@@ -1,0 +1,9 @@
+[install]
+exact = true
+
+[test]
+preload = [
+	"./happydom.ts",
+	"./testing-library.ts",
+	"@testing-library/react/dont-cleanup-after-each",
+]

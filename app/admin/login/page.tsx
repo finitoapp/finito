@@ -1,0 +1,28 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { SwitchAccountForm } from "@/app/admin/(private)/settings/switch-account/switch-account-form";
+import { LoginForm } from "@/components/login-form";
+
+export default function LoginPage() {
+	const router = useRouter();
+
+	return (
+		<>
+			<div className={"pt-6"}>
+				<LoginForm />
+			</div>
+			<div className="my-3 after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+				<span className="bg-card text-muted-foreground relative z-10 px-2">
+					Or use your existing account
+				</span>
+			</div>
+
+			<SwitchAccountForm
+				onSuccess={() => {
+					router.push("/admin");
+				}}
+			/>
+		</>
+	);
+}
