@@ -23,7 +23,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import type { BillScreenData } from "@/lib/bill/billDriver";
+import type { ScreenData } from "@/lib/bill/billDriver";
 import { FioApiClient } from "@/lib/fio/fio-api-client";
 import type { NostrStorageRow } from "@/lib/nostr-storage";
 import {
@@ -319,7 +319,7 @@ const resolveUiNotification = (
 				});
 
 				const getBillByQrCode = useEffectEvent(
-					(pos: Pos, qrCodeId: NonEmptyString): BillScreenData => {
+					(pos: Pos, qrCodeId: NonEmptyString): ScreenData => {
 						const tableId = (tables ?? []).find((table) =>
 							(table.value.qrCodes ?? [])
 								.map((qrCode) => qrCode.id)
@@ -328,34 +328,43 @@ const resolveUiNotification = (
 
 						if (tableId === undefined) {
 							return {
-								bill: null,
+								variant: "payment",
+								payload: {
+									bill: null,
+								},
 							};
 						}
 
 						for (const bill of Object.values(pos.bills)) {
 							if (bill.table && bill.table.id === tableId.value.id) {
 								return {
-									bill: {
-										currency: bill.currency,
-										items: bill.items.map((item) => ({
-											id: item.id,
-											label: item.name,
-											price: item.price,
-											quantity: item.quantity,
-											optionality: {
-												checked: 0,
-											},
-										})),
-									},
-									merchant: {
-										name: bill.table.name,
+									variant: "payment",
+									payload: {
+										bill: {
+											currency: bill.currency,
+											items: bill.items.map((item) => ({
+												id: item.id,
+												label: item.name,
+												price: item.price,
+												quantity: item.quantity,
+												optionality: {
+													checked: 0,
+												},
+											})),
+										},
+										merchant: {
+											name: bill.table.name,
+										},
 									},
 								};
 							}
 						}
 
 						return {
-							bill: null,
+							variant: "payment",
+							payload: {
+								bill: null,
+							},
 						};
 					},
 				);

@@ -56,7 +56,7 @@ export class TableDriver implements BillDriver {
 						}
 
 						callback({
-							type: "bill",
+							type: "screen",
 							payload: billScreenData,
 						});
 						return null;

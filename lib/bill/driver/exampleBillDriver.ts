@@ -82,21 +82,23 @@ export class ExampleBillDriver implements BillDriver {
 		timeout = setTimeout(() => {
 			timeout = setTimeout(() => {
 				callback({
-					type: "bill",
+					type: "screen",
 					payload: {
 						variant: exampleBillItemId !== "2" ? "payment" : "refund",
-						merchant: {
-							name: NonEmptyString("The best restaurant"),
-						},
-						bill: {
-							allowTip: exampleBillItemId !== "2",
-							currency: "CZK",
-							items: Array.from(
-								items.entries().map(([id, values]) => ({
-									id,
-									...values,
-								})),
-							),
+						payload: {
+							merchant: {
+								name: NonEmptyString("The best restaurant"),
+							},
+							bill: {
+								allowTip: exampleBillItemId !== "2",
+								currency: "CZK",
+								items: Array.from(
+									items.entries().map(([id, values]) => ({
+										id,
+										...values,
+									})),
+								),
+							},
 						},
 					},
 				});

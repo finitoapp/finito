@@ -1,4 +1,4 @@
-import type { BillScreenData } from "@/lib/bill/billDriver";
+import type { ScreenData } from "@/lib/bill/billDriver";
 import { createNostrMessageBus } from "@/lib/nostr-message-bus";
 import type { NonEmptyString, Uuid7 } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 export const tableEventMessageBus = createNostrMessageBus<{
 	billChange: {
 		input: {
-			billScreenData: BillScreenData | null;
+			billScreenData: ScreenData | null;
 			subscriptionId: Uuid7;
 		};
 		output: null;

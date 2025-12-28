@@ -21,22 +21,24 @@ export type BillSubscription = {
 	pay: (params: PaymentInit) => Promise<PaymentFinished>;
 };
 
-export type BillScreenData = {
-	bill: Bill | null; // Null when the bill does not exist
-	variant?: "payment" | "refund"; // Default payment
-	allowManualRefresh?: boolean;
-	table?: {
-		name: string;
+export type ScreenData = {
+	variant: "payment" | "refund"; // Default payment
+	payload: {
+		bill: Bill | null; // Null when the bill does not exist
+		allowManualRefresh?: boolean;
+		table?: {
+			name: string;
+		};
+		merchant?: PaymentMerchant;
+		paymentOptions?: (
+			| {
+					type: (typeof BillPaymentOption)["BtcLn"];
+			  }
+			| {
+					type: (typeof BillPaymentOption)["BankTransferCZ"];
+			  }
+		)[];
 	};
-	merchant?: PaymentMerchant;
-	paymentOptions?: (
-		| {
-				type: (typeof BillPaymentOption)["BtcLn"];
-		  }
-		| {
-				type: (typeof BillPaymentOption)["BankTransferCZ"];
-		  }
-	)[];
 };
 
 export type BillDriverSubscriptionEvent =
@@ -47,8 +49,8 @@ export type BillDriverSubscriptionEvent =
 			};
 	  }
 	| {
-			type: "bill";
-			payload: BillScreenData;
+			type: "screen";
+			payload: ScreenData;
 	  }
 	| {
 			type: "paymentInProgress";

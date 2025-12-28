@@ -43,8 +43,8 @@ import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
 import type {
 	BillDriverSubscriptionEvent,
 	BillPaymentOption,
-	BillScreenData,
 	BillSubscription,
+	ScreenData,
 } from "@/lib/bill/billDriver";
 import { billManager } from "@/lib/bill/billManager";
 import { formatAmount } from "@/lib/format-utils";
@@ -59,7 +59,7 @@ import {
 
 const PayButton: React.FC<{
 	subscription: BillSubscription | null;
-	bill: BillScreenData;
+	screen: ScreenData;
 	selectedItemsAtom: SelectedItemsAtom;
 	selectedTipAtom: SelectedTipAtom;
 	paymentReadyAtom: PaymentReadyAtom;
@@ -76,8 +76,8 @@ const PayButton: React.FC<{
 	const selectedTip = useAtomValue(props.selectedTipAtom);
 
 	const itemsAmount =
-		props.bill.bill !== null
-			? props.bill.bill.items.reduce((acc, item) => {
+		props.screen.payload.bill !== null
+			? props.screen.payload.bill.items.reduce((acc, item) => {
 					const quantity =
 						item.optionality === undefined
 							? item.quantity
@@ -118,11 +118,11 @@ const PayButton: React.FC<{
 
 					try {
 						await (async () => {
-							if (props.subscription !== null && props.bill.bill) {
+							if (props.subscription !== null && props.screen.payload.bill) {
 								const items: { id: string; price: number; quantity: number }[] =
 									[];
 
-								for (const item of props.bill.bill.items ?? []) {
+								for (const item of props.screen.payload.bill.items ?? []) {
 									const quantity =
 										item.optionality === undefined
 											? item.quantity
@@ -151,8 +151,8 @@ const PayButton: React.FC<{
 									paymentId,
 									items,
 									tip: itemsAmount * (selectedTip / 100),
-									currency: props.bill.bill.currency,
-									merchant: props.bill.merchant,
+									currency: props.screen.payload.bill.currency,
+									merchant: props.screen.payload.merchant,
 									paymentOption: {
 										type: paymentMethod,
 									},
@@ -190,11 +190,14 @@ const PayButton: React.FC<{
 					<>
 						{totalAmount >= 0 ? "Pay" : "Refund"}
 						<motion.span
-							key={`${totalAmount} ${props.bill.bill?.currency}`}
+							key={`${totalAmount} ${props.screen.payload.bill?.currency}`}
 							initial={{ scale: 1.1, opacity: 0.5 }}
 							animate={{ scale: 1, opacity: 1 }}
 						>
-							{formatAmount(Math.abs(totalAmount), props.bill.bill?.currency)}
+							{formatAmount(
+								Math.abs(totalAmount),
+								props.screen.payload.bill?.currency,
+							)}
 						</motion.span>
 						{/*<ChevronsRightIcon strokeWidth={2} />*/}
 					</>
@@ -206,7 +209,7 @@ const PayButton: React.FC<{
 
 const BottomPanel: FC<{
 	subscription: BillSubscription | null;
-	bill: BillScreenData | null;
+	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
 	selectedTipAtom: SelectedTipAtom;
 	paymentReadyAtom: PaymentReadyAtom;
@@ -214,7 +217,7 @@ const BottomPanel: FC<{
 	loadingAtom: LoadingAtom;
 }> = ({
 	subscription,
-	bill,
+	screen,
 	selectedItemsAtom,
 	selectedTipAtom,
 	paymentReadyAtom,
@@ -228,18 +231,20 @@ const BottomPanel: FC<{
 	useEffect(() => {
 		if (
 			!isOpen &&
-			bill !== null &&
-			bill.bill !== null &&
+			screen !== null &&
+			screen.payload.bill !== null &&
 			paymentFinished === null
 		) {
 			setOpen(true);
 		} else if (
 			isOpen &&
-			(bill === null || bill.bill === null || paymentFinished !== null)
+			(screen === null ||
+				screen.payload.bill === null ||
+				paymentFinished !== null)
 		) {
 			setOpen(false);
 		}
-	}, [bill, isOpen, paymentFinished]);
+	}, [screen, isOpen, paymentFinished]);
 
 	const totalAmount =
 		(paymentReady?.bill.items.reduce((acc, item) => {
@@ -312,10 +317,10 @@ const BottomPanel: FC<{
 								</Button>
 							</div>
 						) : (
-							bill !== null &&
-							bill.bill !== null && (
+							screen !== null &&
+							screen.payload.bill !== null && (
 								<>
-									{bill.bill.allowTip === true && (
+									{screen.payload.bill.allowTip === true && (
 										<div
 											className={
 												"text-xs text-muted-foreground font-bold flex flex-col gap-2"
@@ -329,7 +334,7 @@ const BottomPanel: FC<{
 										<ButtonGroup className={"w-full"}>
 											<PayButton
 												subscription={subscription}
-												bill={bill}
+												screen={screen}
 												selectedItemsAtom={selectedItemsAtom}
 												selectedTipAtom={selectedTipAtom}
 												paymentReadyAtom={paymentReadyAtom}
@@ -349,7 +354,7 @@ const BottomPanel: FC<{
 };
 
 const Screen: FC<{
-	bill: BillScreenData | null;
+	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
 	paymentReadyAtom: PaymentReadyAtom;
 	paymentFinishedAtom: PaymentFinishedAtom;
@@ -396,9 +401,9 @@ const Screen: FC<{
 
 	return (
 		<>
-			{props.bill !== null && props.bill.bill !== null && (
+			{props.screen !== null && props.screen.payload.bill !== null && (
 				<div className={"mb-28 flex flex-col grow"}>
-					{props.bill.variant === "refund" && (
+					{props.screen.variant === "refund" && (
 						<div
 							className={
 								"fixed w-xl h-full max-w-full flex justify-center items-center pb-60"
@@ -411,9 +416,9 @@ const Screen: FC<{
 						</div>
 					)}
 
-					{(props.bill.variant === undefined ||
-						props.bill.variant === "payment") &&
-						props.bill.bill.items.length === 0 && (
+					{(props.screen.variant === undefined ||
+						props.screen.variant === "payment") &&
+						props.screen.payload.bill.items.length === 0 && (
 							<div
 								className={
 									"fixed w-xl h-full max-w-full flex justify-center items-center pb-60"
@@ -434,17 +439,17 @@ const Screen: FC<{
 					>
 						<CarouselContent>
 							<CarouselItem>
-								{props.bill?.table?.name && (
+								{props.screen?.payload.table?.name && (
 									<h3
 										className={
 											"text-md font-bold text-foreground m-auto py-4 px-4"
 										}
 									>
-										{props.bill.table.name}
+										{props.screen.payload.table.name}
 									</h3>
 								)}
 								<BillItemList
-									bill={props.bill.bill}
+									bill={props.screen.payload.bill}
 									selectedItemsAtom={props.selectedItemsAtom}
 								/>
 							</CarouselItem>
@@ -566,7 +571,7 @@ export default function Page() {
 	const [subscription, setSubscription] = useState<BillSubscription | null>(
 		null,
 	);
-	const [bill, setBill] = useState<BillScreenData | null>(null);
+	const [screen, setScreen] = useState<ScreenData | null>(null);
 	const [qrCode, setQrCode] = useState<string | null>(null);
 
 	const subscriptionHandler = useEffectEvent(
@@ -579,8 +584,8 @@ export default function Page() {
 				return;
 			}
 
-			if (event.type === "bill") {
-				setBill(event.payload);
+			if (event.type === "screen") {
+				setScreen(event.payload);
 				store.set(loadingAtom, null);
 				return;
 			}
@@ -691,9 +696,9 @@ export default function Page() {
 		<div className="w-full flex flex-col justify-between min-h-full">
 			<div className={"h-18"} />
 			<Header
-				title={bill !== null ? bill.merchant?.name : ""}
+				title={screen !== null ? screen.payload.merchant?.name : ""}
 				endAddon={
-					bill?.allowManualRefresh && (
+					screen?.payload.allowManualRefresh && (
 						<Button
 							type={"button"}
 							variant={"secondary"}
@@ -712,7 +717,7 @@ export default function Page() {
 			<Loading loadingAtom={loadingAtom} />
 
 			<Screen
-				bill={bill}
+				screen={screen}
 				selectedItemsAtom={selectedItemsAtom}
 				paymentReadyAtom={paymentReadyAtom}
 				paymentFinishedAtom={paymentFinishedAtom}
@@ -726,7 +731,7 @@ export default function Page() {
 
 			<BottomPanel
 				subscription={subscription}
-				bill={bill}
+				screen={screen}
 				selectedItemsAtom={selectedItemsAtom}
 				selectedTipAtom={selectedTipAtom}
 				paymentReadyAtom={paymentReadyAtom}

@@ -94,10 +94,13 @@ export class StaticPaymentBillDriver implements BillDriver {
 					staticOfflinePayment = staticOfflinePaymentResult.data;
 
 					callback({
-						type: "bill",
+						type: "screen",
 						payload: {
-							bill: staticOfflinePayment.bill,
-							merchant: staticOfflinePayment.merchant,
+							variant: "payment",
+							payload: {
+								bill: staticOfflinePayment.bill,
+								merchant: staticOfflinePayment.merchant,
+							},
 						},
 					});
 
