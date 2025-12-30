@@ -15,9 +15,11 @@ The code is transparent, allowing verification that it does exactly what it clai
 With Finito, your data remains under your sole control. No one else has access.
 Data loss isn't a concern thanks to automated encrypted backups to relays of your choice—readable only by you.
 
+<p>
 <img src=".github/screenshot1.jpg" alt="Screenshot1" width="25%" height="25%"  />
 <img src=".github/screenshot2.jpg" alt="Screenshot2" width="25%" height="25%"  />
 <img src=".github/screenshot3.jpg" alt="Screenshot3" width="25%" height="25%"  />
+</p>
 
 ## How Finito Works
 
