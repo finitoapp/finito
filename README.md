@@ -1,11 +1,18 @@
 # Finito
+#### make business payments self-custody again
 
-> **Make business payments self-custody again**
+> **This project is in its early experimental phase. Please share your feedback with us and help us in our mission.**
+
+<p>
+<img src=".github/screenshot1.webp" alt="Screenshot1" width="32%" height="32%" />
+<img src=".github/screenshot2.webp" alt="Screenshot2" width="32%" height="32%" />
+<img src=".github/screenshot3.webp" alt="Screenshot3" width="32%" height="32%" />
+</p>
 
 Payments in both the online and real worlds are becoming increasingly digitized.
 While digital payments offer convenience on one side, they also introduce numerous risks, issues, costs, technical limitations, and dependencies on third parties on the other.
 
-Finito aims to restore control over payments to merchants, just like with physical cash.
+Finito aims to restore control over payments to merchants, **just like with physical cash**.
 It reduces reliance on banks, payment terminal providers, and "smart payment" services (e.g., pay-at-table, ordering, reservations, etc.).
 Using the Finito app, you can start accepting payments in under a minute—whether you're running a café, bistro, restaurant, hair salon, plumbing service, or simply selling handmade goods.
 
@@ -15,11 +22,13 @@ The code is transparent, allowing verification that it does exactly what it clai
 With Finito, your data remains under your sole control. No one else has access.
 Data loss isn't a concern thanks to automated encrypted backups to relays of your choice—readable only by you.
 
-<p>
-<img src=".github/screenshot1.webp" alt="Screenshot1" width="32%" height="32%" />
-<img src=".github/screenshot2.webp" alt="Screenshot2" width="32%" height="32%" />
-<img src=".github/screenshot3.webp" alt="Screenshot3" width="32%" height="32%" />
-</p>
+### Our Goal
+
+Payment systems are increasingly regulated, centralized, and controlled by a handful of powerful institutions that exploit this dominance. We believe that the ability to sell one's services or products to customers is a fundamental right of every entrepreneur.
+
+**Our mission is to create a true alternative to traditional payment tools**—one that is simple, as independent as possible, completely free, and yet modern and technologically advanced.
+
+Finito enables you to operate a payment system without relying on any operator, financial institutions, or suppliers of specialized hardware. You become your own payment provider.
 
 ## How Finito Works
 
@@ -56,8 +65,8 @@ Communication between the customer and merchant apps is handled via the Nostr pr
 
 ## Supported Payment Methods
 
-- **Bitcoin Payments**: Instant setup; connect wallets via NWC protocols or APIs.
-- **Cash Payments**: Immediate, but no remote capability.
+- **Bitcoin Payments**: Included from the first launch; connect wallets via NWC protocols or APIs.
+- **Cash Payments**: Included from the first launch, but no remote capability.
 - **Bank QR Code Payments**: Works after entering account details; receipt verification/refunds need compatible bank plugins.
 - **Card Payments**: Not currently supported due to technical constraints (future TapToPay possible).
 
