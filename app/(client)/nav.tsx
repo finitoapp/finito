@@ -40,7 +40,7 @@ export function Nav() {
 				bottom:
 					pathname === "/payment" || paths.length > 2 || hash !== null
 						? -80
-						: 8,
+						: "env(safe-area-inset-bottom, 8px)",
 			}}
 		>
 			<div className="relative max-w-md mx-auto">

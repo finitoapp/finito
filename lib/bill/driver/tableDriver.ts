@@ -1,4 +1,8 @@
-import type { BillDriver, BillSubscription } from "@/lib/bill/billDriver";
+import type {
+	BillDriver,
+	BillSubscription,
+	ScreenDataPaymentPayFunction,
+} from "@/lib/bill/billDriver";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -38,6 +42,37 @@ export class TableDriver implements BillDriver {
 				ndk,
 			});
 
+		const pay: ScreenDataPaymentPayFunction = async (params) => {
+			callback({
+				type: "screen",
+				payload: {
+					variant: "paymentReady",
+					payload: {
+						paymentId: params.paymentId,
+						type: "btcLn",
+						lnInvoice: "",
+						bill: {
+							items: [],
+							currency: params.currency,
+							tip: params.tip,
+						},
+					},
+				},
+			});
+
+			callback({
+				type: "screen",
+				payload: {
+					variant: "paymentFinished",
+					payload: {
+						type: "failure",
+						paymentId: params.paymentId,
+						reason: NonEmptyString("The payment is not ready yet."),
+					},
+				},
+			});
+		};
+
 		const server = await tableEventMessageBus
 			.createInstance({
 				pubkey: ndk.signer.pubkey,
@@ -57,7 +92,10 @@ export class TableDriver implements BillDriver {
 
 						callback({
 							type: "screen",
-							payload: billScreenData,
+							payload: {
+								...billScreenData,
+								pay,
+							},
 						});
 						return null;
 					},
@@ -98,27 +136,6 @@ export class TableDriver implements BillDriver {
 						ignoreResponse: true,
 					},
 				);
-			},
-			pay: async (params) => {
-				callback({
-					type: "paymentReady",
-					payload: {
-						paymentId: params.paymentId,
-						type: "btcLn",
-						lnInvoice: "",
-						bill: {
-							items: [],
-							currency: params.currency,
-							tip: params.tip,
-						},
-					},
-				});
-
-				return {
-					type: "failure",
-					paymentId: params.paymentId,
-					reason: NonEmptyString("The payment is not ready yet."),
-				};
 			},
 		} satisfies BillSubscription;
 	}

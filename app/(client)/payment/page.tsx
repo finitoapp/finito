@@ -2,26 +2,21 @@
 
 import { IconRefresh } from "@tabler/icons-react";
 import { motion } from "framer-motion";
-import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
+import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
-	ArrowLeftIcon,
 	LoaderCircleIcon,
 	QrCodeIcon,
 	RecycleIcon,
 	SquircleDashedIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type FC, useEffect, useEffectEvent, useRef, useState } from "react";
+import { type FC, useEffect, useEffectEvent, useState } from "react";
 import { BillItemList } from "@/app/(client)/bill-item-list";
 import {
 	createLoadingAtom,
-	createPaymentFinishedAtom,
-	createPaymentReadyAtom,
 	createSelectedItemsAtom,
 	createSelectedTipAtom,
 	type LoadingAtom,
-	type PaymentFinishedAtom,
-	type PaymentReadyAtom,
 	type SelectedItemsAtom,
 	type SelectedTipAtom,
 } from "@/app/(client)/bill-utils";
@@ -30,12 +25,6 @@ import { LoadingIndicator } from "@/components/loading-indicator";
 import { TipSelector } from "@/components/tip-selector";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
-import {
-	Carousel,
-	type CarouselApi,
-	CarouselContent,
-	CarouselItem,
-} from "@/components/ui/carousel";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
 import { useNostr } from "@/hooks/use-nostr";
@@ -57,18 +46,14 @@ import {
 	paymentReadyStorage,
 } from "@/storages/payment-progress-storage";
 
-const PayButton: React.FC<{
+const PayButton: FC<{
 	subscription: BillSubscription | null;
 	screen: ScreenData;
 	selectedItemsAtom: SelectedItemsAtom;
 	selectedTipAtom: SelectedTipAtom;
-	paymentReadyAtom: PaymentReadyAtom;
-	paymentFinishedAtom: PaymentFinishedAtom;
 	loadingAtom: LoadingAtom;
 }> = (props) => {
 	const { ndk } = useNostr();
-	const [paymentReady, setPaymentReady] = useAtom(props.paymentReadyAtom);
-	const setPaymentFinished = useSetAtom(props.paymentFinishedAtom);
 	const setLoading = useSetAtom(props.loadingAtom);
 	const [paymentMethod, setPaymentMethod] =
 		useState<BillPaymentOption>("btcLn");
@@ -76,7 +61,7 @@ const PayButton: React.FC<{
 	const selectedTip = useAtomValue(props.selectedTipAtom);
 
 	const itemsAmount =
-		props.screen.payload.bill !== null
+		props.screen.variant === "payment" && props.screen.payload.bill !== null
 			? props.screen.payload.bill.items.reduce((acc, item) => {
 					const quantity =
 						item.optionality === undefined
@@ -114,79 +99,71 @@ const PayButton: React.FC<{
 				size={"lg"}
 				disabled={totalAmount === 0}
 				onClick={async () => {
-					setPaymentReady(null);
+					await (async () => {
+						if (
+							props.subscription !== null &&
+							(props.screen.variant === "payment" ||
+								props.screen.variant === "refund") &&
+							props.screen.payload.bill
+						) {
+							const pay = props.screen.pay;
 
-					try {
-						await (async () => {
-							if (props.subscription !== null && props.screen.payload.bill) {
-								const items: { id: string; price: number; quantity: number }[] =
-									[];
+							const items: { id: string; price: number; quantity: number }[] =
+								[];
 
-								for (const item of props.screen.payload.bill.items ?? []) {
-									const quantity =
-										item.optionality === undefined
-											? item.quantity
-											: Math.min(
-													selectedItems[item.id] ?? item.optionality.checked,
-													item.quantity,
-												);
+							for (const item of props.screen.variant === "payment"
+								? props.screen.payload.bill.items
+								: []) {
+								const quantity =
+									item.optionality === undefined
+										? item.quantity
+										: Math.min(
+												selectedItems[item.id] ?? item.optionality.checked,
+												item.quantity,
+											);
 
-									if (quantity <= 0) {
-										continue;
-									}
-
-									items.push({
-										id: item.id,
-										price: item.price,
-										quantity: quantity,
-									});
+								if (quantity <= 0) {
+									continue;
 								}
 
-								if (items.length === 0) {
-									return;
-								}
+								items.push({
+									id: item.id,
+									price: item.price,
+									quantity: quantity,
+								});
+							}
 
-								const paymentId = Uuid7.random();
-								const paymentInit: PaymentInit = {
-									paymentId,
-									items,
-									tip: itemsAmount * (selectedTip / 100),
-									currency: props.screen.payload.bill.currency,
-									merchant: props.screen.payload.merchant,
-									paymentOption: {
-										type: paymentMethod,
-									},
-								};
-
-								await paymentInitStorage.insertOrUpdate(
-									ndk,
-									paymentId,
-									paymentInit,
-								);
-
-								setLoading("The payment is preparing");
-								const paymentFinished =
-									await props.subscription.pay(paymentInit);
-								setPaymentFinished(paymentFinished);
-								setPaymentReady(undefined);
-								setLoading(null);
-								if (paymentFinished.paymentId) {
-									await paymentFinishedStorage.insertOrUpdate(
-										ndk,
-										paymentFinished.paymentId,
-										paymentFinished,
-									);
-								}
+							if (items.length === 0) {
 								return;
 							}
-						})();
-					} catch (e) {
-						setPaymentReady(undefined);
-						throw e;
-					}
+
+							const paymentId = Uuid7.random();
+							const paymentInit: PaymentInit = {
+								paymentId,
+								items,
+								tip: itemsAmount * (selectedTip / 100),
+								currency: props.screen.payload.bill.currency,
+								merchant: props.screen.payload.merchant,
+								paymentOption: {
+									type: paymentMethod,
+								},
+							};
+
+							setLoading("The payment is preparing");
+							await paymentInitStorage.insertOrUpdate(
+								ndk,
+								paymentId,
+								paymentInit,
+							);
+							await pay(paymentInit);
+							setLoading(null);
+							return;
+						}
+					})();
 				}}
 			>
-				{paymentReady === undefined && (
+				{(props.screen.variant === "payment" ||
+					props.screen.variant === "refund") && (
 					<>
 						{totalAmount >= 0 ? "Pay" : "Refund"}
 						<motion.span
@@ -212,55 +189,49 @@ const BottomPanel: FC<{
 	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
 	selectedTipAtom: SelectedTipAtom;
-	paymentReadyAtom: PaymentReadyAtom;
-	paymentFinishedAtom: PaymentFinishedAtom;
 	loadingAtom: LoadingAtom;
 }> = ({
 	subscription,
 	screen,
 	selectedItemsAtom,
 	selectedTipAtom,
-	paymentReadyAtom,
-	paymentFinishedAtom,
 	loadingAtom,
 }) => {
 	const [isOpen, setOpen] = useState(false);
-	const [paymentReady, setPaymentReady] = useAtom(paymentReadyAtom);
-	const [paymentFinished, setPaymentFinished] = useAtom(paymentFinishedAtom);
 
 	useEffect(() => {
 		if (
 			!isOpen &&
-			screen !== null &&
-			screen.payload.bill !== null &&
-			paymentFinished === null
+			(screen?.variant === "payment" ||
+				screen?.variant === "paymentReady" ||
+				screen?.variant === "refund")
 		) {
 			setOpen(true);
-		} else if (
-			isOpen &&
-			(screen === null ||
-				screen.payload.bill === null ||
-				paymentFinished !== null)
-		) {
+		} else if (isOpen && screen?.variant === "paymentFinished") {
 			setOpen(false);
 		}
-	}, [screen, isOpen, paymentFinished]);
+	}, [isOpen, screen?.variant]);
 
 	const totalAmount =
-		(paymentReady?.bill.items.reduce((acc, item) => {
-			return item.price * item.quantity + acc;
-		}, 0) ?? 0) + (paymentReady?.bill.tip ?? 0);
+		(screen?.variant === "paymentReady" &&
+			(screen.payload.bill.items.reduce((acc, item) => {
+				return item.price * item.quantity + acc;
+			}, 0) ?? 0) + (screen.payload.bill.tip ?? 0)) ||
+		0;
 
 	return (
 		<div
 			className={
 				"bg-card rounded-t-2xl p-4 w-full max-w-xl flex flex-col gap-2 shadow-2xl fixed bottom-0"
 			}
+			style={{
+				paddingBottom: "env(safe-area-inset-bottom)",
+			}}
 		>
 			<Collapsible open={isOpen}>
 				<CollapsibleContent>
 					<div className={"flex flex-col gap-4 shadow-2xl"}>
-						{paymentReady ? (
+						{screen && screen.variant === "paymentReady" ? (
 							<div className={"flex flex-col gap-4"}>
 								<ButtonGroup className={"w-full"}>
 									<SelectButton
@@ -290,7 +261,7 @@ const BottomPanel: FC<{
 										asChild
 									>
 										<a
-											href={`lightning:${paymentReady && paymentReady.type === "btcLn" ? paymentReady.lnInvoice : ""}`}
+											href={`lightning:${screen.payload.type === "btcLn" ? screen.payload.lnInvoice : ""}`}
 										>
 											{totalAmount >= 0 ? "Pay" : "Refund"}
 										</a>
@@ -304,20 +275,10 @@ const BottomPanel: FC<{
 								>
 									<QrCodeIcon /> Copy & display QR invoice
 								</Button>
-								<Button
-									className={"h-12 w-full"}
-									variant={"outline"}
-									size={"lg"}
-									onClick={async () => {
-										setPaymentReady(undefined);
-										setPaymentFinished(null);
-									}}
-								>
-									<ArrowLeftIcon /> Back to the bill
-								</Button>
 							</div>
 						) : (
 							screen !== null &&
+							screen.variant === "payment" &&
 							screen.payload.bill !== null && (
 								<>
 									{screen.payload.bill.allowTip === true && (
@@ -337,8 +298,6 @@ const BottomPanel: FC<{
 												screen={screen}
 												selectedItemsAtom={selectedItemsAtom}
 												selectedTipAtom={selectedTipAtom}
-												paymentReadyAtom={paymentReadyAtom}
-												paymentFinishedAtom={paymentFinishedAtom}
 												loadingAtom={loadingAtom}
 											/>
 										</ButtonGroup>
@@ -356,52 +315,18 @@ const BottomPanel: FC<{
 const Screen: FC<{
 	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
-	paymentReadyAtom: PaymentReadyAtom;
-	paymentFinishedAtom: PaymentFinishedAtom;
-	onBackToTheBill: () => void;
 }> = (props) => {
-	const apiRef = useRef<CarouselApi | null>(null);
-	const paymentReadyFromAtom = useAtomValue(props.paymentReadyAtom);
-	const [paymentFinished, setPaymentFinished] = useAtom(
-		props.paymentFinishedAtom,
-	);
-	const [paymentReady, setPaymentReady] = useState(paymentReadyFromAtom);
-
-	useEffect(() => {
-		if (!apiRef.current) {
-			return;
-		}
-
-		const currentScroll = apiRef.current.scrollProgress();
-
-		if (
-			paymentReadyFromAtom === undefined &&
-			paymentFinished === null &&
-			currentScroll !== 0
-		) {
-			apiRef.current.scrollTo(0);
-			return;
-		}
-
-		if (
-			(paymentFinished !== null || paymentReadyFromAtom !== undefined) &&
-			currentScroll !== 1
-		) {
-			setPaymentReady(paymentReadyFromAtom);
-			apiRef.current.scrollTo(1);
-			return;
-		}
-	}, [paymentReadyFromAtom, paymentFinished]);
-
 	const totalAmount =
-		paymentReady?.bill.items.reduce(
-			(acc, value) => acc + value.price * value.quantity,
-			0,
-		) ?? 0;
+		props.screen && props.screen.variant === "paymentReady"
+			? props.screen.payload.bill.items.reduce(
+					(acc, value) => acc + value.price * value.quantity,
+					0,
+				)
+			: 0;
 
 	return (
 		<>
-			{props.screen !== null && props.screen.payload.bill !== null && (
+			{props.screen !== null && (
 				<div className={"mb-28 flex flex-col grow"}>
 					{props.screen.variant === "refund" && (
 						<div
@@ -416,8 +341,9 @@ const Screen: FC<{
 						</div>
 					)}
 
-					{(props.screen.variant === undefined ||
-						props.screen.variant === "payment") &&
+					{(props.screen?.variant === "payment" ||
+						props.screen?.variant === "refund") &&
+						props.screen.payload.bill &&
 						props.screen.payload.bill.items.length === 0 && (
 							<div
 								className={
@@ -431,110 +357,90 @@ const Screen: FC<{
 							</div>
 						)}
 
-					<Carousel
-						className="w-full"
-						setApi={(api) => {
-							apiRef.current = api;
-						}}
-					>
-						<CarouselContent>
-							<CarouselItem>
-								{props.screen?.payload.table?.name && (
-									<h3
-										className={
-											"text-md font-bold text-foreground m-auto py-4 px-4"
-										}
-									>
-										{props.screen.payload.table.name}
-									</h3>
-								)}
-								<BillItemList
-									bill={props.screen.payload.bill}
-									selectedItemsAtom={props.selectedItemsAtom}
-								/>
-							</CarouselItem>
-							<CarouselItem>
-								{paymentFinished !== null && (
-									<div
-										className={
-											"w-full flex h-dvh flex-col items-center justify-evenly"
-										}
-									>
-										<LoadingIndicator
-											text={
-												paymentFinished.type === "failure"
-													? paymentFinished.reason
-													: "The payment is successfully paid"
-											}
-											open={true}
-											status={paymentFinished.type}
-										/>
-										<Button
-											type={"button"}
-											size={"lg"}
-											onClick={() => {
-												props.onBackToTheBill();
-												setPaymentReady(undefined);
-												setPaymentFinished(null);
-											}}
-										>
-											<ArrowLeftIcon /> Back to the bill
-										</Button>
-									</div>
-								)}
+					{(props.screen.variant === "payment" ||
+						props.screen.variant === "refund") &&
+						props.screen.payload.table?.name && (
+							<h3
+								className={"text-md font-bold text-foreground m-auto py-4 px-4"}
+							>
+								{props.screen.payload.table.name}
+							</h3>
+						)}
+					{(props.screen.variant === "payment" ||
+						props.screen.variant === "refund") &&
+						props.screen.payload.bill && (
+							<BillItemList
+								bill={props.screen.payload.bill}
+								selectedItemsAtom={props.selectedItemsAtom}
+							/>
+						)}
+					{props.screen?.variant === "paymentFinished" && (
+						<div
+							className={
+								"w-full flex h-dvh flex-col items-center justify-evenly"
+							}
+						>
+							<LoadingIndicator
+								text={
+									props.screen.payload.type === "failure"
+										? props.screen.payload.reason
+										: "The payment is successfully paid"
+								}
+								open={true}
+								status={props.screen.payload.type}
+							/>
+						</div>
+					)}
 
-								{paymentFinished === null && paymentReady && (
-									<div
-										className={
-											"w-full flex h-dvh pb-80 flex-col items-center gap-12 justify-evenly"
-										}
-									>
-										<div className={"flex flex-col items-center gap-4"}>
-											<div className={"text-2xl"}>
-												<strong>
-													{formatAmount(
-														paymentReady.amountExpectedToPay
-															? paymentReady.amountExpectedToPay.value
-															: totalAmount,
-														paymentReady.amountExpectedToPay
-															? paymentReady.amountExpectedToPay.currency
-															: paymentReady.bill.currency,
-													)}
-												</strong>
-											</div>
-											{paymentReady.amountExpectedToPay && (
-												<div className={"text-2xl"}>
-													{formatAmount(
-														totalAmount,
-														paymentReady.bill.currency,
-													)}
-												</div>
-											)}
-										</div>
-
-										{paymentReady.amountExpectedToPay && (
-											<div className={"text-xs text-muted-foreground"}>
-												rate{" "}
-												{formatAmount(paymentReady.amountExpectedToPay.rate)}{" "}
-												{paymentReady.amountExpectedToPay.currency}/
-												{paymentReady.bill.currency}
-											</div>
+					{props.screen.variant === "paymentReady" && (
+						<div
+							className={
+								"w-full flex h-dvh pb-80 flex-col items-center gap-12 justify-evenly"
+							}
+						>
+							<div className={"flex flex-col items-center gap-4"}>
+								<div className={"text-2xl"}>
+									<strong>
+										{formatAmount(
+											props.screen.payload.amountExpectedToPay
+												? props.screen.payload.amountExpectedToPay.value
+												: totalAmount,
+											props.screen.payload.amountExpectedToPay
+												? props.screen.payload.amountExpectedToPay.currency
+												: props.screen.payload.bill.currency,
 										)}
-
-										<div className={"flex flex-col items-center gap-4"}>
-											<LoaderCircleIcon className="animate-spin size-12 text-muted-foreground" />
-
-											<div className={"text-xs text-muted-foreground"}>
-												{totalAmount >= 0
-													? "We are waiting for your payment"
-													: "We are waiting for your refund"}
-											</div>
-										</div>
+									</strong>
+								</div>
+								{props.screen.payload.amountExpectedToPay && (
+									<div className={"text-2xl"}>
+										{formatAmount(
+											totalAmount,
+											props.screen.payload.bill.currency,
+										)}
 									</div>
 								)}
-							</CarouselItem>
-						</CarouselContent>
-					</Carousel>
+							</div>
+
+							{props.screen.payload.amountExpectedToPay && (
+								<div className={"text-xs text-muted-foreground"}>
+									rate{" "}
+									{formatAmount(props.screen.payload.amountExpectedToPay.rate)}{" "}
+									{props.screen.payload.amountExpectedToPay.currency}/
+									{props.screen.payload.bill.currency}
+								</div>
+							)}
+
+							<div className={"flex flex-col items-center gap-4"}>
+								<LoaderCircleIcon className="animate-spin size-12 text-muted-foreground" />
+
+								<div className={"text-xs text-muted-foreground"}>
+									{totalAmount >= 0
+										? "We are waiting for your payment"
+										: "We are waiting for your refund"}
+								</div>
+							</div>
+						</div>
+					)}
 				</div>
 			)}
 		</>
@@ -562,8 +468,6 @@ export default function Page() {
 	const router = useRouter();
 	const [selectedItemsAtom] = useState(createSelectedItemsAtom);
 	const [selectedTipAtom] = useState(createSelectedTipAtom);
-	const [paymentReadyAtom] = useState(createPaymentReadyAtom);
-	const [paymentFinishedAtom] = useState(createPaymentFinishedAtom);
 	const [loadingAtom] = useState(() =>
 		createLoadingAtom("Loading the data..."),
 	);
@@ -585,6 +489,22 @@ export default function Page() {
 			}
 
 			if (event.type === "screen") {
+				if (event.payload.variant === "paymentReady") {
+					await paymentReadyStorage.insertOrUpdate(
+						ndk,
+						event.payload.payload.paymentId,
+						event.payload.payload,
+					);
+				} else if (event.payload.variant === "paymentFinished") {
+					if (event.payload.payload.paymentId) {
+						await paymentFinishedStorage.insertOrUpdate(
+							ndk,
+							event.payload.payload.paymentId,
+							event.payload.payload,
+						);
+					}
+				}
+
 				setScreen(event.payload);
 				store.set(loadingAtom, null);
 				return;
@@ -595,27 +515,14 @@ export default function Page() {
 				return;
 			}
 
-			if (event.type === "paymentReady") {
-				await paymentReadyStorage.insertOrUpdate(
-					ndk,
-					event.payload.paymentId,
-					event.payload,
-				);
-				store.set(paymentReadyAtom, event.payload);
-				store.set(loadingAtom, null);
-				return;
-			}
-
 			if (event.type === "closed") {
 				alert("The bill is closed");
-				router.replace("/scan");
+				router.replace("/");
 				return;
 			}
 
 			if (event.type === "resetBill") {
-				store.set(paymentFinishedAtom, null);
 				store.set(loadingAtom, "Loading the data...");
-				store.set(paymentReadyAtom, undefined);
 				const subscription = await subscriptionPromise;
 				if (subscription !== null) {
 					void subscription.refresh();
@@ -696,9 +603,22 @@ export default function Page() {
 		<div className="w-full flex flex-col justify-between min-h-full">
 			<div className={"h-18"} />
 			<Header
-				title={screen !== null ? screen.payload.merchant?.name : ""}
+				title={
+					screen !== null && screen?.variant === "payment"
+						? screen.payload.merchant?.name
+						: ""
+				}
+				onBackClick={() => {
+					if (screen?.variant === "paymentReady" && screen.parentScreen) {
+						setScreen(screen.parentScreen);
+						return;
+					}
+
+					router.replace("/");
+				}}
 				endAddon={
-					screen?.payload.allowManualRefresh && (
+					screen?.variant === "payment" &&
+					screen.payload.allowManualRefresh && (
 						<Button
 							type={"button"}
 							variant={"secondary"}
@@ -716,26 +636,13 @@ export default function Page() {
 
 			<Loading loadingAtom={loadingAtom} />
 
-			<Screen
-				screen={screen}
-				selectedItemsAtom={selectedItemsAtom}
-				paymentReadyAtom={paymentReadyAtom}
-				paymentFinishedAtom={paymentFinishedAtom}
-				onBackToTheBill={async () => {
-					store.set(paymentFinishedAtom, null);
-					store.set(loadingAtom, "Loading the data...");
-					store.set(paymentReadyAtom, undefined);
-					setSessionId(Uuid7.random());
-				}}
-			/>
+			<Screen screen={screen} selectedItemsAtom={selectedItemsAtom} />
 
 			<BottomPanel
 				subscription={subscription}
 				screen={screen}
 				selectedItemsAtom={selectedItemsAtom}
 				selectedTipAtom={selectedTipAtom}
-				paymentReadyAtom={paymentReadyAtom}
-				paymentFinishedAtom={paymentFinishedAtom}
 				loadingAtom={loadingAtom}
 			/>
 		</div>

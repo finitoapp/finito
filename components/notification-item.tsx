@@ -319,7 +319,13 @@ const resolveUiNotification = (
 				});
 
 				const getBillByQrCode = useEffectEvent(
-					(pos: Pos, qrCodeId: NonEmptyString): ScreenData => {
+					(
+						pos: Pos,
+						qrCodeId: NonEmptyString,
+					): Omit<
+						Extract<ScreenData, { variant: "payment" | "refund" }>,
+						"pay"
+					> => {
 						const tableId = (tables ?? []).find((table) =>
 							(table.value.qrCodes ?? [])
 								.map((qrCode) => qrCode.id)

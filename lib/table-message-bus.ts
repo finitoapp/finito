@@ -22,7 +22,10 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 export const tableEventMessageBus = createNostrMessageBus<{
 	billChange: {
 		input: {
-			billScreenData: ScreenData | null;
+			billScreenData: Omit<
+				Extract<ScreenData, { variant: "payment" | "refund" }>,
+				"pay" | "parentScreen"
+			> | null;
 			subscriptionId: Uuid7;
 		};
 		output: null;

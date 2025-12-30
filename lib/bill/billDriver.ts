@@ -18,28 +18,43 @@ export type BillPaymentOption = InferEnumType<typeof BillPaymentOption>;
 export type BillSubscription = {
 	close: () => Promise<void>;
 	refresh: () => Promise<void>;
-	pay: (params: PaymentInit) => Promise<PaymentFinished>;
 };
 
-export type ScreenData = {
-	variant: "payment" | "refund"; // Default payment
-	payload: {
-		bill: Bill | null; // Null when the bill does not exist
-		allowManualRefresh?: boolean;
-		table?: {
-			name: string;
-		};
-		merchant?: PaymentMerchant;
-		paymentOptions?: (
-			| {
-					type: (typeof BillPaymentOption)["BtcLn"];
-			  }
-			| {
-					type: (typeof BillPaymentOption)["BankTransferCZ"];
-			  }
-		)[];
-	};
-};
+export type ScreenDataPaymentPayFunction = (
+	params: PaymentInit,
+) => Promise<void>;
+
+export type ScreenData =
+	| {
+			variant: "payment" | "refund"; // Default payment
+			parentScreen?: ScreenData;
+			pay: ScreenDataPaymentPayFunction;
+			payload: {
+				bill: Bill | null; // Null when the bill does not exist
+				allowManualRefresh?: boolean;
+				table?: {
+					name: string;
+				};
+				merchant?: PaymentMerchant;
+				paymentOptions?: (
+					| {
+							type: (typeof BillPaymentOption)["BtcLn"];
+					  }
+					| {
+							type: (typeof BillPaymentOption)["BankTransferCZ"];
+					  }
+				)[];
+			};
+	  }
+	| {
+			variant: "paymentReady";
+			parentScreen?: ScreenData;
+			payload: PaymentReady;
+	  }
+	| {
+			variant: "paymentFinished";
+			payload: PaymentFinished;
+	  };
 
 export type BillDriverSubscriptionEvent =
 	| {
@@ -61,10 +76,6 @@ export type BillDriverSubscriptionEvent =
 	| {
 			type: "closed";
 			payload: EmptyObject;
-	  }
-	| {
-			type: "paymentReady";
-			payload: PaymentReady;
 	  }
 	| {
 			type: "resetBill";

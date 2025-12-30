@@ -1,4 +1,8 @@
-import type { BillDriver, BillSubscription } from "@/lib/bill/billDriver";
+import type {
+	BillDriver,
+	BillSubscription,
+	ScreenData,
+} from "@/lib/bill/billDriver";
 import { NonEmptyString } from "@/lib/types";
 import type { PaymentReady } from "@/storages/payment-progress-storage";
 
@@ -77,30 +81,113 @@ export class ExampleBillDriver implements BillDriver {
 			return null;
 		}
 
+		const rootScreen: ScreenData = {
+			variant: exampleBillItemId !== "2" ? "payment" : "refund",
+			pay: () => Promise.resolve(),
+			payload: {
+				merchant: {
+					name: NonEmptyString("The best restaurant"),
+				},
+				bill: {
+					allowTip: exampleBillItemId !== "2",
+					currency: "CZK",
+					items: Array.from(
+						items.entries().map(([id, values]) => ({
+							id,
+							...values,
+						})),
+					),
+				},
+			},
+		};
+
 		let timeout: null | Timer = null;
+
+		rootScreen.pay = async (params) => {
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			return new Promise((resolve) => {
+				const rate = 1_913_775;
+
+				const finalItems: PaymentReady["bill"]["items"] = [];
+
+				for (const item of params.items) {
+					const finalItem = items.get(item.id);
+					if (finalItem === undefined) {
+						return;
+					}
+					finalItems.push({
+						...finalItem,
+						id: item.id,
+					});
+				}
+
+				const totalAmount = finalItems.reduce(
+					(acc, value) => acc + value.price * value.quantity,
+					0,
+				);
+
+				timeout = setTimeout(() => {
+					if (Math.random() >= 0.5) {
+						callback({
+							type: "screen",
+							payload: {
+								variant: "paymentFinished",
+								payload: {
+									paymentId: params.paymentId,
+									type: "failure",
+									reason: NonEmptyString("The bill is locked!"),
+								},
+							},
+						});
+						resolve();
+						return;
+					}
+
+					callback({
+						type: "screen",
+						payload: {
+							variant: "paymentFinished",
+							payload: {
+								paymentId: params.paymentId,
+								type: "success",
+							},
+						},
+					});
+
+					resolve();
+				}, 3_000);
+
+				callback({
+					type: "screen",
+					payload: {
+						variant: "paymentReady",
+						parentScreen: rootScreen,
+						payload: {
+							paymentId: params.paymentId,
+							bill: {
+								items: finalItems,
+								tip: params.tip,
+								currency: params.currency,
+							},
+							type: "btcLn",
+							lnInvoice: "abc",
+							amountExpectedToPay: {
+								value: totalAmount / rate,
+								currency: "BTC",
+								rate: rate,
+							},
+						},
+					},
+				});
+			});
+		};
 
 		timeout = setTimeout(() => {
 			timeout = setTimeout(() => {
 				callback({
 					type: "screen",
-					payload: {
-						variant: exampleBillItemId !== "2" ? "payment" : "refund",
-						payload: {
-							merchant: {
-								name: NonEmptyString("The best restaurant"),
-							},
-							bill: {
-								allowTip: exampleBillItemId !== "2",
-								currency: "CZK",
-								items: Array.from(
-									items.entries().map(([id, values]) => ({
-										id,
-										...values,
-									})),
-								),
-							},
-						},
-					},
+					payload: rootScreen,
 				});
 			}, 1200);
 
@@ -118,66 +205,6 @@ export class ExampleBillDriver implements BillDriver {
 				if (timeout !== null) {
 					clearTimeout(timeout);
 				}
-			},
-			pay: async (params) => {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-
-				return new Promise((resolve) => {
-					const rate = 1_913_775;
-
-					const finalItems: PaymentReady["bill"]["items"] = [];
-
-					for (const item of params.items) {
-						const finalItem = items.get(item.id);
-						if (finalItem === undefined) {
-							return;
-						}
-						finalItems.push({
-							...finalItem,
-							id: item.id,
-						});
-					}
-
-					const totalAmount = finalItems.reduce(
-						(acc, value) => acc + value.price * value.quantity,
-						0,
-					);
-
-					timeout = setTimeout(() => {
-						if (Math.random() >= 0.5) {
-							resolve({
-								paymentId: params.paymentId,
-								type: "failure",
-								reason: NonEmptyString("The bill is locked!"),
-							});
-							return;
-						}
-
-						resolve({
-							paymentId: params.paymentId,
-							type: "success",
-						});
-					}, 3_000);
-
-					callback({
-						type: "paymentReady",
-						payload: {
-							paymentId: params.paymentId,
-							bill: {
-								items: finalItems,
-								tip: params.tip,
-								currency: params.currency,
-							},
-							type: "btcLn",
-							lnInvoice: "abc",
-							amountExpectedToPay: {
-								value: totalAmount / rate,
-								currency: "BTC",
-								rate: rate,
-							},
-						},
-					});
-				});
 			},
 		} satisfies BillSubscription;
 	}

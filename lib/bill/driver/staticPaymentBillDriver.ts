@@ -4,13 +4,16 @@ import NDK, {
 	NDKUser,
 } from "@nostr-dev-kit/ndk";
 import { defaultRelays } from "@/atoms/nostr-relays";
-import type { BillDriver, BillSubscription } from "@/lib/bill/billDriver";
+import type {
+	BillDriver,
+	BillSubscription,
+	ScreenDataPaymentPayFunction,
+} from "@/lib/bill/billDriver";
 import {
 	type StaticOfflinePayment,
 	StaticOfflinePaymentSchema,
 } from "@/lib/schemas";
 import { NonEmptyString } from "@/lib/types";
-import type { PaymentFinished } from "@/storages/payment-progress-storage";
 
 export class StaticPaymentBillDriver implements BillDriver {
 	public async subscribe({
@@ -50,10 +53,49 @@ export class StaticPaymentBillDriver implements BillDriver {
 		let staticOfflinePayment: StaticOfflinePayment | null = null;
 		let zapVerificationSubscription: NDKSubscription | null = null;
 
-		let resolvePaymentFinished: (input: PaymentFinished) => void = () => {};
-		const paymentFinishedPromise = new Promise<PaymentFinished>((resolve) => {
+		let resolvePaymentFinished: () => void = () => {};
+		const paymentFinishedPromise = new Promise<void>((resolve) => {
 			resolvePaymentFinished = resolve;
 		});
+
+		const pay: ScreenDataPaymentPayFunction = async (params) => {
+			if (staticOfflinePayment === null) {
+				callback({
+					type: "screen",
+					payload: {
+						variant: "paymentFinished",
+						payload: {
+							type: "failure",
+							paymentId: params.paymentId,
+							reason: NonEmptyString("The payment is not ready yet."),
+						},
+					},
+				});
+				return;
+			}
+
+			const zapWallet = staticOfflinePayment.paymentOptions.find(
+				(paymentOption) => paymentOption.type === "lnZap",
+			);
+
+			callback({
+				type: "screen",
+				payload: {
+					variant: "paymentReady",
+					payload: {
+						paymentId: params.paymentId,
+						bill: {
+							currency: staticOfflinePayment.bill.currency,
+							items: staticOfflinePayment.bill.items,
+						},
+						type: "btcLn",
+						lnInvoice: zapWallet ? zapWallet.lnInvoice : "",
+					},
+				},
+			});
+
+			return paymentFinishedPromise;
+		};
 
 		const billSubscription = ndk.subscribe(
 			{
@@ -97,6 +139,7 @@ export class StaticPaymentBillDriver implements BillDriver {
 						type: "screen",
 						payload: {
 							variant: "payment",
+							pay,
 							payload: {
 								bill: staticOfflinePayment.bill,
 								merchant: staticOfflinePayment.merchant,
@@ -121,9 +164,16 @@ export class StaticPaymentBillDriver implements BillDriver {
 								{},
 								{
 									onEvent: async () => {
-										resolvePaymentFinished({
-											type: "success",
+										callback({
+											type: "screen",
+											payload: {
+												variant: "paymentFinished",
+												payload: {
+													type: "success",
+												},
+											},
 										});
+										resolvePaymentFinished();
 									},
 								},
 							);
@@ -140,34 +190,6 @@ export class StaticPaymentBillDriver implements BillDriver {
 				if (zapVerificationSubscription !== null) {
 					zapVerificationSubscription.stop();
 				}
-			},
-			pay: async (params) => {
-				if (staticOfflinePayment === null) {
-					return {
-						type: "failure",
-						paymentId: params.paymentId,
-						reason: NonEmptyString("The payment is not ready yet."),
-					};
-				}
-
-				const zapWallet = staticOfflinePayment.paymentOptions.find(
-					(paymentOption) => paymentOption.type === "lnZap",
-				);
-
-				callback({
-					type: "paymentReady",
-					payload: {
-						paymentId: params.paymentId,
-						bill: {
-							currency: staticOfflinePayment.bill.currency,
-							items: staticOfflinePayment.bill.items,
-						},
-						type: "btcLn",
-						lnInvoice: zapWallet ? zapWallet.lnInvoice : "",
-					},
-				});
-
-				return paymentFinishedPromise;
 			},
 		} satisfies BillSubscription;
 	}
