@@ -43,6 +43,10 @@ Communication between the customer and merchant apps is handled via the Nostr pr
 - **Contact Management**: Streamlines invoice creation.
 - **Account Management**: Track funds across cash registers, bank accounts, BTC wallets, etc.
 
+<p>
+<img src=".github/screenshot_pos1.webp" alt="Screenshot POS1" />
+</p>
+
 ### Customer App Features
 
 - **Payments**: Scan a QR code to select the appropriate plugin and complete payment (commonly table or bill QR codes from Finito POS).
