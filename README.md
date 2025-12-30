@@ -1,6 +1,6 @@
 # Finito
 
-> **Make payments self-custody again**
+> **Make business payments self-custody again**
 
 Payments in both the online and real worlds are becoming increasingly digitized.
 While digital payments offer convenience on one side, they also introduce numerous risks, issues, costs, technical limitations, and dependencies on third parties on the other.
@@ -14,6 +14,10 @@ The code is transparent, allowing verification that it does exactly what it clai
 
 With Finito, your data remains under your sole control. No one else has access.
 Data loss isn't a concern thanks to automated encrypted backups to relays of your choice—readable only by you.
+
+<img src=".github/screenshot1.jpg" alt="Screenshot1" width="25%" height="25%"  />
+<img src=".github/screenshot2.jpg" alt="Screenshot2" width="25%" height="25%"  />
+<img src=".github/screenshot3.jpg" alt="Screenshot3" width="25%" height="25%"  />
 
 ## How Finito Works
 
