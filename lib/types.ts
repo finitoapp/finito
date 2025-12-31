@@ -2,7 +2,11 @@ import { format } from "date-fns";
 import { v4, v7 } from "uuid";
 import { z } from "zod";
 
-export const PercentSchema = z.number().min(0).max(100).brand("Percent");
+export const PercentSchema = z
+	.number()
+	.min(0)
+	.max(100)
+	.brand<"Percent", "inout">();
 export const Percent = <T extends number>(value: T): Percent =>
 	PercentSchema.parse(value);
 export type Percent = z.output<typeof PercentSchema>;
@@ -10,7 +14,7 @@ export type Percent = z.output<typeof PercentSchema>;
 export const NumberStringSchema = z
 	.string()
 	.regex(/^-?\d+(\.\d*)?$/, { error: "Expected to be a number" })
-	.brand("Number");
+	.brand<"Number", "inout">();
 export const NumberString = (value: string): NumberString =>
 	NumberStringSchema.parse(value);
 export type NumberString = z.output<typeof NumberStringSchema>;
@@ -18,7 +22,7 @@ export type NumberString = z.output<typeof NumberStringSchema>;
 export const IntegerSchema = z
 	.number()
 	.int("Expected to be an integer")
-	.brand("Integer");
+	.brand<"Integer", "inout">();
 export const Integer = <T extends number>(value: T): Integer =>
 	IntegerSchema.parse(value);
 export type Integer = z.output<typeof IntegerSchema>;
@@ -27,8 +31,8 @@ export const PositiveIntegerSchema = z
 	.number()
 	.int("Expected to be an integer")
 	.min(1, "Expected to be a positive integer")
-	.brand("Integer")
-	.brand("PositiveInteger");
+	.brand<"Integer", "inout">()
+	.brand<"PositiveInteger", "inout">();
 export const PositiveInteger = <T extends number>(value: T): PositiveInteger =>
 	PositiveIntegerSchema.parse(value);
 export type PositiveInteger = z.output<typeof PositiveIntegerSchema>;
@@ -37,9 +41,9 @@ export const NonNegativeIntegerSchema = z
 	.number()
 	.int("Expected to be an integer")
 	.min(0, "Expected to be an non-negative integer")
-	.brand("Integer")
-	.brand("PositiveInteger")
-	.brand("NonNegativeInteger");
+	.brand<"Integer", "inout">()
+	.brand<"PositiveInteger", "inout">()
+	.brand<"NonNegativeInteger", "inout">();
 export const NonNegativeInteger = <T extends number>(
 	value: T,
 ): NonNegativeInteger => NonNegativeIntegerSchema.parse(value);
@@ -48,7 +52,7 @@ export type NonNegativeInteger = z.output<typeof NonNegativeIntegerSchema>;
 export const NonEmptyStringSchema = z
 	.string()
 	.min(1, "Expected to be a non empty string")
-	.brand("NonEmptyString");
+	.brand<"NonEmptyString", "inout">();
 export const NonEmptyString = <T extends string>(value: T): NonEmptyString =>
 	NonEmptyStringSchema.parse(value);
 export type NonEmptyString = z.output<typeof NonEmptyStringSchema>;
@@ -57,10 +61,10 @@ export const NonEmptyString32Schema = z
 	.string()
 	.min(1, "Expected to be a non empty string")
 	.max(32, "Expected to be 32 characters in max")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString32")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const NonEmptyString32 = <T extends string>(
 	value: T,
 ): NonEmptyString32 => NonEmptyString32Schema.parse(value);
@@ -68,11 +72,11 @@ export type NonEmptyString32 = z.output<typeof NonEmptyString32Schema>;
 
 export const DateStringSchema = z.iso
 	.date()
-	.brand("Date")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString32")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"Date", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const DateString = <T extends string>(value: T): DateString =>
 	DateStringSchema.parse(value);
 export type DateString = z.output<typeof DateStringSchema>;
@@ -85,11 +89,11 @@ export const IbanSchema = z
 		/^((CZ|SK)[0-9]{22}|DE[0-9]{20}|(AT|LT)[0-9]{18}|HU[0-9]{26}|NO[0-9]{13}|(?!CZ|SK|DE|AT|LT|HU|NO)[A-Z]{2}[0-9]{13,31})$/,
 		"Expected to be IBAN",
 	)
-	.brand("Iban")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString32")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"Iban", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const Iban = <T extends string>(value: T): Iban =>
 	IbanSchema.parse(value);
 export type Iban = z.output<typeof IbanSchema>;
@@ -99,22 +103,23 @@ export const PhoneSchema = z
 	.min(1, "Expected to be a non empty string")
 	.max(32, "Expected to be 32 characters in max")
 	.regex(/^(\+|0)[0-9]{10,}$/, "Expected to be phone")
-	.brand("Phone")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString32")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"Phone", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const Phone = <T extends string>(value: T): Phone =>
 	PhoneSchema.parse(value);
 export type Phone = z.output<typeof PhoneSchema>;
 
 export const EmailSchema = z
-	.string()
-	.email("Expected to be email")
+	.email({
+		error: "Expected to be email",
+	})
 	.max(255, "Expected to be 255 characters in max")
-	.brand("Email")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString255");
+	.brand<"Email", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const Email = <T extends string>(value: T): Email =>
 	EmailSchema.parse(value);
 export type Email = z.output<typeof EmailSchema>;
@@ -124,8 +129,8 @@ export const HttpsUrlSchema = z
 		protocol: /^https$/,
 		error: "Expected to be an URL with https",
 	})
-	.brand("HttpsUrl")
-	.brand("NonEmptyString");
+	.brand<"HttpsUrl", "inout">()
+	.brand<"NonEmptyString", "inout">();
 export const HttpsUrl = <T extends string>(value: T): HttpsUrl =>
 	HttpsUrlSchema.parse(value);
 export type HttpsUrl = z.output<typeof HttpsUrlSchema>;
@@ -134,9 +139,9 @@ export const NonEmptyString64Schema = z
 	.string()
 	.min(1, "Expected to be a non empty string")
 	.max(64, "Expected to be 64 characters in max")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const NonEmptyString64 = <T extends string>(
 	value: T,
 ): NonEmptyString64 => NonEmptyString64Schema.parse(value);
@@ -146,8 +151,8 @@ export const NonEmptyString255Schema = z
 	.string()
 	.min(1, "Expected to be a non empty string")
 	.max(255, "Expected to be 255 characters in max")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString255");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const NonEmptyString255 = <T extends string>(
 	value: T,
 ): NonEmptyString255 => NonEmptyString255Schema.parse(value);
@@ -163,8 +168,8 @@ const uuid4Regex =
 export const UuidSchema = z
 	.string()
 	.regex(uuidRegex, "Expected to be uuid")
-	.brand("NonEmptyString")
-	.brand("Uuid");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"Uuid", "inout">();
 export type Uuid = z.output<typeof UuidSchema>;
 export const Uuid = <T extends string>(value: T): Uuid =>
 	UuidSchema.parse(value);
@@ -172,9 +177,9 @@ export const Uuid = <T extends string>(value: T): Uuid =>
 export const Uuid4Schema = z
 	.string()
 	.regex(uuid4Regex, "Expected to be uuid4")
-	.brand("NonEmptyString")
-	.brand("Uuid")
-	.brand("Uuid4");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"Uuid", "inout">()
+	.brand<"Uuid4", "inout">();
 export type Uuid4 = z.output<typeof Uuid4Schema>;
 export const Uuid4 = <T extends string>(value: T): Uuid4 =>
 	Uuid4Schema.parse(value);
@@ -183,9 +188,9 @@ Uuid4.random = (): Uuid4 => v4() as Uuid4;
 export const Uuid7Schema = z
 	.string()
 	.regex(uuid7Regex, "Expected to be uuid7")
-	.brand("NonEmptyString")
-	.brand("Uuid")
-	.brand("Uuid7");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"Uuid", "inout">()
+	.brand<"Uuid7", "inout">();
 export type Uuid7 = z.output<typeof Uuid7Schema>;
 export const Uuid7 = <T extends string>(value: T): Uuid7 =>
 	Uuid7Schema.parse(value);
@@ -193,8 +198,8 @@ Uuid7.random = (): Uuid7 => v7() as Uuid7;
 
 export const WssUrlSchema = z
 	.url({ protocol: /^wss$/ })
-	.brand("NonEmptyString")
-	.brand("WssUrl");
+	.brand<"NonEmptyString", "inout">()
+	.brand<"WssUrl", "inout">();
 export type WssUrl = z.output<typeof WssUrlSchema>;
 export const WssUrl = <T extends string>(value: T): WssUrl =>
 	WssUrlSchema.parse(value);
@@ -251,10 +256,10 @@ export const StringToUndefinedStringSchema = z
 
 export const DateToDateString = (date: Date) =>
 	format(date, "yyyy-MM-dd") as DateString;
-export const DateToDateStringSchema = z.date().transform(DateToDateString).pipe(
-	// @ts-expect-error
-	DateStringSchema,
-);
+export const DateToDateStringSchema = z
+	.date()
+	.transform(DateToDateString)
+	.pipe(DateStringSchema);
 
 export const StringToNumberSchema = StringToNullableStringSchema.transform(
 	(value) => (value === null ? null : Number(value)),
@@ -273,11 +278,11 @@ export const StringToUndefinedNumberSchema =
 export const IdentificationNumberCzSchema = z
 	.string()
 	.regex(/^[0-9]{8}$/, "Expected to be Czech identification number")
-	.brand("IdentificationNumberCz")
-	.brand("NonEmptyString")
-	.brand("NonEmptyString32")
-	.brand("NonEmptyString64")
-	.brand("NonEmptyString255");
+	.brand<"IdentificationNumberCz", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
 export const IdentificationNumberCz = <T extends string>(
 	value: T,
 ): IdentificationNumberCz => IdentificationNumberCzSchema.parse(value);

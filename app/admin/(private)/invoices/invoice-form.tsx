@@ -94,17 +94,11 @@ const itemSchema = z.object({
 	]),
 
 	supplier: z.object({
-		billingInfo: BillingInfoFormSchema.nullable().pipe(
-			// @ts-expect-error
-			BillingInfoFormSchema,
-		),
+		billingInfo: BillingInfoFormSchema.nullable().pipe(BillingInfoFormSchema),
 	}),
 
 	customer: z.object({
-		billingInfo: ClientFormSchema.nullable().pipe(
-			// @ts-expect-error
-			ClientFormSchema,
-		),
+		billingInfo: ClientFormSchema.nullable().pipe(ClientFormSchema),
 	}),
 
 	items: z
@@ -303,11 +297,7 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 					}),
 					...builder.line({
 						...builder.nestedField("customer", ({ builder }) => ({
-							...builder.createComponent(
-								"billingInfo",
-								// @ts-expect-error
-								CustomerBillingInfo,
-							),
+							...builder.createComponent("billingInfo", CustomerBillingInfo),
 						})),
 					}),
 				}),
@@ -333,11 +323,7 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 					{
 						...builder.line({
 							...builder.nestedField("supplier", ({ builder }) => ({
-								...builder.createComponent(
-									"billingInfo",
-									// @ts-expect-error
-									SupplierBillingInfo,
-								),
+								...builder.createComponent("billingInfo", SupplierBillingInfo),
 							})),
 							...builder.magicInput("currency").select({
 								values: FiatCurrency,

@@ -4,6 +4,7 @@ import { AresApiClient } from "@/lib/ares/ares-api-client";
 import type { AddressSchema } from "@/lib/schemas";
 import {
 	IdentificationNumberCzSchema,
+	NonEmptyString,
 	NonEmptyStringSchema,
 } from "@/lib/types";
 
@@ -59,10 +60,12 @@ export const AutocompleteIdentificationNumberInput =
 				identificationNumber: row.ico ?? "",
 				vatNumber: row.dic ?? "",
 				address: {
-					street: `${row.sidlo.nazevUlice ?? row.sidlo.nazevCastiObce}`,
-					descriptiveNumber: `${row.sidlo.cisloDomovni}`,
+					street: NonEmptyString(
+						`${row.sidlo.nazevUlice ?? row.sidlo.nazevCastiObce}`,
+					),
+					descriptiveNumber: NonEmptyString(`${row.sidlo.cisloDomovni}`),
 					city: row.sidlo.nazevObce,
-					postalCode: `${row.sidlo.psc}`,
+					postalCode: NonEmptyString(`${row.sidlo.psc}`),
 				},
 				addressLine: row.sidlo.textovaAdresa,
 			}));
