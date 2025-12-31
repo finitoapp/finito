@@ -1,4 +1,4 @@
-import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormEventHandler } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -25,7 +25,7 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 ): UseActionFormResult<Schema> => {
 	const form = useForm<// @ts-expect-error improve it later
 	z.output>({
-		resolver: standardSchemaResolver(zodSchema),
+		resolver: zodResolver(zodSchema),
 		defaultValues:
 			props.values !== undefined
 				? zodSchema.encode(props.values)

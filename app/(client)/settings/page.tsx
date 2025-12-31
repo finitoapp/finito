@@ -1,6 +1,6 @@
 "use client";
 
-import { IconUserCircle } from "@tabler/icons-react";
+import { IconPlugConnected, IconUserCircle } from "@tabler/icons-react";
 import {
 	HardDriveDownloadIcon,
 	KeyRoundIcon,
@@ -14,6 +14,13 @@ import { FadeHeader } from "@/components/fade-header";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useInstallPwa } from "@/hooks/use-install-pwa";
 
+const walletItems: ComponentProps<typeof VerticalNav>["items"] = [
+	{
+		label: "Connected wallets",
+		nextLink: "/settings/wallets",
+		icon: <IconPlugConnected className="h-4 w-4" />,
+	},
+];
 const navigationItems: ComponentProps<typeof VerticalNav>["items"] = [
 	{
 		label: "Account",
@@ -85,6 +92,7 @@ export default function Page() {
 			<div className={"h-20"} />
 			<FadeHeader title={"Settings"} />
 
+			<VerticalNav items={walletItems} />
 			<VerticalNav items={navigationItems} />
 			{navigationPluginsItems.length > 0 && (
 				<VerticalNav title={"Plugins"} items={navigationPluginsItems} />

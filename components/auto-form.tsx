@@ -498,13 +498,18 @@ export const AutoFormInput = {
 						{params.label && (
 							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
 						)}
-						<FormControl>
-							<Textarea
-								rows={params.rows}
-								{...field}
-								placeholder={params.placeholder}
-							/>
-						</FormControl>
+						<div className="flex gap-2">
+							<FormControl>
+								<Textarea
+									rows={params.rows}
+									{...field}
+									placeholder={params.placeholder}
+								/>
+							</FormControl>
+							{params.copyToClipboard && (
+								<CopyButton type={"button"} text={field.value} />
+							)}
+						</div>
 						{params.description && (
 							<FormDescription>{params.description}</FormDescription>
 						)}
