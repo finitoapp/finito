@@ -1,5 +1,6 @@
 import type { BillDriver } from "@/lib/bill/billDriver";
 import { ExampleBillDriver } from "@/lib/bill/driver/exampleBillDriver";
+import { LnDriver } from "@/lib/bill/driver/lnDriver";
 import { StaticPaymentBillDriver } from "@/lib/bill/driver/staticPaymentBillDriver";
 import { TableDriver } from "@/lib/bill/driver/tableDriver";
 
@@ -8,6 +9,7 @@ class BillManager implements BillDriver {
 		new StaticPaymentBillDriver(),
 		new ExampleBillDriver(),
 		new TableDriver(),
+		new LnDriver(),
 	];
 
 	public async subscribe(params: Parameters<BillDriver["subscribe"]>[0]) {

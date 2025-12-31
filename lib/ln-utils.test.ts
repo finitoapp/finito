@@ -11,4 +11,14 @@ describe("extractBtcAmountFromLightningInvoice", () => {
 	] as const)("should parse correctly (%o)", ({ value, expected }) => {
 		expect(extractBtcAmountFromLightningInvoice(value)).toBe(expected);
 	});
+
+	it.each([
+		{
+			value: "invalidInvoice",
+		},
+	] as const)("should parse correctly (%o)", ({ value }) => {
+		expect(() => extractBtcAmountFromLightningInvoice(value)).toThrow(
+			"Not a proper lightning payment request",
+		);
+	});
 });
