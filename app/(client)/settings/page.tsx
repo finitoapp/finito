@@ -56,18 +56,18 @@ const InstallPWA = () => {
 	const searchParams = useSearchParams();
 
 	const installAutomatically = useEffectEvent(() => {
-		if (!isPwaSupported) {
-			return;
-		}
-
 		if (searchParams.get("install") === "true") {
 			onClick();
 		}
 	});
 
 	useEffect(() => {
+		if (!isPwaSupported) {
+			return;
+		}
+
 		installAutomatically();
-	}, []);
+	}, [isPwaSupported]);
 
 	if (!isPwaSupported) {
 		return null;
