@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
 	return {
 		name: "Finito POS",
 		short_name: "Finito POS",
-		description: "A Progressive Web App built with Next.js",
+		description: "Make business payments self-custody again",
 		start_url: "/admin",
 		display: "fullscreen",
 		orientation: "portrait",
