@@ -7,8 +7,8 @@ import {
 	LayoutDashboardIcon,
 	RefreshCcwIcon,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { type ComponentProps, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type ComponentProps, useEffect, useEffectEvent } from "react";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -53,6 +53,21 @@ const navigationPluginsItems: ComponentProps<typeof VerticalNav>["items"] = [];
 
 const InstallPWA = () => {
 	const { isPwaSupported, onClick } = useInstallPwa();
+	const searchParams = useSearchParams();
+
+	const installAutomatically = useEffectEvent(() => {
+		if (!isPwaSupported) {
+			return;
+		}
+
+		if (searchParams.get("install") === "true") {
+			onClick();
+		}
+	});
+
+	useEffect(() => {
+		installAutomatically();
+	}, []);
 
 	if (!isPwaSupported) {
 		return null;
