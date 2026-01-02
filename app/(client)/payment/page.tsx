@@ -222,7 +222,7 @@ const BottomPanel: FC<{
 	return (
 		<div
 			className={
-				"bg-card rounded-t-2xl p-4 w-full max-w-xl flex flex-col gap-2 shadow-2xl fixed bottom-0"
+				"bg-card rounded-t-2xl w-full max-w-xl shadow-2xl fixed bottom-0"
 			}
 			style={{
 				paddingBottom: "env(safe-area-inset-bottom)",
@@ -230,7 +230,7 @@ const BottomPanel: FC<{
 		>
 			<Collapsible open={isOpen}>
 				<CollapsibleContent>
-					<div className={"flex flex-col gap-4 shadow-2xl"}>
+					<div className={"flex flex-col gap-4 shadow-2xl p-4"}>
 						{screen && screen.variant === "paymentReady" ? (
 							<div className={"flex flex-col gap-4"}>
 								<ButtonGroup className={"w-full"}>
