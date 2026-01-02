@@ -6,7 +6,6 @@ import { Header } from "@/components/header";
 import { KeyValueList } from "@/components/key-value-list";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,19 +59,9 @@ export default function Page() {
 			<div className={"h-10"} />
 			<Header title={"Payment detail"} />
 
-			<div className={"flex  px-4 pt-4 justify-start items-center gap-6"}>
-				<Avatar className="size-14">
-					<AvatarImage
-						className="rounded-lg"
-						src="https://api.dicebear.com/9.x/bottts/png"
-						alt="@reui"
-					/>
-					<AvatarFallback>CH</AvatarFallback>
-				</Avatar>
-				<h2 className="text-2xl font-bold text-foreground">
-					{paymentInit?.value.merchant?.name}
-				</h2>
-			</div>
+			<h2 className="px-4 pt-4 text-2xl font-bold text-foreground">
+				{paymentInit?.value.merchant?.name}
+			</h2>
 
 			<LoadingIndicator
 				text={

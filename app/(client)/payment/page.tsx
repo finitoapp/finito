@@ -377,7 +377,7 @@ const Screen: FC<{
 					{props.screen?.variant === "paymentFinished" && (
 						<div
 							className={
-								"w-full flex h-dvh flex-col items-center justify-evenly"
+								"w-full flex h-full flex-col items-center justify-evenly"
 							}
 						>
 							<LoadingIndicator
@@ -395,7 +395,7 @@ const Screen: FC<{
 					{props.screen.variant === "paymentReady" && (
 						<div
 							className={
-								"w-full flex h-dvh pb-80 flex-col items-center gap-12 justify-evenly"
+								"w-full flex h-full pb-80 flex-col items-center gap-12 justify-evenly"
 							}
 						>
 							<div className={"flex flex-col items-center gap-4"}>

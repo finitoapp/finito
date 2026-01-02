@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const loadingIndicatorVariants = cva(
-	"inset-0 z-50 flex flex-col items-center justify-center backdrop-blur-sm transition-all",
+	"inset-0 z-50 flex flex-col items-center justify-center transition-all",
 	{
 		variants: {
 			variant: {
 				default: "",
-				fullscreen: "fixed bg-background/80",
+				fullscreen: "fixed bg-background/80 backdrop-blur-sm",
 			},
 		},
 		defaultVariants: {
@@ -79,7 +79,7 @@ export function LoadingIndicator({
 			)}
 		>
 			{/* Spinning circle */}
-			<div className="relative">
+			<div className="relative -z-10">
 				{status === "success" && (
 					<div className="h-28 w-28 rounded-full bg-green-500 flex items-center justify-center animate-in zoom-in-50 duration-300">
 						<CheckIcon className={"size-12"} />
@@ -97,7 +97,7 @@ export function LoadingIndicator({
 				)}
 			</div>
 
-			<div className="mt-6 relative h-8 w-full">
+			<div className="mt-6 relative -z-10 h-8 w-full">
 				<p
 					className={cn(
 						"absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-lg font-medium text-foreground transition-all duration-300 ease-in-out",
