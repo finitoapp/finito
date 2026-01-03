@@ -559,6 +559,7 @@ export default function Page() {
 
 			if (subscription === null) {
 				alert("Unknown QR code");
+				router.replace("/");
 				return;
 			}
 
@@ -578,7 +579,7 @@ export default function Page() {
 				});
 			}
 		};
-	}, [qrCode, ndk, sessionId]);
+	}, [qrCode, ndk, sessionId, router.replace]);
 
 	useOnMountUnsafe(() => {
 		(async () => {

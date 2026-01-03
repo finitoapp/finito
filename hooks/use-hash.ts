@@ -6,8 +6,6 @@ import { useEffect } from "react";
 const hashAtomNumber = atom(0);
 const hashAtom = atom<string | null>(null);
 
-let shutdown = () => {};
-
 const resolveHash = () => {
 	const [hash, ...rest] = decodeURIComponent(window.location.hash)
 		.replace(/^#/, "")
@@ -25,6 +23,7 @@ export const useHash = () => {
 	const hash = useAtomValue(hashAtom) ?? resolveHash();
 
 	useEffect(() => {
+		let shutdown = () => {};
 		const currentValue = store.get(hashAtomNumber);
 		store.set(hashAtomNumber, currentValue + 1);
 		if (currentValue === 0) {
@@ -62,10 +61,7 @@ export const useHash = () => {
 		return () => {
 			const currentValue = store.get(hashAtomNumber);
 			store.set(hashAtomNumber, currentValue - 1);
-			if (currentValue === 1) {
-				shutdown();
-				shutdown = () => {};
-			}
+			shutdown();
 		};
 	}, [store.set, store.get]);
 
