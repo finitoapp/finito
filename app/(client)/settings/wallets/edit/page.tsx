@@ -30,7 +30,7 @@ export default function Page() {
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>
 					<AccountForm
-						tagFilter={["spark"]}
+						tagFilter={["spark", "nwc"]}
 						key={item ? "yes" : "no"}
 						defaultValues={
 							item

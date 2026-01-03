@@ -14,6 +14,7 @@ import {
 	IbanSchema,
 	NonEmptyString,
 	NonEmptyStringSchema,
+	NwcCredentialsSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
@@ -21,9 +22,10 @@ import { accountStorage } from "@/storages/account-storage";
 
 const baseItemSchema = z.object({
 	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	_tag: z.enum(["iban", "lud16", "spark", "cash_register"]),
+	_tag: z.enum(["iban", "lud16", "spark", "nwc", "cash_register"]),
 	iban: z.string(),
 	lud16: z.string(),
+	credentials: z.string(),
 	mnemonic: z.string(),
 	mnemonicVariant: z.enum(["manual", "new"]),
 	currency: z.enum(FiatCurrency).nullable(),
@@ -53,6 +55,10 @@ const itemSchema = z.discriminatedUnion("_tag", [
 		}),
 	]),
 	baseItemSchema.extend({
+		_tag: z.literal("nwc"),
+		credentials: StringToNullableStringSchema.pipe(NwcCredentialsSchema),
+	}),
+	baseItemSchema.extend({
 		_tag: z.literal("cash_register"),
 		currency: z.enum(FiatCurrency).nullable().pipe(z.enum(FiatCurrency)),
 	}),
@@ -63,6 +69,7 @@ const itemDefaultValues = {
 	_tag: "iban",
 	iban: "",
 	lud16: "",
+	credentials: "",
 	mnemonicVariant: "new",
 	mnemonic: "",
 	currency: null,
@@ -71,6 +78,7 @@ const itemDefaultValues = {
 const tags = {
 	iban: "Bank account (IBAN)",
 	lud16: "BTC Wallet (LUD16)",
+	nwc: "NWC protocol (NostrWalletConnect)",
 	spark: "Spark bitcoin L2",
 	cash_register: "Cash register",
 } as const;
@@ -83,6 +91,7 @@ const createComponents = (
 			label: "Name",
 		}),
 		...builder.magicInput("_tag").select({
+			label: "Protocol",
 			allowEmpty: false,
 			values: options.tagFilter ? pick(tags, options.tagFilter) : tags,
 		}),
@@ -101,19 +110,27 @@ const createComponents = (
 				label: "LUD16",
 			}),
 		}),
+		...builder.when("_tag", "nwc", {
+			...builder.magicInput("credentials").textarea({
+				label: "Credentials",
+				rows: 5,
+				secretContent: true,
+			}),
+		}),
 		...builder.when("_tag", "spark", {
 			...builder.magicInput("mnemonicVariant").select({
+				label: "Seed",
 				allowEmpty: false,
 				values: {
-					new: "Generate new random",
+					new: "Generate new random seed",
 					manual: "Use existing seed",
 				},
 			}),
 			...builder.when("mnemonicVariant", "manual", {
-				...builder.magicInput("mnemonic").text({
+				...builder.magicInput("mnemonic").textarea({
 					label: "Mnemonic",
 					copyToClipboard: true,
-					type: "password",
+					secretContent: true,
 				}),
 			}),
 		}),
@@ -160,6 +177,13 @@ export const AccountForm: React.FC<{
 					return {
 						_tag: values._tag,
 						lud16: values.lud16,
+					} as const;
+				}
+
+				if (values._tag === "nwc") {
+					return {
+						_tag: values._tag,
+						credentials: values.credentials,
 					} as const;
 				}
 

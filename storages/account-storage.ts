@@ -5,6 +5,7 @@ import {
 	FiatCurrency,
 	IbanSchema,
 	NonEmptyStringSchema,
+	NwcCredentialsSchema,
 } from "@/lib/types";
 
 export const AccountSchema = z.intersection(
@@ -25,6 +26,10 @@ export const AccountSchema = z.intersection(
 		z.object({
 			_tag: z.literal("spark"),
 			mnemonic: NonEmptyStringSchema,
+		}),
+		z.object({
+			_tag: z.literal("nwc"),
+			credentials: NwcCredentialsSchema,
 		}),
 		z.object({
 			_tag: z.literal("cash_register"),

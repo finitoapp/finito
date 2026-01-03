@@ -45,6 +45,8 @@ import type {
 import type { z } from "zod";
 import { CollapsibleSeparator } from "@/components/collapsible-separator";
 import { CopyButton } from "@/components/copy-button";
+import { PasswordInput } from "@/components/password-input";
+import { PasswordTextarea } from "@/components/password-textarea";
 import {
 	Accordion,
 	AccordionContent,
@@ -184,6 +186,7 @@ type InputParams = {
 	type?: React.HTMLInputTypeAttribute;
 	disabled?: boolean;
 	copyToClipboard?: boolean;
+	secretContent?: boolean;
 };
 
 type CheckboxParams = {
@@ -233,12 +236,20 @@ export const AutoFormInput = {
 									{params.startAddon && (
 										<InputAddon>{params.startAddon}</InputAddon>
 									)}
-									<Input
-										{...field}
-										disabled={params.disabled}
-										type={params.type}
-										placeholder={params.placeholder}
-									/>
+									{params.secretContent ? (
+										<PasswordInput
+											{...field}
+											disabled={params.disabled}
+											placeholder={params.placeholder}
+										/>
+									) : (
+										<Input
+											{...field}
+											disabled={params.disabled}
+											type={params.type}
+											placeholder={params.placeholder}
+										/>
+									)}
 									{params.endAddon && (
 										<InputAddon>{params.endAddon}</InputAddon>
 									)}
@@ -500,11 +511,19 @@ export const AutoFormInput = {
 						)}
 						<div className="flex gap-2">
 							<FormControl>
-								<Textarea
-									rows={params.rows}
-									{...field}
-									placeholder={params.placeholder}
-								/>
+								{params.secretContent ? (
+									<PasswordTextarea
+										rows={params.rows}
+										{...field}
+										placeholder={params.placeholder}
+									/>
+								) : (
+									<Textarea
+										rows={params.rows}
+										{...field}
+										placeholder={params.placeholder}
+									/>
+								)}
 							</FormControl>
 							{params.copyToClipboard && (
 								<CopyButton type={"button"} text={field.value} />

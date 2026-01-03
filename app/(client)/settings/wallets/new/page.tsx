@@ -17,7 +17,7 @@ export default function Page() {
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>
 					<AccountForm
-						tagFilter={["spark"]}
+						tagFilter={["spark", "nwc"]}
 						defaultValues={{
 							_tag: "spark",
 						}}

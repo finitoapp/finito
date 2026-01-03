@@ -289,3 +289,15 @@ export const IdentificationNumberCz = <T extends string>(
 export type IdentificationNumberCz = z.output<
 	typeof IdentificationNumberCzSchema
 >;
+
+export const NwcCredentialsSchema = z
+	.string()
+	.regex(
+		/^nostr\+walletconnect:\/\/([a-f0-9]{64})\?(?=.*secret=([a-f0-9]{64}))(?=.*relay=[^&]+).*$/,
+		"Expected to be NWC credentials",
+	)
+	.brand<"NwcCredentials", "inout">()
+	.brand<"NonEmptyString", "inout">();
+export const NwcCredentials = <T extends string>(value: T): NwcCredentials =>
+	NwcCredentialsSchema.parse(value);
+export type NwcCredentials = z.output<typeof NwcCredentialsSchema>;

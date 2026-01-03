@@ -63,7 +63,9 @@ export function AccountsTable() {
 												? "-"
 												: item.value._tag === "spark"
 													? "-"
-													: formatIban(item.value.iban)
+													: item.value._tag === "nwc"
+														? "-"
+														: formatIban(item.value.iban)
 										: "-",
 								}))
 							: undefined
