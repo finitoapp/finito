@@ -1,6 +1,11 @@
 "use client";
 
-import { IconPlugConnected, IconUserCircle } from "@tabler/icons-react";
+import {
+	IconBrandGithub,
+	IconBrandX,
+	IconPlugConnected,
+	IconUserCircle,
+} from "@tabler/icons-react";
 import {
 	HardDriveDownloadIcon,
 	KeyRoundIcon,
@@ -50,6 +55,36 @@ const navigationItems3: ComponentProps<typeof VerticalNav>["items"] = [
 	},
 ];
 const navigationPluginsItems: ComponentProps<typeof VerticalNav>["items"] = [];
+const navigationLinkItems: ComponentProps<typeof VerticalNav>["items"] = [
+	{
+		label: "Follow as on X",
+		component: (props) => (
+			<a
+				{...props}
+				target={"_blank"}
+				rel="noopener"
+				href={"https://x.com/finito_app"}
+			>
+				{props.children}
+			</a>
+		),
+		icon: <IconBrandX className="h-4 w-4" />,
+	},
+	{
+		label: "Check out our code on GitHub",
+		component: (props) => (
+			<a
+				{...props}
+				target={"_blank"}
+				rel="noopener"
+				href={"https://github.com/finitoapp/finito"}
+			>
+				{props.children}
+			</a>
+		),
+		icon: <IconBrandGithub className="h-4 w-4" />,
+	},
+];
 
 const InstallPWA = () => {
 	const { isPwaSupported, onClick } = useInstallPwa();
@@ -115,9 +150,13 @@ export default function Page() {
 			<VerticalNav items={navigationItems3} />
 			<InstallPWA />
 
+			<VerticalNav title={"External links"} items={navigationLinkItems} />
+
 			<div className={"text-center text-sm"}>
 				App version: <strong>{commitHash}</strong>
 			</div>
+
+			<div className={"text-center text-sm"}>We are OpenSource</div>
 		</div>
 	);
 }
