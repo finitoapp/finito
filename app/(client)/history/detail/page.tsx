@@ -57,7 +57,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
-			<Header title={"Payment detail"} />
+			<Header title={"Payment detail"} backPath={"/history"} />
 
 			<h2 className="px-4 pt-4 text-2xl font-bold text-foreground">
 				{paymentInit?.value.merchant?.name}

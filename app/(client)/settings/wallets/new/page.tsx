@@ -12,7 +12,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-10"} />
-			<Header title={"Connected wallets"} />
+			<Header title={"Connected wallets"} backPath={"/settings/wallets"} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>

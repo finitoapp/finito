@@ -62,7 +62,7 @@ export default function Page() {
 	return (
 		<div className="space-y-14 w-full px-4">
 			<div className={"h-10"} />
-			<Header title={"Connected wallets"} />
+			<Header title={"Connected wallets"} backPath={"/settings"} />
 
 			<div className={"flex my-10 w-full justify-center"}>
 				<Link href={"/settings/wallets/new"}>

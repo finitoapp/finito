@@ -9,7 +9,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
-			<Header title={"Credentials"} />
+			<Header title={"Credentials"} backPath={"/settings"} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardHeader>
