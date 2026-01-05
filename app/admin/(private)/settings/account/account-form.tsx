@@ -21,7 +21,7 @@ export const accountSchema = z.object({
 	about: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
 	bio: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
 	website: StringToUndefinedStringSchema.pipe(HttpsUrlSchema.optional()),
-	lud16: StringToUndefinedStringSchema.pipe(EmailSchema),
+	lud16: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
 });
 
 const components = createAutoFormLayout(accountSchema, ({ builder }) => ({

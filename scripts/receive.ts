@@ -1,15 +1,14 @@
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { createStore } from "jotai";
+import { generateSeedWords } from "nostr-tools/nip06";
 import { ndkAtom } from "@/atoms/ndk";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
+import { seedAtom } from "@/atoms/seed";
+import { NonEmptyString } from "@/lib/types";
 
 (async () => {
-	const nsec =
+	const _nsec =
 		"nsec1ylaxw6rp4jf96ar29kzzhus7ntkp5t26s9nk8xjva26tawd94w8s86968n";
 	const store = createStore();
-	await store.set(nostrSignerAtom, {
-		ndkSignerPayload: new NDKPrivateKeySigner(nsec).toPayload(),
-	});
+	await store.set(seedAtom, NonEmptyString(generateSeedWords()));
 	const ndk = await store.get(ndkAtom);
 
 	const result = await ndk.fetchEvents({

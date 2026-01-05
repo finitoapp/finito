@@ -1,10 +1,10 @@
 import { useAtomValue } from "jotai";
 import { ndkAtom } from "@/atoms/ndk";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
+import { seedAtom } from "@/atoms/seed";
 
 export const useNostr = () => {
 	const ndk = useAtomValue(ndkAtom);
-	useAtomValue(nostrSignerAtom);
+	useAtomValue(seedAtom);
 
 	return {
 		ndk: ndk,

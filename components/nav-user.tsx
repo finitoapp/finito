@@ -1,6 +1,6 @@
 "use client";
 
-import { ndkSignerFromPayload } from "@nostr-dev-kit/ndk";
+import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { IconPlus } from "@tabler/icons-react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
@@ -9,9 +9,10 @@ import {
 	LogOutIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { privateKeyFromSeedWords } from "nostr-tools/nip06";
 import { useCallback, useEffect, useState } from "react";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
-import { nostrSignersAtom } from "@/atoms/nostr-signers";
+import { seedAtom } from "@/atoms/seed";
+import { seedsAtom } from "@/atoms/seeds";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -30,11 +31,12 @@ import {
 import { useInstallPwa } from "@/hooks/use-install-pwa";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrProfile } from "@/hooks/useNostrProfile";
+import type { NonEmptyString } from "@/lib/types";
 
 type Account = {
 	pubkey: string;
 	npub: string;
-	payload: string;
+	payload: NonEmptyString;
 	name?: string;
 };
 
@@ -51,29 +53,24 @@ export function NavUser({
 	const { ndk } = useNostr();
 	const profile = useNostrProfile() ?? {};
 	const { onClick, isPwaSupported } = useInstallPwa();
-	const nostrSigners = useAtomValue(nostrSignersAtom);
+	const seeds = useAtomValue(seedsAtom);
 	const [accounts, setAccounts] = useState<Account[]>([]);
-	const [nostrSigner, setNostrSigner] = useAtom(nostrSignerAtom);
-	const setNostrSigners = useSetAtom(nostrSignersAtom);
+	const [seed, setSeed] = useAtom(seedAtom);
+	const setSeeds = useSetAtom(seedsAtom);
 
 	useEffect(() => {
 		(async () => {
 			const result = await Promise.all(
-				(nostrSigners ?? { signers: [] }).signers.map(async (nostrSigners) => {
-					const signer = await ndkSignerFromPayload(
-						nostrSigners.ndkSignerPayload,
-						ndk,
-					);
-					if (signer === undefined) {
-						return undefined;
-					}
+				(seeds ?? { seeds: [] }).seeds.map(async (seed) => {
+					const privateKey = privateKeyFromSeedWords(seed);
+					const signer = new NDKPrivateKeySigner(privateKey);
 
 					const user = await signer.user();
 
 					return {
 						profile: await user.fetchProfile(),
 						signer,
-						payload: nostrSigners.ndkSignerPayload,
+						payload: seed,
 					};
 				}),
 			);
@@ -95,34 +92,26 @@ export function NavUser({
 
 			setAccounts(accounts);
 		})();
-	}, [ndk, nostrSigners]);
+	}, [seeds]);
 
 	const logout = useCallback(async () => {
-		let theBestNdkSignerPayload: string | null = null;
+		let theBestNdkSignerPayload: NonEmptyString | null = null;
 
-		setNostrSigners((previous) => {
-			const newSigners: {
-				ndkSignerPayload: string;
-			}[] = [];
+		setSeeds((previous) => {
+			const newSigners: NonEmptyString[] = [];
 
-			if (nostrSigner !== null) {
-				for (const previousSigner of (previous ?? { signers: [] }).signers) {
-					if (
-						previousSigner.ndkSignerPayload !== nostrSigner.ndkSignerPayload
-					) {
-						if (theBestNdkSignerPayload === null) {
-							theBestNdkSignerPayload = previousSigner.ndkSignerPayload;
-						}
-
-						newSigners.push({
-							ndkSignerPayload: previousSigner.ndkSignerPayload,
-						});
+			for (const previousSeed of (previous ?? { seeds: [] }).seeds) {
+				if (previousSeed !== seed) {
+					if (theBestNdkSignerPayload === null) {
+						theBestNdkSignerPayload = previousSeed;
 					}
+
+					newSigners.push(previousSeed);
 				}
 			}
 
 			return {
-				signers: [...newSigners],
+				seeds: [...newSigners],
 			};
 		});
 
@@ -130,10 +119,8 @@ export function NavUser({
 			return;
 		}
 
-		setNostrSigner({
-			ndkSignerPayload: theBestNdkSignerPayload,
-		});
-	}, [setNostrSigners, setNostrSigner, nostrSigner]);
+		setSeed(theBestNdkSignerPayload);
+	}, [seed, setSeed, setSeeds]);
 
 	return (
 		<SidebarMenu>
@@ -173,9 +160,7 @@ export function NavUser({
 									key={account.pubkey}
 									className="p-0 font-normal"
 									onClick={() => {
-										setNostrSigner({
-											ndkSignerPayload: account.payload,
-										});
+										setSeed(account.payload);
 									}}
 								>
 									<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">

@@ -1,12 +1,12 @@
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { useSetAtom } from "jotai";
+import { generateSeedWords } from "nostr-tools/nip06";
 import type React from "react";
 import { z } from "zod";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
+import { seedAtom } from "@/atoms/seed";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { WssUrl } from "@/lib/types";
+import { NonEmptyString, WssUrl } from "@/lib/types";
 
 const formSchema = z.object({});
 const components = createAutoFormLayout(formSchema, () => ({}));
@@ -15,13 +15,11 @@ export const NewAccountForm: React.FC<{
 	onSuccess: () => unknown;
 }> = (props) => {
 	const setRelays = useSetAtom(nostrRelaysAtom);
-	const setNostrSigner = useSetAtom(nostrSignerAtom);
+	const setSeed = useSetAtom(seedAtom);
 	const form = useActionForm(formSchema, {
 		defaultValues: {},
 		saveAction: async () => {
-			setNostrSigner({
-				ndkSignerPayload: NDKPrivateKeySigner.generate().toPayload(),
-			});
+			setSeed(NonEmptyString(generateSeedWords()));
 			setRelays({
 				relays: [
 					WssUrl("wss://relay.primal.net"),

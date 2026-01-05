@@ -1,15 +1,31 @@
 "use client";
 
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import type React from "react";
 import { useEffect, useEffectEvent } from "react";
 import type { EmptyObject } from "type-fest";
-import { credentialsSchema } from "@/app/admin/(private)/settings/credentials/credentials-schema";
+import { z } from "zod";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
+import { seedAtom } from "@/atoms/seed";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useNostr } from "@/hooks/use-nostr";
+import {
+	NonEmptyStringSchema,
+	StringToNullableStringSchema,
+	WssUrlSchema,
+} from "@/lib/types";
+
+export const credentialsSchema = z.object({
+	npub: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	nsec: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	seed: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	relay1: StringToNullableStringSchema.pipe(WssUrlSchema),
+	relay2: StringToNullableStringSchema.pipe(WssUrlSchema.nullable()),
+	relay3: StringToNullableStringSchema.pipe(WssUrlSchema.nullable()),
+	relay4: StringToNullableStringSchema.pipe(WssUrlSchema.nullable()),
+});
 
 const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	...builder.magicInput("npub").text({
@@ -20,8 +36,15 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	...builder.magicInput("nsec").text({
 		label: "Nsec",
 		disabled: true,
-		type: "password",
 		copyToClipboard: true,
+		secretContent: true,
+	}),
+	...builder.magicInput("seed").textarea({
+		label: "Seed",
+		disabled: true,
+		copyToClipboard: true,
+		secretContent: true,
+		rows: 4,
 	}),
 	...builder.magicInput("relay1").text({
 		label: "Relay 1",
@@ -39,6 +62,7 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 
 export const CredentialsForm: React.FC<EmptyObject> = () => {
 	const [{ relays }, setRelays] = useAtom(nostrRelaysAtom);
+	const seed = useAtomValue(seedAtom);
 	const { ndk } = useNostr();
 	const defaultValues = {
 		relay1: relays[0] ?? "",
@@ -50,7 +74,10 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 	};
 
 	const form = useActionForm(credentialsSchema, {
-		defaultValues: () => defaultValues,
+		defaultValues: () => ({
+			...defaultValues,
+			seed,
+		}),
 		saveAction: async (values) => {
 			setRelays({
 				relays: [

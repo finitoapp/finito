@@ -1,18 +1,18 @@
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
+import { generateSeedWords } from "nostr-tools/nip06";
 import { useState } from "react";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
-import { nostrSignersAtom } from "@/atoms/nostr-signers";
+import { seedAtom } from "@/atoms/seed";
+import { seedsAtom } from "@/atoms/seeds";
 import { ProgressSteps } from "@/components/progress-steps";
 import { Button } from "@/components/ui/button";
-import { WssUrl } from "@/lib/types";
+import { NonEmptyString, WssUrl } from "@/lib/types";
 
 export function LoginForm() {
 	const [currentStep, setCurrentStep] = useState(0);
-	const setNostrSigner = useSetAtom(nostrSignerAtom);
-	const setNostrSigners = useSetAtom(nostrSignersAtom);
+	const setSeed = useSetAtom(seedAtom);
+	const setSeeds = useSetAtom(seedsAtom);
 	const setRelays = useSetAtom(nostrRelaysAtom);
 	const router = useRouter();
 
@@ -66,18 +66,11 @@ export function LoginForm() {
 					setCurrentStep(4);
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 
-					const ndkSignerPayload = NDKPrivateKeySigner.generate().toPayload();
-					setNostrSigners((previous) => ({
-						signers: [
-							...(previous !== null ? previous.signers : []),
-							{
-								ndkSignerPayload,
-							},
-						],
+					const seed = NonEmptyString(generateSeedWords());
+					setSeeds((previous) => ({
+						seeds: [...(previous !== null ? previous.seeds : []), seed],
 					}));
-					setNostrSigner({
-						ndkSignerPayload,
-					});
+					setSeed(seed);
 					setRelays({
 						relays: [
 							WssUrl("wss://relay.primal.net"),

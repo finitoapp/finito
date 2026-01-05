@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Suspense } from "react";
 import { Toaster } from "sonner";
 import Providers from "@/app/providers";
 import { ClientOnly } from "@/components/client-only";
+import { LoadingIndicator } from "@/components/loading-indicator";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
@@ -46,11 +48,22 @@ export default function RootLayout({
 						enableSystem
 						disableTransitionOnChange
 					>
-						<Providers>
-							{children}
-							<div className="isolate"></div>
-						</Providers>
-						<Toaster />
+						{/* Until async Jotai store is initializing */}
+						<Suspense
+							fallback={
+								<LoadingIndicator
+									open={true}
+									text={"Initializing user data"}
+									variant={"fullscreen"}
+								/>
+							}
+						>
+							<Providers>
+								{children}
+								<div className="isolate"></div>
+							</Providers>
+							<Toaster />
+						</Suspense>
 					</ThemeProvider>
 				</ClientOnly>
 			</body>

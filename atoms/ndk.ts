@@ -2,11 +2,13 @@ import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSigner,
 	type NDKUser,
-	ndkSignerFromPayload,
 } from "@nostr-dev-kit/ndk";
 import { atom } from "jotai";
+import { privateKeyFromSeedWords } from "nostr-tools/nip06";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
+import { seedAtom } from "@/atoms/seed";
+import { NonEmptyString } from "@/lib/types";
+import { accountStorage } from "@/storages/account-storage";
 
 const rawNdkAtom = atom<Promise<NDK>>(async () => {
 	// const cacheAdapter = new NDKCacheAdapterSqliteWasm({ dbName: "ndk-cache" });
@@ -29,28 +31,32 @@ const rawNdkAtom = atom<Promise<NDK>>(async () => {
 });
 
 const ndkSignerAtom = atom<Promise<NDKSigner>>(async (get) => {
-	const nostrSigner = get(nostrSignerAtom);
-	const ndk = await get(rawNdkAtom);
-
-	if (nostrSigner === null) {
+	const seed = get(seedAtom);
+	if (seed === null) {
 		return NDKPrivateKeySigner.generate();
 	}
 
-	const signer = await ndkSignerFromPayload(nostrSigner.ndkSignerPayload, ndk);
+	const privateKey = privateKeyFromSeedWords(seed);
 
-	return signer ?? NDKPrivateKeySigner.generate();
+	return new NDKPrivateKeySigner(privateKey);
 });
 
 export const ndkAtom = atom(async (get) => {
 	const nostrRelays = get(nostrRelaysAtom);
-	const [ndk, signer] = await Promise.all([
+	const [ndk, signer, seed] = await Promise.all([
 		get(rawNdkAtom),
 		get(ndkSignerAtom),
+		get(seedAtom),
 	]);
 
 	ndk.signer = signer;
 
-	const currentRelays = Object.keys(ndk.pool.relays);
+	const finalNdk = ndk as NDK & {
+		signer: NDKSigner;
+		activeUser: NDKUser;
+	};
+
+	const currentRelays = Object.keys(finalNdk.pool.relays);
 	const relaysToRemove = currentRelays.filter(
 		(currentRelay) => !(nostrRelays.relays as string[]).includes(currentRelay),
 	);
@@ -60,15 +66,29 @@ export const ndkAtom = atom(async (get) => {
 	);
 
 	for (const relayToRemove of relaysToRemove) {
-		ndk.pool.removeRelay(relayToRemove);
+		finalNdk.pool.removeRelay(relayToRemove);
 	}
 
 	for (const relayToAdd of relaysToAdd) {
-		ndk.addExplicitRelay(relayToAdd, undefined, true);
+		finalNdk.addExplicitRelay(relayToAdd, undefined, true);
 	}
 
-	return ndk as NDK & {
-		signer: NDKSigner;
-		activeUser: NDKUser;
-	};
+	await finalNdk.connect();
+
+	// Create default Spark wallet
+	await (async () => {
+		const msgBuffer = new TextEncoder().encode(seed);
+		const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+		const hashArray = Array.from(new Uint8Array(hashBuffer));
+		const id = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+		await accountStorage.insertOrUpdate(finalNdk, id, {
+			id,
+			name: NonEmptyString("Default"),
+			_tag: "spark",
+			mnemonic: NonEmptyString(seed),
+		});
+	})();
+
+	return finalNdk;
 });

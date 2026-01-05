@@ -1,22 +1,21 @@
 import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
 import { createStore } from "jotai";
+import { generateSeedWords } from "nostr-tools/nip06";
 import { ndkAtom } from "@/atoms/ndk";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
+import { seedAtom } from "@/atoms/seed";
 import { extractExpirationFromLightningInvoice } from "@/lib/ln-utils";
 import type { StaticOfflinePayment } from "@/lib/schemas";
 import { assertNotNull } from "@/lib/type-utils";
-import { Currency } from "@/lib/types";
+import { Currency, NonEmptyString } from "@/lib/types";
 
 (async () => {
 	const amount = 2000;
-	const nsec =
+	const _nsec =
 		"nsec1sg0cxhuqwr6gpd7ftdl24dh9cyufw6zsr3ckgwv7yas2vf8cc8esdwt3x7";
 
 	const store = createStore();
-	await store.set(nostrSignerAtom, {
-		ndkSignerPayload: new NDKPrivateKeySigner(nsec).toPayload(),
-	});
+	await store.set(seedAtom, NonEmptyString(generateSeedWords()));
 	const ndk = await store.get(ndkAtom);
 	console.log("npub", ndk.activeUser?.npub);
 	console.log("pubkey", ndk.activeUser?.pubkey);

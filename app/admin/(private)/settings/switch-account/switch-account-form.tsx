@@ -1,10 +1,9 @@
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { useSetAtom } from "jotai";
 import type React from "react";
 import { z } from "zod";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { nostrSignerAtom } from "@/atoms/nostr-signer";
-import { nostrSignersAtom } from "@/atoms/nostr-signers";
+import { seedAtom } from "@/atoms/seed";
+import { seedsAtom } from "@/atoms/seeds";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import {
@@ -14,16 +13,16 @@ import {
 } from "@/lib/types";
 
 export const switchAccountSchema = z.object({
-	nsec: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	seed: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
 });
 
 export const switchUserDefaultValues = {
-	nsec: "",
+	seed: "",
 } satisfies z.input<typeof switchAccountSchema>;
 
 const components = createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
-	...builder.magicInput("nsec").textarea({
-		placeholder: "paste your nsec",
+	...builder.magicInput("seed").textarea({
+		placeholder: "paste your seed",
 		rows: 4,
 	}),
 }));
@@ -31,31 +30,22 @@ const components = createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
 export const SwitchAccountForm: React.FC<{
 	onSuccess?: () => unknown;
 }> = (props) => {
-	const setNostrSigner = useSetAtom(nostrSignerAtom);
-	const setNostrSigners = useSetAtom(nostrSignersAtom);
+	const setSeed = useSetAtom(seedAtom);
+	const setSeeds = useSetAtom(seedsAtom);
 	const setRelays = useSetAtom(nostrRelaysAtom);
 	const form = useActionForm(switchAccountSchema, {
 		defaultValues: switchUserDefaultValues,
 		saveAction: async (values) => {
-			const ndkSignerPayload = new NDKPrivateKeySigner(values.nsec).toPayload();
-
-			setNostrSigner({
-				ndkSignerPayload,
-			});
-			setNostrSigners((previous) => {
-				for (const previousSigner of (previous ?? { signers: [] }).signers) {
-					if (previousSigner.ndkSignerPayload === ndkSignerPayload) {
+			setSeed(values.seed);
+			setSeeds((previous) => {
+				for (const previousSeed of (previous ?? { seeds: [] }).seeds) {
+					if (previousSeed === values.seed) {
 						return previous;
 					}
 				}
 
 				return {
-					signers: [
-						...(previous !== null ? previous.signers : []),
-						{
-							ndkSignerPayload,
-						},
-					],
+					seeds: [...(previous !== null ? previous.seeds : []), values.seed],
 				};
 			});
 			setRelays({

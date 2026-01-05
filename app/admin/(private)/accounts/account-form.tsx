@@ -131,6 +131,7 @@ const createComponents = (
 					label: "Mnemonic",
 					copyToClipboard: true,
 					secretContent: true,
+					rows: 4,
 				}),
 			}),
 		}),
