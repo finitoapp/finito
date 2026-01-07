@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
-import { Header } from "@/components/header";
+import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent } from "@/components/ui/card";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
@@ -25,7 +25,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-10"} />
-			<Header title={"Connected wallets"} backPath={"/settings/wallets"} />
+			<FadeHeader title={"Connected wallets"} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>
@@ -40,7 +40,7 @@ export default function Page() {
 									}
 								: undefined
 						}
-						onSuccess={() => router.push("/settings/wallets")}
+						onSuccess={() => router.back()}
 					/>
 				</CardContent>
 			</ResponsiveCard>

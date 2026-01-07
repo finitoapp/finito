@@ -10,7 +10,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
-import { Header } from "@/components/header";
+import { FadeHeader } from "@/components/fade-header";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -62,7 +62,7 @@ export default function Page() {
 	return (
 		<div className="space-y-14 w-full px-4">
 			<div className={"h-10"} />
-			<Header title={"Connected wallets"} backPath={"/settings"} />
+			<FadeHeader title={"Connected wallets"} />
 
 			<div className={"flex my-10 w-full justify-center"}>
 				<Link href={"/settings/wallets/new"}>

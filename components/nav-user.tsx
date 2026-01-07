@@ -64,11 +64,10 @@ export function NavUser({
 				(seeds ?? { seeds: [] }).seeds.map(async (seed) => {
 					const privateKey = privateKeyFromSeedWords(seed);
 					const signer = new NDKPrivateKeySigner(privateKey);
-
-					const user = await signer.user();
+					const user = await ndk.fetchUser(signer.npub);
 
 					return {
-						profile: await user.fetchProfile(),
+						profile: await user?.fetchProfile(),
 						signer,
 						payload: seed,
 					};
@@ -92,7 +91,7 @@ export function NavUser({
 
 			setAccounts(accounts);
 		})();
-	}, [seeds]);
+	}, [seeds, ndk.fetchUser]);
 
 	const logout = useCallback(async () => {
 		let theBestNdkSignerPayload: NonEmptyString | null = null;

@@ -2,7 +2,7 @@
 
 import { DownloadIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Header } from "@/components/header";
+import { FadeHeader } from "@/components/fade-header";
 import { KeyValueList } from "@/components/key-value-list";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -56,12 +56,8 @@ export default function Page() {
 
 	return (
 		<div className="space-y-8 w-full">
-			<div className={"h-10"} />
-			<Header title={"Payment detail"} backPath={"/history"} />
-
-			<h2 className="px-4 pt-4 text-2xl font-bold text-foreground">
-				{paymentInit?.value.merchant?.name}
-			</h2>
+			<div className={"h-20"} />
+			<FadeHeader title={"Payment detail"} />
 
 			<LoadingIndicator
 				text={
@@ -92,7 +88,7 @@ export default function Page() {
 								value: paymentInit ? (
 									paymentInit.value.merchant?.name
 								) : (
-									<Skeleton className={"h-5 w-[200px]"} />
+									<Skeleton className={"h-5 w-50"} />
 								),
 							},
 							{
@@ -100,7 +96,7 @@ export default function Page() {
 								value: paymentInit ? (
 									(paymentInit.value.merchant?.phone ?? "-")
 								) : (
-									<Skeleton className={"h-5 w-[200px]"} />
+									<Skeleton className={"h-5 w-50"} />
 								),
 							},
 						]}
@@ -117,7 +113,7 @@ export default function Page() {
 								value: paymentInit ? (
 									formatAmount(totalAmount, paymentInit.value.currency)
 								) : (
-									<Skeleton className={"h-5 w-[200px]"} />
+									<Skeleton className={"h-5 w-50"} />
 								),
 							},
 							{
@@ -125,7 +121,7 @@ export default function Page() {
 								value: paymentInit ? (
 									new Date(paymentInit.createdAt * 1000).toLocaleString()
 								) : (
-									<Skeleton className={"h-5 w-[200px]"} />
+									<Skeleton className={"h-5 w-50"} />
 								),
 							},
 						]}
@@ -152,8 +148,8 @@ export default function Page() {
 				</CardContent>
 			</ResponsiveCard>
 
-			<div className={"flex justify-center  px-4"}>
-				<Button className={"w-full md:w-100"} type={"button"}>
+			<div className={"flex justify-center px-4"}>
+				<Button className={"w-full"} type={"button"}>
 					<DownloadIcon />
 					Download receipt
 				</Button>

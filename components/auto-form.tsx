@@ -132,6 +132,7 @@ export const AutoForm = <
 >(props: {
 	form: UseActionFormResult<S>;
 	components: TComponents;
+	saveClassName?: React.ComponentProps<"div">["className"];
 	saveLabel?: React.ReactNode;
 }) => {
 	console.log("err", props.form.form.formState.errors);
@@ -153,6 +154,7 @@ export const AutoForm = <
 				<div className="flex justify-end gap-4">
 					<Button
 						type="submit"
+						className={props.saveClassName}
 						disabled={
 							props.form.form.formState.isSubmitting ||
 							props.form.form.formState.disabled

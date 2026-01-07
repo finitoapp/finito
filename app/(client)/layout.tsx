@@ -1,7 +1,6 @@
 "use client";
 
 import { ViewTransition } from "react";
-import { Nav } from "@/app/(client)/nav";
 
 export default function Layout({
 	children,
@@ -16,7 +15,7 @@ export default function Layout({
 				<div className={"h-18 max-w-xl"}></div>
 			</ViewTransition>
 
-			<Nav />
+			{/*<Nav />*/}
 		</div>
 	);
 }

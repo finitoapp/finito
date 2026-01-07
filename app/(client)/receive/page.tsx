@@ -1,10 +1,10 @@
 "use client";
 
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { AccountForm } from "@/app/admin/(private)/settings/account/account-form";
+import { PaymentForm } from "@/app/(client)/receive/payment-form";
 import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { useNostr } from "@/hooks/use-nostr";
 
 export default function Page() {
@@ -20,14 +20,11 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
-			<FadeHeader title={"Account"} />
+			<FadeHeader title={"Receive payment"} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
-				<CardHeader>
-					<CardTitle>Account settings</CardTitle>
-				</CardHeader>
 				<CardContent>
-					<AccountForm key={data ? "yes" : "no"} defaultValues={data} />
+					<PaymentForm key={data ? "yes" : "no"} onSave={() => {}} />
 				</CardContent>
 			</ResponsiveCard>
 		</div>

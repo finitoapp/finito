@@ -1,10 +1,6 @@
 "use client";
 
-import { atom, useAtomValue, useStore } from "jotai";
-import { useEffect } from "react";
-
-const hashAtomNumber = atom(0);
-const hashAtom = atom<string | null>(null);
+import { useEffect, useEffectEvent, useState } from "react";
 
 const resolveHash = () => {
 	const [hash, ...rest] = decodeURIComponent(window.location.hash)
@@ -19,51 +15,33 @@ const resolveHash = () => {
 };
 
 export const useHash = () => {
-	const store = useStore();
-	const hash = useAtomValue(hashAtom) ?? resolveHash();
+	const [hash, setHash] = useState(resolveHash());
+
+	const refreshHash = useEffectEvent(() => {
+		const newHash = resolveHash();
+		if (newHash !== hash) {
+			setHash(newHash);
+		}
+	});
 
 	useEffect(() => {
-		let shutdown = () => {};
-		const currentValue = store.get(hashAtomNumber);
-		store.set(hashAtomNumber, currentValue + 1);
-		if (currentValue === 0) {
-			const { pushState, replaceState } = window.history;
-			window.history.pushState = (...args) => {
-				pushState.apply(window.history, args);
-				setTimeout(() =>
-					store.set(
-						hashAtom,
-						window.location.hash !== "" ? resolveHash() : null,
-					),
-				);
-			};
-			window.history.replaceState = (...args) => {
-				replaceState.apply(window.history, args);
-				setTimeout(() =>
-					store.set(
-						hashAtom,
-						window.location.hash !== "" ? resolveHash() : null,
-					),
-				);
-			};
-			const onChange = () => {
-				store.set(hashAtom, window.location.hash !== "" ? resolveHash() : null);
-			};
-			window.addEventListener("hashchange", onChange);
+		const onHashChanged = () => setHash(resolveHash());
+		const { pushState, replaceState } = window.history;
+		window.history.pushState = (...args) => {
+			pushState.apply(window.history, args);
+			setTimeout(() => setHash(resolveHash()));
+		};
+		window.history.replaceState = (...args) => {
+			replaceState.apply(window.history, args);
+			setTimeout(() => setHash(resolveHash()));
+		};
+		window.addEventListener("hashchange", onHashChanged);
 
-			shutdown = () => {
-				window.removeEventListener("hashchange", onChange);
-				window.history.pushState = pushState;
-				window.history.replaceState = replaceState;
-			};
-		}
+		refreshHash();
 
 		return () => {
-			const currentValue = store.get(hashAtomNumber);
-			store.set(hashAtomNumber, currentValue - 1);
-			shutdown();
+			window.removeEventListener("hashchange", onHashChanged);
 		};
-	}, [store.set, store.get]);
-
+	}, []);
 	return hash;
 };

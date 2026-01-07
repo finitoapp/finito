@@ -4,6 +4,7 @@ import { IconRefresh } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
+	ArrowLeftIcon,
 	LoaderCircleIcon,
 	QrCodeIcon,
 	RecycleIcon,
@@ -20,7 +21,7 @@ import {
 	type SelectedItemsAtom,
 	type SelectedTipAtom,
 } from "@/app/(client)/bill-utils";
-import { Header } from "@/components/header";
+import { FadeHeader } from "@/components/fade-header";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { TipSelector } from "@/components/tip-selector";
 import { Button } from "@/components/ui/button";
@@ -602,21 +603,29 @@ export default function Page() {
 
 	return (
 		<div className="w-full flex flex-col justify-between min-h-full">
-			<div className={"h-18"} />
-			<Header
+			<div className={"h-24"} />
+			<FadeHeader
 				title={
 					screen !== null && screen?.variant === "payment"
 						? screen.payload.merchant?.name
 						: ""
 				}
-				onBackClick={() => {
-					if (screen?.variant === "paymentReady" && screen.parentScreen) {
-						setScreen(screen.parentScreen);
-						return;
-					}
+				startAddon={
+					<Button
+						type={"button"}
+						variant={"ghost"}
+						onClick={() => {
+							if (screen?.variant === "paymentReady" && screen.parentScreen) {
+								setScreen(screen.parentScreen);
+								return;
+							}
 
-					router.replace("/");
-				}}
+							router.replace("/");
+						}}
+					>
+						<ArrowLeftIcon className={"text-primary"} />
+					</Button>
+				}
 				endAddon={
 					screen?.variant === "payment" &&
 					screen.payload.allowManualRefresh && (

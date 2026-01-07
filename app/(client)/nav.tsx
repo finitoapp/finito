@@ -1,6 +1,6 @@
 "use client";
 
-import { HandCoinsIcon, ReceiptIcon, User } from "lucide-react";
+import { HandCoinsIcon, ReceiptIcon, SettingsIcon } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,7 +23,7 @@ const navItems: {
 	},
 	{
 		href: "/settings",
-		icon: User,
+		icon: SettingsIcon,
 		label: "Settings",
 	},
 ];
@@ -35,12 +35,12 @@ export function Nav() {
 
 	return (
 		<div
-			className="fixed bg-background border-t safe-area-pb z-50 max-w-xl rounded-full shadow-2xl transition-all duration-400"
+			className="fixed bg-background border-t safe-area-pb z-50 w-full shadow-2xl transition-all duration-400"
 			style={{
 				bottom:
 					pathname === "/payment" || paths.length > 2 || hash !== null
 						? -80
-						: "max(env(safe-area-inset-bottom, 0px), 8px)",
+						: "max(env(safe-area-inset-bottom, 0px), 0px)",
 			}}
 		>
 			<div className="relative max-w-md mx-auto">

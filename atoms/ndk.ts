@@ -1,3 +1,4 @@
+import { sha256 } from "@noble/hashes/sha2.js";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSigner,
@@ -42,8 +43,8 @@ const ndkSignerAtom = atom<Promise<NDKSigner>>(async (get) => {
 });
 
 export const ndkAtom = atom(async (get) => {
-	const nostrRelays = get(nostrRelaysAtom);
-	const [ndk, signer, seed] = await Promise.all([
+	const [nostrRelays, ndk, signer, seed] = await Promise.all([
+		get(nostrRelaysAtom),
 		get(rawNdkAtom),
 		get(ndkSignerAtom),
 		get(seedAtom),
@@ -78,7 +79,7 @@ export const ndkAtom = atom(async (get) => {
 	// Create default Spark wallet
 	await (async () => {
 		const msgBuffer = new TextEncoder().encode(seed);
-		const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+		const hashBuffer = sha256(msgBuffer);
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
 		const id = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 

@@ -87,13 +87,14 @@ const createComponents = (
 	options: { tagFilter?: (keyof typeof tags)[] } = {},
 ) =>
 	createAutoFormLayout(itemSchema, ({ builder }) => ({
-		...builder.magicInput("name").text({
-			label: "Name",
-		}),
 		...builder.magicInput("_tag").select({
 			label: "Protocol",
+			variant: "toggle",
 			allowEmpty: false,
 			values: options.tagFilter ? pick(tags, options.tagFilter) : tags,
+		}),
+		...builder.magicInput("name").text({
+			label: "Name",
 		}),
 		...builder.when("_tag", "iban", {
 			...builder.magicInput("iban").text({

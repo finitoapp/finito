@@ -1,11 +1,17 @@
 "use client";
 
-import { type FC, useEffect, useRef } from "react";
+import { ArrowLeftIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { type FC, type ReactNode, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 export const FadeHeader: FC<{
-	title: string;
+	title: ReactNode;
+	endAddon?: React.ReactNode;
+	startAddon?: React.ReactNode | null;
 }> = (props) => {
 	const divRef = useRef<HTMLDivElement>(null);
+	const router = useRouter();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -25,17 +31,28 @@ export const FadeHeader: FC<{
 		return () => window.removeEventListener("scroll", handleScroll);
 	}, []);
 
+	const startAddon =
+		props.startAddon === undefined ? (
+			<Button type={"button"} variant={"ghost"} onClick={() => router.back()}>
+				<ArrowLeftIcon className={"text-primary"} />
+			</Button>
+		) : (
+			props.startAddon
+		);
+
 	return (
 		<div
 			ref={divRef}
-			className="text-center fixed left-0 right-0 -z-10"
+			className="text-center fixed left-0 right-0"
 			style={{ opacity: 1, top: "env(safe-area-inset-top)" }}
 		>
 			<div className="relative flex flex-row w-full justify-center">
-				<div className="max-w-xl px-4 py-10 flex flex-1 flex-row justify-between gap-4">
-					<h2 className="text-2xl font-bold text-foreground m-auto">
+				<div className="max-w-xl px-4 py-5 flex flex-1 flex-row justify-between gap-4">
+					<div className={"w-10"}>{startAddon}</div>
+					<h2 className="flex-1 shrink text-2xl font-bold text-foreground m-auto">
 						{props.title}
 					</h2>
+					<div className={"w-10"}>{props.endAddon}</div>
 				</div>
 			</div>
 		</div>

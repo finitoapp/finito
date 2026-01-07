@@ -15,6 +15,7 @@ interface NavItem {
 	active?: boolean;
 	onClick?: () => void;
 	className?: string;
+	disableAction?: boolean;
 }
 
 interface VerticalNavProps {
@@ -69,9 +70,11 @@ function NavItemComponent({ item }: { item: NavItem }) {
 				<div className="flex items-center gap-3 w-full p-0.5">
 					{item.icon}
 					<span className={"w-full"}>{item.label}</span>
-					<div className={"pl-2"}>
-						{item.action ? item.action : <ChevronRight className="h-4 w-4" />}
-					</div>
+					{!item.disableAction && (
+						<div className={"pl-2"}>
+							{item.action ? item.action : <ChevronRight className="h-4 w-4" />}
+						</div>
+					)}
 				</div>
 			</div>
 		</Component>
