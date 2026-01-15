@@ -89,7 +89,7 @@ export const FioPluginForm: React.FC<{
 	const form = useActionForm(fioPluginSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await fioPluginStorage.insertOrUpdate(ndk, null, values);
+			await fioPluginStorage.insertOrUpdate({ ndk }, null, values);
 		},
 		onSuccess: () => {},
 	});

@@ -36,7 +36,7 @@ export default function Home() {
 				return;
 			}
 
-			await clientStorage.delete(ndk, item.eventId);
+			await clientStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/clients");
 		},
 	});

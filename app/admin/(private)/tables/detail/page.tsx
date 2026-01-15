@@ -40,7 +40,7 @@ export default function Home() {
 				return;
 			}
 
-			await tableStorage.delete(ndk, item.eventId);
+			await tableStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/tables");
 		},
 	});

@@ -14,3 +14,6 @@ indent_style = space
 
 [components/ui/*]
 indent_style = space
+
+[package.json]
+indent_style = space

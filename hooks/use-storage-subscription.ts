@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useNostr } from "@/hooks/use-nostr";
-import type { NostrStorage, NostrStorageRow } from "@/lib/nostr-storage";
+import type { Storage, StorageRow } from "@/lib/storage";
 
-export const useStorageSubscription = <TNostrStorage extends NostrStorage<any>>(
-	storage: TNostrStorage,
+export const useStorageSubscription = <TStorage extends Storage<any, any>>(
+	storage: TStorage,
 	options: {
 		key?: string | null | undefined;
 		limit?: number | undefined;
 	} = {},
 ): {
-	data: undefined | NostrStorageRow<TNostrStorage["$shape"]>[];
+	data: undefined | StorageRow<TStorage["$shape"]>[];
 	eose: boolean;
 	hasNextPage: boolean;
 	loadNextPage: () => unknown;
@@ -19,7 +19,7 @@ export const useStorageSubscription = <TNostrStorage extends NostrStorage<any>>(
 		null,
 	);
 	const [data, setData] = useState<{
-		data: undefined | NostrStorageRow<TNostrStorage["$shape"]>[];
+		data: undefined | StorageRow<TStorage["$shape"]>[];
 		hasNextPage: boolean;
 		eose: boolean;
 	}>({
@@ -29,44 +29,47 @@ export const useStorageSubscription = <TNostrStorage extends NostrStorage<any>>(
 	});
 
 	useEffect(() => {
-		subscriptionRef.current = storage.subscribe(ndk, {
-			key: options.key,
-			limit: options.limit,
-			onEvents: ({ getAllRows, hasNextPage }) => {
-				if (subscriptionRef.current === null) {
-					return;
-				}
+		subscriptionRef.current = storage.subscribe(
+			{ ndk },
+			{
+				key: options.key,
+				limit: options.limit,
+				onEvents: ({ getAllRows, hasNextPage }) => {
+					if (subscriptionRef.current === null) {
+						return;
+					}
 
-				setData((values) => ({
-					...values,
-					hasNextPage,
-					data: Array.from(Object.values(getAllRows())),
-					eose: true,
-				}));
-			},
-			onEvent: ({ getAllRows }) => {
-				if (subscriptionRef.current === null) {
-					return;
-				}
+					setData((values) => ({
+						...values,
+						hasNextPage,
+						data: Array.from(Object.values(getAllRows())),
+						eose: true,
+					}));
+				},
+				onEvent: ({ getAllRows }) => {
+					if (subscriptionRef.current === null) {
+						return;
+					}
 
-				console.log("hook-onEvent");
-				setData((values) => ({
-					...values,
-					data: Array.from(Object.values(getAllRows())),
-				}));
-			},
-			onDelete: ({ getAllRows }) => {
-				if (subscriptionRef.current === null) {
-					return;
-				}
+					console.log("hook-onEvent");
+					setData((values) => ({
+						...values,
+						data: Array.from(Object.values(getAllRows())),
+					}));
+				},
+				onDelete: ({ getAllRows }) => {
+					if (subscriptionRef.current === null) {
+						return;
+					}
 
-				console.log("hook-onDelete");
-				setData((values) => ({
-					...values,
-					data: Array.from(Object.values(getAllRows())),
-				}));
+					console.log("hook-onDelete");
+					setData((values) => ({
+						...values,
+						data: Array.from(Object.values(getAllRows())),
+					}));
+				},
 			},
-		});
+		);
 
 		return () => {
 			if (subscriptionRef.current) {

@@ -17,7 +17,7 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 					return result.success ? formatIban(result.data) : value;
 				},
 				fetchItems: async () => {
-					const items = await accountStorage.select(ndk);
+					const items = await accountStorage.select({ ndk });
 
 					return items.data
 						.filter((item) => item.value._tag === "iban")

@@ -38,7 +38,7 @@ export default function Home() {
 				return;
 			}
 
-			await itemStorage.delete(ndk, item.eventId);
+			await itemStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/items");
 		},
 	});

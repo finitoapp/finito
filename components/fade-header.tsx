@@ -23,7 +23,7 @@ export const FadeHeader: FC<{
 
 			if (divRef.current) {
 				divRef.current.style.opacity = newOpacity.toString();
-				divRef.current.style.top = `${(0 - scrollY / 3).toString()}px`;
+				divRef.current.style.top = `calc(env(safe-area-inset-top) + ${(0 - scrollY / 3).toString()}px)`;
 			}
 		};
 

@@ -63,7 +63,7 @@ export default function Home() {
 				].join(",")}
 				onSuccess={async (_, values) => {
 					if (values.invoiceNumber === serialNumber?.invoiceNumber) {
-						await invoiceLastNumberStorage.insertOrUpdate(ndk, null, {
+						await invoiceLastNumberStorage.insertOrUpdate({ ndk }, null, {
 							serialNumber: serialNumber.serialNumber,
 							date: serialNumber.date,
 						});

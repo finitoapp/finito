@@ -111,7 +111,7 @@ export async function createPayment(params: {
 
 	promises.push(
 		notificationStorage.insertOrUpdate(
-			params.ndk,
+			{ ndk: params.ndk },
 			`verifyPayment_${params.paymentId}`,
 			{
 				type: "verifyPayment",
@@ -122,7 +122,7 @@ export async function createPayment(params: {
 	);
 
 	promises.push(
-		paymentStatusStorage.insertOrUpdate(params.ndk, params.paymentId, {
+		paymentStatusStorage.insertOrUpdate({ ndk: params.ndk }, params.paymentId, {
 			paymentId: params.paymentId,
 			status: PaymentStatus.Unpaid,
 		}),
@@ -130,7 +130,7 @@ export async function createPayment(params: {
 
 	await Promise.all(promises);
 
-	await paymentStorage.insertOrUpdate(params.ndk, params.paymentId, {
+	await paymentStorage.insertOrUpdate({ ndk: params.ndk }, params.paymentId, {
 		id: params.paymentId,
 		webPaymentEventId: event.id,
 		...params.paymentData,
@@ -145,10 +145,13 @@ export async function createSparkPayment(params: {
 		activeUser: NDKUser;
 	};
 }) {
-	const { data: accounts } = await accountStorage.select(params.ndk, {
-		key: params.accountId,
-		limit: 1,
-	});
+	const { data: accounts } = await accountStorage.select(
+		{ ndk: params.ndk },
+		{
+			key: params.accountId,
+			limit: 1,
+		},
+	);
 
 	const account = accounts[0];
 	if (account === undefined) {

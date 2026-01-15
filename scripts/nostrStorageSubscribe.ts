@@ -20,15 +20,18 @@ import { NonEmptyString } from "@/lib/types";
 		}),
 	});
 
-	const _result = await myStorage.subscribe(ndk, {
-		onEvent: () => {
-			console.log("eose");
+	const _result = await myStorage.subscribe(
+		{ ndk },
+		{
+			onEvent: () => {
+				console.log("eose");
+			},
+			onEvents: (data) => {
+				console.log("result", JSON.stringify(data, null, 2));
+			},
+			onDelete: (data) => {
+				console.log("result", JSON.stringify(data, null, 2));
+			},
 		},
-		onEvents: (data) => {
-			console.log("result", JSON.stringify(data, null, 2));
-		},
-		onDelete: (data) => {
-			console.log("result", JSON.stringify(data, null, 2));
-		},
-	});
+	);
 })();

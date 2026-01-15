@@ -74,7 +74,7 @@ export const SmtpForm: React.FC<{
 	const form = useActionForm(smtpSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await smtpStorage.insertOrUpdate(ndk, null, values);
+			await smtpStorage.insertOrUpdate({ ndk }, null, values);
 		},
 		onSuccess: () => {},
 	});

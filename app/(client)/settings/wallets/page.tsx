@@ -137,7 +137,7 @@ export default function Page() {
 										</DropdownMenuItem>
 										<DropdownMenuItem
 											onClick={async () => {
-												await accountStorage.delete(ndk, item.eventId);
+												await accountStorage.delete({ ndk }, item.eventId);
 											}}
 										>
 											<TrashIcon />

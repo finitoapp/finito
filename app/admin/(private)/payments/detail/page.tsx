@@ -58,7 +58,7 @@ const StatusButton: FC<{
 	const value = invoiceStatus ? invoiceStatus.value.status : null;
 
 	const markAsPaid = async () => {
-		await paymentStatusStorage.insertOrUpdate(ndk, props.paymentId, {
+		await paymentStatusStorage.insertOrUpdate({ ndk }, props.paymentId, {
 			paymentId: props.paymentId,
 			...(value === null || value === "unpaid"
 				? {
@@ -288,7 +288,7 @@ export default function Home() {
 			});
 
 			await deleteEvent.publish();
-			await paymentStorage.delete(ndk, item.eventId);
+			await paymentStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/payments");
 		},
 	});

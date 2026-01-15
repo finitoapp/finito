@@ -8,7 +8,7 @@ export const BackgroundProcessing: FC<EmptyObject> = () => {
 	useEffect(() => {
 		(async () => {
 			await notificationStorage.insertOrUpdate(
-				ndk,
+				{ ndk },
 				"backgroundTableProcessing",
 				{
 					type: "backgroundTableProcessing",

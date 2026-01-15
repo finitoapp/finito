@@ -97,7 +97,7 @@ export const InvoiceNumberSeriesForm: React.FC<{
 		defaultValues,
 		saveAction: async (values) => {
 			const { eventId } = await invoiceNumberSeriesStorage.insertOrUpdate(
-				ndk,
+				{ ndk },
 				null,
 				values,
 			);

@@ -211,7 +211,7 @@ export const BillingInfoForm: React.FC<{
 
 			const { eventId } = await (
 				params.customStorage ?? clientStorage
-			).insertOrUpdate(ndk, id, finalValues);
+			).insertOrUpdate({ ndk }, id, finalValues);
 
 			if (params.onSuccess) {
 				params.onSuccess(eventId);

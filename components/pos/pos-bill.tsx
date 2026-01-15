@@ -381,26 +381,35 @@ const PayButton: FC<{
 			onClick={() => {
 				startTransition(async () => {
 					const { data: billingSettingsRows } =
-						await billingSettingsStorage.select(ndk, {
-							key: null,
-							limit: 1,
-						});
+						await billingSettingsStorage.select(
+							{ ndk },
+							{
+								key: null,
+								limit: 1,
+							},
+						);
 
 					const billingSettings = billingSettingsRows[0];
 
 					const [{ data: bankTransferCzRows }, { data: lnZapRows }] =
 						await Promise.all([
 							billingSettings && billingSettings.value.defaultBankTransferCzKey
-								? accountStorage.select(ndk, {
-										key: billingSettings.value.defaultBankTransferCzKey,
-										limit: 1,
-									})
+								? accountStorage.select(
+										{ ndk },
+										{
+											key: billingSettings.value.defaultBankTransferCzKey,
+											limit: 1,
+										},
+									)
 								: { data: [] },
 							billingSettings && billingSettings.value.defaultLnZapKey
-								? accountStorage.select(ndk, {
-										key: billingSettings.value.defaultLnZapKey,
-										limit: 1,
-									})
+								? accountStorage.select(
+										{ ndk },
+										{
+											key: billingSettings.value.defaultLnZapKey,
+											limit: 1,
+										},
+									)
 								: { data: [] },
 						]);
 

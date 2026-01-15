@@ -228,7 +228,7 @@ export const AccountForm: React.FC<{
 				return;
 			}
 
-			const { eventId } = await accountStorage.insertOrUpdate(ndk, id, {
+			const { eventId } = await accountStorage.insertOrUpdate({ ndk }, id, {
 				id,
 				name: values.name,
 				...sparkValues,

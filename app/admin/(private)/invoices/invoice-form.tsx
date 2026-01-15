@@ -234,7 +234,7 @@ const CustomerBillingInfo: AutoFormComponent<
 				},
 				// @ts-expect-error
 				fetchItems: async () => {
-					const items = await clientStorage.select(ndk);
+					const items = await clientStorage.select({ ndk });
 
 					return items.data.map((item) => ({
 						label: item.value.label ?? item.value.name,
@@ -262,7 +262,7 @@ const SupplierBillingInfo: AutoFormComponent<
 					return value.name;
 				},
 				fetchItems: async () => {
-					const items = await billingInfoStorage.select(ndk);
+					const items = await billingInfoStorage.select({ ndk });
 					const item = items.data[0];
 
 					return item !== undefined
@@ -428,13 +428,13 @@ export const InvoiceForm: React.FC<{
 					: Uuid7.random();
 
 			if (!params.defaultValues || !params.defaultValues.id) {
-				await invoiceStatusStorage.insertOrUpdate(ndk, id, {
+				await invoiceStatusStorage.insertOrUpdate({ ndk }, id, {
 					invoiceId: id,
 					status: InvoiceStatus.Unpaid,
 				});
 			}
 
-			const { eventId } = await invoiceStorage.insertOrUpdate(ndk, id, {
+			const { eventId } = await invoiceStorage.insertOrUpdate({ ndk }, id, {
 				id,
 				...values,
 			});
