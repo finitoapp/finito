@@ -83,7 +83,7 @@ export const ndkAtom = atom(async (get) => {
 		const hashArray = Array.from(new Uint8Array(hashBuffer));
 		const id = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-		await accountStorage.insertOrUpdate(finalNdk, id, {
+		await accountStorage.insertOrUpdate({ ndk: finalNdk }, id, {
 			id,
 			name: NonEmptyString("Default"),
 			_tag: "spark",

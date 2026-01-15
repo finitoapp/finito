@@ -9,71 +9,19 @@ import NDK, {
 import { nip04 } from "nostr-tools";
 import type { JsonObject } from "type-fest";
 import type { z } from "zod";
+import type { Storage, StorageEventId, StorageRow } from "@/lib/storage";
 import { jsonCodec } from "@/lib/zod/jsonCodec";
 
 export type EnhancedNDK = NDK & {
 	activeUser: NDKUser;
 	signer: NDKSigner;
 };
-type EventId = string & z.$brand<"NostrStorageEventId">;
 
-export type NostrStorageRow<TShape extends JsonObject> = {
-	value: TShape;
-	createdAt: number;
-	eventId: EventId;
-	key: string | null;
+type Deps = {
+	ndk: EnhancedNDK;
 };
 
-export type NostrStorage<TShape extends JsonObject> = {
-	namespace: string;
-	$shape: TShape;
-	schema: z.Schema<TShape>;
-
-	select: (
-		ndk: EnhancedNDK,
-		params?: {
-			key?: string | null;
-			limit?: number;
-			since?: number;
-			until?: number;
-		},
-	) => Promise<{
-		data: NostrStorageRow<TShape>[];
-	}>;
-	subscribe: (
-		ndk: EnhancedNDK,
-		params: {
-			key?: string | null;
-			limit?: number;
-			since?: number;
-			until?: number;
-			// on eose
-			onEvents: (data: {
-				getAllRows: () => Record<string, NostrStorageRow<TShape>>;
-				hasNextPage: boolean;
-			}) => unknown;
-			// after eose per each event
-			onEvent: (data: {
-				row: NostrStorageRow<TShape>;
-				getAllRows: () => Record<string, NostrStorageRow<TShape>>;
-			}) => unknown;
-			// when a row is deleted by kind 5
-			onDelete: (data: {
-				deletedRow: NostrStorageRow<TShape>;
-				getAllRows: () => Record<string, NostrStorageRow<TShape>>;
-			}) => unknown;
-		},
-	) => {
-		close: () => void;
-		fetchNextPage: () => void;
-	};
-	insertOrUpdate: (
-		ndk: EnhancedNDK,
-		key: string | null,
-		value: TShape,
-	) => Promise<NostrStorageRow<TShape>>;
-	delete: (ndk: EnhancedNDK, eventId: EventId) => Promise<{ eventId: EventId }>;
-};
+export type NostrStorage<TShape extends JsonObject> = Storage<Deps, TShape>;
 
 const kind = 30078; // Application
 // const kind = 14; // private message
@@ -111,13 +59,13 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 
 		return {
 			key,
-			eventId: event.id as EventId,
+			eventId: event.id as StorageEventId,
 			createdAt: event.created_at,
 			value: result.data,
 		};
 	};
 
-	const select: NostrStorage<TShape>["select"] = async (ndk, params) => {
+	const select: NostrStorage<TShape>["select"] = async ({ ndk }, params) => {
 		const filter = {
 			kinds: [kind],
 			authors: [ndk.activeUser.pubkey],
@@ -136,7 +84,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 			cacheUsage: NDKSubscriptionCacheUsage.ONLY_RELAY,
 		});
 
-		const result = new Map<string, NostrStorageRow<TShape>>();
+		const result = new Map<string, StorageRow<TShape>>();
 		for (const event of events) {
 			const row = decodeEvent(ndk, event);
 			if (row === undefined) {
@@ -151,9 +99,9 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 		};
 	};
 
-	const subscribe: NostrStorage<TShape>["subscribe"] = (ndk, params) => {
+	const subscribe: NostrStorage<TShape>["subscribe"] = ({ ndk }, params) => {
 		let oldestDate: undefined | number;
-		const eventBuffer = new Map<string, NostrStorageRow<TShape>>();
+		const eventBuffer = new Map<string, StorageRow<TShape>>();
 		const eventIdToEventKey = new Map<string, string>();
 
 		let pageEventCounter = 0;
@@ -303,7 +251,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 						return;
 					}
 
-					eventIdToEventKey.delete(event.id as EventId);
+					eventIdToEventKey.delete(event.id as StorageEventId);
 
 					const row = eventBuffer.get(eventKey);
 					if (row === undefined) {
@@ -350,7 +298,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 	};
 
 	const insertOrUpdate: NostrStorage<TShape>["insertOrUpdate"] = async (
-		ndk,
+		{ ndk },
 		key,
 		value,
 	) => {
@@ -374,13 +322,16 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 
 		return {
 			value,
-			eventId: event.id as EventId,
+			eventId: event.id as StorageEventId,
 			createdAt: event.rawEvent().created_at,
 			key,
 		};
 	};
 
-	const deleteItem: NostrStorage<TShape>["delete"] = async (ndk, eventId) => {
+	const deleteItem: NostrStorage<TShape>["delete"] = async (
+		{ ndk },
+		eventId,
+	) => {
 		const event = new NDKEvent(ndk, {
 			kind: 5,
 			created_at: Math.floor(Date.now() / 1000),
@@ -394,7 +345,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 		await event.publish();
 
 		return {
-			eventId: event.id as EventId,
+			eventId: event.id as StorageEventId,
 		};
 	};
 

@@ -91,7 +91,7 @@ export const ItemForm: React.FC<{
 					? params.defaultValues.id
 					: v7();
 
-			const { eventId } = await itemStorage.insertOrUpdate(ndk, id, {
+			const { eventId } = await itemStorage.insertOrUpdate({ ndk }, id, {
 				id,
 				...values,
 				price: {

@@ -54,7 +54,7 @@ export const InvoiceLastNumberForm: React.FC<{
 		defaultValues,
 		saveAction: async (values) => {
 			const { eventId } = await invoiceLastNumberStorage.insertOrUpdate(
-				ndk,
+				{ ndk },
 				null,
 				values,
 			);

@@ -152,7 +152,7 @@ const PayButton: FC<{
 
 							setLoading("The payment is preparing");
 							await paymentInitStorage.insertOrUpdate(
-								ndk,
+								{ ndk },
 								paymentId,
 								paymentInit,
 							);
@@ -492,14 +492,14 @@ export default function Page() {
 			if (event.type === "screen") {
 				if (event.payload.variant === "paymentReady") {
 					await paymentReadyStorage.insertOrUpdate(
-						ndk,
+						{ ndk },
 						event.payload.payload.paymentId,
 						event.payload.payload,
 					);
 				} else if (event.payload.variant === "paymentFinished") {
 					if (event.payload.payload.paymentId) {
 						await paymentFinishedStorage.insertOrUpdate(
-							ndk,
+							{ ndk },
 							event.payload.payload.paymentId,
 							event.payload.payload,
 						);

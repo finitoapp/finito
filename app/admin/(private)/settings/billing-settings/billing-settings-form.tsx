@@ -168,7 +168,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 										createComboboxInput({
 											label: "Default bank account",
 											fetchItems: async () => {
-												const items = await accountStorage.select(ndk);
+												const items = await accountStorage.select({ ndk });
 
 												return items.data
 													.filter((item) => item.value._tag === "iban")
@@ -215,7 +215,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 							createComboboxInput({
 								label: "Default bank account",
 								fetchItems: async () => {
-									const items = await accountStorage.select(ndk);
+									const items = await accountStorage.select({ ndk });
 
 									return items.data
 										.filter((item) => item.value._tag === "iban")
@@ -241,7 +241,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 							createComboboxInput({
 								label: "Default LN Zap wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select(ndk);
+									const items = await accountStorage.select({ ndk });
 
 									return items.data
 										.filter((item) => item.value._tag === "lud16")
@@ -265,7 +265,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 							createComboboxInput({
 								label: "Default LN Spark wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select(ndk);
+									const items = await accountStorage.select({ ndk });
 
 									return items.data
 										.filter((item) => item.value._tag === "spark")
@@ -360,7 +360,7 @@ export const BillingSettingsForm: React.FC<{
 		defaultValues,
 		saveAction: async (values) => {
 			const { eventId } = await billingSettingsStorage.insertOrUpdate(
-				ndk,
+				{ ndk },
 				null,
 				{
 					...values,

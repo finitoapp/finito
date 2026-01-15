@@ -62,7 +62,7 @@ const StatusButton: FC<{
 	const value = invoiceStatus ? invoiceStatus.value.status : null;
 
 	const markAsPaid = async () => {
-		await invoiceStatusStorage.insertOrUpdate(ndk, props.invoiceId, {
+		await invoiceStatusStorage.insertOrUpdate({ ndk }, props.invoiceId, {
 			invoiceId: props.invoiceId,
 			status:
 				value === null || value === "unpaid"
@@ -245,14 +245,20 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 
 						const [{ data: billingSettingsRows }, { data: smtpRows }] =
 							await Promise.all([
-								billingSettingsStorage.select(ndk, {
-									key: null,
-									limit: 1,
-								}),
-								smtpStorage.select(ndk, {
-									key: null,
-									limit: 1,
-								}),
+								billingSettingsStorage.select(
+									{ ndk },
+									{
+										key: null,
+										limit: 1,
+									},
+								),
+								smtpStorage.select(
+									{ ndk },
+									{
+										key: null,
+										limit: 1,
+									},
+								),
 							]);
 
 						const smtp = smtpRows[0];
@@ -342,7 +348,7 @@ export default function Home() {
 				return;
 			}
 
-			await invoiceStorage.delete(ndk, item.eventId);
+			await invoiceStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/invoices");
 		},
 	});

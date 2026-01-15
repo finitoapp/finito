@@ -73,7 +73,7 @@ export const TableForm: React.FC<{
 					? params.defaultValues.id
 					: v7();
 
-			const { eventId } = await tableStorage.insertOrUpdate(ndk, id, {
+			const { eventId } = await tableStorage.insertOrUpdate({ ndk }, id, {
 				id,
 				...values,
 			});

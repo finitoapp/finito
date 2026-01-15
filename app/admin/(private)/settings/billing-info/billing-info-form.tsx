@@ -196,7 +196,7 @@ export const BillingInfoForm: React.FC<{
 
 			const { eventId } = await (
 				params.customStorage ?? clientStorage
-			).insertOrUpdate(ndk, null, {
+			).insertOrUpdate({ ndk }, null, {
 				id,
 				...values,
 			});

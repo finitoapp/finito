@@ -20,12 +20,12 @@ import { NonEmptyString } from "@/lib/types";
 		}),
 	});
 
-	// const result = await myStorage.select(ndk);
+	// const result = await myStorage.select({ ndk });
 	// const result = await myStorage.delete(
 	// 	ndk,
 	// 	"fdc9c2bdf91f4c1576295efb7157986a98e658008e5f80a18bd88bdca5f16715",
 	// );
-	const result = await myStorage.insertOrUpdate(ndk, "key2", {
+	const result = await myStorage.insertOrUpdate({ ndk }, "key2", {
 		isSuper: false,
 	});
 

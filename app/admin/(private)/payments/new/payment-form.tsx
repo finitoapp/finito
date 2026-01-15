@@ -246,7 +246,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 							createComboboxOrTextInput<string>({
 								label: "lud16 wallet address with `Lightning Zaps` support",
 								fetchItems: async () => {
-									const items = await accountStorage.select(ndk);
+									const items = await accountStorage.select({ ndk });
 
 									return items.data
 										.filter((item) => item.value._tag === "lud16")
@@ -286,7 +286,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 							createComboboxOrTextInput<string>({
 								label: "Spark wallet account",
 								fetchItems: async () => {
-									const items = await accountStorage.select(ndk);
+									const items = await accountStorage.select({ ndk });
 
 									return items.data
 										.filter((item) => item.value._tag === "spark")

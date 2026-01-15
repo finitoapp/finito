@@ -37,7 +37,7 @@ export default function Home() {
 				return;
 			}
 
-			await accountStorage.delete(ndk, item.eventId);
+			await accountStorage.delete({ ndk }, item.eventId);
 			router.push("/admin/accounts");
 		},
 	});

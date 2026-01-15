@@ -25,7 +25,7 @@ import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import type { ScreenData } from "@/lib/bill/billDriver";
 import { FioApiClient } from "@/lib/fio/fio-api-client";
-import type { NostrStorageRow } from "@/lib/nostr-storage";
+import type { StorageRow } from "@/lib/storage";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -49,7 +49,7 @@ import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 const resolveUiNotification = (
-	notification: NostrStorageRow<Notification>,
+	notification: StorageRow<Notification>,
 ): BackgroundJob => {
 	if (notification.value.type === "verifyPayment") {
 		const notificationData = notification.value;
@@ -123,7 +123,7 @@ const resolveUiNotification = (
 
 							(async () => {
 								await paymentStatusStorage.insertOrUpdate(
-									ndk,
+									{ ndk },
 									notificationData.paymentId,
 									{
 										paymentId: notificationData.paymentId,
@@ -153,10 +153,13 @@ const resolveUiNotification = (
 						}
 
 						const walletPromise = (async () => {
-							const { data: accounts } = await accountStorage.select(ndk, {
-								key: sparkWallet.accountId,
-								limit: 1,
-							});
+							const { data: accounts } = await accountStorage.select(
+								{ ndk },
+								{
+									key: sparkWallet.accountId,
+									limit: 1,
+								},
+							);
 
 							const account = accounts[0];
 							if (account === undefined) {
@@ -198,7 +201,7 @@ const resolveUiNotification = (
 							markAsPaid.current = true;
 
 							await paymentStatusStorage.insertOrUpdate(
-								ndk,
+								{ ndk },
 								notificationData.paymentId,
 								{
 									paymentId: notificationData.paymentId,
@@ -269,7 +272,7 @@ const resolveUiNotification = (
 								console.log("FIO OK");
 								markAsPaid.current = true;
 								await paymentStatusStorage.insertOrUpdate(
-									ndk,
+									{ ndk },
 									notificationData.paymentId,
 									{
 										paymentId: notificationData.paymentId,
@@ -508,7 +511,7 @@ type BackgroundJob = {
 export function NotificationItem({
 	notification,
 }: {
-	notification: NostrStorageRow<Notification>;
+	notification: StorageRow<Notification>;
 }) {
 	const uiNotification = useMemo(
 		() => resolveUiNotification(notification),
@@ -517,7 +520,7 @@ export function NotificationItem({
 	const { ndk } = useNostr();
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
-			await notificationStorage.delete(ndk, notification.eventId);
+			await notificationStorage.delete({ ndk }, notification.eventId);
 		},
 	});
 

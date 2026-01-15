@@ -16,9 +16,15 @@ export const resolveSubsequentInvoiceNumber = async (deps: {
 }) => {
 	const [invoiceLastNumbersData, invoiceNumberSeriesData, billingSettingsData] =
 		await Promise.all([
-			invoiceLastNumberStorage.select(deps.ndk, { key: null, limit: 1 }),
-			invoiceNumberSeriesStorage.select(deps.ndk, { key: null, limit: 1 }),
-			billingSettingsStorage.select(deps.ndk, { key: null, limit: 1 }),
+			invoiceLastNumberStorage.select(
+				{ ndk: deps.ndk },
+				{ key: null, limit: 1 },
+			),
+			invoiceNumberSeriesStorage.select(
+				{ ndk: deps.ndk },
+				{ key: null, limit: 1 },
+			),
+			billingSettingsStorage.select({ ndk: deps.ndk }, { key: null, limit: 1 }),
 		]);
 
 	const invoiceLastNumbers = invoiceLastNumbersData.data[0]?.value ?? {
