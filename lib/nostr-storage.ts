@@ -352,6 +352,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 	return {
 		$shape: undefined as unknown as TShape,
 		schema: props.schema,
+		namespace: props.namespace,
 
 		select,
 		subscribe,
