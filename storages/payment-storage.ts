@@ -102,7 +102,7 @@ export const PaymentSchema = z.object({
 export type Payment = z.output<typeof PaymentSchema>;
 
 export const paymentStorage = createNostrStorage({
-	namespace: "finito_payment",
+	namespace: "payment",
 	schema: PaymentSchema,
 	useEncryption: true,
 });

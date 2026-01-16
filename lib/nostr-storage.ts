@@ -23,16 +23,19 @@ type Deps = {
 
 export type NostrStorage<TShape extends JsonObject> = Storage<Deps, TShape>;
 
+const keyPrefix = "finito_" as const;
+
 const kind = 30078; // Application
 // const kind = 14; // private message
 
 export const createNostrStorage = <TShape extends JsonObject>(props: {
-	schema: z.Schema<TShape>;
+	schema: z.Schema<TShape, unknown>;
 	namespace: string;
 	useEncryption?: boolean | undefined;
 }) => {
+	const fullKeyPrefix = `${keyPrefix}${props.namespace}`;
 	const getFullKey = (key: string | null) =>
-		`${props.namespace}${key !== null ? `|${key}` : ""}`;
+		`${fullKeyPrefix}${key !== null ? `|${key}` : ""}`;
 
 	const schemaCodes = jsonCodec(props.schema);
 	const decodeEvent = (ndk: EnhancedNDK, event: NDKEvent) => {
@@ -41,7 +44,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 			return undefined;
 		}
 
-		const key = dTag.substring(props.namespace.length + 1);
+		const key = dTag.substring(fullKeyPrefix.length + 1);
 		const encrypted = event.tagValue("encrypted");
 		const content =
 			encrypted === "true" && ndk.signer instanceof NDKPrivateKeySigner
@@ -69,7 +72,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 		const filter = {
 			kinds: [kind],
 			authors: [ndk.activeUser.pubkey],
-			"#l": [props.namespace],
+			"#l": [fullKeyPrefix],
 			...(params && params.limit ? { limit: params.limit } : {}),
 			...(params && params.until ? { until: params.until } : {}),
 			...(params && params.since ? { since: params.since } : {}),
@@ -119,7 +122,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 			const filter = {
 				kinds: [kind],
 				authors: [ndk.activeUser.pubkey],
-				"#l": [props.namespace],
+				"#l": [fullKeyPrefix],
 				...(params && params.limit ? { limit: params.limit } : {}),
 				...(until ? { until: until } : {}),
 				...(params && params.since ? { since: params.since } : {}),
@@ -309,7 +312,7 @@ export const createNostrStorage = <TShape extends JsonObject>(props: {
 			created_at: Math.floor(Date.now() / 1000),
 			tags: [
 				["d", getFullKey(key)],
-				["l", props.namespace],
+				["l", fullKeyPrefix],
 				...(props.useEncryption ? [["encrypted", "true"]] : []),
 			],
 			content:

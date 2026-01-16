@@ -22,7 +22,7 @@ export const FioPluginSchema = z.object({
 export type FioPlugin = z.output<typeof FioPluginSchema>;
 
 export const fioPluginStorage = createNostrStorage({
-	namespace: "finito_fio_plugin",
+	namespace: "fio_plugin",
 	schema: FioPluginSchema,
 	useEncryption: true,
 });

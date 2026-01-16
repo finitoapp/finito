@@ -53,7 +53,7 @@ export const BillingSettingsSchema = z.object({
 export type BillingSettings = z.output<typeof BillingSettingsSchema>;
 
 export const billingSettingsStorage = createNostrStorage({
-	namespace: "finito_billing_settings",
+	namespace: "billing_settings",
 	schema: BillingSettingsSchema,
 	useEncryption: true,
 });

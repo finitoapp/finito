@@ -14,7 +14,7 @@ export const InvoiceStatusSchema = z.object({
 });
 
 export const invoiceStatusStorage = createNostrStorage({
-	namespace: "finito_invoice_status",
+	namespace: "invoice_status",
 	schema: InvoiceStatusSchema,
 	useEncryption: true,
 });

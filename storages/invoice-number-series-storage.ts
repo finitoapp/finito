@@ -21,7 +21,7 @@ export const InvoiceNumberSeriesSchema = z.discriminatedUnion("monthFormat", [
 export type InvoiceNumberSeries = z.output<typeof InvoiceNumberSeriesSchema>;
 
 export const invoiceNumberSeriesStorage = createNostrStorage({
-	namespace: "finito_invoice_number_series",
+	namespace: "invoice_number_series",
 	schema: InvoiceNumberSeriesSchema,
 	useEncryption: true,
 });

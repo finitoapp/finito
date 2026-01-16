@@ -17,7 +17,7 @@ export const TableSchema = z.object({
 export type Table = z.output<typeof TableSchema>;
 
 export const tableStorage = createNostrStorage({
-	namespace: "finito_table",
+	namespace: "table",
 	schema: TableSchema,
 	useEncryption: true,
 });

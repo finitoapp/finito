@@ -22,7 +22,7 @@ export const ItemSchema = z.object({
 export type Item = z.output<typeof ItemSchema>;
 
 export const itemStorage = createNostrStorage({
-	namespace: "finito_item",
+	namespace: "item",
 	schema: ItemSchema,
 	useEncryption: true,
 });

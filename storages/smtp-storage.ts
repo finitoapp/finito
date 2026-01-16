@@ -16,7 +16,7 @@ export const SmtpSchema = z.object({
 export type Smtp = z.output<typeof SmtpSchema>;
 
 export const smtpStorage = createNostrStorage({
-	namespace: "finito_smtp",
+	namespace: "smtp",
 	schema: SmtpSchema,
 	useEncryption: true,
 });

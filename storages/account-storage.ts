@@ -41,7 +41,7 @@ export const AccountSchema = z.intersection(
 export type Account = z.output<typeof AccountSchema>;
 
 export const accountStorage = createNostrStorage({
-	namespace: "finito_account",
+	namespace: "account",
 	schema: AccountSchema,
 	useEncryption: true,
 });

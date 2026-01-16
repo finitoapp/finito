@@ -93,19 +93,19 @@ export type PaymentReady = z.output<typeof PaymentReadySchema>;
 export type PaymentFinished = z.output<typeof PaymentFinishedSchema>;
 
 export const paymentInitStorage = createNostrStorage({
-	namespace: "finito_payment_init",
+	namespace: "payment_init",
 	schema: PaymentInitSchema,
 	useEncryption: true,
 });
 
 export const paymentReadyStorage = createNostrStorage({
-	namespace: "finito_payment_ready",
+	namespace: "payment_ready",
 	schema: PaymentReadySchema,
 	useEncryption: true,
 });
 
 export const paymentFinishedStorage = createNostrStorage({
-	namespace: "finito_payment_finished",
+	namespace: "payment_finished",
 	schema: PaymentFinishedSchema,
 	useEncryption: true,
 });

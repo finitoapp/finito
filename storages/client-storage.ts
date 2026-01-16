@@ -29,7 +29,7 @@ export const ClientSchema = z.object({
 export type Client = z.output<typeof ClientSchema>;
 
 export const clientStorage = createNostrStorage({
-	namespace: "finito_client",
+	namespace: "client",
 	schema: ClientSchema,
 	useEncryption: true,
 });

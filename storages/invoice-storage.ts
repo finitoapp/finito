@@ -63,7 +63,7 @@ export const InvoiceSchema = z.object({
 export type Invoice = z.output<typeof InvoiceSchema>;
 
 export const invoiceStorage = createNostrStorage({
-	namespace: "finito_invoice",
+	namespace: "invoice",
 	schema: InvoiceSchema,
 	useEncryption: true,
 });

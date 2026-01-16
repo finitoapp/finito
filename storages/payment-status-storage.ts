@@ -33,7 +33,7 @@ export const PaymentStatusSchema = z.discriminatedUnion("status", [
 ]);
 
 export const paymentStatusStorage = createNostrStorage({
-	namespace: "finito_payment_status",
+	namespace: "payment_status",
 	schema: PaymentStatusSchema,
 	useEncryption: true,
 });

@@ -32,7 +32,7 @@ export const BillingInfoSchema = ClientSchema.omit({
 export type BillingInfo = z.output<typeof BillingInfoSchema>;
 
 export const billingInfoStorage = createNostrStorage({
-	namespace: "finito_billing_info",
+	namespace: "billing_info",
 	schema: BillingInfoSchema,
 	useEncryption: true,
 });

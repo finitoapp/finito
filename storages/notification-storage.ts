@@ -23,7 +23,7 @@ export const NotificationSchema = z.discriminatedUnion("type", [
 export type Notification = z.output<typeof NotificationSchema>;
 
 export const notificationStorage = createNostrStorage({
-	namespace: "finito_notification",
+	namespace: "notification",
 	schema: NotificationSchema,
 	useEncryption: true,
 });
