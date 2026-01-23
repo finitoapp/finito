@@ -16,6 +16,7 @@ import { AutoformIbanInput } from "@/components/auto-form/autoform-iban";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	createPayment,
 	createSparkPayment,
@@ -240,13 +241,13 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					},
 				}),
 				...builder.createComponent("lud16", (props) => {
-					const { ndk } = useNostr();
+					const storageDeps = useStorageDeps();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
 								label: "lud16 wallet address with `Lightning Zaps` support",
 								fetchItems: async () => {
-									const items = await accountStorage.select({ ndk });
+									const items = await accountStorage.select(storageDeps);
 
 									return items.data
 										.filter((item) => item.value._tag === "lud16")
@@ -260,7 +261,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 										}));
 								},
 							}),
-						[ndk],
+						[storageDeps],
 					);
 
 					return <ComboboxInput {...props} />;
@@ -280,13 +281,13 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					},
 				}),
 				...builder.createComponent("accountId", (props) => {
-					const { ndk } = useNostr();
+					const storageDeps = useStorageDeps();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
 								label: "Spark wallet account",
 								fetchItems: async () => {
-									const items = await accountStorage.select({ ndk });
+									const items = await accountStorage.select(storageDeps);
 
 									return items.data
 										.filter((item) => item.value._tag === "spark")
@@ -297,7 +298,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 										}));
 								},
 							}),
-						[ndk],
+						[storageDeps],
 					);
 
 					return <ComboboxInput {...props} />;

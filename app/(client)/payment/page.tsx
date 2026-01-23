@@ -30,6 +30,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
 import { useNostr } from "@/hooks/use-nostr";
 import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import type {
 	BillDriverSubscriptionEvent,
 	BillPaymentOption,
@@ -54,7 +55,7 @@ const PayButton: FC<{
 	selectedTipAtom: SelectedTipAtom;
 	loadingAtom: LoadingAtom;
 }> = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const setLoading = useSetAtom(props.loadingAtom);
 	const [paymentMethod, setPaymentMethod] =
 		useState<BillPaymentOption>("btcLn");
@@ -152,7 +153,7 @@ const PayButton: FC<{
 
 							setLoading("The payment is preparing");
 							await paymentInitStorage.insertOrUpdate(
-								{ ndk },
+								storageDeps,
 								paymentId,
 								paymentInit,
 							);
@@ -473,6 +474,7 @@ export default function Page() {
 		createLoadingAtom("Loading the data..."),
 	);
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const [subscription, setSubscription] = useState<BillSubscription | null>(
 		null,
 	);
@@ -492,14 +494,14 @@ export default function Page() {
 			if (event.type === "screen") {
 				if (event.payload.variant === "paymentReady") {
 					await paymentReadyStorage.insertOrUpdate(
-						{ ndk },
+						storageDeps,
 						event.payload.payload.paymentId,
 						event.payload.payload,
 					);
 				} else if (event.payload.variant === "paymentFinished") {
 					if (event.payload.payload.paymentId) {
 						await paymentFinishedStorage.insertOrUpdate(
-							{ ndk },
+							storageDeps,
 							event.payload.payload.paymentId,
 							event.payload.payload,
 						);

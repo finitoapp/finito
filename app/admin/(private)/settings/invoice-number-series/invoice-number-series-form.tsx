@@ -4,7 +4,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	NonEmptyStringSchema,
 	PositiveIntegerSchema,
@@ -92,12 +92,12 @@ export const InvoiceNumberSeriesForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(invoiceNumberSeriesFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
 			const { eventId } = await invoiceNumberSeriesStorage.insertOrUpdate(
-				{ ndk },
+				storageDeps,
 				null,
 				values,
 			);

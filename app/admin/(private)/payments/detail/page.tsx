@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useNostr } from "@/hooks/use-nostr";
 import { usePaymentStatus } from "@/hooks/use-payment-status";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { shareImageOrDownload } from "@/lib/file-utils";
@@ -48,7 +49,7 @@ import { paymentStorage } from "@/storages/payment-storage";
 const StatusButton: FC<{
 	paymentId: Uuid7;
 }> = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const { data: invoiceStates } = useStorageSubscription(paymentStatusStorage, {
 		limit: 1,
 		key: props.paymentId,
@@ -58,7 +59,7 @@ const StatusButton: FC<{
 	const value = invoiceStatus ? invoiceStatus.value.status : null;
 
 	const markAsPaid = async () => {
-		await paymentStatusStorage.insertOrUpdate({ ndk }, props.paymentId, {
+		await paymentStatusStorage.insertOrUpdate(storageDeps, props.paymentId, {
 			paymentId: props.paymentId,
 			...(value === null || value === "unpaid"
 				? {
@@ -256,6 +257,7 @@ const FullscreenQrPayment: FC<{
 export default function Home() {
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const tab = searchParams.get("tab");
 	const router = useRouter();
@@ -288,7 +290,7 @@ export default function Home() {
 			});
 
 			await deleteEvent.publish();
-			await paymentStorage.delete({ ndk }, item.eventId);
+			await paymentStorage.delete(storageDeps, item.eventId);
 			router.push("/admin/payments");
 		},
 	});

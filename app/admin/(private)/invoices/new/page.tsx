@@ -7,6 +7,7 @@ import { useId, useState } from "react";
 import { InvoiceForm } from "@/app/admin/(private)/invoices/invoice-form";
 import { BackButton } from "@/components/back-button";
 import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { resolveSubsequentInvoiceNumber } from "@/lib/invoice-number-service";
 import { accountStorage } from "@/storages/account-storage";
@@ -17,6 +18,7 @@ import { invoiceLastNumberStorage } from "@/storages/invoice-last-number-storage
 export default function Home() {
 	const id = useId();
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const router = useRouter();
 	const [now] = useState(() => new Date());
 
@@ -63,7 +65,7 @@ export default function Home() {
 				].join(",")}
 				onSuccess={async (_, values) => {
 					if (values.invoiceNumber === serialNumber?.invoiceNumber) {
-						await invoiceLastNumberStorage.insertOrUpdate({ ndk }, null, {
+						await invoiceLastNumberStorage.insertOrUpdate(storageDeps, null, {
 							serialNumber: serialNumber.serialNumber,
 							date: serialNumber.date,
 						});

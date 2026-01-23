@@ -6,7 +6,7 @@ import { v7 } from "uuid";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { assertNever } from "@/lib/type-utils";
 import {
 	EmailSchema,
@@ -154,7 +154,7 @@ export const AccountForm: React.FC<{
 		() => createComponents({ tagFilter: params.tagFilter }),
 		[params.tagFilter],
 	);
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(itemSchema, {
 		defaultValues: {
 			...itemDefaultValues,
@@ -228,7 +228,7 @@ export const AccountForm: React.FC<{
 				return;
 			}
 
-			const { eventId } = await accountStorage.insertOrUpdate({ ndk }, id, {
+			const { eventId } = await accountStorage.insertOrUpdate(storageDeps, id, {
 				id,
 				name: values.name,
 				...sparkValues,

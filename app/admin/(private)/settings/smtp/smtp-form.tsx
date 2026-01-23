@@ -6,7 +6,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	EmailSchema,
 	NonEmptyStringSchema,
@@ -67,14 +67,14 @@ const components = createAutoFormLayout(smtpSchema, ({ builder }) => ({
 export const SmtpForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof smtpSchema>>;
 }> = (params) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const [defaultValues] = useState(() => {
 		return merge(smtpDefaultValues, params.defaultValues ?? {});
 	});
 	const form = useActionForm(smtpSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await smtpStorage.insertOrUpdate({ ndk }, null, values);
+			await smtpStorage.insertOrUpdate(storageDeps, null, values);
 		},
 		onSuccess: () => {},
 	});

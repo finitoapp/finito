@@ -49,6 +49,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
 import { createEmptyBill, useBill } from "@/hooks/use-bill";
 import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { currencyConverter } from "@/lib/currency-converter/currency-converter";
 import { formatAmount } from "@/lib/format-utils";
@@ -370,6 +371,7 @@ const PayButton: FC<{
 	total: number;
 }> = (props) => {
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const [isSaving, startTransition] = useTransition();
 	const { deleteBill } = useBill();
 	const asyncRoutePush = useAsyncRoutePush();
@@ -381,35 +383,26 @@ const PayButton: FC<{
 			onClick={() => {
 				startTransition(async () => {
 					const { data: billingSettingsRows } =
-						await billingSettingsStorage.select(
-							{ ndk },
-							{
-								key: null,
-								limit: 1,
-							},
-						);
+						await billingSettingsStorage.select(storageDeps, {
+							key: null,
+							limit: 1,
+						});
 
 					const billingSettings = billingSettingsRows[0];
 
 					const [{ data: bankTransferCzRows }, { data: lnZapRows }] =
 						await Promise.all([
 							billingSettings && billingSettings.value.defaultBankTransferCzKey
-								? accountStorage.select(
-										{ ndk },
-										{
-											key: billingSettings.value.defaultBankTransferCzKey,
-											limit: 1,
-										},
-									)
+								? accountStorage.select(storageDeps, {
+										key: billingSettings.value.defaultBankTransferCzKey,
+										limit: 1,
+									})
 								: { data: [] },
 							billingSettings && billingSettings.value.defaultLnZapKey
-								? accountStorage.select(
-										{ ndk },
-										{
-											key: billingSettings.value.defaultLnZapKey,
-											limit: 1,
-										},
-									)
+								? accountStorage.select(storageDeps, {
+										key: billingSettings.value.defaultLnZapKey,
+										limit: 1,
+									})
 								: { data: [] },
 						]);
 

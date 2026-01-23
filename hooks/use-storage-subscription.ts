@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import type { Storage, StorageRow } from "@/lib/storage";
 
 export const useStorageSubscription = <TStorage extends Storage<any, any>>(
@@ -14,7 +14,7 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 	hasNextPage: boolean;
 	loadNextPage: () => unknown;
 } => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const subscriptionRef = useRef<ReturnType<typeof storage.subscribe> | null>(
 		null,
 	);
@@ -29,47 +29,44 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 	});
 
 	useEffect(() => {
-		subscriptionRef.current = storage.subscribe(
-			{ ndk },
-			{
-				key: options.key,
-				limit: options.limit,
-				onEvents: ({ getAllRows, hasNextPage }) => {
-					if (subscriptionRef.current === null) {
-						return;
-					}
+		subscriptionRef.current = storage.subscribe(storageDeps, {
+			key: options.key,
+			limit: options.limit,
+			onEvents: ({ getAllRows, hasNextPage }) => {
+				if (subscriptionRef.current === null) {
+					return;
+				}
 
-					setData((values) => ({
-						...values,
-						hasNextPage,
-						data: Array.from(Object.values(getAllRows())),
-						eose: true,
-					}));
-				},
-				onEvent: ({ getAllRows }) => {
-					if (subscriptionRef.current === null) {
-						return;
-					}
-
-					console.log("hook-onEvent");
-					setData((values) => ({
-						...values,
-						data: Array.from(Object.values(getAllRows())),
-					}));
-				},
-				onDelete: ({ getAllRows }) => {
-					if (subscriptionRef.current === null) {
-						return;
-					}
-
-					console.log("hook-onDelete");
-					setData((values) => ({
-						...values,
-						data: Array.from(Object.values(getAllRows())),
-					}));
-				},
+				setData((values) => ({
+					...values,
+					hasNextPage,
+					data: Array.from(Object.values(getAllRows())),
+					eose: true,
+				}));
 			},
-		);
+			onEvent: ({ getAllRows }) => {
+				if (subscriptionRef.current === null) {
+					return;
+				}
+
+				console.log("hook-onEvent");
+				setData((values) => ({
+					...values,
+					data: Array.from(Object.values(getAllRows())),
+				}));
+			},
+			onDelete: ({ getAllRows }) => {
+				if (subscriptionRef.current === null) {
+					return;
+				}
+
+				console.log("hook-onDelete");
+				setData((values) => ({
+					...values,
+					data: Array.from(Object.values(getAllRows())),
+				}));
+			},
+		});
 
 		return () => {
 			if (subscriptionRef.current) {
@@ -77,14 +74,7 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 				subscriptionRef.current = null;
 			}
 		};
-	}, [
-		storage.subscribe,
-		ndk,
-		ndk.activeUser.pubkey,
-		options.key,
-		options.limit,
-		storage,
-	]);
+	}, [storage.subscribe, options.key, options.limit, storage, storageDeps]);
 
 	return {
 		...data,

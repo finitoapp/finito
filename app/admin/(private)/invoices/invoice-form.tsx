@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { AddressSchema } from "@/lib/schemas";
 import {
 	Currency,
@@ -223,7 +223,7 @@ const SupplierEditForm = (
 const CustomerBillingInfo: AutoFormComponent<
 	z.output<typeof ClientFormSchema> | null
 > = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
@@ -234,7 +234,7 @@ const CustomerBillingInfo: AutoFormComponent<
 				},
 				// @ts-expect-error
 				fetchItems: async () => {
-					const items = await clientStorage.select({ ndk });
+					const items = await clientStorage.select(storageDeps);
 
 					return items.data.map((item) => ({
 						label: item.value.label ?? item.value.name,
@@ -243,7 +243,7 @@ const CustomerBillingInfo: AutoFormComponent<
 				},
 				EditComponent: CustomerEditForm,
 			}),
-		[ndk],
+		[storageDeps],
 	);
 
 	// @ts-expect-error
@@ -253,7 +253,7 @@ const CustomerBillingInfo: AutoFormComponent<
 const SupplierBillingInfo: AutoFormComponent<
 	z.output<typeof BillingInfoFormSchema> | null
 > = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
@@ -262,7 +262,7 @@ const SupplierBillingInfo: AutoFormComponent<
 					return value.name;
 				},
 				fetchItems: async () => {
-					const items = await billingInfoStorage.select({ ndk });
+					const items = await billingInfoStorage.select(storageDeps);
 					const item = items.data[0];
 
 					return item !== undefined
@@ -277,7 +277,7 @@ const SupplierBillingInfo: AutoFormComponent<
 				// @ts-expect-error
 				EditComponent: SupplierEditForm,
 			}),
-		[ndk],
+		[storageDeps],
 	);
 
 	// @ts-expect-error
@@ -418,7 +418,7 @@ export const InvoiceForm: React.FC<{
 	const [defaultValues] = useState(() => {
 		return merge(createDefaultValues(), params.defaultValues ?? {});
 	});
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {
@@ -428,13 +428,13 @@ export const InvoiceForm: React.FC<{
 					: Uuid7.random();
 
 			if (!params.defaultValues || !params.defaultValues.id) {
-				await invoiceStatusStorage.insertOrUpdate({ ndk }, id, {
+				await invoiceStatusStorage.insertOrUpdate(storageDeps, id, {
 					invoiceId: id,
 					status: InvoiceStatus.Unpaid,
 				});
 			}
 
-			const { eventId } = await invoiceStorage.insertOrUpdate({ ndk }, id, {
+			const { eventId } = await invoiceStorage.insertOrUpdate(storageDeps, id, {
 				id,
 				...values,
 			});

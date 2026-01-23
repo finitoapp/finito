@@ -1,21 +1,22 @@
 import { type FC, useEffect } from "react";
 import type { EmptyObject } from "type-fest";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { notificationStorage } from "@/storages/notification-storage";
 
 export const BackgroundProcessing: FC<EmptyObject> = () => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
+
 	useEffect(() => {
 		(async () => {
 			await notificationStorage.insertOrUpdate(
-				{ ndk },
+				storageDeps,
 				"backgroundTableProcessing",
 				{
 					type: "backgroundTableProcessing",
 				},
 			);
 		})();
-	}, [ndk]);
+	}, [storageDeps]);
 
 	return null;
 };
