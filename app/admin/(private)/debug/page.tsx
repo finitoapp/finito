@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrRelays } from "@/hooks/use-nostr-relays";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { downloadFile } from "@/lib/file-utils";
 import type { NostrStorage } from "@/lib/nostr-storage";
 import { accountStorage } from "@/storages/account-storage";
@@ -34,7 +35,7 @@ import { smtpStorage } from "@/storages/smtp-storage";
 import { tableStorage } from "@/storages/table-storage";
 
 const DownloadStorageData = () => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const [isLoading, setLoading] = useState(false);
 
 	const handleDownload = async () => {
@@ -65,7 +66,7 @@ const DownloadStorageData = () => {
 			const result = {} as Record<string, any>;
 
 			for (const storage of storages) {
-				const selectedData = await storage.select({ ndk });
+				const selectedData = await storage.select(storageDeps);
 				result[storage.namespace] = selectedData.data;
 			}
 

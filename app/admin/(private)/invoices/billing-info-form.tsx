@@ -15,7 +15,7 @@ import {
 } from "@/components/autocomplete-identification-number-input";
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { type Address, AddressSchema } from "@/lib/schemas";
 import {
 	CountryCode,
@@ -189,7 +189,7 @@ export const BillingInfoForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(billingInfoFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
@@ -211,7 +211,7 @@ export const BillingInfoForm: React.FC<{
 
 			const { eventId } = await (
 				params.customStorage ?? clientStorage
-			).insertOrUpdate({ ndk }, id, finalValues);
+			).insertOrUpdate(storageDeps, id, finalValues);
 
 			if (params.onSuccess) {
 				params.onSuccess(eventId);

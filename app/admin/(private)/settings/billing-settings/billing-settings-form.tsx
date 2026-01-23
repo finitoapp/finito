@@ -6,7 +6,7 @@ import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { formatIban } from "@/lib/format-utils";
 import {
 	FiatCurrency,
@@ -162,13 +162,13 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 							).includes(value),
 						{
 							...builder.createComponent("bankAccountKey", (props) => {
-								const { ndk } = useNostr();
+								const storageDeps = useStorageDeps();
 								const ComboboxInput = useMemo(
 									() =>
 										createComboboxInput({
 											label: "Default bank account",
 											fetchItems: async () => {
-												const items = await accountStorage.select({ ndk });
+												const items = await accountStorage.select(storageDeps);
 
 												return items.data
 													.filter((item) => item.value._tag === "iban")
@@ -181,7 +181,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 													}));
 											},
 										}),
-									[ndk],
+									[storageDeps],
 								);
 
 								return <ComboboxInput {...props} />;
@@ -209,13 +209,13 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 				}),
 
 				...builder.createComponent("defaultBankTransferCzKey", (props) => {
-					const { ndk } = useNostr();
+					const storageDeps = useStorageDeps();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default bank account",
 								fetchItems: async () => {
-									const items = await accountStorage.select({ ndk });
+									const items = await accountStorage.select(storageDeps);
 
 									return items.data
 										.filter((item) => item.value._tag === "iban")
@@ -228,20 +228,20 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 										}));
 								},
 							}),
-						[ndk],
+						[storageDeps],
 					);
 
 					return <ComboboxInput {...props} />;
 				}),
 
 				...builder.createComponent("defaultLnZapKey", (props) => {
-					const { ndk } = useNostr();
+					const storageDeps = useStorageDeps();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default LN Zap wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select({ ndk });
+									const items = await accountStorage.select(storageDeps);
 
 									return items.data
 										.filter((item) => item.value._tag === "lud16")
@@ -252,20 +252,20 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 										}));
 								},
 							}),
-						[ndk],
+						[storageDeps],
 					);
 
 					return <ComboboxInput {...props} />;
 				}),
 
 				...builder.createComponent("defaultLnSparkKey", (props) => {
-					const { ndk } = useNostr();
+					const storageDeps = useStorageDeps();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default LN Spark wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select({ ndk });
+									const items = await accountStorage.select(storageDeps);
 
 									return items.data
 										.filter((item) => item.value._tag === "spark")
@@ -276,7 +276,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 										}));
 								},
 							}),
-						[ndk],
+						[storageDeps],
 					);
 
 					return <ComboboxInput {...props} />;
@@ -355,12 +355,12 @@ export const BillingSettingsForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(billingSettingsFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
 			const { eventId } = await billingSettingsStorage.insertOrUpdate(
-				{ ndk },
+				storageDeps,
 				null,
 				{
 					...values,

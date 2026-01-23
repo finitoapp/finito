@@ -6,7 +6,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	HttpsUrlSchema,
 	NonEmptyString255Schema,
@@ -82,14 +82,14 @@ const components = createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
 export const FioPluginForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof fioPluginSchema>>;
 }> = (params) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const [defaultValues] = useState(() => {
 		return merge(fioPluginDefaultValues, params.defaultValues ?? {});
 	});
 	const form = useActionForm(fioPluginSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await fioPluginStorage.insertOrUpdate({ ndk }, null, values);
+			await fioPluginStorage.insertOrUpdate(storageDeps, null, values);
 		},
 		onSuccess: () => {},
 	});

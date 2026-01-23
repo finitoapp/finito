@@ -22,6 +22,7 @@ import { type Pos, posAtom } from "@/atoms/pos";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import type { ScreenData } from "@/lib/bill/billDriver";
 import { FioApiClient } from "@/lib/fio/fio-api-client";
@@ -74,7 +75,7 @@ const resolveUiNotification = (
 			],
 			Component: ({ deleteNotification }) => {
 				const markAsPaid = useRef(false);
-				const { ndk } = useNostr();
+				const storageDeps = useStorageDeps();
 				const { data: items } = useStorageSubscription(paymentStorage, {
 					key: notificationData.paymentId,
 				});
@@ -123,7 +124,7 @@ const resolveUiNotification = (
 
 							(async () => {
 								await paymentStatusStorage.insertOrUpdate(
-									{ ndk },
+									storageDeps,
 									notificationData.paymentId,
 									{
 										paymentId: notificationData.paymentId,
@@ -136,7 +137,7 @@ const resolveUiNotification = (
 								deleteNotification();
 							})();
 						}
-					}, [zapReceipt, deleteNotification, ndk]);
+					}, [zapReceipt, deleteNotification, storageDeps]);
 				}
 
 				// LN Spark
@@ -154,7 +155,7 @@ const resolveUiNotification = (
 
 						const walletPromise = (async () => {
 							const { data: accounts } = await accountStorage.select(
-								{ ndk },
+								storageDeps,
 								{
 									key: sparkWallet.accountId,
 									limit: 1,
@@ -201,7 +202,7 @@ const resolveUiNotification = (
 							markAsPaid.current = true;
 
 							await paymentStatusStorage.insertOrUpdate(
-								{ ndk },
+								storageDeps,
 								notificationData.paymentId,
 								{
 									paymentId: notificationData.paymentId,
@@ -223,7 +224,7 @@ const resolveUiNotification = (
 
 							clearInterval(timer);
 						};
-					}, [deleteNotification, ndk, sparkWallet]);
+					}, [deleteNotification, sparkWallet, storageDeps]);
 				}
 
 				// FIO
@@ -272,7 +273,7 @@ const resolveUiNotification = (
 								console.log("FIO OK");
 								markAsPaid.current = true;
 								await paymentStatusStorage.insertOrUpdate(
-									{ ndk },
+									storageDeps,
 									notificationData.paymentId,
 									{
 										paymentId: notificationData.paymentId,
@@ -290,7 +291,7 @@ const resolveUiNotification = (
 					return () => {
 						clearInterval(timer);
 					};
-				}, [fioApiClient, item, fioData, deleteNotification, ndk]);
+				}, [fioApiClient, item, fioData, deleteNotification, storageDeps]);
 
 				return null;
 			},
@@ -517,10 +518,10 @@ export function NotificationItem({
 		() => resolveUiNotification(notification),
 		[notification],
 	);
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
-			await notificationStorage.delete({ ndk }, notification.eventId);
+			await notificationStorage.delete(storageDeps, notification.eventId);
 		},
 	});
 

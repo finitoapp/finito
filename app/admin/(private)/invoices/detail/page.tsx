@@ -30,7 +30,7 @@ import {
 	CardToolbar,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { downloadFile } from "@/lib/file-utils";
@@ -52,7 +52,7 @@ import { smtpStorage } from "@/storages/smtp-storage";
 const StatusButton: FC<{
 	invoiceId: Uuid7;
 }> = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const { data: invoiceStates } = useStorageSubscription(invoiceStatusStorage, {
 		limit: 1,
 		key: props.invoiceId,
@@ -62,7 +62,7 @@ const StatusButton: FC<{
 	const value = invoiceStatus ? invoiceStatus.value.status : null;
 
 	const markAsPaid = async () => {
-		await invoiceStatusStorage.insertOrUpdate({ ndk }, props.invoiceId, {
+		await invoiceStatusStorage.insertOrUpdate(storageDeps, props.invoiceId, {
 			invoiceId: props.invoiceId,
 			status:
 				value === null || value === "unpaid"
@@ -222,7 +222,7 @@ const DownloadPdf = (props: {
 
 const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 	const [isGenerating, setGenerating] = useState(false);
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 
 	return (
 		<Button
@@ -245,20 +245,14 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 
 						const [{ data: billingSettingsRows }, { data: smtpRows }] =
 							await Promise.all([
-								billingSettingsStorage.select(
-									{ ndk },
-									{
-										key: null,
-										limit: 1,
-									},
-								),
-								smtpStorage.select(
-									{ ndk },
-									{
-										key: null,
-										limit: 1,
-									},
-								),
+								billingSettingsStorage.select(storageDeps, {
+									key: null,
+									limit: 1,
+								}),
+								smtpStorage.select(storageDeps, {
+									key: null,
+									limit: 1,
+								}),
 							]);
 
 						const smtp = smtpRows[0];
@@ -329,7 +323,7 @@ const ISDOCGenerator = (props: { invoice: Invoice }) => {
 
 export default function Home() {
 	const searchParams = useSearchParams();
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
@@ -348,7 +342,7 @@ export default function Home() {
 				return;
 			}
 
-			await invoiceStorage.delete({ ndk }, item.eventId);
+			await invoiceStorage.delete(storageDeps, item.eventId);
 			router.push("/admin/invoices");
 		},
 	});

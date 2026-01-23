@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { formatIban } from "@/lib/format-utils";
 import { IbanSchema } from "@/lib/types";
 import { accountStorage } from "@/storages/account-storage";
 
 export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput<string>({
@@ -17,7 +17,7 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 					return result.success ? formatIban(result.data) : value;
 				},
 				fetchItems: async () => {
-					const items = await accountStorage.select({ ndk });
+					const items = await accountStorage.select(storageDeps);
 
 					return items.data
 						.filter((item) => item.value._tag === "iban")
@@ -30,7 +30,7 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 						}));
 				},
 			}),
-		[ndk],
+		[storageDeps],
 	);
 
 	return <ComboboxInput {...props} />;

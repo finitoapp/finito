@@ -3,7 +3,7 @@ import { v7 } from "uuid";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	Currency,
 	NonEmptyStringSchema,
@@ -79,7 +79,7 @@ export const ItemForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof itemSchema> & { id: string }>;
 	onSuccess?: (newEventId: string) => unknown;
 }> = (params) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(itemSchema, {
 		defaultValues: {
 			...itemDefaultValues,
@@ -91,7 +91,7 @@ export const ItemForm: React.FC<{
 					? params.defaultValues.id
 					: v7();
 
-			const { eventId } = await itemStorage.insertOrUpdate({ ndk }, id, {
+			const { eventId } = await itemStorage.insertOrUpdate(storageDeps, id, {
 				id,
 				...values,
 				price: {

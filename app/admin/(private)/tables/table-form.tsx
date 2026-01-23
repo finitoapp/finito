@@ -3,7 +3,7 @@ import { v7 } from "uuid";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
 	NonEmptyStringSchema,
 	PositiveIntegerSchema,
@@ -61,7 +61,7 @@ export const TableForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof tableSchema> & { id: string }>;
 	onSuccess?: (newEventId: string) => unknown;
 }> = (params) => {
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const form = useActionForm(tableSchema, {
 		defaultValues: {
 			...tableDefaultValues,
@@ -73,7 +73,7 @@ export const TableForm: React.FC<{
 					? params.defaultValues.id
 					: v7();
 
-			const { eventId } = await tableStorage.insertOrUpdate({ ndk }, id, {
+			const { eventId } = await tableStorage.insertOrUpdate(storageDeps, id, {
 				id,
 				...values,
 			});

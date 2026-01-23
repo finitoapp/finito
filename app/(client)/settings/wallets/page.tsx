@@ -20,14 +20,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { cn } from "@/lib/utils";
 import { accountStorage } from "@/storages/account-storage";
 
 export default function Page() {
 	const router = useRouter();
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const {
 		data: items,
 		hasNextPage,
@@ -137,7 +137,7 @@ export default function Page() {
 										</DropdownMenuItem>
 										<DropdownMenuItem
 											onClick={async () => {
-												await accountStorage.delete({ ndk }, item.eventId);
+												await accountStorage.delete(storageDeps, item.eventId);
 											}}
 										>
 											<TrashIcon />

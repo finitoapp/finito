@@ -14,6 +14,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { formatAmount } from "@/lib/format-utils";
 import { clientBaseUrl } from "@/lib/window-utils";
@@ -22,6 +23,7 @@ import { tableStorage } from "@/storages/table-storage";
 export default function Home() {
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
@@ -40,7 +42,7 @@ export default function Home() {
 				return;
 			}
 
-			await tableStorage.delete({ ndk }, item.eventId);
+			await tableStorage.delete(storageDeps, item.eventId);
 			router.push("/admin/tables");
 		},
 	});

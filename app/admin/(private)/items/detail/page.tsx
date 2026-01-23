@@ -12,14 +12,14 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNostr } from "@/hooks/use-nostr";
+import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { formatAmount } from "@/lib/format-utils";
 import { itemStorage } from "@/storages/item-storage";
 
 export default function Home() {
 	const searchParams = useSearchParams();
-	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
@@ -38,7 +38,7 @@ export default function Home() {
 				return;
 			}
 
-			await itemStorage.delete({ ndk }, item.eventId);
+			await itemStorage.delete(storageDeps, item.eventId);
 			router.push("/admin/items");
 		},
 	});
