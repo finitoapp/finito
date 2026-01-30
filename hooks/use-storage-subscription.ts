@@ -1,11 +1,12 @@
+import type { Id } from "@evolu/common";
 import { useEffect, useRef, useState } from "react";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
 import type { Storage, StorageRow } from "@/lib/storage";
 
-export const useStorageSubscription = <TStorage extends Storage<any, any>>(
+export const useStorageSubscription = <TStorage extends Storage<any>>(
 	storage: TStorage,
 	options: {
-		key?: string | null | undefined;
+		id?: Id | undefined;
 		limit?: number | undefined;
 	} = {},
 ): {
@@ -30,7 +31,7 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 
 	useEffect(() => {
 		subscriptionRef.current = storage.subscribe(storageDeps, {
-			key: options.key,
+			id: options.id,
 			limit: options.limit,
 			onEvents: ({ getAllRows, hasNextPage }) => {
 				if (subscriptionRef.current === null) {
@@ -49,7 +50,6 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 					return;
 				}
 
-				console.log("hook-onEvent");
 				setData((values) => ({
 					...values,
 					data: Array.from(Object.values(getAllRows())),
@@ -60,7 +60,6 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 					return;
 				}
 
-				console.log("hook-onDelete");
 				setData((values) => ({
 					...values,
 					data: Array.from(Object.values(getAllRows())),
@@ -74,7 +73,7 @@ export const useStorageSubscription = <TStorage extends Storage<any, any>>(
 				subscriptionRef.current = null;
 			}
 		};
-	}, [storage.subscribe, options.key, options.limit, storage, storageDeps]);
+	}, [storage.subscribe, options.id, options.limit, storage, storageDeps]);
 
 	return {
 		...data,

@@ -1,3 +1,4 @@
+import { sqliteTrue } from "@evolu/common";
 import { merge } from "es-toolkit";
 import { BitcoinIcon } from "lucide-react";
 import type React from "react";
@@ -6,7 +7,7 @@ import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	Currency,
 	EmailSchema,
@@ -14,7 +15,6 @@ import {
 	StringToNumberSchema,
 	type Uuid7,
 } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
 
 const baseStaticPaymentSchema = z.object({
 	totalAmount: StringToNumberSchema,
@@ -54,26 +54,35 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 	...builder.when("type", (value) => value === "lnZap", {
 		...builder.createComponent("lud16", (props) => {
-			const storageDeps = useStorageDeps();
+			const evolu = useEvolu();
 			const ComboboxInput = useMemo(
 				() =>
 					createComboboxOrTextInput<string>({
 						label: "lud16 wallet address with `Lightning Zaps` support",
 						fetchItems: async () => {
-							const items = await accountStorage.select(storageDeps);
+							const items = await evolu.loadQuery(
+								evolu.createQuery((db) =>
+									db
+										.selectFrom("account")
+										.leftJoin("accountLud16", "accountLud16.id", "account.id")
+										.select([
+											"account.name as name",
+											"accountLud16.lud16 as lud16",
+										] as const)
+										.where("account.isDeleted", "is not", sqliteTrue)
+										.where("account._tag", "=", "accountLud16"),
+								),
+							);
 
-							return items.data
-								.filter((item) => item.value._tag === "lud16")
+							return items
+								.filter((item) => item.lud16 !== null)
 								.map((item) => ({
-									label:
-										item.value._tag === "lud16"
-											? `${item.value.lud16} (${item.value.name})`
-											: "-",
-									value: item.value._tag === "lud16" ? item.value.lud16 : "-",
+									label: `${item.lud16} (${item.name})`,
+									value: item.lud16,
 								}));
 						},
 					}),
-				[storageDeps],
+				[evolu],
 			);
 
 			return <ComboboxInput {...props} />;
@@ -82,23 +91,32 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 	...builder.when("type", (value) => value === "lnSpark", {
 		...builder.createComponent("accountId", (props) => {
-			const storageDeps = useStorageDeps();
+			const evolu = useEvolu();
 			const ComboboxInput = useMemo(
 				() =>
 					createComboboxOrTextInput<string>({
 						label: "Spark wallet account",
 						fetchItems: async () => {
-							const items = await accountStorage.select(storageDeps);
+							const items = await evolu.loadQuery(
+								evolu.createQuery((db) =>
+									db
+										.selectFrom("account")
+										.select([
+											"account.id as id",
+											"account.name as name",
+										] as const)
+										.where("account.isDeleted", "is not", sqliteTrue)
+										.where("account._tag", "=", "accountSpark"),
+								),
+							);
 
-							return items.data
-								.filter((item) => item.value._tag === "spark")
-								.map((item) => ({
-									label: item.value._tag === "spark" ? item.value.name : "-",
-									value: item.value._tag === "spark" ? item.value.id : "-",
-								}));
+							return items.map((item) => ({
+								label: item.name,
+								value: item.id,
+							}));
 						},
 					}),
-				[storageDeps],
+				[evolu],
 			);
 
 			return <ComboboxInput {...props} />;

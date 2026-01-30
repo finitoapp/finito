@@ -1,9 +1,17 @@
-import { useSetAtom } from "jotai";
+import {
+	getOrThrow,
+	type Mnemonic,
+	NonEmptyString100,
+	PositiveInt,
+	sqliteTrue,
+} from "@evolu/common";
+import { faker } from "@faker-js/faker";
+import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
 import { z } from "zod";
-import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { seedAtom } from "@/atoms/seed";
-import { seedsAtom } from "@/atoms/seeds";
+import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { evoluCounterAtom } from "@/atoms/evolu-counter";
+import { defaultRelays, nostrRelaysAtom } from "@/atoms/nostr-relays";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import {
@@ -30,30 +38,61 @@ const components = createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
 export const SwitchAccountForm: React.FC<{
 	onSuccess?: () => unknown;
 }> = (props) => {
-	const setSeed = useSetAtom(seedAtom);
-	const setSeeds = useSetAtom(seedsAtom);
-	const setRelays = useSetAtom(nostrRelaysAtom);
+	const setEvoluCounter = useSetAtom(evoluCounterAtom);
+	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const form = useActionForm(switchAccountSchema, {
 		defaultValues: switchUserDefaultValues,
 		saveAction: async (values) => {
-			setSeed(values.seed);
-			setSeeds((previous) => {
-				for (const previousSeed of (previous ?? { seeds: [] }).seeds) {
-					if (previousSeed === values.seed) {
-						return previous;
-					}
-				}
+			const mnemonic = values.seed as unknown as Mnemonic;
 
-				return {
-					seeds: [...(previous !== null ? previous.seeds : []), values.seed],
-				};
+			const existingAccounts = await deviceEvolu.loadQuery(
+				deviceEvolu.createQuery((db) =>
+					db
+						.selectFrom("account")
+						.select(["account.id as id"])
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("mnemonic", "=", mnemonic)
+						.limit(1),
+				),
+			);
+
+			await new Promise<void>((resolve) => {
+				const existingAccount = existingAccounts[0];
+				if (existingAccount) {
+					getOrThrow(
+						deviceEvolu.update(
+							"account",
+							{
+								id: existingAccount.id as never,
+								lastUseAt: PositiveInt.orThrow(Date.now()),
+							},
+							{
+								onComplete: () => {
+									resolve();
+								},
+							},
+						),
+					);
+				} else {
+					const { id } = getOrThrow(
+						deviceEvolu.insert(
+							"account",
+							{
+								name: NonEmptyString100.orThrow(faker.internet.username()),
+								mnemonic,
+								lastUseAt: PositiveInt.orThrow(Date.now()),
+							},
+							{
+								onComplete: () => {
+									resolve();
+								},
+							},
+						),
+					);
+				}
 			});
-			setRelays({
-				relays: [
-					WssUrl("wss://relay.primal.net"),
-					WssUrl("wss://relay.damus.io"),
-				],
-			});
+
+			setEvoluCounter((value) => value + 1);
 		},
 		onSuccess: props.onSuccess,
 	});

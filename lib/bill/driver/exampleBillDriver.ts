@@ -1,3 +1,4 @@
+import type { Id } from "@evolu/common";
 import type {
 	BillDriver,
 	BillSubscription,
@@ -134,7 +135,7 @@ export class ExampleBillDriver implements BillDriver {
 							payload: {
 								variant: "paymentFinished",
 								payload: {
-									paymentId: params.paymentId,
+									paymentId: params.paymentId as Id,
 									type: "failure",
 									reason: NonEmptyString("The bill is locked!"),
 								},
@@ -149,7 +150,7 @@ export class ExampleBillDriver implements BillDriver {
 						payload: {
 							variant: "paymentFinished",
 							payload: {
-								paymentId: params.paymentId,
+								paymentId: params.paymentId as Id,
 								type: "success",
 							},
 						},

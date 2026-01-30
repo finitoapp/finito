@@ -1,13 +1,13 @@
+import { sqliteTrue } from "@evolu/common";
 import { useMemo } from "react";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import { formatIban } from "@/lib/format-utils";
 import { IbanSchema } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
 
 export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput<string>({
@@ -17,20 +17,25 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 					return result.success ? formatIban(result.data) : value;
 				},
 				fetchItems: async () => {
-					const items = await accountStorage.select(storageDeps);
+					const query = evolu.createQuery((db) =>
+						db
+							.selectFrom("account")
+							.leftJoin("accountIban", "accountIban.id", "account.id")
+							.select(["account.id", "account.name", "accountIban.iban"])
+							.where("_tag", "=", "accountIban")
+							.where("account.isDeleted", "is not", sqliteTrue),
+					);
+					const items = await evolu.loadQuery(query);
 
-					return items.data
-						.filter((item) => item.value._tag === "iban")
-						.map((item) => ({
-							label:
-								item.value._tag === "iban"
-									? `${formatIban(item.value.iban)} (${item.value.name})`
-									: "-",
-							value: item.value._tag === "iban" ? item.value.iban : "-",
-						}));
+					return items.map((item) => {
+						return {
+							label: `${formatIban(item.iban)} (${item.name})`,
+							value: item.iban,
+						};
+					});
 				},
 			}),
-		[storageDeps],
+		[evolu],
 	);
 
 	return <ComboboxInput {...props} />;

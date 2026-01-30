@@ -135,7 +135,7 @@ export const AutoForm = <
 	saveClassName?: React.ComponentProps<"div">["className"];
 	saveLabel?: React.ReactNode;
 }) => {
-	console.log("err", props.form.form.formState.errors);
+	console.log(props.form.form.formState);
 
 	return (
 		<Form {...props.form.form}>
@@ -518,12 +518,14 @@ export const AutoFormInput = {
 										rows={params.rows}
 										{...field}
 										placeholder={params.placeholder}
+										disabled={params.disabled}
 									/>
 								) : (
 									<Textarea
 										rows={params.rows}
 										{...field}
 										placeholder={params.placeholder}
+										disabled={params.disabled}
 									/>
 								)}
 							</FormControl>
@@ -783,6 +785,8 @@ export type Builder<
 			columns: {
 				title: string;
 				className?: React.ComponentProps<"div">["className"];
+				inputCellClassName?: React.ComponentProps<"div">["className"];
+				hidden?: boolean;
 			}[];
 			addRowLabel?: string;
 		},
@@ -1098,6 +1102,10 @@ const createBuilder = <
 				columns: {
 					title: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
+					inputCellClassName?: React.ComponentProps<
+						typeof TableHead
+					>["className"];
+					hidden?: boolean;
 				}[];
 				addRowLabel?: string;
 			},
@@ -1122,6 +1130,10 @@ const createBuilder = <
 				columns: {
 					title: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
+					inputCellClassName?: React.ComponentProps<
+						typeof TableHead
+					>["className"];
+					hidden?: boolean;
 				}[];
 			}) => {
 				const {
@@ -1210,15 +1222,22 @@ const createBuilder = <
 								</Button>
 							</div>
 						</TableCell>
-						{Object.entries(components).map(([key, Component]) => (
-							<TableCell
-								key={key}
-								className={"lg:[&>div>label]:hidden max-lg:p-0"}
-							>
-								{/* @ts-expect-error */}
-								<Component name={key} control={props.control} />
-							</TableCell>
-						))}
+						{Object.entries(components)
+							.filter(
+								([key, Component], index) => !props.columns[index]?.hidden,
+							)
+							.map(([key, Component], index) => (
+								<TableCell
+									key={key}
+									className={cn(
+										"lg:[&>div>label]:hidden max-lg:p-0",
+										props.columns[index]?.inputCellClassName,
+									)}
+								>
+									{/* @ts-expect-error */}
+									<Component name={key} control={props.control} />
+								</TableCell>
+							))}
 						<TableCell className="w-12 max-lg:hidden">
 							<Button
 								type={"button"}
@@ -1283,14 +1302,16 @@ const createBuilder = <
 								<TableHeader>
 									<TableRow>
 										<TableHead className="w-12"></TableHead>
-										{options.columns.map((column, index) => (
-											<TableHead
-												className={column.className}
-												key={index.toString()}
-											>
-												{column.title}
-											</TableHead>
-										))}
+										{options.columns
+											.filter((column) => !column.hidden)
+											.map((column, index) => (
+												<TableHead
+													className={column.className}
+													key={index.toString()}
+												>
+													{column.title}
+												</TableHead>
+											))}
 										<TableHead className="w-12"></TableHead>
 									</TableRow>
 								</TableHeader>

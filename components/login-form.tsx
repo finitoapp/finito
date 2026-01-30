@@ -1,19 +1,26 @@
-import { useSetAtom } from "jotai";
+import {
+	createOwnerSecret,
+	createRandomBytes,
+	getOrThrow,
+	NonEmptyString100,
+	ownerSecretToMnemonic,
+	PositiveInt,
+	sqliteTrue,
+} from "@evolu/common";
+import { faker } from "@faker-js/faker";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
-import { generateSeedWords } from "nostr-tools/nip06";
 import { useState } from "react";
-import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { seedAtom } from "@/atoms/seed";
-import { seedsAtom } from "@/atoms/seeds";
+import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { evoluCounterAtom } from "@/atoms/evolu-counter";
+import { defaultRelays } from "@/atoms/nostr-relays";
 import { ProgressSteps } from "@/components/progress-steps";
 import { Button } from "@/components/ui/button";
-import { NonEmptyString, WssUrl } from "@/lib/types";
 
 export function LoginForm() {
 	const [currentStep, setCurrentStep] = useState(0);
-	const setSeed = useSetAtom(seedAtom);
-	const setSeeds = useSetAtom(seedsAtom);
-	const setRelays = useSetAtom(nostrRelaysAtom);
+	const setEvoluCounter = useSetAtom(evoluCounterAtom);
+	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const router = useRouter();
 
 	return (
@@ -66,17 +73,29 @@ export function LoginForm() {
 					setCurrentStep(4);
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 
-					const seed = NonEmptyString(generateSeedWords());
-					setSeeds((previous) => ({
-						seeds: [...(previous !== null ? previous.seeds : []), seed],
-					}));
-					setSeed(seed);
-					setRelays({
-						relays: [
-							WssUrl("wss://relay.primal.net"),
-							WssUrl("wss://relay.damus.io"),
-						],
+					const mnemonic = ownerSecretToMnemonic(
+						createOwnerSecret({
+							randomBytes: createRandomBytes(),
+						}),
+					);
+
+					await new Promise<void>((resolve) => {
+						getOrThrow(
+							deviceEvolu.insert(
+								"account",
+								{
+									name: NonEmptyString100.orThrow(faker.internet.username()),
+									mnemonic,
+									lastUseAt: PositiveInt.orThrow(Date.now()),
+								},
+								{
+									onComplete: resolve,
+								},
+							),
+						);
 					});
+
+					setEvoluCounter((value) => value + 1);
 
 					router.push("/admin");
 				}}

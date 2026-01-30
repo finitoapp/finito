@@ -1,10 +1,17 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { InvoiceStatusBadge } from "@/app/admin/(private)/invoices/invoice-status-badge";
-import { DataGrid } from "@/components/data-grid";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,20 +22,186 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
 import { formatAmount } from "@/lib/format-utils";
-import { invoiceStorage } from "@/storages/invoice-storage";
+
+type Row = {
+	id: Id;
+	invoiceNumber: string;
+	customerName: string;
+	issueDate: string; // ISO date string
+	dueDate: string; // ISO date string
+	currency: string;
+	amount: number; // computed client-side
+};
+
+const columns: ColumnDef<Row>[] = [
+	{
+		accessorKey: "invoiceNumber",
+		header: createSortableHeader("Invoice number"),
+	},
+	{
+		accessorKey: "customerName",
+		header: createSortableHeader("Customer name"),
+	},
+	{
+		accessorKey: "issueDate",
+		header: createSortableHeader("Issue date"),
+		cell: ({ row }) => new Date(row.original.issueDate).toLocaleDateString(),
+	},
+	{
+		accessorKey: "dueDate",
+		header: createSortableHeader("Due date"),
+		cell: ({ row }) => new Date(row.original.dueDate).toLocaleDateString(),
+	},
+	{
+		accessorKey: "amount",
+		header: createSortableHeader("Amount"),
+		cell: ({ row }) => formatAmount(row.original.amount, row.original.currency),
+	},
+	{
+		accessorKey: "status",
+		header: createSortableHeader("Status"),
+		cell: ({ row }) => (
+			<InvoiceStatusBadge
+				invoiceId={row.original.id}
+				dueDate={new Date(row.original.dueDate)}
+			/>
+		),
+	},
+];
 
 export function InvoicesTable() {
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(invoiceStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("invoices");
+	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const finalSorting = sorting ?? {
+					id: "createdAt",
+					desc: true,
+				};
+				const sortingColumn = `invoice.${finalSorting.id}`;
+
+				const query = evolu.createQuery((db) => {
+					let qb = db
+						.selectFrom("invoice")
+						.leftJoin(
+							"invoiceCustomerBillingInfo",
+							"invoiceCustomerBillingInfo.id",
+							"invoice.id",
+						)
+						.select([
+							"invoice.id as id",
+							"invoice.invoiceNumber as invoiceNumber",
+							"invoice.issueDate as issueDate",
+							"invoice.dueDate as dueDate",
+							"invoice.currency as currency",
+							"invoiceCustomerBillingInfo.name as customerName",
+							"invoice.createdAt as invoice.createdAt",
+						] as const)
+						.where("invoice.isDeleted", "is not", sqliteTrue);
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									sortingColumn,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb("invoice.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy("invoice.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "invoiceNumber") {
+							qb = qb.where(
+								"invoice.invoiceNumber",
+								"like",
+								`${filter.value}%`,
+							);
+						}
+						if (filter.id === "customerName") {
+							qb = qb.where(
+								"invoiceCustomerBillingInfo.name",
+								"like",
+								`${filter.value}%`,
+							);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				const formatData = async (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[finalSorting.id]: last[finalSorting.id as keyof typeof last],
+						};
+					}
+
+					const ids = data.map((d) => d.id);
+					let amounts = new Map<Id, number>();
+					if (ids.length > 0) {
+						const items = await evolu.loadQuery(
+							evolu.createQuery((db) =>
+								db
+									.selectFrom("invoiceItem")
+									.select([
+										"invoiceItem.invoiceId as invoiceId",
+										"invoiceItem.price as price",
+										"invoiceItem.quantity as quantity",
+									] as const)
+									.where("invoiceItem.isDeleted", "is not", sqliteTrue)
+									.where("invoiceItem.invoiceId", "in", ids as Id[]),
+							),
+						);
+						amounts = items.reduce((map, it) => {
+							const prev = map.get(it.invoiceId as Id) ?? 0;
+							map.set(it.invoiceId as Id, prev + it.price * it.quantity);
+							return map;
+						}, new Map<Id, number>());
+					}
+
+					return {
+						data: data.map((d) => ({
+							...d,
+							amount: amounts.get(d.id as Id) ?? 0,
+						})),
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					};
+				};
+
+				void evolu.loadQuery(query).then((rows) => {
+					void formatData(rows).then(setData);
+				});
+
+				return evolu.subscribeQuery(query)(() => {
+					void formatData(evolu.getQueryRows(query)).then(setData);
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
@@ -46,82 +219,21 @@ export function InvoicesTable() {
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									status: item.value.id,
-									invoiceNumber: item.value.invoiceNumber,
-									customerName: item.value.customer.billingInfo.name,
-									issueDate: new Date(
-										item.value.issueDate,
-									).toLocaleDateString(),
-									dueDate: new Date(item.value.dueDate).toLocaleDateString(),
-									amount: formatAmount(
-										item.value.items.reduce(
-											(acc, value) => acc + value.price * value.quantity,
-											0,
-										),
-										item.value.currency,
-									),
-								}))
-							: undefined
-					}
-					columns={[
-						{
-							key: "invoiceNumber" as const,
-							header: "Invoice number",
-							width: "400px",
-						},
-						{
-							key: "customerName" as const,
-							header: "Customer name",
-						},
-						{
-							key: "issueDate" as const,
-							header: "Issue date",
-						},
-						{
-							key: "dueDate" as const,
-							header: "Due date",
-						},
-						{
-							key: "amount" as const,
-							header: "Amount",
-						},
-						{
-							key: "status" as const,
-							header: "Status",
-							render: (_, row) => (
-								<InvoiceStatusBadge
-									invoiceId={row.id}
-									dueDate={new Date(row.dueDate)}
-								/>
-							),
-						},
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					filterableColumns={[
+						{ id: "invoiceNumber", title: "Invoice number" },
+						{ id: "customerName", title: "Customer name" },
 					]}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/invoices/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

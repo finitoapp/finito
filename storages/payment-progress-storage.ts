@@ -1,10 +1,8 @@
 import { z } from "zod";
-import { createNostrStorage } from "@/lib/nostr-storage";
 import {
 	Currency,
 	type InferEnumType,
 	NonEmptyStringSchema,
-	Uuid7Schema,
 } from "@/lib/types";
 import { PaymentMerchantSchema } from "@/storages/payment-storage";
 
@@ -15,7 +13,7 @@ export const BillPaymentOption = {
 export type BillPaymentOption = InferEnumType<typeof BillPaymentOption>;
 
 export const PaymentInitSchema = z.object({
-	paymentId: Uuid7Schema,
+	paymentId: z.string(),
 	items: z
 		.object({
 			id: z.string(),
@@ -32,7 +30,7 @@ export const PaymentInitSchema = z.object({
 });
 
 const BasePaymentReadySchema = z.object({
-	paymentId: Uuid7Schema,
+	paymentId: z.string(),
 	bill: z.object({
 		items: z
 			.object({
@@ -67,7 +65,7 @@ export const PaymentReadySchema = z.discriminatedUnion("type", [
 ]);
 
 const BasePaymentFinishedSchema = z.object({
-	paymentId: Uuid7Schema.optional(), // When missing, then it's not stored to the payment history
+	paymentId: z.string().optional(), // When missing, then it's not stored to the payment history
 });
 
 export const PaymentFinishedSchema = z.discriminatedUnion("type", [
@@ -91,21 +89,3 @@ export const PaymentFinishedSchema = z.discriminatedUnion("type", [
 export type PaymentInit = z.output<typeof PaymentInitSchema>;
 export type PaymentReady = z.output<typeof PaymentReadySchema>;
 export type PaymentFinished = z.output<typeof PaymentFinishedSchema>;
-
-export const paymentInitStorage = createNostrStorage({
-	namespace: "payment_init",
-	schema: PaymentInitSchema,
-	useEncryption: true,
-});
-
-export const paymentReadyStorage = createNostrStorage({
-	namespace: "payment_ready",
-	schema: PaymentReadySchema,
-	useEncryption: true,
-});
-
-export const paymentFinishedStorage = createNostrStorage({
-	namespace: "payment_finished",
-	schema: PaymentFinishedSchema,
-	useEncryption: true,
-});

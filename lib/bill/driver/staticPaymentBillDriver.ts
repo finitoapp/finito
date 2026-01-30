@@ -48,8 +48,6 @@ export class StaticPaymentBillDriver implements BillDriver {
 
 		await ndk.connect();
 
-		console.log("yes1", signer.pubkey);
-
 		let staticOfflinePayment: StaticOfflinePayment | null = null;
 		let zapVerificationSubscription: NDKSubscription | null = null;
 
@@ -108,8 +106,6 @@ export class StaticPaymentBillDriver implements BillDriver {
 			{},
 			{
 				onEvent: async (event) => {
-					console.log("yes", await event.toNostrEvent());
-
 					if (ndk.activeUser === undefined) {
 						return;
 					}

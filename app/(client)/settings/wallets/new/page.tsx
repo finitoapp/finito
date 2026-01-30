@@ -17,9 +17,9 @@ export default function Page() {
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>
 					<AccountForm
-						tagFilter={["spark", "nwc"]}
+						tagFilter={["accountSpark", "accountNwc"]}
 						defaultValues={{
-							_tag: "spark",
+							_tag: "accountSpark",
 						}}
 						onSuccess={() => router.back()}
 					/>

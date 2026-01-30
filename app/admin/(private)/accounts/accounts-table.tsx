@@ -1,9 +1,16 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,20 +21,150 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
 import { formatIban } from "@/lib/format-utils";
-import { accountStorage } from "@/storages/account-storage";
+
+type Task = {
+	id: Id;
+	name: string;
+	_tag: string;
+};
+
+const columns: ColumnDef<Task, Task>[] = [
+	{
+		accessorKey: "name",
+		header: createSortableHeader("Name"),
+	},
+	{
+		accessorKey: "_tag",
+		header: createSortableHeader("Type"),
+	},
+	{
+		accessorKey: "address",
+		header: createSortableHeader("Address"),
+		cell: ({ row }) => {
+			console.log("row", row.original);
+			return row
+				? row.original._tag === "accountLud16"
+					? row.original["accountLud16.lud16"]
+					: row.original._tag === "accountCashRegister"
+						? "-"
+						: row.original._tag === "accountSpark"
+							? "-"
+							: row.original._tag === "accountNwc"
+								? "-"
+								: formatIban(row.original["accountIban.iban"])
+				: "-";
+		},
+	},
+];
 
 export function AccountsTable() {
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(accountStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("accounts");
+	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const finalSorting = sorting ?? {
+					id: "createdAt",
+					desc: true,
+				};
+				const sortingColumn = `account.${finalSorting.id}`;
+
+				const query = evolu.createQuery((db) => {
+					let qb = db
+						.selectFrom("account")
+						.leftJoin("accountIban", "accountIban.id", "account.id")
+						.leftJoin("accountLud16", "accountLud16.id", "account.id")
+						.leftJoin("accountSpark", "accountSpark.id", "account.id")
+						.leftJoin("accountNwc", "accountNwc.id", "account.id")
+						.leftJoin(
+							"accountCashRegister",
+							"accountCashRegister.id",
+							"account.id",
+						)
+						.select([
+							"account.id as id",
+							"account.name as name",
+							"account._tag as _tag",
+							"account.createdAt as createdAt",
+							"accountIban.id as accountIban",
+							"accountIban.iban as accountIban.iban",
+							"accountIban.currency as accountIban.currency",
+							"accountLud16.id as accountLud16",
+							"accountLud16.lud16 as accountLud16.lud16",
+							"accountSpark.id as accountSpark",
+							"accountSpark.mnemonic as accountSpark.mnemonic",
+							"accountNwc.id as accountNwc",
+							"accountNwc.credentials as accountNwc.credentials",
+							"accountCashRegister.id as accountCashRegister",
+							"accountCashRegister.currency as accountCashRegister.currency",
+						] as const)
+						.where("account.isDeleted", "is not", sqliteTrue);
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									sortingColumn,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb("account.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy("account.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "name") {
+							qb = qb.where("account.name", "like", `${filter.value}%`);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				const formatData = (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[finalSorting.id]: last[finalSorting.id],
+						};
+					}
+
+					return {
+						data,
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					};
+				};
+
+				void evolu.loadQuery(query).then((rows) => {
+					setData(formatData(rows));
+				});
+
+				return evolu.subscribeQuery(query)(() => {
+					setData(formatData(evolu.getQueryRows(query)));
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
@@ -47,42 +184,17 @@ export function AccountsTable() {
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									eventId: item.eventId,
-									name: item.value.name,
-									type: item.value._tag,
-									address: item
-										? item.value._tag === "lud16"
-											? item.value.lud16
-											: item.value._tag === "cash_register"
-												? "-"
-												: item.value._tag === "spark"
-													? "-"
-													: item.value._tag === "nwc"
-														? "-"
-														: formatIban(item.value.iban)
-										: "-",
-								}))
-							: undefined
-					}
-					columns={[
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					searchKey="name"
+					searchPlaceholder="Search by name..."
+					filterableColumns={[
 						{
-							key: "name" as const,
-							header: "Name",
-							width: "400px",
-						},
-						{
-							key: "type" as const,
-							header: "Type",
-						},
-						{
-							key: "address" as const,
-							header: "Address",
+							id: "name",
+							title: "Name",
 						},
 					]}
 					onRowClick={(item) =>
@@ -90,21 +202,7 @@ export function AccountsTable() {
 							`/admin/accounts/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

@@ -20,7 +20,7 @@ export default function Home() {
 					<CardTitle>New table</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<TableForm onSuccess={() => router.push("/admin/tables")} />
+					<TableForm onSuccess={() => router.back()} />
 				</CardContent>
 			</ResponsiveCard>
 		</div>

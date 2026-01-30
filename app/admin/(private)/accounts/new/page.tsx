@@ -20,7 +20,7 @@ export default function Home() {
 					<CardTitle>New account</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<AccountForm onSuccess={() => router.push("/admin/accounts")} />
+					<AccountForm onSuccess={() => router.back()} />
 				</CardContent>
 			</ResponsiveCard>
 		</div>

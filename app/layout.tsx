@@ -48,22 +48,11 @@ export default function RootLayout({
 						enableSystem
 						disableTransitionOnChange
 					>
-						{/* Until async Jotai store is initializing */}
-						<Suspense
-							fallback={
-								<LoadingIndicator
-									open={true}
-									text={"Initializing user data"}
-									variant={"fullscreen"}
-								/>
-							}
-						>
-							<Providers>
-								{children}
-								<div className="isolate"></div>
-							</Providers>
-							<Toaster />
-						</Suspense>
+						<Providers>
+							{children}
+							<div className="isolate"></div>
+						</Providers>
+						<Toaster />
 					</ThemeProvider>
 				</ClientOnly>
 			</body>

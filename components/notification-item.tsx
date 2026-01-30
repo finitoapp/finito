@@ -1,4 +1,10 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
+import {
+	createIdFromString,
+	getOrThrow,
+	type Id,
+	sqliteTrue,
+} from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import type { Timeout } from "@radix-ui/primitive";
 import { useMutation } from "@tanstack/react-query";
@@ -20,40 +26,29 @@ import {
 } from "react";
 import { type Pos, posAtom } from "@/atoms/pos";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import type { ScreenData } from "@/lib/bill/billDriver";
 import { FioApiClient } from "@/lib/fio/fio-api-client";
-import type { StorageRow } from "@/lib/storage";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
 } from "@/lib/table-message-bus";
-import { assertNever } from "@/lib/type-utils";
 import { type NonEmptyString, Uuid7 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { accountStorage } from "@/storages/account-storage";
-import { fioPluginStorage } from "@/storages/fio-plugin-storage";
-import {
-	type Notification,
-	notificationStorage,
-} from "@/storages/notification-storage";
-import {
-	PaymentStatus,
-	paymentStatusStorage,
-} from "@/storages/payment-status-storage";
-import { paymentStorage } from "@/storages/payment-storage";
-import { tableStorage } from "@/storages/table-storage";
+import type { Notification } from "@/storages/notification-storage";
+import { PaymentStatus } from "@/storages/payment-status-storage";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 const resolveUiNotification = (
-	notification: StorageRow<Notification>,
+	notification: Notification & { id: Id; createdAt: number },
 ): BackgroundJob => {
-	if (notification.value.type === "verifyPayment") {
-		const notificationData = notification.value;
+	if (notification.type === "verifyPayment") {
+		const notificationData = notification;
 
 		return {
 			title: "Ověření LN platby",
@@ -61,7 +56,7 @@ const resolveUiNotification = (
 			progress: null,
 			canBeClosed: false,
 			description: "Čekáme na příchozí platbu",
-			id: notification.value.id,
+			id: notification.id,
 			timestamp: notification.createdAt,
 			actions: [
 				{
@@ -75,36 +70,144 @@ const resolveUiNotification = (
 			],
 			Component: ({ deleteNotification }) => {
 				const markAsPaid = useRef(false);
-				const storageDeps = useStorageDeps();
-				const { data: items } = useStorageSubscription(paymentStorage, {
-					key: notificationData.paymentId,
-				});
-
-				const item = items && items[0];
-
-				const { data: paymentStatusRows } = useStorageSubscription(
-					paymentStatusStorage,
-					{
-						key: notificationData.paymentId,
-					},
+				const evolu = useEvolu();
+				const paymentId = notificationData.paymentId as Id;
+				const paymentQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("payment")
+							.leftJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
+							.leftJoin("paymentLnSpark", "paymentLnSpark.id", "payment.id")
+							.leftJoin(
+								"paymentBankTransferCZ",
+								"paymentBankTransferCZ.id",
+								"payment.id",
+							)
+							.leftJoin("paymentCash", "paymentCash.id", "payment.id")
+							.select([
+								"payment.id as id",
+								"payment.type as type",
+								"payment.privateKey as privateKey",
+								"payment.billCurrency as billCurrency",
+								"paymentLnZap.lnInvoice as lnZapLnInvoice",
+								"paymentLnZap.walletPubkey as lnZapWalletPubkey",
+								"paymentLnZap.amount as lnZapAmount",
+								"paymentLnZap.expirationIn as lnZapExpirationIn",
+								"paymentLnSpark.accountId as lnSparkAccountId",
+								"paymentLnSpark.lnInvoice as lnSparkLnInvoice",
+								"paymentLnSpark.sparkInvoiceId as lnSparkSparkInvoiceId",
+								"paymentLnSpark.amount as lnSparkAmount",
+								"paymentLnSpark.expirationIn as lnSparkExpirationIn",
+								"paymentBankTransferCZ.iban as bankTransferIban",
+								"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
+								"paymentCash.id as cashId",
+							] as const)
+							.where("payment.isDeleted", "is not", sqliteTrue)
+							.where("payment.id", "=", paymentId),
+					[paymentId],
 				);
-				const paymentStatus = paymentStatusRows && paymentStatusRows[0];
+				const paymentBillItemsQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("paymentBillItem")
+							.select([
+								"paymentBillItem.price as price",
+								"paymentBillItem.quantity as quantity",
+								"paymentBillItem.label as label",
+							] as const)
+							.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
+							.where("paymentBillItem.paymentId", "=", paymentId),
+					[paymentId],
+				);
+				const { data: paymentRows } = useEvoluQuery(paymentQuery);
+				const { data: paymentBillItemsRows } = useEvoluQuery(
+					paymentBillItemsQuery,
+				);
+				const item = useMemo(() => {
+					const payment = paymentRows?.[0];
+					if (!payment || !payment.privateKey || !payment.billCurrency) {
+						return null;
+					}
+
+					return {
+						privateKey: payment.privateKey,
+						bill: {
+							currency: payment.billCurrency,
+							items: (paymentBillItemsRows ?? []).map((billItem) => ({
+								price: billItem.price ?? 0,
+								quantity: billItem.quantity ?? 0,
+								label: billItem.label ?? "",
+							})),
+						},
+						paymentOptions: [
+							payment.type === "lnZap" &&
+							payment.lnZapLnInvoice &&
+							payment.lnZapWalletPubkey &&
+							payment.lnZapAmount !== null &&
+							payment.lnZapExpirationIn !== null
+								? {
+										type: "lnZap" as const,
+										lnInvoice: payment.lnZapLnInvoice,
+										walletPubkey: payment.lnZapWalletPubkey,
+										amount: payment.lnZapAmount,
+										expirationIn: payment.lnZapExpirationIn,
+									}
+								: payment.type === "lnSpark" &&
+										payment.lnSparkAccountId &&
+										payment.lnSparkLnInvoice &&
+										payment.lnSparkSparkInvoiceId &&
+										payment.lnSparkAmount !== null &&
+										payment.lnSparkExpirationIn !== null
+									? {
+											type: "lnSpark" as const,
+											accountId: payment.lnSparkAccountId,
+											lnInvoice: payment.lnSparkLnInvoice,
+											sparkInvoiceId: payment.lnSparkSparkInvoiceId,
+											amount: payment.lnSparkAmount,
+											expirationIn: payment.lnSparkExpirationIn,
+										}
+									: payment.type === "bankTransferCZ" &&
+											payment.bankTransferIban &&
+											payment.bankTransferVariableSymbol
+										? {
+												type: "bankTransferCZ" as const,
+												iban: payment.bankTransferIban,
+												variableSymbol: payment.bankTransferVariableSymbol,
+											}
+										: payment.type === "cash" && payment.cashId
+											? { type: "cash" as const }
+											: null,
+						].filter((paymentOption) => paymentOption !== null),
+					};
+				}, [paymentRows, paymentBillItemsRows]);
+
+				const paymentStatusQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("paymentStatus")
+							.select(["paymentStatus.status as status"] as const)
+							.where("paymentStatus.isDeleted", "is not", sqliteTrue)
+							.where("paymentStatus.id", "=", notificationData.paymentId as Id),
+					[notificationData.paymentId],
+				);
+				const { data: paymentStatusRows } = useEvoluQuery(paymentStatusQuery);
+				const paymentStatus = paymentStatusRows?.[0];
 				useEffect(() => {
-					if (paymentStatus?.value.status === PaymentStatus.Paid) {
+					if (paymentStatus?.status === PaymentStatus.Paid) {
 						deleteNotification();
 					}
-				}, [paymentStatus?.value.status, deleteNotification]);
+				}, [paymentStatus?.status, deleteNotification]);
 
 				// LN
 				{
 					const zapWallet =
 						item &&
-						item.value.paymentOptions.find(
+						item.paymentOptions.find(
 							(paymentOption) => paymentOption.type === "lnZap",
 						);
 
 					const ndkSigner = item
-						? new NDKPrivateKeySigner(item.value.privateKey)
+						? new NDKPrivateKeySigner(item.privateKey)
 						: null;
 
 					const { data: zapReceipt } = useNostrSubscription(
@@ -123,28 +226,24 @@ const resolveUiNotification = (
 							markAsPaid.current = true;
 
 							(async () => {
-								await paymentStatusStorage.insertOrUpdate(
-									storageDeps,
-									notificationData.paymentId,
-									{
-										paymentId: notificationData.paymentId,
+								getOrThrow(
+									evolu.upsert("paymentStatus", {
+										id: notificationData.paymentId as Id,
 										status: PaymentStatus.Paid,
-										prove: {
-											type: "lnZap",
-										},
-									},
+										proveType: "lnZap",
+									}),
 								);
 								deleteNotification();
 							})();
 						}
-					}, [zapReceipt, deleteNotification, storageDeps]);
+					}, [zapReceipt, deleteNotification, evolu]);
 				}
 
 				// LN Spark
 				{
 					const sparkWallet =
 						item &&
-						item.value.paymentOptions.find(
+						item.paymentOptions.find(
 							(paymentOption) => paymentOption.type === "lnSpark",
 						);
 
@@ -154,12 +253,18 @@ const resolveUiNotification = (
 						}
 
 						const walletPromise = (async () => {
-							const { data: accounts } = await accountStorage.select(
-								storageDeps,
-								{
-									key: sparkWallet.accountId,
-									limit: 1,
-								},
+							const accounts = await evolu.loadQuery(
+								evolu.createQuery((db) =>
+									db
+										.selectFrom("account")
+										.leftJoin("accountSpark", "accountSpark.id", "account.id")
+										.select([
+											"account._tag as _tag",
+											"accountSpark.mnemonic as mnemonic",
+										] as const)
+										.where("account.isDeleted", "is not", sqliteTrue)
+										.where("account.id", "=", sparkWallet.accountId as Id),
+								),
 							);
 
 							const account = accounts[0];
@@ -167,12 +272,12 @@ const resolveUiNotification = (
 								return;
 							}
 
-							if (account.value._tag !== "spark") {
+							if (account._tag !== "accountSpark" || !account.mnemonic) {
 								return;
 							}
 
 							const { wallet } = await SparkWallet.initialize({
-								mnemonicOrSeed: account.value.mnemonic,
+								mnemonicOrSeed: account.mnemonic,
 								options: {
 									network: "MAINNET",
 								},
@@ -201,16 +306,12 @@ const resolveUiNotification = (
 							console.log("Spark OK");
 							markAsPaid.current = true;
 
-							await paymentStatusStorage.insertOrUpdate(
-								storageDeps,
-								notificationData.paymentId,
-								{
-									paymentId: notificationData.paymentId,
+							getOrThrow(
+								evolu.upsert("paymentStatus", {
+									id: notificationData.paymentId as Id,
 									status: PaymentStatus.Paid,
-									prove: {
-										type: "bankTransferCZ",
-									},
-								},
+									proveType: "bankTransferCZ",
+								}),
 							);
 							deleteNotification();
 						}, 5 * 1000);
@@ -224,36 +325,66 @@ const resolveUiNotification = (
 
 							clearInterval(timer);
 						};
-					}, [deleteNotification, sparkWallet, storageDeps]);
+					}, [deleteNotification, sparkWallet, evolu]);
 				}
 
 				// FIO
-				const { data: fioPluginRows } = useStorageSubscription(
-					fioPluginStorage,
-					{
-						key: null,
-					},
+				const fioPluginId = createIdFromString("");
+				const fioPluginQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("fioPlugin")
+							.selectAll()
+							.where("isDeleted", "is not", sqliteTrue)
+							.where("id", "=", fioPluginId),
+					[fioPluginId],
 				);
+				const { data: fioPluginRows } = useEvoluQuery(fioPluginQuery);
+
+				const fioPluginTokenQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("fioPluginToken")
+							.select(["fioPluginToken.token as token"] as const)
+							.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
+							.where("fioPluginToken.fioPluginId", "=", fioPluginId),
+					[fioPluginId],
+				);
+				const { data: fioPluginTokens } = useEvoluQuery(fioPluginTokenQuery);
 
 				const fioData = fioPluginRows && fioPluginRows[0];
 
 				const fioApiClient = useMemo(() => {
-					if (!fioData) {
+					if (
+						!fioData?.apiUrl ||
+						!fioData?.numberOfSecondsBetweenChecks ||
+						!fioPluginTokens ||
+						fioPluginTokens.length === 0
+					) {
 						return null;
 					}
 
-					return new FioApiClient(
-						fioData.value.tokens.map((token) => token.token),
-						fioData.value.apiUrl,
-					);
-				}, [fioData]);
+					const tokens = fioPluginTokens
+						.map((token) => token.token)
+						.filter((token): token is string => token !== null);
+
+					if (tokens.length === 0) {
+						return null;
+					}
+
+					return new FioApiClient(tokens, fioData.apiUrl);
+				}, [
+					fioData?.apiUrl,
+					fioData?.numberOfSecondsBetweenChecks,
+					fioPluginTokens,
+				]);
 
 				useEffect(() => {
 					if (!item || !fioApiClient || markAsPaid.current || !fioData) {
 						return;
 					}
 
-					const totalAmount = item.value.bill.items.reduce((acc, item) => {
+					const totalAmount = item.bill.items.reduce((acc, item) => {
 						return item.price + acc;
 					}, 0);
 
@@ -267,43 +398,39 @@ const resolveUiNotification = (
 									"Bezhotovostní příjem",
 									"Příjem převodem uvnitř banky",
 								].includes(transaction.Typ) &&
-								transaction.Měna === item.value.bill.currency &&
+								transaction.Měna === item.bill.currency &&
 								transaction.Objem === totalAmount
 							) {
 								console.log("FIO OK");
 								markAsPaid.current = true;
-								await paymentStatusStorage.insertOrUpdate(
-									storageDeps,
-									notificationData.paymentId,
-									{
-										paymentId: notificationData.paymentId,
+								getOrThrow(
+									evolu.upsert("paymentStatus", {
+										id: notificationData.paymentId as Id,
 										status: PaymentStatus.Paid,
-										prove: {
-											type: "bankTransferCZ",
-										},
-									},
+										proveType: "bankTransferCZ",
+									}),
 								);
 								deleteNotification();
 							}
 						}
-					}, fioData.value.numberOfSecondsBetweenChecks * 1000);
+					}, fioData.numberOfSecondsBetweenChecks * 1000);
 
 					return () => {
 						clearInterval(timer);
 					};
-				}, [fioApiClient, item, fioData, deleteNotification, storageDeps]);
+				}, [fioApiClient, item, fioData, deleteNotification, evolu]);
 
 				return null;
 			},
 		};
-	} else if (notification.value.type === "backgroundTableProcessing") {
+	} else if (notification.type === "backgroundTableProcessing") {
 		return {
 			title: "Table processing is running",
 			type: "info",
 			canBeClosed: false,
 			description:
 				"This is only an indication that payment processing from the table is operational.",
-			id: notification.value.type,
+			id: notification.type,
 			Component: () => {
 				const { ndk } = useNostr();
 				const pos = useAtomValue(posAtom);
@@ -313,14 +440,18 @@ const resolveUiNotification = (
 						{ pubkey: string; qrCodeId: NonEmptyString; timeout: Timeout }
 					>
 				>(new Map());
-				const {
-					data: tables,
-					hasNextPage,
-					loadNextPage,
-					eose,
-				} = useStorageSubscription(tableStorage, {
-					limit: 15,
-				});
+				const tableCodesQuery = useCreateQuery(
+					(db) =>
+						db
+							.selectFrom("tableCode")
+							.select([
+								"tableCode.id as id",
+								"tableCode.tableId as tableId",
+							] as const)
+							.where("tableCode.isDeleted", "is not", sqliteTrue),
+					[],
+				);
+				const { data: tableCodes } = useEvoluQuery(tableCodesQuery);
 
 				const getBillByQrCode = useEffectEvent(
 					(
@@ -330,13 +461,11 @@ const resolveUiNotification = (
 						Extract<ScreenData, { variant: "payment" | "refund" }>,
 						"pay"
 					> => {
-						const tableId = (tables ?? []).find((table) =>
-							(table.value.qrCodes ?? [])
-								.map((qrCode) => qrCode.id)
-								.includes(qrCodeId),
+						const tableCode = (tableCodes ?? []).find(
+							(code) => code.id === qrCodeId,
 						);
 
-						if (tableId === undefined) {
+						if (tableCode === undefined) {
 							return {
 								variant: "payment",
 								payload: {
@@ -346,7 +475,7 @@ const resolveUiNotification = (
 						}
 
 						for (const bill of Object.values(pos.bills)) {
-							if (bill.table && bill.table.id === tableId.value.id) {
+							if (bill.table && bill.table.id === tableCode.tableId) {
 								return {
 									variant: "payment",
 									payload: {
@@ -489,7 +618,7 @@ const resolveUiNotification = (
 		};
 	}
 
-	assertNever(notification.value);
+	throw new Error("Unsupported notification type");
 };
 
 type BackgroundJob = {
@@ -512,16 +641,22 @@ type BackgroundJob = {
 export function NotificationItem({
 	notification,
 }: {
-	notification: StorageRow<Notification>;
+	notification: Notification & { id: Id; createdAt: number };
 }) {
+	// biome-ignore lint/correctness/useExhaustiveDependencies: It's OK
 	const uiNotification = useMemo(
 		() => resolveUiNotification(notification),
-		[notification],
+		[notification.id],
 	);
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
-			await notificationStorage.delete(storageDeps, notification.eventId);
+			getOrThrow(
+				evolu.update("notification", {
+					id: notification.id,
+					isDeleted: sqliteTrue,
+				}),
+			);
 		},
 	});
 
@@ -566,7 +701,7 @@ export function NotificationItem({
 			))
 		: [];
 
-	const ComponentKey = Component && JSON.stringify(notification.value);
+	const ComponentKey = Component && JSON.stringify(notification);
 
 	return (
 		<div
@@ -580,7 +715,7 @@ export function NotificationItem({
 			)}
 
 			<div className="flex gap-4">
-				<div className="flex-shrink-0 pt-0.5">{getIcon()}</div>
+				<div className="shrink-0 pt-0.5">{getIcon()}</div>
 				<div className="flex-1 space-y-2">
 					<div className="flex items-start justify-between gap-2">
 						<div className="flex-1 space-y-1">

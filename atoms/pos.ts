@@ -1,3 +1,4 @@
+import type { Id } from "@evolu/common";
 import { atomWithStorage } from "jotai/utils";
 import type { Currency, NonEmptyString } from "@/lib/types";
 
@@ -16,7 +17,7 @@ type Bill = {
 	currency: Currency; // primal currency
 	rates: Partial<Record<Currency, number>>;
 	table?: {
-		id: string;
+		id: Id;
 		name: NonEmptyString;
 	};
 };

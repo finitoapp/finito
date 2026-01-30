@@ -1,11 +1,11 @@
+import type { Id } from "@evolu/common";
 import type { FC } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePaymentStatus } from "@/hooks/use-payment-status";
-import type { Uuid7 } from "@/lib/types";
 
 export const PaymentStatusBadge: FC<{
-	paymentId: Uuid7;
+	paymentId: Id;
 }> = (props) => {
 	const paymentStatus = usePaymentStatus(props);
 

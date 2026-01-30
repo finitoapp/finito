@@ -1,5 +1,6 @@
 "use client";
 
+import { getOrThrow, type Id, sqliteTrue } from "@evolu/common";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -31,47 +32,47 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
 import { usePaymentStatus } from "@/hooks/use-payment-status";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { shareImageOrDownload } from "@/lib/file-utils";
 import { formatAmount } from "@/lib/format-utils";
-import type { Uuid7 } from "@/lib/types";
 import { clientBaseUrl } from "@/lib/window-utils";
-import {
-	PaymentStatus,
-	paymentStatusStorage,
-} from "@/storages/payment-status-storage";
-import { paymentStorage } from "@/storages/payment-storage";
+import { PaymentStatus } from "@/storages/payment-status-storage";
 
 const StatusButton: FC<{
-	paymentId: Uuid7;
+	paymentId: Id;
 }> = (props) => {
-	const storageDeps = useStorageDeps();
-	const { data: invoiceStates } = useStorageSubscription(paymentStatusStorage, {
-		limit: 1,
-		key: props.paymentId,
-	});
+	const evolu = useEvolu();
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentStatus")
+				.select(["paymentStatus.status as status"] as const)
+				.where("paymentStatus.isDeleted", "is not", sqliteTrue)
+				.where("paymentStatus.id", "=", props.paymentId),
+		[props.paymentId],
+	);
+	const { data: paymentStatusRows } = useEvoluQuery(query);
 
-	const invoiceStatus = invoiceStates ? invoiceStates[0] : undefined;
-	const value = invoiceStatus ? invoiceStatus.value.status : null;
+	const value = paymentStatusRows?.[0]?.status ?? null;
 
 	const markAsPaid = async () => {
-		await paymentStatusStorage.insertOrUpdate(storageDeps, props.paymentId, {
-			paymentId: props.paymentId,
-			...(value === null || value === "unpaid"
-				? {
-						status: PaymentStatus.Paid,
-						prove: {
-							type: "cash",
-						},
-					}
-				: {
-						status: PaymentStatus.Unpaid,
-					}),
-		});
+		getOrThrow(
+			evolu.upsert("paymentStatus", {
+				id: props.paymentId,
+				status:
+					value === null || value === PaymentStatus.Unpaid
+						? PaymentStatus.Paid
+						: PaymentStatus.Unpaid,
+				proveType:
+					value === null || value === PaymentStatus.Unpaid ? "cash" : null,
+			}),
+		);
 	};
 
 	return (
@@ -257,7 +258,8 @@ const FullscreenQrPayment: FC<{
 export default function Home() {
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const tab = searchParams.get("tab");
 	const router = useRouter();
@@ -267,11 +269,126 @@ export default function Home() {
 
 	const czechQRCodeRef = useRef<HTMLCanvasElement>(null);
 
-	const { data: items } = useStorageSubscription(paymentStorage, {
-		key: id,
-	});
+	const paymentId = id as Id;
+	const paymentQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("payment")
+				.leftJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
+				.leftJoin("paymentLnSpark", "paymentLnSpark.id", "payment.id")
+				.leftJoin(
+					"paymentBankTransferCZ",
+					"paymentBankTransferCZ.id",
+					"payment.id",
+				)
+				.leftJoin("paymentCash", "paymentCash.id", "payment.id")
+				.select([
+					"payment.id as id",
+					"payment.type as type",
+					"payment.webPaymentEventId as webPaymentEventId",
+					"payment.privateKey as privateKey",
+					"payment.billCurrency as billCurrency",
+					"payment.billAllowTip as billAllowTip",
+					"payment.merchantName as merchantName",
+					"payment.onSuccessfulPaymentRedirectUrl as onSuccessfulPaymentRedirectUrl",
+					"payment.createdAt as createdAt",
+					"paymentLnZap.lnInvoice as lnZapLnInvoice",
+					"paymentLnZap.walletPubkey as lnZapWalletPubkey",
+					"paymentLnZap.expirationIn as lnZapExpirationIn",
+					"paymentLnSpark.accountId as lnSparkAccountId",
+					"paymentLnSpark.lnInvoice as lnSparkLnInvoice",
+					"paymentLnSpark.sparkInvoiceId as lnSparkSparkInvoiceId",
+					"paymentLnSpark.expirationIn as lnSparkExpirationIn",
+					"paymentBankTransferCZ.iban as bankTransferIban",
+					"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
+					"paymentCash.id as cashId",
+				] as const)
+				.where("payment.isDeleted", "is not", sqliteTrue)
+				.where("payment.id", "=", paymentId),
+		[paymentId],
+	);
+	const paymentBillItemsQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentBillItem")
+				.select([
+					"paymentBillItem.label as label",
+					"paymentBillItem.price as price",
+					"paymentBillItem.quantity as quantity",
+				] as const)
+				.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
+				.where("paymentBillItem.paymentId", "=", paymentId),
+		[paymentId],
+	);
+	const { data: paymentRows } = useEvoluQuery(paymentQuery);
+	const { data: paymentBillItemsRows } = useEvoluQuery(paymentBillItemsQuery);
 
-	const item = items && items[0];
+	const payment = paymentRows?.[0];
+	const item =
+		payment &&
+		payment.privateKey &&
+		payment.webPaymentEventId &&
+		payment.billCurrency
+			? {
+					id: payment.id,
+					webPaymentEventId: payment.webPaymentEventId,
+					privateKey: payment.privateKey,
+					createdAt: payment.createdAt,
+					merchant: payment.merchantName
+						? { name: payment.merchantName }
+						: undefined,
+					onSuccessfulPayment: payment.onSuccessfulPaymentRedirectUrl
+						? {
+								_tag: "httpRedirect" as const,
+								redirectUrl: payment.onSuccessfulPaymentRedirectUrl,
+							}
+						: undefined,
+					bill: {
+						currency: payment.billCurrency,
+						allowTip: payment.billAllowTip === sqliteTrue,
+						items: (paymentBillItemsRows ?? []).map((billItem) => ({
+							label: billItem.label ?? "",
+							price: billItem.price ?? 0,
+							quantity: billItem.quantity ?? 0,
+						})),
+					},
+					paymentOptions: [
+						payment.type === "lnZap" &&
+						payment.lnZapLnInvoice &&
+						payment.lnZapWalletPubkey &&
+						payment.lnZapExpirationIn !== null
+							? {
+									type: "lnZap" as const,
+									lnInvoice: payment.lnZapLnInvoice,
+									walletPubkey: payment.lnZapWalletPubkey,
+									expirationIn: payment.lnZapExpirationIn,
+								}
+							: payment.type === "lnSpark" &&
+									payment.lnSparkAccountId &&
+									payment.lnSparkLnInvoice &&
+									payment.lnSparkSparkInvoiceId &&
+									payment.lnSparkExpirationIn !== null
+								? {
+										type: "lnSpark" as const,
+										accountId: payment.lnSparkAccountId,
+										lnInvoice: payment.lnSparkLnInvoice,
+										sparkInvoiceId: payment.lnSparkSparkInvoiceId,
+										expirationIn: payment.lnSparkExpirationIn,
+									}
+								: payment.type === "bankTransferCZ" &&
+										payment.bankTransferIban &&
+										payment.bankTransferVariableSymbol
+									? {
+											type: "bankTransferCZ" as const,
+											iban: payment.bankTransferIban,
+											variableSymbol: payment.bankTransferVariableSymbol,
+										}
+									: payment.type === "cash" && payment.cashId
+										? { type: "cash" as const }
+										: null,
+					].filter((paymentOption) => paymentOption !== null),
+				}
+			: undefined;
 
 	const { mutateAsync: deletePayment, isPending: isDeleting } = useMutation({
 		mutationFn: async () => {
@@ -283,33 +400,51 @@ export default function Home() {
 				kind: 5,
 				created_at: Math.floor(Date.now() / 1000),
 				tags: [
-					["e", item.value.webPaymentEventId],
+					["e", item.webPaymentEventId],
 					["k", "4"],
 				],
 				content: "Deleted by user",
 			});
 
 			await deleteEvent.publish();
-			await paymentStorage.delete(storageDeps, item.eventId);
+			getOrThrow(
+				evolu.update("payment", {
+					id: item.id,
+					isDeleted: sqliteTrue,
+				}),
+			);
 			router.push("/admin/payments");
 		},
 	});
 
+	const onDelete = withConfirm(
+		async () => {
+			await deletePayment();
+		},
+		{
+			title: "Delete payment?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
+
 	const zapWallet =
 		item &&
-		item.value.paymentOptions.find(
+		item.paymentOptions.find(
 			(paymentOption) =>
 				paymentOption.type === "lnZap" || paymentOption.type === "lnSpark",
 		);
 
-	const paymentStatus = usePaymentStatus({ paymentId: id as Uuid7 });
+	const paymentStatus = usePaymentStatus({ paymentId: id as Id });
 
 	const totalAmount = item
-		? item.value.bill.items.reduce((acc, val) => acc + val.price, 0)
+		? item.bill.items.reduce((acc, val) => acc + val.price, 0)
 		: 0;
 	const czechBankTransfer =
 		item &&
-		item.value.paymentOptions.find(
+		item.paymentOptions.find(
 			(paymentOption) => paymentOption.type === "bankTransferCZ",
 		);
 	const czechQRCode =
@@ -317,13 +452,13 @@ export default function Home() {
 		czechBankTransfer &&
 		generateCzechBankQrCode({
 			amount: totalAmount,
-			currency: item.value.bill.currency,
+			currency: item.bill.currency,
 			iban: czechBankTransfer.iban,
 			variableSymbol: czechBankTransfer.variableSymbol,
 			useInstantPayment: true,
 		});
 
-	const frontendUrl = `${clientBaseUrl}#s-${item?.value.privateKey}`;
+	const frontendUrl = `${clientBaseUrl}#s-${item?.privateKey}`;
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -336,7 +471,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.bill.items[0]?.label}
+							{item?.bill.items[0]?.label}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -347,8 +482,7 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												formatAmount(totalAmount, item.value.bill.currency)}
+											{item && formatAmount(totalAmount, item.bill.currency)}
 										</>
 									}
 									className={"flex-1"}
@@ -410,19 +544,17 @@ export default function Home() {
 										items={[
 											{
 												key: "Merchant name",
-												value: item?.value.merchant?.name ?? "-",
+												value: item?.merchant?.name ?? "-",
 											},
 											{
 												key: "Redirect",
-												value:
-													item?.value.onSuccessfulPayment?.redirectUrl ?? "no",
+												value: item?.onSuccessfulPayment?.redirectUrl ?? "no",
 												help: "The customer will be redirected to this address after successful payment if they use payment via the web application.",
 											},
 											{
 												key: "Tip",
 												value:
-													item?.value.onSuccessfulPayment &&
-													item.value.bill.allowTip
+													item?.onSuccessfulPayment && item.bill.allowTip
 														? "yes"
 														: "no",
 												help: "Static payments do not support tips",
@@ -448,8 +580,8 @@ export default function Home() {
 								czechQRCode={czechQRCode}
 								isPaid={paymentStatus === PaymentStatus.Paid}
 							/>
-							{item && <StatusButton paymentId={item.value.id} />}
-							<Button className={"w-full"} onClick={() => deletePayment()}>
+							{item && <StatusButton paymentId={item.id} />}
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								{isDeleting ? (
 									<LoaderCircleIcon className="animate-spin" />
 								) : (

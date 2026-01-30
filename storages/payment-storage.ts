@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { createNostrStorage } from "@/lib/nostr-storage";
 import {
 	Currency,
 	HttpsUrlSchema,
@@ -7,7 +6,6 @@ import {
 	type InferEnumType,
 	NonEmptyStringSchema,
 	PhoneSchema,
-	Uuid7Schema,
 } from "@/lib/types";
 
 export const PaymentMethod = {
@@ -56,7 +54,6 @@ export const PaymentMerchantSchema = z.object({
 export type PaymentMerchant = z.output<typeof PaymentMerchantSchema>;
 
 export const PaymentSchema = z.object({
-	id: Uuid7Schema,
 	bill: BillSchema,
 	merchant: PaymentMerchantSchema.optional(),
 	// In the future, it is expected that more variants will be introduced
@@ -97,12 +94,4 @@ export const PaymentSchema = z.object({
 		.default([]),
 	privateKey: z.string(),
 	webPaymentEventId: z.string(),
-});
-
-export type Payment = z.output<typeof PaymentSchema>;
-
-export const paymentStorage = createNostrStorage({
-	namespace: "payment",
-	schema: PaymentSchema,
-	useEncryption: true,
 });

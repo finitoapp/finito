@@ -41,7 +41,7 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 			try {
 				await props.saveAction(values);
 			} catch (error) {
-				console.error(error);
+				console.error(error, error.cause);
 				toast("Something bad happened while saving.");
 				return;
 			}

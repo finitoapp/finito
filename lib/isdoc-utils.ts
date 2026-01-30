@@ -84,7 +84,7 @@ export const createIsdocXml = (invoice: Invoice) => {
 <Invoice xmlns="http://isdoc.cz/namespace/2013" version="6.0.2">
   <DocumentType>1</DocumentType>
   <ID>${invoice.invoiceNumber}</ID>
-  <UUID>${invoice.id}</UUID>
+  <UUID>${invoice.invoiceId}</UUID>
   <IssuingSystem>Finito</IssuingSystem>
   <IssueDate>${invoice.issueDate}</IssueDate>
   <VATApplicable>${invoice.supplier.billingInfo.countrySpecific.vatPayer}</VATApplicable>

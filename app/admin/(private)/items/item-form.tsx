@@ -1,9 +1,19 @@
+import {
+	createId,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+	sqliteTrue,
+} from "@evolu/common";
+import { merge } from "es-toolkit";
 import type React from "react";
-import { v7 } from "uuid";
+import { useMemo, useState } from "react";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
+import { createComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	Currency,
 	NonEmptyStringSchema,
@@ -12,46 +22,54 @@ import {
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
-import { itemStorage } from "@/storages/item-storage";
 
 const itemSchema = z.object({
-	price: StringToNumberSchema,
-	currency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
+	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+	priceValue: StringToNumberSchema,
+	priceCurrency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
 	label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	unitOfMeasure: StringToUndefinedStringSchema.pipe(
-		NonEmptyStringSchema.optional(),
+	unitOfMeasure: StringToNullableStringSchema.pipe(
+		NonEmptyStringSchema.nullable(),
+	),
+	categoryId: StringToNullableStringSchema.pipe(
+		NonEmptyStringSchema.nullable(),
 	),
 	productCodeType: z.enum(ProductCodeType),
-	productCode: StringToUndefinedStringSchema.pipe(
-		NonEmptyStringSchema.optional(),
+	productCodeValue: StringToNullableStringSchema.pipe(
+		NonEmptyStringSchema.nullable(),
 	),
-	internalCode: StringToUndefinedStringSchema.pipe(
-		NonEmptyStringSchema.optional(),
+	internalCode: StringToNullableStringSchema.pipe(
+		NonEmptyStringSchema.nullable(),
 	),
 });
 
 const itemDefaultValues = {
-	price: "",
-	currency: null,
+	id: "",
+	priceValue: "",
+	priceCurrency: null,
 	label: "",
 	unitOfMeasure: "",
+	categoryId: "",
 	productCodeType: ProductCodeType.EAN,
-	productCode: "",
+	productCodeValue: "",
 	internalCode: "",
 } satisfies z.input<typeof itemSchema>;
 
 const components = createAutoFormLayout(itemSchema, ({ builder }) => ({
+	...builder.magicInput("id").text({
+		type: "hidden",
+	}),
 	...builder.magicInput("label").text({
 		label: "Label",
 	}),
 	...builder.line({
-		...builder.magicInput("price").amount({
+		...builder.magicInput("priceValue").amount({
 			label: "Price",
 			placeholder: "0",
 			type: "number",
 			currencyFieldName: "currency",
 		}),
-		...builder.magicInput("currency").select({
+		...builder.magicInput("priceCurrency").select({
 			values: Currency,
 			allowEmpty: true,
 			label: "Currency",
@@ -60,8 +78,38 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => ({
 	...builder.magicInput("unitOfMeasure").text({
 		label: "Unit of Measure (UOM) (optional)",
 	}),
+	...builder.createComponent("categoryId", (props) => {
+		const evolu = useEvolu();
+		const ComboboxInput = useMemo(
+			() =>
+				createComboboxInput({
+					label: "Category (optional)",
+					placeholder: "Select a category",
+					fetchItems: async () => {
+						const items = await evolu.loadQuery(
+							evolu.createQuery((db) =>
+								db
+									.selectFrom("category")
+									.select(["category.id as id", "category.name as name"])
+									.where("category.isDeleted", "is not", sqliteTrue)
+									.orderBy("category.name", "asc"),
+							),
+						);
+
+						return items.flatMap((item) =>
+							item.name === null
+								? []
+								: [{ label: item.name, value: item.id as string }],
+						);
+					},
+				}),
+			[evolu],
+		);
+
+		return <ComboboxInput {...props} />;
+	}),
 	...builder.line({
-		...builder.magicInput("productCode").text({
+		...builder.magicInput("productCodeValue").text({
 			label: "Product code (optional)",
 		}),
 		...builder.magicInput("productCodeType").select({
@@ -76,39 +124,36 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => ({
 }));
 
 export const ItemForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof itemSchema> & { id: string }>;
-	onSuccess?: (newEventId: string) => unknown;
+	defaultValues?: PartialDeep<z.input<typeof itemSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
-	const storageDeps = useStorageDeps();
+	const [defaultValues] = useState(() => {
+		return merge(itemDefaultValues, params.defaultValues ?? {});
+	});
+	const evolu = useEvolu();
 	const form = useActionForm(itemSchema, {
-		defaultValues: {
-			...itemDefaultValues,
-			...(params.defaultValues ?? {}),
-		},
+		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const { eventId } = await itemStorage.insertOrUpdate(storageDeps, id, {
-				id,
-				...values,
-				price: {
-					value: values.price,
-					currency: values.currency,
-				},
-				productCode: values.productCode
-					? {
-							type: values.productCodeType,
-							code: values.productCode,
-						}
-					: undefined,
-			});
-
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
-			}
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = values.id ?? createId(createIdDeps);
+			getOrThrow(
+				evolu.upsert(
+					"item",
+					{
+						...values,
+						id,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id as Id);
+							}
+						},
+					},
+				),
+			);
 		},
 	});
 

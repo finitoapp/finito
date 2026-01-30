@@ -1,17 +1,55 @@
 "use client";
 
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { BillingInfoForm } from "@/app/admin/(private)/settings/billing-info/billing-info-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { billingInfoStorage } from "@/storages/billing-info-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { CountryCode } from "@/lib/types";
 
 export default function Home() {
-	const { data } = useStorageSubscription(billingInfoStorage, {
-		limit: 1,
-	});
+	const itemId = createIdFromString("");
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("billingInfo")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const addressQuery = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("billingInfoAddress")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const czQuery = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("billingInfoCz")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const { data } = useEvoluQuery(query);
+	const { data: addressData } = useEvoluQuery(addressQuery);
+	const { data: czData } = useEvoluQuery(czQuery);
 
 	const item = data && data[0];
+	const address = addressData && addressData[0];
+	const cz = czData && czData[0];
 
 	return (
 		<ResponsiveCard className="w-full max-w-xl">
@@ -20,18 +58,17 @@ export default function Home() {
 			</CardHeader>
 			<CardContent>
 				<BillingInfoForm
-					key={item ? "yes" : "no"}
-					customStorage={billingInfoStorage}
+					key={item && address && cz ? "yes" : "no"}
 					defaultValues={
-						item
+						item && address && cz
 							? {
-									...item.value,
-									countrySpecific: {
-										...item.value.countrySpecific,
-										vatNumber: item.value.countrySpecific.vatNumber ?? "",
-										identificationNumber:
-											item.value.countrySpecific.identificationNumber ?? "",
-										caseNumber: item.value.countrySpecific.caseNumber ?? "",
+									...item,
+									address,
+									cz: {
+										vatPayer: cz.vatPayer === sqliteTrue,
+										vatNumber: cz.vatNumber ?? "",
+										identificationNumber: cz.identificationNumber ?? "",
+										caseNumber: cz.caseNumber ?? "",
 									},
 								}
 							: undefined

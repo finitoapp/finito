@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSigner,
@@ -15,6 +16,7 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { AutoformIbanInput } from "@/components/auto-form/autoform-iban";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
 import { useActionForm } from "@/hooks/use-action-form";
+import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
 import {
@@ -36,7 +38,6 @@ import {
 	StringToUndefinedStringSchema,
 	Uuid7,
 } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
 
 const baseStaticPaymentSchema = z.object({
 	currency: z.enum(FiatCurrency),
@@ -241,27 +242,39 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					},
 				}),
 				...builder.createComponent("lud16", (props) => {
-					const storageDeps = useStorageDeps();
+					const evolu = useEvolu();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
 								label: "lud16 wallet address with `Lightning Zaps` support",
 								fetchItems: async () => {
-									const items = await accountStorage.select(storageDeps);
+									const items = await evolu.loadQuery(
+										evolu.createQuery((db) =>
+											db
+												.selectFrom("account")
+												.leftJoin(
+													"accountLud16",
+													"accountLud16.id",
+													"account.id",
+												)
+												.select([
+													"account.name as name",
+													"accountLud16.lud16 as lud16",
+												] as const)
+												.where("account.isDeleted", "is not", sqliteTrue)
+												.where("account._tag", "=", "accountLud16"),
+										),
+									);
 
-									return items.data
-										.filter((item) => item.value._tag === "lud16")
+									return items
+										.filter((item) => item.lud16 !== null)
 										.map((item) => ({
-											label:
-												item.value._tag === "lud16"
-													? `${item.value.lud16} (${item.value.name})`
-													: "-",
-											value:
-												item.value._tag === "lud16" ? item.value.lud16 : "-",
+											label: `${item.lud16} (${item.name})`,
+											value: item.lud16,
 										}));
 								},
 							}),
-						[storageDeps],
+						[evolu],
 					);
 
 					return <ComboboxInput {...props} />;
@@ -281,24 +294,32 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					},
 				}),
 				...builder.createComponent("accountId", (props) => {
-					const storageDeps = useStorageDeps();
+					const evolu = useEvolu();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
 								label: "Spark wallet account",
 								fetchItems: async () => {
-									const items = await accountStorage.select(storageDeps);
+									const items = await evolu.loadQuery(
+										evolu.createQuery((db) =>
+											db
+												.selectFrom("account")
+												.select([
+													"account.id as id",
+													"account.name as name",
+												] as const)
+												.where("account.isDeleted", "is not", sqliteTrue)
+												.where("account._tag", "=", "accountSpark"),
+										),
+									);
 
-									return items.data
-										.filter((item) => item.value._tag === "spark")
-										.map((item) => ({
-											label:
-												item.value._tag === "spark" ? item.value.name : "-",
-											value: item.value._tag === "spark" ? item.value.id : "-",
-										}));
+									return items.map((item) => ({
+										label: item.name,
+										value: item.id,
+									}));
 								},
 							}),
-						[storageDeps],
+						[evolu],
 					);
 
 					return <ComboboxInput {...props} />;
@@ -312,6 +333,7 @@ export const PaymentForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof staticPaymentSchema> & { id: Uuid7 }>;
 }> = (params) => {
 	const { ndk } = useNostr();
+	const storageDeps = useStorageDeps();
 	const router = useRouter();
 	console.log("params.defaultValues", params.defaultValues);
 	const [defaultValues] = useState(() => {
@@ -320,11 +342,6 @@ export const PaymentForm: React.FC<{
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: Uuid7.random();
-
 			const paymentSigner = NDKPrivateKeySigner.generate();
 			const paymentNdk = new NDK({
 				explicitRelayUrls: ndk.explicitRelayUrls,
@@ -363,9 +380,9 @@ export const PaymentForm: React.FC<{
 			} else if (values.type === "lnSpark") {
 				paymentOption = await (async () => {
 					const zapPaymentResult = await createSparkPayment({
-						accountId: values.accountId,
+						accountId: values.accountId as Id,
 						amountInBtc: values.amountInBtc,
-						ndk,
+						...storageDeps,
 					});
 
 					if (zapPaymentResult === undefined) {
@@ -429,11 +446,10 @@ export const PaymentForm: React.FC<{
 				privateKey: paymentSigner.privateKey,
 			};
 
-			await createPayment({
+			const id = await createPayment({
 				paymentNdk,
-				ndk,
+				...storageDeps,
 				paymentData,
-				paymentId: id,
 			});
 
 			router.push(

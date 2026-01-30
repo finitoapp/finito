@@ -1,16 +1,17 @@
+import { createIdFromString, getOrThrow, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useState } from "react";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	DateToDateStringSchema,
 	NonNegativeIntegerSchema,
 	StringToNumberSchema,
 } from "@/lib/types";
-import { invoiceLastNumberStorage } from "@/storages/invoice-last-number-storage";
 
 export const invoiceLastNumberFormSchema = z.object({
 	serialNumber: StringToNumberSchema.pipe(NonNegativeIntegerSchema),
@@ -38,30 +39,37 @@ export const invoiceLastNumberFormComponents = createAutoFormLayout(
 );
 
 export const InvoiceLastNumberForm: React.FC<{
-	defaultValues?: Partial<
-		z.input<typeof invoiceLastNumberFormSchema> & { id: string }
-	>;
-	onSuccess?: (newEventId: string) => unknown;
+	defaultValues?: PartialDeep<z.input<typeof invoiceLastNumberFormSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createInvoiceLastNumberDefaultValues(),
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
 	const form = useActionForm(invoiceLastNumberFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const { eventId } = await invoiceLastNumberStorage.insertOrUpdate(
-				storageDeps,
-				null,
-				values,
-			);
+			const id = createIdFromString("");
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
-			}
+			getOrThrow(
+				evolu.upsert(
+					"invoiceLastNumber",
+					{
+						...values,
+						id,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id);
+							}
+						},
+					},
+				),
+			);
 		},
 	});
 

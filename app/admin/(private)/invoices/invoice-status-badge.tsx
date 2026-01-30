@@ -1,21 +1,28 @@
+import { type Id, sqliteTrue } from "@evolu/common";
 import type { FC } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import type { Uuid7 } from "@/lib/types";
-import { invoiceStatusStorage } from "@/storages/invoice-status-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export const InvoiceStatusBadge: FC<{
-	invoiceId: Uuid7;
+	invoiceId: Id;
 	dueDate: Date;
 }> = (props) => {
-	const { data: invoiceStates } = useStorageSubscription(invoiceStatusStorage, {
-		limit: 1,
-		key: props.invoiceId,
-	});
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("invoiceStatus")
+				.select("status")
+				.where("id", "=", props.invoiceId)
+				.where("isDeleted", "is not", sqliteTrue)
+				.limit(1),
+		[props.invoiceId],
+	);
+	const { data: invoiceStates } = useEvoluQuery(query);
 
 	const invoiceStatus = invoiceStates ? invoiceStates[0] : undefined;
-	const value = invoiceStatus ? invoiceStatus.value.status : null;
+	const value = invoiceStatus ? invoiceStatus.status : null;
 	const now = new Date();
 
 	if (value === null) {

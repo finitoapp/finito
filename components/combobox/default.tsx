@@ -251,6 +251,8 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 											key={index.toString()}
 											value={index.toString()}
 											onSelect={() => {
+												console.log("onSelect", allItems[index]);
+
 												if (props.onChange) {
 													props.onChange(allItems[index].value);
 												}

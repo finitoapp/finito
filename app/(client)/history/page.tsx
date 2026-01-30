@@ -1,38 +1,47 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { formatAmount } from "@/lib/format-utils";
-import type { Uuid7 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import {
-	paymentFinishedStorage,
-	paymentInitStorage,
-} from "@/storages/payment-progress-storage";
+
+type InitItem = {
+	id: Id;
+	createdAt: number;
+	currency: string | null;
+	tip: number | null;
+	merchantName: string | null;
+	items: Array<{ price: number | null; quantity: number | null }>;
+};
 
 const PaymentStatus: FC<{
-	paymentId: Uuid7;
+	paymentId: Id;
 }> = (props) => {
-	const { data: items, eose } = useStorageSubscription(paymentFinishedStorage, {
-		limit: 15,
-		key: props.paymentId,
-	});
-
-	const item = items && items[0];
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentFinished")
+				.select(["paymentFinished.type as type"] as const)
+				.where("paymentFinished.isDeleted", "is not", sqliteTrue)
+				.where("paymentFinished.id", "=", props.paymentId)
+				.limit(1),
+		[props.paymentId],
+	);
+	const { data: rows } = useEvoluQuery(query);
 
 	const [className, icon] = (() => {
-		if (!item && !eose) {
+		if (rows === undefined) {
 			return ["", <LoaderCircleIcon key={1} className="animate-spin size-4" />];
 		}
-
-		if (item && item.value.type === "success") {
+		if (rows[0]?.type === "success") {
 			return ["bg-green-500", <CheckIcon key={1} className="size-4" />];
 		}
-
 		return ["bg-red-700", <XIcon key={1} className="size-4" />];
 	})();
 
@@ -49,21 +58,58 @@ const PaymentStatus: FC<{
 };
 
 export default function Page() {
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(paymentInitStorage, {
-		limit: 20,
-	});
+	const paymentInitQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentInit")
+				.select([
+					"paymentInit.id as id",
+					"paymentInit.createdAt as createdAt",
+					"paymentInit.currency as currency",
+					"paymentInit.tip as tip",
+					"paymentInit.merchantName as merchantName",
+				] as const)
+				.where("paymentInit.isDeleted", "is not", sqliteTrue)
+				.orderBy("paymentInit.createdAt", "desc")
+				.limit(20),
+		[],
+	);
+	const paymentInitItemQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentInitItem")
+				.select([
+					"paymentInitItem.paymentInitId as paymentInitId",
+					"paymentInitItem.price as price",
+					"paymentInitItem.quantity as quantity",
+				] as const)
+				.where("paymentInitItem.isDeleted", "is not", sqliteTrue),
+		[],
+	);
+	const { data: paymentInitRows } = useEvoluQuery(paymentInitQuery);
+	const { data: paymentInitItemRows } = useEvoluQuery(paymentInitItemQuery);
+
+	const items: InitItem[] =
+		paymentInitRows?.map((row) => ({
+			id: row.id,
+			createdAt: row.createdAt,
+			currency: row.currency,
+			tip: row.tip,
+			merchantName: row.merchantName,
+			items: (paymentInitItemRows ?? []).filter(
+				(item) => item.paymentInitId === row.id,
+			),
+		})) ?? [];
+
+	const itemsForNav: Array<InitItem | null> =
+		paymentInitRows === undefined ? [null, null, null, null] : items;
 
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-20"} />
 			<FadeHeader title={"Payment history"} />
 
-			{eose && items && items.length === 0 && (
+			{paymentInitRows !== undefined && items.length === 0 && (
 				<div
 					className={"h-full flex flex-col justify-center items-center gap-8"}
 				>
@@ -80,7 +126,7 @@ export default function Page() {
 			)}
 
 			<VerticalNav
-				items={(items ?? [null, null, null, null]).map((item, index) => {
+				items={itemsForNav.map((item, index) => {
 					if (item === null) {
 						return {
 							className:
@@ -96,15 +142,15 @@ export default function Page() {
 							label: (
 								<div className={cn("flex flex-col gap-2 items-start w-max")}>
 									<strong>
-										<Skeleton className={"h-5 w-[250px]"} />
+										<Skeleton className={"h-5 w-62.5"} />
 									</strong>
 									<div className={"flex justify-between w-full text-xs"}>
 										<span>
-											<Skeleton className={"h-4 w-[20px]"} />
+											<Skeleton className={"h-4 w-5"} />
 										</span>
 										&nbsp;&nbsp;•&nbsp;&nbsp;
 										<span className={"text-muted-foreground"}>
-											<Skeleton className={"h-4 w-[50px]"} />
+											<Skeleton className={"h-4 w-12.5"} />
 										</span>
 									</div>
 								</div>
@@ -114,19 +160,19 @@ export default function Page() {
 					}
 
 					const totalAmount =
-						item.value.items.reduce(
-							(acc, value) => acc + value.price * value.quantity,
+						item.items.reduce(
+							(acc, value) => acc + (value.price ?? 0) * (value.quantity ?? 0),
 							0,
-						) + (item.value.tip ?? 0);
+						) + (item.tip ?? 0);
 
 					return {
 						label: (
 							<div className={"flex flex-col gap-2 items-start w-max"}>
-								<strong>
-									{item.value.merchant?.name ?? "Unknown merchant"}
-								</strong>
+								<strong>{item.merchantName ?? "Unknown merchant"}</strong>
 								<div className={"flex justify-between w-full text-xs"}>
-									<span>{formatAmount(totalAmount, item.value.currency)}</span>
+									<span>
+										{formatAmount(totalAmount, item.currency ?? "CZK")}
+									</span>
 									&nbsp;&nbsp;•&nbsp;&nbsp;
 									<span className={"text-muted-foreground"}>
 										{new Date(item.createdAt * 1000).toLocaleString()}
@@ -136,10 +182,10 @@ export default function Page() {
 						),
 						icon: (
 							<div className={"p-2"}>
-								<PaymentStatus paymentId={item.value.paymentId} />
+								<PaymentStatus paymentId={item.id} />
 							</div>
 						),
-						nextLink: `/history/detail?id=${encodeURIComponent(item.key ?? "")}`,
+						nextLink: `/history/detail?id=${encodeURIComponent(item.id)}`,
 					};
 				})}
 			/>

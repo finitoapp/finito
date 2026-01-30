@@ -1,25 +1,35 @@
 "use client";
 
+import {
+	createId,
+	createIdFromString,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+	sqliteTrue,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useState } from "react";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	HttpsUrlSchema,
 	NonEmptyString255Schema,
+	NonEmptyStringSchema,
 	PositiveIntegerSchema,
 	StringToNullableNumberSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
-import { fioPluginStorage } from "@/storages/fio-plugin-storage";
 
 export const fioPluginSchema = z.object({
 	apiUrl: StringToUndefinedStringSchema.pipe(HttpsUrlSchema),
 	tokens: z
 		.object({
+			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
 			token: StringToUndefinedStringSchema.pipe(NonEmptyString255Schema),
 		})
 		.array(),
@@ -29,6 +39,7 @@ export const fioPluginSchema = z.object({
 });
 
 const tokenDefaultValues = {
+	id: "",
 	token: "",
 };
 
@@ -36,6 +47,7 @@ const fioPluginDefaultValues = {
 	apiUrl: "https://fioapi.fio.cz",
 	tokens: [
 		{
+			id: "",
 			token: "",
 		},
 	],
@@ -63,11 +75,17 @@ const components = createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
 					defaultValue: tokenDefaultValues,
 					columns: [
 						{
+							title: "ID",
+						},
+						{
 							title: "Token",
 						},
 					],
 				},
 				({ builder }) => ({
+					...builder.magicInput("id").text({
+						type: "hidden",
+					}),
 					...builder.magicInput("token").text({
 						label: "API Token",
 						type: "password",
@@ -80,18 +98,69 @@ const components = createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
 }));
 
 export const FioPluginForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof fioPluginSchema>>;
+	defaultValues?: PartialDeep<z.input<typeof fioPluginSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(fioPluginDefaultValues, params.defaultValues ?? {});
 	});
 	const form = useActionForm(fioPluginSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await fioPluginStorage.insertOrUpdate(storageDeps, null, values);
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = createIdFromString("");
+
+			const { tokens, ...fioPlugin } = values;
+
+			getOrThrow(
+				evolu.upsert(
+					"fioPlugin",
+					{
+						...fioPlugin,
+						id,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id);
+							}
+						},
+					},
+				),
+			);
+
+			const originalTokens = new Set(
+				(params.defaultValues?.tokens ?? []).map((token) => token?.id),
+			);
+
+			for (const token of tokens) {
+				if (token.id) {
+					originalTokens.delete(token.id);
+				}
+
+				getOrThrow(
+					evolu.upsert("fioPluginToken", {
+						...token,
+						id: token.id ?? createId(createIdDeps),
+						fioPluginId: id,
+					}),
+				);
+			}
+
+			for (const id of originalTokens) {
+				if (id) {
+					getOrThrow(
+						evolu.update("fioPluginToken", {
+							id: id as Id,
+							isDeleted: sqliteTrue,
+						}),
+					);
+				}
+			}
 		},
-		onSuccess: () => {},
 	});
 
 	return <AutoForm form={form} components={components} />;

@@ -1,12 +1,14 @@
 "use client";
 
+import { createIdFromString, getOrThrow, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useState } from "react";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	EmailSchema,
 	NonEmptyStringSchema,
@@ -14,7 +16,6 @@ import {
 	StringToNullableNumberSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
-import { smtpStorage } from "@/storages/smtp-storage";
 
 export const smtpSchema = z.object({
 	server: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
@@ -65,18 +66,40 @@ const components = createAutoFormLayout(smtpSchema, ({ builder }) => ({
 }));
 
 export const SmtpForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof smtpSchema>>;
+	defaultValues?: PartialDeep<z.input<typeof smtpSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(smtpDefaultValues, params.defaultValues ?? {});
 	});
 	const form = useActionForm(smtpSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await smtpStorage.insertOrUpdate(storageDeps, null, values);
+			const id = createIdFromString("");
+
+			getOrThrow(
+				evolu.upsert(
+					"smtp",
+					{
+						id,
+						server: values.server,
+						port: values.port,
+						username: values.credentials.username,
+						password: values.credentials.password,
+						name: values.name,
+						email: values.email,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id);
+							}
+						},
+					},
+				),
+			);
 		},
-		onSuccess: () => {},
 	});
 
 	return <AutoForm form={form} components={components} />;

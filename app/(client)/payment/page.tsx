@@ -1,5 +1,6 @@
 "use client";
 
+import { createIdFromString, getOrThrow } from "@evolu/common";
 import { IconRefresh } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
@@ -28,9 +29,9 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
+import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
 import type {
 	BillDriverSubscriptionEvent,
 	BillPaymentOption,
@@ -41,12 +42,7 @@ import { billManager } from "@/lib/bill/billManager";
 import { formatAmount } from "@/lib/format-utils";
 import { assertNever } from "@/lib/type-utils";
 import { Uuid7 } from "@/lib/types";
-import {
-	type PaymentInit,
-	paymentFinishedStorage,
-	paymentInitStorage,
-	paymentReadyStorage,
-} from "@/storages/payment-progress-storage";
+import type { PaymentInit } from "@/storages/payment-progress-storage";
 
 const PayButton: FC<{
 	subscription: BillSubscription | null;
@@ -55,7 +51,7 @@ const PayButton: FC<{
 	selectedTipAtom: SelectedTipAtom;
 	loadingAtom: LoadingAtom;
 }> = (props) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const setLoading = useSetAtom(props.loadingAtom);
 	const [paymentMethod, setPaymentMethod] =
 		useState<BillPaymentOption>("btcLn");
@@ -152,11 +148,29 @@ const PayButton: FC<{
 							};
 
 							setLoading("The payment is preparing");
-							await paymentInitStorage.insertOrUpdate(
-								storageDeps,
-								paymentId,
-								paymentInit,
+							getOrThrow(
+								evolu.upsert("paymentInit", {
+									id: createIdFromString(paymentId),
+									tip: paymentInit.tip,
+									currency: paymentInit.currency,
+									paymentOptionType: paymentInit.paymentOption.type,
+									merchantName: paymentInit.merchant?.name ?? null,
+									merchantPhone: paymentInit.merchant?.phone ?? null,
+								}),
 							);
+							for (const [index, item] of paymentInit.items.entries()) {
+								getOrThrow(
+									evolu.upsert("paymentInitItem", {
+										id: createIdFromString(
+											`${paymentId}:paymentInitItem:${index}`,
+										),
+										paymentInitId: createIdFromString(paymentId),
+										itemId: item.id,
+										price: item.price,
+										quantity: item.quantity,
+									}),
+								);
+							}
 							await pay(paymentInit);
 							setLoading(null);
 							return;
@@ -474,7 +488,7 @@ export default function Page() {
 		createLoadingAtom("Loading the data..."),
 	);
 	const { ndk } = useNostr();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const [subscription, setSubscription] = useState<BillSubscription | null>(
 		null,
 	);
@@ -493,19 +507,55 @@ export default function Page() {
 
 			if (event.type === "screen") {
 				if (event.payload.variant === "paymentReady") {
-					await paymentReadyStorage.insertOrUpdate(
-						storageDeps,
-						event.payload.payload.paymentId,
-						event.payload.payload,
+					const payload = event.payload.payload;
+					getOrThrow(
+						evolu.upsert("paymentReady", {
+							id: createIdFromString(payload.paymentId),
+							billTip: payload.bill.tip ?? null,
+							billCurrency: payload.bill.currency,
+							amountExpectedToPayValue:
+								payload.amountExpectedToPay?.value ?? null,
+							amountExpectedToPayRate:
+								payload.amountExpectedToPay?.rate ?? null,
+							amountExpectedToPayCurrency:
+								payload.amountExpectedToPay?.currency ?? null,
+						}),
 					);
-				} else if (event.payload.variant === "paymentFinished") {
-					if (event.payload.payload.paymentId) {
-						await paymentFinishedStorage.insertOrUpdate(
-							storageDeps,
-							event.payload.payload.paymentId,
-							event.payload.payload,
+					for (const [index, item] of payload.bill.items.entries()) {
+						getOrThrow(
+							evolu.upsert("paymentReadyItem", {
+								id: createIdFromString(
+									`${payload.paymentId}:paymentReadyItem:${index}`,
+								),
+								paymentReadyId: createIdFromString(payload.paymentId),
+								itemId: item.id,
+								price: item.price,
+								quantity: item.quantity,
+								label: item.label,
+							}),
 						);
 					}
+				} else if (event.payload.variant === "paymentFinished") {
+					const payload = event.payload.payload;
+					const paymentId = payload.paymentId;
+					if (!paymentId) return;
+					getOrThrow(
+						evolu.upsert("paymentFinished", {
+							id: createIdFromString(paymentId),
+							type: payload.type,
+							reason: payload.type === "failure" ? payload.reason : null,
+							refundType:
+								payload.type === "failure"
+									? (payload.refund?.type ?? null)
+									: null,
+							refundLnInvoice:
+								payload.type === "failure"
+									? payload.refund?.type === "btcLn"
+										? payload.refund.lnInvoice
+										: null
+									: null,
+						}),
+					);
 				}
 
 				setScreen(event.payload);
@@ -582,7 +632,7 @@ export default function Page() {
 				});
 			}
 		};
-	}, [qrCode, ndk, sessionId, router.replace]);
+	}, [qrCode, ndk, sessionId, router]);
 
 	useOnMountUnsafe(() => {
 		(async () => {

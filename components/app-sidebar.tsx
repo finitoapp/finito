@@ -68,6 +68,11 @@ const data = {
 			icon: IconPackage,
 		},
 		{
+			title: "Categories",
+			url: "/admin/categories" as never,
+			icon: IconPackage,
+		},
+		{
 			title: "Tables",
 			url: "/admin/tables",
 			icon: IconPicnicTable,

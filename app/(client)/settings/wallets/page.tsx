@@ -1,5 +1,6 @@
 "use client";
 
+import { getOrThrow, sqliteTrue } from "@evolu/common";
 import {
 	ChevronDownIcon,
 	EditIcon,
@@ -20,22 +21,30 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { cn } from "@/lib/utils";
-import { accountStorage } from "@/storages/account-storage";
 
 export default function Page() {
 	const router = useRouter();
-	const storageDeps = useStorageDeps();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(accountStorage, {
-		limit: 20,
-	});
+	const evolu = useEvolu();
+	const { confirm } = useGlobalDialog();
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("account")
+				.select([
+					"account.id as id",
+					"account.name as name",
+					"account._tag as _tag",
+				] as const)
+				.where("account.isDeleted", "is not", sqliteTrue)
+				.orderBy("account.createdAt", "desc"),
+		[],
+	);
+	const { data: items } = useEvoluQuery(query);
 
 	const emptyAction = (
 		<DropdownMenu>
@@ -73,7 +82,7 @@ export default function Page() {
 				</Link>
 			</div>
 
-			{eose && items && items.length === 0 && (
+			{items && items.length === 0 && (
 				<div
 					className={"h-full flex flex-col justify-center items-center gap-8"}
 				>
@@ -113,7 +122,7 @@ export default function Page() {
 					return {
 						label: (
 							<div className={"items-start w-max"}>
-								<strong>{item.value.name}</strong> ({item.value._tag})
+								<strong>{item.name}</strong> ({item._tag})
 							</div>
 						),
 						action: (
@@ -128,7 +137,7 @@ export default function Page() {
 										<DropdownMenuItem
 											onClick={() => {
 												router.push(
-													`/settings/wallets/edit?id=${encodeURIComponent(item.key ?? "")}`,
+													`/settings/wallets/edit?id=${encodeURIComponent(item.id)}`,
 												);
 											}}
 										>
@@ -137,7 +146,23 @@ export default function Page() {
 										</DropdownMenuItem>
 										<DropdownMenuItem
 											onClick={async () => {
-												await accountStorage.delete(storageDeps, item.eventId);
+												const accepted = await confirm({
+													title: "Delete wallet?",
+													description: "This action cannot be undone.",
+													confirmText: "Delete",
+													cancelText: "Cancel",
+													confirmVariant: "destructive",
+												});
+												if (!accepted) {
+													return;
+												}
+
+												getOrThrow(
+													evolu.update("account", {
+														id: item.id,
+														isDeleted: sqliteTrue,
+													}),
+												);
 											}}
 										>
 											<TrashIcon />

@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { DownloadIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { FadeHeader } from "@/components/fade-header";
@@ -9,49 +10,104 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { formatAmount } from "@/lib/format-utils";
-import {
-	paymentFinishedStorage,
-	paymentInitStorage,
-	paymentReadyStorage,
-} from "@/storages/payment-progress-storage";
 
 export default function Page() {
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
-	if (id === null) {
-		throw Promise.reject();
-	}
+	if (id === null) throw Promise.reject();
 
-	const { data: items } = useStorageSubscription(paymentInitStorage, {
-		key: id,
-	});
+	const paymentId = id as Id;
 
-	const { data: paymentReadyItems } = useStorageSubscription(
-		paymentReadyStorage,
-		{
-			key: id,
-		},
+	const paymentInitQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentInit")
+				.select([
+					"paymentInit.id as id",
+					"paymentInit.createdAt as createdAt",
+					"paymentInit.tip as tip",
+					"paymentInit.currency as currency",
+					"paymentInit.merchantName as merchantName",
+					"paymentInit.merchantPhone as merchantPhone",
+				] as const)
+				.where("paymentInit.isDeleted", "is not", sqliteTrue)
+				.where("paymentInit.id", "=", paymentId)
+				.limit(1),
+		[paymentId],
+	);
+	const paymentInitItemQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentInitItem")
+				.select([
+					"paymentInitItem.itemId as itemId",
+					"paymentInitItem.price as price",
+					"paymentInitItem.quantity as quantity",
+				] as const)
+				.where("paymentInitItem.isDeleted", "is not", sqliteTrue)
+				.where("paymentInitItem.paymentInitId", "=", paymentId),
+		[paymentId],
+	);
+	const paymentReadyQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentReady")
+				.select([
+					"paymentReady.billTip as billTip",
+					"paymentReady.billCurrency as billCurrency",
+				] as const)
+				.where("paymentReady.isDeleted", "is not", sqliteTrue)
+				.where("paymentReady.id", "=", paymentId)
+				.limit(1),
+		[paymentId],
+	);
+	const paymentReadyItemQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentReadyItem")
+				.select([
+					"paymentReadyItem.itemId as itemId",
+					"paymentReadyItem.label as label",
+				] as const)
+				.where("paymentReadyItem.isDeleted", "is not", sqliteTrue)
+				.where("paymentReadyItem.paymentReadyId", "=", paymentId),
+		[paymentId],
+	);
+	const paymentFinishedQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentFinished")
+				.select([
+					"paymentFinished.type as type",
+					"paymentFinished.reason as reason",
+				] as const)
+				.where("paymentFinished.isDeleted", "is not", sqliteTrue)
+				.where("paymentFinished.id", "=", paymentId)
+				.limit(1),
+		[paymentId],
 	);
 
-	const { data: paymentFinishedItems, eose: paymentFinishedEose } =
-		useStorageSubscription(paymentFinishedStorage, {
-			key: id,
-		});
+	const { data: paymentInitRows } = useEvoluQuery(paymentInitQuery);
+	const { data: paymentInitItemRows } = useEvoluQuery(paymentInitItemQuery);
+	const { data: paymentReadyRows } = useEvoluQuery(paymentReadyQuery);
+	const { data: paymentReadyItemRows } = useEvoluQuery(paymentReadyItemQuery);
+	const { data: paymentFinishedRows } = useEvoluQuery(paymentFinishedQuery);
 
-	const paymentInit = items && items[0];
-	const paymentReady = paymentReadyItems && paymentReadyItems[0];
-	const paymentFinished = paymentFinishedItems && paymentFinishedItems[0];
+	const paymentInit = paymentInitRows?.[0];
+	const paymentReady = paymentReadyRows?.[0];
+	const paymentFinished = paymentFinishedRows?.[0];
 
 	const totalAmount =
-		(paymentInit?.value.items.reduce(
-			(acc, value) => acc + value.price * value.quantity,
+		(paymentInitItemRows?.reduce(
+			(acc, value) => acc + (value.price ?? 0) * (value.quantity ?? 0),
 			0,
-		) ?? 0) + (paymentInit?.value.tip ?? 0);
+		) ?? 0) + (paymentInit?.tip ?? 0);
 
-	const itemsById = new Map(
-		paymentReady?.value.bill.items.map((item) => [item.id, item]),
+	const readyItemLabels = new Map(
+		(paymentReadyItemRows ?? []).map((item) => [item.itemId, item.label]),
 	);
 
 	return (
@@ -61,21 +117,23 @@ export default function Page() {
 
 			<LoadingIndicator
 				text={
-					paymentFinishedEose
-						? paymentFinished !== undefined
-							? paymentFinished.value.type === "success"
+					paymentFinishedRows === undefined
+						? "loading"
+						: paymentFinished
+							? paymentFinished.type === "success"
 								? "Paid"
-								: paymentFinished.value.reason
+								: (paymentFinished.reason ?? "Failed")
 							: "Still in progress or expired"
-						: "loading"
 				}
 				open={true}
 				status={
-					paymentFinishedEose
-						? paymentFinished !== undefined
-							? paymentFinished.value.type
+					paymentFinishedRows === undefined
+						? "loading"
+						: paymentFinished
+							? paymentFinished.type === "success"
+								? "success"
+								: "failure"
 							: "failure"
-						: "loading"
 				}
 			/>
 
@@ -86,7 +144,7 @@ export default function Page() {
 							{
 								key: "Name",
 								value: paymentInit ? (
-									paymentInit.value.merchant?.name
+									paymentInit.merchantName
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -94,7 +152,7 @@ export default function Page() {
 							{
 								key: "Phone",
 								value: paymentInit ? (
-									(paymentInit.value.merchant?.phone ?? "-")
+									(paymentInit.merchantPhone ?? "-")
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -111,7 +169,7 @@ export default function Page() {
 							{
 								key: "Spending",
 								value: paymentInit ? (
-									formatAmount(totalAmount, paymentInit.value.currency)
+									formatAmount(totalAmount, paymentInit.currency ?? "CZK")
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -135,15 +193,13 @@ export default function Page() {
 				</CardHeader>
 				<CardContent>
 					<KeyValueList
-						items={
-							paymentInit?.value.items.map((item) => ({
-								key: `${item.quantity}× ${itemsById.get(item.id)?.label ?? item.id}`,
-								value: formatAmount(
-									item.quantity * item.price,
-									paymentInit.value.currency,
-								),
-							})) ?? []
-						}
+						items={(paymentInitItemRows ?? []).map((item) => ({
+							key: `${item.quantity ?? 0}× ${readyItemLabels.get(item.itemId ?? "") ?? item.itemId ?? "-"}`,
+							value: formatAmount(
+								(item.quantity ?? 0) * (item.price ?? 0),
+								paymentReady?.billCurrency ?? paymentInit?.currency ?? "CZK",
+							),
+						}))}
 					/>
 				</CardContent>
 			</ResponsiveCard>

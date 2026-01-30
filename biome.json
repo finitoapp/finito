@@ -38,6 +38,7 @@
 			"recommended": true,
 			"complexity": {
 				"useOptionalChain": "off",
+				"noUselessLoneBlockStatements": "off",
 				"noForEach": "off"
 			},
 			"correctness": {

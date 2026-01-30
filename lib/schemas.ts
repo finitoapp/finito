@@ -3,7 +3,6 @@ import { NonEmptyStringSchema } from "@/lib/types";
 import { PaymentSchema } from "@/storages/payment-storage";
 
 export const StaticOfflinePaymentSchema = PaymentSchema.omit({
-	id: true,
 	webPaymentEventId: true,
 });
 

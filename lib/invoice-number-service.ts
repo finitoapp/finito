@@ -1,58 +1,81 @@
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { format } from "date-fns-tz";
 import { isTheSameDateString } from "@/lib/date-string-utils";
-import type { EnhancedNDK } from "@/lib/nostr-storage";
+import type { Evolu } from "@/lib/evolu";
 import {
 	type DateString,
 	DateToDateString,
 	NonNegativeInteger,
 	Timezone,
 } from "@/lib/types";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
-import { invoiceLastNumberStorage } from "@/storages/invoice-last-number-storage";
-import { invoiceNumberSeriesStorage } from "@/storages/invoice-number-series-storage";
 
 export const resolveSubsequentInvoiceNumber = async (deps: {
-	ndk: EnhancedNDK;
+	evolu: Evolu;
 }) => {
-	const [invoiceLastNumbersData, invoiceNumberSeriesData, billingSettingsData] =
+	const evolu = deps.evolu;
+	const [invoiceLastNumbersRows, invoiceNumberSeriesRows, billingSettingsRows] =
 		await Promise.all([
-			invoiceLastNumberStorage.select(
-				{ ndk: deps.ndk },
-				{ key: null, limit: 1 },
-			),
-			invoiceNumberSeriesStorage.select(
-				{ ndk: deps.ndk },
-				{ key: null, limit: 1 },
-			),
-			billingSettingsStorage.select({ ndk: deps.ndk }, { key: null, limit: 1 }),
+			(async () => {
+				const query = evolu.createQuery((db) =>
+					db
+						.selectFrom("invoiceLastNumber")
+						.selectAll()
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("id", "=", createIdFromString("")),
+				);
+				return await evolu.loadQuery(query);
+			})(),
+			(async () => {
+				const query = evolu.createQuery((db) =>
+					db
+						.selectFrom("invoiceNumberSeries")
+						.selectAll()
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("id", "=", createIdFromString("")),
+				);
+				return await evolu.loadQuery(query);
+			})(),
+			(async () => {
+				const query = evolu.createQuery((db) =>
+					db
+						.selectFrom("billingSettings")
+						.selectAll()
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("id", "=", createIdFromString("")),
+				);
+				return await evolu.loadQuery(query);
+			})(),
 		]);
 
-	const invoiceLastNumbers = invoiceLastNumbersData.data[0]?.value ?? {
+	const invoiceLastNumbers = invoiceLastNumbersRows[0] ?? {
 		serialNumber: 0,
 		date: null,
 	};
-	const invoiceNumberSeries = invoiceNumberSeriesData.data[0]?.value ?? {
+	const invoiceNumberSeries = invoiceNumberSeriesRows[0] ?? {
 		serialNumberDigits: 4,
 		yearFormat: "default",
 		monthFormat: "hidden",
 	};
-	const billingSettings = billingSettingsData.data[0]?.value ?? {
+	const billingSettings = billingSettingsRows[0] ?? {
 		defaultTimezone: Timezone["Europe/Prague"],
 	};
 
 	return computeSubsequentInvoiceNumber({
 		now: new Date(),
-		timezone: billingSettings.defaultTimezone,
-		yearFormat: invoiceNumberSeries.yearFormat,
-		monthFormat: invoiceNumberSeries.monthFormat,
-		dayFormat:
-			"dayFormat" in invoiceNumberSeries
-				? invoiceNumberSeries.dayFormat
-				: "hidden",
-		serialNumberDigits: invoiceNumberSeries.serialNumberDigits,
+		timezone: billingSettings.defaultTimezone as Timezone,
+		yearFormat: (invoiceNumberSeries.yearFormat ?? "default") as
+			| "default"
+			| "short",
+		monthFormat: (invoiceNumberSeries.monthFormat ?? "hidden") as
+			| "default"
+			| "hidden",
+		dayFormat: (invoiceNumberSeries.dayFormat ?? "hidden") as
+			| "default"
+			| "hidden",
+		serialNumberDigits: invoiceNumberSeries.serialNumberDigits ?? 4,
 		prefix: invoiceNumberSeries.prefix ?? "",
-		lastSerialNumber: invoiceLastNumbers.serialNumber,
-		lastDate: invoiceLastNumbers.date,
+		lastSerialNumber: invoiceLastNumbers.serialNumber ?? 0,
+		lastDate: invoiceLastNumbers.date as DateString | null,
 	});
 };
 

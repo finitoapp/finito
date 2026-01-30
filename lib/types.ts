@@ -237,7 +237,7 @@ export const ProductCodeType = {
 export type ProductCodeType = InferEnumType<typeof ProductCodeType>;
 
 export const emptyStringToNullTransformation = (
-	value: string,
+	value: string | null,
 ): string | null => (value !== "" ? value : null);
 
 export const emptyStringToUndefinedTransformation = (
@@ -245,8 +245,7 @@ export const emptyStringToUndefinedTransformation = (
 ): string | undefined => (value !== "" ? value : undefined);
 
 export const StringToNullableStringSchema = z
-	.string()
-	.trim()
+	.union([z.string().trim(), z.null()])
 	.transform(emptyStringToNullTransformation);
 
 export const StringToUndefinedStringSchema = z

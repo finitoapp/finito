@@ -1,15 +1,26 @@
 "use client";
 
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { SmtpForm } from "@/app/admin/(private)/settings/smtp/smtp-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { smtpStorage } from "@/storages/smtp-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
-	const { data } = useStorageSubscription(smtpStorage, {
-		limit: 1,
-	});
+	const itemId = createIdFromString("");
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("smtp")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const { data } = useEvoluQuery(query);
 
 	const item = data && data[0];
 
@@ -20,12 +31,16 @@ export default function Home() {
 			</CardHeader>
 			<CardContent>
 				<SmtpForm
-					key={data ? "yes" : "no"}
+					key={item ? "yes" : "no"}
 					defaultValues={
 						item
 							? {
-									...item.value,
-									port: item.value.port.toString(),
+									...item,
+									port: item.port.toString(),
+									credentials: {
+										username: item.username,
+										password: item.password,
+									},
 								}
 							: undefined
 					}

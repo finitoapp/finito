@@ -1,7 +1,15 @@
 import { useSetAtom } from "jotai";
 import { type Pos, posAtom } from "@/atoms/pos";
 import { type Currency, Uuid7 } from "@/lib/types";
-import type { Item } from "@/storages/item-storage";
+
+type BillInputItem = {
+	id: string;
+	label: string;
+	price: {
+		value: number;
+		currency: Currency;
+	};
+};
 
 export const createEmptyBill = (props: {
 	defaultCurrency: Currency;
@@ -59,7 +67,7 @@ export const useBill = () => {
 		addItem: (props: {
 			billId: Uuid7;
 			defaultCurrency: Currency;
-			item: Item;
+			item: BillInputItem;
 		}) => {
 			setPos((prev) => {
 				const billId = props.billId ?? Uuid7.random();

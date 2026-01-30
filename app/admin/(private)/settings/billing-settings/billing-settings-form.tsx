@@ -1,3 +1,12 @@
+import {
+	createId,
+	createIdFromString,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+	sqliteFalse,
+	sqliteTrue,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -6,19 +15,18 @@ import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import { formatIban } from "@/lib/format-utils";
 import {
 	FiatCurrency,
 	NonEmptyStringSchema,
 	NonNegativeIntegerSchema,
 	PercentSchema,
+	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 	Timezone,
 } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
 import { InvoicePaymentMethod } from "@/storages/invoice-storage";
 import { PaymentMethod } from "@/storages/payment-storage";
 
@@ -30,7 +38,8 @@ export const billingSettingsFormSchema = z.object({
 	defaultTimezone: z.enum(Timezone),
 	taxRates: z
 		.object({
-			name: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+			name: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
 			rate: StringToNumberSchema.pipe(PercentSchema),
 		})
 		.array(),
@@ -71,21 +80,9 @@ export const billingSettingsFormSchema = z.object({
 		}),
 	]),
 	defaultPaymentMethod: z.enum(PaymentMethod),
-	defaultBankTransferCzKey: z
-		.string()
-		.nullable()
-		.transform((value) => value ?? undefined)
-		.pipe(NonEmptyStringSchema.optional()),
-	defaultLnZapKey: z
-		.string()
-		.nullable()
-		.transform((value) => value ?? undefined)
-		.pipe(NonEmptyStringSchema.optional()),
-	defaultLnSparkKey: z
-		.string()
-		.nullable()
-		.transform((value) => value ?? undefined)
-		.pipe(NonEmptyStringSchema.optional()),
+	defaultBankTransferCzKey: NonEmptyStringSchema.nullable(),
+	defaultLnZapKey: NonEmptyStringSchema.nullable(),
+	defaultLnSparkKey: NonEmptyStringSchema.nullable(),
 });
 
 export const createBillingSettingsDefaultValues = () =>
@@ -95,6 +92,7 @@ export const createBillingSettingsDefaultValues = () =>
 		defaultTimezone: Timezone["Europe/Prague"],
 		taxRates: [
 			{
+				id: "",
 				name: "",
 				rate: "21",
 			},
@@ -162,26 +160,39 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 							).includes(value),
 						{
 							...builder.createComponent("bankAccountKey", (props) => {
-								const storageDeps = useStorageDeps();
+								const evolu = useEvolu();
 								const ComboboxInput = useMemo(
 									() =>
 										createComboboxInput({
 											label: "Default bank account",
 											fetchItems: async () => {
-												const items = await accountStorage.select(storageDeps);
+												const query = evolu.createQuery((db) =>
+													db
+														.selectFrom("account")
+														.leftJoin(
+															"accountIban",
+															"accountIban.id",
+															"account.id",
+														)
+														.select([
+															"account.id",
+															"account.name",
+															"accountIban.iban",
+														])
+														.where("_tag", "=", "accountIban")
+														.where("account.isDeleted", "is not", sqliteTrue),
+												);
+												const items = await evolu.loadQuery(query);
 
-												return items.data
-													.filter((item) => item.value._tag === "iban")
-													.map((item) => ({
-														label:
-															item.value._tag === "iban"
-																? `${formatIban(item.value.iban)} (${item.value.name})`
-																: "-",
-														value: item.key ?? "-",
-													}));
+												return items.map((item) => {
+													return {
+														label: `${formatIban(item.iban)} (${item.name})`,
+														value: item.id ?? "-",
+													};
+												});
 											},
 										}),
-									[storageDeps],
+									[evolu],
 								);
 
 								return <ComboboxInput {...props} />;
@@ -209,74 +220,91 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 				}),
 
 				...builder.createComponent("defaultBankTransferCzKey", (props) => {
-					const storageDeps = useStorageDeps();
+					const evolu = useEvolu();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default bank account",
 								fetchItems: async () => {
-									const items = await accountStorage.select(storageDeps);
+									const query = evolu.createQuery((db) =>
+										db
+											.selectFrom("account")
+											.leftJoin("accountIban", "accountIban.id", "account.id")
+											.select([
+												"account.id",
+												"account.name",
+												"accountIban.iban",
+											])
+											.where("_tag", "=", "accountIban")
+											.where("account.isDeleted", "is not", sqliteTrue),
+									);
+									const items = await evolu.loadQuery(query);
 
-									return items.data
-										.filter((item) => item.value._tag === "iban")
-										.map((item) => ({
-											label:
-												item.value._tag === "iban"
-													? `${formatIban(item.value.iban)} (${item.value.name})`
-													: "-",
-											value: item.key ?? "-",
-										}));
+									return items.map((item) => {
+										return {
+											label: `${formatIban(item.iban)} (${item.name})`,
+											value: item.id ?? "-",
+										};
+									});
 								},
 							}),
-						[storageDeps],
+						[evolu],
 					);
 
 					return <ComboboxInput {...props} />;
 				}),
 
 				...builder.createComponent("defaultLnZapKey", (props) => {
-					const storageDeps = useStorageDeps();
+					const evolu = useEvolu();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default LN Zap wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select(storageDeps);
+									const query = evolu.createQuery((db) =>
+										db
+											.selectFrom("account")
+											.selectAll()
+											.where("_tag", "=", "lud16")
+											.where("isDeleted", "is not", sqliteTrue),
+									);
+									const items = await evolu.loadQuery(query);
 
-									return items.data
-										.filter((item) => item.value._tag === "lud16")
-										.map((item) => ({
-											label:
-												item.value._tag === "lud16" ? item.value.name : "-",
-											value: item.key ?? "-",
-										}));
+									return items.map((item) => ({
+										label: item.name,
+										value: item.id ?? "-",
+									}));
 								},
 							}),
-						[storageDeps],
+						[evolu],
 					);
 
 					return <ComboboxInput {...props} />;
 				}),
 
 				...builder.createComponent("defaultLnSparkKey", (props) => {
-					const storageDeps = useStorageDeps();
+					const evolu = useEvolu();
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
 								label: "Default LN Spark wallet",
 								fetchItems: async () => {
-									const items = await accountStorage.select(storageDeps);
+									const query = evolu.createQuery((db) =>
+										db
+											.selectFrom("account")
+											.selectAll()
+											.where("_tag", "=", "accountSpark")
+											.where("isDeleted", "is not", sqliteTrue),
+									);
+									const items = await evolu.loadQuery(query);
 
-									return items.data
-										.filter((item) => item.value._tag === "spark")
-										.map((item) => ({
-											label:
-												item.value._tag === "spark" ? item.value.name : "-",
-											value: item.key ?? "-",
-										}));
+									return items.map((item) => ({
+										label: item.name,
+										value: item.id ?? "-",
+									}));
 								},
 							}),
-						[storageDeps],
+						[evolu],
 					);
 
 					return <ComboboxInput {...props} />;
@@ -316,10 +344,15 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 						name: "taxRates",
 						addRowLabel: "Add rate",
 						defaultValue: {
+							id: "",
 							name: "",
 							rate: "",
 						},
 						columns: [
+							{
+								title: "ID",
+								hidden: true,
+							},
 							{
 								title: "Name",
 							},
@@ -330,6 +363,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 						],
 					},
 					({ builder }) => ({
+						...builder.magicInput("id").text({ type: "hidden" }),
 						...builder.magicInput("name").text({}),
 						...builder.magicInput("rate").text({
 							placeholder: "0",
@@ -345,36 +379,92 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 
 export const BillingSettingsForm: React.FC<{
 	defaultValues?: PartialDeep<
-		z.input<typeof billingSettingsFormSchema> & { id: string }
+		z.input<typeof billingSettingsFormSchema> & {
+			id: Id;
+			taxRates?: Array<{ id: Id; name: string; rate: string }>;
+		}
 	>;
-	onSuccess?: (newEventId: string) => unknown;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createBillingSettingsDefaultValues(),
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
 	const form = useActionForm(billingSettingsFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const { eventId } = await billingSettingsStorage.insertOrUpdate(
-				storageDeps,
-				null,
-				{
-					...values,
-					invoiceEmailSettings: values.invoiceEmailSettings.enable
-						? {
-								subject: values.invoiceEmailSettings.subject,
-								body: values.invoiceEmailSettings.body,
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = params.defaultValues?.id ?? createIdFromString("");
+
+			getOrThrow(
+				evolu.upsert(
+					"billingSettings",
+					{
+						id,
+						defaultInvoiceDueDateDays: values.defaultInvoiceDueDateDays,
+						defaultCurrency: values.defaultCurrency,
+						defaultTimezone: values.defaultTimezone,
+						defaultPaymentMethodMethod: values.defaultPayment.method,
+						defaultPaymentMethodBankAccountKey: values.defaultPayment
+							.bankAccountKey as Id,
+						defaultPaymentMethod: values.defaultPaymentMethod,
+						defaultBankTransferCzKey: values.defaultBankTransferCzKey as Id,
+						defaultLnZapKey: values.defaultLnZapKey as Id,
+						defaultLnSparkKey: values.defaultLnSparkKey as Id,
+						invoiceEmailSettingsEnable: values.invoiceEmailSettings.enable
+							? sqliteTrue
+							: sqliteFalse,
+						invoiceEmailSettingsSubject: values.invoiceEmailSettings.enable
+							? values.invoiceEmailSettings.subject
+							: null,
+						invoiceEmailSettingsBody: values.invoiceEmailSettings.enable
+							? values.invoiceEmailSettings.body
+							: null,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id as Id);
 							}
-						: undefined,
-				},
+						},
+					},
+				),
 			);
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
+			const originalTaxRates = new Set(
+				(params.defaultValues?.taxRates ?? []).map((taxRate) => taxRate?.id),
+			);
+
+			for (const taxRate of values.taxRates) {
+				const taxRateId = (taxRate as any).id as Id | undefined;
+				if (taxRateId) {
+					originalTaxRates.delete(taxRateId);
+				}
+
+				getOrThrow(
+					evolu.upsert("billingSettingsTaxRate", {
+						id: taxRateId ?? createId(createIdDeps),
+						billingSettingsId: id,
+						name: taxRate.name,
+						rate: taxRate.rate,
+					}),
+				);
+			}
+
+			for (const taxRateId of originalTaxRates) {
+				if (taxRateId) {
+					getOrThrow(
+						evolu.update("billingSettingsTaxRate", {
+							id: taxRateId,
+							isDeleted: sqliteTrue,
+						}),
+					);
+				}
 			}
 		},
 	});

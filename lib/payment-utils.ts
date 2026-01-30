@@ -1,22 +1,24 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
+import {
+	createIdFromString,
+	getOrThrow,
+	type Id,
+	sqliteFalse,
+	sqliteTrue,
+} from "@evolu/common";
 import NDK, {
 	NDKEvent,
 	type NDKSigner,
 	type NDKUser,
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
+import type { Evolu } from "@/lib/evolu";
 import { extractExpirationFromLightningInvoice } from "@/lib/ln-utils";
 import { shiftNumericString } from "@/lib/number-utils";
 import type { StaticOfflinePayment } from "@/lib/schemas";
 import { assertNotNull } from "@/lib/type-utils";
-import { type Email, NumberString, Uuid7 } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
-import { notificationStorage } from "@/storages/notification-storage";
-import {
-	PaymentStatus,
-	paymentStatusStorage,
-} from "@/storages/payment-status-storage";
-import { paymentStorage } from "@/storages/payment-storage";
+import { type Email, NumberString } from "@/lib/types";
+import { PaymentStatus } from "@/storages/payment-status-storage";
 
 export async function createZapPayment(params: {
 	lud16: Email;
@@ -82,11 +84,11 @@ export async function createPayment(params: {
 		signer: NDKSigner;
 		activeUser: NDKUser;
 	};
+	evolu: Evolu;
 	paymentNdk: NDK & {
 		signer: NDKSigner;
 		activeUser: NDKUser;
 	};
-	paymentId: Uuid7;
 	paymentData: StaticOfflinePayment;
 }) {
 	const event = new NDKEvent(params.ndk, {
@@ -107,50 +109,133 @@ export async function createPayment(params: {
 	const result = await event.publish();
 	console.log("result", result, await event.toNostrEvent());
 
+	const id = createIdFromString(event.id);
+
+	getOrThrow(
+		params.evolu.upsert("payment", {
+			id,
+			type: params.paymentData.paymentOptions?.[0]?.type ?? "cash",
+			billCurrency: params.paymentData.bill.currency,
+			billAllowTip: params.paymentData.bill.allowTip ? sqliteTrue : sqliteFalse,
+			merchantName: params.paymentData.merchant?.name ?? null,
+			onSuccessfulPaymentTag:
+				params.paymentData.onSuccessfulPayment?._tag ?? null,
+			onSuccessfulPaymentRedirectUrl:
+				params.paymentData.onSuccessfulPayment?.redirectUrl ?? null,
+			privateKey: params.paymentData.privateKey,
+			webPaymentEventId: event.id,
+		}),
+	);
+
+	for (const [index, billItem] of params.paymentData.bill.items.entries()) {
+		getOrThrow(
+			params.evolu.upsert("paymentBillItem", {
+				id: createIdFromString(`${id}:billItem:${index}`),
+				paymentId: id,
+				price: billItem.price,
+				quantity: billItem.quantity,
+				label: billItem.label,
+				optionalityChecked: billItem.optionality?.checked ?? null,
+			}),
+		);
+	}
+
+	const paymentOption = params.paymentData.paymentOptions?.[0];
+	if (paymentOption?.type === "lnZap") {
+		getOrThrow(
+			params.evolu.upsert("paymentLnZap", {
+				id,
+				lnInvoice: paymentOption.lnInvoice,
+				walletPubkey: paymentOption.walletPubkey,
+				amount: paymentOption.amount,
+				expirationIn: paymentOption.expirationIn,
+			}),
+		);
+	} else if (paymentOption?.type === "lnSpark") {
+		getOrThrow(
+			params.evolu.upsert("paymentLnSpark", {
+				id,
+				accountId: paymentOption.accountId as Id,
+				lnInvoice: paymentOption.lnInvoice,
+				sparkInvoiceId: paymentOption.sparkInvoiceId,
+				amount: paymentOption.amount,
+				expirationIn: paymentOption.expirationIn,
+			}),
+		);
+	} else if (paymentOption?.type === "bankTransferCZ") {
+		getOrThrow(
+			params.evolu.upsert("paymentBankTransferCZ", {
+				id,
+				iban: paymentOption.iban,
+				variableSymbol: paymentOption.variableSymbol,
+			}),
+		);
+	} else if (paymentOption?.type === "cash" || paymentOption === undefined) {
+		getOrThrow(
+			params.evolu.upsert("paymentCash", {
+				id,
+			}),
+		);
+	}
+
 	const promises: Promise<unknown>[] = [];
 
 	promises.push(
-		notificationStorage.insertOrUpdate(
-			{ ndk: params.ndk },
-			`verifyPayment_${params.paymentId}`,
-			{
-				type: "verifyPayment",
-				id: Uuid7.random(),
-				paymentId: params.paymentId,
-			},
-		),
+		(async () => {
+			const notificationId = createIdFromString(`verifyPayment_${id}`);
+			getOrThrow(
+				params.evolu.upsert("notification", {
+					id: notificationId,
+					type: "verifyPayment",
+				}),
+			);
+			getOrThrow(
+				params.evolu.upsert("notificationVerifyPayment", {
+					id: notificationId,
+					paymentId: id,
+				}),
+			);
+		})(),
 	);
 
 	promises.push(
-		paymentStatusStorage.insertOrUpdate({ ndk: params.ndk }, params.paymentId, {
-			paymentId: params.paymentId,
-			status: PaymentStatus.Unpaid,
-		}),
+		(async () => {
+			getOrThrow(
+				params.evolu.upsert("paymentStatus", {
+					id,
+					status: PaymentStatus.Unpaid,
+					proveType: null,
+				}),
+			);
+		})(),
 	);
 
 	await Promise.all(promises);
 
-	await paymentStorage.insertOrUpdate({ ndk: params.ndk }, params.paymentId, {
-		id: params.paymentId,
-		webPaymentEventId: event.id,
-		...params.paymentData,
-	});
+	return id;
 }
 
 export async function createSparkPayment(params: {
-	accountId: string;
+	accountId: Id;
 	amountInBtc: number;
 	ndk: NDK & {
 		signer: NDKSigner;
 		activeUser: NDKUser;
 	};
+	evolu: Evolu;
 }) {
-	const { data: accounts } = await accountStorage.select(
-		{ ndk: params.ndk },
-		{
-			key: params.accountId,
-			limit: 1,
-		},
+	const accounts = await params.evolu.loadQuery(
+		params.evolu.createQuery((db) =>
+			db
+				.selectFrom("account")
+				.leftJoin("accountSpark", "accountSpark.id", "account.id")
+				.select([
+					"account._tag as _tag",
+					"accountSpark.mnemonic as mnemonic",
+				] as const)
+				.where("account.isDeleted", "is not", sqliteTrue)
+				.where("account.id", "=", params.accountId),
+		),
 	);
 
 	const account = accounts[0];
@@ -158,12 +243,12 @@ export async function createSparkPayment(params: {
 		return;
 	}
 
-	if (account.value._tag !== "spark") {
+	if (account._tag !== "accountSpark" || !account.mnemonic) {
 		return;
 	}
 
 	const { wallet } = await SparkWallet.initialize({
-		mnemonicOrSeed: account.value.mnemonic,
+		mnemonicOrSeed: account.mnemonic,
 		options: {
 			network: "MAINNET",
 		},

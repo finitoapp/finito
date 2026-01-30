@@ -1,3 +1,4 @@
+import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSigner,
@@ -48,18 +49,17 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
 import { createEmptyBill, useBill } from "@/hooks/use-bill";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { currencyConverter } from "@/lib/currency-converter/currency-converter";
 import { formatAmount } from "@/lib/format-utils";
 import { createPayment, createZapPayment } from "@/lib/payment-utils";
 import type { StaticOfflinePayment } from "@/lib/schemas";
-import { Currency, type NonEmptyString, Uuid7 } from "@/lib/types";
+import { Currency, type NonEmptyString } from "@/lib/types";
 import { clientBaseUrl } from "@/lib/window-utils";
-import { accountStorage } from "@/storages/account-storage";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
-import { tableStorage } from "@/storages/table-storage";
 
 const Item: React.FC<{
 	item: Pos["bills"][string]["items"][number];
@@ -214,7 +214,7 @@ const PosBillName: React.FC<{
 
 		firstRender.current = debouncedValue;
 
-		console.log("save");
+		console.log("save---------------------");
 		setPos((prev) => {
 			if (props.billId === undefined) {
 				return prev;
@@ -302,37 +302,49 @@ const PosBillTable: React.FC<{
 	placeholder: string;
 	defaultCurrency: Currency;
 	table?: {
-		id: string;
+		id: Id;
 		name: NonEmptyString;
 		qrCode?: NonEmptyString;
 	};
 }> = (props) => {
 	const setPos = useSetAtom(posAtom);
-
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(tableStorage, {
-		limit: 5,
-	});
+	const tableQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("table")
+				.select(["table.id as id", "table.label as label"] as const)
+				.where("table.isDeleted", "is not", sqliteTrue),
+		[],
+	);
+	const { data: items } = useEvoluQuery(tableQuery);
+	const tableCodesQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("tableCode")
+				.select(["tableCode.id as id", "tableCode.tableId as tableId"] as const)
+				.where("tableCode.isDeleted", "is not", sqliteTrue),
+		[],
+	);
+	const { data: tableCodes } = useEvoluQuery(tableCodesQuery);
 
 	const table =
 		items && props.table
-			? items.find((item) => item.value.id === props.table?.id)
+			? items.find((item) => item.id === props.table?.id)
 			: undefined;
-	const tableQrCode = table && table.value.qrCodes && table.value.qrCodes[0];
+	const tableQrCode =
+		table && tableCodes
+			? tableCodes.find((tableCode) => tableCode.tableId === table.id)
+			: undefined;
 
 	return (
 		<div className={"flex gap-2"}>
 			<ComboboxDefault
 				items={(items ?? []).map((item) => ({
 					value: {
-						id: item.value.id,
-						name: item.value.label,
+						id: item.id,
+						name: item.label,
 					},
-					label: item.value.label,
+					label: item.label,
 				}))}
 				placeholder={"Select a table"}
 				value={props.table ?? null}
@@ -360,7 +372,7 @@ const PosBillTable: React.FC<{
 					});
 				}}
 			/>
-			<TableQrCode tableQrCode={tableQrCode ? tableQrCode.id : undefined} />
+			<TableQrCode tableQrCode={tableQrCode?.id} />
 		</div>
 	);
 };
@@ -371,6 +383,7 @@ const PayButton: FC<{
 	total: number;
 }> = (props) => {
 	const { ndk } = useNostr();
+	const evolu = useEvolu();
 	const storageDeps = useStorageDeps();
 	const [isSaving, startTransition] = useTransition();
 	const { deleteBill } = useBill();
@@ -382,29 +395,69 @@ const PayButton: FC<{
 			disabled={props.bill.items.length === 0 || isSaving}
 			onClick={() => {
 				startTransition(async () => {
-					const { data: billingSettingsRows } =
-						await billingSettingsStorage.select(storageDeps, {
-							key: null,
-							limit: 1,
-						});
+					const billingSettingsRows = await evolu.loadQuery(
+						evolu.createQuery((db) =>
+							db
+								.selectFrom("billingSettings")
+								.selectAll()
+								.where("isDeleted", "is not", sqliteTrue)
+								.where("id", "=", createIdFromString("")),
+						),
+					);
 
 					const billingSettings = billingSettingsRows[0];
 
-					const [{ data: bankTransferCzRows }, { data: lnZapRows }] =
-						await Promise.all([
-							billingSettings && billingSettings.value.defaultBankTransferCzKey
-								? accountStorage.select(storageDeps, {
-										key: billingSettings.value.defaultBankTransferCzKey,
-										limit: 1,
-									})
-								: { data: [] },
-							billingSettings && billingSettings.value.defaultLnZapKey
-								? accountStorage.select(storageDeps, {
-										key: billingSettings.value.defaultLnZapKey,
-										limit: 1,
-									})
-								: { data: [] },
-						]);
+					const [bankTransferCzRows, lnZapRows] = await Promise.all([
+						(async () => {
+							if (
+								!billingSettings ||
+								!billingSettings.defaultBankTransferCzKey
+							) {
+								return [];
+							}
+
+							return await evolu.loadQuery(
+								evolu.createQuery((db) =>
+									db
+										.selectFrom("account")
+										.leftJoin("accountIban", "accountIban.id", "account.id")
+										.select([
+											"account._tag as _tag",
+											"accountIban.iban as iban",
+										] as const)
+										.where("account.isDeleted", "is not", sqliteTrue)
+										.where(
+											"account.id",
+											"=",
+											billingSettings.defaultBankTransferCzKey as Id,
+										),
+								),
+							);
+						})(),
+						(async () => {
+							if (!billingSettings || !billingSettings.defaultLnZapKey) {
+								return [];
+							}
+
+							return await evolu.loadQuery(
+								evolu.createQuery((db) =>
+									db
+										.selectFrom("account")
+										.leftJoin("accountLud16", "accountLud16.id", "account.id")
+										.select([
+											"account._tag as _tag",
+											"accountLud16.lud16 as lud16",
+										] as const)
+										.where("account.isDeleted", "is not", sqliteTrue)
+										.where(
+											"account.id",
+											"=",
+											billingSettings.defaultLnZapKey as Id,
+										),
+								),
+							);
+						})(),
+					]);
 
 					const paymentOptions: StaticOfflinePayment["paymentOptions"] = [
 						{
@@ -418,14 +471,13 @@ const PayButton: FC<{
 							return;
 						}
 
-						const result = value.value;
-						if (result._tag !== "iban") {
+						if (value._tag !== "accountIban" || !value.iban) {
 							return;
 						}
 
 						paymentOptions.push({
 							type: "bankTransferCZ",
-							iban: result.iban,
+							iban: value.iban,
 							variableSymbol: "1",
 						});
 					})();
@@ -451,8 +503,7 @@ const PayButton: FC<{
 							return undefined;
 						}
 
-						const result = value.value;
-						if (result._tag !== "lud16") {
+						if (value._tag !== "accountLud16" || !value.lud16) {
 							return;
 						}
 
@@ -468,7 +519,7 @@ const PayButton: FC<{
 
 						const zapPaymentResult = await createZapPayment({
 							amountInBtc: btcAmount,
-							lud16: result.lud16,
+							lud16: value.lud16,
 							ndk,
 							paymentNdk,
 						});
@@ -482,7 +533,6 @@ const PayButton: FC<{
 						});
 					})();
 
-					const id = Uuid7.random();
 					const paymentData: StaticOfflinePayment = {
 						bill: {
 							currency: props.bill.currency,
@@ -498,11 +548,10 @@ const PayButton: FC<{
 						privateKey: paymentSigner.privateKey,
 					};
 
-					await createPayment({
+					const id = await createPayment({
 						paymentNdk,
-						ndk,
+						...storageDeps,
 						paymentData,
-						paymentId: id,
 					});
 
 					asyncRoutePush(
@@ -566,7 +615,7 @@ export const PosBill: React.FC<{
 		<>
 			{/* Right Panel - Bill */}
 			<div className="space-y-4" ref={props.ref}>
-				<ResponsiveCard className="h-full flex flex-col w-full md:w-sm lg:w-md">
+				<ResponsiveCard className="flex flex-col w-full md:w-sm lg:w-md">
 					<CardContent className="flex-1 flex flex-col">
 						{/* Cart Items */}
 						<div className="flex-1 overflow-hidden space-y-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -11,23 +12,36 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { formatIban } from "@/lib/format-utils";
-import { accountStorage } from "@/storages/account-storage";
 
 export default function Home() {
 	const searchParams = useSearchParams();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(accountStorage, {
-		key: id,
-	});
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("account")
+				.leftJoin("accountIban", "accountIban.id", "account.id")
+				.leftJoin("accountLud16", "accountLud16.id", "account.id")
+				.selectAll()
+				.where("account.isDeleted", "is not", sqliteTrue)
+				.where("account.id", "=", id as Id);
+		},
+		[id],
+	);
+
+	const { data: items } = useEvoluQuery(query);
 
 	const item = items && items[0];
 
@@ -37,10 +51,23 @@ export default function Home() {
 				return;
 			}
 
-			await accountStorage.delete(storageDeps, item.eventId);
+			evolu.update("account", { id: item.id, isDeleted: sqliteTrue });
 			router.push("/admin/accounts");
 		},
 	});
+
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete account?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -53,7 +80,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.name}
+							{item?.name}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -64,7 +91,7 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item && item.value._tag}
+											{item?._tag}
 										</>
 									}
 									className={"flex-1"}
@@ -78,15 +105,15 @@ export default function Home() {
 											{
 												key: "Address",
 												value: item
-													? item.value._tag === "lud16"
-														? item.value.lud16
-														: item.value._tag === "cash_register"
+													? item._tag === "accountLud16"
+														? item.lud16
+														: item._tag === "accountCashRegister"
 															? "-"
-															: item.value._tag === "spark"
+															: item._tag === "accountSpark"
 																? "-"
-																: item.value._tag === "nwc"
+																: item._tag === "accountNwc"
 																	? "-"
-																	: formatIban(item.value.iban)
+																	: formatIban(item.iban)
 													: "-",
 											},
 										]}
@@ -112,7 +139,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>

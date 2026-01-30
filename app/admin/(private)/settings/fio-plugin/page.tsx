@@ -1,17 +1,44 @@
 "use client";
 
+import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { fioPluginStorage } from "@/storages/fio-plugin-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
-	const { data } = useStorageSubscription(fioPluginStorage, {
-		limit: 1,
-	});
+	const itemId = createIdFromString("");
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("fioPlugin")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const { data } = useEvoluQuery(query);
 
 	const item = data && data[0];
+
+	const tokensQuery = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("fioPluginToken")
+				.select([
+					"fioPluginToken.id as id",
+					"fioPluginToken.token as token",
+				] as const)
+				.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
+				.where("fioPluginToken.fioPluginId", "=", itemId);
+		},
+		[itemId],
+	);
+
+	const { data: tokens } = useEvoluQuery(tokensQuery);
 
 	return (
 		<div className={"w-full lg:max-w-4xl"}>
@@ -21,13 +48,14 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<FioPluginForm
-						key={data ? "yes" : "no"}
+						key={item && tokens !== undefined ? "yes" : "no"}
 						defaultValues={
-							item
+							item && tokens
 								? {
-										...item.value,
+										...item,
 										numberOfSecondsBetweenChecks:
-											item.value.numberOfSecondsBetweenChecks.toString(),
+											item.numberOfSecondsBetweenChecks.toString(),
+										tokens,
 									}
 								: undefined
 						}

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { createNostrStorage } from "@/lib/nostr-storage";
 import { AddressSchema } from "@/lib/schemas";
 import {
 	CountryCode,
@@ -16,20 +15,12 @@ export const ClientCountrySpecificCZSchema = z.object({
 });
 
 export const ClientSchema = z.object({
-	id: z.string(),
 	name: NonEmptyStringSchema, // Company name
-	label: NonEmptyStringSchema.optional(), // Custom name for private purposes
-	email: EmailSchema.optional(),
-	address: AddressSchema.optional(),
+	label: NonEmptyStringSchema.nullable(), // Custom name for private purposes
+	email: EmailSchema.nullable(),
+	address: AddressSchema.nullable(),
+	countryCode: z.literal(CountryCode.CZ),
 	countrySpecific: z.discriminatedUnion("countryCode", [
 		ClientCountrySpecificCZSchema,
 	]),
-});
-
-export type Client = z.output<typeof ClientSchema>;
-
-export const clientStorage = createNostrStorage({
-	namespace: "client",
-	schema: ClientSchema,
-	useEncryption: true,
 });

@@ -1,17 +1,23 @@
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import type { Uuid7 } from "@/lib/types";
-import { paymentStatusStorage } from "@/storages/payment-status-storage";
+import { type Id, sqliteTrue } from "@evolu/common";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
-export const usePaymentStatus = (props: { paymentId: Uuid7 }) => {
-	const { data: paymentStates } = useStorageSubscription(paymentStatusStorage, {
-		limit: 1,
-		key: props.paymentId,
-	});
+export const usePaymentStatus = (props: { paymentId: Id }) => {
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("paymentStatus")
+				.select(["paymentStatus.status as status"] as const)
+				.where("paymentStatus.isDeleted", "is not", sqliteTrue)
+				.where("paymentStatus.id", "=", props.paymentId),
+		[props.paymentId],
+	);
+	const { data: paymentStates } = useEvoluQuery(query);
 
-	const paymentStatus = paymentStates ? paymentStates[0] : undefined;
+	const paymentStatus = paymentStates?.[0];
 	if (paymentStatus === undefined) {
 		return null;
 	}
 
-	return paymentStatus.value.status;
+	return paymentStatus.status;
 };

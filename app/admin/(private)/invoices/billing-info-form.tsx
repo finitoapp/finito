@@ -1,8 +1,13 @@
+import {
+	createId,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { v7 } from "uuid";
 import { z } from "zod";
 import {
 	AutoForm,
@@ -15,7 +20,7 @@ import {
 } from "@/components/autocomplete-identification-number-input";
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import { type Address, AddressSchema } from "@/lib/schemas";
 import {
 	CountryCode,
@@ -25,7 +30,6 @@ import {
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
-import { clientStorage } from "@/storages/client-storage";
 
 export const createClientAddressFormSchema = <
 	TOptional extends boolean,
@@ -37,6 +41,7 @@ export const createClientAddressFormSchema = <
 		street: string;
 		city: string;
 		postalCode: string;
+		descriptiveNumber: string;
 	}
 > =>
 	z
@@ -44,9 +49,15 @@ export const createClientAddressFormSchema = <
 			street: StringToUndefinedStringSchema,
 			city: StringToUndefinedStringSchema,
 			postalCode: StringToUndefinedStringSchema,
+			descriptiveNumber: StringToUndefinedStringSchema,
 		})
 		.transform((values) =>
-			values.city || values.street || values.postalCode ? values : undefined,
+			values.city ||
+			values.street ||
+			values.postalCode ||
+			values.descriptiveNumber
+				? values
+				: undefined,
 		)
 		.pipe(
 			props.optional ? AddressSchema.optional() : AddressSchema,
@@ -56,6 +67,7 @@ export const createClientAddressFormSchema = <
 			street: string;
 			city: string;
 			postalCode: string;
+			descriptiveNumber: string;
 		}
 	>;
 
@@ -89,6 +101,7 @@ export const createBillingInfoFormDefaultValues = () =>
 			street: "",
 			city: "",
 			postalCode: "",
+			descriptiveNumber: "",
 		},
 		countrySpecific: {
 			countryCode: null,
@@ -153,6 +166,9 @@ const components = createAutoFormLayout(
 				...builder.magicInput("postalCode").text({
 					label: "Postal Code",
 				}),
+				...builder.magicInput("descriptiveNumber").text({
+					label: "Descriptive Number",
+				}),
 			};
 		}),
 		...builder.nestedField("countrySpecific", ({ builder }) => ({
@@ -174,14 +190,9 @@ const components = createAutoFormLayout(
 );
 
 export const BillingInfoForm: React.FC<{
-	defaultValues?: Partial<
-		z.input<typeof billingInfoFormSchema> & { id: string }
-	>;
-	onBeforeSave?: (
-		values: z.output<typeof billingInfoFormSchema> & { id: string },
-	) => boolean;
+	defaultValues?: Partial<z.input<typeof billingInfoFormSchema> & { id: Id }>;
+	onBeforeSave?: (values: z.output<typeof billingInfoFormSchema>) => boolean;
 	onSuccess?: (newEventId: string) => unknown;
-	customStorage?: typeof clientStorage;
 }> = (params) => {
 	const [defaultValues] = useState(() => {
 		return merge(
@@ -189,32 +200,55 @@ export const BillingInfoForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const form = useActionForm(billingInfoFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const finalValues = {
-				id,
-				...values,
-			};
-
 			if (params.onBeforeSave) {
-				if (!params.onBeforeSave(finalValues)) {
+				if (!params.onBeforeSave(values)) {
 					return;
 				}
 			}
 
-			const { eventId } = await (
-				params.customStorage ?? clientStorage
-			).insertOrUpdate(storageDeps, id, finalValues);
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = params.defaultValues?.id ?? createId(createIdDeps);
+
+			getOrThrow(
+				evolu.upsert("client", {
+					id,
+					name: values.name,
+					label: values.label ?? null,
+					email: values.email ?? null,
+					countryCode: values.countrySpecific.countryCode,
+				}),
+			);
+
+			if (values.address) {
+				getOrThrow(
+					evolu.upsert("clientAddress", {
+						id,
+						street: values.address.street,
+						descriptiveNumber: values.address.descriptiveNumber,
+						city: values.address.city,
+						postalCode: values.address.postalCode,
+					}),
+				);
+			}
+
+			getOrThrow(
+				evolu.upsert("clientCz", {
+					id,
+					identificationNumber:
+						values.countrySpecific.identificationNumber ?? null,
+					vatNumber: values.countrySpecific.vatNumber ?? null,
+					caseNumber: null,
+				}),
+			);
 
 			if (params.onSuccess) {
-				params.onSuccess(eventId);
+				params.onSuccess(id);
 			}
 		},
 	});

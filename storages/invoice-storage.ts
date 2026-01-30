@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { createNostrStorage } from "@/lib/nostr-storage";
 import { AddressSchema } from "@/lib/schemas";
 import {
 	Currency,
@@ -21,7 +20,7 @@ export const InvoicePaymentMethod = {
 export type InvoicePaymentMethod = InferEnumType<typeof InvoicePaymentMethod>;
 
 export const InvoiceSchema = z.object({
-	id: Uuid7Schema, // Uuid is required by isdoc spec. (http://www.isdoc.cz/)
+	invoiceId: Uuid7Schema, // Uuid is required by isdoc spec. (http://www.isdoc.cz/)
 	invoiceNumber: NonEmptyStringSchema,
 	payment: z.discriminatedUnion("method", [
 		z.object({
@@ -37,12 +36,12 @@ export const InvoiceSchema = z.object({
 		}),
 	]),
 	supplier: z.object({
-		billingInfo: BillingInfoSchema.omit({ id: true, address: true }).extend({
+		billingInfo: BillingInfoSchema.omit({ address: true }).extend({
 			address: AddressSchema,
 		}),
 	}),
 	customer: z.object({
-		billingInfo: ClientSchema.omit({ id: true, address: true }).extend({
+		billingInfo: ClientSchema.omit({ address: true }).extend({
 			address: AddressSchema,
 		}),
 	}),
@@ -61,9 +60,3 @@ export const InvoiceSchema = z.object({
 });
 
 export type Invoice = z.output<typeof InvoiceSchema>;
-
-export const invoiceStorage = createNostrStorage({
-	namespace: "invoice",
-	schema: InvoiceSchema,
-	useEncryption: true,
-});

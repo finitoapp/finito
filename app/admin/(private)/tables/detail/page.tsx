@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, ExternalLink, Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -13,27 +14,49 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
 import { formatAmount } from "@/lib/format-utils";
 import { clientBaseUrl } from "@/lib/window-utils";
-import { tableStorage } from "@/storages/table-storage";
 
 export default function Home() {
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(tableStorage, {
-		key: id,
-	});
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("table")
+				.selectAll()
+				.where("table.isDeleted", "is not", sqliteTrue)
+				.where("table.id", "=", id as Id);
+		},
+		[id],
+	);
 
+	const codesQuery = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("tableCode")
+				.select(["tableCode.id as id", "tableCode.code as code"] as const)
+				.where("tableCode.isDeleted", "is not", sqliteTrue)
+				.where("tableCode.tableId", "=", id as Id);
+		},
+		[id],
+	);
+
+	const { data: items } = useEvoluQuery(query);
+	const { data: tableCodes } = useEvoluQuery(codesQuery);
 	const item = items && items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
@@ -42,14 +65,27 @@ export default function Home() {
 				return;
 			}
 
-			await tableStorage.delete(storageDeps, item.eventId);
+			evolu.update("table", { id: item.id, isDeleted: sqliteTrue });
 			router.push("/admin/tables");
 		},
 	});
 
-	const qrCode = item && item.value.qrCodes && item.value.qrCodes[0];
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete table?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
+
+	const qrCode = tableCodes && tableCodes[0];
 	const frontendUrl =
-		qrCode && `${clientBaseUrl}#t-${ndk.signer.pubkey}-${qrCode.id}`;
+		qrCode && `${clientBaseUrl}#t-${ndk.signer.pubkey}-${qrCode.code}`;
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -62,7 +98,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.label}
+							{item?.label}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -73,7 +109,7 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item && formatAmount(item.value.numberOfSeats)}
+											{item && formatAmount(item.numberOfSeats)}
 										</>
 									}
 									className={"flex-1"}
@@ -84,13 +120,10 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												new Date(item.createdAt * 1000).toLocaleDateString()}
+											{item && new Date(item.createdAt).toLocaleDateString()}
 										</>
 									}
-									footer={
-										item && new Date(item.createdAt * 1000).toLocaleTimeString()
-									}
+									footer={item && new Date(item.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -101,13 +134,11 @@ export default function Home() {
 										items={[
 											{
 												key: "Name",
-												value: item?.value.label ?? "-",
+												value: item?.label ?? "-",
 											},
 											{
 												key: "Number of Seats",
-												value: item
-													? formatAmount(item.value.numberOfSeats)
-													: "-",
+												value: item ? formatAmount(item.numberOfSeats) : "-",
 											},
 										]}
 									/>
@@ -129,7 +160,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>

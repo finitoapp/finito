@@ -1,28 +1,40 @@
 "use client";
 
+import { sqliteTrue } from "@evolu/common";
 import { Bell, X } from "lucide-react";
 import { useState } from "react";
 import { NotificationItem } from "@/components/notification-item";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { cn } from "@/lib/utils";
-import { notificationStorage } from "@/storages/notification-storage";
 import { Button } from "./ui/button";
 
 export function NotificationCenter() {
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(notificationStorage, {
-		limit: 5,
-	});
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("notification")
+				.leftJoin(
+					"notificationVerifyPayment",
+					"notificationVerifyPayment.id",
+					"notification.id",
+				)
+				.select([
+					"notification.id as id",
+					"notification.type as type",
+					"notificationVerifyPayment.paymentId as paymentId",
+					"notification.createdAt as createdAt",
+				] as const)
+				.where("notification.isDeleted", "is not", sqliteTrue)
+				.orderBy("notification.createdAt", "desc")
+				.limit(5),
+		[],
+	);
+	const { data: items } = useEvoluQuery(query);
 
 	const [isOpen, setIsOpen] = useState(false);
 	const unreadCount = items
-		? items.filter(
-				(item) => !["backgroundTableProcessing"].includes(item.value.type),
-			).length
+		? items.filter((item) => item.type !== "backgroundTableProcessing").length
 		: 0;
 
 	return (
@@ -94,7 +106,7 @@ export function NotificationCenter() {
 								{items &&
 									items.map((backgroundJob) => (
 										<NotificationItem
-											key={backgroundJob.value?.id ?? backgroundJob.value.type}
+											key={backgroundJob.id}
 											notification={backgroundJob}
 										/>
 									))}

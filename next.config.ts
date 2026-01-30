@@ -20,6 +20,11 @@ const nextConfig: NextConfig = {
 		: internalHost
 			? `http://${internalHost}:3000`
 			: undefined,
+	turbopack: {
+		resolveAlias: {
+			buffer: "./buffer-mock.ts",
+		},
+	},
 };
 
 export default nextConfig;

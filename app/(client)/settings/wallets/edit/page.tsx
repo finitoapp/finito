@@ -1,12 +1,13 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
 import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { accountStorage } from "@/storages/account-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Page() {
 	const router = useRouter();
@@ -16,9 +17,31 @@ export default function Page() {
 		throw Promise.reject();
 	}
 
-	const { data } = useStorageSubscription(accountStorage, {
-		key: id,
-	});
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("account")
+				.leftJoin("accountIban", "accountIban.id", "account.id")
+				.leftJoin("accountLud16", "accountLud16.id", "account.id")
+				.leftJoin("accountSpark", "accountSpark.id", "account.id")
+				.leftJoin("accountNwc", "accountNwc.id", "account.id")
+				.leftJoin("accountCashRegister", "accountCashRegister.id", "account.id")
+				.select([
+					"account.id as id",
+					"account.name as name",
+					"account._tag as _tag",
+					"accountIban.iban as accountIban.iban",
+					"accountIban.currency as accountIban.currency",
+					"accountLud16.lud16 as accountLud16.lud16",
+					"accountSpark.mnemonic as accountSpark.mnemonic",
+					"accountNwc.credentials as accountNwc.credentials",
+					"accountCashRegister.currency as accountCashRegister.currency",
+				] as const)
+				.where("account.isDeleted", "is not", sqliteTrue)
+				.where("account.id", "=", id as Id),
+		[id],
+	);
+	const { data } = useEvoluQuery(query);
 
 	const item = data && data[0];
 
@@ -30,12 +53,12 @@ export default function Page() {
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>
 					<AccountForm
-						tagFilter={["spark", "nwc"]}
+						tagFilter={["accountSpark", "accountNwc"]}
 						key={item ? "yes" : "no"}
 						defaultValues={
 							item
 								? {
-										...item.value,
+										...item,
 										mnemonicVariant: "manual",
 									}
 								: undefined

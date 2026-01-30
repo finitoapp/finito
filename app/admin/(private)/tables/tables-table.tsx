@@ -1,9 +1,17 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
+import { jsonArrayFrom } from "kysely/helpers/sqlite";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,19 +22,125 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { tableStorage } from "@/storages/table-storage";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
+
+type Task = {
+	id: Id;
+	label: string;
+	numberOfSeats: string;
+	codes: string;
+};
+
+const columns: ColumnDef<Task, Task>[] = [
+	{
+		accessorKey: "label",
+		header: createSortableHeader("Label"),
+	},
+	{
+		accessorKey: "numberOfSeats",
+		header: createSortableHeader("Number of seats"),
+	},
+	{
+		accessorKey: "codes",
+		header: createSortableHeader("Codes"),
+		cell: ({ row }) =>
+			JSON.parse(row.original.codes)
+				.map(({ code }) => code)
+				.join(","),
+	},
+];
 
 export function TablesTable() {
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(tableStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("tables");
+
+	const onFilterChange = useMemo<DataTableOnFilterChange<unknown>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const finalSorting = sorting ?? { id: "createdAt", desc: true };
+				const sortingColumn = `table.${finalSorting.id}`;
+
+				const query = evolu.createQuery((db) => {
+					let qb = db
+						.selectFrom("table")
+						.select((eb) => [
+							"table.id as id",
+							"table.label as label",
+							"table.numberOfSeats as numberOfSeats",
+							"table.createdAt as createdAt",
+							jsonArrayFrom(
+								eb
+									.selectFrom("tableCode")
+									.select(["tableCode.code as code"])
+									.where("tableCode.isDeleted", "is not", sqliteTrue)
+									.whereRef("tableCode.tableId", "=", "table.id"),
+							).as("codes"),
+						])
+						.where("table.isDeleted", "is not", sqliteTrue);
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									sortingColumn,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb("table.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy("table.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "label") {
+							qb = qb.where("table.label", "like", `${filter.value}%`);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				const formatData = (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[finalSorting.id]: last[finalSorting.id],
+						};
+					}
+
+					return {
+						data,
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					};
+				};
+
+				void evolu.loadQuery(query).then((rows) => {
+					setData(formatData(rows));
+				});
+
+				return evolu.subscribeQuery(query)(() => {
+					setData(formatData(evolu.getQueryRows(query)));
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
@@ -44,35 +158,17 @@ export function TablesTable() {
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									eventId: item.eventId,
-									createdAt: new Date(item.createdAt * 1000),
-									label: item.value.label,
-									numberOfSeats: item.value.numberOfSeats,
-									qrCodes: (item.value.qrCodes ?? [])
-										.map((qrCode) => qrCode.id)
-										.join(", "),
-								}))
-							: undefined
-					}
-					columns={[
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					searchKey="label"
+					searchPlaceholder="Search by label..."
+					filterableColumns={[
 						{
-							key: "label" as const,
-							header: "Label",
-							width: "400px",
-						},
-						{
-							key: "numberOfSeats" as const,
-							header: "Number of Seats",
-						},
-						{
-							key: "qrCodes" as const,
-							header: "QR Codes",
+							id: "label",
+							title: "Label",
 						},
 					]}
 					onRowClick={(item) =>
@@ -80,21 +176,7 @@ export function TablesTable() {
 							`/admin/tables/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex mt-y justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

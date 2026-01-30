@@ -10,7 +10,7 @@ import {
 	ScanQrCodeIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { seedAtom } from "@/atoms/seed";
+import { accountAtom } from "@/atoms/account";
 import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,13 @@ import { formatAmount } from "@/lib/format-utils";
 import { Currency } from "@/lib/types";
 
 const WalletStatus = () => {
-	const seed = useAtomValue(seedAtom);
+	const { mnemonic } = useAtomValue(accountAtom);
 
 	const { data } = useQuery<bigint>({
 		queryKey: ["walletStatus"],
 		queryFn: async () => {
 			const { wallet } = await SparkWallet.initialize({
-				mnemonicOrSeed: seed,
+				mnemonicOrSeed: mnemonic,
 				options: {
 					network: "MAINNET",
 				},

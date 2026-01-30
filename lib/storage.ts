@@ -1,39 +1,51 @@
-import type { JsonObject } from "type-fest";
+import type { EvoluSchema, Id } from "@evolu/common";
+import type { JsonObject, ObjectMerge, ValueOf } from "type-fest";
 import type { z } from "zod";
+import type { Evolu } from "@/lib/evolu";
 
-export type StorageEventId = string & z.$brand<"StorageEventId">;
+export type StorageCursor = string & z.$brand<"StorageCursor">;
 
 export type StorageRow<TShape extends Readonly<JsonObject>> = {
-	value: TShape;
-	createdAt: number;
-	eventId: StorageEventId;
-	key: string | null;
+	value: TShape & { id: Id; createdAt: number; updatedAt: number | null };
+	cursor: StorageCursor;
 };
 
-export type Storage<TDeps, TShape extends JsonObject> = {
-	namespace: string;
+export type StorageDeps = {
+	evolu: Evolu;
+};
+
+export type Storage<
+	TShape extends Readonly<JsonObject>,
+	TNamespace extends string,
+> = {
+	namespace: TNamespace;
 	$shape: TShape;
-	$deps: TDeps;
 	schema: z.Schema<TShape>;
+	evoluSchema?: ValueOf<EvoluSchema>;
+	variants?: {
+		discriminant: string;
+		column: string;
+		schema: EvoluSchema;
+	};
 
 	select: (
-		deps: TDeps,
+		deps: StorageDeps,
 		params?: {
-			key?: string | null;
+			id?: Id;
 			limit?: number;
-			since?: number;
-			until?: number;
+			since?: StorageCursor;
+			until?: StorageCursor;
 		},
 	) => Promise<{
 		data: StorageRow<TShape>[];
 	}>;
 	subscribe: (
-		deps: TDeps,
+		deps: StorageDeps,
 		params: {
-			key?: string | null;
+			id?: Id;
 			limit?: number;
-			since?: number;
-			until?: number;
+			since?: StorageCursor;
+			until?: StorageCursor;
 			// on eose
 			onEvents: (data: {
 				getAllRows: () => Record<string, StorageRow<TShape>>;
@@ -54,13 +66,21 @@ export type Storage<TDeps, TShape extends JsonObject> = {
 		close: () => void;
 		fetchNextPage: () => void;
 	};
-	insertOrUpdate: (
-		deps: TDeps,
-		key: string | null,
-		value: TShape,
+	insert: (
+		deps: StorageDeps,
+		value: ObjectMerge<TShape, { id?: never | undefined }>,
 	) => Promise<StorageRow<TShape>>;
-	delete: (
-		deps: TDeps,
-		eventId: StorageEventId,
-	) => Promise<{ eventId: StorageEventId }>;
+	upsert: (
+		deps: StorageDeps,
+		value: ObjectMerge<TShape, { id: Id }>,
+	) => Promise<StorageRow<TShape>>;
+	update: (
+		deps: StorageDeps,
+		value: ObjectMerge<TShape, { id: Id }>, // This should be partial, but currently nostr-storage can't implement it
+	) => Promise<void>;
+	insertOrUpdate: (
+		deps: StorageDeps,
+		value: ObjectMerge<TShape, { id?: Id | never | undefined }>,
+	) => Promise<{ id: Id }>;
+	delete: (deps: StorageDeps, value: { id: Id }) => Promise<void>;
 };

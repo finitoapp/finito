@@ -1,8 +1,13 @@
-import { merge } from "es-toolkit";
+import {
+	createId,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+} from "@evolu/common";
+import { merge, omit } from "es-toolkit";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { v7 } from "uuid";
 import { z } from "zod";
 import {
 	AutoForm,
@@ -15,8 +20,9 @@ import {
 } from "@/components/autocomplete-identification-number-input";
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import { type Address, AddressSchema } from "@/lib/schemas";
+import { assertNever } from "@/lib/type-utils";
 import {
 	CountryCode,
 	EmailSchema,
@@ -25,7 +31,6 @@ import {
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
-import { clientStorage } from "@/storages/client-storage";
 
 export const createClientAddressFormSchema = <
 	TOptional extends boolean,
@@ -62,29 +67,36 @@ export const createClientAddressFormSchema = <
 		}
 	>;
 
-export const clientFormSchema = z.object({
+export const baseClientFormSchema = z.object({
+	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
 	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	label: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	email: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
+	label: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
+	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
 	address: createClientAddressFormSchema({ optional: true }),
-	countrySpecific: z.discriminatedUnion("countryCode", [
-		z.object({
-			countryCode: z
-				.enum(CountryCode)
-				.nullable()
-				.pipe(z.literal(CountryCode.CZ)),
-			vatNumber: StringToUndefinedStringSchema.pipe(
-				NonEmptyStringSchema.optional(),
+	countryCode: z.enum(CountryCode),
+	cz: z.object({
+		vatNumber: z.string(),
+		identificationNumber: z.string(),
+	}),
+});
+
+export const clientFormSchema = z.discriminatedUnion("countryCode", [
+	baseClientFormSchema.extend({
+		countryCode: z.literal(CountryCode.CZ),
+		cz: z.object({
+			vatNumber: StringToNullableStringSchema.pipe(
+				NonEmptyStringSchema.nullable(),
 			),
-			identificationNumber: StringToUndefinedStringSchema.pipe(
-				IdentificationNumberCzSchema.optional(),
+			identificationNumber: StringToNullableStringSchema.pipe(
+				IdentificationNumberCzSchema.nullable(),
 			),
 		}),
-	]),
-});
+	}),
+]);
 
 export const createClientFormDefaultValues = () =>
 	({
+		id: "",
 		name: "",
 		label: "",
 		email: "",
@@ -94,8 +106,8 @@ export const createClientFormDefaultValues = () =>
 			city: "",
 			postalCode: "",
 		},
-		countrySpecific: {
-			countryCode: null,
+		countryCode: CountryCode.CZ,
+		cz: {
 			vatNumber: "",
 			identificationNumber: "",
 		},
@@ -116,12 +128,9 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 		}
 
 		setValue("name", value.name);
-		setValue("countrySpecific.countryCode", CountryCode.CZ);
-		setValue(
-			"countrySpecific.identificationNumber",
-			value.identificationNumber,
-		);
-		setValue("countrySpecific.vatNumber", value.vatNumber);
+		setValue("countryCode", CountryCode.CZ);
+		setValue("cz.identificationNumber", value.identificationNumber);
+		setValue("cz.vatNumber", value.vatNumber);
 		setValue("address.street", value.address.street);
 		setValue("address.city", value.address.city);
 		setValue("address.postalCode", value.address.postalCode);
@@ -135,6 +144,9 @@ const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 	_search: Search,
 	_separator: () => <Separator />,
 
+	...builder.magicInput("id").text({
+		type: "hidden",
+	}),
 	...builder.magicInput("name").text({
 		label: "Company name",
 	}),
@@ -161,13 +173,15 @@ const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 			}),
 		};
 	}),
-	...builder.nestedField("countrySpecific", ({ builder }) => ({
-		...builder.magicInput("countryCode").select({
-			values: CountryCode,
-			allowEmpty: true,
-			label: "Country code",
-		}),
-		...builder.when("countrySpecific.countryCode", CountryCode.CZ, {
+
+	...builder.magicInput("countryCode").select({
+		values: CountryCode,
+		allowEmpty: false,
+		label: "Country code",
+	}),
+
+	...builder.nestedField("cz", ({ builder }) => ({
+		...builder.when("countryCode", CountryCode.CZ, {
 			...builder.magicInput("identificationNumber").text({
 				label: "Identification Number",
 			}),
@@ -179,42 +193,62 @@ const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 }));
 
 export const ClientForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof clientFormSchema> & { id: string }>;
-	onBeforeSave?: (
-		values: z.output<typeof clientFormSchema> & { id: string },
-	) => boolean;
-	onSuccess?: (newEventId: string) => unknown;
-	customStorage?: typeof clientStorage;
+	defaultValues?: Partial<z.input<typeof clientFormSchema>>;
+	onBeforeSave?: (values: z.output<typeof clientFormSchema>) => boolean;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
 	const [defaultValues] = useState(() => {
 		return merge(createClientFormDefaultValues(), params.defaultValues ?? {});
 	});
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const form = useActionForm(clientFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const finalValues = {
-				id,
-				...values,
-			};
-
 			if (params.onBeforeSave) {
-				if (!params.onBeforeSave(finalValues)) {
+				if (!params.onBeforeSave(values)) {
 					return;
 				}
 			}
 
-			const { eventId } = await (
-				params.customStorage ?? clientStorage
-			).insertOrUpdate(storageDeps, id, finalValues);
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = values.id ?? createId(createIdDeps);
+			const { address, ...valuesCopy } = omit(values, ["cz"]);
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
+			getOrThrow(
+				evolu.upsert(
+					"client",
+					{
+						...valuesCopy,
+						id,
+					},
+					{
+						onComplete: () => {
+							if (params.onSuccess) {
+								params.onSuccess(id as Id);
+							}
+						},
+					},
+				),
+			);
+
+			getOrThrow(
+				evolu.upsert("clientAddress", {
+					...address,
+					id,
+				}),
+			);
+
+			if (values.countryCode === CountryCode.CZ) {
+				getOrThrow(
+					evolu.upsert("clientCz", {
+						id,
+						...values.cz,
+					}),
+				);
+			} else {
+				assertNever(values.countryCode);
 			}
 		},
 	});

@@ -22,7 +22,6 @@ export const PosDial: React.FC<{
 }> = (props) => {
 	const [value, setValue] = useState("");
 	const createEvent = (eventValue: string) => () => {
-		console.log("yes ", eventValue);
 		setValue((value) => value + eventValue);
 	};
 

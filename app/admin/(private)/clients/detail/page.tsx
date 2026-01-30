@@ -1,5 +1,6 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -11,22 +12,35 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { clientStorage } from "@/storages/client-storage";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 
 export default function Home() {
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
-	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(clientStorage, {
-		key: id,
-	});
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("client")
+				.leftJoin("clientAddress", "clientAddress.id", "client.id")
+				.leftJoin("clientCz", "clientCz.id", "client.id")
+				.selectAll()
+				.where("client.isDeleted", "is not", sqliteTrue)
+				.where("client.id", "=", id as Id);
+		},
+		[id],
+	);
+
+	const { data: items } = useEvoluQuery(query);
 
 	const item = items && items[0];
 
@@ -36,10 +50,23 @@ export default function Home() {
 				return;
 			}
 
-			await clientStorage.delete(storageDeps, item.eventId);
+			evolu.update("client", { id: item.id, isDeleted: sqliteTrue });
 			router.push("/admin/clients");
 		},
 	});
+
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete client?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -52,7 +79,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.label ?? item?.value.name}
+							{item?.label ?? item?.name}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -60,9 +87,7 @@ export default function Home() {
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={"VAT Number"}
-									content={
-										item ? item.value.countrySpecific.vatNumber : <Skeleton />
-									}
+									content={item ? item.vatNumber : <Skeleton />}
 									className={"flex-1"}
 								/>
 
@@ -71,13 +96,10 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												new Date(item.createdAt * 1000).toLocaleDateString()}
+											{item && new Date(item.createdAt).toLocaleDateString()}
 										</>
 									}
-									footer={
-										item && new Date(item.createdAt * 1000).toLocaleTimeString()
-									}
+									footer={item && new Date(item.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -88,23 +110,23 @@ export default function Home() {
 										items={[
 											{
 												key: "Company name",
-												value: item?.value.name ?? "-",
+												value: item?.name ?? "-",
 											},
 											{
 												key: "Street",
-												value: item?.value.address?.street ?? "-",
+												value: item?.street ?? "-",
 											},
 											{
 												key: "City",
-												value: item?.value.address?.city ?? "-",
+												value: item?.city ?? "-",
 											},
 											{
 												key: "Postal Code",
-												value: item?.value.address?.postalCode ?? "-",
+												value: item?.postalCode ?? "-",
 											},
 											{
 												key: "Country",
-												value: item?.value.countrySpecific?.countryCode ?? "-",
+												value: item?.countryCode ?? "-",
 											},
 										]}
 									/>
@@ -114,17 +136,15 @@ export default function Home() {
 										items={[
 											{
 												key: "VAT Number",
-												value: item?.value.countrySpecific.vatNumber ?? "-",
+												value: item?.vatNumber ?? "-",
 											},
 											{
 												key: "Identification Number",
-												value:
-													item?.value.countrySpecific?.identificationNumber ??
-													"-",
+												value: item?.identificationNumber ?? "-",
 											},
 											{
 												key: "E-mail",
-												value: item?.value.email ?? "-",
+												value: item?.email ?? "-",
 											},
 										]}
 									/>
@@ -146,7 +166,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>

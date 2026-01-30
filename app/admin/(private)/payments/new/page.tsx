@@ -1,25 +1,36 @@
 "use client";
 
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { PaymentForm } from "@/app/admin/(private)/payments/new/payment-form";
 import { BackButton } from "@/components/back-button";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostrProfile } from "@/hooks/useNostrProfile";
-import { billingInfoStorage } from "@/storages/billing-info-storage";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
 
 export default function Home() {
 	const nostrProfile = useNostrProfile();
 
-	const { data } = useStorageSubscription(billingInfoStorage, {
-		limit: 1,
-	});
-
-	const { data: billingSettingsRows } = useStorageSubscription(
-		billingSettingsStorage,
-		{
-			limit: 1,
-		},
+	const billingInfoQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("billingInfo")
+				.selectAll()
+				.where("billingInfo.isDeleted", "is not", sqliteTrue)
+				.where("billingInfo.id", "=", createIdFromString("")),
+		[],
 	);
+	const { data } = useEvoluQuery(billingInfoQuery);
+
+	const billingSettingsQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("billingSettings")
+				.selectAll()
+				.where("billingSettings.isDeleted", "is not", sqliteTrue)
+				.where("billingSettings.id", "=", createIdFromString("")),
+		[],
+	);
+	const { data: billingSettingsRows } = useEvoluQuery(billingSettingsQuery);
 
 	const item = data && data[0];
 	const billingSettings = billingSettingsRows && billingSettingsRows[0];
@@ -36,9 +47,9 @@ export default function Home() {
 				)}
 				defaultValues={{
 					lud16: nostrProfile?.lud16 ?? "",
-					merchantName: item?.value.name ?? "",
-					currency: billingSettings?.value.defaultCurrency,
-					type: billingSettings?.value.defaultPaymentMethod,
+					merchantName: item?.name ?? "",
+					currency: billingSettings?.defaultCurrency,
+					type: billingSettings?.defaultPaymentMethod,
 				}}
 			/>
 		</div>

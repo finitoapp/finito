@@ -1,13 +1,17 @@
+import {
+	createOwnerSecret,
+	createRandomBytes,
+	ownerSecretToMnemonic,
+} from "@evolu/common";
 import NDK, { NDKEvent, NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
 import { createStore } from "jotai";
-import { generateSeedWords } from "nostr-tools/nip06";
+import { evoluAtom } from "@/atoms/evolu";
 import { ndkAtom } from "@/atoms/ndk";
-import { seedAtom } from "@/atoms/seed";
 import { extractExpirationFromLightningInvoice } from "@/lib/ln-utils";
 import type { StaticOfflinePayment } from "@/lib/schemas";
 import { assertNotNull } from "@/lib/type-utils";
-import { Currency, NonEmptyString } from "@/lib/types";
+import { Currency } from "@/lib/types";
 
 (async () => {
 	const amount = 2000;
@@ -15,7 +19,14 @@ import { Currency, NonEmptyString } from "@/lib/types";
 		"nsec1sg0cxhuqwr6gpd7ftdl24dh9cyufw6zsr3ckgwv7yas2vf8cc8esdwt3x7";
 
 	const store = createStore();
-	await store.set(seedAtom, NonEmptyString(generateSeedWords()));
+	const evolu = store.get(evoluAtom);
+	await evolu.restoreAppOwner(
+		ownerSecretToMnemonic(
+			createOwnerSecret({
+				randomBytes: createRandomBytes(),
+			}),
+		),
+	);
 	const ndk = await store.get(ndkAtom);
 	console.log("npub", ndk.activeUser?.npub);
 	console.log("pubkey", ndk.activeUser?.pubkey);

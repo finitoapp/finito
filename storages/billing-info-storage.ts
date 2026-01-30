@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { createNostrStorage } from "@/lib/nostr-storage";
 import { NonEmptyStringSchema } from "@/lib/types";
 import {
 	ClientCountrySpecificCZSchema,
@@ -27,12 +26,4 @@ export const BillingInfoSchema = ClientSchema.omit({
 			caseNumber: NonEmptyStringSchema.optional(),
 		}),
 	]),
-});
-
-export type BillingInfo = z.output<typeof BillingInfoSchema>;
-
-export const billingInfoStorage = createNostrStorage({
-	namespace: "billing_info",
-	schema: BillingInfoSchema,
-	useEncryption: true,
 });

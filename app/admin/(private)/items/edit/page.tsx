@@ -1,13 +1,14 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { ProductCodeType } from "@/lib/types";
-import { itemStorage } from "@/storages/item-storage";
 
 export default function Home() {
 	const router = useRouter();
@@ -17,11 +18,30 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const { data } = useStorageSubscription(itemStorage, {
-		key: id,
-	});
+	const query = useCreateQuery(
+		(db) => {
+			return db
+				.selectFrom("item")
+				.select([
+					"item.id as id",
+					"item.label as label",
+					"item.priceValue as priceValue",
+					"item.priceCurrency as priceCurrency",
+					"item.unitOfMeasure as unitOfMeasure",
+					"item.categoryId as categoryId",
+					"item.productCodeType as productCodeType",
+					"item.productCodeValue as productCodeValue",
+					"item.internalCode as internalCode",
+				] as const)
+				.where("item.isDeleted", "is not", sqliteTrue)
+				.where("item.id", "=", id as Id);
+		},
+		[id],
+	);
 
-	const item = data && data[0];
+	const { data: items } = useEvoluQuery(query);
+	const item = items && items[0];
+	console.log("item", item);
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -39,21 +59,17 @@ export default function Home() {
 						defaultValues={
 							item
 								? {
-										...item.value,
-										price: item.value.price.value.toString(),
-										currency: item.value.price.currency,
-										productCode: item.value.productCode
-											? item.value.productCode.code
-											: "",
-										productCodeType: item.value.productCode
-											? item.value.productCode.type
-											: ProductCodeType.EAN,
+										...item,
+										priceValue: item.priceValue.toString(),
+										priceCurrency: item.priceCurrency,
+										categoryId: item.categoryId ?? "",
+										productCodeValue: item.productCodeValue ?? "",
+										productCodeType:
+											item.productCodeType ?? ProductCodeType.EAN,
 									}
 								: undefined
 						}
-						onSuccess={() =>
-							router.push(`/admin/items/detail?id=${encodeURIComponent(id)}`)
-						}
+						onSuccess={() => router.back()}
 					/>
 				</CardContent>
 			</ResponsiveCard>

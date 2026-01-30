@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
+import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const browserQueryClient: QueryClient = new QueryClient({
@@ -20,7 +21,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
 		<Provider store={jotaiStore}>
 			<QueryClientProvider client={browserQueryClient}>
-				<TooltipProvider>{children}</TooltipProvider>
+				<TooltipProvider>
+					{children}
+					<GlobalDialogHost />
+				</TooltipProvider>
 			</QueryClientProvider>
 		</Provider>
 	);

@@ -1,10 +1,22 @@
+import {
+	createId,
+	createIdFromString,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+	sqliteFalse,
+	sqliteTrue,
+} from "@evolu/common";
 import { addDays } from "date-fns";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
-import { ClientForm } from "@/app/admin/(private)/clients/client-form";
+import {
+	ClientForm,
+	clientFormSchema,
+} from "@/app/admin/(private)/clients/client-form";
 import {
 	BillingInfoForm,
 	type billingInfoFormSchema,
@@ -25,7 +37,9 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { nestObjectSkipNullBranches } from "@/lib/object-utils";
 import { AddressSchema } from "@/lib/schemas";
 import {
 	Currency,
@@ -37,75 +51,56 @@ import {
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 	Uuid7,
+	Uuid7Schema,
 } from "@/lib/types";
-import {
-	BillingInfoSchema,
-	billingInfoStorage,
-} from "@/storages/billing-info-storage";
-import { ClientSchema, clientStorage } from "@/storages/client-storage";
-import {
-	InvoiceStatus,
-	invoiceStatusStorage,
-} from "@/storages/invoice-status-storage";
-import {
-	InvoicePaymentMethod,
-	invoiceStorage,
-} from "@/storages/invoice-storage";
+import { InvoiceStatus } from "@/storages/invoice-status-storage";
+import { InvoicePaymentMethod } from "@/storages/invoice-storage";
 
-const BillingInfoFormSchema = BillingInfoSchema.omit({
-	id: true,
-	address: true,
-}).extend({
-	address: AddressSchema,
-});
+const BillingInfoFormSchema = clientFormSchema;
 
-const ClientFormSchema = ClientSchema.omit({
-	id: true,
-	address: true,
-}).extend({
-	address: AddressSchema,
-});
+const ClientFormSchema = clientFormSchema;
 
 const itemSchema = z.object({
-	invoiceNumber: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
-	currency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
+	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+	invoiceId: StringToNullableStringSchema.pipe(Uuid7Schema),
+	invoiceNumber: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	currency: z.enum(Currency),
 	issueDate: DateToDateStringSchema,
 	dueDate: DateToDateStringSchema,
 
 	payment: z.discriminatedUnion("method", [
 		z.object({
 			method: z.literal(InvoicePaymentMethod.BankTransfer),
-			iban: StringToUndefinedStringSchema.transform((value) =>
+			iban: StringToNullableStringSchema.transform((value) =>
 				value ? value.replace(/ /g, "") : value,
 			).pipe(IbanSchema),
 		}),
 		z.object({
 			method: z.literal(InvoicePaymentMethod.PaymentCard),
-			iban: StringToUndefinedStringSchema.transform((value) =>
+			iban: StringToNullableStringSchema.transform((value) =>
 				value ? value.replace(/ /g, "") : value,
-			).pipe(IbanSchema.optional()),
+			).pipe(IbanSchema.nullable()),
 		}),
 		z.object({
 			method: z.literal(InvoicePaymentMethod.Cash),
-			iban: StringToUndefinedStringSchema.transform(() => undefined).pipe(
-				z.undefined(),
-			),
+			iban: StringToNullableStringSchema.transform(() => null).pipe(z.null()),
 		}),
 	]),
 
 	supplier: z.object({
-		billingInfo: BillingInfoFormSchema.nullable().pipe(BillingInfoFormSchema),
+		billingInfo: BillingInfoFormSchema,
 	}),
 
 	customer: z.object({
-		billingInfo: ClientFormSchema.nullable().pipe(ClientFormSchema),
+		billingInfo: ClientFormSchema,
 	}),
 
 	items: z
 		.object({
+			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
 			label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-			unitOfMeasure: StringToUndefinedStringSchema.pipe(
-				NonEmptyStringSchema.optional(),
+			unitOfMeasure: StringToNullableStringSchema.pipe(
+				NonEmptyStringSchema.nullable(),
 			),
 			price: StringToNumberSchema,
 			quantity: StringToNumberSchema,
@@ -114,6 +109,7 @@ const itemSchema = z.object({
 });
 
 const itemDefaultValues = {
+	id: "",
 	label: "",
 	price: "0",
 	quantity: "1",
@@ -124,13 +120,15 @@ const createDefaultValues = () => {
 	const now = new Date();
 
 	return {
+		id: "",
+		invoiceId: Uuid7.random(),
 		invoiceNumber: "",
-		currency: null,
+		currency: Currency.CZK,
 		issueDate: now,
 		dueDate: addDays(now, 14),
 
 		payment: {
-			method: InvoicePaymentMethod.BankTransfer,
+			method: InvoicePaymentMethod.Cash,
 			iban: "",
 		},
 
@@ -223,7 +221,30 @@ const SupplierEditForm = (
 const CustomerBillingInfo: AutoFormComponent<
 	z.output<typeof ClientFormSchema> | null
 > = (props) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+
+	const query = useCreateQuery((db) => {
+		return db
+			.selectFrom("client")
+			.leftJoin("clientAddress", "clientAddress.id", "client.id")
+			.leftJoin("clientCz", "clientCz.id", "client.id")
+			.select([
+				"client.id as id",
+				"client.name as name",
+				"client.label as label",
+				"client.email as email",
+				"client.countryCode as countryCode",
+				"clientAddress.street as address.street",
+				"clientAddress.descriptiveNumber as address.descriptiveNumber",
+				"clientAddress.city as address.city",
+				"clientAddress.postalCode as address.postalCode",
+				"clientCz.identificationNumber as cz.identificationNumber",
+				"clientCz.vatNumber as cz.vatNumber",
+				"clientCz.caseNumber as cz.caseNumber",
+			])
+			.where("client.isDeleted", "is not", sqliteTrue);
+	}, []);
+
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
@@ -234,16 +255,29 @@ const CustomerBillingInfo: AutoFormComponent<
 				},
 				// @ts-expect-error
 				fetchItems: async () => {
-					const items = await clientStorage.select(storageDeps);
+					const items = await evolu
+						.loadQuery(query)
+						.then((rows) => rows.map(nestObjectSkipNullBranches));
 
-					return items.data.map((item) => ({
-						label: item.value.label ?? item.value.name,
-						value: item.value,
+					console.log("ite2ms", items);
+
+					return items.map((item) => ({
+						label: item.label ?? item.name,
+						value: {
+							...item,
+							email: item.email ?? "",
+							label: item.label ?? "",
+							cz: {
+								vatNumber: item.cz.vatNumber ?? "",
+								identificationNumber: item.cz.identificationNumber ?? "",
+								caseNumber: item.cz.caseNumber ?? "",
+							},
+						},
 					}));
 				},
 				EditComponent: CustomerEditForm,
 			}),
-		[storageDeps],
+		[evolu],
 	);
 
 	// @ts-expect-error
@@ -253,7 +287,32 @@ const CustomerBillingInfo: AutoFormComponent<
 const SupplierBillingInfo: AutoFormComponent<
 	z.output<typeof BillingInfoFormSchema> | null
 > = (props) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+
+	const query = useCreateQuery((db) => {
+		return db
+			.selectFrom("billingInfo")
+			.leftJoin("billingInfoAddress", "billingInfoAddress.id", "billingInfo.id")
+			.leftJoin("billingInfoCz", "billingInfoCz.id", "billingInfo.id")
+			.select([
+				"billingInfo.id as id",
+				"billingInfo.name as name",
+				"billingInfo.label as label",
+				"billingInfo.email as email",
+				"billingInfo.countryCode as countryCode",
+				"billingInfoAddress.street as address.street",
+				"billingInfoAddress.descriptiveNumber as address.descriptiveNumber",
+				"billingInfoAddress.city as address.city",
+				"billingInfoAddress.postalCode as address.postalCode",
+				"billingInfoCz.vatPayer as cz.vatPayer",
+				"billingInfoCz.identificationNumber as cz.identificationNumber",
+				"billingInfoCz.vatNumber as cz.vatNumber",
+				"billingInfoCz.caseNumber as cz.caseNumber",
+			])
+			.where("billingInfo.isDeleted", "is not", sqliteTrue)
+			.where("billingInfo.id", "=", createIdFromString(""));
+	}, []);
+
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
@@ -262,14 +321,29 @@ const SupplierBillingInfo: AutoFormComponent<
 					return value.name;
 				},
 				fetchItems: async () => {
-					const items = await billingInfoStorage.select(storageDeps);
-					const item = items.data[0];
+					const items = await evolu
+						.loadQuery(query)
+						.then((rows) => rows.map(nestObjectSkipNullBranches));
+
+					const item = items[0];
+
+					console.log("ite3", item);
 
 					return item !== undefined
 						? [
 								{
-									label: item.value.label ?? item.value.name,
-									value: item.value,
+									label: item.label ?? item.name,
+									value: {
+										...item,
+										email: item.email ?? "",
+										label: item.label ?? "",
+										cz: {
+											vatPayer: item.cz.vatPayer === sqliteTrue,
+											vatNumber: item.cz.vatNumber ?? "",
+											identificationNumber: item.cz.identificationNumber ?? "",
+											caseNumber: item.cz.caseNumber ?? "",
+										},
+									},
 								},
 							]
 						: [];
@@ -277,7 +351,7 @@ const SupplierBillingInfo: AutoFormComponent<
 				// @ts-expect-error
 				EditComponent: SupplierEditForm,
 			}),
-		[storageDeps],
+		[evolu],
 	);
 
 	// @ts-expect-error
@@ -286,6 +360,13 @@ const SupplierBillingInfo: AutoFormComponent<
 
 const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 	return {
+		...builder.magicInput("id").text({
+			type: "hidden",
+		}),
+		...builder.magicInput("invoiceId").text({
+			type: "hidden",
+		}),
+
 		...builder.card(
 			{
 				title: "Invoice info",
@@ -369,6 +450,10 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 						defaultValue: itemDefaultValues,
 						columns: [
 							{
+								title: "ID",
+								hidden: true,
+							},
+							{
 								title: "Label",
 							},
 							{
@@ -386,6 +471,9 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 						],
 					},
 					({ builder }) => ({
+						...builder.magicInput("id").text({
+							type: "hidden",
+						}),
 						...builder.magicInput("label").text({
 							label: "Label",
 						}),
@@ -409,38 +497,127 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 });
 
 export const InvoiceForm: React.FC<{
-	defaultValues?: PartialDeep<z.input<typeof itemSchema> & { id: Uuid7 }>;
-	onSuccess?: (
-		newEventId: string,
-		values: z.output<typeof itemSchema>,
-	) => unknown;
+	defaultValues?: PartialDeep<z.input<typeof itemSchema>>;
+	onSuccess?: (newEventId: Id, values: z.output<typeof itemSchema>) => unknown;
 }> = (params) => {
 	const [defaultValues] = useState(() => {
 		return merge(createDefaultValues(), params.defaultValues ?? {});
 	});
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: Uuid7.random();
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
 
-			if (!params.defaultValues || !params.defaultValues.id) {
-				await invoiceStatusStorage.insertOrUpdate(storageDeps, id, {
-					invoiceId: id,
-					status: InvoiceStatus.Unpaid,
-				});
+			const id = values.id ?? createId(createIdDeps);
+
+			const { items, customer, supplier, payment, ...invoice } = values;
+			console.log("InvoiceForm:saveAction", { values, invoice });
+
+			getOrThrow(
+				evolu.upsert("invoice", {
+					id,
+					invoiceId: invoice.invoiceId,
+					invoiceNumber: invoice.invoiceNumber,
+					issueDate: invoice.issueDate,
+					dueDate: invoice.dueDate,
+					currency: invoice.currency,
+					paymentMethod: payment.method,
+					paymentIban: payment.iban,
+				}),
+			);
+
+			{
+				const { address, cz, ...billingInfo } = customer.billingInfo;
+				getOrThrow(
+					evolu.upsert("invoiceCustomerBillingInfo", {
+						...billingInfo,
+						id,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("invoiceCustomerBillingInfoAddress", {
+						...address,
+						id,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("invoiceCustomerBillingInfoCz", {
+						...cz,
+						id,
+					}),
+				);
 			}
 
-			const { eventId } = await invoiceStorage.insertOrUpdate(storageDeps, id, {
-				id,
-				...values,
-			});
+			{
+				const { address, cz, ...billingInfo } = supplier.billingInfo;
+				getOrThrow(
+					evolu.upsert("invoiceSupplierBillingInfo", {
+						...billingInfo,
+						id,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("invoiceSupplierBillingInfoAddress", {
+						...address,
+						id,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("invoiceSupplierBillingInfoCz", {
+						...cz,
+						vatPayer: cz.vatPayer ? sqliteTrue : sqliteFalse,
+						id,
+					}),
+				);
+			}
+
+			if (!values.id) {
+				getOrThrow(
+					evolu.upsert("invoiceStatus", {
+						id,
+						status: InvoiceStatus.Unpaid,
+					}),
+				);
+			}
+
+			const originalItems = new Set(
+				(params.defaultValues?.items ?? []).map(
+					(item) => (item as any).id as Id,
+				),
+			);
+
+			for (const item of items) {
+				const itemId = (item as any).id ?? createId(createIdDeps);
+				originalItems.delete(itemId);
+
+				getOrThrow(
+					evolu.upsert("invoiceItem", {
+						id: itemId,
+						invoiceId: id,
+						label: item.label,
+						price: item.price,
+						quantity: item.quantity,
+						unitOfMeasure: item.unitOfMeasure,
+					}),
+				);
+			}
+
+			for (const itemId of originalItems) {
+				if (itemId) {
+					getOrThrow(
+						evolu.update("invoiceItem", {
+							id: itemId,
+							isDeleted: sqliteTrue,
+						}),
+					);
+				}
+			}
 
 			if (params.onSuccess) {
-				params.onSuccess(eventId, values);
+				params.onSuccess(id as Id, values);
 			}
 		},
 	});

@@ -1,12 +1,17 @@
 "use client";
 
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useMemo } from "react";
 import { PaymentStatusBadge } from "@/app/admin/(private)/payments/payment-status-badge";
-import { DataGrid } from "@/components/data-grid";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,85 +22,150 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
 import { formatAmount } from "@/lib/format-utils";
-import { type Payment, paymentStorage } from "@/storages/payment-storage";
+
+type Row = {
+	id: Id;
+	createdAt: string;
+	amount: number;
+	billCurrency: string;
+	label: string;
+};
+
+const columns: ColumnDef<Row>[] = [
+	{
+		accessorKey: "createdAt",
+		header: createSortableHeader("Created at"),
+		cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
+	},
+	{
+		accessorKey: "amount",
+		header: "Amount",
+		cell: ({ row }) =>
+			formatAmount(row.original.amount, row.original.billCurrency),
+	},
+	{
+		accessorKey: "status",
+		header: "Status",
+		cell: ({ row }) => <PaymentStatusBadge paymentId={row.original.id} />,
+	},
+	{
+		accessorKey: "label",
+		header: "Description",
+	},
+];
 
 export function PaymentsTable() {
 	const router = useRouter();
-	const [paymentPubkeys, setPaymentPubkeys] = useState<{
-		pubkeys: string[];
-		authors: string[];
-	} | null>(null);
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("payments");
+	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
+		() =>
+			({ sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+				const finalSorting = sorting ?? {
+					id: "createdAt",
+					desc: true,
+				};
 
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(paymentStorage, {
-		limit: 15,
-	});
+				const query = evolu.createQuery((db) => {
+					let qb = db
+						.selectFrom("payment")
+						.select([
+							"payment.id as id",
+							"payment.billCurrency as billCurrency",
+							"payment.createdAt as createdAt",
+						] as const)
+						.where("payment.isDeleted", "is not", sqliteTrue);
 
-	const paymentStatusRef = useRef<Record<string, true>>({});
-	useNostrSubscription(
-		paymentPubkeys !== null
-			? {
-					kinds: [9735], // zap receipt
-					authors: paymentPubkeys.authors,
-					"#p": paymentPubkeys.pubkeys,
-					limit: 20,
-				}
-			: false,
-		{
-			transform: async (event) => {
-				const p = event.tags.find((tag) => tag[0] === "p");
-				if (p === undefined) {
-					return undefined;
-				}
-				const pubkey = p[1];
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									"createdAt",
+									finalSorting.desc ? "<" : ">",
+									previousCursor.createdAt as string,
+								),
+								eb.and([
+									eb("createdAt", "=", previousCursor.createdAt as string),
+									eb("id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
 
-				paymentStatusRef.current[pubkey] = true;
-				return event;
+					return qb
+						.orderBy("createdAt", finalSorting.desc ? "desc" : "asc")
+						.orderBy("id", "desc")
+						.limit(limit + 1);
+				});
+
+				const formatData = async (result) => {
+					const payments = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = payments[payments.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							createdAt: last.createdAt,
+						};
+					}
+
+					const ids = payments.map((payment) => payment.id);
+					const billItems =
+						ids.length > 0
+							? await evolu.loadQuery(
+									evolu.createQuery((db) =>
+										db
+											.selectFrom("paymentBillItem")
+											.select([
+												"paymentBillItem.paymentId as paymentId",
+												"paymentBillItem.price as price",
+												"paymentBillItem.label as label",
+											] as const)
+											.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
+											.where("paymentBillItem.paymentId", "in", ids as Id[]),
+									),
+								)
+							: [];
+
+					const rows: Row[] = payments.map((payment) => {
+						const relatedItems = billItems.filter(
+							(item) => item.paymentId === payment.id,
+						);
+						return {
+							id: payment.id,
+							createdAt: payment.createdAt,
+							amount: relatedItems.reduce(
+								(acc, val) => acc + (val.price ?? 0),
+								0,
+							),
+							billCurrency: payment.billCurrency ?? "",
+							label: relatedItems[0]?.label ?? "-",
+						};
+					});
+
+					return {
+						data: rows,
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					};
+				};
+
+				void evolu.loadQuery(query).then((rows) => {
+					void formatData(rows).then(setData);
+				});
+
+				return evolu.subscribeQuery(query)(() => {
+					void formatData(evolu.getQueryRows(query)).then(setData);
+				});
 			},
-		},
+		[evolu],
 	);
-
-	const findLnZapPaymentOption = (paymentOptions: Payment["paymentOptions"]) =>
-		paymentOptions.find((paymentOption) => paymentOption.type === "lnZap");
-
-	const computePaymentPubkeys = useEffectEvent(() => {
-		const pubkeys: string[] = [];
-		const authors: string[] = [];
-
-		for (const payment of items ?? []) {
-			const paymentOption = findLnZapPaymentOption(
-				payment.value.paymentOptions,
-			);
-			if (paymentOption === undefined) {
-				continue;
-			}
-
-			const ndkSigner = new NDKPrivateKeySigner(payment.value.privateKey);
-
-			pubkeys.push(ndkSigner.pubkey);
-			authors.push(paymentOption.walletPubkey);
-		}
-
-		setPaymentPubkeys({
-			pubkeys,
-			authors,
-		});
-	});
-
-	useEffect(() => {
-		if (!eose) {
-			return;
-		}
-
-		computePaymentPubkeys();
-	}, [eose]);
 
 	return (
 		<ResponsiveCard>
@@ -115,85 +185,17 @@ export function PaymentsTable() {
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((payment) => {
-									const ndkSigner = new NDKPrivateKeySigner(
-										payment.value.privateKey,
-									);
-
-									const paymentOption = findLnZapPaymentOption(
-										payment.value.paymentOptions,
-									);
-
-									return {
-										id: payment.value.id,
-										createdAt: new Date(payment.createdAt * 1000),
-										amount: formatAmount(
-											payment.value.bill.items.reduce(
-												(acc, val) => acc + val.price,
-												0,
-											),
-											payment.value.bill.currency,
-										),
-										status:
-											paymentOption !== undefined
-												? paymentStatusRef.current[ndkSigner.pubkey]
-													? "Paid"
-													: paymentOption.expirationIn < Date.now() / 1000
-														? "Expired"
-														: "Waiting"
-												: "Unknown",
-										label: payment.value.bill.items[0].label,
-									};
-								})
-							: undefined
-					}
-					columns={[
-						{
-							key: "createdAt" as const,
-							header: "Created at",
-							width: "200px",
-							render: (value) => value.toLocaleString(),
-						},
-						{
-							key: "amount" as const,
-							header: "Amount",
-							width: "200px",
-						},
-						{
-							key: "status" as const,
-							header: "Status",
-							width: "250px",
-							render: (_, row) => <PaymentStatusBadge paymentId={row.id} />,
-						},
-						{
-							key: "label" as const,
-							header: "Description",
-						},
-					]}
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
 					onRowClick={(payment) =>
 						router.push(
 							`/admin/payments/detail?id=${encodeURIComponent(payment.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

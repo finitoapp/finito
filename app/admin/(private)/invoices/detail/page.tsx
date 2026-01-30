@@ -1,5 +1,6 @@
 "use client";
 
+import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { PDFViewer, usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
@@ -15,7 +16,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PDFDocument } from "pdf-lib";
 import { QRCodeCanvas } from "qrcode.react";
-import { type FC, useEffect, useEffectEvent, useRef, useState } from "react";
+import {
+	type FC,
+	useEffect,
+	useEffectEvent,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { InvoiceStatusBadge } from "@/app/admin/(private)/invoices/invoice-status-badge";
 import { BackButton } from "@/components/back-button";
 import { InvoiceTemplate } from "@/components/invoices/invoice-cz";
@@ -30,44 +38,41 @@ import {
 	CardToolbar,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
+import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { downloadFile } from "@/lib/file-utils";
 import { formatAmount, formatIban } from "@/lib/format-utils";
 import { createIsdocXml } from "@/lib/isdoc-utils";
-import type { Uuid7 } from "@/lib/types";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
-import {
-	InvoiceStatus,
-	invoiceStatusStorage,
-} from "@/storages/invoice-status-storage";
-import {
-	type Invoice,
-	InvoicePaymentMethod,
-	invoiceStorage,
-} from "@/storages/invoice-storage";
-import { smtpStorage } from "@/storages/smtp-storage";
+import { nestObjectSkipNullBranches } from "@/lib/object-utils";
+import { InvoiceStatus } from "@/storages/invoice-status-storage";
+import { type Invoice, InvoicePaymentMethod } from "@/storages/invoice-storage";
 
 const StatusButton: FC<{
-	invoiceId: Uuid7;
+	invoiceId: Id;
 }> = (props) => {
-	const storageDeps = useStorageDeps();
-	const { data: invoiceStates } = useStorageSubscription(invoiceStatusStorage, {
-		limit: 1,
-		key: props.invoiceId,
-	});
+	const evolu = useEvolu();
+	const query = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("invoiceStatus")
+				.select("status")
+				.where("id", "=", props.invoiceId)
+				.where("isDeleted", "is not", sqliteTrue)
+				.limit(1),
+		[props.invoiceId],
+	);
+	const { data: invoiceStates } = useEvoluQuery(query);
 
 	const invoiceStatus = invoiceStates ? invoiceStates[0] : undefined;
-	const value = invoiceStatus ? invoiceStatus.value.status : null;
+	const value = invoiceStatus ? invoiceStatus.status : null;
 
 	const markAsPaid = async () => {
-		await invoiceStatusStorage.insertOrUpdate(storageDeps, props.invoiceId, {
-			invoiceId: props.invoiceId,
-			status:
-				value === null || value === "unpaid"
-					? InvoiceStatus.Paid
-					: InvoiceStatus.Unpaid,
+		evolu.upsert("invoiceStatus", {
+			id: props.invoiceId,
+			status: value === "unpaid" ? InvoiceStatus.Paid : InvoiceStatus.Unpaid,
 		});
 	};
 
@@ -222,7 +227,7 @@ const DownloadPdf = (props: {
 
 const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 	const [isGenerating, setGenerating] = useState(false);
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 
 	return (
 		<Button
@@ -243,17 +248,28 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 							return;
 						}
 
-						const [{ data: billingSettingsRows }, { data: smtpRows }] =
-							await Promise.all([
-								billingSettingsStorage.select(storageDeps, {
-									key: null,
-									limit: 1,
-								}),
-								smtpStorage.select(storageDeps, {
-									key: null,
-									limit: 1,
-								}),
-							]);
+						const [billingSettingsRows, smtpRows] = await Promise.all([
+							(async () => {
+								const query = evolu.createQuery((db) =>
+									db
+										.selectFrom("billingSettings")
+										.selectAll()
+										.where("isDeleted", "is not", sqliteTrue)
+										.where("id", "=", createIdFromString("")),
+								);
+								return await evolu.loadQuery(query);
+							})(),
+							(async () => {
+								const query = evolu.createQuery((db) =>
+									db
+										.selectFrom("smtp")
+										.selectAll()
+										.where("isDeleted", "is not", sqliteTrue)
+										.where("id", "=", createIdFromString("")),
+								);
+								return await evolu.loadQuery(query);
+							})(),
+						]);
 
 						const smtp = smtpRows[0];
 						if (smtp === undefined) {
@@ -263,13 +279,10 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 						const billingSettings = billingSettingsRows[0];
 						if (
 							billingSettings === undefined ||
-							billingSettings.value.invoiceEmailSettings === undefined
+							billingSettings.invoiceEmailSettingsEnable !== sqliteTrue
 						) {
 							return;
 						}
-
-						const invoiceEmailSettings =
-							billingSettings.value.invoiceEmailSettings;
 
 						const reader = new FileReader();
 						reader.onloadend = async () => {
@@ -280,16 +293,14 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 							const base64data = reader.result.split(",")[1];
 
 							await invoke("send_invoice", {
-								server: smtp.value.server,
-								port: smtp.value.port,
-								username: smtp.value.credentials.username,
-								password: smtp.value.credentials.password,
-								from: smtp.value.name
-									? `${smtp.value.name} <${smtp.value.email}>`
-									: smtp.value.email,
+								server: smtp.server,
+								port: smtp.port,
+								username: smtp.username,
+								password: smtp.password,
+								from: smtp.name ? `${smtp.name} <${smtp.email}>` : smtp.email,
 								to: `${props.invoice.customer.billingInfo.name} <${customerEmail}>`,
-								subject: invoiceEmailSettings.subject,
-								body: invoiceEmailSettings.body,
+								subject: billingSettings.invoiceEmailSettingsSubject,
+								body: billingSettings.invoiceEmailSettingsBody,
 								attachmentName: params.fileName,
 								attachmentMimetype: params.mimetype,
 								attachment: base64data,
@@ -322,19 +333,118 @@ const ISDOCGenerator = (props: { invoice: Invoice }) => {
 };
 
 export default function Home() {
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
-	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(invoiceStorage, {
-		key: id,
-	});
+	const invoiceQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("invoice")
+				.leftJoin(
+					"invoiceCustomerBillingInfo",
+					"invoiceCustomerBillingInfo.id",
+					"invoice.id",
+				)
+				.leftJoin(
+					"invoiceCustomerBillingInfoAddress",
+					"invoiceCustomerBillingInfoAddress.id",
+					"invoice.id",
+				)
+				.leftJoin(
+					"invoiceCustomerBillingInfoCz",
+					"invoiceCustomerBillingInfoCz.id",
+					"invoice.id",
+				)
+				.leftJoin(
+					"invoiceSupplierBillingInfo",
+					"invoiceSupplierBillingInfo.id",
+					"invoice.id",
+				)
+				.leftJoin(
+					"invoiceSupplierBillingInfoAddress",
+					"invoiceSupplierBillingInfoAddress.id",
+					"invoice.id",
+				)
+				.leftJoin(
+					"invoiceSupplierBillingInfoCz",
+					"invoiceSupplierBillingInfoCz.id",
+					"invoice.id",
+				)
+				.select([
+					"invoice.id as id",
+					"invoice.invoiceId as invoiceId",
+					"invoice.invoiceNumber as invoiceNumber",
+					"invoice.issueDate as issueDate",
+					"invoice.dueDate as dueDate",
+					"invoice.currency as currency",
+					"invoice.paymentMethod as payment.method",
+					"invoice.paymentIban as payment.iban",
+					"invoice.createdAt as createdAt",
 
-	const item = items && items[0];
+					"invoiceCustomerBillingInfo.name as customer.billingInfo.name",
+					"invoiceCustomerBillingInfo.label as customer.billingInfo.label",
+					"invoiceCustomerBillingInfo.email as customer.billingInfo.email",
+					"invoiceCustomerBillingInfo.countryCode as customer.billingInfo.countryCode",
+					"invoiceCustomerBillingInfoAddress.street as customer.billingInfo.address.street",
+					"invoiceCustomerBillingInfoAddress.descriptiveNumber as customer.billingInfo.address.descriptiveNumber",
+					"invoiceCustomerBillingInfoAddress.city as customer.billingInfo.address.city",
+					"invoiceCustomerBillingInfoAddress.postalCode as customer.billingInfo.address.postalCode",
+					"invoiceCustomerBillingInfoCz.identificationNumber as customer.billingInfo.countrySpecific.identificationNumber",
+					"invoiceCustomerBillingInfoCz.vatNumber as customer.billingInfo.countrySpecific.vatNumber",
+					"invoiceCustomerBillingInfoCz.caseNumber as customer.billingInfo.countrySpecific.caseNumber",
+
+					"invoiceSupplierBillingInfo.name as supplier.billingInfo.name",
+					"invoiceSupplierBillingInfo.label as supplier.billingInfo.label",
+					"invoiceSupplierBillingInfo.email as supplier.billingInfo.email",
+					"invoiceSupplierBillingInfo.countryCode as supplier.billingInfo.countryCode",
+					"invoiceSupplierBillingInfoAddress.street as supplier.billingInfo.address.street",
+					"invoiceSupplierBillingInfoAddress.descriptiveNumber as supplier.billingInfo.address.descriptiveNumber",
+					"invoiceSupplierBillingInfoAddress.city as supplier.billingInfo.address.city",
+					"invoiceSupplierBillingInfoAddress.postalCode as supplier.billingInfo.address.postalCode",
+					"invoiceSupplierBillingInfoCz.vatPayer as supplier.billingInfo.countrySpecific.vatPayer",
+					"invoiceSupplierBillingInfoCz.identificationNumber as supplier.billingInfo.countrySpecific.identificationNumber",
+					"invoiceSupplierBillingInfoCz.vatNumber as supplier.billingInfo.countrySpecific.vatNumber",
+					"invoiceSupplierBillingInfoCz.caseNumber as supplier.billingInfo.countrySpecific.caseNumber",
+				])
+				.where("invoice.id", "=", id as Id)
+				.where("invoice.isDeleted", "is not", sqliteTrue),
+		[id],
+	);
+
+	const itemsQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("invoiceItem")
+				.selectAll()
+				.where("invoiceId", "=", id as Id)
+				.where("isDeleted", "is not", sqliteTrue),
+		[id],
+	);
+
+	const { data: invoiceRows } = useEvoluQuery(invoiceQuery);
+	const { data: invoiceItemRows } = useEvoluQuery(itemsQuery);
+
+	const item = useMemo(() => {
+		const row = invoiceRows && invoiceRows[0];
+		if (!row) return undefined;
+
+		const nested = nestObjectSkipNullBranches(row);
+		return {
+			...nested,
+			items: (invoiceItemRows ?? []).map((it) => ({
+				label: it.label,
+				price: it.price,
+				quantity: it.quantity,
+				unitOfMeasure: it.unitOfMeasure,
+			})),
+		} as unknown as { value: Invoice };
+	}, [invoiceRows, invoiceItemRows]);
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -342,26 +452,40 @@ export default function Home() {
 				return;
 			}
 
-			await invoiceStorage.delete(storageDeps, item.eventId);
+			evolu.update("invoice", {
+				id: item.id as Id,
+				isDeleted: sqliteTrue,
+			});
 			router.push("/admin/invoices");
 		},
 	});
 
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete invoice?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
+
 	const totalAmount =
-		item?.value.items.reduce(
-			(acc, value) => acc + value.price * value.quantity,
-			0,
-		) ?? 0;
+		item?.items.reduce((acc, value) => acc + value.price * value.quantity, 0) ??
+		0;
 
 	const paymentQrCode =
-		item?.value.payment.method === InvoicePaymentMethod.BankTransfer &&
+		item?.paymentMethod === InvoicePaymentMethod.BankTransfer &&
 		totalAmount > 0 &&
-		item.value.payment.iban.startsWith("CZ")
+		item.paymentIban.startsWith("CZ")
 			? generateCzechBankQrCode({
 					amount: totalAmount,
-					currency: item.value.currency,
-					iban: item.value.payment.iban,
-					variableSymbol: item.value.invoiceNumber,
+					currency: item.currency,
+					iban: item.paymentIban,
+					variableSymbol: item.invoiceNumber,
 				})
 			: null;
 
@@ -377,13 +501,13 @@ export default function Home() {
 						<CardHeader>
 							<CardTitle>
 								{!item && <Skeleton />}
-								{item?.value.invoiceNumber}
+								{item?.invoiceNumber}
 							</CardTitle>
 							<CardToolbar>
 								{item && (
 									<InvoiceStatusBadge
-										invoiceId={item.value.id}
-										dueDate={new Date(item.value.dueDate)}
+										invoiceId={item.id}
+										dueDate={new Date(item.dueDate)}
 									/>
 								)}
 							</CardToolbar>
@@ -398,12 +522,12 @@ export default function Home() {
 												{!item && <Skeleton />}
 												{item &&
 													`${formatAmount(
-														item.value.items.reduce(
+														item.items.reduce(
 															(acc, value) =>
 																acc + value.price * value.quantity,
 															0,
 														),
-														item.value.currency,
+														item.currency,
 													)}`}
 											</>
 										}
@@ -415,13 +539,11 @@ export default function Home() {
 										content={
 											<>
 												{!item && <Skeleton />}
-												{item &&
-													new Date(item.createdAt * 1000).toLocaleDateString()}
+												{item && new Date(item.createdAt).toLocaleDateString()}
 											</>
 										}
 										footer={
-											item &&
-											new Date(item.createdAt * 1000).toLocaleTimeString()
+											item && new Date(item.createdAt).toLocaleTimeString()
 										}
 										className={"flex-1"}
 									/>
@@ -432,8 +554,7 @@ export default function Home() {
 										content={
 											<>
 												{!item && <Skeleton />}
-												{item &&
-													new Date(item.value.issueDate).toLocaleDateString()}
+												{item && new Date(item.issueDate).toLocaleDateString()}
 											</>
 										}
 										className={"flex-1"}
@@ -444,8 +565,7 @@ export default function Home() {
 										content={
 											<>
 												{!item && <Skeleton />}
-												{item &&
-													new Date(item.value.dueDate).toLocaleDateString()}
+												{item && new Date(item.dueDate).toLocaleDateString()}
 											</>
 										}
 										className={"flex-1"}
@@ -458,72 +578,70 @@ export default function Home() {
 											items={[
 												{
 													key: "Invoice number",
-													value: item?.value.invoiceNumber ?? "-",
+													value: item?.invoiceNumber ?? "-",
 												},
 												{
 													key: "Price",
 													value: item
 														? formatAmount(
-																item.value.items.reduce(
+																item.items.reduce(
 																	(acc, value) =>
 																		acc + value.price * value.quantity,
 																	0,
 																),
-																item.value.currency,
+																item.currency,
 															)
 														: "-",
 												},
 												{
 													key: "Name",
-													value: item?.value.supplier.billingInfo.name ?? "-",
+													value: item?.supplier.billingInfo.name ?? "-",
 												},
 												{
 													key: "VAT Number",
 													value:
-														item?.value.supplier.billingInfo.countrySpecific
+														item?.supplier.billingInfo.countrySpecific
 															.vatNumber ?? "-",
 												},
 												{
 													key: "Payment Method",
-													value: item?.value.payment.method,
+													value: item?.paymentMethod,
 												},
-												...(item?.value.payment.method ===
+												...(item?.paymentMethod ===
 												InvoicePaymentMethod.BankTransfer
 													? [
 															{
 																key: "IBAN",
-																value: item?.value.payment.iban
-																	? formatIban(item.value.payment.iban)
+																value: item?.paymentIban
+																	? formatIban(item.paymentIban)
 																	: "-",
 															},
 														]
 													: []),
 												{
 													key: "E-mail",
-													value: item?.value.supplier.billingInfo.email ?? "-",
+													value: item?.supplier.billingInfo.email ?? "-",
 												},
 												{
 													key: "Street",
 													value:
-														item?.value.supplier.billingInfo.address?.street ??
-														"-",
+														item?.supplier.billingInfo.address?.street ?? "-",
 												},
 												{
 													key: "City",
 													value:
-														item?.value.supplier.billingInfo.address?.city ??
-														"-",
+														item?.supplier.billingInfo.address?.city ?? "-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														item?.value.supplier.billingInfo.address
-															?.postalCode ?? "-",
+														item?.supplier.billingInfo.address?.postalCode ??
+														"-",
 												},
 												{
 													key: "Country",
 													value:
-														item?.value.supplier.billingInfo.countrySpecific
+														item?.supplier.billingInfo.countrySpecific
 															.countryCode ?? "-",
 												},
 											]}
@@ -534,46 +652,44 @@ export default function Home() {
 											items={[
 												{
 													key: "Customer",
-													value: item?.value.customer.billingInfo.name ?? "-",
+													value: item?.customer.billingInfo.name ?? "-",
 												},
 												{
 													key: "VAT Number",
 													value:
-														item?.value.customer.billingInfo.countrySpecific
+														item?.customer.billingInfo.countrySpecific
 															.vatNumber ?? "-",
 												},
 												{
 													key: "Identification Number",
 													value:
-														item?.value.customer.billingInfo.countrySpecific
+														item?.customer.billingInfo.countrySpecific
 															.identificationNumber ?? "-",
 												},
 												{
 													key: "E-mail",
-													value: item?.value.customer.billingInfo.email ?? "-",
+													value: item?.customer.billingInfo.email ?? "-",
 												},
 												{
 													key: "Street",
 													value:
-														item?.value.customer.billingInfo.address?.street ??
-														"-",
+														item?.customer.billingInfo.address?.street ?? "-",
 												},
 												{
 													key: "City",
 													value:
-														item?.value.customer.billingInfo.address?.city ??
-														"-",
+														item?.customer.billingInfo.address?.city ?? "-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														item?.value.customer.billingInfo.address
-															?.postalCode ?? "-",
+														item?.customer.billingInfo.address?.postalCode ??
+														"-",
 												},
 												{
 													key: "Country",
 													value:
-														item?.value.customer.billingInfo.countrySpecific
+														item?.customer.billingInfo.countrySpecific
 															.countryCode ?? "-",
 												},
 											]}
@@ -592,15 +708,10 @@ export default function Home() {
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							{item && (
-								<DownloadPdf
-									invoice={item.value}
-									paymentQrCode={paymentQrCode}
-								/>
+								<DownloadPdf invoice={item} paymentQrCode={paymentQrCode} />
 							)}
-							{item && (
-								<SendPdf invoice={item.value} paymentQrCode={paymentQrCode} />
-							)}
-							{item && <ISDOCGenerator invoice={item.value} />}
+							{item && <SendPdf invoice={item} paymentQrCode={paymentQrCode} />}
+							{item && <ISDOCGenerator invoice={item} />}
 							<Button variant={"outline"} className={"w-full"} asChild>
 								<Link
 									href={`/admin/invoices/edit?id=${encodeURIComponent(id)}`}
@@ -609,8 +720,8 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							{item && <StatusButton invoiceId={item.value.id} />}
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							{item && <StatusButton invoiceId={item.id} />}
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>
@@ -631,16 +742,13 @@ export default function Home() {
 												height={600}
 												showToolbar={false}
 											>
-												<InvoiceTemplate
-													qrCodeSrc={qrUri}
-													invoice={item.value}
-												/>
+												<InvoiceTemplate qrCodeSrc={qrUri} invoice={item} />
 											</PDFViewer>
 										)}
 									</QrCodeImageBuilder>
 								) : (
 									<PDFViewer width={"100%"} height={600} showToolbar={false}>
-										<InvoiceTemplate invoice={item.value} qrCodeSrc={null} />
+										<InvoiceTemplate invoice={item} qrCodeSrc={null} />
 									</PDFViewer>
 								))}
 						</CardContent>
