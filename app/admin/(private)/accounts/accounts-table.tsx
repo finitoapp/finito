@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -31,18 +34,18 @@ type Task = {
 	_tag: string;
 };
 
-const columns: ColumnDef<Task, Task>[] = [
+const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	{
 		accessorKey: "name",
-		header: createSortableHeader("Name"),
+		header: createSortableHeader(t("accounts:table.columns.name")),
 	},
 	{
 		accessorKey: "_tag",
-		header: createSortableHeader("Type"),
+		header: createSortableHeader(t("accounts:table.columns.type")),
 	},
 	{
 		accessorKey: "address",
-		header: createSortableHeader("Address"),
+		header: createSortableHeader(t("accounts:table.columns.address")),
 		cell: ({ row }) => {
 			console.log("row", row.original);
 			return row
@@ -60,10 +63,20 @@ const columns: ColumnDef<Task, Task>[] = [
 	},
 ];
 
+const createFilterableColumns = (t: TFunction) => [
+	{
+		id: "name",
+		title: t("accounts:table.columns.name"),
+	},
+] satisfies { id: keyof Task; title: string }[];
+
 export function AccountsTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("accounts");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
@@ -170,16 +183,16 @@ export function AccountsTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Accounts</CardTitle>
+					<CardTitle>{t("accounts:table.accounts")}</CardTitle>
 					<CardDescription>
-						List of your accounts (bank accounts, wallets, etc.)
+						{t("accounts:table.description.list-of-your-accounts")}
 					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/accounts/new"}>
 						<Button>
 							<PlusIcon />
-							New account
+							{t("accounts:table.actions.new-account")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -190,13 +203,8 @@ export function AccountsTable() {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					searchKey="name"
-					searchPlaceholder="Search by name..."
-					filterableColumns={[
-						{
-							id: "name",
-							title: "Name",
-						},
-					]}
+					searchPlaceholder={t("accounts:table.search.placeholder.by-name")}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/accounts/detail?id=${encodeURIComponent(item.id)}`,

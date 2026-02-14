@@ -1,9 +1,11 @@
 "use client";
 
 import { createIdFromString, getOrThrow, type Id } from "@evolu/common";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { merge } from "es-toolkit";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -39,29 +41,29 @@ const smtpDefaultValues = {
 	email: "",
 } satisfies z.input<typeof smtpSchema>;
 
-const components = createAutoFormLayout(smtpSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(smtpSchema, ({ builder }) => ({
 	...builder.magicInput("server").text({
-		label: "Server",
+		label: t("settings:form.smtp-form.label.server"),
 	}),
 	...builder.magicInput("port").text({
-		label: "Port",
+		label: t("settings:form.smtp-form.label.port"),
 		type: "number",
 	}),
 	...builder.nestedField("credentials", ({ builder }) => ({
 		...builder.magicInput("username").text({
-			label: "Username",
+			label: t("settings:form.smtp-form.label.username"),
 		}),
 		...builder.magicInput("password").text({
-			label: "Password",
+			label: t("settings:form.smtp-form.label.password"),
 			type: "password",
 			copyToClipboard: true,
 		}),
 	})),
 	...builder.magicInput("email").text({
-		label: "Your E-mail",
+		label: t("settings:form.smtp-form.label.your-e-mail"),
 	}),
 	...builder.magicInput("name").text({
-		label: "Your email name",
+		label: t("settings:form.smtp-form.label.your-email-name"),
 	}),
 }));
 
@@ -69,10 +71,12 @@ export const SmtpForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof smtpSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(smtpDefaultValues, params.defaultValues ?? {});
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(smtpSchema, {
 		defaultValues,
 		saveAction: async (values) => {

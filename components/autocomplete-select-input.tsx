@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import { LoaderCircleIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -28,6 +31,7 @@ export const createAutocompleteSelectInput =
 		placeholder?: string;
 	}): AutoFormComponent<TItem> =>
 	(props) => {
+		const { t } = useTranslation();
 		return (
 			<FormField
 				control={props.control}
@@ -118,7 +122,7 @@ export const createAutocompleteSelectInput =
 							filter={null}
 						>
 							<Label className="flex flex-col gap-2">
-								<span className="text-sm font-medium">Search subjects</span>
+								<span className="text-sm font-medium">{t("components:autocomplete.searchSubjects")}</span>
 								<AutocompleteControl>
 									<AutocompleteInput
 										variant={"lg"}

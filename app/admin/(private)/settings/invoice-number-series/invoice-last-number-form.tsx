@@ -1,7 +1,9 @@
 import { createIdFromString, getOrThrow, type Id } from "@evolu/common";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { merge } from "es-toolkit";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -24,16 +26,16 @@ export const createInvoiceLastNumberDefaultValues = () =>
 		date: null,
 	}) satisfies z.input<typeof invoiceLastNumberFormSchema>;
 
-export const invoiceLastNumberFormComponents = createAutoFormLayout(
+const createComponents = (t: TFunction) => createAutoFormLayout(
 	invoiceLastNumberFormSchema,
 	({ builder }) => ({
 		...builder.magicInput("serialNumber").text({
-			label: "Last invoice serial number",
+			label: t("settings:form.invoice-last-number-form.label.last-invoice-serial-number"),
 			type: "number",
 		}),
 
 		...builder.magicInput("date").date({
-			label: "Last invoice date",
+			label: t("settings:form.invoice-last-number-form.label.last-invoice-date"),
 		}),
 	}),
 );
@@ -42,6 +44,7 @@ export const InvoiceLastNumberForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof invoiceLastNumberFormSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
@@ -49,6 +52,7 @@ export const InvoiceLastNumberForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(invoiceLastNumberFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
@@ -73,5 +77,5 @@ export const InvoiceLastNumberForm: React.FC<{
 		},
 	});
 
-	return <AutoForm form={form} components={invoiceLastNumberFormComponents} />;
+	return <AutoForm form={form} components={components} />;
 };

@@ -7,5 +7,5 @@ export default function Layout(
 		children: React.ReactNode;
 	}>,
 ) {
-	return <DefautLayout title={"Settings"}>{props.children}</DefautLayout>;
+	return <DefautLayout titleKey={"admin:layout.title.settings"}>{props.children}</DefautLayout>;
 }

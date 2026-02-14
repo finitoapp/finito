@@ -1,6 +1,8 @@
 "use client";
 
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSigner,
@@ -98,27 +100,27 @@ const staticPaymentDefaultValues = {
 	items: [itemDefaultValues],
 } satisfies z.input<typeof staticPaymentSchema>;
 
-const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 	...builder.card(
 		{
-			title: "Payment info",
+			title: t("payments:form.payment-form.title.payment-info"),
 		},
 		{
 			...builder.magicInput("merchantName").text({
-				label: "Merchant name",
+				label: t("payments:form.payment-form.label.merchant-name"),
 			}),
 
 			...builder.magicInput("currency").select({
 				values: FiatCurrency,
 				allowEmpty: false,
-				label: "Currency",
+				label: t("payments:form.payment-form.label.currency"),
 			}),
 		},
 	),
 
 	...builder.collapsibleSeparator(
 		{
-			title: "Advanced options",
+			title: t("payments:form.payment-form.title.advanced-options"),
 			watchErrors: ["redirectUrl"],
 		},
 		{
@@ -126,10 +128,11 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 				{},
 				{
 					...builder.magicInput("redirectUrl").text({
-						label: "Redirect URL",
-						placeholder: "https://",
-						description:
-							"The customer will be redirected to this URL when they complete the payment via the web interface.",
+						label: t("payments:form.payment-form.label.redirect-url"),
+						placeholder: t("payments:form.payment-form.placeholder.https"),
+						description: t(
+							"payments:form.payment-form.description.the-customer-will-be-redirected-to-this-url-when-they-complete-the-payment-via-t",
+						),
 					}),
 				},
 			),
@@ -138,7 +141,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 	...builder.card(
 		{
-			title: "Items",
+			title: t("payments:form.payment-form.title.items"),
 		},
 		{
 			...builder.arrayTableField(
@@ -147,29 +150,29 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					defaultValue: itemDefaultValues,
 					columns: [
 						{
-							title: "Label",
+							title: t("payments:form.payment-form.title.label"),
 						},
 						{
-							title: "Price",
+							title: t("payments:form.payment-form.title.price"),
 							className: "w-[130px]",
 						},
 						{
-							title: "Quantity",
+							title: t("payments:form.payment-form.title.quantity"),
 							className: "w-[80px]",
 						},
 					],
 				},
 				({ builder }) => ({
 					...builder.magicInput("label").text({
-						label: "Label",
+						label: t("payments:form.payment-form.label.label"),
 					}),
 					...builder.magicInput("price").text({
-						label: "Price",
-						placeholder: "0",
+						label: t("payments:form.payment-form.label.price"),
+						placeholder: t("payments:form.payment-form.placeholder.0"),
 					}),
 					...builder.magicInput("quantity").text({
-						label: "Quantity",
-						placeholder: "1",
+						label: t("payments:form.payment-form.label.quantity"),
+						placeholder: t("payments:form.payment-form.placeholder.1"),
 						type: "number",
 					}),
 				}),
@@ -206,12 +209,12 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 	...builder.magicInput("totalAmount").text({
 		disabled: true,
-		label: "Total amount",
+		label: t("payments:form.payment-form.label.total-amount"),
 	}),
 
 	...builder.card(
 		{
-			title: "Payment method",
+			title: t("payments:form.payment-form.title.payment-method"),
 		},
 		{
 			...builder.magicInput("type").select({
@@ -231,9 +234,9 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 			...builder.when("type", (value) => value === "lnZap", {
 				...builder.magicInput("amountInBtc").amount({
-					label: "Price in BTC",
+					label: t("payments:form.payment-form.label.price-in-btc"),
 					type: "number",
-					placeholder: "0",
+					placeholder: t("payments:form.payment-form.placeholder.0"),
 					currency: Currency.BTC,
 					disabled: true,
 					computeAmount: {
@@ -246,7 +249,9 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
-								label: "lud16 wallet address with `Lightning Zaps` support",
+								label: t(
+									"payments:form.payment-form.label.lud16-wallet-address-with-lightning-zaps-support",
+								),
 								fetchItems: async () => {
 									const items = await evolu.loadQuery(
 										evolu.createQuery((db) =>
@@ -283,9 +288,9 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 
 			...builder.when("type", (value) => value === "lnSpark", {
 				...builder.magicInput("amountInBtc").amount({
-					label: "Price in BTC",
+					label: t("payments:form.payment-form.label.price-in-btc"),
 					type: "number",
-					placeholder: "0",
+					placeholder: t("payments:form.payment-form.placeholder.0"),
 					currency: Currency.BTC,
 					disabled: true,
 					computeAmount: {
@@ -298,7 +303,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxOrTextInput<string>({
-								label: "Spark wallet account",
+								label: t("payments:form.payment-form.label.spark-wallet-account"),
 								fetchItems: async () => {
 									const items = await evolu.loadQuery(
 										evolu.createQuery((db) =>
@@ -332,6 +337,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 export const PaymentForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof staticPaymentSchema> & { id: Uuid7 }>;
 }> = (params) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const storageDeps = useStorageDeps();
 	const router = useRouter();
@@ -339,6 +345,7 @@ export const PaymentForm: React.FC<{
 	const [defaultValues] = useState(() => {
 		return merge(staticPaymentDefaultValues, params.defaultValues ?? {});
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {

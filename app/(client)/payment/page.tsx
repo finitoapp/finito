@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, getOrThrow } from "@evolu/common";
 import { IconRefresh } from "@tabler/icons-react";
 import { motion } from "framer-motion";
@@ -303,7 +305,7 @@ const BottomPanel: FC<{
 												"text-xs text-muted-foreground font-bold flex flex-col gap-2"
 											}
 										>
-											<span className={"uppercase"}>Tip for the staff</span>
+											<span className={"uppercase"}>{t("client:bill.tipForStaff")}</span>
 											<TipSelector selectedTipAtom={selectedTipAtom} />
 										</div>
 									)}
@@ -479,6 +481,7 @@ const Loading: FC<{
 };
 
 export default function Page() {
+	const { t } = useTranslation();
 	const [sessionId, setSessionId] = useState<Uuid7 | null>(null);
 	const store = useStore();
 	const router = useRouter();

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,6 +47,7 @@ export function NavUser({
 		avatar: string;
 	};
 }) {
+	const { t } = useTranslation();
 	const { setOpenMobile } = useSidebar();
 	const { onClick, isPwaSupported } = useInstallPwa();
 	const { withConfirm } = useGlobalDialog();
@@ -77,7 +79,8 @@ export function NavUser({
 	);
 
 	const activeAccountId = accounts[0]?.id;
-	const activeAccountName = accounts[0]?.name ?? "unknown";
+	const activeAccountName =
+		accounts[0]?.name ?? t("navigation:account.unknown");
 
 	const logout = useCallback(async () => {
 		const currentAccount = accounts[0];
@@ -106,14 +109,13 @@ export function NavUser({
 	const logoutWithConfirm = useMemo(
 		() =>
 			withConfirm(logout, {
-				title: "Logout current account?",
-				description:
-					"The current account will be removed from this device. You can restore it later with your seed phrase.",
-				confirmText: "Logout",
-				cancelText: "Cancel",
+				title: t("navigation:account.confirmLogout.title"),
+				description: t("navigation:account.confirmLogout.description"),
+				confirmText: t("navigation:account.actions.logout"),
+				cancelText: t("navigation:account.actions.cancel"),
 				confirmVariant: "destructive",
 			}),
-		[logout, withConfirm],
+		[logout, t, withConfirm],
 	);
 
 	return (
@@ -127,7 +129,9 @@ export function NavUser({
 						>
 							<Avatar className="h-8 w-8 rounded-lg grayscale">
 								<AvatarImage src={user.avatar} alt={user.name} />
-								<AvatarFallback className="rounded-lg">CN</AvatarFallback>
+								<AvatarFallback className="rounded-lg">
+									{t("navigation:account.initials")}
+								</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">
@@ -143,7 +147,9 @@ export function NavUser({
 						align="end"
 						sideOffset={4}
 					>
-						<DropdownMenuLabel>Accounts</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("navigation:account.accounts")}
+						</DropdownMenuLabel>
 						{accounts.map((account) => {
 							return (
 								<DropdownMenuItem
@@ -172,7 +178,9 @@ export function NavUser({
 									<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 										<Avatar className="h-8 w-8 rounded-lg">
 											<AvatarImage src={user.avatar} alt={account.name} />
-											<AvatarFallback className="rounded-lg">CN</AvatarFallback>
+											<AvatarFallback className="rounded-lg">
+												{t("navigation:account.initials")}
+											</AvatarFallback>
 										</Avatar>
 										<div className="grid flex-1 text-left text-sm leading-tight">
 											<span className="truncate font-medium">
@@ -189,22 +197,26 @@ export function NavUser({
 								onClick={() => setOpenMobile(false)}
 							>
 								<IconPlus />
-								Add account
+								{t("navigation:account.actions.addAccount")}
 							</Link>
 						</DropdownMenuItem>
-						<DropdownMenuSeparator title={"Actions"} />
-						<DropdownMenuLabel>Current account</DropdownMenuLabel>
+						<DropdownMenuSeparator
+							title={t("navigation:account.actions.label")}
+						/>
+						<DropdownMenuLabel>
+							{t("navigation:account.currentAccount")}
+						</DropdownMenuLabel>
 						<DropdownMenuItem
 							onClick={() => void logoutWithConfirm()}
 							disabled={accounts.length <= 1}
 						>
 							<LogOutIcon />
-							Logout
+							{t("navigation:account.actions.logout")}
 						</DropdownMenuItem>
 						{isPwaSupported && (
 							<DropdownMenuItem>
 								<HardDriveDownloadIcon onClick={onClick} />
-								Install
+								{t("navigation:account.actions.install")}
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>

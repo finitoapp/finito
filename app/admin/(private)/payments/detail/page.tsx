@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { getOrThrow, type Id, sqliteTrue } from "@evolu/common";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
@@ -127,7 +129,7 @@ const FullscreenQrPayment: FC<{
 				>
 					<div>
 						<DialogHeader>
-							<DialogTitle>Payment</DialogTitle>
+							<DialogTitle>{t("payments:page.payment")}</DialogTitle>
 						</DialogHeader>
 
 						{isPaid ? (
@@ -256,6 +258,7 @@ const FullscreenQrPayment: FC<{
 };
 
 export default function Home() {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
 	const evolu = useEvolu();
@@ -571,7 +574,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-10"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<FullscreenQrPayment

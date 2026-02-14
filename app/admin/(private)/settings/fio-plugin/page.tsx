@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -8,6 +10,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const itemId = createIdFromString("");
 	const query = useCreateQuery(
 		(db) => {
@@ -44,7 +47,7 @@ export default function Home() {
 		<div className={"w-full lg:max-w-4xl"}>
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Fio bank plugin</CardTitle>
+					<CardTitle>{t("settings:page.fioBankPlugin")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<FioPluginForm

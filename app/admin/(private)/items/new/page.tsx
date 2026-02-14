@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,6 +12,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvolu } from "@/hooks/use-evolu";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 
@@ -35,7 +38,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>New item</CardTitle>
+					<CardTitle>{t("items:page.newItem")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ItemForm

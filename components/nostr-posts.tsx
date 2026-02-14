@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import {
 	Heart,
 	MessageCircle,
@@ -112,11 +115,12 @@ const posts = [
 ];
 
 export function NostrPosts(props: { posts?: typeof posts }) {
+	const { t } = useTranslation();
 	return (
 		<div className="max-w-2xl mx-auto space-y-4">
 			<div className="text-center mb-8">
-				<h1 className="text-3xl font-bold mb-2">Nostr Posts</h1>
-				<p className="text-muted-foreground">Decentralized social media feed</p>
+				<h1 className="text-3xl font-bold mb-2">{t("components:nostrPosts.nostrPosts")}</h1>
+				<p className="text-muted-foreground">{t("components:nostrPosts.decentralizedSocialMediaFeed")}</p>
 			</div>
 
 			<div className="space-y-4">

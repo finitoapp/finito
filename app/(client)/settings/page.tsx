@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import {
 	IconBrandGithub,
 	IconBrandX,
@@ -122,6 +124,7 @@ const InstallPWA = () => {
 };
 
 export default function Page() {
+	const { t } = useTranslation();
 	const commitHash = process.env.NEXT_PUBLIC_GIT_COMMIT || "unknown";
 	const router = useRouter();
 
@@ -156,7 +159,7 @@ export default function Page() {
 				App version: <strong>{commitHash}</strong>
 			</div>
 
-			<div className={"text-center text-sm"}>We are OpenSource</div>
+			<div className={"text-center text-sm"}>{t("settings:page.weAreOpensource")}</div>
 		</div>
 	);
 }

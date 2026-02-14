@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { getOrThrow, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
@@ -18,6 +20,7 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
@@ -141,7 +144,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-4"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<Button variant={"outline"} className={"w-full"} asChild>

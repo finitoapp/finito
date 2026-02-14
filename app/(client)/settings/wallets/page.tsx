@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { getOrThrow, sqliteTrue } from "@evolu/common";
 import {
 	ChevronDownIcon,
@@ -28,6 +30,7 @@ import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { cn } from "@/lib/utils";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const { confirm } = useGlobalDialog();
@@ -57,11 +60,11 @@ export default function Page() {
 				<DropdownMenuGroup>
 					<DropdownMenuItem>
 						<EditIcon />
-						<span>Edit</span>
+						<span>{t("common:actions.edit")}</span>
 					</DropdownMenuItem>
 					<DropdownMenuItem>
 						<TrashIcon />
-						<span>Delete</span>
+						<span>{t("common:actions.delete")}</span>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>
@@ -142,7 +145,7 @@ export default function Page() {
 											}}
 										>
 											<EditIcon />
-											<span>Edit</span>
+											<span>{t("common:actions.edit")}</span>
 										</DropdownMenuItem>
 										<DropdownMenuItem
 											onClick={async () => {
@@ -166,7 +169,7 @@ export default function Page() {
 											}}
 										>
 											<TrashIcon />
-											<span>Delete</span>
+											<span>{t("common:actions.delete")}</span>
 										</DropdownMenuItem>
 									</DropdownMenuGroup>
 								</DropdownMenuContent>

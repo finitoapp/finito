@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import {
 	Document,
 	Font,
@@ -213,6 +216,7 @@ export const InvoiceTemplate: React.FC<{
 	invoice: Invoice;
 	qrCodeSrc: string | null;
 }> = ({ invoice, qrCodeSrc }) => {
+	const { t } = useTranslation();
 	const czechBankAccountNumber =
 		invoice.payment.method === InvoicePaymentMethod.BankTransfer
 			? parseCzechBankAccountFromIban(invoice.payment.iban)
@@ -224,7 +228,7 @@ export const InvoiceTemplate: React.FC<{
 				{/* Header */}
 				<View style={styles.header}>
 					<View style={{ width: "50%" }}>
-						<Text style={styles.title}>Faktura</Text>
+						<Text style={styles.title}>{t("invoices:pdf.cz.faktura")}</Text>
 						<Text style={styles.invoiceNumber}>č. {invoice.invoiceNumber}</Text>
 					</View>
 				</View>
@@ -234,7 +238,7 @@ export const InvoiceTemplate: React.FC<{
 				<View style={{ flexDirection: "row" }}>
 					<View style={{ width: "60%", paddingRight: 20 }}>
 						<View style={styles.billToSection}>
-							<Text style={styles.sectionTitle}>Dodavatel</Text>
+							<Text style={styles.sectionTitle}>{t("invoices:pdf.cz.dodavatel")}</Text>
 							<Text style={styles.companyName}>
 								{invoice.supplier.billingInfo.name}
 							</Text>
@@ -269,7 +273,7 @@ export const InvoiceTemplate: React.FC<{
 									DIČ: {invoice.supplier.billingInfo.countrySpecific.vatNumber}
 								</Text>
 							) : (
-								<Text>Neplátce DPH</Text>
+								<Text>{t("invoices:pdf.cz.neplatceDph")}</Text>
 							)}
 							<View style={{ height: 6, width: "100%" }}></View>
 							{invoice.supplier.billingInfo.email && (
@@ -279,7 +283,7 @@ export const InvoiceTemplate: React.FC<{
 					</View>
 					<View style={{ width: "40%" }}>
 						<View style={styles.billToSection}>
-							<Text style={styles.sectionTitle}>Odběratel</Text>
+							<Text style={styles.sectionTitle}>{t("invoices:pdf.cz.odberatel")}</Text>
 							<Text style={styles.companyName}>
 								{invoice.customer.billingInfo.name}
 							</Text>
@@ -327,7 +331,7 @@ export const InvoiceTemplate: React.FC<{
 					<View style={{ width: "50%" }}>
 						<View style={{ flexDirection: "row", width: "100%" }}>
 							<View style={{ width: "50%" }}>
-								<Text style={styles.dateInfo}>Způsob úhrady:</Text>
+								<Text style={styles.dateInfo}>{t("invoices:pdf.cz.zpusobUhrady")}</Text>
 							</View>
 							<View style={{ width: "50%", paddingLeft: 8 }}>
 								<Text>
@@ -353,7 +357,7 @@ export const InvoiceTemplate: React.FC<{
 										}}
 									>
 										<View style={{ width: "50%" }}>
-											<Text style={styles.dateInfo}>Číslo účtu:</Text>
+											<Text style={styles.dateInfo}>{t("invoices:pdf.cz.cisloUctu")}</Text>
 										</View>
 										<View
 											style={{
@@ -374,7 +378,7 @@ export const InvoiceTemplate: React.FC<{
 									}}
 								>
 									<View style={{ width: "50%" }}>
-										<Text style={styles.dateInfo}>Variabilní symbol:</Text>
+										<Text style={styles.dateInfo}>{t("invoices:pdf.cz.variabilniSymbol")}</Text>
 									</View>
 									<View style={{ width: "50%", paddingLeft: 8 }}>
 										<Text>{invoice.invoiceNumber}</Text>
@@ -387,7 +391,7 @@ export const InvoiceTemplate: React.FC<{
 									}}
 								>
 									<View style={{ width: "50%" }}>
-										<Text style={styles.dateInfo}>IBAN:</Text>
+										<Text style={styles.dateInfo}>{t("invoices:pdf.cz.iban")}</Text>
 									</View>
 									<View style={{ width: "50%", paddingLeft: 8 }}>
 										<Text>{formatIban(invoice.payment.iban)}</Text>
@@ -399,7 +403,7 @@ export const InvoiceTemplate: React.FC<{
 					<View style={{ width: "50%" }}>
 						<View style={{ flexDirection: "row", width: "100%" }}>
 							<View style={{ width: "50%" }}>
-								<Text style={styles.dateInfo}>Datum vystavení:</Text>
+								<Text style={styles.dateInfo}>{t("invoices:pdf.cz.datumVystaveni")}</Text>
 							</View>
 							<View style={{ width: "50%", paddingLeft: 8 }}>
 								<Text>
@@ -415,7 +419,7 @@ export const InvoiceTemplate: React.FC<{
 							}}
 						>
 							<View style={{ width: "50%" }}>
-								<Text style={styles.dateInfo}>Datum splatnosti:</Text>
+								<Text style={styles.dateInfo}>{t("invoices:pdf.cz.datumSplatnosti")}</Text>
 							</View>
 							<View style={{ width: "50%", paddingLeft: 8 }}>
 								<Text>
@@ -435,7 +439,7 @@ export const InvoiceTemplate: React.FC<{
 						<Text style={[styles.tableHeaderText, styles.quantityCol]}>
 							Počet
 						</Text>
-						<Text style={[styles.tableHeaderText, styles.unitCol]}>M.J.</Text>
+						<Text style={[styles.tableHeaderText, styles.unitCol]}>{t("invoices:pdf.cz.mj")}</Text>
 						<Text style={[styles.tableHeaderText, styles.rateCol]}>
 							Cena za M.J.
 						</Text>
@@ -517,7 +521,7 @@ export const InvoiceTemplate: React.FC<{
 					</View>
 					<View style={styles.totalsTable}>
 						<View style={[styles.totalRow, styles.totalRowFinal]}>
-							<Text style={styles.totalLabelFinal}>Celkem k úhradě</Text>
+							<Text style={styles.totalLabelFinal}>{t("invoices:pdf.cz.celkemKUhrade")}</Text>
 							<Text style={styles.totalValueFinal}>
 								{formatAmount(
 									invoice.items.reduce(
@@ -534,8 +538,8 @@ export const InvoiceTemplate: React.FC<{
 
 				{/* Notes */}
 				<View style={styles.notesSection}>
-					<Text style={styles.notesTitle}>Poznámka</Text>
-					<Text style={styles.notesText}>Děkujeme vám za spolupráci!</Text>
+					<Text style={styles.notesTitle}>{t("invoices:pdf.cz.poznamka")}</Text>
+					<Text style={styles.notesText}>{t("invoices:pdf.cz.dekujemeVamZaSpolupraci")}</Text>
 				</View>
 
 				{/* Footer */}

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
 import { BackButton } from "@/components/back-button";
@@ -7,6 +9,7 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	return (
@@ -17,7 +20,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>New account</CardTitle>
+					<CardTitle>{t("accounts:page.newAccount")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<AccountForm onSuccess={() => router.back()} />

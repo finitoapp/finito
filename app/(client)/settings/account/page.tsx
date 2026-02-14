@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { AccountForm } from "@/app/admin/(private)/settings/account/account-form";
 import { FadeHeader } from "@/components/fade-header";
@@ -8,6 +10,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNostr } from "@/hooks/use-nostr";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const { data } = useSuspenseQuery({
 		queryKey: [],
@@ -24,7 +27,7 @@ export default function Page() {
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardHeader>
-					<CardTitle>Account settings</CardTitle>
+					<CardTitle>{t("settings:page.accountSettings")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<AccountForm key={data ? "yes" : "no"} defaultValues={data} />

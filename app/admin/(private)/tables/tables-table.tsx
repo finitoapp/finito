@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { jsonArrayFrom } from "kysely/helpers/sqlite";
 import { PlusIcon } from "lucide-react";
@@ -32,18 +35,18 @@ type Task = {
 	codes: string;
 };
 
-const columns: ColumnDef<Task, Task>[] = [
+const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	{
 		accessorKey: "label",
-		header: createSortableHeader("Label"),
+		header: createSortableHeader(t("tables:table.columns.label")),
 	},
 	{
 		accessorKey: "numberOfSeats",
-		header: createSortableHeader("Number of seats"),
+		header: createSortableHeader(t("tables:table.columns.number-of-seats")),
 	},
 	{
 		accessorKey: "codes",
-		header: createSortableHeader("Codes"),
+		header: createSortableHeader(t("tables:table.columns.codes")),
 		cell: ({ row }) =>
 			JSON.parse(row.original.codes)
 				.map(({ code }) => code)
@@ -51,10 +54,20 @@ const columns: ColumnDef<Task, Task>[] = [
 	},
 ];
 
+const createFilterableColumns = (t: TFunction) => [
+	{
+		id: "label",
+		title: t("tables:table.columns.label"),
+	},
+] satisfies { id: keyof Task; title: string }[];
+
 export function TablesTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("tables");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 
 	const onFilterChange = useMemo<DataTableOnFilterChange<unknown>>(
 		() =>
@@ -146,14 +159,14 @@ export function TablesTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Tables</CardTitle>
-					<CardDescription>List of your tables</CardDescription>
+					<CardTitle>{t("tables:table.tables")}</CardTitle>
+					<CardDescription>{t("tables:table.listOfYourTables")}</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/tables/new"}>
 						<Button>
 							<PlusIcon />
-							New table
+							{t("tables:table.actions.new-table")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -164,13 +177,8 @@ export function TablesTable() {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					searchKey="label"
-					searchPlaceholder="Search by label..."
-					filterableColumns={[
-						{
-							id: "label",
-							title: "Label",
-						},
-					]}
+					searchPlaceholder={t("tables:table.search.placeholder.by-label")}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/tables/detail?id=${encodeURIComponent(item.id)}`,

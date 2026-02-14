@@ -24,6 +24,7 @@ import {
 	useMemo,
 	useRef,
 } from "react";
+import type { TFunction } from "i18next";
 import { type Pos, posAtom } from "@/atoms/pos";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { useCreateQuery } from "@/hooks/use-create-query";
@@ -41,27 +42,31 @@ import { type NonEmptyString, Uuid7 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/storages/notification-storage";
 import { PaymentStatus } from "@/storages/payment-status-storage";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 const resolveUiNotification = (
+	t: TFunction,
 	notification: Notification & { id: Id; createdAt: number },
 ): BackgroundJob => {
 	if (notification.type === "verifyPayment") {
 		const notificationData = notification;
 
 		return {
-			title: "Ověření LN platby",
+			title: t("components:notificationItem.verifyPayment.title"),
 			type: "info",
 			progress: null,
 			canBeClosed: false,
-			description: "Čekáme na příchozí platbu",
+			description: t("components:notificationItem.verifyPayment.description"),
 			id: notification.id,
 			timestamp: notification.createdAt,
 			actions: [
 				{
 					buttonProps: {
-						children: "Stop waiting",
+						children: t(
+							"components:notificationItem.verifyPayment.actions.stopWaiting",
+						),
 					},
 					callback: ({ deleteNotification }) => {
 						deleteNotification();
@@ -425,11 +430,12 @@ const resolveUiNotification = (
 		};
 	} else if (notification.type === "backgroundTableProcessing") {
 		return {
-			title: "Table processing is running",
+			title: t("components:notificationItem.backgroundTableProcessing.title"),
 			type: "info",
 			canBeClosed: false,
-			description:
-				"This is only an indication that payment processing from the table is operational.",
+			description: t(
+				"components:notificationItem.backgroundTableProcessing.description",
+			),
 			id: notification.type,
 			Component: () => {
 				const { ndk } = useNostr();
@@ -643,10 +649,11 @@ export function NotificationItem({
 }: {
 	notification: Notification & { id: Id; createdAt: number };
 }) {
+	const { t } = useTranslation();
 	// biome-ignore lint/correctness/useExhaustiveDependencies: It's OK
 	const uiNotification = useMemo(
-		() => resolveUiNotification(notification),
-		[notification.id],
+		() => resolveUiNotification(t, notification),
+		[notification.id, t],
 	);
 	const evolu = useEvolu();
 	const { mutateAsync: deleteItem } = useMutation({

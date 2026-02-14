@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -31,14 +34,14 @@ type Task = {
 	_tag: string;
 };
 
-const columns: ColumnDef<Task, Task>[] = [
+const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	{
 		accessorKey: "name",
-		header: createSortableHeader("Name"),
+		header: createSortableHeader(t("clients:table.columns.name")),
 	},
 	{
 		accessorKey: "vatNumber",
-		header: createSortableHeader("VAT Number"),
+		header: createSortableHeader(t("clients:table.columns.vat-number")),
 		cell: ({ row }) => {
 			console.log("row", row.original);
 			return row.original.countryCode === CountryCode.CZ
@@ -48,10 +51,20 @@ const columns: ColumnDef<Task, Task>[] = [
 	},
 ];
 
+const createFilterableColumns = (t: TFunction) => [
+	{
+		id: "name",
+		title: t("clients:table.columns.name"),
+	},
+] satisfies { id: keyof Task; title: string }[];
+
 export function ClientTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("clients");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
@@ -142,14 +155,14 @@ export function ClientTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Clients</CardTitle>
-					<CardDescription>List of your clients</CardDescription>
+					<CardTitle>{t("clients:table.clients")}</CardTitle>
+					<CardDescription>{t("clients:table.listOfYourClients")}</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/clients/new"}>
 						<Button>
 							<PlusIcon />
-							New client
+							{t("clients:table.actions.new-client")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -160,13 +173,8 @@ export function ClientTable() {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					searchKey="name"
-					searchPlaceholder="Search by name..."
-					filterableColumns={[
-						{
-							id: "name",
-							title: "Name",
-						},
-					]}
+					searchPlaceholder={t("clients:table.search.placeholder.by-name")}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/clients/detail?id=${encodeURIComponent(item.id)}`,

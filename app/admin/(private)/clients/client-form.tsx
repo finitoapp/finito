@@ -5,8 +5,10 @@ import {
 	type Id,
 } from "@evolu/common";
 import { merge, omit } from "es-toolkit";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -140,7 +142,7 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 	return <AutocompleteIdentificationNumberInput {...props} />;
 };
 
-const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 	_search: Search,
 	_separator: () => <Separator />,
 
@@ -148,28 +150,30 @@ const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 		type: "hidden",
 	}),
 	...builder.magicInput("name").text({
-		label: "Company name",
+		label: t("clients:form.client-form.label.company-name"),
 	}),
 	...builder.magicInput("label").text({
-		label: "Label",
-		description: "Your private name for internal purposes",
+		label: t("clients:form.client-form.label.label"),
+		description: t(
+			"clients:form.client-form.description.your-private-name-for-internal-purposes",
+		),
 	}),
 	...builder.magicInput("email").text({
-		label: "Email",
+		label: t("clients:form.client-form.label.email"),
 	}),
 	...builder.nestedField("address", ({ builder }) => {
 		return {
 			...builder.magicInput("street").text({
-				label: "Street",
+				label: t("clients:form.client-form.label.street"),
 			}),
 			...builder.magicInput("descriptiveNumber").text({
-				label: "Descriptive Number",
+				label: t("clients:form.client-form.label.descriptive-number"),
 			}),
 			...builder.magicInput("city").text({
-				label: "City",
+				label: t("clients:form.client-form.label.city"),
 			}),
 			...builder.magicInput("postalCode").text({
-				label: "Postal Code",
+				label: t("clients:form.client-form.label.postal-code"),
 			}),
 		};
 	}),
@@ -177,16 +181,16 @@ const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
 	...builder.magicInput("countryCode").select({
 		values: CountryCode,
 		allowEmpty: false,
-		label: "Country code",
+		label: t("clients:form.client-form.label.country-code"),
 	}),
 
 	...builder.nestedField("cz", ({ builder }) => ({
 		...builder.when("countryCode", CountryCode.CZ, {
 			...builder.magicInput("identificationNumber").text({
-				label: "Identification Number",
+				label: t("clients:form.client-form.label.identification-number"),
 			}),
 			...builder.magicInput("vatNumber").text({
-				label: "VAT Number",
+				label: t("clients:form.client-form.label.vat-number"),
 			}),
 		}),
 	})),
@@ -197,10 +201,12 @@ export const ClientForm: React.FC<{
 	onBeforeSave?: (values: z.output<typeof clientFormSchema>) => boolean;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(createClientFormDefaultValues(), params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(clientFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {

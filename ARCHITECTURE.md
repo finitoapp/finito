@@ -112,7 +112,36 @@ Common implementation style:
   - Encrypted via signer + NIP-04.
 - Used where merchant/client coordination is required.
 
-## 8) Build/Test/Validation Commands
+## 8) Internationalization (i18n)
+
+- i18n stack: `i18next` + `react-i18next`.
+- Init/runtime:
+  - `lib/i18n/config.ts` defines supported languages and namespace list.
+  - `lib/i18n/resources.ts` wires locale resources for `en` and `cs` from TypeScript modules.
+  - `lib/i18n/client.ts` initializes i18next and handles language persistence (`localStorage` key `finito:language`).
+  - `components/i18n-provider.tsx` is mounted from `app/providers.tsx`.
+- Runtime model:
+  - App currently uses client-side translations (`react-i18next` hooks in React components).
+  - SSR translation hydration is not used in current implementation.
+- Locale files are namespace-split TypeScript modules:
+  - `locales/en/*.ts`
+  - `locales/cs/*.ts`
+  - Example namespaces: `common`, `navigation`, `admin`, `settings`, `tables`, `invoices`, `components`.
+- Translation key style in code:
+  - Always use `namespace:key.path` format, e.g. `t("tables:page.newTable")`.
+  - Prefer semantic sections over file-name-based keys:
+    - `page.*`, `form.*`, `table.*`, `actions.*`, `label.*`, `description.*`, `title.*`, `placeholder.*`.
+  - Keep generic reusable UI labels in shared namespaces (`common`, `components`).
+  - Keep domain/business wording in domain namespaces (`admin`, `settings`, `tables`, `invoices`, ...).
+- Component composition pattern:
+  - For forms/tables/navigation definitions, prefer factory functions that accept translator instance (`t`) and return config objects.
+  - In consuming components, create translated config via `useMemo(() => createConfig(t), [t])`.
+  - This keeps translation decisions close to UI field/column/link definitions and avoids hardcoded strings.
+- Interpolation and dynamic text:
+  - Use i18next interpolation for variable content (`{{count}}`, `{{message}}`, etc.).
+  - Keep interpolation key names stable and descriptive across locales.
+
+## 9) Build/Test/Validation Commands
 
 From `package.json`:
 
@@ -126,7 +155,7 @@ Note:
 - The repository may contain pre-existing TypeScript issues unrelated to your change.
 - For small feature edits, validate changed files + relevant runtime paths even if full typecheck is noisy.
 
-## 9) Change Guidelines for LLM Agents
+## 10) Change Guidelines for LLM Agents
 
 ### 9.1 Before editing
 
@@ -149,7 +178,7 @@ Note:
   - subscription cleanup correctness (unsubscribe returned),
   - query stability under sorting/filter changes.
 
-## 10) High-Risk Areas
+## 11) High-Risk Areas
 
 - `lib/evolu.ts` schema changes:
   - can cascade widely and break typed queries/forms.
@@ -160,7 +189,7 @@ Note:
 - payment/invoice flows:
   - include derived computations and message-bus interactions.
 
-## 11) Fast Navigation Cheatsheet
+## 12) Fast Navigation Cheatsheet
 
 - “Where is the DB schema?” -> `lib/evolu.ts`, `lib/device-evolu.ts`
 - “Where is current account selection?” -> `atoms/account.ts`
@@ -169,4 +198,3 @@ Note:
 - “Where is generic table behavior?” -> `components/data-table.tsx`
 - “Where is Nostr RPC-like messaging?” -> `lib/nostr-message-bus.ts`
 - “Where is desktop/native bridge?” -> `src-tauri/src/lib.rs`
-

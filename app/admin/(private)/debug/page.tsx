@@ -13,6 +13,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { FullscreenContainer } from "@/components/fullscreen-container";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -28,6 +29,7 @@ import { Currency } from "@/lib/types";
 import { createZip, extractZip } from "@/lib/zip";
 
 const DownloadSqliteData = () => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [isLoading, setLoading] = useState(false);
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -116,7 +118,7 @@ const DownloadSqliteData = () => {
 		<div className={"space-y-4"}>
 			<FullscreenContainer className={"h-200"}>
 				<iframe
-					title={"SQLite explorer"}
+					title={t("admin:debug.sqlite.explorerTitle")}
 					ref={iframeRef}
 					src="https://vwh.github.io/sqlite-online/"
 					style={{
@@ -131,13 +133,14 @@ const DownloadSqliteData = () => {
 				) : (
 					<IconDownload />
 				)}
-				Download
+				{t("admin:debug.common.download")}
 			</Button>
 		</div>
 	);
 };
 
 const DownloadStorageData = () => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [isLoading, setLoading] = useState(false);
 
@@ -179,12 +182,13 @@ const DownloadStorageData = () => {
 			) : (
 				<IconDownload />
 			)}
-			Download
+			{t("admin:debug.common.download")}
 		</Button>
 	);
 };
 
 const UploadStorageData = () => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const [isLoading, setLoading] = useState(false);
@@ -207,7 +211,7 @@ const UploadStorageData = () => {
 				.sort((a, b) => a.name.localeCompare(b.name));
 
 			if (files.length === 0) {
-				throw new Error("No CSV files were found in the uploaded ZIP archive.");
+				throw new Error(t("admin:debug.storage.import.noCsvInArchive"));
 			}
 
 			const knownTables = new Set(Object.keys(Schema));
@@ -266,14 +270,19 @@ const UploadStorageData = () => {
 			}
 
 			setMessage(
-				`Imported ${importedRows} rows from ${importedTables} tables.`,
+				t("admin:debug.storage.import.success", {
+					importedRows,
+					importedTables,
+				}),
 			);
 		} catch (error) {
 			console.error(error);
 			setMessage(
 				error instanceof Error
-					? `Import failed: ${error.message}`
-					: "Import failed.",
+					? t("admin:debug.storage.import.failedWithReason", {
+							message: error.message,
+						})
+					: t("admin:debug.storage.import.failed"),
 			);
 		} finally {
 			setLoading(false);
@@ -303,7 +312,7 @@ const UploadStorageData = () => {
 				) : (
 					<IconUpload />
 				)}
-				Import
+				{t("admin:debug.common.import")}
 			</Button>
 
 			{message !== null && (
@@ -314,6 +323,7 @@ const UploadStorageData = () => {
 };
 
 const RandomDataGenerator = () => {
+	const { t } = useTranslation();
 	const [isLoading, setLoading] = useState(false);
 	const evolu = useEvolu();
 
@@ -391,13 +401,15 @@ const RandomDataGenerator = () => {
 			) : (
 				<IconReload />
 			)}
-			Generate
+			{t("admin:debug.common.generate")}
 		</Button>
 	);
 };
 
 export default function Home() {
-	const commitHash = process.env.NEXT_PUBLIC_GIT_COMMIT || "unknown";
+	const { t } = useTranslation();
+	const commitHash =
+		process.env.NEXT_PUBLIC_GIT_COMMIT || t("admin:debug.application.unknown");
 	const { ndk } = useNostr();
 	const nostrRelays = useNostrRelays();
 	const { data: unpublishedEvents } = useQuery({
@@ -414,13 +426,13 @@ export default function Home() {
 		<div className="w-full lg:max-w-7xl flex flex-col gap-4">
 			<ResponsiveCard className="w-full">
 				<CardHeader>
-					<CardTitle>Application information</CardTitle>
+					<CardTitle>{t("admin:dashboard.applicationInformation")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<KeyValueList
 						items={[
 							{
-								key: "Version",
+								key: t("admin:debug.application.version"),
 								value: commitHash,
 							},
 						]}
@@ -430,13 +442,10 @@ export default function Home() {
 
 			<ResponsiveCard className="w-full">
 				<CardHeader>
-					<CardTitle>SQLite data</CardTitle>
+					<CardTitle>{t("admin:dashboard.sqliteData")}</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-8">
-					<div>
-						Be careful. Exporting data may contain sensitive information,
-						including wallet account accesses and more.
-					</div>
+					<div>{t("admin:debug.exportWarning")}</div>
 
 					<div>
 						<DownloadSqliteData />
@@ -446,13 +455,10 @@ export default function Home() {
 
 			<ResponsiveCard className="w-full">
 				<CardHeader>
-					<CardTitle>Storage data</CardTitle>
+					<CardTitle>{t("admin:dashboard.storageData")}</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-8">
-					<div>
-						Be careful. Exporting data may contain sensitive information,
-						including wallet account accesses and more.
-					</div>
+					<div>{t("admin:debug.exportWarning")}</div>
 
 					<div>
 						<DownloadStorageData />
@@ -466,7 +472,7 @@ export default function Home() {
 
 			<ResponsiveCard className="w-full">
 				<CardHeader>
-					<CardTitle>Random data generator</CardTitle>
+					<CardTitle>{t("admin:dashboard.randomDataGenerator")}</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-8">
 					<div>
@@ -478,7 +484,7 @@ export default function Home() {
 			{ndk.cacheAdapter && (
 				<ResponsiveCard className="w-full">
 					<CardHeader>
-						<CardTitle>Nostr Relays</CardTitle>
+						<CardTitle>{t("admin:dashboard.nostrRelays")}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						{getRelayStatus !== undefined && (
@@ -494,7 +500,7 @@ export default function Home() {
 					</CardContent>
 
 					<CardHeader>
-						<CardTitle>Nostr Unpublished events</CardTitle>
+						<CardTitle>{t("admin:dashboard.nostrUnpublishedEvents")}</CardTitle>
 
 						<CardContent>
 							<pre className={"text-xs"}>

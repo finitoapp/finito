@@ -6,8 +6,11 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
+import { useMemo } from "react";
 import { z } from "zod";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
@@ -28,9 +31,9 @@ export const switchUserDefaultValues = {
 	seed: "",
 } satisfies z.input<typeof switchAccountSchema>;
 
-const components = createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
 	...builder.magicInput("seed").textarea({
-		placeholder: "paste your seed",
+		placeholder: t("settings:form.switch-account-form.placeholder.paste-your-seed"),
 		rows: 4,
 	}),
 }));
@@ -38,8 +41,10 @@ const components = createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
 export const SwitchAccountForm: React.FC<{
 	onSuccess?: () => unknown;
 }> = (props) => {
+	const { t } = useTranslation();
 	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(switchAccountSchema, {
 		defaultValues: switchUserDefaultValues,
 		saveAction: async (values) => {
@@ -98,6 +103,10 @@ export const SwitchAccountForm: React.FC<{
 	});
 
 	return (
-		<AutoForm form={form} components={components} saveLabel={"Use seed"} />
+		<AutoForm
+			form={form}
+			components={components}
+			saveLabel={t("settings:form.switch-account-form.save-label.use-seed")}
+		/>
 	);
 };

@@ -6,6 +6,8 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
@@ -55,36 +57,36 @@ const itemDefaultValues = {
 	internalCode: "",
 } satisfies z.input<typeof itemSchema>;
 
-const components = createAutoFormLayout(itemSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(itemSchema, ({ builder }) => ({
 	...builder.magicInput("id").text({
 		type: "hidden",
 	}),
 	...builder.magicInput("label").text({
-		label: "Label",
+		label: t("items:form.item-form.label.label"),
 	}),
 	...builder.line({
 		...builder.magicInput("priceValue").amount({
-			label: "Price",
-			placeholder: "0",
+			label: t("items:form.item-form.label.price"),
+			placeholder: t("items:form.item-form.placeholder.0"),
 			type: "number",
 			currencyFieldName: "currency",
 		}),
 		...builder.magicInput("priceCurrency").select({
 			values: Currency,
 			allowEmpty: true,
-			label: "Currency",
+			label: t("items:form.item-form.label.currency"),
 		}),
 	}),
 	...builder.magicInput("unitOfMeasure").text({
-		label: "Unit of Measure (UOM) (optional)",
+		label: t("items:form.item-form.label.unit-of-measure-uom-optional"),
 	}),
 	...builder.createComponent("categoryId", (props) => {
 		const evolu = useEvolu();
 		const ComboboxInput = useMemo(
 			() =>
 				createComboboxInput({
-					label: "Category (optional)",
-					placeholder: "Select a category",
+					label: t("items:form.item-form.label.category-optional"),
+					placeholder: t("items:form.item-form.placeholder.select-a-category"),
 					fetchItems: async () => {
 						const items = await evolu.loadQuery(
 							evolu.createQuery((db) =>
@@ -110,16 +112,16 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => ({
 	}),
 	...builder.line({
 		...builder.magicInput("productCodeValue").text({
-			label: "Product code (optional)",
+			label: t("items:form.item-form.label.product-code-optional"),
 		}),
 		...builder.magicInput("productCodeType").select({
 			values: ProductCodeType,
 			allowEmpty: false,
-			label: "Type",
+			label: t("items:form.item-form.label.type"),
 		}),
 	}),
 	...builder.magicInput("internalCode").text({
-		label: "Internal code (SKU) (optional)",
+		label: t("items:form.item-form.label.internal-code-sku-optional"),
 	}),
 }));
 
@@ -127,10 +129,12 @@ export const ItemForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof itemSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(itemDefaultValues, params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {

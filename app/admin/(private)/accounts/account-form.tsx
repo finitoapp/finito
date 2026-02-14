@@ -1,4 +1,6 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import {
 	createId,
 	createRandomBytes,
@@ -118,40 +120,52 @@ const itemDefaultValues = {
 	},
 } satisfies z.input<typeof accountSchema>;
 
-const tags = {
-	accountIban: "Bank account (IBAN)",
-	accountLud16: "BTC Wallet (LUD16)",
-	accountNwc: "NWC protocol (NostrWalletConnect)",
-	accountSpark: "Spark bitcoin L2",
-	accountCashRegister: "Cash register",
-} as const;
+const tagKeys = [
+	"accountIban",
+	"accountLud16",
+	"accountNwc",
+	"accountSpark",
+	"accountCashRegister",
+] as const;
 
 const createComponents = (
-	options: { tagFilter?: (keyof typeof tags)[] } = {},
+	t: TFunction,
+	options: { tagFilter?: (typeof tagKeys)[number][] } = {},
 ) =>
 	createAutoFormLayout(accountSchema, ({ builder }) => ({
 		...builder.magicInput("id").text({
 			type: "hidden",
 		}),
 		...builder.magicInput("name").text({
-			label: "Name",
+			label: t("accounts:form.account-form.label.name"),
 		}),
 		...builder.magicInput("_tag").select({
-			label: "Protocol",
+			label: t("accounts:form.account-form.label.protocol"),
 			variant: "toggle",
 			allowEmpty: false,
-			values: options.tagFilter ? pick(tags, options.tagFilter) : tags,
+			values: pick(
+				{
+					accountIban: t("accounts:form.account-form.tag.account-iban"),
+					accountLud16: t("accounts:form.account-form.tag.account-lud16"),
+					accountNwc: t("accounts:form.account-form.tag.account-nwc"),
+					accountSpark: t("accounts:form.account-form.tag.account-spark"),
+					accountCashRegister: t(
+						"accounts:form.account-form.tag.account-cash-register",
+					),
+				},
+				options.tagFilter ?? [...tagKeys],
+			),
 		}),
 
 		...builder.nestedField("accountIban", ({ builder }) => ({
 			...builder.when("_tag", "accountIban", {
 				...builder.magicInput("iban").text({
-					label: "IBAN",
+					label: t("accounts:form.account-form.label.iban"),
 				}),
 				...builder.magicInput("currency").select({
 					values: FiatCurrency,
 					allowEmpty: false,
-					label: "Currency",
+					label: t("accounts:form.account-form.label.currency"),
 				}),
 			}),
 		})),
@@ -159,7 +173,7 @@ const createComponents = (
 		...builder.nestedField("accountLud16", ({ builder }) => ({
 			...builder.when("_tag", "accountLud16", {
 				...builder.magicInput("lud16").text({
-					label: "LUD16",
+					label: t("accounts:form.account-form.label.lud16"),
 				}),
 			}),
 		})),
@@ -167,7 +181,7 @@ const createComponents = (
 		...builder.nestedField("accountNwc", ({ builder }) => ({
 			...builder.when("_tag", "accountNwc", {
 				...builder.magicInput("credentials").textarea({
-					label: "Credentials",
+					label: t("accounts:form.account-form.label.credentials"),
 					rows: 5,
 					secretContent: true,
 				}),
@@ -177,16 +191,16 @@ const createComponents = (
 		...builder.nestedField("accountSpark", ({ builder }) => ({
 			...builder.when("_tag", "accountSpark", {
 				...builder.magicInput("mnemonicVariant").select({
-					label: "Seed",
+					label: t("accounts:form.account-form.label.seed"),
 					allowEmpty: false,
 					values: {
-						new: "Generate new random seed",
-						manual: "Use existing seed",
+						new: t("accounts:form.account-form.seed-option.new"),
+						manual: t("accounts:form.account-form.seed-option.manual"),
 					},
 				}),
 				...builder.when("accountSpark.mnemonicVariant", "manual", {
 					...builder.magicInput("mnemonic").textarea({
-						label: "Mnemonic",
+						label: t("accounts:form.account-form.label.mnemonic"),
 						copyToClipboard: true,
 						secretContent: true,
 						rows: 4,
@@ -200,7 +214,7 @@ const createComponents = (
 				...builder.magicInput("currency").select({
 					values: FiatCurrency,
 					allowEmpty: false,
-					label: "Currency",
+					label: t("accounts:form.account-form.label.currency"),
 				}),
 			}),
 		})),
@@ -209,15 +223,16 @@ const createComponents = (
 export const AccountForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof accountSchema>>;
 	onSuccess?: (newEventId: string) => unknown;
-	tagFilter?: (keyof typeof tags)[];
+	tagFilter?: (typeof tagKeys)[number][];
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(itemDefaultValues, params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
 	const components = useMemo(
-		() => createComponents({ tagFilter: params.tagFilter }),
-		[params.tagFilter],
+		() => createComponents(t, { tagFilter: params.tagFilter }),
+		[params.tagFilter, t],
 	);
 	const form = useActionForm(accountSchema, {
 		defaultValues,

@@ -5,8 +5,10 @@ import {
 	type Id,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -28,12 +30,12 @@ const categoryDefaultValues = {
 	name: "",
 } satisfies z.input<typeof categorySchema>;
 
-const components = createAutoFormLayout(categorySchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(categorySchema, ({ builder }) => ({
 	...builder.magicInput("id").text({
 		type: "hidden",
 	}),
 	...builder.magicInput("name").text({
-		label: "Name",
+		label: t("categories:form.category-form.label.name"),
 	}),
 }));
 
@@ -41,10 +43,12 @@ export const CategoryForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof categorySchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(categoryDefaultValues, params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(categorySchema, {
 		defaultValues,
 		saveAction: async (values) => {

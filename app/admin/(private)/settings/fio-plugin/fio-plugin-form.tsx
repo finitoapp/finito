@@ -9,8 +9,10 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -54,57 +56,64 @@ const fioPluginDefaultValues = {
 	numberOfSecondsBetweenChecks: "30",
 } satisfies z.input<typeof fioPluginSchema>;
 
-const components = createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
-	...builder.magicInput("apiUrl").text({
-		label: "API URL",
-	}),
-	...builder.magicInput("numberOfSecondsBetweenChecks").text({
-		label: "Interval between payment checks",
-		description:
-			"We recommend using a number calculated as '30 / number of tokens'",
-		endAddon: "Seconds",
-	}),
-	...builder.card(
-		{
-			title: "Tokens",
-		},
-		{
-			...builder.arrayTableField(
-				{
-					name: "tokens",
-					defaultValue: tokenDefaultValues,
-					columns: [
-						{
-							title: "ID",
-						},
-						{
-							title: "Token",
-						},
-					],
-				},
-				({ builder }) => ({
-					...builder.magicInput("id").text({
-						type: "hidden",
-					}),
-					...builder.magicInput("token").text({
-						label: "API Token",
-						type: "password",
-						copyToClipboard: true,
-					}),
-				}),
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
+		...builder.magicInput("apiUrl").text({
+			label: t("settings:form.fio-plugin-form.label.api-url"),
+		}),
+		...builder.magicInput("numberOfSecondsBetweenChecks").text({
+			label: t(
+				"settings:form.fio-plugin-form.label.interval-between-payment-checks",
 			),
-		},
-	),
-}));
+			description: t(
+				"settings:form.fio-plugin-form.description.we-recommend-using-a-number-calculated-as-30-number-of-tokens",
+			),
+			endAddon: t("settings:form.fio-plugin-form.end-addon.seconds"),
+		}),
+		...builder.card(
+			{
+				title: t("settings:form.fio-plugin-form.title.tokens"),
+			},
+			{
+				...builder.arrayTableField(
+					{
+						name: "tokens",
+						defaultValue: tokenDefaultValues,
+						columns: [
+							{
+								title: t("settings:form.fio-plugin-form.title.id"),
+								hidden: true,
+							},
+							{
+								title: t("settings:form.fio-plugin-form.title.token"),
+							},
+						],
+					},
+					({ builder }) => ({
+						...builder.magicInput("id").text({
+							type: "hidden",
+						}),
+						...builder.magicInput("token").text({
+							label: t("settings:form.fio-plugin-form.label.api-token"),
+							type: "password",
+							copyToClipboard: true,
+						}),
+					}),
+				),
+			},
+		),
+	}));
 
 export const FioPluginForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof fioPluginSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(fioPluginDefaultValues, params.defaultValues ?? {});
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(fioPluginSchema, {
 		defaultValues,
 		saveAction: async (values) => {

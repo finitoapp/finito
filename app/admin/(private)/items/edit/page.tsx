@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
@@ -11,6 +13,7 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { ProductCodeType } from "@/lib/types";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -51,7 +54,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Edit item</CardTitle>
+					<CardTitle>{t("items:page.editItem")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ItemForm

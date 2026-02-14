@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { sqliteTrue } from "@evolu/common";
 import { Bell, X } from "lucide-react";
 import { useState } from "react";
@@ -10,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 
 export function NotificationCenter() {
+	const { t } = useTranslation();
 	const query = useCreateQuery(
 		(db) =>
 			db
@@ -63,7 +66,7 @@ export function NotificationCenter() {
 					{/* Header */}
 					<div className="flex items-center justify-between border-b border-border px-6 py-4">
 						<div>
-							<h2 className="text-xl font-semibold">Background Jobs</h2>
+							<h2 className="text-xl font-semibold">{t("components:notifications.backgroundJobs")}</h2>
 						</div>
 						<div className="flex items-center gap-2">
 							{unreadCount > 0 && (

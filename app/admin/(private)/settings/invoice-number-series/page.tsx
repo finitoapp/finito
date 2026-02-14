@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { InvoiceLastNumberForm } from "@/app/admin/(private)/settings/invoice-number-series/invoice-last-number-form";
 import { InvoiceNumberSeriesForm } from "@/app/admin/(private)/settings/invoice-number-series/invoice-number-series-form";
@@ -14,6 +16,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const itemId = createIdFromString("");
 	const seriesQuery = useCreateQuery(
 		(db) => {
@@ -48,7 +51,7 @@ export default function Home() {
 		<div className={"flex flex-col gap-4"}>
 			<ResponsiveCard className="w-full max-w-xl">
 				<CardHeader>
-					<CardTitle>Invoice number series</CardTitle>
+					<CardTitle>{t("settings:page.invoiceNumberSeries")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<InvoiceNumberSeriesForm
@@ -67,7 +70,7 @@ export default function Home() {
 
 			<ResponsiveCard className="w-full max-w-xl">
 				<CardHeader>
-					<CardTitle>Last invoice number</CardTitle>
+					<CardTitle>{t("settings:page.lastInvoiceNumber")}</CardTitle>
 				</CardHeader>
 				<CardHeader>
 					<CardDescription>

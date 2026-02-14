@@ -5,19 +5,19 @@ import {
 	NonEmptyString100,
 	ownerSecretToMnemonic,
 	PositiveInt,
-	sqliteTrue,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
-import { defaultRelays } from "@/atoms/nostr-relays";
 import { ProgressSteps } from "@/components/progress-steps";
 import { Button } from "@/components/ui/button";
 
 export function LoginForm() {
+	const { t } = useTranslation();
 	const [currentStep, setCurrentStep] = useState(0);
 	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
@@ -29,24 +29,32 @@ export function LoginForm() {
 				steps={[
 					{
 						id: "account",
-						label: "Creating business identity",
+						label: t("components:loginForm.steps.account.label"),
 						description:
-							currentStep === 1 ? "working..." : currentStep > 1 ? "done" : "",
+							currentStep === 1
+								? t("components:loginForm.steps.account.status.working")
+								: currentStep > 1
+									? t("components:loginForm.steps.account.status.done")
+									: "",
 					},
 					{
 						id: "profile",
-						label: "Activating relays",
+						label: t("components:loginForm.steps.profile.label"),
 						description:
-							currentStep === 2 ? "working..." : currentStep > 2 ? "done" : "",
+							currentStep === 2
+								? t("components:loginForm.steps.profile.status.working")
+								: currentStep > 2
+									? t("components:loginForm.steps.profile.status.done")
+									: "",
 					},
 					{
 						id: "preferences",
-						label: "Ready",
+						label: t("components:loginForm.steps.preferences.label"),
 						description:
 							currentStep === 3 ? (
-								"preparing..."
+								t("components:loginForm.steps.preferences.status.preparing")
 							) : currentStep > 3 ? (
-								"yes, we're ready. Redirecting..."
+								t("components:loginForm.steps.preferences.status.redirecting")
 							) : (
 								<>&nbsp;</>
 							),
@@ -100,7 +108,7 @@ export function LoginForm() {
 					router.push("/admin");
 				}}
 			>
-				Create a new account
+				{t("components:loginForm.actions.createNewAccount")}
 			</Button>
 		</>
 	);

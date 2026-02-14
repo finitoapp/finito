@@ -1,4 +1,6 @@
 import { sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { merge } from "es-toolkit";
 import { BitcoinIcon } from "lucide-react";
 import type React from "react";
@@ -42,7 +44,7 @@ const staticPaymentDefaultValues = {
 	note: "",
 } satisfies z.input<typeof staticPaymentSchema>;
 
-const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 	...builder.magicInput("type").select({
 		variant: "toggle",
 		allowEmpty: false,
@@ -58,7 +60,9 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 			const ComboboxInput = useMemo(
 				() =>
 					createComboboxOrTextInput<string>({
-						label: "lud16 wallet address with `Lightning Zaps` support",
+						label: t(
+							"payments:form.payment-form.label.lud16-wallet-address-with-lightning-zaps-support",
+						),
 						fetchItems: async () => {
 							const items = await evolu.loadQuery(
 								evolu.createQuery((db) =>
@@ -95,7 +99,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 			const ComboboxInput = useMemo(
 				() =>
 					createComboboxOrTextInput<string>({
-						label: "Spark wallet account",
+						label: t("payments:form.payment-form.label.spark-wallet-account"),
 						fetchItems: async () => {
 							const items = await evolu.loadQuery(
 								evolu.createQuery((db) =>
@@ -124,9 +128,9 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 	}),
 
 	...builder.magicInput("totalAmount").amount({
-		label: "Price in BTC",
+		label: t("payments:form.payment-form.label.price-in-btc"),
 		type: "number",
-		placeholder: "0",
+		placeholder: t("payments:form.payment-form.placeholder.0"),
 		currency: Currency.BTC,
 		computeAmount: {
 			sourceAmountFieldName: "totalAmount",
@@ -134,7 +138,7 @@ const components = createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 		},
 	}),
 	...builder.magicInput("note").textarea({
-		label: "Note for recipient (optional)",
+		label: t("payments:form.payment-form.label.note-for-recipient-optional"),
 	}),
 }));
 
@@ -142,10 +146,12 @@ export const PaymentForm: React.FC<{
 	defaultValues?: Partial<z.input<typeof staticPaymentSchema> & { id: Uuid7 }>;
 	onSave: (values: z.output<typeof staticPaymentSchema>) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	console.log("params.defaultValues", params.defaultValues);
 	const [defaultValues] = useState(() => {
 		return merge(staticPaymentDefaultValues, params.defaultValues ?? {});
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {
@@ -161,7 +167,7 @@ export const PaymentForm: React.FC<{
 			saveClassName={"w-full h-10"}
 			saveLabel={
 				<>
-					<BitcoinIcon /> Create invoice
+					<BitcoinIcon /> {t("payments:form.payment-form.save-label.create-invoice")}
 				</>
 			}
 		/>

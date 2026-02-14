@@ -8,9 +8,11 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useAtomValue } from "jotai";
 import type React from "react";
-import { useEffect, useEffectEvent } from "react";
+import { useMemo, useEffect, useEffectEvent } from "react";
 import type { EmptyObject } from "type-fest";
 import { z } from "zod";
 import { accountAtom } from "@/atoms/account";
@@ -69,9 +71,9 @@ const credentialsDefaultValues: z.input<typeof credentialsSchema> = {
 	transports: [],
 };
 
-const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
+const createComponents = (t: TFunction) => createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	...builder.magicInput("seed").textarea({
-		label: "Seed",
+		label: t("settings:form.credentials-form.label.seed"),
 		disabled: true,
 		copyToClipboard: true,
 		secretContent: true,
@@ -79,28 +81,28 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	}),
 	...builder.card(
 		{
-			title: "Evolu Transports",
+			title: t("settings:form.credentials-form.title.evolu-transports"),
 		},
 		{
 			...builder.arrayTableField(
 				{
 					name: "transports",
-					addRowLabel: "Add transport",
+					addRowLabel: t("settings:form.credentials-form.addRowLabel.add-transport"),
 					defaultValue: transportDefaultValues,
 					columns: [
 						{
-							title: "ID",
+							title: t("settings:form.credentials-form.title.id"),
 							hidden: true,
 						},
 						{
-							title: "Type",
+							title: t("settings:form.credentials-form.title.type"),
 							hidden: true,
 						},
 						{
-							title: "Websocket URL",
+							title: t("settings:form.credentials-form.title.websocket-url"),
 						},
 						{
-							title: "Active",
+							title: t("settings:form.credentials-form.title.active"),
 							inputCellClassName: "text-center",
 						},
 					],
@@ -113,10 +115,10 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 						type: "hidden",
 					}),
 					...builder.magicInput("url").text({
-						label: "Websocket URL",
+						label: t("settings:form.credentials-form.label.websocket-url"),
 					}),
 					...builder.magicInput("isActive").checkbox({
-						label: "Active",
+						label: t("settings:form.credentials-form.label.active"),
 					}),
 				}),
 			),
@@ -124,16 +126,16 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	),
 	...builder.card(
 		{
-			title: "Nostr account",
+			title: t("settings:form.credentials-form.title.nostr-account"),
 		},
 		{
 			...builder.magicInput("npub").text({
-				label: "Npub",
+				label: t("settings:form.credentials-form.label.npub"),
 				disabled: true,
 				copyToClipboard: true,
 			}),
 			...builder.magicInput("nsec").text({
-				label: "Nsec",
+				label: t("settings:form.credentials-form.label.nsec"),
 				disabled: true,
 				copyToClipboard: true,
 				secretContent: true,
@@ -142,24 +144,24 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 	),
 	...builder.card(
 		{
-			title: "Nostr Relays",
+			title: t("settings:form.credentials-form.title.nostr-relays"),
 		},
 		{
 			...builder.arrayTableField(
 				{
 					name: "relays",
-					addRowLabel: "Add relay",
+					addRowLabel: t("settings:form.credentials-form.addRowLabel.add-relay"),
 					defaultValue: relayDefaultValues,
 					columns: [
 						{
-							title: "ID",
+							title: t("settings:form.credentials-form.title.id"),
 							hidden: true,
 						},
 						{
-							title: "URL",
+							title: t("settings:form.credentials-form.title.url"),
 						},
 						{
-							title: "Active",
+							title: t("settings:form.credentials-form.title.active"),
 							className: "w-24",
 						},
 					],
@@ -169,10 +171,10 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 						type: "hidden",
 					}),
 					...builder.magicInput("url").text({
-						label: "Relay URL",
+						label: t("settings:form.credentials-form.label.relay-url"),
 					}),
 					...builder.magicInput("isActive").checkbox({
-						label: "Active",
+						label: t("settings:form.credentials-form.label.active"),
 					}),
 				}),
 			),
@@ -181,12 +183,14 @@ const components = createAutoFormLayout(credentialsSchema, ({ builder }) => ({
 }));
 
 export const CredentialsForm: React.FC<EmptyObject> = () => {
+	const { t } = useTranslation();
 	const account = useAtomValue(accountAtom);
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const accountId = account.id as never;
 	const { mnemonic } = account;
 	const { ndk } = useNostr();
 
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(credentialsSchema, {
 		defaultValues: credentialsDefaultValues,
 		saveAction: async (values) => {

@@ -6,8 +6,10 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -40,49 +42,57 @@ const tableDefaultValues = {
 	codes: [],
 } satisfies z.input<typeof tableSchema>;
 
-const components = createAutoFormLayout(tableSchema, ({ builder }) => ({
-	...builder.magicInput("id").text({
-		type: "hidden",
-	}),
-	...builder.magicInput("label").text({
-		label: "Label",
-	}),
-	...builder.magicInput("numberOfSeats").text({
-		label: "Number of Seats",
-		type: "number",
-		placeholder: "0",
-	}),
-	...builder.arrayTableField(
-		{
-			name: "codes",
-			addRowLabel: "Add QR code",
-			defaultValue: {
-				id: "",
-				code: "",
-			},
-			columns: [
-				{
-					title: "ID",
-				},
-			],
-		},
-		({ builder }) => ({
-			...builder.magicInput("id").text({
-				type: "hidden",
-			}),
-			...builder.magicInput("code").text({}),
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(tableSchema, ({ builder }) => ({
+		...builder.magicInput("id").text({
+			type: "hidden",
 		}),
-	),
-}));
+		...builder.magicInput("label").text({
+			label: t("tables:form.fields.label.label"),
+		}),
+		...builder.magicInput("numberOfSeats").text({
+			label: t("tables:form.fields.numberOfSeats.label"),
+			type: "number",
+			placeholder: t("tables:form.table-form.placeholder.0"),
+		}),
+		...builder.arrayTableField(
+			{
+				name: "codes",
+				addRowLabel: t("tables:form.codes.addRowLabel"),
+				defaultValue: {
+					id: "",
+					code: "",
+				},
+				columns: [
+					{
+						hidden: true,
+					},
+					{
+						title: t("tables:form.codes.columns.id"),
+					},
+				],
+			},
+			({ builder }) => ({
+				...builder.magicInput("id").text({
+					type: "hidden",
+				}),
+				...builder.magicInput("code").text({
+					label: t("tables:form.codes.fields.code.label"),
+				}),
+			}),
+		),
+	}));
 
 export const TableForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof tableSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(tableDefaultValues, params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(tableSchema, {
 		defaultValues,
 		saveAction: async (values) => {

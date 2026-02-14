@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -29,17 +32,27 @@ type Task = {
 	name: string;
 };
 
-const columns: ColumnDef<Task>[] = [
+const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 	{
 		accessorKey: "name",
-		header: createSortableHeader("Name"),
+		header: createSortableHeader(t("categories:table.columns.name")),
 	},
 ];
 
+const createFilterableColumns = (t: TFunction) => [
+	{
+		id: "name",
+		title: t("categories:table.columns.name"),
+	},
+] satisfies { id: keyof Task; title: string }[];
+
 export function CategoriesTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("categories");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
@@ -122,14 +135,14 @@ export function CategoriesTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Categories</CardTitle>
-					<CardDescription>List of product categories</CardDescription>
+					<CardTitle>{t("categories:table.categories")}</CardTitle>
+					<CardDescription>{t("categories:table.listOfProductCategories")}</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/categories/new" as never}>
 						<Button>
 							<PlusIcon />
-							New category
+							{t("categories:table.actions.new-category")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -140,13 +153,8 @@ export function CategoriesTable() {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					searchKey="name"
-					searchPlaceholder="Search by name..."
-					filterableColumns={[
-						{
-							id: "name",
-							title: "Name",
-						},
-					]}
+					searchPlaceholder={t("categories:table.search.placeholder.by-name")}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/categories/detail?id=${encodeURIComponent(item.id)}` as never,

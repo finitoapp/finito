@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
 import { DownloadIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -15,6 +17,7 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { formatAmount } from "@/lib/format-utils";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
 	if (id === null) throw Promise.reject();
@@ -189,7 +192,7 @@ export default function Page() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Bill items</CardTitle>
+					<CardTitle>{t("client:bill.itemsTitle")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<KeyValueList

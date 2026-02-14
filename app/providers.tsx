@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
+import { I18nProvider } from "@/components/i18n-provider";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -19,13 +20,15 @@ const jotaiStore = createStore();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
-		<Provider store={jotaiStore}>
-			<QueryClientProvider client={browserQueryClient}>
-				<TooltipProvider>
-					{children}
-					<GlobalDialogHost />
-				</TooltipProvider>
-			</QueryClientProvider>
-		</Provider>
+		<I18nProvider>
+			<Provider store={jotaiStore}>
+				<QueryClientProvider client={browserQueryClient}>
+					<TooltipProvider>
+						{children}
+						<GlobalDialogHost />
+					</TooltipProvider>
+				</QueryClientProvider>
+			</Provider>
+		</I18nProvider>
 	);
 }

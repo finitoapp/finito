@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronDown } from "lucide-react";
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { useEffectEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,6 +93,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 	onRowClick,
 	columnVisibilityDriver,
 }: DataTableProps<TData, TValue>) {
+	const { t } = useTranslation();
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
 		[],
@@ -251,7 +253,9 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 							return (
 								<Input
 									key={filterColumn.id}
-									placeholder={`Filter ${filterColumn.title.toLowerCase()}...`}
+									placeholder={t("components:dataTable.filterPlaceholder", {
+										title: filterColumn.title,
+									})}
 									value={(column.getFilterValue() as string) ?? ""}
 									onChange={(event) =>
 										column.setFilterValue(event.target.value)
@@ -266,14 +270,15 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								onClick={() => table.resetColumnFilters()}
 								className="h-9 px-2 lg:px-3"
 							>
-								Reset
+								{t("components:dataTable.reset")}
 							</Button>
 						)}
 					</div>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="outline" className="ml-auto bg-transparent">
-								Columns <ChevronDown className="ml-2 h-4 w-4" />
+								{t("components:dataTable.columns")}{" "}
+								<ChevronDown className="ml-2 h-4 w-4" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
@@ -328,7 +333,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 									<div className="flex items-center justify-center">
 										<div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 										<span className="ml-2 text-sm text-muted-foreground">
-											Loading...
+											{t("components:dataTable.loading")}
 										</span>
 									</div>
 								</TableCell>
@@ -357,7 +362,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									No results.
+									{t("components:dataTable.noResults")}
 								</TableCell>
 							</TableRow>
 						)}
@@ -366,8 +371,10 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 			</div>
 			<div className="flex items-center justify-end gap-2 py-4">
 				<div className="flex-1 text-sm text-muted-foreground">
-					{table.getFilteredSelectedRowModel().rows.length} of{" "}
-					{table.getFilteredRowModel().rows.length} row(s) selected.
+					{t("components:dataTable.selectedRows", {
+						selected: table.getFilteredSelectedRowModel().rows.length,
+						total: table.getFilteredRowModel().rows.length,
+					})}
 				</div>
 				<div className="flex items-center gap-2">
 					{onFilterChange ? (
@@ -382,7 +389,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								}}
 								disabled={cursorHistory.length === 0 || isLoading}
 							>
-								Previous
+								{t("components:dataTable.previous")}
 							</Button>
 							<Button
 								variant="outline"
@@ -395,7 +402,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								}}
 								disabled={nextCursor === undefined || isLoading}
 							>
-								Next
+								{t("components:dataTable.next")}
 							</Button>
 						</>
 					) : (
@@ -406,7 +413,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								onClick={() => table.previousPage()}
 								disabled={!table.getCanPreviousPage()}
 							>
-								Previous
+								{t("components:dataTable.previous")}
 							</Button>
 							<Button
 								variant="outline"
@@ -414,7 +421,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								onClick={() => table.nextPage()}
 								disabled={!table.getCanNextPage()}
 							>
-								Next
+								{t("components:dataTable.next")}
 							</Button>
 						</>
 					)}

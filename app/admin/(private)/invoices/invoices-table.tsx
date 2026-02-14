@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -36,33 +39,33 @@ type Row = {
 	amount: number; // computed client-side
 };
 
-const columns: ColumnDef<Row>[] = [
+const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "invoiceNumber",
-		header: createSortableHeader("Invoice number"),
+		header: createSortableHeader(t("invoices:table.columns.invoice-number")),
 	},
 	{
 		accessorKey: "customerName",
-		header: createSortableHeader("Customer name"),
+		header: createSortableHeader(t("invoices:table.columns.customer-name")),
 	},
 	{
 		accessorKey: "issueDate",
-		header: createSortableHeader("Issue date"),
+		header: createSortableHeader(t("invoices:table.columns.issue-date")),
 		cell: ({ row }) => new Date(row.original.issueDate).toLocaleDateString(),
 	},
 	{
 		accessorKey: "dueDate",
-		header: createSortableHeader("Due date"),
+		header: createSortableHeader(t("invoices:table.columns.due-date")),
 		cell: ({ row }) => new Date(row.original.dueDate).toLocaleDateString(),
 	},
 	{
 		accessorKey: "amount",
-		header: createSortableHeader("Amount"),
+		header: createSortableHeader(t("invoices:table.columns.amount")),
 		cell: ({ row }) => formatAmount(row.original.amount, row.original.currency),
 	},
 	{
 		accessorKey: "status",
-		header: createSortableHeader("Status"),
+		header: createSortableHeader(t("invoices:table.columns.status")),
 		cell: ({ row }) => (
 			<InvoiceStatusBadge
 				invoiceId={row.original.id}
@@ -72,10 +75,24 @@ const columns: ColumnDef<Row>[] = [
 	},
 ];
 
+const createFilterableColumns = (t: TFunction) => [
+	{
+		id: "invoiceNumber",
+		title: t("invoices:table.columns.invoice-number"),
+	},
+	{
+		id: "customerName",
+		title: t("invoices:table.columns.customer-name"),
+	},
+] satisfies { id: keyof Row; title: string }[];
+
 export function InvoicesTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("invoices");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
@@ -207,14 +224,14 @@ export function InvoicesTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Invoices</CardTitle>
-					<CardDescription>List of your invoices</CardDescription>
+					<CardTitle>{t("invoices:table.invoices")}</CardTitle>
+					<CardDescription>{t("invoices:table.listOfYourInvoices")}</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/invoices/new"}>
 						<Button>
 							<PlusIcon />
-							New invoice
+							{t("invoices:table.actions.new-invoice")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -224,10 +241,7 @@ export function InvoicesTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					filterableColumns={[
-						{ id: "invoiceNumber", title: "Invoice number" },
-						{ id: "customerName", title: "Customer name" },
-					]}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/invoices/detail?id=${encodeURIComponent(item.id)}`,

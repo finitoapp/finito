@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import type React from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 interface BackButtonProps {
@@ -17,6 +18,7 @@ export function BackButton({
 	className,
 	children,
 }: BackButtonProps) {
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	const handleBack = () => {
@@ -37,7 +39,7 @@ export function BackButton({
 			className={className}
 		>
 			<ArrowLeft className="h-4 w-4 mr-2" />
-			{children || "Back"}
+			{children || t("components:backButton.back")}
 		</Button>
 	);
 }

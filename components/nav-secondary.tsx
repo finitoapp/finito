@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import type { Icon } from "@tabler/icons-react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -25,13 +27,14 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+	const { t } = useTranslation();
 	const pathname = usePathname();
 	const { setOpenMobile } = useSidebar();
 
 	return (
 		<SidebarGroup {...props}>
 			<SidebarGroupContent className="flex flex-col gap-2">
-				<SidebarGroupLabel>Settings</SidebarGroupLabel>
+				<SidebarGroupLabel>{t("navigation:main.settings")}</SidebarGroupLabel>
 				<SidebarMenu>
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>

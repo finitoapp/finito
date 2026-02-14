@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import { sqliteTrue } from "@evolu/common";
 import { motion } from "framer-motion";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
@@ -22,6 +25,7 @@ export const PosItems: React.FC<{
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
 }> = (props) => {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const variant = searchParams.get("variant") ?? "list";
@@ -37,7 +41,7 @@ export const PosItems: React.FC<{
 						router.replace(`/admin/pos?id=${encodeURIComponent(id)}`)
 					}
 				>
-					Item list
+					{t("pos:items.tabs.list")}
 				</TabsTrigger>
 				<TabsTrigger
 					value="dial"
@@ -47,7 +51,7 @@ export const PosItems: React.FC<{
 						)
 					}
 				>
-					Dial
+					{t("pos:items.tabs.dial")}
 				</TabsTrigger>
 			</TabsList>
 			<TabsContent value="list">
@@ -64,7 +68,7 @@ export const PosItems: React.FC<{
 										defaultCurrency: props.defaultCurrency,
 										item: {
 											id: Uuid7.random(),
-											label: NonEmptyString("Unknown"),
+											label: NonEmptyString(t("pos:items.unknownItem")),
 											price: {
 												currency: props.defaultCurrency,
 												value,
@@ -87,6 +91,7 @@ export const PosItemsList: React.FC<{
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
 }> = (props) => {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const [searchTerm, setSearchTerm] = useState("");
 	const { addItem } = useBill();
@@ -120,7 +125,7 @@ export const PosItemsList: React.FC<{
 		const map = new Map<string, typeof filteredItems>();
 
 		for (const item of filteredItems) {
-			const key = item.category?.name ?? "Uncategorized";
+			const key = item.category?.name ?? t("pos:items.uncategorized");
 			const previous = map.get(key);
 			if (previous) {
 				previous.push(item);
@@ -144,7 +149,7 @@ export const PosItemsList: React.FC<{
 				<div className="relative">
 					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
 					<Input
-						placeholder="Search items..."
+						placeholder={t("pos:items.searchItems")}
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
 						className="pl-10"
@@ -213,7 +218,7 @@ export const PosItemsList: React.FC<{
 								className={"w-16 h-16 mx-auto mb-2 rounded-lg object-cover"}
 							/>
 							<h3 className="font-medium text-sm mb-1 text-balance">
-								New product
+								{t("pos:items.newProduct")}
 							</h3>
 						</CardContent>
 					</Card>

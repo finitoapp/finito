@@ -1,6 +1,9 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
@@ -34,33 +37,35 @@ type Row = {
 	label: string;
 };
 
-const columns: ColumnDef<Row>[] = [
+const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "createdAt",
-		header: createSortableHeader("Created at"),
+		header: createSortableHeader(t("payments:table.columns.created-at")),
 		cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
 	},
 	{
 		accessorKey: "amount",
-		header: "Amount",
+		header: t("payments:table.columns.amount"),
 		cell: ({ row }) =>
 			formatAmount(row.original.amount, row.original.billCurrency),
 	},
 	{
 		accessorKey: "status",
-		header: "Status",
+		header: t("payments:table.columns.status"),
 		cell: ({ row }) => <PaymentStatusBadge paymentId={row.original.id} />,
 	},
 	{
 		accessorKey: "label",
-		header: "Description",
+		header: t("payments:table.columns.description"),
 	},
 ];
 
 export function PaymentsTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("payments");
+	const columns = useMemo(() => createColumns(t), [t]);
 	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
 		() =>
 			({ sorting, setData, pagination: { limit, cursor } }) => {
@@ -171,16 +176,16 @@ export function PaymentsTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Payment Messages</CardTitle>
+					<CardTitle>{t("payments:table.paymentMessages")}</CardTitle>
 					<CardDescription>
-						Decrypted payment data from Nostr NIP-04 direct messages
+						{t("payments:table.description.decrypted-payment-data")}
 					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/payments/new"}>
 						<Button>
 							<PlusIcon />
-							New payment
+							{t("payments:table.actions.new-payment")}
 						</Button>
 					</Link>
 				</CardToolbar>

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import { FinitoLogo } from "@/components/finito-logo";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -10,6 +12,7 @@ export default function Layout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const { t } = useTranslation();
 	return (
 		<div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
 			<div className="w-full max-w-sm md:max-w-3xl">
@@ -30,7 +33,7 @@ export default function Layout({
 							<div className="bg-muted relative hidden md:block">
 								<Image
 									src="/pexels-photo-220067.jpeg"
-									alt="Image"
+									alt={t("auth:layout.imageAlt")}
 									className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
 									width={1024}
 									height={768}
@@ -40,8 +43,8 @@ export default function Layout({
 					</ResponsiveCard>
 					<div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
 						By clicking continue, you agree to our{" "}
-						<a href="#def">Terms of Service</a> and{" "}
-						<a href="#abc">Privacy Policy</a>.
+						<a href="#def">{t("auth:legal.termsOfService")}</a> and{" "}
+						<a href="#abc">{t("auth:legal.privacyPolicy")}</a>.
 					</div>
 				</div>
 			</div>

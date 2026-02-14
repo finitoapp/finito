@@ -8,6 +8,8 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
 import type { PartialDeep } from "type-fest";
@@ -112,40 +114,48 @@ export const createBillingSettingsDefaultValues = () =>
 		defaultLnSparkKey: null,
 	}) satisfies z.input<typeof billingSettingsFormSchema>;
 
-export const billingSettingsFormComponents = createAutoFormLayout(
+const createComponents = (t: TFunction) => createAutoFormLayout(
 	billingSettingsFormSchema,
 	({ builder }) => ({
 		...builder.card(
 			{
-				title: "Invoice default settings",
+				title: t("settings:form.billing-settings-form.title.invoice-default-settings"),
 			},
 			{
 				...builder.magicInput("defaultInvoiceDueDateDays").text({
-					label: "Default invoice due date",
-					description: "In days",
+					label: t("settings:form.billing-settings-form.label.default-invoice-due-date"),
+					description: t("settings:form.billing-settings-form.description.in-days"),
 				}),
 
 				...builder.magicInput("defaultCurrency").select({
 					values: FiatCurrency,
 					allowEmpty: false,
-					label: "Default currency",
+					label: t("settings:form.billing-settings-form.label.default-currency"),
 				}),
 
 				...builder.magicInput("defaultTimezone").select({
 					values: Timezone,
 					allowEmpty: false,
-					label: "Timezone",
+					label: t("settings:form.billing-settings-form.label.timezone"),
 				}),
 
 				...builder.nestedField("defaultPayment", ({ builder }) => ({
 					...builder.magicInput("method").select({
 						values: {
-							[InvoicePaymentMethod.BankTransfer]: "Bank transfer",
-							[InvoicePaymentMethod.PaymentCard]: "Payment card",
-							[InvoicePaymentMethod.Cash]: "Cash",
+							[InvoicePaymentMethod.BankTransfer]: t(
+								"settings:form.billing-settings-form.payment-method.bank-transfer",
+							),
+							[InvoicePaymentMethod.PaymentCard]: t(
+								"settings:form.billing-settings-form.payment-method.payment-card",
+							),
+							[InvoicePaymentMethod.Cash]: t(
+								"settings:form.billing-settings-form.payment-method.cash",
+							),
 						} satisfies Record<InvoicePaymentMethod, string>,
 						allowEmpty: true,
-						label: "Default invoice payment method",
+						label: t(
+							"settings:form.billing-settings-form.label.default-invoice-payment-method",
+						),
 					}),
 
 					...builder.when(
@@ -164,7 +174,9 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 								const ComboboxInput = useMemo(
 									() =>
 										createComboboxInput({
-											label: "Default bank account",
+											label: t(
+												"settings:form.billing-settings-form.label.default-bank-account",
+											),
 											fetchItems: async () => {
 												const query = evolu.createQuery((db) =>
 													db
@@ -205,18 +217,26 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 
 		...builder.card(
 			{
-				title: "Payment default settings",
+				title: t("settings:form.billing-settings-form.title.payment-default-settings"),
 			},
 			{
 				...builder.magicInput("defaultPaymentMethod").select({
 					values: {
-						[PaymentMethod.Cash]: "Cash",
-						[PaymentMethod.LnZap]: "LN Zap",
-						[PaymentMethod.LnSpark]: "LN Spark",
-						[PaymentMethod.BankTransferCZ]: "Bank transfer (CZ)",
+						[PaymentMethod.Cash]: t(
+							"settings:form.billing-settings-form.default-payment-method.cash",
+						),
+						[PaymentMethod.LnZap]: t(
+							"settings:form.billing-settings-form.default-payment-method.ln-zap",
+						),
+						[PaymentMethod.LnSpark]: t(
+							"settings:form.billing-settings-form.default-payment-method.ln-spark",
+						),
+						[PaymentMethod.BankTransferCZ]: t(
+							"settings:form.billing-settings-form.default-payment-method.bank-transfer-cz",
+						),
 					} satisfies Record<PaymentMethod, string>,
 					allowEmpty: false,
-					label: "Default payment method",
+					label: t("settings:form.billing-settings-form.label.default-payment-method"),
 				}),
 
 				...builder.createComponent("defaultBankTransferCzKey", (props) => {
@@ -224,7 +244,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
-								label: "Default bank account",
+								label: t("settings:form.billing-settings-form.label.default-bank-account"),
 								fetchItems: async () => {
 									const query = evolu.createQuery((db) =>
 										db
@@ -259,7 +279,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
-								label: "Default LN Zap wallet",
+								label: t("settings:form.billing-settings-form.label.default-ln-zap-wallet"),
 								fetchItems: async () => {
 									const query = evolu.createQuery((db) =>
 										db
@@ -287,7 +307,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 					const ComboboxInput = useMemo(
 						() =>
 							createComboboxInput({
-								label: "Default LN Spark wallet",
+								label: t("settings:form.billing-settings-form.label.default-ln-spark-wallet"),
 								fetchItems: async () => {
 									const query = evolu.createQuery((db) =>
 										db
@@ -314,19 +334,19 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 
 		...builder.card(
 			{
-				title: "Invoice email",
+				title: t("settings:form.billing-settings-form.title.invoice-email"),
 			},
 			{
 				...builder.nestedField("invoiceEmailSettings", ({ builder }) => ({
 					...builder.magicInput("enable").checkbox({
-						label: "Enable invoice emails",
+						label: t("settings:form.billing-settings-form.label.enable-invoice-emails"),
 					}),
 					...builder.when("invoiceEmailSettings.enable", true, {
 						...builder.magicInput("subject").text({
-							label: "Email subject",
+							label: t("settings:form.billing-settings-form.label.email-subject"),
 						}),
 						...builder.magicInput("body").textarea({
-							label: "Email body",
+							label: t("settings:form.billing-settings-form.label.email-body"),
 							rows: 8,
 						}),
 					}),
@@ -336,13 +356,13 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 
 		...builder.card(
 			{
-				title: "Tax rates",
+				title: t("settings:form.billing-settings-form.title.tax-rates"),
 			},
 			{
 				...builder.arrayTableField(
 					{
 						name: "taxRates",
-						addRowLabel: "Add rate",
+						addRowLabel: t("settings:form.billing-settings-form.addRowLabel.add-rate"),
 						defaultValue: {
 							id: "",
 							name: "",
@@ -350,14 +370,14 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 						},
 						columns: [
 							{
-								title: "ID",
+								title: t("settings:form.billing-settings-form.title.id"),
 								hidden: true,
 							},
 							{
-								title: "Name",
+								title: t("settings:form.billing-settings-form.title.name"),
 							},
 							{
-								title: "Rate",
+								title: t("settings:form.billing-settings-form.title.rate"),
 								className: "w-[130px]",
 							},
 						],
@@ -366,7 +386,7 @@ export const billingSettingsFormComponents = createAutoFormLayout(
 						...builder.magicInput("id").text({ type: "hidden" }),
 						...builder.magicInput("name").text({}),
 						...builder.magicInput("rate").text({
-							placeholder: "0",
+							placeholder: t("settings:form.billing-settings-form.placeholder.0"),
 							type: "number",
 							endAddon: "%",
 						}),
@@ -386,6 +406,7 @@ export const BillingSettingsForm: React.FC<{
 	>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
@@ -393,6 +414,7 @@ export const BillingSettingsForm: React.FC<{
 			params.defaultValues ?? {},
 		);
 	});
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(billingSettingsFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
@@ -471,5 +493,5 @@ export const BillingSettingsForm: React.FC<{
 
 	console.log("err", form.form.formState.errors);
 
-	return <AutoForm form={form} components={billingSettingsFormComponents} />;
+	return <AutoForm form={form} components={components} />;
 };

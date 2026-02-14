@@ -5,8 +5,10 @@ import {
 	type Id,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -139,35 +141,37 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 	return <AutocompleteIdentificationNumberInput {...props} />;
 };
 
-const components = createAutoFormLayout(
+const createComponents = (t: TFunction) => createAutoFormLayout(
 	billingInfoFormSchema,
 	({ builder }) => ({
 		_search: Search,
 		_separator: () => <Separator />,
 
 		...builder.magicInput("name").text({
-			label: "Company name",
+			label: t("invoices:form.billing-info-form.label.company-name"),
 		}),
 		...builder.magicInput("label").text({
-			label: "Label",
-			description: "Your private name for internal purposes",
+			label: t("invoices:form.billing-info-form.label.label"),
+			description: t(
+				"invoices:form.billing-info-form.description.your-private-name-for-internal-purposes",
+			),
 		}),
 		...builder.magicInput("email").text({
-			label: "Email",
+			label: t("invoices:form.billing-info-form.label.email"),
 		}),
 		...builder.nestedField("address", ({ builder }) => {
 			return {
 				...builder.magicInput("street").text({
-					label: "Street",
+					label: t("invoices:form.billing-info-form.label.street"),
 				}),
 				...builder.magicInput("city").text({
-					label: "City",
+					label: t("invoices:form.billing-info-form.label.city"),
 				}),
 				...builder.magicInput("postalCode").text({
-					label: "Postal Code",
+					label: t("invoices:form.billing-info-form.label.postal-code"),
 				}),
 				...builder.magicInput("descriptiveNumber").text({
-					label: "Descriptive Number",
+					label: t("invoices:form.billing-info-form.label.descriptive-number"),
 				}),
 			};
 		}),
@@ -175,14 +179,14 @@ const components = createAutoFormLayout(
 			...builder.magicInput("countryCode").select({
 				values: CountryCode,
 				allowEmpty: true,
-				label: "Country code",
+				label: t("invoices:form.billing-info-form.label.country-code"),
 			}),
 			...builder.when("countrySpecific.countryCode", CountryCode.CZ, {
 				...builder.magicInput("identificationNumber").text({
-					label: "Identification Number",
+					label: t("invoices:form.billing-info-form.label.identification-number"),
 				}),
 				...builder.magicInput("vatNumber").text({
-					label: "VAT Number",
+					label: t("invoices:form.billing-info-form.label.vat-number"),
 				}),
 			}),
 		})),
@@ -194,6 +198,7 @@ export const BillingInfoForm: React.FC<{
 	onBeforeSave?: (values: z.output<typeof billingInfoFormSchema>) => boolean;
 	onSuccess?: (newEventId: string) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createBillingInfoFormDefaultValues(),
@@ -201,6 +206,7 @@ export const BillingInfoForm: React.FC<{
 		);
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(billingInfoFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {

@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
@@ -10,6 +12,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -60,7 +63,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Edit account</CardTitle>
+					<CardTitle>{t("accounts:page.editAccount")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<AccountForm

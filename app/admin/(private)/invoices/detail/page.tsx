@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { PDFViewer, usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
@@ -333,6 +335,7 @@ const ISDOCGenerator = (props: { invoice: Invoice }) => {
 };
 
 export default function Home() {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
@@ -704,7 +707,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-4"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							{item && (
@@ -730,7 +733,7 @@ export default function Home() {
 
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>PDF invoice preview</CardTitle>
+							<CardTitle>{t("invoices:page.pdfInvoicePreview")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							{item &&

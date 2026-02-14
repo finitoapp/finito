@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
@@ -67,6 +70,7 @@ const Item: React.FC<{
 	billId: string;
 	onRemove: () => unknown;
 }> = (props) => {
+	const { t } = useTranslation();
 	const [isRemoving, setIsRemoving] = useState(false);
 	const setPos = useSetAtom(posAtom);
 
@@ -86,7 +90,8 @@ const Item: React.FC<{
 					<div className="flex-1">
 						<h4 className="font-medium text-sm">{props.item.name}</h4>
 						<p className="text-xs text-muted-foreground">
-							{formatAmount(props.item.price, props.item.currency)} each
+							{formatAmount(props.item.price, props.item.currency)}{" "}
+							{t("pos:bill.each")}
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
@@ -246,6 +251,7 @@ const PosBillName: React.FC<{
 const TableQrCode: React.FC<{
 	tableQrCode?: string;
 }> = (props) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const frontendUrl =
 		props.tableQrCode &&
@@ -261,7 +267,7 @@ const TableQrCode: React.FC<{
 						disabled={props.tableQrCode === undefined}
 						title={
 							props.tableQrCode === undefined
-								? "Table is not selected"
+								? t("pos:bill.table-not-selected")
 								: undefined
 						}
 					>
@@ -270,7 +276,7 @@ const TableQrCode: React.FC<{
 				</DialogTrigger>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Table QR Code</DialogTitle>
+						<DialogTitle>{t("pos:bill.tableQrCode")}</DialogTitle>
 					</DialogHeader>
 
 					<div className={"py-4 bg-white flex rounded"}>
@@ -307,6 +313,7 @@ const PosBillTable: React.FC<{
 		qrCode?: NonEmptyString;
 	};
 }> = (props) => {
+	const { t } = useTranslation();
 	const setPos = useSetAtom(posAtom);
 	const tableQuery = useCreateQuery(
 		(db) =>
@@ -346,7 +353,7 @@ const PosBillTable: React.FC<{
 					},
 					label: item.label,
 				}))}
-				placeholder={"Select a table"}
+				placeholder={t("pos:bill.selectTable")}
 				value={props.table ?? null}
 				compareFunction={(a, b) => a?.id === b?.id}
 				formatCustomValue={(value) => value.name}
@@ -382,6 +389,7 @@ const PayButton: FC<{
 	billId: string;
 	total: number;
 }> = (props) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const evolu = useEvolu();
 	const storageDeps = useStorageDeps();
@@ -566,7 +574,7 @@ const PayButton: FC<{
 				<Loader2 className="animate-spin" />
 			) : (
 				<>
-					Pay{" "}
+					{t("pos:bill.pay")}{" "}
 					<motion.span
 						key={props.total}
 						initial={{ scale: 1.1, opacity: 0.5 }}
@@ -586,6 +594,7 @@ export const PosBill: React.FC<{
 	defaultCurrency: Currency;
 	ref?: React.Ref<HTMLDivElement>;
 }> = (props) => {
+	const { t } = useTranslation();
 	const setPos = useSetAtom(posAtom);
 	const totalPerCurrency = new Map<Currency, number>();
 	let hasDifferentCurrency = false;
@@ -639,7 +648,7 @@ export const PosBill: React.FC<{
 							)}
 
 							{props.bill === undefined || props.bill.items.length === 0 ? (
-								<p className="text-center">No items in cart</p>
+								<p className="text-center">{t("pos:bill.noItemsInCart")}</p>
 							) : (
 								props.bill.items.map((item, index) => (
 									<Item
@@ -686,7 +695,7 @@ export const PosBill: React.FC<{
 									<Separator className="my-4" />
 									<div className="space-y-2">
 										<div className="flex justify-between text-md font-bold">
-											<span>Currency:</span>
+											<span>{t("pos:bill.currency")}</span>
 											<span>
 												<Select
 													value={props.bill.currency}
@@ -737,7 +746,9 @@ export const PosBill: React.FC<{
 												<Separator className="my-4" />
 												<div className="space-y-2">
 													<div className="flex justify-between text-lg font-bold">
-														<span>Total ({currency}):</span>
+														<span>
+															{t("pos:bill.totalPerCurrency", { currency })}
+														</span>
 														<motion.span
 															key={total}
 															initial={{ scale: 1.1, opacity: 0.5 }}
@@ -752,7 +763,7 @@ export const PosBill: React.FC<{
 													currency !== props.bill.currency && (
 														<div className="space-y-2">
 															<div className="flex justify-between text-md font-bold">
-																<span>Rate:</span>
+																<span>{t("pos:bill.rate")}</span>
 																<span>
 																	<Input
 																		className={"text-right"}
@@ -797,7 +808,7 @@ export const PosBill: React.FC<{
 									<Separator className="my-4" />
 									<div className="space-y-2">
 										<div className="flex justify-between text-lg font-bold">
-											<span>Total:</span>
+											<span>{t("pos:bill.total")}</span>
 											<motion.span
 												key={total}
 												initial={{ scale: 1.1, opacity: 0.5 }}

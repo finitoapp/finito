@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CategoryForm } from "@/app/admin/(private)/categories/category-form";
@@ -10,6 +12,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -39,7 +42,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Edit category</CardTitle>
+					<CardTitle>{t("categories:page.editCategory")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<CategoryForm

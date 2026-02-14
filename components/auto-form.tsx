@@ -35,6 +35,7 @@ import {
 	useFormContext,
 	useWatch,
 } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import type {
 	ConditionalPick,
 	Get,
@@ -135,6 +136,7 @@ export const AutoForm = <
 	saveClassName?: React.ComponentProps<"div">["className"];
 	saveLabel?: React.ReactNode;
 }) => {
+	const { t } = useTranslation();
 	console.log(props.form.form.formState);
 
 	return (
@@ -165,7 +167,7 @@ export const AutoForm = <
 						)}
 						{props.saveLabel ?? (
 							<>
-								<Save /> Save
+								<Save /> {t("components:autoForm.actions.save")}
 							</>
 						)}
 					</Button>
@@ -287,6 +289,7 @@ export const AutoFormInput = {
 			),
 	): AutoFormComponent<string | undefined> => {
 		return (props) => {
+			const { t } = useTranslation();
 			const useCurrency =
 				"currency" in params
 					? () => params.currency
@@ -385,7 +388,9 @@ export const AutoFormInput = {
 												}}
 											/>
 											{currencyValue === Currency.BTC && (
-												<InputAddon>Sats</InputAddon>
+												<InputAddon>
+													{t("components:autoForm.units.sats")}
+												</InputAddon>
 											)}
 										</InputGroup>
 									</FormControl>
@@ -406,66 +411,71 @@ export const AutoFormInput = {
 	},
 	date:
 		(params: InputParams): AutoFormComponent<Date | null> =>
-		(props) => (
-			<FormField
-				control={props.control}
-				name={props.name}
-				render={({ field }) => (
-					<FormItem>
-						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
-						)}
-						<FormControl>
-							<Popover>
-								<PopoverTrigger asChild>
-									<div className="relative">
-										<Button
-											type="button"
-											variant={"outline"}
-											mode="input"
-											className="w-full"
-										>
-											<CalendarIcon />
-											{field.value ? (
-												format(field.value, "PPP")
-											) : (
-												<span>Pick a date</span>
-											)}
-										</Button>
-										{field.value && (
+		(props) => {
+			const { t } = useTranslation();
+			return (
+				<FormField
+					control={props.control}
+					name={props.name}
+					render={({ field }) => (
+						<FormItem>
+							{params.label && (
+								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							)}
+							<FormControl>
+								<Popover>
+									<PopoverTrigger asChild>
+										<div className="relative">
 											<Button
 												type="button"
-												variant="dim"
-												size="sm"
-												className="absolute top-1/2 -end-0 -translate-y-1/2"
-												onClick={(e) => {
-													e.preventDefault();
-													field.onChange(null);
-												}}
+												variant={"outline"}
+												mode="input"
+												className="w-full"
 											>
-												<XIcon />
+												<CalendarIcon />
+												{field.value ? (
+													format(field.value, "PPP")
+												) : (
+													<span>
+														{t("components:autoForm.actions.pickDate")}
+													</span>
+												)}
 											</Button>
-										)}
-									</div>
-								</PopoverTrigger>
-								<PopoverContent className="w-auto p-0" align="start">
-									<Calendar
-										mode="single"
-										selected={field.value}
-										onSelect={field.onChange}
-										autoFocus
-									/>
-								</PopoverContent>
-							</Popover>
-						</FormControl>
-						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
-						)}
-						<FormMessage />
-					</FormItem>
-				)}
-			/>
-		),
+											{field.value && (
+												<Button
+													type="button"
+													variant="dim"
+													size="sm"
+													className="absolute top-1/2 -end-0 -translate-y-1/2"
+													onClick={(e) => {
+														e.preventDefault();
+														field.onChange(null);
+													}}
+												>
+													<XIcon />
+												</Button>
+											)}
+										</div>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={field.value}
+											onSelect={field.onChange}
+											autoFocus
+										/>
+									</PopoverContent>
+								</Popover>
+							</FormControl>
+							{params.description && (
+								<FormDescription>{params.description}</FormDescription>
+							)}
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+			);
+		},
 	checkbox:
 		(params: CheckboxParams): AutoFormComponent<boolean> =>
 		(props) => (
@@ -563,7 +573,7 @@ export const AutoFormInput = {
 				params.values().then((values) => {
 					setValues(values);
 				});
-			}, [params.values, params]);
+			}, []);
 
 			return (
 				<FormField
@@ -783,7 +793,7 @@ export type Builder<
 			// @ts-expect-error
 			defaultValue: TSchema[TName][number];
 			columns: {
-				title: string;
+				title?: string;
 				className?: React.ComponentProps<"div">["className"];
 				inputCellClassName?: React.ComponentProps<"div">["className"];
 				hidden?: boolean;
@@ -1049,6 +1059,7 @@ const createBuilder = <
 			>,
 		) => {
 			return createComponent(options.name, (props) => {
+				const { t } = useTranslation();
 				const { fields, append, remove } = useFieldArray({
 					control: props.control, // control props comes from useForm (optional: if you are using FormProvider)
 					name: props.name, // unique name for your Field Array
@@ -1076,7 +1087,7 @@ const createBuilder = <
 										variant={"outline"}
 										onClick={() => remove(index)}
 									>
-										Remove
+										{t("components:autoForm.actions.remove")}
 									</Button>
 								</React.Fragment>
 							);
@@ -1086,7 +1097,7 @@ const createBuilder = <
 							variant={"outline"}
 							onClick={() => append(options.defaultValue)}
 						>
-							Add
+							{t("components:autoForm.actions.add")}
 						</Button>
 					</>
 				);
@@ -1136,6 +1147,7 @@ const createBuilder = <
 					hidden?: boolean;
 				}[];
 			}) => {
+				const { t } = useTranslation();
 				const {
 					attributes,
 					listeners,
@@ -1153,7 +1165,7 @@ const createBuilder = <
 					>(_schema, `${props.name}.${props.index}.`);
 
 					return callback({ builder });
-				}, [props.name, props.index, _schema, callback]);
+				}, [props.name, props.index]);
 
 				const style = {
 					transform: CSS.Transform.toString(transform),
@@ -1184,7 +1196,9 @@ const createBuilder = <
 									{...listeners}
 								>
 									<GripVerticalIcon className="h-4 w-4" />
-									<span className="sr-only">Drag to reorder</span>
+									<span className="sr-only">
+										{t("components:autoForm.actions.dragToReorder")}
+									</span>
 								</Button>
 
 								<Button
@@ -1195,7 +1209,7 @@ const createBuilder = <
 									onClick={() => props.remove(props.index)}
 								>
 									<CircleXIcon />
-									Remove item
+									{t("components:autoForm.actions.removeItem")}
 								</Button>
 
 								<Button
@@ -1206,7 +1220,7 @@ const createBuilder = <
 									onClick={() => props.move(props.index, props.index + 1)}
 								>
 									<ArrowDownIcon className="h-4 w-4" />
-									Move down
+									{t("components:autoForm.actions.moveDown")}
 								</Button>
 
 								<Button
@@ -1218,14 +1232,12 @@ const createBuilder = <
 									onClick={() => props.move(props.index, props.index - 1)}
 								>
 									<ArrowUpIcon className="h-4 w-4" />
-									Move up
+									{t("components:autoForm.actions.moveUp")}
 								</Button>
 							</div>
 						</TableCell>
 						{Object.entries(components)
-							.filter(
-								([key, Component], index) => !props.columns[index]?.hidden,
-							)
+							.filter(([,], index) => !props.columns[index]?.hidden)
 							.map(([key, Component], index) => (
 								<TableCell
 									key={key}
@@ -1245,7 +1257,9 @@ const createBuilder = <
 								onClick={() => props.remove(props.index)}
 							>
 								<CircleXIcon />
-								<div className={"lg:hidden"}>Remove item</div>
+								<div className={"lg:hidden"}>
+									{t("components:autoForm.actions.removeItem")}
+								</div>
 							</Button>
 						</TableCell>
 					</TableRow>
@@ -1253,6 +1267,7 @@ const createBuilder = <
 			};
 
 			return createComponent(options.name, (props) => {
+				const { t } = useTranslation();
 				const isMobile = useMediaQuery("(max-width: 1024px)");
 				const { fields, append, remove, move } = useFieldArray({
 					control: props.control, // control props comes from useForm (optional: if you are using FormProvider)
@@ -1345,7 +1360,8 @@ const createBuilder = <
 								onClick={() => append(options.defaultValue)}
 							>
 								<PlusCircleIcon />
-								{options.addRowLabel ?? "Add item"}
+								{options.addRowLabel ??
+									t("components:autoForm.actions.addItem")}
 							</Button>
 						</div>
 					</DndContext>

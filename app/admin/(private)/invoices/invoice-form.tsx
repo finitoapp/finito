@@ -8,6 +8,8 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { addDays } from "date-fns";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { merge } from "es-toolkit";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -221,6 +223,7 @@ const SupplierEditForm = (
 const CustomerBillingInfo: AutoFormComponent<
 	z.output<typeof ClientFormSchema> | null
 > = (props) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 
 	const query = useCreateQuery((db) => {
@@ -248,7 +251,7 @@ const CustomerBillingInfo: AutoFormComponent<
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
-				label: "Customer",
+				label: t("invoices:form.invoice-form.label.customer"),
 				enableAdd: true,
 				formatCustomValue: (value) => {
 					return value.name;
@@ -287,6 +290,7 @@ const CustomerBillingInfo: AutoFormComponent<
 const SupplierBillingInfo: AutoFormComponent<
 	z.output<typeof BillingInfoFormSchema> | null
 > = (props) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 
 	const query = useCreateQuery((db) => {
@@ -316,7 +320,7 @@ const SupplierBillingInfo: AutoFormComponent<
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput({
-				label: "Supplier",
+				label: t("invoices:form.invoice-form.label.supplier"),
 				formatCustomValue: (value) => {
 					return value.name;
 				},
@@ -358,7 +362,7 @@ const SupplierBillingInfo: AutoFormComponent<
 	return <ComboboxInput {...props} />;
 };
 
-const components = createAutoFormLayout(itemSchema, ({ builder }) => {
+const createComponents = (t: TFunction) => createAutoFormLayout(itemSchema, ({ builder }) => {
 	return {
 		...builder.magicInput("id").text({
 			type: "hidden",
@@ -369,12 +373,12 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 
 		...builder.card(
 			{
-				title: "Invoice info",
+				title: t("invoices:form.invoice-form.title.invoice-info"),
 			},
 			{
 				...builder.line({
 					...builder.magicInput("invoiceNumber").text({
-						label: "Invoice number",
+						label: t("invoices:form.invoice-form.label.invoice-number"),
 					}),
 					...builder.line({
 						...builder.nestedField("customer", ({ builder }) => ({
@@ -384,10 +388,10 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 				}),
 				...builder.line({
 					...builder.magicInput("issueDate").date({
-						label: "Issue date",
+						label: t("invoices:form.invoice-form.label.issue-date"),
 					}),
 					...builder.magicInput("dueDate").date({
-						label: "Due date",
+						label: t("invoices:form.invoice-form.label.due-date"),
 					}),
 				}),
 			},
@@ -395,7 +399,7 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 
 		...builder.collapsibleSeparator(
 			{
-				title: "Advanced options",
+				title: t("invoices:form.invoice-form.title.advanced-options"),
 				watchErrors: ["supplier", "payment", "currency"],
 			},
 			{
@@ -409,7 +413,7 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 							...builder.magicInput("currency").select({
 								values: FiatCurrency,
 								allowEmpty: false,
-								label: "Currency",
+								label: t("invoices:form.invoice-form.label.currency"),
 							}),
 						}),
 
@@ -417,12 +421,18 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 							...builder.nestedField("payment", ({ builder }) => ({
 								...builder.magicInput("method").select({
 									values: {
-										[InvoicePaymentMethod.BankTransfer]: "Bank transfer",
-										[InvoicePaymentMethod.PaymentCard]: "Payment card",
-										[InvoicePaymentMethod.Cash]: "Cash",
+										[InvoicePaymentMethod.BankTransfer]: t(
+											"invoices:form.invoice-form.payment-method.bank-transfer",
+										),
+										[InvoicePaymentMethod.PaymentCard]: t(
+											"invoices:form.invoice-form.payment-method.payment-card",
+										),
+										[InvoicePaymentMethod.Cash]: t(
+											"invoices:form.invoice-form.payment-method.cash",
+										),
 									} satisfies Record<InvoicePaymentMethod, string>,
 									allowEmpty: false,
-									label: "Payment method",
+									label: t("invoices:form.invoice-form.label.payment-method"),
 								}),
 
 								...builder.when(
@@ -441,7 +451,7 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 
 		...builder.card(
 			{
-				title: "Items",
+				title: t("invoices:form.invoice-form.title.items"),
 			},
 			{
 				...builder.arrayTableField(
@@ -450,22 +460,22 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 						defaultValue: itemDefaultValues,
 						columns: [
 							{
-								title: "ID",
+								title: t("invoices:form.invoice-form.title.id"),
 								hidden: true,
 							},
 							{
-								title: "Label",
+								title: t("invoices:form.invoice-form.title.label"),
 							},
 							{
-								title: "Price",
+								title: t("invoices:form.invoice-form.title.price"),
 								className: "w-[130px]",
 							},
 							{
-								title: "Quantity",
+								title: t("invoices:form.invoice-form.title.quantity"),
 								className: "w-[80px]",
 							},
 							{
-								title: "UOM",
+								title: t("invoices:form.invoice-form.title.uom"),
 								className: "w-[70px]",
 							},
 						],
@@ -475,19 +485,19 @@ const components = createAutoFormLayout(itemSchema, ({ builder }) => {
 							type: "hidden",
 						}),
 						...builder.magicInput("label").text({
-							label: "Label",
+							label: t("invoices:form.invoice-form.label.label"),
 						}),
 						...builder.magicInput("price").text({
-							label: "Price",
-							placeholder: "0",
+							label: t("invoices:form.invoice-form.label.price"),
+							placeholder: t("invoices:form.invoice-form.placeholder.0"),
 						}),
 						...builder.magicInput("quantity").text({
-							label: "Quantity",
-							placeholder: "1",
+							label: t("invoices:form.invoice-form.label.quantity"),
+							placeholder: t("invoices:form.invoice-form.placeholder.1"),
 							type: "number",
 						}),
 						...builder.magicInput("unitOfMeasure").text({
-							label: "UOM",
+							label: t("invoices:form.invoice-form.label.uom"),
 						}),
 					}),
 				),
@@ -500,10 +510,12 @@ export const InvoiceForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof itemSchema>>;
 	onSuccess?: (newEventId: Id, values: z.output<typeof itemSchema>) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(createDefaultValues(), params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {

@@ -1,10 +1,13 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { Loader2Icon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { FinitoLogo } from "@/components/finito-logo";
 
 export default function Loading() {
+	const { t } = useTranslation();
 	const rootRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
@@ -42,7 +45,7 @@ export default function Loading() {
 				<FinitoLogo className="text-2xl" />
 				<div className="flex items-center gap-3 text-muted-foreground">
 					<Loader2Icon className="size-4 animate-spin text-primary" />
-					<span className="text-sm">Preparing workspace</span>
+					<span className="text-sm">{t("app:loading.preparingWorkspace")}</span>
 				</div>
 			</div>
 		</div>

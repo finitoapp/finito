@@ -1,5 +1,7 @@
 "use client";
 
+
+import { useTranslation } from "react-i18next";
 import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { SmtpForm } from "@/app/admin/(private)/settings/smtp/smtp-form";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -8,6 +10,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const itemId = createIdFromString("");
 	const query = useCreateQuery(
 		(db) => {
@@ -27,7 +30,7 @@ export default function Home() {
 	return (
 		<ResponsiveCard className="w-full max-w-xl">
 			<CardHeader>
-				<CardTitle>Email sending settings (SMTP configuration)</CardTitle>
+				<CardTitle>{t("settings:page.emailSendingSettingsSmtpConfiguration")}</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<SmtpForm
