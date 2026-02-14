@@ -87,7 +87,15 @@ const locale = {
     "nostrPosts": "Nostr Příspěvky"
   },
   "notifications": {
-    "backgroundJobs": "Práce na pozadí"
+    "backgroundJobs": "Práce na pozadí",
+    "open": "Otevřít notifikace",
+    "close": "Zavřít notifikace",
+    "clearAll": "Vyčistit vše",
+    "loading": "Načítám notifikace...",
+    "empty": {
+      "title": "Žádné úlohy na pozadí",
+      "description": "Máš hotovo. Nové notifikace se objeví tady."
+    }
   },
   "notificationItem": {
     "verifyPayment": {

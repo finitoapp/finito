@@ -1,18 +1,26 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { sqliteTrue } from "@evolu/common";
+import { getOrThrow, sqliteTrue } from "@evolu/common";
+import { useMutation } from "@tanstack/react-query";
 import { Bell, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { NotificationItem } from "@/components/notification-item";
 import { useCreateQuery } from "@/hooks/use-create-query";
+import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import {
+	Sheet,
+	SheetClose,
+	SheetContent,
+	SheetTitle,
+	SheetTrigger,
+} from "./ui/sheet";
 
 export function NotificationCenter() {
 	const { t } = useTranslation();
+	const evolu = useEvolu();
 	const query = useCreateQuery(
 		(db) =>
 			db
@@ -34,99 +42,108 @@ export function NotificationCenter() {
 		[],
 	);
 	const { data: items } = useEvoluQuery(query);
-
 	const [isOpen, setIsOpen] = useState(false);
-	const unreadCount = items
-		? items.filter((item) => item.type !== "backgroundTableProcessing").length
-		: 0;
+	const actionableItems =
+		items?.filter((item) => item.type !== "backgroundTableProcessing") ?? [];
+	const unreadCount = actionableItems.length;
+	const { mutateAsync: clearAllNotifications, isPending: isClearingAll } =
+		useMutation({
+			mutationFn: async () => {
+				for (const item of actionableItems) {
+					getOrThrow(
+						evolu.update("notification", {
+							id: item.id,
+							isDeleted: sqliteTrue,
+						}),
+					);
+				}
+			},
+		});
 
 	return (
-		<>
-			<Button
-				size="icon"
-				variant="outline"
-				className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
-				onClick={() => setIsOpen(!isOpen)}
-			>
-				<Bell className="h-5 w-5" />
-				{unreadCount > 0 && (
-					<span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
-						{unreadCount > 9 ? "9+" : unreadCount}
-					</span>
-				)}
-			</Button>
-
-			<div
-				className={cn(
-					"fixed top-0 right-0 z-40 h-screen w-full max-w-md transform bg-card shadow-2xl transition-transform duration-300 ease-in-out",
-					isOpen ? "translate-x-0" : "translate-x-full",
-				)}
+		<Sheet open={isOpen} onOpenChange={setIsOpen}>
+			<SheetTrigger asChild>
+				<Button
+					size="icon"
+					variant="outline"
+					className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
+					aria-label={t("components:notifications.open")}
+				>
+					<Bell className="h-5 w-5" />
+					{unreadCount > 0 && (
+						<span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+							{unreadCount > 9 ? "9+" : unreadCount}
+						</span>
+					)}
+				</Button>
+			</SheetTrigger>
+			<SheetContent
+				side="right"
+				close={false}
+				className="h-screen w-full max-w-md p-0"
 			>
 				<div className="flex h-full flex-col safe-area-t safe-area-b">
-					{/* Header */}
 					<div className="flex items-center justify-between border-b border-border px-6 py-4">
 						<div>
-							<h2 className="text-xl font-semibold">{t("components:notifications.backgroundJobs")}</h2>
+							<SheetTitle className="text-xl font-semibold">
+								{t("components:notifications.backgroundJobs")}
+							</SheetTitle>
 						</div>
 						<div className="flex items-center gap-2">
 							{unreadCount > 0 && (
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => {}}
+									onClick={() => void clearAllNotifications()}
+									disabled={isClearingAll}
 									className="text-xs"
 								>
-									Clear all
+									{t("components:notifications.clearAll")}
 								</Button>
 							)}
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => setIsOpen(false)}
-								className="h-8 w-8"
-							>
-								<X className="h-4 w-4" />
-							</Button>
+							<SheetClose asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-8 w-8"
+									aria-label={t("components:notifications.close")}
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							</SheetClose>
 						</div>
 					</div>
 
-					{/* Notifications List */}
 					<div className="flex-1 overflow-y-auto">
-						{items && items.length === 0 ? (
+						{items === undefined ? (
+							<div className="flex h-full items-center justify-center px-6 text-sm text-muted-foreground">
+								{t("components:notifications.loading")}
+							</div>
+						) : items.length === 0 ? (
 							<div className="flex h-full flex-col items-center justify-center px-6 text-center">
 								<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
 									<Bell className="h-8 w-8 text-muted-foreground" />
 								</div>
 								<h3 className="mb-2 text-lg font-semibold">
-									No background jobs
+									{t("components:notifications.empty.title")}
 								</h3>
 								<p className="text-sm text-muted-foreground text-pretty">
-									{"You're all caught up! New notifications will appear here."}
+									{t("components:notifications.empty.description")}
 								</p>
 							</div>
 						) : (
 							<div className="divide-y divide-border">
-								{items &&
-									items.map((backgroundJob) => (
-										<NotificationItem
-											key={backgroundJob.id}
-											notification={backgroundJob}
-										/>
-									))}
+								{items.map((backgroundJob) => (
+									<NotificationItem
+										key={backgroundJob.id}
+										notification={backgroundJob}
+									/>
+								))}
 							</div>
 						)}
 					</div>
 				</div>
-			</div>
-
-			{/* Backdrop */}
-			{isOpen && (
-				<button
-					type={"button"}
-					className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm transition-opacity"
-					onClick={() => setIsOpen(false)}
-				/>
-			)}
-		</>
+			</SheetContent>
+		</Sheet>
 	);
 }

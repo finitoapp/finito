@@ -87,7 +87,15 @@ const locale = {
     "nostrPosts": "Nostr Posts"
   },
   "notifications": {
-    "backgroundJobs": "Background Jobs"
+    "backgroundJobs": "Background Jobs",
+    "open": "Open notifications",
+    "close": "Close notifications",
+    "clearAll": "Clear all",
+    "loading": "Loading notifications...",
+    "empty": {
+      "title": "No background jobs",
+      "description": "You're all caught up! New notifications will appear here."
+    }
   },
   "notificationItem": {
     "verifyPayment": {
