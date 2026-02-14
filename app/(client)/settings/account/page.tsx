@@ -1,8 +1,7 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { AccountForm } from "@/app/admin/(private)/settings/account/account-form";
 import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -23,7 +22,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
-			<FadeHeader title={"Account"} />
+			<FadeHeader title={t("settings:page.navigation.account")} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardHeader>

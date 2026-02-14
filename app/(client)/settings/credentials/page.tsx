@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useTranslation } from "react-i18next";
 import { CredentialsForm } from "@/app/admin/(private)/settings/credentials/credentials-form";
 import { FadeHeader } from "@/components/fade-header";
@@ -12,7 +11,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
-			<FadeHeader title={"Credentials"} />
+			<FadeHeader title={t("settings:page.navigation.credentials")} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardHeader>

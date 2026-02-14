@@ -1,5 +1,6 @@
 const locale = {
   "page": {
+    "settings": "Nastavení",
     "accountSettings": "Nastavení účtu",
     "billingInformation": "Fakturační údaje",
     "credentialsSettings": "Nastavení přihlašovacích údajů",
@@ -8,8 +9,37 @@ const locale = {
     "invoiceNumberSeries": "Číselná řada faktury",
     "lastInvoiceNumber": "Číslo poslední faktury",
     "orUseExistingAccount": "Nebo použijte svůj existující účet",
+    "plugins": "Pluginy",
+    "externalLinks": "Externí odkazy",
+    "appVersion": "Verze aplikace",
+    "install": "Nainstalovat",
+    "unknown": "neznámé",
+    "navigation": {
+      "connectedWallets": "Připojené peněženky",
+      "account": "Účet",
+      "credentials": "Přihlašovací údaje",
+      "theme": "Motiv",
+      "language": "Jazyk",
+      "switchAccount": "Přepnout účet"
+    },
+    "links": {
+      "followUsOnX": "Sledujte nás na X",
+      "checkCodeOnGitHub": "Podívejte se na náš kód na GitHubu"
+    },
     "switchAccount": "Přepnout účet",
     "weAreOpensource": "Jsme OpenSource"
+  },
+  "wallets": {
+    "page": {
+      "connectWallet": "Připojit peněženku",
+      "noWalletPaired": "Momentálně nemáte spárovanou žádnou peněženku."
+    },
+    "dialog": {
+      "deleteTitle": "Smazat peněženku?",
+      "deleteDescription": "Tuto akci nelze vrátit zpět.",
+      "deleteConfirmText": "Smazat",
+      "deleteCancelText": "Zrušit"
+    }
   },
   "form": {
     "account-form": {

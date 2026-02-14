@@ -3,6 +3,7 @@
 import { type Id, sqliteTrue } from "@evolu/common";
 import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +59,7 @@ const PaymentStatus: FC<{
 };
 
 export default function Page() {
+	const { t } = useTranslation();
 	const paymentInitQuery = useCreateQuery(
 		(db) =>
 			db
@@ -107,7 +109,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-20"} />
-			<FadeHeader title={"Payment history"} />
+			<FadeHeader title={t("client:page.paymentHistory")} />
 
 			{paymentInitRows !== undefined && items.length === 0 && (
 				<div

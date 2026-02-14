@@ -5,6 +5,7 @@ import { useSetAtom } from "jotai";
 import { TriangleAlertIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { CounterCheckbox } from "@/components/counter-checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -41,6 +42,8 @@ export function BillItemList({
 	className,
 	selectedItemsAtom,
 }: VerticalNavProps) {
+	const { t } = useTranslation();
+
 	if (bill.items.length === 0) {
 		return (
 			<div
@@ -50,7 +53,7 @@ export function BillItemList({
 				)}
 			>
 				<h3 className={"text-foreground text-2xl mt-20"}>
-					There is currently no bill here.
+					{t("client:bill.empty.noBill")}
 				</h3>
 			</div>
 		);
@@ -81,6 +84,7 @@ function NavItemComponent({
 	bill: Bill;
 	selectedItemsAtom: SelectedItemsAtom;
 }) {
+	const { t } = useTranslation();
 	const setSelectedItems = useSetAtom(selectedItemsAtom);
 	const [checked, setChecked] = useState(
 		(item.optionality && item.optionality.checked) ?? item.quantity,
@@ -137,7 +141,8 @@ function NavItemComponent({
 							>
 								<CollapsibleContent>
 									<span className={"text-xs text-primary flex gap-2 mt-2"}>
-										<TriangleAlertIcon size={14} /> {quantityLeft} pcs left!
+										<TriangleAlertIcon size={14} />{" "}
+										{t("client:bill.warning.pcsLeft", { count: quantityLeft })}
 									</span>
 								</CollapsibleContent>
 							</Collapsible>

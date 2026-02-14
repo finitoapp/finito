@@ -1,7 +1,5 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { createIdFromString, getOrThrow } from "@evolu/common";
 import { IconRefresh } from "@tabler/icons-react";
 import { motion } from "framer-motion";
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FC, useEffect, useEffectEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BillItemList } from "@/app/(client)/bill-item-list";
 import {
 	createLoadingAtom,
@@ -53,6 +52,7 @@ const PayButton: FC<{
 	selectedTipAtom: SelectedTipAtom;
 	loadingAtom: LoadingAtom;
 }> = (props) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const setLoading = useSetAtom(props.loadingAtom);
 	const [paymentMethod, setPaymentMethod] =
@@ -84,11 +84,11 @@ const PayButton: FC<{
 				options={[
 					{
 						value: "btcLn",
-						label: "BTC lightning",
+						label: t("client:paymentPage.methods.btcLightning"),
 					},
 					{
 						value: "bankTransferCZ",
-						label: "Bank transfer",
+						label: t("client:paymentPage.methods.bankTransfer"),
 					},
 				]}
 				size={"lg"}
@@ -149,7 +149,7 @@ const PayButton: FC<{
 								},
 							};
 
-							setLoading("The payment is preparing");
+							setLoading(t("client:paymentPage.loading.preparingPayment"));
 							getOrThrow(
 								evolu.upsert("paymentInit", {
 									id: createIdFromString(paymentId),
@@ -183,7 +183,9 @@ const PayButton: FC<{
 				{(props.screen.variant === "payment" ||
 					props.screen.variant === "refund") && (
 					<>
-						{totalAmount >= 0 ? "Pay" : "Refund"}
+						{totalAmount >= 0
+							? t("client:paymentPage.actions.pay")
+							: t("client:paymentPage.actions.refund")}
 						<motion.span
 							key={`${totalAmount} ${props.screen.payload.bill?.currency}`}
 							initial={{ scale: 1.1, opacity: 0.5 }}
@@ -215,6 +217,7 @@ const BottomPanel: FC<{
 	selectedTipAtom,
 	loadingAtom,
 }) => {
+	const { t } = useTranslation();
 	const [isOpen, setOpen] = useState(false);
 
 	useEffect(() => {
@@ -258,15 +261,15 @@ const BottomPanel: FC<{
 										options={[
 											{
 												value: "external",
-												label: "External Wallet",
+												label: t("client:paymentPage.wallets.external"),
 											},
 											{
 												value: "primalWallet",
-												label: "Primal Wallet",
+												label: t("client:paymentPage.wallets.primal"),
 											},
 											{
 												value: "bitlifi",
-												label: "Bitlifi",
+												label: t("client:paymentPage.wallets.bitlifi"),
 											},
 										]}
 										size={"lg"}
@@ -281,7 +284,9 @@ const BottomPanel: FC<{
 										<a
 											href={`lightning:${screen.payload.type === "btcLn" ? screen.payload.lnInvoice : ""}`}
 										>
-											{totalAmount >= 0 ? "Pay" : "Refund"}
+											{totalAmount >= 0
+												? t("client:paymentPage.actions.pay")
+												: t("client:paymentPage.actions.refund")}
 										</a>
 									</Button>
 								</ButtonGroup>
@@ -291,7 +296,8 @@ const BottomPanel: FC<{
 									size={"lg"}
 									onClick={async () => {}}
 								>
-									<QrCodeIcon /> Copy & display QR invoice
+									<QrCodeIcon />{" "}
+									{t("client:paymentPage.actions.copyShowQrInvoice")}
 								</Button>
 							</div>
 						) : (
@@ -305,7 +311,9 @@ const BottomPanel: FC<{
 												"text-xs text-muted-foreground font-bold flex flex-col gap-2"
 											}
 										>
-											<span className={"uppercase"}>{t("client:bill.tipForStaff")}</span>
+											<span className={"uppercase"}>
+												{t("client:bill.tipForStaff")}
+											</span>
 											<TipSelector selectedTipAtom={selectedTipAtom} />
 										</div>
 									)}
@@ -334,6 +342,7 @@ const Screen: FC<{
 	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
 }> = (props) => {
+	const { t } = useTranslation();
 	const totalAmount =
 		props.screen && props.screen.variant === "paymentReady"
 			? props.screen.payload.bill.items.reduce(
@@ -402,7 +411,7 @@ const Screen: FC<{
 								text={
 									props.screen.payload.type === "failure"
 										? props.screen.payload.reason
-										: "The payment is successfully paid"
+										: t("client:paymentPage.status.paymentSuccessful")
 								}
 								open={true}
 								status={props.screen.payload.type}
@@ -441,7 +450,7 @@ const Screen: FC<{
 
 							{props.screen.payload.amountExpectedToPay && (
 								<div className={"text-xs text-muted-foreground"}>
-									rate{" "}
+									{t("client:paymentPage.labels.rate")}{" "}
 									{formatAmount(props.screen.payload.amountExpectedToPay.rate)}{" "}
 									{props.screen.payload.amountExpectedToPay.currency}/
 									{props.screen.payload.bill.currency}
@@ -453,8 +462,8 @@ const Screen: FC<{
 
 								<div className={"text-xs text-muted-foreground"}>
 									{totalAmount >= 0
-										? "We are waiting for your payment"
-										: "We are waiting for your refund"}
+										? t("client:paymentPage.status.waitingForPayment")
+										: t("client:paymentPage.status.waitingForRefund")}
 								</div>
 							</div>
 						</div>
@@ -468,11 +477,12 @@ const Screen: FC<{
 const Loading: FC<{
 	loadingAtom: LoadingAtom;
 }> = (props) => {
+	const { t } = useTranslation();
 	const loading = useAtomValue(props.loadingAtom);
 
 	return (
 		<LoadingIndicator
-			text={loading ?? "The payment is successfully paid"}
+			text={loading ?? t("client:paymentPage.status.paymentSuccessful")}
 			open={loading !== null}
 			status={"loading"}
 			variant={"fullscreen"}
@@ -488,7 +498,7 @@ export default function Page() {
 	const [selectedItemsAtom] = useState(createSelectedItemsAtom);
 	const [selectedTipAtom] = useState(createSelectedTipAtom);
 	const [loadingAtom] = useState(() =>
-		createLoadingAtom("Loading the data..."),
+		createLoadingAtom(t("client:paymentPage.loading.loadingData")),
 	);
 	const { ndk } = useNostr();
 	const evolu = useEvolu();
@@ -572,13 +582,13 @@ export default function Page() {
 			}
 
 			if (event.type === "closed") {
-				alert("The bill is closed");
+				alert(t("client:paymentPage.alerts.billClosed"));
 				router.replace("/");
 				return;
 			}
 
 			if (event.type === "resetBill") {
-				store.set(loadingAtom, "Loading the data...");
+				store.set(loadingAtom, t("client:paymentPage.loading.loadingData"));
 				const subscription = await subscriptionPromise;
 				if (subscription !== null) {
 					void subscription.refresh();
@@ -614,7 +624,7 @@ export default function Page() {
 			}
 
 			if (subscription === null) {
-				alert("Unknown QR code");
+				alert(t("client:paymentPage.alerts.unknownQrCode"));
 				router.replace("/");
 				return;
 			}
@@ -635,7 +645,7 @@ export default function Page() {
 				});
 			}
 		};
-	}, [qrCode, ndk, sessionId, router]);
+	}, [qrCode, ndk, sessionId, router, t]);
 
 	useOnMountUnsafe(() => {
 		(async () => {

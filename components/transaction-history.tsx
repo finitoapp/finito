@@ -1,6 +1,7 @@
 import { type Id, sqliteTrue } from "@evolu/common";
 import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
@@ -55,6 +56,7 @@ const PaymentStatus: FC<{
 };
 
 export const TransactionHistory = () => {
+	const { t } = useTranslation();
 	const paymentInitQuery = useCreateQuery(
 		(db) =>
 			db
@@ -107,7 +109,7 @@ export const TransactionHistory = () => {
 
 	return (
 		<VerticalNav
-			title={"Transaction history"}
+			title={t("client:transactionHistory.title")}
 			items={navItems.map((item, index) => {
 				if (item === false) {
 					return {
@@ -120,11 +122,10 @@ export const TransactionHistory = () => {
 							>
 								<ReceiptIcon className="h-10 w-10 text-muted-foreground" />
 								<h2 className={"text-foreground text-lg"}>
-									Your transaction history is empty
+									{t("client:transactionHistory.empty.title")}
 								</h2>
 								<p className="text-balance text-sm text-muted-foreground text-center">
-									Your payment transactions will appear here once you make your
-									first purchase or sale.
+									{t("client:transactionHistory.empty.description")}
 								</p>
 							</div>
 						),
@@ -172,7 +173,10 @@ export const TransactionHistory = () => {
 				return {
 					label: (
 						<div className={"flex flex-col gap-2 items-start w-max"}>
-							<strong>{item.merchantName ?? "Unknown merchant"}</strong>
+							<strong>
+								{item.merchantName ??
+									t("client:transactionHistory.unknownMerchant")}
+							</strong>
 							<div className={"flex justify-between w-full text-xs"}>
 								<span>{formatAmount(totalAmount, item.currency ?? "CZK")}</span>
 								&nbsp;&nbsp;•&nbsp;&nbsp;

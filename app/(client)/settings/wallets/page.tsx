@@ -1,7 +1,5 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { getOrThrow, sqliteTrue } from "@evolu/common";
 import {
 	ChevronDownIcon,
@@ -12,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
 import { Button } from "@/components/ui/button";
@@ -74,13 +73,13 @@ export default function Page() {
 	return (
 		<div className="space-y-14 w-full px-4">
 			<div className={"h-10"} />
-			<FadeHeader title={"Connected wallets"} />
+			<FadeHeader title={t("settings:page.navigation.connectedWallets")} />
 
 			<div className={"flex my-10 w-full justify-center"}>
 				<Link href={"/settings/wallets/new"}>
 					<Button variant="primary" size={"lg"}>
 						<PlusIcon />
-						Connect a wallet
+						{t("settings:wallets.page.connectWallet")}
 					</Button>
 				</Link>
 			</div>
@@ -91,7 +90,7 @@ export default function Page() {
 				>
 					<WalletIcon className="h-12 w-12 text-muted-foreground" />
 					<h2 className={"text-foreground text-lg"}>
-						You currently have no wallet paired.
+						{t("settings:wallets.page.noWalletPaired")}
 					</h2>
 					<div className={"h-20"}></div>
 				</div>
@@ -150,10 +149,16 @@ export default function Page() {
 										<DropdownMenuItem
 											onClick={async () => {
 												const accepted = await confirm({
-													title: "Delete wallet?",
-													description: "This action cannot be undone.",
-													confirmText: "Delete",
-													cancelText: "Cancel",
+													title: t("settings:wallets.dialog.deleteTitle"),
+													description: t(
+														"settings:wallets.dialog.deleteDescription",
+													),
+													confirmText: t(
+														"settings:wallets.dialog.deleteConfirmText",
+													),
+													cancelText: t(
+														"settings:wallets.dialog.deleteCancelText",
+													),
 													confirmVariant: "destructive",
 												});
 												if (!accepted) {

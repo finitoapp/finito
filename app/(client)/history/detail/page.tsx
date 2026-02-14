@@ -1,10 +1,9 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
 import { DownloadIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { FadeHeader } from "@/components/fade-header";
 import { KeyValueList } from "@/components/key-value-list";
 import { LoadingIndicator } from "@/components/loading-indicator";
@@ -116,17 +115,18 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-20"} />
-			<FadeHeader title={"Payment detail"} />
+			<FadeHeader title={t("client:page.paymentDetail")} />
 
 			<LoadingIndicator
 				text={
 					paymentFinishedRows === undefined
-						? "loading"
+						? t("client:historyDetail.status.loading")
 						: paymentFinished
 							? paymentFinished.type === "success"
-								? "Paid"
-								: (paymentFinished.reason ?? "Failed")
-							: "Still in progress or expired"
+								? t("client:historyDetail.status.paid")
+								: (paymentFinished.reason ??
+									t("client:historyDetail.status.failed"))
+							: t("client:historyDetail.status.inProgressOrExpired")
 				}
 				open={true}
 				status={
@@ -145,7 +145,7 @@ export default function Page() {
 					<KeyValueList
 						items={[
 							{
-								key: "Name",
+								key: t("client:historyDetail.fields.name"),
 								value: paymentInit ? (
 									paymentInit.merchantName
 								) : (
@@ -153,7 +153,7 @@ export default function Page() {
 								),
 							},
 							{
-								key: "Phone",
+								key: t("client:historyDetail.fields.phone"),
 								value: paymentInit ? (
 									(paymentInit.merchantPhone ?? "-")
 								) : (
@@ -170,7 +170,7 @@ export default function Page() {
 					<KeyValueList
 						items={[
 							{
-								key: "Spending",
+								key: t("client:historyDetail.fields.spending"),
 								value: paymentInit ? (
 									formatAmount(totalAmount, paymentInit.currency ?? "CZK")
 								) : (
@@ -178,7 +178,7 @@ export default function Page() {
 								),
 							},
 							{
-								key: "Date",
+								key: t("client:historyDetail.fields.date"),
 								value: paymentInit ? (
 									new Date(paymentInit.createdAt * 1000).toLocaleString()
 								) : (
@@ -210,7 +210,7 @@ export default function Page() {
 			<div className={"flex justify-center px-4"}>
 				<Button className={"w-full"} type={"button"}>
 					<DownloadIcon />
-					Download receipt
+					{t("client:historyDetail.actions.downloadReceipt")}
 				</Button>
 			</div>
 

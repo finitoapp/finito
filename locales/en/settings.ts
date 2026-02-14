@@ -1,5 +1,6 @@
 const locale = {
   "page": {
+    "settings": "Settings",
     "accountSettings": "Account settings",
     "billingInformation": "Billing information",
     "credentialsSettings": "Credentials settings",
@@ -8,8 +9,37 @@ const locale = {
     "invoiceNumberSeries": "Invoice number series",
     "lastInvoiceNumber": "Last invoice number",
     "orUseExistingAccount": "Or use your existing account",
+    "plugins": "Plugins",
+    "externalLinks": "External links",
+    "appVersion": "App version",
+    "install": "Install",
+    "unknown": "unknown",
+    "navigation": {
+      "connectedWallets": "Connected wallets",
+      "account": "Account",
+      "credentials": "Credentials",
+      "theme": "Theme",
+      "language": "Language",
+      "switchAccount": "Switch account"
+    },
+    "links": {
+      "followUsOnX": "Follow us on X",
+      "checkCodeOnGitHub": "Check out our code on GitHub"
+    },
     "switchAccount": "Switch account",
     "weAreOpensource": "We are OpenSource"
+  },
+  "wallets": {
+    "page": {
+      "connectWallet": "Connect a wallet",
+      "noWalletPaired": "You currently have no wallet paired."
+    },
+    "dialog": {
+      "deleteTitle": "Delete wallet?",
+      "deleteDescription": "This action cannot be undone.",
+      "deleteConfirmText": "Delete",
+      "deleteCancelText": "Cancel"
+    }
   },
   "form": {
     "account-form": {

@@ -10,6 +10,7 @@ import {
 	ScanQrCodeIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import { accountAtom } from "@/atoms/account";
 import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
@@ -74,6 +75,7 @@ const WalletStatus = () => {
 };
 
 export default function Page() {
+	const { t } = useTranslation();
 	return (
 		<div className="space-y-8 w-full p-4 flex flex-col">
 			<div className={"h-26"} />
@@ -88,7 +90,8 @@ export default function Page() {
 							variant={"dim"}
 							className={"h-14 w-36 px-8 text-foreground"}
 						>
-							<ArrowDownIcon className={"size-5 text-primary"} /> Receive
+							<ArrowDownIcon className={"size-5 text-primary"} />
+							{t("client:home.actions.receive")}
 						</Button>
 					</Link>
 					<Link href={"/scan"}>
@@ -106,7 +109,8 @@ export default function Page() {
 						variant={"dim"}
 						className={"h-14 w-36 px-8 text-foreground"}
 					>
-						<ArrowUpIcon className={"size-5 text-primary"} /> Send
+						<ArrowUpIcon className={"size-5 text-primary"} />
+						{t("client:home.actions.send")}
 					</Button>
 				</div>
 			</div>

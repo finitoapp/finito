@@ -2,6 +2,7 @@
 
 import { type Id, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
 import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -10,6 +11,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -48,7 +50,7 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-10"} />
-			<FadeHeader title={"Connected wallets"} />
+			<FadeHeader title={t("settings:page.navigation.connectedWallets")} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
 				<CardContent>

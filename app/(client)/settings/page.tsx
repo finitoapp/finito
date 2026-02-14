@@ -1,7 +1,5 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import {
 	IconBrandGithub,
 	IconBrandX,
@@ -11,36 +9,43 @@ import {
 import {
 	HardDriveDownloadIcon,
 	KeyRoundIcon,
+	LanguagesIcon,
 	LayoutDashboardIcon,
 	RefreshCcwIcon,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type ComponentProps, useEffect, useEffectEvent } from "react";
+import { type ComponentProps, useEffect, useEffectEvent, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
+import { LanguageToggle } from "@/components/language-toggle";
 import { ModeToggle } from "@/components/mode-toggle";
 import { useInstallPwa } from "@/hooks/use-install-pwa";
 
-const walletItems: ComponentProps<typeof VerticalNav>["items"] = [
+const createWalletItems = (
+	t: (key: string) => string,
+): ComponentProps<typeof VerticalNav>["items"] => [
 	{
-		label: "Connected wallets",
+		label: t("settings:page.navigation.connectedWallets"),
 		nextLink: "/settings/wallets",
 		icon: <IconPlugConnected className="h-4 w-4" />,
 	},
 ];
-const navigationItems: ComponentProps<typeof VerticalNav>["items"] = [
+const createNavigationItems = (
+	t: (key: string) => string,
+): ComponentProps<typeof VerticalNav>["items"] => [
 	{
-		label: "Account",
+		label: t("settings:page.navigation.account"),
 		nextLink: "/settings/account",
 		icon: <IconUserCircle className="h-4 w-4" />,
 	},
 	{
-		label: "Credentials",
+		label: t("settings:page.navigation.credentials"),
 		nextLink: "/settings/credentials",
 		icon: <KeyRoundIcon className="h-4 w-4" />,
 	},
 	{
-		label: "Theme",
+		label: t("settings:page.navigation.theme"),
 		icon: <LayoutDashboardIcon className="h-4 w-4" />,
 		action: (
 			<div className={"-my-4 -mr-2"}>
@@ -48,18 +53,31 @@ const navigationItems: ComponentProps<typeof VerticalNav>["items"] = [
 			</div>
 		),
 	},
-];
-const navigationItems3: ComponentProps<typeof VerticalNav>["items"] = [
 	{
-		label: "Switch account",
+		label: t("settings:page.navigation.language"),
+		icon: <LanguagesIcon className="h-4 w-4" />,
+		action: (
+			<div className={"-my-4 -mr-2"}>
+				<LanguageToggle />
+			</div>
+		),
+	},
+];
+const createSecondaryNavigationItems = (
+	t: (key: string) => string,
+): ComponentProps<typeof VerticalNav>["items"] => [
+	{
+		label: t("settings:page.navigation.switchAccount"),
 		nextLink: "/settings/switch-account",
 		icon: <RefreshCcwIcon className="h-4 w-4" />,
 	},
 ];
 const navigationPluginsItems: ComponentProps<typeof VerticalNav>["items"] = [];
-const navigationLinkItems: ComponentProps<typeof VerticalNav>["items"] = [
+const createNavigationLinkItems = (
+	t: (key: string) => string,
+): ComponentProps<typeof VerticalNav>["items"] => [
 	{
-		label: "Follow as on X",
+		label: t("settings:page.links.followUsOnX"),
 		component: (props) => (
 			<a
 				{...props}
@@ -73,7 +91,7 @@ const navigationLinkItems: ComponentProps<typeof VerticalNav>["items"] = [
 		icon: <IconBrandX className="h-4 w-4" />,
 	},
 	{
-		label: "Check out our code on GitHub",
+		label: t("settings:page.links.checkCodeOnGitHub"),
 		component: (props) => (
 			<a
 				{...props}
@@ -89,6 +107,7 @@ const navigationLinkItems: ComponentProps<typeof VerticalNav>["items"] = [
 ];
 
 const InstallPWA = () => {
+	const { t } = useTranslation();
 	const { isPwaSupported, onClick } = useInstallPwa();
 	const searchParams = useSearchParams();
 
@@ -114,7 +133,7 @@ const InstallPWA = () => {
 		<VerticalNav
 			items={[
 				{
-					label: "Install",
+					label: t("settings:page.install"),
 					onClick: () => onClick(),
 					icon: <HardDriveDownloadIcon className="h-4 w-4" />,
 				},
@@ -125,8 +144,16 @@ const InstallPWA = () => {
 
 export default function Page() {
 	const { t } = useTranslation();
-	const commitHash = process.env.NEXT_PUBLIC_GIT_COMMIT || "unknown";
+	const commitHash =
+		process.env.NEXT_PUBLIC_GIT_COMMIT || t("settings:page.unknown");
 	const router = useRouter();
+	const walletItems = useMemo(() => createWalletItems(t), [t]);
+	const navigationItems = useMemo(() => createNavigationItems(t), [t]);
+	const navigationItems3 = useMemo(
+		() => createSecondaryNavigationItems(t),
+		[t],
+	);
+	const navigationLinkItems = useMemo(() => createNavigationLinkItems(t), [t]);
 
 	useEffect(() => {
 		for (const item of [
@@ -138,28 +165,36 @@ export default function Page() {
 				router.prefetch(item.nextLink);
 			}
 		}
-	}, [router]);
+	}, [router, navigationItems, navigationItems3]);
 
 	return (
 		<div className="space-y-8 w-full px-4">
 			<div className={"h-10"} />
-			<FadeHeader title={"Settings"} />
+			<FadeHeader title={t("settings:page.settings")} />
 
 			<VerticalNav items={walletItems} />
 			<VerticalNav items={navigationItems} />
 			{navigationPluginsItems.length > 0 && (
-				<VerticalNav title={"Plugins"} items={navigationPluginsItems} />
+				<VerticalNav
+					title={t("settings:page.plugins")}
+					items={navigationPluginsItems}
+				/>
 			)}
 			<VerticalNav items={navigationItems3} />
 			<InstallPWA />
 
-			<VerticalNav title={"External links"} items={navigationLinkItems} />
+			<VerticalNav
+				title={t("settings:page.externalLinks")}
+				items={navigationLinkItems}
+			/>
 
 			<div className={"text-center text-sm"}>
-				App version: <strong>{commitHash}</strong>
+				{t("settings:page.appVersion")}: <strong>{commitHash}</strong>
 			</div>
 
-			<div className={"text-center text-sm"}>{t("settings:page.weAreOpensource")}</div>
+			<div className={"text-center text-sm"}>
+				{t("settings:page.weAreOpensource")}
+			</div>
 		</div>
 	);
 }
