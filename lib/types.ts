@@ -100,9 +100,13 @@ export type Iban = z.output<typeof IbanSchema>;
 
 export const PhoneSchema = z
 	.string()
-	.min(1, "Expected to be a non empty string")
+	.trim()
+	.min(1, "Expected to be phone")
 	.max(32, "Expected to be 32 characters in max")
-	.regex(/^(\+|0)[0-9]{10,}$/, "Expected to be phone")
+	.refine((value) => {
+		const digitsOnly = value.replace(/\D/g, "");
+		return digitsOnly.length >= 6 && digitsOnly.length <= 15;
+	}, "Expected to be phone")
 	.brand<"Phone", "inout">()
 	.brand<"NonEmptyString", "inout">()
 	.brand<"NonEmptyString32", "inout">()

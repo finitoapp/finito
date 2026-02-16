@@ -34,8 +34,8 @@ We believe accepting payments should feel more like handling cash: direct, trans
 ## What the project includes today
 
 - Merchant/admin app (`app/admin/...`) for managing:
-  - items, categories, clients, and tables,
-  - payments, invoices, and POS workflows.
+  - items, categories, clients, tables, and reservations,
+  - payments, invoices, POS workflows, and reservation operations.
 - Client app (`app/(client)/...`) for:
   - receiving and confirming payments,
   - payment history and basic settings.

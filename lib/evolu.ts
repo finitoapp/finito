@@ -58,6 +58,29 @@ export const Schema = {
 		tableId: Id,
 		code: NonEmptyTrimmedString100,
 	},
+	reservation: {
+		id: Id,
+		tableId: nullOr(Id),
+		note: nullOr(NonEmptyTrimmedString1000),
+		_tag: NonEmptyTrimmedString100,
+		startAt: NonNegativeInt,
+		endAt: NonNegativeInt,
+	},
+	reservationBooking: {
+		id: Id,
+		name: NonEmptyTrimmedString100,
+		phone: nullOr(NonEmptyTrimmedString100),
+		email: nullOr(NonEmptyTrimmedString100),
+		numberOfPeople: PositiveInt,
+		approvalStatus: NonEmptyTrimmedString100,
+		serviceStatus: NonEmptyTrimmedString100,
+		statusReason: nullOr(NonEmptyTrimmedString1000),
+		source: nullOr(NonEmptyTrimmedString100),
+	},
+	reservationBlock: {
+		id: Id,
+		label: NonEmptyTrimmedString100,
+	},
 	account: {
 		id: Id,
 		name: NonEmptyTrimmedString100,
@@ -344,13 +367,23 @@ export const createAppEvolu = (props: {
 	transports: ReadonlyArray<OwnerTransport>;
 }) => {
 	const evolu = createEvolu(evoluReactWebDeps)(Schema, {
-		name: SimpleName.orThrow("Finito" + createIdFromString(props.mnemonic)),
+		name: SimpleName.orThrow(`Finito${createIdFromString(props.mnemonic)}`),
 		// enableLogging: true,
 		transports: props.transports,
 		externalAppOwner: createAppOwner(mnemonicToOwnerSecret(props.mnemonic)),
 		indexes: (create) => [
 			create(`item_categoryId`).on(`item`).column("categoryId"),
 			create(`tableCode_tableId`).on(`tableCode`).column("tableId"),
+			create(`reservation_tableId`).on(`reservation`).column("tableId"),
+			create(`reservation_tag`).on(`reservation`).column("_tag"),
+			create(`reservation_startAt`).on(`reservation`).column("startAt"),
+			create(`reservation_endAt`).on(`reservation`).column("endAt"),
+			create(`reservationBooking_approvalStatus`)
+				.on(`reservationBooking`)
+				.column("approvalStatus"),
+			create(`reservationBooking_serviceStatus`)
+				.on(`reservationBooking`)
+				.column("serviceStatus"),
 			create(`fioPluginToken_fioPluginId`)
 				.on(`fioPluginToken`)
 				.column("fioPluginId"),

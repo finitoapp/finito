@@ -198,3 +198,48 @@ Note:
 - “Where is generic table behavior?” -> `components/data-table.tsx`
 - “Where is Nostr RPC-like messaging?” -> `lib/nostr-message-bus.ts`
 - “Where is desktop/native bridge?” -> `src-tauri/src/lib.rs`
+
+## 13) Jotai State Architecture (Re-render Control)
+
+These rules are project-wide. They are not specific to one feature.
+
+### 13.1 Core principle
+
+- Pass atom references down the tree; read atom values as deep as possible.
+- Avoid passing large computed value props from parent components when children can subscribe directly.
+
+### 13.2 Ownership model
+
+- Root feature component should create/own atom instances (or atom factory output).
+- Root should mostly pass `stateAtoms` (or specific atoms), not resolved values.
+- Child components should call `useAtomValue`/`useAtom` for the exact state they render.
+
+### 13.3 Read/write split
+
+- Components that only update state should use `useSetAtom` only.
+- Do not subscribe (`useAtomValue`) in write-only components.
+- This prevents unnecessary subscriptions and render cascades.
+
+### 13.4 Granularity rules
+
+- Prefer multiple small atoms over one broad object atom.
+- Use `atomFamily` for per-entity/per-row subscriptions (`byId`, `rowIds`, etc.).
+- Keep derived data in derived atoms (filtering, grouping, collision checks, visibility flags).
+
+### 13.5 Interaction state placement
+
+- Keep pointer/gesture session details local to interaction hooks/components unless shared globally.
+- Persist only necessary shared interaction output in atoms (e.g., selected id, preview patch).
+- Separate committed data atoms from transient preview atoms when UI stability matters.
+
+### 13.6 Anti-patterns to avoid
+
+- Parent component reads many atoms and forwards raw values through multiple levels.
+- One atom stores entire feature UI state as a single object and updates frequently.
+- Global atom updates on every pointer move when only one subtree needs the data.
+
+### 13.7 Practical checklist before merge
+
+- For each atom change, list which components subscribe to it.
+- Verify that drag/typing/high-frequency interactions do not trigger root-level re-renders.
+- Confirm expensive derived computations are in derived atoms, not top-level React renders.

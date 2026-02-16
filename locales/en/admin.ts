@@ -8,6 +8,7 @@ const locale = {
       "items": "Items",
       "categories": "Categories",
       "tables": "Tables",
+      "reservations": "Reservations",
       "clients": "Clients",
       "accounts": "Accounts",
       "settings": "Settings",

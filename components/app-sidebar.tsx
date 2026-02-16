@@ -3,6 +3,7 @@
 import {
 	IconBug,
 	IconBuildingBank,
+	IconCalendarEvent,
 	IconCashBanknote,
 	IconCashRegister,
 	IconDashboard,
@@ -81,6 +82,11 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconPicnicTable,
 			},
 			{
+				title: t("navigation:main.links.reservations"),
+				url: "/admin/reservations",
+				icon: IconCalendarEvent,
+			},
+			{
 				title: t("navigation:main.links.clients"),
 				url: "/admin/clients",
 				icon: IconUsers,
@@ -134,8 +140,8 @@ const createNavigationData = (t: TFunction) =>
 			},
 		],
 	}) satisfies {
-	navMain: ComponentProps<typeof NavMain>["items"];
-	navSecondary: ComponentProps<typeof NavSecondary>["items"];
+		navMain: ComponentProps<typeof NavMain>["items"];
+		navSecondary: ComponentProps<typeof NavSecondary>["items"];
 	};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

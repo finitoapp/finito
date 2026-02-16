@@ -12,6 +12,7 @@ import csItems from "@/locales/cs/items";
 import csNavigation from "@/locales/cs/navigation";
 import csPayments from "@/locales/cs/payments";
 import csPos from "@/locales/cs/pos";
+import csReservations from "@/locales/cs/reservations";
 import csSettings from "@/locales/cs/settings";
 import csTables from "@/locales/cs/tables";
 import enAccounts from "@/locales/en/accounts";
@@ -28,6 +29,7 @@ import enItems from "@/locales/en/items";
 import enNavigation from "@/locales/en/navigation";
 import enPayments from "@/locales/en/payments";
 import enPos from "@/locales/en/pos";
+import enReservations from "@/locales/en/reservations";
 import enSettings from "@/locales/en/settings";
 import enTables from "@/locales/en/tables";
 
@@ -46,6 +48,7 @@ export const resources = {
 		invoices: enInvoices,
 		payments: enPayments,
 		tables: enTables,
+		reservations: enReservations,
 		navigation: enNavigation,
 		components: enComponents,
 		pos: enPos,
@@ -64,6 +67,7 @@ export const resources = {
 		invoices: csInvoices,
 		payments: csPayments,
 		tables: csTables,
+		reservations: csReservations,
 		navigation: csNavigation,
 		components: csComponents,
 		pos: csPos,

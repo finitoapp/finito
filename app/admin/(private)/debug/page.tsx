@@ -1,10 +1,16 @@
 "use client";
 
-import { getOrThrow } from "@evolu/common";
+import {
+	createIdFromString,
+	getOrThrow,
+	type Id,
+	sqliteTrue,
+} from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { IconDownload, IconReload, IconUpload } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { LoaderCircleIcon } from "lucide-react";
 import {
 	type ChangeEvent,
@@ -327,7 +333,7 @@ const RandomDataGenerator = () => {
 	const [isLoading, setLoading] = useState(false);
 	const evolu = useEvolu();
 
-	const generateData = () => {
+	const generateData = async () => {
 		setLoading(true);
 
 		try {
@@ -345,7 +351,7 @@ const RandomDataGenerator = () => {
 				});
 
 			const tableIds: string[] = [];
-			Array(8)
+			Array(4)
 				.keys()
 				.forEach((index) => {
 					const { id } = getOrThrow(
@@ -357,7 +363,7 @@ const RandomDataGenerator = () => {
 					tableIds.push(id);
 				});
 
-			Array(4)
+			Array(2)
 				.keys()
 				.forEach((index) => {
 					const { id } = getOrThrow(
@@ -369,7 +375,7 @@ const RandomDataGenerator = () => {
 					tableIds.push(id);
 				});
 
-			Array(12)
+			Array(6)
 				.keys()
 				.forEach((index) => {
 					const { id } = getOrThrow(
@@ -389,6 +395,223 @@ const RandomDataGenerator = () => {
 					}),
 				),
 			);
+
+			const billingSettingsRows = await evolu.loadQuery(
+				evolu.createQuery((db) =>
+					db
+						.selectFrom("billingSettings")
+						.select([
+							"billingSettings.defaultTimezone as defaultTimezone",
+						] as const)
+						.where("billingSettings.isDeleted", "is not", sqliteTrue)
+						.where("billingSettings.id", "=", createIdFromString("")),
+				),
+			);
+			const timezone =
+				billingSettingsRows[0]?.defaultTimezone ?? "Europe/Prague";
+			const slotMinutes = 30;
+			const slotMs = slotMinutes * 60 * 1000;
+			const reservationWindowStartMinutes = 8 * 60;
+			const reservationWindowEndMinutes = 22 * 60;
+			const dayLabels = [new Date(), addDays(new Date(), 1)].map((date) =>
+				formatInTimeZone(date, timezone, "yyyy-MM-dd"),
+			);
+
+			const targetTableIds = tableIds as Id[];
+
+			const hasOverlap = (
+				intervals: Array<{ start: number; end: number }>,
+				start: number,
+				end: number,
+			) => intervals.some((item) => start < item.end && end > item.start);
+
+			for (const tableId of targetTableIds) {
+				for (const dayLabel of dayLabels) {
+					const intervals: Array<{ start: number; end: number }> = [];
+					const dayStart = fromZonedTime(
+						`${dayLabel}T00:00:00`,
+						timezone,
+					).getTime();
+					const windowStartMs =
+						dayStart + reservationWindowStartMinutes * 60 * 1000;
+					const windowEndMs =
+						dayStart + reservationWindowEndMinutes * 60 * 1000;
+					let cursorMs = windowStartMs;
+					let insertedForDay = 0;
+
+					while (cursorMs + slotMs <= windowEndMs) {
+						const gapSlots = faker.number.int({ min: 0, max: 2 });
+						cursorMs += gapSlots * slotMs;
+						if (cursorMs + slotMs > windowEndMs) {
+							break;
+						}
+
+						const remainingSlots = Math.floor(
+							(windowEndMs - cursorMs) / slotMs,
+						);
+						if (remainingSlots < 2) {
+							break;
+						}
+						const durationSlots = faker.number.int({
+							min: 2,
+							max: Math.min(6, remainingSlots),
+						});
+						const startAt = cursorMs;
+						const endAt = startAt + durationSlots * slotMs;
+
+						if (hasOverlap(intervals, startAt, endAt)) {
+							cursorMs += slotMs;
+							continue;
+						}
+
+						const note =
+							faker.helpers.maybe(() => faker.lorem.sentence(), {
+								probability: 0.35,
+							}) ?? null;
+						const phone =
+							faker.helpers.maybe(() => faker.phone.number(), {
+								probability: 0.55,
+							}) ?? null;
+						const email =
+							faker.helpers.maybe(() => faker.internet.email(), {
+								probability: 0.45,
+							}) ?? null;
+						const numberOfPeople = faker.number.int({ min: 1, max: 8 });
+
+						const { id: reservationId } = getOrThrow(
+							evolu.insert("reservation", {
+								tableId,
+								note,
+								_tag: "reservationBooking",
+								startAt,
+								endAt,
+							}),
+						);
+						getOrThrow(
+							evolu.upsert("reservationBooking", {
+								id: reservationId,
+								name: faker.person.fullName(),
+								phone,
+								email,
+								numberOfPeople,
+								approvalStatus: faker.helpers.arrayElement([
+									"approved",
+									"approved",
+									"pending",
+								]),
+								serviceStatus: "upcoming",
+								statusReason: null,
+								source: faker.helpers.arrayElement(["manual", "phone", "web"]),
+							}),
+						);
+
+						intervals.push({ start: startAt, end: endAt });
+						insertedForDay += 1;
+						cursorMs = endAt;
+					}
+
+					if (insertedForDay === 0) {
+						// Fallback: make sure each target table gets at least one reservation
+						for (
+							let candidateStart = windowStartMs;
+							candidateStart + 2 * slotMs <= windowEndMs;
+							candidateStart += slotMs
+						) {
+							const candidateEnd = candidateStart + 2 * slotMs; // 60 min
+							if (hasOverlap(intervals, candidateStart, candidateEnd)) {
+								continue;
+							}
+
+							const note =
+								faker.helpers.maybe(() => faker.lorem.sentence(), {
+									probability: 0.35,
+								}) ?? null;
+							const phone =
+								faker.helpers.maybe(() => faker.phone.number(), {
+									probability: 0.55,
+								}) ?? null;
+							const email =
+								faker.helpers.maybe(() => faker.internet.email(), {
+									probability: 0.45,
+								}) ?? null;
+							const numberOfPeople = faker.number.int({ min: 1, max: 8 });
+
+							const { id: reservationId } = getOrThrow(
+								evolu.insert("reservation", {
+									tableId,
+									note,
+									_tag: "reservationBooking",
+									startAt: candidateStart,
+									endAt: candidateEnd,
+								}),
+							);
+							getOrThrow(
+								evolu.upsert("reservationBooking", {
+									id: reservationId,
+									name: faker.person.fullName(),
+									phone,
+									email,
+									numberOfPeople,
+									approvalStatus: faker.helpers.arrayElement([
+										"approved",
+										"approved",
+										"pending",
+									]),
+									serviceStatus: "upcoming",
+									statusReason: null,
+									source: faker.helpers.arrayElement([
+										"manual",
+										"phone",
+										"web",
+									]),
+								}),
+							);
+							intervals.push({ start: candidateStart, end: candidateEnd });
+							break;
+						}
+					}
+				}
+			}
+
+			if (targetTableIds.length > 0) {
+				const blockDurationMs = 5 * 60 * 60 * 1000;
+				const blockDayLabel = dayLabels[0];
+				const blockTableId = faker.helpers.arrayElement(targetTableIds);
+				const latestBlockStartMinutes =
+					reservationWindowEndMinutes - blockDurationMs / (60 * 1000);
+				const maxStartSlot = Math.max(
+					0,
+					Math.floor(
+						(latestBlockStartMinutes - reservationWindowStartMinutes) /
+							slotMinutes,
+					),
+				);
+				const startSlot = faker.number.int({ min: 0, max: maxStartSlot });
+				const blockStartMinutes =
+					reservationWindowStartMinutes + startSlot * slotMinutes;
+				const blockDayStart = fromZonedTime(
+					`${blockDayLabel}T00:00:00`,
+					timezone,
+				).getTime();
+				const blockStartAt = blockDayStart + blockStartMinutes * 60 * 1000;
+				const blockEndAt = blockStartAt + blockDurationMs;
+
+				const { id: blockReservationId } = getOrThrow(
+					evolu.insert("reservation", {
+						tableId: blockTableId,
+						note: "Automaticky vygenerovaná blokace",
+						_tag: "reservationBlock",
+						startAt: blockStartAt,
+						endAt: blockEndAt,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("reservationBlock", {
+						id: blockReservationId,
+						label: "Technická blokace",
+					}),
+				);
+			}
 		} finally {
 			setLoading(false);
 		}
