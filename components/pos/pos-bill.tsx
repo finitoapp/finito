@@ -8,7 +8,6 @@ import NDK, {
 } from "@nostr-dev-kit/ndk";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSetAtom } from "jotai";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -28,7 +27,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { type Pos, posAtom } from "@/atoms/pos";
 import { ComboboxDefault } from "@/components/combobox/default";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
@@ -51,11 +49,12 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
-import { createEmptyBill, useBill } from "@/hooks/use-bill";
+import { useBill } from "@/hooks/use-bill";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
+import type { Pos } from "@/hooks/use-pos";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { currencyConverter } from "@/lib/currency-converter/currency-converter";
 import { formatAmount } from "@/lib/format-utils";
@@ -66,13 +65,11 @@ import { clientBaseUrl } from "@/lib/window-utils";
 
 const Item: React.FC<{
 	item: Pos["bills"][string]["items"][number];
-	itemIndex: number;
 	billId: string;
-	onRemove: () => unknown;
 }> = (props) => {
 	const { t } = useTranslation();
 	const [isRemoving, setIsRemoving] = useState(false);
-	const setPos = useSetAtom(posAtom);
+	const { removeItem, updateItemQuantity } = useBill();
 
 	return (
 		<AnimatePresence>
@@ -101,32 +98,11 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									setPos((prev) => ({
-										...prev,
-										bills: {
-											...prev.bills,
-											[props.billId]: {
-												...prev.bills[props.billId],
-												items: [
-													...prev.bills[props.billId].items.slice(
-														0,
-														props.itemIndex,
-													),
-													{
-														...prev.bills[props.billId].items[props.itemIndex],
-														quantity: Math.max(
-															prev.bills[props.billId].items[props.itemIndex]
-																.quantity - 1,
-															1,
-														),
-													},
-													...prev.bills[props.billId].items.slice(
-														props.itemIndex + 1,
-													),
-												],
-											},
-										},
-									}))
+									updateItemQuantity({
+										billId: props.billId,
+										itemId: props.item.id,
+										delta: -1,
+									})
 								}
 								className="h-8 w-8 p-0"
 							>
@@ -153,30 +129,11 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									setPos((prev) => ({
-										...prev,
-										bills: {
-											...prev.bills,
-											[props.billId]: {
-												...prev.bills[props.billId],
-												items: [
-													...prev.bills[props.billId].items.slice(
-														0,
-														props.itemIndex,
-													),
-													{
-														...prev.bills[props.billId].items[props.itemIndex],
-														quantity:
-															prev.bills[props.billId].items[props.itemIndex]
-																.quantity + 1,
-													},
-													...prev.bills[props.billId].items.slice(
-														props.itemIndex + 1,
-													),
-												],
-											},
-										},
-									}))
+									updateItemQuantity({
+										billId: props.billId,
+										itemId: props.item.id,
+										delta: 1,
+									})
 								}
 								className="h-8 w-8 p-0"
 							>
@@ -188,7 +145,12 @@ const Item: React.FC<{
 							variant="destructive"
 							onClick={() => {
 								setIsRemoving(true);
-								setTimeout(props.onRemove, 200);
+								setTimeout(() => {
+									removeItem({
+										billId: props.billId,
+										itemId: props.item.id,
+									});
+								}, 200);
 							}}
 							className="h-8 w-8 p-0 ml-2"
 						>
@@ -205,11 +167,10 @@ const PosBillName: React.FC<{
 	billId?: string;
 	billLabel: string;
 	placeholder: string;
-	defaultCurrency: Currency;
 }> = (props) => {
 	const firstRender = useRef<string>(props.billLabel);
 	const [value, setValue] = useState(props.billLabel);
-	const setPos = useSetAtom(posAtom);
+	const { setBillLabel } = useBill();
 	const debouncedValue = useDebounce(value, 300);
 
 	useEffect(() => {
@@ -218,26 +179,15 @@ const PosBillName: React.FC<{
 		}
 
 		firstRender.current = debouncedValue;
+		if (props.billId === undefined) {
+			return;
+		}
 
-		console.log("save---------------------");
-		setPos((prev) => {
-			if (props.billId === undefined) {
-				return prev;
-			}
-
-			return {
-				...prev,
-				bills: {
-					...prev.bills,
-					[props.billId]: {
-						...(prev.bills[props.billId] ??
-							createEmptyBill({ defaultCurrency: props.defaultCurrency })),
-						label: debouncedValue,
-					},
-				},
-			};
+		setBillLabel({
+			billId: props.billId,
+			label: debouncedValue,
 		});
-	}, [debouncedValue, setPos, props.billId, props.defaultCurrency]);
+	}, [debouncedValue, setBillLabel, props.billId]);
 
 	return (
 		<Input
@@ -304,9 +254,6 @@ const TableQrCode: React.FC<{
 
 const PosBillTable: React.FC<{
 	billId?: string;
-	billLabel: string;
-	placeholder: string;
-	defaultCurrency: Currency;
 	table?: {
 		id: Id;
 		name: NonEmptyString;
@@ -314,7 +261,7 @@ const PosBillTable: React.FC<{
 	};
 }> = (props) => {
 	const { t } = useTranslation();
-	const setPos = useSetAtom(posAtom);
+	const { setBillTable } = useBill();
 	const tableQuery = useCreateQuery(
 		(db) =>
 			db
@@ -362,24 +309,13 @@ const PosBillTable: React.FC<{
 				compareFunction={(a, b) => a?.id === b?.id}
 				formatCustomValue={(value) => value.name}
 				onChange={(value) => {
-					setPos((prev) => {
-						if (props.billId === undefined) {
-							return prev;
-						}
+					if (props.billId === undefined) {
+						return;
+					}
 
-						return {
-							...prev,
-							bills: {
-								...prev.bills,
-								[props.billId]: {
-									...(prev.bills[props.billId] ??
-										createEmptyBill({
-											defaultCurrency: props.defaultCurrency,
-										})),
-									table: value ?? undefined,
-								},
-							},
-						};
+					setBillTable({
+						billId: props.billId,
+						tableId: (value?.id as Id | undefined) ?? null,
 					});
 				}}
 			/>
@@ -595,11 +531,10 @@ const PayButton: FC<{
 export const PosBill: React.FC<{
 	billId?: string;
 	bill?: Pos["bills"][string];
-	defaultCurrency: Currency;
 	ref?: React.Ref<HTMLDivElement>;
 }> = (props) => {
 	const { t } = useTranslation();
-	const setPos = useSetAtom(posAtom);
+	const { setBillCurrency, setBillRate } = useBill();
 	const totalPerCurrency = new Map<Currency, number>();
 	let hasDifferentCurrency = false;
 
@@ -637,16 +572,12 @@ export const PosBill: React.FC<{
 									<PosBillName
 										billId={props.billId}
 										billLabel={props.bill !== undefined ? props.bill.label : ""}
-										defaultCurrency={props.defaultCurrency}
 										placeholder={`# ${props.bill?.id ?? 0}`}
 									/>
 
 									<PosBillTable
 										billId={props.billId}
-										billLabel={props.bill !== undefined ? props.bill.label : ""}
-										defaultCurrency={props.defaultCurrency}
 										table={props.bill?.table}
-										placeholder={`# ${props.bill?.id ?? 0}`}
 									/>
 								</>
 							)}
@@ -654,38 +585,11 @@ export const PosBill: React.FC<{
 							{props.bill === undefined || props.bill.items.length === 0 ? (
 								<p className="text-center">{t("pos:bill.noItemsInCart")}</p>
 							) : (
-								props.bill.items.map((item, index) => (
+								props.bill.items.map((item) => (
 									<Item
 										key={item.id}
 										billId={props.billId ?? ""}
-										itemIndex={index}
 										item={item}
-										onRemove={() => {
-											return setPos((prev) => {
-												if (props.billId === undefined) {
-													return prev;
-												}
-
-												return {
-													...prev,
-													bills: {
-														...prev.bills,
-														[props.billId]: {
-															...prev.bills[props.billId],
-															items: [
-																...prev.bills[props.billId].items.slice(
-																	0,
-																	index,
-																),
-																...prev.bills[props.billId].items.slice(
-																	index + 1,
-																),
-															],
-														},
-													},
-												};
-											});
-										}}
 									></Item>
 								))
 							)}
@@ -710,22 +614,13 @@ export const PosBill: React.FC<{
 														if (!valueResult.success) {
 															return;
 														}
+														if (props.billId === undefined) {
+															return;
+														}
 
-														setPos((prev) => {
-															if (props.billId === undefined) {
-																return prev;
-															}
-
-															return {
-																...prev,
-																bills: {
-																	...prev.bills,
-																	[props.billId]: {
-																		...prev.bills[props.billId],
-																		currency: valueResult.data,
-																	},
-																},
-															};
+														setBillCurrency({
+															billId: props.billId,
+															currency: valueResult.data,
 														});
 													}}
 												>
@@ -779,26 +674,14 @@ export const PosBill: React.FC<{
 																		}
 																		onChange={(e) => {
 																			const value = e.target.value;
+																			if (props.billId === undefined) {
+																				return;
+																			}
 
-																			setPos((prev) => {
-																				if (props.billId === undefined) {
-																					return prev;
-																				}
-
-																				return {
-																					...prev,
-																					bills: {
-																						...prev.bills,
-																						[props.billId]: {
-																							...prev.bills[props.billId],
-																							rates: {
-																								...prev.bills[props.billId]
-																									.rates,
-																								[currency]: Number(value),
-																							},
-																						},
-																					},
-																				};
+																			setBillRate({
+																				billId: props.billId,
+																				currency,
+																				rate: Number(value),
 																			});
 																		}}
 																	/>

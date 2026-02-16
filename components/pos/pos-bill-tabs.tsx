@@ -1,19 +1,18 @@
-import { useAtomValue } from "jotai";
 import { CircleXIcon, PlusIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FC, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { posAtom } from "@/atoms/pos";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
+import { usePos } from "@/hooks/use-pos";
 import type { Currency } from "@/lib/types";
 
 export const PosBillTabs: FC<{
 	defaultCurrency: Currency;
 }> = (props) => {
 	const { t } = useTranslation();
-	const pos = useAtomValue(posAtom);
+	const pos = usePos();
 	const { deleteBill, createBill } = useBill();
 	const router = useRouter();
 	const searchParams = useSearchParams();

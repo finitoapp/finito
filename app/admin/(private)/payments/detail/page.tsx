@@ -1,7 +1,5 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { getOrThrow, type Id, sqliteTrue } from "@evolu/common";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
@@ -18,6 +16,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { type FC, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { LoadingIndicator } from "@/components/loading-indicator";
@@ -91,6 +90,7 @@ const FullscreenQrPayment: FC<{
 	czechQRCode: string | undefined;
 	isPaid: boolean;
 }> = ({ frontendUrl, lnInvoice, czechQRCode, isPaid }) => {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const isOpen = searchParams.get("focus") === "true";
 	const id = searchParams.get("id") ?? "";

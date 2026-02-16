@@ -1,13 +1,12 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { sqliteTrue } from "@evolu/common";
 import { motion } from "framer-motion";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useMemo, useState } from "react";
-import type { Pos } from "@/atoms/pos";
+import { useTranslation } from "react-i18next";
 import { PosDial } from "@/components/pos/pos-dial";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,12 +14,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import type { Pos } from "@/hooks/use-pos";
 import { formatAmount } from "@/lib/format-utils";
 import { nestObjectSkipNullBranches } from "@/lib/object-utils";
 import { type Currency, NonEmptyString, Uuid7 } from "@/lib/types";
 
+type CatalogItem = {
+	id: string;
+	label: string;
+	price: {
+		value: number;
+		currency: Currency;
+	};
+	category?: {
+		id: string;
+		name: string;
+	};
+};
+
 export const PosItems: React.FC<{
-	billId?: Uuid7;
+	billId?: string;
 	bill?: Pos["bills"][string];
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
@@ -63,8 +76,8 @@ export const PosItems: React.FC<{
 						<CardContent>
 							<PosDial
 								onSubmit={(value) => {
-									addItem({
-										billId: props.billId ?? Uuid7.random(),
+									const billId = addItem({
+										billId: props.billId,
 										defaultCurrency: props.defaultCurrency,
 										item: {
 											id: Uuid7.random(),
@@ -75,6 +88,12 @@ export const PosItems: React.FC<{
 											},
 										},
 									});
+
+									if (props.billId === undefined) {
+										router.replace(
+											`/admin/pos?id=${encodeURIComponent(billId)}&variant=${encodeURIComponent("dial")}`,
+										);
+									}
 								}}
 							/>
 						</CardContent>
@@ -86,7 +105,7 @@ export const PosItems: React.FC<{
 };
 
 export const PosItemsList: React.FC<{
-	billId?: Uuid7;
+	billId?: string;
 	bill?: Pos["bills"][string];
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
@@ -112,7 +131,8 @@ export const PosItemsList: React.FC<{
 				.where("item.isDeleted", "is not", sqliteTrue),
 		[],
 	);
-	const items = useEvoluQuery(query).data.map(nestObjectSkipNullBranches);
+	const rawItems = useEvoluQuery(query).data ?? [];
+	const items = rawItems.map(nestObjectSkipNullBranches) as CatalogItem[];
 
 	const filteredItems = useMemo(
 		() =>
@@ -140,7 +160,7 @@ export const PosItemsList: React.FC<{
 				categoryName,
 				items: [...items].sort((a, b) => a.label.localeCompare(b.label)),
 			}));
-	}, [filteredItems]);
+	}, [filteredItems, t]);
 
 	return (
 		<div className="flex w-full flex-col gap-4">
@@ -173,11 +193,17 @@ export const PosItemsList: React.FC<{
 											props.onItemClick(event);
 										}
 
-										addItem({
-											billId: props.billId ?? Uuid7.random(),
+										const billId = addItem({
+											billId: props.billId,
 											defaultCurrency: props.defaultCurrency,
 											item,
 										});
+
+										if (props.billId === undefined) {
+											router.replace(
+												`/admin/pos?id=${encodeURIComponent(billId)}`,
+											);
+										}
 									}}
 								>
 									<motion.div

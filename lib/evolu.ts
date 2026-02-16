@@ -9,6 +9,7 @@ import {
 	NonEmptyTrimmedString100,
 	NonEmptyTrimmedString1000,
 	NonNegativeInt,
+	NonNegativeNumber,
 	nullOr,
 	type OwnerTransport,
 	PositiveInt,
@@ -82,6 +83,28 @@ export const Schema = {
 		id: Id,
 		tableId: Id,
 		code: NonEmptyTrimmedString100,
+	},
+	posBill: {
+		id: Id,
+		displayId: PositiveInt,
+		label: nullOr(NonEmptyTrimmedString100),
+		currency: NonEmptyTrimmedString100,
+		tableId: nullOr(Id),
+	},
+	posBillItem: {
+		id: Id,
+		billId: Id,
+		sourceItemId: NonEmptyString,
+		name: NonEmptyString,
+		price: NonNegativeNumber,
+		quantity: PositiveInt,
+		currency: NonEmptyTrimmedString100,
+	},
+	posBillRate: {
+		id: Id,
+		billId: Id,
+		currency: NonEmptyTrimmedString100,
+		rate: NonNegativeNumber,
 	},
 	reservation: {
 		id: Id,
@@ -401,6 +424,13 @@ export const createAppEvolu = (props: {
 			create(`menuCategory_menuId`).on(`menuCategory`).column("menuId"),
 			create(`menuItem_menuCategoryId`).on(`menuItem`).column("menuCategoryId"),
 			create(`tableCode_tableId`).on(`tableCode`).column("tableId"),
+			create(`posBill_tableId`).on(`posBill`).column("tableId"),
+			create(`posBillItem_billId`).on(`posBillItem`).column("billId"),
+			create(`posBillRate_billId`).on(`posBillRate`).column("billId"),
+			create(`posBillRate_billId_currency`)
+				.on(`posBillRate`)
+				.column("billId")
+				.column("currency"),
 			create(`reservation_tableId`).on(`reservation`).column("tableId"),
 			create(`reservation_tag`).on(`reservation`).column("_tag"),
 			create(`reservation_startAt`).on(`reservation`).column("startAt"),

@@ -13,12 +13,10 @@ import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
 import { type Atom, atom, useAtomValue, useStore } from "jotai";
-import type { Store } from "jotai/vanilla/store";
 import { Bell, X } from "lucide-react";
 import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
-import { type Pos, posAtom } from "@/atoms/pos";
 import { NotificationItem } from "@/components/notification-item";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -68,7 +66,6 @@ type BackgroundDef = {
 		};
 		evolu: Evolu;
 		deviceEvolu: DeviceEvolu;
-		jotaiStore: Store;
 		setNotification: (notification: NotificationUI) => void;
 		deleteNotification: () => void;
 	}) => Promise<() => void>;
@@ -463,7 +460,14 @@ export const resolveNotificationDef = (
 					id: notification.type,
 				});
 
-				const subscriptionRef = new Map();
+				const subscriptionRef = new Map<
+					Uuid7,
+					{
+						pubkey: string;
+						qrCodeId: NonEmptyString;
+						timeout: ReturnType<typeof setTimeout>;
+					}
+				>();
 
 				const tableCodesQuery = props.evolu.createQuery((db) =>
 					db
@@ -475,17 +479,58 @@ export const resolveNotificationDef = (
 						.where("tableCode.isDeleted", "is not", sqliteTrue),
 				);
 
-				let tableCodes = [];
+				const posBillsQuery = props.evolu.createQuery((db) =>
+					db
+						.selectFrom("posBill")
+						.leftJoin("table", "table.id", "posBill.tableId")
+						.select([
+							"posBill.id as id",
+							"posBill.tableId as tableId",
+							"posBill.currency as currency",
+							"table.label as tableLabel",
+						] as const)
+						.where("posBill.isDeleted", "is not", sqliteTrue),
+				);
+
+				const posBillItemsQuery = props.evolu.createQuery((db) =>
+					db
+						.selectFrom("posBillItem")
+						.select([
+							"posBillItem.billId as billId",
+							"posBillItem.sourceItemId as sourceItemId",
+							"posBillItem.name as name",
+							"posBillItem.price as price",
+							"posBillItem.quantity as quantity",
+						] as const)
+						.where("posBillItem.isDeleted", "is not", sqliteTrue),
+				);
+
+				let tableCodes: Array<{
+					code: string | null;
+					tableId: Id | null;
+				}> = [];
+				let posBills: Array<{
+					id: Id;
+					tableId: Id | null;
+					currency: string | null;
+					tableLabel: string | null;
+				}> = [];
+				let posBillItems: Array<{
+					billId: Id | null;
+					sourceItemId: string | null;
+					name: string | null;
+					price: number | null;
+					quantity: number | null;
+				}> = [];
 
 				const getBillByQrCode = (
-					pos: Pos,
 					qrCodeId: NonEmptyString,
 				): Omit<
 					Extract<ScreenData, { variant: "payment" | "refund" }>,
 					"pay"
 				> => {
 					const tableCode = tableCodes.find(({ code }) => code === qrCodeId);
-					if (tableCode === undefined) {
+					if (tableCode === undefined || tableCode.tableId === null) {
 						return {
 							variant: "payment",
 							payload: {
@@ -494,35 +539,55 @@ export const resolveNotificationDef = (
 						};
 					}
 
-					for (const bill of Object.values(pos.bills)) {
-						if (bill.table && bill.table.id === tableCode.tableId) {
-							return {
-								variant: "payment",
-								payload: {
-									bill: {
-										currency: bill.currency,
-										items: bill.items.map((item) => ({
-											id: item.id,
-											label: item.name,
-											price: item.price,
-											quantity: item.quantity,
-											optionality: {
-												checked: 0,
-											},
-										})),
-									},
-									merchant: {
-										name: bill.table.name,
-									},
-								},
-							};
-						}
+					const bill = posBills.find(
+						(item) => item.tableId === tableCode.tableId,
+					);
+					if (bill === undefined || !bill.tableLabel) {
+						return {
+							variant: "payment",
+							payload: {
+								bill: null,
+							},
+						};
 					}
+
+					const items = posBillItems
+						.filter(
+							(
+								item,
+							): item is {
+								billId: Id;
+								sourceItemId: string;
+								name: string;
+								price: number;
+								quantity: number;
+							} =>
+								item.billId === bill.id &&
+								item.sourceItemId !== null &&
+								item.name !== null &&
+								item.price !== null &&
+								item.quantity !== null,
+						)
+						.map((item) => ({
+							id: item.sourceItemId,
+							label: item.name,
+							price: item.price,
+							quantity: item.quantity,
+							optionality: {
+								checked: 0,
+							},
+						}));
 
 					return {
 						variant: "payment",
 						payload: {
-							bill: null,
+							bill: {
+								currency: bill.currency,
+								items,
+							},
+							merchant: {
+								name: bill.tableLabel as NonEmptyString,
+							},
 						},
 					};
 				};
@@ -532,8 +597,6 @@ export const resolveNotificationDef = (
 					qrCodeId: NonEmptyString;
 					subscriptionId: Uuid7;
 				}) => {
-					const pos = props.jotaiStore.get(posAtom);
-
 					tableEventMessageBus
 						.createInstance({
 							pubkey: input.pubkey,
@@ -544,7 +607,7 @@ export const resolveNotificationDef = (
 						.call(
 							"billChange",
 							{
-								billScreenData: getBillByQrCode(pos, input.qrCodeId),
+								billScreenData: getBillByQrCode(input.qrCodeId),
 								subscriptionId: input.subscriptionId,
 							},
 							{
@@ -553,7 +616,19 @@ export const resolveNotificationDef = (
 						);
 				};
 
-				let unsubscribeStore: null | (() => void) = null;
+				const sendBillChangeToAll = () => {
+					for (const [
+						subscriptionId,
+						subscription,
+					] of subscriptionRef.entries()) {
+						sendBillChange({
+							pubkey: subscription.pubkey,
+							qrCodeId: subscription.qrCodeId,
+							subscriptionId,
+						});
+					}
+				};
+
 				const serverPromise = tableRequestMessageBus
 					.createInstance({
 						pubkey: props.ndk.signer.pubkey,
@@ -571,6 +646,13 @@ export const resolveNotificationDef = (
 									subscription.timeout = setTimeout(() => {
 										subscriptionRef.delete(subscriptionId);
 									}, 30_000);
+
+									sendBillChange({
+										pubkey: subscription.pubkey,
+										qrCodeId: subscription.qrCodeId,
+										subscriptionId,
+									});
+
 									return {
 										subscriptionId,
 									};
@@ -589,38 +671,53 @@ export const resolveNotificationDef = (
 									subscriptionId,
 								});
 
-								unsubscribeStore = props.jotaiStore.sub(posAtom, () => {
-									sendBillChange({
-										...input,
-										subscriptionId,
-									});
-								});
-
 								return {
 									subscriptionId,
 								};
 							},
 							unsubscribe: async (input) => {
-								subscriptionRef.delete(input.subscriptionId);
-								if (unsubscribeStore) {
-									unsubscribeStore();
-									unsubscribeStore = null;
+								const subscription = subscriptionRef.get(input.subscriptionId);
+								if (subscription) {
+									clearTimeout(subscription.timeout);
 								}
+								subscriptionRef.delete(input.subscriptionId);
 								return null;
 							},
 						},
 					);
 
-				const unsubscribe = subscribeToEvoluQuery(
+				const unsubscribeTableCodes = subscribeToEvoluQuery(
 					props.evolu,
 					tableCodesQuery,
 					(data) => {
-						tableCodes = data;
+						tableCodes = [...data];
+						sendBillChangeToAll();
+					},
+				);
+				const unsubscribePosBills = subscribeToEvoluQuery(
+					props.evolu,
+					posBillsQuery,
+					(data) => {
+						posBills = [...data];
+						sendBillChangeToAll();
+					},
+				);
+				const unsubscribePosBillItems = subscribeToEvoluQuery(
+					props.evolu,
+					posBillItemsQuery,
+					(data) => {
+						posBillItems = [...data];
+						sendBillChangeToAll();
 					},
 				);
 
 				return () => {
-					unsubscribe();
+					unsubscribeTableCodes();
+					unsubscribePosBills();
+					unsubscribePosBillItems();
+					for (const subscription of subscriptionRef.values()) {
+						clearTimeout(subscription.timeout);
+					}
 					serverPromise.then((server) => server.close());
 				};
 			},
@@ -703,7 +800,6 @@ export function NotificationCenter() {
 					evolu,
 					deviceEvolu,
 					ndk,
-					jotaiStore,
 				});
 			}
 		}
@@ -718,7 +814,16 @@ export function NotificationCenter() {
 				delete notificationDefsRef.current[id];
 			}
 		};
-	}, [items, deleteNotification, evolu, deviceEvolu, ndk, jotaiStore, t]);
+	}, [
+		items,
+		deleteNotification,
+		evolu,
+		deviceEvolu,
+		ndk,
+		jotaiStore,
+		t,
+		notificationUis,
+	]);
 
 	useEffect(() => {
 		return () => {

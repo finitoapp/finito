@@ -1,20 +1,19 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useAtomValue } from "jotai";
 import { useSearchParams } from "next/navigation";
 import { type FC, type MouseEvent, useRef, useState } from "react";
-import { posAtom } from "@/atoms/pos";
 import { PosBill } from "@/components/pos/pos-bill";
 import { PosBillTabs } from "@/components/pos/pos-bill-tabs";
 import { PosItems } from "@/components/pos/pos-items";
 import { ResponsiveCard } from "@/components/responsive-card";
-import type { Currency, Uuid7 } from "@/lib/types";
+import { usePos } from "@/hooks/use-pos";
+import type { Currency } from "@/lib/types";
 
 export const POS: FC<{
 	defaultCurrency: Currency;
 }> = (props) => {
 	const searchParams = useSearchParams();
-	const id = searchParams.get("id") as Uuid7 | null;
-	const pos = useAtomValue(posAtom);
+	const id = searchParams.get("id");
+	const pos = usePos();
 	const bill = id !== null ? (pos.bills[id] ?? undefined) : undefined;
 	const [flyingButtons, setFlyingButtons] = useState<
 		Array<{ id: number; x: number; y: number }>
@@ -97,7 +96,6 @@ export const POS: FC<{
 				/>
 				<PosBill
 					ref={counterRef}
-					defaultCurrency={props.defaultCurrency}
 					key={id ?? ""}
 					bill={bill}
 					billId={id ?? undefined}
