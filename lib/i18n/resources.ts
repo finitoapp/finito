@@ -10,6 +10,7 @@ import csComponents from "@/locales/cs/components";
 import csInvoices from "@/locales/cs/invoices";
 import csItems from "@/locales/cs/items";
 import csLanding from "@/locales/cs/landing";
+import csMenus from "@/locales/cs/menus";
 import csNavigation from "@/locales/cs/navigation";
 import csPayments from "@/locales/cs/payments";
 import csPos from "@/locales/cs/pos";
@@ -28,6 +29,7 @@ import enComponents from "@/locales/en/components";
 import enInvoices from "@/locales/en/invoices";
 import enItems from "@/locales/en/items";
 import enLanding from "@/locales/en/landing";
+import enMenus from "@/locales/en/menus";
 import enNavigation from "@/locales/en/navigation";
 import enPayments from "@/locales/en/payments";
 import enPos from "@/locales/en/pos";
@@ -47,6 +49,7 @@ export const resources = {
 		categories: enCategories,
 		clients: enClients,
 		items: enItems,
+		menus: enMenus,
 		invoices: enInvoices,
 		payments: enPayments,
 		tables: enTables,
@@ -67,6 +70,7 @@ export const resources = {
 		categories: csCategories,
 		clients: csClients,
 		items: csItems,
+		menus: csMenus,
 		invoices: csInvoices,
 		payments: csPayments,
 		tables: csTables,

@@ -1,15 +1,19 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import {
 	IconCashRegister,
 	IconFileInvoice,
 	IconListDetails,
 	IconPackage,
 } from "@tabler/icons-react";
-import { CalendarIcon, ConstructionIcon } from "lucide-react";
+import {
+	CalendarClockIcon,
+	CalendarIcon,
+	ConstructionIcon,
+	UtensilsCrossedIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { ClickableCard } from "@/components/clickable-card";
 import { FinitoLogo } from "@/components/finito-logo";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -75,12 +79,27 @@ export default function Home() {
 				<ClickableCard
 					title={t("admin:dashboard.home.cards.itemManagement.title")}
 					data-testid="items"
-					description={t("admin:dashboard.home.cards.itemManagement.description")}
+					description={t(
+						"admin:dashboard.home.cards.itemManagement.description",
+					)}
 					onClick={() => router.push("/admin/items")}
 					className={"@container/card min-w-sm"}
 				>
 					<div className={"w-full flex justify-center"}>
 						<IconPackage size={64} />
+					</div>
+				</ClickableCard>
+
+				<ClickableCard
+					title={t("admin:dashboard.home.cards.menuManagement.title")}
+					description={t(
+						"admin:dashboard.home.cards.menuManagement.description",
+					)}
+					onClick={() => router.push("/admin/menus" as never)}
+					className={"@container/card min-w-sm"}
+				>
+					<div className={"w-full flex justify-center"}>
+						<UtensilsCrossedIcon size={64} />
 					</div>
 				</ClickableCard>
 
@@ -117,7 +136,9 @@ export default function Home() {
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
-							{t("admin:dashboard.home.cards.paymentWidgetsPaywalls.description")}
+							{t(
+								"admin:dashboard.home.cards.paymentWidgetsPaywalls.description",
+							)}
 						</p>
 					</CardContent>
 				</ResponsiveCard>
@@ -128,9 +149,11 @@ export default function Home() {
 					>
 						<CardTitle>{t("admin:dashboard.reservations")}</CardTitle>
 						<CardToolbar>
-							<Badge variant={"secondary"}>
-								<CalendarIcon />
-								{t("admin:dashboard.home.status.planned")}
+							<Badge
+								variant={"secondary"}
+								aria-label={t("admin:dashboard.reservations")}
+							>
+								<CalendarClockIcon />
 							</Badge>
 						</CardToolbar>
 					</CardHeader>

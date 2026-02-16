@@ -6,6 +6,7 @@ const locale = {
       "pointOfSale": "Point of Sale",
       "invoices": "Invoices",
       "items": "Items",
+      "menus": "Menus",
       "categories": "Categories",
       "tables": "Tables",
       "reservations": "Reservations",
@@ -39,6 +40,10 @@ const locale = {
         "itemManagement": {
           "title": "Item management",
           "description": "Don't waste time entering items over and over again while creating payments. Specify your sales items in advance."
+        },
+        "menuManagement": {
+          "title": "Menu management",
+          "description": "Create and manage lunch and permanent menus. Build menu offers from existing items and keep them ready for publishing."
         },
         "orderPayments": {
           "description": "Accept money from customers based on their selection of items. It's an ideal solution for sales stands."

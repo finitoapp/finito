@@ -33,6 +33,7 @@ import { Schema } from "@/lib/evolu";
 import { downloadFile } from "@/lib/file-utils";
 import { Currency } from "@/lib/types";
 import { createZip, extractZip } from "@/lib/zip";
+import { MenuStatus } from "@/storages/menu-storage";
 
 const DownloadSqliteData = () => {
 	const { t } = useTranslation();
@@ -611,6 +612,155 @@ const RandomDataGenerator = () => {
 						label: "Technická blokace",
 					}),
 				);
+			}
+
+			const sourceItems = await evolu.loadQuery(
+				evolu.createQuery((db) =>
+					db
+						.selectFrom("item")
+						.select([
+							"item.id as id",
+							"item.label as label",
+							"item.priceValue as priceValue",
+							"item.priceCurrency as priceCurrency",
+							"item.unitOfMeasure as unitOfMeasure",
+							"item.internalCode as internalCode",
+							"item.productCodeType as productCodeType",
+							"item.productCodeValue as productCodeValue",
+						] as const)
+						.where("item.isDeleted", "is not", sqliteTrue)
+						.orderBy("item.label", "asc"),
+				),
+			);
+
+			const normalizedSourceItems = sourceItems.flatMap((item) => {
+				if (
+					item.label === null ||
+					item.priceValue === null ||
+					item.priceCurrency === null
+				) {
+					return [];
+				}
+				return [
+					{
+						id: item.id,
+						label: item.label,
+						priceValue: item.priceValue,
+						priceCurrency: item.priceCurrency,
+						unitOfMeasure: item.unitOfMeasure,
+						internalCode: item.internalCode,
+						productCodeType: item.productCodeType,
+						productCodeValue: item.productCodeValue,
+					},
+				];
+			});
+
+			if (normalizedSourceItems.length > 0) {
+				const shuffledSourceItems = faker.helpers.shuffle(
+					normalizedSourceItems,
+				);
+				let sourceItemCursor = 0;
+				const takeSourceItems = (count: number) => {
+					const items = [];
+					for (let index = 0; index < count; index += 1) {
+						items.push(
+							shuffledSourceItems[
+								sourceItemCursor % shuffledSourceItems.length
+							],
+						);
+						sourceItemCursor += 1;
+					}
+					return items.sort((a, b) =>
+						a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+					);
+				};
+
+				const middayStartHour = 11;
+				const middayEndHour = 14;
+				const toZonedTimestamp = (dayLabel: string, hour: number) =>
+					fromZonedTime(
+						`${dayLabel}T${hour.toString().padStart(2, "0")}:00:00`,
+						timezone,
+					).getTime();
+
+				const menuBlueprints: Array<{
+					name: string;
+					validFrom: number | null;
+					validTo: number | null;
+					publishedAt: number | null;
+					categories: Array<{ name: string; itemsCount: number }>;
+				}> = [
+					{
+						name: "Stálá nabídka",
+						validFrom: null,
+						validTo: null,
+						publishedAt: null,
+						categories: [
+							{ name: "Předkrmy", itemsCount: 4 },
+							{ name: "Hlavní jídla", itemsCount: 8 },
+							{ name: "Nápoje", itemsCount: 6 },
+						],
+					},
+					{
+						name: `Polední menu ${formatInTimeZone(new Date(), timezone, "d.M.yyyy")}`,
+						validFrom: toZonedTimestamp(dayLabels[0], middayStartHour),
+						validTo: toZonedTimestamp(dayLabels[0], middayEndHour),
+						publishedAt: null,
+						categories: [
+							{ name: "Polévky", itemsCount: 2 },
+							{ name: "Hlavní jídla", itemsCount: 5 },
+							{ name: "Dezerty", itemsCount: 2 },
+						],
+					},
+					{
+						name: `Polední menu ${formatInTimeZone(addDays(new Date(), 1), timezone, "d.M.yyyy")}`,
+						validFrom: toZonedTimestamp(dayLabels[1], middayStartHour),
+						validTo: toZonedTimestamp(dayLabels[1], middayEndHour),
+						publishedAt: null,
+						categories: [
+							{ name: "Polévky", itemsCount: 2 },
+							{ name: "Hlavní jídla", itemsCount: 5 },
+							{ name: "Dezerty", itemsCount: 2 },
+						],
+					},
+				];
+
+				for (const menuBlueprint of menuBlueprints) {
+					const { id: menuId } = getOrThrow(
+						evolu.insert("menu", {
+							name: menuBlueprint.name,
+							status: MenuStatus.Published,
+							validFrom: menuBlueprint.validFrom,
+							validTo: menuBlueprint.validTo,
+							publishedAt: menuBlueprint.publishedAt,
+						}),
+					);
+
+					for (const category of menuBlueprint.categories) {
+						const { id: menuCategoryId } = getOrThrow(
+							evolu.insert("menuCategory", {
+								menuId: menuId as Id,
+								name: category.name,
+							}),
+						);
+
+						for (const sourceItem of takeSourceItems(category.itemsCount)) {
+							getOrThrow(
+								evolu.insert("menuItem", {
+									menuCategoryId: menuCategoryId as Id,
+									sourceItemId: sourceItem.id as Id,
+									label: sourceItem.label,
+									priceValue: sourceItem.priceValue,
+									priceCurrency: sourceItem.priceCurrency,
+									unitOfMeasure: sourceItem.unitOfMeasure,
+									internalCode: sourceItem.internalCode,
+									productCodeType: sourceItem.productCodeType,
+									productCodeValue: sourceItem.productCodeValue,
+								}),
+							);
+						}
+					}
+				}
 			}
 		} finally {
 			setLoading(false);

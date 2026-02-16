@@ -24,6 +24,7 @@ const locale = {
       "pointOfSale": "Pokladna",
       "invoices": "Faktury",
       "items": "Položky",
+      "menus": "Nabídky",
       "categories": "Kategorie",
       "tables": "Stoly",
       "reservations": "Rezervace",

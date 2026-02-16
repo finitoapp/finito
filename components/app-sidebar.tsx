@@ -77,6 +77,11 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconPackage,
 			},
 			{
+				title: t("navigation:main.links.menus"),
+				url: "/admin/menus" as never,
+				icon: IconPackage,
+			},
+			{
 				title: t("navigation:main.links.tables"),
 				url: "/admin/tables",
 				icon: IconPicnicTable,

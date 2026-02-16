@@ -6,6 +6,7 @@ const locale = {
       "pointOfSale": "Pokladna",
       "invoices": "Faktury",
       "items": "Položky",
+      "menus": "Nabídky",
       "categories": "Kategorie",
       "tables": "Stoly",
       "reservations": "Rezervace",
@@ -39,6 +40,10 @@ const locale = {
         "itemManagement": {
           "title": "Správa položek",
           "description": "Neztrácejte čas opakovaným zadáváním položek při vytváření plateb. Připravte si prodejní položky předem."
+        },
+        "menuManagement": {
+          "title": "Správa nabídek",
+          "description": "Vytvářejte a spravujte polední i stálé nabídky. Sestavte menu z existujících položek a mějte je připravené pro publikaci."
         },
         "orderPayments": {
           "description": "Přijímejte platby od zákazníků podle vybraných položek. Ideální řešení pro prodejní stánky."

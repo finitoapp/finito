@@ -24,6 +24,7 @@ const locale = {
       "pointOfSale": "Point of Sale",
       "invoices": "Invoices",
       "items": "Items",
+      "menus": "Menus",
       "categories": "Categories",
       "tables": "Tables",
       "reservations": "Reservations",
