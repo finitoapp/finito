@@ -3,6 +3,7 @@ const locale = {
     "itemsTitle": "Bill items",
     "tipForStaff": "Tip for the staff",
     "empty": {
+      "emptyBill": "There is currently an empty bill here.",
       "noBill": "There is currently no bill here."
     },
     "warning": {

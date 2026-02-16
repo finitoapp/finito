@@ -3,6 +3,7 @@ const locale = {
     "itemsTitle": "Fakturovat položky",
     "tipForStaff": "Tip pro personál",
     "empty": {
+      "emptyBill": "Momentálně je zde prázdný účet.",
       "noBill": "Momentálně zde není žádný účet."
     },
     "warning": {

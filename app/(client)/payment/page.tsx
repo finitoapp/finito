@@ -370,8 +370,8 @@ const Screen: FC<{
 
 					{(props.screen?.variant === "payment" ||
 						props.screen?.variant === "refund") &&
-						props.screen.payload.bill &&
-						props.screen.payload.bill.items.length === 0 && (
+						(props.screen.payload.bill === null ||
+							props.screen.payload.bill.items.length === 0) && (
 							<div
 								className={
 									"fixed w-xl h-full max-w-full flex justify-center items-center pb-60"
@@ -394,13 +394,12 @@ const Screen: FC<{
 							</h3>
 						)}
 					{(props.screen.variant === "payment" ||
-						props.screen.variant === "refund") &&
-						props.screen.payload.bill && (
-							<BillItemList
-								bill={props.screen.payload.bill}
-								selectedItemsAtom={props.selectedItemsAtom}
-							/>
-						)}
+						props.screen.variant === "refund") && (
+						<BillItemList
+							bill={props.screen.payload.bill}
+							selectedItemsAtom={props.selectedItemsAtom}
+						/>
+					)}
 					{props.screen?.variant === "paymentFinished" && (
 						<div
 							className={

@@ -32,7 +32,7 @@ export interface Bill {
 }
 
 interface VerticalNavProps {
-	bill: Bill;
+	bill: Bill | null;
 	selectedItemsAtom: SelectedItemsAtom;
 	className?: string;
 }
@@ -44,7 +44,7 @@ export function BillItemList({
 }: VerticalNavProps) {
 	const { t } = useTranslation();
 
-	if (bill.items.length === 0) {
+	if (bill === null || bill.items.length === 0) {
 		return (
 			<div
 				className={cn(
@@ -53,7 +53,9 @@ export function BillItemList({
 				)}
 			>
 				<h3 className={"text-foreground text-2xl mt-20"}>
-					{t("client:bill.empty.noBill")}
+					{bill
+						? t("client:bill.empty.emptyBill")
+						: t("client:bill.empty.noBill")}
 				</h3>
 			</div>
 		);

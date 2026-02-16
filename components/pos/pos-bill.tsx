@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
@@ -27,6 +26,7 @@ import {
 	useState,
 	useTransition,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { type Pos, posAtom } from "@/atoms/pos";
 import { ComboboxDefault } from "@/components/combobox/default";
@@ -328,7 +328,11 @@ const PosBillTable: React.FC<{
 		(db) =>
 			db
 				.selectFrom("tableCode")
-				.select(["tableCode.id as id", "tableCode.tableId as tableId"] as const)
+				.select([
+					"tableCode.id as id",
+					"tableCode.code as code",
+					"tableCode.tableId as tableId",
+				] as const)
 				.where("tableCode.isDeleted", "is not", sqliteTrue),
 		[],
 	);
@@ -379,7 +383,7 @@ const PosBillTable: React.FC<{
 					});
 				}}
 			/>
-			<TableQrCode tableQrCode={tableQrCode?.id} />
+			<TableQrCode tableQrCode={tableQrCode?.code} />
 		</div>
 	);
 };
