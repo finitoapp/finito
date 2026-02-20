@@ -17,6 +17,8 @@ import {
 	ExternalLink,
 	FocusIcon,
 	LoaderCircleIcon,
+	PauseIcon,
+	PlayIcon,
 	Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
@@ -48,8 +50,13 @@ import { useNostr } from "@/hooks/use-nostr";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { shareImageOrDownload } from "@/lib/file-utils";
 import { formatMoney } from "@/lib/format-utils";
+import { stopPaymentWatching } from "@/lib/payment-utils";
 import { clientBaseUrl } from "@/lib/window-utils";
 import { PaymentStatus } from "@/storages/payment-status-storage";
+import {
+	PaymentWatchingStatus,
+	PaymentWatchingStopReason,
+} from "@/storages/payment-watching-state-storage";
 
 const StatusButton: FC<{
 	paymentId: Id;
@@ -137,6 +144,78 @@ const StatusButton: FC<{
 		>
 			<CoinsIcon />
 			{t("payments:detail.actions.pay-in-cash")}
+		</Button>
+	);
+};
+
+const PaymentWatchingToggleButton: FC<{
+	paymentId: Id;
+	status: PaymentWatchingStatus | null;
+	className?: string;
+}> = (props) => {
+	const { t } = useTranslation();
+	const evolu = useEvolu();
+
+	const showButton =
+		props.status !== null && props.status !== PaymentWatchingStatus.Verified;
+	const isWatching = props.status === PaymentWatchingStatus.Watching;
+	const canToggle =
+		props.status === PaymentWatchingStatus.Watching ||
+		props.status === PaymentWatchingStatus.Stopped ||
+		props.status === PaymentWatchingStatus.Failed;
+
+	const { mutateAsync: toggleWatching, isPending: isTogglingWatching } =
+		useMutation({
+			mutationFn: async () => {
+				if (props.status === PaymentWatchingStatus.Watching) {
+					await stopPaymentWatching({
+						evolu,
+						paymentId: props.paymentId,
+						reason: PaymentWatchingStopReason.Manual,
+					});
+					return;
+				}
+
+				if (
+					props.status === PaymentWatchingStatus.Stopped ||
+					props.status === PaymentWatchingStatus.Failed
+				) {
+					getOrThrow(
+						evolu.upsert("paymentWatchingState", {
+							id: props.paymentId,
+							status: PaymentWatchingStatus.Watching,
+							verifiedAt: null,
+							proveType: null,
+							transactionId: null,
+							stoppedAt: null,
+							stopReason: null,
+						}),
+					);
+				}
+			},
+		});
+
+	if (!showButton) {
+		return null;
+	}
+
+	return (
+		<Button
+			variant={"outline"}
+			className={props.className}
+			disabled={!canToggle || isTogglingWatching}
+			onClick={() => void toggleWatching()}
+		>
+			{isTogglingWatching ? (
+				<LoaderCircleIcon className="animate-spin" />
+			) : isWatching ? (
+				<PauseIcon />
+			) : (
+				<PlayIcon />
+			)}
+			{isWatching
+				? t("payments:detail.actions.stop-watching")
+				: t("payments:detail.actions.resume-watching")}
 		</Button>
 	);
 };
@@ -371,6 +450,11 @@ export default function Home() {
 					"payment.id",
 				)
 				.leftJoin("paymentCash", "paymentCash.id", "payment.id")
+				.leftJoin("paymentWatchingState", (join) =>
+					join
+						.onRef("paymentWatchingState.id", "=", "payment.id")
+						.on("paymentWatchingState.isDeleted", "is not", sqliteTrue),
+				)
 				.select([
 					"payment.id as id",
 					"payment.type as type",
@@ -393,6 +477,7 @@ export default function Home() {
 					"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
 					"paymentCash.id as cashId",
 					"paymentCash.accountId as cashAccountId",
+					"paymentWatchingState.status as paymentWatchingStateStatus",
 				] as const)
 				.where("payment.isDeleted", "is not", sqliteTrue)
 				.where("payment.id", "=", paymentId),
@@ -553,6 +638,8 @@ export default function Home() {
 			? ((cashPayment.accountId as Id | undefined) ?? null)
 			: null;
 	const supportsCashPayment = cashPayment !== undefined;
+	const paymentWatchingStateStatus =
+		payment?.paymentWatchingStateStatus ?? null;
 
 	const paymentStatus =
 		paymentReconciliationRows === undefined
@@ -733,6 +820,11 @@ export default function Home() {
 									)}
 								</p>
 							)}
+							<PaymentWatchingToggleButton
+								paymentId={paymentId}
+								status={paymentWatchingStateStatus}
+								className={"w-full"}
+							/>
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								{isDeleting ? (
 									<LoaderCircleIcon className="animate-spin" />

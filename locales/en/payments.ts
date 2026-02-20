@@ -7,6 +7,8 @@ const locale = {
       "pay-in-cash": "Pay in cash",
       "cancel": "Cancel",
       "show-fullscreen-qr-payment": "Show fullscreen QR payment",
+      "stop-watching": "Stop watching",
+      "resume-watching": "Resume watching",
       "delete": "Delete",
       "open": "Open",
       "open-in-btc-wallet": "Open in BTC wallet",

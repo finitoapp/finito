@@ -7,6 +7,8 @@ const locale = {
       "pay-in-cash": "Zaplatit v hotovosti",
       "cancel": "Zrušit",
       "show-fullscreen-qr-payment": "Zobrazit QR platbu na celou obrazovku",
+      "stop-watching": "Přerušit sledování",
+      "resume-watching": "Obnovit sledování",
       "delete": "Smazat",
       "open": "Otevřít",
       "open-in-btc-wallet": "Otevřít v BTC peněžence",
