@@ -5,6 +5,7 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background-processing/background-process";
 import {
 	extractBtcAmountFromLightningInvoice,
@@ -23,6 +24,33 @@ type WatchedLnZapPayment = {
 	lnInvoice: string | null;
 	amount: number | null;
 	status: string | null;
+};
+
+const splitAmountByExpectedAllocation = (params: {
+	amount: number;
+	expectedProductAmount: number;
+	expectedTipAmount: number;
+}) => {
+	const totalAmount = Math.max(0, params.amount);
+	let remainingAmount = totalAmount;
+
+	const productAmount = Math.min(
+		Math.max(0, params.expectedProductAmount),
+		remainingAmount,
+	);
+	remainingAmount -= productAmount;
+
+	const tipAmount = Math.min(
+		Math.max(0, params.expectedTipAmount),
+		remainingAmount,
+	);
+	remainingAmount -= tipAmount;
+
+	return {
+		productAmount,
+		tipAmount,
+		overpaymentAmount: remainingAmount,
+	};
 };
 
 export const syncLnZapTransfersProcess: BackgroundProcess = {
@@ -51,7 +79,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 		let syncInProgress = false;
 
 		const findPaymentIdsByPaymentHash = async (paymentHash: string) => {
-			const zapPayments = await props.evolu.loadQuery(
+			const paymentRows = await props.evolu.loadQuery(
 				props.evolu.createQuery((db) =>
 					db
 						.selectFrom("payment")
@@ -62,37 +90,68 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 						.where("paymentLnZap.paymentHash", "=", paymentHash),
 				),
 			);
-			const sparkPayments = await props.evolu.loadQuery(
+
+			return paymentRows.map((row) => row.id as Id);
+		};
+
+		const findExpectedAllocationByPaymentId = async (paymentId: Id) => {
+			const paymentRows = await props.evolu.loadQuery(
 				props.evolu.createQuery((db) =>
 					db
 						.selectFrom("payment")
-						.innerJoin("paymentLnSpark", "paymentLnSpark.id", "payment.id")
-						.select(["payment.id as id"] as const)
+						.leftJoin("paymentBillItem", (join) =>
+							join
+								.onRef("paymentBillItem.paymentId", "=", "payment.id")
+								.on("paymentBillItem.isDeleted", "is not", sqliteTrue),
+						)
+						.select([
+							"payment.expectedTipAmount as expectedTipAmount",
+							sql<number>`
+								coalesce(
+									sum("paymentBillItem"."price" * "paymentBillItem"."quantity"),
+									0
+								)
+							`.as("expectedProductAmount"),
+						] as const)
 						.where("payment.isDeleted", "is not", sqliteTrue)
-						.where("paymentLnSpark.isDeleted", "is not", sqliteTrue)
-						.where("paymentLnSpark.paymentHash", "=", paymentHash),
+						.where("payment.id", "=", paymentId)
+						.groupBy("payment.id")
+						.groupBy("payment.expectedTipAmount")
+						.limit(1),
 				),
 			);
 
-			const paymentIds = new Set<Id>();
-			for (const row of zapPayments) {
-				if (row.id === null) continue;
-				paymentIds.add(row.id);
+			const payment = paymentRows[0];
+			if (payment === undefined) {
+				return null;
 			}
-			for (const row of sparkPayments) {
-				if (row.id === null) continue;
-				paymentIds.add(row.id);
-			}
-			return Array.from(paymentIds);
+
+			return {
+				expectedProductAmount: payment.expectedProductAmount ?? 0,
+				expectedTipAmount: payment.expectedTipAmount ?? 0,
+			};
 		};
 
 		const upsertPaymentMatchingClaims = async (payload: {
 			transactionId: Id;
 			paymentHash: string;
+			amount: number;
 		}) => {
 			const paymentIds = await findPaymentIdsByPaymentHash(payload.paymentHash);
 
 			for (const paymentId of paymentIds) {
+				const expectedAllocation =
+					await findExpectedAllocationByPaymentId(paymentId);
+				if (expectedAllocation === null) {
+					continue;
+				}
+
+				const splitAllocation = splitAmountByExpectedAllocation({
+					amount: payload.amount,
+					expectedProductAmount: expectedAllocation.expectedProductAmount,
+					expectedTipAmount: expectedAllocation.expectedTipAmount,
+				});
+
 				const claimId = createIdFromString(
 					`reconciliationClaim:lnPaymentHash:${payload.transactionId}:${paymentId}`,
 				);
@@ -106,6 +165,37 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 						confidence: 1,
 						rule: "lnPaymentHash",
 						createdBy: "syncLnZapTransfersProcess",
+					}),
+				);
+				const allocationId = createIdFromString(
+					`reconciliationClaimAllocation:${claimId}:product`,
+				);
+				getOrThrow(
+					props.evolu.upsert("reconciliationClaimAllocation", {
+						id: allocationId,
+						claimId,
+						componentType: "product",
+						amount: splitAllocation.productAmount,
+					}),
+				);
+				getOrThrow(
+					props.evolu.upsert("reconciliationClaimAllocation", {
+						id: createIdFromString(
+							`reconciliationClaimAllocation:${claimId}:tip`,
+						),
+						claimId,
+						componentType: "tip",
+						amount: splitAllocation.tipAmount,
+					}),
+				);
+				getOrThrow(
+					props.evolu.upsert("reconciliationClaimAllocation", {
+						id: createIdFromString(
+							`reconciliationClaimAllocation:${claimId}:overpayment`,
+						),
+						claimId,
+						componentType: "overpayment",
+						amount: splitAllocation.overpaymentAmount,
 					}),
 				);
 			}
@@ -150,6 +240,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				await upsertPaymentMatchingClaims({
 					transactionId,
 					paymentHash,
+					amount,
 				});
 
 				verifiedPaymentIds.add(paymentId);

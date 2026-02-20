@@ -92,6 +92,7 @@ const locale = {
         "price": "Cena",
         "quantity": "Množství",
         "total-amount": "Celková částka",
+        "expected-tip-amount": "Očekávané spropitné",
         "price-in-btc": "Cena v BTC",
         "lud16-wallet-address-with-lightning-zaps-support": "Adresa lud16 peněženky s podporou Lightning Zapů",
         "spark-wallet-account": "Spark peněženka",

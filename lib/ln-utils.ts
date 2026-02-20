@@ -37,9 +37,6 @@ export const extractPaymentHashFromLnInvoice = (
 	if (typeof paymentHash.value === "string") {
 		return paymentHash.value.toLowerCase();
 	}
-	if (typeof paymentHash.value === "number") {
-		return `${paymentHash.value}`.toLowerCase();
-	}
 
-	return null;
+	return `${paymentHash.value}`.toLowerCase();
 };

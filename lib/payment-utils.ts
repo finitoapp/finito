@@ -95,6 +95,7 @@ export async function createPayment(params: {
 		signer: NDKSigner;
 		activeUser: NDKUser;
 	};
+	expectedTipAmount: number | null;
 	paymentData: StaticOfflinePayment;
 }) {
 	const event = new NDKEvent(params.ndk, {
@@ -123,6 +124,7 @@ export async function createPayment(params: {
 			type: params.paymentData.paymentOptions?.[0]?.type ?? "cash",
 			billCurrency: params.paymentData.bill.currency,
 			billAllowTip: params.paymentData.bill.allowTip ? sqliteTrue : sqliteFalse,
+			expectedTipAmount: params.expectedTipAmount,
 			merchantName: params.paymentData.merchant?.name ?? null,
 			onSuccessfulPaymentTag:
 				params.paymentData.onSuccessfulPayment?._tag ?? null,

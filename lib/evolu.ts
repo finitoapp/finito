@@ -185,6 +185,15 @@ export const Schema = {
 		// Optional actor/process identifier that authored this claim.
 		createdBy: nullOr(NonEmptyTrimmedString100),
 	},
+	reconciliationClaimAllocation: {
+		id: Id,
+		// FK-like reference to reconciliationClaim.id.
+		claimId: Id,
+		// Allocation bucket: product/tip/overpayment/refund.
+		componentType: NonEmptyTrimmedString100,
+		// Signed minor units (allows correction rows).
+		amount: Int,
+	},
 	transactionIban: {
 		id: Id,
 		variableSymbol: nullOr(NonEmptyTrimmedString100),
@@ -446,6 +455,8 @@ export const Schema = {
 		type: NonEmptyTrimmedString100,
 		billCurrency: NonEmptyTrimmedString100,
 		billAllowTip: SqliteBoolean,
+		// Optional expected tip amount in minor units used for reconciliation split.
+		expectedTipAmount: nullOr(NonNegativeInt),
 		merchantName: nullOr(NonEmptyTrimmedString100),
 		// Optional tag/event emitted after successful settlement.
 		onSuccessfulPaymentTag: nullOr(NonEmptyTrimmedString100),
@@ -556,6 +567,13 @@ export const createAppEvolu = (props: {
 				.on(`reconciliationClaim`)
 				.column("entityType")
 				.column("entityId"),
+			create(`reconciliationClaimAllocation_claimId`)
+				.on(`reconciliationClaimAllocation`)
+				.column("claimId"),
+			create(`reconciliationClaimAllocation_claimId_componentType`)
+				.on(`reconciliationClaimAllocation`)
+				.column("claimId")
+				.column("componentType"),
 			create(`paymentLnZap_paymentHash`)
 				.on(`paymentLnZap`)
 				.column("paymentHash"),

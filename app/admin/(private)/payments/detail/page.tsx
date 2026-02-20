@@ -100,6 +100,17 @@ const StatusButton: FC<{
 						createdBy: "adminPaymentsDetail",
 					}),
 				);
+				const claimAllocationId = createIdFromString(
+					`reconciliationClaimAllocation:${claimId}:product`,
+				);
+				getOrThrow(
+					evolu.upsert("reconciliationClaimAllocation", {
+						id: claimAllocationId,
+						claimId,
+						componentType: "product",
+						amount: props.amount,
+					}),
+				);
 			},
 		},
 	);
@@ -367,6 +378,7 @@ export default function Home() {
 					"payment.privateKey as privateKey",
 					"payment.billCurrency as billCurrency",
 					"payment.billAllowTip as billAllowTip",
+					"payment.expectedTipAmount as expectedTipAmount",
 					"payment.merchantName as merchantName",
 					"payment.onSuccessfulPaymentRedirectUrl as onSuccessfulPaymentRedirectUrl",
 					"payment.createdAt as createdAt",
@@ -423,9 +435,11 @@ export default function Home() {
 		payment.billCurrency
 			? {
 					id: payment.id,
+					paymentType: payment.type,
 					webPaymentEventId: payment.webPaymentEventId,
 					privateKey: payment.privateKey,
 					createdAt: payment.createdAt,
+					expectedTipAmount: payment.expectedTipAmount ?? null,
 					merchant: payment.merchantName
 						? { name: payment.merchantName }
 						: undefined,
@@ -668,6 +682,19 @@ export default function Home() {
 														: t("payments:detail.values.no"),
 												help: t("payments:detail.help.tip"),
 											},
+											...(item?.expectedTipAmount !== null
+												? [
+														{
+															key: t(
+																"payments:form.payment-form.label.expected-tip-amount",
+															),
+															value: formatMoney({
+																value: item.expectedTipAmount,
+																currency: item.bill.currency,
+															}),
+														},
+													]
+												: []),
 										]}
 									/>
 								</div>

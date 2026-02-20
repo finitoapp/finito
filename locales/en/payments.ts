@@ -92,6 +92,7 @@ const locale = {
         "price": "Price",
         "quantity": "Quantity",
         "total-amount": "Total amount",
+        "expected-tip-amount": "Expected tip amount",
         "price-in-btc": "Price in BTC",
         "lud16-wallet-address-with-lightning-zaps-support": "lud16 wallet address with `Lightning Zaps` support",
         "spark-wallet-account": "Spark wallet account",

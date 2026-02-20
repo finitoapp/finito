@@ -504,6 +504,7 @@ const PayButton: FC<{
 					const id = await createPayment({
 						paymentNdk,
 						...storageDeps,
+						expectedTipAmount: null,
 						paymentData,
 					});
 

@@ -51,6 +51,7 @@ const baseStaticPaymentSchema = z.object({
 			currency: z.enum(Currency),
 		})
 		.pipe(moneyCodec),
+	expectedTipAmount: StringToNullableNumberSchema,
 	amountInBtc: StringToNullableNumberSchema.pipe(IntegerSchema),
 	iban: z.string(),
 	lnZapAccountId: z.string(),
@@ -91,6 +92,13 @@ const staticPaymentSchema = z
 	])
 	.transform((values) => ({
 		...values,
+		expectedTipAmount:
+			values.expectedTipAmount === null
+				? null
+				: moneyCodec.parse({
+						value: values.expectedTipAmount.toString(),
+						currency: values.totalAmount.currency,
+					}).value,
 		items: values.items.map((item) => ({
 			...item,
 			price: moneyCodec.parse({
@@ -116,6 +124,7 @@ const staticPaymentDefaultValues = {
 		value: "0",
 		currency: Currency.USD,
 	},
+	expectedTipAmount: "",
 	amountInBtc: "0",
 	redirectUrl: "",
 	items: [itemDefaultValues],
@@ -131,7 +140,10 @@ const createComponents = (t: TFunction) =>
 				...builder.magicInput("merchantName").text({
 					label: t("payments:form.payment-form.label.merchant-name"),
 				}),
-
+				...builder.magicInput("expectedTipAmount").text({
+					label: t("payments:form.payment-form.label.expected-tip-amount"),
+					placeholder: t("payments:form.payment-form.placeholder.0"),
+				}),
 				...builder.nestedField("totalAmount", ({ builder }) => ({
 					...builder.magicInput("currency").select({
 						values: FiatCurrency,
@@ -213,10 +225,18 @@ const createComponents = (t: TFunction) =>
 			"_totalAmount",
 			(props) => {
 				const { setValue } = useFormContext();
-				const result = useWatch({
+				const [result, expectedTipAmount] = useWatch({
 					control: props.control,
-					name: "items",
-				}) as [{ price: string; quantity: string }];
+					name: ["items", "expectedTipAmount"],
+				}) as [
+					[{ price: string; quantity: string }],
+					expectedTipAmount: string,
+				];
+
+				const tip = Number(expectedTipAmount);
+				if (Number.isNaN(tip)) {
+					return null;
+				}
 
 				const totalPrice = result.reduce((acc, row) => {
 					const price = Number(row.price);
@@ -225,7 +245,7 @@ const createComponents = (t: TFunction) =>
 						return acc;
 					}
 					return acc + price * quantity;
-				}, 0);
+				}, tip);
 
 				useEffect(() => {
 					setValue("totalAmount.value", totalPrice.toString());
@@ -538,6 +558,7 @@ export const PaymentForm: React.FC<{
 			const id = await createPayment({
 				paymentNdk,
 				...storageDeps,
+				expectedTipAmount: values.expectedTipAmount,
 				paymentData,
 			});
 
