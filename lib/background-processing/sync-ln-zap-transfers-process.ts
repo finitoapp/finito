@@ -7,6 +7,7 @@ import {
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background-processing/background-process";
+import { subscribeToEvoluQuery } from "@/lib/evolu-utils";
 import {
 	extractBtcAmountFromLightningInvoice,
 	extractPaymentHashFromLnInvoice,
@@ -14,7 +15,6 @@ import {
 import { PaymentStatus } from "@/storages/payment-status-storage";
 
 const notificationId = createIdFromString("syncLnZapTransfers");
-const refreshIntervalMs = 30_000;
 
 type WatchedLnZapPayment = {
 	id: Id;
@@ -31,8 +31,7 @@ const splitAmountByExpectedAllocation = (params: {
 	expectedProductAmount: number;
 	expectedTipAmount: number;
 }) => {
-	const totalAmount = Math.max(0, params.amount);
-	let remainingAmount = totalAmount;
+	let remainingAmount = Math.max(0, params.amount);
 
 	const productAmount = Math.min(
 		Math.max(0, params.expectedProductAmount),
@@ -53,6 +52,9 @@ const splitAmountByExpectedAllocation = (params: {
 	};
 };
 
+const createZapPairKey = (authorPubkey: string, recipientPubkey: string) =>
+	`${authorPubkey}|${recipientPubkey}`;
+
 export const syncLnZapTransfersProcess: BackgroundProcess = {
 	name: "syncLnZapTransfers",
 	run: async (props) => {
@@ -67,16 +69,14 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 			timestamp: Date.now(),
 		});
 
-		const subscriptions = new Map<Id, { stop: () => void }>();
-		const pendingReceipts = new Map<
-			Id,
-			{
-				payment: WatchedLnZapPayment;
-				occurredAtSec: number | null;
-			}
-		>();
+		const watchedPaymentsById = new Map<Id, WatchedLnZapPayment>();
+		let watchedPaymentsByPair = new Map<string, WatchedLnZapPayment[]>();
+		let zapReceiptSubscription: { stop: () => void } | null = null;
+		let activeZapFilterSignature: string | null = null;
 		const verifiedPaymentIds = new Set<Id>();
+		const processingPaymentIds = new Set<Id>();
 		let syncInProgress = false;
+		let queuedWatchedPayments: ReadonlyArray<WatchedLnZapPayment> | null = null;
 
 		const findPaymentIdsByPaymentHash = async (paymentHash: string) => {
 			const paymentRows = await props.evolu.loadQuery(
@@ -201,17 +201,25 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 			}
 		};
 
-		const upsertTransactionsFromPendingReceipts = async () => {
-			let createdCount = 0;
+		const upsertTransactionFromReceipt = async (params: {
+			payment: WatchedLnZapPayment;
+			occurredAtSec: number | null;
+		}) => {
+			const { payment, occurredAtSec } = params;
+			if (!payment.accountId || !payment.lnInvoice) {
+				return false;
+			}
+			if (
+				verifiedPaymentIds.has(payment.id) ||
+				!watchedPaymentsById.has(payment.id) ||
+				processingPaymentIds.has(payment.id)
+			) {
+				return false;
+			}
 
-			for (const [paymentId, pending] of pendingReceipts.entries()) {
-				const { payment } = pending;
-				console.log("payment...", payment);
+			processingPaymentIds.add(payment.id);
 
-				if (!payment.accountId || !payment.lnInvoice) {
-					continue;
-				}
-
+			try {
 				const transactionId = createIdFromString(`lnZapReceipt:${payment.id}`);
 				const amount = extractBtcAmountFromLightningInvoice(payment.lnInvoice);
 				const paymentHash = extractPaymentHashFromLnInvoice(payment.lnInvoice);
@@ -223,9 +231,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 						_tag: "accountLud16",
 						amount,
 						occurredAt:
-							pending.occurredAtSec === null
-								? Date.now()
-								: pending.occurredAtSec * 1000,
+							occurredAtSec === null ? Date.now() : occurredAtSec * 1000,
 						note: "Incoming LN zap payment",
 						internalTransferGroupId: null,
 					}),
@@ -243,116 +249,192 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 					amount,
 				});
 
-				verifiedPaymentIds.add(paymentId);
-				pendingReceipts.delete(paymentId);
-
-				const subscription = subscriptions.get(paymentId);
-				if (subscription) {
-					subscription.stop();
-					subscriptions.delete(paymentId);
-				}
-
-				createdCount += 1;
-			}
-
-			if (createdCount > 0) {
-				notification.update({
-					title: "LN zap receipts",
-					type: "success",
-					progress: null,
-					canBeClosed: true,
-					description: `Verified ${createdCount} LN zap payment(s).`,
-					isUnread: false,
-					id: notificationId,
-					timestamp: Date.now(),
-				});
+				verifiedPaymentIds.add(payment.id);
+				watchedPaymentsById.delete(payment.id);
+				return true;
+			} finally {
+				processingPaymentIds.delete(payment.id);
 			}
 		};
 
-		const syncWatchList = async () => {
-			if (syncInProgress) return;
+		const watchedPaymentsQuery = props.evolu.createQuery((db) =>
+			db
+				.selectFrom("payment")
+				.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
+				.leftJoin("paymentStatus", "paymentStatus.id", "payment.id")
+				.select([
+					"payment.id as id",
+					"payment.privateKey as privateKey",
+					"paymentLnZap.accountId as accountId",
+					"paymentLnZap.walletPubkey as walletPubkey",
+					"paymentLnZap.lnInvoice as lnInvoice",
+					"paymentLnZap.amount as amount",
+					"paymentStatus.status as status",
+				] as const)
+				.where("payment.isDeleted", "is not", sqliteTrue)
+				.where("paymentLnZap.isDeleted", "is not", sqliteTrue),
+		);
+
+		const syncWatchList = async (
+			initialWatchedPayments: ReadonlyArray<WatchedLnZapPayment>,
+		) => {
+			if (syncInProgress) {
+				queuedWatchedPayments = initialWatchedPayments;
+				return;
+			}
 			syncInProgress = true;
 
 			try {
-				const watchedPayments = await props.evolu.loadQuery(
-					props.evolu.createQuery((db) =>
-						db
-							.selectFrom("payment")
-							.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
-							.leftJoin("paymentStatus", "paymentStatus.id", "payment.id")
-							.select([
-								"payment.id as id",
-								"payment.privateKey as privateKey",
-								"paymentLnZap.accountId as accountId",
-								"paymentLnZap.walletPubkey as walletPubkey",
-								"paymentLnZap.lnInvoice as lnInvoice",
-								"paymentLnZap.amount as amount",
-								"paymentStatus.status as status",
-							] as const)
-							.where("payment.isDeleted", "is not", sqliteTrue)
-							.where("paymentLnZap.isDeleted", "is not", sqliteTrue),
-					),
-				);
+				const nextWatchedPaymentsById = new Map<Id, WatchedLnZapPayment>();
+				const nextWatchedPaymentsByPair = new Map<
+					string,
+					WatchedLnZapPayment[]
+				>();
+				const authors = new Set<string>();
+				const recipients = new Set<string>();
 
-				const watchedPaymentIds = new Set(
-					watchedPayments.map((payment) => payment.id),
-				);
-
-				for (const [paymentId, subscription] of subscriptions.entries()) {
-					if (!watchedPaymentIds.has(paymentId)) {
-						subscription.stop();
-						subscriptions.delete(paymentId);
-						pendingReceipts.delete(paymentId);
-						verifiedPaymentIds.delete(paymentId);
-					}
-				}
-
-				for (const payment of watchedPayments) {
+				for (const payment of initialWatchedPayments) {
 					if (
 						payment.status === PaymentStatus.Paid ||
 						verifiedPaymentIds.has(payment.id) ||
-						subscriptions.has(payment.id) ||
 						!payment.privateKey ||
 						!payment.walletPubkey
 					) {
 						continue;
 					}
 
-					console.log("watching.....");
 					const signer = new NDKPrivateKeySigner(payment.privateKey);
-					const subscription = props.ndk.subscribe(
+					const recipientPubkey = signer.pubkey;
+					const pairKey = createZapPairKey(
+						payment.walletPubkey,
+						recipientPubkey,
+					);
+
+					const pairPayments = nextWatchedPaymentsByPair.get(pairKey) ?? [];
+					pairPayments.push(payment);
+					nextWatchedPaymentsByPair.set(pairKey, pairPayments);
+					nextWatchedPaymentsById.set(payment.id, payment);
+					authors.add(payment.walletPubkey);
+					recipients.add(recipientPubkey);
+				}
+
+				for (const paymentId of watchedPaymentsById.keys()) {
+					if (!nextWatchedPaymentsById.has(paymentId)) {
+						verifiedPaymentIds.delete(paymentId);
+						processingPaymentIds.delete(paymentId);
+					}
+				}
+
+				watchedPaymentsById.clear();
+				for (const [id, payment] of nextWatchedPaymentsById) {
+					watchedPaymentsById.set(id, payment);
+				}
+				watchedPaymentsByPair = nextWatchedPaymentsByPair;
+
+				const filterAuthors = Array.from(authors).sort();
+				const filterRecipients = Array.from(recipients).sort();
+				const nextFilterSignature = JSON.stringify({
+					authors: filterAuthors,
+					recipients: filterRecipients,
+				});
+
+				if (filterAuthors.length === 0 || filterRecipients.length === 0) {
+					if (zapReceiptSubscription !== null) {
+						zapReceiptSubscription.stop();
+						zapReceiptSubscription = null;
+						activeZapFilterSignature = null;
+					}
+				} else if (nextFilterSignature !== activeZapFilterSignature) {
+					if (zapReceiptSubscription !== null) {
+						zapReceiptSubscription.stop();
+					}
+
+					zapReceiptSubscription = props.ndk.subscribe(
 						{
 							kinds: [9735], // zap receipt
-							authors: [payment.walletPubkey],
-							"#p": [signer.pubkey],
-							limit: 1,
+							authors: filterAuthors,
+							"#p": filterRecipients,
+							limit: 50,
 						},
 						{},
 						{
 							onEvent: (receipt) => {
-								console.log("receipt.....");
-								pendingReceipts.set(payment.id, {
-									payment,
-									occurredAtSec: receipt.created_at ?? null,
-								});
-								void upsertTransactionsFromPendingReceipts();
+								const authorPubkey = receipt.pubkey;
+								if (!authorPubkey) {
+									return;
+								}
+
+								const recipientPubkeys = receipt.tags
+									.filter(
+										(tag): tag is [string, string, ...string[]] =>
+											tag[0] === "p" && typeof tag[1] === "string",
+									)
+									.map((tag) => tag[1]);
+
+								let matched = false;
+								const matchedPayments = new Map<Id, WatchedLnZapPayment>();
+								for (const recipientPubkey of recipientPubkeys) {
+									const payments = watchedPaymentsByPair.get(
+										createZapPairKey(authorPubkey, recipientPubkey),
+									);
+									if (!payments) {
+										continue;
+									}
+
+									for (const payment of payments) {
+										if (
+											verifiedPaymentIds.has(payment.id) ||
+											!watchedPaymentsById.has(payment.id)
+										) {
+											continue;
+										}
+
+										matchedPayments.set(payment.id, payment);
+										matched = true;
+									}
+								}
+
+								if (!matched) {
+									return;
+								}
+
+								void (async () => {
+									let createdCount = 0;
+									for (const payment of matchedPayments.values()) {
+										const created = await upsertTransactionFromReceipt({
+											payment,
+											occurredAtSec: receipt.created_at ?? null,
+										});
+										if (created) {
+											createdCount += 1;
+										}
+									}
+
+									if (createdCount > 0) {
+										notification.update({
+											title: "LN zap receipts",
+											type: "success",
+											progress: null,
+											canBeClosed: true,
+											description: `Verified ${createdCount} LN zap payment(s).`,
+											isUnread: false,
+											id: notificationId,
+											timestamp: Date.now(),
+										});
+									}
+								})();
 							},
 						},
 					);
-
-					subscriptions.set(payment.id, {
-						stop: () => subscription.stop(),
-					});
+					activeZapFilterSignature = nextFilterSignature;
 				}
-
-				await upsertTransactionsFromPendingReceipts();
 
 				notification.update({
 					title: "LN zap receipts",
 					type: "info",
 					progress: null,
 					canBeClosed: true,
-					description: `Watching ${subscriptions.size} LN zap payment(s).`,
+					description: `Watching ${watchedPaymentsById.size} LN zap payment(s).`,
 					isUnread: false,
 					id: notificationId,
 					timestamp: Date.now(),
@@ -373,21 +455,37 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				});
 			} finally {
 				syncInProgress = false;
+				const nextWatchedPayments = queuedWatchedPayments;
+				queuedWatchedPayments = null;
+				if (nextWatchedPayments !== null) {
+					void syncWatchList(nextWatchedPayments);
+				}
 			}
 		};
 
-		void syncWatchList();
-		const interval = globalThis.setInterval(() => {
-			void syncWatchList();
-		}, refreshIntervalMs);
+		const unsubscribeWatchedPayments = subscribeToEvoluQuery(
+			props.evolu,
+			watchedPaymentsQuery,
+			(watchedPayments) => {
+				const nextWatchedPayments =
+					watchedPayments as ReadonlyArray<WatchedLnZapPayment>;
+				if (syncInProgress) {
+					queuedWatchedPayments = nextWatchedPayments;
+					return;
+				}
+
+				void syncWatchList(nextWatchedPayments);
+			},
+		);
 
 		return () => {
-			globalThis.clearInterval(interval);
-			for (const subscription of subscriptions.values()) {
-				subscription.stop();
+			unsubscribeWatchedPayments();
+			if (zapReceiptSubscription !== null) {
+				zapReceiptSubscription.stop();
 			}
-			subscriptions.clear();
-			pendingReceipts.clear();
+			watchedPaymentsById.clear();
+			watchedPaymentsByPair.clear();
+			processingPaymentIds.clear();
 		};
 	},
 };
