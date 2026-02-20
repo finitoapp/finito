@@ -8,7 +8,7 @@ const drivers: CurrencyConverterDriver[] = [
 export const currencyConverter = {
 	convert: async (
 		props: Parameters<CurrencyConverterDriver["convert"]>[0],
-	): Promise<number | null> => {
+	): Promise<bigint | null> => {
 		for (const driver of drivers) {
 			const result = await driver.convert(props);
 			if (result !== null) {

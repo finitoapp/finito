@@ -3,19 +3,19 @@ import {
 	createRandomBytes,
 	getOrThrow,
 	type Id,
-	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
-import { createComboboxInput } from "@/components/combobox-input";
+import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createActiveCategoriesQuery } from "@/lib/evolu-queries/category-queries";
 import {
 	Currency,
 	NonEmptyStringSchema,
@@ -24,26 +24,35 @@ import {
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/types";
+import { moneyCodec } from "@/lib/zod/moneyCodec";
 
-const itemSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	priceValue: StringToNumberSchema,
-	priceCurrency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
-	label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	unitOfMeasure: StringToNullableStringSchema.pipe(
-		NonEmptyStringSchema.nullable(),
-	),
-	categoryId: StringToNullableStringSchema.pipe(
-		NonEmptyStringSchema.nullable(),
-	),
-	productCodeType: z.enum(ProductCodeType),
-	productCodeValue: StringToNullableStringSchema.pipe(
-		NonEmptyStringSchema.nullable(),
-	),
-	internalCode: StringToNullableStringSchema.pipe(
-		NonEmptyStringSchema.nullable(),
-	),
-});
+const itemSchema = z
+	.object({
+		id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+		priceValue: StringToNumberSchema,
+		priceCurrency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
+		label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+		unitOfMeasure: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+		categoryId: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+		productCodeType: z.enum(ProductCodeType),
+		productCodeValue: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+		internalCode: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+	})
+	.transform((values) => ({
+		...values,
+		priceValue: moneyCodec.parse({
+			value: values.priceValue.toString(),
+			currency: values.priceCurrency,
+		}).value,
+	}));
 
 const itemDefaultValues = {
 	id: "",
@@ -57,73 +66,58 @@ const itemDefaultValues = {
 	internalCode: "",
 } satisfies z.input<typeof itemSchema>;
 
-const createComponents = (t: TFunction) => createAutoFormLayout(itemSchema, ({ builder }) => ({
-	...builder.magicInput("id").text({
-		type: "hidden",
-	}),
-	...builder.magicInput("label").text({
-		label: t("items:form.item-form.label.label"),
-	}),
-	...builder.line({
-		...builder.magicInput("priceValue").amount({
-			label: t("items:form.item-form.label.price"),
-			placeholder: t("items:form.item-form.placeholder.0"),
-			type: "number",
-			currencyFieldName: "currency",
-		}),
-		...builder.magicInput("priceCurrency").select({
-			values: Currency,
-			allowEmpty: true,
-			label: t("items:form.item-form.label.currency"),
-		}),
-	}),
-	...builder.magicInput("unitOfMeasure").text({
-		label: t("items:form.item-form.label.unit-of-measure-uom-optional"),
-	}),
-	...builder.createComponent("categoryId", (props) => {
-		const evolu = useEvolu();
-		const ComboboxInput = useMemo(
-			() =>
-				createComboboxInput({
-					label: t("items:form.item-form.label.category-optional"),
-					placeholder: t("items:form.item-form.placeholder.select-a-category"),
-					fetchItems: async () => {
-						const items = await evolu.loadQuery(
-							evolu.createQuery((db) =>
-								db
-									.selectFrom("category")
-									.select(["category.id as id", "category.name as name"])
-									.where("category.isDeleted", "is not", sqliteTrue)
-									.orderBy("category.name", "asc"),
-							),
-						);
+const createComponents = (t: TFunction) => {
+	const CategoryComboboxInput = createEvoluComboboxInput({
+		label: t("items:form.item-form.label.category-optional"),
+		placeholder: t("items:form.item-form.placeholder.select-a-category"),
+		createQuery: createActiveCategoriesQuery,
+		mapRowsToItems: (rows) =>
+			rows.flatMap((row) =>
+				row.name === null ? [] : [{ label: row.name, value: row.id as string }],
+			),
+	});
 
-						return items.flatMap((item) =>
-							item.name === null
-								? []
-								: [{ label: item.name, value: item.id as string }],
-						);
-					},
-				}),
-			[evolu],
-		);
-
-		return <ComboboxInput {...props} />;
-	}),
-	...builder.line({
-		...builder.magicInput("productCodeValue").text({
-			label: t("items:form.item-form.label.product-code-optional"),
+	return createAutoFormLayout(itemSchema, ({ builder }) => ({
+		...builder.magicInput("id").text({
+			type: "hidden",
 		}),
-		...builder.magicInput("productCodeType").select({
-			values: ProductCodeType,
-			allowEmpty: false,
-			label: t("items:form.item-form.label.type"),
+		...builder.magicInput("label").text({
+			label: t("items:form.item-form.label.label"),
 		}),
-	}),
-	...builder.magicInput("internalCode").text({
-		label: t("items:form.item-form.label.internal-code-sku-optional"),
-	}),
-}));
+		...builder.line({
+			...builder.magicInput("priceValue").amount({
+				label: t("items:form.item-form.label.price"),
+				placeholder: t("items:form.item-form.placeholder.0"),
+				type: "number",
+				currencyFieldName: "currency",
+			}),
+			...builder.magicInput("priceCurrency").select({
+				values: Currency,
+				allowEmpty: true,
+				label: t("items:form.item-form.label.currency"),
+			}),
+		}),
+		...builder.magicInput("unitOfMeasure").text({
+			label: t("items:form.item-form.label.unit-of-measure-uom-optional"),
+		}),
+		...builder.createComponent("categoryId", (props) => {
+			return <CategoryComboboxInput {...props} />;
+		}),
+		...builder.line({
+			...builder.magicInput("productCodeValue").text({
+				label: t("items:form.item-form.label.product-code-optional"),
+			}),
+			...builder.magicInput("productCodeType").select({
+				values: ProductCodeType,
+				allowEmpty: false,
+				label: t("items:form.item-form.label.type"),
+			}),
+		}),
+		...builder.magicInput("internalCode").text({
+			label: t("items:form.item-form.label.internal-code-sku-optional"),
+		}),
+	}));
+};
 
 export const ItemForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof itemSchema>>;

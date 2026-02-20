@@ -12,6 +12,7 @@ const locale = {
       "reservations": "Reservations",
       "clients": "Clients",
       "accounts": "Accounts",
+      "transactions": "Transactions",
       "settings": "Settings",
       "debug": "Debug"
     }

@@ -7,6 +7,10 @@ import {
 	NonEmptyStringSchema,
 	PhoneSchema,
 } from "@/lib/types";
+import {
+	epochMillisToDateCodec,
+	integerStringToInteger,
+} from "@/lib/zod/codecs";
 
 export const PaymentMethod = {
 	BankTransferCZ: "bankTransferCZ",
@@ -18,7 +22,7 @@ export type PaymentMethod = InferEnumType<typeof PaymentMethod>;
 
 const BillItemSchema = z.object({
 	id: z.string(),
-	price: z.number(),
+	price: integerStringToInteger,
 	quantity: z.number(),
 	label: z.string(),
 	optionality: z
@@ -67,18 +71,19 @@ export const PaymentSchema = z.object({
 		.discriminatedUnion("type", [
 			z.object({
 				type: z.literal("lnZap"),
+				accountId: z.string().optional(),
 				lnInvoice: z.string(),
 				walletPubkey: z.string(),
-				amount: z.number(),
-				expirationIn: z.number(),
+				amount: integerStringToInteger,
+				expirationIn: epochMillisToDateCodec,
 			}),
 			z.object({
 				type: z.literal("lnSpark"),
 				accountId: z.string(),
 				lnInvoice: z.string(),
 				sparkInvoiceId: z.string(),
-				amount: z.number(),
-				expirationIn: z.number(),
+				amount: integerStringToInteger,
+				expirationIn: epochMillisToDateCodec,
 			}),
 			z.object({
 				type: z.literal("bankTransferCZ"),
@@ -87,6 +92,7 @@ export const PaymentSchema = z.object({
 			}),
 			z.object({
 				type: z.literal("cash"),
+				accountId: z.string().optional(),
 			}),
 		])
 		.array()

@@ -17,6 +17,7 @@ import csPos from "@/locales/cs/pos";
 import csReservations from "@/locales/cs/reservations";
 import csSettings from "@/locales/cs/settings";
 import csTables from "@/locales/cs/tables";
+import csTransactions from "@/locales/cs/transactions";
 import enAccounts from "@/locales/en/accounts";
 import enAdmin from "@/locales/en/admin";
 import enApp from "@/locales/en/app";
@@ -36,6 +37,7 @@ import enPos from "@/locales/en/pos";
 import enReservations from "@/locales/en/reservations";
 import enSettings from "@/locales/en/settings";
 import enTables from "@/locales/en/tables";
+import enTransactions from "@/locales/en/transactions";
 
 export const resources = {
 	en: {
@@ -53,6 +55,7 @@ export const resources = {
 		invoices: enInvoices,
 		payments: enPayments,
 		tables: enTables,
+		transactions: enTransactions,
 		reservations: enReservations,
 		landing: enLanding,
 		navigation: enNavigation,
@@ -74,6 +77,7 @@ export const resources = {
 		invoices: csInvoices,
 		payments: csPayments,
 		tables: csTables,
+		transactions: csTransactions,
 		reservations: csReservations,
 		landing: csLanding,
 		navigation: csNavigation,

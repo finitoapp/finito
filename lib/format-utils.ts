@@ -1,4 +1,5 @@
 import type { Iban } from "@/lib/types";
+import { type Money, minorUnitsToDecimalString } from "@/lib/zod/moneyCodec";
 
 export function formatAmount(
 	amount: number,
@@ -27,6 +28,11 @@ export function formatAmount(
 	} catch (_error) {
 		return `${amount.toLocaleString()}${currency ? ` ${currency.toUpperCase()}` : ""}`;
 	}
+}
+
+export function formatMoney(money: Money, locale: string = "en-US") {
+	const value = minorUnitsToDecimalString(money);
+	return formatAmount(Number(value), money.currency, locale);
 }
 
 export function formatIban(iban: Iban) {

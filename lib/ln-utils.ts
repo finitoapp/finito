@@ -21,5 +21,25 @@ export const extractBtcAmountFromLightningInvoice = (lnInvoice: string) => {
 
 	assertNotUndefined(amount);
 
-	return Number(amount.value) / 100000000 / 1000;
+	return Number(amount.value) / 1000;
+};
+
+export const extractPaymentHashFromLnInvoice = (
+	lnInvoice: string,
+): string | null => {
+	const decoded = decode(lnInvoice);
+	const paymentHash = decoded.sections.find(
+		(section) => section.name === "payment_hash",
+	);
+
+	assertNotUndefined(paymentHash);
+
+	if (typeof paymentHash.value === "string") {
+		return paymentHash.value.toLowerCase();
+	}
+	if (typeof paymentHash.value === "number") {
+		return `${paymentHash.value}`.toLowerCase();
+	}
+
+	return null;
 };

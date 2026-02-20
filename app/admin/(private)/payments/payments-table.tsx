@@ -1,21 +1,20 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { PaymentStatusBadge } from "@/app/admin/(private)/payments/payment-status-badge";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
 	type DataTableOnFilterChange,
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	CardContent,
@@ -27,7 +26,8 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
+import { PaymentStatus } from "@/storages/payment-status-storage";
 
 type Row = {
 	id: Id;
@@ -35,6 +35,7 @@ type Row = {
 	amount: number;
 	billCurrency: string;
 	label: string;
+	status: PaymentStatus;
 };
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
@@ -47,12 +48,23 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 		accessorKey: "amount",
 		header: t("payments:table.columns.amount"),
 		cell: ({ row }) =>
-			formatAmount(row.original.amount, row.original.billCurrency),
+			formatMoney({
+				value: row.original.amount,
+				currency: row.original.billCurrency,
+			}),
 	},
 	{
 		accessorKey: "status",
 		header: t("payments:table.columns.status"),
-		cell: ({ row }) => <PaymentStatusBadge paymentId={row.original.id} />,
+		cell: ({ row }) => (
+			<Badge
+				variant={
+					row.original.status === PaymentStatus.Unpaid ? "primary" : "success"
+				}
+			>
+				{row.original.status}
+			</Badge>
+		),
 	},
 	{
 		accessorKey: "label",
@@ -137,6 +149,30 @@ export function PaymentsTable() {
 									),
 								)
 							: [];
+					const reconciliationClaims =
+						ids.length > 0
+							? await evolu.loadQuery(
+									evolu.createQuery((db) =>
+										db
+											.selectFrom("reconciliationClaim")
+											.select([
+												"reconciliationClaim.entityId as paymentId",
+											] as const)
+											.where(
+												"reconciliationClaim.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("reconciliationClaim.entityType", "=", "payment")
+											.where("reconciliationClaim.entityId", "in", ids as Id[]),
+									),
+								)
+							: [];
+					const paidPaymentIds = new Set<Id>();
+					for (const claim of reconciliationClaims) {
+						if (claim.paymentId === null) continue;
+						paidPaymentIds.add(claim.paymentId);
+					}
 
 					const rows: Row[] = payments.map((payment) => {
 						const relatedItems = billItems.filter(
@@ -151,6 +187,9 @@ export function PaymentsTable() {
 							),
 							billCurrency: payment.billCurrency ?? "",
 							label: relatedItems[0]?.label ?? "-",
+							status: paidPaymentIds.has(payment.id)
+								? PaymentStatus.Paid
+								: PaymentStatus.Unpaid,
 						};
 					});
 

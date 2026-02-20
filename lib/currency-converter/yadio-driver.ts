@@ -1,5 +1,8 @@
+import { BigNumber } from "bignumber.js";
 import { z } from "zod";
 import type { CurrencyConverterDriver } from "@/lib/currency-converter/currency-converter-types";
+import { Integer } from "@/lib/types";
+import { currencyFractionDigits } from "@/lib/zod/moneyCodec";
 
 export const createYadioDriver = ({
 	cacheInSeconds,
@@ -43,7 +46,17 @@ export const createYadioDriver = ({
 				return null;
 			}
 
-			return rate * props.amount;
+			return Integer(
+				new BigNumber(rate)
+					.times(
+						new BigNumber(props.amount).shiftedBy(
+							-currencyFractionDigits[props.sourceCurrency],
+						),
+					)
+					.shiftedBy(currencyFractionDigits[props.targetCurrency])
+					.integerValue()
+					.toNumber(),
+			);
 		},
 	};
 

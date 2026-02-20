@@ -22,6 +22,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
+import { runBackgroundProcesses } from "@/lib/background-processing/background-process";
 import type { ScreenData } from "@/lib/bill/billDriver";
 import type { DeviceEvolu } from "@/lib/device-evolu";
 import type { Evolu } from "@/lib/evolu";
@@ -44,7 +45,7 @@ import {
 	SheetTrigger,
 } from "./ui/sheet";
 
-type NotificationUI = {
+export type NotificationUI = {
 	id: string;
 	title: string;
 	description: string;
@@ -52,9 +53,10 @@ type NotificationUI = {
 	timestamp?: number;
 	progress?: number | null; // Use null for an unknown time horizon (rotating spinner)
 	canBeClosed?: boolean;
+	isUnread?: boolean;
 	actions?: {
 		buttonProps: ComponentProps<typeof Button>;
-		callback: (params: { deleteNotification: () => unknown }) => unknown;
+		callback: () => unknown;
 	}[];
 };
 
@@ -66,6 +68,10 @@ type BackgroundDef = {
 		};
 		evolu: Evolu;
 		deviceEvolu: DeviceEvolu;
+		addNotification: (notification: NotificationUI) => {
+			update: (notification: NotificationUI) => void;
+			delete: () => void;
+		};
 		setNotification: (notification: NotificationUI) => void;
 		deleteNotification: () => void;
 	}) => Promise<() => void>;
@@ -731,10 +737,17 @@ export function NotificationCenter() {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
-	const [notificationUis, setNotificationUis] = useState<
-		Record<string, Atom<NotificationUI>>
+	const notificationUisRef = useRef<
+		Record<
+			string,
+			{
+				atom: Atom<NotificationUI>;
+				isUnread: boolean;
+			}
+		>
 	>({});
 	const { ndk } = useNostr();
+	const [, setForceRender] = useState(0);
 	const jotaiStore = useStore();
 	const query = useCreateQuery(
 		(db) =>
@@ -757,90 +770,61 @@ export function NotificationCenter() {
 		[],
 	);
 
-	const notificationDefsRef = useRef<Record<string, Promise<() => void>>>({});
+	useEffect(() => {
+		const unsubscribePromise = runBackgroundProcesses({
+			addNotification: (notificationUi: NotificationUI) => {
+				let currentUi = notificationUisRef.current[notificationUi.id];
+				if (currentUi) {
+					jotaiStore.set(currentUi.atom, notificationUi);
+					currentUi.isUnread = notificationUi.isUnread === true;
+				} else {
+					currentUi = atom(notificationUi);
+					notificationUisRef.current[notificationUi.id] = {
+						atom: currentUi,
+						isUnread: notificationUi.isUnread === true,
+					};
+				}
 
-	const { mutateAsync: deleteNotification } = useMutation({
-		mutationFn: async (id: Id) => {
-			getOrThrow(
-				evolu.update("notification", {
-					id,
-					isDeleted: sqliteTrue,
-				}),
-			);
-		},
-	});
+				setForceRender((prev) => prev + 1);
+
+				return {
+					update: (notificationUi: NotificationUI) => {
+						const currentUi = notificationUisRef.current[notificationUi.id];
+						if (currentUi) {
+							jotaiStore.set(currentUi.atom, notificationUi);
+							const currentIsUnread = currentUi.isUnread;
+							currentUi.isUnread = notificationUi.isUnread === true;
+							if (currentIsUnread !== currentUi.isUnread) {
+								setForceRender((prev) => prev + 1);
+							}
+						}
+					},
+					delete: () => {
+						delete notificationUisRef.current[notificationUi.id];
+						setForceRender((prev) => prev + 1);
+					},
+				};
+			},
+			evolu,
+			deviceEvolu,
+			ndk,
+			t,
+		});
+
+		return () => {
+			unsubscribePromise.then((unsubscribe) => unsubscribe());
+			notificationUisRef.current = {};
+		};
+	}, [evolu, deviceEvolu, ndk, jotaiStore, t]);
 
 	const { data: items } = useEvoluQuery(query);
-
-	useEffect(() => {
-		const currentIds = new Set(Object.keys(notificationDefsRef.current));
-		if (items) {
-			for (const item of items) {
-				const has = currentIds.delete(item.id);
-				if (has) {
-					continue;
-				}
-
-				notificationDefsRef.current[item.id] = resolveNotificationDef(
-					t,
-					item,
-				).subscribe({
-					setNotification: (notificationUi: NotificationUI) => {
-						const currentAtom = notificationUis[item.id];
-						if (currentAtom) {
-							jotaiStore.set(currentAtom, notificationUi);
-						}
-
-						setNotificationUis((values) => ({
-							...values,
-							[item.id]: atom(notificationUi),
-						}));
-					},
-					deleteNotification: deleteNotification.bind(item.id),
-					evolu,
-					deviceEvolu,
-					ndk,
-				});
-			}
-		}
-
-		return () => {
-			for (const id of currentIds) {
-				const unsubscribePromise = notificationDefsRef.current[id];
-				if (unsubscribePromise) {
-					unsubscribePromise.then((unsubscribe) => unsubscribe());
-				}
-
-				delete notificationDefsRef.current[id];
-			}
-		};
-	}, [
-		items,
-		deleteNotification,
-		evolu,
-		deviceEvolu,
-		ndk,
-		jotaiStore,
-		t,
-		notificationUis,
-	]);
-
-	useEffect(() => {
-		return () => {
-			for (const unsubscribePromise of Object.values(
-				notificationDefsRef.current,
-			)) {
-				unsubscribePromise.then((unsubscribe) => unsubscribe());
-			}
-
-			notificationDefsRef.current = {};
-		};
-	}, []);
 
 	const [isOpen, setIsOpen] = useState(false);
 	const actionableItems =
 		items?.filter((item) => item.type !== "backgroundTableProcessing") ?? [];
-	const unreadCount = actionableItems.length;
+	const unreadCount = Object.values(notificationUisRef.current).filter(
+		(notificationUi) => notificationUi.isUnread,
+	).length;
 	const { mutateAsync: clearAllNotifications, isPending: isClearingAll } =
 		useMutation({
 			mutationFn: async () => {
@@ -910,11 +894,7 @@ export function NotificationCenter() {
 					</div>
 
 					<div className="flex-1 overflow-y-auto">
-						{items === undefined ? (
-							<div className="flex h-full items-center justify-center px-6 text-sm text-muted-foreground">
-								{t("components:notifications.loading")}
-							</div>
-						) : items.length === 0 ? (
+						{Object.keys(notificationUisRef.current).length === 0 ? (
 							<div className="flex h-full flex-col items-center justify-center px-6 text-center">
 								<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
 									<Bell className="h-8 w-8 text-muted-foreground" />
@@ -928,13 +908,15 @@ export function NotificationCenter() {
 							</div>
 						) : (
 							<div className="divide-y divide-border">
-								{Object.entries(notificationUis).map(([id, notificationUi]) => (
-									<NotificationItem
-										key={id}
-										notificationAtom={notificationUi}
-										deleteNotification={deleteNotification.bind(id)}
-									/>
-								))}
+								{Object.entries(notificationUisRef.current).map(
+									([id, notificationUi]) => (
+										<NotificationItem
+											key={id}
+											notificationAtom={notificationUi.atom}
+											deleteNotification={() => {}}
+										/>
+									),
+								)}
 							</div>
 						)}
 					</div>

@@ -148,7 +148,7 @@ export const ReservationForm: React.FC<{
 		const TableComboboxInput = createComboboxInput({
 			label: t("reservations:form.fields.tableId"),
 			placeholder: t("reservations:form.fields.tableId"),
-			fetchItems: async () => tableItems,
+			items: tableItems,
 		});
 		return createAutoFormLayout(reservationFormSchema, ({ builder }) => ({
 			...builder.magicInput("id").text({

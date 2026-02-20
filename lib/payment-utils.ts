@@ -13,16 +13,22 @@ import NDK, {
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
 import type { Evolu } from "@/lib/evolu";
-import { extractExpirationFromLightningInvoice } from "@/lib/ln-utils";
+import {
+	extractExpirationFromLightningInvoice,
+	extractPaymentHashFromLnInvoice,
+} from "@/lib/ln-utils";
 import { shiftNumericString } from "@/lib/number-utils";
-import type { StaticOfflinePayment } from "@/lib/schemas";
+import {
+	type StaticOfflinePayment,
+	StaticOfflinePaymentSchema,
+} from "@/lib/schemas";
 import { assertNotNull } from "@/lib/type-utils";
-import { type Email, NumberString } from "@/lib/types";
+import type { Email, Integer } from "@/lib/types";
 import { PaymentStatus } from "@/storages/payment-status-storage";
 
 export async function createZapPayment(params: {
 	lud16: Email;
-	amountInBtc: number;
+	amountInBtc: Integer;
 	ndk: NDK & {
 		signer: NDKSigner;
 		activeUser: NDKUser;
@@ -44,8 +50,8 @@ export async function createZapPayment(params: {
 	console.log("lnurl", lnurl);
 
 	const amountInMilliSats = shiftNumericString(
-		NumberString(params.amountInBtc.toFixed(8)),
-		11,
+		params.amountInBtc.toString(),
+		3,
 	);
 
 	const zapRequestEvent = new NDKEvent(params.paymentNdk, {
@@ -75,7 +81,7 @@ export async function createZapPayment(params: {
 	return {
 		lnInvoice: zapResult.pr,
 		walletPubkey: lnurlResult.nostrPubkey,
-		expirationIn: expirationIn.getTime() / 1000,
+		expirationIn: expirationIn,
 	} as const;
 }
 
@@ -101,7 +107,7 @@ export async function createPayment(params: {
 		],
 		content: await params.ndk.signer.encrypt(
 			params.paymentNdk.activeUser,
-			JSON.stringify(params.paymentData),
+			JSON.stringify(StaticOfflinePaymentSchema.encode(params.paymentData)),
 			"nip04",
 		),
 	});
@@ -132,7 +138,7 @@ export async function createPayment(params: {
 			params.evolu.upsert("paymentBillItem", {
 				id: createIdFromString(`${id}:billItem:${index}`),
 				paymentId: id,
-				price: billItem.price,
+				price: Number(billItem.price),
 				quantity: billItem.quantity,
 				label: billItem.label,
 				optionalityChecked: billItem.optionality?.checked ?? null,
@@ -142,13 +148,16 @@ export async function createPayment(params: {
 
 	const paymentOption = params.paymentData.paymentOptions?.[0];
 	if (paymentOption?.type === "lnZap") {
+		console.log("paymentOption", paymentOption);
 		getOrThrow(
 			params.evolu.upsert("paymentLnZap", {
 				id,
+				accountId: paymentOption.accountId as Id,
 				lnInvoice: paymentOption.lnInvoice,
+				paymentHash: extractPaymentHashFromLnInvoice(paymentOption.lnInvoice),
 				walletPubkey: paymentOption.walletPubkey,
-				amount: paymentOption.amount,
-				expirationIn: paymentOption.expirationIn,
+				amount: Number(paymentOption.amount),
+				expirationIn: paymentOption.expirationIn.getTime(),
 			}),
 		);
 	} else if (paymentOption?.type === "lnSpark") {
@@ -157,9 +166,10 @@ export async function createPayment(params: {
 				id,
 				accountId: paymentOption.accountId as Id,
 				lnInvoice: paymentOption.lnInvoice,
+				paymentHash: extractPaymentHashFromLnInvoice(paymentOption.lnInvoice),
 				sparkInvoiceId: paymentOption.sparkInvoiceId,
-				amount: paymentOption.amount,
-				expirationIn: paymentOption.expirationIn,
+				amount: Number(paymentOption.amount),
+				expirationIn: paymentOption.expirationIn.getTime(),
 			}),
 		);
 	} else if (paymentOption?.type === "bankTransferCZ") {
@@ -174,50 +184,27 @@ export async function createPayment(params: {
 		getOrThrow(
 			params.evolu.upsert("paymentCash", {
 				id,
+				accountId: paymentOption?.accountId
+					? (paymentOption.accountId as Id)
+					: null,
 			}),
 		);
 	}
 
-	const promises: Promise<unknown>[] = [];
-
-	promises.push(
-		(async () => {
-			const notificationId = createIdFromString(`verifyPayment_${id}`);
-			getOrThrow(
-				params.evolu.upsert("notification", {
-					id: notificationId,
-					type: "verifyPayment",
-				}),
-			);
-			getOrThrow(
-				params.evolu.upsert("notificationVerifyPayment", {
-					id: notificationId,
-					paymentId: id,
-				}),
-			);
-		})(),
+	getOrThrow(
+		params.evolu.upsert("paymentStatus", {
+			id,
+			status: PaymentStatus.Unpaid,
+			proveType: null,
+		}),
 	);
-
-	promises.push(
-		(async () => {
-			getOrThrow(
-				params.evolu.upsert("paymentStatus", {
-					id,
-					status: PaymentStatus.Unpaid,
-					proveType: null,
-				}),
-			);
-		})(),
-	);
-
-	await Promise.all(promises);
 
 	return id;
 }
 
 export async function createSparkPayment(params: {
 	accountId: Id;
-	amountInBtc: number;
+	amountInBtc: Integer;
 	ndk: NDK & {
 		signer: NDKSigner;
 		activeUser: NDKUser;
@@ -255,7 +242,7 @@ export async function createSparkPayment(params: {
 	});
 
 	const invoice = await wallet.createLightningInvoice({
-		amountSats: params.amountInBtc * 100000000,
+		amountSats: Number(params.amountInBtc),
 		expirySeconds: 3600, // 1 hour
 	});
 

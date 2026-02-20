@@ -1,8 +1,7 @@
 "use client";
 
-
+import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
 import { useTranslation } from "react-i18next";
-import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +55,7 @@ export default function Home() {
 							item && tokens
 								? {
 										...item,
+										isActive: item.isActive === sqliteTrue,
 										numberOfSecondsBetweenChecks:
 											item.numberOfSecondsBetweenChecks.toString(),
 										tokens,

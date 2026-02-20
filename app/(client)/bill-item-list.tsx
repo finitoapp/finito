@@ -9,13 +9,14 @@ import { useTranslation } from "react-i18next";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { CounterCheckbox } from "@/components/counter-checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
+import type { Currency, Integer } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
 	id: string;
 	label: React.ReactNode;
-	price: number;
+	price: Integer;
 	quantity: number;
 	action?: React.ReactNode;
 	icon?: React.ReactNode;
@@ -26,7 +27,7 @@ interface NavItem {
 }
 
 export interface Bill {
-	currency: string;
+	currency: Currency;
 	allowTip?: boolean;
 	items: NavItem[];
 }
@@ -135,7 +136,10 @@ function NavItemComponent({
 							<strong>{item.label}</strong>
 							<small>
 								{item.quantity}×&nbsp;&nbsp;•&nbsp;&nbsp;
-								{formatAmount(item.price, bill.currency)}
+								{formatMoney({
+									value: item.price,
+									currency: bill.currency,
+								})}
 							</small>
 							<Collapsible
 								open={quantity > 0 && quantityLeft > 0}

@@ -2,8 +2,8 @@ import type { Currency } from "@/lib/types";
 
 export type CurrencyConverterDriver = {
 	convert: (props: {
-		amount: number;
+		amount: Integer;
 		sourceCurrency: Currency;
 		targetCurrency: Currency;
-	}) => Promise<number | null>;
+	}) => Promise<Integer | null>;
 };

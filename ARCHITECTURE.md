@@ -66,6 +66,20 @@ It focuses on where things live, how data flows, and which patterns must stay co
 3. `atoms/evolu.ts` uses account mnemonic/transports to create app Evolu.
 4. `atoms/evolu.ts` seeds baseline domain data if missing (e.g., default Spark account, background notification row).
 
+### 4.3 CRDT data-model requirements
+
+Because app data uses Evolu (CRDT/local-first), schema and write patterns must be CRDT-safe:
+
+- Prefer storing immutable facts/intents; avoid modeling core workflows as frequent in-place overwrite of a single authoritative row.
+- Treat derived/read-optimized state as projection/materialization over base facts, not as the primary source of truth.
+- Ensure merge outcomes are deterministic across replicas:
+  - define stable ordering and tie-break rules for competing writes,
+  - avoid logic that depends on local timing or process order.
+- Model conflicts explicitly when needed (multiple concurrent intents can coexist until resolved by deterministic rules).
+- Keep write operations idempotent and safe to replay (background retries and multi-device writes are expected).
+- Minimize strict constraints that are not replica-friendly under concurrent offline writes; prefer eventual validation/resolution flows.
+- When adding schema fields/tables, preserve forward/backward sync compatibility for clients on different app versions.
+
 ## 5) UI/Query Pattern: DataTable Contract
 
 `components/data-table.tsx` expects server-like pagination response:

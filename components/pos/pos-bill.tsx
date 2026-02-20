@@ -57,11 +57,16 @@ import { useNostr } from "@/hooks/use-nostr";
 import type { Pos } from "@/hooks/use-pos";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
 import { currencyConverter } from "@/lib/currency-converter/currency-converter";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
 import { createPayment, createZapPayment } from "@/lib/payment-utils";
 import type { StaticOfflinePayment } from "@/lib/schemas";
-import { Currency, type NonEmptyString } from "@/lib/types";
+import { Currency, type Integer, type NonEmptyString } from "@/lib/types";
 import { clientBaseUrl } from "@/lib/window-utils";
+
+const toMoney = (value: number, currency: Currency) => ({
+	value: BigInt(Math.round(value)),
+	currency,
+});
 
 const Item: React.FC<{
 	item: Pos["bills"][string]["items"][number];
@@ -87,7 +92,7 @@ const Item: React.FC<{
 					<div className="flex-1">
 						<h4 className="font-medium text-sm">{props.item.name}</h4>
 						<p className="text-xs text-muted-foreground">
-							{formatAmount(props.item.price, props.item.currency)}{" "}
+							{formatMoney(toMoney(props.item.price, props.item.currency))}{" "}
 							{t("pos:bill.each")}
 						</p>
 					</div>
@@ -327,7 +332,7 @@ const PosBillTable: React.FC<{
 const PayButton: FC<{
 	bill: Pos["bills"][string];
 	billId: string;
-	total: number;
+	total: Integer;
 }> = (props) => {
 	const { t } = useTranslation();
 	const { ndk } = useNostr();
@@ -520,7 +525,7 @@ const PayButton: FC<{
 						initial={{ scale: 1.1, opacity: 0.5 }}
 						animate={{ scale: 1, opacity: 1 }}
 					>
-						{formatAmount(props.total, props.bill.currency)}
+						{formatMoney(toMoney(props.total, props.bill.currency))}
 					</motion.span>
 				</>
 			)}
@@ -653,7 +658,7 @@ export const PosBill: React.FC<{
 															initial={{ scale: 1.1, opacity: 0.5 }}
 															animate={{ scale: 1, opacity: 1 }}
 														>
-															{formatAmount(total, currency)}
+															{formatMoney(toMoney(total, currency))}
 														</motion.span>
 													</div>
 												</div>
@@ -701,7 +706,7 @@ export const PosBill: React.FC<{
 												initial={{ scale: 1.1, opacity: 0.5 }}
 												animate={{ scale: 1, opacity: 1 }}
 											>
-												{formatAmount(total, props.bill.currency)}
+												{formatMoney(toMoney(total, props.bill.currency))}
 											</motion.span>
 										</div>
 									</div>

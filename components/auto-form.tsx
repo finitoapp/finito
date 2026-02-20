@@ -103,6 +103,11 @@ import { currencyConverter } from "@/lib/currency-converter/currency-converter";
 import { shiftNumericString } from "@/lib/number-utils";
 import { Currency, NumberStringSchema } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+	decimalStringToMinorUnits,
+	minorUnitsToDecimalString,
+	minorUnitsToDecimalStringForUI,
+} from "@/lib/zod/moneyCodec";
 
 export type AutoFormComponents<TSchema extends Record<string, unknown>> = {
 	[key in keyof TSchema]-?: AutoFormComponent<TSchema[key]>;
@@ -110,6 +115,7 @@ export type AutoFormComponents<TSchema extends Record<string, unknown>> = {
 
 export type AutoFormBaseSchema =
 	| z.ZodObject
+	| z.ZodPipe
 	| z.ZodUnion<readonly (z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>)[]>;
 
 const AutoFormInputLayer = <
@@ -307,7 +313,7 @@ export const AutoFormInput = {
 						targetCurrency: Currency;
 						onChange: (value: string) => unknown;
 					}) => {
-						const [amount, currency] = useWatch({
+						const [amountString, currency] = useWatch({
 							control: props.control,
 							name: [
 								// @ts-expect-error
@@ -323,17 +329,41 @@ export const AutoFormInput = {
 									return;
 								}
 
+								const amount = decimalStringToMinorUnits({
+									currency,
+									value: amountString,
+								});
+								if (amount === null) {
+									return;
+								}
+
+								console.log("amount", amount);
+
 								const newAmount = await currencyConverter.convert({
 									amount: amount,
 									sourceCurrency: currency,
 									targetCurrency,
 								});
 
+								console.log("newAmount", newAmount);
+								console.log(
+									"newAmount2",
+									minorUnitsToDecimalStringForUI({
+										value: newAmount,
+										currency: targetCurrency,
+									}),
+								);
+
 								if (newAmount !== null) {
-									onChange(newAmount.toString());
+									onChange(
+										minorUnitsToDecimalStringForUI({
+											value: newAmount,
+											currency: targetCurrency,
+										}),
+									);
 								}
 							})();
-						}, [onChange, targetCurrency, amount, currency]);
+						}, [onChange, targetCurrency, amountString, currency]);
 					}
 				: () => null;
 
@@ -347,8 +377,6 @@ export const AutoFormInput = {
 							targetCurrency: currencyValue,
 							onChange: field.onChange,
 						});
-						const value = NumberStringSchema.safeParse(field.value);
-
 						return (
 							<FormItem>
 								{params.label && (
@@ -362,11 +390,7 @@ export const AutoFormInput = {
 												disabled={params.disabled}
 												type={params.type}
 												placeholder={params.placeholder}
-												value={
-													currencyValue === Currency.BTC && value.success
-														? shiftNumericString(value.data, 8)
-														: field.value
-												}
+												value={field.value}
 												onChange={(e) => {
 													if (currencyValue === Currency.BTC) {
 														const value = NumberStringSchema.safeParse(

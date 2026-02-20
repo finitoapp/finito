@@ -1,6 +1,13 @@
 "use client";
 
-import { getOrThrow, type Id, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createIdFromString,
+	createRandomBytes,
+	getOrThrow,
+	type Id,
+	sqliteTrue,
+} from "@evolu/common";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -15,7 +22,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
-import { type FC, useRef } from "react";
+import { type FC, type ReactNode, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
@@ -38,48 +45,87 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
-import { usePaymentStatus } from "@/hooks/use-payment-status";
 import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
 import { shareImageOrDownload } from "@/lib/file-utils";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
 import { clientBaseUrl } from "@/lib/window-utils";
 import { PaymentStatus } from "@/storages/payment-status-storage";
 
 const StatusButton: FC<{
 	paymentId: Id;
+	amount: number;
+	cashAccountId: Id | null;
+	className?: string;
 }> = (props) => {
 	const evolu = useEvolu();
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("paymentStatus")
-				.select(["paymentStatus.status as status"] as const)
-				.where("paymentStatus.isDeleted", "is not", sqliteTrue)
-				.where("paymentStatus.id", "=", props.paymentId),
-		[props.paymentId],
+	const { withConfirm } = useGlobalDialog();
+	const { mutateAsync: payInCash, isPending: isPayInCashPending } = useMutation(
+		{
+			mutationFn: async () => {
+				if (props.cashAccountId === null || props.amount <= 0) {
+					return;
+				}
+
+				const transactionId = createId({ randomBytes: createRandomBytes() });
+				getOrThrow(
+					evolu.upsert("transaction", {
+						id: transactionId,
+						accountId: props.cashAccountId,
+						_tag: "accountCashRegister",
+						amount: props.amount,
+						occurredAt: Date.now(),
+						note: "Manual cash register settlement",
+						internalTransferGroupId: null,
+					}),
+				);
+				getOrThrow(
+					evolu.upsert("transactionCashRegister", {
+						id: transactionId,
+					}),
+				);
+
+				const claimId = createIdFromString(
+					`reconciliationClaim:transaction:${transactionId}:payment:${props.paymentId}`,
+				);
+				getOrThrow(
+					evolu.upsert("reconciliationClaim", {
+						id: claimId,
+						sourceType: "transaction",
+						sourceId: transactionId,
+						entityType: "payment",
+						entityId: props.paymentId,
+						confidence: 1,
+						rule: "manualCashRegisterSettlement",
+						createdBy: "adminPaymentsDetail",
+					}),
+				);
+			},
+		},
 	);
-	const { data: paymentStatusRows } = useEvoluQuery(query);
-
-	const value = paymentStatusRows?.[0]?.status ?? null;
-
-	const markAsPaid = async () => {
-		getOrThrow(
-			evolu.upsert("paymentStatus", {
-				id: props.paymentId,
-				status:
-					value === null || value === PaymentStatus.Unpaid
-						? PaymentStatus.Paid
-						: PaymentStatus.Unpaid,
-				proveType:
-					value === null || value === PaymentStatus.Unpaid ? "cash" : null,
-			}),
-		);
-	};
+	const onPayInCash = withConfirm(
+		async () => {
+			await payInCash();
+		},
+		{
+			title: "Pay in cash?",
+			description:
+				"This creates a cash transaction and links it to this payment.",
+			confirmText: "Pay in cash",
+			cancelText: "Cancel",
+		},
+	);
 
 	return (
-		<Button variant={"outline"} className={"w-full"} onClick={markAsPaid}>
+		<Button
+			variant={"outline"}
+			className={props.className}
+			onClick={() => void onPayInCash()}
+			disabled={
+				props.cashAccountId === null || props.amount <= 0 || isPayInCashPending
+			}
+		>
 			<CoinsIcon />
-			{value === null || value === "unpaid" ? "Mark as paid" : "Remove payment"}
+			Pay in cash
 		</Button>
 	);
 };
@@ -89,7 +135,8 @@ const FullscreenQrPayment: FC<{
 	lnInvoice: string | undefined;
 	czechQRCode: string | undefined;
 	isPaid: boolean;
-}> = ({ frontendUrl, lnInvoice, czechQRCode, isPaid }) => {
+	cashTabContent?: ReactNode;
+}> = ({ frontendUrl, lnInvoice, czechQRCode, isPaid, cashTabContent }) => {
 	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const isOpen = searchParams.get("focus") === "true";
@@ -186,6 +233,21 @@ const FullscreenQrPayment: FC<{
 											CZ QR Payment
 										</TabsTrigger>
 									)}
+									{cashTabContent && (
+										<TabsTrigger
+											value="cash"
+											onClick={() =>
+												router.replace(
+													`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=cash`,
+													{
+														scroll: false,
+													},
+												)
+											}
+										>
+											Cash
+										</TabsTrigger>
+									)}
 								</TabsList>
 								<TabsContent value="web" className={"h-full"}>
 									<ResponsiveCard className={"h-full flex"}>
@@ -248,6 +310,19 @@ const FullscreenQrPayment: FC<{
 										</ResponsiveCard>
 									</TabsContent>
 								)}
+								{cashTabContent && (
+									<TabsContent value="cash" className={"h-full"}>
+										<ResponsiveCard className={"h-full flex"}>
+											<CardContent
+												className={"flex items-center justify-center"}
+											>
+												<div className={"w-full max-w-sm"}>
+													{cashTabContent}
+												</div>
+											</CardContent>
+										</ResponsiveCard>
+									</TabsContent>
+								)}
 							</Tabs>
 						)}
 					</div>
@@ -305,6 +380,7 @@ export default function Home() {
 					"paymentBankTransferCZ.iban as bankTransferIban",
 					"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
 					"paymentCash.id as cashId",
+					"paymentCash.accountId as cashAccountId",
 				] as const)
 				.where("payment.isDeleted", "is not", sqliteTrue)
 				.where("payment.id", "=", paymentId),
@@ -325,6 +401,19 @@ export default function Home() {
 	);
 	const { data: paymentRows } = useEvoluQuery(paymentQuery);
 	const { data: paymentBillItemsRows } = useEvoluQuery(paymentBillItemsQuery);
+	const paymentReconciliationQuery = useCreateQuery(
+		(db) =>
+			db
+				.selectFrom("reconciliationClaim")
+				.select(["reconciliationClaim.id as id"] as const)
+				.where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+				.where("reconciliationClaim.entityType", "=", "payment")
+				.where("reconciliationClaim.entityId", "=", paymentId),
+		[paymentId],
+	);
+	const { data: paymentReconciliationRows } = useEvoluQuery(
+		paymentReconciliationQuery,
+	);
 
 	const payment = paymentRows?.[0];
 	const item =
@@ -387,7 +476,10 @@ export default function Home() {
 											variableSymbol: payment.bankTransferVariableSymbol,
 										}
 									: payment.type === "cash" && payment.cashId
-										? { type: "cash" as const }
+										? {
+												type: "cash" as const,
+												accountId: payment.cashAccountId ?? undefined,
+											}
 										: null,
 					].filter((paymentOption) => paymentOption !== null),
 				}
@@ -439,8 +531,21 @@ export default function Home() {
 			(paymentOption) =>
 				paymentOption.type === "lnZap" || paymentOption.type === "lnSpark",
 		);
+	const cashPayment =
+		item &&
+		item.paymentOptions.find((paymentOption) => paymentOption.type === "cash");
+	const cashAccountId =
+		cashPayment && cashPayment.type === "cash"
+			? ((cashPayment.accountId as Id | undefined) ?? null)
+			: null;
+	const supportsCashPayment = cashPayment !== undefined;
 
-	const paymentStatus = usePaymentStatus({ paymentId: id as Id });
+	const paymentStatus =
+		paymentReconciliationRows === undefined
+			? null
+			: paymentReconciliationRows.length > 0
+				? PaymentStatus.Paid
+				: PaymentStatus.Unpaid;
 
 	const totalAmount = item
 		? item.bill.items.reduce((acc, val) => acc + val.price, 0)
@@ -485,7 +590,11 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item && formatAmount(totalAmount, item.bill.currency)}
+											{item &&
+												formatMoney({
+													value: totalAmount,
+													currency: item.bill.currency,
+												})}
 										</>
 									}
 									className={"flex-1"}
@@ -495,13 +604,10 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												new Date(item.createdAt * 1000).toLocaleDateString()}
+											{item && new Date(item.createdAt).toLocaleDateString()}
 										</>
 									}
-									footer={
-										item && new Date(item.createdAt * 1000).toLocaleTimeString()
-									}
+									footer={item && new Date(item.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -512,14 +618,12 @@ export default function Home() {
 										<>
 											{!item && <Skeleton />}
 											{zapWallet &&
-												new Date(
-													zapWallet.expirationIn * 1000,
-												).toLocaleDateString()}
+												new Date(zapWallet.expirationIn).toLocaleDateString()}
 										</>
 									}
 									footer={
 										zapWallet &&
-										new Date(zapWallet.expirationIn * 1000).toLocaleTimeString()
+										new Date(zapWallet.expirationIn).toLocaleTimeString()
 									}
 									className={"flex-1"}
 								/>
@@ -582,15 +686,29 @@ export default function Home() {
 								lnInvoice={zapWallet?.lnInvoice}
 								czechQRCode={czechQRCode}
 								isPaid={paymentStatus === PaymentStatus.Paid}
+								cashTabContent={
+									item && supportsCashPayment ? (
+										<StatusButton
+											paymentId={item.id}
+											amount={totalAmount}
+											cashAccountId={cashAccountId}
+											className={"w-full"}
+										/>
+									) : undefined
+								}
 							/>
-							{item && <StatusButton paymentId={item.id} />}
+							{item && supportsCashPayment && cashAccountId === null && (
+								<p className={"text-sm text-muted-foreground"}>
+									Cash payment is enabled, but no cash register account is
+									configured.
+								</p>
+							)}
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								{isDeleting ? (
 									<LoaderCircleIcon className="animate-spin" />
 								) : (
 									<Trash2Icon />
 								)}
-								<Trash2Icon />
 								Delete
 							</Button>
 						</CardContent>
@@ -647,6 +765,21 @@ export default function Home() {
 										}
 									>
 										CZ QR Payment
+									</TabsTrigger>
+								)}
+								{supportsCashPayment && (
+									<TabsTrigger
+										value="cash"
+										onClick={() =>
+											router.replace(
+												`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=cash`,
+												{
+													scroll: false,
+												},
+											)
+										}
+									>
+										Cash
 									</TabsTrigger>
 								)}
 							</TabsList>
@@ -751,6 +884,28 @@ export default function Home() {
 													<DownloadIcon />
 													Download QR code
 												</Button>
+											</div>
+										</CardContent>
+									</ResponsiveCard>
+								</TabsContent>
+							)}
+							{item && supportsCashPayment && (
+								<TabsContent value="cash">
+									<ResponsiveCard>
+										<CardContent>
+											<div className={"flex flex-col gap-3"}>
+												<StatusButton
+													paymentId={item.id}
+													amount={totalAmount}
+													cashAccountId={cashAccountId}
+													className={"w-full"}
+												/>
+												{cashAccountId === null && (
+													<p className={"text-sm text-muted-foreground"}>
+														No cash register account is configured for this
+														payment.
+													</p>
+												)}
 											</div>
 										</CardContent>
 									</ResponsiveCard>

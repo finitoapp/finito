@@ -11,10 +11,19 @@ export const Percent = <T extends number>(value: T): Percent =>
 	PercentSchema.parse(value);
 export type Percent = z.output<typeof PercentSchema>;
 
+export const IntegerStringSchema = z
+	.string()
+	.regex(/^-?\d+$/, { error: "Expected to be a integer" })
+	.brand<"IntegerString", "inout">();
+export const IntegerString = (value: string): IntegerString =>
+	IntegerStringSchema.parse(value);
+export type IntegerString = z.output<typeof IntegerStringSchema>;
+
 export const NumberStringSchema = z
 	.string()
 	.regex(/^-?\d+(\.\d*)?$/, { error: "Expected to be a number" })
-	.brand<"Number", "inout">();
+	.brand<"IntegerString", "inout">()
+	.brand<"NumberString", "inout">();
 export const NumberString = (value: string): NumberString =>
 	NumberStringSchema.parse(value);
 export type NumberString = z.output<typeof NumberStringSchema>;
@@ -267,6 +276,20 @@ export const DateToDateStringSchema = z
 export const StringToNumberSchema = StringToNullableStringSchema.transform(
 	(value) => (value === null ? null : Number(value)),
 ).pipe(z.number());
+
+export const StringToBigIntSchema = StringToNullableStringSchema.transform(
+	(value) => {
+		if (value === null) {
+			return null;
+		}
+
+		try {
+			return BigInt(value);
+		} catch (e) {
+			return null;
+		}
+	},
+).pipe(z.bigint());
 
 export const StringToNullableNumberSchema =
 	StringToNullableStringSchema.transform((value) =>

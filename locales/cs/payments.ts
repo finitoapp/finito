@@ -39,6 +39,7 @@ const locale = {
         "price-in-btc": "Cena v BTC",
         "lud16-wallet-address-with-lightning-zaps-support": "Adresa lud16 peněženky s podporou Lightning Zapů",
         "spark-wallet-account": "Spark peněženka",
+        "cash-register-account": "Pokladní účet",
         "note-for-recipient-optional": "Poznámka pro příjemce (volitelné)"
       },
       "placeholder": {

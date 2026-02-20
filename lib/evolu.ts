@@ -2,6 +2,7 @@ import {
 	createAppOwner,
 	createEvolu,
 	createIdFromString,
+	Int,
 	id,
 	type Mnemonic,
 	mnemonicToOwnerSecret,
@@ -20,20 +21,10 @@ import {
 import { evoluReactWebDeps } from "@evolu/react-web";
 import { Id } from "@/lib/evolu-types";
 
-const RawSchema: Record<
-	string,
-	| {
-			id: typeof Id;
-			payload: typeof NonEmptyString;
-	  }
-	| Readonly<Record<string, unknown>>
-> = {};
-
 const CategoryId = id("Category");
 
 // const Schema = RawSchema;
 export const Schema = {
-	...RawSchema,
 	category: {
 		id: CategoryId,
 		name: NonEmptyTrimmedString100,
@@ -42,6 +33,7 @@ export const Schema = {
 		id: Id,
 		categoryId: nullOr(CategoryId),
 		label: NonEmptyTrimmedString100,
+		// Stored in minor units for `priceCurrency` (e.g. cents, satoshis).
 		priceValue: NonNegativeInt,
 		priceCurrency: NonEmptyTrimmedString100,
 		unitOfMeasure: nullOr(NonEmptyTrimmedString100),
@@ -52,6 +44,7 @@ export const Schema = {
 	menu: {
 		id: Id,
 		name: NonEmptyTrimmedString100,
+		// Workflow state of menu publication (draft/published/archived...).
 		status: NonEmptyTrimmedString100,
 		validFrom: nullOr(NonNegativeInt),
 		validTo: nullOr(NonNegativeInt),
@@ -65,8 +58,10 @@ export const Schema = {
 	menuItem: {
 		id: Id,
 		menuCategoryId: Id,
+		// Optional link to source catalog item when menu item is derived from `item`.
 		sourceItemId: nullOr(Id),
 		label: NonEmptyTrimmedString100,
+		// Stored in minor units for `priceCurrency`.
 		priceValue: NonNegativeInt,
 		priceCurrency: NonEmptyTrimmedString100,
 		unitOfMeasure: nullOr(NonEmptyTrimmedString100),
@@ -104,14 +99,18 @@ export const Schema = {
 		id: Id,
 		billId: Id,
 		currency: NonEmptyTrimmedString100,
+		// Exchange rate from bill currency to `currency`.
 		rate: NonNegativeNumber,
 	},
 	reservation: {
 		id: Id,
 		tableId: nullOr(Id),
 		note: nullOr(NonEmptyTrimmedString1000),
+		// Reservation type discriminator (booking/block/...).
 		_tag: NonEmptyTrimmedString100,
+		// Epoch milliseconds.
 		startAt: NonNegativeInt,
+		// Epoch milliseconds.
 		endAt: NonNegativeInt,
 	},
 	reservationBooking: {
@@ -132,6 +131,7 @@ export const Schema = {
 	account: {
 		id: Id,
 		name: NonEmptyTrimmedString100,
+		// Account kind discriminator (iban/lud16/spark/nwc/cashRegister...).
 		_tag: NonEmptyTrimmedString100,
 	},
 	accountIban: {
@@ -155,16 +155,82 @@ export const Schema = {
 		id: Id,
 		currency: NonEmptyTrimmedString100,
 	},
+	transaction: {
+		id: Id,
+		// Logical account this transaction belongs to (bank, LN wallet, cash register...).
+		accountId: Id,
+		// Transaction kind discriminator (incoming/outgoing/internal transfer legs...).
+		_tag: NonEmptyTrimmedString100,
+		// Signed amount in the smallest unit of account currency.
+		amount: Int,
+		// Epoch milliseconds.
+		occurredAt: NonNegativeInt,
+		note: nullOr(NonEmptyTrimmedString1000),
+		// Shared id for both legs of one internal transfer.
+		internalTransferGroupId: nullOr(Id),
+	},
+	reconciliationClaim: {
+		id: Id,
+		// Source of settlement evidence (bankTransaction/manual/cash/terminal/...).
+		sourceType: NonEmptyTrimmedString100,
+		// Identifier unique within `sourceType`. For manual sourceType use the same value as reconciliationClaim.id
+		sourceId: Id,
+		// Target entity type currently expected as payment or invoice.
+		entityType: NonEmptyTrimmedString100,
+		entityId: Id,
+		// Confidence score used by reconciliation ordering.
+		confidence: NonNegativeNumber,
+		// Matching or override rule identifier.
+		rule: NonEmptyTrimmedString100,
+		// Optional actor/process identifier that authored this claim.
+		createdBy: nullOr(NonEmptyTrimmedString100),
+	},
+	transactionIban: {
+		id: Id,
+		variableSymbol: nullOr(NonEmptyTrimmedString100),
+		constantSymbol: nullOr(NonEmptyTrimmedString100),
+		specificSymbol: nullOr(NonEmptyTrimmedString100),
+		// Provider-specific payment reference from bank statement.
+		bankReference: nullOr(NonEmptyTrimmedString1000),
+	},
+	transactionLud16: {
+		id: Id,
+		// Raw BOLT11 invoice, optional for imported transactions.
+		lnInvoice: nullOr(NonEmptyString),
+		// Payment hash for LN reconciliation.
+		paymentHash: NonEmptyString,
+	},
+	transactionSpark: {
+		id: Id,
+		// Transfer id from Spark API for deduplication.
+		sparkTransferId: NonEmptyTrimmedString100,
+		lnInvoice: NonEmptyString,
+		// Proof of settlement returned by Spark.
+		preImage: NonEmptyString,
+		// Payment hash for LN reconciliation.
+		paymentHash: NonEmptyString,
+	},
+	transactionNwc: {
+		id: Id,
+		nwcEventId: nullOr(NonEmptyString),
+		nwcRequestId: nullOr(NonEmptyString),
+	},
+	transactionCashRegister: {
+		id: Id,
+	},
 	notification: {
 		id: Id,
+		// Notification kind discriminator consumed by notification center/background jobs.
 		type: NonEmptyTrimmedString100,
 	},
 	notificationVerifyPayment: {
 		id: Id,
+		// Points to `payment.id` that should be re-verified asynchronously.
 		paymentId: Id,
 	},
 	notificationBackgroundTableProcessing: {
 		id: Id,
+		// Marker row used to trigger one background table processing cycle.
 	},
 	client: {
 		id: Id,
@@ -210,15 +276,20 @@ export const Schema = {
 	fioPlugin: {
 		id: Id,
 		apiUrl: NonEmptyTrimmedString100,
+		// Polling interval in seconds.
 		numberOfSecondsBetweenChecks: PositiveInt,
+		// Hard switch for FIO sync background process.
+		isActive: SqliteBoolean,
 	},
 	fioPluginToken: {
 		id: Id,
+		// FK to owning FIO plugin configuration.
 		fioPluginId: Id,
 		token: NonEmptyTrimmedString100,
 	},
 	invoiceNumberSeries: {
 		id: Id,
+		// Number of digits used for left-padded sequence in generated invoice number.
 		serialNumberDigits: PositiveInt,
 		yearFormat: NonEmptyTrimmedString100,
 		monthFormat: NonEmptyTrimmedString100,
@@ -227,7 +298,9 @@ export const Schema = {
 	},
 	invoiceLastNumber: {
 		id: Id,
+		// Last used serial number for invoice generation.
 		serialNumber: NonNegativeInt,
+		// Anchor date used for reset logic depending on configured formats.
 		date: nullOr(NonEmptyTrimmedString100),
 	},
 	smtp: {
@@ -244,14 +317,18 @@ export const Schema = {
 		defaultInvoiceDueDateDays: NonNegativeInt,
 		defaultCurrency: NonEmptyTrimmedString100,
 		defaultTimezone: NonEmptyTrimmedString100,
+		// Persisted payment method enum used as default for new invoices/payments.
 		defaultPaymentMethodMethod: nullOr(NonEmptyTrimmedString100),
+		// Optional FK to account row used for bank transfer defaults.
 		defaultPaymentMethodBankAccountKey: nullOr(Id),
 		defaultPaymentMethod: NonEmptyTrimmedString100,
+		// Optional FK to payment option config rows.
 		defaultBankTransferCzKey: nullOr(Id),
 		defaultLnZapKey: nullOr(Id),
 		defaultLnSparkKey: nullOr(Id),
 		invoiceEmailSettingsEnable: SqliteBoolean,
 		invoiceEmailSettingsSubject: nullOr(NonEmptyTrimmedString100),
+		// Templated email body that can include placeholders.
 		invoiceEmailSettingsBody: nullOr(NonEmptyString),
 	},
 	billingSettingsTaxRate: {
@@ -342,7 +419,9 @@ export const Schema = {
 		id: Id,
 		billTip: nullOr(NonNegativeInt),
 		billCurrency: NonEmptyTrimmedString100,
+		// Expected amount to settle in smallest unit for `amountExpectedToPayCurrency`.
 		amountExpectedToPayValue: nullOr(NonNegativeInt),
+		// Optional conversion rate used to derive expected amount.
 		amountExpectedToPayRate: nullOr(NonNegativeInt),
 		amountExpectedToPayCurrency: nullOr(NonEmptyTrimmedString100),
 	},
@@ -363,13 +442,17 @@ export const Schema = {
 	},
 	payment: {
 		id: Id,
+		// Payment flow type discriminator (static/dynamic/...).
 		type: NonEmptyTrimmedString100,
 		billCurrency: NonEmptyTrimmedString100,
 		billAllowTip: SqliteBoolean,
 		merchantName: nullOr(NonEmptyTrimmedString100),
+		// Optional tag/event emitted after successful settlement.
 		onSuccessfulPaymentTag: nullOr(NonEmptyTrimmedString100),
+		// Optional redirect after successful settlement.
 		onSuccessfulPaymentRedirectUrl: nullOr(NonEmptyString),
 		privateKey: NonEmptyString,
+		// External event id used by web payment flow.
 		webPaymentEventId: NonEmptyString,
 	},
 	paymentBillItem: {
@@ -382,17 +465,28 @@ export const Schema = {
 	},
 	paymentLnZap: {
 		id: Id,
+		// Target account for mirrored incoming LN transaction after verification.
+		accountId: Id,
 		lnInvoice: NonEmptyString,
+		// Payment hash for LN reconciliation.
+		paymentHash: NonEmptyString,
 		walletPubkey: NonEmptyString,
+		// Satoshis.
 		amount: NonNegativeInt,
+		// UNIX timestamp in seconds (invoice expiry).
 		expirationIn: NonNegativeInt,
 	},
 	paymentLnSpark: {
 		id: Id,
 		accountId: Id,
 		lnInvoice: NonEmptyString,
+		// Payment hash for LN reconciliation.
+		paymentHash: NonEmptyString,
+		// Identifier returned by Spark invoice API.
 		sparkInvoiceId: NonEmptyString,
+		// Satoshis.
 		amount: NonNegativeInt,
+		// UNIX timestamp in seconds (invoice expiry).
 		expirationIn: NonNegativeInt,
 	},
 	paymentBankTransferCZ: {
@@ -402,10 +496,13 @@ export const Schema = {
 	},
 	paymentCash: {
 		id: Id,
+		// Cash register account where the cash settlement is recorded.
+		accountId: nullOr(Id),
 	},
 	paymentStatus: {
 		id: Id,
 		status: NonEmptyTrimmedString100,
+		// How status was proven (manual/spark/fio/ln-zap/...).
 		proveType: nullOr(NonEmptyTrimmedString100),
 	},
 };
@@ -441,6 +538,30 @@ export const createAppEvolu = (props: {
 			create(`reservationBooking_serviceStatus`)
 				.on(`reservationBooking`)
 				.column("serviceStatus"),
+			create(`transaction_accountId`).on(`transaction`).column("accountId"),
+			create(`transaction_tag`).on(`transaction`).column("_tag"),
+			create(`transaction_occurredAt`).on(`transaction`).column("occurredAt"),
+			create(`transaction_accountId_occurredAt`)
+				.on(`transaction`)
+				.column("accountId")
+				.column("occurredAt"),
+			create(`transaction_internalTransferGroupId`)
+				.on(`transaction`)
+				.column("internalTransferGroupId"),
+			create(`reconciliationClaim_sourceType_sourceId`)
+				.on(`reconciliationClaim`)
+				.column("sourceType")
+				.column("sourceId"),
+			create(`reconciliationClaim_entityType_entityId`)
+				.on(`reconciliationClaim`)
+				.column("entityType")
+				.column("entityId"),
+			create(`paymentLnZap_paymentHash`)
+				.on(`paymentLnZap`)
+				.column("paymentHash"),
+			create(`paymentLnSpark_paymentHash`)
+				.on(`paymentLnSpark`)
+				.column("paymentHash"),
 			create(`fioPluginToken_fioPluginId`)
 				.on(`fioPluginToken`)
 				.column("fioPluginId"),

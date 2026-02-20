@@ -142,6 +142,7 @@ const locale = {
     "fio-plugin-form": {
       "label": {
         "api-url": "API URL",
+        "active": "Aktivní",
         "interval-between-payment-checks": "Interval mezi kontrolami plateb",
         "api-token": "API token"
       },

@@ -39,6 +39,7 @@ const locale = {
         "price-in-btc": "Price in BTC",
         "lud16-wallet-address-with-lightning-zaps-support": "lud16 wallet address with `Lightning Zaps` support",
         "spark-wallet-account": "Spark wallet account",
+        "cash-register-account": "Cash register account",
         "note-for-recipient-optional": "Note for recipient (optional)"
       },
       "placeholder": {

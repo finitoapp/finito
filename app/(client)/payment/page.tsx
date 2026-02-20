@@ -2,6 +2,7 @@
 
 import { createIdFromString, getOrThrow } from "@evolu/common";
 import { IconRefresh } from "@tabler/icons-react";
+import BigNumber from "bignumber.js";
 import { motion } from "framer-motion";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
 import {
@@ -40,9 +41,9 @@ import type {
 	ScreenData,
 } from "@/lib/bill/billDriver";
 import { billManager } from "@/lib/bill/billManager";
-import { formatAmount } from "@/lib/format-utils";
+import { formatAmount, formatMoney } from "@/lib/format-utils";
 import { assertNever } from "@/lib/type-utils";
-import { Uuid7 } from "@/lib/types";
+import { Currency, Integer, Uuid7 } from "@/lib/types";
 import type { PaymentInit } from "@/storages/payment-progress-storage";
 
 const PayButton: FC<{
@@ -71,10 +72,12 @@ const PayButton: FC<{
 									item.quantity,
 								);
 
-					return item.price * quantity + acc;
-				}, 0)
-			: 0;
-	const totalAmount = itemsAmount * (1 + selectedTip / 100);
+					return acc.plus(new BigNumber(item.price).times(quantity));
+				}, new BigNumber(0))
+			: new BigNumber(0);
+	const totalAmount = itemsAmount.times(
+		new BigNumber(0).plus(new BigNumber(selectedTip).div(100)),
+	);
 
 	return (
 		<>
@@ -97,7 +100,7 @@ const PayButton: FC<{
 			<Button
 				className={"h-12 w-60"}
 				size={"lg"}
-				disabled={totalAmount === 0}
+				disabled={totalAmount.eq(0)}
 				onClick={async () => {
 					await (async () => {
 						if (
@@ -108,7 +111,7 @@ const PayButton: FC<{
 						) {
 							const pay = props.screen.pay;
 
-							const items: { id: string; price: number; quantity: number }[] =
+							const items: { id: string; price: Integer; quantity: number }[] =
 								[];
 
 							for (const item of props.screen.variant === "payment"
@@ -141,7 +144,7 @@ const PayButton: FC<{
 							const paymentInit: PaymentInit = {
 								paymentId,
 								items,
-								tip: itemsAmount * (selectedTip / 100),
+								tip: Integer(totalAmount.integerValue().toNumber()),
 								currency: props.screen.payload.bill.currency,
 								merchant: props.screen.payload.merchant,
 								paymentOption: {
@@ -153,7 +156,7 @@ const PayButton: FC<{
 							getOrThrow(
 								evolu.upsert("paymentInit", {
 									id: createIdFromString(paymentId),
-									tip: paymentInit.tip,
+									tip: Number(paymentInit.tip),
 									currency: paymentInit.currency,
 									paymentOptionType: paymentInit.paymentOption.type,
 									merchantName: paymentInit.merchant?.name ?? null,
@@ -168,7 +171,7 @@ const PayButton: FC<{
 										),
 										paymentInitId: createIdFromString(paymentId),
 										itemId: item.id,
-										price: item.price,
+										price: Number(item.price),
 										quantity: item.quantity,
 									}),
 								);
@@ -183,7 +186,7 @@ const PayButton: FC<{
 				{(props.screen.variant === "payment" ||
 					props.screen.variant === "refund") && (
 					<>
-						{totalAmount >= 0
+						{totalAmount.gte(0)
 							? t("client:paymentPage.actions.pay")
 							: t("client:paymentPage.actions.refund")}
 						<motion.span
@@ -191,10 +194,10 @@ const PayButton: FC<{
 							initial={{ scale: 1.1, opacity: 0.5 }}
 							animate={{ scale: 1, opacity: 1 }}
 						>
-							{formatAmount(
-								Math.abs(totalAmount),
-								props.screen.payload.bill?.currency,
-							)}
+							{formatMoney({
+								value: Integer(totalAmount.integerValue().toNumber()),
+								currency: props.screen.payload.bill?.currency ?? Currency.USD,
+							})}
 						</motion.span>
 						{/*<ChevronsRightIcon strokeWidth={2} />*/}
 					</>
@@ -235,10 +238,12 @@ const BottomPanel: FC<{
 
 	const totalAmount =
 		(screen?.variant === "paymentReady" &&
-			(screen.payload.bill.items.reduce((acc, item) => {
-				return item.price * item.quantity + acc;
-			}, 0) ?? 0) + (screen.payload.bill.tip ?? 0)) ||
-		0;
+			(
+				screen.payload.bill.items.reduce((acc, item) => {
+					return acc.plus(new BigNumber(item.price).times(item.quantity));
+				}, new BigNumber(0)) ?? new BigNumber(0)
+			).plus(screen.payload.bill.tip ?? new BigNumber(0))) ||
+		new BigNumber(0);
 
 	return (
 		<div
@@ -284,7 +289,7 @@ const BottomPanel: FC<{
 										<a
 											href={`lightning:${screen.payload.type === "btcLn" ? screen.payload.lnInvoice : ""}`}
 										>
-											{totalAmount >= 0
+											{totalAmount.gte(0)
 												? t("client:paymentPage.actions.pay")
 												: t("client:paymentPage.actions.refund")}
 										</a>
@@ -346,10 +351,11 @@ const Screen: FC<{
 	const totalAmount =
 		props.screen && props.screen.variant === "paymentReady"
 			? props.screen.payload.bill.items.reduce(
-					(acc, value) => acc + value.price * value.quantity,
-					0,
+					(acc, value) =>
+						acc.plus(new BigNumber(value.price).times(value.quantity)),
+					new BigNumber(0),
 				)
-			: 0;
+			: new BigNumber(0);
 
 	return (
 		<>
@@ -427,22 +433,22 @@ const Screen: FC<{
 							<div className={"flex flex-col items-center gap-4"}>
 								<div className={"text-2xl"}>
 									<strong>
-										{formatAmount(
-											props.screen.payload.amountExpectedToPay
+										{formatMoney({
+											value: props.screen.payload.amountExpectedToPay
 												? props.screen.payload.amountExpectedToPay.value
-												: totalAmount,
-											props.screen.payload.amountExpectedToPay
+												: Integer(totalAmount.integerValue().toNumber()),
+											currency: props.screen.payload.amountExpectedToPay
 												? props.screen.payload.amountExpectedToPay.currency
 												: props.screen.payload.bill.currency,
-										)}
+										})}
 									</strong>
 								</div>
 								{props.screen.payload.amountExpectedToPay && (
 									<div className={"text-2xl"}>
-										{formatAmount(
-											totalAmount,
-											props.screen.payload.bill.currency,
-										)}
+										{formatMoney({
+											value: Integer(totalAmount.integerValue().toNumber()),
+											currency: props.screen.payload.bill.currency,
+										})}
 									</div>
 								)}
 							</div>
@@ -460,7 +466,7 @@ const Screen: FC<{
 								<LoaderCircleIcon className="animate-spin size-12 text-muted-foreground" />
 
 								<div className={"text-xs text-muted-foreground"}>
-									{totalAmount >= 0
+									{totalAmount.gte(0)
 										? t("client:paymentPage.status.waitingForPayment")
 										: t("client:paymentPage.status.waitingForRefund")}
 								</div>
@@ -523,12 +529,14 @@ export default function Page() {
 					getOrThrow(
 						evolu.upsert("paymentReady", {
 							id: createIdFromString(payload.paymentId),
-							billTip: payload.bill.tip ?? null,
+							billTip: payload.bill.tip ? Number(payload.bill.tip) : null,
 							billCurrency: payload.bill.currency,
-							amountExpectedToPayValue:
-								payload.amountExpectedToPay?.value ?? null,
-							amountExpectedToPayRate:
-								payload.amountExpectedToPay?.rate ?? null,
+							amountExpectedToPayValue: payload.amountExpectedToPay?.value
+								? Number(payload.amountExpectedToPay?.value)
+								: null,
+							amountExpectedToPayRate: payload.amountExpectedToPay?.rate
+								? Number(payload.amountExpectedToPay?.rate)
+								: null,
 							amountExpectedToPayCurrency:
 								payload.amountExpectedToPay?.currency ?? null,
 						}),
@@ -541,7 +549,7 @@ export default function Page() {
 								),
 								paymentReadyId: createIdFromString(payload.paymentId),
 								itemId: item.id,
-								price: item.price,
+								price: Number(item.price),
 								quantity: item.quantity,
 								label: item.label,
 							}),

@@ -6,6 +6,7 @@ import {
 	createRandomBytes,
 	getOrThrow,
 	type Id,
+	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
@@ -29,6 +30,7 @@ import {
 
 export const fioPluginSchema = z.object({
 	apiUrl: StringToUndefinedStringSchema.pipe(HttpsUrlSchema),
+	isActive: z.boolean(),
 	tokens: z
 		.object({
 			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
@@ -47,6 +49,7 @@ const tokenDefaultValues = {
 
 const fioPluginDefaultValues = {
 	apiUrl: "https://fioapi.fio.cz",
+	isActive: true,
 	tokens: [
 		{
 			id: "",
@@ -60,6 +63,9 @@ const createComponents = (t: TFunction) =>
 	createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
 		...builder.magicInput("apiUrl").text({
 			label: t("settings:form.fio-plugin-form.label.api-url"),
+		}),
+		...builder.magicInput("isActive").checkbox({
+			label: t("settings:form.fio-plugin-form.label.active"),
 		}),
 		...builder.magicInput("numberOfSecondsBetweenChecks").text({
 			label: t(
@@ -129,6 +135,7 @@ export const FioPluginForm: React.FC<{
 					"fioPlugin",
 					{
 						...fioPlugin,
+						isActive: fioPlugin.isActive ? sqliteTrue : sqliteFalse,
 						id,
 					},
 					{

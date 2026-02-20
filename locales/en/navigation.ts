@@ -29,7 +29,8 @@ const locale = {
       "tables": "Tables",
       "reservations": "Reservations",
       "clients": "Clients",
-      "moneyAccounts": "Money Accounts"
+      "moneyAccounts": "Money Accounts",
+      "transactions": "Transactions"
     }
   },
   "settings": {

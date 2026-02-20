@@ -57,6 +57,11 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconListDetails,
 			},
 			{
+				title: t("navigation:main.links.transactions"),
+				url: "/admin/transactions",
+				icon: IconListDetails,
+			},
+			{
 				title: t("navigation:main.links.pointOfSale"),
 				url: "/admin/pos",
 				icon: IconCashRegister,

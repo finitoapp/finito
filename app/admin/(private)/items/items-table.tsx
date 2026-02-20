@@ -1,14 +1,13 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -26,14 +25,15 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
+import type { Currency, Integer } from "@/lib/types";
 
 type Task = {
 	id: Id;
 	label: string;
 	categoryName: string | null;
-	priceCurrency: string;
-	priceValue: number;
+	priceCurrency: Currency;
+	priceValue: Integer;
 };
 
 const createColumns = (t: TFunction): ColumnDef<Task>[] => [
@@ -50,20 +50,24 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 		accessorKey: "priceValue",
 		header: createSortableHeader(t("items:table.columns.amount")),
 		cell: ({ row }) =>
-			formatAmount(row.original.priceValue, row.original.priceCurrency),
+			formatMoney({
+				value: row.original.priceValue,
+				currency: row.original.priceCurrency,
+			}),
 	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "label",
-		title: t("items:table.columns.label"),
-	},
-	{
-		id: "categoryName",
-		title: t("items:table.columns.category"),
-	},
-] satisfies { id: keyof Task; title: string }[];
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "label",
+			title: t("items:table.columns.label"),
+		},
+		{
+			id: "categoryName",
+			title: t("items:table.columns.category"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function ItemsTable() {
 	const { t } = useTranslation();
@@ -165,7 +169,9 @@ export function ItemsTable() {
 			<CardHeader>
 				<CardHeading className={"py-6"}>
 					<CardTitle>{t("items:table.items")}</CardTitle>
-					<CardDescription>{t("items:table.listOfYourSalesItems")}</CardDescription>
+					<CardDescription>
+						{t("items:table.listOfYourSalesItems")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/items/new"}>

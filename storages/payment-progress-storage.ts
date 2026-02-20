@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
 	Currency,
 	type InferEnumType,
+	IntegerSchema,
 	NonEmptyStringSchema,
 } from "@/lib/types";
 import { PaymentMerchantSchema } from "@/storages/payment-storage";
@@ -17,11 +18,11 @@ export const PaymentInitSchema = z.object({
 	items: z
 		.object({
 			id: z.string(),
-			price: z.number(),
+			price: IntegerSchema,
 			quantity: z.number(),
 		})
 		.array(),
-	tip: z.number(),
+	tip: IntegerSchema,
 	currency: z.enum(Currency),
 	paymentOption: z.object({
 		type: z.enum(BillPaymentOption),
@@ -35,18 +36,18 @@ const BasePaymentReadySchema = z.object({
 		items: z
 			.object({
 				id: z.string(),
-				price: z.number(),
+				price: IntegerSchema,
 				quantity: z.number(),
 				label: z.string(),
 			})
 			.array(),
-		tip: z.number().optional(),
+		tip: IntegerSchema.optional(),
 		currency: z.enum(Currency),
 	}),
 	// When a customer wants to pay in different currency
 	amountExpectedToPay: z
 		.object({
-			value: z.number(),
+			value: IntegerSchema,
 			rate: z.number(),
 			currency: z.enum(Currency),
 		})

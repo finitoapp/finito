@@ -9,13 +9,13 @@ import {
 } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
-import { createComboboxInput } from "@/components/combobox-input";
+import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import { formatIban } from "@/lib/format-utils";
@@ -114,23 +114,84 @@ export const createBillingSettingsDefaultValues = () =>
 		defaultLnSparkKey: null,
 	}) satisfies z.input<typeof billingSettingsFormSchema>;
 
-const createComponents = (t: TFunction) => createAutoFormLayout(
-	billingSettingsFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) => {
+	const DefaultBankAccountComboboxInput = createEvoluComboboxInput({
+		label: t("settings:form.billing-settings-form.label.default-bank-account"),
+		createQuery: (evolu) =>
+			evolu.createQuery((db) =>
+				db
+					.selectFrom("account")
+					.leftJoin("accountIban", "accountIban.id", "account.id")
+					.select(["account.id", "account.name", "accountIban.iban"])
+					.where("_tag", "=", "accountIban")
+					.where("account.isDeleted", "is not", sqliteTrue),
+			),
+		mapRowsToItems: (rows) =>
+			rows.map((row) => ({
+				label: `${formatIban(row.iban ?? "")} (${row.name ?? "-"})`,
+				value: row.id ?? "-",
+			})),
+	});
+
+	const DefaultLnZapComboboxInput = createEvoluComboboxInput({
+		label: t("settings:form.billing-settings-form.label.default-ln-zap-wallet"),
+		createQuery: (evolu) =>
+			evolu.createQuery((db) =>
+				db
+					.selectFrom("account")
+					.selectAll()
+					.where("_tag", "=", "lud16")
+					.where("isDeleted", "is not", sqliteTrue),
+			),
+		mapRowsToItems: (rows) =>
+			rows.map((row) => ({
+				label: row.name ?? "-",
+				value: row.id ?? "-",
+			})),
+	});
+
+	const DefaultLnSparkComboboxInput = createEvoluComboboxInput({
+		label: t(
+			"settings:form.billing-settings-form.label.default-ln-spark-wallet",
+		),
+		createQuery: (evolu) =>
+			evolu.createQuery((db) =>
+				db
+					.selectFrom("account")
+					.selectAll()
+					.where("_tag", "=", "accountSpark")
+					.where("isDeleted", "is not", sqliteTrue),
+			),
+		mapRowsToItems: (rows) =>
+			rows.map((row) => ({
+				label: row.name ?? "-",
+				value: row.id ?? "-",
+			})),
+	});
+
+	return createAutoFormLayout(billingSettingsFormSchema, ({ builder }) => ({
 		...builder.card(
 			{
-				title: t("settings:form.billing-settings-form.title.invoice-default-settings"),
+				title: t(
+					"settings:form.billing-settings-form.title.invoice-default-settings",
+				),
 			},
 			{
 				...builder.magicInput("defaultInvoiceDueDateDays").text({
-					label: t("settings:form.billing-settings-form.label.default-invoice-due-date"),
-					description: t("settings:form.billing-settings-form.description.in-days"),
+					label: t(
+						"settings:form.billing-settings-form.label.default-invoice-due-date",
+					),
+					description: t(
+						"settings:form.billing-settings-form.description.in-days",
+					),
 				}),
 
 				...builder.magicInput("defaultCurrency").select({
 					values: FiatCurrency,
 					allowEmpty: false,
-					label: t("settings:form.billing-settings-form.label.default-currency"),
+					label: t(
+						"settings:form.billing-settings-form.label.default-currency",
+					),
 				}),
 
 				...builder.magicInput("defaultTimezone").select({
@@ -169,46 +230,9 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 								] as string[]
 							).includes(value),
 						{
-							...builder.createComponent("bankAccountKey", (props) => {
-								const evolu = useEvolu();
-								const ComboboxInput = useMemo(
-									() =>
-										createComboboxInput({
-											label: t(
-												"settings:form.billing-settings-form.label.default-bank-account",
-											),
-											fetchItems: async () => {
-												const query = evolu.createQuery((db) =>
-													db
-														.selectFrom("account")
-														.leftJoin(
-															"accountIban",
-															"accountIban.id",
-															"account.id",
-														)
-														.select([
-															"account.id",
-															"account.name",
-															"accountIban.iban",
-														])
-														.where("_tag", "=", "accountIban")
-														.where("account.isDeleted", "is not", sqliteTrue),
-												);
-												const items = await evolu.loadQuery(query);
-
-												return items.map((item) => {
-													return {
-														label: `${formatIban(item.iban)} (${item.name})`,
-														value: item.id ?? "-",
-													};
-												});
-											},
-										}),
-									[evolu],
-								);
-
-								return <ComboboxInput {...props} />;
-							}),
+							...builder.createComponent("bankAccountKey", (props) => (
+								<DefaultBankAccountComboboxInput {...props} />
+							)),
 						},
 					),
 				})),
@@ -217,7 +241,9 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 
 		...builder.card(
 			{
-				title: t("settings:form.billing-settings-form.title.payment-default-settings"),
+				title: t(
+					"settings:form.billing-settings-form.title.payment-default-settings",
+				),
 			},
 			{
 				...builder.magicInput("defaultPaymentMethod").select({
@@ -236,99 +262,22 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 						),
 					} satisfies Record<PaymentMethod, string>,
 					allowEmpty: false,
-					label: t("settings:form.billing-settings-form.label.default-payment-method"),
+					label: t(
+						"settings:form.billing-settings-form.label.default-payment-method",
+					),
 				}),
 
-				...builder.createComponent("defaultBankTransferCzKey", (props) => {
-					const evolu = useEvolu();
-					const ComboboxInput = useMemo(
-						() =>
-							createComboboxInput({
-								label: t("settings:form.billing-settings-form.label.default-bank-account"),
-								fetchItems: async () => {
-									const query = evolu.createQuery((db) =>
-										db
-											.selectFrom("account")
-											.leftJoin("accountIban", "accountIban.id", "account.id")
-											.select([
-												"account.id",
-												"account.name",
-												"accountIban.iban",
-											])
-											.where("_tag", "=", "accountIban")
-											.where("account.isDeleted", "is not", sqliteTrue),
-									);
-									const items = await evolu.loadQuery(query);
+				...builder.createComponent("defaultBankTransferCzKey", (props) => (
+					<DefaultBankAccountComboboxInput {...props} />
+				)),
 
-									return items.map((item) => {
-										return {
-											label: `${formatIban(item.iban)} (${item.name})`,
-											value: item.id ?? "-",
-										};
-									});
-								},
-							}),
-						[evolu],
-					);
+				...builder.createComponent("defaultLnZapKey", (props) => (
+					<DefaultLnZapComboboxInput {...props} />
+				)),
 
-					return <ComboboxInput {...props} />;
-				}),
-
-				...builder.createComponent("defaultLnZapKey", (props) => {
-					const evolu = useEvolu();
-					const ComboboxInput = useMemo(
-						() =>
-							createComboboxInput({
-								label: t("settings:form.billing-settings-form.label.default-ln-zap-wallet"),
-								fetchItems: async () => {
-									const query = evolu.createQuery((db) =>
-										db
-											.selectFrom("account")
-											.selectAll()
-											.where("_tag", "=", "lud16")
-											.where("isDeleted", "is not", sqliteTrue),
-									);
-									const items = await evolu.loadQuery(query);
-
-									return items.map((item) => ({
-										label: item.name,
-										value: item.id ?? "-",
-									}));
-								},
-							}),
-						[evolu],
-					);
-
-					return <ComboboxInput {...props} />;
-				}),
-
-				...builder.createComponent("defaultLnSparkKey", (props) => {
-					const evolu = useEvolu();
-					const ComboboxInput = useMemo(
-						() =>
-							createComboboxInput({
-								label: t("settings:form.billing-settings-form.label.default-ln-spark-wallet"),
-								fetchItems: async () => {
-									const query = evolu.createQuery((db) =>
-										db
-											.selectFrom("account")
-											.selectAll()
-											.where("_tag", "=", "accountSpark")
-											.where("isDeleted", "is not", sqliteTrue),
-									);
-									const items = await evolu.loadQuery(query);
-
-									return items.map((item) => ({
-										label: item.name,
-										value: item.id ?? "-",
-									}));
-								},
-							}),
-						[evolu],
-					);
-
-					return <ComboboxInput {...props} />;
-				}),
+				...builder.createComponent("defaultLnSparkKey", (props) => (
+					<DefaultLnSparkComboboxInput {...props} />
+				)),
 			},
 		),
 
@@ -339,11 +288,15 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 			{
 				...builder.nestedField("invoiceEmailSettings", ({ builder }) => ({
 					...builder.magicInput("enable").checkbox({
-						label: t("settings:form.billing-settings-form.label.enable-invoice-emails"),
+						label: t(
+							"settings:form.billing-settings-form.label.enable-invoice-emails",
+						),
 					}),
 					...builder.when("invoiceEmailSettings.enable", true, {
 						...builder.magicInput("subject").text({
-							label: t("settings:form.billing-settings-form.label.email-subject"),
+							label: t(
+								"settings:form.billing-settings-form.label.email-subject",
+							),
 						}),
 						...builder.magicInput("body").textarea({
 							label: t("settings:form.billing-settings-form.label.email-body"),
@@ -362,7 +315,9 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 				...builder.arrayTableField(
 					{
 						name: "taxRates",
-						addRowLabel: t("settings:form.billing-settings-form.addRowLabel.add-rate"),
+						addRowLabel: t(
+							"settings:form.billing-settings-form.addRowLabel.add-rate",
+						),
 						defaultValue: {
 							id: "",
 							name: "",
@@ -386,7 +341,9 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 						...builder.magicInput("id").text({ type: "hidden" }),
 						...builder.magicInput("name").text({}),
 						...builder.magicInput("rate").text({
-							placeholder: t("settings:form.billing-settings-form.placeholder.0"),
+							placeholder: t(
+								"settings:form.billing-settings-form.placeholder.0",
+							),
 							type: "number",
 							endAddon: "%",
 						}),
@@ -394,8 +351,8 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 				),
 			},
 		),
-	}),
-);
+	}));
+};
 
 export const BillingSettingsForm: React.FC<{
 	defaultValues?: PartialDeep<
@@ -463,7 +420,7 @@ export const BillingSettingsForm: React.FC<{
 			);
 
 			for (const taxRate of values.taxRates) {
-				const taxRateId = (taxRate as any).id as Id | undefined;
+				const taxRateId = (taxRate as { id?: Id }).id;
 				if (taxRateId) {
 					originalTaxRates.delete(taxRateId);
 				}

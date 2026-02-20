@@ -15,7 +15,7 @@ import { useBill } from "@/hooks/use-bill";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { Pos } from "@/hooks/use-pos";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
 import { nestObjectSkipNullBranches } from "@/lib/object-utils";
 import { type Currency, NonEmptyString, Uuid7 } from "@/lib/types";
 
@@ -31,6 +31,11 @@ type CatalogItem = {
 		name: string;
 	};
 };
+
+const toMoney = (value: number, currency: Currency) => ({
+	value: BigInt(Math.round(value)),
+	currency,
+});
 
 export const PosItems: React.FC<{
 	billId?: string;
@@ -224,7 +229,9 @@ export const PosItemsList: React.FC<{
 												{item.label}
 											</h3>
 											<p className="text-lg font-bold text-primary">
-												{formatAmount(item.price.value, item.price.currency)}
+												{formatMoney(
+													toMoney(item.price.value, item.price.currency),
+												)}
 											</p>
 										</CardContent>
 									</motion.div>

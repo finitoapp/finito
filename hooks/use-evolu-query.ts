@@ -1,5 +1,5 @@
 import type { Query, QueryRows, Row } from "@evolu/common";
-import { useMemo, useSyncExternalStore } from "react";
+import { use, useMemo, useSyncExternalStore } from "react";
 import { useEvolu } from "@/hooks/use-evolu";
 
 export const useEvoluQuery = <R extends Row>(
@@ -13,7 +13,7 @@ export const useEvoluQuery = <R extends Row>(
 	const evolu = useEvolu();
 	const targetEvolu = evoluOverride ?? evolu;
 
-	targetEvolu.loadQuery(query);
+	use(targetEvolu.loadQuery(query));
 
 	const data = useSyncExternalStore(
 		useMemo(() => targetEvolu.subscribeQuery(query), [targetEvolu, query]),
