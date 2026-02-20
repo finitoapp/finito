@@ -516,6 +516,21 @@ export const Schema = {
 		// How status was proven (manual/spark/fio/ln-zap/...).
 		proveType: nullOr(NonEmptyTrimmedString100),
 	},
+	paymentWatchingState: {
+		id: Id,
+		// Watch lifecycle state (watching/verified/stopped/failed).
+		status: NonEmptyTrimmedString100,
+		// Epoch milliseconds when watcher marked payment as verified.
+		verifiedAt: nullOr(NonNegativeInt),
+		// Verification source/type (lnZap/lnSpark/...).
+		proveType: nullOr(NonEmptyTrimmedString100),
+		// Related transaction id created by verification process.
+		transactionId: nullOr(Id),
+		// Epoch milliseconds when active watching was interrupted.
+		stoppedAt: nullOr(NonNegativeInt),
+		// Reason for stopping active watching (manual/timeout/deleted/...).
+		stopReason: nullOr(NonEmptyTrimmedString100),
+	},
 };
 
 export const createAppEvolu = (props: {
@@ -596,6 +611,11 @@ export const createAppEvolu = (props: {
 			create(`paymentBillItem_paymentId`)
 				.on(`paymentBillItem`)
 				.column("paymentId"),
+			// Partial index for actively watched payments (status='watching').
+			create(`paymentWatchingState_status_watching`)
+				.on(`paymentWatchingState`)
+				.column("status")
+				.where("status", "=", "watching"),
 		],
 	});
 

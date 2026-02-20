@@ -12,7 +12,7 @@ import {
 	extractBtcAmountFromLightningInvoice,
 	extractPaymentHashFromLnInvoice,
 } from "@/lib/ln-utils";
-import { PaymentStatus } from "@/storages/payment-status-storage";
+import { PaymentWatchingStatus } from "@/storages/payment-watching-state-storage";
 
 const notificationId = createIdFromString("syncLnZapTransfers");
 
@@ -23,7 +23,6 @@ type WatchedLnZapPayment = {
 	walletPubkey: string | null;
 	lnInvoice: string | null;
 	amount: number | null;
-	status: string | null;
 };
 
 const splitAmountByExpectedAllocation = (params: {
@@ -248,6 +247,17 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 					paymentHash,
 					amount,
 				});
+				getOrThrow(
+					props.evolu.upsert("paymentWatchingState", {
+						id: payment.id,
+						status: PaymentWatchingStatus.Verified,
+						verifiedAt: Date.now(),
+						proveType: "lnZap",
+						transactionId,
+						stoppedAt: null,
+						stopReason: null,
+					}),
+				);
 
 				verifiedPaymentIds.add(payment.id);
 				watchedPaymentsById.delete(payment.id);
@@ -261,7 +271,11 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 			db
 				.selectFrom("payment")
 				.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
-				.leftJoin("paymentStatus", "paymentStatus.id", "payment.id")
+				.innerJoin(
+					"paymentWatchingState",
+					"paymentWatchingState.id",
+					"payment.id",
+				)
 				.select([
 					"payment.id as id",
 					"payment.privateKey as privateKey",
@@ -269,10 +283,15 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 					"paymentLnZap.walletPubkey as walletPubkey",
 					"paymentLnZap.lnInvoice as lnInvoice",
 					"paymentLnZap.amount as amount",
-					"paymentStatus.status as status",
 				] as const)
 				.where("payment.isDeleted", "is not", sqliteTrue)
-				.where("paymentLnZap.isDeleted", "is not", sqliteTrue),
+				.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
+				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
+				.where(
+					"paymentWatchingState.status",
+					"=",
+					PaymentWatchingStatus.Watching,
+				),
 		);
 
 		const syncWatchList = async (
@@ -295,7 +314,6 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 
 				for (const payment of initialWatchedPayments) {
 					if (
-						payment.status === PaymentStatus.Paid ||
 						verifiedPaymentIds.has(payment.id) ||
 						!payment.privateKey ||
 						!payment.walletPubkey
