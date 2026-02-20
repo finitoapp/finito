@@ -2,6 +2,62 @@ const locale = {
   "page": {
     "payment": "Payment"
   },
+  "detail": {
+    "actions": {
+      "pay-in-cash": "Pay in cash",
+      "cancel": "Cancel",
+      "show-fullscreen-qr-payment": "Show fullscreen QR payment",
+      "delete": "Delete",
+      "open": "Open",
+      "open-in-btc-wallet": "Open in BTC wallet",
+      "share-qr-code": "Share QR code",
+      "download-qr-code": "Download QR code"
+    },
+    "confirm": {
+      "pay-in-cash": {
+        "title": "Pay in cash?",
+        "description": "This creates a cash transaction and links it to this payment."
+      },
+      "delete-payment": {
+        "title": "Delete payment?",
+        "description": "This action cannot be undone."
+      }
+    },
+    "messages": {
+      "payment-successfully-paid": "The payment is successfully paid",
+      "share-qr-description": "Share this QR code in your banking app",
+      "no-cash-register-account-configured": "No cash register account is configured for this payment.",
+      "cash-payment-enabled-no-cash-register-account": "Cash payment is enabled, but no cash register account is configured."
+    },
+    "tabs": {
+      "web-payment": "Web payment",
+      "btc-ln-payment": "BTC LN payment",
+      "cz-qr-payment": "CZ QR Payment",
+      "cash": "Cash"
+    },
+    "labels": {
+      "price": "Price",
+      "created-at": "Created at",
+      "expire-at": "Expire at",
+      "status": "Status",
+      "merchant-name": "Merchant name",
+      "redirect": "Redirect",
+      "tip": "Tip"
+    },
+    "status": {
+      "paid": "Paid",
+      "waiting": "Waiting",
+      "unknown": "Unknown"
+    },
+    "values": {
+      "yes": "yes",
+      "no": "no"
+    },
+    "help": {
+      "redirect": "The customer will be redirected to this address after successful payment if they use payment via the web application.",
+      "tip": "Static payments do not support tips"
+    }
+  },
   "table": {
     "paymentMessages": "Payment Messages",
     "description": {

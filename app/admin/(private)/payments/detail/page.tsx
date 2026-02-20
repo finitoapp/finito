@@ -57,6 +57,7 @@ const StatusButton: FC<{
 	cashAccountId: Id | null;
 	className?: string;
 }> = (props) => {
+	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const { withConfirm } = useGlobalDialog();
 	const { mutateAsync: payInCash, isPending: isPayInCashPending } = useMutation(
@@ -107,11 +108,10 @@ const StatusButton: FC<{
 			await payInCash();
 		},
 		{
-			title: "Pay in cash?",
-			description:
-				"This creates a cash transaction and links it to this payment.",
-			confirmText: "Pay in cash",
-			cancelText: "Cancel",
+			title: t("payments:detail.confirm.pay-in-cash.title"),
+			description: t("payments:detail.confirm.pay-in-cash.description"),
+			confirmText: t("payments:detail.actions.pay-in-cash"),
+			cancelText: t("payments:detail.actions.cancel"),
 		},
 	);
 
@@ -125,7 +125,7 @@ const StatusButton: FC<{
 			}
 		>
 			<CoinsIcon />
-			Pay in cash
+			{t("payments:detail.actions.pay-in-cash")}
 		</Button>
 	);
 };
@@ -152,7 +152,7 @@ const FullscreenQrPayment: FC<{
 					scroll={false}
 				>
 					<FocusIcon />
-					Show fullscreen QR payment
+					{t("payments:detail.actions.show-fullscreen-qr-payment")}
 				</Link>
 			</Button>
 
@@ -182,7 +182,7 @@ const FullscreenQrPayment: FC<{
 						{isPaid ? (
 							<div className={"h-full w-full flex justify-center"}>
 								<LoadingIndicator
-									text={"The payment is successfully paid"}
+									text={t("payments:detail.messages.payment-successfully-paid")}
 									open={true}
 									status={"success"}
 								/>
@@ -201,7 +201,7 @@ const FullscreenQrPayment: FC<{
 											)
 										}
 									>
-										Web payment
+										{t("payments:detail.tabs.web-payment")}
 									</TabsTrigger>
 									{lnInvoice && (
 										<TabsTrigger
@@ -215,7 +215,7 @@ const FullscreenQrPayment: FC<{
 												)
 											}
 										>
-											BTC LN payment
+											{t("payments:detail.tabs.btc-ln-payment")}
 										</TabsTrigger>
 									)}
 									{czechQRCode && (
@@ -230,7 +230,7 @@ const FullscreenQrPayment: FC<{
 												)
 											}
 										>
-											CZ QR Payment
+											{t("payments:detail.tabs.cz-qr-payment")}
 										</TabsTrigger>
 									)}
 									{cashTabContent && (
@@ -245,7 +245,7 @@ const FullscreenQrPayment: FC<{
 												)
 											}
 										>
-											Cash
+											{t("payments:detail.tabs.cash")}
 										</TabsTrigger>
 									)}
 								</TabsList>
@@ -517,10 +517,10 @@ export default function Home() {
 			await deletePayment();
 		},
 		{
-			title: "Delete payment?",
-			description: "This action cannot be undone.",
-			confirmText: "Delete",
-			cancelText: "Cancel",
+			title: t("payments:detail.confirm.delete-payment.title"),
+			description: t("payments:detail.confirm.delete-payment.description"),
+			confirmText: t("payments:detail.actions.delete"),
+			cancelText: t("payments:detail.actions.cancel"),
 			confirmVariant: "destructive",
 		},
 	);
@@ -586,7 +586,7 @@ export default function Home() {
 						<div className={"flex flex-col gap-8"}>
 							<div className={"flex gap-4"}>
 								<StaticCard
-									title={"Price"}
+									title={t("payments:detail.labels.price")}
 									content={
 										<>
 											{!item && <Skeleton />}
@@ -600,7 +600,7 @@ export default function Home() {
 									className={"flex-1"}
 								/>
 								<StaticCard
-									title={"Created at"}
+									title={t("payments:detail.labels.created-at")}
 									content={
 										<>
 											{!item && <Skeleton />}
@@ -613,7 +613,7 @@ export default function Home() {
 							</div>
 							<div className={"flex gap-4"}>
 								<StaticCard
-									title={"Expire at"}
+									title={t("payments:detail.labels.expire-at")}
 									content={
 										<>
 											{!item && <Skeleton />}
@@ -629,16 +629,16 @@ export default function Home() {
 								/>
 
 								<StaticCard
-									title={"Status"}
+									title={t("payments:detail.labels.status")}
 									content={
 										<>
 											{!item && <Skeleton />}
 											{item &&
 												(paymentStatus
 													? paymentStatus === PaymentStatus.Paid
-														? "Paid"
-														: "Waiting"
-													: "Unknown")}
+														? t("payments:detail.status.paid")
+														: t("payments:detail.status.waiting")
+													: t("payments:detail.status.unknown"))}
 										</>
 									}
 									className={"flex-1"}
@@ -650,21 +650,23 @@ export default function Home() {
 									<KeyValueList
 										items={[
 											{
-												key: "Merchant name",
+												key: t("payments:detail.labels.merchant-name"),
 												value: item?.merchant?.name ?? "-",
 											},
 											{
-												key: "Redirect",
-												value: item?.onSuccessfulPayment?.redirectUrl ?? "no",
-												help: "The customer will be redirected to this address after successful payment if they use payment via the web application.",
+												key: t("payments:detail.labels.redirect"),
+												value:
+													item?.onSuccessfulPayment?.redirectUrl ??
+													t("payments:detail.values.no"),
+												help: t("payments:detail.help.redirect"),
 											},
 											{
-												key: "Tip",
+												key: t("payments:detail.labels.tip"),
 												value:
 													item?.onSuccessfulPayment && item.bill.allowTip
-														? "yes"
-														: "no",
-												help: "Static payments do not support tips",
+														? t("payments:detail.values.yes")
+														: t("payments:detail.values.no"),
+												help: t("payments:detail.help.tip"),
 											},
 										]}
 									/>
@@ -699,8 +701,9 @@ export default function Home() {
 							/>
 							{item && supportsCashPayment && cashAccountId === null && (
 								<p className={"text-sm text-muted-foreground"}>
-									Cash payment is enabled, but no cash register account is
-									configured.
+									{t(
+										"payments:detail.messages.cash-payment-enabled-no-cash-register-account",
+									)}
 								</p>
 							)}
 							<Button className={"w-full"} onClick={() => void onDelete()}>
@@ -709,14 +712,14 @@ export default function Home() {
 								) : (
 									<Trash2Icon />
 								)}
-								Delete
+								{t("payments:detail.actions.delete")}
 							</Button>
 						</CardContent>
 					</ResponsiveCard>
 
 					{paymentStatus === PaymentStatus.Paid ? (
 						<LoadingIndicator
-							text={"The payment is successfully paid"}
+							text={t("payments:detail.messages.payment-successfully-paid")}
 							open={true}
 							status={"success"}
 							className={"mt-10"}
@@ -735,7 +738,7 @@ export default function Home() {
 										)
 									}
 								>
-									Web payment
+									{t("payments:detail.tabs.web-payment")}
 								</TabsTrigger>
 								{zapWallet && (
 									<TabsTrigger
@@ -749,7 +752,7 @@ export default function Home() {
 											)
 										}
 									>
-										BTC LN payment
+										{t("payments:detail.tabs.btc-ln-payment")}
 									</TabsTrigger>
 								)}
 								{czechQRCode && (
@@ -764,7 +767,7 @@ export default function Home() {
 											)
 										}
 									>
-										CZ QR Payment
+										{t("payments:detail.tabs.cz-qr-payment")}
 									</TabsTrigger>
 								)}
 								{supportsCashPayment && (
@@ -779,7 +782,7 @@ export default function Home() {
 											)
 										}
 									>
-										Cash
+										{t("payments:detail.tabs.cash")}
 									</TabsTrigger>
 								)}
 							</TabsList>
@@ -799,7 +802,7 @@ export default function Home() {
 												<Button asChild>
 													<a href={frontendUrl} target={"_blank"}>
 														<ExternalLink />
-														Open
+														{t("payments:detail.actions.open")}
 													</a>
 												</Button>
 											</div>
@@ -826,7 +829,7 @@ export default function Home() {
 														target={"_blank"}
 													>
 														<BitcoinIcon />
-														Open in BTC wallet
+														{t("payments:detail.actions.open-in-btc-wallet")}
 													</a>
 												</Button>
 											</div>
@@ -872,8 +875,12 @@ export default function Home() {
 																	fileName: `qr-payment.jpg`,
 																	mimetype,
 																	blob,
-																	title: "Share QR code",
-																	text: "Share this QR code in your banking app",
+																	title: t(
+																		"payments:detail.actions.share-qr-code",
+																	),
+																	text: t(
+																		"payments:detail.messages.share-qr-description",
+																	),
 																});
 															},
 															mimetype,
@@ -882,7 +889,7 @@ export default function Home() {
 													}}
 												>
 													<DownloadIcon />
-													Download QR code
+													{t("payments:detail.actions.download-qr-code")}
 												</Button>
 											</div>
 										</CardContent>
@@ -902,8 +909,9 @@ export default function Home() {
 												/>
 												{cashAccountId === null && (
 													<p className={"text-sm text-muted-foreground"}>
-														No cash register account is configured for this
-														payment.
+														{t(
+															"payments:detail.messages.no-cash-register-account-configured",
+														)}
 													</p>
 												)}
 											</div>

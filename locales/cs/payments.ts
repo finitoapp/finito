@@ -2,6 +2,62 @@ const locale = {
   "page": {
     "payment": "Platba"
   },
+  "detail": {
+    "actions": {
+      "pay-in-cash": "Zaplatit v hotovosti",
+      "cancel": "Zrušit",
+      "show-fullscreen-qr-payment": "Zobrazit QR platbu na celou obrazovku",
+      "delete": "Smazat",
+      "open": "Otevřít",
+      "open-in-btc-wallet": "Otevřít v BTC peněžence",
+      "share-qr-code": "Sdílet QR kód",
+      "download-qr-code": "Stáhnout QR kód"
+    },
+    "confirm": {
+      "pay-in-cash": {
+        "title": "Zaplatit v hotovosti?",
+        "description": "Tímto se vytvoří hotovostní transakce a propojí se s touto platbou."
+      },
+      "delete-payment": {
+        "title": "Smazat platbu?",
+        "description": "Tuto akci nelze vrátit zpět."
+      }
+    },
+    "messages": {
+      "payment-successfully-paid": "Platba byla úspěšně zaplacena",
+      "share-qr-description": "Sdílejte tento QR kód ve své bankovní aplikaci",
+      "no-cash-register-account-configured": "Pro tuto platbu není nakonfigurován pokladní účet.",
+      "cash-payment-enabled-no-cash-register-account": "Hotovostní platba je povolena, ale není nakonfigurován pokladní účet."
+    },
+    "tabs": {
+      "web-payment": "Webová platba",
+      "btc-ln-payment": "BTC LN platba",
+      "cz-qr-payment": "CZ QR platba",
+      "cash": "Hotovost"
+    },
+    "labels": {
+      "price": "Cena",
+      "created-at": "Vytvořeno",
+      "expire-at": "Vyprší",
+      "status": "Stav",
+      "merchant-name": "Název obchodníka",
+      "redirect": "Přesměrování",
+      "tip": "Spropitné"
+    },
+    "status": {
+      "paid": "Zaplaceno",
+      "waiting": "Čeká na zaplacení",
+      "unknown": "Neznámý"
+    },
+    "values": {
+      "yes": "ano",
+      "no": "ne"
+    },
+    "help": {
+      "redirect": "Zákazník bude po úspěšné platbě přesměrován na tuto adresu, pokud platí přes webovou aplikaci.",
+      "tip": "Statické platby nepodporují spropitné"
+    }
+  },
   "table": {
     "paymentMessages": "Platební zprávy",
     "description": {
