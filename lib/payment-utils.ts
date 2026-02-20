@@ -25,10 +25,7 @@ import {
 import { assertNotNull } from "@/lib/type-utils";
 import type { Email, Integer } from "@/lib/types";
 import { PaymentStatus } from "@/storages/payment-status-storage";
-import {
-	PaymentWatchingStatus,
-	type PaymentWatchingStopReason,
-} from "@/storages/payment-watching-state-storage";
+import type { PaymentWatchingStopReason } from "@/storages/payment-watching-state-storage";
 
 export async function createZapPayment(params: {
 	lud16: Email;
@@ -201,7 +198,6 @@ export async function createPayment(params: {
 		getOrThrow(
 			params.evolu.upsert("paymentWatchingState", {
 				id,
-				status: PaymentWatchingStatus.Watching,
 				verifiedAt: null,
 				proveType: null,
 				transactionId: null,
@@ -231,26 +227,30 @@ export async function stopPaymentWatching(params: {
 		params.evolu.createQuery((db) =>
 			db
 				.selectFrom("paymentWatchingState")
-				.select(["paymentWatchingState.status as status"] as const)
+				.select([
+					"paymentWatchingState.verifiedAt as verifiedAt",
+					"paymentWatchingState.stoppedAt as stoppedAt",
+				] as const)
 				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
 				.where("paymentWatchingState.id", "=", params.paymentId)
 				.limit(1),
 		),
 	);
+	const paymentWatchingState = rows[0];
 
-	if (rows[0]?.status !== PaymentWatchingStatus.Watching) {
+	if (
+		paymentWatchingState === undefined ||
+		paymentWatchingState.verifiedAt !== null ||
+		paymentWatchingState.stoppedAt !== null
+	) {
 		return false;
 	}
 
 	getOrThrow(
 		params.evolu.upsert("paymentWatchingState", {
 			id: params.paymentId,
-			status: PaymentWatchingStatus.Stopped,
 			stoppedAt: Date.now(),
 			stopReason: params.reason,
-			verifiedAt: null,
-			proveType: null,
-			transactionId: null,
 		}),
 	);
 

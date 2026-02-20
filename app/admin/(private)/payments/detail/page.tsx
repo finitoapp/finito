@@ -56,6 +56,7 @@ import { PaymentStatus } from "@/storages/payment-status-storage";
 import {
 	PaymentWatchingStatus,
 	PaymentWatchingStopReason,
+	resolvePaymentWatchingStatus,
 } from "@/storages/payment-watching-state-storage";
 
 const StatusButton: FC<{
@@ -150,24 +151,30 @@ const StatusButton: FC<{
 
 const PaymentWatchingToggleButton: FC<{
 	paymentId: Id;
-	status: PaymentWatchingStatus | null;
+	hasPaymentWatchingState: boolean;
+	verifiedAt: number | null;
+	stoppedAt: number | null;
 	className?: string;
 }> = (props) => {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
 
+	const paymentWatchingStatus = resolvePaymentWatchingStatus({
+		verifiedAt: props.verifiedAt,
+		stoppedAt: props.stoppedAt,
+	});
 	const showButton =
-		props.status !== null && props.status !== PaymentWatchingStatus.Verified;
-	const isWatching = props.status === PaymentWatchingStatus.Watching;
+		props.hasPaymentWatchingState &&
+		paymentWatchingStatus !== PaymentWatchingStatus.Verified;
+	const isWatching = paymentWatchingStatus === PaymentWatchingStatus.Watching;
 	const canToggle =
-		props.status === PaymentWatchingStatus.Watching ||
-		props.status === PaymentWatchingStatus.Stopped ||
-		props.status === PaymentWatchingStatus.Failed;
+		paymentWatchingStatus === PaymentWatchingStatus.Watching ||
+		paymentWatchingStatus === PaymentWatchingStatus.Stopped;
 
 	const { mutateAsync: toggleWatching, isPending: isTogglingWatching } =
 		useMutation({
 			mutationFn: async () => {
-				if (props.status === PaymentWatchingStatus.Watching) {
+				if (paymentWatchingStatus === PaymentWatchingStatus.Watching) {
 					await stopPaymentWatching({
 						evolu,
 						paymentId: props.paymentId,
@@ -176,17 +183,10 @@ const PaymentWatchingToggleButton: FC<{
 					return;
 				}
 
-				if (
-					props.status === PaymentWatchingStatus.Stopped ||
-					props.status === PaymentWatchingStatus.Failed
-				) {
+				if (paymentWatchingStatus === PaymentWatchingStatus.Stopped) {
 					getOrThrow(
 						evolu.upsert("paymentWatchingState", {
 							id: props.paymentId,
-							status: PaymentWatchingStatus.Watching,
-							verifiedAt: null,
-							proveType: null,
-							transactionId: null,
 							stoppedAt: null,
 							stopReason: null,
 						}),
@@ -477,7 +477,9 @@ export default function Home() {
 					"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
 					"paymentCash.id as cashId",
 					"paymentCash.accountId as cashAccountId",
-					"paymentWatchingState.status as paymentWatchingStateStatus",
+					"paymentWatchingState.id as paymentWatchingStateId",
+					"paymentWatchingState.verifiedAt as paymentWatchingStateVerifiedAt",
+					"paymentWatchingState.stoppedAt as paymentWatchingStateStoppedAt",
 				] as const)
 				.where("payment.isDeleted", "is not", sqliteTrue)
 				.where("payment.id", "=", paymentId),
@@ -638,8 +640,11 @@ export default function Home() {
 			? ((cashPayment.accountId as Id | undefined) ?? null)
 			: null;
 	const supportsCashPayment = cashPayment !== undefined;
-	const paymentWatchingStateStatus =
-		payment?.paymentWatchingStateStatus ?? null;
+	const hasPaymentWatchingState = payment?.paymentWatchingStateId != null;
+	const paymentWatchingStateVerifiedAt =
+		payment?.paymentWatchingStateVerifiedAt ?? null;
+	const paymentWatchingStateStoppedAt =
+		payment?.paymentWatchingStateStoppedAt ?? null;
 
 	const paymentStatus =
 		paymentReconciliationRows === undefined
@@ -822,7 +827,9 @@ export default function Home() {
 							)}
 							<PaymentWatchingToggleButton
 								paymentId={paymentId}
-								status={paymentWatchingStateStatus}
+								hasPaymentWatchingState={hasPaymentWatchingState}
+								verifiedAt={paymentWatchingStateVerifiedAt}
+								stoppedAt={paymentWatchingStateStoppedAt}
 								className={"w-full"}
 							/>
 							<Button className={"w-full"} onClick={() => void onDelete()}>

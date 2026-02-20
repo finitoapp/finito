@@ -518,8 +518,6 @@ export const Schema = {
 	},
 	paymentWatchingState: {
 		id: Id,
-		// Watch lifecycle state (watching/verified/stopped/failed).
-		status: NonEmptyTrimmedString100,
 		// Epoch milliseconds when watcher marked payment as verified.
 		verifiedAt: nullOr(NonNegativeInt),
 		// Verification source/type (lnZap/lnSpark/...).
@@ -611,11 +609,13 @@ export const createAppEvolu = (props: {
 			create(`paymentBillItem_paymentId`)
 				.on(`paymentBillItem`)
 				.column("paymentId"),
-			// Partial index for actively watched payments (status='watching').
-			create(`paymentWatchingState_status_watching`)
+			// Partial index for actively watched payments (verifiedAt/stoppedAt are null).
+			create(`paymentWatchingState_watching_by_timestamps`)
 				.on(`paymentWatchingState`)
-				.column("status")
-				.where("status", "=", "watching"),
+				.column("verifiedAt")
+				.column("stoppedAt")
+				.where("verifiedAt", "is", null)
+				.where("stoppedAt", "is", null),
 		],
 	});
 

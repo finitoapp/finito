@@ -12,7 +12,6 @@ import {
 	extractBtcAmountFromLightningInvoice,
 	extractPaymentHashFromLnInvoice,
 } from "@/lib/ln-utils";
-import { PaymentWatchingStatus } from "@/storages/payment-watching-state-storage";
 
 const notificationId = createIdFromString("syncLnZapTransfers");
 
@@ -248,14 +247,11 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 					amount,
 				});
 				getOrThrow(
-					props.evolu.upsert("paymentWatchingState", {
+					props.evolu.update("paymentWatchingState", {
 						id: payment.id,
-						status: PaymentWatchingStatus.Verified,
 						verifiedAt: Date.now(),
 						proveType: "lnZap",
 						transactionId,
-						stoppedAt: null,
-						stopReason: null,
 					}),
 				);
 
@@ -287,11 +283,8 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				.where("payment.isDeleted", "is not", sqliteTrue)
 				.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
 				.where("paymentWatchingState.isDeleted", "is not", sqliteTrue)
-				.where(
-					"paymentWatchingState.status",
-					"=",
-					PaymentWatchingStatus.Watching,
-				),
+				.where("paymentWatchingState.verifiedAt", "is", null)
+				.where("paymentWatchingState.stoppedAt", "is", null),
 		);
 
 		const syncWatchList = async (
