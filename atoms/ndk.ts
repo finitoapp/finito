@@ -22,8 +22,7 @@ const rawNdkAtom = atom<Promise<NDK>>(async () => {
 		cacheAdapter,
 	});
 
-	console.log("ndk", "connecting");
-	void ndk.connect();
+	await ndk.connect(5_000);
 
 	return ndk;
 });
@@ -67,8 +66,6 @@ export const ndkAtom = atom(async (get) => {
 	for (const relayToAdd of relaysToAdd) {
 		finalNdk.addExplicitRelay(relayToAdd, undefined, true);
 	}
-
-	void finalNdk.connect();
 
 	return finalNdk;
 });

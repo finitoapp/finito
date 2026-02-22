@@ -5,8 +5,10 @@ import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { WssUrl } from "@/lib/types";
 
 export const defaultRelays = [
-	WssUrl("wss://relay.primal.net"),
-	WssUrl("wss://relay.damus.io"),
+	// WssUrl("wss://relay.primal.net"),
+	// WssUrl("wss://relay.damus.io"),
+	// WssUrl("wss://relay.iris.to"),
+	WssUrl("wss://relay.snort.social"),
 ];
 
 export const nostrRelaysAtom = atom<

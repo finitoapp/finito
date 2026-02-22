@@ -7,7 +7,7 @@ import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
 } from "@/lib/table-message-bus";
-import { NonEmptyString, NonEmptyStringSchema, Uuid7 } from "@/lib/types";
+import { NonEmptyStringSchema, Uuid7 } from "@/lib/types";
 
 export class TableDriver implements BillDriver {
 	public async subscribe({
@@ -15,20 +15,20 @@ export class TableDriver implements BillDriver {
 		callback,
 		ndk,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
+		let isInsideThePayment = false;
 		const expectedSubscriptionId = Uuid7.random();
-		const [prefix, pubkey = null, qrCodeId = null, ...rest] = billId.split("-");
+		const [prefix, pubkey = null, qrCodeIdFirstPart = null, ...rest] =
+			billId.split("-");
 		if (
 			prefix !== "t" ||
 			typeof pubkey !== "string" ||
-			typeof qrCodeId !== "string"
+			typeof qrCodeIdFirstPart !== "string"
 		) {
 			return null;
 		}
 
-		if (rest.length !== 0) {
-			return null;
-		}
-
+		const qrCodeId =
+			qrCodeIdFirstPart + (rest.length > 0 ? "-" + rest.join("-") : "");
 		const qrCodeIdResult = NonEmptyStringSchema.safeParse(qrCodeId);
 		if (!qrCodeIdResult.success) {
 			return null;
@@ -36,72 +36,87 @@ export class TableDriver implements BillDriver {
 
 		const tableRequestClient = tableRequestMessageBus
 			.createInstance({
-				pubkey,
+				ndk,
 			})
 			.getClient({
-				ndk,
+				recipientPubkey: pubkey,
 			});
 
 		const pay: ScreenDataPaymentPayFunction = async (params) => {
-			callback({
-				type: "screen",
-				payload: {
-					variant: "paymentReady",
-					payload: {
+			console.log("pay", params);
+			const response = await tableRequestClient.call(
+				"createPaymentFromSubscribedBill",
+				{
+					subscriptionId: expectedSubscriptionId,
+					payment: {
 						paymentId: params.paymentId,
-						type: "btcLn",
-						lnInvoice: "",
-						bill: {
-							items: [],
-							currency: params.currency,
-							tip: params.tip,
+						paymentOption: {
+							type: "btcLn",
 						},
+						currency: params.currency,
+						items: params.items,
+						tip: params.tip,
 					},
 				},
-			});
+			);
+
+			console.log("response", response);
+
+			isInsideThePayment = true;
 
 			callback({
 				type: "screen",
-				payload: {
-					variant: "paymentFinished",
-					payload: {
-						type: "failure",
-						paymentId: params.paymentId,
-						reason: NonEmptyString("The payment is not ready yet."),
-					},
-				},
+				payload: response,
 			});
 		};
 
 		const server = await tableEventMessageBus
 			.createInstance({
-				pubkey: ndk.signer.pubkey,
+				ndk,
 			})
-			.listen(
-				{
-					ndk,
-				},
-				{
-					billChange: async ({ billScreenData, subscriptionId }) => {
-						if (
-							billScreenData === null ||
-							expectedSubscriptionId !== subscriptionId
-						) {
-							return null;
-						}
-
-						callback({
-							type: "screen",
-							payload: {
-								...billScreenData,
-								pay,
-							},
-						});
+			.listen({
+				billChange: async ({ billScreenData, subscriptionId }) => {
+					if (isInsideThePayment) {
 						return null;
-					},
-				},
-			);
+					}
 
+					if (
+						billScreenData === null ||
+						expectedSubscriptionId !== subscriptionId
+					) {
+						return null;
+					}
+
+					callback({
+						type: "screen",
+						payload: {
+							...billScreenData,
+							pay,
+						},
+					});
+					return null;
+				},
+				paymentFinished: async ({ billScreenData, subscriptionId }) => {
+					console.log("paymentFinished2", billScreenData, subscriptionId);
+					if (
+						billScreenData === null ||
+						expectedSubscriptionId !== subscriptionId
+					) {
+						return null;
+					}
+
+					isInsideThePayment = true;
+
+					console.log("paymentFinished3", billScreenData, subscriptionId);
+					callback({
+						type: "screen",
+						payload: billScreenData,
+					});
+					return null;
+				},
+			});
+
+		console.log("Subscribing to bill by QR code", qrCodeId);
 		await tableRequestClient.call("subscribeToBillByQrCode", {
 			pubkey: ndk.signer.pubkey,
 			qrCodeId: qrCodeIdResult.data,
@@ -109,6 +124,10 @@ export class TableDriver implements BillDriver {
 		});
 
 		const interval = setInterval(() => {
+			if (isInsideThePayment) {
+				return;
+			}
+
 			void tableRequestClient.call(
 				"subscribeToBillByQrCode",
 				{
