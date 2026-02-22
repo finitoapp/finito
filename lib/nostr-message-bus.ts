@@ -165,6 +165,7 @@ export type NostrMessageBus<TShape extends Record<string, FunctionDef>> = {
 	};
 };
 
+// RPC protocol behavior and wire format are documented in docs/nostr-rpc-nip-draft.md.
 export const createNostrMessageBus = <
 	TShape extends Record<string, FunctionDef>,
 >(props: {
