@@ -76,7 +76,7 @@ const PayButton: FC<{
 				}, new BigNumber(0))
 			: new BigNumber(0);
 	const totalAmount = itemsAmount.times(
-		new BigNumber(0).plus(new BigNumber(selectedTip).div(100)),
+		new BigNumber(1).plus(new BigNumber(selectedTip).div(100)),
 	);
 
 	return (
@@ -144,7 +144,13 @@ const PayButton: FC<{
 							const paymentInit: PaymentInit = {
 								paymentId,
 								items,
-								tip: Integer(totalAmount.integerValue().toNumber()),
+								tip: Integer(
+									totalAmount
+										.times(selectedTip)
+										.div(100)
+										.integerValue()
+										.toNumber(),
+								),
 								currency: props.screen.payload.bill.currency,
 								merchant: props.screen.payload.merchant,
 								paymentOption: {
@@ -558,24 +564,25 @@ export default function Page() {
 				} else if (event.payload.variant === "paymentFinished") {
 					const payload = event.payload.payload;
 					const paymentId = payload.paymentId;
-					if (!paymentId) return;
-					getOrThrow(
-						evolu.upsert("paymentFinished", {
-							id: createIdFromString(paymentId),
-							type: payload.type,
-							reason: payload.type === "failure" ? payload.reason : null,
-							refundType:
-								payload.type === "failure"
-									? (payload.refund?.type ?? null)
-									: null,
-							refundLnInvoice:
-								payload.type === "failure"
-									? payload.refund?.type === "btcLn"
-										? payload.refund.lnInvoice
-										: null
-									: null,
-						}),
-					);
+					if (paymentId) {
+						getOrThrow(
+							evolu.upsert("paymentFinished", {
+								id: createIdFromString(paymentId),
+								type: payload.type,
+								reason: payload.type === "failure" ? payload.reason : null,
+								refundType:
+									payload.type === "failure"
+										? (payload.refund?.type ?? null)
+										: null,
+								refundLnInvoice:
+									payload.type === "failure"
+										? payload.refund?.type === "btcLn"
+											? payload.refund.lnInvoice
+											: null
+										: null,
+							}),
+						);
+					}
 				}
 
 				setScreen(event.payload);

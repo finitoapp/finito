@@ -9,7 +9,7 @@ import { FadeHeader } from "@/components/fade-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { formatAmount } from "@/lib/format-utils";
+import { formatAmount, formatMoney } from "@/lib/format-utils";
 import { cn } from "@/lib/utils";
 
 type InitItem = {
@@ -173,11 +173,14 @@ export default function Page() {
 								<strong>{item.merchantName ?? "Unknown merchant"}</strong>
 								<div className={"flex justify-between w-full text-xs"}>
 									<span>
-										{formatAmount(totalAmount, item.currency ?? "CZK")}
+										{formatMoney({
+											value: totalAmount,
+											currency: item.currency ?? "CZK",
+										})}
 									</span>
 									&nbsp;&nbsp;•&nbsp;&nbsp;
 									<span className={"text-muted-foreground"}>
-										{new Date(item.createdAt * 1000).toLocaleString()}
+										{new Date(item.createdAt).toLocaleString()}
 									</span>
 								</div>
 							</div>

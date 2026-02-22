@@ -13,7 +13,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { formatAmount } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
 
 export default function Page() {
 	const { t } = useTranslation();
@@ -107,6 +107,7 @@ export default function Page() {
 			(acc, value) => acc + (value.price ?? 0) * (value.quantity ?? 0),
 			0,
 		) ?? 0) + (paymentInit?.tip ?? 0);
+	const tipAmount = paymentReady?.billTip ?? paymentInit?.tip ?? 0;
 
 	const readyItemLabels = new Map(
 		(paymentReadyItemRows ?? []).map((item) => [item.itemId, item.label]),
@@ -172,7 +173,24 @@ export default function Page() {
 							{
 								key: t("client:historyDetail.fields.spending"),
 								value: paymentInit ? (
-									formatAmount(totalAmount, paymentInit.currency ?? "CZK")
+									formatMoney({
+										value: totalAmount,
+										currency: paymentInit.currency ?? "CZK",
+									})
+								) : (
+									<Skeleton className={"h-5 w-50"} />
+								),
+							},
+							{
+								key: t("client:bill.tipForStaff"),
+								value: paymentInit ? (
+									formatMoney({
+										value: tipAmount,
+										currency:
+											paymentReady?.billCurrency ??
+											paymentInit.currency ??
+											"CZK",
+									})
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -180,7 +198,7 @@ export default function Page() {
 							{
 								key: t("client:historyDetail.fields.date"),
 								value: paymentInit ? (
-									new Date(paymentInit.createdAt * 1000).toLocaleString()
+									new Date(paymentInit.createdAt).toLocaleString()
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -198,10 +216,11 @@ export default function Page() {
 					<KeyValueList
 						items={(paymentInitItemRows ?? []).map((item) => ({
 							key: `${item.quantity ?? 0}× ${readyItemLabels.get(item.itemId ?? "") ?? item.itemId ?? "-"}`,
-							value: formatAmount(
-								(item.quantity ?? 0) * (item.price ?? 0),
-								paymentReady?.billCurrency ?? paymentInit?.currency ?? "CZK",
-							),
+							value: formatMoney({
+								value: (item.quantity ?? 0) * (item.price ?? 0),
+								currency:
+									paymentReady?.billCurrency ?? paymentInit?.currency ?? "CZK",
+							}),
 						}))}
 					/>
 				</CardContent>
