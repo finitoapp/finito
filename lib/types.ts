@@ -46,6 +46,17 @@ export const PositiveInteger = <T extends number>(value: T): PositiveInteger =>
 	PositiveIntegerSchema.parse(value);
 export type PositiveInteger = z.output<typeof PositiveIntegerSchema>;
 
+export const TimestampMsSchema = z
+	.number()
+	.int("Expected to be an integer")
+	.min(1, "Expected to be a positive integer")
+	.brand<"Integer", "inout">()
+	.brand<"PositiveInteger", "inout">()
+	.brand<"TimestampMs", "inout">();
+export const TimestampMs = <T extends number>(value: T): TimestampMs =>
+	TimestampMsSchema.parse(value);
+export type TimestampMs = z.output<typeof TimestampMsSchema>;
+
 export const NonNegativeIntegerSchema = z
 	.number()
 	.int("Expected to be an integer")

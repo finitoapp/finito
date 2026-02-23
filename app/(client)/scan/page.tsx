@@ -11,7 +11,7 @@ export default function Page() {
 	const router = useRouter();
 
 	return (
-		<div className="flex-1 flex flex-col p-8 justify-evenly gap-4">
+		<div className="flex-1 flex flex-col px-8 justify-evenly gap-4">
 			<div className={"h-10"} />
 			<FadeHeader title={t("client:page.scanQrCode")} />
 
