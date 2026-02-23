@@ -2,20 +2,13 @@
 
 import { createIdFromString, getOrThrow } from "@evolu/common";
 import { IconRefresh } from "@tabler/icons-react";
-import BigNumber from "bignumber.js";
+import { BigNumber } from "bignumber.js";
 import { motion } from "framer-motion";
 import { useAtomValue, useSetAtom, useStore } from "jotai";
-import {
-	ArrowLeftIcon,
-	LoaderCircleIcon,
-	QrCodeIcon,
-	RecycleIcon,
-	SquircleDashedIcon,
-} from "lucide-react";
+import { ArrowLeftIcon, QrCodeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FC, useEffect, useEffectEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BillItemList } from "@/app/(client)/bill-item-list";
 import {
 	createLoadingAtom,
 	createSelectedItemsAtom,
@@ -24,6 +17,9 @@ import {
 	type SelectedItemsAtom,
 	type SelectedTipAtom,
 } from "@/app/(client)/bill-utils";
+import { MenuScreen } from "@/app/(client)/payment/components/menu-screen";
+import { PaymentScreen } from "@/app/(client)/payment/components/payment-screen";
+import { ReservationScreen } from "@/app/(client)/payment/components/reservation-screen";
 import { FadeHeader } from "@/components/fade-header";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { TipSelector } from "@/components/tip-selector";
@@ -41,7 +37,7 @@ import type {
 	ScreenData,
 } from "@/lib/bill/billDriver";
 import { billManager } from "@/lib/bill/billManager";
-import { formatAmount, formatMoney } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/format-utils";
 import { assertNever } from "@/lib/type-utils";
 import { Currency, Integer, Uuid7 } from "@/lib/types";
 import type { PaymentInit } from "@/storages/payment-progress-storage";
@@ -111,8 +107,7 @@ const PayButton: FC<{
 						) {
 							const pay = props.screen.pay;
 
-							const items: { id: string; price: Integer; quantity: number }[] =
-								[];
+							const items: PaymentInit["items"] = [];
 
 							for (const item of props.screen.variant === "payment"
 								? props.screen.payload.bill.items
@@ -132,6 +127,7 @@ const PayButton: FC<{
 								items.push({
 									id: item.id,
 									price: item.price,
+									label: item.label,
 									quantity: quantity,
 								});
 							}
@@ -353,136 +349,33 @@ const Screen: FC<{
 	screen: ScreenData | null;
 	selectedItemsAtom: SelectedItemsAtom;
 }> = (props) => {
-	const { t } = useTranslation();
-	const totalAmount =
-		props.screen && props.screen.variant === "paymentReady"
-			? props.screen.payload.bill.items.reduce(
-					(acc, value) =>
-						acc.plus(new BigNumber(value.price).times(value.quantity)),
-					new BigNumber(0),
-				)
-			: new BigNumber(0);
+	if (props.screen === null) {
+		return null;
+	}
 
-	return (
-		<>
-			{props.screen !== null && (
-				<div className={"mb-28 flex flex-col grow"}>
-					{props.screen.variant === "refund" && (
-						<div
-							className={
-								"fixed w-xl h-full max-w-full flex justify-center items-center pb-60"
-							}
-						>
-							<RecycleIcon
-								size={300}
-								className={"text-muted-foreground opacity-5"}
-							/>
-						</div>
-					)}
+	if (
+		props.screen.variant === "paymentReady" ||
+		props.screen.variant === "paymentFinished" ||
+		props.screen.variant === "payment" ||
+		props.screen.variant === "refund"
+	) {
+		return (
+			<PaymentScreen
+				screen={props.screen}
+				selectedItemsAtom={props.selectedItemsAtom}
+			/>
+		);
+	}
 
-					{(props.screen?.variant === "payment" ||
-						props.screen?.variant === "refund") &&
-						(props.screen.payload.bill === null ||
-							props.screen.payload.bill.items.length === 0) && (
-							<div
-								className={
-									"fixed w-xl h-full max-w-full flex justify-center items-center pb-60"
-								}
-							>
-								<SquircleDashedIcon
-									size={300}
-									className={"text-muted-foreground opacity-5"}
-								/>
-							</div>
-						)}
+	if (props.screen.variant === "menu") {
+		return <MenuScreen screen={props.screen} />;
+	}
 
-					{(props.screen.variant === "payment" ||
-						props.screen.variant === "refund") &&
-						props.screen.payload.table?.name && (
-							<h3
-								className={"text-md font-bold text-foreground m-auto py-4 px-4"}
-							>
-								{props.screen.payload.table.name}
-							</h3>
-						)}
-					{(props.screen.variant === "payment" ||
-						props.screen.variant === "refund") && (
-						<BillItemList
-							bill={props.screen.payload.bill}
-							selectedItemsAtom={props.selectedItemsAtom}
-						/>
-					)}
-					{props.screen?.variant === "paymentFinished" && (
-						<div
-							className={
-								"w-full flex h-full flex-col items-center justify-evenly"
-							}
-						>
-							<LoadingIndicator
-								text={
-									props.screen.payload.type === "failure"
-										? props.screen.payload.reason
-										: t("client:paymentPage.status.paymentSuccessful")
-								}
-								open={true}
-								status={props.screen.payload.type}
-							/>
-						</div>
-					)}
+	if (props.screen.variant === "reservation") {
+		return <ReservationScreen screen={props.screen} />;
+	}
 
-					{props.screen.variant === "paymentReady" && (
-						<div
-							className={
-								"w-full flex h-full pb-80 flex-col items-center gap-12 justify-evenly"
-							}
-						>
-							<div className={"flex flex-col items-center gap-4"}>
-								<div className={"text-2xl"}>
-									<strong>
-										{formatMoney({
-											value: props.screen.payload.amountExpectedToPay
-												? props.screen.payload.amountExpectedToPay.value
-												: Integer(totalAmount.integerValue().toNumber()),
-											currency: props.screen.payload.amountExpectedToPay
-												? props.screen.payload.amountExpectedToPay.currency
-												: props.screen.payload.bill.currency,
-										})}
-									</strong>
-								</div>
-								{props.screen.payload.amountExpectedToPay && (
-									<div className={"text-2xl"}>
-										{formatMoney({
-											value: Integer(totalAmount.integerValue().toNumber()),
-											currency: props.screen.payload.bill.currency,
-										})}
-									</div>
-								)}
-							</div>
-
-							{props.screen.payload.amountExpectedToPay && (
-								<div className={"text-xs text-muted-foreground"}>
-									{t("client:paymentPage.labels.rate")}{" "}
-									{formatAmount(props.screen.payload.amountExpectedToPay.rate)}{" "}
-									{props.screen.payload.amountExpectedToPay.currency}/
-									{props.screen.payload.bill.currency}
-								</div>
-							)}
-
-							<div className={"flex flex-col items-center gap-4"}>
-								<LoaderCircleIcon className="animate-spin size-12 text-muted-foreground" />
-
-								<div className={"text-xs text-muted-foreground"}>
-									{totalAmount.gte(0)
-										? t("client:paymentPage.status.waitingForPayment")
-										: t("client:paymentPage.status.waitingForRefund")}
-								</div>
-							</div>
-						</div>
-					)}
-				</div>
-			)}
-		</>
-	);
+	assertNever(props.screen.variant);
 };
 
 const Loading: FC<{
@@ -626,6 +519,7 @@ export default function Page() {
 		(async () => {
 			subscriptionPromise = billManager.subscribe({
 				ndk,
+				t,
 				billId: qrCode,
 				callback: async (event) => {
 					await subscriptionHandler(event, subscriptionPromise);
@@ -687,7 +581,7 @@ export default function Page() {
 				title={
 					screen !== null && screen?.variant === "payment"
 						? screen.payload.merchant?.name
-						: ""
+						: "Restaurace v pangejtu"
 				}
 				startAddon={
 					<Button

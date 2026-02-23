@@ -80,6 +80,51 @@ const locale = {
     "alerts": {
       "billClosed": "Účet je uzavřen",
       "unknownQrCode": "Neznámý QR kód"
+    },
+    "menu": {
+      "generatedAt": "Menu vygenerováno",
+      "validity": {
+        "sameDay": "Platí {{date}}, {{from}}–{{to}}",
+        "fromTo": "Platí od {{from}} do {{to}}",
+        "from": "Platí od {{from}}",
+        "to": "Platí do {{to}}"
+      }
+    },
+    "reservation": {
+      "title": "Rezervační formulář",
+      "fields": {
+        "date": "Datum",
+        "numberOfPeople": "Počet osob",
+        "slot": "Čas",
+        "email": "E-mail",
+        "phone": "Telefon",
+        "note": "Poznámka"
+      },
+      "placeholders": {
+        "email": "vas@email.cz",
+        "phone": "+420...",
+        "note": "Volitelná poznámka k rezervaci"
+      },
+      "actions": {
+        "submit": "Odeslat rezervaci"
+      },
+      "messages": {
+        "peopleRange": "Povoleno {{min}}-{{max}} osob",
+        "noSlotForSelection": "Pro zvolený den/počet osob není volný slot"
+      },
+      "labels": {
+        "closed": "zavřeno",
+        "slotCount": "{{count}} slotů",
+        "slotPeopleRange": "{{min}}-{{max}} os.",
+        "required": "povinný",
+        "optional": "volitelný"
+      },
+      "summary": {
+        "generatedAt": "Data vygenerována",
+        "contactRequirements": "Kontakt: e-mail {{emailRequirement}}, telefon {{phoneRequirement}}",
+        "noteEnabled": "Poznámka je povolená.",
+        "noteEnabledWithMax": "Poznámka je povolená (max {{max}} znaků)."
+      }
     }
   },
   "form": {

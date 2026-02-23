@@ -14,6 +14,9 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
+const toMenuItemAvailabilityStatus = (value: string | null) =>
+	value === "soldOut" || value === "hidden" ? value : null;
+
 export default function Home() {
 	const { t } = useTranslation();
 	const router = useRouter();
@@ -62,6 +65,7 @@ export default function Home() {
 					"menuItem.menuCategoryId as menuCategoryId",
 					"menuItem.sourceItemId as sourceItemId",
 					"menuItem.label as label",
+					"menuItem.availabilityStatus as availabilityStatus",
 					"menuItem.priceValue as priceValue",
 					"menuItem.priceCurrency as priceCurrency",
 					"menuItem.unitOfMeasure as unitOfMeasure",
@@ -107,6 +111,7 @@ export default function Home() {
 				id: item.id,
 				sourceItemId: item.sourceItemId,
 				label: item.label,
+				availabilityStatus: toMenuItemAvailabilityStatus(item.availabilityStatus),
 				priceValue: item.priceValue,
 				priceCurrency: item.priceCurrency,
 				unitOfMeasure: item.unitOfMeasure,

@@ -36,6 +36,7 @@ type MenuItemState = {
 	id: string;
 	sourceItemId: string | null;
 	label: string;
+	availabilityStatus: "soldOut" | "hidden" | null;
 	priceValue: number;
 	priceCurrency: string;
 	unitOfMeasure: string | null;
@@ -76,8 +77,10 @@ export type MenuFormDefaultValues = {
 };
 
 const EmptySelectValue = "__empty__";
+const AvailableAvailabilityStatusSelectValue = "__available__";
 
 const menuStatusValues = [MenuStatus.Draft, MenuStatus.Published] as const;
+const menuItemAvailabilityStatusValues = ["soldOut", "hidden"] as const;
 
 const menuPayloadSchema = z
 	.object({
@@ -98,6 +101,9 @@ const menuPayloadSchema = z
 								id: z.string().trim().min(1),
 								sourceItemId: z.string().trim().min(1).nullable(),
 								label: NonEmptyStringSchema,
+								availabilityStatus: z
+									.enum(menuItemAvailabilityStatusValues)
+									.nullable(),
 								priceValue: z.number().int().nonnegative(),
 								priceCurrency: z.enum(Currency),
 								unitOfMeasure: z.string().trim().min(1).nullable(),
@@ -146,7 +152,10 @@ const createInitialFormState = (
 				id: category.id,
 				name: category.name,
 				selectedItemId: EmptySelectValue,
-				items: [...category.items],
+				items: category.items.map((item) => ({
+					...item,
+					availabilityStatus: item.availabilityStatus ?? null,
+				})),
 			})) ?? [],
 	};
 };
@@ -251,6 +260,7 @@ export const MenuForm = (params: {
 					id: createNewId() as string,
 					sourceItemId: sourceItem.id,
 					label: sourceItem.label,
+					availabilityStatus: null,
 					priceValue: sourceItem.priceValue,
 					priceCurrency: sourceItem.priceCurrency,
 					unitOfMeasure: sourceItem.unitOfMeasure,
@@ -328,6 +338,7 @@ export const MenuForm = (params: {
 						menuCategoryId: category.id as Id,
 						sourceItemId: item.sourceItemId as Id | null,
 						label: item.label,
+						availabilityStatus: item.availabilityStatus,
 						priceValue: item.priceValue,
 						priceCurrency: item.priceCurrency,
 						unitOfMeasure: item.unitOfMeasure,
@@ -395,6 +406,7 @@ export const MenuForm = (params: {
 					id: item.id,
 					sourceItemId: item.sourceItemId,
 					label: item.label.trim(),
+					availabilityStatus: item.availabilityStatus,
 					priceValue: item.priceValue,
 					priceCurrency: item.priceCurrency,
 					unitOfMeasure: normalizeNullableString(item.unitOfMeasure),
@@ -442,6 +454,13 @@ export const MenuForm = (params: {
 	const statusLabels: Record<(typeof menuStatusValues)[number], string> = {
 		[MenuStatus.Draft]: t("menus:status.draft"),
 		[MenuStatus.Published]: t("menus:status.published"),
+	};
+	const availabilityStatusLabels: Record<
+		(typeof menuItemAvailabilityStatusValues)[number],
+		string
+	> = {
+		soldOut: t("menus:form.availabilityStatus.soldOut"),
+		hidden: t("menus:form.availabilityStatus.hidden"),
 	};
 
 	return (
@@ -624,15 +643,62 @@ export const MenuForm = (params: {
 												{item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}
 											</div>
 										</div>
-										<Button
-											type="button"
-											variant={"outline"}
-											onClick={() =>
-												removeItemFromCategory(category.id, item.id)
-											}
-										>
-											<Trash2Icon />
-										</Button>
+										<div className={"flex items-center gap-2"}>
+											<div className={"w-40"}>
+												<Select
+													value={
+														item.availabilityStatus ??
+														AvailableAvailabilityStatusSelectValue
+													}
+													onValueChange={(value) =>
+														updateCategory(category.id, (current) => ({
+															...current,
+															items: current.items.map((currentItem) =>
+																currentItem.id !== item.id
+																	? currentItem
+																	: {
+																			...currentItem,
+																			availabilityStatus:
+																				value ===
+																				AvailableAvailabilityStatusSelectValue
+																					? null
+																					: (value as (typeof menuItemAvailabilityStatusValues)[number]),
+																		},
+															),
+														}))
+													}
+												>
+													<SelectTrigger>
+														<SelectValue
+															placeholder={t(
+																"menus:form.fields.availabilityStatus",
+															)}
+														/>
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem
+															value={AvailableAvailabilityStatusSelectValue}
+														>
+															{t("menus:form.availabilityStatus.available")}
+														</SelectItem>
+														{menuItemAvailabilityStatusValues.map((status) => (
+															<SelectItem key={status} value={status}>
+																{availabilityStatusLabels[status]}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											</div>
+											<Button
+												type="button"
+												variant={"outline"}
+												onClick={() =>
+													removeItemFromCategory(category.id, item.id)
+												}
+											>
+												<Trash2Icon />
+											</Button>
+										</div>
 									</div>
 								))}
 							</div>

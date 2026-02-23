@@ -61,6 +61,8 @@ export const Schema = {
 		// Optional link to source catalog item when menu item is derived from `item`.
 		sourceItemId: nullOr(Id),
 		label: NonEmptyTrimmedString100,
+		// `null` = available, `"soldOut"` | `"hidden"` for menu-specific availability.
+		availabilityStatus: nullOr(NonEmptyTrimmedString100),
 		// Stored in minor units for `priceCurrency`.
 		priceValue: NonNegativeInt,
 		priceCurrency: NonEmptyTrimmedString100,

@@ -28,7 +28,13 @@ const locale = {
       "status": "Stav",
       "validFrom": "Platné od",
       "validTo": "Platné do",
-      "publishedAt": "Publikováno od"
+      "publishedAt": "Publikováno od",
+      "availabilityStatus": "Dostupnost"
+    },
+    "availabilityStatus": {
+      "available": "Dostupné",
+      "soldOut": "Vyprodané",
+      "hidden": "Skryté"
     },
     "sections": {
       "categories": "Kategorie",

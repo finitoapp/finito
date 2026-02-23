@@ -1,6 +1,6 @@
 import type { BillDriver, BillSubscription } from "@/lib/bill/billDriver";
 import { extractBtcAmountFromLightningInvoice } from "@/lib/ln-utils";
-import { Currency, Uuid7 } from "@/lib/types";
+import { Currency, IntegerSchema, NonEmptyString, Uuid7 } from "@/lib/types";
 
 const lightningInvoiceRegex =
 	/^(lightning:)?(ln)(bc|tb|bcrt|tbregtest)?(\d+[pnumk]?)?1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+$/i;
@@ -27,6 +27,23 @@ export class LnDriver implements BillDriver {
 			return null;
 		}
 
+		const amountAsInteger = IntegerSchema.safeParse(amount);
+		if (!amountAsInteger.success) {
+			callback({
+				type: "screen",
+				payload: {
+					variant: "paymentFinished",
+					payload: {
+						paymentId: Uuid7.random(),
+						type: "failure",
+						reason: NonEmptyString(
+							"Invoice amount contains milli satoshis which are not supported. Please use a whole number of satoshis.",
+						),
+					},
+				},
+			});
+		}
+
 		callback({
 			type: "screen",
 			payload: {
@@ -37,7 +54,7 @@ export class LnDriver implements BillDriver {
 						items: [
 							{
 								id: Uuid7.random(),
-								price: amount,
+								price: amountAsInteger.data,
 								quantity: 1,
 								label: "invoice",
 							},

@@ -1,6 +1,8 @@
 import type { BillDriver } from "@/lib/bill/billDriver";
 import { ExampleBillDriver } from "@/lib/bill/driver/exampleBillDriver";
 import { LnDriver } from "@/lib/bill/driver/lnDriver";
+import { MenuDriver } from "@/lib/bill/driver/menuDriver";
+import { ReservationDriver } from "@/lib/bill/driver/reservationDriver";
 import { StaticPaymentBillDriver } from "@/lib/bill/driver/staticPaymentBillDriver";
 import { TableDriver } from "@/lib/bill/driver/tableDriver";
 
@@ -8,6 +10,8 @@ class BillManager implements BillDriver {
 	private readonly billDrivers: BillDriver[] = [
 		new StaticPaymentBillDriver(),
 		new ExampleBillDriver(),
+		new MenuDriver(),
+		new ReservationDriver(),
 		new TableDriver(),
 		new LnDriver(),
 	];

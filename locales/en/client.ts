@@ -80,6 +80,51 @@ const locale = {
     "alerts": {
       "billClosed": "The bill is closed",
       "unknownQrCode": "Unknown QR code"
+    },
+    "menu": {
+      "generatedAt": "Menu generated",
+      "validity": {
+        "sameDay": "Valid {{date}}, {{from}}–{{to}}",
+        "fromTo": "Valid from {{from}} to {{to}}",
+        "from": "Valid from {{from}}",
+        "to": "Valid to {{to}}"
+      }
+    },
+    "reservation": {
+      "title": "Reservation form",
+      "fields": {
+        "date": "Date",
+        "numberOfPeople": "Number of people",
+        "slot": "Time",
+        "email": "Email",
+        "phone": "Phone",
+        "note": "Note"
+      },
+      "placeholders": {
+        "email": "you@example.com",
+        "phone": "+420...",
+        "note": "Optional reservation note"
+      },
+      "actions": {
+        "submit": "Submit reservation"
+      },
+      "messages": {
+        "peopleRange": "Allowed {{min}}-{{max}} people",
+        "noSlotForSelection": "No available slot for the selected day/party size"
+      },
+      "labels": {
+        "closed": "closed",
+        "slotCount": "{{count}} slots",
+        "slotPeopleRange": "{{min}}-{{max}} ppl",
+        "required": "required",
+        "optional": "optional"
+      },
+      "summary": {
+        "generatedAt": "Data generated",
+        "contactRequirements": "Contact: email {{emailRequirement}}, phone {{phoneRequirement}}",
+        "noteEnabled": "Note is enabled.",
+        "noteEnabledWithMax": "Note is enabled (max {{max}} characters)."
+      }
     }
   },
   "form": {

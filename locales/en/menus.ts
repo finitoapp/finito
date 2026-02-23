@@ -28,7 +28,13 @@ const locale = {
       "status": "Status",
       "validFrom": "Valid from",
       "validTo": "Valid to",
-      "publishedAt": "Published at"
+      "publishedAt": "Published at",
+      "availabilityStatus": "Availability"
+    },
+    "availabilityStatus": {
+      "available": "Available",
+      "soldOut": "Sold out",
+      "hidden": "Hidden"
     },
     "sections": {
       "categories": "Categories",

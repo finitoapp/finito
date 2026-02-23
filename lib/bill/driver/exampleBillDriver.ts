@@ -1,10 +1,11 @@
 import type { Id } from "@evolu/common";
+import { BigNumber } from "bignumber.js";
 import type {
 	BillDriver,
 	BillSubscription,
 	ScreenData,
 } from "@/lib/bill/billDriver";
-import { NonEmptyString } from "@/lib/types";
+import { Integer, NonEmptyString } from "@/lib/types";
 import type { PaymentReady } from "@/storages/payment-progress-storage";
 
 const exampleBillItems = {
@@ -13,7 +14,7 @@ const exampleBillItems = {
 			"1",
 			{
 				label: "Maďarský guláš",
-				price: 190,
+				price: Integer(190),
 				quantity: 1,
 			},
 		],
@@ -21,7 +22,7 @@ const exampleBillItems = {
 			"2",
 			{
 				label: "Řízek",
-				price: 219,
+				price: Integer(219),
 				quantity: 1,
 			},
 		],
@@ -29,7 +30,7 @@ const exampleBillItems = {
 			"3",
 			{
 				label: "Pivo",
-				price: 49,
+				price: Integer(49),
 				quantity: 3,
 				optionality: {
 					checked: 2,
@@ -40,7 +41,7 @@ const exampleBillItems = {
 			"4",
 			{
 				label: "Volitelné párátko",
-				price: 2,
+				price: Integer(2),
 				quantity: 1,
 				optionality: {
 					checked: 1,
@@ -53,7 +54,7 @@ const exampleBillItems = {
 			"1",
 			{
 				label: "Refund",
-				price: -190,
+				price: Integer(-190),
 				quantity: 1,
 			},
 		],
@@ -124,8 +125,9 @@ export class ExampleBillDriver implements BillDriver {
 				}
 
 				const totalAmount = finalItems.reduce(
-					(acc, value) => acc + value.price * value.quantity,
-					0,
+					(acc, value) =>
+						acc.plus(new BigNumber(value.price).times(value.quantity)),
+					new BigNumber(0),
 				);
 
 				timeout = setTimeout(() => {
@@ -174,7 +176,7 @@ export class ExampleBillDriver implements BillDriver {
 							type: "btcLn",
 							lnInvoice: "abc",
 							amountExpectedToPay: {
-								value: totalAmount / rate,
+								value: Integer(totalAmount.div(rate).integerValue().toNumber()),
 								currency: "BTC",
 								rate: rate,
 							},

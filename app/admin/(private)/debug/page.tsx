@@ -750,6 +750,7 @@ const RandomDataGenerator = () => {
 									menuCategoryId: menuCategoryId as Id,
 									sourceItemId: sourceItem.id as Id,
 									label: sourceItem.label,
+									availabilityStatus: null,
 									priceValue: sourceItem.priceValue,
 									priceCurrency: sourceItem.priceCurrency,
 									unitOfMeasure: sourceItem.unitOfMeasure,

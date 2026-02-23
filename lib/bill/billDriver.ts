@@ -1,6 +1,9 @@
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
+import type { TFunction } from "i18next";
 import type { EmptyObject } from "type-fest";
+import type { NostrMenu } from "@/lib/contracts/nostr/menu";
+import type { ReservationFormData } from "@/lib/contracts/nostr/reservation";
 import type { InferEnumType } from "@/lib/types";
 import type {
 	PaymentFinished,
@@ -54,6 +57,16 @@ export type ScreenData =
 	| {
 			variant: "paymentFinished";
 			payload: PaymentFinished;
+	  }
+	| {
+			variant: "menu";
+			parentScreen?: ScreenData;
+			payload: NostrMenu;
+	  }
+	| {
+			variant: "reservation";
+			parentScreen?: ScreenData;
+			payload: ReservationFormData;
 	  };
 
 export type BillDriverSubscriptionEvent =
@@ -93,5 +106,6 @@ export interface BillDriver {
 			signer: NDKSigner;
 			activeUser: NDKUser;
 		};
+		t: TFunction;
 	}): Promise<null | BillSubscription>;
 }
