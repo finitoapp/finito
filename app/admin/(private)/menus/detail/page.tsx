@@ -12,14 +12,18 @@ import { useMutation } from "@tanstack/react-query";
 import {
 	CopyIcon,
 	EditIcon,
+	ExternalLink,
 	EyeIcon,
 	PrinterIcon,
+	QrCodeIcon,
 	Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { type MenuPdfData, MenuPdfTemplate } from "@/components/menus/menu-pdf";
@@ -27,15 +31,25 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { downloadFile } from "@/lib/file-utils";
-import { formatAmount } from "@/lib/format-utils";
-import { isMenuVisibleForPublic } from "@/lib/menu-utils";
-import { MenuStatus } from "@/storages/menu-storage";
+import { useNostr } from "@/hooks/use-nostr";
+import { MenuStatus } from "@/lib/evolu/model/menu";
+import { publishRelevantMenusToStorage } from "@/lib/menu/service";
+import { isMenuVisibleForPublic } from "@/lib/menu/utils";
+import { downloadFile } from "@/lib/shared/files/file-utils";
+import { formatAmount } from "@/lib/shared/utils/format";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 const createNewId = () => createId({ randomBytes: createRandomBytes() }) as Id;
 
@@ -132,6 +146,7 @@ const DownloadMenuPdf = (props: {
 export default function Home() {
 	const { t, i18n } = useTranslation();
 	const evolu = useEvolu();
+	const { ndk } = useNostr();
 	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -300,6 +315,7 @@ export default function Home() {
 		() => `menu-${toSafeFileName(menu?.name ?? "menu")}.pdf`,
 		[menu?.name],
 	);
+	const menuPreviewUrl = `${clientBaseUrl}#m-${ndk.signer.pubkey}`;
 
 	const { mutateAsync: deleteMenu } = useMutation({
 		mutationFn: async () => {
@@ -340,12 +356,27 @@ export default function Home() {
 				menu.status === MenuStatus.Published
 					? MenuStatus.Draft
 					: MenuStatus.Published;
+			const nextPublishedAt =
+				nextStatus === MenuStatus.Published ? Date.now() : menu.publishedAt;
 			getOrThrow(
 				evolu.update("menu", {
 					id: menu.id,
 					status: nextStatus,
+					publishedAt: nextPublishedAt,
 				}),
 			);
+
+			const publishResult = await publishRelevantMenusToStorage({
+				ndk,
+				evolu,
+			});
+			if (publishResult instanceof Error) {
+				console.error(
+					"Failed to publish menus to Nostr storage",
+					publishResult,
+				);
+				toast("Nepodařilo se publikovat menu do veřejného náhledu.");
+			}
 		},
 	});
 
@@ -568,6 +599,32 @@ export default function Home() {
 									? t("menus:detail.actions.moveToDraft")
 									: t("menus:detail.actions.publish")}
 							</Button>
+							<Button variant={"outline"} className={"w-full"} asChild>
+								<a href={menuPreviewUrl} target={"_blank"} rel={"noreferrer"}>
+									<ExternalLink />
+									Náhled
+								</a>
+							</Button>
+							<Dialog>
+								<DialogTrigger asChild>
+									<Button variant={"outline"} className={"w-full"}>
+										<QrCodeIcon />
+										Zobraz QR kód
+									</Button>
+								</DialogTrigger>
+								<DialogContent>
+									<DialogHeader>
+										<DialogTitle>Zobraz QR kód</DialogTitle>
+									</DialogHeader>
+									<div className={"py-4 bg-white flex rounded"}>
+										<QRCodeSVG
+											className={"w-full"}
+											size={256}
+											value={menuPreviewUrl}
+										/>
+									</div>
+								</DialogContent>
+							</Dialog>
 							<Button
 								variant={"outline"}
 								className={"w-full"}

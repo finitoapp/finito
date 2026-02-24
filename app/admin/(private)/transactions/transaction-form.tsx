@@ -23,7 +23,7 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 type AccountTag =
 	| "accountIban"

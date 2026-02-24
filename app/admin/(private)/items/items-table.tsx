@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatMoney } from "@/lib/format-utils";
-import type { Currency, Integer } from "@/lib/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+import type { Currency, Integer } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;

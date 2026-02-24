@@ -15,7 +15,7 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const invoiceNumberSeriesFormSchema = z.object({
 	serialNumberDigits: StringToNumberSchema.pipe(PositiveIntegerSchema),

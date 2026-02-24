@@ -14,7 +14,7 @@ import {
 	HttpsUrlSchema,
 	NonEmptyStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const accountSchema = z.object({
 	name: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),

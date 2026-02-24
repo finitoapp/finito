@@ -11,10 +11,10 @@ import {
 	View,
 } from "@react-pdf/renderer";
 import type React from "react";
-import { formatAmount, formatIban } from "@/lib/format-utils";
-import { parseCzechBankAccountFromIban } from "@/lib/iban-utils";
-import { CountryCode } from "@/lib/types";
-import { type Invoice, InvoicePaymentMethod } from "@/storages/invoice-storage";
+import { formatAmount, formatIban } from "@/lib/shared/utils/format";
+import { parseCzechBankAccountFromIban } from "@/lib/shared/utils/iban";
+import { CountryCode } from "@/lib/shared/types";
+import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 
 Font.register({
 	family: "Roboto",

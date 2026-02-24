@@ -18,7 +18,7 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatIban } from "@/lib/format-utils";
+import { formatIban } from "@/lib/shared/utils/format";
 import {
 	FiatCurrency,
 	NonEmptyStringSchema,
@@ -28,9 +28,9 @@ import {
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 	Timezone,
-} from "@/lib/types";
-import { InvoicePaymentMethod } from "@/storages/invoice-storage";
-import { PaymentMethod } from "@/storages/payment-storage";
+} from "@/lib/shared/types";
+import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
+import { PaymentMethod } from "@/lib/evolu/model/payment";
 
 export const billingSettingsFormSchema = z.object({
 	defaultInvoiceDueDateDays: StringToNumberSchema.pipe(

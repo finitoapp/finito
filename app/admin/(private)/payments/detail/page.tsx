@@ -47,17 +47,17 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
-import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
-import { shareImageOrDownload } from "@/lib/file-utils";
-import { formatMoney } from "@/lib/format-utils";
-import { stopPaymentWatching } from "@/lib/payment-utils";
-import { clientBaseUrl } from "@/lib/window-utils";
-import { PaymentStatus } from "@/storages/payment-status-storage";
+import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
+import { shareImageOrDownload } from "@/lib/shared/files/file-utils";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { stopPaymentWatching } from "@/lib/payment/service";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
+import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import {
 	PaymentWatchingStatus,
 	PaymentWatchingStopReason,
 	resolvePaymentWatchingStatus,
-} from "@/storages/payment-watching-state-storage";
+} from "@/lib/evolu/model/payment-watching-state";
 
 const StatusButton: FC<{
 	paymentId: Id;

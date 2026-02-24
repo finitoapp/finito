@@ -13,7 +13,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { formatMoney } from "@/lib/format-utils";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export default function Page() {
 	const { t } = useTranslation();

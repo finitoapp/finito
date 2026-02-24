@@ -17,7 +17,7 @@ import {
 	PositiveIntegerSchema,
 	StringToNullableNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const smtpSchema = z.object({
 	server: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),

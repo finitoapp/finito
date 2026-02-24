@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { HandCoinsIcon } from "lucide-react";
 import type React from "react";
 import type { FC } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 export const FinitoLogo: FC<React.ComponentProps<"div">> = ({
 	className,

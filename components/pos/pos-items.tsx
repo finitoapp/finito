@@ -15,9 +15,9 @@ import { useBill } from "@/hooks/use-bill";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { Pos } from "@/hooks/use-pos";
-import { formatMoney } from "@/lib/format-utils";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
-import { type Currency, NonEmptyString, Uuid7 } from "@/lib/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
+import { type Currency, NonEmptyString, Uuid7 } from "@/lib/shared/types";
 
 type CatalogItem = {
 	id: string;

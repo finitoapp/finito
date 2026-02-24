@@ -15,7 +15,7 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
-import { createActiveCategoriesQuery } from "@/lib/evolu-queries/category-queries";
+import { createActiveCategoriesQuery } from "@/lib/evolu/queries/category";
 import {
 	Currency,
 	NonEmptyStringSchema,
@@ -23,8 +23,8 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
-import { moneyCodec } from "@/lib/zod/moneyCodec";
+} from "@/lib/shared/types";
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const itemSchema = z
 	.object({

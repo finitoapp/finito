@@ -2,7 +2,7 @@
 
 import type React from "react";
 import { toLocalTimeLabel } from "@/app/admin/(private)/reservations/lib/calendar-math";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 export const TimelineHeader: React.FC<{
 	tableColumnLabel: string;

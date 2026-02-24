@@ -24,7 +24,7 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const reservationApprovalStatusValues = [
 	"pending",

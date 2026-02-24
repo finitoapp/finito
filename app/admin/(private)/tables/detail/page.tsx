@@ -21,8 +21,8 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
-import { formatAmount } from "@/lib/format-utils";
-import { clientBaseUrl } from "@/lib/window-utils";
+import { formatAmount } from "@/lib/shared/utils/format";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 export default function Home() {
 	const { t } = useTranslation();

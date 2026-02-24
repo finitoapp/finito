@@ -19,7 +19,7 @@ import type { ReservationStateAtoms } from "@/app/admin/(private)/reservations/l
 import { Button } from "@/components/ui/button";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 import { ReservationRow } from "./timeline/reservation-row";
 import { TimelineHeader } from "./timeline/timeline-header";
 

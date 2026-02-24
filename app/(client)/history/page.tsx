@@ -9,8 +9,8 @@ import { FadeHeader } from "@/components/fade-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { formatAmount, formatMoney } from "@/lib/format-utils";
-import { cn } from "@/lib/utils";
+import { formatAmount, formatMoney } from "@/lib/shared/utils/format";
+import { cn } from "@/lib/shared/ui/cn";
 
 type InitItem = {
 	id: Id;

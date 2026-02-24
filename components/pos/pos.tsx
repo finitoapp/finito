@@ -6,7 +6,7 @@ import { PosBillTabs } from "@/components/pos/pos-bill-tabs";
 import { PosItems } from "@/components/pos/pos-items";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { usePos } from "@/hooks/use-pos";
-import type { Currency } from "@/lib/types";
+import type { Currency } from "@/lib/shared/types";
 
 export const POS: FC<{
 	defaultCurrency: Currency;

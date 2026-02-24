@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { useTranslation } from "react-i18next";
-import type { ScreenData } from "@/lib/bill/billDriver";
-import { formatMoney } from "@/lib/format-utils";
+import type { ScreenData } from "@/lib/bill/driver";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export const MenuScreen: FC<{
 	screen: Extract<

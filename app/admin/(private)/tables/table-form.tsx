@@ -21,7 +21,7 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const tableSchema = z.object({
 	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),

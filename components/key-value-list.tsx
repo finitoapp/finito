@@ -1,6 +1,6 @@
 import { Lightbulb } from "lucide-react";
 import type React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 interface KeyValueItem {
 	key: string;

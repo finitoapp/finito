@@ -14,7 +14,6 @@
 			"components/**/*",
 			"!components/ui/**/*",
 			"hooks/**/*",
-			"storages/**/*",
 			"lib/**/*",
 			"scripts/**/*",
 			"!scripts/**/*Test.ts",

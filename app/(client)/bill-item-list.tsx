@@ -9,9 +9,9 @@ import { useTranslation } from "react-i18next";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { CounterCheckbox } from "@/components/counter-checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { formatMoney } from "@/lib/format-utils";
-import type { Currency, Integer } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/shared/utils/format";
+import type { Currency, Integer } from "@/lib/shared/types";
+import { cn } from "@/lib/shared/ui/cn";
 
 interface NavItem {
 	id: string;

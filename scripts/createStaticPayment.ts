@@ -8,10 +8,10 @@ import { bech32 } from "@scure/base";
 import { createStore } from "jotai";
 import { evoluAtom } from "@/atoms/evolu";
 import { ndkAtom } from "@/atoms/ndk";
-import { extractExpirationFromLightningInvoice } from "@/lib/ln-utils";
-import type { StaticOfflinePayment } from "@/lib/schemas";
-import { assertNotNull } from "@/lib/type-utils";
-import { Currency } from "@/lib/types";
+import { extractExpirationFromLightningInvoice } from "@/lib/shared/utils/ln";
+import type { StaticOfflinePayment } from "@/lib/shared/schemas";
+import { assertNotNull } from "@/lib/shared/utils/type";
+import { Currency } from "@/lib/shared/types";
 
 (async () => {
 	const amount = 2000;

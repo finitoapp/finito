@@ -3,7 +3,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { createAppEvolu } from "@/lib/evolu";
-import { NonEmptyString } from "@/lib/types";
+import { NonEmptyString } from "@/lib/shared/types";
 
 export const evoluAtom = atom(async (get) => {
 	const account = await get(accountAtom);

@@ -2,7 +2,7 @@ import { Eye, EyeOff } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 export interface PasswordTextareaProps
 	extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}

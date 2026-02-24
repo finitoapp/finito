@@ -25,7 +25,7 @@ import {
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
 	WssUrlSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const transportTypeWebsocket = "websocket";
 

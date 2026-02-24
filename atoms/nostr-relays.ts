@@ -2,7 +2,7 @@ import { getOrThrow, sqliteTrue } from "@evolu/common";
 import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
-import { WssUrl } from "@/lib/types";
+import { WssUrl } from "@/lib/shared/types";
 
 export const defaultRelays = [
 	// WssUrl("wss://relay.primal.net"),

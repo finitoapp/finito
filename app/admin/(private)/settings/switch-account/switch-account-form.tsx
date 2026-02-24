@@ -21,7 +21,7 @@ import {
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
 	WssUrl,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const switchAccountSchema = z.object({
 	seed: StringToNullableStringSchema.pipe(NonEmptyStringSchema),

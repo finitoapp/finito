@@ -18,7 +18,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { formatIban } from "@/lib/format-utils";
+import { formatIban } from "@/lib/shared/utils/format";
 
 export default function Home() {
 	const { t } = useTranslation();

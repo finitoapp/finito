@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatIban } from "@/lib/format-utils";
-import { IbanSchema } from "@/lib/types";
+import { formatIban } from "@/lib/shared/utils/format";
+import { IbanSchema } from "@/lib/shared/types";
 
 export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 	const evolu = useEvolu();

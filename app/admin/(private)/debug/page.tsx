@@ -28,12 +28,12 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrRelays } from "@/hooks/use-nostr-relays";
-import { decodeCsv, encodeCsv } from "@/lib/csv";
+import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { Schema } from "@/lib/evolu";
-import { downloadFile } from "@/lib/file-utils";
-import { Currency } from "@/lib/types";
-import { createZip, extractZip } from "@/lib/zip";
-import { MenuStatus } from "@/storages/menu-storage";
+import { downloadFile } from "@/lib/shared/files/file-utils";
+import { Currency } from "@/lib/shared/types";
+import { createZip, extractZip } from "@/lib/shared/files/zip";
+import { MenuStatus } from "@/lib/evolu/model/menu";
 
 const DownloadSqliteData = () => {
 	const { t } = useTranslation();

@@ -10,6 +10,7 @@ import {
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,13 +25,15 @@ import {
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { formatAmount } from "@/lib/format-utils";
+import { useNostr } from "@/hooks/use-nostr";
+import { MenuStatus } from "@/lib/evolu/model/menu";
+import { publishRelevantMenusToStorage } from "@/lib/menu/service";
 import {
 	fromDatetimeLocalInputValue,
 	toDatetimeLocalInputValue,
-} from "@/lib/menu-utils";
-import { Currency, NonEmptyStringSchema } from "@/lib/types";
-import { MenuStatus } from "@/storages/menu-storage";
+} from "@/lib/menu/utils";
+import { Currency, NonEmptyStringSchema } from "@/lib/shared/types";
+import { formatAmount } from "@/lib/shared/utils/format";
 
 type MenuItemState = {
 	id: string;
@@ -166,6 +169,7 @@ export const MenuForm = (params: {
 }) => {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
+	const { ndk } = useNostr();
 	const [state, setState] = useState<MenuFormState>(() =>
 		createInitialFormState(params.defaultValues),
 	);
@@ -441,6 +445,17 @@ export const MenuForm = (params: {
 				menuId,
 				categories: payload.categories,
 			});
+			const publishResult = await publishRelevantMenusToStorage({
+				ndk,
+				evolu,
+			});
+			if (publishResult instanceof Error) {
+				console.error(
+					"Failed to publish menus to Nostr storage",
+					publishResult,
+				);
+				toast("Nepodařilo se publikovat menu do veřejného náhledu.");
+			}
 			params.onSuccess?.(menuId);
 		} catch (error) {
 			setSubmitError(

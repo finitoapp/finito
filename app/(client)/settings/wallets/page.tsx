@@ -26,7 +26,7 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 export default function Page() {
 	const { t } = useTranslation();

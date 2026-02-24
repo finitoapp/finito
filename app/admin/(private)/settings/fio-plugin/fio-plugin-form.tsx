@@ -26,7 +26,7 @@ import {
 	PositiveIntegerSchema,
 	StringToNullableNumberSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const fioPluginSchema = z.object({
 	apiUrl: StringToUndefinedStringSchema.pipe(HttpsUrlSchema),

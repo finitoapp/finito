@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/shared/ui/cn';
 import { cva, VariantProps } from 'class-variance-authority';
 import { Avatar as AvatarPrimitive } from 'radix-ui';
 

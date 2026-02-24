@@ -21,7 +21,7 @@ import type {
 } from "@/app/admin/(private)/reservations/lib/types";
 import { withWindowPointerSession } from "@/app/admin/(private)/reservations/lib/window-pointer-session";
 import { useEvolu } from "@/hooks/use-evolu";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 const RESERVATION_EDIT_LONG_PRESS_MS = 700;
 const RESERVATION_EDIT_LONG_PRESS_MOVE_THRESHOLD_PX = 4;

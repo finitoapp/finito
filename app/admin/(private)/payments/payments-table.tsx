@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatMoney } from "@/lib/format-utils";
-import { PaymentStatus } from "@/storages/payment-status-storage";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 
 type Row = {
 	id: Id;

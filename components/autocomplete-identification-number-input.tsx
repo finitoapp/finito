@@ -1,12 +1,12 @@
 import { z } from "zod";
 import { createAutocompleteSelectInput } from "@/components/autocomplete-select-input";
-import { AresApiClient } from "@/lib/ares/ares-api-client";
-import type { AddressSchema } from "@/lib/schemas";
+import { AresApiClient } from "@/lib/integrations/ares/client";
+import type { AddressSchema } from "@/lib/shared/schemas";
 import {
 	IdentificationNumberCzSchema,
 	NonEmptyString,
 	NonEmptyStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export type AutocompleteIdentificationNumberItem = {
 	name: string;

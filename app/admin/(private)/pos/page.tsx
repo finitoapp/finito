@@ -4,7 +4,7 @@ import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { POS } from "@/components/pos/pos";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { Currency } from "@/lib/types";
+import { Currency } from "@/lib/shared/types";
 
 export default function Home() {
 	const billingSettingsQuery = useCreateQuery(

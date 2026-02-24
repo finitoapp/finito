@@ -41,8 +41,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
-import { AddressSchema } from "@/lib/schemas";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
+import { AddressSchema } from "@/lib/shared/schemas";
 import {
 	Currency,
 	DateToDateStringSchema,
@@ -54,9 +54,9 @@ import {
 	StringToUndefinedStringSchema,
 	Uuid7,
 	Uuid7Schema,
-} from "@/lib/types";
-import { InvoiceStatus } from "@/storages/invoice-status-storage";
-import { InvoicePaymentMethod } from "@/storages/invoice-storage";
+} from "@/lib/shared/types";
+import { InvoiceStatus } from "@/lib/evolu/model/invoice-status";
+import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 
 const BillingInfoFormSchema = clientFormSchema;
 

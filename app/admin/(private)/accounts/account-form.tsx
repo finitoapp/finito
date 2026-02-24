@@ -17,7 +17,7 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import type { EvoluSchema } from "@/lib/evolu";
-import { assertNever } from "@/lib/type-utils";
+import { assertNever } from "@/lib/shared/utils/type";
 import {
 	EmailSchema,
 	FiatCurrency,
@@ -26,7 +26,7 @@ import {
 	NwcCredentialsSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const baseAccountSparkSchema = z.object({
 	mnemonic: z.string(),

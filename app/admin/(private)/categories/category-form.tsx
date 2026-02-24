@@ -18,7 +18,7 @@ import {
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const categorySchema = z.object({
 	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),

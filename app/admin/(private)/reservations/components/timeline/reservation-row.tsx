@@ -6,7 +6,7 @@ import type React from "react";
 import { Fragment } from "react";
 import type { ReservationStateAtoms } from "@/app/admin/(private)/reservations/lib/state-atoms";
 import type { TableVm } from "@/app/admin/(private)/reservations/lib/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 import { type BeginDrag, ReservationBlock } from "./reservation-block";
 
 export const ReservationRow: React.FC<{

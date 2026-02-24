@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { ComponentProps } from "react";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 

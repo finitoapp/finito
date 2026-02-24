@@ -56,12 +56,12 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import type { Pos } from "@/hooks/use-pos";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { currencyConverter } from "@/lib/currency-converter/currency-converter";
-import { formatMoney } from "@/lib/format-utils";
-import { createPayment, createZapPayment } from "@/lib/payment-utils";
-import type { StaticOfflinePayment } from "@/lib/schemas";
-import { Currency, type Integer, type NonEmptyString } from "@/lib/types";
-import { clientBaseUrl } from "@/lib/window-utils";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { createPayment, createZapPayment } from "@/lib/payment/service";
+import type { StaticOfflinePayment } from "@/lib/shared/schemas";
+import { Currency, type Integer, type NonEmptyString } from "@/lib/shared/types";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 const toMoney = (value: number, currency: Currency) => ({
 	value: BigInt(Math.round(value)),

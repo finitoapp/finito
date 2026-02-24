@@ -6,7 +6,7 @@ import {
 } from "@evolu/common";
 import { useEvolu } from "@/hooks/use-evolu";
 import { usePosRows } from "@/hooks/use-pos";
-import type { Currency } from "@/lib/types";
+import type { Currency } from "@/lib/shared/types";
 
 type BillInputItem = {
 	id: string;

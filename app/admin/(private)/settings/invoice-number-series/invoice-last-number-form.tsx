@@ -13,7 +13,7 @@ import {
 	DateToDateStringSchema,
 	NonNegativeIntegerSchema,
 	StringToNumberSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const invoiceLastNumberFormSchema = z.object({
 	serialNumber: StringToNumberSchema.pipe(NonNegativeIntegerSchema),

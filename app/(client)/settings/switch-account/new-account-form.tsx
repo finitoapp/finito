@@ -19,7 +19,7 @@ import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { defaultRelays } from "@/atoms/nostr-relays";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { WssUrl } from "@/lib/types";
+import { WssUrl } from "@/lib/shared/types";
 
 const formSchema = z.object({});
 const createComponents = (t: TFunction) => createAutoFormLayout(formSchema, () => ({}));

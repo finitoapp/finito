@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { isMenuVisibleForPublic } from "@/lib/menu-utils";
-import { MenuStatus } from "@/storages/menu-storage";
+import { isMenuVisibleForPublic } from "@/lib/menu/utils";
+import { MenuStatus } from "@/lib/evolu/model/menu";
 
 type MenuRow = {
 	id: Id;

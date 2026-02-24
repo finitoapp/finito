@@ -31,7 +31,7 @@ import {
 	IdentificationNumberCzSchema,
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const billingInfoAddressFormSchema = createClientAddressFormSchema({
 	optional: true,

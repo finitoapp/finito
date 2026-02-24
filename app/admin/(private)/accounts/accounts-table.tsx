@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatIban } from "@/lib/format-utils";
+import { formatIban } from "@/lib/shared/utils/format";
 
 type Task = {
 	id: Id;

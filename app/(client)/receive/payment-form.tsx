@@ -16,7 +16,7 @@ import {
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	type Uuid7,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 const baseStaticPaymentSchema = z.object({
 	totalAmount: StringToNumberSchema,

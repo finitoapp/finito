@@ -10,7 +10,7 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
 
 export default function Home() {
 	const { t } = useTranslation();

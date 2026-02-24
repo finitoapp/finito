@@ -25,9 +25,9 @@ import {
 	createPayment,
 	createSparkPayment,
 	createZapPayment,
-} from "@/lib/payment-utils";
-import type { StaticOfflinePayment } from "@/lib/schemas";
-import { assertNever } from "@/lib/type-utils";
+} from "@/lib/payment/service";
+import type { StaticOfflinePayment } from "@/lib/shared/schemas";
+import { assertNever } from "@/lib/shared/utils/type";
 import {
 	Currency,
 	FiatCurrency,
@@ -41,8 +41,8 @@ import {
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
 	Uuid7,
-} from "@/lib/types";
-import { moneyCodec } from "@/lib/zod/moneyCodec";
+} from "@/lib/shared/types";
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const baseStaticPaymentSchema = z.object({
 	totalAmount: z

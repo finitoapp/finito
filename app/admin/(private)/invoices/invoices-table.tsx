@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatAmount } from "@/lib/format-utils";
+import { formatAmount } from "@/lib/shared/utils/format";
 
 type Row = {
 	id: Id;

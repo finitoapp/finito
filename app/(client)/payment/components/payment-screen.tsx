@@ -8,9 +8,9 @@ import { useTranslation } from "react-i18next";
 import { BillItemList } from "@/app/(client)/bill-item-list";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { LoadingIndicator } from "@/components/loading-indicator";
-import type { ScreenData } from "@/lib/bill/billDriver";
-import { formatAmount, formatMoney } from "@/lib/format-utils";
-import { Integer } from "@/lib/types";
+import type { ScreenData } from "@/lib/bill/driver";
+import { formatAmount, formatMoney } from "@/lib/shared/utils/format";
+import { Integer } from "@/lib/shared/types";
 
 export const PaymentScreen: FC<{
 	screen: Extract<

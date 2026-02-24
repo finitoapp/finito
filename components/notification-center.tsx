@@ -23,20 +23,20 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
-import { runBackgroundProcesses } from "@/lib/background-processing/background-process";
-import type { ScreenData } from "@/lib/bill/billDriver";
-import type { DeviceEvolu } from "@/lib/device-evolu";
+import { runBackgroundProcesses } from "@/lib/background/service";
+import type { ScreenData } from "@/lib/bill/driver";
 import type { Evolu } from "@/lib/evolu";
-import { subscribeToEvoluQuery } from "@/lib/evolu-utils";
-import { FioApiClient } from "@/lib/fio/fio-api-client";
+import type { DeviceEvolu } from "@/lib/evolu/device";
+import type { Notification } from "@/lib/evolu/model/notification";
+import { PaymentStatus } from "@/lib/evolu/model/payment-status";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import { FioApiClient } from "@/lib/integrations/fio/client";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
-} from "@/lib/table-message-bus";
-import type { NonEmptyString } from "@/lib/types";
-import { Uuid7 } from "@/lib/types";
-import type { Notification } from "@/storages/notification-storage";
-import { PaymentStatus } from "@/storages/payment-status-storage";
+} from "@/lib/table/message-bus";
+import type { NonEmptyString } from "@/lib/shared/types";
+import { Uuid7 } from "@/lib/shared/types";
 import { Button } from "./ui/button";
 import {
 	Sheet,

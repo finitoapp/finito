@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { z } from "zod";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { Currency, type Integer, type NonEmptyString } from "@/lib/types";
+import { Currency, type Integer, type NonEmptyString } from "@/lib/shared/types";
 
 export type PosItem = {
 	id: string;

@@ -1,6 +1,6 @@
 "use client"
 import { Check, ChevronDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/shared/ui/cn"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {ComponentProps} from "react";

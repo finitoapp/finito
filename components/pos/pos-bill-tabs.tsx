@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
 import { usePos } from "@/hooks/use-pos";
-import type { Currency } from "@/lib/types";
+import type { Currency } from "@/lib/shared/types";
 
 export const PosBillTabs: FC<{
 	defaultCurrency: Currency;

@@ -11,8 +11,8 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { resolveSubsequentInvoiceNumber } from "@/lib/invoice-number-service";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
+import { resolveSubsequentInvoiceNumber } from "@/lib/invoice/number-service";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
 
 export default function Home() {
 	const id = useId();

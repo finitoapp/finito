@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ScreenData } from "@/lib/bill/billDriver";
+import type { ScreenData } from "@/lib/bill/driver";
 
 type ReservationScreenProps = {
 	screen: Extract<ScreenData, { variant: "reservation" }>;

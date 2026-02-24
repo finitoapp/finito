@@ -99,15 +99,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { UseActionFormResult } from "@/hooks/use-action-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { currencyConverter } from "@/lib/currency-converter/currency-converter";
-import { shiftNumericString } from "@/lib/number-utils";
-import { Currency, NumberStringSchema } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { shiftNumericString } from "@/lib/shared/utils/number";
+import { Currency, NumberStringSchema } from "@/lib/shared/types";
+import { cn } from "@/lib/shared/ui/cn";
 import {
 	decimalStringToMinorUnits,
 	minorUnitsToDecimalString,
 	minorUnitsToDecimalStringForUI,
-} from "@/lib/zod/moneyCodec";
+} from "@/lib/shared/zod/money-codec";
 
 export type AutoFormComponents<TSchema extends Record<string, unknown>> = {
 	[key in keyof TSchema]-?: AutoFormComponent<TSchema[key]>;

@@ -2,7 +2,7 @@ import { atom } from "jotai";
 import type {
 	PaymentFinished,
 	PaymentReady,
-} from "@/storages/payment-progress-storage";
+} from "@/lib/evolu/model/payment-progress";
 
 export const createSelectedItemsAtom = () => atom({} as Record<string, number>);
 export const createSelectedTipAtom = () => atom(0);

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { CountryCode } from "@/lib/types";
+import { CountryCode } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;

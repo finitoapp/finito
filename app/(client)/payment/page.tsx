@@ -35,12 +35,12 @@ import type {
 	BillPaymentOption,
 	BillSubscription,
 	ScreenData,
-} from "@/lib/bill/billDriver";
-import { billManager } from "@/lib/bill/billManager";
-import { formatMoney } from "@/lib/format-utils";
-import { assertNever } from "@/lib/type-utils";
-import { Currency, Integer, Uuid7 } from "@/lib/types";
-import type { PaymentInit } from "@/storages/payment-progress-storage";
+} from "@/lib/bill/driver";
+import { billManager } from "@/lib/bill/manager";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { assertNever } from "@/lib/shared/utils/type";
+import { Currency, Integer, Uuid7 } from "@/lib/shared/types";
+import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
 
 const PayButton: FC<{
 	subscription: BillSubscription | null;

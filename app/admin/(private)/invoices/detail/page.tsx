@@ -44,13 +44,13 @@ import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { generateCzechBankQrCode } from "@/lib/czech-bank-qr-generator";
-import { downloadFile } from "@/lib/file-utils";
-import { formatAmount, formatIban } from "@/lib/format-utils";
-import { createIsdocXml } from "@/lib/isdoc-utils";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
-import { InvoiceStatus } from "@/storages/invoice-status-storage";
-import { type Invoice, InvoicePaymentMethod } from "@/storages/invoice-storage";
+import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
+import { downloadFile } from "@/lib/shared/files/file-utils";
+import { formatAmount, formatIban } from "@/lib/shared/utils/format";
+import { createIsdocXml } from "@/lib/invoice/isdoc";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
+import { InvoiceStatus } from "@/lib/evolu/model/invoice-status";
+import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 
 const StatusButton: FC<{
 	invoiceId: Id;

@@ -7,7 +7,7 @@ import { InvoiceForm } from "@/app/admin/(private)/invoices/invoice-form";
 import { BackButton } from "@/components/back-button";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { nestObjectSkipNullBranches } from "@/lib/object-utils";
+import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
 
 export default function Home() {
 	const router = useRouter();

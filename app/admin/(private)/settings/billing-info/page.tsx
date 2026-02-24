@@ -8,7 +8,7 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { CountryCode } from "@/lib/types";
+import { CountryCode } from "@/lib/shared/types";
 
 export default function Home() {
 	const { t } = useTranslation();

@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
-import { type Address, AddressSchema } from "@/lib/schemas";
+import { type Address, AddressSchema } from "@/lib/shared/schemas";
 import {
 	CountryCode,
 	EmailSchema,
@@ -31,7 +31,7 @@ import {
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const createClientAddressFormSchema = <
 	TOptional extends boolean,
