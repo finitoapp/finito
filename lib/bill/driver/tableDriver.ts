@@ -1,3 +1,4 @@
+import * as errore from "errore";
 import type {
 	BillDriver,
 	BillSubscription,
@@ -59,6 +60,16 @@ export class TableDriver implements BillDriver {
 					},
 				},
 			);
+			if (errore.isError(response)) {
+				console.error(response);
+				callback({
+					type: "billLoading",
+					payload: {
+						text: "Failed to create payment...",
+					},
+				});
+				return;
+			}
 
 			console.log("response", response);
 
@@ -115,30 +126,60 @@ export class TableDriver implements BillDriver {
 					return null;
 				},
 			});
+		if (errore.isError(server)) {
+			console.error(server);
+			callback({
+				type: "billLoading",
+				payload: {
+					text: "Failed to subscribe to table updates...",
+				},
+			});
+			return null;
+		}
 
 		console.log("Subscribing to bill by QR code", qrCodeId);
-		await tableRequestClient.call("subscribeToBillByQrCode", {
-			pubkey: ndk.signer.pubkey,
-			qrCodeId: qrCodeIdResult.data,
-			subscriptionId: expectedSubscriptionId,
-		});
+		const subscribeResult = await tableRequestClient.call(
+			"subscribeToBillByQrCode",
+			{
+				pubkey: ndk.signer.pubkey,
+				qrCodeId: qrCodeIdResult.data,
+				subscriptionId: expectedSubscriptionId,
+			},
+		);
+		if (errore.isError(subscribeResult)) {
+			console.error(subscribeResult);
+			server.close();
+			callback({
+				type: "billLoading",
+				payload: {
+					text: "Failed to subscribe to bill...",
+				},
+			});
+			return null;
+		}
 
 		const interval = setInterval(() => {
 			if (isInsideThePayment) {
 				return;
 			}
 
-			void tableRequestClient.call(
-				"subscribeToBillByQrCode",
-				{
-					pubkey: ndk.signer.pubkey,
-					qrCodeId: qrCodeIdResult.data,
-					subscriptionId: expectedSubscriptionId,
-				},
-				{
-					ignoreResponse: true,
-				},
-			);
+			void tableRequestClient
+				.call(
+					"subscribeToBillByQrCode",
+					{
+						pubkey: ndk.signer.pubkey,
+						qrCodeId: qrCodeIdResult.data,
+						subscriptionId: expectedSubscriptionId,
+					},
+					{
+						ignoreResponse: true,
+					},
+				)
+				.then((result) => {
+					if (errore.isError(result)) {
+						console.error(result);
+					}
+				});
 		}, 20_000);
 
 		return {
@@ -146,15 +187,21 @@ export class TableDriver implements BillDriver {
 			close: async () => {
 				server.close();
 				clearInterval(interval);
-				void tableRequestClient.call(
-					"unsubscribe",
-					{
-						subscriptionId: expectedSubscriptionId,
-					},
-					{
-						ignoreResponse: true,
-					},
-				);
+				void tableRequestClient
+					.call(
+						"unsubscribe",
+						{
+							subscriptionId: expectedSubscriptionId,
+						},
+						{
+							ignoreResponse: true,
+						},
+					)
+					.then((result) => {
+						if (errore.isError(result)) {
+							console.error(result);
+						}
+					});
 			},
 		} satisfies BillSubscription;
 	}

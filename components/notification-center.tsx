@@ -11,6 +11,7 @@ import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
+import * as errore from "errore";
 import type { TFunction } from "i18next";
 import { type Atom, atom, useAtomValue, useStore } from "jotai";
 import { Bell, X } from "lucide-react";
@@ -619,7 +620,12 @@ export const resolveNotificationDef = (
 							{
 								ignoreResponse: true,
 							},
-						);
+						)
+						.then((result) => {
+							if (errore.isError(result)) {
+								console.error(result);
+							}
+						});
 				};
 
 				const sendBillChangeToAll = () => {
@@ -724,7 +730,13 @@ export const resolveNotificationDef = (
 					for (const subscription of subscriptionRef.values()) {
 						clearTimeout(subscription.timeout);
 					}
-					serverPromise.then((server) => server.close());
+					serverPromise.then((server) => {
+						if (errore.isError(server)) {
+							console.error(server);
+							return;
+						}
+						server.close();
+					});
 				};
 			},
 		};

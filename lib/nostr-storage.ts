@@ -1,9 +1,47 @@
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
+import * as errore from "errore";
 import type { JsonValue } from "type-fest";
 
 const messageBusKind = 30078;
+
+export class NostrStorageSubscriptionClosedBeforeReadyError extends errore.createTaggedError(
+	{
+		name: "NostrStorageSubscriptionClosedBeforeReadyError",
+		message:
+			'Nostr storage "$namespace" subscription closed before becoming ready',
+	},
+) {}
+
+export class NostrStorageOlderEventIgnoredError extends errore.createTaggedError(
+	{
+		name: "NostrStorageOlderEventIgnoredError",
+		message:
+			'Nostr storage "$namespace" ignored older event "$eventId" ($createdAt < $latestCreatedAt)',
+	},
+) {}
+
+export class NostrStorageInvalidJsonEventError extends errore.createTaggedError(
+	{
+		name: "NostrStorageInvalidJsonEventError",
+		message:
+			'Nostr storage "$namespace" received invalid JSON in event "$eventId"',
+	},
+) {}
+
+export type NostrStorageSubscription = {
+	close: () => void;
+};
+
+export type NostrStorageSubscribeResult =
+	| NostrStorageSubscription
+	| NostrStorageSubscriptionClosedBeforeReadyError;
+
+export type NostrStorageEventResult<TShape extends JsonValue> =
+	| TShape
+	| NostrStorageOlderEventIgnoredError
+	| NostrStorageInvalidJsonEventError;
 
 export type NostrStorage<TShape extends JsonValue> = {
 	namespace: string;
@@ -14,10 +52,8 @@ export type NostrStorage<TShape extends JsonValue> = {
 			ndk: NDK;
 			pubkey: string;
 		},
-		callback: (data: TShape) => unknown,
-	) => Promise<{
-		close: () => void;
-	}>;
+		callback: (result: NostrStorageEventResult<TShape>) => unknown,
+	) => Promise<NostrStorageSubscribeResult>;
 
 	write: (
 		params: {
@@ -38,7 +74,7 @@ export const createNostrStorage = <TShape extends JsonValue>(props: {
 		$shape: undefined as unknown as TShape,
 
 		subscribe: async (params, callback) => {
-			return await new Promise<{ close: () => void }>((resolve, reject) => {
+			return await new Promise<NostrStorageSubscribeResult>((resolve) => {
 				let settled = false;
 				const processedEventCacheSize = 1024;
 				const processedEventIds = new Set<string>();
@@ -92,33 +128,43 @@ export const createNostrStorage = <TShape extends JsonValue>(props: {
 							}
 
 							settled = true;
-							reject(
-								new Error(
-									`Nostr storage "${props.namespace}" subscription closed before becoming ready`,
-								),
+							resolve(
+								new NostrStorageSubscriptionClosedBeforeReadyError({
+									namespace: props.namespace,
+								}),
 							);
 						},
 						onEvent: (event) => {
-							console.log("onEvent", event.id);
 							if (!rememberEventId(event.id)) {
 								return;
 							}
 
-							console.log("onEvent1", event.id);
 							const createdAt = event.created_at ?? 0;
 							if (createdAt < latestCreatedAt) {
+								callback(
+									new NostrStorageOlderEventIgnoredError({
+										namespace: props.namespace,
+										eventId: event.id,
+										createdAt,
+										latestCreatedAt,
+									}),
+								);
 								return;
 							}
 
-							console.log("onEvent2", event.id);
-							let data: unknown;
-							try {
-								data = JSON.parse(event.content);
-							} catch {
+							const data = errore.tryFn({
+								try: () => JSON.parse(event.content),
+								catch: (cause) =>
+									new NostrStorageInvalidJsonEventError({
+										namespace: props.namespace,
+										eventId: event.id,
+										cause,
+									}),
+							});
+							if (errore.isError(data)) {
+								callback(data);
 								return;
 							}
-
-							console.log("onEvent3", event.id);
 
 							latestCreatedAt = createdAt;
 							callback(data as TShape);

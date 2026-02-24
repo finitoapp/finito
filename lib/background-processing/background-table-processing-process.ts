@@ -1,4 +1,5 @@
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
+import * as errore from "errore";
 import type { BackgroundProcess } from "@/lib/background-processing/background-process";
 import type { ScreenData } from "@/lib/bill/billDriver";
 import { subscribeToEvoluQuery } from "@/lib/evolu-utils";
@@ -189,7 +190,12 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					{
 						ignoreResponse: true,
 					},
-				);
+				)
+				.then((result) => {
+					if (errore.isError(result)) {
+						console.error(result);
+					}
+				});
 		};
 
 		const sendBillChangeToAll = () => {
@@ -291,7 +297,13 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 			for (const subscription of subscriptionRef.values()) {
 				clearTimeout(subscription.timeout);
 			}
-			void serverPromise.then((server) => server.close());
+			void serverPromise.then((server) => {
+				if (errore.isError(server)) {
+					console.error(server);
+					return;
+				}
+				server.close();
+			});
 		};
 	},
 };

@@ -1,5 +1,7 @@
 # AGENTS Instructions
 
+This codebase uses the errore.org convention. ALWAYS read the errore skill before editing any code.
+
 ## Evolu write rules
 - Use `evolu.update` for partial changes of an existing row.
 - Use `evolu.upsert` for creating a row or writing a coherent row state; include all non-null fields required for a valid state.
