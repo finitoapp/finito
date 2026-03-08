@@ -33,6 +33,7 @@ const locale = {
         "occurred-at": "Datum transakce",
         "amount": "Částka",
         "note": "Poznámka",
+        "currency": "Měna",
         "internal-transfer-group-id": "ID skupiny interního převodu",
         "source-type": "Typ zdroje",
         "source-id": "ID zdroje",

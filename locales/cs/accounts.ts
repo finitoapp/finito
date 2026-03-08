@@ -14,7 +14,8 @@ const locale = {
     "columns": {
       "name": "Název",
       "type": "Typ",
-      "address": "Adresa"
+      "address": "Adresa",
+      "currency": "Měna"
     },
     "search": {
       "placeholder": {
