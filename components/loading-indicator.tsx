@@ -3,7 +3,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { CheckIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 const loadingIndicatorVariants = cva(
 	"inset-0 z-50 flex flex-col items-center justify-center transition-all",

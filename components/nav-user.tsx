@@ -1,18 +1,19 @@
 "use client";
 
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import { sqliteTrue } from "@evolu/common";
 import { IconPlus } from "@tabler/icons-react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import type { NotNull } from "kysely";
 import {
 	ChevronsUpDownIcon,
 	HardDriveDownloadIcon,
 	LogOutIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { privateKeyFromSeedWords } from "nostr-tools/nip06";
-import { useCallback, useEffect, useState } from "react";
-import { seedAtom } from "@/atoms/seed";
-import { seedsAtom } from "@/atoms/seeds";
+import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -28,17 +29,23 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useInstallPwa } from "@/hooks/use-install-pwa";
-import { useNostr } from "@/hooks/use-nostr";
-import { useNostrProfile } from "@/hooks/useNostrProfile";
-import type { NonEmptyString } from "@/lib/types";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import { TimestampMs } from "@/lib/shared/types";
 
-type Account = {
-	pubkey: string;
-	npub: string;
-	payload: NonEmptyString;
-	name?: string;
-};
+const accountsQuery = createDeviceQuery((db) =>
+	db
+		.selectFrom("account")
+		.select(["account.id as id", "account.name as name"])
+		.where("isDeleted", "is not", sqliteTrue)
+		.where("name", "is not", null)
+		.orderBy("lastUseAt", "desc")
+		.$narrowType<{
+			name: NotNull;
+		}>(),
+);
 
 export function NavUser({
 	user,
@@ -49,77 +56,51 @@ export function NavUser({
 		avatar: string;
 	};
 }) {
+	const { t } = useTranslation();
 	const { setOpenMobile } = useSidebar();
-	const { ndk } = useNostr();
-	const profile = useNostrProfile() ?? {};
 	const { onClick, isPwaSupported } = useInstallPwa();
-	const seeds = useAtomValue(seedsAtom);
-	const [accounts, setAccounts] = useState<Account[]>([]);
-	const [seed, setSeed] = useAtom(seedAtom);
-	const setSeeds = useSetAtom(seedsAtom);
+	const { withConfirm } = useGlobalDialog();
+	const deviceEvolu = useAtomValue(deviceEvoluAtom);
+	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 
-	useEffect(() => {
-		(async () => {
-			const result = await Promise.all(
-				(seeds ?? { seeds: [] }).seeds.map(async (seed) => {
-					const privateKey = privateKeyFromSeedWords(seed);
-					const signer = new NDKPrivateKeySigner(privateKey);
-					const user = await ndk.fetchUser(signer.npub);
-
-					return {
-						profile: await user?.fetchProfile(),
-						signer,
-						payload: seed,
-					};
-				}),
-			);
-
-			const accounts: Account[] = [];
-
-			for (const row of result) {
-				if (!row) {
-					continue;
-				}
-
-				accounts.push({
-					pubkey: row.signer.pubkey,
-					npub: row.signer.userSync.npub,
-					name: row.profile?.name,
-					payload: row.payload,
-				});
-			}
-
-			setAccounts(accounts);
-		})();
-	}, [seeds, ndk.fetchUser]);
+	const { data: accounts } = useEvoluQuery(accountsQuery, deviceEvolu);
+	const activeAccountId = accounts[0]?.id;
+	const activeAccountName =
+		accounts[0]?.name ?? t("navigation:account.unknown");
 
 	const logout = useCallback(async () => {
-		let theBestNdkSignerPayload: NonEmptyString | null = null;
-
-		setSeeds((previous) => {
-			const newSigners: NonEmptyString[] = [];
-
-			for (const previousSeed of (previous ?? { seeds: [] }).seeds) {
-				if (previousSeed !== seed) {
-					if (theBestNdkSignerPayload === null) {
-						theBestNdkSignerPayload = previousSeed;
-					}
-
-					newSigners.push(previousSeed);
-				}
-			}
-
-			return {
-				seeds: [...newSigners],
-			};
-		});
-
-		if (theBestNdkSignerPayload === null) {
+		const currentAccount = accounts[0];
+		if (!currentAccount) {
 			return;
 		}
 
-		setSeed(theBestNdkSignerPayload);
-	}, [seed, setSeed, setSeeds]);
+		await new Promise<void>((resolve) => {
+			deviceEvolu.update(
+				"account",
+				{
+					id: currentAccount.id,
+					isDeleted: sqliteTrue,
+				},
+				{
+					onComplete: resolve,
+				},
+			);
+		});
+
+		setEvoluCounter((value) => value + 1);
+	}, [accounts, deviceEvolu, setEvoluCounter]);
+
+	const logoutWithConfirm = useMemo(
+		() =>
+			withConfirm(logout, {
+				title: t("navigation:account.confirmLogout.title"),
+				description: t("navigation:account.confirmLogout.description"),
+				confirmText: t("navigation:account.actions.logout"),
+				cancelText: t("navigation:account.actions.cancel"),
+				confirmVariant: "destructive",
+			}),
+		[logout, t, withConfirm],
+	);
 
 	return (
 		<SidebarMenu>
@@ -132,14 +113,13 @@ export function NavUser({
 						>
 							<Avatar className="h-8 w-8 rounded-lg grayscale">
 								<AvatarImage src={user.avatar} alt={user.name} />
-								<AvatarFallback className="rounded-lg">CN</AvatarFallback>
+								<AvatarFallback className="rounded-lg">
+									{t("navigation:account.initials")}
+								</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">
-									{profile.name ?? "unknown"}
-								</span>
-								<span className="text-muted-foreground truncate text-xs">
-									{ndk.activeUser.npub}
+									{activeAccountName}
 								</span>
 							</div>
 							<ChevronsUpDownIcon className="ml-auto" />
@@ -151,28 +131,42 @@ export function NavUser({
 						align="end"
 						sideOffset={4}
 					>
-						<DropdownMenuLabel>Accounts</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("navigation:account.accounts")}
+						</DropdownMenuLabel>
 						{accounts.map((account) => {
 							return (
 								<DropdownMenuItem
-									disabled={account.pubkey === ndk.activeUser.pubkey}
-									key={account.pubkey}
+									disabled={account.id === activeAccountId}
+									key={account.id}
 									className="p-0 font-normal"
-									onClick={() => {
-										setSeed(account.payload);
+									onClick={async () => {
+										await new Promise<void>((resolve) => {
+											deviceEvolu.update(
+												"account",
+												{
+													id: account.id,
+													lastUseAt: TimestampMs(Date.now()),
+												},
+												{
+													onComplete: resolve,
+												},
+											);
+										});
+
+										setEvoluCounter((value) => value + 1); // Reload
 									}}
 								>
 									<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 										<Avatar className="h-8 w-8 rounded-lg">
-											<AvatarImage src={user.avatar} alt={account.pubkey} />
-											<AvatarFallback className="rounded-lg">CN</AvatarFallback>
+											<AvatarImage src={user.avatar} alt={account.name} />
+											<AvatarFallback className="rounded-lg">
+												{t("navigation:account.initials")}
+											</AvatarFallback>
 										</Avatar>
 										<div className="grid flex-1 text-left text-sm leading-tight">
 											<span className="truncate font-medium">
-												{account.name ?? "unknown"}
-											</span>
-											<span className="text-muted-foreground truncate text-xs">
-												{account.npub}
+												{account.name}
 											</span>
 										</div>
 									</div>
@@ -185,19 +179,26 @@ export function NavUser({
 								onClick={() => setOpenMobile(false)}
 							>
 								<IconPlus />
-								Add account
+								{t("navigation:account.actions.addAccount")}
 							</Link>
 						</DropdownMenuItem>
-						<DropdownMenuSeparator title={"Actions"} />
-						<DropdownMenuLabel>Current account</DropdownMenuLabel>
-						<DropdownMenuItem onClick={logout} disabled={accounts.length <= 1}>
+						<DropdownMenuSeparator
+							title={t("navigation:account.actions.label")}
+						/>
+						<DropdownMenuLabel>
+							{t("navigation:account.currentAccount")}
+						</DropdownMenuLabel>
+						<DropdownMenuItem
+							onClick={() => void logoutWithConfirm()}
+							disabled={accounts.length <= 1}
+						>
 							<LogOutIcon />
-							Logout
+							{t("navigation:account.actions.logout")}
 						</DropdownMenuItem>
 						{isPwaSupported && (
 							<DropdownMenuItem>
 								<HardDriveDownloadIcon onClick={onClick} />
-								Install
+								{t("navigation:account.actions.install")}
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>

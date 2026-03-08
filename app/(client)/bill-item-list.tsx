@@ -3,32 +3,21 @@
 import { motion } from "framer-motion";
 import { useSetAtom } from "jotai";
 import { TriangleAlertIcon } from "lucide-react";
-import type React from "react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { CounterCheckbox } from "@/components/counter-checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { formatAmount } from "@/lib/format-utils";
-import { cn } from "@/lib/utils";
+import type { ScreenData } from "@/lib/bill/driver";
+import { cn } from "@/lib/shared/ui/cn";
+import { formatMoney } from "@/lib/shared/utils/format";
 
-interface NavItem {
-	id: string;
-	label: React.ReactNode;
-	price: number;
-	quantity: number;
-	action?: React.ReactNode;
-	icon?: React.ReactNode;
-	active?: boolean;
-	optionality?: {
-		checked: number; // how many pieces are selected
-	};
-}
-
-export interface Bill {
-	currency: string;
-	allowTip?: boolean;
-	items: NavItem[];
-}
+type Bill = Extract<
+	ScreenData,
+	{
+		variant: "table";
+	}
+>["payload"]["bill"];
 
 interface VerticalNavProps {
 	bill: Bill;
@@ -41,7 +30,9 @@ export function BillItemList({
 	className,
 	selectedItemsAtom,
 }: VerticalNavProps) {
-	if (bill.items.length === 0) {
+	const { t } = useTranslation();
+
+	if (bill === null || bill.items.length === 0) {
 		return (
 			<div
 				className={cn(
@@ -50,7 +41,9 @@ export function BillItemList({
 				)}
 			>
 				<h3 className={"text-foreground text-2xl mt-20"}>
-					There is currently no bill here.
+					{bill
+						? t("client:bill.empty.emptyBill")
+						: t("client:bill.empty.noBill")}
 				</h3>
 			</div>
 		);
@@ -77,10 +70,11 @@ function NavItemComponent({
 	bill,
 	selectedItemsAtom,
 }: {
-	item: NavItem;
-	bill: Bill;
+	item: NonNullable<Bill>["items"][number];
+	bill: NonNullable<Bill>;
 	selectedItemsAtom: SelectedItemsAtom;
 }) {
+	const { t } = useTranslation();
 	const setSelectedItems = useSetAtom(selectedItemsAtom);
 	const [checked, setChecked] = useState(
 		(item.optionality && item.optionality.checked) ?? item.quantity,
@@ -121,15 +115,18 @@ function NavItemComponent({
 						disabled={item.optionality === undefined}
 					>
 						<motion.div
-							key={`${item.label} ${item.quantity}x ${item.price} ${bill.currency}`}
+							key={`${item.item.label} ${item.quantity}x ${item.item.price} ${bill.currency}`}
 							initial={{ scale: 1.1, opacity: 0.5 }}
 							animate={{ scale: 1, opacity: 1 }}
 							className={"flex flex-col items-start"}
 						>
-							<strong>{item.label}</strong>
+							<strong>{item.item.label}</strong>
 							<small>
 								{item.quantity}×&nbsp;&nbsp;•&nbsp;&nbsp;
-								{formatAmount(item.price, bill.currency)}
+								{formatMoney({
+									value: item.item.price,
+									currency: bill.currency,
+								})}
 							</small>
 							<Collapsible
 								open={quantity > 0 && quantityLeft > 0}
@@ -137,7 +134,8 @@ function NavItemComponent({
 							>
 								<CollapsibleContent>
 									<span className={"text-xs text-primary flex gap-2 mt-2"}>
-										<TriangleAlertIcon size={14} /> {quantityLeft} pcs left!
+										<TriangleAlertIcon size={14} />{" "}
+										{t("client:bill.warning.pcsLeft", { count: quantityLeft })}
 									</span>
 								</CollapsibleContent>
 							</Collapsible>

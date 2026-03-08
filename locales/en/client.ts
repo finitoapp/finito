@@ -1,0 +1,145 @@
+const locale = {
+  "bill": {
+    "itemsTitle": "Bill items",
+    "tipForStaff": "Tip for the staff",
+    "empty": {
+      "emptyBill": "There is currently an empty bill here.",
+      "noBill": "There is currently no bill here."
+    },
+    "warning": {
+      "pcsLeft": "{{count}} pcs left!"
+    }
+  },
+  "home": {
+    "scanHint": "Point your camera at the QR code to pay",
+    "title": "Home",
+    "actions": {
+      "receive": "Receive",
+      "send": "Send"
+    }
+  },
+  "page": {
+    "scanQrCode": "Scan QR Code",
+    "paymentDetail": "Payment detail",
+    "paymentHistory": "Payment history",
+    "receivePayment": "Receive payment",
+    "useExample": "Use example"
+  },
+  "transactionHistory": {
+    "title": "Transaction history",
+    "unknownMerchant": "Unknown merchant",
+    "empty": {
+      "title": "Your transaction history is empty",
+      "description": "Your payment transactions will appear here once you make your first purchase or sale."
+    }
+  },
+  "historyDetail": {
+    "status": {
+      "loading": "loading",
+      "paid": "Paid",
+      "failed": "Failed",
+      "inProgressOrExpired": "Still in progress or expired"
+    },
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "spending": "Spending",
+      "date": "Date"
+    },
+    "actions": {
+      "downloadReceipt": "Download receipt"
+    }
+  },
+  "paymentPage": {
+    "methods": {
+      "btcLightning": "BTC lightning",
+      "bankTransfer": "Bank transfer"
+    },
+    "wallets": {
+      "external": "External Wallet",
+      "primal": "Primal Wallet",
+      "bitlifi": "Bitlifi"
+    },
+    "actions": {
+      "pay": "Pay",
+      "refund": "Refund",
+      "copyShowQrInvoice": "Copy & display QR invoice"
+    },
+    "loading": {
+      "preparingPayment": "The payment is preparing",
+      "loadingData": "Loading the data..."
+    },
+    "status": {
+      "paymentSuccessful": "The payment is successfully paid",
+      "waitingForPayment": "We are waiting for your payment",
+      "waitingForRefund": "We are waiting for your refund"
+    },
+    "labels": {
+      "rate": "rate"
+    },
+    "alerts": {
+      "billClosed": "The bill is closed",
+      "unknownQrCode": "Unknown QR code"
+    },
+    "menu": {
+      "generatedAt": "Menu generated",
+      "validity": {
+        "sameDay": "Valid {{date}}, {{from}}–{{to}}",
+        "fromTo": "Valid from {{from}} to {{to}}",
+        "from": "Valid from {{from}}",
+        "to": "Valid to {{to}}"
+      }
+    },
+    "reservation": {
+      "title": "Reservation form",
+      "fields": {
+        "date": "Date",
+        "numberOfPeople": "Number of people",
+        "slot": "Time",
+        "email": "Email",
+        "phone": "Phone",
+        "note": "Note"
+      },
+      "placeholders": {
+        "email": "you@example.com",
+        "phone": "+420...",
+        "note": "Optional reservation note"
+      },
+      "actions": {
+        "submit": "Submit reservation"
+      },
+      "messages": {
+        "peopleRange": "Allowed {{min}}-{{max}} people",
+        "noSlotForSelection": "No available slot for the selected day/party size"
+      },
+      "labels": {
+        "closed": "closed",
+        "slotCount": "{{count}} slots",
+        "slotPeopleRange": "{{min}}-{{max}} ppl",
+        "required": "required",
+        "optional": "optional"
+      },
+      "summary": {
+        "generatedAt": "Data generated",
+        "contactRequirements": "Contact: email {{emailRequirement}}, phone {{phoneRequirement}}",
+        "noteEnabled": "Note is enabled.",
+        "noteEnabledWithMax": "Note is enabled (max {{max}} characters)."
+      }
+    }
+  },
+  "form": {
+    "payment-form": {
+      "label": {
+        "lud16-wallet-address-with-lightning-zaps-support": "lud16 wallet address with `Lightning Zaps` support",
+        "spark-wallet-account": "Spark wallet account",
+        "price-in-btc": "Price in BTC",
+        "note-for-recipient-optional": "Note for recipient (optional)"
+      },
+      "placeholder": {
+        "0": "0"
+      }
+    }
+  }
+} as const;
+
+export default locale;

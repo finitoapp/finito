@@ -1,24 +1,34 @@
 "use client";
 
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
+	const evolu = useEvolu();
 
-	const { data: billingSettingsRows } = useStorageSubscription(
-		billingSettingsStorage,
-		{
-			limit: 1,
-		},
-	);
-
-	const billingSettings = billingSettingsRows && billingSettingsRows[0];
+	const [billingSettings, setBillingSettings] = useState<any>(undefined);
+	useEffect(() => {
+		const query = createQuery((db) =>
+			db
+				.selectFrom("billingSettings")
+				.selectAll()
+				.where("isDeleted", "is not", sqliteTrue)
+				.where("id", "=", createIdFromString("")),
+		);
+		evolu.loadQuery(query).then((rows) => {
+			setBillingSettings(rows[0]);
+		});
+	}, [evolu]);
 
 	return (
 		<div className={"max-w-xl w-full"}>
@@ -28,14 +38,14 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>New item</CardTitle>
+					<CardTitle>{t("items:page.newItem")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ItemForm
 						key={[billingSettings ? "true" : false].join(",")}
-						onSuccess={() => router.push("/admin/items")}
+						onSuccess={() => router.back()}
 						defaultValues={{
-							currency: billingSettings?.value.defaultCurrency,
+							currency: billingSettings?.defaultCurrency,
 						}}
 					/>
 				</CardContent>

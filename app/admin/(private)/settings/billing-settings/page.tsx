@@ -1,39 +1,96 @@
 "use client";
 
+import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
 import { BillingSettingsForm } from "@/app/admin/(private)/settings/billing-settings/billing-settings-form";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
-	const { data } = useStorageSubscription(billingSettingsStorage, {
-		limit: 1,
-	});
+	const itemId = createIdFromString("");
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("billingSettings")
+					.select((eb) => [
+						"defaultInvoiceDueDateDays",
+						"defaultCurrency",
+						"defaultTimezone",
+						"defaultPaymentMethodMethod",
+						"defaultPaymentMethodBankAccountKey",
+						"defaultPaymentMethod",
+						"defaultBankTransferCzKey",
+						"defaultLnZapKey",
+						"defaultLnSparkKey",
+						"invoiceEmailSettingsEnable",
+						"invoiceEmailSettingsSubject",
+						"invoiceEmailSettingsBody",
 
-	const item = data && data[0];
+						kysely
+							.jsonArrayFrom(
+								eb
+									.selectFrom("billingSettingsTaxRate")
+									.select(["id", "name", "rate"])
+									.where("isDeleted", "is not", sqliteTrue)
+									.where("rate", "is not", null)
+									.$narrowType<{
+										rate: NotNull;
+									}>(),
+							)
+							.as("rates"),
+					])
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("defaultInvoiceDueDateDays", "is not", null)
+					.where("defaultCurrency", "is not", null)
+					.where("defaultTimezone", "is not", null)
+					.where("defaultPaymentMethod", "is not", null)
+					.where("invoiceEmailSettingsEnable", "is not", null)
+					.where("id", "=", itemId)
+					.$narrowType<{
+						defaultInvoiceDueDateDays: NotNull;
+						defaultCurrency: NotNull;
+						defaultTimezone: NotNull;
+						defaultPaymentMethod: NotNull;
+						invoiceEmailSettingsEnable: NotNull;
+					}>();
+			}),
+		[itemId],
+	);
+
+	const { data } = useEvoluQuery(query);
+
+	const item = data[0];
 
 	return (
 		<div className="w-full max-w-xl">
 			<BillingSettingsForm
-				key={item ? "yes" : "no"}
 				defaultValues={
 					item
 						? {
-								...item.value,
 								defaultInvoiceDueDateDays:
-									item.value.defaultInvoiceDueDateDays.toFixed(),
-								taxRates: item.value.taxRates.map((taxRate) => ({
-									...taxRate,
-									rate: taxRate.rate.toFixed(),
-									name: taxRate.name ?? "",
+									item.defaultInvoiceDueDateDays.toString(),
+								defaultCurrency: item.defaultCurrency,
+								defaultTimezone: item.defaultTimezone,
+								defaultPayment: {
+									method: item.defaultPaymentMethodMethod,
+									bankAccountKey: item.defaultPaymentMethodBankAccountKey,
+								},
+								defaultPaymentMethod: item.defaultPaymentMethod,
+								defaultBankTransferCzKey: item.defaultBankTransferCzKey,
+								defaultLnZapKey: item.defaultLnZapKey,
+								defaultLnSparkKey: item.defaultLnSparkKey,
+								invoiceEmailSettings: {
+									enable: item.invoiceEmailSettingsEnable === sqliteTrue,
+									subject: item.invoiceEmailSettingsSubject ?? "",
+									body: item.invoiceEmailSettingsBody ?? "",
+								},
+								taxRates: item.rates.map((tr) => ({
+									id: tr.id,
+									name: tr.name ?? "",
+									rate: tr.rate.toString(),
 								})),
-								invoiceEmailSettings: item.value.invoiceEmailSettings
-									? {
-											enable: true,
-											...item.value.invoiceEmailSettings,
-										}
-									: {
-											enable: false,
-										},
 							}
 						: undefined
 				}

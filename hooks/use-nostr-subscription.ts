@@ -103,7 +103,7 @@ export const useNostrSubscription = <T = NostrEvent>(
 		return () => {
 			subscription.stop();
 		};
-	}, [ndk.subscribe, refetchFlag, filters !== false]);
+	}, [ndk.subscribe, refetchFlag, filters !== false, ndk]);
 
 	return {
 		data: Object.values(data.data),

@@ -10,22 +10,23 @@ import {
 	ScanQrCodeIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { seedAtom } from "@/atoms/seed";
+import { useTranslation } from "react-i18next";
+import { accountAtom } from "@/atoms/account";
 import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatAmount } from "@/lib/format-utils";
-import { Currency } from "@/lib/types";
+import { Currency } from "@/lib/shared/types";
+import { formatAmount } from "@/lib/shared/utils/format";
 
 const WalletStatus = () => {
-	const seed = useAtomValue(seedAtom);
+	const { mnemonic } = useAtomValue(accountAtom);
 
 	const { data } = useQuery<bigint>({
 		queryKey: ["walletStatus"],
 		queryFn: async () => {
 			const { wallet } = await SparkWallet.initialize({
-				mnemonicOrSeed: seed,
+				mnemonicOrSeed: mnemonic,
 				options: {
 					network: "MAINNET",
 				},
@@ -74,6 +75,7 @@ const WalletStatus = () => {
 };
 
 export default function Page() {
+	const { t } = useTranslation();
 	return (
 		<div className="space-y-8 w-full p-4 flex flex-col">
 			<div className={"h-26"} />
@@ -88,7 +90,8 @@ export default function Page() {
 							variant={"dim"}
 							className={"h-14 w-36 px-8 text-foreground"}
 						>
-							<ArrowDownIcon className={"size-5 text-primary"} /> Receive
+							<ArrowDownIcon className={"size-5 text-primary"} />
+							{t("client:home.actions.receive")}
 						</Button>
 					</Link>
 					<Link href={"/scan"}>
@@ -106,7 +109,8 @@ export default function Page() {
 						variant={"dim"}
 						className={"h-14 w-36 px-8 text-foreground"}
 					>
-						<ArrowUpIcon className={"size-5 text-primary"} /> Send
+						<ArrowUpIcon className={"size-5 text-primary"} />
+						{t("client:home.actions.send")}
 					</Button>
 				</div>
 			</div>

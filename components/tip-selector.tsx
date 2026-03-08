@@ -2,6 +2,7 @@
 
 import { useAtom } from "jotai";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SelectedTipAtom } from "@/app/(client)/bill-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 const TIP_PERCENTAGES = [0, 5, 10, 15, 20];
 
 export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
+	const { t } = useTranslation();
 	const [selectedTip, setSelectedTip] = useAtom(props.selectedTipAtom);
 	const [customTip, setCustomTip] = useState("");
 	const [isCustom, setIsCustom] = useState(false);
@@ -46,7 +48,7 @@ export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
 				<div className="relative flex-1">
 					<Input
 						type="number"
-						placeholder="Custom %"
+						placeholder={t("components:tipSelector.custom")}
 						value={customTip}
 						onChange={(e) => handleCustomTip(e.target.value)}
 						className={`h-10 text-center ${isCustom ? "ring-2 ring-primary" : ""}`}

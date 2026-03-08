@@ -1,10 +1,14 @@
 "use client";
 
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, ExternalLink, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -13,28 +17,65 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import { clientBaseUrl } from "@/lib/window-utils";
-import { tableStorage } from "@/storages/table-storage";
+import { createQuery } from "@/lib/evolu";
+import { formatAmount } from "@/lib/shared/utils/format";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const { ndk } = useNostr();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(tableStorage, {
-		key: id,
-	});
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("table")
+					.select((eb) => [
+						"table.id as id",
+						"table.createdAt as createdAt",
+						"table.label as label",
+						"table.numberOfSeats as numberOfSeats",
 
-	const item = items && items[0];
+						kysely
+							.jsonArrayFrom(
+								eb
+									.selectFrom("tableCode")
+									.select(["tableCode.code as code"] as const)
+									.whereRef("tableCode.tableId", "=", "table.id")
+									.where("tableCode.isDeleted", "is not", sqliteTrue)
+									.where("tableCode.code", "is not", null)
+									.$narrowType<{
+										code: NotNull;
+									}>(),
+							)
+							.as("codes"),
+					])
+					.where("table.isDeleted", "is not", sqliteTrue)
+					.where("table.label", "is not", null)
+					.where("table.numberOfSeats", "is not", null)
+					.where("table.id", "=", id as Id)
+					.$narrowType<{
+						label: NotNull;
+						numberOfSeats: NotNull;
+					}>();
+			}),
+		[id],
+	);
+
+	const { data: items } = useEvoluQuery(query);
+	const item = items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -42,14 +83,27 @@ export default function Home() {
 				return;
 			}
 
-			await tableStorage.delete(storageDeps, item.eventId);
+			evolu.update("table", { id: item.id, isDeleted: sqliteTrue });
 			router.push("/admin/tables");
 		},
 	});
 
-	const qrCode = item && item.value.qrCodes && item.value.qrCodes[0];
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete table?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
+
+	const qrCode = item?.codes[0];
 	const frontendUrl =
-		qrCode && `${clientBaseUrl}#t-${ndk.signer.pubkey}-${qrCode.id}`;
+		qrCode && `${clientBaseUrl}#t-${ndk.signer.pubkey}-${qrCode.code}`;
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -62,7 +116,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.label}
+							{item?.label}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -73,7 +127,7 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item && formatAmount(item.value.numberOfSeats)}
+											{item && formatAmount(item.numberOfSeats)}
 										</>
 									}
 									className={"flex-1"}
@@ -84,13 +138,10 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												new Date(item.createdAt * 1000).toLocaleDateString()}
+											{item && new Date(item.createdAt).toLocaleDateString()}
 										</>
 									}
-									footer={
-										item && new Date(item.createdAt * 1000).toLocaleTimeString()
-									}
+									footer={item && new Date(item.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -101,13 +152,11 @@ export default function Home() {
 										items={[
 											{
 												key: "Name",
-												value: item?.value.label ?? "-",
+												value: item?.label ?? "-",
 											},
 											{
 												key: "Number of Seats",
-												value: item
-													? formatAmount(item.value.numberOfSeats)
-													: "-",
+												value: item ? formatAmount(item.numberOfSeats) : "-",
 											},
 										]}
 									/>
@@ -120,7 +169,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-4"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<Button variant={"outline"} className={"w-full"} asChild>
@@ -129,7 +178,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>

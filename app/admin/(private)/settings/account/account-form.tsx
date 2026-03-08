@@ -1,7 +1,10 @@
 "use client";
 
 import type { NDKUserProfile } from "@nostr-dev-kit/ndk";
+import type { TFunction } from "i18next";
 import type React from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
@@ -11,7 +14,7 @@ import {
 	HttpsUrlSchema,
 	NonEmptyStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
+} from "@/lib/shared/types";
 
 export const accountSchema = z.object({
 	name: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
@@ -24,31 +27,34 @@ export const accountSchema = z.object({
 	lud16: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
 });
 
-const components = createAutoFormLayout(accountSchema, ({ builder }) => ({
-	...builder.magicInput("name").text({
-		label: "Name",
-	}),
-	...builder.magicInput("displayName").text({
-		label: "Display name",
-	}),
-	...builder.magicInput("website").text({
-		label: "Website",
-	}),
-	...builder.magicInput("about").textarea({
-		label: "About",
-	}),
-	...builder.magicInput("bio").textarea({
-		label: "Bio",
-	}),
-	...builder.magicInput("lud16").text({
-		label: "lud16 address",
-	}),
-}));
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(accountSchema, ({ builder }) => ({
+		...builder.magicInput("name").text({
+			label: t("settings:form.account-form.label.name"),
+		}),
+		...builder.magicInput("displayName").text({
+			label: t("settings:form.account-form.label.display-name"),
+		}),
+		...builder.magicInput("website").text({
+			label: t("settings:form.account-form.label.website"),
+		}),
+		...builder.magicInput("about").textarea({
+			label: t("settings:form.account-form.label.about"),
+		}),
+		...builder.magicInput("bio").textarea({
+			label: t("settings:form.account-form.label.bio"),
+		}),
+		...builder.magicInput("lud16").text({
+			label: t("settings:form.account-form.label.lud16-address"),
+		}),
+	}));
 
 export const AccountForm: React.FC<{
 	defaultValues: NDKUserProfile | null;
 }> = (props) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(accountSchema, {
 		defaultValues: {
 			name: props.defaultValues ? (props.defaultValues.name ?? "") : "",

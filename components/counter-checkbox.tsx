@@ -3,10 +3,11 @@
 import { motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import type * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 interface CounterCheckboxProps {
 	value: number;
@@ -27,6 +28,7 @@ export function CounterCheckbox({
 	disabled,
 	children,
 }: CounterCheckboxProps) {
+	const { t } = useTranslation();
 	const handleCountChange = (newCount: number) => {
 		const clampedCount = Math.max(minCount, Math.min(maxCount, newCount));
 		onCountChange(clampedCount);
@@ -116,7 +118,9 @@ export function CounterCheckbox({
 						}}
 					>
 						<Minus className="h-4 w-4" />
-						<span className="sr-only">Decrease count</span>
+						<span className="sr-only">
+							{t("components:counterCheckbox.decreaseCount")}
+						</span>
 					</Button>
 					<Button
 						type="button"
@@ -129,7 +133,9 @@ export function CounterCheckbox({
 						}}
 					>
 						<Plus className="h-4 w-4" />
-						<span className="sr-only">Increase count</span>
+						<span className="sr-only">
+							{t("components:counterCheckbox.increaseCount")}
+						</span>
 					</Button>
 				</ButtonGroup>
 			)}

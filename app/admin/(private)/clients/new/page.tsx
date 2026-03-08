@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { ClientForm } from "@/app/admin/(private)/clients/client-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	return (
@@ -17,7 +19,7 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>New client</CardTitle>
+					<CardTitle>{t("clients:page.newClient")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ClientForm onSuccess={() => router.push("/admin/clients")} />

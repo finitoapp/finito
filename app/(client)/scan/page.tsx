@@ -2,21 +2,21 @@
 
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { FadeHeader } from "@/components/fade-header";
 import { Button } from "@/components/ui/button";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	return (
-		<div className="flex-1 flex flex-col p-8 justify-evenly gap-4">
+		<div className="flex-1 flex flex-col px-8 justify-evenly gap-4">
 			<div className={"h-10"} />
-			<FadeHeader title={"Scan QR Code"} />
+			<FadeHeader title={t("client:page.scanQrCode")} />
 
 			<div className="text-center">
-				<p className="text-muted-foreground">
-					Point your camera at the QR code to pay
-				</p>
+				<p className="text-muted-foreground">{t("client:home.scanHint")}</p>
 			</div>
 
 			<div className="flex flex-col bg-black rounded-2xl overflow-hidden relative">
@@ -46,7 +46,7 @@ export default function Page() {
 						router.push(`/#example-1`);
 					}}
 				>
-					Use example
+					{t("client:page.useExample")}
 				</Button>
 			</div>
 		</div>

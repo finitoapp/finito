@@ -1,14 +1,18 @@
 "use client";
 
+import type { Id } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ClientForm } from "@/app/admin/(private)/clients/client-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { clientStorage } from "@/storages/client-storage";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createGetClientsQuery } from "@/lib/evolu/queries/client";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
@@ -16,11 +20,21 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const { data } = useStorageSubscription(clientStorage, {
-		key: id,
-	});
+	const query = useMemo(() => createGetClientsQuery({ id: id as Id }), [id]);
 
-	const item = data && data[0];
+	const { data: items } = useEvoluQuery(query);
+
+	const item = items[0];
+
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/clients");
+		}
+	}, [item, router]);
+
+	if (item === undefined) {
+		return null;
+	}
 
 	return (
 		<div className={"max-w-xl w-full"}>
@@ -30,27 +44,31 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Edit client</CardTitle>
+					<CardTitle>{t("clients:page.editClient")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<ClientForm
-						key={item ? "yes" : "no"}
-						defaultValues={
-							item
+						defaultValues={{
+							...item,
+							label: item.label ?? "",
+							email: item.email ?? "",
+							address: {
+								...item.address,
+								street: item.address.street ?? "",
+								city: item.address.city ?? "",
+								postalCode: item.address.postalCode ?? "",
+								descriptiveNumber: item.address.descriptiveNumber ?? "",
+							},
+							cz: item.cz
 								? {
-										...item.value,
-										countrySpecific: {
-											...item.value.countrySpecific,
-											vatNumber: item.value.countrySpecific.vatNumber ?? "",
-											identificationNumber:
-												item.value.countrySpecific.identificationNumber ?? "",
-										},
+										...item.cz,
+										vatNumber: item.cz.vatNumber ?? "",
+										identificationNumber: item.cz.identificationNumber ?? "",
+										caseNumber: item.cz.caseNumber ?? "",
 									}
-								: undefined
-						}
-						onSuccess={() =>
-							router.push(`/admin/clients/detail?id=${encodeURIComponent(id)}`)
-						}
+								: undefined,
+						}}
+						onSuccess={() => router.back()}
 					/>
 				</CardContent>
 			</ResponsiveCard>

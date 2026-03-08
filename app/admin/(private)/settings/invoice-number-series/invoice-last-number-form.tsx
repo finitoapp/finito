@@ -1,16 +1,19 @@
+import { createIdFromString, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
 	DateToDateStringSchema,
 	NonNegativeIntegerSchema,
 	StringToNumberSchema,
-} from "@/lib/types";
-import { invoiceLastNumberStorage } from "@/storages/invoice-last-number-storage";
+} from "@/lib/shared/types";
 
 export const invoiceLastNumberFormSchema = z.object({
 	serialNumber: StringToNumberSchema.pipe(NonNegativeIntegerSchema),
@@ -23,47 +26,56 @@ export const createInvoiceLastNumberDefaultValues = () =>
 		date: null,
 	}) satisfies z.input<typeof invoiceLastNumberFormSchema>;
 
-export const invoiceLastNumberFormComponents = createAutoFormLayout(
-	invoiceLastNumberFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(invoiceLastNumberFormSchema, ({ builder }) => ({
 		...builder.magicInput("serialNumber").text({
-			label: "Last invoice serial number",
+			label: t(
+				"settings:form.invoice-last-number-form.label.last-invoice-serial-number",
+			),
 			type: "number",
 		}),
 
 		...builder.magicInput("date").date({
-			label: "Last invoice date",
+			label: t(
+				"settings:form.invoice-last-number-form.label.last-invoice-date",
+			),
 		}),
-	}),
-);
+	}));
 
 export const InvoiceLastNumberForm: React.FC<{
-	defaultValues?: Partial<
-		z.input<typeof invoiceLastNumberFormSchema> & { id: string }
-	>;
-	onSuccess?: (newEventId: string) => unknown;
+	defaultValues?: PartialDeep<z.input<typeof invoiceLastNumberFormSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createInvoiceLastNumberDefaultValues(),
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(invoiceLastNumberFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const { eventId } = await invoiceLastNumberStorage.insertOrUpdate(
-				storageDeps,
-				null,
-				values,
-			);
+			const id = createIdFromString("");
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
-			}
+			evolu.upsert(
+				"invoiceLastNumber",
+				{
+					...values,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
+					},
+				},
+			);
 		},
 	});
 
-	return <AutoForm form={form} components={invoiceLastNumberFormComponents} />;
+	return <AutoForm form={form} components={components} />;
 };

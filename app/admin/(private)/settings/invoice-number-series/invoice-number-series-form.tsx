@@ -1,24 +1,27 @@
+import { createIdFromString, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
+import { useEvolu } from "@/hooks/use-evolu";
 import {
-	NonEmptyStringSchema,
+	NonEmptyString32Schema,
 	PositiveIntegerSchema,
+	StringToNullableStringSchema,
 	StringToNumberSchema,
-	StringToUndefinedStringSchema,
-} from "@/lib/types";
-import { invoiceNumberSeriesStorage } from "@/storages/invoice-number-series-storage";
+} from "@/lib/shared/types";
 
 export const invoiceNumberSeriesFormSchema = z.object({
 	serialNumberDigits: StringToNumberSchema.pipe(PositiveIntegerSchema),
 	yearFormat: z.enum(["default", "short"]),
 	monthFormat: z.enum(["default", "hidden"]),
 	dayFormat: z.enum(["default", "hidden"]),
-	prefix: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+	prefix: StringToNullableStringSchema.pipe(NonEmptyString32Schema.nullable()),
 });
 
 export const createInvoiceNumberSeriesDefaultValues = () =>
@@ -32,81 +35,91 @@ export const createInvoiceNumberSeriesDefaultValues = () =>
 
 const now = new Date();
 
-export const billingSettingsFormComponents = createAutoFormLayout(
-	invoiceNumberSeriesFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(invoiceNumberSeriesFormSchema, ({ builder }) => ({
 		...builder.magicInput("serialNumberDigits").text({
-			label: "Number of digits",
+			label: t(
+				"settings:form.invoice-number-series-form.label.number-of-digits",
+			),
 			type: "number",
-			description:
-				"If you don't issue more than 9999 invoices per time period, number 4 will be optimal for you.",
+			description: t(
+				"settings:form.invoice-number-series-form.description.if-you-dont-issue-more-than-9999-invoices-per-time-period-number-4-will-be-optim",
+			),
 		}),
 
 		...builder.magicInput("yearFormat").select({
 			values: {
-				default: `default (${now.getFullYear()})`,
-				short: `short (${now.getFullYear().toString().substring(2)})`,
+				default: `${t("settings:form.invoice-number-series-form.option.default")} (${now.getFullYear()})`,
+				short: `${t("settings:form.invoice-number-series-form.option.short")} (${now.getFullYear().toString().substring(2)})`,
 			},
 			allowEmpty: false,
-			label: "Year format",
+			label: t("settings:form.invoice-number-series-form.label.year-format"),
 			variant: "toggle",
 		}),
 
 		...builder.magicInput("monthFormat").select({
 			values: {
-				default: `default (${(now.getMonth() + 1).toString().padStart(2, "0")})`,
-				hidden: "hidden",
+				default: `${t("settings:form.invoice-number-series-form.option.default")} (${(now.getMonth() + 1).toString().padStart(2, "0")})`,
+				hidden: t("settings:form.invoice-number-series-form.option.hidden"),
 			},
 			allowEmpty: false,
-			label: "Month format",
+			label: t("settings:form.invoice-number-series-form.label.month-format"),
 			variant: "toggle",
 		}),
 
 		...builder.when("monthFormat", (value) => value !== "hidden", {
 			...builder.magicInput("dayFormat").select({
 				values: {
-					default: `default (${now.getDate().toString().padStart(2, "0")})`,
-					hidden: "hidden",
+					default: `${t("settings:form.invoice-number-series-form.option.default")} (${now.getDate().toString().padStart(2, "0")})`,
+					hidden: t("settings:form.invoice-number-series-form.option.hidden"),
 				},
 				allowEmpty: false,
-				label: "Day format",
+				label: t("settings:form.invoice-number-series-form.label.day-format"),
 				variant: "toggle",
 			}),
 		}),
 
 		...builder.magicInput("prefix").text({
-			label: "Invoice number prefix",
+			label: t(
+				"settings:form.invoice-number-series-form.label.invoice-number-prefix",
+			),
 		}),
-	}),
-);
+	}));
 
 export const InvoiceNumberSeriesForm: React.FC<{
-	defaultValues?: Partial<
-		z.input<typeof invoiceNumberSeriesFormSchema> & { id: string }
-	>;
-	onSuccess?: (newEventId: string) => unknown;
+	defaultValues?: PartialDeep<z.input<typeof invoiceNumberSeriesFormSchema>>;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
+	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createInvoiceNumberSeriesDefaultValues(),
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(invoiceNumberSeriesFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const { eventId } = await invoiceNumberSeriesStorage.insertOrUpdate(
-				storageDeps,
-				null,
-				values,
-			);
+			const id = createIdFromString("");
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
-			}
+			evolu.upsert(
+				"invoiceNumberSeries",
+				{
+					...values,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
+					},
+				},
+			);
 		},
 	});
 
-	return <AutoForm form={form} components={billingSettingsFormComponents} />;
+	return <AutoForm form={form} components={components} />;
 };

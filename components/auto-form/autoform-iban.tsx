@@ -1,13 +1,15 @@
+import { sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { useMemo } from "react";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { formatIban } from "@/lib/format-utils";
-import { IbanSchema } from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { IbanSchema } from "@/lib/shared/types";
+import { formatIban } from "@/lib/shared/utils/format";
 
 export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const ComboboxInput = useMemo(
 		() =>
 			createComboboxOrTextInput<string>({
@@ -17,20 +19,31 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 					return result.success ? formatIban(result.data) : value;
 				},
 				fetchItems: async () => {
-					const items = await accountStorage.select(storageDeps);
+					const query = createQuery((db) =>
+						db
+							.selectFrom("account")
+							.innerJoin("accountIban", "accountIban.id", "account.id")
+							.select(["account.id", "account.name", "accountIban.iban"])
+							.where("_tag", "=", "accountIban")
+							.where("account.isDeleted", "is not", sqliteTrue)
+							.where("account.name", "is not", null)
+							.where("accountIban.iban", "is not", null)
+							.$narrowType<{
+								name: NotNull;
+								iban: NotNull;
+							}>(),
+					);
+					const items = await evolu.loadQuery(query);
 
-					return items.data
-						.filter((item) => item.value._tag === "iban")
-						.map((item) => ({
-							label:
-								item.value._tag === "iban"
-									? `${formatIban(item.value.iban)} (${item.value.name})`
-									: "-",
-							value: item.value._tag === "iban" ? item.value.iban : "-",
-						}));
+					return items.map((item) => {
+						return {
+							label: `${formatIban(item.iban)} (${item.name})`,
+							value: item.iban,
+						};
+					});
 				},
 			}),
-		[storageDeps],
+		[evolu],
 	);
 
 	return <ComboboxInput {...props} />;

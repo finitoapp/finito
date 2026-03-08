@@ -1,19 +1,24 @@
-import { useSetAtom } from "jotai";
+import {
+	createOwnerSecret,
+	createRandomBytes,
+	ownerSecretToMnemonic,
+} from "@evolu/common";
+import { faker } from "@faker-js/faker";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useRouter } from "next/navigation";
-import { generateSeedWords } from "nostr-tools/nip06";
 import { useState } from "react";
-import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { seedAtom } from "@/atoms/seed";
-import { seedsAtom } from "@/atoms/seeds";
+import { useTranslation } from "react-i18next";
+import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { ProgressSteps } from "@/components/progress-steps";
 import { Button } from "@/components/ui/button";
-import { NonEmptyString, WssUrl } from "@/lib/types";
+import { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 export function LoginForm() {
+	const { t } = useTranslation();
 	const [currentStep, setCurrentStep] = useState(0);
-	const setSeed = useSetAtom(seedAtom);
-	const setSeeds = useSetAtom(seedsAtom);
-	const setRelays = useSetAtom(nostrRelaysAtom);
+	const setEvoluCounter = useSetAtom(evoluCounterAtom);
+	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const router = useRouter();
 
 	return (
@@ -22,24 +27,32 @@ export function LoginForm() {
 				steps={[
 					{
 						id: "account",
-						label: "Creating business identity",
+						label: t("components:loginForm.steps.account.label"),
 						description:
-							currentStep === 1 ? "working..." : currentStep > 1 ? "done" : "",
+							currentStep === 1
+								? t("components:loginForm.steps.account.status.working")
+								: currentStep > 1
+									? t("components:loginForm.steps.account.status.done")
+									: "",
 					},
 					{
 						id: "profile",
-						label: "Activating relays",
+						label: t("components:loginForm.steps.profile.label"),
 						description:
-							currentStep === 2 ? "working..." : currentStep > 2 ? "done" : "",
+							currentStep === 2
+								? t("components:loginForm.steps.profile.status.working")
+								: currentStep > 2
+									? t("components:loginForm.steps.profile.status.done")
+									: "",
 					},
 					{
 						id: "preferences",
-						label: "Ready",
+						label: t("components:loginForm.steps.preferences.label"),
 						description:
 							currentStep === 3 ? (
-								"preparing..."
+								t("components:loginForm.steps.preferences.status.preparing")
 							) : currentStep > 3 ? (
-								"yes, we're ready. Redirecting..."
+								t("components:loginForm.steps.preferences.status.redirecting")
 							) : (
 								<>&nbsp;</>
 							),
@@ -66,22 +79,32 @@ export function LoginForm() {
 					setCurrentStep(4);
 					await new Promise((resolve) => setTimeout(resolve, 1000));
 
-					const seed = NonEmptyString(generateSeedWords());
-					setSeeds((previous) => ({
-						seeds: [...(previous !== null ? previous.seeds : []), seed],
-					}));
-					setSeed(seed);
-					setRelays({
-						relays: [
-							WssUrl("wss://relay.primal.net"),
-							WssUrl("wss://relay.damus.io"),
-						],
+					const mnemonic = ownerSecretToMnemonic(
+						createOwnerSecret({
+							randomBytes: createRandomBytes(),
+						}),
+					);
+
+					await new Promise<void>((resolve) => {
+						deviceEvolu.insert(
+							"account",
+							{
+								name: NonEmptyString255(faker.internet.username()),
+								mnemonic,
+								lastUseAt: TimestampMs(Date.now()),
+							},
+							{
+								onComplete: resolve,
+							},
+						);
 					});
+
+					setEvoluCounter((value) => value + 1);
 
 					router.push("/admin");
 				}}
 			>
-				Create a new account
+				{t("components:loginForm.actions.createNewAccount")}
 			</Button>
 		</>
 	);

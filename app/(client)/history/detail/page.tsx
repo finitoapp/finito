@@ -1,100 +1,190 @@
 "use client";
 
-import { DownloadIcon } from "lucide-react";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FadeHeader } from "@/components/fade-header";
 import { KeyValueList } from "@/components/key-value-list";
-import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
-import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import {
-	paymentFinishedStorage,
-	paymentInitStorage,
-	paymentReadyStorage,
-} from "@/storages/payment-progress-storage";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export default function Page() {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
-	if (id === null) {
-		throw Promise.reject();
-	}
+	if (id === null) throw Promise.reject();
 
-	const { data: items } = useStorageSubscription(paymentInitStorage, {
-		key: id,
-	});
+	const paymentId = id as Id;
 
-	const { data: paymentReadyItems } = useStorageSubscription(
-		paymentReadyStorage,
-		{
-			key: id,
-		},
+	const paymentInitQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("payment")
+					.select(
+						(eb) =>
+							[
+								"id",
+								"createdAt",
+								"totalAmount",
+								"currency",
+								"tipAmount",
+								"direction",
+
+								kysely
+									.jsonArrayFrom(
+										eb
+											.selectFrom("paymentItemLine")
+											.select(
+												(eb) =>
+													[
+														"paymentItemLine.totalAmount as totalAmount",
+														"paymentItemLine.quantity as quantity",
+
+														kysely
+															.jsonObjectFrom(
+																eb
+																	.selectFrom("paymentItem")
+																	.select(["paymentItem.label as label"])
+																	.whereRef(
+																		"paymentItem.id",
+																		"=",
+																		"paymentItemLine.id",
+																	)
+																	.where(
+																		"paymentItem.isDeleted",
+																		"is not",
+																		sqliteTrue,
+																	)
+																	.where("paymentItem.label", "is not", null)
+																	.$narrowType<{
+																		label: NotNull;
+																	}>(),
+															)
+															.as("item"),
+													] as const,
+											)
+											.whereRef("paymentItemLine.paymentId", "=", "payment.id")
+											.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+											.where("paymentItemLine.totalAmount", "is not", null)
+											.where("paymentItemLine.quantity", "is not", null)
+											.$narrowType<{
+												totalAmount: NotNull;
+												quantity: NotNull;
+												item: NotNull;
+											}>(),
+									)
+									.as("items"),
+							] as const,
+					)
+					.where("payment.isDeleted", "is not", sqliteTrue)
+					.where("payment.currency", "is not", null)
+					.where("payment.totalAmount", "is not", null)
+					.where("payment.direction", "is not", null)
+					.where("payment.id", "=", paymentId)
+					.limit(1)
+					.$narrowType<{
+						currency: NotNull;
+						totalAmount: NotNull;
+						direction: NotNull;
+					}>(),
+			),
+		[paymentId],
 	);
 
-	const { data: paymentFinishedItems, eose: paymentFinishedEose } =
-		useStorageSubscription(paymentFinishedStorage, {
-			key: id,
-		});
+	const { data: paymentInitRows } = useEvoluQuery(paymentInitQuery);
 
-	const paymentInit = items && items[0];
-	const paymentReady = paymentReadyItems && paymentReadyItems[0];
-	const paymentFinished = paymentFinishedItems && paymentFinishedItems[0];
-
-	const totalAmount =
-		(paymentInit?.value.items.reduce(
-			(acc, value) => acc + value.price * value.quantity,
-			0,
-		) ?? 0) + (paymentInit?.value.tip ?? 0);
-
-	const itemsById = new Map(
-		paymentReady?.value.bill.items.map((item) => [item.id, item]),
-	);
+	const payment = paymentInitRows[0];
 
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-20"} />
-			<FadeHeader title={"Payment detail"} />
+			<FadeHeader title={t("client:page.paymentDetail")} />
 
-			<LoadingIndicator
-				text={
-					paymentFinishedEose
-						? paymentFinished !== undefined
-							? paymentFinished.value.type === "success"
-								? "Paid"
-								: paymentFinished.value.reason
-							: "Still in progress or expired"
-						: "loading"
-				}
-				open={true}
-				status={
-					paymentFinishedEose
-						? paymentFinished !== undefined
-							? paymentFinished.value.type
-							: "failure"
-						: "loading"
-				}
-			/>
+			{/*<LoadingIndicator*/}
+			{/*	text={*/}
+			{/*		paymentFinishedRows === undefined*/}
+			{/*			? t("client:historyDetail.status.loading")*/}
+			{/*			: paymentFinished*/}
+			{/*				? paymentFinished.type === "success"*/}
+			{/*					? t("client:historyDetail.status.paid")*/}
+			{/*					: (paymentFinished.reason ??*/}
+			{/*						t("client:historyDetail.status.failed"))*/}
+			{/*				: t("client:historyDetail.status.inProgressOrExpired")*/}
+			{/*	}*/}
+			{/*	open={true}*/}
+			{/*	status={*/}
+			{/*		paymentFinishedRows === undefined*/}
+			{/*			? "loading"*/}
+			{/*			: paymentFinished*/}
+			{/*				? paymentFinished.type === "success"*/}
+			{/*					? "success"*/}
+			{/*					: "failure"*/}
+			{/*				: "failure"*/}
+			{/*	}*/}
+			{/*/>*/}
+
+			{/*<ResponsiveCard>*/}
+			{/*	<CardContent>*/}
+			{/*		<KeyValueList*/}
+			{/*			items={[*/}
+			{/*				{*/}
+			{/*					key: t("client:historyDetail.fields.name"),*/}
+			{/*					value: payment ? (*/}
+			{/*						payment.merchantName*/}
+			{/*					) : (*/}
+			{/*						<Skeleton className={"h-5 w-50"} />*/}
+			{/*					),*/}
+			{/*				},*/}
+			{/*				{*/}
+			{/*					key: t("client:historyDetail.fields.phone"),*/}
+			{/*					value: payment ? (*/}
+			{/*						(payment.merchantPhone ?? "-")*/}
+			{/*					) : (*/}
+			{/*						<Skeleton className={"h-5 w-50"} />*/}
+			{/*					),*/}
+			{/*				},*/}
+			{/*			]}*/}
+			{/*		/>*/}
+			{/*	</CardContent>*/}
+			{/*</ResponsiveCard>*/}
 
 			<ResponsiveCard>
 				<CardContent>
 					<KeyValueList
 						items={[
 							{
-								key: "Name",
-								value: paymentInit ? (
-									paymentInit.value.merchant?.name
+								key: t("client:historyDetail.fields.spending"),
+								value: payment ? (
+									formatMoney({
+										value: payment.totalAmount,
+										currency: payment.currency,
+									})
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
 							},
+							...(payment.tipAmount
+								? [
+										{
+											key: t("client:bill.tipForStaff"),
+											value: formatMoney({
+												value: payment.tipAmount,
+												currency: payment.currency,
+											}),
+										},
+									]
+								: []),
 							{
-								key: "Phone",
-								value: paymentInit ? (
-									(paymentInit.value.merchant?.phone ?? "-")
+								key: t("client:historyDetail.fields.date"),
+								value: payment ? (
+									new Date(payment.createdAt).toLocaleString()
 								) : (
 									<Skeleton className={"h-5 w-50"} />
 								),
@@ -104,56 +194,31 @@ export default function Page() {
 				</CardContent>
 			</ResponsiveCard>
 
-			<ResponsiveCard>
-				<CardContent>
-					<KeyValueList
-						items={[
-							{
-								key: "Spending",
-								value: paymentInit ? (
-									formatAmount(totalAmount, paymentInit.value.currency)
-								) : (
-									<Skeleton className={"h-5 w-50"} />
-								),
-							},
-							{
-								key: "Date",
-								value: paymentInit ? (
-									new Date(paymentInit.createdAt * 1000).toLocaleString()
-								) : (
-									<Skeleton className={"h-5 w-50"} />
-								),
-							},
-						]}
-					/>
-				</CardContent>
-			</ResponsiveCard>
+			{payment.items.length > 0 && (
+				<ResponsiveCard>
+					<CardHeader>
+						<CardTitle>{t("client:bill.itemsTitle")}</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<KeyValueList
+							items={payment.items.map((item) => ({
+								key: `${item.quantity ?? 0}× ${item.item.label}`,
+								value: formatMoney({
+									value: item.totalAmount,
+									currency: payment.currency,
+								}),
+							}))}
+						/>
+					</CardContent>
+				</ResponsiveCard>
+			)}
 
-			<ResponsiveCard>
-				<CardHeader>
-					<CardTitle>Bill items</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<KeyValueList
-						items={
-							paymentInit?.value.items.map((item) => ({
-								key: `${item.quantity}× ${itemsById.get(item.id)?.label ?? item.id}`,
-								value: formatAmount(
-									item.quantity * item.price,
-									paymentInit.value.currency,
-								),
-							})) ?? []
-						}
-					/>
-				</CardContent>
-			</ResponsiveCard>
-
-			<div className={"flex justify-center px-4"}>
-				<Button className={"w-full"} type={"button"}>
-					<DownloadIcon />
-					Download receipt
-				</Button>
-			</div>
+			{/*<div className={"flex justify-center px-4"}>*/}
+			{/*	<Button className={"w-full"} type={"button"}>*/}
+			{/*		<DownloadIcon />*/}
+			{/*		{t("client:historyDetail.actions.downloadReceipt")}*/}
+			{/*	</Button>*/}
+			{/*</div>*/}
 
 			<div className={"h-0"}></div>
 		</div>

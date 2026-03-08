@@ -1,9 +1,19 @@
 "use client";
 
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,82 +24,195 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import { itemStorage } from "@/storages/item-storage";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { Currency, Integer, NonEmptyString255 } from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+
+type Task = {
+	id: Id;
+	createdAt: DateIso;
+	label: NonEmptyString255;
+	categoryName: string | null;
+	currency: Currency;
+	price: Integer;
+};
+
+const createColumns = (t: TFunction): ColumnDef<Task>[] => [
+	{
+		accessorKey: "label",
+		header: createSortableHeader(t("items:table.columns.label")),
+	},
+	{
+		accessorKey: "categoryName",
+		header: createSortableHeader(t("items:table.columns.category")),
+		cell: ({ row }) => row.original.categoryName ?? "-",
+	},
+	{
+		accessorKey: "price",
+		header: createSortableHeader(t("items:table.columns.amount")),
+		cell: ({ row }) =>
+			formatMoney({
+				value: row.original.price,
+				currency: row.original.currency,
+			}),
+	},
+];
+
+const sortingFields = {
+	id: "item.id",
+	label: "item.label",
+	price: "item.price",
+	currency: "item.currency",
+	createdAt: "item.createdAt",
+	categoryName: "category.name",
+} as const satisfies Record<keyof Task, string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "label",
+			title: t("items:table.columns.label"),
+		},
+		{
+			id: "categoryName",
+			title: t("items:table.columns.category"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function ItemsTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(itemStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("items");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
+	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
+
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
+					let qb = db
+						.selectFrom("item")
+						.leftJoin("category", "category.id", "item.categoryId")
+						.select([
+							"item.id as id",
+							"item.label as label",
+							"item.price as price",
+							"item.currency as currency",
+							"item.createdAt as createdAt",
+							"category.name as categoryName",
+						] as const)
+						.where("item.isDeleted", "is not", sqliteTrue)
+						.where("item.label", "is not", null)
+						.$narrowType<{
+							label: NotNull;
+							price: NotNull;
+							currency: NotNull;
+						}>();
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									finalSorting.id,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
+									eb("item.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
+						.orderBy("item.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "label") {
+							qb = qb.where(
+								"item.label",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
+						}
+						if (filter.id === "categoryName") {
+							qb = qb.where(
+								"category.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				return subscribeToEvoluQuery(evolu, query, (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[sortingField]: last[sortingField],
+						};
+					}
+
+					setData({
+						data: [...data],
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					});
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Items</CardTitle>
-					<CardDescription>List of your sales items</CardDescription>
+					<CardTitle>{t("items:table.items")}</CardTitle>
+					<CardDescription>
+						{t("items:table.listOfYourSalesItems")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/items/new"}>
 						<Button>
 							<PlusIcon />
-							New item
+							{t("items:table.actions.new-item")}
 						</Button>
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									eventId: item.eventId,
-									createdAt: new Date(item.createdAt * 1000),
-									amount: formatAmount(
-										item.value.price.value,
-										item.value.price.currency,
-									),
-									label: item.value.label,
-								}))
-							: undefined
-					}
-					columns={[
-						{
-							key: "label" as const,
-							header: "Label",
-							width: "400px",
-						},
-						{
-							key: "amount" as const,
-							header: "Amount",
-						},
-					]}
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(`/admin/items/detail?id=${encodeURIComponent(item.id)}`)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

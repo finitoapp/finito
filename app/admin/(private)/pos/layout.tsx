@@ -7,5 +7,9 @@ export default function Layout(
 		children: React.ReactNode;
 	}>,
 ) {
-	return <DefautLayout title={"Point of Sale"}>{props.children}</DefautLayout>;
+	return (
+		<DefautLayout titleKey={"admin:layout.title.pointOfSale"}>
+			{props.children}
+		</DefautLayout>
+	);
 }

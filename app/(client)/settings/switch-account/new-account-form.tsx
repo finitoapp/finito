@@ -1,31 +1,56 @@
-import { useSetAtom } from "jotai";
-import { generateSeedWords } from "nostr-tools/nip06";
+import {
+	createOwnerSecret,
+	createRandomBytes,
+	ownerSecretToMnemonic,
+} from "@evolu/common";
+import { faker } from "@faker-js/faker";
+import type { TFunction } from "i18next";
+import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { nostrRelaysAtom } from "@/atoms/nostr-relays";
-import { seedAtom } from "@/atoms/seed";
+import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { NonEmptyString, WssUrl } from "@/lib/types";
+import { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 const formSchema = z.object({});
-const components = createAutoFormLayout(formSchema, () => ({}));
+const createComponents = (_t: TFunction) =>
+	createAutoFormLayout(formSchema, () => ({}));
 
 export const NewAccountForm: React.FC<{
 	onSuccess: () => unknown;
 }> = (props) => {
-	const setRelays = useSetAtom(nostrRelaysAtom);
-	const setSeed = useSetAtom(seedAtom);
+	const { t } = useTranslation();
+	const setEvoluCounter = useSetAtom(evoluCounterAtom);
+	const deviceEvolu = useAtomValue(deviceEvoluAtom);
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(formSchema, {
 		defaultValues: {},
 		saveAction: async () => {
-			setSeed(NonEmptyString(generateSeedWords()));
-			setRelays({
-				relays: [
-					WssUrl("wss://relay.primal.net"),
-					WssUrl("wss://relay.damus.io"),
-				],
+			const mnemonic = ownerSecretToMnemonic(
+				createOwnerSecret({
+					randomBytes: createRandomBytes(),
+				}),
+			);
+
+			await new Promise<void>((resolve) => {
+				deviceEvolu.insert(
+					"account",
+					{
+						name: NonEmptyString255(faker.internet.username()),
+						mnemonic,
+						lastUseAt: TimestampMs(Date.now()),
+					},
+					{
+						onComplete: resolve,
+					},
+				);
 			});
+
+			setEvoluCounter((value) => value + 1);
 		},
 		onSuccess: props.onSuccess,
 	});
@@ -34,7 +59,9 @@ export const NewAccountForm: React.FC<{
 		<AutoForm
 			form={form}
 			components={components}
-			saveLabel={"Generate a new account"}
+			saveLabel={t(
+				"settings:form.new-account-form.save-label.generate-a-new-account",
+			)}
 		/>
 	);
 };

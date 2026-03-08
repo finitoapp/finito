@@ -1,9 +1,12 @@
+import { createId, createRandomBytes, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { v7 } from "uuid";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { addressFormSchema } from "@/app/admin/(private)/clients/client-form";
 import {
 	AutoForm,
 	type AutoFormComponent,
@@ -15,73 +18,73 @@ import {
 } from "@/components/autocomplete-identification-number-input";
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { type Address, AddressSchema } from "@/lib/schemas";
+import { useEvolu } from "@/hooks/use-evolu";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
+	BoolToSqliteBoolSchema,
 	CountryCode,
 	EmailSchema,
 	IdentificationNumberCzSchema,
-	NonEmptyStringSchema,
+	NonEmptyString255Schema,
 	StringToNullableStringSchema,
-	StringToUndefinedStringSchema,
-} from "@/lib/types";
-import { clientStorage } from "@/storages/client-storage";
+} from "@/lib/shared/types";
 
-export const createClientAddressFormSchema = <
-	TOptional extends boolean,
->(props: {
-	optional: TOptional;
-}): z.Schema<
-	TOptional extends true ? Address | undefined : Address,
-	{
-		street: string;
-		city: string;
-		postalCode: string;
-	}
-> =>
-	z
-		.object({
-			street: StringToUndefinedStringSchema,
-			city: StringToUndefinedStringSchema,
-			postalCode: StringToUndefinedStringSchema,
-		})
-		.transform((values) =>
-			values.city || values.street || values.postalCode ? values : undefined,
-		)
-		.pipe(
-			props.optional ? AddressSchema.optional() : AddressSchema,
-		) as z.Schema<
-		TOptional extends true ? Address | undefined : Address,
-		{
-			street: string;
-			city: string;
-			postalCode: string;
-		}
-	>;
-
-export const billingInfoFormSchema = z.object({
-	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	label: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	email: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
-	address: createClientAddressFormSchema({ optional: true }),
-	countrySpecific: z.discriminatedUnion("countryCode", [
-		z.object({
-			countryCode: z
-				.enum(CountryCode)
-				.nullable()
-				.pipe(z.literal(CountryCode.CZ)),
-			vatNumber: StringToUndefinedStringSchema.pipe(
-				NonEmptyStringSchema.optional(),
-			),
-			identificationNumber: StringToUndefinedStringSchema.pipe(
-				IdentificationNumberCzSchema.optional(),
-			),
-		}),
-	]),
+export const baseBillingInfoFormSchema = z.object({
+	id: TableIdSchema,
+	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
+	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
+	address: addressFormSchema,
+	countryCode: z.enum(CountryCode),
+	cz: z.object({
+		vatPayer: BoolToSqliteBoolSchema,
+		vatNumber: StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		),
+		identificationNumber: StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		),
+		caseNumber: StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		),
+	}),
 });
+
+const billingInfoFormSchema = z.discriminatedUnion("countryCode", [
+	baseBillingInfoFormSchema.extend({
+		countryCode: z.literal(CountryCode.CZ),
+		cz: z.discriminatedUnion("vatPayer", [
+			z.object({
+				vatPayer: z.literal(true),
+				vatNumber: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+				identificationNumber: StringToNullableStringSchema.pipe(
+					IdentificationNumberCzSchema,
+				),
+				caseNumber: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+			}),
+			z.object({
+				vatPayer: z.literal(false),
+				vatNumber: StringToNullableStringSchema.pipe(
+					NonEmptyString255Schema.nullable(),
+				),
+				identificationNumber: StringToNullableStringSchema.pipe(
+					IdentificationNumberCzSchema.nullable(),
+				),
+				caseNumber: StringToNullableStringSchema.pipe(
+					NonEmptyString255Schema.nullable(),
+				),
+			}),
+		]),
+	}),
+]);
+
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
 
 export const createBillingInfoFormDefaultValues = () =>
 	({
+		id: createId(createIdDeps),
 		name: "",
 		label: "",
 		email: "",
@@ -89,11 +92,14 @@ export const createBillingInfoFormDefaultValues = () =>
 			street: "",
 			city: "",
 			postalCode: "",
+			descriptiveNumber: "",
 		},
-		countrySpecific: {
-			countryCode: null,
+		countryCode: CountryCode.CZ,
+		cz: {
+			vatPayer: false,
 			vatNumber: "",
 			identificationNumber: "",
+			caseNumber: "",
 		},
 	}) satisfies z.input<typeof billingInfoFormSchema>;
 
@@ -126,95 +132,115 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 	return <AutocompleteIdentificationNumberInput {...props} />;
 };
 
-const components = createAutoFormLayout(
-	billingInfoFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(billingInfoFormSchema, ({ builder }) => ({
 		_search: Search,
 		_separator: () => <Separator />,
 
+		...builder.magicInput("id").text({
+			type: "hidden",
+		}),
 		...builder.magicInput("name").text({
-			label: "Company name",
+			label: t("invoices:form.billing-info-form.label.company-name"),
 		}),
 		...builder.magicInput("label").text({
-			label: "Label",
-			description: "Your private name for internal purposes",
+			label: t("invoices:form.billing-info-form.label.label"),
+			description: t(
+				"invoices:form.billing-info-form.description.your-private-name-for-internal-purposes",
+			),
 		}),
 		...builder.magicInput("email").text({
-			label: "Email",
+			label: t("invoices:form.billing-info-form.label.email"),
 		}),
 		...builder.nestedField("address", ({ builder }) => {
 			return {
 				...builder.magicInput("street").text({
-					label: "Street",
+					label: t("invoices:form.billing-info-form.label.street"),
 				}),
 				...builder.magicInput("city").text({
-					label: "City",
+					label: t("invoices:form.billing-info-form.label.city"),
 				}),
 				...builder.magicInput("postalCode").text({
-					label: "Postal Code",
+					label: t("invoices:form.billing-info-form.label.postal-code"),
+				}),
+				...builder.magicInput("descriptiveNumber").text({
+					label: t("invoices:form.billing-info-form.label.descriptive-number"),
 				}),
 			};
 		}),
-		...builder.nestedField("countrySpecific", ({ builder }) => ({
-			...builder.magicInput("countryCode").select({
-				values: CountryCode,
-				allowEmpty: true,
-				label: "Country code",
-			}),
-			...builder.when("countrySpecific.countryCode", CountryCode.CZ, {
+		...builder.magicInput("countryCode").select({
+			values: CountryCode,
+			allowEmpty: false,
+			label: t("settings:form.billing-info-form.label.country-code"),
+		}),
+		...builder.nestedField("cz", ({ builder }) => ({
+			...builder.when("countryCode", CountryCode.CZ, {
 				...builder.magicInput("identificationNumber").text({
-					label: "Identification Number",
+					label: t(
+						"settings:form.billing-info-form.label.identification-number",
+					),
+				}),
+				...builder.magicInput("vatPayer").checkbox({
+					label: t("settings:form.billing-info-form.label.vat-payer"),
 				}),
 				...builder.magicInput("vatNumber").text({
-					label: "VAT Number",
+					label: t("settings:form.billing-info-form.label.vat-number"),
+				}),
+				...builder.magicInput("caseNumber").textarea({
+					label: t("settings:form.billing-info-form.label.case-number"),
 				}),
 			}),
 		})),
-	}),
-);
+	}));
 
 export const BillingInfoForm: React.FC<{
-	defaultValues?: Partial<
-		z.input<typeof billingInfoFormSchema> & { id: string }
-	>;
-	onBeforeSave?: (
-		values: z.output<typeof billingInfoFormSchema> & { id: string },
-	) => boolean;
-	onSuccess?: (newEventId: string) => unknown;
-	customStorage?: typeof clientStorage;
+	defaultValues?: Partial<z.input<typeof billingInfoFormSchema>>;
+	onBeforeSave?: (values: z.output<typeof billingInfoFormSchema>) => boolean;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(
 			createBillingInfoFormDefaultValues(),
 			params.defaultValues ?? {},
 		);
 	});
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(billingInfoFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const finalValues = {
-				id,
-				...values,
-			};
-
 			if (params.onBeforeSave) {
-				if (!params.onBeforeSave(finalValues)) {
+				if (!params.onBeforeSave(values)) {
 					return;
 				}
 			}
 
-			const { eventId } = await (
-				params.customStorage ?? clientStorage
-			).insertOrUpdate(storageDeps, id, finalValues);
+			const { address, cz, ...client } = values;
+
+			evolu.upsert("client", {
+				id: client.id,
+				name: client.name,
+				label: client.label,
+				email: client.email,
+				countryCode: client.countryCode,
+			});
+
+			if (values.address) {
+				evolu.upsert("clientAddress", {
+					id: client.id,
+					...address,
+				});
+			}
+
+			evolu.upsert("clientCz", {
+				id: client.id,
+				...cz,
+				vatPayer: BoolToSqliteBoolSchema.decode(cz.vatPayer),
+			});
 
 			if (params.onSuccess) {
-				params.onSuccess(eventId);
+				params.onSuccess(values.id);
 			}
 		},
 	});

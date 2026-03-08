@@ -1,12 +1,19 @@
 "use client";
 
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { PaymentStatusBadge } from "@/app/admin/(private)/payments/payment-status-badge";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,183 +24,183 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useNostrSubscription } from "@/hooks/use-nostr-subscription";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import { type Payment, paymentStorage } from "@/storages/payment-storage";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { Currency, Integer, NonEmptyString255 } from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+
+type Row = {
+	id: Id;
+	createdAt: DateIso;
+	totalAmount: Integer;
+	currency: Currency;
+	label: NonEmptyString255 | null;
+	// status: PaymentStatus;
+};
+
+const sortingFields = {
+	id: "payment.id",
+	createdAt: "payment.createdAt",
+	totalAmount: "payment.totalAmount",
+	currency: "payment.currency",
+	label: "paymentItem.label",
+} as const satisfies Record<keyof Row | "createdAt", string>;
+
+const createColumns = (t: TFunction): ColumnDef<Row>[] => [
+	{
+		accessorKey: "createdAt",
+		header: createSortableHeader(t("payments:table.columns.created-at")),
+		cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
+	},
+	{
+		accessorKey: "amount",
+		header: t("payments:table.columns.amount"),
+		cell: ({ row }) =>
+			formatMoney({
+				value: row.original.totalAmount,
+				currency: row.original.currency,
+			}),
+	},
+	// {
+	// 	accessorKey: "status",
+	// 	header: t("payments:table.columns.status"),
+	// 	cell: ({ row }) => (
+	// 		<Badge
+	// 			variant={
+	// 				row.original.status === PaymentStatus.Unpaid ? "primary" : "success"
+	// 			}
+	// 		>
+	// 			{row.original.status}
+	// 		</Badge>
+	// 	),
+	// },
+	{
+		accessorKey: "label",
+		header: t("payments:table.columns.description"),
+	},
+];
 
 export function PaymentsTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
-	const [paymentPubkeys, setPaymentPubkeys] = useState<{
-		pubkeys: string[];
-		authors: string[];
-	} | null>(null);
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("payments");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
+		() =>
+			({ sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(paymentStorage, {
-		limit: 15,
-	});
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-	const paymentStatusRef = useRef<Record<string, true>>({});
-	useNostrSubscription(
-		paymentPubkeys !== null
-			? {
-					kinds: [9735], // zap receipt
-					authors: paymentPubkeys.authors,
-					"#p": paymentPubkeys.pubkeys,
-					limit: 20,
-				}
-			: false,
-		{
-			transform: async (event) => {
-				const p = event.tags.find((tag) => tag[0] === "p");
-				if (p === undefined) {
-					return undefined;
-				}
-				const pubkey = p[1];
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
 
-				paymentStatusRef.current[pubkey] = true;
-				return event;
+				const query = createQuery((db) => {
+					let qb = db
+						.selectFrom("payment")
+						.leftJoin(
+							"paymentItemLine",
+							"paymentItemLine.paymentId",
+							"payment.id",
+						)
+						.leftJoin("paymentItem", "paymentItem.id", "paymentItemLine.id")
+						.select([
+							"payment.id as id",
+							"payment.totalAmount as totalAmount",
+							"payment.currency as currency",
+							"payment.createdAt as createdAt",
+							"paymentItem.label as label",
+						] as const)
+						.where("payment.isDeleted", "is not", sqliteTrue)
+						.where("payment.totalAmount", "is not", null)
+						.where("payment.currency", "is not", null)
+						.groupBy("payment.id")
+						.$narrowType<{
+							totalAmount: NotNull;
+							currency: NotNull;
+						}>();
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									finalSorting.id,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
+									eb("payment.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
+						.orderBy("payment.id", "desc");
+
+					return qb.limit(limit + 1);
+				});
+
+				return subscribeToEvoluQuery(evolu, query, (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[sortingField]: last[sortingField],
+						};
+					}
+
+					setData({
+						data: [...data],
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					});
+				});
 			},
-		},
+		[evolu],
 	);
-
-	const findLnZapPaymentOption = (paymentOptions: Payment["paymentOptions"]) =>
-		paymentOptions.find((paymentOption) => paymentOption.type === "lnZap");
-
-	const computePaymentPubkeys = useEffectEvent(() => {
-		const pubkeys: string[] = [];
-		const authors: string[] = [];
-
-		for (const payment of items ?? []) {
-			const paymentOption = findLnZapPaymentOption(
-				payment.value.paymentOptions,
-			);
-			if (paymentOption === undefined) {
-				continue;
-			}
-
-			const ndkSigner = new NDKPrivateKeySigner(payment.value.privateKey);
-
-			pubkeys.push(ndkSigner.pubkey);
-			authors.push(paymentOption.walletPubkey);
-		}
-
-		setPaymentPubkeys({
-			pubkeys,
-			authors,
-		});
-	});
-
-	useEffect(() => {
-		if (!eose) {
-			return;
-		}
-
-		computePaymentPubkeys();
-	}, [eose]);
 
 	return (
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Payment Messages</CardTitle>
+					<CardTitle>{t("payments:table.paymentMessages")}</CardTitle>
 					<CardDescription>
-						Decrypted payment data from Nostr NIP-04 direct messages
+						{t("payments:table.description.decrypted-payment-data")}
 					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/payments/new"}>
 						<Button>
 							<PlusIcon />
-							New payment
+							{t("payments:table.actions.new-payment")}
 						</Button>
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((payment) => {
-									const ndkSigner = new NDKPrivateKeySigner(
-										payment.value.privateKey,
-									);
-
-									const paymentOption = findLnZapPaymentOption(
-										payment.value.paymentOptions,
-									);
-
-									return {
-										id: payment.value.id,
-										createdAt: new Date(payment.createdAt * 1000),
-										amount: formatAmount(
-											payment.value.bill.items.reduce(
-												(acc, val) => acc + val.price,
-												0,
-											),
-											payment.value.bill.currency,
-										),
-										status:
-											paymentOption !== undefined
-												? paymentStatusRef.current[ndkSigner.pubkey]
-													? "Paid"
-													: paymentOption.expirationIn < Date.now() / 1000
-														? "Expired"
-														: "Waiting"
-												: "Unknown",
-										label: payment.value.bill.items[0].label,
-									};
-								})
-							: undefined
-					}
-					columns={[
-						{
-							key: "createdAt" as const,
-							header: "Created at",
-							width: "200px",
-							render: (value) => value.toLocaleString(),
-						},
-						{
-							key: "amount" as const,
-							header: "Amount",
-							width: "200px",
-						},
-						{
-							key: "status" as const,
-							header: "Status",
-							width: "250px",
-							render: (_, row) => <PaymentStatusBadge paymentId={row.id} />,
-						},
-						{
-							key: "label" as const,
-							header: "Description",
-						},
-					]}
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
 					onRowClick={(payment) =>
 						router.push(
 							`/admin/payments/detail?id=${encodeURIComponent(payment.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

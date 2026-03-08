@@ -14,12 +14,23 @@ const nextConfig: NextConfig = {
 	},
 	images: {
 		unoptimized: true,
+		remotePatterns: [
+			{
+				protocol: "https",
+				hostname: "raw.githubusercontent.com",
+			},
+		],
 	},
 	assetPrefix: isProd
 		? undefined
 		: internalHost
 			? `http://${internalHost}:3000`
 			: undefined,
+	turbopack: {
+		resolveAlias: {
+			buffer: "./buffer-mock.ts",
+		},
+	},
 };
 
 export default nextConfig;

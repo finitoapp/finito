@@ -1,9 +1,19 @@
 "use client";
 
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,87 +24,194 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { tableStorage } from "@/storages/table-storage";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { NonEmptyString255, PositiveInteger } from "@/lib/shared/types";
+
+type Task = {
+	id: Id;
+	label: NonEmptyString255;
+	numberOfSeats: PositiveInteger;
+	codes: {
+		code: NonEmptyString255;
+	}[];
+};
+
+const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
+	{
+		accessorKey: "label",
+		header: createSortableHeader(t("tables:table.columns.label")),
+	},
+	{
+		accessorKey: "numberOfSeats",
+		header: createSortableHeader(t("tables:table.columns.number-of-seats")),
+	},
+	{
+		accessorKey: "codes",
+		header: createSortableHeader(t("tables:table.columns.codes")),
+		cell: ({ row }) => row.original.codes.map(({ code }) => code).join(","),
+	},
+];
+
+const sortingFields = {
+	id: "table.id",
+	createdAt: "table.createdAt",
+	label: "table.label",
+	numberOfSeats: "table.numberOfSeats",
+	codes: "table.id",
+} as const satisfies Record<keyof Task | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "label",
+			title: t("tables:table.columns.label"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function TablesTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(tableStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("tables");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
+
+	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
+
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
+					let qb = db
+						.selectFrom("table")
+						.select((eb) => [
+							"table.id as id",
+							"table.label as label",
+							"table.numberOfSeats as numberOfSeats",
+							"table.createdAt as createdAt",
+							kysely
+								.jsonArrayFrom(
+									eb
+										.selectFrom("tableCode")
+										.select([
+											"tableCode.id as id",
+											"tableCode.code as code",
+										] as const)
+										.whereRef("tableCode.tableId", "=", "table.id")
+										.where("tableCode.isDeleted", "is not", sqliteTrue)
+										.where("tableCode.code", "is not", null)
+										.$narrowType<{
+											code: NotNull;
+										}>(),
+								)
+								.as("codes"),
+						])
+						.where("table.isDeleted", "is not", sqliteTrue)
+						.where("table.label", "is not", null)
+						.where("table.numberOfSeats", "is not", null)
+						.$narrowType<{
+							codes: NotNull;
+							label: NotNull;
+							numberOfSeats: NotNull;
+						}>();
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									finalSorting.id,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
+									eb("table.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
+						.orderBy("table.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "label") {
+							qb = qb.where(
+								"table.label",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				return subscribeToEvoluQuery(evolu, query, (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[sortingField]: last[sortingField],
+						};
+					}
+
+					setData({
+						data: [...data],
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					});
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Tables</CardTitle>
-					<CardDescription>List of your tables</CardDescription>
+					<CardTitle>{t("tables:table.tables")}</CardTitle>
+					<CardDescription>
+						{t("tables:table.listOfYourTables")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/tables/new"}>
 						<Button>
 							<PlusIcon />
-							New table
+							{t("tables:table.actions.new-table")}
 						</Button>
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									eventId: item.eventId,
-									createdAt: new Date(item.createdAt * 1000),
-									label: item.value.label,
-									numberOfSeats: item.value.numberOfSeats,
-									qrCodes: (item.value.qrCodes ?? [])
-										.map((qrCode) => qrCode.id)
-										.join(", "),
-								}))
-							: undefined
-					}
-					columns={[
-						{
-							key: "label" as const,
-							header: "Label",
-							width: "400px",
-						},
-						{
-							key: "numberOfSeats" as const,
-							header: "Number of Seats",
-						},
-						{
-							key: "qrCodes" as const,
-							header: "QR Codes",
-						},
-					]}
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/tables/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex mt-y justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

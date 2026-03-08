@@ -1,33 +1,79 @@
 "use client";
 
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { fioPluginStorage } from "@/storages/fio-plugin-storage";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
-	const { data } = useStorageSubscription(fioPluginStorage, {
-		limit: 1,
-	});
+	const { t } = useTranslation();
+	const itemId = createIdFromString("");
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("fioPlugin")
+					.selectAll()
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("id", "=", itemId)
+					.where("apiUrl", "is not", null)
+					.where("numberOfSecondsBetweenChecks", "is not", null)
+					.where("isActive", "is not", null)
+					.$narrowType<{
+						apiUrl: NotNull;
+						numberOfSecondsBetweenChecks: NotNull;
+						isActive: NotNull;
+					}>();
+			}),
+		[itemId],
+	);
 
-	const item = data && data[0];
+	const { data } = useEvoluQuery(query);
+
+	const item = data[0];
+
+	const tokensQuery = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("fioPluginToken")
+					.select([
+						"fioPluginToken.id as id",
+						"fioPluginToken.token as token",
+					] as const)
+					.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
+					.where("fioPluginToken.fioPluginId", "=", itemId)
+					.where("fioPluginToken.token", "is not", null)
+					.$narrowType<{
+						token: NotNull;
+					}>();
+			}),
+		[itemId],
+	);
+
+	const { data: tokens } = useEvoluQuery(tokensQuery);
 
 	return (
 		<div className={"w-full lg:max-w-4xl"}>
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>Fio bank plugin</CardTitle>
+					<CardTitle>{t("settings:page.fioBankPlugin")}</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<FioPluginForm
-						key={data ? "yes" : "no"}
 						defaultValues={
 							item
 								? {
-										...item.value,
+										...item,
+										isActive: item.isActive === sqliteTrue,
 										numberOfSecondsBetweenChecks:
-											item.value.numberOfSecondsBetweenChecks.toString(),
+											item.numberOfSecondsBetweenChecks.toString(),
+										tokens,
 									}
 								: undefined
 						}

@@ -1,8 +1,11 @@
+import { createId, createRandomBytes, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
-import { v7 } from "uuid";
+import { useTranslation } from "react-i18next";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import {
 	AutoForm,
@@ -15,76 +18,65 @@ import {
 } from "@/components/autocomplete-identification-number-input";
 import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { type Address, AddressSchema } from "@/lib/schemas";
+import { useEvolu } from "@/hooks/use-evolu";
+import { AddressSchema } from "@/lib/evolu/model/payment";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	CountryCode,
 	EmailSchema,
 	IdentificationNumberCzSchema,
-	NonEmptyStringSchema,
+	NonEmptyString255Schema,
 	StringToNullableStringSchema,
-	StringToUndefinedStringSchema,
-} from "@/lib/types";
-import { clientStorage } from "@/storages/client-storage";
+} from "@/lib/shared/types";
+import { assertNever } from "@/lib/shared/utils/type";
 
-export const createClientAddressFormSchema = <
-	TOptional extends boolean,
->(props: {
-	optional: TOptional;
-}): z.Schema<
-	TOptional extends true ? Address | undefined : Address,
-	{
-		street: string;
-		city: string;
-		postalCode: string;
-		descriptiveNumber: string;
-	}
-> =>
-	z
-		.object({
-			street: StringToUndefinedStringSchema,
-			city: StringToUndefinedStringSchema,
-			postalCode: StringToUndefinedStringSchema,
-			descriptiveNumber: StringToUndefinedStringSchema,
-		})
-		.transform((values) =>
-			values.city || values.street || values.postalCode ? values : undefined,
-		)
-		.pipe(
-			props.optional ? AddressSchema.optional() : AddressSchema,
-		) as z.Schema<
-		TOptional extends true ? Address | undefined : Address,
-		{
-			street: string;
-			city: string;
-			postalCode: string;
-			descriptiveNumber: string;
-		}
-	>;
+export const addressFormSchema = z
+	.object({
+		street: StringToNullableStringSchema,
+		city: StringToNullableStringSchema,
+		postalCode: StringToNullableStringSchema,
+		descriptiveNumber: StringToNullableStringSchema,
+	})
+	.pipe(AddressSchema);
 
-export const clientFormSchema = z.object({
-	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	label: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	email: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
-	address: createClientAddressFormSchema({ optional: true }),
-	countrySpecific: z.discriminatedUnion("countryCode", [
-		z.object({
-			countryCode: z
-				.enum(CountryCode)
-				.nullable()
-				.pipe(z.literal(CountryCode.CZ)),
-			vatNumber: StringToUndefinedStringSchema.pipe(
-				NonEmptyStringSchema.optional(),
+export const baseClientFormSchema = z.object({
+	id: TableIdSchema,
+	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
+	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
+	address: addressFormSchema,
+	countryCode: z.enum(CountryCode),
+	cz: z.object({
+		vatNumber: z.string(),
+		identificationNumber: z.string(),
+		caseNumber: z.string(),
+	}),
+});
+
+export const clientFormSchema = z.discriminatedUnion("countryCode", [
+	baseClientFormSchema.extend({
+		countryCode: z.literal(CountryCode.CZ),
+		cz: z.object({
+			vatNumber: StringToNullableStringSchema.pipe(
+				NonEmptyString255Schema.nullable(),
 			),
-			identificationNumber: StringToUndefinedStringSchema.pipe(
-				IdentificationNumberCzSchema.optional(),
+			caseNumber: StringToNullableStringSchema.pipe(
+				NonEmptyString255Schema.nullable(),
+			),
+			identificationNumber: StringToNullableStringSchema.pipe(
+				IdentificationNumberCzSchema.nullable(),
 			),
 		}),
-	]),
-});
+	}),
+]);
+
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
 
 export const createClientFormDefaultValues = () =>
 	({
+		id: createId(createIdDeps),
 		name: "",
 		label: "",
 		email: "",
@@ -94,10 +86,11 @@ export const createClientFormDefaultValues = () =>
 			city: "",
 			postalCode: "",
 		},
-		countrySpecific: {
-			countryCode: null,
+		countryCode: CountryCode.CZ,
+		cz: {
 			vatNumber: "",
 			identificationNumber: "",
+			caseNumber: "",
 		},
 	}) satisfies z.input<typeof clientFormSchema>;
 
@@ -116,12 +109,9 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 		}
 
 		setValue("name", value.name);
-		setValue("countrySpecific.countryCode", CountryCode.CZ);
-		setValue(
-			"countrySpecific.identificationNumber",
-			value.identificationNumber,
-		);
-		setValue("countrySpecific.vatNumber", value.vatNumber);
+		setValue("countryCode", CountryCode.CZ);
+		setValue("cz.identificationNumber", value.identificationNumber);
+		setValue("cz.vatNumber", value.vatNumber);
 		setValue("address.street", value.address.street);
 		setValue("address.city", value.address.city);
 		setValue("address.postalCode", value.address.postalCode);
@@ -131,90 +121,106 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 	return <AutocompleteIdentificationNumberInput {...props} />;
 };
 
-const components = createAutoFormLayout(clientFormSchema, ({ builder }) => ({
-	_search: Search,
-	_separator: () => <Separator />,
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(clientFormSchema, ({ builder }) => ({
+		_search: Search,
+		_separator: () => <Separator />,
 
-	...builder.magicInput("name").text({
-		label: "Company name",
-	}),
-	...builder.magicInput("label").text({
-		label: "Label",
-		description: "Your private name for internal purposes",
-	}),
-	...builder.magicInput("email").text({
-		label: "Email",
-	}),
-	...builder.nestedField("address", ({ builder }) => {
-		return {
-			...builder.magicInput("street").text({
-				label: "Street",
-			}),
-			...builder.magicInput("descriptiveNumber").text({
-				label: "Descriptive Number",
-			}),
-			...builder.magicInput("city").text({
-				label: "City",
-			}),
-			...builder.magicInput("postalCode").text({
-				label: "Postal Code",
-			}),
-		};
-	}),
-	...builder.nestedField("countrySpecific", ({ builder }) => ({
+		...builder.magicInput("id").text({
+			type: "hidden",
+		}),
+		...builder.magicInput("name").text({
+			label: t("clients:form.client-form.label.company-name"),
+		}),
+		...builder.magicInput("label").text({
+			label: t("clients:form.client-form.label.label"),
+			description: t(
+				"clients:form.client-form.description.your-private-name-for-internal-purposes",
+			),
+		}),
+		...builder.magicInput("email").text({
+			label: t("clients:form.client-form.label.email"),
+		}),
+		...builder.nestedField("address", ({ builder }) => {
+			return {
+				...builder.magicInput("street").text({
+					label: t("clients:form.client-form.label.street"),
+				}),
+				...builder.magicInput("descriptiveNumber").text({
+					label: t("clients:form.client-form.label.descriptive-number"),
+				}),
+				...builder.magicInput("city").text({
+					label: t("clients:form.client-form.label.city"),
+				}),
+				...builder.magicInput("postalCode").text({
+					label: t("clients:form.client-form.label.postal-code"),
+				}),
+			};
+		}),
+
 		...builder.magicInput("countryCode").select({
 			values: CountryCode,
-			allowEmpty: true,
-			label: "Country code",
+			allowEmpty: false,
+			label: t("clients:form.client-form.label.country-code"),
 		}),
-		...builder.when("countrySpecific.countryCode", CountryCode.CZ, {
-			...builder.magicInput("identificationNumber").text({
-				label: "Identification Number",
+
+		...builder.nestedField("cz", ({ builder }) => ({
+			...builder.when("countryCode", CountryCode.CZ, {
+				...builder.magicInput("identificationNumber").text({
+					label: t("clients:form.client-form.label.identification-number"),
+				}),
+				...builder.magicInput("vatNumber").text({
+					label: t("clients:form.client-form.label.vat-number"),
+				}),
+				...builder.magicInput("caseNumber").text({
+					label: t("clients:form.client-form.label.case-number"),
+				}),
 			}),
-			...builder.magicInput("vatNumber").text({
-				label: "VAT Number",
-			}),
-		}),
-	})),
-}));
+		})),
+	}));
 
 export const ClientForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof clientFormSchema> & { id: string }>;
-	onBeforeSave?: (
-		values: z.output<typeof clientFormSchema> & { id: string },
-	) => boolean;
-	onSuccess?: (newEventId: string) => unknown;
-	customStorage?: typeof clientStorage;
+	defaultValues?: PartialDeep<z.input<typeof clientFormSchema>>;
+	onBeforeSave?: (values: z.input<typeof clientFormSchema>) => boolean;
+	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
+	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
 		return merge(createClientFormDefaultValues(), params.defaultValues ?? {});
 	});
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(clientFormSchema, {
 		defaultValues,
-		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const finalValues = {
-				id,
-				...values,
-			};
-
+		saveAction: async (values, originalValues) => {
 			if (params.onBeforeSave) {
-				if (!params.onBeforeSave(finalValues)) {
+				if (!params.onBeforeSave(originalValues)) {
 					return;
 				}
 			}
 
-			const { eventId } = await (
-				params.customStorage ?? clientStorage
-			).insertOrUpdate(storageDeps, id, finalValues);
+			const { address, cz, ...valuesCopy } = values;
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
+			evolu.upsert("client", valuesCopy, {
+				onComplete: () => {
+					if (params.onSuccess) {
+						params.onSuccess(values.id);
+					}
+				},
+			});
+
+			evolu.upsert("clientAddress", {
+				...address,
+				id: values.id,
+			});
+
+			if (values.countryCode === CountryCode.CZ) {
+				evolu.upsert("clientCz", {
+					...cz,
+					id: values.id,
+				});
+			} else {
+				assertNever(values.countryCode);
 			}
 		},
 	});

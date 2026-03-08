@@ -20,7 +20,7 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 const defaultCompare = <TItem extends JsonValue>(
 	a: TItem | null,
@@ -29,10 +29,13 @@ const defaultCompare = <TItem extends JsonValue>(
 	return JSON.stringify(a) === JSON.stringify(b);
 };
 
-export type EditComponentProps<TItem extends JsonValue> = {
-	defaultValue: TItem | undefined;
+export type EditComponentProps<
+	TOutput extends JsonValue,
+	TInput extends JsonValue = TOutput,
+> = {
+	defaultValue: TInput | undefined;
 	close: () => unknown;
-	save: (value: TItem) => unknown;
+	save: (value: TOutput) => unknown;
 };
 
 const DefaultEdit = (props: EditComponentProps<string>) => {
@@ -251,6 +254,8 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 											key={index.toString()}
 											value={index.toString()}
 											onSelect={() => {
+												console.log("onSelect", allItems[index]);
+
 												if (props.onChange) {
 													props.onChange(allItems[index].value);
 												}

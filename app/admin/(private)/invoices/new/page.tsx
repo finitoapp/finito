@@ -1,54 +1,100 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { addDays } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useMemo, useState } from "react";
 import { InvoiceForm } from "@/app/admin/(private)/invoices/invoice-form";
 import { BackButton } from "@/components/back-button";
-import { useNostr } from "@/hooks/use-nostr";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { resolveSubsequentInvoiceNumber } from "@/lib/invoice-number-service";
-import { accountStorage } from "@/storages/account-storage";
-import { billingInfoStorage } from "@/storages/billing-info-storage";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
-import { invoiceLastNumberStorage } from "@/storages/invoice-last-number-storage";
+import { createQuery } from "@/lib/evolu";
+import { resolveSubsequentInvoiceNumber } from "@/lib/invoice/number-service";
 
 export default function Home() {
-	const id = useId();
-	const { ndk } = useNostr();
 	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const router = useRouter();
 	const [now] = useState(() => new Date());
-
-	const { data: serialNumber } = useQuery({
-		queryKey: [`serialNumber-${id}`],
-		queryFn: () => resolveSubsequentInvoiceNumber({ ndk }),
-		gcTime: 0,
-		staleTime: 0,
-	});
-
-	const { data } = useStorageSubscription(billingInfoStorage, {
-		limit: 1,
-	});
-
-	const { data: billingSettingsRows } = useStorageSubscription(
-		billingSettingsStorage,
-		{
-			limit: 1,
-		},
+	const queryFn = useMemo(
+		() => () => resolveSubsequentInvoiceNumber(storageDeps),
+		[storageDeps],
 	);
 
-	const item = data && data[0];
-	const billingSettings = billingSettingsRows && billingSettingsRows[0];
-
-	const { data: bankAccountRows } = useStorageSubscription(accountStorage, {
-		limit: 1,
-		key: billingSettings?.value.defaultPayment?.bankAccountKey,
+	const { data: serialNumber } = useSuspenseQuery({
+		queryKey: [`serialNumber`],
+		queryFn,
+		staleTime: 0,
+		gcTime: 0,
+		refetchOnMount: true,
 	});
 
-	const bankAccount = bankAccountRows && bankAccountRows[0];
+	// const billingInfoQuery = useMemo(
+	// 	() =>
+	// 		createQuery((db) =>
+	// 			db
+	// 				.selectFrom("billingInfo")
+	// 				.leftJoin(
+	// 					"billingInfoAddress",
+	// 					"billingInfoAddress.id",
+	// 					"billingInfo.id",
+	// 				)
+	// 				.leftJoin("billingInfoCz", "billingInfoCz.id", "billingInfo.id")
+	// 				.select([
+	// 					"billingInfo.id as id",
+	// 					"billingInfo.name as name",
+	// 					"billingInfo.label as label",
+	// 					"billingInfo.email as email",
+	// 					"billingInfo.countryCode as countryCode",
+	//
+	// 					"billingInfoAddress.street as address.street",
+	// 					"billingInfoAddress.descriptiveNumber as address.descriptiveNumber",
+	// 					"billingInfoAddress.city as address.city",
+	// 					"billingInfoAddress.postalCode as address.postalCode",
+	//
+	// 					"billingInfoCz.vatPayer as cz.vatPayer",
+	// 					"billingInfoCz.identificationNumber as cz.identificationNumber",
+	// 					"billingInfoCz.vatNumber as cz.vatNumber",
+	// 					"billingInfoCz.caseNumber as cz.caseNumber",
+	// 				])
+	// 				.where("billingInfo.id", "=", createIdFromString(""))
+	// 				.where("billingInfo.isDeleted", "is not", sqliteTrue),
+	// 		),
+	// 	[],
+	// );
+
+	const billingSettingsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("billingSettings")
+					.leftJoin(
+						"account",
+						"billingSettings.defaultPaymentMethodBankAccountKey",
+						"account.id",
+					)
+					.leftJoin("accountIban", "accountIban.id", "account.id")
+					.select([
+						"billingSettings.id as id",
+						"billingSettings.defaultCurrency as defaultCurrency",
+						"billingSettings.defaultInvoiceDueDateDays as defaultInvoiceDueDateDays",
+						"billingSettings.defaultPaymentMethodMethod as defaultPaymentMethodMethod",
+						"account.id as account",
+						"account.id as accountId",
+						"account._tag as accountTag",
+						"accountIban.iban as accountIban",
+					])
+					.where("billingSettings.isDeleted", "is not", sqliteTrue)
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("billingSettings.id", "=", createIdFromString("")),
+			),
+		[],
+	);
+
+	const { data: billingSettingsData } = useEvoluQuery(billingSettingsQuery);
+	const billingSettings = billingSettingsData[0];
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -57,15 +103,10 @@ export default function Home() {
 			</div>
 
 			<InvoiceForm
-				key={[
-					item ? "true" : false,
-					billingSettings ? "true" : false,
-					bankAccount ? "true" : false,
-					serialNumber ? "true" : false,
-				].join(",")}
 				onSuccess={async (_, values) => {
 					if (values.invoiceNumber === serialNumber?.invoiceNumber) {
-						await invoiceLastNumberStorage.insertOrUpdate(storageDeps, null, {
+						evolu.upsert("invoiceLastNumber", {
+							id: createIdFromString(""),
 							serialNumber: serialNumber.serialNumber,
 							date: serialNumber.date,
 						});
@@ -73,30 +114,25 @@ export default function Home() {
 
 					router.push("/admin/invoices");
 				}}
-				defaultValues={
-					item
-						? {
-								invoiceNumber: serialNumber?.invoiceNumber ?? "",
-								supplier: {
-									billingInfo: item.value,
-								},
-								issueDate: now,
-								dueDate: addDays(
-									now,
-									billingSettings?.value.defaultInvoiceDueDateDays ?? 14,
-								),
-								currency: billingSettings?.value.defaultCurrency,
-								payment: {
-									method:
-										billingSettings?.value.defaultPayment?.method ?? undefined,
-									iban:
-										bankAccount?.value._tag === "iban"
-											? bankAccount?.value.iban
-											: "",
-								},
-							}
-						: undefined
-				}
+				defaultValues={{
+					invoiceNumber: serialNumber.invoiceNumber,
+					// supplier: {
+					// 	billingInfo: nestObjectSkipNullBranches(billingInfo),
+					// },
+					issueDate: now,
+					dueDate: addDays(
+						now,
+						billingSettings?.defaultInvoiceDueDateDays ?? 14,
+					),
+					currency: billingSettings?.defaultCurrency ?? undefined,
+					payment: {
+						method: billingSettings?.defaultPaymentMethodMethod ?? undefined,
+						iban:
+							billingSettings?.accountTag === "accountIban"
+								? (billingSettings?.accountIban ?? "")
+								: "",
+					},
+				}}
 			/>
 		</div>
 	);

@@ -1,10 +1,14 @@
 "use client";
 
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import Barcode from "react-barcode";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -12,23 +16,71 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import { itemStorage } from "@/storages/item-storage";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export default function Home() {
+	const { t } = useTranslation();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
-	const storageDeps = useStorageDeps();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(itemStorage, {
-		key: id,
-	});
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("item")
+					.leftJoin("category", "category.id", "item.categoryId")
+					.select(
+						(eb) =>
+							[
+								"item.id as id",
+								"item.label as label",
+								"item.price as price",
+								"item.currency as currency",
+								"item.unitOfMeasure as unitOfMeasure",
+								"item.categoryId as categoryId",
+								"item.productCodeType as productCodeType",
+								"item.productCodeValue as productCodeValue",
+								"item.internalCode as internalCode",
+								"item.createdAt as createdAt",
+								"category.name as category.name",
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("category")
+											.select(["category.name as name"])
+											.whereRef("category.id", "=", "item.categoryId")
+											.where("category.name", "is not", null)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("category"),
+							] as const,
+					)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.price", "is not", null)
+					.where("item.currency", "is not", null)
+					.where("item.id", "=", id as Id)
+					.$narrowType<{
+						price: NotNull;
+						currency: NotNull;
+					}>();
+			}),
+		[id],
+	);
+
+	const { data: items } = useEvoluQuery(query);
 
 	const item = items && items[0];
 
@@ -38,10 +90,27 @@ export default function Home() {
 				return;
 			}
 
-			await itemStorage.delete(storageDeps, item.eventId);
+			evolu.update("item", {
+				id: item.id,
+				isDeleted: sqliteTrue,
+			});
+
 			router.push("/admin/items");
 		},
 	});
+
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete item?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -54,7 +123,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.value.label}
+							{item?.label}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -66,7 +135,7 @@ export default function Home() {
 										<>
 											{!item && <Skeleton />}
 											{item &&
-												`${formatAmount(item.value.price.value, item.value.price.currency)}${item.value.unitOfMeasure ? ` / ${item.value.unitOfMeasure}` : ""}`}
+												`${formatMoney({ value: item.price, currency: item.currency })}${item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}`}
 										</>
 									}
 									className={"flex-1"}
@@ -77,13 +146,10 @@ export default function Home() {
 									content={
 										<>
 											{!item && <Skeleton />}
-											{item &&
-												new Date(item.createdAt * 1000).toLocaleDateString()}
+											{item && new Date(item.createdAt).toLocaleDateString()}
 										</>
 									}
-									footer={
-										item && new Date(item.createdAt * 1000).toLocaleTimeString()
-									}
+									footer={item && new Date(item.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -94,20 +160,24 @@ export default function Home() {
 										items={[
 											{
 												key: "Name",
-												value: item?.value.label ?? "-",
+												value: item?.label ?? "-",
 											},
 											{
 												key: "Price",
 												value: item
-													? formatAmount(
-															item.value.price.value,
-															item.value.price.currency,
-														)
+													? formatMoney({
+															value: item.price,
+															currency: item.currency,
+														})
 													: "-",
 											},
 											{
 												key: "Unit of measure",
-												value: item?.value.unitOfMeasure ?? "-",
+												value: item?.unitOfMeasure ?? "-",
+											},
+											{
+												key: "Category",
+												value: item?.category?.name ?? "-",
 											},
 										]}
 									/>
@@ -117,14 +187,15 @@ export default function Home() {
 										items={[
 											{
 												key: "Product code",
-												value: item?.value.productCode
-													? `${item.value.productCode.type} ${item.value.productCode.code}`
-													: "-",
+												value:
+													item?.productCodeType && item?.productCodeValue
+														? `${item.productCodeType} ${item.productCodeValue}`
+														: "-",
 												help: "Setting up a product code makes it easier to work with a barcode reader.",
 											},
 											{
 												key: "Internal code (SKU)",
-												value: item?.value.internalCode ?? "-",
+												value: item?.internalCode ?? "-",
 											},
 										]}
 									/>
@@ -138,7 +209,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-4"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<Button variant={"outline"} className={"w-full"} asChild>
@@ -147,23 +218,23 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>
 						</CardContent>
 					</ResponsiveCard>
 
-					{item && item.value.productCode && (
+					{item && item.productCodeValue && item.productCodeType && (
 						<ResponsiveCard>
 							<CardHeader>
-								<CardTitle>Barcode</CardTitle>
+								<CardTitle>{t("items:page.barcode")}</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<div className={"flex flex-col gap-2"}>
 									<div className={"bg-white flex rounded justify-center"}>
 										<Barcode
-											value={item.value.productCode.code}
+											value={item.productCodeValue}
 											displayValue={true}
 										/>
 									</div>

@@ -1,0 +1,45 @@
+import { describe, expect, it } from "bun:test";
+import { DateString } from "@/lib/shared/types";
+import { isTheSameDateString } from "@/lib/shared/utils/date-string";
+
+describe("isTheSameDateString", () => {
+	it.each([
+		{
+			date1: DateString("2025-10-01"),
+			date2: DateString("2025-10-01"),
+			mode: "year-month",
+			expected: true,
+		},
+		{
+			date1: DateString("2025-10-01"),
+			date2: DateString("2025-10-02"),
+			mode: "year-month",
+			expected: true,
+		},
+		{
+			date1: DateString("2025-10-01"),
+			date2: DateString("2025-11-01"),
+			mode: "year-month",
+			expected: false,
+		},
+		{
+			date1: DateString("2025-10-01"),
+			date2: DateString("2025-11-01"),
+			mode: "year",
+			expected: true,
+		},
+		{
+			date1: DateString("2025-10-01"),
+			date2: DateString("2026-11-01"),
+			mode: "year",
+			expected: false,
+		},
+	] as const)("should compare correctly (%o)", ({
+		date1,
+		date2,
+		mode,
+		expected,
+	}) => {
+		expect(isTheSameDateString(date1, date2, mode)).toBe(expected);
+	});
+});

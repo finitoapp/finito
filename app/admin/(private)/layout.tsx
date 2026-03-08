@@ -1,6 +1,6 @@
 "use client";
 
-import { BackgroundProcessing } from "@/app/admin/(private)/background-processing";
+import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
@@ -19,8 +19,9 @@ export default function Layout({
 			}
 		>
 			<AppSidebar variant="inset" />
-			<SidebarInset>{children}</SidebarInset>
-			<BackgroundProcessing />
+			<SidebarInset>
+				<Suspense fallback={null}>{children}</Suspense>
+			</SidebarInset>
 		</SidebarProvider>
 	);
 }

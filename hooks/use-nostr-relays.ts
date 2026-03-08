@@ -2,9 +2,7 @@ import { useAtomValue } from "jotai";
 import { nostrRelaysAtom } from "@/atoms/nostr-relays";
 
 export const useNostrRelays = () => {
-	const { relays } = useAtomValue(nostrRelaysAtom);
+	const relays = useAtomValue(nostrRelaysAtom);
 
-	return {
-		nostrRelays: relays,
-	};
+	return relays;
 };

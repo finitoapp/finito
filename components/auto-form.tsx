@@ -35,6 +35,7 @@ import {
 	useFormContext,
 	useWatch,
 } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import type {
 	ConditionalPick,
 	Get,
@@ -98,17 +99,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { UseActionFormResult } from "@/hooks/use-action-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { currencyConverter } from "@/lib/currency-converter/currency-converter";
-import { shiftNumericString } from "@/lib/number-utils";
-import { Currency, NumberStringSchema } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { Currency, NumberStringSchema } from "@/lib/shared/types";
+import { cn } from "@/lib/shared/ui/cn";
+import { shiftNumericString } from "@/lib/shared/utils/number";
+import {
+	decimalStringToMinorUnits,
+	minorUnitsToDecimalStringForUI,
+} from "@/lib/shared/zod/money-codec";
 
-export type AutoFormComponents<TSchema extends Record<string, unknown>> = {
+export type AutoFormComponents<
+	TSchema extends Readonly<Record<string, unknown>>,
+> = {
 	[key in keyof TSchema]-?: AutoFormComponent<TSchema[key]>;
 };
 
 export type AutoFormBaseSchema =
 	| z.ZodObject
+	| z.ZodPipe<z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>>
 	| z.ZodUnion<readonly (z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>)[]>;
 
 const AutoFormInputLayer = <
@@ -135,7 +143,8 @@ export const AutoForm = <
 	saveClassName?: React.ComponentProps<"div">["className"];
 	saveLabel?: React.ReactNode;
 }) => {
-	console.log("err", props.form.form.formState.errors);
+	const { t } = useTranslation();
+	console.log(props.form.form.formState);
 
 	return (
 		<Form {...props.form.form}>
@@ -165,7 +174,7 @@ export const AutoForm = <
 						)}
 						{props.saveLabel ?? (
 							<>
-								<Save /> Save
+								<Save /> {t("components:autoForm.actions.save")}
 							</>
 						)}
 					</Button>
@@ -222,7 +231,7 @@ export const AutoFormInput = {
 				startAddon?: React.ReactNode;
 				endAddon?: React.ReactNode;
 			},
-		): AutoFormComponent<string | undefined> =>
+		): AutoFormComponent<string> =>
 		(props) => (
 			<FormField
 				control={props.control}
@@ -285,8 +294,9 @@ export const AutoFormInput = {
 						currency: Currency;
 				  }
 			),
-	): AutoFormComponent<string | undefined> => {
+	): AutoFormComponent<string> => {
 		return (props) => {
+			const { t } = useTranslation();
 			const useCurrency =
 				"currency" in params
 					? () => params.currency
@@ -304,7 +314,7 @@ export const AutoFormInput = {
 						targetCurrency: Currency;
 						onChange: (value: string) => unknown;
 					}) => {
-						const [amount, currency] = useWatch({
+						const [amountString, currency] = useWatch({
 							control: props.control,
 							name: [
 								// @ts-expect-error
@@ -320,6 +330,14 @@ export const AutoFormInput = {
 									return;
 								}
 
+								const amount = decimalStringToMinorUnits({
+									currency,
+									value: amountString,
+								});
+								if (amount === null) {
+									return;
+								}
+
 								const newAmount = await currencyConverter.convert({
 									amount: amount,
 									sourceCurrency: currency,
@@ -327,10 +345,15 @@ export const AutoFormInput = {
 								});
 
 								if (newAmount !== null) {
-									onChange(newAmount.toString());
+									onChange(
+										minorUnitsToDecimalStringForUI({
+											value: newAmount,
+											currency: targetCurrency,
+										}),
+									);
 								}
 							})();
-						}, [onChange, targetCurrency, amount, currency]);
+						}, [onChange, targetCurrency, amountString, currency]);
 					}
 				: () => null;
 
@@ -344,8 +367,6 @@ export const AutoFormInput = {
 							targetCurrency: currencyValue,
 							onChange: field.onChange,
 						});
-						const value = NumberStringSchema.safeParse(field.value);
-
 						return (
 							<FormItem>
 								{params.label && (
@@ -359,11 +380,7 @@ export const AutoFormInput = {
 												disabled={params.disabled}
 												type={params.type}
 												placeholder={params.placeholder}
-												value={
-													currencyValue === Currency.BTC && value.success
-														? shiftNumericString(value.data, 8)
-														: field.value
-												}
+												value={field.value}
 												onChange={(e) => {
 													if (currencyValue === Currency.BTC) {
 														const value = NumberStringSchema.safeParse(
@@ -385,7 +402,9 @@ export const AutoFormInput = {
 												}}
 											/>
 											{currencyValue === Currency.BTC && (
-												<InputAddon>Sats</InputAddon>
+												<InputAddon>
+													{t("components:autoForm.units.sats")}
+												</InputAddon>
 											)}
 										</InputGroup>
 									</FormControl>
@@ -406,66 +425,71 @@ export const AutoFormInput = {
 	},
 	date:
 		(params: InputParams): AutoFormComponent<Date | null> =>
-		(props) => (
-			<FormField
-				control={props.control}
-				name={props.name}
-				render={({ field }) => (
-					<FormItem>
-						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
-						)}
-						<FormControl>
-							<Popover>
-								<PopoverTrigger asChild>
-									<div className="relative">
-										<Button
-											type="button"
-											variant={"outline"}
-											mode="input"
-											className="w-full"
-										>
-											<CalendarIcon />
-											{field.value ? (
-												format(field.value, "PPP")
-											) : (
-												<span>Pick a date</span>
-											)}
-										</Button>
-										{field.value && (
+		(props) => {
+			const { t } = useTranslation();
+			return (
+				<FormField
+					control={props.control}
+					name={props.name}
+					render={({ field }) => (
+						<FormItem>
+							{params.label && (
+								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							)}
+							<FormControl>
+								<Popover>
+									<PopoverTrigger asChild>
+										<div className="relative">
 											<Button
 												type="button"
-												variant="dim"
-												size="sm"
-												className="absolute top-1/2 -end-0 -translate-y-1/2"
-												onClick={(e) => {
-													e.preventDefault();
-													field.onChange(null);
-												}}
+												variant={"outline"}
+												mode="input"
+												className="w-full"
 											>
-												<XIcon />
+												<CalendarIcon />
+												{field.value ? (
+													format(field.value, "PPP")
+												) : (
+													<span>
+														{t("components:autoForm.actions.pickDate")}
+													</span>
+												)}
 											</Button>
-										)}
-									</div>
-								</PopoverTrigger>
-								<PopoverContent className="w-auto p-0" align="start">
-									<Calendar
-										mode="single"
-										selected={field.value}
-										onSelect={field.onChange}
-										autoFocus
-									/>
-								</PopoverContent>
-							</Popover>
-						</FormControl>
-						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
-						)}
-						<FormMessage />
-					</FormItem>
-				)}
-			/>
-		),
+											{field.value && (
+												<Button
+													type="button"
+													variant="dim"
+													size="sm"
+													className="absolute top-1/2 -end-0 -translate-y-1/2"
+													onClick={(e) => {
+														e.preventDefault();
+														field.onChange(null);
+													}}
+												>
+													<XIcon />
+												</Button>
+											)}
+										</div>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={field.value}
+											onSelect={field.onChange}
+											autoFocus
+										/>
+									</PopoverContent>
+								</Popover>
+							</FormControl>
+							{params.description && (
+								<FormDescription>{params.description}</FormDescription>
+							)}
+							<FormMessage />
+						</FormItem>
+					)}
+				/>
+			);
+		},
 	checkbox:
 		(params: CheckboxParams): AutoFormComponent<boolean> =>
 		(props) => (
@@ -501,7 +525,7 @@ export const AutoFormInput = {
 			params: InputParams & {
 				rows?: number;
 			},
-		): AutoFormComponent<string | undefined> =>
+		): AutoFormComponent<string> =>
 		(props) => (
 			<FormField
 				control={props.control}
@@ -518,12 +542,14 @@ export const AutoFormInput = {
 										rows={params.rows}
 										{...field}
 										placeholder={params.placeholder}
+										disabled={params.disabled}
 									/>
 								) : (
 									<Textarea
 										rows={params.rows}
 										{...field}
 										placeholder={params.placeholder}
+										disabled={params.disabled}
 									/>
 								)}
 							</FormControl>
@@ -561,7 +587,7 @@ export const AutoFormInput = {
 				params.values().then((values) => {
 					setValues(values);
 				});
-			}, [params.values, params]);
+			}, []);
 
 			return (
 				<FormField
@@ -755,12 +781,13 @@ export type Builder<
 		>,
 	) => CreateComponentResult<TName, AutoFormComponent<TSchema[TName]>>;
 	arrayField: <
-		TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+		TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+			string,
 	>(
 		options: {
 			name: TName;
 			// @ts-expect-error
-			defaultValue: TSchema[TName][number];
+			defaultValue: () => TSchema[TName][number];
 		},
 		components: (params: {
 			builder: Builder<
@@ -774,15 +801,18 @@ export type Builder<
 		>,
 	) => CreateComponentResult<TName, AutoFormComponent<TSchema[TName]>>;
 	arrayTableField: <
-		TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+		TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+			string,
 	>(
 		options: {
 			name: TName;
 			// @ts-expect-error
-			defaultValue: TSchema[TName][number];
+			defaultValue: () => TSchema[TName][number];
 			columns: {
-				title: string;
+				title?: string;
 				className?: React.ComponentProps<"div">["className"];
+				inputCellClassName?: React.ComponentProps<"div">["className"];
+				hidden?: boolean;
 			}[];
 			addRowLabel?: string;
 		},
@@ -818,7 +848,7 @@ const createBuilder = <
 					// @ts-expect-error
 					const origMethod = target[prop];
 					if (typeof origMethod === "function") {
-						return (...params: unknown[]) =>
+						return (...params: ReadonlyArray<unknown>) =>
 							createComponent(prefix + name, origMethod(...params));
 					}
 				},
@@ -1026,12 +1056,13 @@ const createBuilder = <
 			>;
 		},
 		arrayField: <
-			TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+			TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+				string,
 		>(
 			options: {
 				name: TName;
 				// @ts-expect-error
-				defaultValue: TSchema[TName][number];
+				defaultValue: () => TSchema[TName][number];
 			},
 			callback: (params: {
 				builder: Builder<
@@ -1045,6 +1076,7 @@ const createBuilder = <
 			>,
 		) => {
 			return createComponent(options.name, (props) => {
+				const { t } = useTranslation();
 				const { fields, append, remove } = useFieldArray({
 					control: props.control, // control props comes from useForm (optional: if you are using FormProvider)
 					name: props.name, // unique name for your Field Array
@@ -1072,7 +1104,7 @@ const createBuilder = <
 										variant={"outline"}
 										onClick={() => remove(index)}
 									>
-										Remove
+										{t("components:autoForm.actions.remove")}
 									</Button>
 								</React.Fragment>
 							);
@@ -1080,24 +1112,29 @@ const createBuilder = <
 						<Button
 							type={"button"}
 							variant={"outline"}
-							onClick={() => append(options.defaultValue)}
+							onClick={() => append(options.defaultValue())}
 						>
-							Add
+							{t("components:autoForm.actions.add")}
 						</Button>
 					</>
 				);
 			}) as ReturnType<Builder<TSchema, TRootSchema>["arrayField"]>;
 		},
 		arrayTableField: <
-			TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+			TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+				string,
 		>(
 			options: {
 				name: TName;
 				// @ts-expect-error
-				defaultValue: TSchema[TName][number];
+				defaultValue: () => TSchema[TName][number];
 				columns: {
-					title: string;
+					title?: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
+					inputCellClassName?: React.ComponentProps<
+						typeof TableHead
+					>["className"];
+					hidden?: boolean;
 				}[];
 				addRowLabel?: string;
 			},
@@ -1120,10 +1157,15 @@ const createBuilder = <
 				move: (index: number, newIndex: number) => void;
 				field: Record<"id", string>;
 				columns: {
-					title: string;
+					title?: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
+					inputCellClassName?: React.ComponentProps<
+						typeof TableHead
+					>["className"];
+					hidden?: boolean;
 				}[];
 			}) => {
+				const { t } = useTranslation();
 				const {
 					attributes,
 					listeners,
@@ -1141,7 +1183,7 @@ const createBuilder = <
 					>(_schema, `${props.name}.${props.index}.`);
 
 					return callback({ builder });
-				}, [props.name, props.index, _schema, callback]);
+				}, [props.name, props.index]);
 
 				const style = {
 					transform: CSS.Transform.toString(transform),
@@ -1172,7 +1214,9 @@ const createBuilder = <
 									{...listeners}
 								>
 									<GripVerticalIcon className="h-4 w-4" />
-									<span className="sr-only">Drag to reorder</span>
+									<span className="sr-only">
+										{t("components:autoForm.actions.dragToReorder")}
+									</span>
 								</Button>
 
 								<Button
@@ -1183,7 +1227,7 @@ const createBuilder = <
 									onClick={() => props.remove(props.index)}
 								>
 									<CircleXIcon />
-									Remove item
+									{t("components:autoForm.actions.removeItem")}
 								</Button>
 
 								<Button
@@ -1194,7 +1238,7 @@ const createBuilder = <
 									onClick={() => props.move(props.index, props.index + 1)}
 								>
 									<ArrowDownIcon className="h-4 w-4" />
-									Move down
+									{t("components:autoForm.actions.moveDown")}
 								</Button>
 
 								<Button
@@ -1206,19 +1250,24 @@ const createBuilder = <
 									onClick={() => props.move(props.index, props.index - 1)}
 								>
 									<ArrowUpIcon className="h-4 w-4" />
-									Move up
+									{t("components:autoForm.actions.moveUp")}
 								</Button>
 							</div>
 						</TableCell>
-						{Object.entries(components).map(([key, Component]) => (
-							<TableCell
-								key={key}
-								className={"lg:[&>div>label]:hidden max-lg:p-0"}
-							>
-								{/* @ts-expect-error */}
-								<Component name={key} control={props.control} />
-							</TableCell>
-						))}
+						{Object.entries(components)
+							.filter(([,], index) => !props.columns[index]?.hidden)
+							.map(([key, Component], index) => (
+								<TableCell
+									key={key}
+									className={cn(
+										"lg:[&>div>label]:hidden max-lg:p-0",
+										props.columns[index]?.inputCellClassName,
+									)}
+								>
+									{/* @ts-expect-error */}
+									<Component name={key} control={props.control} />
+								</TableCell>
+							))}
 						<TableCell className="w-12 max-lg:hidden">
 							<Button
 								type={"button"}
@@ -1226,7 +1275,9 @@ const createBuilder = <
 								onClick={() => props.remove(props.index)}
 							>
 								<CircleXIcon />
-								<div className={"lg:hidden"}>Remove item</div>
+								<div className={"lg:hidden"}>
+									{t("components:autoForm.actions.removeItem")}
+								</div>
 							</Button>
 						</TableCell>
 					</TableRow>
@@ -1234,6 +1285,7 @@ const createBuilder = <
 			};
 
 			return createComponent(options.name, (props) => {
+				const { t } = useTranslation();
 				const isMobile = useMediaQuery("(max-width: 1024px)");
 				const { fields, append, remove, move } = useFieldArray({
 					control: props.control, // control props comes from useForm (optional: if you are using FormProvider)
@@ -1283,14 +1335,16 @@ const createBuilder = <
 								<TableHeader>
 									<TableRow>
 										<TableHead className="w-12"></TableHead>
-										{options.columns.map((column, index) => (
-											<TableHead
-												className={column.className}
-												key={index.toString()}
-											>
-												{column.title}
-											</TableHead>
-										))}
+										{options.columns
+											.filter((column) => !column.hidden)
+											.map((column, index) => (
+												<TableHead
+													className={column.className}
+													key={index.toString()}
+												>
+													{column.title}
+												</TableHead>
+											))}
 										<TableHead className="w-12"></TableHead>
 									</TableRow>
 								</TableHeader>
@@ -1321,10 +1375,11 @@ const createBuilder = <
 							<Button
 								type={"button"}
 								variant={"outline"}
-								onClick={() => append(options.defaultValue)}
+								onClick={() => append(options.defaultValue())}
 							>
 								<PlusCircleIcon />
-								{options.addRowLabel ?? "Add item"}
+								{options.addRowLabel ??
+									t("components:autoForm.actions.addItem")}
 							</Button>
 						</div>
 					</DndContext>

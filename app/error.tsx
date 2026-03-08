@@ -1,6 +1,7 @@
 "use client"; // Error components must be Client Components
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function ErrorPage({
 	error,
@@ -9,6 +10,7 @@ export default function ErrorPage({
 	error: Error & { digest?: string };
 	reset: () => void;
 }) {
+	const { t } = useTranslation();
 	useEffect(() => {
 		// Log the error to an error reporting service
 		console.error(error);
@@ -16,7 +18,7 @@ export default function ErrorPage({
 
 	return (
 		<div>
-			<h2>Something went wrong!</h2>
+			<h2>{t("app:error.generic")}</h2>
 			<button
 				type={"button"}
 				onClick={
@@ -24,7 +26,7 @@ export default function ErrorPage({
 					() => reset()
 				}
 			>
-				Try again
+				{t("common:actions.retry")}
 			</button>
 		</div>
 	);

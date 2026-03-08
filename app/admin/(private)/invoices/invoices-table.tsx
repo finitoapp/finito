@@ -1,10 +1,19 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { InvoiceStatusBadge } from "@/app/admin/(private)/invoices/invoice-status-badge";
-import { DataGrid } from "@/components/data-grid";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import {
+	createSortableHeader,
+	DataTable,
+	type DataTableOnFilterChange,
+} from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,113 +24,248 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import { invoiceStorage } from "@/storages/invoice-storage";
+import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
+import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type {
+	Currency,
+	DateString,
+	Integer,
+	NonEmptyString255,
+} from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+
+type Row = {
+	id: Id;
+	invoiceNumber: string;
+	customerName: string | null;
+	issueDate: DateString; // ISO date string
+	dueDate: DateString; // ISO date string
+	currency: Currency;
+	totalAmount: Integer; // computed client-side
+};
+
+const createColumns = (t: TFunction): ColumnDef<Row>[] => [
+	{
+		accessorKey: "invoiceNumber",
+		header: createSortableHeader(t("invoices:table.columns.invoice-number")),
+	},
+	{
+		accessorKey: "customerName",
+		header: createSortableHeader(t("invoices:table.columns.customer-name")),
+	},
+	{
+		accessorKey: "issueDate",
+		header: createSortableHeader(t("invoices:table.columns.issue-date")),
+		cell: ({ row }) => new Date(row.original.issueDate).toLocaleDateString(),
+	},
+	{
+		accessorKey: "dueDate",
+		header: createSortableHeader(t("invoices:table.columns.due-date")),
+		cell: ({ row }) => new Date(row.original.dueDate).toLocaleDateString(),
+	},
+	{
+		accessorKey: "amount",
+		header: createSortableHeader(t("invoices:table.columns.amount")),
+		cell: ({ row }) =>
+			formatMoney({
+				value: row.original.totalAmount,
+				currency: row.original.currency,
+			}),
+	},
+	{
+		accessorKey: "status",
+		header: createSortableHeader(t("invoices:table.columns.status")),
+		// cell: ({ row }) => (
+		// 	<InvoiceStatusBadge
+		// 		invoiceId={row.original.id}
+		// 		dueDate={new Date(row.original.dueDate)}
+		// 	/>
+		// ),
+	},
+];
+
+const sortingFields = {
+	id: "invoice.id",
+	createdAt: "invoice.createdAt",
+	invoiceNumber: "invoice.invoiceNumber",
+	customerName: "invoiceCustomerBillingInfo.name",
+	issueDate: "invoice.issueDate",
+	dueDate: "invoice.dueDate",
+	currency: "invoice.currency",
+	totalAmount: "totalAmount",
+} as const satisfies Record<keyof Row | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "invoiceNumber",
+			title: t("invoices:table.columns.invoice-number"),
+		},
+		{
+			id: "customerName",
+			title: t("invoices:table.columns.customer-name"),
+		},
+	] satisfies { id: keyof Row; title: string }[];
 
 export function InvoicesTable() {
+	const { t } = useTranslation();
 	const router = useRouter();
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(invoiceStorage, {
-		limit: 15,
-	});
+	const evolu = useEvolu();
+	const columnVisibilityDriver = useDataTableVisibilityDriver("invoices");
+	const columns = useMemo(() => createColumns(t), [t]);
+	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
+	const onFilterChange = useMemo<DataTableOnFilterChange<Row>>(
+		() =>
+			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				const previousCursor =
+					cursor !== undefined ? JSON.parse(cursor) : undefined;
+
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
+
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
+					let qb = db
+						.selectFrom("invoice")
+						.leftJoin(
+							"invoiceCustomerBillingInfo",
+							"invoiceCustomerBillingInfo.id",
+							"invoice.id",
+						)
+						.leftJoin(
+							"invoiceItemLine",
+							"invoiceItemLine.invoiceId",
+							"invoice.id",
+						)
+						.select(
+							(eb) =>
+								[
+									"invoice.id as id",
+									"invoice.invoiceNumber as invoiceNumber",
+									"invoice.issueDate as issueDate",
+									"invoice.dueDate as dueDate",
+									"invoice.currency as currency",
+									"invoiceCustomerBillingInfo.name as customerName",
+									"invoice.createdAt as createdAt",
+									eb.fn
+										.coalesce(
+											eb.fn.sum<Integer>("invoiceItemLine.totalAmount"),
+											eb.val(0),
+										)
+										.as("totalAmount"),
+								] as const,
+						)
+						.where("invoice.isDeleted", "is not", sqliteTrue)
+						.where("invoice.invoiceNumber", "is not", null)
+						.where("invoice.currency", "is not", null)
+						.where("invoice.dueDate", "is not", null)
+						.where("invoice.issueDate", "is not", null)
+						.groupBy("invoice.id")
+						.$narrowType<{
+							invoiceNumber: NotNull;
+							currency: NotNull;
+							dueDate: NotNull;
+							issueDate: NotNull;
+						}>();
+
+					if (previousCursor) {
+						qb = qb.where((eb) =>
+							eb.or([
+								eb(
+									finalSorting.id,
+									finalSorting.desc ? "<" : ">",
+									previousCursor[finalSorting.id],
+								),
+								eb.and([
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
+									eb("invoice.id", "<", previousCursor.id as Id),
+								]),
+							]),
+						);
+					}
+
+					qb = qb
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
+						.orderBy("invoice.id", "desc");
+
+					for (const filter of filters) {
+						if (filter.id === "invoiceNumber") {
+							qb = qb.where(
+								"invoice.invoiceNumber",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
+						}
+						if (filter.id === "customerName") {
+							qb = qb.where(
+								"invoiceCustomerBillingInfo.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
+						}
+					}
+
+					return qb.limit(limit + 1);
+				});
+
+				return subscribeToEvoluQuery(evolu, query, async (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
+
+					let nextCursor: undefined | Record<string, unknown>;
+					const last = data[data.length - 1];
+					if (result.length > limit && last) {
+						nextCursor = {
+							id: last.id,
+							[sortingField]: last[sortingField],
+						};
+					}
+
+					setData({
+						data: [...data],
+						cursor:
+							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
+					});
+				});
+			},
+		[evolu],
+	);
 
 	return (
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>Invoices</CardTitle>
-					<CardDescription>List of your invoices</CardDescription>
+					<CardTitle>{t("invoices:table.invoices")}</CardTitle>
+					<CardDescription>
+						{t("invoices:table.listOfYourInvoices")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/invoices/new"}>
 						<Button>
 							<PlusIcon />
-							New invoice
+							{t("invoices:table.actions.new-invoice")}
 						</Button>
 					</Link>
 				</CardToolbar>
 			</CardHeader>
-			<CardContent className={"p-0"}>
-				<DataGrid
-					data={
-						items
-							? items.map((item) => ({
-									id: item.value.id,
-									status: item.value.id,
-									invoiceNumber: item.value.invoiceNumber,
-									customerName: item.value.customer.billingInfo.name,
-									issueDate: new Date(
-										item.value.issueDate,
-									).toLocaleDateString(),
-									dueDate: new Date(item.value.dueDate).toLocaleDateString(),
-									amount: formatAmount(
-										item.value.items.reduce(
-											(acc, value) => acc + value.price * value.quantity,
-											0,
-										),
-										item.value.currency,
-									),
-								}))
-							: undefined
-					}
-					columns={[
-						{
-							key: "invoiceNumber" as const,
-							header: "Invoice number",
-							width: "400px",
-						},
-						{
-							key: "customerName" as const,
-							header: "Customer name",
-						},
-						{
-							key: "issueDate" as const,
-							header: "Issue date",
-						},
-						{
-							key: "dueDate" as const,
-							header: "Due date",
-						},
-						{
-							key: "amount" as const,
-							header: "Amount",
-						},
-						{
-							key: "status" as const,
-							header: "Status",
-							render: (_, row) => (
-								<InvoiceStatusBadge
-									invoiceId={row.id}
-									dueDate={new Date(row.dueDate)}
-								/>
-							),
-						},
-					]}
+			<CardContent>
+				<DataTable
+					columns={columns}
+					columnVisibilityDriver={columnVisibilityDriver}
+					onFilterChange={onFilterChange}
+					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
 							`/admin/invoices/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
-					className="border rounded-md"
 				/>
-
-				{hasNextPage && (
-					<div className={"flex my-4 justify-center"}>
-						<Button
-							disabled={!eose}
-							variant={"outline"}
-							size={"sm"}
-							onClick={loadNextPage}
-						>
-							Load next page
-						</Button>
-					</div>
-				)}
 			</CardContent>
 		</ResponsiveCard>
 	);

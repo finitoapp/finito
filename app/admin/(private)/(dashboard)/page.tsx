@@ -6,8 +6,14 @@ import {
 	IconListDetails,
 	IconPackage,
 } from "@tabler/icons-react";
-import { CalendarIcon, ConstructionIcon } from "lucide-react";
+import {
+	CalendarClockIcon,
+	CalendarIcon,
+	ConstructionIcon,
+	UtensilsCrossedIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { ClickableCard } from "@/components/clickable-card";
 import { FinitoLogo } from "@/components/finito-logo";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -20,6 +26,7 @@ import {
 } from "@/components/ui/card";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const router = useRouter();
 
 	return (
@@ -31,16 +38,14 @@ export default function Home() {
 					</div>
 				</h1>
 				<p className="text-muted-foreground" data-testid="text">
-					Decentralized payment platform and point of sale system
+					{t("admin:dashboard.home.subtitle")}
 				</p>
 			</div>
 
 			<div className={"w-full flex gap-8 mt-8 flex-wrap justify-center"}>
 				<ClickableCard
-					title={"Payments"}
-					description={
-						"Create one-time payments that can be made without having to be online."
-					}
+					title={t("admin:dashboard.home.cards.payments.title")}
+					description={t("admin:dashboard.home.cards.payments.description")}
 					onClick={() => router.push("/admin/payments")}
 					className={"@container/card min-w-sm"}
 				>
@@ -50,11 +55,8 @@ export default function Home() {
 				</ClickableCard>
 
 				<ClickableCard
-					title={"Point of sale system"}
-					description={`
-					Keep track of open bills and process payments. This is a robust
-					solution for small shops, bistros, cafes, etc.
-					`}
+					title={t("admin:dashboard.home.cards.pos.title")}
+					description={t("admin:dashboard.home.cards.pos.description")}
 					onClick={() => router.push("/admin/pos")}
 					className={"@container/card min-w-sm"}
 				>
@@ -64,10 +66,8 @@ export default function Home() {
 				</ClickableCard>
 
 				<ClickableCard
-					title={"Invoicing"}
-					description={
-						"Issue invoices to your customers conveniently and yet securely. Leave no trace of yourself or your customers on public clouds."
-					}
+					title={t("admin:dashboard.home.cards.invoicing.title")}
+					description={t("admin:dashboard.home.cards.invoicing.description")}
 					onClick={() => router.push("/admin/invoices")}
 					className={"@container/card min-w-sm"}
 				>
@@ -77,12 +77,11 @@ export default function Home() {
 				</ClickableCard>
 
 				<ClickableCard
-					title={"Item management"}
+					title={t("admin:dashboard.home.cards.itemManagement.title")}
 					data-testid="items"
-					description={
-						"Don't waste time entering items over and over again while creating" +
-						" payments. Specify your sales items in advance."
-					}
+					description={t(
+						"admin:dashboard.home.cards.itemManagement.description",
+					)}
 					onClick={() => router.push("/admin/items")}
 					className={"@container/card min-w-sm"}
 				>
@@ -91,22 +90,34 @@ export default function Home() {
 					</div>
 				</ClickableCard>
 
+				<ClickableCard
+					title={t("admin:dashboard.home.cards.menuManagement.title")}
+					description={t(
+						"admin:dashboard.home.cards.menuManagement.description",
+					)}
+					onClick={() => router.push("/admin/menus" as never)}
+					className={"@container/card min-w-sm"}
+				>
+					<div className={"w-full flex justify-center"}>
+						<UtensilsCrossedIcon size={64} />
+					</div>
+				</ClickableCard>
+
 				<ResponsiveCard className="@container/card min-w-sm">
 					<CardHeader
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
-						<CardTitle>Order payments</CardTitle>
+						<CardTitle>{t("admin:dashboard.orderPayments")}</CardTitle>
 						<CardToolbar>
 							<Badge>
 								<ConstructionIcon />
-								under development
+								{t("admin:dashboard.home.status.underDevelopment")}
 							</Badge>
 						</CardToolbar>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
-							Accept money from customers based on their selection of items.
-							It's an ideal solution for sales stands.
+							{t("admin:dashboard.home.cards.orderPayments.description")}
 						</p>
 					</CardContent>
 				</ResponsiveCard>
@@ -115,19 +126,19 @@ export default function Home() {
 					<CardHeader
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
-						<CardTitle>Payment widgets & Paywalls</CardTitle>
+						<CardTitle>{t("admin:dashboard.paymentWidgetsPaywalls")}</CardTitle>
 						<CardToolbar>
 							<Badge variant={"secondary"}>
 								<CalendarIcon />
-								planned
+								{t("admin:dashboard.home.status.planned")}
 							</Badge>
 						</CardToolbar>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
-							Integrate payment elements directly into your website. It can be
-							both payment buttons and locked sections hidden behind a payment
-							wall.
+							{t(
+								"admin:dashboard.home.cards.paymentWidgetsPaywalls.description",
+							)}
 						</p>
 					</CardContent>
 				</ResponsiveCard>
@@ -136,18 +147,19 @@ export default function Home() {
 					<CardHeader
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
-						<CardTitle>Reservations</CardTitle>
+						<CardTitle>{t("admin:dashboard.reservations")}</CardTitle>
 						<CardToolbar>
-							<Badge variant={"secondary"}>
-								<CalendarIcon />
-								planned
+							<Badge
+								variant={"secondary"}
+								aria-label={t("admin:dashboard.reservations")}
+							>
+								<CalendarClockIcon />
 							</Badge>
 						</CardToolbar>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
-							Utilize the full capacity of your venue. Offer your customers the
-							option of booking a place either online or by phone.
+							{t("admin:dashboard.home.cards.reservations.description")}
 						</p>
 					</CardContent>
 				</ResponsiveCard>

@@ -1,112 +1,187 @@
-import { useSetAtom } from "jotai";
-import { type Pos, posAtom } from "@/atoms/pos";
-import { type Currency, Uuid7 } from "@/lib/types";
-import type { Item } from "@/storages/item-storage";
-
-export const createEmptyBill = (props: {
-	defaultCurrency: Currency;
-}): Pos["bills"][string] => ({
-	id: 1,
-	label: ``,
-	items: [],
-	currency: props.defaultCurrency,
-	rates: {},
-});
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { useEvolu } from "@/hooks/use-evolu";
+import { usePosRows } from "@/hooks/use-pos";
+import type { EvoluSchemaType } from "@/lib/evolu";
+import type { Id } from "@/lib/evolu/types";
+import {
+	type Currency,
+	Integer,
+	type NonEmptyString255,
+	PositiveInteger,
+} from "@/lib/shared/types";
 
 export const useBill = () => {
-	const setPos = useSetAtom(posAtom);
+	const evolu = useEvolu();
+	const { billRows } = usePosRows();
+
+	const getNextDisplayId = () =>
+		PositiveInteger(
+			billRows.reduce((max, bill) => Math.max(max, bill.displayId), 0) + 1,
+		);
+
+	const createBillInternal = (defaultCurrency: Currency): Id => {
+		const { id } = evolu.insert("posBill", {
+			displayId: getNextDisplayId(),
+			label: null,
+			currency: defaultCurrency,
+			tableId: null,
+		});
+
+		return id;
+	};
 
 	return {
-		deleteBill: (billId: string) => {
-			void setPos((prev) => {
-				const bills = {
-					...prev.bills,
-				};
-				delete bills[billId];
+		deleteBill: (billId: Id) => {
+			const bill = billRows.find((bill) => bill.id === billId);
+			if (bill === undefined) {
+				return;
+			}
 
-				return {
-					...prev,
-					bills,
-				};
+			evolu.update("posBill", {
+				id: billId,
+				isDeleted: sqliteTrue,
 			});
+
+			for (const item of bill.items) {
+				evolu.update("posBillItemLine", {
+					id: item.id,
+					isDeleted: sqliteTrue,
+				});
+				evolu.update("posBillItem", {
+					id: item.id,
+					isDeleted: sqliteTrue,
+				});
+			}
+
+			for (const rate of bill.rates) {
+				evolu.update("posBillRate", {
+					id: rate.id,
+					isDeleted: sqliteTrue,
+				});
+			}
 		},
 		createBill: (props: { defaultCurrency: Currency }) => {
-			const billId = Uuid7.random();
+			return createBillInternal(props.defaultCurrency);
+		},
+		addItem: (props: {
+			billId?: Id;
+			defaultCurrency: Currency;
+			item: EvoluSchemaType["item"];
+		}) => {
+			const billId = props.billId ?? createBillInternal(props.defaultCurrency);
+			const bill = billRows.find((bill) => bill.id === billId);
+			if (bill === undefined) {
+				return;
+			}
 
-			setPos((previous) => {
-				let maxId = 0;
+			const currentItem = bill.items.find(
+				(item) => item.item.sourceItemId === props.item.id,
+			);
 
-				for (const bill of Object.values(previous.bills)) {
-					if (bill.id > maxId) {
-						maxId = bill.id;
-					}
-				}
+			if (currentItem) {
+				evolu.update("posBillItemLine", {
+					id: currentItem.id,
+					quantity: currentItem.quantity + 1,
+					totalAmount: Integer(
+						Math.round(props.item.price * currentItem.quantity + 1),
+					),
+				});
+			} else {
+				const { id } = evolu.insert("posBillItemLine", {
+					posBillId: billId,
+					totalAmount: props.item.price,
+					quantity: 1,
+				});
 
-				return {
-					...previous,
-					bills: {
-						...previous.bills,
-						[billId]: {
-							...createEmptyBill(props),
-							id: maxId + 1,
-						},
-					},
-				};
-			});
+				evolu.upsert("posBillItem", {
+					...props.item,
+					id,
+					sourceItemId: props.item.id,
+				});
+			}
 
 			return billId;
 		},
-		addItem: (props: {
-			billId: Uuid7;
-			defaultCurrency: Currency;
-			item: Item;
-		}) => {
-			setPos((prev) => {
-				const billId = props.billId ?? Uuid7.random();
-				const currentBill = prev.bills[billId] ?? createEmptyBill(props);
+		updateItemQuantity: (props: { billId: Id; itemId: Id; delta: -1 | 1 }) => {
+			const bill = billRows.find((bill) => bill.id === props.billId);
+			if (bill === undefined) {
+				return;
+			}
 
-				const index = currentBill.items.findIndex(
-					(billItem) => billItem.id === props.item.id,
-				);
-				if (index !== -1) {
-					return {
-						...prev,
-						bills: {
-							...prev.bills,
-							[billId]: {
-								...currentBill,
-								items: [
-									...currentBill.items.slice(0, index),
-									{
-										...currentBill.items[index],
-										quantity: currentBill.items[index].quantity + 1,
-									},
-									...currentBill.items.slice(index + 1),
-								],
-							},
-						},
-					};
-				}
+			const currentItem = bill.items.find(
+				(item) => item.item.sourceItemId === props.itemId,
+			);
+			if (currentItem === undefined) {
+				return;
+			}
 
-				return {
-					...prev,
-					bills: {
-						...prev.bills,
-						[billId]: {
-							...currentBill,
-							items: [
-								...currentBill.items,
-								{
-									id: props.item.id,
-									currency: props.item.price.currency,
-									name: props.item.label,
-									price: props.item.price.value,
-									quantity: 1,
-								},
-							],
-						},
-					},
-				};
+			const nextQuantity = currentItem.quantity + props.delta;
+			if (nextQuantity <= 0) {
+				evolu.update("posBillItemLine", {
+					id: currentItem.id,
+					isDeleted: sqliteTrue,
+				});
+				evolu.update("posBillItem", {
+					id: currentItem.id,
+					isDeleted: sqliteTrue,
+				});
+				return;
+			}
+
+			evolu.update("posBillItemLine", {
+				id: currentItem.id,
+				quantity: nextQuantity,
+				totalAmount: Integer(Math.round(currentItem.item.price * nextQuantity)),
+			});
+		},
+		removeItem: (props: { billId: Id; itemId: Id }) => {
+			const bill = billRows.find((bill) => bill.id === props.billId);
+			if (bill === undefined) {
+				return;
+			}
+
+			const currentItem = bill.items.find((item) => item.id === props.itemId);
+			if (currentItem === undefined) {
+				return;
+			}
+
+			evolu.update("posBillItemLine", {
+				id: currentItem.id,
+				isDeleted: sqliteTrue,
+			});
+			evolu.update("posBillItem", {
+				id: currentItem.id,
+				isDeleted: sqliteTrue,
+			});
+		},
+		setBillLabel: (props: { billId: Id; label: NonEmptyString255 | null }) => {
+			evolu.update("posBill", {
+				id: props.billId,
+				label: props.label,
+			});
+		},
+		setBillTable: (props: { billId: Id; tableId: Id | null }) => {
+			evolu.update("posBill", {
+				id: props.billId,
+				tableId: props.tableId,
+			});
+		},
+		setBillCurrency: (props: { billId: string; currency: Currency }) => {
+			evolu.update("posBill", {
+				id: props.billId as Id,
+				currency: props.currency,
+			});
+		},
+		setBillRate: (props: { billId: Id; currency: Currency; rate: number }) => {
+			if (!Number.isFinite(props.rate) || props.rate <= 0) {
+				return;
+			}
+
+			evolu.upsert("posBillRate", {
+				id: createIdFromString(`posBillRate:${props.billId}:${props.currency}`),
+				billId: props.billId,
+				currency: props.currency,
+				rate: props.rate,
 			});
 		},
 	};

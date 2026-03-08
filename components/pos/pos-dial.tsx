@@ -2,7 +2,7 @@ import { CheckIcon, DeleteIcon, XIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/ui/cn";
 
 const CalculatorButton: React.FC<React.ComponentProps<typeof Button>> = (
 	props,
@@ -22,7 +22,6 @@ export const PosDial: React.FC<{
 }> = (props) => {
 	const [value, setValue] = useState("");
 	const createEvent = (eventValue: string) => () => {
-		console.log("yes ", eventValue);
 		setValue((value) => value + eventValue);
 	};
 

@@ -1,35 +1,56 @@
 "use client";
 
+import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatIban } from "@/lib/format-utils";
-import { accountStorage } from "@/storages/account-storage";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
+import { formatIban } from "@/lib/shared/utils/format";
 
 export default function Home() {
+	const { t } = useTranslation();
 	const searchParams = useSearchParams();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const router = useRouter();
 	if (id === null) {
 		throw Promise.reject();
 	}
 
-	const { data: items } = useStorageSubscription(accountStorage, {
-		key: id,
-	});
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("account")
+					.leftJoin("accountIban", "accountIban.id", "account.id")
+					.leftJoin("accountLud16", "accountLud16.id", "account.id")
+					.selectAll()
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("account.id", "=", id as Id)
+					.$narrowType<{
+						id: NotNull;
+					}>();
+			}),
+		[id],
+	);
 
-	const item = items && items[0];
+	const { data: items } = useEvoluQuery(query);
+
+	const item = items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -37,10 +58,33 @@ export default function Home() {
 				return;
 			}
 
-			await accountStorage.delete(storageDeps, item.eventId);
+			evolu.update("account", { id: item.id, isDeleted: sqliteTrue });
 			router.push("/admin/accounts");
 		},
 	});
+
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: "Delete account?",
+			description: "This action cannot be undone.",
+			confirmText: "Delete",
+			cancelText: "Cancel",
+			confirmVariant: "destructive",
+		},
+	);
+
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/accounts");
+		}
+	}, [item, router]);
+
+	if (item === undefined) {
+		return null;
+	}
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -51,22 +95,14 @@ export default function Home() {
 			<div className={"flex gap-4 flex-wrap"}>
 				<ResponsiveCard className={"flex-2"}>
 					<CardHeader>
-						<CardTitle>
-							{!item && <Skeleton />}
-							{item?.value.name}
-						</CardTitle>
+						<CardTitle>{item.name}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className={"flex flex-col gap-8"}>
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={"Type"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item && item.value._tag}
-										</>
-									}
+									content={item._tag}
 									className={"flex-1"}
 								/>
 							</div>
@@ -78,15 +114,17 @@ export default function Home() {
 											{
 												key: "Address",
 												value: item
-													? item.value._tag === "lud16"
-														? item.value.lud16
-														: item.value._tag === "cash_register"
+													? item._tag === "accountLud16"
+														? item.lud16
+														: item._tag === "accountCashRegister"
 															? "-"
-															: item.value._tag === "spark"
+															: item._tag === "accountSpark"
 																? "-"
-																: item.value._tag === "nwc"
+																: item._tag === "accountNwc"
 																	? "-"
-																	: formatIban(item.value.iban)
+																	: item.iban
+																		? formatIban(item.iban)
+																		: "-"
 													: "-",
 											},
 										]}
@@ -101,7 +139,7 @@ export default function Home() {
 				<div className={"flex-1 flex flex-col gap-4"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>Actions</CardTitle>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<Button variant={"outline"} className={"w-full"} asChild>
@@ -112,7 +150,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							<Button className={"w-full"} onClick={() => deleteItem()}>
+							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
 							</Button>

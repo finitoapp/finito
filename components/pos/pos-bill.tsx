@@ -1,11 +1,9 @@
-import NDK, {
-	NDKPrivateKeySigner,
-	type NDKSigner,
-	type NDKUser,
-} from "@nostr-dev-kit/ndk";
+"use client";
+
+import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSetAtom } from "jotai";
+import type { NotNull } from "kysely";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -19,12 +17,13 @@ import {
 	type FC,
 	Fragment,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 	useTransition,
 } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { type Pos, posAtom } from "@/atoms/pos";
 import { ComboboxDefault } from "@/components/combobox/default";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
@@ -47,28 +46,32 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
-import { createEmptyBill, useBill } from "@/hooks/use-bill";
+import { useBill } from "@/hooks/use-bill";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { currencyConverter } from "@/lib/currency-converter/currency-converter";
-import { formatAmount } from "@/lib/format-utils";
-import { createPayment, createZapPayment } from "@/lib/payment-utils";
-import type { StaticOfflinePayment } from "@/lib/schemas";
-import { Currency, type NonEmptyString, Uuid7 } from "@/lib/types";
-import { clientBaseUrl } from "@/lib/window-utils";
-import { accountStorage } from "@/storages/account-storage";
-import { billingSettingsStorage } from "@/storages/billing-settings-storage";
-import { tableStorage } from "@/storages/table-storage";
+import type { Pos } from "@/hooks/use-pos";
+import { createQuery } from "@/lib/evolu";
+import type { Id } from "@/lib/evolu/types";
+import { createPayment } from "@/lib/payment/service";
+import {
+	Currency,
+	Integer,
+	type NonEmptyString255,
+	NonEmptyString255Schema,
+	type NonNegativeInteger,
+	StringToNullableStringSchema,
+} from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 const Item: React.FC<{
-	item: Pos["bills"][string]["items"][number];
-	itemIndex: number;
-	billId: string;
-	onRemove: () => unknown;
+	item: Pos["bills"][Id]["items"][number];
+	billId: Id;
 }> = (props) => {
+	const { t } = useTranslation();
 	const [isRemoving, setIsRemoving] = useState(false);
-	const setPos = useSetAtom(posAtom);
+	const { removeItem, updateItemQuantity } = useBill();
 
 	return (
 		<AnimatePresence>
@@ -84,9 +87,13 @@ const Item: React.FC<{
 					}}
 				>
 					<div className="flex-1">
-						<h4 className="font-medium text-sm">{props.item.name}</h4>
+						<h4 className="font-medium text-sm">{props.item.item.label}</h4>
 						<p className="text-xs text-muted-foreground">
-							{formatAmount(props.item.price, props.item.currency)} each
+							{formatMoney({
+								value: props.item.item.price,
+								currency: props.item.item.currency,
+							})}{" "}
+							{t("pos:bill.each")}
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
@@ -96,32 +103,11 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									setPos((prev) => ({
-										...prev,
-										bills: {
-											...prev.bills,
-											[props.billId]: {
-												...prev.bills[props.billId],
-												items: [
-													...prev.bills[props.billId].items.slice(
-														0,
-														props.itemIndex,
-													),
-													{
-														...prev.bills[props.billId].items[props.itemIndex],
-														quantity: Math.max(
-															prev.bills[props.billId].items[props.itemIndex]
-																.quantity - 1,
-															1,
-														),
-													},
-													...prev.bills[props.billId].items.slice(
-														props.itemIndex + 1,
-													),
-												],
-											},
-										},
-									}))
+									updateItemQuantity({
+										billId: props.billId,
+										itemId: props.item.id,
+										delta: -1,
+									})
 								}
 								className="h-8 w-8 p-0"
 							>
@@ -148,30 +134,11 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									setPos((prev) => ({
-										...prev,
-										bills: {
-											...prev.bills,
-											[props.billId]: {
-												...prev.bills[props.billId],
-												items: [
-													...prev.bills[props.billId].items.slice(
-														0,
-														props.itemIndex,
-													),
-													{
-														...prev.bills[props.billId].items[props.itemIndex],
-														quantity:
-															prev.bills[props.billId].items[props.itemIndex]
-																.quantity + 1,
-													},
-													...prev.bills[props.billId].items.slice(
-														props.itemIndex + 1,
-													),
-												],
-											},
-										},
-									}))
+									updateItemQuantity({
+										billId: props.billId,
+										itemId: props.item.id,
+										delta: 1,
+									})
 								}
 								className="h-8 w-8 p-0"
 							>
@@ -183,7 +150,12 @@ const Item: React.FC<{
 							variant="destructive"
 							onClick={() => {
 								setIsRemoving(true);
-								setTimeout(props.onRemove, 200);
+								setTimeout(() => {
+									removeItem({
+										billId: props.billId,
+										itemId: props.item.id,
+									});
+								}, 200);
 							}}
 							className="h-8 w-8 p-0 ml-2"
 						>
@@ -197,14 +169,13 @@ const Item: React.FC<{
 };
 
 const PosBillName: React.FC<{
-	billId?: string;
+	billId?: Id;
 	billLabel: string;
 	placeholder: string;
-	defaultCurrency: Currency;
 }> = (props) => {
 	const firstRender = useRef<string>(props.billLabel);
 	const [value, setValue] = useState(props.billLabel);
-	const setPos = useSetAtom(posAtom);
+	const { setBillLabel } = useBill();
 	const debouncedValue = useDebounce(value, 300);
 
 	useEffect(() => {
@@ -213,26 +184,22 @@ const PosBillName: React.FC<{
 		}
 
 		firstRender.current = debouncedValue;
+		if (props.billId === undefined) {
+			return;
+		}
 
-		console.log("save");
-		setPos((prev) => {
-			if (props.billId === undefined) {
-				return prev;
-			}
+		const debouncedValueResult = StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		).safeParse(debouncedValue);
+		if (!debouncedValueResult.success) {
+			return;
+		}
 
-			return {
-				...prev,
-				bills: {
-					...prev.bills,
-					[props.billId]: {
-						...(prev.bills[props.billId] ??
-							createEmptyBill({ defaultCurrency: props.defaultCurrency })),
-						label: debouncedValue,
-					},
-				},
-			};
+		setBillLabel({
+			billId: props.billId,
+			label: debouncedValueResult.data,
 		});
-	}, [debouncedValue, setPos, props.billId, props.defaultCurrency]);
+	}, [debouncedValue, setBillLabel, props.billId]);
 
 	return (
 		<Input
@@ -246,6 +213,7 @@ const PosBillName: React.FC<{
 const TableQrCode: React.FC<{
 	tableQrCode?: string;
 }> = (props) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const frontendUrl =
 		props.tableQrCode &&
@@ -261,7 +229,7 @@ const TableQrCode: React.FC<{
 						disabled={props.tableQrCode === undefined}
 						title={
 							props.tableQrCode === undefined
-								? "Table is not selected"
+								? t("pos:bill.table-not-selected")
 								: undefined
 						}
 					>
@@ -270,7 +238,7 @@ const TableQrCode: React.FC<{
 				</DialogTrigger>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Table QR Code</DialogTitle>
+						<DialogTitle>{t("pos:bill.tableQrCode")}</DialogTitle>
 					</DialogHeader>
 
 					<div className={"py-4 bg-white flex rounded"}>
@@ -297,81 +265,102 @@ const TableQrCode: React.FC<{
 };
 
 const PosBillTable: React.FC<{
-	billId?: string;
-	billLabel: string;
-	placeholder: string;
-	defaultCurrency: Currency;
+	billId?: Id;
 	table?: {
-		id: string;
-		name: NonEmptyString;
-		qrCode?: NonEmptyString;
+		id: Id;
+		label: NonEmptyString255;
+		// qrCode?: NonEmptyString255;
 	};
 }> = (props) => {
-	const setPos = useSetAtom(posAtom);
+	const { t } = useTranslation();
+	const { setBillTable } = useBill();
+	const tableQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("table")
+					.select(["table.id as id", "table.label as label"] as const)
+					.where("table.isDeleted", "is not", sqliteTrue)
+					.where("table.label", "is not", null)
+					.$narrowType<{
+						label: NotNull;
+					}>(),
+			),
+		[],
+	);
+	const { data: items } = useEvoluQuery(tableQuery);
+	const tableCodesQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("tableCode")
+					.select([
+						"tableCode.id as id",
+						"tableCode.code as code",
+						"tableCode.tableId as tableId",
+					] as const)
+					.where("tableCode.isDeleted", "is not", sqliteTrue)
+					.where("tableCode.code", "is not", null)
+					.where("tableCode.tableId", "is not", null)
+					.$narrowType<{
+						code: NotNull;
+						tableId: NotNull;
+					}>(),
+			),
+		[],
+	);
+	const { data: tableCodes } = useEvoluQuery(tableCodesQuery);
 
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(tableStorage, {
-		limit: 5,
-	});
-
-	const table =
-		items && props.table
-			? items.find((item) => item.value.id === props.table?.id)
-			: undefined;
-	const tableQrCode = table && table.value.qrCodes && table.value.qrCodes[0];
+	const table = items.find((item) => item.id === props.table?.id);
+	const tableQrCode = table
+		? tableCodes.find((tableCode) => tableCode.tableId === table.id)
+		: undefined;
 
 	return (
 		<div className={"flex gap-2"}>
 			<ComboboxDefault
 				items={(items ?? []).map((item) => ({
 					value: {
-						id: item.value.id,
-						name: item.value.label,
+						id: item.id,
+						name: item.label,
 					},
-					label: item.value.label,
+					label: item.label,
 				}))}
-				placeholder={"Select a table"}
-				value={props.table ?? null}
+				placeholder={t("pos:bill.selectTable")}
+				value={
+					props.table
+						? {
+								id: props.table.id,
+								name: props.table.label,
+							}
+						: null
+				}
 				compareFunction={(a, b) => a?.id === b?.id}
 				formatCustomValue={(value) => value.name}
 				onChange={(value) => {
-					setPos((prev) => {
-						if (props.billId === undefined) {
-							return prev;
-						}
+					if (props.billId === undefined) {
+						return;
+					}
 
-						return {
-							...prev,
-							bills: {
-								...prev.bills,
-								[props.billId]: {
-									...(prev.bills[props.billId] ??
-										createEmptyBill({
-											defaultCurrency: props.defaultCurrency,
-										})),
-									table: value ?? undefined,
-								},
-							},
-						};
+					setBillTable({
+						billId: props.billId,
+						tableId: (value?.id as Id | undefined) ?? null,
 					});
 				}}
 			/>
-			<TableQrCode tableQrCode={tableQrCode ? tableQrCode.id : undefined} />
+			<TableQrCode tableQrCode={tableQrCode?.code} />
 		</div>
 	);
 };
 
 const PayButton: FC<{
-	bill: Pos["bills"][string];
-	billId: string;
-	total: number;
+	bill: Pos["bills"][Id];
+	billId: Id;
+	total: Integer;
 }> = (props) => {
+	const { t } = useTranslation();
 	const { ndk } = useNostr();
-	const storageDeps = useStorageDeps();
+	const evolu = useEvolu();
 	const [isSaving, startTransition] = useTransition();
 	const { deleteBill } = useBill();
 	const asyncRoutePush = useAsyncRoutePush();
@@ -382,127 +371,172 @@ const PayButton: FC<{
 			disabled={props.bill.items.length === 0 || isSaving}
 			onClick={() => {
 				startTransition(async () => {
-					const { data: billingSettingsRows } =
-						await billingSettingsStorage.select(storageDeps, {
-							key: null,
-							limit: 1,
-						});
+					// const billingSettingsRows = await evolu.loadQuery(
+					// 	createQuery((db) =>
+					// 		db
+					// 			.selectFrom("billingSettings")
+					// 			.selectAll()
+					// 			.where("isDeleted", "is not", sqliteTrue)
+					// 			.where("id", "=", createIdFromString("")),
+					// 	),
+					// );
+					//
+					// const billingSettings = billingSettingsRows[0];
+					//
+					// const [bankTransferCzRows, lnZapRows] = await Promise.all([
+					// 	(async () => {
+					// 		if (
+					// 			!billingSettings ||
+					// 			!billingSettings.defaultBankTransferCzKey
+					// 		) {
+					// 			return [];
+					// 		}
+					//
+					// 		return await evolu.loadQuery(
+					// 			createQuery((db) =>
+					// 				db
+					// 					.selectFrom("account")
+					// 					.leftJoin("accountIban", "accountIban.id", "account.id")
+					// 					.select([
+					// 						"account._tag as _tag",
+					// 						"accountIban.iban as iban",
+					// 					] as const)
+					// 					.where("account.isDeleted", "is not", sqliteTrue)
+					// 					.where(
+					// 						"account.id",
+					// 						"=",
+					// 						billingSettings.defaultBankTransferCzKey as Id,
+					// 					),
+					// 			),
+					// 		);
+					// 	})(),
+					// 	(async () => {
+					// 		if (!billingSettings || !billingSettings.defaultLnZapKey) {
+					// 			return [];
+					// 		}
+					//
+					// 		return await evolu.loadQuery(
+					// 			createQuery((db) =>
+					// 				db
+					// 					.selectFrom("account")
+					// 					.leftJoin("accountLud16", "accountLud16.id", "account.id")
+					// 					.select([
+					// 						"account._tag as _tag",
+					// 						"accountLud16.lud16 as lud16",
+					// 					] as const)
+					// 					.where("account.isDeleted", "is not", sqliteTrue)
+					// 					.where(
+					// 						"account.id",
+					// 						"=",
+					// 						billingSettings.defaultLnZapKey as Id,
+					// 					),
+					// 			),
+					// 		);
+					// 	})(),
+					// ]);
+					//
+					// const paymentOptions: StaticOfflinePayment["paymentOptions"] = [
+					// 	{
+					// 		type: "cash",
+					// 	},
+					// ];
+					//
+					// (() => {
+					// 	const value = bankTransferCzRows[0];
+					// 	if (value === undefined) {
+					// 		return;
+					// 	}
+					//
+					// 	if (value._tag !== "accountIban" || !value.iban) {
+					// 		return;
+					// 	}
+					//
+					// 	paymentOptions.push({
+					// 		type: "bankTransferCZ",
+					// 		iban: value.iban,
+					// 		variableSymbol: "1",
+					// 	});
+					// })();
+					//
+					// const paymentSigner = NDKPrivateKeySigner.generate();
+					// const paymentNdk = new NDK({
+					// 	explicitRelayUrls: ndk.explicitRelayUrls,
+					// 	signer: paymentSigner,
+					// }) as NDK & {
+					// 	signer: NDKSigner;
+					// 	activeUser: NDKUser;
+					// };
+					//
+					// await paymentNdk.connect();
+					//
+					// if (paymentNdk.activeUser === undefined) {
+					// 	return;
+					// }
+					//
+					// await (async () => {
+					// 	const value = lnZapRows[0];
+					// 	if (value === undefined) {
+					// 		return undefined;
+					// 	}
+					//
+					// 	if (value._tag !== "accountLud16" || !value.lud16) {
+					// 		return;
+					// 	}
+					//
+					// 	const btcAmount = await currencyConverter.convert({
+					// 		amount: props.total,
+					// 		sourceCurrency: props.bill.currency,
+					// 		targetCurrency: Currency.BTC,
+					// 	});
+					//
+					// 	if (btcAmount === null) {
+					// 		return;
+					// 	}
+					//
+					// 	const zapPaymentResult = await createZapPayment({
+					// 		amountInSats: btcAmount,
+					// 		lud16: value.lud16,
+					// 		ndk,
+					// 		paymentNdk,
+					// 	});
+					//
+					// 	paymentOptions.push({
+					// 		type: "lnZap",
+					// 		amount: btcAmount,
+					// 		lnInvoice: zapPaymentResult.lnInvoice,
+					// 		walletPubkey: zapPaymentResult.walletPubkey,
+					// 		expirationIn: extractExpirationFromLightningInvoice(
+					// 			zapPaymentResult.lnInvoice,
+					// 		),
+					// 	});
+					// })();
+					//
+					// const paymentData: StaticOfflinePayment = {
+					// 	bill: {
+					// 		currency: props.bill.currency,
+					// 		allowTip: false,
+					// 		items: props.bill.items.map((item) => ({
+					// 			id: item.id,
+					// 			price: item.price,
+					// 			label: item.name,
+					// 			quantity: item.quantity,
+					// 		})),
+					// 	},
+					// 	paymentOptions,
+					// 	privateKey: NonEmptyString(paymentSigner.privateKey),
+					// };
 
-					const billingSettings = billingSettingsRows[0];
-
-					const [{ data: bankTransferCzRows }, { data: lnZapRows }] =
-						await Promise.all([
-							billingSettings && billingSettings.value.defaultBankTransferCzKey
-								? accountStorage.select(storageDeps, {
-										key: billingSettings.value.defaultBankTransferCzKey,
-										limit: 1,
-									})
-								: { data: [] },
-							billingSettings && billingSettings.value.defaultLnZapKey
-								? accountStorage.select(storageDeps, {
-										key: billingSettings.value.defaultLnZapKey,
-										limit: 1,
-									})
-								: { data: [] },
-						]);
-
-					const paymentOptions: StaticOfflinePayment["paymentOptions"] = [
-						{
-							type: "cash",
-						},
-					];
-
-					(() => {
-						const value = bankTransferCzRows[0];
-						if (value === undefined) {
-							return;
-						}
-
-						const result = value.value;
-						if (result._tag !== "iban") {
-							return;
-						}
-
-						paymentOptions.push({
-							type: "bankTransferCZ",
-							iban: result.iban,
-							variableSymbol: "1",
-						});
-					})();
-
-					const paymentSigner = NDKPrivateKeySigner.generate();
-					const paymentNdk = new NDK({
-						explicitRelayUrls: ndk.explicitRelayUrls,
-						signer: paymentSigner,
-					}) as NDK & {
-						signer: NDKSigner;
-						activeUser: NDKUser;
-					};
-
-					await paymentNdk.connect();
-
-					if (paymentNdk.activeUser === undefined) {
-						return;
-					}
-
-					await (async () => {
-						const value = lnZapRows[0];
-						if (value === undefined) {
-							return undefined;
-						}
-
-						const result = value.value;
-						if (result._tag !== "lud16") {
-							return;
-						}
-
-						const btcAmount = await currencyConverter.convert({
-							amount: props.total,
-							sourceCurrency: props.bill.currency,
-							targetCurrency: Currency.BTC,
-						});
-
-						if (btcAmount === null) {
-							return;
-						}
-
-						const zapPaymentResult = await createZapPayment({
-							amountInBtc: btcAmount,
-							lud16: result.lud16,
-							ndk,
-							paymentNdk,
-						});
-
-						paymentOptions.push({
-							type: "lnZap",
-							amount: btcAmount,
-							lnInvoice: zapPaymentResult.lnInvoice,
-							walletPubkey: zapPaymentResult.walletPubkey,
-							expirationIn: zapPaymentResult.expirationIn,
-						});
-					})();
-
-					const id = Uuid7.random();
-					const paymentData: StaticOfflinePayment = {
-						bill: {
-							currency: props.bill.currency,
-							allowTip: false,
-							items: props.bill.items.map((item) => ({
-								id: item.id,
-								price: item.price,
-								label: item.name,
-								quantity: item.quantity,
-							})),
-						},
-						paymentOptions,
-						privateKey: paymentSigner.privateKey,
-					};
-
-					await createPayment({
-						paymentNdk,
+					const id = await createPayment({
+						evolu,
 						ndk,
-						paymentData,
-						paymentId: id,
+						payment: {
+							id: createId({
+								randomBytes: createRandomBytes(),
+							}),
+							currency: props.bill.currency,
+						},
+						totalAmount: props.total as NonNegativeInteger,
+						tipAmount: null,
 					});
 
 					asyncRoutePush(
@@ -517,13 +551,13 @@ const PayButton: FC<{
 				<Loader2 className="animate-spin" />
 			) : (
 				<>
-					Pay{" "}
+					{t("pos:bill.pay")}{" "}
 					<motion.span
 						key={props.total}
 						initial={{ scale: 1.1, opacity: 0.5 }}
 						animate={{ scale: 1, opacity: 1 }}
 					>
-						{formatAmount(props.total, props.bill.currency)}
+						{formatMoney({ value: props.total, currency: props.bill.currency })}
 					</motion.span>
 				</>
 			)}
@@ -532,41 +566,47 @@ const PayButton: FC<{
 };
 
 export const PosBill: React.FC<{
-	billId?: string;
-	bill?: Pos["bills"][string];
-	defaultCurrency: Currency;
+	billId: Id | undefined;
+	bill?: Pos["bills"][Id];
 	ref?: React.Ref<HTMLDivElement>;
 }> = (props) => {
-	const setPos = useSetAtom(posAtom);
-	const totalPerCurrency = new Map<Currency, number>();
+	const { t } = useTranslation();
+	const { setBillCurrency, setBillRate } = useBill();
+	const totalPerCurrency = new Map<Currency, Integer>();
 	let hasDifferentCurrency = false;
+	const billId = props.billId;
 
 	for (const item of props.bill?.items ?? []) {
 		hasDifferentCurrency =
-			hasDifferentCurrency || item.currency !== props.bill?.currency;
+			hasDifferentCurrency || item.item.currency !== props.bill?.currency;
 
 		totalPerCurrency.set(
-			item.currency,
-			(totalPerCurrency.get(item.currency) ?? 0) + item.price * item.quantity,
+			item.item.currency,
+			Integer(
+				(totalPerCurrency.get(item.item.currency) ?? 0) +
+					Math.round(item.item.price * item.quantity),
+			),
 		);
 	}
 
 	const total =
 		props.bill === undefined
-			? 0
-			: totalPerCurrency
-					.entries()
-					.reduce(
-						(acc, [currency, value]) =>
-							value / (props.bill?.rates[currency] ?? 1) + acc,
-						0,
-					);
+			? Integer(0)
+			: Integer(
+					totalPerCurrency.entries().reduce((acc, [currency, value]) => {
+						const rate = props.bill?.rates.find(
+							(rate) => rate.currency === currency,
+						);
+
+						return Math.round(value / (rate?.rate ?? 1)) + acc;
+					}, 0),
+				);
 
 	return (
 		<>
 			{/* Right Panel - Bill */}
 			<div className="space-y-4" ref={props.ref}>
-				<ResponsiveCard className="h-full flex flex-col w-full md:w-sm lg:w-md">
+				<ResponsiveCard className="flex flex-col w-full md:w-sm lg:w-md">
 					<CardContent className="flex-1 flex flex-col">
 						{/* Cart Items */}
 						<div className="flex-1 overflow-hidden space-y-2">
@@ -574,57 +614,24 @@ export const PosBill: React.FC<{
 								<>
 									<PosBillName
 										billId={props.billId}
-										billLabel={props.bill !== undefined ? props.bill.label : ""}
-										defaultCurrency={props.defaultCurrency}
+										billLabel={props.bill?.label ?? ""}
 										placeholder={`# ${props.bill?.id ?? 0}`}
 									/>
 
 									<PosBillTable
 										billId={props.billId}
-										billLabel={props.bill !== undefined ? props.bill.label : ""}
-										defaultCurrency={props.defaultCurrency}
-										table={props.bill?.table}
-										placeholder={`# ${props.bill?.id ?? 0}`}
+										table={props.bill?.table ?? undefined}
 									/>
 								</>
 							)}
 
-							{props.bill === undefined || props.bill.items.length === 0 ? (
-								<p className="text-center">No items in cart</p>
+							{props.bill === undefined ||
+							props.bill.items.length === 0 ||
+							billId === undefined ? (
+								<p className="text-center">{t("pos:bill.noItemsInCart")}</p>
 							) : (
-								props.bill.items.map((item, index) => (
-									<Item
-										key={item.id}
-										billId={props.billId ?? ""}
-										itemIndex={index}
-										item={item}
-										onRemove={() => {
-											return setPos((prev) => {
-												if (props.billId === undefined) {
-													return prev;
-												}
-
-												return {
-													...prev,
-													bills: {
-														...prev.bills,
-														[props.billId]: {
-															...prev.bills[props.billId],
-															items: [
-																...prev.bills[props.billId].items.slice(
-																	0,
-																	index,
-																),
-																...prev.bills[props.billId].items.slice(
-																	index + 1,
-																),
-															],
-														},
-													},
-												};
-											});
-										}}
-									></Item>
+								props.bill.items.map((item) => (
+									<Item key={item.id} billId={billId} item={item}></Item>
 								))
 							)}
 						</div>
@@ -637,7 +644,7 @@ export const PosBill: React.FC<{
 									<Separator className="my-4" />
 									<div className="space-y-2">
 										<div className="flex justify-between text-md font-bold">
-											<span>Currency:</span>
+											<span>{t("pos:bill.currency")}</span>
 											<span>
 												<Select
 													value={props.bill.currency}
@@ -648,22 +655,13 @@ export const PosBill: React.FC<{
 														if (!valueResult.success) {
 															return;
 														}
+														if (props.billId === undefined) {
+															return;
+														}
 
-														setPos((prev) => {
-															if (props.billId === undefined) {
-																return prev;
-															}
-
-															return {
-																...prev,
-																bills: {
-																	...prev.bills,
-																	[props.billId]: {
-																		...prev.bills[props.billId],
-																		currency: valueResult.data,
-																	},
-																},
-															};
+														setBillCurrency({
+															billId: props.billId,
+															currency: valueResult.data,
 														});
 													}}
 												>
@@ -688,13 +686,15 @@ export const PosBill: React.FC<{
 												<Separator className="my-4" />
 												<div className="space-y-2">
 													<div className="flex justify-between text-lg font-bold">
-														<span>Total ({currency}):</span>
+														<span>
+															{t("pos:bill.totalPerCurrency", { currency })}
+														</span>
 														<motion.span
 															key={total}
 															initial={{ scale: 1.1, opacity: 0.5 }}
 															animate={{ scale: 1, opacity: 1 }}
 														>
-															{formatAmount(total, currency)}
+															{formatMoney({ value: total, currency })}
 														</motion.span>
 													</div>
 												</div>
@@ -703,38 +703,29 @@ export const PosBill: React.FC<{
 													currency !== props.bill.currency && (
 														<div className="space-y-2">
 															<div className="flex justify-between text-md font-bold">
-																<span>Rate:</span>
+																<span>{t("pos:bill.rate")}</span>
 																<span>
 																	<Input
 																		className={"text-right"}
 																		variant={"sm"}
 																		type={"number"}
 																		value={
-																			props.bill?.rates[currency]?.toString() ??
-																			"1"
+																			props.bill?.rates
+																				.find(
+																					(rate) => rate.currency === currency,
+																				)
+																				?.rate.toString() ?? "1"
 																		}
 																		onChange={(e) => {
 																			const value = e.target.value;
+																			if (props.billId === undefined) {
+																				return;
+																			}
 
-																			setPos((prev) => {
-																				if (props.billId === undefined) {
-																					return prev;
-																				}
-
-																				return {
-																					...prev,
-																					bills: {
-																						...prev.bills,
-																						[props.billId]: {
-																							...prev.bills[props.billId],
-																							rates: {
-																								...prev.bills[props.billId]
-																									.rates,
-																								[currency]: Number(value),
-																							},
-																						},
-																					},
-																				};
+																			setBillRate({
+																				billId: props.billId,
+																				currency,
+																				rate: Number(value),
 																			});
 																		}}
 																	/>
@@ -748,13 +739,16 @@ export const PosBill: React.FC<{
 									<Separator className="my-4" />
 									<div className="space-y-2">
 										<div className="flex justify-between text-lg font-bold">
-											<span>Total:</span>
+											<span>{t("pos:bill.total")}</span>
 											<motion.span
 												key={total}
 												initial={{ scale: 1.1, opacity: 0.5 }}
 												animate={{ scale: 1, opacity: 1 }}
 											>
-												{formatAmount(total, props.bill.currency)}
+												{formatMoney({
+													value: total,
+													currency: props.bill.currency,
+												})}
 											</motion.span>
 										</div>
 									</div>

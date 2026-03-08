@@ -1,241 +1,331 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
-import { pick } from "es-toolkit";
+import {
+	createId,
+	createRandomBytes,
+	type StandardSchemaV1,
+} from "@evolu/common";
+import type { SystemColumns } from "@evolu/common/local-first";
+import { merge, omit, pick } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
-import { useMemo } from "react";
-import { v7 } from "uuid";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { PartialDeep, Simplify } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { assertNever } from "@/lib/type-utils";
+import { useEvolu } from "@/hooks/use-evolu";
+import type { EvoluSchema } from "@/lib/evolu";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	EmailSchema,
 	FiatCurrency,
 	IbanSchema,
-	NonEmptyString,
-	NonEmptyStringSchema,
+	NonEmptyString255,
+	NonEmptyString255Schema,
 	NwcCredentialsSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
-} from "@/lib/types";
-import { accountStorage } from "@/storages/account-storage";
+} from "@/lib/shared/types";
+import { assertNever } from "@/lib/shared/utils/type";
 
-const baseItemSchema = z.object({
-	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	_tag: z.enum(["iban", "lud16", "spark", "nwc", "cash_register"]),
-	iban: z.string(),
-	lud16: z.string(),
-	credentials: z.string(),
+const baseAccountSparkSchema = z.object({
 	mnemonic: z.string(),
 	mnemonicVariant: z.enum(["manual", "new"]),
-	currency: z.enum(FiatCurrency).nullable(),
 });
 
-const itemSchema = z.discriminatedUnion("_tag", [
-	baseItemSchema.extend({
-		_tag: z.literal("iban"),
-		iban: StringToUndefinedStringSchema.transform((value) =>
-			value ? value.replace(/ /g, "") : value,
-		).pipe(IbanSchema),
-		currency: z.enum(FiatCurrency).nullable().pipe(z.enum(FiatCurrency)),
+const baseAccountSchema = z.object({
+	id: TableIdSchema,
+	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+	accountIban: z.object({
+		iban: z.string(),
+		currency: z.enum(FiatCurrency).nullable(),
 	}),
-	baseItemSchema.extend({
-		_tag: z.literal("lud16"),
-		lud16: StringToNullableStringSchema.pipe(EmailSchema),
+	accountLud16: z.object({
+		lud16: z.string(),
 	}),
-	z.discriminatedUnion("mnemonicVariant", [
-		baseItemSchema.extend({
-			_tag: z.literal("spark"),
-			mnemonicVariant: z.literal("manual"),
-			mnemonic: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	accountSpark: z.object({
+		mnemonic: z.string(),
+		mnemonicVariant: z.enum(["manual", "new"]),
+	}),
+	accountNwc: z.object({
+		credentials: z.string(),
+	}),
+	accountCashRegister: z.object({
+		currency: z.enum(FiatCurrency).nullable(),
+	}),
+});
+
+const accountSchema = z.discriminatedUnion("_tag", [
+	baseAccountSchema.extend({
+		_tag: z.literal("accountIban"),
+		accountIban: z.object({
+			iban: StringToUndefinedStringSchema.transform((value) =>
+				value ? value.replace(/ /g, "") : value,
+			).pipe(IbanSchema),
+			currency: z.enum(FiatCurrency).nullable().pipe(z.enum(FiatCurrency)),
 		}),
-		baseItemSchema.extend({
-			_tag: z.literal("spark"),
-			mnemonicVariant: z.literal("new"),
-		}),
-	]),
-	baseItemSchema.extend({
-		_tag: z.literal("nwc"),
-		credentials: StringToNullableStringSchema.pipe(NwcCredentialsSchema),
 	}),
-	baseItemSchema.extend({
-		_tag: z.literal("cash_register"),
-		currency: z.enum(FiatCurrency).nullable().pipe(z.enum(FiatCurrency)),
+	baseAccountSchema.extend({
+		_tag: z.literal("accountLud16"),
+		accountLud16: z.object({
+			lud16: StringToNullableStringSchema.pipe(EmailSchema),
+		}),
+	}),
+	baseAccountSchema.extend({
+		_tag: z.literal("accountSpark"),
+		accountSpark: z.discriminatedUnion("mnemonicVariant", [
+			baseAccountSparkSchema.extend({
+				mnemonicVariant: z.literal("manual"),
+				mnemonic: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+			}),
+			baseAccountSparkSchema.extend({
+				mnemonicVariant: z.literal("new"),
+			}),
+		]),
+	}),
+	baseAccountSchema.extend({
+		_tag: z.literal("accountNwc"),
+		accountNwc: z.object({
+			credentials: StringToNullableStringSchema.pipe(NwcCredentialsSchema),
+		}),
+	}),
+	baseAccountSchema.extend({
+		_tag: z.literal("accountCashRegister"),
+		accountCashRegister: z.object({
+			currency: z.enum(FiatCurrency).nullable().pipe(z.enum(FiatCurrency)),
+		}),
 	}),
 ]);
 
-const itemDefaultValues = {
-	name: "",
-	_tag: "iban",
-	iban: "",
-	lud16: "",
-	credentials: "",
-	mnemonicVariant: "new",
-	mnemonic: "",
-	currency: null,
-} satisfies z.input<typeof itemSchema>;
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
 
-const tags = {
-	iban: "Bank account (IBAN)",
-	lud16: "BTC Wallet (LUD16)",
-	nwc: "NWC protocol (NostrWalletConnect)",
-	spark: "Spark bitcoin L2",
-	cash_register: "Cash register",
-} as const;
+const createItemDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		name: "",
+		_tag: "accountIban",
+		accountIban: {
+			iban: "",
+			currency: null,
+		},
+		accountLud16: {
+			lud16: "",
+		},
+		accountSpark: {
+			mnemonicVariant: "new",
+			mnemonic: "",
+		},
+		accountNwc: {
+			credentials: "",
+		},
+		accountCashRegister: {
+			currency: null,
+		},
+	}) satisfies z.input<typeof accountSchema>;
+
+const tagKeys = [
+	"accountIban",
+	"accountLud16",
+	"accountNwc",
+	"accountSpark",
+	"accountCashRegister",
+] as const;
 
 const createComponents = (
-	options: { tagFilter?: (keyof typeof tags)[] } = {},
+	t: TFunction,
+	options: { tagFilter?: (typeof tagKeys)[number][] } = {},
 ) =>
-	createAutoFormLayout(itemSchema, ({ builder }) => ({
-		...builder.magicInput("_tag").select({
-			label: "Protocol",
-			variant: "toggle",
-			allowEmpty: false,
-			values: options.tagFilter ? pick(tags, options.tagFilter) : tags,
+	createAutoFormLayout(accountSchema, ({ builder }) => ({
+		...builder.magicInput("id").text({
+			type: "hidden",
 		}),
 		...builder.magicInput("name").text({
-			label: "Name",
+			label: t("accounts:form.account-form.label.name"),
 		}),
-		...builder.when("_tag", "iban", {
-			...builder.magicInput("iban").text({
-				label: "IBAN",
-			}),
-			...builder.magicInput("currency").select({
-				values: FiatCurrency,
-				allowEmpty: false,
-				label: "Currency",
-			}),
-		}),
-		...builder.when("_tag", "lud16", {
-			...builder.magicInput("lud16").text({
-				label: "LUD16",
-			}),
-		}),
-		...builder.when("_tag", "nwc", {
-			...builder.magicInput("credentials").textarea({
-				label: "Credentials",
-				rows: 5,
-				secretContent: true,
-			}),
-		}),
-		...builder.when("_tag", "spark", {
-			...builder.magicInput("mnemonicVariant").select({
-				label: "Seed",
-				allowEmpty: false,
-				values: {
-					new: "Generate new random seed",
-					manual: "Use existing seed",
+		...builder.magicInput("_tag").select({
+			label: t("accounts:form.account-form.label.protocol"),
+			variant: "toggle",
+			allowEmpty: false,
+			values: pick(
+				{
+					accountIban: t("accounts:form.account-form.tag.account-iban"),
+					accountLud16: t("accounts:form.account-form.tag.account-lud16"),
+					accountNwc: t("accounts:form.account-form.tag.account-nwc"),
+					accountSpark: t("accounts:form.account-form.tag.account-spark"),
+					accountCashRegister: t(
+						"accounts:form.account-form.tag.account-cash-register",
+					),
 				},
-			}),
-			...builder.when("mnemonicVariant", "manual", {
-				...builder.magicInput("mnemonic").textarea({
-					label: "Mnemonic",
-					copyToClipboard: true,
-					secretContent: true,
-					rows: 4,
+				options.tagFilter ?? [...tagKeys],
+			),
+		}),
+
+		...builder.nestedField("accountIban", ({ builder }) => ({
+			...builder.when("_tag", "accountIban", {
+				...builder.magicInput("iban").text({
+					label: t("accounts:form.account-form.label.iban"),
+				}),
+				...builder.magicInput("currency").select({
+					values: FiatCurrency,
+					allowEmpty: false,
+					label: t("accounts:form.account-form.label.currency"),
 				}),
 			}),
-		}),
-		...builder.when("_tag", "cash_register", {
-			...builder.magicInput("currency").select({
-				values: FiatCurrency,
-				allowEmpty: false,
-				label: "Currency",
+		})),
+
+		...builder.nestedField("accountLud16", ({ builder }) => ({
+			...builder.when("_tag", "accountLud16", {
+				...builder.magicInput("lud16").text({
+					label: t("accounts:form.account-form.label.lud16"),
+				}),
 			}),
-		}),
+		})),
+
+		...builder.nestedField("accountNwc", ({ builder }) => ({
+			...builder.when("_tag", "accountNwc", {
+				...builder.magicInput("credentials").textarea({
+					label: t("accounts:form.account-form.label.credentials"),
+					rows: 5,
+					secretContent: true,
+				}),
+			}),
+		})),
+
+		...builder.nestedField("accountSpark", ({ builder }) => ({
+			...builder.when("_tag", "accountSpark", {
+				...builder.magicInput("mnemonicVariant").select({
+					label: t("accounts:form.account-form.label.seed"),
+					allowEmpty: false,
+					values: {
+						new: t("accounts:form.account-form.seed-option.new"),
+						manual: t("accounts:form.account-form.seed-option.manual"),
+					},
+				}),
+				...builder.when("accountSpark.mnemonicVariant", "manual", {
+					...builder.magicInput("mnemonic").textarea({
+						label: t("accounts:form.account-form.label.mnemonic"),
+						copyToClipboard: true,
+						secretContent: true,
+						rows: 4,
+					}),
+				}),
+			}),
+		})),
+
+		...builder.nestedField("accountCashRegister", ({ builder }) => ({
+			...builder.when("_tag", "accountCashRegister", {
+				...builder.magicInput("currency").select({
+					values: FiatCurrency,
+					allowEmpty: false,
+					label: t("accounts:form.account-form.label.currency"),
+				}),
+			}),
+		})),
 	}));
 
 export const AccountForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof itemSchema> & { id: string }>;
+	defaultValues?: PartialDeep<z.input<typeof accountSchema>>;
 	onSuccess?: (newEventId: string) => unknown;
-	tagFilter?: (keyof typeof tags)[];
+	tagFilter?: (typeof tagKeys)[number][];
 }> = (params) => {
+	const { t } = useTranslation();
+	const [defaultValues] = useState(() => {
+		return merge(createItemDefaultValues(), params.defaultValues ?? {});
+	});
+	const evolu = useEvolu();
 	const components = useMemo(
-		() => createComponents({ tagFilter: params.tagFilter }),
-		[params.tagFilter],
+		() => createComponents(t, { tagFilter: params.tagFilter }),
+		[params.tagFilter, t],
 	);
-	const storageDeps = useStorageDeps();
-	const form = useActionForm(itemSchema, {
-		defaultValues: {
-			...itemDefaultValues,
-			...(params.defaultValues ?? {}),
-		},
+	const form = useActionForm(accountSchema, {
+		defaultValues,
 		saveAction: async (values) => {
-			const id =
-				params.defaultValues && params.defaultValues.id
-					? params.defaultValues.id
-					: v7();
-
-			const sparkValues = await (async () => {
-				if (values._tag === "iban") {
-					return {
-						_tag: values._tag,
-						iban: values.iban,
-						currency: values.currency,
-					} as const;
-				}
-
-				if (values._tag === "lud16") {
-					return {
-						_tag: values._tag,
-						lud16: values.lud16,
-					} as const;
-				}
-
-				if (values._tag === "nwc") {
-					return {
-						_tag: values._tag,
-						credentials: values.credentials,
-					} as const;
-				}
-
-				if (values._tag === "cash_register") {
-					return {
-						_tag: values._tag,
-						currency: values.currency,
-					} as const;
-				}
-
-				if (values._tag === "spark") {
-					if (values.mnemonicVariant === "manual") {
-						return {
-							_tag: "spark",
-							mnemonic: values.mnemonic,
-						} as const;
-					}
-
-					const { mnemonic } = await SparkWallet.initialize({
-						options: {
-							network: "MAINNET",
+			const upserts: {
+				[key in keyof EvoluSchema]?: Simplify<
+					Omit<
+						{
+							[key2 in keyof EvoluSchema[key]]: StandardSchemaV1.InferOutput<
+								// @ts-expect-error
+								EvoluSchema[key][key2]
+							>;
 						},
-					});
+						keyof SystemColumns | "id"
+					>
+				>;
+			} = {};
+			if (values._tag === "accountIban") {
+				upserts.accountIban = {
+					iban: values.accountIban.iban,
+					currency: values.accountIban.currency,
+				};
+			} else if (values._tag === "accountLud16") {
+				upserts.accountLud16 = {
+					lud16: values.accountLud16.lud16,
+				};
+			} else if (values._tag === "accountNwc") {
+				upserts.accountNwc = {
+					credentials: values.accountNwc.credentials,
+				};
+			} else if (values._tag === "accountSpark") {
+				const mnemonic =
+					values.accountSpark.mnemonicVariant === "manual"
+						? values.accountSpark.mnemonic
+						: (
+								await SparkWallet.initialize({
+									options: { network: "MAINNET" },
+								})
+							).mnemonic;
 
-					if (mnemonic === undefined) {
-						console.error("Unexpected mnemonic value");
-						return;
-					}
-
-					return {
-						_tag: "spark",
-						mnemonic: NonEmptyString(mnemonic),
-					} as const;
+				if (!mnemonic) {
+					throw new Error("Unexpected mnemonic value");
 				}
 
+				upserts.accountSpark = {
+					mnemonic: NonEmptyString255(mnemonic),
+				};
+			} else if (values._tag === "accountCashRegister") {
+				upserts.accountCashRegister = {
+					currency: values.accountCashRegister.currency,
+				};
+			} else {
 				assertNever(values);
-			})();
-
-			if (sparkValues === undefined) {
-				return;
 			}
 
-			const { eventId } = await accountStorage.insertOrUpdate(storageDeps, id, {
-				id,
-				name: values.name,
-				...sparkValues,
-			});
+			const createIdDeps = {
+				randomBytes: createRandomBytes(),
+			};
+			const id = values.id ?? createId(createIdDeps);
+			const valuesCopy = omit(values, [
+				"accountIban",
+				"accountLud16",
+				"accountNwc",
+				"accountSpark",
+				"accountCashRegister",
+			]);
 
-			if (params.onSuccess) {
-				params.onSuccess(eventId);
+			evolu.upsert(
+				"account",
+				{
+					...valuesCopy,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
+					},
+				},
+			);
+
+			for (const [key, values] of Object.entries(upserts)) {
+				evolu.upsert(key as keyof EvoluSchema, {
+					id,
+					...values,
+				});
 			}
 		},
 	});

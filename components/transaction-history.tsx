@@ -1,35 +1,39 @@
+import { type Id, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useStorageSubscription } from "@/hooks/use-storage-subscription";
-import { formatAmount } from "@/lib/format-utils";
-import type { Uuid7 } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import {
-	paymentFinishedStorage,
-	paymentInitStorage,
-} from "@/storages/payment-progress-storage";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
+import { cn } from "@/lib/shared/ui/cn";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 const PaymentStatus: FC<{
-	paymentId: Uuid7;
+	paymentId: Id;
 }> = (props) => {
-	const { data: items, eose } = useStorageSubscription(paymentFinishedStorage, {
-		limit: 15,
-		key: props.paymentId,
-	});
-
-	const item = items && items[0];
+	const query = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("paymentFinished")
+					.select(["paymentFinished.type as type"] as const)
+					.where("paymentFinished.isDeleted", "is not", sqliteTrue)
+					.where("paymentFinished.id", "=", props.paymentId)
+					.limit(1),
+			),
+		[props.paymentId],
+	);
+	const { data: rows } = useEvoluQuery(query);
 
 	const [className, icon] = (() => {
-		if (!item && !eose) {
+		if (rows === undefined) {
 			return ["", <LoaderCircleIcon key={1} className="animate-spin size-4" />];
 		}
-
-		if (item && item.value.type === "success") {
+		if (rows[0]?.type === "success") {
 			return ["bg-green-500", <CheckIcon key={1} className="size-4" />];
 		}
-
 		return ["bg-red-700", <XIcon key={1} className="size-4" />];
 	})();
 
@@ -46,24 +50,43 @@ const PaymentStatus: FC<{
 };
 
 export const TransactionHistory = () => {
-	const {
-		data: items,
-		hasNextPage,
-		loadNextPage,
-		eose,
-	} = useStorageSubscription(paymentInitStorage, {
-		limit: 20,
-	});
+	const { t } = useTranslation();
+	const paymentInitQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("payment")
+					.select([
+						"id",
+						"createdAt",
+						"totalAmount",
+						"currency",
+						"tipAmount",
+						"direction",
+					] as const)
+					.where("payment.isDeleted", "is not", sqliteTrue)
+					.where("payment.currency", "is not", null)
+					.where("payment.totalAmount", "is not", null)
+					.where("payment.direction", "is not", null)
+					.orderBy("payment.createdAt", "desc")
+					.limit(20)
+					.$narrowType<{
+						currency: NotNull;
+						totalAmount: NotNull;
+						direction: NotNull;
+					}>(),
+			),
+		[],
+	);
+
+	const { data: items } = useEvoluQuery(paymentInitQuery);
+
+	const navItems = items.length === 0 ? ([false] as const) : items;
 
 	return (
 		<VerticalNav
-			title={"Transaction history"}
-			items={(items === undefined
-				? [null, null, null, null]
-				: items.length === 0
-					? ([false] as const)
-					: items
-			).map((item, index) => {
+			title={t("client:transactionHistory.title")}
+			items={navItems.map((item) => {
 				if (item === false) {
 					return {
 						disableAction: true,
@@ -75,74 +98,40 @@ export const TransactionHistory = () => {
 							>
 								<ReceiptIcon className="h-10 w-10 text-muted-foreground" />
 								<h2 className={"text-foreground text-lg"}>
-									Your transaction history is empty
+									{t("client:transactionHistory.empty.title")}
 								</h2>
 								<p className="text-balance text-sm text-muted-foreground text-center">
-									Your payment transactions will appear here once you make your
-									first purchase or sale.
+									{t("client:transactionHistory.empty.description")}
 								</p>
 							</div>
 						),
 					};
 				}
 
-				if (item === null) {
-					return {
-						className:
-							index === 1
-								? "opacity-70"
-								: index === 2
-									? "opacity-50"
-									: index === 3
-										? "opacity-25"
-										: index === 4
-											? "opacity-15"
-											: undefined,
-						label: (
-							<div className={cn("flex flex-col gap-2 items-start w-max")}>
-								<strong>
-									<Skeleton className={"h-5 w-[250px]"} />
-								</strong>
-								<div className={"flex justify-between w-full text-xs"}>
-									<span>
-										<Skeleton className={"h-4 w-[20px]"} />
-									</span>
-									&nbsp;&nbsp;•&nbsp;&nbsp;
-									<span className={"text-muted-foreground"}>
-										<Skeleton className={"h-4 w-[50px]"} />
-									</span>
-								</div>
-							</div>
-						),
-						icon: <Skeleton className="h-10 w-10 p-2" />,
-					};
-				}
-
-				const totalAmount =
-					item.value.items.reduce(
-						(acc, value) => acc + value.price * value.quantity,
-						0,
-					) + (item.value.tip ?? 0);
-
 				return {
 					label: (
 						<div className={"flex flex-col gap-2 items-start w-max"}>
-							<strong>{item.value.merchant?.name ?? "Unknown merchant"}</strong>
+							<strong>{t("client:transactionHistory.unknownMerchant")}</strong>
 							<div className={"flex justify-between w-full text-xs"}>
-								<span>{formatAmount(totalAmount, item.value.currency)}</span>
+								<span>
+									{formatMoney({
+										value: item.totalAmount,
+										currency: item.currency,
+									})}
+								</span>
 								&nbsp;&nbsp;•&nbsp;&nbsp;
 								<span className={"text-muted-foreground"}>
-									{new Date(item.createdAt * 1000).toLocaleString()}
+									{new Date(item.createdAt).toLocaleString()}
 								</span>
 							</div>
 						</div>
 					),
 					icon: (
 						<div className={"p-2"}>
-							<PaymentStatus paymentId={item.value.paymentId} />
+							<PaymentStatus paymentId={item.id} />
 						</div>
 					),
-					nextLink: `/history/detail?id=${encodeURIComponent(item.key ?? "")}`,
+					nextLink: `/history/detail?id=${encodeURIComponent(item.id)}`,
 				};
 			})}
 		/>
