@@ -32,7 +32,8 @@ const locale = {
         "postal-code": "PSČ",
         "country-code": "Kód země",
         "identification-number": "IČO",
-        "vat-number": "DIČ"
+        "vat-number": "DIČ",
+        "case-number": "Spisová značka"
       },
       "description": {
         "your-private-name-for-internal-purposes": "Váš interní název pro soukromé použití"

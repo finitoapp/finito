@@ -33,6 +33,7 @@ const locale = {
         "occurred-at": "Occurred at",
         "amount": "Amount",
         "note": "Note",
+        "currency": "Currency",
         "internal-transfer-group-id": "Internal transfer group ID",
         "source-type": "Source type",
         "source-id": "Source ID",

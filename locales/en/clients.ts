@@ -32,7 +32,8 @@ const locale = {
         "postal-code": "Postal Code",
         "country-code": "Country code",
         "identification-number": "Identification Number",
-        "vat-number": "VAT Number"
+        "vat-number": "VAT Number",
+        "case-number": "Case Number"
       },
       "description": {
         "your-private-name-for-internal-purposes": "Your private name for internal purposes"
