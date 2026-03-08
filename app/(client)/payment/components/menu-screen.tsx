@@ -126,8 +126,8 @@ export const MenuScreen: FC<{
 													].join(" ")}
 												>
 													{formatMoney({
-														value: item.priceValue,
-														currency: item.priceCurrency,
+														value: item.price,
+														currency: item.currency,
 													})}
 												</div>
 											</div>

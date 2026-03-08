@@ -3,7 +3,6 @@
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
-	type ColumnSort,
 	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
@@ -17,7 +16,6 @@ import {
 import { ArrowUpDown, ChevronDown } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { useEffectEvent, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -126,7 +124,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 		return columnVisibilityDriver.subscribe((columnVisibility) => {
 			setColumnVisibility(columnVisibility);
 		});
-	}, []);
+	}, [columnVisibilityDriver]);
 
 	// Handle external filtering
 	React.useEffect(() => {
@@ -138,24 +136,26 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 			}));
 
 			let unsubscribed = false;
-			const unsubscribe = onFilterChange({
-				filters,
-				sorting: sorting[0],
-				setData: (result) => {
-					// ignore when another fetchData has been called
-					if (unsubscribed) {
-						return;
-					}
+			const unsubscribe = onFilterChange
+				? onFilterChange({
+						filters,
+						sorting: sorting[0],
+						setData: (result) => {
+							// ignore when another fetchData has been called
+							if (unsubscribed) {
+								return;
+							}
 
-					setIsLoading(false);
-					setData(result.data);
-					setNextCursor(result.cursor);
-				},
-				pagination: {
-					cursor: currentCursor,
-					limit: pageSize,
-				},
-			});
+							setIsLoading(false);
+							setData(result.data);
+							setNextCursor(result.cursor);
+						},
+						pagination: {
+							cursor: currentCursor,
+							limit: pageSize,
+						},
+					})
+				: () => {};
 
 			return () => {
 				unsubscribed = true;
@@ -219,11 +219,11 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 												className="h-9 bg-transparent"
 											>
 												{filterColumn.title}
-												{column.getFilterValue() && (
+												{column.getFilterValue() ? (
 													<span className="ml-2 rounded-sm bg-primary px-1 text-xs text-primary-foreground">
 														1
 													</span>
-												)}
+												) : null}
 												<ChevronDown className="ml-2 h-4 w-4" />
 											</Button>
 										</DropdownMenuTrigger>

@@ -1,13 +1,6 @@
-"use client";
-
-import {
-	createId,
-	createRandomBytes,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
+import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { NotNull } from "kysely";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,15 +8,21 @@ import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
+	ConstantSymbolSchema,
+	Currency,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
+	NumberStringSchema,
+	SpecificSymbolSchema,
 	StringToNullableStringSchema,
-	StringToNumberSchema,
-	StringToUndefinedStringSchema,
+	VariableSymbolSchema,
 } from "@/lib/shared/types";
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 type AccountTag =
 	| "accountIban"
@@ -32,87 +31,78 @@ type AccountTag =
 	| "accountNwc"
 	| "accountCashRegister";
 
-const nullableNonEmptyStringSchema = StringToNullableStringSchema.pipe(
-	NonEmptyStringSchema.nullable(),
-);
-
 const transactionSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	accountId: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	occurredAt: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	amount: StringToNumberSchema.refine((value) => Number.isInteger(value), {
-		message: "Expected integer amount",
-	}).refine((value) => value !== 0, {
-		message: "Amount must not be zero",
-	}),
-	note: nullableNonEmptyStringSchema,
-	internalTransferGroupId: nullableNonEmptyStringSchema,
+	id: TableIdSchema,
+	accountId: z.string().pipe(TableIdSchema),
+	occurredAt: z.date(),
+	amount: StringToNullableStringSchema.pipe(NumberStringSchema),
+	currency: z.enum(Currency),
+	note: StringToNullableStringSchema.pipe(NumberStringSchema.nullable()),
+	internalTransferGroupId: StringToNullableStringSchema.pipe(
+		NonEmptyString255Schema,
+	),
 	transactionIban: z.object({
-		variableSymbol: nullableNonEmptyStringSchema,
-		constantSymbol: nullableNonEmptyStringSchema,
-		specificSymbol: nullableNonEmptyStringSchema,
-		bankReference: nullableNonEmptyStringSchema,
+		variableSymbol: StringToNullableStringSchema.pipe(VariableSymbolSchema),
+		constantSymbol: StringToNullableStringSchema.pipe(ConstantSymbolSchema),
+		specificSymbol: StringToNullableStringSchema.pipe(SpecificSymbolSchema),
+		bankReference: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	}),
 	transactionLud16: z.object({
-		lnInvoice: nullableNonEmptyStringSchema,
-		paymentHash: nullableNonEmptyStringSchema,
+		lnInvoice: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+		paymentHash: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
 	}),
 	transactionSpark: z.object({
-		sparkTransferId: nullableNonEmptyStringSchema,
-		lnInvoice: nullableNonEmptyStringSchema,
-		preImage: nullableNonEmptyStringSchema,
-		paymentHash: nullableNonEmptyStringSchema,
+		sparkTransferId: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+		lnInvoice: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+		preImage: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+		paymentHash: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
 	}),
 	transactionNwc: z.object({
-		nwcEventId: nullableNonEmptyStringSchema,
-		nwcRequestId: nullableNonEmptyStringSchema,
+		nwcEventId: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
+		nwcRequestId: StringToNullableStringSchema.pipe(
+			NonEmptyStringSchema.nullable(),
+		),
 	}),
 });
 
-const accountTags = [
-	"accountIban",
-	"accountLud16",
-	"accountSpark",
-	"accountNwc",
-	"accountCashRegister",
-] as const;
-
-const isAccountTag = (value: string): value is AccountTag =>
-	accountTags.includes(value as AccountTag);
-
-export const formatDateTimeLocalValue = (date: Date) => {
-	const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
-	return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
 };
 
-const itemDefaultValues = {
-	id: "",
-	accountId: "",
-	occurredAt: formatDateTimeLocalValue(new Date()),
-	amount: "0",
-	note: "",
-	internalTransferGroupId: "",
-	transactionIban: {
-		variableSymbol: "",
-		constantSymbol: "",
-		specificSymbol: "",
-		bankReference: "",
-	},
-	transactionLud16: {
-		lnInvoice: "",
-		paymentHash: "",
-	},
-	transactionSpark: {
-		sparkTransferId: "",
-		lnInvoice: "",
-		preImage: "",
-		paymentHash: "",
-	},
-	transactionNwc: {
-		nwcEventId: "",
-		nwcRequestId: "",
-	},
-} satisfies z.input<typeof transactionSchema>;
+const createItemDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		accountId: "",
+		occurredAt: new Date(),
+		amount: "0",
+		currency: Currency.USD,
+		note: "",
+		internalTransferGroupId: "",
+		transactionIban: {
+			variableSymbol: "",
+			constantSymbol: "",
+			specificSymbol: "",
+			bankReference: "",
+		},
+		transactionLud16: {
+			lnInvoice: "",
+			paymentHash: "",
+		},
+		transactionSpark: {
+			sparkTransferId: "",
+			lnInvoice: "",
+			preImage: "",
+			paymentHash: "",
+		},
+		transactionNwc: {
+			nwcEventId: "",
+			nwcRequestId: "",
+		},
+	}) satisfies z.input<typeof transactionSchema>;
 
 const createAccountTagLabel = (props: {
 	t: ReturnType<typeof useTranslation>["t"];
@@ -146,6 +136,10 @@ const createComponents = (
 	},
 ) =>
 	createAutoFormLayout(transactionSchema, ({ builder }) => ({
+		...builder.magicInput("id").text({
+			type: "hidden",
+		}),
+
 		...builder.card(
 			{},
 			{
@@ -157,13 +151,18 @@ const createComponents = (
 						"transactions:form.transaction-form.placeholder.select-account",
 					),
 				}),
-				...builder.magicInput("occurredAt").text({
+				...builder.magicInput("occurredAt").date({
 					label: t("transactions:form.transaction-form.label.occurred-at"),
 					type: "datetime-local",
 				}),
 				...builder.magicInput("amount").text({
 					label: t("transactions:form.transaction-form.label.amount"),
 					type: "number",
+				}),
+				...builder.magicInput("currency").select({
+					values: Currency,
+					allowEmpty: false,
+					label: t("transactions:form.transaction-form.label.currency"),
 				}),
 				...builder.magicInput("note").textarea({
 					label: t("transactions:form.transaction-form.label.note"),
@@ -306,32 +305,34 @@ export const TransactionForm: React.FC<{
 	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
-		return merge(itemDefaultValues, params.defaultValues ?? {});
+		return merge(createItemDefaultValues(), params.defaultValues ?? {});
 	});
 
-	const accountsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("account")
-				.select([
-					"account.id as id",
-					"account.name as name",
-					"account._tag as _tag",
-				] as const)
-				.where("account.isDeleted", "is not", sqliteTrue)
-				.orderBy("account.name", "asc"),
+	const accountsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("account")
+					.select([
+						"account.id as id",
+						"account.name as name",
+						"account._tag as _tag",
+					] as const)
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("account.name", "is not", null)
+					.where("account._tag", "is not", null)
+					.orderBy("account.name", "asc")
+					.$narrowType<{
+						name: NotNull;
+						_tag: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data: accountRows } = useEvoluQuery(accountsQuery);
 
 	const accountTagById = useMemo(() => {
-		const result = new Map<string, AccountTag>();
-		for (const row of accountRows ?? []) {
-			if (row._tag !== null && isAccountTag(row._tag)) {
-				result.set(row.id, row._tag);
-			}
-		}
-		return result;
+		return new Map(accountRows.map((row) => [row.id as string, row._tag]));
 	}, [accountRows]);
 
 	const accountOptions = useMemo<Record<string, string>>(() => {
@@ -370,47 +371,41 @@ export const TransactionForm: React.FC<{
 
 			const id = values.id ?? createId({ randomBytes: createRandomBytes() });
 
-			getOrThrow(
-				evolu.upsert(
-					"transaction",
-					{
-						id,
-						accountId: values.accountId as unknown as Id,
-						_tag: accountTag,
-						amount: values.amount,
-						occurredAt,
-						note: values.note,
-						internalTransferGroupId: values.internalTransferGroupId,
+			evolu.upsert(
+				"transaction",
+				{
+					id,
+					accountId: values.accountId,
+					_tag: accountTag,
+					amount: moneyCodec.decode({
+						value: values.amount,
+						currency: values.currency,
+					}).value,
+					currency: values.currency,
+					occurredAt,
+					note: values.note,
+					internalTransferGroupId: values.internalTransferGroupId,
+				},
+				{
+					onComplete: () => {
+						params.onSuccess?.(id);
 					},
-					{
-						onComplete: () => {
-							params.onSuccess?.(id);
-						},
-					},
-				),
+				},
 			);
 
 			if (accountTag === "accountIban") {
-				getOrThrow(
-					evolu.upsert("transactionIban", {
-						id,
-						variableSymbol: values.transactionIban.variableSymbol,
-						constantSymbol: values.transactionIban.constantSymbol,
-						specificSymbol: values.transactionIban.specificSymbol,
-						bankReference: values.transactionIban.bankReference,
-					}),
-				);
+				evolu.upsert("transactionIban", {
+					...values.transactionIban,
+					id,
+				});
 				return;
 			}
 
 			if (accountTag === "accountLud16") {
-				getOrThrow(
-					evolu.upsert("transactionLud16", {
-						id,
-						lnInvoice: values.transactionLud16.lnInvoice,
-						paymentHash: values.transactionLud16.paymentHash,
-					}),
-				);
+				evolu.upsert("transactionLud16", {
+					...values.transactionLud16,
+					id,
+				});
 				return;
 			}
 
@@ -426,34 +421,28 @@ export const TransactionForm: React.FC<{
 					throw new Error("Spark transaction fields are required");
 				}
 
-				getOrThrow(
-					evolu.upsert("transactionSpark", {
-						id,
-						sparkTransferId,
-						lnInvoice,
-						preImage,
-						paymentHash,
-					}),
-				);
+				evolu.upsert("transactionSpark", {
+					id,
+					sparkTransferId,
+					lnInvoice,
+					preImage,
+					paymentHash,
+				});
 				return;
 			}
 
 			if (accountTag === "accountNwc") {
-				getOrThrow(
-					evolu.upsert("transactionNwc", {
-						id,
-						nwcEventId: values.transactionNwc.nwcEventId,
-						nwcRequestId: values.transactionNwc.nwcRequestId,
-					}),
-				);
+				evolu.upsert("transactionNwc", {
+					id,
+					nwcEventId: values.transactionNwc.nwcEventId,
+					nwcRequestId: values.transactionNwc.nwcRequestId,
+				});
 				return;
 			}
 
-			getOrThrow(
-				evolu.upsert("transactionCashRegister", {
-					id,
-				}),
-			);
+			evolu.upsert("transactionCashRegister", {
+				id,
+			});
 		},
 	});
 

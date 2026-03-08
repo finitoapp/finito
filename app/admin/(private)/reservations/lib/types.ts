@@ -1,6 +1,7 @@
 import type { Id } from "@evolu/common";
+import type { PositiveInteger, TimestampMs } from "@/lib/shared/types";
 
-export type ReservationTag = "reservationBooking" | "reservationBlock";
+export type ReservationTag = "booking" | "block";
 export type ReservationApprovalStatus = "pending" | "approved" | "rejected";
 export type ReservationServiceStatus =
 	| "upcoming"
@@ -14,12 +15,12 @@ export type ReservationBaseVm = {
 	_tag: ReservationTag;
 	tableId: Id | null;
 	note: string | null;
-	startAt: number;
-	endAt: number;
+	startAt: TimestampMs;
+	endAt: TimestampMs;
 };
 
 export type ReservationBookingVm = ReservationBaseVm & {
-	_tag: "reservationBooking";
+	_tag: "booking";
 	name: string;
 	phone: string | null;
 	email: string | null;
@@ -31,7 +32,7 @@ export type ReservationBookingVm = ReservationBaseVm & {
 };
 
 export type ReservationBlockVm = ReservationBaseVm & {
-	_tag: "reservationBlock";
+	_tag: "block";
 	label: string;
 };
 
@@ -40,21 +41,21 @@ export type ReservationVm = ReservationBookingVm | ReservationBlockVm;
 export type TableVm = {
 	id: Id;
 	label: string;
-	numberOfSeats: number;
+	numberOfSeats: PositiveInteger;
 };
 
 export type DayRange = {
-	dayStartMs: number;
-	dayEndMs: number;
-	openMs: number;
-	closeMs: number;
+	dayStartMs: TimestampMs;
+	dayEndMs: TimestampMs;
+	openMs: TimestampMs;
+	closeMs: TimestampMs;
 };
 
 export type PreviewReservation = {
 	id: Id;
 	tableId: Id | null;
-	startAt: number;
-	endAt: number;
+	startAt: TimestampMs;
+	endAt: TimestampMs;
 };
 
 export type DraftReservation = {

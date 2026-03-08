@@ -1,5 +1,3 @@
-"use client";
-
 import type { Id } from "@evolu/common";
 import { useSetAtom } from "jotai";
 import type React from "react";

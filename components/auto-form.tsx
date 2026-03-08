@@ -100,22 +100,23 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { UseActionFormResult } from "@/hooks/use-action-form";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
-import { shiftNumericString } from "@/lib/shared/utils/number";
 import { Currency, NumberStringSchema } from "@/lib/shared/types";
 import { cn } from "@/lib/shared/ui/cn";
+import { shiftNumericString } from "@/lib/shared/utils/number";
 import {
 	decimalStringToMinorUnits,
-	minorUnitsToDecimalString,
 	minorUnitsToDecimalStringForUI,
 } from "@/lib/shared/zod/money-codec";
 
-export type AutoFormComponents<TSchema extends Record<string, unknown>> = {
+export type AutoFormComponents<
+	TSchema extends Readonly<Record<string, unknown>>,
+> = {
 	[key in keyof TSchema]-?: AutoFormComponent<TSchema[key]>;
 };
 
 export type AutoFormBaseSchema =
 	| z.ZodObject
-	| z.ZodPipe
+	| z.ZodPipe<z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>>
 	| z.ZodUnion<readonly (z.ZodObject | z.ZodUnion<readonly z.ZodObject[]>)[]>;
 
 const AutoFormInputLayer = <
@@ -230,7 +231,7 @@ export const AutoFormInput = {
 				startAddon?: React.ReactNode;
 				endAddon?: React.ReactNode;
 			},
-		): AutoFormComponent<string | undefined> =>
+		): AutoFormComponent<string> =>
 		(props) => (
 			<FormField
 				control={props.control}
@@ -293,7 +294,7 @@ export const AutoFormInput = {
 						currency: Currency;
 				  }
 			),
-	): AutoFormComponent<string | undefined> => {
+	): AutoFormComponent<string> => {
 		return (props) => {
 			const { t } = useTranslation();
 			const useCurrency =
@@ -337,22 +338,11 @@ export const AutoFormInput = {
 									return;
 								}
 
-								console.log("amount", amount);
-
 								const newAmount = await currencyConverter.convert({
 									amount: amount,
 									sourceCurrency: currency,
 									targetCurrency,
 								});
-
-								console.log("newAmount", newAmount);
-								console.log(
-									"newAmount2",
-									minorUnitsToDecimalStringForUI({
-										value: newAmount,
-										currency: targetCurrency,
-									}),
-								);
 
 								if (newAmount !== null) {
 									onChange(
@@ -535,7 +525,7 @@ export const AutoFormInput = {
 			params: InputParams & {
 				rows?: number;
 			},
-		): AutoFormComponent<string | undefined> =>
+		): AutoFormComponent<string> =>
 		(props) => (
 			<FormField
 				control={props.control}
@@ -791,12 +781,13 @@ export type Builder<
 		>,
 	) => CreateComponentResult<TName, AutoFormComponent<TSchema[TName]>>;
 	arrayField: <
-		TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+		TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+			string,
 	>(
 		options: {
 			name: TName;
 			// @ts-expect-error
-			defaultValue: TSchema[TName][number];
+			defaultValue: () => TSchema[TName][number];
 		},
 		components: (params: {
 			builder: Builder<
@@ -810,12 +801,13 @@ export type Builder<
 		>,
 	) => CreateComponentResult<TName, AutoFormComponent<TSchema[TName]>>;
 	arrayTableField: <
-		TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+		TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+			string,
 	>(
 		options: {
 			name: TName;
 			// @ts-expect-error
-			defaultValue: TSchema[TName][number];
+			defaultValue: () => TSchema[TName][number];
 			columns: {
 				title?: string;
 				className?: React.ComponentProps<"div">["className"];
@@ -856,7 +848,7 @@ const createBuilder = <
 					// @ts-expect-error
 					const origMethod = target[prop];
 					if (typeof origMethod === "function") {
-						return (...params: unknown[]) =>
+						return (...params: ReadonlyArray<unknown>) =>
 							createComponent(prefix + name, origMethod(...params));
 					}
 				},
@@ -1064,12 +1056,13 @@ const createBuilder = <
 			>;
 		},
 		arrayField: <
-			TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+			TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+				string,
 		>(
 			options: {
 				name: TName;
 				// @ts-expect-error
-				defaultValue: TSchema[TName][number];
+				defaultValue: () => TSchema[TName][number];
 			},
 			callback: (params: {
 				builder: Builder<
@@ -1119,7 +1112,7 @@ const createBuilder = <
 						<Button
 							type={"button"}
 							variant={"outline"}
-							onClick={() => append(options.defaultValue)}
+							onClick={() => append(options.defaultValue())}
 						>
 							{t("components:autoForm.actions.add")}
 						</Button>
@@ -1128,14 +1121,15 @@ const createBuilder = <
 			}) as ReturnType<Builder<TSchema, TRootSchema>["arrayField"]>;
 		},
 		arrayTableField: <
-			TName extends keyof ConditionalPick<TSchema, unknown[]> & string,
+			TName extends keyof ConditionalPick<TSchema, ReadonlyArray<unknown>> &
+				string,
 		>(
 			options: {
 				name: TName;
 				// @ts-expect-error
-				defaultValue: TSchema[TName][number];
+				defaultValue: () => TSchema[TName][number];
 				columns: {
-					title: string;
+					title?: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
 					inputCellClassName?: React.ComponentProps<
 						typeof TableHead
@@ -1163,7 +1157,7 @@ const createBuilder = <
 				move: (index: number, newIndex: number) => void;
 				field: Record<"id", string>;
 				columns: {
-					title: string;
+					title?: string;
 					className?: React.ComponentProps<typeof TableHead>["className"];
 					inputCellClassName?: React.ComponentProps<
 						typeof TableHead
@@ -1381,7 +1375,7 @@ const createBuilder = <
 							<Button
 								type={"button"}
 								variant={"outline"}
-								onClick={() => append(options.defaultValue)}
+								onClick={() => append(options.defaultValue())}
 							>
 								<PlusCircleIcon />
 								{options.addRowLabel ??

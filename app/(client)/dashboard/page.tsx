@@ -16,8 +16,8 @@ import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatAmount } from "@/lib/shared/utils/format";
 import { Currency } from "@/lib/shared/types";
+import { formatAmount } from "@/lib/shared/utils/format";
 
 const WalletStatus = () => {
 	const { mnemonic } = useAtomValue(accountAtom);

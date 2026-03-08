@@ -5,11 +5,13 @@ import { useEvolu } from "@/hooks/use-evolu";
 export const useEvoluQuery = <R extends Row>(
 	query: Query<R>,
 	evoluOverride?: {
-		loadQuery: (query: Query<R>) => Promise<R[]>;
-		getQueryRows: (query: Query<R>) => QueryRows<R>;
-		subscribeQuery: (query: Query<R>) => (callback: () => void) => () => void;
+		loadQuery: (query: Query<NoInfer<R>>) => Promise<QueryRows<NoInfer<R>>>;
+		getQueryRows: (query: Query<NoInfer<R>>) => QueryRows<NoInfer<R>>;
+		subscribeQuery: (
+			query: Query<NoInfer<R>>,
+		) => (callback: () => void) => () => void;
 	},
-): { data: any[] | undefined } => {
+): { data: QueryRows<R> } => {
 	const evolu = useEvolu();
 	const targetEvolu = evoluOverride ?? evolu;
 
@@ -21,6 +23,6 @@ export const useEvoluQuery = <R extends Row>(
 	);
 
 	return {
-		data,
+		data: data as QueryRows<R>,
 	};
 };

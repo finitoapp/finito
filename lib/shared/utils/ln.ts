@@ -1,4 +1,5 @@
 import { decode } from "light-bolt11-decoder";
+import { Integer, NonEmptyString, TimestampSec } from "@/lib/shared/types";
 import { assertNotUndefined } from "@/lib/shared/utils/type";
 
 export const extractExpirationFromLightningInvoice = (lnInvoice: string) => {
@@ -6,11 +7,10 @@ export const extractExpirationFromLightningInvoice = (lnInvoice: string) => {
 	const timestamp = decodedLnInvoice.sections.find(
 		(section) => section.name === "timestamp",
 	);
-	if (timestamp === undefined) {
-		return null;
-	}
 
-	return new Date(decodedLnInvoice.expiry * 1000 + timestamp.value * 1000);
+	assertNotUndefined(timestamp);
+
+	return TimestampSec(decodedLnInvoice.expiry + timestamp.value);
 };
 
 export const extractBtcAmountFromLightningInvoice = (lnInvoice: string) => {
@@ -21,12 +21,12 @@ export const extractBtcAmountFromLightningInvoice = (lnInvoice: string) => {
 
 	assertNotUndefined(amount);
 
-	return Number(amount.value) / 1000;
+	return Integer(Number(amount.value) / 1000); // Let's don't support mSats for now
 };
 
 export const extractPaymentHashFromLnInvoice = (
 	lnInvoice: string,
-): string | null => {
+): NonEmptyString => {
 	const decoded = decode(lnInvoice);
 	const paymentHash = decoded.sections.find(
 		(section) => section.name === "payment_hash",
@@ -34,9 +34,5 @@ export const extractPaymentHashFromLnInvoice = (
 
 	assertNotUndefined(paymentHash);
 
-	if (typeof paymentHash.value === "string") {
-		return paymentHash.value.toLowerCase();
-	}
-
-	return `${paymentHash.value}`.toLowerCase();
+	return NonEmptyString(`${paymentHash.value}`.toLowerCase());
 };

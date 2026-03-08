@@ -1,5 +1,3 @@
-"use client";
-
 export const createLongPressTracker = (params: {
 	durationMs: number;
 	moveThresholdPx: number;

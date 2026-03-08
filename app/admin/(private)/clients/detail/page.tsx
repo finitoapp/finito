@@ -1,12 +1,13 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -14,10 +15,10 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -30,22 +31,69 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("client")
-				.leftJoin("clientAddress", "clientAddress.id", "client.id")
-				.leftJoin("clientCz", "clientCz.id", "client.id")
-				.selectAll()
-				.where("client.isDeleted", "is not", sqliteTrue)
-				.where("client.id", "=", id as Id);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("client")
+					.select(
+						(eb) =>
+							[
+								"client.id as id",
+								"client.createdAt as createdAt",
+								"client.name as name",
+								"client.label as label",
+								"client.email as email",
+								"client.countryCode as countryCode",
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("clientAddress")
+											.select([
+												"clientAddress.street as street",
+												"clientAddress.descriptiveNumber as descriptiveNumber",
+												"clientAddress.city as city",
+												"clientAddress.postalCode as postalCode",
+											])
+											.whereRef("clientAddress.id", "=", "client.id")
+											.where("client.isDeleted", "is not", sqliteTrue),
+									)
+									.as("address"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("clientCz")
+											.select([
+												"clientCz.vatPayer as vatPayer",
+												"clientCz.identificationNumber as identificationNumber",
+												"clientCz.vatNumber as vatNumber",
+												"clientCz.caseNumber as caseNumber",
+											])
+											.whereRef("clientCz.id", "=", "client.id")
+											.where("client.isDeleted", "is not", sqliteTrue),
+									)
+									.as("cz"),
+							] as const,
+					)
+					.where("client.isDeleted", "is not", sqliteTrue)
+					.where("client.name", "is not", null)
+					.where("client.countryCode", "is not", null)
+					.where("client.id", "=", id as Id)
+					.$narrowType<{
+						name: NotNull;
+						countryCode: NotNull;
+					}>();
+			}),
 		[id],
 	);
 
 	const { data: items } = useEvoluQuery(query);
 
-	const item = items && items[0];
+	const item = items[0];
+
+	console.log("item", item, JSON.stringify(item));
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -90,7 +138,7 @@ export default function Home() {
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={"VAT Number"}
-									content={item ? item.vatNumber : <Skeleton />}
+									content={item ? item.cz?.vatNumber : <Skeleton />}
 									className={"flex-1"}
 								/>
 
@@ -117,15 +165,15 @@ export default function Home() {
 											},
 											{
 												key: "Street",
-												value: item?.street ?? "-",
+												value: item?.address?.street ?? "-",
 											},
 											{
 												key: "City",
-												value: item?.city ?? "-",
+												value: item?.address?.city ?? "-",
 											},
 											{
 												key: "Postal Code",
-												value: item?.postalCode ?? "-",
+												value: item?.address?.postalCode ?? "-",
 											},
 											{
 												key: "Country",
@@ -139,11 +187,11 @@ export default function Home() {
 										items={[
 											{
 												key: "VAT Number",
-												value: item?.vatNumber ?? "-",
+												value: item?.cz?.vatNumber ?? "-",
 											},
 											{
 												key: "Identification Number",
-												value: item?.identificationNumber ?? "-",
+												value: item?.cz?.identificationNumber ?? "-",
 											},
 											{
 												key: "E-mail",

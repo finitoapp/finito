@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { createAutocompleteSelectInput } from "@/components/autocomplete-select-input";
+import type { AddressSchema } from "@/lib/evolu/model/payment";
 import { AresApiClient } from "@/lib/integrations/ares/client";
-import type { AddressSchema } from "@/lib/shared/schemas";
 import {
 	IdentificationNumberCzSchema,
-	NonEmptyString,
+	NonEmptyString32,
+	NonEmptyString255,
 	NonEmptyStringSchema,
 } from "@/lib/shared/types";
 
@@ -60,12 +61,12 @@ export const AutocompleteIdentificationNumberInput =
 				identificationNumber: row.ico ?? "",
 				vatNumber: row.dic ?? "",
 				address: {
-					street: NonEmptyString(
+					street: NonEmptyString255(
 						`${row.sidlo.nazevUlice ?? row.sidlo.nazevCastiObce}`,
 					),
-					descriptiveNumber: NonEmptyString(`${row.sidlo.cisloDomovni}`),
+					descriptiveNumber: NonEmptyString32(`${row.sidlo.cisloDomovni}`),
 					city: row.sidlo.nazevObce,
-					postalCode: NonEmptyString(`${row.sidlo.psc}`),
+					postalCode: NonEmptyString32(`${row.sidlo.psc}`),
 				},
 				addressLine: row.sidlo.textovaAdresa,
 			}));

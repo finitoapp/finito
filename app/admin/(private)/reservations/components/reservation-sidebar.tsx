@@ -1,6 +1,6 @@
 "use client";
 
-import { getOrThrow, type Id } from "@evolu/common";
+import type { Id } from "@evolu/common";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
 	ArrowLeftIcon,
@@ -54,7 +54,7 @@ const ReservationDetailPanel: React.FC<{
 			? t("reservations:form.table.unassigned")
 			: (tableLabelById.get(reservation.tableId) ??
 				t("reservations:form.table.unassigned"));
-	const isBooking = reservation._tag === "reservationBooking";
+	const isBooking = reservation._tag === "booking";
 	const canAssignTable = isBooking && reservation.tableId === null;
 	const canApprove =
 		isBooking &&
@@ -92,12 +92,12 @@ const ReservationDetailPanel: React.FC<{
 			<div className="space-y-3 p-3 text-sm">
 				<div>
 					<div className="text-xs text-muted-foreground">
-						{reservation._tag === "reservationBooking"
+						{reservation._tag === "booking"
 							? t("reservations:form.fields.name")
 							: t("reservations:form.fields.label")}
 					</div>
 					<div className="font-medium">
-						{reservation._tag === "reservationBooking"
+						{reservation._tag === "booking"
 							? reservation.name
 							: reservation.label}
 					</div>
@@ -117,7 +117,7 @@ const ReservationDetailPanel: React.FC<{
 					</div>
 					<div className="font-medium">{tableLabel}</div>
 				</div>
-				{reservation._tag === "reservationBooking" && (
+				{reservation._tag === "booking" && (
 					<>
 						<div>
 							<div className="text-xs text-muted-foreground">
@@ -201,13 +201,11 @@ const ReservationDetailPanel: React.FC<{
 										variant="outline"
 										className="h-7 px-2 text-xs"
 										onClick={() => {
-											getOrThrow(
-												evolu.update("reservationBooking", {
-													id: reservation.id,
-													approvalStatus: "approved",
-													statusReason: null,
-												}),
-											);
+											evolu.update("reservationBooking", {
+												id: reservation.id,
+												approvalStatus: "approved",
+												statusReason: null,
+											});
 										}}
 									>
 										<CheckIcon />
@@ -221,12 +219,10 @@ const ReservationDetailPanel: React.FC<{
 										variant="outline"
 										className="h-7 px-2 text-xs"
 										onClick={() => {
-											getOrThrow(
-												evolu.update("reservationBooking", {
-													id: reservation.id,
-													approvalStatus: "rejected",
-												}),
-											);
+											evolu.update("reservationBooking", {
+												id: reservation.id,
+												approvalStatus: "rejected",
+											});
 										}}
 									>
 										<XIcon />
@@ -240,12 +236,10 @@ const ReservationDetailPanel: React.FC<{
 										variant="outline"
 										className="h-7 px-2 text-xs"
 										onClick={() => {
-											getOrThrow(
-												evolu.update("reservationBooking", {
-													id: reservation.id,
-													serviceStatus: "seated",
-												}),
-											);
+											evolu.update("reservationBooking", {
+												id: reservation.id,
+												serviceStatus: "seated",
+											});
 										}}
 									>
 										<UserCheckIcon />
@@ -259,12 +253,10 @@ const ReservationDetailPanel: React.FC<{
 										variant="outline"
 										className="h-7 px-2 text-xs"
 										onClick={() => {
-											getOrThrow(
-												evolu.update("reservationBooking", {
-													id: reservation.id,
-													serviceStatus: "completed",
-												}),
-											);
+											evolu.update("reservationBooking", {
+												id: reservation.id,
+												serviceStatus: "completed",
+											});
 										}}
 									>
 										<CheckIcon />
@@ -278,12 +270,10 @@ const ReservationDetailPanel: React.FC<{
 										variant="outline"
 										className="h-7 px-2 text-xs"
 										onClick={() => {
-											getOrThrow(
-												evolu.update("reservationBooking", {
-													id: reservation.id,
-													serviceStatus: "noShow",
-												}),
-											);
+											evolu.update("reservationBooking", {
+												id: reservation.id,
+												serviceStatus: "noShow",
+											});
 										}}
 									>
 										<CircleDashedIcon />

@@ -1,4 +1,4 @@
-import type { Currency } from "@/lib/shared/types";
+import type { Currency, Integer } from "@/lib/shared/types";
 
 export type CurrencyConverterDriver = {
 	convert: (props: {

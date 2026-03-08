@@ -1,39 +1,55 @@
 "use client";
 
 import { createIdFromString, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
 import { PaymentForm } from "@/app/admin/(private)/payments/new/payment-form";
 import { BackButton } from "@/components/back-button";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { useNostrProfile } from "@/hooks/useNostrProfile";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
-	const nostrProfile = useNostrProfile();
-
-	const billingInfoQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("billingInfo")
-				.selectAll()
-				.where("billingInfo.isDeleted", "is not", sqliteTrue)
-				.where("billingInfo.id", "=", createIdFromString("")),
+	const billingInfoQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("billingInfo")
+					.select(["billingInfo.name as name"])
+					.where("billingInfo.isDeleted", "is not", sqliteTrue)
+					.where("billingInfo.name", "is not", null)
+					.where("billingInfo.id", "=", createIdFromString(""))
+					.$narrowType<{
+						name: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data } = useEvoluQuery(billingInfoQuery);
 
-	const billingSettingsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("billingSettings")
-				.selectAll()
-				.where("billingSettings.isDeleted", "is not", sqliteTrue)
-				.where("billingSettings.id", "=", createIdFromString("")),
+	const billingSettingsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("billingSettings")
+					.select([
+						"billingSettings.defaultPaymentMethod as defaultPaymentMethod",
+						"billingSettings.defaultCurrency as defaultCurrency",
+					])
+					.where("billingSettings.isDeleted", "is not", sqliteTrue)
+					.where("billingSettings.defaultPaymentMethod", "is not", null)
+					.where("billingSettings.defaultCurrency", "is not", null)
+					.where("billingSettings.id", "=", createIdFromString(""))
+					.$narrowType<{
+						defaultPaymentMethod: NotNull;
+						defaultCurrency: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data: billingSettingsRows } = useEvoluQuery(billingSettingsQuery);
 
-	const item = data && data[0];
-	const billingSettings = billingSettingsRows && billingSettingsRows[0];
+	const item = data[0];
+	const billingSettings = billingSettingsRows[0];
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -42,11 +58,7 @@ export default function Home() {
 			</div>
 
 			<PaymentForm
-				key={[item && billingSettings && nostrProfile ? "true" : false].join(
-					",",
-				)}
 				defaultValues={{
-					lud16: nostrProfile?.lud16 ?? "",
 					merchantName: item?.name ?? "",
 					currency: billingSettings?.defaultCurrency,
 					type: billingSettings?.defaultPaymentMethod,

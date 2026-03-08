@@ -1,6 +1,6 @@
-import { CalendarDaysIcon, Clock3Icon, UsersIcon } from "lucide-react";
+import { CalendarDaysIcon, UsersIcon } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,13 @@ type ReservationScreenProps = {
 export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 	const { i18n, t } = useTranslation();
 	const timezone = screen.payload.timezone;
+	const idPrefix = useId();
+	const dateFieldId = `${idPrefix}-reservation-date`;
+	const peopleFieldId = `${idPrefix}-reservation-people`;
+	const slotFieldId = `${idPrefix}-reservation-slot`;
+	const emailFieldId = `${idPrefix}-reservation-email`;
+	const phoneFieldId = `${idPrefix}-reservation-phone`;
+	const noteFieldId = `${idPrefix}-reservation-note`;
 
 	const selectableDays = useMemo(
 		() => screen.payload.days.filter((day) => day.isSelectable),
@@ -121,9 +128,11 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 	const selectedSlot =
 		selectedSlotId === null
 			? null
-			: filteredSlots.find((slot) => slot.id === selectedSlotId) ?? null;
-	const isEmailRequired = screen.payload.contactRequirements.isEmailRequired === true;
-	const isPhoneRequired = screen.payload.contactRequirements.isPhoneRequired === true;
+			: (filteredSlots.find((slot) => slot.id === selectedSlotId) ?? null);
+	const isEmailRequired =
+		screen.payload.contactRequirements.isEmailRequired === true;
+	const isPhoneRequired =
+		screen.payload.contactRequirements.isPhoneRequired === true;
 	const canSubmit =
 		selectedSlot !== null &&
 		(!isEmailRequired || email.trim().length > 0) &&
@@ -142,10 +151,14 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+							<label
+								className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+								htmlFor={dateFieldId}
+							>
 								{t("client:paymentPage.reservation.fields.date")}
 							</label>
 							<select
+								id={dateFieldId}
 								className="w-full rounded-md border bg-background px-3 py-2 text-sm"
 								value={selectedDate ?? ""}
 								onChange={(event) =>
@@ -157,28 +170,35 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 										key={day.date}
 										value={day.date}
 										disabled={!day.isSelectable}
-										>
-											{formatDayLabel(day.date)}
-											{!day.isSelectable
-												? ` (${t("client:paymentPage.reservation.labels.closed")})`
-												: ""}
-											{day.availableSlotsCount !== undefined
-												? ` • ${t("client:paymentPage.reservation.labels.slotCount", {
+									>
+										{formatDayLabel(day.date)}
+										{!day.isSelectable
+											? ` (${t("client:paymentPage.reservation.labels.closed")})`
+											: ""}
+										{day.availableSlotsCount !== undefined
+											? ` • ${t(
+													"client:paymentPage.reservation.labels.slotCount",
+													{
 														count: day.availableSlotsCount,
-												  })}`
-												: ""}
-										</option>
-									))}
+													},
+												)}`
+											: ""}
+									</option>
+								))}
 							</select>
 						</div>
 
 						<div className="space-y-2">
-							<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+							<label
+								className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+								htmlFor={peopleFieldId}
+							>
 								{t("client:paymentPage.reservation.fields.numberOfPeople")}
 							</label>
 							<div className="flex items-center gap-2">
 								<UsersIcon className="size-4 text-muted-foreground" />
 								<select
+									id={peopleFieldId}
 									className="w-full rounded-md border bg-background px-3 py-2 text-sm"
 									value={numberOfPeople}
 									onChange={(event) => {
@@ -203,10 +223,14 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 						</div>
 
 						<div className="space-y-2">
-							<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+							<label
+								className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+								htmlFor={slotFieldId}
+							>
 								{t("client:paymentPage.reservation.fields.slot")}
 							</label>
 							<select
+								id={slotFieldId}
 								className="w-full rounded-md border bg-background px-3 py-2 text-sm"
 								value={selectedSlotId ?? ""}
 								onChange={(event) =>
@@ -235,7 +259,7 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 																? Number(slot.maxNumberOfPeople)
 																: Number(screen.payload.numberOfPeople.max),
 														},
-												  )}`
+													)}`
 												: ""}
 										</option>
 									))
@@ -245,10 +269,14 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 
 						{isEmailRequired && (
 							<div className="space-y-2">
-								<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+								<label
+									className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+									htmlFor={emailFieldId}
+								>
 									{t("client:paymentPage.reservation.fields.email")}
 								</label>
 								<Input
+									id={emailFieldId}
 									type="email"
 									value={email}
 									onChange={(event) => setEmail(event.target.value)}
@@ -261,10 +289,14 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 
 						{isPhoneRequired && (
 							<div className="space-y-2">
-								<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+								<label
+									className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+									htmlFor={phoneFieldId}
+								>
 									{t("client:paymentPage.reservation.fields.phone")}
 								</label>
 								<Input
+									id={phoneFieldId}
 									type="tel"
 									value={phone}
 									onChange={(event) => setPhone(event.target.value)}
@@ -277,10 +309,14 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 
 						{screen.payload.note.enabled && (
 							<div className="space-y-2">
-								<label className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+								<label
+									className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+									htmlFor={noteFieldId}
+								>
 									{t("client:paymentPage.reservation.fields.note")}
 								</label>
 								<Textarea
+									id={noteFieldId}
 									value={note}
 									onChange={(event) => setNote(event.target.value)}
 									maxLength={
@@ -336,9 +372,12 @@ export const ReservationScreen: FC<ReservationScreenProps> = ({ screen }) => {
 					{screen.payload.note.enabled && (
 						<div className="mt-1 text-xs text-muted-foreground">
 							{screen.payload.note.maxLength !== undefined
-								? t("client:paymentPage.reservation.summary.noteEnabledWithMax", {
-										max: Number(screen.payload.note.maxLength),
-									})
+								? t(
+										"client:paymentPage.reservation.summary.noteEnabledWithMax",
+										{
+											max: Number(screen.payload.note.maxLength),
+										},
+									)
 								: t("client:paymentPage.reservation.summary.noteEnabled")}
 						</div>
 					)}

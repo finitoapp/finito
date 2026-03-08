@@ -1,34 +1,75 @@
 import {
 	createOwnerSecret,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
-	NonEmptyString100,
+	kysely,
 	ownerSecretToMnemonic,
-	PositiveInt,
 	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { atom } from "jotai";
+import type { NotNull } from "kysely";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import {
+	NonEmptyString255Schema,
+	TimestampMsSchema,
+	WssUrl,
+} from "@/lib/shared/types";
 
 export const accountAtom = atom(async (get) => {
 	get(evoluCounterAtom); // Because we want to reload evolu when counter is increased
 	const deviceEvolu = await get(deviceEvoluAtom);
 
-	const query = deviceEvolu.createQuery((db) =>
+	const query = createDeviceQuery((db) =>
 		db
 			.selectFrom("account")
-			.select([
+			.select((eb) => [
 				"account.id as id",
 				"account.mnemonic as mnemonic",
 				"account.name as name",
+
+				kysely
+					.jsonArrayFrom(
+						eb
+							.selectFrom("accountEvoluTransport")
+							.leftJoin(
+								"accountEvoluTransportWebsocket",
+								"accountEvoluTransportWebsocket.id",
+								"accountEvoluTransport.id",
+							)
+							.select([
+								"accountEvoluTransport.type as type",
+								"accountEvoluTransportWebsocket.url as url",
+							])
+							.whereRef("accountEvoluTransport.accountId", "=", "account.id")
+							.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
+							.where("accountEvoluTransport.type", "is not", null)
+							.where("accountEvoluTransportWebsocket.url", "is not", null)
+							.where("accountEvoluTransport.isActive", "=", sqliteTrue)
+							.where(
+								"accountEvoluTransportWebsocket.isDeleted",
+								"is not",
+								sqliteTrue,
+							)
+							.$narrowType<{
+								type: NotNull;
+								url: NotNull;
+							}>(),
+					)
+					.as("transports"),
 			])
 			.where("isDeleted", "is not", sqliteTrue)
+			.where("account.mnemonic", "is not", null)
+			.where("account.name", "is not", null)
 			.orderBy("lastUseAt", "desc")
-			.limit(1),
+			.limit(1)
+			.$narrowType<{
+				name: NotNull;
+				mnemonic: NotNull;
+			}>(),
 	);
 
 	// Create default values
@@ -42,77 +83,39 @@ export const accountAtom = atom(async (get) => {
 		const mnemonic = ownerSecretToMnemonic(ownerSecret);
 
 		const data = {
-			name: NonEmptyString100.orThrow(faker.internet.username()),
+			name: NonEmptyString255Schema.parse(faker.internet.username()),
 			mnemonic,
-			lastUseAt: PositiveInt.orThrow(Date.now()),
+			lastUseAt: TimestampMsSchema.parse(Date.now()),
 		};
 		const id = await new Promise<Id>((resolve) => {
-			const { id: accountId } = getOrThrow(
-				deviceEvolu.insert("account", data, {
-					onComplete: () => {
-						resolve(accountId);
-					},
-				}),
-			);
-			const { id } = getOrThrow(
-				deviceEvolu.insert("accountEvoluTransport", {
-					accountId,
-					type: "websocket",
-					isActive: sqliteFalse,
-				}),
-			);
-			getOrThrow(
-				deviceEvolu.upsert("accountEvoluTransportWebsocket", {
-					id,
-					url: "wss://free.evoluhq.com",
-				}),
-			);
+			const { id: accountId } = deviceEvolu.insert("account", data, {
+				onComplete: () => {
+					resolve(accountId);
+				},
+			});
+			const { id } = deviceEvolu.insert("accountEvoluTransport", {
+				accountId,
+				type: "WebSocket",
+				isActive: sqliteFalse,
+			});
+			deviceEvolu.upsert("accountEvoluTransportWebsocket", {
+				id,
+				url: WssUrl("wss://free.evoluhq.com"),
+			});
 		});
 
 		return {
 			id,
 			mnemonic: data.mnemonic,
 			name: data.name,
-			transports: [
-				{
-					type: "websocket",
-					url: "wss://free.evoluhq.com",
-				},
-			],
+			transports: [],
 		};
 	}
-
-	const transports = await deviceEvolu.loadQuery(
-		deviceEvolu.createQuery((db) =>
-			db
-				.selectFrom("accountEvoluTransport")
-				.leftJoin(
-					"accountEvoluTransportWebsocket",
-					"accountEvoluTransportWebsocket.id",
-					"accountEvoluTransport.id",
-				)
-				.select([
-					"accountEvoluTransport.type as type",
-					"accountEvoluTransportWebsocket.url as url",
-				])
-				.where("accountEvoluTransport.accountId", "=", row.id)
-				.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
-				.where("accountEvoluTransport.isActive", "=", sqliteTrue)
-				.where(
-					"accountEvoluTransportWebsocket.isDeleted",
-					"is not",
-					sqliteTrue,
-				),
-		),
-	);
 
 	return {
 		id: row.id,
 		mnemonic: row.mnemonic,
 		name: row.name,
-		transports: transports.map((transport) => ({
-			type: transport.type,
-			url: transport.url,
-		})),
+		transports: row.transports,
 	};
 });

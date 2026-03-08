@@ -29,10 +29,13 @@ const defaultCompare = <TItem extends JsonValue>(
 	return JSON.stringify(a) === JSON.stringify(b);
 };
 
-export type EditComponentProps<TItem extends JsonValue> = {
-	defaultValue: TItem | undefined;
+export type EditComponentProps<
+	TOutput extends JsonValue,
+	TInput extends JsonValue = TOutput,
+> = {
+	defaultValue: TInput | undefined;
 	close: () => unknown;
-	save: (value: TItem) => unknown;
+	save: (value: TOutput) => unknown;
 };
 
 const DefaultEdit = (props: EditComponentProps<string>) => {

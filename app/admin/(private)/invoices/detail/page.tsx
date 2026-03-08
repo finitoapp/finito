@@ -1,11 +1,10 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
+import { createIdFromString, type Id, kysely, sqliteTrue } from "@evolu/common";
 import { PDFViewer, usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import type { NotNull } from "kysely";
 import {
 	CoinsIcon,
 	EditIcon,
@@ -26,7 +25,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { InvoiceStatusBadge } from "@/app/admin/(private)/invoices/invoice-status-badge";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { InvoiceTemplate } from "@/components/invoices/invoice-cz";
 import { KeyValueList } from "@/components/key-value-list";
@@ -39,49 +38,54 @@ import {
 	CardTitle,
 	CardToolbar,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
+import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
+import { InvoiceStatus } from "@/lib/evolu/model/invoice-status";
+import { createIsdocXml } from "@/lib/invoice/isdoc";
 import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
 import { downloadFile } from "@/lib/shared/files/file-utils";
-import { formatAmount, formatIban } from "@/lib/shared/utils/format";
-import { createIsdocXml } from "@/lib/invoice/isdoc";
-import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
-import { InvoiceStatus } from "@/lib/evolu/model/invoice-status";
-import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
+import { Integer } from "@/lib/shared/types";
+import { formatIban, formatMoney } from "@/lib/shared/utils/format";
 
 const StatusButton: FC<{
 	invoiceId: Id;
 }> = (props) => {
-	const evolu = useEvolu();
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("invoiceStatus")
-				.select("status")
-				.where("id", "=", props.invoiceId)
-				.where("isDeleted", "is not", sqliteTrue)
-				.limit(1),
+	const _evolu = useEvolu();
+	const query = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("paymentWatchingState")
+					.select("verifiedAt")
+					.where("id", "=", props.invoiceId)
+					.where("isDeleted", "is not", sqliteTrue)
+					.limit(1),
+			),
 		[props.invoiceId],
 	);
 	const { data: invoiceStates } = useEvoluQuery(query);
 
 	const invoiceStatus = invoiceStates ? invoiceStates[0] : undefined;
-	const value = invoiceStatus ? invoiceStatus.status : null;
+	const value =
+		invoiceStatus && invoiceStatus.verifiedAt
+			? InvoiceStatus.Paid
+			: InvoiceStatus.Unpaid;
 
 	const markAsPaid = async () => {
-		evolu.upsert("invoiceStatus", {
-			id: props.invoiceId,
-			status: value === "unpaid" ? InvoiceStatus.Paid : InvoiceStatus.Unpaid,
-		});
+		// @TODO
+		// evolu.upsert("invoiceStatus", {
+		// 	id: props.invoiceId,
+		// 	status: value === "unpaid" ? InvoiceStatus.Paid : InvoiceStatus.Unpaid,
+		// });
 	};
 
 	return (
 		<Button variant={"outline"} className={"w-full"} onClick={markAsPaid}>
 			<CoinsIcon />
-			{value === null || value === "unpaid" ? "Mark as paid" : "Remove payment"}
+			{value === "unpaid" ? "Mark as paid" : "Remove payment"}
 		</Button>
 	);
 };
@@ -245,14 +249,15 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 					invoice={props.invoice}
 					paymentQrCode={props.paymentQrCode}
 					onGenerated={async (params) => {
-						const customerEmail = props.invoice.customer.billingInfo.email;
+						const customerEmail =
+							props.invoice.invoiceCustomerBillingInfo.email;
 						if (customerEmail === undefined) {
 							return;
 						}
 
 						const [billingSettingsRows, smtpRows] = await Promise.all([
 							(async () => {
-								const query = evolu.createQuery((db) =>
+								const query = createQuery((db) =>
 									db
 										.selectFrom("billingSettings")
 										.selectAll()
@@ -262,7 +267,7 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 								return await evolu.loadQuery(query);
 							})(),
 							(async () => {
-								const query = evolu.createQuery((db) =>
+								const query = createQuery((db) =>
 									db
 										.selectFrom("smtp")
 										.selectAll()
@@ -300,7 +305,7 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 								username: smtp.username,
 								password: smtp.password,
 								from: smtp.name ? `${smtp.name} <${smtp.email}>` : smtp.email,
-								to: `${props.invoice.customer.billingInfo.name} <${customerEmail}>`,
+								to: `${props.invoice.invoiceCustomerBillingInfo.name} <${customerEmail}>`,
 								subject: billingSettings.invoiceEmailSettingsSubject,
 								body: billingSettings.invoiceEmailSettingsBody,
 								attachmentName: params.fileName,
@@ -345,118 +350,313 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const invoiceQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("invoice")
-				.leftJoin(
-					"invoiceCustomerBillingInfo",
-					"invoiceCustomerBillingInfo.id",
-					"invoice.id",
-				)
-				.leftJoin(
-					"invoiceCustomerBillingInfoAddress",
-					"invoiceCustomerBillingInfoAddress.id",
-					"invoice.id",
-				)
-				.leftJoin(
-					"invoiceCustomerBillingInfoCz",
-					"invoiceCustomerBillingInfoCz.id",
-					"invoice.id",
-				)
-				.leftJoin(
-					"invoiceSupplierBillingInfo",
-					"invoiceSupplierBillingInfo.id",
-					"invoice.id",
-				)
-				.leftJoin(
-					"invoiceSupplierBillingInfoAddress",
-					"invoiceSupplierBillingInfoAddress.id",
-					"invoice.id",
-				)
-				.leftJoin(
-					"invoiceSupplierBillingInfoCz",
-					"invoiceSupplierBillingInfoCz.id",
-					"invoice.id",
-				)
-				.select([
-					"invoice.id as id",
-					"invoice.invoiceId as invoiceId",
-					"invoice.invoiceNumber as invoiceNumber",
-					"invoice.issueDate as issueDate",
-					"invoice.dueDate as dueDate",
-					"invoice.currency as currency",
-					"invoice.paymentMethod as payment.method",
-					"invoice.paymentIban as payment.iban",
-					"invoice.createdAt as createdAt",
+	const invoiceQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("invoice")
+					.select((eb) => [
+						"invoice.id as id",
+						"invoice.invoiceId as invoiceId",
+						"invoice.invoiceNumber as invoiceNumber",
+						"invoice.issueDate as issueDate",
+						"invoice.dueDate as dueDate",
+						"invoice.currency as currency",
+						"invoice.paymentMethod as paymentMethod",
+						"invoice.paymentIban as paymentIban",
+						"invoice.createdAt as createdAt",
 
-					"invoiceCustomerBillingInfo.name as customer.billingInfo.name",
-					"invoiceCustomerBillingInfo.label as customer.billingInfo.label",
-					"invoiceCustomerBillingInfo.email as customer.billingInfo.email",
-					"invoiceCustomerBillingInfo.countryCode as customer.billingInfo.countryCode",
-					"invoiceCustomerBillingInfoAddress.street as customer.billingInfo.address.street",
-					"invoiceCustomerBillingInfoAddress.descriptiveNumber as customer.billingInfo.address.descriptiveNumber",
-					"invoiceCustomerBillingInfoAddress.city as customer.billingInfo.address.city",
-					"invoiceCustomerBillingInfoAddress.postalCode as customer.billingInfo.address.postalCode",
-					"invoiceCustomerBillingInfoCz.identificationNumber as customer.billingInfo.countrySpecific.identificationNumber",
-					"invoiceCustomerBillingInfoCz.vatNumber as customer.billingInfo.countrySpecific.vatNumber",
-					"invoiceCustomerBillingInfoCz.caseNumber as customer.billingInfo.countrySpecific.caseNumber",
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceCustomerBillingInfo")
+									.select([
+										"invoiceCustomerBillingInfo.name as name",
+										"invoiceCustomerBillingInfo.label as label",
+										"invoiceCustomerBillingInfo.email as email",
+										"invoiceCustomerBillingInfo.countryCode as countryCode",
+									])
+									.whereRef("invoiceCustomerBillingInfo.id", "=", "invoice.id")
+									.where(
+										"invoiceCustomerBillingInfo.isDeleted",
+										"is not",
+										sqliteTrue,
+									)
+									.where("invoiceCustomerBillingInfo.name", "is not", null)
+									.where(
+										"invoiceCustomerBillingInfo.countryCode",
+										"is not",
+										null,
+									)
+									.$narrowType<{
+										name: NotNull;
+										countryCode: NotNull;
+									}>(),
+							)
+							.as("invoiceCustomerBillingInfo"),
 
-					"invoiceSupplierBillingInfo.name as supplier.billingInfo.name",
-					"invoiceSupplierBillingInfo.label as supplier.billingInfo.label",
-					"invoiceSupplierBillingInfo.email as supplier.billingInfo.email",
-					"invoiceSupplierBillingInfo.countryCode as supplier.billingInfo.countryCode",
-					"invoiceSupplierBillingInfoAddress.street as supplier.billingInfo.address.street",
-					"invoiceSupplierBillingInfoAddress.descriptiveNumber as supplier.billingInfo.address.descriptiveNumber",
-					"invoiceSupplierBillingInfoAddress.city as supplier.billingInfo.address.city",
-					"invoiceSupplierBillingInfoAddress.postalCode as supplier.billingInfo.address.postalCode",
-					"invoiceSupplierBillingInfoCz.vatPayer as supplier.billingInfo.countrySpecific.vatPayer",
-					"invoiceSupplierBillingInfoCz.identificationNumber as supplier.billingInfo.countrySpecific.identificationNumber",
-					"invoiceSupplierBillingInfoCz.vatNumber as supplier.billingInfo.countrySpecific.vatNumber",
-					"invoiceSupplierBillingInfoCz.caseNumber as supplier.billingInfo.countrySpecific.caseNumber",
-				])
-				.where("invoice.id", "=", id as Id)
-				.where("invoice.isDeleted", "is not", sqliteTrue),
-		[id],
-	);
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceCustomerBillingInfoAddress")
+									.select([
+										"invoiceCustomerBillingInfoAddress.street as street",
+										"invoiceCustomerBillingInfoAddress.descriptiveNumber as descriptiveNumber",
+										"invoiceCustomerBillingInfoAddress.city as city",
+										"invoiceCustomerBillingInfoAddress.postalCode as postalCode",
+									])
+									.whereRef(
+										"invoiceCustomerBillingInfoAddress.id",
+										"=",
+										"invoice.id",
+									)
+									.where(
+										"invoiceCustomerBillingInfoAddress.isDeleted",
+										"is not",
+										sqliteTrue,
+									),
+							)
+							.as("invoiceCustomerBillingInfoAddress"),
 
-	const itemsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("invoiceItem")
-				.selectAll()
-				.where("invoiceId", "=", id as Id)
-				.where("isDeleted", "is not", sqliteTrue),
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceCustomerBillingInfoCz")
+									.select([
+										"invoiceCustomerBillingInfoCz.vatPayer as vatPayer",
+										"invoiceCustomerBillingInfoCz.identificationNumber as identificationNumber",
+										"invoiceCustomerBillingInfoCz.vatNumber as vatNumber",
+										"invoiceCustomerBillingInfoCz.caseNumber as caseNumber",
+									])
+									.whereRef(
+										"invoiceCustomerBillingInfoCz.id",
+										"=",
+										"invoice.id",
+									)
+									.where(
+										"invoiceCustomerBillingInfoCz.isDeleted",
+										"is not",
+										sqliteTrue,
+									)
+									.where(
+										"invoiceCustomerBillingInfoCz.vatPayer",
+										"is not",
+										null,
+									)
+									.where(
+										"invoiceCustomerBillingInfoCz.identificationNumber",
+										"is not",
+										null,
+									)
+									.$narrowType<{
+										vatPayer: NotNull;
+										identificationNumber: NotNull;
+									}>(),
+							)
+							.as("invoiceCustomerBillingInfoCz"),
+
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceSupplierBillingInfo")
+									.select([
+										"invoiceSupplierBillingInfo.name as name",
+										"invoiceSupplierBillingInfo.label as label",
+										"invoiceSupplierBillingInfo.email as email",
+										"invoiceSupplierBillingInfo.countryCode as countryCode",
+									])
+									.whereRef("invoiceSupplierBillingInfo.id", "=", "invoice.id")
+									.where(
+										"invoiceSupplierBillingInfo.isDeleted",
+										"is not",
+										sqliteTrue,
+									)
+									.where("invoiceSupplierBillingInfo.name", "is not", null)
+									.where(
+										"invoiceSupplierBillingInfo.countryCode",
+										"is not",
+										null,
+									)
+									.$narrowType<{
+										name: NotNull;
+										countryCode: NotNull;
+									}>(),
+							)
+							.as("invoiceSupplierBillingInfo"),
+
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceSupplierBillingInfoAddress")
+									.select([
+										"invoiceSupplierBillingInfoAddress.street as street",
+										"invoiceSupplierBillingInfoAddress.descriptiveNumber as descriptiveNumber",
+										"invoiceSupplierBillingInfoAddress.city as city",
+										"invoiceSupplierBillingInfoAddress.postalCode as postalCode",
+									])
+									.whereRef(
+										"invoiceSupplierBillingInfoAddress.id",
+										"=",
+										"invoice.id",
+									)
+									.where(
+										"invoiceSupplierBillingInfoAddress.isDeleted",
+										"is not",
+										sqliteTrue,
+									),
+							)
+							.as("invoiceSupplierBillingInfoAddress"),
+
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("invoiceSupplierBillingInfoCz")
+									.select([
+										"invoiceSupplierBillingInfoCz.vatPayer as vatPayer",
+										"invoiceSupplierBillingInfoCz.identificationNumber as identificationNumber",
+										"invoiceSupplierBillingInfoCz.vatNumber as vatNumber",
+										"invoiceSupplierBillingInfoCz.caseNumber as caseNumber",
+									])
+									.whereRef(
+										"invoiceSupplierBillingInfoCz.id",
+										"=",
+										"invoice.id",
+									)
+									.where(
+										"invoiceSupplierBillingInfoCz.isDeleted",
+										"is not",
+										sqliteTrue,
+									)
+									.where(
+										"invoiceSupplierBillingInfoCz.vatPayer",
+										"is not",
+										null,
+									)
+									.where(
+										"invoiceSupplierBillingInfoCz.identificationNumber",
+										"is not",
+										null,
+									)
+									.$narrowType<{
+										vatPayer: NotNull;
+										identificationNumber: NotNull;
+									}>(),
+							)
+							.as("invoiceSupplierBillingInfoCz"),
+
+						kysely
+							.jsonObjectFrom(
+								eb
+									.selectFrom("paymentWatchingState")
+									.select(["paymentWatchingState.verifiedAt as verifiedAt"])
+									.whereRef("paymentWatchingState.id", "=", "invoice.id")
+									.where(
+										"paymentWatchingState.isDeleted",
+										"is not",
+										sqliteTrue,
+									),
+							)
+							.as("paymentWatchingState"),
+
+						kysely
+							.jsonArrayFrom(
+								eb
+									.selectFrom("invoiceItemLine")
+									.select(
+										(eb) =>
+											[
+												"invoiceItemLine.id as id",
+												"invoiceItemLine.quantity as quantity",
+												"invoiceItemLine.totalAmount as totalAmount",
+
+												kysely
+													.jsonObjectFrom(
+														eb
+															.selectFrom("invoiceItem")
+															.select([
+																"invoiceItem.id as id",
+																"invoiceItem.categoryId as categoryId",
+																"invoiceItem.sourceItemId as sourceItemId",
+																"invoiceItem.label as label",
+																"invoiceItem.price as price",
+																"invoiceItem.currency as currency",
+																"invoiceItem.unitOfMeasure as unitOfMeasure",
+																"invoiceItem.internalCode as internalCode",
+																"invoiceItem.productCodeType as productCodeType",
+																"invoiceItem.productCodeValue as productCodeValue",
+															])
+															.whereRef(
+																"invoiceItem.id",
+																"=",
+																"invoiceItemLine.id",
+															)
+															.where(
+																"invoiceItem.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.where("invoiceItem.label", "is not", null)
+															.where("invoiceItem.price", "is not", null)
+															.where("invoiceItem.currency", "is not", null)
+															.$narrowType<{
+																label: NotNull;
+																price: NotNull;
+																currency: NotNull;
+															}>(),
+													)
+													.as("item"),
+											] as const,
+									)
+									.whereRef("invoiceItemLine.invoiceId", "=", "invoice.id")
+									.where("invoiceItemLine.isDeleted", "is not", sqliteTrue)
+									.where("invoiceItemLine.totalAmount", "is not", null)
+									.where("invoiceItemLine.quantity", "is not", null)
+									.$narrowType<{
+										quantity: NotNull;
+										totalAmount: NotNull;
+										item: NotNull;
+									}>(),
+							)
+							.as("items"),
+					])
+					.where("invoice.id", "=", id as Id)
+					.where("invoice.isDeleted", "is not", sqliteTrue)
+					.where("invoice.invoiceId", "is not", null)
+					.where("invoice.invoiceNumber", "is not", null)
+					.where("invoice.issueDate", "is not", null)
+					.where("invoice.dueDate", "is not", null)
+					.where("invoice.currency", "is not", null)
+					.where("invoice.paymentMethod", "is not", null)
+					.$narrowType<{
+						items: NotNull;
+						invoiceId: NotNull;
+						invoiceNumber: NotNull;
+						issueDate: NotNull;
+						dueDate: NotNull;
+						currency: NotNull;
+						paymentMethod: NotNull;
+						invoiceSupplierBillingInfo: NotNull;
+						invoiceSupplierBillingInfoAddress: NotNull;
+						invoiceSupplierBillingInfoCz: NotNull;
+						invoiceCustomerBillingInfo: NotNull;
+						invoiceCustomerBillingInfoAddress: NotNull;
+						invoiceCustomerBillingInfoCz: NotNull;
+					}>(),
+			),
 		[id],
 	);
 
 	const { data: invoiceRows } = useEvoluQuery(invoiceQuery);
-	const { data: invoiceItemRows } = useEvoluQuery(itemsQuery);
-
-	const item = useMemo(() => {
-		const row = invoiceRows && invoiceRows[0];
-		if (!row) return undefined;
-
-		const nested = nestObjectSkipNullBranches(row);
-		return {
-			...nested,
-			items: (invoiceItemRows ?? []).map((it) => ({
-				label: it.label,
-				price: it.price,
-				quantity: it.quantity,
-				unitOfMeasure: it.unitOfMeasure,
-			})),
-		} as unknown as { value: Invoice };
-	}, [invoiceRows, invoiceItemRows]);
+	const invoice = invoiceRows[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
-			if (item === undefined) {
+			if (invoice === undefined) {
 				return;
 			}
 
 			evolu.update("invoice", {
-				id: item.id as Id,
+				id: invoice.id,
 				isDeleted: sqliteTrue,
 			});
 			router.push("/admin/invoices");
@@ -476,21 +676,33 @@ export default function Home() {
 		},
 	);
 
-	const totalAmount =
-		item?.items.reduce((acc, value) => acc + value.price * value.quantity, 0) ??
-		0;
+	const totalAmount = invoice
+		? invoice.items.reduce((acc, value) => acc + value.totalAmount, 0)
+		: 0;
 
 	const paymentQrCode =
-		item?.paymentMethod === InvoicePaymentMethod.BankTransfer &&
+		invoice &&
+		invoice.paymentMethod === InvoicePaymentMethod.BankTransfer &&
+		invoice.paymentIban &&
 		totalAmount > 0 &&
-		item.paymentIban.startsWith("CZ")
+		invoice.paymentIban.startsWith("CZ")
 			? generateCzechBankQrCode({
 					amount: totalAmount,
-					currency: item.currency,
-					iban: item.paymentIban,
-					variableSymbol: item.invoiceNumber,
+					currency: invoice.currency,
+					iban: invoice.paymentIban,
+					variableSymbol: invoice.invoiceNumber,
 				})
 			: null;
+
+	useEffect(() => {
+		if (invoice === undefined) {
+			router.replace("/admin/invoices");
+		}
+	}, [invoice, router]);
+
+	if (invoice === undefined) {
+		return null;
+	}
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -502,17 +714,14 @@ export default function Home() {
 				<div className={"flex flex-2 gap-4 flex-col"}>
 					<ResponsiveCard>
 						<CardHeader>
-							<CardTitle>
-								{!item && <Skeleton />}
-								{item?.invoiceNumber}
-							</CardTitle>
+							<CardTitle>{invoice.invoiceNumber}</CardTitle>
 							<CardToolbar>
-								{item && (
-									<InvoiceStatusBadge
-										invoiceId={item.id}
-										dueDate={new Date(item.dueDate)}
-									/>
-								)}
+								{/*{item && (*/}
+								{/*	<InvoiceStatusBadge*/}
+								{/*		invoiceId={item.id}*/}
+								{/*		dueDate={new Date(item.dueDate)}*/}
+								{/*	/>*/}
+								{/*)}*/}
 							</CardToolbar>
 						</CardHeader>
 						<CardContent>
@@ -520,57 +729,35 @@ export default function Home() {
 								<div className={"flex gap-4"}>
 									<StaticCard
 										title={"Price"}
-										content={
-											<>
-												{!item && <Skeleton />}
-												{item &&
-													`${formatAmount(
-														item.items.reduce(
-															(acc, value) =>
-																acc + value.price * value.quantity,
-															0,
-														),
-														item.currency,
-													)}`}
-											</>
-										}
+										content={formatMoney({
+											value: Integer(
+												invoice.items.reduce(
+													(acc, value) => acc + value.totalAmount,
+													0,
+												),
+											),
+											currency: invoice.currency,
+										})}
 										className={"flex-1"}
 									/>
 
 									<StaticCard
 										title={"Modified at"}
-										content={
-											<>
-												{!item && <Skeleton />}
-												{item && new Date(item.createdAt).toLocaleDateString()}
-											</>
-										}
-										footer={
-											item && new Date(item.createdAt).toLocaleTimeString()
-										}
+										content={new Date(invoice.createdAt).toLocaleDateString()}
+										footer={new Date(invoice.createdAt).toLocaleTimeString()}
 										className={"flex-1"}
 									/>
 								</div>
 								<div className={"flex gap-4"}>
 									<StaticCard
 										title={"Issue date"}
-										content={
-											<>
-												{!item && <Skeleton />}
-												{item && new Date(item.issueDate).toLocaleDateString()}
-											</>
-										}
+										content={new Date(invoice.issueDate).toLocaleDateString()}
 										className={"flex-1"}
 									/>
 
 									<StaticCard
 										title={"Due date"}
-										content={
-											<>
-												{!item && <Skeleton />}
-												{item && new Date(item.dueDate).toLocaleDateString()}
-											</>
-										}
+										content={new Date(invoice.dueDate).toLocaleDateString()}
 										className={"flex-1"}
 									/>
 								</div>
@@ -581,71 +768,74 @@ export default function Home() {
 											items={[
 												{
 													key: "Invoice number",
-													value: item?.invoiceNumber ?? "-",
+													value: invoice.invoiceNumber ?? "-",
 												},
 												{
 													key: "Price",
-													value: item
-														? formatAmount(
-																item.items.reduce(
-																	(acc, value) =>
-																		acc + value.price * value.quantity,
-																	0,
-																),
-																item.currency,
-															)
-														: "-",
+													value: formatMoney({
+														value: Integer(
+															invoice.items.reduce(
+																(acc, value) => acc + value.totalAmount,
+																0,
+															),
+														),
+														currency: invoice.currency,
+													}),
 												},
 												{
 													key: "Name",
-													value: item?.supplier.billingInfo.name ?? "-",
+													value: invoice.invoiceSupplierBillingInfo.name ?? "-",
 												},
 												{
 													key: "VAT Number",
 													value:
-														item?.supplier.billingInfo.countrySpecific
-															.vatNumber ?? "-",
+														(invoice.invoiceSupplierBillingInfoCz &&
+															invoice.invoiceSupplierBillingInfoCz.vatNumber) ??
+														"-",
 												},
 												{
 													key: "Payment Method",
-													value: item?.paymentMethod,
+													value: invoice.paymentMethod,
 												},
-												...(item?.paymentMethod ===
+												...(invoice.paymentMethod ===
 												InvoicePaymentMethod.BankTransfer
 													? [
 															{
 																key: "IBAN",
-																value: item?.paymentIban
-																	? formatIban(item.paymentIban)
+																value: invoice.paymentIban
+																	? formatIban(invoice.paymentIban)
 																	: "-",
 															},
 														]
 													: []),
 												{
 													key: "E-mail",
-													value: item?.supplier.billingInfo.email ?? "-",
+													value:
+														invoice.invoiceSupplierBillingInfo.email ?? "-",
 												},
 												{
 													key: "Street",
 													value:
-														item?.supplier.billingInfo.address?.street ?? "-",
+														invoice.invoiceSupplierBillingInfoAddress.street ??
+														"-",
 												},
 												{
 													key: "City",
 													value:
-														item?.supplier.billingInfo.address?.city ?? "-",
+														invoice.invoiceSupplierBillingInfoAddress.city ??
+														"-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														item?.supplier.billingInfo.address?.postalCode ??
-														"-",
+														invoice.invoiceSupplierBillingInfoAddress
+															.postalCode ?? "-",
 												},
 												{
 													key: "Country",
 													value:
-														item?.supplier.billingInfo.countrySpecific
-															.countryCode ?? "-",
+														invoice.invoiceSupplierBillingInfo.countryCode ??
+														"-",
 												},
 											]}
 										/>
@@ -655,45 +845,51 @@ export default function Home() {
 											items={[
 												{
 													key: "Customer",
-													value: item?.customer.billingInfo.name ?? "-",
+													value: invoice.invoiceCustomerBillingInfo.name ?? "-",
 												},
 												{
 													key: "VAT Number",
 													value:
-														item?.customer.billingInfo.countrySpecific
-															.vatNumber ?? "-",
+														(invoice.invoiceCustomerBillingInfoCz &&
+															invoice.invoiceCustomerBillingInfoCz.vatNumber) ??
+														"-",
 												},
 												{
 													key: "Identification Number",
 													value:
-														item?.customer.billingInfo.countrySpecific
-															.identificationNumber ?? "-",
+														(invoice.invoiceCustomerBillingInfoCz &&
+															invoice.invoiceCustomerBillingInfoCz
+																.identificationNumber) ??
+														"-",
 												},
 												{
 													key: "E-mail",
-													value: item?.customer.billingInfo.email ?? "-",
+													value:
+														invoice.invoiceCustomerBillingInfo.email ?? "-",
 												},
 												{
 													key: "Street",
 													value:
-														item?.customer.billingInfo.address?.street ?? "-",
+														invoice.invoiceCustomerBillingInfoAddress.street ??
+														"-",
 												},
 												{
 													key: "City",
 													value:
-														item?.customer.billingInfo.address?.city ?? "-",
+														invoice.invoiceCustomerBillingInfoAddress.city ??
+														"-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														item?.customer.billingInfo.address?.postalCode ??
-														"-",
+														invoice.invoiceCustomerBillingInfoAddress
+															.postalCode ?? "-",
 												},
 												{
 													key: "Country",
 													value:
-														item?.customer.billingInfo.countrySpecific
-															.countryCode ?? "-",
+														invoice.invoiceCustomerBillingInfo.countryCode ??
+														"-",
 												},
 											]}
 										/>
@@ -710,11 +906,9 @@ export default function Home() {
 							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
-							{item && (
-								<DownloadPdf invoice={item} paymentQrCode={paymentQrCode} />
-							)}
-							{item && <SendPdf invoice={item} paymentQrCode={paymentQrCode} />}
-							{item && <ISDOCGenerator invoice={item} />}
+							<DownloadPdf invoice={invoice} paymentQrCode={paymentQrCode} />
+							<SendPdf invoice={invoice} paymentQrCode={paymentQrCode} />
+							<ISDOCGenerator invoice={invoice} />
 							<Button variant={"outline"} className={"w-full"} asChild>
 								<Link
 									href={`/admin/invoices/edit?id=${encodeURIComponent(id)}`}
@@ -723,7 +917,7 @@ export default function Home() {
 									Edit
 								</Link>
 							</Button>
-							{item && <StatusButton invoiceId={item.id} />}
+							{<StatusButton invoiceId={invoice.id} />}
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
 								Delete
@@ -736,24 +930,19 @@ export default function Home() {
 							<CardTitle>{t("invoices:page.pdfInvoicePreview")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
-							{item &&
-								(paymentQrCode ? (
-									<QrCodeImageBuilder qrCode={paymentQrCode}>
-										{(qrUri) => (
-											<PDFViewer
-												width={"100%"}
-												height={600}
-												showToolbar={false}
-											>
-												<InvoiceTemplate qrCodeSrc={qrUri} invoice={item} />
-											</PDFViewer>
-										)}
-									</QrCodeImageBuilder>
-								) : (
-									<PDFViewer width={"100%"} height={600} showToolbar={false}>
-										<InvoiceTemplate invoice={item} qrCodeSrc={null} />
-									</PDFViewer>
-								))}
+							{paymentQrCode ? (
+								<QrCodeImageBuilder qrCode={paymentQrCode}>
+									{(qrUri) => (
+										<PDFViewer width={"100%"} height={600} showToolbar={false}>
+											<InvoiceTemplate qrCodeSrc={qrUri} invoice={invoice} />
+										</PDFViewer>
+									)}
+								</QrCodeImageBuilder>
+							) : (
+								<PDFViewer width={"100%"} height={600} showToolbar={false}>
+									<InvoiceTemplate invoice={invoice} qrCodeSrc={null} />
+								</PDFViewer>
+							)}
 						</CardContent>
 					</ResponsiveCard>
 				</div>

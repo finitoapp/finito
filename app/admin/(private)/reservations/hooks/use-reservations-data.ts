@@ -14,18 +14,22 @@ import type {
 	ReservationVm,
 	TableVm,
 } from "@/app/admin/(private)/reservations/lib/types";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export const useReservationsData = (params: { selectedDay: Date }) => {
 	const billingSettingsId = createIdFromString("");
-	const billingSettingsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("billingSettings")
-				.select(["billingSettings.defaultTimezone as defaultTimezone"] as const)
-				.where("billingSettings.isDeleted", "is not", sqliteTrue)
-				.where("billingSettings.id", "=", billingSettingsId),
+	const billingSettingsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("billingSettings")
+					.select([
+						"billingSettings.defaultTimezone as defaultTimezone",
+					] as const)
+					.where("billingSettings.isDeleted", "is not", sqliteTrue)
+					.where("billingSettings.id", "=", billingSettingsId),
+			),
 		[billingSettingsId],
 	);
 	const { data: billingSettingsRows } = useEvoluQuery(billingSettingsQuery);
@@ -38,17 +42,19 @@ export const useReservationsData = (params: { selectedDay: Date }) => {
 		[params.selectedDay, timezone],
 	);
 
-	const tablesQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("table")
-				.select([
-					"table.id as id",
-					"table.label as label",
-					"table.numberOfSeats as numberOfSeats",
-				] as const)
-				.where("table.isDeleted", "is not", sqliteTrue)
-				.orderBy("table.label", "asc"),
+	const tablesQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("table")
+					.select([
+						"table.id as id",
+						"table.label as label",
+						"table.numberOfSeats as numberOfSeats",
+					] as const)
+					.where("table.isDeleted", "is not", sqliteTrue)
+					.orderBy("table.label", "asc"),
+			),
 		[],
 	);
 	const { data: tableRows } = useEvoluQuery(tablesQuery);
@@ -70,37 +76,39 @@ export const useReservationsData = (params: { selectedDay: Date }) => {
 		[tableRows],
 	);
 
-	const reservationsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("reservation")
-				.leftJoin(
-					"reservationBooking",
-					"reservationBooking.id",
-					"reservation.id",
-				)
-				.leftJoin("reservationBlock", "reservationBlock.id", "reservation.id")
-				.select([
-					"reservation.id as id",
-					"reservation._tag as _tag",
-					"reservation.tableId as tableId",
-					"reservation.note as note",
-					"reservation.startAt as startAt",
-					"reservation.endAt as endAt",
-					"reservationBooking.name as bookingName",
-					"reservationBooking.phone as bookingPhone",
-					"reservationBooking.email as bookingEmail",
-					"reservationBooking.numberOfPeople as bookingNumberOfPeople",
-					"reservationBooking.approvalStatus as bookingApprovalStatus",
-					"reservationBooking.serviceStatus as bookingServiceStatus",
-					"reservationBooking.statusReason as bookingStatusReason",
-					"reservationBooking.source as bookingSource",
-					"reservationBlock.label as blockLabel",
-				] as const)
-				.where("reservation.isDeleted", "is not", sqliteTrue)
-				.where("reservation.startAt", "<", dayRange.dayEndMs as never)
-				.where("reservation.endAt", ">", dayRange.dayStartMs as never)
-				.orderBy("reservation.startAt", "asc"),
+	const reservationsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("reservation")
+					.leftJoin(
+						"reservationBooking",
+						"reservationBooking.id",
+						"reservation.id",
+					)
+					.leftJoin("reservationBlock", "reservationBlock.id", "reservation.id")
+					.select([
+						"reservation.id as id",
+						"reservation._tag as _tag",
+						"reservation.tableId as tableId",
+						"reservation.note as note",
+						"reservation.startAt as startAt",
+						"reservation.endAt as endAt",
+						"reservationBooking.name as bookingName",
+						"reservationBooking.phone as bookingPhone",
+						"reservationBooking.email as bookingEmail",
+						"reservationBooking.numberOfPeople as bookingNumberOfPeople",
+						"reservationBooking.approvalStatus as bookingApprovalStatus",
+						"reservationBooking.serviceStatus as bookingServiceStatus",
+						"reservationBooking.statusReason as bookingStatusReason",
+						"reservationBooking.source as bookingSource",
+						"reservationBlock.label as blockLabel",
+					] as const)
+					.where("reservation.isDeleted", "is not", sqliteTrue)
+					.where("reservation.startAt", "<", dayRange.dayEndMs as never)
+					.where("reservation.endAt", ">", dayRange.dayStartMs as never)
+					.orderBy("reservation.startAt", "asc"),
+			),
 		[dayRange.dayStartMs, dayRange.dayEndMs],
 	);
 	const { data: reservationRows } = useEvoluQuery(reservationsQuery);
@@ -123,7 +131,7 @@ export const useReservationsData = (params: { selectedDay: Date }) => {
 			const startAt = row.startAt;
 			const endAt = row.endAt;
 
-			if (_tag === "reservationBooking") {
+			if (_tag === "booking") {
 				if (row.bookingName === null || row.bookingNumberOfPeople === null) {
 					continue;
 				}
@@ -152,7 +160,7 @@ export const useReservationsData = (params: { selectedDay: Date }) => {
 				continue;
 			}
 
-			if (_tag === "reservationBlock") {
+			if (_tag === "block") {
 				if (row.blockLabel === null) continue;
 				mapped.push({
 					id,

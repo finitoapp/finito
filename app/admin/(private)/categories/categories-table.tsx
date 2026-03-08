@@ -1,14 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -26,6 +26,8 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
 
 type Task = {
 	id: Id;
@@ -39,12 +41,19 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "name",
-		title: t("categories:table.columns.name"),
-	},
-] satisfies { id: keyof Task; title: string }[];
+const sortingFields = {
+	id: "category.id",
+	createdAt: "category.createdAt",
+	name: "category.name",
+} as const satisfies Record<keyof Task | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "name",
+			title: t("categories:table.columns.name"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function CategoriesTable() {
 	const { t } = useTranslation();
@@ -59,25 +68,34 @@ export function CategoriesTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? { id: "createdAt", desc: true };
-				const sortingColumn = `category.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("category")
 						.selectAll()
-						.where("isDeleted", "is not", sqliteTrue);
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("name", "is not", null)
+						.$narrowType<{
+							name: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("category.id", "<", previousCursor.id as never),
 								]),
 							]),
@@ -85,7 +103,7 @@ export function CategoriesTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("category.id", "desc");
 
 					for (const filter of filters) {
@@ -101,7 +119,7 @@ export function CategoriesTable() {
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -109,23 +127,15 @@ export function CategoriesTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -136,7 +146,9 @@ export function CategoriesTable() {
 			<CardHeader>
 				<CardHeading className={"py-6"}>
 					<CardTitle>{t("categories:table.categories")}</CardTitle>
-					<CardDescription>{t("categories:table.listOfProductCategories")}</CardDescription>
+					<CardDescription>
+						{t("categories:table.listOfProductCategories")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/categories/new" as never}>
@@ -152,8 +164,6 @@ export function CategoriesTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="name"
-					searchPlaceholder={t("categories:table.search.placeholder.by-name")}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(

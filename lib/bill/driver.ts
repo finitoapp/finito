@@ -1,16 +1,18 @@
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
-import type { EmptyObject } from "type-fest";
+import type { PaymentMerchant } from "@/lib/evolu/model/payment";
+import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
+import type { Id } from "@/lib/evolu/types";
 import type { NostrMenu } from "@/lib/nostr/contracts/menu";
+import type { NostrPayment } from "@/lib/nostr/contracts/payment";
 import type { ReservationFormData } from "@/lib/nostr/contracts/reservation";
-import type { InferEnumType } from "@/lib/shared/types";
 import type {
-	PaymentFinished,
-	PaymentInit,
-	PaymentReady,
-} from "@/lib/evolu/model/payment-progress";
-import type { Bill, PaymentMerchant } from "@/lib/evolu/model/payment";
+	Currency,
+	InferEnumType,
+	Integer,
+	NonNegativeInteger,
+} from "@/lib/shared/types";
 
 export const BillPaymentOption = {
 	BtcLn: "btcLn",
@@ -20,7 +22,6 @@ export type BillPaymentOption = InferEnumType<typeof BillPaymentOption>;
 
 export type BillSubscription = {
 	close: () => Promise<void>;
-	refresh: () => Promise<void>;
 };
 
 export type ScreenDataPaymentPayFunction = (
@@ -28,35 +29,44 @@ export type ScreenDataPaymentPayFunction = (
 ) => Promise<void>;
 
 export type ScreenData =
+	// | {
+	// 		variant: "payment" | "refund"; // Default payment
+	// 		parentScreen?: ScreenData;
+	// 		pay: ScreenDataPaymentPayFunction;
+	// 		payload: {
+	// 			bill: Bill | null; // Null when the bill does not exist
+	// 			allowManualRefresh?: boolean;
+	// 			table?: {
+	// 				name: string;
+	// 			};
+	// 			merchant?: PaymentMerchant;
+	// 			paymentOptions?: (
+	// 				| {
+	// 						type: (typeof BillPaymentOption)["BtcLn"];
+	// 				  }
+	// 				| {
+	// 						type: (typeof BillPaymentOption)["BankTransferCZ"];
+	// 				  }
+	// 			)[];
+	// 		};
+	//   }
+	// | {
+	// 		variant: "paymentReady";
+	// 		parentScreen?: ScreenData;
+	// 		payload: PaymentReady;
+	//   }
+	// | {
+	// 		variant: "paymentFinished";
+	// 		parentScreen?: ScreenData;
+	// 		payload: PaymentFinished;
+	//   }
 	| {
-			variant: "payment" | "refund"; // Default payment
+			variant: "payment";
 			parentScreen?: ScreenData;
-			pay: ScreenDataPaymentPayFunction;
 			payload: {
-				bill: Bill | null; // Null when the bill does not exist
-				allowManualRefresh?: boolean;
-				table?: {
-					name: string;
-				};
-				merchant?: PaymentMerchant;
-				paymentOptions?: (
-					| {
-							type: (typeof BillPaymentOption)["BtcLn"];
-					  }
-					| {
-							type: (typeof BillPaymentOption)["BankTransferCZ"];
-					  }
-				)[];
+				payment: NostrPayment["payment"];
+				merchant?: NostrPayment["merchant"];
 			};
-	  }
-	| {
-			variant: "paymentReady";
-			parentScreen?: ScreenData;
-			payload: PaymentReady;
-	  }
-	| {
-			variant: "paymentFinished";
-			payload: PaymentFinished;
 	  }
 	| {
 			variant: "menu";
@@ -64,36 +74,60 @@ export type ScreenData =
 			payload: NostrMenu;
 	  }
 	| {
+			variant: "table";
+			parentScreen?: ScreenData;
+			pay: ScreenDataPaymentPayFunction;
+			payload: {
+				table?: {
+					name: string;
+				};
+				merchant?: PaymentMerchant;
+				// Null when the bill does not exist
+				bill: null | {
+					currency: Currency;
+					allowTip?: boolean;
+					items: {
+						id: Id;
+						quantity: number;
+						optionality?: {
+							checked: NonNegativeInteger;
+						};
+						item: {
+							label: string;
+							price: Integer;
+						};
+					}[];
+				};
+			};
+	  }
+	| {
 			variant: "reservation";
 			parentScreen?: ScreenData;
 			payload: ReservationFormData;
-	  };
-
-export type BillDriverSubscriptionEvent =
-	| {
-			type: "billLoading";
-			payload: {
-				text: string;
-			};
 	  }
 	| {
-			type: "screen";
-			payload: ScreenData;
-	  }
-	| {
-			type: "paymentInProgress";
+			variant: "loading";
+			parentScreen?: ScreenData;
 			payload: {
 				text: string | null;
+				status?: "loading" | "success" | "failure"; // loading is default
 			};
 	  }
 	| {
-			type: "closed";
-			payload: EmptyObject;
-	  }
-	| {
-			type: "resetBill";
-			payload: EmptyObject;
+			variant: "info";
+			parentScreen?: ScreenData;
+			payload: {
+				text: string | null;
+				status?: "loading" | "success" | "failure"; // loading is default
+			};
 	  };
+
+export type BillDriverSubscriptionEvent = {
+	type: "close";
+	payload: {
+		alertMessage: string;
+	};
+};
 
 export interface BillDriver {
 	/**
@@ -102,6 +136,11 @@ export interface BillDriver {
 	subscribe(props: {
 		billId: string;
 		callback: (event: BillDriverSubscriptionEvent) => unknown;
+		screenStack: {
+			push: (screen: ScreenData) => void;
+			replace: (screen: ScreenData) => void;
+			back: () => void;
+		};
 		ndk: NDK & {
 			signer: NDKSigner;
 			activeUser: NDKUser;

@@ -1,33 +1,34 @@
 import { z } from "zod";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	Currency,
+	IntegerSchema,
 	NonEmptyStringSchema,
-	NonNegativeIntegerSchema,
 	TimestampMsSchema,
 	Timezone,
 } from "@/lib/shared/types";
 
 const MenuItemPublicSchema = z.object({
 	// Internal Evolu row id intentionally reused as stable public identifier.
-	id: NonEmptyStringSchema,
+	id: TableIdSchema,
 	label: NonEmptyStringSchema,
 	// Optional UI hint for visually marking sold-out items.
 	isSoldOut: z.boolean().optional(),
 	// Stored in minor units for `priceCurrency` (same convention as Evolu).
-	priceValue: NonNegativeIntegerSchema,
-	priceCurrency: z.enum(Currency),
+	price: IntegerSchema,
+	currency: z.enum(Currency),
 	unitOfMeasure: NonEmptyStringSchema.optional(),
 });
 
 const MenuCategoryPublicSchema = z.object({
-	id: NonEmptyStringSchema,
+	id: TableIdSchema,
 	name: NonEmptyStringSchema,
 	// Sorted by `label` ascending.
 	items: z.array(MenuItemPublicSchema),
 });
 
 const MenuPublicSchema = z.object({
-	id: NonEmptyStringSchema,
+	id: TableIdSchema,
 	name: NonEmptyStringSchema,
 	// Only published + currently valid menus should be exported.
 	// `status` is omitted because the contract includes only published menus.

@@ -1,15 +1,15 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -18,7 +18,7 @@ export default function Home() {
 
 	const [billingSettings, setBillingSettings] = useState<any>(undefined);
 	useEffect(() => {
-		const query = evolu.createQuery((db) =>
+		const query = createQuery((db) =>
 			db
 				.selectFrom("billingSettings")
 				.selectAll()
@@ -45,7 +45,7 @@ export default function Home() {
 						key={[billingSettings ? "true" : false].join(",")}
 						onSuccess={() => router.back()}
 						defaultValues={{
-							priceCurrency: billingSettings?.defaultCurrency,
+							currency: billingSettings?.defaultCurrency,
 						}}
 					/>
 				</CardContent>

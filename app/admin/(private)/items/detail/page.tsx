@@ -1,13 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import Barcode from "react-barcode";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -15,11 +16,11 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { formatAmount } from "@/lib/shared/utils/format";
+import { createQuery } from "@/lib/evolu";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -32,27 +33,50 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("item")
-				.leftJoin("category", "category.id", "item.categoryId")
-				.select([
-					"item.id as id",
-					"item.label as label",
-					"item.priceValue as priceValue",
-					"item.priceCurrency as priceCurrency",
-					"item.unitOfMeasure as unitOfMeasure",
-					"item.categoryId as categoryId",
-					"item.productCodeType as productCodeType",
-					"item.productCodeValue as productCodeValue",
-					"item.internalCode as internalCode",
-					"item.createdAt as createdAt",
-					"category.name as category.name",
-				] as const)
-				.where("item.isDeleted", "is not", sqliteTrue)
-				.where("item.id", "=", id as Id);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("item")
+					.leftJoin("category", "category.id", "item.categoryId")
+					.select(
+						(eb) =>
+							[
+								"item.id as id",
+								"item.label as label",
+								"item.price as price",
+								"item.currency as currency",
+								"item.unitOfMeasure as unitOfMeasure",
+								"item.categoryId as categoryId",
+								"item.productCodeType as productCodeType",
+								"item.productCodeValue as productCodeValue",
+								"item.internalCode as internalCode",
+								"item.createdAt as createdAt",
+								"category.name as category.name",
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("category")
+											.select(["category.name as name"])
+											.whereRef("category.id", "=", "item.categoryId")
+											.where("category.name", "is not", null)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("category"),
+							] as const,
+					)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.price", "is not", null)
+					.where("item.currency", "is not", null)
+					.where("item.id", "=", id as Id)
+					.$narrowType<{
+						price: NotNull;
+						currency: NotNull;
+					}>();
+			}),
 		[id],
 	);
 
@@ -111,7 +135,7 @@ export default function Home() {
 										<>
 											{!item && <Skeleton />}
 											{item &&
-												`${formatAmount(item.priceValue, item.priceCurrency)}${item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}`}
+												`${formatMoney({ value: item.price, currency: item.currency })}${item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}`}
 										</>
 									}
 									className={"flex-1"}
@@ -141,7 +165,10 @@ export default function Home() {
 											{
 												key: "Price",
 												value: item
-													? formatAmount(item.priceValue, item.priceCurrency)
+													? formatMoney({
+															value: item.price,
+															currency: item.currency,
+														})
 													: "-",
 											},
 											{

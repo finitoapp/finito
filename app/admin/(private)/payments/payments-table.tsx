@@ -1,8 +1,9 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,6 @@ import {
 	type DataTableOnFilterChange,
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	CardContent,
@@ -26,17 +26,27 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { Currency, Integer, NonEmptyString255 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
-import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 
 type Row = {
 	id: Id;
-	createdAt: string;
-	amount: number;
-	billCurrency: string;
-	label: string;
-	status: PaymentStatus;
+	createdAt: DateIso;
+	totalAmount: Integer;
+	currency: Currency;
+	label: NonEmptyString255 | null;
+	// status: PaymentStatus;
 };
+
+const sortingFields = {
+	id: "payment.id",
+	createdAt: "payment.createdAt",
+	totalAmount: "payment.totalAmount",
+	currency: "payment.currency",
+	label: "paymentItem.label",
+} as const satisfies Record<keyof Row | "createdAt", string>;
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
@@ -49,23 +59,23 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 		header: t("payments:table.columns.amount"),
 		cell: ({ row }) =>
 			formatMoney({
-				value: row.original.amount,
-				currency: row.original.billCurrency,
+				value: row.original.totalAmount,
+				currency: row.original.currency,
 			}),
 	},
-	{
-		accessorKey: "status",
-		header: t("payments:table.columns.status"),
-		cell: ({ row }) => (
-			<Badge
-				variant={
-					row.original.status === PaymentStatus.Unpaid ? "primary" : "success"
-				}
-			>
-				{row.original.status}
-			</Badge>
-		),
-	},
+	// {
+	// 	accessorKey: "status",
+	// 	header: t("payments:table.columns.status"),
+	// 	cell: ({ row }) => (
+	// 		<Badge
+	// 			variant={
+	// 				row.original.status === PaymentStatus.Unpaid ? "primary" : "success"
+	// 			}
+	// 		>
+	// 			{row.original.status}
+	// 		</Badge>
+	// 	),
+	// },
 	{
 		accessorKey: "label",
 		header: t("payments:table.columns.description"),
@@ -83,129 +93,80 @@ export function PaymentsTable() {
 			({ sorting, setData, pagination: { limit, cursor } }) => {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
-				const finalSorting = sorting ?? {
-					id: "createdAt",
-					desc: true,
+
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
+
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
 				};
 
-				const query = evolu.createQuery((db) => {
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("payment")
+						.leftJoin(
+							"paymentItemLine",
+							"paymentItemLine.paymentId",
+							"payment.id",
+						)
+						.leftJoin("paymentItem", "paymentItem.id", "paymentItemLine.id")
 						.select([
 							"payment.id as id",
-							"payment.billCurrency as billCurrency",
+							"payment.totalAmount as totalAmount",
+							"payment.currency as currency",
 							"payment.createdAt as createdAt",
+							"paymentItem.label as label",
 						] as const)
-						.where("payment.isDeleted", "is not", sqliteTrue);
+						.where("payment.isDeleted", "is not", sqliteTrue)
+						.where("payment.totalAmount", "is not", null)
+						.where("payment.currency", "is not", null)
+						.groupBy("payment.id")
+						.$narrowType<{
+							totalAmount: NotNull;
+							currency: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									"createdAt",
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
-									previousCursor.createdAt as string,
+									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb("createdAt", "=", previousCursor.createdAt as string),
-									eb("id", "<", previousCursor.id as Id),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
+									eb("payment.id", "<", previousCursor.id as Id),
 								]),
 							]),
 						);
 					}
 
-					return qb
-						.orderBy("createdAt", finalSorting.desc ? "desc" : "asc")
-						.orderBy("id", "desc")
-						.limit(limit + 1);
+					qb = qb
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
+						.orderBy("payment.id", "desc");
+
+					return qb.limit(limit + 1);
 				});
 
-				const formatData = async (result) => {
-					const payments = result.length > limit ? result.slice(0, -1) : result;
+				return subscribeToEvoluQuery(evolu, query, (result) => {
+					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
-					const last = payments[payments.length - 1];
+					const last = data[data.length - 1];
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							createdAt: last.createdAt,
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					const ids = payments.map((payment) => payment.id);
-					const billItems =
-						ids.length > 0
-							? await evolu.loadQuery(
-									evolu.createQuery((db) =>
-										db
-											.selectFrom("paymentBillItem")
-											.select([
-												"paymentBillItem.paymentId as paymentId",
-												"paymentBillItem.price as price",
-												"paymentBillItem.label as label",
-											] as const)
-											.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
-											.where("paymentBillItem.paymentId", "in", ids as Id[]),
-									),
-								)
-							: [];
-					const reconciliationClaims =
-						ids.length > 0
-							? await evolu.loadQuery(
-									evolu.createQuery((db) =>
-										db
-											.selectFrom("reconciliationClaim")
-											.select([
-												"reconciliationClaim.entityId as paymentId",
-											] as const)
-											.where(
-												"reconciliationClaim.isDeleted",
-												"is not",
-												sqliteTrue,
-											)
-											.where("reconciliationClaim.entityType", "=", "payment")
-											.where("reconciliationClaim.entityId", "in", ids as Id[]),
-									),
-								)
-							: [];
-					const paidPaymentIds = new Set<Id>();
-					for (const claim of reconciliationClaims) {
-						if (claim.paymentId === null) continue;
-						paidPaymentIds.add(claim.paymentId);
-					}
-
-					const rows: Row[] = payments.map((payment) => {
-						const relatedItems = billItems.filter(
-							(item) => item.paymentId === payment.id,
-						);
-						return {
-							id: payment.id,
-							createdAt: payment.createdAt,
-							amount: relatedItems.reduce(
-								(acc, val) => acc + (val.price ?? 0),
-								0,
-							),
-							billCurrency: payment.billCurrency ?? "",
-							label: relatedItems[0]?.label ?? "-",
-							status: paidPaymentIds.has(payment.id)
-								? PaymentStatus.Paid
-								: PaymentStatus.Unpaid,
-						};
-					});
-
-					return {
-						data: rows,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					void formatData(rows).then(setData);
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					void formatData(evolu.getQueryRows(query)).then(setData);
+					});
 				});
 			},
 		[evolu],

@@ -1,9 +1,8 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { Loader2Icon } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { FinitoLogo } from "@/components/finito-logo";
 
 export default function Loading() {

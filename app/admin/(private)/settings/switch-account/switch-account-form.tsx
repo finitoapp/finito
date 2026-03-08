@@ -1,26 +1,20 @@
-import {
-	getOrThrow,
-	type Mnemonic,
-	NonEmptyString100,
-	PositiveInt,
-	sqliteTrue,
-} from "@evolu/common";
+import { type Mnemonic, sqliteTrue } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
-import { defaultRelays, nostrRelaysAtom } from "@/atoms/nostr-relays";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
+import { createDeviceQuery } from "@/lib/evolu/device";
 import {
+	NonEmptyString255,
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
-	WssUrl,
 } from "@/lib/shared/types";
 
 export const switchAccountSchema = z.object({
@@ -31,12 +25,15 @@ export const switchUserDefaultValues = {
 	seed: "",
 } satisfies z.input<typeof switchAccountSchema>;
 
-const createComponents = (t: TFunction) => createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
-	...builder.magicInput("seed").textarea({
-		placeholder: t("settings:form.switch-account-form.placeholder.paste-your-seed"),
-		rows: 4,
-	}),
-}));
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(switchAccountSchema, ({ builder }) => ({
+		...builder.magicInput("seed").textarea({
+			placeholder: t(
+				"settings:form.switch-account-form.placeholder.paste-your-seed",
+			),
+			rows: 4,
+		}),
+	}));
 
 export const SwitchAccountForm: React.FC<{
 	onSuccess?: () => unknown;
@@ -51,7 +48,7 @@ export const SwitchAccountForm: React.FC<{
 			const mnemonic = values.seed as unknown as Mnemonic;
 
 			const existingAccounts = await deviceEvolu.loadQuery(
-				deviceEvolu.createQuery((db) =>
+				createDeviceQuery((db) =>
 					db
 						.selectFrom("account")
 						.select(["account.id as id"])
@@ -64,35 +61,31 @@ export const SwitchAccountForm: React.FC<{
 			await new Promise<void>((resolve) => {
 				const existingAccount = existingAccounts[0];
 				if (existingAccount) {
-					getOrThrow(
-						deviceEvolu.update(
-							"account",
-							{
-								id: existingAccount.id as never,
-								lastUseAt: PositiveInt.orThrow(Date.now()),
+					deviceEvolu.update(
+						"account",
+						{
+							id: existingAccount.id,
+							lastUseAt: Date.now(),
+						},
+						{
+							onComplete: () => {
+								resolve();
 							},
-							{
-								onComplete: () => {
-									resolve();
-								},
-							},
-						),
+						},
 					);
 				} else {
-					const { id } = getOrThrow(
-						deviceEvolu.insert(
-							"account",
-							{
-								name: NonEmptyString100.orThrow(faker.internet.username()),
-								mnemonic,
-								lastUseAt: PositiveInt.orThrow(Date.now()),
+					deviceEvolu.insert(
+						"account",
+						{
+							name: NonEmptyString255(faker.internet.username()),
+							mnemonic,
+							lastUseAt: Date.now(),
+						},
+						{
+							onComplete: () => {
+								resolve();
 							},
-							{
-								onComplete: () => {
-									resolve();
-								},
-							},
-						),
+						},
 					);
 				}
 			});

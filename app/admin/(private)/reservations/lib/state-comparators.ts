@@ -53,7 +53,7 @@ export const areReservationsEqual = (
 			a.note === b.note &&
 			a.startAt === b.startAt &&
 			a.endAt === b.endAt &&
-			(a._tag === "reservationBooking" && b._tag === "reservationBooking"
+			(a._tag === "booking" && b._tag === "booking"
 				? a.name === b.name &&
 					a.phone === b.phone &&
 					a.email === b.email &&
@@ -62,7 +62,7 @@ export const areReservationsEqual = (
 					a.serviceStatus === b.serviceStatus &&
 					a.statusReason === b.statusReason &&
 					a.source === b.source
-				: a._tag === "reservationBlock" && b._tag === "reservationBlock"
+				: a._tag === "block" && b._tag === "block"
 					? a.label === b.label
 					: false),
 	);

@@ -1,7 +1,7 @@
 "use client"; // Error components must be Client Components
 
-import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function ErrorPage({
 	error,

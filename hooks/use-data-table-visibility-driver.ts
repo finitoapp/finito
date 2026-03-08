@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	createIdFromString,
-	getOrThrow,
-	sqliteFalse,
-	sqliteTrue,
-} from "@evolu/common";
+import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
 import type {
 	OnChangeFn,
 	Updater,
@@ -14,6 +9,8 @@ import type {
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import { NonEmptyString255 } from "@/lib/shared/types";
 
 const resolveVisibilityState = (
 	updater: Updater<VisibilityState>,
@@ -32,28 +29,24 @@ export const useDataTableVisibilityDriver = (tableKey: string) => {
 
 				for (const [name, isVisible] of Object.entries(nextVisibility)) {
 					if (isVisible) {
-						getOrThrow(
-							deviceEvolu.update("dataTableVisibilityState", {
-								id: createIdFromString(`${tableKey}.${name}`),
-								isDeleted: sqliteTrue,
-							}),
-						);
+						deviceEvolu.update("dataTableVisibilityState", {
+							id: createIdFromString(`${tableKey}.${name}`),
+							isDeleted: sqliteTrue,
+						});
 					} else {
-						getOrThrow(
-							deviceEvolu.upsert("dataTableVisibilityState", {
-								id: createIdFromString(`${tableKey}.${name}`),
-								dataTableId,
-								name,
-								isHidden: sqliteTrue,
-								isDeleted: sqliteFalse,
-							}),
-						);
+						deviceEvolu.upsert("dataTableVisibilityState", {
+							id: createIdFromString(`${tableKey}.${name}`),
+							dataTableId,
+							name: NonEmptyString255(name),
+							isHidden: sqliteTrue,
+							isDeleted: sqliteFalse,
+						});
 					}
 				}
 			}) satisfies OnChangeFn<VisibilityState>,
 			subscribe: (callback: (visibility: VisibilityState) => void) => {
 				const dataTableId = createIdFromString(tableKey);
-				const query = deviceEvolu.createQuery((db) =>
+				const query = createDeviceQuery((db) =>
 					db
 						.selectFrom("dataTableVisibilityState")
 						.selectAll()

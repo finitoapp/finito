@@ -7,7 +7,9 @@ export default function Page() {
 	return (
 		<div className="space-y-8 w-full">
 			<div className="text-center">
-				<h2 className="text-2xl font-bold text-gray-900 mb-2">{t("client:home.title")}</h2>
+				<h2 className="text-2xl font-bold text-gray-900 mb-2">
+					{t("client:home.title")}
+				</h2>
 				<p className="text-gray-600">{t("client:home.scanHint")}</p>
 			</div>
 		</div>

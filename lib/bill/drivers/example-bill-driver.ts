@@ -1,36 +1,46 @@
-import type { Id } from "@evolu/common";
+import { createIdFromString } from "@evolu/common";
 import { BigNumber } from "bignumber.js";
 import type {
 	BillDriver,
 	BillSubscription,
 	ScreenData,
 } from "@/lib/bill/driver";
-import { Integer, NonEmptyString } from "@/lib/shared/types";
 import type { PaymentReady } from "@/lib/evolu/model/payment-progress";
+import { Currency, Integer, NonEmptyString } from "@/lib/shared/types";
+import {
+	extractExpirationFromLightningInvoice,
+	extractPaymentHashFromLnInvoice,
+} from "@/lib/shared/utils/ln";
 
 const exampleBillItems = {
 	"1": new Map([
 		[
 			"1",
 			{
-				label: "Maďarský guláš",
-				price: Integer(190),
+				item: {
+					label: "Maďarský guláš",
+					price: Integer(190),
+				},
 				quantity: 1,
 			},
 		],
 		[
 			"2",
 			{
-				label: "Řízek",
-				price: Integer(219),
+				item: {
+					label: "Řízek",
+					price: Integer(219),
+				},
 				quantity: 1,
 			},
 		],
 		[
 			"3",
 			{
-				label: "Pivo",
-				price: Integer(49),
+				item: {
+					label: "Pivo",
+					price: Integer(49),
+				},
 				quantity: 3,
 				optionality: {
 					checked: 2,
@@ -40,8 +50,10 @@ const exampleBillItems = {
 		[
 			"4",
 			{
-				label: "Volitelné párátko",
-				price: Integer(2),
+				item: {
+					label: "Volitelné párátko",
+					price: Integer(2),
+				},
 				quantity: 1,
 				optionality: {
 					checked: 1,
@@ -53,23 +65,33 @@ const exampleBillItems = {
 		[
 			"1",
 			{
-				label: "Refund",
-				price: Integer(-190),
+				item: {
+					label: "Refund",
+					price: Integer(-190),
+				},
 				quantity: 1,
 			},
 		],
 	]),
 } as Record<
 	string,
-	Map<string, Omit<PaymentReady["bill"]["items"][number], "id">>
+	Map<
+		string,
+		Omit<
+			NonNullable<
+				Extract<ScreenData, { variant: "table" }>["payload"]["bill"]
+			>["items"][number],
+			"id"
+		>
+	>
 >;
 
 export class ExampleBillDriver implements BillDriver {
 	public async subscribe({
 		billId,
-		callback,
+		screenStack,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
-		const [_, exampleBillItemId] = /^example-([0-9]+)$/.exec(billId) ?? [
+		const [_, exampleBillItemId] = /^example-([0-9a-z]+)$/.exec(billId) ?? [
 			null,
 			null,
 		];
@@ -78,13 +100,26 @@ export class ExampleBillDriver implements BillDriver {
 			return null;
 		}
 
+		if (exampleBillItemId === "loading") {
+			screenStack.replace({
+				variant: "loading",
+				payload: {
+					text: "Loading screen...",
+				},
+			});
+
+			return {
+				close: async () => {},
+			} satisfies BillSubscription;
+		}
+
 		const items = exampleBillItems[exampleBillItemId];
 		if (items === undefined) {
 			return null;
 		}
 
-		const rootScreen: ScreenData = {
-			variant: exampleBillItemId !== "2" ? "payment" : "refund",
+		const rootScreen: Extract<ScreenData, { variant: "table" }> = {
+			variant: "table",
 			pay: () => Promise.resolve(),
 			payload: {
 				merchant: {
@@ -95,7 +130,7 @@ export class ExampleBillDriver implements BillDriver {
 					currency: "CZK",
 					items: Array.from(
 						items.entries().map(([id, values]) => ({
-							id,
+							id: createIdFromString(id),
 							...values,
 						})),
 					),
@@ -121,6 +156,8 @@ export class ExampleBillDriver implements BillDriver {
 					finalItems.push({
 						...finalItem,
 						id: item.id,
+						price: finalItem.item.price,
+						label: finalItem.item.label,
 					});
 				}
 
@@ -132,53 +169,48 @@ export class ExampleBillDriver implements BillDriver {
 
 				timeout = setTimeout(() => {
 					if (Math.random() >= 0.5) {
-						callback({
-							type: "screen",
+						screenStack.replace({
+							variant: "info",
 							payload: {
-								variant: "paymentFinished",
-								payload: {
-									paymentId: params.paymentId as Id,
-									type: "failure",
-									reason: NonEmptyString("The bill is locked!"),
-								},
+								status: "failure",
+								text: NonEmptyString("The bill is locked!"),
 							},
 						});
 						resolve();
 						return;
 					}
 
-					callback({
-						type: "screen",
+					screenStack.replace({
+						variant: "info",
 						payload: {
-							variant: "paymentFinished",
-							payload: {
-								paymentId: params.paymentId as Id,
-								type: "success",
-							},
+							status: "success",
+							text: NonEmptyString("The bill is successfully paid!"),
 						},
 					});
 
 					resolve();
 				}, 3_000);
 
-				callback({
-					type: "screen",
+				const lnInvoice = NonEmptyString(
+					"lnbc10n1p564j4ppp5aqtgx7tua76eggt4raal4py0j36dqj8sv0mtcn886lxe9wdtw67sdqqcqzzsxqrrsssp5x45v7knsz233fe6v497yhk77ekg66fq377s0955g6dsvkpn2ey8s9qxpqysgq3tf98g8hcxzhapa0p8s2xpu4ap44xu603l6z97d6wyxaskftc0hpwy5hce5awy0y6ksnuqs3pk6vu04ja5x795werrd2qxq22k9lx4qpxsj5ms",
+				);
+
+				screenStack.push({
+					variant: "payment",
+					parentScreen: rootScreen,
 					payload: {
-						variant: "paymentReady",
-						parentScreen: rootScreen,
-						payload: {
-							paymentId: params.paymentId,
-							bill: {
-								items: finalItems,
-								tip: params.tip,
-								currency: params.currency,
-							},
-							type: "btcLn",
-							lnInvoice: "abc",
-							amountExpectedToPay: {
-								value: Integer(totalAmount.div(rate).integerValue().toNumber()),
-								currency: "BTC",
-								rate: rate,
+						payment: {
+							id: params.paymentId as unknown as NonEmptyString,
+							direction: "incoming",
+							totalAmount: Integer(
+								Math.round(totalAmount.div(rate).integerValue().toNumber()),
+							),
+							currency: Currency.BTC,
+							paymentSpecification: {
+								type: "lnInvoice",
+								lnInvoice,
+								paymentHash: extractPaymentHashFromLnInvoice(lnInvoice),
+								expirationIn: extractExpirationFromLightningInvoice(lnInvoice),
 							},
 						},
 					},
@@ -188,14 +220,11 @@ export class ExampleBillDriver implements BillDriver {
 
 		timeout = setTimeout(() => {
 			timeout = setTimeout(() => {
-				callback({
-					type: "screen",
-					payload: rootScreen,
-				});
+				screenStack.replace(rootScreen);
 			}, 1200);
 
-			callback({
-				type: "billLoading",
+			screenStack.replace({
+				variant: "loading",
 				payload: {
 					text: "Collecting items...",
 				},
@@ -203,7 +232,6 @@ export class ExampleBillDriver implements BillDriver {
 		}, 800);
 
 		return {
-			refresh: async () => {},
 			close: async () => {
 				if (timeout !== null) {
 					clearTimeout(timeout);

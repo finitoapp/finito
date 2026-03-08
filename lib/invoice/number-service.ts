@@ -1,13 +1,13 @@
 import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { format } from "date-fns-tz";
-import { isTheSameDateString } from "@/lib/shared/utils/date-string";
-import type { Evolu } from "@/lib/evolu";
+import { createQuery, type Evolu } from "@/lib/evolu";
 import {
 	type DateString,
 	DateToDateString,
 	NonNegativeInteger,
 	Timezone,
 } from "@/lib/shared/types";
+import { isTheSameDateString } from "@/lib/shared/utils/date-string";
 
 export const resolveSubsequentInvoiceNumber = async (deps: {
 	evolu: Evolu;
@@ -16,7 +16,7 @@ export const resolveSubsequentInvoiceNumber = async (deps: {
 	const [invoiceLastNumbersRows, invoiceNumberSeriesRows, billingSettingsRows] =
 		await Promise.all([
 			(async () => {
-				const query = evolu.createQuery((db) =>
+				const query = createQuery((db) =>
 					db
 						.selectFrom("invoiceLastNumber")
 						.selectAll()
@@ -26,7 +26,7 @@ export const resolveSubsequentInvoiceNumber = async (deps: {
 				return await evolu.loadQuery(query);
 			})(),
 			(async () => {
-				const query = evolu.createQuery((db) =>
+				const query = createQuery((db) =>
 					db
 						.selectFrom("invoiceNumberSeries")
 						.selectAll()
@@ -36,7 +36,7 @@ export const resolveSubsequentInvoiceNumber = async (deps: {
 				return await evolu.loadQuery(query);
 			})(),
 			(async () => {
-				const query = evolu.createQuery((db) =>
+				const query = createQuery((db) =>
 					db
 						.selectFrom("billingSettings")
 						.selectAll()

@@ -1,6 +1,14 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
-import { createIdFromString, getOrThrow, sqliteTrue } from "@evolu/common";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
+import { createQuery } from "@/lib/evolu";
+import {
+	Currency,
+	Integer,
+	NonEmptyString,
+	TimestampMs,
+} from "@/lib/shared/types";
 
 export const syncSparkTransfersProcess: BackgroundProcess = {
 	name: "verifyPayment",
@@ -28,7 +36,7 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 		});
 
 		const accounts = await props.evolu.loadQuery(
-			props.evolu.createQuery((db) =>
+			createQuery((db) =>
 				db
 					.selectFrom("account")
 					.innerJoin("accountSpark", "accountSpark.id", "account.id")
@@ -37,7 +45,11 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 						"account._tag as _tag",
 						"accountSpark.mnemonic as mnemonic",
 					] as const)
-					.where("account.isDeleted", "is not", sqliteTrue),
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("accountSpark.mnemonic", "is not", null)
+					.$narrowType<{
+						mnemonic: NotNull;
+					}>(),
 			),
 		);
 
@@ -77,24 +89,29 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 				}
 
 				const id = createIdFromString(`sparkTransfer:${walletTransfer.id}`);
-				getOrThrow(
-					props.evolu.upsert("transaction", {
-						id,
-						accountId: account.id,
-						_tag: "transactionSpark",
-						amount: walletTransfer.totalValue,
-						occurredAt: walletTransfer.updatedTime?.getTime() ?? Date.now(),
-					}),
-				);
-				getOrThrow(
-					props.evolu.upsert("transactionSpark", {
-						id,
-						sparkTransferId: walletTransfer.id,
-						preImage: userRequest.paymentPreimage,
-						lnInvoice: userRequest.invoice.encodedInvoice,
-						paymentHash: userRequest.invoice.paymentHash,
-					}),
-				);
+				props.evolu.upsert("transaction", {
+					id,
+					accountId: account.id,
+					_tag: "accountSpark",
+					amount: Integer(walletTransfer.totalValue),
+					currency: Currency.BTC,
+					occurredAt: TimestampMs(
+						walletTransfer.updatedTime?.getTime() ?? Date.now(),
+					),
+				});
+				props.evolu.upsert("transactionSpark", {
+					id,
+					sparkTransferId: NonEmptyString(walletTransfer.id),
+					preImage: NonEmptyString(
+						userRequest.paymentPreimage as unknown as string,
+					),
+					lnInvoice: NonEmptyString(
+						(userRequest.invoice as any).encodedInvoice as unknown as string,
+					),
+					paymentHash: NonEmptyString(
+						(userRequest.invoice as any).paymentHash as unknown as string,
+					),
+				});
 			});
 
 			unsubscribe.push(() => {

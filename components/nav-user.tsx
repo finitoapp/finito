@@ -1,8 +1,9 @@
 "use client";
 
-import { getOrThrow, PositiveInt, sqliteTrue } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import { IconPlus } from "@tabler/icons-react";
 import { useAtomValue, useSetAtom } from "jotai";
+import type { NotNull } from "kysely";
 import {
 	ChevronsUpDownIcon,
 	HardDriveDownloadIcon,
@@ -28,15 +29,23 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useInstallPwa } from "@/hooks/use-install-pwa";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import { TimestampMs } from "@/lib/shared/types";
 
-type Account = {
-	id: string;
-	name: string;
-};
+const accountsQuery = createDeviceQuery((db) =>
+	db
+		.selectFrom("account")
+		.select(["account.id as id", "account.name as name"])
+		.where("isDeleted", "is not", sqliteTrue)
+		.where("name", "is not", null)
+		.orderBy("lastUseAt", "desc")
+		.$narrowType<{
+			name: NotNull;
+		}>(),
+);
 
 export function NavUser({
 	user,
@@ -54,30 +63,7 @@ export function NavUser({
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 
-	const accountsQuery = useCreateQuery(
-		(db: any) =>
-			db
-				.selectFrom("account")
-				.select(["account.id as id", "account.name as name"])
-				.where("isDeleted", "is not", sqliteTrue)
-				.orderBy("lastUseAt", "desc"),
-		[],
-		deviceEvolu as never,
-	);
-	const { data: accountRows } = useEvoluQuery(
-		accountsQuery,
-		deviceEvolu as never,
-	);
-	const accounts = useMemo<Account[]>(
-		() =>
-			(accountRows ?? []).flatMap((row) =>
-				row.name === null || row.name === undefined
-					? []
-					: [{ id: row.id as string, name: row.name as string }],
-			),
-		[accountRows],
-	);
-
+	const { data: accounts } = useEvoluQuery(accountsQuery, deviceEvolu);
 	const activeAccountId = accounts[0]?.id;
 	const activeAccountName =
 		accounts[0]?.name ?? t("navigation:account.unknown");
@@ -89,17 +75,15 @@ export function NavUser({
 		}
 
 		await new Promise<void>((resolve) => {
-			getOrThrow(
-				deviceEvolu.update(
-					"account",
-					{
-						id: currentAccount.id as never,
-						isDeleted: sqliteTrue,
-					},
-					{
-						onComplete: resolve,
-					},
-				),
+			deviceEvolu.update(
+				"account",
+				{
+					id: currentAccount.id,
+					isDeleted: sqliteTrue,
+				},
+				{
+					onComplete: resolve,
+				},
 			);
 		});
 
@@ -158,17 +142,15 @@ export function NavUser({
 									className="p-0 font-normal"
 									onClick={async () => {
 										await new Promise<void>((resolve) => {
-											getOrThrow(
-												deviceEvolu.update(
-													"account",
-													{
-														id: account.id as never,
-														lastUseAt: PositiveInt.orThrow(Date.now()),
-													},
-													{
-														onComplete: resolve,
-													},
-												),
+											deviceEvolu.update(
+												"account",
+												{
+													id: account.id,
+													lastUseAt: TimestampMs(Date.now()),
+												},
+												{
+													onComplete: resolve,
+												},
 											);
 										});
 

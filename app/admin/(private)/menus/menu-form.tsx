@@ -1,12 +1,5 @@
-"use client";
-
-import {
-	createId,
-	createRandomBytes,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
+import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,30 +15,43 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
+import { createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
+import { type Id, TableIdSchema } from "@/lib/evolu/types";
 import { publishRelevantMenusToStorage } from "@/lib/menu/service";
 import {
 	fromDatetimeLocalInputValue,
 	toDatetimeLocalInputValue,
 } from "@/lib/menu/utils";
-import { Currency, NonEmptyStringSchema } from "@/lib/shared/types";
-import { formatAmount } from "@/lib/shared/utils/format";
+import {
+	Currency,
+	type Integer,
+	IntegerSchema,
+	type NonEmptyString,
+	type NonEmptyString255,
+	NonEmptyString255Schema,
+	NonEmptyStringSchema,
+	ProductCodeType,
+	TimestampMsSchema,
+} from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 type MenuItemState = {
-	id: string;
-	sourceItemId: string | null;
-	label: string;
+	id: Id;
 	availabilityStatus: "soldOut" | "hidden" | null;
-	priceValue: number;
-	priceCurrency: string;
-	unitOfMeasure: string | null;
-	internalCode: string | null;
-	productCodeType: string | null;
-	productCodeValue: string | null;
+	item: {
+		sourceItemId: Id | null;
+		label: NonEmptyString255;
+		price: Integer;
+		currency: Currency;
+		unitOfMeasure: NonEmptyString | null;
+		internalCode: NonEmptyString | null;
+		productCodeType: ProductCodeType | null;
+		productCodeValue: NonEmptyString | null;
+	};
 };
 
 type MenuCategoryState = {
@@ -87,32 +93,32 @@ const menuItemAvailabilityStatusValues = ["soldOut", "hidden"] as const;
 
 const menuPayloadSchema = z
 	.object({
-		id: z.string().trim().min(1).optional(),
-		name: NonEmptyStringSchema,
+		id: TableIdSchema.optional(),
+		name: NonEmptyString255Schema,
 		status: z.enum(menuStatusValues),
-		validFrom: z.number().int().nonnegative().nullable(),
-		validTo: z.number().int().nonnegative().nullable(),
-		publishedAt: z.number().int().nonnegative().nullable(),
+		validFrom: TimestampMsSchema.nullable(),
+		validTo: TimestampMsSchema.nullable(),
+		publishedAt: TimestampMsSchema.nullable(),
 		categories: z
 			.array(
 				z.object({
-					id: z.string().trim().min(1),
-					name: NonEmptyStringSchema,
+					id: TableIdSchema,
+					name: NonEmptyString255Schema,
 					items: z
 						.array(
 							z.object({
-								id: z.string().trim().min(1),
-								sourceItemId: z.string().trim().min(1).nullable(),
-								label: NonEmptyStringSchema,
+								id: TableIdSchema,
+								sourceItemId: TableIdSchema.nullable(),
+								label: NonEmptyString255Schema,
 								availabilityStatus: z
 									.enum(menuItemAvailabilityStatusValues)
 									.nullable(),
-								priceValue: z.number().int().nonnegative(),
-								priceCurrency: z.enum(Currency),
-								unitOfMeasure: z.string().trim().min(1).nullable(),
-								internalCode: z.string().trim().min(1).nullable(),
-								productCodeType: z.string().trim().min(1).nullable(),
-								productCodeValue: z.string().trim().min(1).nullable(),
+								price: IntegerSchema,
+								currency: z.enum(Currency),
+								unitOfMeasure: NonEmptyStringSchema.nullable(),
+								internalCode: NonEmptyStringSchema.nullable(),
+								productCodeType: z.enum(ProductCodeType).nullable(),
+								productCodeValue: NonEmptyStringSchema.nullable(),
 							}),
 						)
 						.min(1),
@@ -131,8 +137,7 @@ const menuPayloadSchema = z
 		},
 	);
 
-const createNewId = (): Id =>
-	createId({ randomBytes: createRandomBytes() }) as Id;
+const createNewId = () => createId({ randomBytes: createRandomBytes() });
 
 const normalizeNullableString = (value: string | null) => {
 	if (value === null) return null;
@@ -176,22 +181,32 @@ export const MenuForm = (params: {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
-	const itemCatalogQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("item")
-				.select([
-					"item.id as id",
-					"item.label as label",
-					"item.priceValue as priceValue",
-					"item.priceCurrency as priceCurrency",
-					"item.unitOfMeasure as unitOfMeasure",
-					"item.internalCode as internalCode",
-					"item.productCodeType as productCodeType",
-					"item.productCodeValue as productCodeValue",
-				] as const)
-				.where("item.isDeleted", "is not", sqliteTrue)
-				.orderBy("item.label", "asc"),
+	const itemCatalogQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("item")
+					.select([
+						"item.id as id",
+						"item.label as label",
+						"item.price as price",
+						"item.currency as currency",
+						"item.unitOfMeasure as unitOfMeasure",
+						"item.internalCode as internalCode",
+						"item.productCodeType as productCodeType",
+						"item.productCodeValue as productCodeValue",
+					] as const)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.label", "is not", null)
+					.where("item.price", "is not", null)
+					.where("item.currency", "is not", null)
+					.orderBy("item.label", "asc")
+					.$narrowType<{
+						label: NotNull;
+						price: NotNull;
+						currency: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data: itemCatalogRows } = useEvoluQuery(itemCatalogQuery);
@@ -252,7 +267,7 @@ export const MenuForm = (params: {
 		updateCategory(categoryId, (current) => {
 			if (
 				current.items.some(
-					(item) => item.sourceItemId === current.selectedItemId,
+					(item) => item.item.sourceItemId === current.selectedItemId,
 				)
 			) {
 				return current;
@@ -261,19 +276,23 @@ export const MenuForm = (params: {
 			const nextItems = [
 				...current.items,
 				{
-					id: createNewId() as string,
-					sourceItemId: sourceItem.id,
-					label: sourceItem.label,
+					id: createNewId(),
 					availabilityStatus: null,
-					priceValue: sourceItem.priceValue,
-					priceCurrency: sourceItem.priceCurrency,
-					unitOfMeasure: sourceItem.unitOfMeasure,
-					internalCode: sourceItem.internalCode,
-					productCodeType: sourceItem.productCodeType,
-					productCodeValue: sourceItem.productCodeValue,
+					item: {
+						sourceItemId: sourceItem.id,
+						label: sourceItem.label,
+						price: sourceItem.price,
+						currency: sourceItem.currency,
+						unitOfMeasure: sourceItem.unitOfMeasure,
+						internalCode: sourceItem.internalCode,
+						productCodeType: sourceItem.productCodeType,
+						productCodeValue: sourceItem.productCodeValue,
+					},
 				} satisfies MenuItemState,
 			].sort((a, b) =>
-				a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+				a.item.label.localeCompare(b.item.label, undefined, {
+					sensitivity: "base",
+				}),
 			);
 
 			return {
@@ -297,7 +316,7 @@ export const MenuForm = (params: {
 	}) => {
 		const { menuId, categories } = params;
 		const existingCategories = await evolu.loadQuery(
-			evolu.createQuery((db) =>
+			createQuery((db) =>
 				db
 					.selectFrom("menuCategory")
 					.select(["menuCategory.id as id"] as const)
@@ -306,16 +325,16 @@ export const MenuForm = (params: {
 			),
 		);
 		const existingItems = await evolu.loadQuery(
-			evolu.createQuery((db) =>
+			createQuery((db) =>
 				db
-					.selectFrom("menuItem")
+					.selectFrom("menuItemLine")
 					.innerJoin(
 						"menuCategory",
 						"menuCategory.id",
-						"menuItem.menuCategoryId",
+						"menuItemLine.menuCategoryId",
 					)
-					.select(["menuItem.id as id"] as const)
-					.where("menuItem.isDeleted", "is not", sqliteTrue)
+					.select(["menuItemLine.id as id"] as const)
+					.where("menuItemLine.isDeleted", "is not", sqliteTrue)
 					.where("menuCategory.isDeleted", "is not", sqliteTrue)
 					.where("menuCategory.menuId", "=", menuId),
 			),
@@ -326,53 +345,48 @@ export const MenuForm = (params: {
 
 		for (const category of categories) {
 			nextCategoryIds.add(category.id);
-			getOrThrow(
-				evolu.upsert("menuCategory", {
-					id: category.id as Id,
-					menuId,
-					name: category.name,
-				}),
-			);
+			evolu.upsert("menuCategory", {
+				id: category.id as Id,
+				menuId,
+				name: category.name,
+			});
 
 			for (const item of category.items) {
 				nextItemIds.add(item.id);
-				getOrThrow(
-					evolu.upsert("menuItem", {
-						id: item.id as Id,
-						menuCategoryId: category.id as Id,
-						sourceItemId: item.sourceItemId as Id | null,
-						label: item.label,
-						availabilityStatus: item.availabilityStatus,
-						priceValue: item.priceValue,
-						priceCurrency: item.priceCurrency,
-						unitOfMeasure: item.unitOfMeasure,
-						internalCode: item.internalCode,
-						productCodeType: item.productCodeType,
-						productCodeValue: item.productCodeValue,
-					}),
-				);
+				evolu.upsert("menuItem", {
+					id: item.id,
+					sourceItemId: item.sourceItemId,
+					label: item.label,
+					price: item.price,
+					currency: item.currency,
+					unitOfMeasure: item.unitOfMeasure,
+					internalCode: item.internalCode,
+					productCodeType: item.productCodeType,
+					productCodeValue: item.productCodeValue,
+				});
+				evolu.upsert("menuItemLine", {
+					id: item.id,
+					menuCategoryId: category.id,
+					availabilityStatus: item.availabilityStatus,
+				});
 			}
 		}
 
 		for (const { id } of existingItems) {
 			if (!nextItemIds.has(id)) {
-				getOrThrow(
-					evolu.update("menuItem", {
-						id: id as Id,
-						isDeleted: sqliteTrue,
-					}),
-				);
+				evolu.update("menuItem", {
+					id: id as Id,
+					isDeleted: sqliteTrue,
+				});
 			}
 		}
 
 		for (const { id } of existingCategories) {
 			if (!nextCategoryIds.has(id)) {
-				getOrThrow(
-					evolu.update("menuCategory", {
-						id: id as Id,
-						isDeleted: sqliteTrue,
-					}),
-				);
+				evolu.update("menuCategory", {
+					id: id as Id,
+					isDeleted: sqliteTrue,
+				});
 			}
 		}
 	};
@@ -408,15 +422,15 @@ export const MenuForm = (params: {
 				name: category.name.trim(),
 				items: category.items.map((item) => ({
 					id: item.id,
-					sourceItemId: item.sourceItemId,
-					label: item.label.trim(),
+					sourceItemId: item.item.sourceItemId,
+					label: item.item.label.trim(),
 					availabilityStatus: item.availabilityStatus,
-					priceValue: item.priceValue,
-					priceCurrency: item.priceCurrency,
-					unitOfMeasure: normalizeNullableString(item.unitOfMeasure),
-					internalCode: normalizeNullableString(item.internalCode),
-					productCodeType: normalizeNullableString(item.productCodeType),
-					productCodeValue: normalizeNullableString(item.productCodeValue),
+					price: item.item.price,
+					currency: item.item.currency,
+					unitOfMeasure: normalizeNullableString(item.item.unitOfMeasure),
+					internalCode: normalizeNullableString(item.item.internalCode),
+					productCodeType: normalizeNullableString(item.item.productCodeType),
+					productCodeValue: normalizeNullableString(item.item.productCodeValue),
 				})),
 			})),
 		});
@@ -431,16 +445,14 @@ export const MenuForm = (params: {
 		try {
 			const payload = menuPayloadResult.data;
 			const menuId = (payload.id ?? createNewId()) as Id;
-			getOrThrow(
-				evolu.upsert("menu", {
-					id: menuId,
-					name: payload.name,
-					status: payload.status,
-					validFrom: payload.validFrom,
-					validTo: payload.validTo,
-					publishedAt: payload.publishedAt,
-				}),
-			);
+			evolu.upsert("menu", {
+				id: menuId,
+				name: payload.name,
+				status: payload.status,
+				validFrom: payload.validFrom,
+				validTo: payload.validTo,
+				publishedAt: payload.publishedAt,
+			});
 			await syncMenuRelations({
 				menuId,
 				categories: payload.categories,
@@ -649,13 +661,15 @@ export const MenuForm = (params: {
 										}
 									>
 										<div className={"flex flex-col gap-1"}>
-											<div className={"font-medium"}>{item.label}</div>
+											<div className={"font-medium"}>{item.item.label}</div>
 											<div className={"text-sm text-muted-foreground"}>
-												{formatAmount(
-													item.priceValue,
-													item.priceCurrency as (typeof Currency)[keyof typeof Currency],
-												)}
-												{item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}
+												{formatMoney({
+													value: item.item.price,
+													currency: item.item.currency,
+												})}
+												{item.item.unitOfMeasure
+													? ` / ${item.item.unitOfMeasure}`
+													: ""}
 											</div>
 										</div>
 										<div className={"flex items-center gap-2"}>

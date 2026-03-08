@@ -1,9 +1,14 @@
-import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
 import * as errore from "errore";
-import type { Evolu } from "@/lib/evolu";
+import type { NotNull } from "kysely";
+import { createQuery, type Evolu } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { menuStorage } from "@/lib/menu/nostr-storage";
-import { Timezone, type Timezone as TimezoneType } from "@/lib/shared/types";
+import {
+	type TimestampMs,
+	Timezone,
+	type Timezone as TimezoneType,
+} from "@/lib/shared/types";
 
 export class PublishRelevantMenusLoadError extends errore.createTaggedError({
 	name: "PublishRelevantMenusLoadError",
@@ -28,69 +33,133 @@ type PublishRelevantMenusResult =
 export const publishRelevantMenusToStorage = async (params: {
 	ndk: Parameters<typeof menuStorage.write>[0]["ndk"];
 	evolu: Evolu;
-	now?: number;
+	now?: TimestampMs;
 }): Promise<PublishRelevantMenusResult> => {
 	const now = params.now ?? Date.now();
 
 	const loaded = await Promise.all([
 		params.evolu.loadQuery(
-			params.evolu.createQuery((db) =>
+			createQuery((db) =>
 				db
 					.selectFrom("menu")
-					.select([
-						"menu.id as id",
-						"menu.name as name",
-						"menu.status as status",
-						"menu.validFrom as validFrom",
-						"menu.validTo as validTo",
-						"menu.publishedAt as publishedAt",
-					] as const)
+					.select(
+						(eb) =>
+							[
+								"menu.id as id",
+								"menu.name as name",
+								"menu.status as status",
+								"menu.validFrom as validFrom",
+								"menu.validTo as validTo",
+								"menu.publishedAt as publishedAt",
+
+								kysely
+									.jsonArrayFrom(
+										eb
+											.selectFrom("menuCategory")
+											.select((eb) => [
+												"menuCategory.id as id",
+												"menuCategory.name as name",
+
+												kysely
+													.jsonArrayFrom(
+														eb
+															.selectFrom("menuItemLine")
+															.select(
+																(eb) =>
+																	[
+																		"menuItemLine.id as id",
+																		"menuItemLine.menuCategoryId as menuCategoryId",
+																		"menuItemLine.availabilityStatus as availabilityStatus",
+
+																		kysely
+																			.jsonObjectFrom(
+																				eb
+																					.selectFrom("menuItem")
+																					.select([
+																						"menuItem.label as label",
+																						"menuItem.price as price",
+																						"menuItem.currency as currency",
+																						"menuItem.unitOfMeasure as unitOfMeasure",
+																						"menuItem.id as id",
+																						"menuItem.sourceItemId as sourceItemId",
+																					])
+																					.whereRef(
+																						"menuItem.id",
+																						"=",
+																						"menuItemLine.id",
+																					)
+																					.where(
+																						"menuItem.isDeleted",
+																						"is not",
+																						sqliteTrue,
+																					)
+																					.where(
+																						"menuItem.label",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.price",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.currency",
+																						"is not",
+																						null,
+																					)
+																					.$narrowType<{
+																						label: NotNull;
+																						price: NotNull;
+																						currency: NotNull;
+																					}>(),
+																			)
+																			.as("item"),
+																	] as const,
+															)
+															.whereRef(
+																"menuItemLine.menuCategoryId",
+																"=",
+																"menuCategory.id",
+															)
+															.where(
+																"menuItemLine.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.$narrowType<{
+																item: NotNull;
+															}>(),
+													)
+													.as("items"),
+											])
+											.whereRef("menuCategory.menuId", "=", "menu.id")
+											.where("menuCategory.isDeleted", "is not", sqliteTrue)
+											.where("menuCategory.name", "is not", null)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("categories"),
+							] as const,
+					)
 					.where("menu.isDeleted", "is not", sqliteTrue)
+					.where("menu.name", "is not", null)
 					.where("menu.status", "=", MenuStatus.Published)
 					.where((eb) =>
 						eb.or([
 							eb("menu.validTo", "is", null),
 							eb("menu.validTo", ">=", now),
 						]),
-					),
-			),
-		),
-		params.evolu.loadQuery(
-			params.evolu.createQuery((db) =>
-				db
-					.selectFrom("menuCategory")
-					.select([
-						"menuCategory.id as id",
-						"menuCategory.menuId as menuId",
-						"menuCategory.name as name",
-					] as const)
-					.where("menuCategory.isDeleted", "is not", sqliteTrue),
-			),
-		),
-		params.evolu.loadQuery(
-			params.evolu.createQuery((db) =>
-				db
-					.selectFrom("menuItem")
-					.innerJoin(
-						"menuCategory",
-						"menuCategory.id",
-						"menuItem.menuCategoryId",
 					)
-					.select([
-						"menuItem.id as id",
-						"menuItem.menuCategoryId as menuCategoryId",
-						"menuItem.label as label",
-						"menuItem.availabilityStatus as availabilityStatus",
-						"menuItem.priceValue as priceValue",
-						"menuItem.priceCurrency as priceCurrency",
-						"menuItem.unitOfMeasure as unitOfMeasure",
-					] as const)
-					.where("menuItem.isDeleted", "is not", sqliteTrue)
-					.where("menuCategory.isDeleted", "is not", sqliteTrue),
+					.$narrowType<{
+						name: NotNull;
+						status: NotNull;
+					}>(),
 			),
 		),
 		params.evolu.loadQuery(
-			params.evolu.createQuery((db) =>
+			createQuery((db) =>
 				db
 					.selectFrom("billingSettings")
 					.select([
@@ -105,102 +174,40 @@ export const publishRelevantMenusToStorage = async (params: {
 		return loaded;
 	}
 
-	const [menuRows, categoryRows, itemRows, billingSettingsRows] = loaded;
+	const [menuRows, billingSettingsRows] = loaded;
 	const timezone = isKnownTimezone(billingSettingsRows[0]?.defaultTimezone)
 		? billingSettingsRows[0].defaultTimezone
 		: Timezone["Europe/Prague"];
-
-	const relevantMenus = menuRows;
-
-	const relevantMenuIds = new Set(relevantMenus.map((menu) => menu.id));
-	const categoriesByMenuId = new Map<
-		string,
-		Array<{
-			id: string;
-			name: string;
-			items: Array<{
-				id: string;
-				label: string;
-				availabilityStatus: string | null;
-				priceValue: number;
-				priceCurrency: string;
-				unitOfMeasure: string | null;
-			}>;
-		}>
-	>();
-	const categoryIndex = new Map<string, { menuId: string; index: number }>();
-
-	for (const category of categoryRows) {
-		if (category.name === null) continue;
-		if (!relevantMenuIds.has(category.menuId)) continue;
-
-		const menuCategories = categoriesByMenuId.get(category.menuId) ?? [];
-		const index =
-			menuCategories.push({
-				id: category.id,
-				name: category.name,
-				items: [],
-			}) - 1;
-		categoriesByMenuId.set(category.menuId, menuCategories);
-		categoryIndex.set(category.id, { menuId: category.menuId, index });
-	}
-
-	for (const item of itemRows) {
-		if (
-			item.label === null ||
-			item.priceValue === null ||
-			item.priceCurrency === null ||
-			item.availabilityStatus === "hidden"
-		) {
-			continue;
-		}
-
-		const categoryRef = categoryIndex.get(item.menuCategoryId);
-		if (!categoryRef) continue;
-
-		const categories = categoriesByMenuId.get(categoryRef.menuId);
-		const category = categories?.[categoryRef.index];
-		if (!category) continue;
-
-		category.items.push({
-			id: item.id,
-			label: item.label,
-			availabilityStatus: item.availabilityStatus,
-			priceValue: item.priceValue,
-			priceCurrency: item.priceCurrency,
-			unitOfMeasure: item.unitOfMeasure,
-		});
-	}
 
 	const payload: Parameters<typeof menuStorage.write>[1] = {
 		version: 1,
 		generatedAt: now,
 		timezone,
-		menus: relevantMenus
+		menus: menuRows
 			.map((menu) => ({
 				id: menu.id,
 				name: menu.name,
 				validFrom: menu.validFrom ?? undefined,
 				validTo: menu.validTo ?? undefined,
 				publishedAt: menu.publishedAt ?? undefined,
-				categories: (categoriesByMenuId.get(menu.id) ?? [])
+				categories: menu.categories
 					.map((category) => ({
 						id: category.id,
 						name: category.name,
-						items: [...category.items]
+						items: category.items
 							.sort((a, b) =>
-								a.label.localeCompare(b.label, undefined, {
+								a.item.label.localeCompare(b.item.label, undefined, {
 									sensitivity: "base",
 								}),
 							)
 							.map((item) => ({
 								id: item.id,
-								label: item.label,
+								label: item.item.label,
 								isSoldOut:
 									item.availabilityStatus === "soldOut" ? true : undefined,
-								priceValue: item.priceValue,
-								priceCurrency: item.priceCurrency,
-								unitOfMeasure: item.unitOfMeasure ?? undefined,
+								price: item.item.price,
+								currency: item.item.currency,
+								unitOfMeasure: item.item.unitOfMeasure ?? undefined,
 							})),
 					}))
 					.filter((category) => category.items.length > 0)

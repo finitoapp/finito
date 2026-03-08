@@ -3,37 +3,24 @@
 import { motion } from "framer-motion";
 import { useSetAtom } from "jotai";
 import { TriangleAlertIcon } from "lucide-react";
-import type React from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SelectedItemsAtom } from "@/app/(client)/bill-utils";
 import { CounterCheckbox } from "@/components/counter-checkbox";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { formatMoney } from "@/lib/shared/utils/format";
-import type { Currency, Integer } from "@/lib/shared/types";
+import type { ScreenData } from "@/lib/bill/driver";
 import { cn } from "@/lib/shared/ui/cn";
+import { formatMoney } from "@/lib/shared/utils/format";
 
-interface NavItem {
-	id: string;
-	label: React.ReactNode;
-	price: Integer;
-	quantity: number;
-	action?: React.ReactNode;
-	icon?: React.ReactNode;
-	active?: boolean;
-	optionality?: {
-		checked: number; // how many pieces are selected
-	};
-}
-
-export interface Bill {
-	currency: Currency;
-	allowTip?: boolean;
-	items: NavItem[];
-}
+type Bill = Extract<
+	ScreenData,
+	{
+		variant: "table";
+	}
+>["payload"]["bill"];
 
 interface VerticalNavProps {
-	bill: Bill | null;
+	bill: Bill;
 	selectedItemsAtom: SelectedItemsAtom;
 	className?: string;
 }
@@ -83,8 +70,8 @@ function NavItemComponent({
 	bill,
 	selectedItemsAtom,
 }: {
-	item: NavItem;
-	bill: Bill;
+	item: NonNullable<Bill>["items"][number];
+	bill: NonNullable<Bill>;
 	selectedItemsAtom: SelectedItemsAtom;
 }) {
 	const { t } = useTranslation();
@@ -128,16 +115,16 @@ function NavItemComponent({
 						disabled={item.optionality === undefined}
 					>
 						<motion.div
-							key={`${item.label} ${item.quantity}x ${item.price} ${bill.currency}`}
+							key={`${item.item.label} ${item.quantity}x ${item.item.price} ${bill.currency}`}
 							initial={{ scale: 1.1, opacity: 0.5 }}
 							animate={{ scale: 1, opacity: 1 }}
 							className={"flex flex-col items-start"}
 						>
-							<strong>{item.label}</strong>
+							<strong>{item.item.label}</strong>
 							<small>
 								{item.quantity}×&nbsp;&nbsp;•&nbsp;&nbsp;
 								{formatMoney({
-									value: item.price,
+									value: item.item.price,
 									currency: bill.currency,
 								})}
 							</small>

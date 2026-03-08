@@ -4,7 +4,10 @@ import {
 	HttpsUrlSchema,
 	IbanSchema,
 	type InferEnumType,
+	NonEmptyString32Schema,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
+	NonNegativeIntegerSchema,
 	PhoneSchema,
 } from "@/lib/shared/types";
 import {
@@ -27,7 +30,7 @@ const BillItemSchema = z.object({
 	label: z.string(),
 	optionality: z
 		.object({
-			checked: z.number(),
+			checked: NonNegativeIntegerSchema,
 		})
 		.optional(), // false when missing
 });
@@ -42,11 +45,12 @@ export type BillItem = z.output<typeof BillItemSchema>;
 export type Bill = z.output<typeof BillSchema>;
 
 export const AddressSchema = z.object({
-	street: NonEmptyStringSchema,
-	descriptiveNumber: NonEmptyStringSchema,
-	city: NonEmptyStringSchema,
-	postalCode: NonEmptyStringSchema,
+	street: NonEmptyString255Schema.nullable(),
+	descriptiveNumber: NonEmptyString32Schema.nullable(),
+	city: NonEmptyString255Schema.nullable(),
+	postalCode: NonEmptyString32Schema.nullable(),
 });
+export type Address = z.output<typeof AddressSchema>;
 
 export const PaymentMerchantSchema = z.object({
 	name: NonEmptyStringSchema,
@@ -72,7 +76,7 @@ export const PaymentSchema = z.object({
 			z.object({
 				type: z.literal("lnZap"),
 				accountId: z.string().optional(),
-				lnInvoice: z.string(),
+				lnInvoice: NonEmptyStringSchema,
 				walletPubkey: z.string(),
 				amount: integerStringToInteger,
 				expirationIn: epochMillisToDateCodec,
@@ -80,7 +84,7 @@ export const PaymentSchema = z.object({
 			z.object({
 				type: z.literal("lnSpark"),
 				accountId: z.string(),
-				lnInvoice: z.string(),
+				lnInvoice: NonEmptyStringSchema,
 				sparkInvoiceId: z.string(),
 				amount: integerStringToInteger,
 				expirationIn: epochMillisToDateCodec,
@@ -98,6 +102,6 @@ export const PaymentSchema = z.object({
 		.array()
 		.optional()
 		.default([]),
-	privateKey: z.string(),
+	privateKey: NonEmptyStringSchema,
 	webPaymentEventId: z.string(),
 });

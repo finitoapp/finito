@@ -19,16 +19,29 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 		onSuccess?: () => unknown;
 		saveAction: (
 			props: z.output<Schema>,
+			originalValues: z.input<Schema>,
 			// biome-ignore lint/suspicious/noConfusingVoidType: We want this here
 		) => Promise<z.input<Schema> | void>;
 	},
 ): UseActionFormResult<Schema> => {
 	const form = useForm<// @ts-expect-error improve it later
 	z.output>({
-		resolver: zodResolver(zodSchema),
+		// @ts-expect-error
+		resolver: async (values, context, options) => {
+			const result = await zodResolver(zodSchema)(values, context, options);
+
+			return {
+				values: {
+					originalValues: values,
+					transformedValues: result.values,
+				},
+				errors: result.errors,
+			};
+		},
 		defaultValues:
 			props.values !== undefined
-				? zodSchema.encode(props.values)
+				? // @ts-expect-error
+					zodSchema.encode(props.values)
 				: typeof props.defaultValues === "function"
 					? props.defaultValues()
 					: props.defaultValues,
@@ -39,9 +52,9 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 		$schema: zodSchema,
 		handleSubmitWithAction: form.handleSubmit(async (values) => {
 			try {
-				await props.saveAction(values);
+				await props.saveAction(values.transformedValues, values.originalValues);
 			} catch (error) {
-				console.error(error, error.cause);
+				console.error(error, error instanceof Error ? error.cause : undefined);
 				toast("Something bad happened while saving.");
 				return;
 			}
@@ -51,6 +64,7 @@ export const useActionForm = <Schema extends AutoFormBaseSchema>(
 				props.onSuccess();
 			}
 		}),
+		// @ts-expect-error
 		form,
 	};
 };

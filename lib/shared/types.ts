@@ -23,7 +23,8 @@ export const NumberStringSchema = z
 	.string()
 	.regex(/^-?\d+(\.\d*)?$/, { error: "Expected to be a number" })
 	.brand<"IntegerString", "inout">()
-	.brand<"NumberString", "inout">();
+	.brand<"NumberString", "inout">()
+	.brand<"NonEmptyString", "inout">();
 export const NumberString = (value: string): NumberString =>
 	NumberStringSchema.parse(value);
 export type NumberString = z.output<typeof NumberStringSchema>;
@@ -41,6 +42,7 @@ export const PositiveIntegerSchema = z
 	.int("Expected to be an integer")
 	.min(1, "Expected to be a positive integer")
 	.brand<"Integer", "inout">()
+	.brand<"NonNegativeInteger", "inout">()
 	.brand<"PositiveInteger", "inout">();
 export const PositiveInteger = <T extends number>(value: T): PositiveInteger =>
 	PositiveIntegerSchema.parse(value);
@@ -57,12 +59,22 @@ export const TimestampMs = <T extends number>(value: T): TimestampMs =>
 	TimestampMsSchema.parse(value);
 export type TimestampMs = z.output<typeof TimestampMsSchema>;
 
+export const TimestampSecSchema = z
+	.number()
+	.int("Expected to be an integer")
+	.min(1, "Expected to be a positive integer")
+	.brand<"Integer", "inout">()
+	.brand<"PositiveInteger", "inout">()
+	.brand<"TimestampSec", "inout">();
+export const TimestampSec = <T extends number>(value: T): TimestampSec =>
+	TimestampSecSchema.parse(value);
+export type TimestampSec = z.output<typeof TimestampSecSchema>;
+
 export const NonNegativeIntegerSchema = z
 	.number()
 	.int("Expected to be an integer")
 	.min(0, "Expected to be an non-negative integer")
 	.brand<"Integer", "inout">()
-	.brand<"PositiveInteger", "inout">()
 	.brand<"NonNegativeInteger", "inout">();
 export const NonNegativeInteger = <T extends number>(
 	value: T,
@@ -118,6 +130,48 @@ export const Iban = <T extends string>(value: T): Iban =>
 	IbanSchema.parse(value);
 export type Iban = z.output<typeof IbanSchema>;
 
+export const VariableSymbolSchema = z
+	.string()
+	.min(1, "Expected to be a non empty string")
+	.max(10, "Expected to be 10 characters in max")
+	.regex(/^[0-9]{1,10}$/, "Expected to be variable symbol")
+	.brand<"VariableSymbol", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
+export const VariableSymbol = <T extends string>(value: T): VariableSymbol =>
+	VariableSymbolSchema.parse(value);
+export type VariableSymbol = z.output<typeof VariableSymbolSchema>;
+
+export const SpecificSymbolSchema = z
+	.string()
+	.min(1, "Expected to be a non empty string")
+	.max(10, "Expected to be 10 characters in max")
+	.regex(/^[0-9]{1,10}$/, "Expected to be specific symbol")
+	.brand<"SpecificSymbol", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
+export const SpecificSymbol = <T extends string>(value: T): SpecificSymbol =>
+	SpecificSymbolSchema.parse(value);
+export type SpecificSymbol = z.output<typeof SpecificSymbolSchema>;
+
+export const ConstantSymbolSchema = z
+	.string()
+	.min(1, "Expected to be a non empty string")
+	.max(4, "Expected to be 4 characters in max")
+	.regex(/^[0-9]{1,4}$/, "Expected to be constant symbol")
+	.brand<"ConstantSymbol", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
+export const ConstantSymbol = <T extends string>(value: T): ConstantSymbol =>
+	ConstantSymbolSchema.parse(value);
+export type ConstantSymbol = z.output<typeof ConstantSymbolSchema>;
+
 export const PhoneSchema = z
 	.string()
 	.trim()
@@ -125,7 +179,7 @@ export const PhoneSchema = z
 	.max(32, "Expected to be 32 characters in max")
 	.refine((value) => {
 		const digitsOnly = value.replace(/\D/g, "");
-		return digitsOnly.length >= 6 && digitsOnly.length <= 15;
+		return digitsOnly.length >= 6 && digitsOnly.length <= 32;
 	}, "Expected to be phone")
 	.brand<"Phone", "inout">()
 	.brand<"NonEmptyString", "inout">()
@@ -269,13 +323,21 @@ export const emptyStringToUndefinedTransformation = (
 ): string | undefined => (value !== "" ? value : undefined);
 
 export const StringToNullableStringSchema = z
-	.union([z.string().trim(), z.null()])
+	.string()
+	.trim()
 	.transform(emptyStringToNullTransformation);
 
 export const StringToUndefinedStringSchema = z
 	.string()
 	.trim()
 	.transform(emptyStringToUndefinedTransformation);
+
+export const SqliteBoolSchema = z.union([z.literal(0), z.literal(1)]);
+
+export const BoolToSqliteBoolSchema = z
+	.boolean()
+	.transform((value) => (value ? 1 : 0))
+	.pipe(SqliteBoolSchema);
 
 export const DateToDateString = (date: Date) =>
 	format(date, "yyyy-MM-dd") as DateString;
@@ -288,29 +350,10 @@ export const StringToNumberSchema = StringToNullableStringSchema.transform(
 	(value) => (value === null ? null : Number(value)),
 ).pipe(z.number());
 
-export const StringToBigIntSchema = StringToNullableStringSchema.transform(
-	(value) => {
-		if (value === null) {
-			return null;
-		}
-
-		try {
-			return BigInt(value);
-		} catch (e) {
-			return null;
-		}
-	},
-).pipe(z.bigint());
-
 export const StringToNullableNumberSchema =
 	StringToNullableStringSchema.transform((value) =>
 		value === null ? null : Number(value),
 	).pipe(z.number().nullable());
-
-export const StringToUndefinedNumberSchema =
-	StringToUndefinedStringSchema.transform((value) =>
-		value === undefined ? undefined : Number(value),
-	).pipe(z.number().optional());
 
 export const IdentificationNumberCzSchema = z
 	.string()

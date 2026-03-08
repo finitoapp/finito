@@ -1,8 +1,7 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { Languages } from "lucide-react";
-import { setAppLanguage } from "@/lib/i18n/client";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -10,10 +9,17 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { setAppLanguage } from "@/lib/i18n/client";
 
 export function LanguageToggle() {
 	const { t, i18n } = useTranslation();
-	const currentLanguage = (i18n.resolvedLanguage ?? i18n.language ?? "en").startsWith("cs") ? "cs" : "en";
+	const currentLanguage = (
+		i18n.resolvedLanguage ??
+		i18n.language ??
+		"en"
+	).startsWith("cs")
+		? "cs"
+		: "en";
 
 	return (
 		<DropdownMenu>
@@ -23,7 +29,9 @@ export function LanguageToggle() {
 					className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
 				>
 					<Languages className="h-[1.2rem] w-[1.2rem]" />
-					<span className="sr-only">{t("components:languageToggle.toggleLanguage")}</span>
+					<span className="sr-only">
+						{t("components:languageToggle.toggleLanguage")}
+					</span>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">

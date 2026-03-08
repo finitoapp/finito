@@ -1,7 +1,6 @@
-"use client";
-
-import { sqliteTrue } from "@evolu/common";
+import { createId, createRandomBytes, kysely, sqliteTrue } from "@evolu/common";
 import { motion } from "framer-motion";
+import type { NotNull } from "kysely";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
@@ -12,34 +11,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { Pos } from "@/hooks/use-pos";
+import { createQuery } from "@/lib/evolu";
+import type { Id } from "@/lib/evolu/types";
+import {
+	type Currency,
+	NonEmptyString255,
+	NumberString,
+} from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
-import { nestObjectSkipNullBranches } from "@/lib/shared/utils/object";
-import { type Currency, NonEmptyString, Uuid7 } from "@/lib/shared/types";
-
-type CatalogItem = {
-	id: string;
-	label: string;
-	price: {
-		value: number;
-		currency: Currency;
-	};
-	category?: {
-		id: string;
-		name: string;
-	};
-};
-
-const toMoney = (value: number, currency: Currency) => ({
-	value: BigInt(Math.round(value)),
-	currency,
-});
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 export const PosItems: React.FC<{
-	billId?: string;
-	bill?: Pos["bills"][string];
+	billId?: Id;
+	bill?: Pos["bills"][Id];
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
 }> = (props) => {
@@ -85,16 +71,24 @@ export const PosItems: React.FC<{
 										billId: props.billId,
 										defaultCurrency: props.defaultCurrency,
 										item: {
-											id: Uuid7.random(),
-											label: NonEmptyString(t("pos:items.unknownItem")),
-											price: {
+											id: createId({
+												randomBytes: createRandomBytes(),
+											}),
+											label: NonEmptyString255(t("pos:items.unknownItem")),
+											price: moneyCodec.decode({
+												value: NumberString(value.toString()),
 												currency: props.defaultCurrency,
-												value,
-											},
+											}).value,
+											currency: props.defaultCurrency,
+											categoryId: null,
+											unitOfMeasure: null,
+											internalCode: null,
+											productCodeType: null,
+											productCodeValue: null,
 										},
 									});
 
-									if (props.billId === undefined) {
+									if (billId !== undefined) {
 										router.replace(
 											`/admin/pos?id=${encodeURIComponent(billId)}&variant=${encodeURIComponent("dial")}`,
 										);
@@ -110,8 +104,8 @@ export const PosItems: React.FC<{
 };
 
 export const PosItemsList: React.FC<{
-	billId?: string;
-	bill?: Pos["bills"][string];
+	billId?: Id;
+	bill?: Pos["bills"][Id];
 	onItemClick?: (event: React.MouseEvent<HTMLDivElement>) => unknown;
 	defaultCurrency: Currency;
 }> = (props) => {
@@ -120,24 +114,52 @@ export const PosItemsList: React.FC<{
 	const [searchTerm, setSearchTerm] = useState("");
 	const { addItem } = useBill();
 
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("item")
-				.leftJoin("category", "category.id", "item.categoryId")
-				.select([
-					"item.id as id",
-					"item.label as label",
-					"item.priceValue as price.value",
-					"item.priceCurrency as price.currency",
-					"category.id as category.id",
-					"category.name as category.name",
-				] as const)
-				.where("item.isDeleted", "is not", sqliteTrue),
+	const query = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("item")
+					.select(
+						(eb) =>
+							[
+								"item.id as id",
+								"item.label as label",
+								"item.price as price",
+								"item.currency as currency",
+								"item.unitOfMeasure as unitOfMeasure",
+								"item.internalCode as internalCode",
+								"item.productCodeType as productCodeType",
+								"item.productCodeValue as productCodeValue",
+								"item.categoryId as categoryId",
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("category")
+											.select(["category.name as name"])
+											.whereRef("category.id", "=", "item.categoryId")
+											.where("category.isDeleted", "is not", sqliteTrue)
+											.where("category.name", "is not", null)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("category"),
+							] as const,
+					)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.label", "is not", null)
+					.where("item.price", "is not", null)
+					.where("item.currency", "is not", null)
+					.$narrowType<{
+						label: NotNull;
+						price: NotNull;
+						currency: NotNull;
+					}>(),
+			),
 		[],
 	);
-	const rawItems = useEvoluQuery(query).data ?? [];
-	const items = rawItems.map(nestObjectSkipNullBranches) as CatalogItem[];
+	const { data: items } = useEvoluQuery(query);
 
 	const filteredItems = useMemo(
 		() =>
@@ -204,7 +226,7 @@ export const PosItemsList: React.FC<{
 											item,
 										});
 
-										if (props.billId === undefined) {
+										if (billId !== undefined) {
 											router.replace(
 												`/admin/pos?id=${encodeURIComponent(billId)}`,
 											);
@@ -229,9 +251,10 @@ export const PosItemsList: React.FC<{
 												{item.label}
 											</h3>
 											<p className="text-lg font-bold text-primary">
-												{formatMoney(
-													toMoney(item.price.value, item.price.currency),
-												)}
+												{formatMoney({
+													value: item.price,
+													currency: item.currency,
+												})}
 											</p>
 										</CardContent>
 									</motion.div>

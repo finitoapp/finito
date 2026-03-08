@@ -1,5 +1,3 @@
-"use client";
-
 export const withWindowPointerSession = (handlers: {
 	onPointerMove?: (event: PointerEvent) => void;
 	onPointerUp?: (event: PointerEvent) => void;

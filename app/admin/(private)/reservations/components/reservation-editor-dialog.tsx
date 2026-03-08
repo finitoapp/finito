@@ -1,6 +1,6 @@
 "use client";
 
-import { getOrThrow, sqliteTrue } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import { useAtom, useAtomValue } from "jotai";
 import { Trash2Icon } from "lucide-react";
 import { useMemo } from "react";
@@ -44,27 +44,21 @@ export const ReservationEditorDialog: React.FC<{
 			withConfirm(
 				async () => {
 					if (editingReservationId === null) return;
-					getOrThrow(
-						evolu.update("reservation", {
+					evolu.update("reservation", {
+						id: editingReservationId,
+						isDeleted: sqliteTrue,
+					});
+					if (editingReservation?._tag === "booking") {
+						evolu.update("reservationBooking", {
 							id: editingReservationId,
 							isDeleted: sqliteTrue,
-						}),
-					);
-					if (editingReservation?._tag === "reservationBooking") {
-						getOrThrow(
-							evolu.update("reservationBooking", {
-								id: editingReservationId,
-								isDeleted: sqliteTrue,
-							}),
-						);
+						});
 					}
-					if (editingReservation?._tag === "reservationBlock") {
-						getOrThrow(
-							evolu.update("reservationBlock", {
-								id: editingReservationId,
-								isDeleted: sqliteTrue,
-							}),
-						);
+					if (editingReservation?._tag === "block") {
+						evolu.update("reservationBlock", {
+							id: editingReservationId,
+							isDeleted: sqliteTrue,
+						});
 					}
 					setDialogOpen(false);
 					setDraft(null);

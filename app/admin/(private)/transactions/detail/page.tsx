@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
@@ -13,10 +14,11 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createGetTransactionQuery } from "@/lib/evolu/queries/transaction";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -29,49 +31,16 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("transaction")
-				.innerJoin("account", "account.id", "transaction.accountId")
-				.leftJoin("transactionIban", "transactionIban.id", "transaction.id")
-				.leftJoin("transactionLud16", "transactionLud16.id", "transaction.id")
-				.leftJoin("transactionSpark", "transactionSpark.id", "transaction.id")
-				.leftJoin("transactionNwc", "transactionNwc.id", "transaction.id")
-				.leftJoin(
-					"transactionCashRegister",
-					"transactionCashRegister.id",
-					"transaction.id",
-				)
-				.select([
-					"transaction.id as id",
-					"transaction._tag as _tag",
-					"transaction.amount as amount",
-					"transaction.occurredAt as occurredAt",
-					"transaction.createdAt as createdAt",
-					"transaction.note as note",
-					"transaction.internalTransferGroupId as internalTransferGroupId",
-					"account.name as accountName",
-					"transactionIban.variableSymbol as ibanVariableSymbol",
-					"transactionIban.constantSymbol as ibanConstantSymbol",
-					"transactionIban.specificSymbol as ibanSpecificSymbol",
-					"transactionIban.bankReference as ibanBankReference",
-					"transactionLud16.lnInvoice as lud16LnInvoice",
-					"transactionLud16.paymentHash as lud16PaymentHash",
-					"transactionSpark.sparkTransferId as sparkTransferId",
-					"transactionSpark.lnInvoice as sparkLnInvoice",
-					"transactionSpark.preImage as sparkPreImage",
-					"transactionSpark.paymentHash as sparkPaymentHash",
-					"transactionNwc.nwcEventId as nwcEventId",
-					"transactionNwc.nwcRequestId as nwcRequestId",
-				] as const)
-				.where("transaction.isDeleted", "is not", sqliteTrue)
-				.where("transaction.id", "=", id as Id),
+	const query = useMemo(
+		() =>
+			createGetTransactionQuery({
+				id: id as Id,
+			}),
 		[id],
 	);
 
 	const { data: items } = useEvoluQuery(query);
-	const item = items?.[0];
+	const item = items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -97,10 +66,9 @@ export default function Home() {
 		},
 	);
 
-	const formatAmount = (amount: number | null) => {
-		if (amount === null) return "-";
-		return amount > 0 ? `+${amount}` : `${amount}`;
-	};
+	if (item === undefined) {
+		return null;
+	}
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -113,7 +81,7 @@ export default function Home() {
 					<CardHeader>
 						<CardTitle>
 							{!item && <Skeleton />}
-							{item?.accountName}
+							{item.account.name}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -121,7 +89,7 @@ export default function Home() {
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={t("transactions:detail.labels.type")}
-									content={item?._tag ?? <Skeleton />}
+									content={item._tag ?? <Skeleton />}
 									className={"flex-1"}
 								/>
 							</div>
@@ -132,120 +100,119 @@ export default function Home() {
 										items={[
 											{
 												key: t("transactions:detail.labels.account"),
-												value: item?.accountName ?? "-",
+												value: item.account.name,
 											},
 											{
 												key: t("transactions:detail.labels.amount"),
-												value: formatAmount(item?.amount ?? null),
+												value: formatMoney({
+													value: item.amount,
+													currency: item.currency,
+												}),
 											},
 											{
 												key: t("transactions:detail.labels.occurred-at"),
-												value: item?.occurredAt
-													? new Date(item.occurredAt).toLocaleString()
-													: "-",
+												value: new Date(item.occurredAt).toLocaleString(),
 											},
 											{
 												key: t("transactions:detail.labels.created-at"),
-												value: item?.createdAt
-													? new Date(item.createdAt).toLocaleString()
-													: "-",
+												value: new Date(item.createdAt).toLocaleString(),
 											},
 											{
 												key: t("transactions:detail.labels.note"),
-												value: item?.note ?? "-",
+												value: item.note ?? "-",
 											},
 											{
 												key: t(
 													"transactions:detail.labels.internal-transfer-group-id",
 												),
-												value: item?.internalTransferGroupId ?? "-",
+												value: item.internalTransferGroupId ?? "-",
 											},
-											...(item?._tag === "accountIban"
+											...(item.transactionIban
 												? [
 														{
 															key: t(
 																"transactions:form.transaction-form.label.variable-symbol",
 															),
-															value: item.ibanVariableSymbol ?? "-",
+															value: item.transactionIban.variableSymbol ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.constant-symbol",
 															),
-															value: item.ibanConstantSymbol ?? "-",
+															value: item.transactionIban.constantSymbol ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.specific-symbol",
 															),
-															value: item.ibanSpecificSymbol ?? "-",
+															value: item.transactionIban.specificSymbol ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.bank-reference",
 															),
-															value: item.ibanBankReference ?? "-",
+															value: item.transactionIban.bankReference ?? "-",
 														},
 													]
 												: []),
-											...(item?._tag === "accountLud16"
+											...(item.transactionLud16
 												? [
 														{
 															key: t(
 																"transactions:form.transaction-form.label.ln-invoice",
 															),
-															value: item.lud16LnInvoice ?? "-",
+															value: item.transactionLud16.lnInvoice ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.payment-hash",
 															),
-															value: item.lud16PaymentHash ?? "-",
+															value: item.transactionLud16.paymentHash ?? "-",
 														},
 													]
 												: []),
-											...(item?._tag === "accountSpark" ||
-											item?._tag === "transactionSpark"
+											...(item.transactionSpark
 												? [
 														{
 															key: t(
 																"transactions:form.transaction-form.label.spark-transfer-id",
 															),
-															value: item.sparkTransferId ?? "-",
+															value:
+																item.transactionSpark.sparkTransferId ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.ln-invoice",
 															),
-															value: item.sparkLnInvoice ?? "-",
+															value: item.transactionSpark.lnInvoice ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.pre-image",
 															),
-															value: item.sparkPreImage ?? "-",
+															value: item.transactionSpark.preImage ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.payment-hash",
 															),
-															value: item.sparkPaymentHash ?? "-",
+															value: item.transactionSpark.paymentHash ?? "-",
 														},
 													]
 												: []),
-											...(item?._tag === "accountNwc"
+											...(item.transactionNwc
 												? [
 														{
 															key: t(
 																"transactions:form.transaction-form.label.nwc-event-id",
 															),
-															value: item.nwcEventId ?? "-",
+															value: item.transactionNwc.nwcEventId ?? "-",
 														},
 														{
 															key: t(
 																"transactions:form.transaction-form.label.nwc-request-id",
 															),
-															value: item.nwcRequestId ?? "-",
+															value: item.transactionNwc.nwcRequestId ?? "-",
 														},
 													]
 												: []),

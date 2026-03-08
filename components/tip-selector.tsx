@@ -1,9 +1,8 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { useAtom } from "jotai";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { SelectedTipAtom } from "@/app/(client)/bill-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

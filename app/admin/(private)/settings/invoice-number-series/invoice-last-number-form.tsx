@@ -1,9 +1,9 @@
-import { createIdFromString, getOrThrow, type Id } from "@evolu/common";
-import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
+import { createIdFromString, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -26,19 +26,21 @@ export const createInvoiceLastNumberDefaultValues = () =>
 		date: null,
 	}) satisfies z.input<typeof invoiceLastNumberFormSchema>;
 
-const createComponents = (t: TFunction) => createAutoFormLayout(
-	invoiceLastNumberFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(invoiceLastNumberFormSchema, ({ builder }) => ({
 		...builder.magicInput("serialNumber").text({
-			label: t("settings:form.invoice-last-number-form.label.last-invoice-serial-number"),
+			label: t(
+				"settings:form.invoice-last-number-form.label.last-invoice-serial-number",
+			),
 			type: "number",
 		}),
 
 		...builder.magicInput("date").date({
-			label: t("settings:form.invoice-last-number-form.label.last-invoice-date"),
+			label: t(
+				"settings:form.invoice-last-number-form.label.last-invoice-date",
+			),
 		}),
-	}),
-);
+	}));
 
 export const InvoiceLastNumberForm: React.FC<{
 	defaultValues?: PartialDeep<z.input<typeof invoiceLastNumberFormSchema>>;
@@ -58,21 +60,19 @@ export const InvoiceLastNumberForm: React.FC<{
 		saveAction: async (values) => {
 			const id = createIdFromString("");
 
-			getOrThrow(
-				evolu.upsert(
-					"invoiceLastNumber",
-					{
-						...values,
-						id,
+			evolu.upsert(
+				"invoiceLastNumber",
+				{
+					...values,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
 					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id);
-							}
-						},
-					},
-				),
+				},
 			);
 		},
 	});

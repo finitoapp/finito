@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { Integer, IntegerSchema, IntegerStringSchema } from "@/lib/shared/types";
+import {
+	type Integer,
+	IntegerSchema,
+	type IntegerString,
+	IntegerStringSchema,
+} from "@/lib/shared/types";
 
 export const integerStringToBigIntCodec = z.codec(
 	IntegerStringSchema,
@@ -14,8 +19,8 @@ export const integerStringToInteger = z.codec(
 	IntegerStringSchema,
 	IntegerSchema,
 	{
-		decode: (value) => Number(value),
-		encode: (value) => value.toFixed(0),
+		decode: (value) => Number(value) as Integer,
+		encode: (value) => value.toFixed(0) as IntegerString,
 	},
 );
 

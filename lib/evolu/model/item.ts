@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { Currency, NonEmptyStringSchema, ProductCodeType } from "@/lib/shared/types";
+import {
+	Currency,
+	NonEmptyStringSchema,
+	ProductCodeType,
+} from "@/lib/shared/types";
 
 export const ItemSchema = z.object({
 	id: z.string(),

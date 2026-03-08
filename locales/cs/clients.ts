@@ -11,6 +11,7 @@ const locale = {
     },
     "columns": {
       "name": "Název",
+      "identification-number": "IČO",
       "vat-number": "DIČ"
     },
     "search": {

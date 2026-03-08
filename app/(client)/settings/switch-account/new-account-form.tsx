@@ -1,28 +1,24 @@
 import {
 	createOwnerSecret,
 	createRandomBytes,
-	getOrThrow,
-	NonEmptyString100,
 	ownerSecretToMnemonic,
-	PositiveInt,
-	sqliteTrue,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import { useAtomValue, useSetAtom } from "jotai";
 import type React from "react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
-import { defaultRelays } from "@/atoms/nostr-relays";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
-import { WssUrl } from "@/lib/shared/types";
+import { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 const formSchema = z.object({});
-const createComponents = (t: TFunction) => createAutoFormLayout(formSchema, () => ({}));
+const createComponents = (_t: TFunction) =>
+	createAutoFormLayout(formSchema, () => ({}));
 
 export const NewAccountForm: React.FC<{
 	onSuccess: () => unknown;
@@ -41,18 +37,16 @@ export const NewAccountForm: React.FC<{
 			);
 
 			await new Promise<void>((resolve) => {
-				const { id } = getOrThrow(
-					deviceEvolu.insert(
-						"account",
-						{
-							name: NonEmptyString100.orThrow(faker.internet.username()),
-							mnemonic,
-							lastUseAt: PositiveInt.orThrow(Date.now()),
-						},
-						{
-							onComplete: resolve,
-						},
-					),
+				deviceEvolu.insert(
+					"account",
+					{
+						name: NonEmptyString255(faker.internet.username()),
+						mnemonic,
+						lastUseAt: TimestampMs(Date.now()),
+					},
+					{
+						onComplete: resolve,
+					},
 				);
 			});
 
@@ -65,7 +59,9 @@ export const NewAccountForm: React.FC<{
 		<AutoForm
 			form={form}
 			components={components}
-			saveLabel={t("settings:form.new-account-form.save-label.generate-a-new-account")}
+			saveLabel={t(
+				"settings:form.new-account-form.save-label.generate-a-new-account",
+			)}
 		/>
 	);
 };

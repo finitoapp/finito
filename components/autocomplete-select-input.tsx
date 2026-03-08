@@ -1,9 +1,7 @@
-"use client";
-
-import { useTranslation } from "react-i18next";
 import { LoaderCircleIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { JsonValue } from "type-fest";
 import type { AutoFormComponent } from "@/components/auto-form";
 import {
@@ -74,12 +72,7 @@ export const createAutocompleteSelectInput =
 							clearTimeout(timeoutId);
 							ignore = true;
 						};
-					}, [
-						searchValue,
-						params.fetchFailedErrorMessage,
-						params.fetchItems,
-						params,
-					]);
+					}, [searchValue]);
 					let status: React.ReactNode = "";
 					if (isLoading) {
 						status = (
@@ -122,7 +115,9 @@ export const createAutocompleteSelectInput =
 							filter={null}
 						>
 							<Label className="flex flex-col gap-2">
-								<span className="text-sm font-medium">{t("components:autocomplete.searchSubjects")}</span>
+								<span className="text-sm font-medium">
+									{t("components:autocomplete.searchSubjects")}
+								</span>
 								<AutocompleteControl>
 									<AutocompleteInput
 										variant={"lg"}

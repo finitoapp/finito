@@ -1,6 +1,6 @@
 "use client";
 
-import { getOrThrow, sqliteTrue } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import {
 	ChevronDownIcon,
 	EditIcon,
@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { FadeHeader } from "@/components/fade-header";
@@ -22,10 +23,10 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
 import { cn } from "@/lib/shared/ui/cn";
 
 export default function Page() {
@@ -33,17 +34,19 @@ export default function Page() {
 	const router = useRouter();
 	const evolu = useEvolu();
 	const { confirm } = useGlobalDialog();
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("account")
-				.select([
-					"account.id as id",
-					"account.name as name",
-					"account._tag as _tag",
-				] as const)
-				.where("account.isDeleted", "is not", sqliteTrue)
-				.orderBy("account.createdAt", "desc"),
+	const query = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("account")
+					.select([
+						"account.id as id",
+						"account.name as name",
+						"account._tag as _tag",
+					] as const)
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.orderBy("account.createdAt", "desc"),
+			),
 		[],
 	);
 	const { data: items } = useEvoluQuery(query);
@@ -165,12 +168,10 @@ export default function Page() {
 													return;
 												}
 
-												getOrThrow(
-													evolu.update("account", {
-														id: item.id,
-														isDeleted: sqliteTrue,
-													}),
-												);
+												evolu.update("account", {
+													id: item.id,
+													isDeleted: sqliteTrue,
+												});
 											}}
 										>
 											<TrashIcon />

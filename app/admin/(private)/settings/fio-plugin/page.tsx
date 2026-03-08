@@ -1,42 +1,58 @@
 "use client";
 
-import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
 	const itemId = createIdFromString("");
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("fioPlugin")
-				.selectAll()
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("fioPlugin")
+					.selectAll()
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("id", "=", itemId)
+					.where("apiUrl", "is not", null)
+					.where("numberOfSecondsBetweenChecks", "is not", null)
+					.where("isActive", "is not", null)
+					.$narrowType<{
+						apiUrl: NotNull;
+						numberOfSecondsBetweenChecks: NotNull;
+						isActive: NotNull;
+					}>();
+			}),
 		[itemId],
 	);
 
 	const { data } = useEvoluQuery(query);
 
-	const item = data && data[0];
+	const item = data[0];
 
-	const tokensQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("fioPluginToken")
-				.select([
-					"fioPluginToken.id as id",
-					"fioPluginToken.token as token",
-				] as const)
-				.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
-				.where("fioPluginToken.fioPluginId", "=", itemId);
-		},
+	const tokensQuery = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("fioPluginToken")
+					.select([
+						"fioPluginToken.id as id",
+						"fioPluginToken.token as token",
+					] as const)
+					.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
+					.where("fioPluginToken.fioPluginId", "=", itemId)
+					.where("fioPluginToken.token", "is not", null)
+					.$narrowType<{
+						token: NotNull;
+					}>();
+			}),
 		[itemId],
 	);
 
@@ -50,9 +66,8 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<FioPluginForm
-						key={item && tokens !== undefined ? "yes" : "no"}
 						defaultValues={
-							item && tokens
+							item
 								? {
 										...item,
 										isActive: item.isActive === sqliteTrue,

@@ -1,14 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -26,12 +26,17 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { CountryCode } from "@/lib/shared/types";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import { CountryCode, type NonEmptyString255 } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;
 	name: string;
-	_tag: string;
+	countryCode: CountryCode;
+	vatNumber: NonEmptyString255 | null;
+	identificationNumber: NonEmptyString255 | null;
+	createdAt: DateIso;
 };
 
 const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
@@ -40,23 +45,43 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 		header: createSortableHeader(t("clients:table.columns.name")),
 	},
 	{
+		accessorKey: "identificationNumber",
+		header: createSortableHeader(
+			t("clients:table.columns.identification-number"),
+		),
+		cell: ({ row }) => {
+			return row.original.countryCode === CountryCode.CZ
+				? row.original.identificationNumber
+				: "-";
+		},
+	},
+	{
 		accessorKey: "vatNumber",
 		header: createSortableHeader(t("clients:table.columns.vat-number")),
 		cell: ({ row }) => {
-			console.log("row", row.original);
 			return row.original.countryCode === CountryCode.CZ
-				? row.original["clientCz.vatNumber"]
+				? row.original.vatNumber
 				: "-";
 		},
 	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "name",
-		title: t("clients:table.columns.name"),
-	},
-] satisfies { id: keyof Task; title: string }[];
+const sortingFields = {
+	id: "client.id",
+	createdAt: "client.createdAt",
+	name: "client.name",
+	countryCode: "client.countryCode",
+	vatNumber: "clientCz.vatNumber",
+	identificationNumber: "clientCz.identificationNumber",
+} as const satisfies Record<keyof Task, string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "name",
+			title: t("clients:table.columns.name"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function ClientTable() {
 	const { t } = useTranslation();
@@ -71,13 +96,15 @@ export function ClientTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? {
-					id: "createdAt",
-					desc: true,
-				};
-				const sortingColumn = `client.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("client")
 						.leftJoin("clientAddress", "clientAddress.id", "client.id")
@@ -88,20 +115,27 @@ export function ClientTable() {
 							"client.label as label",
 							"client.countryCode as countryCode",
 							"client.createdAt as createdAt",
-							"clientCz.vatNumber as clientCz.vatNumber",
+							"clientCz.vatNumber as vatNumber",
+							"clientCz.identificationNumber as identificationNumber",
 						] as const)
-						.where("client.isDeleted", "is not", sqliteTrue);
+						.where("client.isDeleted", "is not", sqliteTrue)
+						.where("client.name", "is not", null)
+						.where("client.countryCode", "is not", null)
+						.$narrowType<{
+							name: NotNull;
+							countryCode: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("client.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -109,19 +143,23 @@ export function ClientTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("client.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "name") {
-							qb = qb.where("client.name", "like", `${filter.value}%`);
+							qb = qb.where(
+								"client.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 					}
 
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -129,23 +167,15 @@ export function ClientTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -156,7 +186,9 @@ export function ClientTable() {
 			<CardHeader>
 				<CardHeading className={"py-6"}>
 					<CardTitle>{t("clients:table.clients")}</CardTitle>
-					<CardDescription>{t("clients:table.listOfYourClients")}</CardDescription>
+					<CardDescription>
+						{t("clients:table.listOfYourClients")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/clients/new"}>
@@ -172,8 +204,6 @@ export function ClientTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="name"
-					searchPlaceholder={t("clients:table.search.placeholder.by-name")}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(

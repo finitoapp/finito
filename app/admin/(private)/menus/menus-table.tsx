@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { isMenuVisibleForPublic } from "@/lib/menu/utils";
+import { createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
+import { isMenuVisibleForPublic } from "@/lib/menu/utils";
 
 type MenuRow = {
 	id: Id;
@@ -102,7 +103,7 @@ export const MenusTable = () => {
 				const finalSorting = sorting ?? { id: "name", desc: false };
 				const sortingColumn = `menu.${finalSorting.id}`;
 
-				const query = evolu.createQuery((db) => {
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("menu")
 						.select([

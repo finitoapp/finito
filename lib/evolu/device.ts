@@ -1,78 +1,89 @@
 import {
+	AppName,
 	createEvolu,
-	id,
+	createQueryBuilder,
+	getOrThrow,
 	Mnemonic,
-	NonEmptyString100,
-	NonEmptyString1000,
-	PositiveInt,
 	type Evolu as RawEvolu,
-	SimpleName,
-	SqliteBoolean,
+	testAppOwner,
 } from "@evolu/common";
-import { evoluReactWebDeps } from "@evolu/react-web";
-
-const DataTableId = id("DataTable");
-const DataTableVisibilityStateId = id("DataTableVisibilityState");
-const AccountId = id("Account");
-const AccountEvoluTransportId = id("AccountEvoluTransport");
+import { createEvoluDeps, createRun } from "@evolu/web";
+import { z } from "zod";
+import { TableIdSchema } from "@/lib/evolu/types";
+import {
+	NonEmptyString255Schema,
+	SqliteBoolSchema,
+	TimestampMsSchema,
+	WssUrlSchema,
+} from "@/lib/shared/types";
 
 const DeviceSchema = {
 	dataTable: {
-		id: DataTableId,
-		name: NonEmptyString100,
+		id: TableIdSchema,
+		name: NonEmptyString255Schema,
 	},
 	dataTableVisibilityState: {
-		id: DataTableVisibilityStateId,
-		dataTableId: DataTableId,
-		name: NonEmptyString100,
-		isHidden: SqliteBoolean,
+		id: TableIdSchema,
+		dataTableId: TableIdSchema,
+		name: NonEmptyString255Schema,
+		isHidden: SqliteBoolSchema,
 	},
 	account: {
-		id: AccountId,
-		name: NonEmptyString100,
+		id: TableIdSchema,
+		name: NonEmptyString255Schema,
 		mnemonic: Mnemonic,
-		lastUseAt: PositiveInt,
+		lastUseAt: TimestampMsSchema,
 	},
 	accountNostrRelay: {
-		id: AccountEvoluTransportId,
-		accountId: AccountId,
-		isActive: SqliteBoolean,
-		url: NonEmptyString1000,
+		id: TableIdSchema,
+		accountId: TableIdSchema,
+		isActive: SqliteBoolSchema,
+		url: WssUrlSchema,
 	},
 	accountEvoluTransport: {
-		id: AccountEvoluTransportId,
-		accountId: AccountId,
-		type: NonEmptyString100,
-		isActive: SqliteBoolean,
+		id: TableIdSchema,
+		accountId: TableIdSchema,
+		type: z.enum(["WebSocket"]),
+		isActive: SqliteBoolSchema,
 	},
 	accountEvoluTransportWebsocket: {
-		id: AccountEvoluTransportId,
-		url: NonEmptyString1000,
+		id: TableIdSchema,
+		url: WssUrlSchema,
 	},
 } as const;
 
-export const createDeviceEvolu = () => {
-	const evolu = createEvolu(evoluReactWebDeps)(DeviceSchema, {
-		name: SimpleName.orThrow("Finito-Device"),
-		// enableLogging: true,
-		transports: [], // Disable syncing for now
-		indexes: () => [],
-		// indexes: (create) =>
-		// 	storages.map((storage) =>
-		// 		create(`${storage.namespace}_createdOrUpdatedAt`)
-		// 			.on(`${storage.namespace}`)
-		// 			.column("createdOrUpdatedAt"),
-		// 	),
-	});
+export const createDeviceQuery = createQueryBuilder(DeviceSchema);
 
-	evolu.subscribeError(() => {
-		const error = evolu.getError();
-		if (!error) return;
+export const createDeviceEvolu = async () => {
+	const run = createRun(createEvoluDeps());
+	const evolu = getOrThrow(
+		await createEvolu(DeviceSchema, {
+			appName: AppName.orThrow("FinitoDevice"),
+			appOwner: testAppOwner,
+			// enableLogging: true,
+			transports: [], // Disable syncing for now
+			indexes: () => [],
+			// indexes: (create) =>
+			// 	storages.map((storage) =>
+			// 		create(`${storage.namespace}_createdOrUpdatedAt`)
+			// 			.on(`${storage.namespace}`)
+			// 			.column("createdOrUpdatedAt"),
+			// 	),
+		})(run),
+	);
 
-		alert("🚨 Evolu error occurred! Check the console.");
-		// eslint-disable-next-line no-console
-		console.error(error);
-	});
+	(async () => {
+		console.log("deviceAppOwner", await evolu.appOwner);
+	})();
+
+	// evolu.subscribeError(() => {
+	// 	const error = evolu.getError();
+	// 	if (!error) return;
+	//
+	// 	alert("🚨 Evolu error occurred! Check the console.");
+	// 	// eslint-disable-next-line no-console
+	// 	console.error(error);
+	// });
 
 	return evolu;
 };

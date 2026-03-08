@@ -1,9 +1,8 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -51,7 +50,9 @@ export const HiddenInput = () => {
 	return (
 		<div className="max-w-2xl mx-auto p-6 space-y-6">
 			<div className="text-center space-y-2">
-				<h1 className="text-3xl font-bold">{t("components:hiddenInput.hiddenInputDemo")}</h1>
+				<h1 className="text-3xl font-bold">
+					{t("components:hiddenInput.hiddenInputDemo")}
+				</h1>
 				<p className="text-muted-foreground">
 					Text inputs with hidden values and reveal functionality
 				</p>
@@ -70,7 +71,9 @@ export const HiddenInput = () => {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor={passwordId}>{t("components:hiddenInput.password")}</Label>
+						<Label htmlFor={passwordId}>
+							{t("components:hiddenInput.password")}
+						</Label>
 						<div className="relative">
 							<Input
 								id={passwordId}
@@ -161,7 +164,9 @@ export const HiddenInput = () => {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
-						<Label htmlFor={apikeyId}>{t("components:hiddenInput.apiKey")}</Label>
+						<Label htmlFor={apikeyId}>
+							{t("components:hiddenInput.apiKey")}
+						</Label>
 						<div className="flex items-center gap-2">
 							<Input
 								id={apikeyId}
@@ -194,7 +199,9 @@ export const HiddenInput = () => {
 			<Card>
 				<CardHeader>
 					<CardTitle>{t("components:hiddenInput.actions")}</CardTitle>
-					<CardDescription>{t("components:hiddenInput.controlAllHiddenValuesAtOnce")}</CardDescription>
+					<CardDescription>
+						{t("components:hiddenInput.controlAllHiddenValuesAtOnce")}
+					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="flex flex-wrap gap-2">

@@ -1,19 +1,15 @@
-import type { Query } from "@evolu/common";
 import { sqliteTrue } from "@evolu/common";
-import type { Evolu } from "@/lib/evolu";
+import type { NotNull } from "kysely";
+import { createQuery } from "@/lib/evolu";
 
-export type ActiveCategoryRow = {
-	id: string;
-	name: string | null;
-};
-
-export const createActiveCategoriesQuery = (
-	evolu: Pick<Evolu, "createQuery">,
-): Query<ActiveCategoryRow> =>
-	evolu.createQuery((db) =>
-		db
-			.selectFrom("category")
-			.select(["category.id as id", "category.name as name"])
-			.where("category.isDeleted", "is not", sqliteTrue)
-			.orderBy("category.name", "asc"),
-	);
+export const activeCategoriesQuery = createQuery((db) =>
+	db
+		.selectFrom("category")
+		.select(["category.id as id", "category.name as name"])
+		.where("category.isDeleted", "is not", sqliteTrue)
+		.where("category.name", "is not", null)
+		.orderBy("category.name", "asc")
+		.$narrowType<{
+			name: NotNull;
+		}>(),
+);

@@ -1,13 +1,9 @@
 "use client";
 
-import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
-import NDK, {
-	NDKPrivateKeySigner,
-	type NDKSigner,
-	type NDKUser,
-} from "@nostr-dev-kit/ndk";
+import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
+import type { NotNull } from "kysely";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -21,6 +17,7 @@ import {
 	type FC,
 	Fragment,
 	useEffect,
+	useMemo,
 	useRef,
 	useState,
 	useTransition,
@@ -50,27 +47,27 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAsyncRoutePush } from "@/hooks/use-async-route-push";
 import { useBill } from "@/hooks/use-bill";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import type { Pos } from "@/hooks/use-pos";
-import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { createQuery } from "@/lib/evolu";
+import type { Id } from "@/lib/evolu/types";
+import { createPayment } from "@/lib/payment/service";
+import {
+	Currency,
+	Integer,
+	type NonEmptyString255,
+	NonEmptyString255Schema,
+	type NonNegativeInteger,
+	StringToNullableStringSchema,
+} from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
-import { createPayment, createZapPayment } from "@/lib/payment/service";
-import type { StaticOfflinePayment } from "@/lib/shared/schemas";
-import { Currency, type Integer, type NonEmptyString } from "@/lib/shared/types";
 import { clientBaseUrl } from "@/lib/shared/utils/window";
 
-const toMoney = (value: number, currency: Currency) => ({
-	value: BigInt(Math.round(value)),
-	currency,
-});
-
 const Item: React.FC<{
-	item: Pos["bills"][string]["items"][number];
-	billId: string;
+	item: Pos["bills"][Id]["items"][number];
+	billId: Id;
 }> = (props) => {
 	const { t } = useTranslation();
 	const [isRemoving, setIsRemoving] = useState(false);
@@ -90,9 +87,12 @@ const Item: React.FC<{
 					}}
 				>
 					<div className="flex-1">
-						<h4 className="font-medium text-sm">{props.item.name}</h4>
+						<h4 className="font-medium text-sm">{props.item.item.label}</h4>
 						<p className="text-xs text-muted-foreground">
-							{formatMoney(toMoney(props.item.price, props.item.currency))}{" "}
+							{formatMoney({
+								value: props.item.item.price,
+								currency: props.item.item.currency,
+							})}{" "}
 							{t("pos:bill.each")}
 						</p>
 					</div>
@@ -169,7 +169,7 @@ const Item: React.FC<{
 };
 
 const PosBillName: React.FC<{
-	billId?: string;
+	billId?: Id;
 	billLabel: string;
 	placeholder: string;
 }> = (props) => {
@@ -188,9 +188,16 @@ const PosBillName: React.FC<{
 			return;
 		}
 
+		const debouncedValueResult = StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		).safeParse(debouncedValue);
+		if (!debouncedValueResult.success) {
+			return;
+		}
+
 		setBillLabel({
 			billId: props.billId,
-			label: debouncedValue,
+			label: debouncedValueResult.data,
 		});
 	}, [debouncedValue, setBillLabel, props.billId]);
 
@@ -258,46 +265,56 @@ const TableQrCode: React.FC<{
 };
 
 const PosBillTable: React.FC<{
-	billId?: string;
+	billId?: Id;
 	table?: {
 		id: Id;
-		name: NonEmptyString;
-		qrCode?: NonEmptyString;
+		label: NonEmptyString255;
+		// qrCode?: NonEmptyString255;
 	};
 }> = (props) => {
 	const { t } = useTranslation();
 	const { setBillTable } = useBill();
-	const tableQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("table")
-				.select(["table.id as id", "table.label as label"] as const)
-				.where("table.isDeleted", "is not", sqliteTrue),
+	const tableQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("table")
+					.select(["table.id as id", "table.label as label"] as const)
+					.where("table.isDeleted", "is not", sqliteTrue)
+					.where("table.label", "is not", null)
+					.$narrowType<{
+						label: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data: items } = useEvoluQuery(tableQuery);
-	const tableCodesQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("tableCode")
-				.select([
-					"tableCode.id as id",
-					"tableCode.code as code",
-					"tableCode.tableId as tableId",
-				] as const)
-				.where("tableCode.isDeleted", "is not", sqliteTrue),
+	const tableCodesQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("tableCode")
+					.select([
+						"tableCode.id as id",
+						"tableCode.code as code",
+						"tableCode.tableId as tableId",
+					] as const)
+					.where("tableCode.isDeleted", "is not", sqliteTrue)
+					.where("tableCode.code", "is not", null)
+					.where("tableCode.tableId", "is not", null)
+					.$narrowType<{
+						code: NotNull;
+						tableId: NotNull;
+					}>(),
+			),
 		[],
 	);
 	const { data: tableCodes } = useEvoluQuery(tableCodesQuery);
 
-	const table =
-		items && props.table
-			? items.find((item) => item.id === props.table?.id)
-			: undefined;
-	const tableQrCode =
-		table && tableCodes
-			? tableCodes.find((tableCode) => tableCode.tableId === table.id)
-			: undefined;
+	const table = items.find((item) => item.id === props.table?.id);
+	const tableQrCode = table
+		? tableCodes.find((tableCode) => tableCode.tableId === table.id)
+		: undefined;
 
 	return (
 		<div className={"flex gap-2"}>
@@ -310,7 +327,14 @@ const PosBillTable: React.FC<{
 					label: item.label,
 				}))}
 				placeholder={t("pos:bill.selectTable")}
-				value={props.table ?? null}
+				value={
+					props.table
+						? {
+								id: props.table.id,
+								name: props.table.label,
+							}
+						: null
+				}
 				compareFunction={(a, b) => a?.id === b?.id}
 				formatCustomValue={(value) => value.name}
 				onChange={(value) => {
@@ -330,14 +354,13 @@ const PosBillTable: React.FC<{
 };
 
 const PayButton: FC<{
-	bill: Pos["bills"][string];
-	billId: string;
+	bill: Pos["bills"][Id];
+	billId: Id;
 	total: Integer;
 }> = (props) => {
 	const { t } = useTranslation();
 	const { ndk } = useNostr();
 	const evolu = useEvolu();
-	const storageDeps = useStorageDeps();
 	const [isSaving, startTransition] = useTransition();
 	const { deleteBill } = useBill();
 	const asyncRoutePush = useAsyncRoutePush();
@@ -348,164 +371,172 @@ const PayButton: FC<{
 			disabled={props.bill.items.length === 0 || isSaving}
 			onClick={() => {
 				startTransition(async () => {
-					const billingSettingsRows = await evolu.loadQuery(
-						evolu.createQuery((db) =>
-							db
-								.selectFrom("billingSettings")
-								.selectAll()
-								.where("isDeleted", "is not", sqliteTrue)
-								.where("id", "=", createIdFromString("")),
-						),
-					);
-
-					const billingSettings = billingSettingsRows[0];
-
-					const [bankTransferCzRows, lnZapRows] = await Promise.all([
-						(async () => {
-							if (
-								!billingSettings ||
-								!billingSettings.defaultBankTransferCzKey
-							) {
-								return [];
-							}
-
-							return await evolu.loadQuery(
-								evolu.createQuery((db) =>
-									db
-										.selectFrom("account")
-										.leftJoin("accountIban", "accountIban.id", "account.id")
-										.select([
-											"account._tag as _tag",
-											"accountIban.iban as iban",
-										] as const)
-										.where("account.isDeleted", "is not", sqliteTrue)
-										.where(
-											"account.id",
-											"=",
-											billingSettings.defaultBankTransferCzKey as Id,
-										),
-								),
-							);
-						})(),
-						(async () => {
-							if (!billingSettings || !billingSettings.defaultLnZapKey) {
-								return [];
-							}
-
-							return await evolu.loadQuery(
-								evolu.createQuery((db) =>
-									db
-										.selectFrom("account")
-										.leftJoin("accountLud16", "accountLud16.id", "account.id")
-										.select([
-											"account._tag as _tag",
-											"accountLud16.lud16 as lud16",
-										] as const)
-										.where("account.isDeleted", "is not", sqliteTrue)
-										.where(
-											"account.id",
-											"=",
-											billingSettings.defaultLnZapKey as Id,
-										),
-								),
-							);
-						})(),
-					]);
-
-					const paymentOptions: StaticOfflinePayment["paymentOptions"] = [
-						{
-							type: "cash",
-						},
-					];
-
-					(() => {
-						const value = bankTransferCzRows[0];
-						if (value === undefined) {
-							return;
-						}
-
-						if (value._tag !== "accountIban" || !value.iban) {
-							return;
-						}
-
-						paymentOptions.push({
-							type: "bankTransferCZ",
-							iban: value.iban,
-							variableSymbol: "1",
-						});
-					})();
-
-					const paymentSigner = NDKPrivateKeySigner.generate();
-					const paymentNdk = new NDK({
-						explicitRelayUrls: ndk.explicitRelayUrls,
-						signer: paymentSigner,
-					}) as NDK & {
-						signer: NDKSigner;
-						activeUser: NDKUser;
-					};
-
-					await paymentNdk.connect();
-
-					if (paymentNdk.activeUser === undefined) {
-						return;
-					}
-
-					await (async () => {
-						const value = lnZapRows[0];
-						if (value === undefined) {
-							return undefined;
-						}
-
-						if (value._tag !== "accountLud16" || !value.lud16) {
-							return;
-						}
-
-						const btcAmount = await currencyConverter.convert({
-							amount: props.total,
-							sourceCurrency: props.bill.currency,
-							targetCurrency: Currency.BTC,
-						});
-
-						if (btcAmount === null) {
-							return;
-						}
-
-						const zapPaymentResult = await createZapPayment({
-							amountInBtc: btcAmount,
-							lud16: value.lud16,
-							ndk,
-							paymentNdk,
-						});
-
-						paymentOptions.push({
-							type: "lnZap",
-							amount: btcAmount,
-							lnInvoice: zapPaymentResult.lnInvoice,
-							walletPubkey: zapPaymentResult.walletPubkey,
-							expirationIn: zapPaymentResult.expirationIn,
-						});
-					})();
-
-					const paymentData: StaticOfflinePayment = {
-						bill: {
-							currency: props.bill.currency,
-							allowTip: false,
-							items: props.bill.items.map((item) => ({
-								id: item.id,
-								price: item.price,
-								label: item.name,
-								quantity: item.quantity,
-							})),
-						},
-						paymentOptions,
-						privateKey: paymentSigner.privateKey,
-					};
+					// const billingSettingsRows = await evolu.loadQuery(
+					// 	createQuery((db) =>
+					// 		db
+					// 			.selectFrom("billingSettings")
+					// 			.selectAll()
+					// 			.where("isDeleted", "is not", sqliteTrue)
+					// 			.where("id", "=", createIdFromString("")),
+					// 	),
+					// );
+					//
+					// const billingSettings = billingSettingsRows[0];
+					//
+					// const [bankTransferCzRows, lnZapRows] = await Promise.all([
+					// 	(async () => {
+					// 		if (
+					// 			!billingSettings ||
+					// 			!billingSettings.defaultBankTransferCzKey
+					// 		) {
+					// 			return [];
+					// 		}
+					//
+					// 		return await evolu.loadQuery(
+					// 			createQuery((db) =>
+					// 				db
+					// 					.selectFrom("account")
+					// 					.leftJoin("accountIban", "accountIban.id", "account.id")
+					// 					.select([
+					// 						"account._tag as _tag",
+					// 						"accountIban.iban as iban",
+					// 					] as const)
+					// 					.where("account.isDeleted", "is not", sqliteTrue)
+					// 					.where(
+					// 						"account.id",
+					// 						"=",
+					// 						billingSettings.defaultBankTransferCzKey as Id,
+					// 					),
+					// 			),
+					// 		);
+					// 	})(),
+					// 	(async () => {
+					// 		if (!billingSettings || !billingSettings.defaultLnZapKey) {
+					// 			return [];
+					// 		}
+					//
+					// 		return await evolu.loadQuery(
+					// 			createQuery((db) =>
+					// 				db
+					// 					.selectFrom("account")
+					// 					.leftJoin("accountLud16", "accountLud16.id", "account.id")
+					// 					.select([
+					// 						"account._tag as _tag",
+					// 						"accountLud16.lud16 as lud16",
+					// 					] as const)
+					// 					.where("account.isDeleted", "is not", sqliteTrue)
+					// 					.where(
+					// 						"account.id",
+					// 						"=",
+					// 						billingSettings.defaultLnZapKey as Id,
+					// 					),
+					// 			),
+					// 		);
+					// 	})(),
+					// ]);
+					//
+					// const paymentOptions: StaticOfflinePayment["paymentOptions"] = [
+					// 	{
+					// 		type: "cash",
+					// 	},
+					// ];
+					//
+					// (() => {
+					// 	const value = bankTransferCzRows[0];
+					// 	if (value === undefined) {
+					// 		return;
+					// 	}
+					//
+					// 	if (value._tag !== "accountIban" || !value.iban) {
+					// 		return;
+					// 	}
+					//
+					// 	paymentOptions.push({
+					// 		type: "bankTransferCZ",
+					// 		iban: value.iban,
+					// 		variableSymbol: "1",
+					// 	});
+					// })();
+					//
+					// const paymentSigner = NDKPrivateKeySigner.generate();
+					// const paymentNdk = new NDK({
+					// 	explicitRelayUrls: ndk.explicitRelayUrls,
+					// 	signer: paymentSigner,
+					// }) as NDK & {
+					// 	signer: NDKSigner;
+					// 	activeUser: NDKUser;
+					// };
+					//
+					// await paymentNdk.connect();
+					//
+					// if (paymentNdk.activeUser === undefined) {
+					// 	return;
+					// }
+					//
+					// await (async () => {
+					// 	const value = lnZapRows[0];
+					// 	if (value === undefined) {
+					// 		return undefined;
+					// 	}
+					//
+					// 	if (value._tag !== "accountLud16" || !value.lud16) {
+					// 		return;
+					// 	}
+					//
+					// 	const btcAmount = await currencyConverter.convert({
+					// 		amount: props.total,
+					// 		sourceCurrency: props.bill.currency,
+					// 		targetCurrency: Currency.BTC,
+					// 	});
+					//
+					// 	if (btcAmount === null) {
+					// 		return;
+					// 	}
+					//
+					// 	const zapPaymentResult = await createZapPayment({
+					// 		amountInSats: btcAmount,
+					// 		lud16: value.lud16,
+					// 		ndk,
+					// 		paymentNdk,
+					// 	});
+					//
+					// 	paymentOptions.push({
+					// 		type: "lnZap",
+					// 		amount: btcAmount,
+					// 		lnInvoice: zapPaymentResult.lnInvoice,
+					// 		walletPubkey: zapPaymentResult.walletPubkey,
+					// 		expirationIn: extractExpirationFromLightningInvoice(
+					// 			zapPaymentResult.lnInvoice,
+					// 		),
+					// 	});
+					// })();
+					//
+					// const paymentData: StaticOfflinePayment = {
+					// 	bill: {
+					// 		currency: props.bill.currency,
+					// 		allowTip: false,
+					// 		items: props.bill.items.map((item) => ({
+					// 			id: item.id,
+					// 			price: item.price,
+					// 			label: item.name,
+					// 			quantity: item.quantity,
+					// 		})),
+					// 	},
+					// 	paymentOptions,
+					// 	privateKey: NonEmptyString(paymentSigner.privateKey),
+					// };
 
 					const id = await createPayment({
-						paymentNdk,
-						...storageDeps,
-						expectedTipAmount: null,
-						paymentData,
+						evolu,
+						ndk,
+						payment: {
+							id: createId({
+								randomBytes: createRandomBytes(),
+							}),
+							currency: props.bill.currency,
+						},
+						totalAmount: props.total as NonNegativeInteger,
+						tipAmount: null,
 					});
 
 					asyncRoutePush(
@@ -526,7 +557,7 @@ const PayButton: FC<{
 						initial={{ scale: 1.1, opacity: 0.5 }}
 						animate={{ scale: 1, opacity: 1 }}
 					>
-						{formatMoney(toMoney(props.total, props.bill.currency))}
+						{formatMoney({ value: props.total, currency: props.bill.currency })}
 					</motion.span>
 				</>
 			)}
@@ -535,35 +566,41 @@ const PayButton: FC<{
 };
 
 export const PosBill: React.FC<{
-	billId?: string;
-	bill?: Pos["bills"][string];
+	billId: Id | undefined;
+	bill?: Pos["bills"][Id];
 	ref?: React.Ref<HTMLDivElement>;
 }> = (props) => {
 	const { t } = useTranslation();
 	const { setBillCurrency, setBillRate } = useBill();
-	const totalPerCurrency = new Map<Currency, number>();
+	const totalPerCurrency = new Map<Currency, Integer>();
 	let hasDifferentCurrency = false;
+	const billId = props.billId;
 
 	for (const item of props.bill?.items ?? []) {
 		hasDifferentCurrency =
-			hasDifferentCurrency || item.currency !== props.bill?.currency;
+			hasDifferentCurrency || item.item.currency !== props.bill?.currency;
 
 		totalPerCurrency.set(
-			item.currency,
-			(totalPerCurrency.get(item.currency) ?? 0) + item.price * item.quantity,
+			item.item.currency,
+			Integer(
+				(totalPerCurrency.get(item.item.currency) ?? 0) +
+					Math.round(item.item.price * item.quantity),
+			),
 		);
 	}
 
 	const total =
 		props.bill === undefined
-			? 0
-			: totalPerCurrency
-					.entries()
-					.reduce(
-						(acc, [currency, value]) =>
-							value / (props.bill?.rates[currency] ?? 1) + acc,
-						0,
-					);
+			? Integer(0)
+			: Integer(
+					totalPerCurrency.entries().reduce((acc, [currency, value]) => {
+						const rate = props.bill?.rates.find(
+							(rate) => rate.currency === currency,
+						);
+
+						return Math.round(value / (rate?.rate ?? 1)) + acc;
+					}, 0),
+				);
 
 	return (
 		<>
@@ -577,26 +614,24 @@ export const PosBill: React.FC<{
 								<>
 									<PosBillName
 										billId={props.billId}
-										billLabel={props.bill !== undefined ? props.bill.label : ""}
+										billLabel={props.bill?.label ?? ""}
 										placeholder={`# ${props.bill?.id ?? 0}`}
 									/>
 
 									<PosBillTable
 										billId={props.billId}
-										table={props.bill?.table}
+										table={props.bill?.table ?? undefined}
 									/>
 								</>
 							)}
 
-							{props.bill === undefined || props.bill.items.length === 0 ? (
+							{props.bill === undefined ||
+							props.bill.items.length === 0 ||
+							billId === undefined ? (
 								<p className="text-center">{t("pos:bill.noItemsInCart")}</p>
 							) : (
 								props.bill.items.map((item) => (
-									<Item
-										key={item.id}
-										billId={props.billId ?? ""}
-										item={item}
-									></Item>
+									<Item key={item.id} billId={billId} item={item}></Item>
 								))
 							)}
 						</div>
@@ -659,7 +694,7 @@ export const PosBill: React.FC<{
 															initial={{ scale: 1.1, opacity: 0.5 }}
 															animate={{ scale: 1, opacity: 1 }}
 														>
-															{formatMoney(toMoney(total, currency))}
+															{formatMoney({ value: total, currency })}
 														</motion.span>
 													</div>
 												</div>
@@ -675,8 +710,11 @@ export const PosBill: React.FC<{
 																		variant={"sm"}
 																		type={"number"}
 																		value={
-																			props.bill?.rates[currency]?.toString() ??
-																			"1"
+																			props.bill?.rates
+																				.find(
+																					(rate) => rate.currency === currency,
+																				)
+																				?.rate.toString() ?? "1"
 																		}
 																		onChange={(e) => {
 																			const value = e.target.value;
@@ -707,7 +745,10 @@ export const PosBill: React.FC<{
 												initial={{ scale: 1.1, opacity: 0.5 }}
 												animate={{ scale: 1, opacity: 1 }}
 											>
-												{formatMoney(toMoney(total, props.bill.currency))}
+												{formatMoney({
+													value: total,
+													currency: props.bill.currency,
+												})}
 											</motion.span>
 										</div>
 									</div>

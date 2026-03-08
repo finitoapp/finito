@@ -1,12 +1,12 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { getOrThrow, sqliteTrue } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -14,10 +14,10 @@ import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -30,23 +30,26 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const categoryQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("category")
-				.selectAll()
-				.where("category.isDeleted", "is not", sqliteTrue)
-				.where("category.id", "=", id as never);
-		},
+	const categoryQuery = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("category")
+					.selectAll()
+					.where("category.isDeleted", "is not", sqliteTrue)
+					.where("category.id", "=", id as never);
+			}),
 		[id],
 	);
-	const itemsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("item")
-				.select(["item.id as id"] as const)
-				.where("item.isDeleted", "is not", sqliteTrue)
-				.where("item.categoryId", "=", id as never),
+	const itemsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("item")
+					.select(["item.id as id"] as const)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.categoryId", "=", id as never),
+			),
 		[id],
 	);
 
@@ -62,12 +65,10 @@ export default function Home() {
 				return;
 			}
 
-			getOrThrow(
-				evolu.update("category", {
-					id: category.id,
-					isDeleted: sqliteTrue,
-				}),
-			);
+			evolu.update("category", {
+				id: category.id,
+				isDeleted: sqliteTrue,
+			});
 
 			router.push("/admin/categories" as never);
 		},

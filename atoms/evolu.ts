@@ -1,13 +1,13 @@
-import { createIdFromString, getOrThrow, sqliteTrue } from "@evolu/common";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
-import { createAppEvolu } from "@/lib/evolu";
-import { NonEmptyString } from "@/lib/shared/types";
+import { createAppEvolu, createQuery } from "@/lib/evolu";
+import { NonEmptyString64, NonEmptyString255 } from "@/lib/shared/types";
 
 export const evoluAtom = atom(async (get) => {
 	const account = await get(accountAtom);
-	const evolu = createAppEvolu({
+	const evolu = await createAppEvolu({
 		mnemonic: account.mnemonic,
 		transports: account.transports,
 	});
@@ -30,7 +30,7 @@ export const evoluAtom = atom(async (get) => {
 			);
 
 			const data = await evolu.loadQuery(
-				evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("account")
 						.selectAll()
@@ -40,19 +40,15 @@ export const evoluAtom = atom(async (get) => {
 			);
 
 			if (data.length === 0) {
-				getOrThrow(
-					evolu.upsert("account", {
-						id,
-						name: NonEmptyString("Default"),
-						_tag: "accountSpark",
-					}),
-				);
-				getOrThrow(
-					evolu.upsert("accountSpark", {
-						id,
-						mnemonic: NonEmptyString(appOwner.mnemonic),
-					}),
-				);
+				evolu.upsert("account", {
+					id,
+					name: NonEmptyString255("Default"),
+					_tag: "accountSpark",
+				});
+				evolu.upsert("accountSpark", {
+					id,
+					mnemonic: NonEmptyString255(appOwner.mnemonic),
+				});
 			}
 		}
 
@@ -60,7 +56,7 @@ export const evoluAtom = atom(async (get) => {
 		{
 			const id = createIdFromString(`backgroundTableProcessing`);
 			const data = await evolu.loadQuery(
-				evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("notification")
 						.selectAll()
@@ -70,17 +66,13 @@ export const evoluAtom = atom(async (get) => {
 			);
 
 			if (data.length === 0) {
-				getOrThrow(
-					evolu.upsert("notification", {
-						id,
-						type: "backgroundTableProcessing",
-					}),
-				);
-				getOrThrow(
-					evolu.upsert("notificationBackgroundTableProcessing", {
-						id,
-					}),
-				);
+				evolu.upsert("notification", {
+					id,
+					type: NonEmptyString64("backgroundTableProcessing"),
+				});
+				evolu.upsert("notificationBackgroundTableProcessing", {
+					id,
+				});
 			}
 		}
 	})();

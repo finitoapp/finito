@@ -1,9 +1,9 @@
 "use client";
 
-import { useTranslation } from "react-i18next";
 import { HandCoinsIcon } from "lucide-react";
 import type React from "react";
 import type { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/shared/ui/cn";
 
 export const FinitoLogo: FC<React.ComponentProps<"div">> = ({
@@ -21,7 +21,10 @@ export const FinitoLogo: FC<React.ComponentProps<"div">> = ({
 		>
 			<HandCoinsIcon width={"1em"} height={"1em"} />
 			<span>
-				Fin<strong className={"text-foreground"}>{t("components:brand.ito")}</strong>
+				Fin
+				<strong className={"text-foreground"}>
+					{t("components:brand.ito")}
+				</strong>
 			</span>
 		</div>
 	);

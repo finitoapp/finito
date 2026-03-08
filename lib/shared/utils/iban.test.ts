@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { parseCzechBankAccountFromIban } from "@/lib/shared/utils/iban";
 import { Iban } from "@/lib/shared/types";
+import { parseCzechBankAccountFromIban } from "@/lib/shared/utils/iban";
 
 describe("parseCzechBankAccountFromIban", () => {
 	it.each([

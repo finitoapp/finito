@@ -1,6 +1,4 @@
-"use client";
-
-import { getOrThrow, type Id } from "@evolu/common";
+import type { Id } from "@evolu/common";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
@@ -99,13 +97,11 @@ export const ReservationBlock: React.FC<{
 	if (reservation === null) {
 		return null;
 	}
-	const isBlock = reservation._tag === "reservationBlock";
+	const isBlock = reservation._tag === "block";
 	const isRejected =
-		reservation._tag === "reservationBooking" &&
-		reservation.approvalStatus === "rejected";
+		reservation._tag === "booking" && reservation.approvalStatus === "rejected";
 	const isPending =
-		reservation._tag === "reservationBooking" &&
-		reservation.approvalStatus === "pending";
+		reservation._tag === "booking" && reservation.approvalStatus === "pending";
 
 	const visibleStart = Math.max(reservation.startAt, dayRange.openMs);
 	const visibleEnd = Math.min(reservation.endAt, dayRange.closeMs);
@@ -157,7 +153,7 @@ export const ReservationBlock: React.FC<{
 						transition={{ duration: 0.18, ease: "easeOut" }}
 						style={{ top: -Math.max(30, Math.round(rowHeightPx * 0.6)) }}
 					>
-						{reservation._tag === "reservationBooking" && (
+						{reservation._tag === "booking" && (
 							<>
 								<button
 									type="button"
@@ -167,13 +163,11 @@ export const ReservationBlock: React.FC<{
 									className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border border-border/60 bg-background text-[10px] leading-none hover:bg-muted"
 									onClick={(event) => {
 										event.stopPropagation();
-										getOrThrow(
-											evolu.update("reservationBooking", {
-												id: reservation.id,
-												approvalStatus: "approved",
-												statusReason: null,
-											}),
-										);
+										evolu.update("reservationBooking", {
+											id: reservation.id,
+											approvalStatus: "approved",
+											statusReason: null,
+										});
 									}}
 								>
 									<CheckIcon className="h-3 w-3" />
@@ -186,12 +180,10 @@ export const ReservationBlock: React.FC<{
 									className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border border-border/60 bg-background text-[10px] leading-none hover:bg-muted"
 									onClick={(event) => {
 										event.stopPropagation();
-										getOrThrow(
-											evolu.update("reservationBooking", {
-												id: reservation.id,
-												approvalStatus: "rejected",
-											}),
-										);
+										evolu.update("reservationBooking", {
+											id: reservation.id,
+											approvalStatus: "rejected",
+										});
 									}}
 								>
 									<XIcon className="h-3 w-3" />
@@ -251,7 +243,7 @@ export const ReservationBlock: React.FC<{
 				data-pan-ignore="true"
 				className={cn(
 					"h-full w-full rounded-sm px-1 text-start outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
-					reservation._tag === "reservationBooking" &&
+					reservation._tag === "booking" &&
 						"flex flex-col items-start justify-center gap-0.5 leading-tight",
 				)}
 				onPointerDown={(event) => {
@@ -318,7 +310,7 @@ export const ReservationBlock: React.FC<{
 					openEditDialog(reservation);
 				}}
 			>
-				{reservation._tag === "reservationBooking" ? (
+				{reservation._tag === "booking" ? (
 					<>
 						<span className={cn("truncate", isRejected && "line-through")}>
 							{`${reservation.name} (${reservation.numberOfPeople})`}

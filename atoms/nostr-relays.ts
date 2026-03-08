@@ -1,7 +1,9 @@
-import { getOrThrow, sqliteTrue } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import { atom } from "jotai";
+import type { NotNull } from "kysely";
 import { accountAtom } from "@/atoms/account";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
+import { createDeviceQuery } from "@/lib/evolu/device";
 import { WssUrl } from "@/lib/shared/types";
 
 export const defaultRelays = [
@@ -12,14 +14,16 @@ export const defaultRelays = [
 ];
 
 export const nostrRelaysAtom = atom<
-	{
-		url: WssUrl;
-	}[]
+	Promise<
+		{
+			url: WssUrl;
+		}[]
+	>
 >(async (get) => {
 	const account = await get(accountAtom);
 	const deviceEvolu = await get(deviceEvoluAtom);
 
-	const query = deviceEvolu.createQuery(
+	const query = createDeviceQuery(
 		(db) =>
 			db
 				.selectFrom("accountNostrRelay")
@@ -29,7 +33,11 @@ export const nostrRelaysAtom = atom<
 					"accountNostrRelay.isActive as isActive",
 					"accountNostrRelay.url as url",
 				])
-				.where("accountNostrRelay.accountId", "=", account.id),
+				.where("accountNostrRelay.accountId", "=", account.id)
+				.where("accountNostrRelay.url", "is not", null)
+				.$narrowType<{
+					url: NotNull;
+				}>(),
 		// We want to check existence of all, so no need to verify isDeleted=false
 		// .where("isDeleted", "is not", sqliteTrue)
 	);
@@ -39,18 +47,16 @@ export const nostrRelaysAtom = atom<
 	if (data.length === 0) {
 		await new Promise<void>((resolve) => {
 			for (const defaultRelay of defaultRelays) {
-				getOrThrow(
-					deviceEvolu.insert(
-						"accountNostrRelay",
-						{
-							accountId: account.id,
-							isActive: sqliteTrue,
-							url: defaultRelay,
-						},
-						{
-							onComplete: resolve,
-						},
-					),
+				deviceEvolu.insert(
+					"accountNostrRelay",
+					{
+						accountId: account.id,
+						isActive: sqliteTrue,
+						url: defaultRelay,
+					},
+					{
+						onComplete: resolve,
+					},
 				);
 			}
 		});

@@ -1,509 +1,75 @@
 "use client";
 
-import { createIdFromString, getOrThrow } from "@evolu/common";
-import { IconRefresh } from "@tabler/icons-react";
-import { BigNumber } from "bignumber.js";
-import { motion } from "framer-motion";
-import { useAtomValue, useSetAtom, useStore } from "jotai";
-import { ArrowLeftIcon, QrCodeIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FC, useEffect, useEffectEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-	createLoadingAtom,
-	createSelectedItemsAtom,
-	createSelectedTipAtom,
-	type LoadingAtom,
-	type SelectedItemsAtom,
-	type SelectedTipAtom,
-} from "@/app/(client)/bill-utils";
+import { InfoScreen } from "@/app/(client)/payment/components/info-screen";
+import { LoadingScreen } from "@/app/(client)/payment/components/loading-screen";
 import { MenuScreen } from "@/app/(client)/payment/components/menu-screen";
 import { PaymentScreen } from "@/app/(client)/payment/components/payment-screen";
 import { ReservationScreen } from "@/app/(client)/payment/components/reservation-screen";
+import { TableScreen } from "@/app/(client)/payment/components/table-screen";
 import { FadeHeader } from "@/components/fade-header";
-import { LoadingIndicator } from "@/components/loading-indicator";
-import { TipSelector } from "@/components/tip-selector";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { SelectButton } from "@/components/ui/select-button";
-import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
 import type {
 	BillDriverSubscriptionEvent,
-	BillPaymentOption,
 	BillSubscription,
 	ScreenData,
 } from "@/lib/bill/driver";
 import { billManager } from "@/lib/bill/manager";
-import { formatMoney } from "@/lib/shared/utils/format";
+import { Uuid7 } from "@/lib/shared/types";
 import { assertNever } from "@/lib/shared/utils/type";
-import { Currency, Integer, Uuid7 } from "@/lib/shared/types";
-import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
 
-const PayButton: FC<{
-	subscription: BillSubscription | null;
-	screen: ScreenData;
-	selectedItemsAtom: SelectedItemsAtom;
-	selectedTipAtom: SelectedTipAtom;
-	loadingAtom: LoadingAtom;
-}> = (props) => {
-	const { t } = useTranslation();
-	const evolu = useEvolu();
-	const setLoading = useSetAtom(props.loadingAtom);
-	const [paymentMethod, setPaymentMethod] =
-		useState<BillPaymentOption>("btcLn");
-	const selectedItems = useAtomValue(props.selectedItemsAtom);
-	const selectedTip = useAtomValue(props.selectedTipAtom);
-
-	const itemsAmount =
-		props.screen.variant === "payment" && props.screen.payload.bill !== null
-			? props.screen.payload.bill.items.reduce((acc, item) => {
-					const quantity =
-						item.optionality === undefined
-							? item.quantity
-							: Math.min(
-									selectedItems[item.id] ?? item.optionality.checked,
-									item.quantity,
-								);
-
-					return acc.plus(new BigNumber(item.price).times(quantity));
-				}, new BigNumber(0))
-			: new BigNumber(0);
-	const totalAmount = itemsAmount.times(
-		new BigNumber(1).plus(new BigNumber(selectedTip).div(100)),
-	);
-
-	return (
-		<>
-			<SelectButton
-				value={paymentMethod}
-				onValueChange={setPaymentMethod}
-				options={[
-					{
-						value: "btcLn",
-						label: t("client:paymentPage.methods.btcLightning"),
-					},
-					{
-						value: "bankTransferCZ",
-						label: t("client:paymentPage.methods.bankTransfer"),
-					},
-				]}
-				size={"lg"}
-				className={"h-12 flex-1"}
-			/>
-			<Button
-				className={"h-12 w-60"}
-				size={"lg"}
-				disabled={totalAmount.eq(0)}
-				onClick={async () => {
-					await (async () => {
-						if (
-							props.subscription !== null &&
-							(props.screen.variant === "payment" ||
-								props.screen.variant === "refund") &&
-							props.screen.payload.bill
-						) {
-							const pay = props.screen.pay;
-
-							const items: PaymentInit["items"] = [];
-
-							for (const item of props.screen.variant === "payment"
-								? props.screen.payload.bill.items
-								: []) {
-								const quantity =
-									item.optionality === undefined
-										? item.quantity
-										: Math.min(
-												selectedItems[item.id] ?? item.optionality.checked,
-												item.quantity,
-											);
-
-								if (quantity <= 0) {
-									continue;
-								}
-
-								items.push({
-									id: item.id,
-									price: item.price,
-									label: item.label,
-									quantity: quantity,
-								});
-							}
-
-							if (items.length === 0) {
-								return;
-							}
-
-							const paymentId = Uuid7.random();
-							const paymentInit: PaymentInit = {
-								paymentId,
-								items,
-								tip: Integer(
-									totalAmount
-										.times(selectedTip)
-										.div(100)
-										.integerValue()
-										.toNumber(),
-								),
-								currency: props.screen.payload.bill.currency,
-								merchant: props.screen.payload.merchant,
-								paymentOption: {
-									type: paymentMethod,
-								},
-							};
-
-							setLoading(t("client:paymentPage.loading.preparingPayment"));
-							getOrThrow(
-								evolu.upsert("paymentInit", {
-									id: createIdFromString(paymentId),
-									tip: Number(paymentInit.tip),
-									currency: paymentInit.currency,
-									paymentOptionType: paymentInit.paymentOption.type,
-									merchantName: paymentInit.merchant?.name ?? null,
-									merchantPhone: paymentInit.merchant?.phone ?? null,
-								}),
-							);
-							for (const [index, item] of paymentInit.items.entries()) {
-								getOrThrow(
-									evolu.upsert("paymentInitItem", {
-										id: createIdFromString(
-											`${paymentId}:paymentInitItem:${index}`,
-										),
-										paymentInitId: createIdFromString(paymentId),
-										itemId: item.id,
-										price: Number(item.price),
-										quantity: item.quantity,
-									}),
-								);
-							}
-							await pay(paymentInit);
-							setLoading(null);
-							return;
-						}
-					})();
-				}}
-			>
-				{(props.screen.variant === "payment" ||
-					props.screen.variant === "refund") && (
-					<>
-						{totalAmount.gte(0)
-							? t("client:paymentPage.actions.pay")
-							: t("client:paymentPage.actions.refund")}
-						<motion.span
-							key={`${totalAmount} ${props.screen.payload.bill?.currency}`}
-							initial={{ scale: 1.1, opacity: 0.5 }}
-							animate={{ scale: 1, opacity: 1 }}
-						>
-							{formatMoney({
-								value: Integer(totalAmount.integerValue().toNumber()),
-								currency: props.screen.payload.bill?.currency ?? Currency.USD,
-							})}
-						</motion.span>
-						{/*<ChevronsRightIcon strokeWidth={2} />*/}
-					</>
-				)}
-			</Button>
-		</>
-	);
-};
-
-const BottomPanel: FC<{
-	subscription: BillSubscription | null;
-	screen: ScreenData | null;
-	selectedItemsAtom: SelectedItemsAtom;
-	selectedTipAtom: SelectedTipAtom;
-	loadingAtom: LoadingAtom;
-}> = ({
-	subscription,
-	screen,
-	selectedItemsAtom,
-	selectedTipAtom,
-	loadingAtom,
-}) => {
-	const { t } = useTranslation();
-	const [isOpen, setOpen] = useState(false);
-
-	useEffect(() => {
-		if (
-			!isOpen &&
-			(screen?.variant === "payment" ||
-				screen?.variant === "paymentReady" ||
-				screen?.variant === "refund")
-		) {
-			setOpen(true);
-		} else if (isOpen && screen?.variant === "paymentFinished") {
-			setOpen(false);
-		}
-	}, [isOpen, screen?.variant]);
-
-	const totalAmount =
-		(screen?.variant === "paymentReady" &&
-			(
-				screen.payload.bill.items.reduce((acc, item) => {
-					return acc.plus(new BigNumber(item.price).times(item.quantity));
-				}, new BigNumber(0)) ?? new BigNumber(0)
-			).plus(screen.payload.bill.tip ?? new BigNumber(0))) ||
-		new BigNumber(0);
-
-	return (
-		<div
-			className={
-				"bg-card rounded-t-2xl w-full max-w-xl shadow-2xl fixed bottom-0"
-			}
-			style={{
-				paddingBottom: "env(safe-area-inset-bottom)",
-			}}
-		>
-			<Collapsible open={isOpen}>
-				<CollapsibleContent>
-					<div className={"flex flex-col gap-4 shadow-2xl p-4"}>
-						{screen && screen.variant === "paymentReady" ? (
-							<div className={"flex flex-col gap-4"}>
-								<ButtonGroup className={"w-full"}>
-									<SelectButton
-										value={"external"}
-										onValueChange={() => {}}
-										options={[
-											{
-												value: "external",
-												label: t("client:paymentPage.wallets.external"),
-											},
-											{
-												value: "primalWallet",
-												label: t("client:paymentPage.wallets.primal"),
-											},
-											{
-												value: "bitlifi",
-												label: t("client:paymentPage.wallets.bitlifi"),
-											},
-										]}
-										size={"lg"}
-										className={"h-12 flex-1"}
-									/>
-									<Button
-										className={"h-12 w-30"}
-										size={"lg"}
-										onClick={async () => {}}
-										asChild
-									>
-										<a
-											href={`lightning:${screen.payload.type === "btcLn" ? screen.payload.lnInvoice : ""}`}
-										>
-											{totalAmount.gte(0)
-												? t("client:paymentPage.actions.pay")
-												: t("client:paymentPage.actions.refund")}
-										</a>
-									</Button>
-								</ButtonGroup>
-								<Button
-									className={"h-12 w-full"}
-									variant={"outline"}
-									size={"lg"}
-									onClick={async () => {}}
-								>
-									<QrCodeIcon />{" "}
-									{t("client:paymentPage.actions.copyShowQrInvoice")}
-								</Button>
-							</div>
-						) : (
-							screen !== null &&
-							screen.variant === "payment" &&
-							screen.payload.bill !== null && (
-								<>
-									{screen.payload.bill.allowTip === true && (
-										<div
-											className={
-												"text-xs text-muted-foreground font-bold flex flex-col gap-2"
-											}
-										>
-											<span className={"uppercase"}>
-												{t("client:bill.tipForStaff")}
-											</span>
-											<TipSelector selectedTipAtom={selectedTipAtom} />
-										</div>
-									)}
-									<div className={"flex gap-2"}>
-										<ButtonGroup className={"w-full"}>
-											<PayButton
-												subscription={subscription}
-												screen={screen}
-												selectedItemsAtom={selectedItemsAtom}
-												selectedTipAtom={selectedTipAtom}
-												loadingAtom={loadingAtom}
-											/>
-										</ButtonGroup>
-									</div>
-								</>
-							)
-						)}
-					</div>
-				</CollapsibleContent>
-			</Collapsible>
-		</div>
-	);
-};
+const screenComponents = {
+	payment: PaymentScreen,
+	table: TableScreen,
+	menu: MenuScreen,
+	reservation: ReservationScreen,
+	loading: LoadingScreen,
+	info: InfoScreen,
+} as Record<ScreenData["variant"], React.FC<{ screen: ScreenData }>>;
 
 const Screen: FC<{
 	screen: ScreenData | null;
-	selectedItemsAtom: SelectedItemsAtom;
 }> = (props) => {
 	if (props.screen === null) {
 		return null;
 	}
 
-	if (
-		props.screen.variant === "paymentReady" ||
-		props.screen.variant === "paymentFinished" ||
-		props.screen.variant === "payment" ||
-		props.screen.variant === "refund"
-	) {
-		return (
-			<PaymentScreen
-				screen={props.screen}
-				selectedItemsAtom={props.selectedItemsAtom}
-			/>
-		);
+	const Component = screenComponents[props.screen.variant];
+	if (Component === undefined) {
+		return null;
 	}
 
-	if (props.screen.variant === "menu") {
-		return <MenuScreen screen={props.screen} />;
-	}
-
-	if (props.screen.variant === "reservation") {
-		return <ReservationScreen screen={props.screen} />;
-	}
-
-	assertNever(props.screen.variant);
-};
-
-const Loading: FC<{
-	loadingAtom: LoadingAtom;
-}> = (props) => {
-	const { t } = useTranslation();
-	const loading = useAtomValue(props.loadingAtom);
-
-	return (
-		<LoadingIndicator
-			text={loading ?? t("client:paymentPage.status.paymentSuccessful")}
-			open={loading !== null}
-			status={"loading"}
-			variant={"fullscreen"}
-		/>
-	);
+	return <Component screen={props.screen}></Component>;
 };
 
 export default function Page() {
 	const { t } = useTranslation();
 	const [sessionId, setSessionId] = useState<Uuid7 | null>(null);
-	const store = useStore();
 	const router = useRouter();
-	const [selectedItemsAtom] = useState(createSelectedItemsAtom);
-	const [selectedTipAtom] = useState(createSelectedTipAtom);
-	const [loadingAtom] = useState(() =>
-		createLoadingAtom(t("client:paymentPage.loading.loadingData")),
-	);
 	const { ndk } = useNostr();
-	const evolu = useEvolu();
-	const [subscription, setSubscription] = useState<BillSubscription | null>(
-		null,
-	);
-	const [screen, setScreen] = useState<ScreenData | null>(null);
+	const fallbackScreen: ScreenData = {
+		variant: "loading",
+		payload: {
+			text: t("client:paymentPage.loading.loadingData"),
+		},
+	};
+	const [screens, setScreens] = useState<ScreenData[]>([fallbackScreen]);
 	const [qrCode, setQrCode] = useState<string | null>(null);
 
 	const subscriptionHandler = useEffectEvent(
-		async (
-			event: BillDriverSubscriptionEvent,
-			subscriptionPromise: Promise<BillSubscription | null>,
-		) => {
-			if (event.type === "billLoading") {
-				store.set(loadingAtom, event.payload.text);
-				return;
-			}
-
-			if (event.type === "screen") {
-				if (event.payload.variant === "paymentReady") {
-					const payload = event.payload.payload;
-					getOrThrow(
-						evolu.upsert("paymentReady", {
-							id: createIdFromString(payload.paymentId),
-							billTip: payload.bill.tip ? Number(payload.bill.tip) : null,
-							billCurrency: payload.bill.currency,
-							amountExpectedToPayValue: payload.amountExpectedToPay?.value
-								? Number(payload.amountExpectedToPay?.value)
-								: null,
-							amountExpectedToPayRate: payload.amountExpectedToPay?.rate
-								? Number(payload.amountExpectedToPay?.rate)
-								: null,
-							amountExpectedToPayCurrency:
-								payload.amountExpectedToPay?.currency ?? null,
-						}),
-					);
-					for (const [index, item] of payload.bill.items.entries()) {
-						getOrThrow(
-							evolu.upsert("paymentReadyItem", {
-								id: createIdFromString(
-									`${payload.paymentId}:paymentReadyItem:${index}`,
-								),
-								paymentReadyId: createIdFromString(payload.paymentId),
-								itemId: item.id,
-								price: Number(item.price),
-								quantity: item.quantity,
-								label: item.label,
-							}),
-						);
-					}
-				} else if (event.payload.variant === "paymentFinished") {
-					const payload = event.payload.payload;
-					const paymentId = payload.paymentId;
-					if (paymentId) {
-						getOrThrow(
-							evolu.upsert("paymentFinished", {
-								id: createIdFromString(paymentId),
-								type: payload.type,
-								reason: payload.type === "failure" ? payload.reason : null,
-								refundType:
-									payload.type === "failure"
-										? (payload.refund?.type ?? null)
-										: null,
-								refundLnInvoice:
-									payload.type === "failure"
-										? payload.refund?.type === "btcLn"
-											? payload.refund.lnInvoice
-											: null
-										: null,
-							}),
-						);
-					}
-				}
-
-				setScreen(event.payload);
-				store.set(loadingAtom, null);
-				return;
-			}
-
-			if (event.type === "paymentInProgress") {
-				store.set(loadingAtom, event.payload.text);
-				return;
-			}
-
-			if (event.type === "closed") {
-				alert(t("client:paymentPage.alerts.billClosed"));
+		async (event: BillDriverSubscriptionEvent) => {
+			if (event.type === "close") {
+				alert(event.payload.alertMessage);
 				router.replace("/");
 				return;
 			}
 
-			if (event.type === "resetBill") {
-				store.set(loadingAtom, t("client:paymentPage.loading.loadingData"));
-				const subscription = await subscriptionPromise;
-				if (subscription !== null) {
-					void subscription.refresh();
-				}
-				return;
-			}
-
-			assertNever(event);
+			assertNever(event.type);
 		},
 	);
 
@@ -522,7 +88,34 @@ export default function Page() {
 				t,
 				billId: qrCode,
 				callback: async (event) => {
-					await subscriptionHandler(event, subscriptionPromise);
+					if (finished) {
+						return;
+					}
+
+					await subscriptionHandler(event);
+				},
+				screenStack: {
+					back: () => {
+						if (finished) {
+							return;
+						}
+
+						setScreens((screens) => screens.slice(0, -1));
+					},
+					push: (screen: ScreenData) => {
+						if (finished) {
+							return;
+						}
+
+						setScreens((screens) => [...screens, screen]);
+					},
+					replace: (screen: ScreenData) => {
+						if (finished) {
+							return;
+						}
+
+						setScreens((screens) => [...screens.slice(0, -1), screen]);
+					},
 				},
 			});
 
@@ -536,8 +129,6 @@ export default function Page() {
 				router.replace("/");
 				return;
 			}
-
-			setSubscription(subscription);
 		})();
 
 		return () => {
@@ -574,12 +165,14 @@ export default function Page() {
 		})();
 	});
 
+	const screen = screens[screens.length - 1] ?? fallbackScreen;
+
 	return (
 		<div className="w-full flex flex-col justify-between min-h-full">
 			<div className={"h-24"} />
 			<FadeHeader
 				title={
-					screen !== null && screen?.variant === "payment"
+					screen.variant === "payment"
 						? screen.payload.merchant?.name
 						: "Restaurace v pangejtu"
 				}
@@ -588,8 +181,8 @@ export default function Page() {
 						type={"button"}
 						variant={"ghost"}
 						onClick={() => {
-							if (screen?.variant === "paymentReady" && screen.parentScreen) {
-								setScreen(screen.parentScreen);
+							if (screens.length > 1) {
+								setScreens((screens) => screens.slice(0, -1));
 								return;
 							}
 
@@ -599,35 +192,17 @@ export default function Page() {
 						<ArrowLeftIcon className={"text-primary"} />
 					</Button>
 				}
-				endAddon={
-					screen?.variant === "payment" &&
-					screen.payload.allowManualRefresh && (
-						<Button
-							type={"button"}
-							variant={"secondary"}
-							onClick={async () => {
-								if (subscription !== null) {
-									await subscription.refresh();
-								}
-							}}
-						>
-							<IconRefresh />
-						</Button>
-					)
-				}
 			/>
 
-			<Loading loadingAtom={loadingAtom} />
+			<Screen screen={screen} />
 
-			<Screen screen={screen} selectedItemsAtom={selectedItemsAtom} />
-
-			<BottomPanel
-				subscription={subscription}
-				screen={screen}
-				selectedItemsAtom={selectedItemsAtom}
-				selectedTipAtom={selectedTipAtom}
-				loadingAtom={loadingAtom}
-			/>
+			{/*<BottomPanel*/}
+			{/*	subscription={subscription}*/}
+			{/*	screen={screen}*/}
+			{/*	selectedItemsAtom={selectedItemsAtom}*/}
+			{/*	selectedTipAtom={selectedTipAtom}*/}
+			{/*	loadingAtom={loadingAtom}*/}
+			{/*/>*/}
 		</div>
 	);
 }

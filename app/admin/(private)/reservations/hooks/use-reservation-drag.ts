@@ -1,6 +1,4 @@
-"use client";
-
-import { getOrThrow, type Id } from "@evolu/common";
+import type { Id } from "@evolu/common";
 import type { TFunction } from "i18next";
 import type React from "react";
 import { useRef } from "react";
@@ -18,6 +16,7 @@ import type {
 import { withWindowPointerSession } from "@/app/admin/(private)/reservations/lib/window-pointer-session";
 import type { GlobalConfirmDialog } from "@/atoms/global-dialog";
 import type { useEvolu } from "@/hooks/use-evolu";
+import type { TimestampMs } from "@/lib/shared/types";
 
 type EvoluClient = ReturnType<typeof useEvolu>;
 
@@ -39,8 +38,8 @@ export const useReservationDrag = (params: {
 
 	const applyDragPreview = (
 		reservationId: Id,
-		startAt: number,
-		endAt: number,
+		startAt: TimestampMs,
+		endAt: TimestampMs,
 		tableId: Id | null,
 	) => {
 		const previous = previewReservationRef.current;
@@ -125,7 +124,7 @@ export const useReservationDrag = (params: {
 				params.t("reservations:page.dragConfirm.description"),
 			confirmText: params.t("reservations:page.dragConfirm.confirm"),
 			cancelText: params.t("reservations:page.dragConfirm.cancel"),
-			confirmVariant: "default",
+			confirmVariant: "primary",
 		});
 		if (!accepted) {
 			previewReservationRef.current = null;
@@ -133,14 +132,12 @@ export const useReservationDrag = (params: {
 			return;
 		}
 
-		getOrThrow(
-			params.evolu.update("reservation", {
-				id: preview.id,
-				startAt: preview.startAt,
-				endAt: preview.endAt,
-				tableId: preview.tableId,
-			}),
-		);
+		params.evolu.update("reservation", {
+			id: preview.id,
+			startAt: preview.startAt,
+			endAt: preview.endAt,
+			tableId: preview.tableId,
+		});
 		previewReservationRef.current = null;
 		params.setPreviewReservation(null);
 	};
@@ -212,7 +209,12 @@ export const useReservationDrag = (params: {
 				nextEndAt = Math.max(nextEndAt, drag.originalStartAt + params.slotMs);
 			}
 
-			applyDragPreview(drag.reservationId, nextStartAt, nextEndAt, nextTableId);
+			applyDragPreview(
+				drag.reservationId,
+				nextStartAt as TimestampMs,
+				nextEndAt as TimestampMs,
+				nextTableId,
+			);
 		};
 
 		const onPointerUp = () => {

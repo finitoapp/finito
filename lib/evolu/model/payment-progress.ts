@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { PaymentMerchantSchema } from "@/lib/evolu/model/payment";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	Currency,
 	type InferEnumType,
 	IntegerSchema,
 	NonEmptyStringSchema,
+	NonNegativeIntegerSchema,
 } from "@/lib/shared/types";
-import { PaymentMerchantSchema } from "@/lib/evolu/model/payment";
 
 export const BillPaymentOption = {
 	BtcLn: "btcLn",
@@ -14,11 +16,11 @@ export const BillPaymentOption = {
 export type BillPaymentOption = InferEnumType<typeof BillPaymentOption>;
 
 export const PaymentInitSchema = z.object({
-	paymentId: z.string(),
+	paymentId: TableIdSchema,
 	items: z
 		.object({
 			// The POS must verify that the item ID exists on the current bill.
-			id: z.string(),
+			id: TableIdSchema,
 			// The POS must verify that the item price is still the same.
 			price: IntegerSchema,
 			// The POS must verify that the requested quantity can be paid.
@@ -31,7 +33,7 @@ export const PaymentInitSchema = z.object({
 		})
 		.array(),
 	// The POS must verify that the tip amount is allowed.
-	tip: IntegerSchema,
+	tip: NonNegativeIntegerSchema,
 	// The POS must verify that the currency is supported.
 	currency: z.enum(Currency),
 	// The POS must verify that the payment option is supported.
@@ -44,11 +46,11 @@ export const PaymentInitSchema = z.object({
 });
 
 const BasePaymentReadySchema = z.object({
-	paymentId: z.string(),
+	paymentId: TableIdSchema,
 	bill: z.object({
 		items: z
 			.object({
-				id: z.string(),
+				id: TableIdSchema,
 				price: IntegerSchema,
 				quantity: z.number(),
 				label: z.string(),

@@ -13,7 +13,7 @@ export const getReservationCollisions = (
 	const byTable = new Map<Id, ReservationVm[]>();
 	for (const reservation of reservations) {
 		if (
-			reservation._tag === "reservationBooking" &&
+			reservation._tag === "booking" &&
 			reservation.approvalStatus === "rejected"
 		) {
 			continue;
@@ -65,7 +65,7 @@ export const getReservationCapacityViolations = (
 	const orderedIds: Id[] = [];
 
 	for (const reservation of reservations) {
-		if (reservation._tag !== "reservationBooking") continue;
+		if (reservation._tag !== "booking") continue;
 		if (reservation.approvalStatus === "rejected") continue;
 		if (reservation.tableId === null) continue;
 		const tableCapacity = tableCapacityById.get(reservation.tableId);
@@ -90,7 +90,7 @@ export const getApprovedReservationWithoutTableViolations = (
 	const orderedIds: Id[] = [];
 
 	for (const reservation of reservations) {
-		if (reservation._tag !== "reservationBooking") continue;
+		if (reservation._tag !== "booking") continue;
 		if (reservation.approvalStatus !== "approved") continue;
 		if (reservation.tableId !== null) continue;
 		if (ids.has(reservation.id)) continue;

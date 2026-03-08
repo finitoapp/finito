@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { shiftNumericString } from "@/lib/shared/utils/number";
 import { NumberString } from "@/lib/shared/types";
+import { shiftNumericString } from "@/lib/shared/utils/number";
 
 describe("shiftNumericString", () => {
 	it.each([

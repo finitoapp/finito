@@ -30,7 +30,7 @@ describe("(dashboard) / page", () => {
 
 	it("Should render", () => {
 		expect(screen.getByTestId("text")).toHaveTextContent(
-			"Decentralized payment platform and point of sale system",
+			"admin:dashboard.home.subtitle",
 		);
 	});
 

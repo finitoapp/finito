@@ -6,7 +6,7 @@ export type GlobalDialogBase = {
 	description?: ReactNode;
 	confirmText?: string;
 	cancelText?: string;
-	confirmVariant?: "default" | "destructive";
+	confirmVariant?: "primary" | "destructive";
 };
 
 export type GlobalAlertDialog = GlobalDialogBase & {

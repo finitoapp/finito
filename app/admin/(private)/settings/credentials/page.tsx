@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useTranslation } from "react-i18next";
 import { CredentialsForm } from "@/app/admin/(private)/settings/credentials/credentials-form";
 import { ResponsiveCard } from "@/components/responsive-card";

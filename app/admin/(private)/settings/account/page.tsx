@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useTranslation } from "react-i18next";
 import { AccountForm } from "@/app/admin/(private)/settings/account/account-form";
 import { ResponsiveCard } from "@/components/responsive-card";

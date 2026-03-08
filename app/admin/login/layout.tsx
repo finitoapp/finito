@@ -1,8 +1,7 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import Image from "next/image";
+import { useTranslation } from "react-i18next";
 import { FinitoLogo } from "@/components/finito-logo";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent } from "@/components/ui/card";

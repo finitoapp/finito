@@ -1,8 +1,9 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,15 +26,18 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { Currency, Integer, NonEmptyString255 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
-import type { Currency, Integer } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;
-	label: string;
+	createdAt: DateIso;
+	label: NonEmptyString255;
 	categoryName: string | null;
-	priceCurrency: Currency;
-	priceValue: Integer;
+	currency: Currency;
+	price: Integer;
 };
 
 const createColumns = (t: TFunction): ColumnDef<Task>[] => [
@@ -47,15 +51,24 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 		cell: ({ row }) => row.original.categoryName ?? "-",
 	},
 	{
-		accessorKey: "priceValue",
+		accessorKey: "price",
 		header: createSortableHeader(t("items:table.columns.amount")),
 		cell: ({ row }) =>
 			formatMoney({
-				value: row.original.priceValue,
-				currency: row.original.priceCurrency,
+				value: row.original.price,
+				currency: row.original.currency,
 			}),
 	},
 ];
+
+const sortingFields = {
+	id: "item.id",
+	label: "item.label",
+	price: "item.price",
+	currency: "item.currency",
+	createdAt: "item.createdAt",
+	categoryName: "category.name",
+} as const satisfies Record<keyof Task, string>;
 
 const createFilterableColumns = (t: TFunction) =>
 	[
@@ -82,36 +95,44 @@ export function ItemsTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? { id: "createdAt", desc: true };
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("item")
 						.leftJoin("category", "category.id", "item.categoryId")
 						.select([
 							"item.id as id",
 							"item.label as label",
-							"item.priceValue as priceValue",
-							"item.priceCurrency as priceCurrency",
+							"item.price as price",
+							"item.currency as currency",
 							"item.createdAt as createdAt",
 							"category.name as categoryName",
 						] as const)
-						.where("item.isDeleted", "is not", sqliteTrue);
+						.where("item.isDeleted", "is not", sqliteTrue)
+						.where("item.label", "is not", null)
+						.$narrowType<{
+							label: NotNull;
+							price: NotNull;
+							currency: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									`item.${finalSorting.id}`,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(
-										`item.${finalSorting.id}`,
-										"=",
-										previousCursor[finalSorting.id],
-									),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("item.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -124,17 +145,25 @@ export function ItemsTable() {
 
 					for (const filter of filters) {
 						if (filter.id === "label") {
-							qb = qb.where("item.label", "like", `${filter.value}%`);
+							qb = qb.where(
+								"item.label",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 						if (filter.id === "categoryName") {
-							qb = qb.where("category.name", "like", `${filter.value}%`);
+							qb = qb.where(
+								"category.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 					}
 
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -142,23 +171,15 @@ export function ItemsTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -187,8 +208,6 @@ export function ItemsTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="label"
-					searchPlaceholder={t("items:table.search.placeholder.by-label")}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(`/admin/items/detail?id=${encodeURIComponent(item.id)}`)

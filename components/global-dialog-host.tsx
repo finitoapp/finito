@@ -60,7 +60,7 @@ export function GlobalDialogHost() {
 						</AlertDialogCancel>
 					) : null}
 					<AlertDialogAction
-						variant={definition?.confirmVariant ?? "default"}
+						variant={definition?.confirmVariant}
 						onClick={() => {
 							closeDialog(true);
 						}}

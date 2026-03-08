@@ -1,10 +1,7 @@
 import {
 	createOwnerSecret,
 	createRandomBytes,
-	getOrThrow,
-	NonEmptyString100,
 	ownerSecretToMnemonic,
-	PositiveInt,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -15,6 +12,7 @@ import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { ProgressSteps } from "@/components/progress-steps";
 import { Button } from "@/components/ui/button";
+import { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 export function LoginForm() {
 	const { t } = useTranslation();
@@ -88,18 +86,16 @@ export function LoginForm() {
 					);
 
 					await new Promise<void>((resolve) => {
-						getOrThrow(
-							deviceEvolu.insert(
-								"account",
-								{
-									name: NonEmptyString100.orThrow(faker.internet.username()),
-									mnemonic,
-									lastUseAt: PositiveInt.orThrow(Date.now()),
-								},
-								{
-									onComplete: resolve,
-								},
-							),
+						deviceEvolu.insert(
+							"account",
+							{
+								name: NonEmptyString255(faker.internet.username()),
+								mnemonic,
+								lastUseAt: TimestampMs(Date.now()),
+							},
+							{
+								onComplete: resolve,
+							},
 						);
 					});
 

@@ -11,6 +11,7 @@ const locale = {
     },
     "columns": {
       "name": "Name",
+      "identification-number": "Identification Number",
       "vat-number": "VAT Number"
     },
     "search": {

@@ -105,7 +105,7 @@ export const createReservationStateAtoms = () => {
 	);
 	const bookingReservationsAtom = atom<readonly ReservationBookingVm[]>((get) =>
 		get(reservationsForRenderAtom).flatMap((reservation) =>
-			reservation._tag === "reservationBooking" ? [reservation] : [],
+			reservation._tag === "booking" ? [reservation] : [],
 		),
 	);
 	const pendingBookingReservationsAtom = atom((get) =>

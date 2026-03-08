@@ -1,13 +1,15 @@
-import {
-	createIdFromString,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
+import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
+import { createQuery } from "@/lib/evolu";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import {
+	Currency,
+	Integer,
+	NonEmptyString,
+	TimestampMs,
+} from "@/lib/shared/types";
 import {
 	extractBtcAmountFromLightningInvoice,
 	extractPaymentHashFromLnInvoice,
@@ -18,35 +20,35 @@ const notificationId = createIdFromString("syncLnZapTransfers");
 type WatchedLnZapPayment = {
 	id: Id;
 	accountId: Id | null;
-	privateKey: string | null;
-	walletPubkey: string | null;
-	lnInvoice: string | null;
-	amount: number | null;
+	privateKey: NonEmptyString;
+	walletPubkey: NonEmptyString | null;
+	lnInvoice: NonEmptyString | null;
+	amount: Integer | null;
 };
 
 const splitAmountByExpectedAllocation = (params: {
-	amount: number;
-	expectedProductAmount: number;
-	expectedTipAmount: number;
+	amount: Integer;
+	expectedProductAmount: Integer;
+	expectedTipAmount: Integer;
 }) => {
 	let remainingAmount = Math.max(0, params.amount);
 
 	const productAmount = Math.min(
 		Math.max(0, params.expectedProductAmount),
 		remainingAmount,
-	);
+	) as Integer;
 	remainingAmount -= productAmount;
 
 	const tipAmount = Math.min(
 		Math.max(0, params.expectedTipAmount),
 		remainingAmount,
-	);
+	) as Integer;
 	remainingAmount -= tipAmount;
 
 	return {
-		productAmount,
+		productAmount: productAmount,
 		tipAmount,
-		overpaymentAmount: remainingAmount,
+		overpaymentAmount: remainingAmount as Integer,
 	};
 };
 
@@ -76,9 +78,9 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 		let syncInProgress = false;
 		let queuedWatchedPayments: ReadonlyArray<WatchedLnZapPayment> | null = null;
 
-		const findPaymentIdsByPaymentHash = async (paymentHash: string) => {
+		const findPaymentIdsByPaymentHash = async (paymentHash: NonEmptyString) => {
 			const paymentRows = await props.evolu.loadQuery(
-				props.evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("payment")
 						.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
@@ -89,24 +91,24 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				),
 			);
 
-			return paymentRows.map((row) => row.id as Id);
+			return paymentRows.map((row) => row.id);
 		};
 
 		const findExpectedAllocationByPaymentId = async (paymentId: Id) => {
 			const paymentRows = await props.evolu.loadQuery(
-				props.evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("payment")
-						.leftJoin("paymentBillItem", (join) =>
+						.leftJoin("paymentItemLine", (join) =>
 							join
-								.onRef("paymentBillItem.paymentId", "=", "payment.id")
-								.on("paymentBillItem.isDeleted", "is not", sqliteTrue),
+								.onRef("paymentItemLine.paymentId", "=", "payment.id")
+								.on("paymentItemLine.isDeleted", "is not", sqliteTrue),
 						)
 						.select([
-							"payment.expectedTipAmount as expectedTipAmount",
-							sql<number>`
+							"payment.tipAmount as tipAmount",
+							sql<Integer>`
 								coalesce(
-									sum("paymentBillItem"."price" * "paymentBillItem"."quantity"),
+									sum("paymentItemLine"."totalAmount"),
 									0
 								)
 							`.as("expectedProductAmount"),
@@ -114,7 +116,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 						.where("payment.isDeleted", "is not", sqliteTrue)
 						.where("payment.id", "=", paymentId)
 						.groupBy("payment.id")
-						.groupBy("payment.expectedTipAmount")
+						.groupBy("payment.tipAmount")
 						.limit(1),
 				),
 			);
@@ -125,15 +127,15 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 			}
 
 			return {
-				expectedProductAmount: payment.expectedProductAmount ?? 0,
-				expectedTipAmount: payment.expectedTipAmount ?? 0,
+				expectedProductAmount: payment.expectedProductAmount ?? Integer(0),
+				expectedTipAmount: payment.tipAmount ?? Integer(0),
 			};
 		};
 
 		const upsertPaymentMatchingClaims = async (payload: {
 			transactionId: Id;
-			paymentHash: string;
-			amount: number;
+			paymentHash: NonEmptyString;
+			amount: Integer;
 		}) => {
 			const paymentIds = await findPaymentIdsByPaymentHash(payload.paymentHash);
 
@@ -153,49 +155,41 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				const claimId = createIdFromString(
 					`reconciliationClaim:lnPaymentHash:${payload.transactionId}:${paymentId}`,
 				);
-				getOrThrow(
-					props.evolu.upsert("reconciliationClaim", {
-						id: claimId,
-						sourceType: "transaction",
-						sourceId: payload.transactionId,
-						entityType: "payment",
-						entityId: paymentId,
-						confidence: 1,
-						rule: "lnPaymentHash",
-						createdBy: "syncLnZapTransfersProcess",
-					}),
-				);
+				props.evolu.upsert("reconciliationClaim", {
+					id: claimId,
+					sourceType: "transaction",
+					sourceId: payload.transactionId,
+					entityType: "payment",
+					entityId: paymentId,
+					confidence: 1,
+					rule: "lnPaymentHash",
+					createdBy: "syncLnZapTransfersProcess",
+				});
 				const allocationId = createIdFromString(
 					`reconciliationClaimAllocation:${claimId}:product`,
 				);
-				getOrThrow(
-					props.evolu.upsert("reconciliationClaimAllocation", {
-						id: allocationId,
-						claimId,
-						componentType: "product",
-						amount: splitAllocation.productAmount,
-					}),
-				);
-				getOrThrow(
-					props.evolu.upsert("reconciliationClaimAllocation", {
-						id: createIdFromString(
-							`reconciliationClaimAllocation:${claimId}:tip`,
-						),
-						claimId,
-						componentType: "tip",
-						amount: splitAllocation.tipAmount,
-					}),
-				);
-				getOrThrow(
-					props.evolu.upsert("reconciliationClaimAllocation", {
-						id: createIdFromString(
-							`reconciliationClaimAllocation:${claimId}:overpayment`,
-						),
-						claimId,
-						componentType: "overpayment",
-						amount: splitAllocation.overpaymentAmount,
-					}),
-				);
+				props.evolu.upsert("reconciliationClaimAllocation", {
+					id: allocationId,
+					claimId,
+					componentType: "product",
+					amount: splitAllocation.productAmount,
+				});
+				props.evolu.upsert("reconciliationClaimAllocation", {
+					id: createIdFromString(
+						`reconciliationClaimAllocation:${claimId}:tip`,
+					),
+					claimId,
+					componentType: "tip",
+					amount: splitAllocation.tipAmount,
+				});
+				props.evolu.upsert("reconciliationClaimAllocation", {
+					id: createIdFromString(
+						`reconciliationClaimAllocation:${claimId}:overpayment`,
+					),
+					claimId,
+					componentType: "overpayment",
+					amount: splitAllocation.overpaymentAmount,
+				});
 			}
 		};
 
@@ -222,38 +216,35 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				const amount = extractBtcAmountFromLightningInvoice(payment.lnInvoice);
 				const paymentHash = extractPaymentHashFromLnInvoice(payment.lnInvoice);
 
-				getOrThrow(
-					props.evolu.upsert("transaction", {
-						id: transactionId,
-						accountId: payment.accountId,
-						_tag: "accountLud16",
-						amount,
-						occurredAt:
-							occurredAtSec === null ? Date.now() : occurredAtSec * 1000,
-						note: "Incoming LN zap payment",
-						internalTransferGroupId: null,
-					}),
-				);
-				getOrThrow(
-					props.evolu.upsert("transactionLud16", {
-						id: transactionId,
-						lnInvoice: payment.lnInvoice,
-						paymentHash,
-					}),
-				);
+				props.evolu.upsert("transaction", {
+					id: transactionId,
+					accountId: payment.accountId,
+					_tag: "accountLud16",
+					amount,
+					currency: Currency.BTC,
+					occurredAt:
+						occurredAtSec === null
+							? Date.now()
+							: TimestampMs(occurredAtSec * 1000),
+					note: NonEmptyString("Incoming LN zap payment"),
+					internalTransferGroupId: null,
+				});
+				props.evolu.upsert("transactionLud16", {
+					id: transactionId,
+					lnInvoice: payment.lnInvoice,
+					paymentHash,
+				});
 				await upsertPaymentMatchingClaims({
 					transactionId,
 					paymentHash,
 					amount,
 				});
-				getOrThrow(
-					props.evolu.update("paymentWatchingState", {
-						id: payment.id,
-						verifiedAt: Date.now(),
-						proveType: "lnZap",
-						transactionId,
-					}),
-				);
+				props.evolu.update("paymentWatchingState", {
+					id: payment.id,
+					verifiedAt: Date.now(),
+					proveType: "lnZap",
+					transactionId,
+				});
 
 				verifiedPaymentIds.add(payment.id);
 				watchedPaymentsById.delete(payment.id);
@@ -263,7 +254,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 			}
 		};
 
-		const watchedPaymentsQuery = props.evolu.createQuery((db) =>
+		const watchedPaymentsQuery = createQuery((db) =>
 			db
 				.selectFrom("payment")
 				.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
@@ -274,7 +265,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				)
 				.select([
 					"payment.id as id",
-					"payment.privateKey as privateKey",
+					"paymentLnZap.privateKey as privateKey",
 					"paymentLnZap.accountId as accountId",
 					"paymentLnZap.walletPubkey as walletPubkey",
 					"paymentLnZap.lnInvoice as lnInvoice",
@@ -306,11 +297,7 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				const recipients = new Set<string>();
 
 				for (const payment of initialWatchedPayments) {
-					if (
-						verifiedPaymentIds.has(payment.id) ||
-						!payment.privateKey ||
-						!payment.walletPubkey
-					) {
+					if (verifiedPaymentIds.has(payment.id) || !payment.walletPubkey) {
 						continue;
 					}
 

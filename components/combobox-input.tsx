@@ -1,7 +1,7 @@
 import type { Query, Row } from "@evolu/common";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
-import { type DependencyList, useId, useMemo } from "react";
+import { type DependencyList, useId } from "react";
 import type { JsonValue } from "type-fest";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { ComboboxDefault } from "@/components/combobox/default";
@@ -13,9 +13,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import type { Evolu } from "@/lib/evolu";
 
 type ComboboxItems<TItem extends JsonValue = JsonValue> = Array<{
 	value: TItem;
@@ -91,19 +89,13 @@ export const createComboboxInput =
 export const createEvoluComboboxInput =
 	<TRow extends Row>(
 		params: {
-			createQuery: (evolu: Pick<Evolu, "createQuery">) => Query<TRow>;
+			query: Query<TRow>;
 			queryDeps?: DependencyList;
 			mapRowsToItems: (rows: readonly TRow[]) => ComboboxItems;
 		} & ComboboxParams,
 	): AutoFormComponent<JsonValue> =>
 	(props) => {
-		const evolu = useEvolu();
-		const queryDeps = params.queryDeps ?? [];
-		const query = useMemo(
-			() => params.createQuery(evolu),
-			[evolu, ...queryDeps],
-		);
-		const { data: queryRows } = useEvoluQuery(query);
+		const { data: queryRows } = useEvoluQuery(params.query);
 		const items = params.mapRowsToItems((queryRows ?? []) as TRow[]);
 
 		return (

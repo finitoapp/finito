@@ -4,12 +4,12 @@ import {
 	createId,
 	createIdFromString,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
+	kysely,
 	sqliteTrue,
 } from "@evolu/common";
-import { NDKEvent } from "@nostr-dev-kit/ndk";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import {
 	BitcoinIcon,
 	CoinsIcon,
@@ -24,10 +24,9 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
-import { type FC, type ReactNode, useRef } from "react";
+import { type FC, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
-import { KeyValueList } from "@/components/key-value-list";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
@@ -39,29 +38,33 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { useNostr } from "@/hooks/use-nostr";
-import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
-import { shareImageOrDownload } from "@/lib/shared/files/file-utils";
-import { formatMoney } from "@/lib/shared/utils/format";
-import { stopPaymentWatching } from "@/lib/payment/service";
-import { clientBaseUrl } from "@/lib/shared/utils/window";
+import { createQuery } from "@/lib/evolu";
 import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import {
 	PaymentWatchingStatus,
 	PaymentWatchingStopReason,
 	resolvePaymentWatchingStatus,
 } from "@/lib/evolu/model/payment-watching-state";
+import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
+import { stopPaymentWatching } from "@/lib/payment/service";
+import { shareImageOrDownload } from "@/lib/shared/files/file-utils";
+import {
+	type Currency,
+	type Integer,
+	NonEmptyString,
+} from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 const StatusButton: FC<{
 	paymentId: Id;
-	amount: number;
+	amount: Integer;
+	currency: Currency;
 	cashAccountId: Id | null;
 	className?: string;
 }> = (props) => {
@@ -76,49 +79,42 @@ const StatusButton: FC<{
 				}
 
 				const transactionId = createId({ randomBytes: createRandomBytes() });
-				getOrThrow(
-					evolu.upsert("transaction", {
-						id: transactionId,
-						accountId: props.cashAccountId,
-						_tag: "accountCashRegister",
-						amount: props.amount,
-						occurredAt: Date.now(),
-						note: "Manual cash register settlement",
-						internalTransferGroupId: null,
-					}),
-				);
-				getOrThrow(
-					evolu.upsert("transactionCashRegister", {
-						id: transactionId,
-					}),
-				);
+				evolu.upsert("transaction", {
+					id: transactionId,
+					accountId: props.cashAccountId,
+					_tag: "accountCashRegister",
+					amount: props.amount,
+					currency: props.currency,
+					occurredAt: Date.now(),
+					note: NonEmptyString("Manual cash register settlement"),
+					internalTransferGroupId: null,
+				});
+				evolu.upsert("transactionCashRegister", {
+					id: transactionId,
+				});
 
 				const claimId = createIdFromString(
 					`reconciliationClaim:transaction:${transactionId}:payment:${props.paymentId}`,
 				);
-				getOrThrow(
-					evolu.upsert("reconciliationClaim", {
-						id: claimId,
-						sourceType: "transaction",
-						sourceId: transactionId,
-						entityType: "payment",
-						entityId: props.paymentId,
-						confidence: 1,
-						rule: "manualCashRegisterSettlement",
-						createdBy: "adminPaymentsDetail",
-					}),
-				);
+				evolu.upsert("reconciliationClaim", {
+					id: claimId,
+					sourceType: "transaction",
+					sourceId: transactionId,
+					entityType: "payment",
+					entityId: props.paymentId,
+					confidence: 1,
+					rule: "manualCashRegisterSettlement",
+					createdBy: "adminPaymentsDetail",
+				});
 				const claimAllocationId = createIdFromString(
 					`reconciliationClaimAllocation:${claimId}:product`,
 				);
-				getOrThrow(
-					evolu.upsert("reconciliationClaimAllocation", {
-						id: claimAllocationId,
-						claimId,
-						componentType: "product",
-						amount: props.amount,
-					}),
-				);
+				evolu.upsert("reconciliationClaimAllocation", {
+					id: claimAllocationId,
+					claimId,
+					componentType: "product",
+					amount: props.amount,
+				});
 			},
 		},
 	);
@@ -184,13 +180,11 @@ const PaymentWatchingToggleButton: FC<{
 				}
 
 				if (paymentWatchingStatus === PaymentWatchingStatus.Stopped) {
-					getOrThrow(
-						evolu.upsert("paymentWatchingState", {
-							id: props.paymentId,
-							stoppedAt: null,
-							stopReason: null,
-						}),
-					);
+					evolu.upsert("paymentWatchingState", {
+						id: props.paymentId,
+						stoppedAt: null,
+						stopReason: null,
+					});
 				}
 			},
 		});
@@ -221,7 +215,7 @@ const PaymentWatchingToggleButton: FC<{
 };
 
 const FullscreenQrPayment: FC<{
-	frontendUrl: string;
+	frontendUrl: string | undefined;
 	lnInvoice: string | undefined;
 	czechQRCode: string | undefined;
 	isPaid: boolean;
@@ -339,25 +333,27 @@ const FullscreenQrPayment: FC<{
 										</TabsTrigger>
 									)}
 								</TabsList>
-								<TabsContent value="web" className={"h-full"}>
-									<ResponsiveCard className={"h-full flex"}>
-										<CardContent className={"flex"}>
-											<div className={"flex flex-1 flex-col gap-2"}>
-												<div
-													className={
-														"rounded h-full flex justify-center items-center"
-													}
-												>
-													<QRCodeSVG
-														size={512}
-														value={frontendUrl}
-														marginSize={2}
-													/>
+								{frontendUrl && (
+									<TabsContent value="web" className={"h-full"}>
+										<ResponsiveCard className={"h-full flex"}>
+											<CardContent className={"flex"}>
+												<div className={"flex flex-1 flex-col gap-2"}>
+													<div
+														className={
+															"rounded h-full flex justify-center items-center"
+														}
+													>
+														<QRCodeSVG
+															size={512}
+															value={frontendUrl}
+															marginSize={2}
+														/>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</ResponsiveCard>
-								</TabsContent>
+											</CardContent>
+										</ResponsiveCard>
+									</TabsContent>
+								)}
 								{lnInvoice && (
 									<TabsContent value="ln" className={"h-full"}>
 										<ResponsiveCard className={"h-full flex"}>
@@ -425,8 +421,6 @@ const FullscreenQrPayment: FC<{
 export default function Home() {
 	const { t } = useTranslation();
 	const searchParams = useSearchParams();
-	const { ndk } = useNostr();
-	const evolu = useEvolu();
 	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const tab = searchParams.get("tab");
@@ -438,177 +432,269 @@ export default function Home() {
 	const czechQRCodeRef = useRef<HTMLCanvasElement>(null);
 
 	const paymentId = id as Id;
-	const paymentQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("payment")
-				.leftJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
-				.leftJoin("paymentLnSpark", "paymentLnSpark.id", "payment.id")
-				.leftJoin(
-					"paymentBankTransferCZ",
-					"paymentBankTransferCZ.id",
-					"payment.id",
-				)
-				.leftJoin("paymentCash", "paymentCash.id", "payment.id")
-				.leftJoin("paymentWatchingState", (join) =>
-					join
-						.onRef("paymentWatchingState.id", "=", "payment.id")
-						.on("paymentWatchingState.isDeleted", "is not", sqliteTrue),
-				)
-				.select([
-					"payment.id as id",
-					"payment.type as type",
-					"payment.webPaymentEventId as webPaymentEventId",
-					"payment.privateKey as privateKey",
-					"payment.billCurrency as billCurrency",
-					"payment.billAllowTip as billAllowTip",
-					"payment.expectedTipAmount as expectedTipAmount",
-					"payment.merchantName as merchantName",
-					"payment.onSuccessfulPaymentRedirectUrl as onSuccessfulPaymentRedirectUrl",
-					"payment.createdAt as createdAt",
-					"paymentLnZap.lnInvoice as lnZapLnInvoice",
-					"paymentLnZap.walletPubkey as lnZapWalletPubkey",
-					"paymentLnZap.expirationIn as lnZapExpirationIn",
-					"paymentLnSpark.accountId as lnSparkAccountId",
-					"paymentLnSpark.lnInvoice as lnSparkLnInvoice",
-					"paymentLnSpark.sparkInvoiceId as lnSparkSparkInvoiceId",
-					"paymentLnSpark.expirationIn as lnSparkExpirationIn",
-					"paymentBankTransferCZ.iban as bankTransferIban",
-					"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
-					"paymentCash.id as cashId",
-					"paymentCash.accountId as cashAccountId",
-					"paymentWatchingState.id as paymentWatchingStateId",
-					"paymentWatchingState.verifiedAt as paymentWatchingStateVerifiedAt",
-					"paymentWatchingState.stoppedAt as paymentWatchingStateStoppedAt",
-				] as const)
-				.where("payment.isDeleted", "is not", sqliteTrue)
-				.where("payment.id", "=", paymentId),
-		[paymentId],
-	);
-	const paymentBillItemsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("paymentBillItem")
-				.select([
-					"paymentBillItem.label as label",
-					"paymentBillItem.price as price",
-					"paymentBillItem.quantity as quantity",
-				] as const)
-				.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
-				.where("paymentBillItem.paymentId", "=", paymentId),
-		[paymentId],
-	);
-	const { data: paymentRows } = useEvoluQuery(paymentQuery);
-	const { data: paymentBillItemsRows } = useEvoluQuery(paymentBillItemsQuery);
-	const paymentReconciliationQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("reconciliationClaim")
-				.select(["reconciliationClaim.id as id"] as const)
-				.where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
-				.where("reconciliationClaim.entityType", "=", "payment")
-				.where("reconciliationClaim.entityId", "=", paymentId),
-		[paymentId],
-	);
-	const { data: paymentReconciliationRows } = useEvoluQuery(
-		paymentReconciliationQuery,
-	);
+	const paymentQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("payment")
+					.select(
+						(eb) =>
+							[
+								"payment.id as id",
+								"payment.createdAt as createdAt",
+								"payment.direction as direction",
+								"payment.totalAmount as totalAmount",
+								"payment.currency as currency",
 
-	const payment = paymentRows?.[0];
-	const item =
-		payment &&
-		payment.privateKey &&
-		payment.webPaymentEventId &&
-		payment.billCurrency
-			? {
-					id: payment.id,
-					paymentType: payment.type,
-					webPaymentEventId: payment.webPaymentEventId,
-					privateKey: payment.privateKey,
-					createdAt: payment.createdAt,
-					expectedTipAmount: payment.expectedTipAmount ?? null,
-					merchant: payment.merchantName
-						? { name: payment.merchantName }
-						: undefined,
-					onSuccessfulPayment: payment.onSuccessfulPaymentRedirectUrl
-						? {
-								_tag: "httpRedirect" as const,
-								redirectUrl: payment.onSuccessfulPaymentRedirectUrl,
-							}
-						: undefined,
-					bill: {
-						currency: payment.billCurrency,
-						allowTip: payment.billAllowTip === sqliteTrue,
-						items: (paymentBillItemsRows ?? []).map((billItem) => ({
-							label: billItem.label ?? "",
-							price: billItem.price ?? 0,
-							quantity: billItem.quantity ?? 0,
-						})),
-					},
-					paymentOptions: [
-						payment.type === "lnZap" &&
-						payment.lnZapLnInvoice &&
-						payment.lnZapWalletPubkey &&
-						payment.lnZapExpirationIn !== null
-							? {
-									type: "lnZap" as const,
-									lnInvoice: payment.lnZapLnInvoice,
-									walletPubkey: payment.lnZapWalletPubkey,
-									expirationIn: payment.lnZapExpirationIn,
-								}
-							: payment.type === "lnSpark" &&
-									payment.lnSparkAccountId &&
-									payment.lnSparkLnInvoice &&
-									payment.lnSparkSparkInvoiceId &&
-									payment.lnSparkExpirationIn !== null
-								? {
-										type: "lnSpark" as const,
-										accountId: payment.lnSparkAccountId,
-										lnInvoice: payment.lnSparkLnInvoice,
-										sparkInvoiceId: payment.lnSparkSparkInvoiceId,
-										expirationIn: payment.lnSparkExpirationIn,
-									}
-								: payment.type === "bankTransferCZ" &&
-										payment.bankTransferIban &&
-										payment.bankTransferVariableSymbol
-									? {
-											type: "bankTransferCZ" as const,
-											iban: payment.bankTransferIban,
-											variableSymbol: payment.bankTransferVariableSymbol,
-										}
-									: payment.type === "cash" && payment.cashId
-										? {
-												type: "cash" as const,
-												accountId: payment.cashAccountId ?? undefined,
-											}
-										: null,
-					].filter((paymentOption) => paymentOption !== null),
-				}
-			: undefined;
+								kysely
+									.jsonArrayFrom(
+										eb
+											.selectFrom("paymentItemLine")
+											.select(
+												(eb) =>
+													[
+														"paymentItemLine.totalAmount as totalAmount",
+														"paymentItemLine.quantity as quantity",
+
+														kysely
+															.jsonObjectFrom(
+																eb
+																	.selectFrom("paymentItem")
+																	.select(["paymentItem.label as label"])
+																	.whereRef(
+																		"paymentItem.id",
+																		"=",
+																		"paymentItemLine.id",
+																	)
+																	.where(
+																		"paymentItem.isDeleted",
+																		"is not",
+																		sqliteTrue,
+																	)
+																	.where("paymentItem.label", "is not", null)
+																	.$narrowType<{
+																		label: NotNull;
+																	}>(),
+															)
+															.as("item"),
+													] as const,
+											)
+											.whereRef("paymentItemLine.paymentId", "=", "payment.id")
+											.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+											.where("paymentItemLine.totalAmount", "is not", null)
+											.where("paymentItemLine.quantity", "is not", null)
+											.$narrowType<{
+												totalAmount: NotNull;
+												quantity: NotNull;
+												item: NotNull;
+											}>(),
+									)
+									.as("items"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentBankTransferCZ")
+											.select(["iban", "variableSymbol"] as const)
+											.whereRef("paymentBankTransferCZ.id", "=", "payment.id")
+											.where(
+												"paymentBankTransferCZ.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("paymentBankTransferCZ.iban", "is not", null)
+											.where(
+												"paymentBankTransferCZ.variableSymbol",
+												"is not",
+												null,
+											)
+											.$narrowType<{
+												iban: NotNull;
+												variableSymbol: NotNull;
+											}>(),
+									)
+									.as("paymentBankTransferCZ"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentLnZap")
+											.select([
+												"lnInvoice",
+												"walletPubkey",
+												"expirationIn",
+											] as const)
+											.whereRef("paymentLnZap.id", "=", "payment.id")
+											.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
+											.where("paymentLnZap.lnInvoice", "is not", null)
+											.where("paymentLnZap.walletPubkey", "is not", null)
+											.where("paymentLnZap.expirationIn", "is not", null)
+											.$narrowType<{
+												lnInvoice: NotNull;
+												walletPubkey: NotNull;
+												expirationIn: NotNull;
+											}>(),
+									)
+									.as("paymentLnZap"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentLnSpark")
+											.select(["lnInvoice", "expirationIn"] as const)
+											.whereRef("paymentLnSpark.id", "=", "payment.id")
+											.where("paymentLnSpark.isDeleted", "is not", sqliteTrue)
+											.where("paymentLnSpark.lnInvoice", "is not", null)
+											.where("paymentLnSpark.expirationIn", "is not", null)
+											.$narrowType<{
+												lnInvoice: NotNull;
+												walletPubkey: NotNull;
+												expirationIn: NotNull;
+											}>(),
+									)
+									.as("paymentLnSpark"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentCash")
+											.select(["accountId"] as const)
+											.whereRef("paymentCash.id", "=", "payment.id")
+											.where("paymentCash.isDeleted", "is not", sqliteTrue)
+											.where("paymentCash.accountId", "is not", null)
+											.$narrowType<{
+												accountId: NotNull;
+											}>(),
+									)
+									.as("paymentCash"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentWebData")
+											.select(["privateKey", "webPaymentEventId"] as const)
+											.whereRef("paymentWebData.id", "=", "payment.id")
+											.where("paymentWebData.isDeleted", "is not", sqliteTrue)
+											.where("paymentWebData.privateKey", "is not", null)
+											.where("paymentWebData.webPaymentEventId", "is not", null)
+											.$narrowType<{
+												privateKey: NotNull;
+												webPaymentEventId: NotNull;
+											}>(),
+									)
+									.as("paymentWebData"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("paymentWatchingState")
+											.select([
+												"verifiedAt",
+												"proveType",
+												"transactionId",
+												"stoppedAt",
+												"stopReason",
+											] as const)
+											.whereRef("paymentWatchingState.id", "=", "payment.id")
+											.where(
+												"paymentWatchingState.isDeleted",
+												"is not",
+												sqliteTrue,
+											),
+									)
+									.as("paymentWatchingState"),
+
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("reconciliationClaim")
+											.innerJoin(
+												"reconciliationClaimAllocation",
+												"reconciliationClaimAllocation.claimId",
+												"reconciliationClaim.id",
+											)
+											.select(
+												(eb) =>
+													[
+														"reconciliationClaim.id as id",
+														eb.fn
+															.sum<Integer>(
+																"reconciliationClaimAllocation.amount",
+															)
+															.as("amount"),
+													] as const,
+											)
+											.whereRef(
+												"reconciliationClaim.entityId",
+												"=",
+												"payment.id",
+											)
+											.where(
+												"reconciliationClaim.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where(
+												"reconciliationClaimAllocation.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("reconciliationClaim.entityType", "=", "payment"),
+									)
+									.as("reconciliationClaim"),
+							] as const,
+					)
+					.where("payment.isDeleted", "is not", sqliteTrue)
+					.where("payment.direction", "is not", null)
+					.where("payment.totalAmount", "is not", null)
+					.where("payment.currency", "is not", null)
+					.where("payment.id", "=", paymentId)
+					.$narrowType<{
+						direction: NotNull;
+						totalAmount: NotNull;
+						currency: NotNull;
+					}>(),
+			),
+		[paymentId],
+	);
+	// const paymentBillItemsQuery = useMemo(
+	// 	() =>
+	// 		createQuery((db) =>
+	// 			db
+	// 				.selectFrom("paymentBillItem")
+	// 				.select([
+	// 					"paymentBillItem.label as label",
+	// 					"paymentBillItem.price as price",
+	// 					"paymentBillItem.quantity as quantity",
+	// 				] as const)
+	// 				.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
+	// 				.where("paymentBillItem.paymentId", "=", paymentId),
+	// 		),
+	// 	[paymentId],
+	// );
+	const { data: paymentRows } = useEvoluQuery(paymentQuery);
+	// const { data: paymentBillItemsRows } = useEvoluQuery(paymentBillItemsQuery);
+	// const paymentReconciliationQuery = useMemo(
+	// 	() =>
+	// 		createQuery((db) =>
+	// 			db
+	// 				.selectFrom("reconciliationClaim")
+	// 				.select(["reconciliationClaim.id as id"] as const)
+	// 				.where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+	// 				.where("reconciliationClaim.entityType", "=", "payment")
+	// 				.where("reconciliationClaim.entityId", "=", paymentId),
+	// 		),
+	// 	[paymentId],
+	// );
+	// const { data: paymentReconciliationRows } = useEvoluQuery(
+	// 	paymentReconciliationQuery,
+	// );
+
+	const payment = paymentRows[0];
 
 	const { mutateAsync: deletePayment, isPending: isDeleting } = useMutation({
 		mutationFn: async () => {
-			if (item === undefined) {
-				return;
-			}
-
-			const deleteEvent = new NDKEvent(ndk, {
-				kind: 5,
-				created_at: Math.floor(Date.now() / 1000),
-				tags: [
-					["e", item.webPaymentEventId],
-					["k", "4"],
-				],
-				content: "Deleted by user",
-			});
-
-			await deleteEvent.publish();
-			getOrThrow(
-				evolu.update("payment", {
-					id: item.id,
-					isDeleted: sqliteTrue,
-				}),
-			);
+			// @TODO
 			router.push("/admin/payments");
 		},
 	});
@@ -626,53 +712,44 @@ export default function Home() {
 		},
 	);
 
-	const zapWallet =
-		item &&
-		item.paymentOptions.find(
-			(paymentOption) =>
-				paymentOption.type === "lnZap" || paymentOption.type === "lnSpark",
-		);
-	const cashPayment =
-		item &&
-		item.paymentOptions.find((paymentOption) => paymentOption.type === "cash");
-	const cashAccountId =
-		cashPayment && cashPayment.type === "cash"
-			? ((cashPayment.accountId as Id | undefined) ?? null)
-			: null;
-	const supportsCashPayment = cashPayment !== undefined;
-	const hasPaymentWatchingState = payment?.paymentWatchingStateId != null;
-	const paymentWatchingStateVerifiedAt =
-		payment?.paymentWatchingStateVerifiedAt ?? null;
-	const paymentWatchingStateStoppedAt =
-		payment?.paymentWatchingStateStoppedAt ?? null;
-
-	const paymentStatus =
-		paymentReconciliationRows === undefined
-			? null
-			: paymentReconciliationRows.length > 0
-				? PaymentStatus.Paid
-				: PaymentStatus.Unpaid;
-
-	const totalAmount = item
-		? item.bill.items.reduce((acc, val) => acc + val.price, 0)
-		: 0;
-	const czechBankTransfer =
-		item &&
-		item.paymentOptions.find(
-			(paymentOption) => paymentOption.type === "bankTransferCZ",
-		);
 	const czechQRCode =
-		item &&
-		czechBankTransfer &&
-		generateCzechBankQrCode({
-			amount: totalAmount,
-			currency: item.bill.currency,
-			iban: czechBankTransfer.iban,
-			variableSymbol: czechBankTransfer.variableSymbol,
-			useInstantPayment: true,
-		});
+		(payment &&
+			payment.paymentBankTransferCZ &&
+			generateCzechBankQrCode({
+				amount: payment.totalAmount / 100,
+				currency: payment.currency,
+				iban: payment.paymentBankTransferCZ.iban,
+				variableSymbol: payment.paymentBankTransferCZ.variableSymbol,
+				useInstantPayment: true,
+			})) ??
+		undefined;
 
-	const frontendUrl = `${clientBaseUrl}#s-${item?.privateKey}`;
+	const frontendUrl =
+		(payment &&
+			payment.paymentWebData &&
+			`${clientBaseUrl}#s-${payment.paymentWebData.privateKey}`) ??
+		undefined;
+
+	useEffect(() => {
+		if (payment === undefined) {
+			router.replace("/admin/payments");
+		}
+	}, [payment, router]);
+
+	if (payment === undefined) {
+		return null;
+	}
+
+	const paymentStatus: PaymentStatus =
+		payment && payment.reconciliationClaim
+			? payment.reconciliationClaim.amount > payment.totalAmount
+				? PaymentStatus.Overpaid
+				: payment.reconciliationClaim.amount < payment.totalAmount
+					? PaymentStatus.Underpaid
+					: PaymentStatus.Paid
+			: PaymentStatus.Unpaid;
+
+	const lightningPayment = payment.paymentLnSpark ?? payment.paymentLnZap;
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -683,37 +760,23 @@ export default function Home() {
 			<div className={"flex gap-4 flex-wrap"}>
 				<ResponsiveCard className={"flex-2"}>
 					<CardHeader>
-						<CardTitle>
-							{!item && <Skeleton />}
-							{item?.bill.items[0]?.label}
-						</CardTitle>
+						<CardTitle>{payment.items[0]?.item.label}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className={"flex flex-col gap-8"}>
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={t("payments:detail.labels.price")}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item &&
-												formatMoney({
-													value: totalAmount,
-													currency: item.bill.currency,
-												})}
-										</>
-									}
+									content={formatMoney({
+										value: payment.totalAmount,
+										currency: payment.currency,
+									})}
 									className={"flex-1"}
 								/>
 								<StaticCard
 									title={t("payments:detail.labels.created-at")}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item && new Date(item.createdAt).toLocaleDateString()}
-										</>
-									}
-									footer={item && new Date(item.createdAt).toLocaleTimeString()}
+									content={new Date(payment.createdAt).toLocaleDateString()}
+									footer={new Date(payment.createdAt).toLocaleTimeString()}
 									className={"flex-1"}
 								/>
 							</div>
@@ -721,74 +784,61 @@ export default function Home() {
 								<StaticCard
 									title={t("payments:detail.labels.expire-at")}
 									content={
-										<>
-											{!item && <Skeleton />}
-											{zapWallet &&
-												new Date(zapWallet.expirationIn).toLocaleDateString()}
-										</>
+										lightningPayment &&
+										new Date(lightningPayment.expirationIn).toLocaleDateString()
 									}
 									footer={
-										zapWallet &&
-										new Date(zapWallet.expirationIn).toLocaleTimeString()
+										lightningPayment &&
+										new Date(lightningPayment.expirationIn).toLocaleTimeString()
 									}
 									className={"flex-1"}
 								/>
 
 								<StaticCard
 									title={t("payments:detail.labels.status")}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item &&
-												(paymentStatus
-													? paymentStatus === PaymentStatus.Paid
-														? t("payments:detail.status.paid")
-														: t("payments:detail.status.waiting")
-													: t("payments:detail.status.unknown"))}
-										</>
-									}
+									content={t(`payments:detail.status.${paymentStatus}`)}
 									className={"flex-1"}
 								/>
 							</div>
 
 							<div className={"flex flex-wrap gap-8"}>
 								<div className={"flex-1"}>
-									<KeyValueList
-										items={[
-											{
-												key: t("payments:detail.labels.merchant-name"),
-												value: item?.merchant?.name ?? "-",
-											},
-											{
-												key: t("payments:detail.labels.redirect"),
-												value:
-													item?.onSuccessfulPayment?.redirectUrl ??
-													t("payments:detail.values.no"),
-												help: t("payments:detail.help.redirect"),
-											},
-											{
-												key: t("payments:detail.labels.tip"),
-												value:
-													item?.onSuccessfulPayment && item.bill.allowTip
-														? t("payments:detail.values.yes")
-														: t("payments:detail.values.no"),
-												help: t("payments:detail.help.tip"),
-											},
-											...(item?.expectedTipAmount !== null
-												? [
-														{
-															key: t(
-																"payments:form.payment-form.label.expected-tip-amount",
-															),
-															value: formatMoney({
-																value: item.expectedTipAmount,
-																currency: item.bill.currency,
-															}),
-														},
-													]
-												: []),
-										]}
-									/>
+									{/*<KeyValueList*/}
+									{/*	items={[*/}
+									{/*		{*/}
+									{/*			key: t("payments:detail.labels.merchant-name"),*/}
+									{/*			value: item?.merchant?.name ?? "-",*/}
+									{/*		},*/}
+									{/*		{*/}
+									{/*			key: t("payments:detail.labels.redirect"),*/}
+									{/*			value:*/}
+									{/*				item?.onSuccessfulPayment?.redirectUrl ??*/}
+									{/*				t("payments:detail.values.no"),*/}
+									{/*			help: t("payments:detail.help.redirect"),*/}
+									{/*		},*/}
+									{/*		{*/}
+									{/*			key: t("payments:detail.labels.tip"),*/}
+									{/*			value:*/}
+									{/*				item?.onSuccessfulPayment && item.bill.allowTip*/}
+									{/*					? t("payments:detail.values.yes")*/}
+									{/*					: t("payments:detail.values.no"),*/}
+									{/*			help: t("payments:detail.help.tip"),*/}
+									{/*		},*/}
+									{/*		...(item?.expectedTipAmount !== null*/}
+									{/*			? [*/}
+									{/*					{*/}
+									{/*						key: t(*/}
+									{/*							"payments:form.payment-form.label.expected-tip-amount",*/}
+									{/*						),*/}
+									{/*						value: formatMoney({*/}
+									{/*							value: item.expectedTipAmount,*/}
+									{/*							currency: item.bill.currency,*/}
+									{/*						}),*/}
+									{/*					},*/}
+									{/*				]*/}
+									{/*			: []),*/}
+									{/*	]}*/}
+									{/*/>*/}
 								</div>
 								<div className={"flex-1"}></div>
 							</div>
@@ -804,21 +854,22 @@ export default function Home() {
 						<CardContent className={"space-y-2"}>
 							<FullscreenQrPayment
 								frontendUrl={frontendUrl}
-								lnInvoice={zapWallet?.lnInvoice}
+								lnInvoice={lightningPayment?.lnInvoice}
 								czechQRCode={czechQRCode}
 								isPaid={paymentStatus === PaymentStatus.Paid}
 								cashTabContent={
-									item && supportsCashPayment ? (
+									payment.paymentCash ? (
 										<StatusButton
-											paymentId={item.id}
-											amount={totalAmount}
-											cashAccountId={cashAccountId}
+											paymentId={payment.id}
+											amount={payment.totalAmount}
+											currency={payment.currency}
+											cashAccountId={payment.paymentCash.accountId}
 											className={"w-full"}
 										/>
 									) : undefined
 								}
 							/>
-							{item && supportsCashPayment && cashAccountId === null && (
+							{!payment.paymentCash && (
 								<p className={"text-sm text-muted-foreground"}>
 									{t(
 										"payments:detail.messages.cash-payment-enabled-no-cash-register-account",
@@ -827,9 +878,9 @@ export default function Home() {
 							)}
 							<PaymentWatchingToggleButton
 								paymentId={paymentId}
-								hasPaymentWatchingState={hasPaymentWatchingState}
-								verifiedAt={paymentWatchingStateVerifiedAt}
-								stoppedAt={paymentWatchingStateStoppedAt}
+								hasPaymentWatchingState={payment.paymentWatchingState !== null}
+								verifiedAt={payment.paymentWatchingState?.verifiedAt ?? null}
+								stoppedAt={payment.paymentWatchingState?.stoppedAt ?? null}
 								className={"w-full"}
 							/>
 							<Button className={"w-full"} onClick={() => void onDelete()}>
@@ -866,7 +917,7 @@ export default function Home() {
 								>
 									{t("payments:detail.tabs.web-payment")}
 								</TabsTrigger>
-								{zapWallet && (
+								{lightningPayment && (
 									<TabsTrigger
 										value="ln"
 										onClick={() =>
@@ -896,7 +947,7 @@ export default function Home() {
 										{t("payments:detail.tabs.cz-qr-payment")}
 									</TabsTrigger>
 								)}
-								{supportsCashPayment && (
+								{payment.paymentCash && (
 									<TabsTrigger
 										value="cash"
 										onClick={() =>
@@ -912,10 +963,10 @@ export default function Home() {
 									</TabsTrigger>
 								)}
 							</TabsList>
-							<TabsContent value="web">
-								<ResponsiveCard>
-									<CardContent>
-										{item && (
+							{frontendUrl && (
+								<TabsContent value="web">
+									<ResponsiveCard>
+										<CardContent>
 											<div className={"flex flex-col gap-2"}>
 												<div className={"py-4 bg-white flex rounded"}>
 													<QRCodeSVG
@@ -932,11 +983,11 @@ export default function Home() {
 													</a>
 												</Button>
 											</div>
-										)}
-									</CardContent>
-								</ResponsiveCard>
-							</TabsContent>
-							{item && zapWallet && (
+										</CardContent>
+									</ResponsiveCard>
+								</TabsContent>
+							)}
+							{lightningPayment && (
 								<TabsContent value="ln">
 									<ResponsiveCard>
 										<CardContent>
@@ -945,13 +996,16 @@ export default function Home() {
 													<QRCodeSVG
 														className={"w-full"}
 														size={256}
-														value={zapWallet.lnInvoice}
+														value={lightningPayment.lnInvoice}
 													/>
 												</div>
-												<Textarea readOnly={true} value={zapWallet.lnInvoice} />
+												<Textarea
+													readOnly={true}
+													value={lightningPayment.lnInvoice}
+												/>
 												<Button asChild>
 													<a
-														href={`lightning:${zapWallet.lnInvoice}`}
+														href={`lightning:${lightningPayment.lnInvoice}`}
 														target={"_blank"}
 													>
 														<BitcoinIcon />
@@ -963,7 +1017,7 @@ export default function Home() {
 									</ResponsiveCard>
 								</TabsContent>
 							)}
-							{item && czechQRCode && (
+							{czechQRCode && (
 								<TabsContent value="bankTransferCZ">
 									<ResponsiveCard>
 										<CardContent>
@@ -1022,24 +1076,25 @@ export default function Home() {
 									</ResponsiveCard>
 								</TabsContent>
 							)}
-							{item && supportsCashPayment && (
+							{payment.paymentCash && (
 								<TabsContent value="cash">
 									<ResponsiveCard>
 										<CardContent>
 											<div className={"flex flex-col gap-3"}>
 												<StatusButton
-													paymentId={item.id}
-													amount={totalAmount}
-													cashAccountId={cashAccountId}
+													paymentId={payment.id}
+													amount={payment.totalAmount}
+													currency={payment.currency}
+													cashAccountId={payment.paymentCash.accountId}
 													className={"w-full"}
 												/>
-												{cashAccountId === null && (
-													<p className={"text-sm text-muted-foreground"}>
-														{t(
-															"payments:detail.messages.no-cash-register-account-configured",
-														)}
-													</p>
-												)}
+												{/*{cashAccountId === null && (*/}
+												{/*	<p className={"text-sm text-muted-foreground"}>*/}
+												{/*		{t(*/}
+												{/*			"payments:detail.messages.no-cash-register-account-configured",*/}
+												{/*		)}*/}
+												{/*	</p>*/}
+												{/*)}*/}
 											</div>
 										</CardContent>
 									</ResponsiveCard>

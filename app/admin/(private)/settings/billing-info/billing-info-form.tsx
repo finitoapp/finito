@@ -1,18 +1,12 @@
-import {
-	createIdFromString,
-	getOrThrow,
-	type Id,
-	sqliteFalse,
-	sqliteTrue,
-} from "@evolu/common";
+import { createIdFromString, type Id } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import type React from "react";
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { createClientAddressFormSchema } from "@/app/admin/(private)/clients/client-form";
+import { addressFormSchema } from "@/app/admin/(private)/clients/client-form";
 import {
 	AutoForm,
 	type AutoFormComponent,
@@ -26,53 +20,56 @@ import { Separator } from "@/components/ui/separator";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import {
+	BoolToSqliteBoolSchema,
 	CountryCode,
 	EmailSchema,
 	IdentificationNumberCzSchema,
-	NonEmptyStringSchema,
+	NonEmptyString255Schema,
 	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 
-const billingInfoAddressFormSchema = createClientAddressFormSchema({
-	optional: true,
-});
-
 export const baseBillingInfoFormSchema = z.object({
-	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	label: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
+	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
 	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
-	address: billingInfoAddressFormSchema,
+	address: addressFormSchema,
 	countryCode: z.enum(CountryCode),
 	cz: z.object({
-		vatPayer: z.boolean(),
-		vatNumber: z.string(),
-		identificationNumber: z.string(),
-		caseNumber: z.string(),
+		vatPayer: BoolToSqliteBoolSchema,
+		vatNumber: StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		),
+		identificationNumber: StringToNullableStringSchema.pipe(
+			IdentificationNumberCzSchema,
+		),
+		caseNumber: StringToNullableStringSchema.pipe(
+			NonEmptyString255Schema.nullable(),
+		),
 	}),
 });
 
-const billingInfoFormSchema = z.discriminatedUnion("countryCode", [
+export const billingInfoFormSchema = z.discriminatedUnion("countryCode", [
 	baseBillingInfoFormSchema.extend({
 		countryCode: z.literal(CountryCode.CZ),
 		cz: z.discriminatedUnion("vatPayer", [
 			z.object({
 				vatPayer: z.literal(true),
-				vatNumber: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+				vatNumber: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 				identificationNumber: StringToNullableStringSchema.pipe(
 					IdentificationNumberCzSchema,
 				),
-				caseNumber: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+				caseNumber: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 			}),
 			z.object({
 				vatPayer: z.literal(false),
 				vatNumber: StringToNullableStringSchema.pipe(
-					NonEmptyStringSchema.nullable(),
+					NonEmptyString255Schema.nullable(),
 				),
 				identificationNumber: StringToNullableStringSchema.pipe(
 					IdentificationNumberCzSchema,
 				),
 				caseNumber: StringToNullableStringSchema.pipe(
-					NonEmptyStringSchema.nullable(),
+					NonEmptyString255Schema.nullable(),
 				),
 			}),
 		]),
@@ -126,9 +123,8 @@ const Search: AutoFormComponent<AutocompleteIdentificationNumberItem> = (
 	return <AutocompleteIdentificationNumberInput {...props} />;
 };
 
-const createComponents = (t: TFunction) => createAutoFormLayout(
-	billingInfoFormSchema,
-	({ builder }) => ({
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(billingInfoFormSchema, ({ builder }) => ({
 		_search: Search,
 		_separator: () => <Separator />,
 
@@ -168,7 +164,9 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 		...builder.nestedField("cz", ({ builder }) => ({
 			...builder.when("countryCode", CountryCode.CZ, {
 				...builder.magicInput("identificationNumber").text({
-					label: t("settings:form.billing-info-form.label.identification-number"),
+					label: t(
+						"settings:form.billing-info-form.label.identification-number",
+					),
 				}),
 				...builder.magicInput("vatPayer").checkbox({
 					label: t("settings:form.billing-info-form.label.vat-payer"),
@@ -181,11 +179,11 @@ const createComponents = (t: TFunction) => createAutoFormLayout(
 				}),
 			}),
 		})),
-	}),
-);
+	}));
 
 export const BillingInfoForm: React.FC<{
-	defaultValues?: Partial<z.input<typeof billingInfoFormSchema> & { id: Id }>;
+	defaultValues?: Partial<z.input<typeof billingInfoFormSchema>>;
+	onBeforeSave?: (values: z.input<typeof billingInfoFormSchema>) => boolean;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
 	const { t } = useTranslation();
@@ -196,35 +194,31 @@ export const BillingInfoForm: React.FC<{
 	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(billingInfoFormSchema, {
 		defaultValues,
-		saveAction: async (values) => {
+		saveAction: async (values, originalValues) => {
+			if (params.onBeforeSave) {
+				if (!params.onBeforeSave(originalValues)) {
+					return;
+				}
+			}
+
 			const id = createIdFromString("");
+			const { address, cz, ...billingInfo } = values;
 
-			getOrThrow(
-				evolu.upsert("billingInfo", {
-					id,
-					name: values.name,
-					label: values.label,
-					email: values.email,
-					countryCode: values.countryCode,
-				}),
-			);
+			evolu.upsert("billingInfo", {
+				...billingInfo,
+				id,
+			});
 
-			getOrThrow(
-				evolu.upsert("billingInfoAddress", {
-					id,
-					...values.address,
-				}),
-			);
+			evolu.upsert("billingInfoAddress", {
+				id,
+				...address,
+			});
 
-			getOrThrow(
-				evolu.upsert("billingInfoCz", {
-					id,
-					identificationNumber: values.cz.identificationNumber,
-					vatNumber: values.cz.vatNumber,
-					caseNumber: values.cz.caseNumber,
-					vatPayer: values.cz.vatPayer ? sqliteTrue : sqliteFalse,
-				}),
-			);
+			evolu.upsert("billingInfoCz", {
+				id,
+				...cz,
+				vatPayer: BoolToSqliteBoolSchema.decode(cz.vatPayer),
+			});
 
 			if (params.onSuccess) {
 				params.onSuccess(id);

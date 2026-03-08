@@ -1,19 +1,22 @@
 "use client";
 
 import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { useMemo } from "react";
 import { POS } from "@/components/pos/pos";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 import { Currency } from "@/lib/shared/types";
 
 export default function Home() {
-	const billingSettingsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("billingSettings")
-				.selectAll()
-				.where("billingSettings.isDeleted", "is not", sqliteTrue)
-				.where("billingSettings.id", "=", createIdFromString("")),
+	const billingSettingsQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("billingSettings")
+					.selectAll()
+					.where("billingSettings.isDeleted", "is not", sqliteTrue)
+					.where("billingSettings.id", "=", createIdFromString("")),
+			),
 		[],
 	);
 	const { data: billingSettingsRows } = useEvoluQuery(billingSettingsQuery);

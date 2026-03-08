@@ -1,21 +1,16 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import {
-	MenuForm,
-	type MenuFormDefaultValues,
-} from "@/app/admin/(private)/menus/menu-form";
+import { MenuForm } from "@/app/admin/(private)/menus/menu-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-
-const toMenuItemAvailabilityStatus = (value: string | null) =>
-	value === "soldOut" || value === "hidden" ? value : null;
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -26,122 +21,132 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const menuQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menu")
-				.select([
-					"menu.id as id",
-					"menu.name as name",
-					"menu.status as status",
-					"menu.validFrom as validFrom",
-					"menu.validTo as validTo",
-					"menu.publishedAt as publishedAt",
-				] as const)
-				.where("menu.isDeleted", "is not", sqliteTrue)
-				.where("menu.id", "=", id as Id),
-		[id],
-	);
-	const categoriesQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menuCategory")
-				.select([
-					"menuCategory.id as id",
-					"menuCategory.menuId as menuId",
-					"menuCategory.name as name",
-				] as const)
-				.where("menuCategory.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.menuId", "=", id as Id),
-		[id],
-	);
-	const itemsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menuItem")
-				.innerJoin("menuCategory", "menuCategory.id", "menuItem.menuCategoryId")
-				.select([
-					"menuItem.id as id",
-					"menuItem.menuCategoryId as menuCategoryId",
-					"menuItem.sourceItemId as sourceItemId",
-					"menuItem.label as label",
-					"menuItem.availabilityStatus as availabilityStatus",
-					"menuItem.priceValue as priceValue",
-					"menuItem.priceCurrency as priceCurrency",
-					"menuItem.unitOfMeasure as unitOfMeasure",
-					"menuItem.internalCode as internalCode",
-					"menuItem.productCodeType as productCodeType",
-					"menuItem.productCodeValue as productCodeValue",
-				] as const)
-				.where("menuItem.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.menuId", "=", id as Id),
+	const menuQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("menu")
+					.select(
+						(eb) =>
+							[
+								"menu.id as id",
+								"menu.name as name",
+								"menu.status as status",
+								"menu.validFrom as validFrom",
+								"menu.validTo as validTo",
+								"menu.publishedAt as publishedAt",
+
+								kysely
+									.jsonArrayFrom(
+										eb
+											.selectFrom("menuCategory")
+											.select((eb) => [
+												"menuCategory.id as id",
+												"menuCategory.menuId as menuId",
+												"menuCategory.name as name",
+
+												kysely
+													.jsonArrayFrom(
+														eb
+															.selectFrom("menuItemLine")
+															.select(
+																(eb) =>
+																	[
+																		"menuItemLine.id as id",
+																		"menuItemLine.availabilityStatus as availabilityStatus",
+
+																		kysely
+																			.jsonObjectFrom(
+																				eb
+																					.selectFrom("menuItem")
+																					.select([
+																						"menuItem.id as id",
+																						"menuItem.categoryId as categoryId",
+																						"menuItem.sourceItemId as sourceItemId",
+																						"menuItem.label as label",
+																						"menuItem.price as price",
+																						"menuItem.currency as currency",
+																						"menuItem.unitOfMeasure as unitOfMeasure",
+																						"menuItem.internalCode as internalCode",
+																						"menuItem.productCodeType as productCodeType",
+																						"menuItem.productCodeValue as productCodeValue",
+																					])
+																					.whereRef(
+																						"menuItem.id",
+																						"=",
+																						"menuItemLine.id",
+																					)
+																					.where(
+																						"menuItem.isDeleted",
+																						"is not",
+																						sqliteTrue,
+																					)
+																					.where(
+																						"menuItem.label",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.price",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.currency",
+																						"is not",
+																						null,
+																					)
+																					.$narrowType<{
+																						label: NotNull;
+																						price: NotNull;
+																						currency: NotNull;
+																					}>(),
+																			)
+																			.as("item"),
+																	] as const,
+															)
+															.whereRef(
+																"menuItemLine.menuCategoryId",
+																"=",
+																"menuCategory.id",
+															)
+															.where(
+																"menuItemLine.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.$narrowType<{
+																item: NotNull;
+															}>(),
+													)
+													.as("items"),
+											])
+											.whereRef("menuCategory.menuId", "=", "menu.id")
+											.where("menuCategory.isDeleted", "is not", sqliteTrue)
+											.where("menuCategory.name", "is not", null)
+											.where("menuCategory.menuId", "=", id as Id)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("categories"),
+							] as const,
+					)
+					.where("menu.isDeleted", "is not", sqliteTrue)
+					.where("menu.name", "is not", null)
+					.where("menu.status", "is not", null)
+					.where("menu.id", "=", id as Id)
+					.$narrowType<{
+						name: NotNull;
+						status: NotNull;
+					}>(),
+			),
 		[id],
 	);
 
 	const { data: menus } = useEvoluQuery(menuQuery);
-	const { data: categoriesRows } = useEvoluQuery(categoriesQuery);
-	const { data: itemsRows } = useEvoluQuery(itemsQuery);
 
-	const defaultValues = useMemo<MenuFormDefaultValues | undefined>(() => {
-		const menu = menus?.[0];
-		if (!menu) return undefined;
-
-		const categoriesMap = new Map<
-			string,
-			{
-				id: string;
-				name: string;
-				items: NonNullable<
-					MenuFormDefaultValues["categories"]
-				>[number]["items"];
-			}
-		>();
-		for (const category of categoriesRows ?? []) {
-			categoriesMap.set(category.id, {
-				id: category.id,
-				name: category.name,
-				items: [],
-			});
-		}
-		for (const item of itemsRows ?? []) {
-			const category = categoriesMap.get(item.menuCategoryId);
-			if (!category) continue;
-			category.items.push({
-				id: item.id,
-				sourceItemId: item.sourceItemId,
-				label: item.label,
-				availabilityStatus: toMenuItemAvailabilityStatus(item.availabilityStatus),
-				priceValue: item.priceValue,
-				priceCurrency: item.priceCurrency,
-				unitOfMeasure: item.unitOfMeasure,
-				internalCode: item.internalCode,
-				productCodeType: item.productCodeType,
-				productCodeValue: item.productCodeValue,
-			});
-		}
-
-		const categories = [...categoriesMap.values()]
-			.map((category) => ({
-				...category,
-				items: [...category.items].sort((a, b) =>
-					a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
-				),
-			}))
-			.sort((a, b) =>
-				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-			);
-
-		return {
-			id: menu.id,
-			name: menu.name,
-			status: menu.status,
-			validFrom: menu.validFrom,
-			validTo: menu.validTo,
-			publishedAt: menu.publishedAt,
-			categories,
-		};
-	}, [menus, categoriesRows, itemsRows]);
+	const menu = menus[0];
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -154,11 +159,7 @@ export default function Home() {
 					<CardTitle>{t("menus:page.editMenu")}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<MenuForm
-						key={`${defaultValues?.id ?? "new"}:${defaultValues?.categories?.length ?? 0}:${defaultValues?.categories?.flatMap((category) => category.items).length ?? 0}`}
-						defaultValues={defaultValues}
-						onSuccess={() => router.back()}
-					/>
+					<MenuForm defaultValues={menu} onSuccess={() => router.back()} />
 				</CardContent>
 			</ResponsiveCard>
 		</div>

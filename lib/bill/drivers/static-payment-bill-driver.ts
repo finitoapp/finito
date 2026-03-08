@@ -1,3 +1,4 @@
+import { createIdFromString } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSubscription,
@@ -13,12 +14,16 @@ import {
 	type StaticOfflinePayment,
 	StaticOfflinePaymentSchema,
 } from "@/lib/shared/schemas";
-import { NonEmptyString } from "@/lib/shared/types";
+import { Integer, NonEmptyString } from "@/lib/shared/types";
+import {
+	extractExpirationFromLightningInvoice,
+	extractPaymentHashFromLnInvoice,
+} from "@/lib/shared/utils/ln";
 
 export class StaticPaymentBillDriver implements BillDriver {
 	public async subscribe({
 		billId,
-		callback,
+		screenStack,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
 		const [prefix, privateKey, ...rest] = billId.split("-");
 		if (prefix !== "s") {
@@ -58,36 +63,58 @@ export class StaticPaymentBillDriver implements BillDriver {
 
 		const pay: ScreenDataPaymentPayFunction = async (params) => {
 			if (staticOfflinePayment === null) {
-				callback({
-					type: "screen",
+				screenStack.replace({
+					variant: "info",
 					payload: {
-						variant: "paymentFinished",
-						payload: {
-							type: "failure",
-							paymentId: params.paymentId,
-							reason: NonEmptyString("The payment is not ready yet."),
-						},
+						status: "failure",
+						text: NonEmptyString("The payment is not ready yet."),
 					},
 				});
 				return;
 			}
 
-			const zapWallet = staticOfflinePayment.paymentOptions.find(
-				(paymentOption) => paymentOption.type === "lnZap",
+			const totalAmount = Integer(
+				staticOfflinePayment.bill.items.reduce((acc, row) => {
+					return acc + Math.round(row.price * row.quantity);
+				}, 0),
 			);
 
-			callback({
-				type: "screen",
-				payload: {
-					variant: "paymentReady",
+			const paymentOption = staticOfflinePayment.paymentOptions.find(
+				(paymentOption) =>
+					paymentOption.type === "lnSpark" || paymentOption.type === "lnZap",
+			);
+
+			if (paymentOption === undefined) {
+				screenStack.replace({
+					variant: "info",
 					payload: {
-						paymentId: params.paymentId,
-						bill: {
-							currency: staticOfflinePayment.bill.currency,
-							items: staticOfflinePayment.bill.items,
+						status: "failure",
+						text: NonEmptyString(
+							"The payment does not support this payment method.",
+						),
+					},
+				});
+				return;
+			}
+
+			screenStack.push({
+				variant: "payment",
+				payload: {
+					payment: {
+						id: params.paymentId as unknown as NonEmptyString,
+						direction: "incoming",
+						totalAmount,
+						currency: staticOfflinePayment.bill.currency,
+						paymentSpecification: {
+							type: "lnInvoice",
+							lnInvoice: paymentOption.lnInvoice,
+							paymentHash: extractPaymentHashFromLnInvoice(
+								paymentOption.lnInvoice,
+							),
+							expirationIn: extractExpirationFromLightningInvoice(
+								paymentOption.lnInvoice,
+							),
 						},
-						type: "btcLn",
-						lnInvoice: zapWallet ? zapWallet.lnInvoice : "",
 					},
 				},
 			});
@@ -131,15 +158,25 @@ export class StaticPaymentBillDriver implements BillDriver {
 
 					staticOfflinePayment = staticOfflinePaymentResult.data;
 
-					callback({
-						type: "screen",
+					screenStack.push({
+						variant: "table",
+						pay,
 						payload: {
-							variant: "payment",
-							pay,
-							payload: {
-								bill: staticOfflinePayment.bill,
-								merchant: staticOfflinePayment.merchant,
+							bill: {
+								allowTip: staticOfflinePayment.bill.allowTip,
+								currency: staticOfflinePayment.bill.currency,
+								items: Array.from(
+									staticOfflinePayment.bill.items.map((item) => ({
+										id: createIdFromString(item.id),
+										quantity: item.quantity,
+										item: {
+											label: item.label,
+											price: item.price,
+										},
+									})),
+								),
 							},
+							merchant: staticOfflinePayment.merchant,
 						},
 					});
 
@@ -160,13 +197,11 @@ export class StaticPaymentBillDriver implements BillDriver {
 								{},
 								{
 									onEvent: async () => {
-										callback({
-											type: "screen",
+										screenStack.replace({
+											variant: "info",
 											payload: {
-												variant: "paymentFinished",
-												payload: {
-													type: "success",
-												},
+												status: "success",
+												text: NonEmptyString("The bill is successfully paid!"),
 											},
 										});
 										resolvePaymentFinished();
@@ -180,7 +215,6 @@ export class StaticPaymentBillDriver implements BillDriver {
 		);
 
 		return {
-			refresh: async () => {},
 			close: async () => {
 				billSubscription.stop();
 				if (zapVerificationSubscription !== null) {

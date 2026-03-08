@@ -1,12 +1,8 @@
-"use client";
-
 import {
 	createId,
 	createIdFromString,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
-	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
@@ -19,10 +15,11 @@ import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
+	BoolToSqliteBoolSchema,
 	HttpsUrlSchema,
 	NonEmptyString255Schema,
-	NonEmptyStringSchema,
 	PositiveIntegerSchema,
 	StringToNullableNumberSchema,
 	StringToUndefinedStringSchema,
@@ -30,34 +27,35 @@ import {
 
 export const fioPluginSchema = z.object({
 	apiUrl: StringToUndefinedStringSchema.pipe(HttpsUrlSchema),
-	isActive: z.boolean(),
+	isActive: BoolToSqliteBoolSchema,
 	tokens: z
 		.object({
-			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+			id: TableIdSchema,
 			token: StringToUndefinedStringSchema.pipe(NonEmptyString255Schema),
 		})
-		.array(),
+		.array()
+		.readonly(),
 	numberOfSecondsBetweenChecks: StringToNullableNumberSchema.pipe(
 		PositiveIntegerSchema,
 	),
 });
 
-const tokenDefaultValues = {
-	id: "",
-	token: "",
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
 };
 
-const fioPluginDefaultValues = {
-	apiUrl: "https://fioapi.fio.cz",
-	isActive: true,
-	tokens: [
-		{
-			id: "",
-			token: "",
-		},
-	],
-	numberOfSecondsBetweenChecks: "30",
-} satisfies z.input<typeof fioPluginSchema>;
+const createTokenDefaultValues = () => ({
+	id: createId(createIdDeps),
+	token: "",
+});
+
+const createFioPluginDefaultValues = () =>
+	({
+		apiUrl: "https://fioapi.fio.cz",
+		isActive: false,
+		tokens: [createTokenDefaultValues()],
+		numberOfSecondsBetweenChecks: "30",
+	}) satisfies z.input<typeof fioPluginSchema>;
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(fioPluginSchema, ({ builder }) => ({
@@ -84,7 +82,7 @@ const createComponents = (t: TFunction) =>
 				...builder.arrayTableField(
 					{
 						name: "tokens",
-						defaultValue: tokenDefaultValues,
+						defaultValue: createTokenDefaultValues,
 						columns: [
 							{
 								title: t("settings:form.fio-plugin-form.title.id"),
@@ -117,7 +115,7 @@ export const FioPluginForm: React.FC<{
 	const { t } = useTranslation();
 	const evolu = useEvolu();
 	const [defaultValues] = useState(() => {
-		return merge(fioPluginDefaultValues, params.defaultValues ?? {});
+		return merge(createFioPluginDefaultValues(), params.defaultValues ?? {});
 	});
 	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(fioPluginSchema, {
@@ -130,22 +128,19 @@ export const FioPluginForm: React.FC<{
 
 			const { tokens, ...fioPlugin } = values;
 
-			getOrThrow(
-				evolu.upsert(
-					"fioPlugin",
-					{
-						...fioPlugin,
-						isActive: fioPlugin.isActive ? sqliteTrue : sqliteFalse,
-						id,
+			evolu.upsert(
+				"fioPlugin",
+				{
+					...fioPlugin,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
 					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id);
-							}
-						},
-					},
-				),
+				},
 			);
 
 			const originalTokens = new Set(
@@ -157,23 +152,19 @@ export const FioPluginForm: React.FC<{
 					originalTokens.delete(token.id);
 				}
 
-				getOrThrow(
-					evolu.upsert("fioPluginToken", {
-						...token,
-						id: token.id ?? createId(createIdDeps),
-						fioPluginId: id,
-					}),
-				);
+				evolu.upsert("fioPluginToken", {
+					...token,
+					id: token.id ?? createId(createIdDeps),
+					fioPluginId: id,
+				});
 			}
 
 			for (const id of originalTokens) {
 				if (id) {
-					getOrThrow(
-						evolu.update("fioPluginToken", {
-							id: id as Id,
-							isDeleted: sqliteTrue,
-						}),
-					);
+					evolu.update("fioPluginToken", {
+						id: id as Id,
+						isDeleted: sqliteTrue,
+					});
 				}
 			}
 		},

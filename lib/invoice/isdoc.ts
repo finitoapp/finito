@@ -1,7 +1,7 @@
+import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
+import { CountryCode } from "@/lib/shared/types";
 import { formatPostalCode } from "@/lib/shared/utils/format";
 import { parseCzechBankAccountFromIban } from "@/lib/shared/utils/iban";
-import { CountryCode } from "@/lib/shared/types";
-import { type Invoice, InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 
 const mapCountryCodeToName: Record<CountryCode, string> = {
 	[CountryCode.CZ]: "Česká republika",
@@ -14,31 +14,37 @@ const mapPaymentMethodToNumber: Record<InvoicePaymentMethod, number> = {
 };
 
 export const createIsdocXml = (invoice: Invoice) => {
-	const createParty = (
+	const createParty = (props: {
 		billingInfo:
-			| Invoice["supplier"]["billingInfo"]
-			| Invoice["customer"]["billingInfo"],
-	) => `<Party>
+			| Invoice["invoiceSupplierBillingInfo"]
+			| Invoice["invoiceCustomerBillingInfo"];
+		address:
+			| Invoice["invoiceSupplierBillingInfoAddress"]
+			| Invoice["invoiceCustomerBillingInfoAddress"];
+		countrySpecific:
+			| Invoice["invoiceSupplierBillingInfoCz"]
+			| Invoice["invoiceCustomerBillingInfoCz"];
+	}) => `<Party>
       <PartyIdentification>
         <ID></ID>
       </PartyIdentification>
       <PartyName>
-        <Name>${billingInfo.name}</Name>
+        <Name>${props.billingInfo.name}</Name>
       </PartyName>
       <PostalAddress>
-        <StreetName>${billingInfo.address.street}</StreetName>
-        <BuildingNumber>${billingInfo.address.descriptiveNumber}</BuildingNumber>
-        <CityName>${billingInfo.address.city}</CityName>
-        <PostalZone>${formatPostalCode(billingInfo.address.postalCode)}</PostalZone>
+        <StreetName>${props.address.street}</StreetName>
+        <BuildingNumber>${props.address.descriptiveNumber}</BuildingNumber>
+        <CityName>${props.address.city}</CityName>
+        <PostalZone>${props.address.postalCode ? formatPostalCode(props.address.postalCode) : ""}</PostalZone>
         <Country>
-          <IdentificationCode>${billingInfo.countrySpecific.countryCode}</IdentificationCode>
-          <Name>${mapCountryCodeToName[billingInfo.countrySpecific.countryCode]}</Name>
+          <IdentificationCode>${props.billingInfo.countryCode}</IdentificationCode>
+          <Name>${mapCountryCodeToName[props.billingInfo.countryCode]}</Name>
         </Country>
       </PostalAddress>
       ${
-				billingInfo.countrySpecific.vatNumber
+				props.countrySpecific.vatNumber
 					? `<PartyTaxScheme>
-        <CompanyID>${billingInfo.countrySpecific.vatNumber}</CompanyID>
+        <CompanyID>${props.countrySpecific.vatNumber}</CompanyID>
         <TaxScheme>VAT</TaxScheme>
       </PartyTaxScheme>`
 					: ""
@@ -50,34 +56,42 @@ export const createIsdocXml = (invoice: Invoice) => {
 		id: number,
 	) => `<InvoiceLine>
       <ID>${id}</ID>
-      <InvoicedQuantity unitCode="${line.unitOfMeasure}">${line.quantity.toString()}</InvoicedQuantity>
-      <LineExtensionAmount>${line.price.toString()}</LineExtensionAmount>
-      <LineExtensionAmountTaxInclusive>${line.price.toString()}</LineExtensionAmountTaxInclusive>
+      <InvoicedQuantity unitCode="${line.item.unitOfMeasure}">${line.quantity.toString()}</InvoicedQuantity>
+      <LineExtensionAmount>${line.totalAmount.toString()}</LineExtensionAmount>
+      <LineExtensionAmountTaxInclusive>${line.item.price.toString()}</LineExtensionAmountTaxInclusive>
       <LineExtensionTaxAmount>0.0</LineExtensionTaxAmount>
-      <UnitPrice>${line.price.toString()}</UnitPrice>
-      <UnitPriceTaxInclusive>${line.price.toString()}</UnitPriceTaxInclusive>
+      <UnitPrice>${line.item.price.toString()}</UnitPrice>
+      <UnitPriceTaxInclusive>${line.item.price.toString()}</UnitPriceTaxInclusive>
       <ClassifiedTaxCategory>
         <Percent>0</Percent>
         <VATCalculationMethod>0</VATCalculationMethod>
         <VATApplicable>false</VATApplicable>
       </ClassifiedTaxCategory>
-      <Note>${line.unitOfMeasure}</Note>
+      <Note>${line.item.unitOfMeasure}</Note>
       <Item>
-        <Description>${line.label}</Description>
+        <Description>${line.item.label}</Description>
       </Item>
     </InvoiceLine>`;
 
-	const supplierParty = createParty(invoice.supplier.billingInfo);
-	const customerParty = createParty(invoice.customer.billingInfo);
+	const supplierParty = createParty({
+		billingInfo: invoice.invoiceSupplierBillingInfo,
+		address: invoice.invoiceSupplierBillingInfoAddress,
+		countrySpecific: invoice.invoiceSupplierBillingInfoCz,
+	});
+	const customerParty = createParty({
+		billingInfo: invoice.invoiceCustomerBillingInfo,
+		address: invoice.invoiceCustomerBillingInfoAddress,
+		countrySpecific: invoice.invoiceCustomerBillingInfoCz,
+	});
 
 	const totalAmount = invoice.items.reduce(
-		(acc, value) => acc + value.price * value.quantity,
+		(acc, value) => acc + value.totalAmount,
 		0,
 	);
 
 	const czechBankAccount =
-		invoice.payment.method === "bankTransfer"
-			? parseCzechBankAccountFromIban(invoice.payment.iban)
+		invoice.paymentMethod === "bankTransfer" && invoice.paymentIban
+			? parseCzechBankAccountFromIban(invoice.paymentIban)
 			: null;
 
 	return `<?xml version="1.0" encoding="UTF-8"?>
@@ -87,7 +101,7 @@ export const createIsdocXml = (invoice: Invoice) => {
   <UUID>${invoice.invoiceId}</UUID>
   <IssuingSystem>Finito</IssuingSystem>
   <IssueDate>${invoice.issueDate}</IssueDate>
-  <VATApplicable>${invoice.supplier.billingInfo.countrySpecific.vatPayer}</VATApplicable>
+  <VATApplicable>${invoice.invoiceSupplierBillingInfoCz.vatPayer}</VATApplicable>
   <ElectronicPossibilityAgreementReference/>
   <Note></Note>
   <LocalCurrencyCode>${invoice.currency}</LocalCurrencyCode>
@@ -139,12 +153,12 @@ export const createIsdocXml = (invoice: Invoice) => {
   <PaymentMeans>
     <Payment>
       <PaidAmount>${totalAmount.toString()}</PaidAmount>
-      <PaymentMeansCode>${mapPaymentMethodToNumber[invoice.payment.method]}</PaymentMeansCode>
+      <PaymentMeansCode>${mapPaymentMethodToNumber[invoice.paymentMethod]}</PaymentMeansCode>
       <Details>
         <PaymentDueDate>${invoice.dueDate}</PaymentDueDate>
         <ID>${invoice.invoiceNumber}</ID>
         ${czechBankAccount !== null ? `<BankCode>${czechBankAccount.split("/")[1]}</BankCode>` : ""}
-        ${invoice.payment.method === "bankTransfer" ? `<IBAN>${invoice.payment.iban}</IBAN>` : ""}
+        ${invoice.paymentMethod === "bankTransfer" ? `<IBAN>${invoice.paymentIban}</IBAN>` : ""}
         <VariableSymbol>${invoice.invoiceNumber}</VariableSymbol>
       </Details>
     </Payment>

@@ -1,8 +1,8 @@
 import {
 	createId,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
+	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { fromZonedTime } from "date-fns-tz";
@@ -16,14 +16,17 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	EmailSchema,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
 	PhoneSchema,
 	PositiveIntegerSchema,
 	StringToNullableStringSchema,
 	StringToNumberSchema,
 	StringToUndefinedStringSchema,
+	TimestampMs,
 } from "@/lib/shared/types";
 
 const reservationApprovalStatusValues = [
@@ -40,9 +43,9 @@ const reservationServiceStatusValues = [
 const reservationSourceValues = ["manual", "phone", "web"] as const;
 
 const reservationBaseSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
+	id: TableIdSchema,
 	note: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
-	tableId: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
+	tableId: StringToNullableStringSchema.pipe(TableIdSchema.nullable()),
 	startAtLocal: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
 	durationMinutes: StringToNumberSchema.pipe(PositiveIntegerSchema).refine(
 		(value) => value % 30 === 0,
@@ -55,8 +58,8 @@ const reservationBaseSchema = z.object({
 const reservationFormSchema = z
 	.discriminatedUnion("_tag", [
 		reservationBaseSchema.extend({
-			_tag: z.literal("reservationBooking"),
-			name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+			_tag: z.literal("booking"),
+			name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 			phone: StringToNullableStringSchema.pipe(PhoneSchema.nullable()),
 			email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
 			numberOfPeople: StringToNumberSchema.pipe(PositiveIntegerSchema),
@@ -71,8 +74,8 @@ const reservationFormSchema = z
 			label: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
 		}),
 		reservationBaseSchema.extend({
-			_tag: z.literal("reservationBlock"),
-			label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+			_tag: z.literal("block"),
+			label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 			name: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
 			phone: StringToNullableStringSchema.pipe(PhoneSchema.nullable()),
 			email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
@@ -89,7 +92,7 @@ const reservationFormSchema = z
 	])
 	.superRefine((value, context) => {
 		if (
-			value._tag === "reservationBooking" &&
+			value._tag === "booking" &&
 			value.approvalStatus === "approved" &&
 			value.tableId === null
 		) {
@@ -101,10 +104,14 @@ const reservationFormSchema = z
 		}
 	});
 
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
+
 const createDefaults = () =>
 	({
-		id: "",
-		_tag: "reservationBooking",
+		id: createId(createIdDeps),
+		_tag: "booking",
 		name: "",
 		phone: "",
 		email: "",
@@ -163,7 +170,7 @@ export const ReservationForm: React.FC<{
 					reservationBlock: t("reservations:form.tag.reservationBlock"),
 				},
 			}),
-			...builder.when("_tag", "reservationBooking", {
+			...builder.when("_tag", "booking", {
 				...builder.magicInput("name").text({
 					label: t("reservations:form.fields.name"),
 				}),
@@ -217,7 +224,7 @@ export const ReservationForm: React.FC<{
 					}),
 				}),
 			}),
-			...builder.when("_tag", "reservationBlock", {
+			...builder.when("_tag", "block", {
 				...builder.magicInput("label").text({
 					label: t("reservations:form.fields.label"),
 				}),
@@ -243,68 +250,55 @@ export const ReservationForm: React.FC<{
 	const form = useActionForm(reservationFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id = values.id ?? createId({ randomBytes: createRandomBytes() });
 			const startAt = fromZonedTime(values.startAtLocal, timezone).getTime();
-			const endAt = startAt + values.durationMinutes * 60 * 1000;
+			const endAt = TimestampMs(startAt + values.durationMinutes * 60 * 1000);
 
-			getOrThrow(
-				evolu.upsert(
-					"reservation",
-					{
-						id,
-						_tag: values._tag,
-						note: values.note,
-						tableId: values.tableId,
-						startAt,
-						endAt,
+			evolu.upsert(
+				"reservation",
+				{
+					id: values.id,
+					_tag: values._tag,
+					note: values.note,
+					tableId: values.tableId,
+					startAt,
+					endAt,
+				},
+				{
+					onComplete: () => {
+						onSuccess?.(values.id);
 					},
-					{
-						onComplete: () => {
-							onSuccess?.(id as Id);
-						},
-					},
-				),
+				},
 			);
 
-			if (values._tag === "reservationBooking") {
-				getOrThrow(
-					evolu.upsert("reservationBooking", {
-						id,
-						name: values.name,
-						phone: values.phone,
-						email: values.email,
-						numberOfPeople: values.numberOfPeople,
-						approvalStatus: values.approvalStatus,
-						serviceStatus: values.serviceStatus,
-						statusReason: values.statusReason,
-						source: values.source,
-					}),
-				);
-				if (values.id !== undefined) {
-					getOrThrow(
-						evolu.update("reservationBlock", {
-							id,
-							isDeleted: sqliteTrue,
-						}),
-					);
-				}
+			if (values._tag === "booking") {
+				evolu.upsert("reservationBooking", {
+					id: values.id,
+					name: values.name,
+					phone: values.phone,
+					email: values.email,
+					numberOfPeople: values.numberOfPeople,
+					approvalStatus: values.approvalStatus,
+					serviceStatus: values.serviceStatus,
+					statusReason: values.statusReason,
+					source: values.source,
+					isDeleted: sqliteFalse,
+				});
+				evolu.update("reservationBlock", {
+					id: values.id,
+					isDeleted: sqliteTrue,
+				});
 				return;
 			}
 
-			getOrThrow(
-				evolu.upsert("reservationBlock", {
-					id,
-					label: values.label,
-				}),
-			);
-			if (values.id !== undefined) {
-				getOrThrow(
-					evolu.update("reservationBooking", {
-						id,
-						isDeleted: sqliteTrue,
-					}),
-				);
-			}
+			evolu.upsert("reservationBlock", {
+				id: values.id,
+				label: values.label,
+				isDeleted: sqliteFalse,
+			});
+			evolu.update("reservationBooking", {
+				id: values.id,
+				isDeleted: sqliteTrue,
+			});
 		},
 	});
 

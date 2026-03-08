@@ -1,8 +1,7 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";

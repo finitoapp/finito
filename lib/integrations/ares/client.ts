@@ -4,6 +4,7 @@ import {
 	type IdentificationNumberCz,
 	IdentificationNumberCzSchema,
 	type NonEmptyString,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
 	NonNegativeIntegerSchema,
 } from "@/lib/shared/types";
@@ -16,7 +17,7 @@ const SubjectSchema = z.object({
 	sidlo: z.object({
 		nazevStatu: NonEmptyStringSchema,
 		nazevKraje: NonEmptyStringSchema.optional(),
-		nazevObce: NonEmptyStringSchema,
+		nazevObce: NonEmptyString255Schema,
 		nazevUlice: NonEmptyStringSchema.optional(),
 		nazevCastiObce: NonEmptyStringSchema,
 		textovaAdresa: NonEmptyStringSchema,

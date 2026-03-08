@@ -1,32 +1,33 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
-import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import {
 	createId,
 	createRandomBytes,
-	getOrThrow,
-	type Id,
+	type StandardSchemaV1,
 } from "@evolu/common";
 import type { SystemColumns } from "@evolu/common/local-first";
 import { merge, omit, pick } from "es-toolkit";
+import type { TFunction } from "i18next";
 import type React from "react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { PartialDeep, Simplify } from "type-fest";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import type { EvoluSchema } from "@/lib/evolu";
-import { assertNever } from "@/lib/shared/utils/type";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	EmailSchema,
 	FiatCurrency,
 	IbanSchema,
-	NonEmptyStringSchema,
+	NonEmptyString255,
+	NonEmptyString255Schema,
 	NwcCredentialsSchema,
 	StringToNullableStringSchema,
 	StringToUndefinedStringSchema,
 } from "@/lib/shared/types";
+import { assertNever } from "@/lib/shared/utils/type";
 
 const baseAccountSparkSchema = z.object({
 	mnemonic: z.string(),
@@ -34,8 +35,8 @@ const baseAccountSparkSchema = z.object({
 });
 
 const baseAccountSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	name: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	id: TableIdSchema,
+	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	accountIban: z.object({
 		iban: z.string(),
 		currency: z.enum(FiatCurrency).nullable(),
@@ -76,7 +77,7 @@ const accountSchema = z.discriminatedUnion("_tag", [
 		accountSpark: z.discriminatedUnion("mnemonicVariant", [
 			baseAccountSparkSchema.extend({
 				mnemonicVariant: z.literal("manual"),
-				mnemonic: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+				mnemonic: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 			}),
 			baseAccountSparkSchema.extend({
 				mnemonicVariant: z.literal("new"),
@@ -97,28 +98,33 @@ const accountSchema = z.discriminatedUnion("_tag", [
 	}),
 ]);
 
-const itemDefaultValues = {
-	id: "",
-	name: "",
-	_tag: "accountIban",
-	accountIban: {
-		iban: "",
-		currency: null,
-	},
-	accountLud16: {
-		lud16: "",
-	},
-	accountSpark: {
-		mnemonicVariant: "new",
-		mnemonic: "",
-	},
-	accountNwc: {
-		credentials: "",
-	},
-	accountCashRegister: {
-		currency: null,
-	},
-} satisfies z.input<typeof accountSchema>;
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
+
+const createItemDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		name: "",
+		_tag: "accountIban",
+		accountIban: {
+			iban: "",
+			currency: null,
+		},
+		accountLud16: {
+			lud16: "",
+		},
+		accountSpark: {
+			mnemonicVariant: "new",
+			mnemonic: "",
+		},
+		accountNwc: {
+			credentials: "",
+		},
+		accountCashRegister: {
+			currency: null,
+		},
+	}) satisfies z.input<typeof accountSchema>;
 
 const tagKeys = [
 	"accountIban",
@@ -227,7 +233,7 @@ export const AccountForm: React.FC<{
 }> = (params) => {
 	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
-		return merge(itemDefaultValues, params.defaultValues ?? {});
+		return merge(createItemDefaultValues(), params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
 	const components = useMemo(
@@ -239,7 +245,15 @@ export const AccountForm: React.FC<{
 		saveAction: async (values) => {
 			const upserts: {
 				[key in keyof EvoluSchema]?: Simplify<
-					Omit<EvoluSchema[key], keyof SystemColumns | "id">
+					Omit<
+						{
+							[key2 in keyof EvoluSchema[key]]: StandardSchemaV1.InferOutput<
+								// @ts-expect-error
+								EvoluSchema[key][key2]
+							>;
+						},
+						keyof SystemColumns | "id"
+					>
 				>;
 			} = {};
 			if (values._tag === "accountIban") {
@@ -270,7 +284,7 @@ export const AccountForm: React.FC<{
 				}
 
 				upserts.accountSpark = {
-					mnemonic,
+					mnemonic: NonEmptyString255(mnemonic),
 				};
 			} else if (values._tag === "accountCashRegister") {
 				upserts.accountCashRegister = {
@@ -292,30 +306,26 @@ export const AccountForm: React.FC<{
 				"accountCashRegister",
 			]);
 
-			getOrThrow(
-				evolu.upsert(
-					"account",
-					{
-						...valuesCopy,
-						id,
+			evolu.upsert(
+				"account",
+				{
+					...valuesCopy,
+					id,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
 					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id);
-							}
-						},
-					},
-				),
+				},
 			);
 
 			for (const [key, values] of Object.entries(upserts)) {
-				getOrThrow(
-					evolu.upsert(key, {
-						id,
-						...values,
-					}),
-				);
+				evolu.upsert(key as keyof EvoluSchema, {
+					id,
+					...values,
+				});
 			}
 		},
 	});

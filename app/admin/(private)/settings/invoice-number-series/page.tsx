@@ -1,8 +1,9 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { createIdFromString, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { InvoiceLastNumberForm } from "@/app/admin/(private)/settings/invoice-number-series/invoice-last-number-form";
 import { InvoiceNumberSeriesForm } from "@/app/admin/(private)/settings/invoice-number-series/invoice-number-series-form";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -12,40 +13,55 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
 	const itemId = createIdFromString("");
-	const seriesQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("invoiceNumberSeries")
-				.selectAll()
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
+	const seriesQuery = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("invoiceNumberSeries")
+					.selectAll()
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("serialNumberDigits", "is not", null)
+					.where("yearFormat", "is not", null)
+					.where("monthFormat", "is not", null)
+					.where("dayFormat", "is not", null)
+					.where("id", "=", itemId)
+					.$narrowType<{
+						serialNumberDigits: NotNull;
+						yearFormat: NotNull;
+						monthFormat: NotNull;
+						dayFormat: NotNull;
+					}>();
+			}),
 		[itemId],
 	);
 
-	const lastNumberQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("invoiceLastNumber")
-				.select(["id", "serialNumber", "date"])
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
+	const lastNumberQuery = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("invoiceLastNumber")
+					.select(["id", "serialNumber", "date"])
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("serialNumber", "is not", null)
+					.where("id", "=", itemId)
+					.$narrowType<{
+						serialNumber: NotNull;
+					}>();
+			}),
 		[itemId],
 	);
 
 	const { data: seriesData } = useEvoluQuery(seriesQuery);
 	const { data: lastNumberData } = useEvoluQuery(lastNumberQuery);
 
-	const item = seriesData && seriesData[0];
-	const lastNumber = lastNumberData && lastNumberData[0];
-	console.log(item, lastNumber);
+	const item = seriesData[0];
+	const lastNumber = lastNumberData[0];
 
 	return (
 		<div className={"flex flex-col gap-4"}>
@@ -55,12 +71,12 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<InvoiceNumberSeriesForm
-						key={item ? "yes" : "no"}
 						defaultValues={
 							item
 								? {
 										...item,
 										serialNumberDigits: item.serialNumberDigits.toString(),
+										prefix: item.prefix ?? "",
 									}
 								: undefined
 						}
@@ -79,7 +95,6 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<InvoiceLastNumberForm
-						key={lastNumber ? "yes" : "no"}
 						defaultValues={
 							lastNumber
 								? {

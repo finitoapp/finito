@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { isTheSameDateString } from "@/lib/shared/utils/date-string";
 import { DateString } from "@/lib/shared/types";
+import { isTheSameDateString } from "@/lib/shared/utils/date-string";
 
 describe("isTheSameDateString", () => {
 	it.each([

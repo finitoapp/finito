@@ -1,6 +1,6 @@
 "use client";
 
-import { getOrThrow, type Id } from "@evolu/common";
+import type { Id } from "@evolu/common";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
 	CheckIcon,
@@ -202,13 +202,11 @@ export const ReservationOperationsPanel: React.FC<{
 												className="h-7 px-2 text-xs"
 												onClick={(event) => {
 													event.stopPropagation();
-													getOrThrow(
-														evolu.update("reservationBooking", {
-															id: reservation.id,
-															approvalStatus: "approved",
-															statusReason: null,
-														}),
-													);
+													evolu.update("reservationBooking", {
+														id: reservation.id,
+														approvalStatus: "approved",
+														statusReason: null,
+													});
 												}}
 											>
 												<CheckIcon />
@@ -222,12 +220,10 @@ export const ReservationOperationsPanel: React.FC<{
 											className="h-7 px-2 text-xs"
 											onClick={(event) => {
 												event.stopPropagation();
-												getOrThrow(
-													evolu.update("reservationBooking", {
-														id: reservation.id,
-														approvalStatus: "rejected",
-													}),
-												);
+												evolu.update("reservationBooking", {
+													id: reservation.id,
+													approvalStatus: "rejected",
+												});
 											}}
 										>
 											<XIcon />
@@ -277,12 +273,10 @@ export const ReservationOperationsPanel: React.FC<{
 											className="h-7 px-2 text-xs"
 											onClick={(event) => {
 												event.stopPropagation();
-												getOrThrow(
-													evolu.update("reservationBooking", {
-														id: reservation.id,
-														serviceStatus: "seated",
-													}),
-												);
+												evolu.update("reservationBooking", {
+													id: reservation.id,
+													serviceStatus: "seated",
+												});
 											}}
 										>
 											<UserCheckIcon />
@@ -295,12 +289,10 @@ export const ReservationOperationsPanel: React.FC<{
 											className="h-7 px-2 text-xs"
 											onClick={(event) => {
 												event.stopPropagation();
-												getOrThrow(
-													evolu.update("reservationBooking", {
-														id: reservation.id,
-														serviceStatus: "noShow",
-													}),
-												);
+												evolu.update("reservationBooking", {
+													id: reservation.id,
+													serviceStatus: "noShow",
+												});
 											}}
 										>
 											<CircleDashedIcon />
@@ -350,12 +342,10 @@ export const ReservationOperationsPanel: React.FC<{
 											className="h-7 px-2 text-xs"
 											onClick={(event) => {
 												event.stopPropagation();
-												getOrThrow(
-													evolu.update("reservationBooking", {
-														id: reservation.id,
-														serviceStatus: "completed",
-													}),
-												);
+												evolu.update("reservationBooking", {
+													id: reservation.id,
+													serviceStatus: "completed",
+												});
 											}}
 										>
 											<CheckIcon />

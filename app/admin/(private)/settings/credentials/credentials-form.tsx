@@ -1,18 +1,13 @@
 "use client";
 
-import {
-	createId,
-	createRandomBytes,
-	getOrThrow,
-	sqliteFalse,
-	sqliteTrue,
-} from "@evolu/common";
+import { createId, createRandomBytes, kysely, sqliteTrue } from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import { useAtomValue } from "jotai";
+import type { NotNull } from "kysely";
 import type React from "react";
-import { useMemo, useEffect, useEffectEvent } from "react";
+import { useEffect, useEffectEvent, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import type { EmptyObject } from "type-fest";
 import { z } from "zod";
 import { accountAtom } from "@/atoms/account";
@@ -20,25 +15,27 @@ import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useNostr } from "@/hooks/use-nostr";
+import { createDeviceQuery } from "@/lib/evolu/device";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
+	BoolToSqliteBoolSchema,
 	NonEmptyStringSchema,
 	StringToNullableStringSchema,
-	StringToUndefinedStringSchema,
 	WssUrlSchema,
 } from "@/lib/shared/types";
 
-const transportTypeWebsocket = "websocket";
+const transportTypeWebsocket = "WebSocket";
 
 const relaySchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	isActive: z.boolean(),
+	id: TableIdSchema,
+	isActive: BoolToSqliteBoolSchema,
 	url: StringToNullableStringSchema.pipe(WssUrlSchema),
 });
 
 const transportSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	type: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-	isActive: z.boolean(),
+	id: TableIdSchema,
+	type: StringToNullableStringSchema.pipe(z.enum(["WebSocket"])),
+	isActive: BoolToSqliteBoolSchema,
 	url: StringToNullableStringSchema.pipe(WssUrlSchema),
 });
 
@@ -50,156 +47,165 @@ export const credentialsSchema = z.object({
 	transports: transportSchema.array(),
 });
 
-const relayDefaultValues: z.input<typeof relaySchema> = {
-	id: "",
-	isActive: true,
-	url: "",
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
 };
 
-const transportDefaultValues: z.input<typeof transportSchema> = {
-	id: "",
-	type: transportTypeWebsocket,
-	isActive: true,
-	url: "",
-};
+const createRelayDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		isActive: true,
+		url: "",
+	}) satisfies z.input<typeof relaySchema>;
 
-const credentialsDefaultValues: z.input<typeof credentialsSchema> = {
-	npub: "",
-	nsec: "",
-	seed: "",
-	relays: [],
-	transports: [],
-};
+const createTransportDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		type: transportTypeWebsocket,
+		isActive: true,
+		url: "",
+	}) satisfies z.input<typeof transportSchema>;
 
-const createComponents = (t: TFunction) => createAutoFormLayout(credentialsSchema, ({ builder }) => ({
-	...builder.magicInput("seed").textarea({
-		label: t("settings:form.credentials-form.label.seed"),
-		disabled: true,
-		copyToClipboard: true,
-		secretContent: true,
-		rows: 4,
-	}),
-	...builder.card(
-		{
-			title: t("settings:form.credentials-form.title.evolu-transports"),
-		},
-		{
-			...builder.arrayTableField(
-				{
-					name: "transports",
-					addRowLabel: t("settings:form.credentials-form.addRowLabel.add-transport"),
-					defaultValue: transportDefaultValues,
-					columns: [
-						{
-							title: t("settings:form.credentials-form.title.id"),
-							hidden: true,
-						},
-						{
-							title: t("settings:form.credentials-form.title.type"),
-							hidden: true,
-						},
-						{
-							title: t("settings:form.credentials-form.title.websocket-url"),
-						},
-						{
-							title: t("settings:form.credentials-form.title.active"),
-							inputCellClassName: "text-center",
-						},
-					],
-				},
-				({ builder }) => ({
-					...builder.magicInput("id").text({
-						type: "hidden",
+const createCredentialsDefaultValues = () =>
+	({
+		npub: "",
+		nsec: "",
+		seed: "",
+		relays: [],
+		transports: [],
+	}) satisfies z.input<typeof credentialsSchema>;
+
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(credentialsSchema, ({ builder }) => ({
+		...builder.magicInput("seed").textarea({
+			label: t("settings:form.credentials-form.label.seed"),
+			disabled: true,
+			copyToClipboard: true,
+			secretContent: true,
+			rows: 4,
+		}),
+		...builder.card(
+			{
+				title: t("settings:form.credentials-form.title.evolu-transports"),
+			},
+			{
+				...builder.arrayTableField(
+					{
+						name: "transports",
+						addRowLabel: t(
+							"settings:form.credentials-form.addRowLabel.add-transport",
+						),
+						defaultValue: createTransportDefaultValues,
+						columns: [
+							{
+								title: t("settings:form.credentials-form.title.id"),
+								hidden: true,
+							},
+							{
+								title: t("settings:form.credentials-form.title.type"),
+								hidden: true,
+							},
+							{
+								title: t("settings:form.credentials-form.title.websocket-url"),
+							},
+							{
+								title: t("settings:form.credentials-form.title.active"),
+								inputCellClassName: "text-center",
+							},
+						],
+					},
+					({ builder }) => ({
+						...builder.magicInput("id").text({
+							type: "hidden",
+						}),
+						...builder.magicInput("type").text({
+							type: "hidden",
+						}),
+						...builder.magicInput("url").text({
+							label: t("settings:form.credentials-form.label.websocket-url"),
+						}),
+						...builder.magicInput("isActive").checkbox({
+							label: t("settings:form.credentials-form.label.active"),
+						}),
 					}),
-					...builder.magicInput("type").text({
-						type: "hidden",
-					}),
-					...builder.magicInput("url").text({
-						label: t("settings:form.credentials-form.label.websocket-url"),
-					}),
-					...builder.magicInput("isActive").checkbox({
-						label: t("settings:form.credentials-form.label.active"),
-					}),
+				),
+			},
+		),
+		...builder.card(
+			{
+				title: t("settings:form.credentials-form.title.nostr-account"),
+			},
+			{
+				...builder.magicInput("npub").text({
+					label: t("settings:form.credentials-form.label.npub"),
+					disabled: true,
+					copyToClipboard: true,
 				}),
-			),
-		},
-	),
-	...builder.card(
-		{
-			title: t("settings:form.credentials-form.title.nostr-account"),
-		},
-		{
-			...builder.magicInput("npub").text({
-				label: t("settings:form.credentials-form.label.npub"),
-				disabled: true,
-				copyToClipboard: true,
-			}),
-			...builder.magicInput("nsec").text({
-				label: t("settings:form.credentials-form.label.nsec"),
-				disabled: true,
-				copyToClipboard: true,
-				secretContent: true,
-			}),
-		},
-	),
-	...builder.card(
-		{
-			title: t("settings:form.credentials-form.title.nostr-relays"),
-		},
-		{
-			...builder.arrayTableField(
-				{
-					name: "relays",
-					addRowLabel: t("settings:form.credentials-form.addRowLabel.add-relay"),
-					defaultValue: relayDefaultValues,
-					columns: [
-						{
-							title: t("settings:form.credentials-form.title.id"),
-							hidden: true,
-						},
-						{
-							title: t("settings:form.credentials-form.title.url"),
-						},
-						{
-							title: t("settings:form.credentials-form.title.active"),
-							className: "w-24",
-						},
-					],
-				},
-				({ builder }) => ({
-					...builder.magicInput("id").text({
-						type: "hidden",
-					}),
-					...builder.magicInput("url").text({
-						label: t("settings:form.credentials-form.label.relay-url"),
-					}),
-					...builder.magicInput("isActive").checkbox({
-						label: t("settings:form.credentials-form.label.active"),
-					}),
+				...builder.magicInput("nsec").text({
+					label: t("settings:form.credentials-form.label.nsec"),
+					disabled: true,
+					copyToClipboard: true,
+					secretContent: true,
 				}),
-			),
-		},
-	),
-}));
+			},
+		),
+		...builder.card(
+			{
+				title: t("settings:form.credentials-form.title.nostr-relays"),
+			},
+			{
+				...builder.arrayTableField(
+					{
+						name: "relays",
+						addRowLabel: t(
+							"settings:form.credentials-form.addRowLabel.add-relay",
+						),
+						defaultValue: createRelayDefaultValues,
+						columns: [
+							{
+								title: t("settings:form.credentials-form.title.id"),
+								hidden: true,
+							},
+							{
+								title: t("settings:form.credentials-form.title.url"),
+							},
+							{
+								title: t("settings:form.credentials-form.title.active"),
+								className: "w-24",
+							},
+						],
+					},
+					({ builder }) => ({
+						...builder.magicInput("id").text({
+							type: "hidden",
+						}),
+						...builder.magicInput("url").text({
+							label: t("settings:form.credentials-form.label.relay-url"),
+						}),
+						...builder.magicInput("isActive").checkbox({
+							label: t("settings:form.credentials-form.label.active"),
+						}),
+					}),
+				),
+			},
+		),
+	}));
 
 export const CredentialsForm: React.FC<EmptyObject> = () => {
 	const { t } = useTranslation();
+	const defaultValues = useMemo(createCredentialsDefaultValues, []);
 	const account = useAtomValue(accountAtom);
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
-	const accountId = account.id as never;
+	const accountId = account.id;
 	const { mnemonic } = account;
 	const { ndk } = useNostr();
 
 	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(credentialsSchema, {
-		defaultValues: credentialsDefaultValues,
+		defaultValues,
 		saveAction: async (values) => {
-			const createIdDeps = {
-				randomBytes: createRandomBytes(),
-			};
-
 			const currentRelays = await deviceEvolu.loadQuery(
-				deviceEvolu.createQuery((db) =>
+				createDeviceQuery((db) =>
 					db
 						.selectFrom("accountNostrRelay")
 						.select(["accountNostrRelay.id as id"])
@@ -211,32 +217,25 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 			const originalRelayIds = new Set(currentRelays.map((relay) => relay.id));
 
 			for (const relay of values.relays) {
-				const id = relay.id ? (relay.id as never) : createId(createIdDeps);
-				if (relay.id) {
-					originalRelayIds.delete(relay.id as never);
-				}
+				originalRelayIds.delete(relay.id);
 
-				getOrThrow(
-					deviceEvolu.upsert("accountNostrRelay", {
-						id,
-						accountId,
-						isActive: relay.isActive ? sqliteTrue : sqliteFalse,
-						url: relay.url,
-					}),
-				);
+				deviceEvolu.upsert("accountNostrRelay", {
+					id: relay.id,
+					accountId,
+					isActive: relay.isActive,
+					url: relay.url,
+				});
 			}
 
 			for (const relayId of originalRelayIds) {
-				getOrThrow(
-					deviceEvolu.update("accountNostrRelay", {
-						id: relayId,
-						isDeleted: sqliteTrue,
-					}),
-				);
+				deviceEvolu.update("accountNostrRelay", {
+					id: relayId,
+					isDeleted: sqliteTrue,
+				});
 			}
 
 			const currentTransports = await deviceEvolu.loadQuery(
-				deviceEvolu.createQuery((db) =>
+				createDeviceQuery((db) =>
 					db
 						.selectFrom("accountEvoluTransport")
 						.select(["accountEvoluTransport.id as id"])
@@ -250,43 +249,30 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 			);
 
 			for (const transport of values.transports) {
-				const id = transport.id
-					? (transport.id as never)
-					: createId(createIdDeps);
-				if (transport.id) {
-					originalTransportIds.delete(transport.id as never);
-				}
+				originalTransportIds.delete(transport.id);
 
-				getOrThrow(
-					deviceEvolu.upsert("accountEvoluTransport", {
-						id,
-						accountId,
-						type: transport.type,
-						isActive: transport.isActive ? sqliteTrue : sqliteFalse,
-					}),
-				);
+				deviceEvolu.upsert("accountEvoluTransport", {
+					id: transport.id,
+					accountId,
+					type: transport.type,
+					isActive: transport.isActive,
+				});
 
-				getOrThrow(
-					deviceEvolu.upsert("accountEvoluTransportWebsocket", {
-						id,
-						url: transport.url,
-					}),
-				);
+				deviceEvolu.upsert("accountEvoluTransportWebsocket", {
+					id: transport.id,
+					url: transport.url,
+				});
 			}
 
 			for (const transportId of originalTransportIds) {
-				getOrThrow(
-					deviceEvolu.update("accountEvoluTransport", {
-						id: transportId,
-						isDeleted: sqliteTrue,
-					}),
-				);
-				getOrThrow(
-					deviceEvolu.update("accountEvoluTransportWebsocket", {
-						id: transportId,
-						isDeleted: sqliteTrue,
-					}),
-				);
+				deviceEvolu.update("accountEvoluTransport", {
+					id: transportId,
+					isDeleted: sqliteTrue,
+				});
+				deviceEvolu.update("accountEvoluTransportWebsocket", {
+					id: transportId,
+					isDeleted: sqliteTrue,
+				});
 			}
 		},
 		onSuccess: () => {},
@@ -295,7 +281,7 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 	const reset = useEffectEvent(async () => {
 		const [relayRows, transportRows] = await Promise.all([
 			deviceEvolu.loadQuery(
-				deviceEvolu.createQuery((db) =>
+				createDeviceQuery((db) =>
 					db
 						.selectFrom("accountNostrRelay")
 						.select([
@@ -304,31 +290,51 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 							"accountNostrRelay.url as url",
 						])
 						.where("accountNostrRelay.accountId", "=", accountId)
-						.where("accountNostrRelay.isDeleted", "is not", sqliteTrue),
+						.where("accountNostrRelay.isDeleted", "is not", sqliteTrue)
+						.where("accountNostrRelay.isActive", "is not", null)
+						.where("accountNostrRelay.url", "is not", null)
+						.$narrowType<{
+							isActive: NotNull;
+							url: NotNull;
+						}>(),
 				),
 			),
 			deviceEvolu.loadQuery(
-				deviceEvolu.createQuery((db) =>
+				createDeviceQuery((db) =>
 					db
 						.selectFrom("accountEvoluTransport")
-						.leftJoin(
-							"accountEvoluTransportWebsocket",
-							"accountEvoluTransportWebsocket.id",
-							"accountEvoluTransport.id",
-						)
-						.select([
+						.select((eb) => [
 							"accountEvoluTransport.id as id",
 							"accountEvoluTransport.type as type",
 							"accountEvoluTransport.isActive as isActive",
-							"accountEvoluTransportWebsocket.url as url",
+
+							kysely
+								.jsonObjectFrom(
+									eb
+										.selectFrom("accountEvoluTransportWebsocket")
+										.select(["accountEvoluTransportWebsocket.url as url"])
+										.whereRef(
+											"accountEvoluTransportWebsocket.id",
+											"=",
+											"accountEvoluTransport.id",
+										)
+										.where(
+											"accountEvoluTransportWebsocket.isDeleted",
+											"is not",
+											sqliteTrue,
+										)
+										.where("accountEvoluTransportWebsocket.url", "is not", null)
+										.$narrowType<{
+											url: NotNull;
+										}>(),
+								)
+								.as("websocket"),
 						])
 						.where("accountEvoluTransport.accountId", "=", accountId)
 						.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
-						.where(
-							"accountEvoluTransportWebsocket.isDeleted",
-							"is not",
-							sqliteTrue,
-						),
+						.$narrowType<{
+							type: NotNull;
+						}>(),
 				),
 			),
 		]);
@@ -339,7 +345,7 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 			seed: mnemonic,
 			relays:
 				relayRows.length === 0
-					? credentialsDefaultValues.relays
+					? defaultValues.relays
 					: relayRows.map((relay) => ({
 							id: relay.id,
 							isActive: Boolean(relay.isActive),
@@ -347,9 +353,9 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 						})),
 			transports: transportRows.map((transport) => ({
 				id: transport.id,
-				type: transport.type ?? transportTypeWebsocket,
+				type: transport.type,
 				isActive: Boolean(transport.isActive),
-				url: transport.url ?? "",
+				url: transport.websocket?.url ?? "",
 			})),
 		});
 	});

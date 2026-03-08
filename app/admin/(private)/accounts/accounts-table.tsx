@@ -1,14 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -26,12 +26,27 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { Currency, Iban, NonEmptyString255 } from "@/lib/shared/types";
 import { formatIban } from "@/lib/shared/utils/format";
 
 type Task = {
 	id: Id;
 	name: string;
 	_tag: string;
+	accountLud16: {
+		lud16: string;
+	} | null;
+	accountCashRegister: {
+		currency: Currency;
+	} | null;
+	accountSpark: { id: Id } | null;
+	accountNwc: { id: Id } | null;
+	accountIban: {
+		iban: Iban;
+		currency: Currency;
+	} | null;
 };
 
 const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
@@ -47,28 +62,52 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 		accessorKey: "address",
 		header: createSortableHeader(t("accounts:table.columns.address")),
 		cell: ({ row }) => {
-			console.log("row", row.original);
 			return row
-				? row.original._tag === "accountLud16"
-					? row.original["accountLud16.lud16"]
-					: row.original._tag === "accountCashRegister"
+				? row.original.accountLud16
+					? row.original.accountLud16.lud16
+					: row.original.accountCashRegister
 						? "-"
-						: row.original._tag === "accountSpark"
+						: row.original.accountSpark
 							? "-"
-							: row.original._tag === "accountNwc"
+							: row.original.accountNwc
 								? "-"
-								: formatIban(row.original["accountIban.iban"])
+								: row.original.accountIban
+									? formatIban(row.original.accountIban.iban)
+									: "-"
 				: "-";
 		},
 	},
+	{
+		accessorKey: "currency",
+		header: createSortableHeader(t("accounts:table.columns.currency")),
+		cell: ({ row }) =>
+			row.original.accountIban
+				? row.original.accountIban.currency
+				: row.original.accountCashRegister
+					? row.original.accountCashRegister.currency
+					: "-",
+	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "name",
-		title: t("accounts:table.columns.name"),
-	},
-] satisfies { id: keyof Task; title: string }[];
+const sortingFields = {
+	id: "account.id",
+	createdAt: "account.createdAt",
+	name: "account.name",
+	_tag: "account._tag",
+	accountLud16: "account._tag",
+	accountCashRegister: "account._tag",
+	accountSpark: "account._tag",
+	accountNwc: "account._tag",
+	accountIban: "account._tag",
+} as const satisfies Record<keyof Task | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "name",
+			title: t("accounts:table.columns.name"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function AccountsTable() {
 	const { t } = useTranslation();
@@ -83,53 +122,113 @@ export function AccountsTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? {
-					id: "createdAt",
-					desc: true,
-				};
-				const sortingColumn = `account.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("account")
-						.leftJoin("accountIban", "accountIban.id", "account.id")
-						.leftJoin("accountLud16", "accountLud16.id", "account.id")
-						.leftJoin("accountSpark", "accountSpark.id", "account.id")
-						.leftJoin("accountNwc", "accountNwc.id", "account.id")
-						.leftJoin(
-							"accountCashRegister",
-							"accountCashRegister.id",
-							"account.id",
+						.select(
+							(eb) =>
+								[
+									"account.id as id",
+									"account.name as name",
+									"account.createdAt as createdAt",
+									"account._tag as _tag",
+
+									kysely
+										.jsonObjectFrom(
+											eb
+												.selectFrom("accountIban")
+												.select([
+													"accountIban.iban as iban",
+													"accountIban.currency as currency",
+												])
+												.whereRef("accountIban.id", "=", "account.id")
+												.where("accountIban.isDeleted", "is not", sqliteTrue)
+												.where("accountIban.iban", "is not", null)
+												.where("accountIban.currency", "is not", null)
+												.$narrowType<{
+													iban: NotNull;
+													currency: NotNull;
+												}>(),
+										)
+										.as("accountIban"),
+
+									kysely
+										.jsonObjectFrom(
+											eb
+												.selectFrom("accountLud16")
+												.select(["accountLud16.lud16 as lud16"])
+												.whereRef("accountLud16.id", "=", "account.id")
+												.where("accountLud16.isDeleted", "is not", sqliteTrue)
+												.where("accountLud16.lud16", "is not", null)
+												.$narrowType<{
+													lud16: NotNull;
+												}>(),
+										)
+										.as("accountLud16"),
+
+									kysely
+										.jsonObjectFrom(
+											eb
+												.selectFrom("accountSpark")
+												.select(["accountSpark.id as id"])
+												.whereRef("accountSpark.id", "=", "account.id")
+												.where("accountSpark.isDeleted", "is not", sqliteTrue),
+										)
+										.as("accountSpark"),
+
+									kysely
+										.jsonObjectFrom(
+											eb
+												.selectFrom("accountNwc")
+												.select(["accountNwc.id as id"])
+												.whereRef("accountNwc.id", "=", "account.id")
+												.where("accountNwc.isDeleted", "is not", sqliteTrue),
+										)
+										.as("accountNwc"),
+
+									kysely
+										.jsonObjectFrom(
+											eb
+												.selectFrom("accountCashRegister")
+												.select(["accountCashRegister.currency as currency"])
+												.whereRef("accountCashRegister.id", "=", "account.id")
+												.where(
+													"accountCashRegister.isDeleted",
+													"is not",
+													sqliteTrue,
+												)
+												.where("accountCashRegister.currency", "is not", null)
+												.$narrowType<{
+													currency: NotNull;
+												}>(),
+										)
+										.as("accountCashRegister"),
+								] as const,
 						)
-						.select([
-							"account.id as id",
-							"account.name as name",
-							"account._tag as _tag",
-							"account.createdAt as createdAt",
-							"accountIban.id as accountIban",
-							"accountIban.iban as accountIban.iban",
-							"accountIban.currency as accountIban.currency",
-							"accountLud16.id as accountLud16",
-							"accountLud16.lud16 as accountLud16.lud16",
-							"accountSpark.id as accountSpark",
-							"accountSpark.mnemonic as accountSpark.mnemonic",
-							"accountNwc.id as accountNwc",
-							"accountNwc.credentials as accountNwc.credentials",
-							"accountCashRegister.id as accountCashRegister",
-							"accountCashRegister.currency as accountCashRegister.currency",
-						] as const)
-						.where("account.isDeleted", "is not", sqliteTrue);
+						.where("account.isDeleted", "is not", sqliteTrue)
+						.$narrowType<{
+							name: NotNull;
+							_tag: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("account.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -137,19 +236,23 @@ export function AccountsTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("account.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "name") {
-							qb = qb.where("account.name", "like", `${filter.value}%`);
+							qb = qb.where(
+								"account.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 					}
 
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -157,23 +260,15 @@ export function AccountsTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -202,8 +297,6 @@ export function AccountsTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="name"
-					searchPlaceholder={t("accounts:table.search.placeholder.by-name")}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(

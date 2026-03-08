@@ -52,7 +52,7 @@ export const ndkAtom = atom(async (get) => {
 	const nostrRelayUrls = nostrRelays.map((relay) => relay.url);
 
 	const relaysToRemove = currentRelays.filter(
-		(currentRelay) => !nostrRelayUrls.includes(currentRelay),
+		(currentRelay) => !(nostrRelayUrls as string[]).includes(currentRelay),
 	);
 
 	const relaysToAdd = nostrRelayUrls.filter(

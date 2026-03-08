@@ -1,8 +1,9 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,11 +26,14 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 type Row = {
 	id: Id;
-	occurredAt: number;
-	createdAt: string;
+	occurredAt: TimestampMs;
+	createdAt: DateIso;
 	accountName: string;
 	type: string;
 	amount: number;
@@ -78,12 +82,14 @@ const createFilterableColumns = (t: TFunction) =>
 		},
 	] satisfies { id: keyof Row; title: string }[];
 
-const sortingColumnMap = {
+const sortingFields = {
+	id: "transaction.id",
 	occurredAt: "transaction.occurredAt",
 	createdAt: "transaction.createdAt",
 	amount: "transaction.amount",
 	accountName: "account.name",
 	type: "transaction._tag",
+	note: "transaction.note",
 } as const;
 
 export function TransactionsTable() {
@@ -99,17 +105,15 @@ export function TransactionsTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
+
 				const finalSorting = {
-					id:
-						sorting && sorting.id in sortingColumnMap
-							? (sorting.id as keyof typeof sortingColumnMap)
-							: ("occurredAt" as const),
-					desc: sorting?.desc ?? true,
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
 				};
 
-				const sortingColumn = sortingColumnMap[finalSorting.id];
-
-				const query = evolu.createQuery((db) => {
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("transaction")
 						.innerJoin("account", "account.id", "transaction.accountId")
@@ -123,18 +127,28 @@ export function TransactionsTable() {
 							"transaction.note as note",
 						] as const)
 						.where("transaction.isDeleted", "is not", sqliteTrue)
-						.where("account.isDeleted", "is not", sqliteTrue);
+						.where("account.isDeleted", "is not", sqliteTrue)
+						.where("transaction.occurredAt", "is not", null)
+						.where("transaction._tag", "is not", null)
+						.where("transaction.amount", "is not", null)
+						.where("account.name", "is not", null)
+						.$narrowType<{
+							occurredAt: NotNull;
+							accountName: NotNull;
+							type: NotNull;
+							amount: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("transaction.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -142,19 +156,23 @@ export function TransactionsTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("transaction.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "accountName") {
-							qb = qb.where("account.name", "like", `${filter.value}%`);
+							qb = qb.where(
+								"account.name",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 					}
 
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -162,23 +180,15 @@ export function TransactionsTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -207,10 +217,6 @@ export function TransactionsTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="accountName"
-					searchPlaceholder={t(
-						"transactions:table.search.placeholder.by-account",
-					)}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(

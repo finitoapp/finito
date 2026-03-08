@@ -1,7 +1,7 @@
 import * as errore from "errore";
 import type { BillDriver, BillSubscription } from "@/lib/bill/driver";
-import { NostrMenu as NostrMenuSchema } from "@/lib/nostr/contracts/menu";
 import { menuStorage } from "@/lib/menu/nostr-storage";
+import { NostrMenu as NostrMenuSchema } from "@/lib/nostr/contracts/menu";
 
 const menuBillIdRegex = /^(m|menu|menus)-([0-9a-f]{64})$/i;
 
@@ -9,6 +9,7 @@ export class MenuDriver implements BillDriver {
 	public async subscribe({
 		billId,
 		callback,
+		screenStack,
 		ndk,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
 		const [_, _prefix, pubkey] = menuBillIdRegex.exec(billId) ?? [
@@ -21,8 +22,8 @@ export class MenuDriver implements BillDriver {
 			return null;
 		}
 
-		callback({
-			type: "billLoading",
+		screenStack.replace({
+			variant: "loading",
 			payload: {
 				text: "Loading menu...",
 			},
@@ -41,22 +42,18 @@ export class MenuDriver implements BillDriver {
 
 				const result = NostrMenuSchema.safeParse(resultOrError);
 				if (!result.success) {
-					console.error(result.error);
 					callback({
-						type: "billLoading",
+						type: "close",
 						payload: {
-							text: "Menu has an invalid structure...",
+							alertMessage: "Menu has an invalid structure...",
 						},
 					});
 					return;
 				}
 
-				callback({
-					type: "screen",
-					payload: {
-						variant: "menu",
-						payload: result.data,
-					},
+				screenStack.replace({
+					variant: "menu",
+					payload: result.data,
 				});
 			},
 		);
@@ -64,20 +61,18 @@ export class MenuDriver implements BillDriver {
 		if (errore.isError(subscription)) {
 			console.error(subscription);
 			callback({
-				type: "billLoading",
+				type: "close",
 				payload: {
-					text: "Menu subscription closed before becoming ready...",
+					alertMessage: "Menu subscription closed before becoming ready...",
 				},
 			});
 
 			return {
-				refresh: async () => {},
 				close: async () => {},
 			} satisfies BillSubscription;
 		}
 
 		return {
-			refresh: async () => {},
 			close: async () => {
 				subscription.close();
 			},

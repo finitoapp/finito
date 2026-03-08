@@ -2,8 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
-import { I18nProvider } from "@/components/i18n-provider";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
+import { I18nProvider } from "@/components/i18n-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const browserQueryClient: QueryClient = new QueryClient({

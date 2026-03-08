@@ -14,7 +14,12 @@ const readLanguageFromStorage = () => {
 	}
 
 	const storedLanguage = window.localStorage.getItem("finito:language");
-	if (storedLanguage && SUPPORTED_LANGUAGES.includes(storedLanguage as (typeof SUPPORTED_LANGUAGES)[number])) {
+	if (
+		storedLanguage &&
+		SUPPORTED_LANGUAGES.includes(
+			storedLanguage as (typeof SUPPORTED_LANGUAGES)[number],
+		)
+	) {
 		return storedLanguage;
 	}
 

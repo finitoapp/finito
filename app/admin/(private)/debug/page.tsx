@@ -1,16 +1,12 @@
 "use client";
 
-import {
-	createIdFromString,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
+import { createIdFromString, type Row, sqliteTrue } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { IconDownload, IconReload, IconUpload } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, format } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import type { NotNull } from "kysely";
 import { LoaderCircleIcon } from "lucide-react";
 import {
 	type ChangeEvent,
@@ -28,12 +24,22 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { useNostrRelays } from "@/hooks/use-nostr-relays";
-import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
-import { Schema } from "@/lib/evolu";
-import { downloadFile } from "@/lib/shared/files/file-utils";
-import { Currency } from "@/lib/shared/types";
-import { createZip, extractZip } from "@/lib/shared/files/zip";
+import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
+import type { Id } from "@/lib/evolu/types";
+import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
+import { downloadFile } from "@/lib/shared/files/file-utils";
+import { createZip, extractZip } from "@/lib/shared/files/zip";
+import {
+	Currency,
+	Email,
+	Integer,
+	NonEmptyString,
+	NonEmptyString255,
+	Phone,
+	PositiveInteger,
+	TimestampMs,
+} from "@/lib/shared/types";
 
 const DownloadSqliteData = () => {
 	const { t } = useTranslation();
@@ -60,6 +66,7 @@ const DownloadSqliteData = () => {
 	const fetchDatabaseFile = useEffectEvent(async () => {
 		try {
 			const result = await evolu.exportDatabase();
+
 			return new Uint8Array(result); // Convert to Uint8Array
 		} catch (error) {
 			console.error("Error fetching the database file:", error);
@@ -155,14 +162,12 @@ const DownloadStorageData = () => {
 		setLoading(true);
 
 		try {
-			const tableNames = Object.keys(Schema).sort();
+			const tableNames = Object.keys(AppSchema).sort();
 			const files: Array<{ name: string; data: Uint8Array }> = [];
 
 			for (const tableName of tableNames) {
-				const rows = await evolu.loadQuery(
-					evolu.createQuery((db) =>
-						(db.selectFrom(tableName as never) as never).selectAll(),
-					),
+				const rows = await evolu.loadQuery<Row>(
+					createQuery((db) => db.selectFrom(tableName as any).selectAll()),
 				);
 				files.push({
 					name: `${tableName}.csv`,
@@ -172,8 +177,8 @@ const DownloadStorageData = () => {
 
 			const zipBytes = createZip(files);
 
-			downloadFile({
-				bytes: [new Blob([zipBytes])],
+			await downloadFile({
+				bytes: [new Blob([zipBytes.buffer as ArrayBuffer])],
 				mimetype: "application/zip",
 				fileName: `finito-backup-${format(new Date(), "yyyy-MM-dd_HH:mm:ss")}.zip`,
 			});
@@ -221,7 +226,7 @@ const UploadStorageData = () => {
 				throw new Error(t("admin:debug.storage.import.noCsvInArchive"));
 			}
 
-			const knownTables = new Set(Object.keys(Schema));
+			const knownTables = new Set(Object.keys(AppSchema));
 			let importedRows = 0;
 			let importedTables = 0;
 
@@ -233,7 +238,7 @@ const UploadStorageData = () => {
 
 				const rows = decodeCsv(entry.data);
 				const knownFields = new Set(
-					Object.keys(Schema[tableName as keyof typeof Schema]),
+					Object.keys(AppSchema[tableName as keyof typeof AppSchema]),
 				);
 				const upsertRows = rows
 					.map((row) => {
@@ -252,18 +257,16 @@ const UploadStorageData = () => {
 					await new Promise<void>((resolve) => {
 						for (const [index, importRow] of batch.entries()) {
 							const isLast = index === batch.length - 1;
-							getOrThrow(
-								evolu.upsert(
-									tableName as never,
-									importRow as never,
-									isLast
-										? {
-												onComplete: () => {
-													resolve();
-												},
-											}
-										: undefined,
-								),
+							evolu.upsert(
+								tableName as never,
+								importRow as never,
+								isLast
+									? {
+											onComplete: () => {
+												resolve();
+											},
+										}
+									: undefined,
 							);
 						}
 					});
@@ -341,64 +344,66 @@ const RandomDataGenerator = () => {
 			Array(100)
 				.keys()
 				.forEach(() => {
-					getOrThrow(
-						evolu.insert("item", {
-							categoryId: null,
-							label: faker.food.dish(),
-							priceValue: faker.number.int({ min: 50, max: 600 }),
-							priceCurrency: Currency.CZK,
-						}),
-					);
+					evolu.insert("item", {
+						categoryId: null,
+						label: NonEmptyString255(faker.food.dish()),
+						price: Integer(faker.number.int({ min: 5000, max: 60000 })),
+						currency: Currency.CZK,
+					});
 				});
 
-			const tableIds: string[] = [];
+			const tableIds: Id[] = [];
 			Array(4)
 				.keys()
 				.forEach((index) => {
-					const { id } = getOrThrow(
-						evolu.insert("table", {
-							label: `Hall ${(index + 1).toString().padStart(2, "0")}`,
-							numberOfSeats: faker.number.int({ min: 2, max: 8 }),
-						}),
-					);
+					const { id } = evolu.insert("table", {
+						label: NonEmptyString255(
+							`Hall ${(index + 1).toString().padStart(2, "0")}`,
+						),
+						numberOfSeats: PositiveInteger(
+							faker.number.int({ min: 2, max: 8 }),
+						),
+					});
 					tableIds.push(id);
 				});
 
 			Array(2)
 				.keys()
 				.forEach((index) => {
-					const { id } = getOrThrow(
-						evolu.insert("table", {
-							label: `Bar ${(index + 1).toString().padStart(2, "0")}`,
-							numberOfSeats: faker.number.int({ min: 2, max: 4 }),
-						}),
-					);
+					const { id } = evolu.insert("table", {
+						label: NonEmptyString255(
+							`Bar ${(index + 1).toString().padStart(2, "0")}`,
+						),
+						numberOfSeats: PositiveInteger(
+							faker.number.int({ min: 2, max: 4 }),
+						),
+					});
 					tableIds.push(id);
 				});
 
 			Array(6)
 				.keys()
 				.forEach((index) => {
-					const { id } = getOrThrow(
-						evolu.insert("table", {
-							label: `Garden ${(index + 1).toString().padStart(2, "0")}`,
-							numberOfSeats: faker.number.int({ min: 4, max: 10 }),
-						}),
-					);
+					const { id } = evolu.insert("table", {
+						label: NonEmptyString255(
+							`Garden ${(index + 1).toString().padStart(2, "0")}`,
+						),
+						numberOfSeats: PositiveInteger(
+							faker.number.int({ min: 4, max: 10 }),
+						),
+					});
 					tableIds.push(id);
 				});
 
 			tableIds.map((tableId, index) =>
-				getOrThrow(
-					evolu.insert("tableCode", {
-						tableId,
-						code: (index + 1).toString().padStart(3, "0"),
-					}),
-				),
+				evolu.insert("tableCode", {
+					tableId,
+					code: NonEmptyString255((index + 1).toString().padStart(3, "0")),
+				}),
 			);
 
 			const billingSettingsRows = await evolu.loadQuery(
-				evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("billingSettings")
 						.select([
@@ -466,45 +471,46 @@ const RandomDataGenerator = () => {
 						}
 
 						const note =
-							faker.helpers.maybe(() => faker.lorem.sentence(), {
-								probability: 0.35,
-							}) ?? null;
+							faker.helpers.maybe(
+								() => NonEmptyString(faker.lorem.sentence()),
+								{
+									probability: 0.35,
+								},
+							) ?? null;
 						const phone =
-							faker.helpers.maybe(() => faker.phone.number(), {
+							faker.helpers.maybe(() => Phone(faker.phone.number()), {
 								probability: 0.55,
 							}) ?? null;
 						const email =
-							faker.helpers.maybe(() => faker.internet.email(), {
+							faker.helpers.maybe(() => Email(faker.internet.email()), {
 								probability: 0.45,
 							}) ?? null;
-						const numberOfPeople = faker.number.int({ min: 1, max: 8 });
+						const numberOfPeople = PositiveInteger(
+							faker.number.int({ min: 1, max: 8 }),
+						);
 
-						const { id: reservationId } = getOrThrow(
-							evolu.insert("reservation", {
-								tableId,
-								note,
-								_tag: "reservationBooking",
-								startAt,
-								endAt,
-							}),
-						);
-						getOrThrow(
-							evolu.upsert("reservationBooking", {
-								id: reservationId,
-								name: faker.person.fullName(),
-								phone,
-								email,
-								numberOfPeople,
-								approvalStatus: faker.helpers.arrayElement([
-									"approved",
-									"approved",
-									"pending",
-								]),
-								serviceStatus: "upcoming",
-								statusReason: null,
-								source: faker.helpers.arrayElement(["manual", "phone", "web"]),
-							}),
-						);
+						const { id: reservationId } = evolu.insert("reservation", {
+							tableId,
+							note,
+							_tag: "booking",
+							startAt: TimestampMs(startAt),
+							endAt: TimestampMs(endAt),
+						});
+						evolu.upsert("reservationBooking", {
+							id: reservationId,
+							name: NonEmptyString255(faker.person.fullName()),
+							phone,
+							email,
+							numberOfPeople,
+							approvalStatus: faker.helpers.arrayElement([
+								"approved",
+								"rejected",
+								"pending",
+							] as const),
+							serviceStatus: "upcoming",
+							statusReason: null,
+							source: faker.helpers.arrayElement(["manual", "phone", "web"]),
+						});
 
 						intervals.push({ start: startAt, end: endAt });
 						insertedForDay += 1;
@@ -524,49 +530,46 @@ const RandomDataGenerator = () => {
 							}
 
 							const note =
-								faker.helpers.maybe(() => faker.lorem.sentence(), {
-									probability: 0.35,
-								}) ?? null;
+								faker.helpers.maybe(
+									() => NonEmptyString(faker.lorem.sentence()),
+									{
+										probability: 0.35,
+									},
+								) ?? null;
 							const phone =
-								faker.helpers.maybe(() => faker.phone.number(), {
+								faker.helpers.maybe(() => Phone(faker.phone.number()), {
 									probability: 0.55,
 								}) ?? null;
 							const email =
-								faker.helpers.maybe(() => faker.internet.email(), {
+								faker.helpers.maybe(() => Email(faker.internet.email()), {
 									probability: 0.45,
 								}) ?? null;
-							const numberOfPeople = faker.number.int({ min: 1, max: 8 });
+							const numberOfPeople = PositiveInteger(
+								faker.number.int({ min: 1, max: 8 }),
+							);
 
-							const { id: reservationId } = getOrThrow(
-								evolu.insert("reservation", {
-									tableId,
-									note,
-									_tag: "reservationBooking",
-									startAt: candidateStart,
-									endAt: candidateEnd,
-								}),
-							);
-							getOrThrow(
-								evolu.upsert("reservationBooking", {
-									id: reservationId,
-									name: faker.person.fullName(),
-									phone,
-									email,
-									numberOfPeople,
-									approvalStatus: faker.helpers.arrayElement([
-										"approved",
-										"approved",
-										"pending",
-									]),
-									serviceStatus: "upcoming",
-									statusReason: null,
-									source: faker.helpers.arrayElement([
-										"manual",
-										"phone",
-										"web",
-									]),
-								}),
-							);
+							const { id: reservationId } = evolu.insert("reservation", {
+								tableId,
+								note,
+								_tag: "booking",
+								startAt: TimestampMs(candidateStart),
+								endAt: TimestampMs(candidateEnd),
+							});
+							evolu.upsert("reservationBooking", {
+								id: reservationId,
+								name: NonEmptyString255(faker.person.fullName()),
+								phone,
+								email,
+								numberOfPeople,
+								approvalStatus: faker.helpers.arrayElement([
+									"approved",
+									"approved",
+									"pending",
+								]),
+								serviceStatus: "upcoming",
+								statusReason: null,
+								source: faker.helpers.arrayElement(["manual", "phone", "web"]),
+							});
 							intervals.push({ start: candidateStart, end: candidateEnd });
 							break;
 						}
@@ -597,68 +600,48 @@ const RandomDataGenerator = () => {
 				const blockStartAt = blockDayStart + blockStartMinutes * 60 * 1000;
 				const blockEndAt = blockStartAt + blockDurationMs;
 
-				const { id: blockReservationId } = getOrThrow(
-					evolu.insert("reservation", {
-						tableId: blockTableId,
-						note: "Automaticky vygenerovaná blokace",
-						_tag: "reservationBlock",
-						startAt: blockStartAt,
-						endAt: blockEndAt,
-					}),
-				);
-				getOrThrow(
-					evolu.upsert("reservationBlock", {
-						id: blockReservationId,
-						label: "Technická blokace",
-					}),
-				);
+				const { id: blockReservationId } = evolu.insert("reservation", {
+					tableId: blockTableId,
+					note: NonEmptyString("Automaticky vygenerovaná blokace"),
+					_tag: "block",
+					startAt: TimestampMs(blockStartAt),
+					endAt: TimestampMs(blockEndAt),
+				});
+				evolu.upsert("reservationBlock", {
+					id: blockReservationId,
+					label: NonEmptyString255("Technická blokace"),
+				});
 			}
 
 			const sourceItems = await evolu.loadQuery(
-				evolu.createQuery((db) =>
+				createQuery((db) =>
 					db
 						.selectFrom("item")
 						.select([
 							"item.id as id",
 							"item.label as label",
-							"item.priceValue as priceValue",
-							"item.priceCurrency as priceCurrency",
+							"item.price as price",
+							"item.currency as currency",
 							"item.unitOfMeasure as unitOfMeasure",
 							"item.internalCode as internalCode",
 							"item.productCodeType as productCodeType",
 							"item.productCodeValue as productCodeValue",
 						] as const)
 						.where("item.isDeleted", "is not", sqliteTrue)
-						.orderBy("item.label", "asc"),
+						.where("item.label", "is not", null)
+						.where("item.price", "is not", null)
+						.where("item.currency", "is not", null)
+						.orderBy("item.label", "asc")
+						.$narrowType<{
+							label: NotNull;
+							price: NotNull;
+							currency: NotNull;
+						}>(),
 				),
 			);
 
-			const normalizedSourceItems = sourceItems.flatMap((item) => {
-				if (
-					item.label === null ||
-					item.priceValue === null ||
-					item.priceCurrency === null
-				) {
-					return [];
-				}
-				return [
-					{
-						id: item.id,
-						label: item.label,
-						priceValue: item.priceValue,
-						priceCurrency: item.priceCurrency,
-						unitOfMeasure: item.unitOfMeasure,
-						internalCode: item.internalCode,
-						productCodeType: item.productCodeType,
-						productCodeValue: item.productCodeValue,
-					},
-				];
-			});
-
-			if (normalizedSourceItems.length > 0) {
-				const shuffledSourceItems = faker.helpers.shuffle(
-					normalizedSourceItems,
-				);
+			if (sourceItems.length > 0) {
+				const shuffledSourceItems = faker.helpers.shuffle(sourceItems);
 				let sourceItemCursor = 0;
 				const takeSourceItems = (count: number) => {
 					const items = [];
@@ -684,81 +667,82 @@ const RandomDataGenerator = () => {
 					).getTime();
 
 				const menuBlueprints: Array<{
-					name: string;
-					validFrom: number | null;
-					validTo: number | null;
-					publishedAt: number | null;
-					categories: Array<{ name: string; itemsCount: number }>;
+					name: NonEmptyString255;
+					validFrom: TimestampMs | null;
+					validTo: TimestampMs | null;
+					publishedAt: TimestampMs | null;
+					categories: Array<{ name: NonEmptyString255; itemsCount: number }>;
 				}> = [
 					{
-						name: "Stálá nabídka",
+						name: NonEmptyString255("Stálá nabídka"),
 						validFrom: null,
 						validTo: null,
 						publishedAt: null,
 						categories: [
-							{ name: "Předkrmy", itemsCount: 4 },
-							{ name: "Hlavní jídla", itemsCount: 8 },
-							{ name: "Nápoje", itemsCount: 6 },
+							{ name: NonEmptyString255("Předkrmy"), itemsCount: 4 },
+							{ name: NonEmptyString255("Hlavní jídla"), itemsCount: 8 },
+							{ name: NonEmptyString255("Nápoje"), itemsCount: 6 },
 						],
 					},
 					{
-						name: `Polední menu ${formatInTimeZone(new Date(), timezone, "d.M.yyyy")}`,
+						name: NonEmptyString255(
+							`Polední menu ${formatInTimeZone(new Date(), timezone, "d.M.yyyy")}`,
+						),
 						validFrom: toZonedTimestamp(dayLabels[0], middayStartHour),
 						validTo: toZonedTimestamp(dayLabels[0], middayEndHour),
 						publishedAt: null,
 						categories: [
-							{ name: "Polévky", itemsCount: 2 },
-							{ name: "Hlavní jídla", itemsCount: 5 },
-							{ name: "Dezerty", itemsCount: 2 },
+							{ name: NonEmptyString255("Polévky"), itemsCount: 2 },
+							{ name: NonEmptyString255("Hlavní jídla"), itemsCount: 5 },
+							{ name: NonEmptyString255("Dezerty"), itemsCount: 2 },
 						],
 					},
 					{
-						name: `Polední menu ${formatInTimeZone(addDays(new Date(), 1), timezone, "d.M.yyyy")}`,
+						name: NonEmptyString255(
+							`Polední menu ${formatInTimeZone(addDays(new Date(), 1), timezone, "d.M.yyyy")}`,
+						),
 						validFrom: toZonedTimestamp(dayLabels[1], middayStartHour),
 						validTo: toZonedTimestamp(dayLabels[1], middayEndHour),
 						publishedAt: null,
 						categories: [
-							{ name: "Polévky", itemsCount: 2 },
-							{ name: "Hlavní jídla", itemsCount: 5 },
-							{ name: "Dezerty", itemsCount: 2 },
+							{ name: NonEmptyString255("Polévky"), itemsCount: 2 },
+							{ name: NonEmptyString255("Hlavní jídla"), itemsCount: 5 },
+							{ name: NonEmptyString255("Dezerty"), itemsCount: 2 },
 						],
 					},
 				];
 
 				for (const menuBlueprint of menuBlueprints) {
-					const { id: menuId } = getOrThrow(
-						evolu.insert("menu", {
-							name: menuBlueprint.name,
-							status: MenuStatus.Published,
-							validFrom: menuBlueprint.validFrom,
-							validTo: menuBlueprint.validTo,
-							publishedAt: menuBlueprint.publishedAt,
-						}),
-					);
+					const { id: menuId } = evolu.insert("menu", {
+						name: menuBlueprint.name,
+						status: MenuStatus.Published,
+						validFrom: menuBlueprint.validFrom,
+						validTo: menuBlueprint.validTo,
+						publishedAt: menuBlueprint.publishedAt,
+					});
 
 					for (const category of menuBlueprint.categories) {
-						const { id: menuCategoryId } = getOrThrow(
-							evolu.insert("menuCategory", {
-								menuId: menuId as Id,
-								name: category.name,
-							}),
-						);
+						const { id: menuCategoryId } = evolu.insert("menuCategory", {
+							menuId: menuId,
+							name: category.name,
+						});
 
 						for (const sourceItem of takeSourceItems(category.itemsCount)) {
-							getOrThrow(
-								evolu.insert("menuItem", {
-									menuCategoryId: menuCategoryId as Id,
-									sourceItemId: sourceItem.id as Id,
-									label: sourceItem.label,
-									availabilityStatus: null,
-									priceValue: sourceItem.priceValue,
-									priceCurrency: sourceItem.priceCurrency,
-									unitOfMeasure: sourceItem.unitOfMeasure,
-									internalCode: sourceItem.internalCode,
-									productCodeType: sourceItem.productCodeType,
-									productCodeValue: sourceItem.productCodeValue,
-								}),
-							);
+							const { id: menuItemId } = evolu.insert("menuItem", {
+								sourceItemId: sourceItem.id,
+								label: sourceItem.label,
+								price: sourceItem.price,
+								currency: sourceItem.currency,
+								unitOfMeasure: sourceItem.unitOfMeasure,
+								internalCode: sourceItem.internalCode,
+								productCodeType: sourceItem.productCodeType,
+								productCodeValue: sourceItem.productCodeValue,
+							});
+							evolu.upsert("menuItemLine", {
+								id: menuItemId,
+								menuCategoryId: menuCategoryId,
+								availabilityStatus: null,
+							});
 						}
 					}
 				}
@@ -864,7 +848,7 @@ export default function Home() {
 						{getRelayStatus !== undefined && (
 							<KeyValueList
 								items={nostrRelays.map((nostrRelay) => ({
-									key: nostrRelay,
+									key: nostrRelay.url,
 									value: JSON.stringify(
 										getRelayStatus.bind(ndk.cacheAdapter)(nostrRelay.url),
 									),

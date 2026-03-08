@@ -1,7 +1,7 @@
 import type { ScreenData } from "@/lib/bill/driver";
+import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
 import { createNostrMessageBus } from "@/lib/nostr/message-bus";
 import type { NonEmptyString, Uuid7 } from "@/lib/shared/types";
-import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
 
 export const tableRequestMessageBus = createNostrMessageBus<{
 	subscribeToBillByQrCode: {
@@ -23,20 +23,20 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 		};
 		output:
 			| {
-					variant: "paymentReady";
+					variant: "info";
 					payload: Extract<
 						ScreenData,
 						{
-							variant: "paymentReady";
+							variant: "info";
 						}
 					>["payload"];
 			  }
 			| {
-					variant: "paymentFinished";
+					variant: "payment";
 					payload: Extract<
 						ScreenData,
 						{
-							variant: "paymentFinished";
+							variant: "payment";
 						}
 					>["payload"];
 			  };
@@ -48,20 +48,16 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 export const tableEventMessageBus = createNostrMessageBus<{
 	billChange: {
 		input: {
-			billScreenData: Omit<
-				Extract<ScreenData, { variant: "payment" | "refund" }>,
-				"pay" | "parentScreen"
-			> | null;
+			billScreenData: Extract<ScreenData, { variant: "table" }>["payload"];
 			subscriptionId: Uuid7;
 		};
 		output: null;
 	};
 	paymentFinished: {
 		input: {
-			billScreenData: Omit<
-				Extract<ScreenData, { variant: "paymentFinished" }>,
-				"pay" | "parentScreen"
-			> | null;
+			billScreenData:
+				| Extract<ScreenData, { variant: "table" }>["payload"]
+				| null;
 			subscriptionId: Uuid7;
 		};
 		output: null;

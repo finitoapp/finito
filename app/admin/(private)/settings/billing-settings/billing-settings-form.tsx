@@ -2,13 +2,13 @@ import {
 	createId,
 	createIdFromString,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
 	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,19 +18,21 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatIban } from "@/lib/shared/utils/format";
+import { createQuery } from "@/lib/evolu";
+import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
+import { PaymentMethod } from "@/lib/evolu/model/payment";
+import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	FiatCurrency,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
 	NonNegativeIntegerSchema,
 	PercentSchema,
 	StringToNullableStringSchema,
 	StringToNumberSchema,
-	StringToUndefinedStringSchema,
 	Timezone,
 } from "@/lib/shared/types";
-import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
-import { PaymentMethod } from "@/lib/evolu/model/payment";
+import { formatIban } from "@/lib/shared/utils/format";
 
 export const billingSettingsFormSchema = z.object({
 	defaultInvoiceDueDateDays: StringToNumberSchema.pipe(
@@ -40,33 +42,29 @@ export const billingSettingsFormSchema = z.object({
 	defaultTimezone: z.enum(Timezone),
 	taxRates: z
 		.object({
-			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-			name: StringToNullableStringSchema.pipe(NonEmptyStringSchema.nullable()),
+			id: TableIdSchema,
+			name: StringToNullableStringSchema.pipe(
+				NonEmptyString255Schema.nullable(),
+			),
 			rate: StringToNumberSchema.pipe(PercentSchema),
 		})
 		.array(),
 	defaultPayment: z.discriminatedUnion("method", [
 		z.object({
 			method: z.null(),
-			bankAccountKey: z
-				.string()
-				.nullable()
-				.pipe(NonEmptyStringSchema.nullable()),
+			bankAccountKey: z.string().nullable().pipe(TableIdSchema.nullable()),
 		}),
 		z.object({
 			method: z.literal(InvoicePaymentMethod.BankTransfer),
-			bankAccountKey: z.string().nullable().pipe(NonEmptyStringSchema),
+			bankAccountKey: z.string().nullable().pipe(TableIdSchema),
 		}),
 		z.object({
 			method: z.literal(InvoicePaymentMethod.Cash),
-			bankAccountKey: z
-				.string()
-				.nullable()
-				.pipe(NonEmptyStringSchema.nullable()),
+			bankAccountKey: z.string().nullable().pipe(TableIdSchema.nullable()),
 		}),
 		z.object({
 			method: z.literal(InvoicePaymentMethod.PaymentCard),
-			bankAccountKey: z.string().nullable().pipe(NonEmptyStringSchema),
+			bankAccountKey: z.string().nullable().pipe(TableIdSchema),
 		}),
 	]),
 	invoiceEmailSettings: z.discriminatedUnion("enable", [
@@ -77,14 +75,24 @@ export const billingSettingsFormSchema = z.object({
 		}),
 		z.object({
 			enable: z.literal(true),
-			subject: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
-			body: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
+			subject: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
+			body: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
 		}),
 	]),
 	defaultPaymentMethod: z.enum(PaymentMethod),
-	defaultBankTransferCzKey: NonEmptyStringSchema.nullable(),
-	defaultLnZapKey: NonEmptyStringSchema.nullable(),
-	defaultLnSparkKey: NonEmptyStringSchema.nullable(),
+	defaultBankTransferCzKey: TableIdSchema.nullable(),
+	defaultLnZapKey: TableIdSchema.nullable(),
+	defaultLnSparkKey: TableIdSchema.nullable(),
+});
+
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
+
+const createTaxRate = () => ({
+	id: createId(createIdDeps),
+	name: "",
+	rate: "21",
 });
 
 export const createBillingSettingsDefaultValues = () =>
@@ -92,13 +100,7 @@ export const createBillingSettingsDefaultValues = () =>
 		defaultInvoiceDueDateDays: "14",
 		defaultCurrency: FiatCurrency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
-		taxRates: [
-			{
-				id: "",
-				name: "",
-				rate: "21",
-			},
-		],
+		taxRates: [createTaxRate()],
 		defaultPayment: {
 			method: null,
 			bankAccountKey: null,
@@ -117,36 +119,43 @@ export const createBillingSettingsDefaultValues = () =>
 const createComponents = (t: TFunction) => {
 	const DefaultBankAccountComboboxInput = createEvoluComboboxInput({
 		label: t("settings:form.billing-settings-form.label.default-bank-account"),
-		createQuery: (evolu) =>
-			evolu.createQuery((db) =>
-				db
-					.selectFrom("account")
-					.leftJoin("accountIban", "accountIban.id", "account.id")
-					.select(["account.id", "account.name", "accountIban.iban"])
-					.where("_tag", "=", "accountIban")
-					.where("account.isDeleted", "is not", sqliteTrue),
-			),
+		query: createQuery((db) =>
+			db
+				.selectFrom("account")
+				.innerJoin("accountIban", "accountIban.id", "account.id")
+				.select(["account.id", "account.name", "accountIban.iban"])
+				.where("_tag", "=", "accountIban")
+				.where("account.isDeleted", "is not", sqliteTrue)
+				.where("account.name", "is not", null)
+				.where("accountIban.iban", "is not", null)
+				.$narrowType<{
+					name: NotNull;
+					iban: NotNull;
+				}>(),
+		),
 		mapRowsToItems: (rows) =>
 			rows.map((row) => ({
-				label: `${formatIban(row.iban ?? "")} (${row.name ?? "-"})`,
-				value: row.id ?? "-",
+				label: `${formatIban(row.iban)} (${row.name})`,
+				value: row.id,
 			})),
 	});
 
 	const DefaultLnZapComboboxInput = createEvoluComboboxInput({
 		label: t("settings:form.billing-settings-form.label.default-ln-zap-wallet"),
-		createQuery: (evolu) =>
-			evolu.createQuery((db) =>
-				db
-					.selectFrom("account")
-					.selectAll()
-					.where("_tag", "=", "lud16")
-					.where("isDeleted", "is not", sqliteTrue),
-			),
+		query: createQuery((db) =>
+			db
+				.selectFrom("account")
+				.selectAll()
+				.where("_tag", "=", "accountLud16")
+				.where("isDeleted", "is not", sqliteTrue)
+				.$narrowType<{
+					name: NotNull;
+				}>(),
+		),
 		mapRowsToItems: (rows) =>
 			rows.map((row) => ({
-				label: row.name ?? "-",
-				value: row.id ?? "-",
+				label: row.name,
+				value: row.id,
 			})),
 	});
 
@@ -154,18 +163,20 @@ const createComponents = (t: TFunction) => {
 		label: t(
 			"settings:form.billing-settings-form.label.default-ln-spark-wallet",
 		),
-		createQuery: (evolu) =>
-			evolu.createQuery((db) =>
-				db
-					.selectFrom("account")
-					.selectAll()
-					.where("_tag", "=", "accountSpark")
-					.where("isDeleted", "is not", sqliteTrue),
-			),
+		query: createQuery((db) =>
+			db
+				.selectFrom("account")
+				.selectAll()
+				.where("_tag", "=", "accountSpark")
+				.where("isDeleted", "is not", sqliteTrue)
+				.$narrowType<{
+					name: NotNull;
+				}>(),
+		),
 		mapRowsToItems: (rows) =>
 			rows.map((row) => ({
-				label: row.name ?? "-",
-				value: row.id ?? "-",
+				label: row.name,
+				value: row.id,
 			})),
 	});
 
@@ -318,11 +329,7 @@ const createComponents = (t: TFunction) => {
 						addRowLabel: t(
 							"settings:form.billing-settings-form.addRowLabel.add-rate",
 						),
-						defaultValue: {
-							id: "",
-							name: "",
-							rate: "",
-						},
+						defaultValue: createTaxRate,
 						columns: [
 							{
 								title: t("settings:form.billing-settings-form.title.id"),
@@ -355,12 +362,7 @@ const createComponents = (t: TFunction) => {
 };
 
 export const BillingSettingsForm: React.FC<{
-	defaultValues?: PartialDeep<
-		z.input<typeof billingSettingsFormSchema> & {
-			id: Id;
-			taxRates?: Array<{ id: Id; name: string; rate: string }>;
-		}
-	>;
+	defaultValues?: PartialDeep<z.input<typeof billingSettingsFormSchema>>;
 	onSuccess?: (newEventId: Id) => unknown;
 }> = (params) => {
 	const { t } = useTranslation();
@@ -375,44 +377,39 @@ export const BillingSettingsForm: React.FC<{
 	const form = useActionForm(billingSettingsFormSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const createIdDeps = {
-				randomBytes: createRandomBytes(),
-			};
-			const id = params.defaultValues?.id ?? createIdFromString("");
+			const id = createIdFromString("");
 
-			getOrThrow(
-				evolu.upsert(
-					"billingSettings",
-					{
-						id,
-						defaultInvoiceDueDateDays: values.defaultInvoiceDueDateDays,
-						defaultCurrency: values.defaultCurrency,
-						defaultTimezone: values.defaultTimezone,
-						defaultPaymentMethodMethod: values.defaultPayment.method,
-						defaultPaymentMethodBankAccountKey: values.defaultPayment
-							.bankAccountKey as Id,
-						defaultPaymentMethod: values.defaultPaymentMethod,
-						defaultBankTransferCzKey: values.defaultBankTransferCzKey as Id,
-						defaultLnZapKey: values.defaultLnZapKey as Id,
-						defaultLnSparkKey: values.defaultLnSparkKey as Id,
-						invoiceEmailSettingsEnable: values.invoiceEmailSettings.enable
-							? sqliteTrue
-							: sqliteFalse,
-						invoiceEmailSettingsSubject: values.invoiceEmailSettings.enable
-							? values.invoiceEmailSettings.subject
-							: null,
-						invoiceEmailSettingsBody: values.invoiceEmailSettings.enable
-							? values.invoiceEmailSettings.body
-							: null,
+			evolu.upsert(
+				"billingSettings",
+				{
+					id,
+					defaultInvoiceDueDateDays: values.defaultInvoiceDueDateDays,
+					defaultCurrency: values.defaultCurrency,
+					defaultTimezone: values.defaultTimezone,
+					defaultPaymentMethodMethod: values.defaultPayment.method,
+					defaultPaymentMethodBankAccountKey:
+						values.defaultPayment.bankAccountKey,
+					defaultPaymentMethod: values.defaultPaymentMethod,
+					defaultBankTransferCzKey: values.defaultBankTransferCzKey,
+					defaultLnZapKey: values.defaultLnZapKey,
+					defaultLnSparkKey: values.defaultLnSparkKey,
+					invoiceEmailSettingsEnable: values.invoiceEmailSettings.enable
+						? sqliteTrue
+						: sqliteFalse,
+					invoiceEmailSettingsSubject: values.invoiceEmailSettings.enable
+						? values.invoiceEmailSettings.subject
+						: null,
+					invoiceEmailSettingsBody: values.invoiceEmailSettings.enable
+						? values.invoiceEmailSettings.body
+						: null,
+				},
+				{
+					onComplete: () => {
+						if (params.onSuccess) {
+							params.onSuccess(id);
+						}
 					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id as Id);
-							}
-						},
-					},
-				),
+				},
 			);
 
 			const originalTaxRates = new Set(
@@ -420,35 +417,25 @@ export const BillingSettingsForm: React.FC<{
 			);
 
 			for (const taxRate of values.taxRates) {
-				const taxRateId = (taxRate as { id?: Id }).id;
-				if (taxRateId) {
-					originalTaxRates.delete(taxRateId);
-				}
+				originalTaxRates.delete(taxRate.id);
 
-				getOrThrow(
-					evolu.upsert("billingSettingsTaxRate", {
-						id: taxRateId ?? createId(createIdDeps),
-						billingSettingsId: id,
-						name: taxRate.name,
-						rate: taxRate.rate,
-					}),
-				);
+				evolu.upsert("billingSettingsTaxRate", {
+					id: taxRate.id,
+					name: taxRate.name,
+					rate: taxRate.rate,
+				});
 			}
 
 			for (const taxRateId of originalTaxRates) {
 				if (taxRateId) {
-					getOrThrow(
-						evolu.update("billingSettingsTaxRate", {
-							id: taxRateId,
-							isDeleted: sqliteTrue,
-						}),
-					);
+					evolu.update("billingSettingsTaxRate", {
+						id: taxRateId,
+						isDeleted: sqliteTrue,
+					});
 				}
 			}
 		},
 	});
-
-	console.log("err", form.form.formState.errors);
 
 	return <AutoForm form={form} components={components} />;
 };

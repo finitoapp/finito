@@ -1,58 +1,79 @@
 "use client";
 
-
+import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { BillingInfoForm } from "@/app/admin/(private)/settings/billing-info/billing-info-form";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { CountryCode } from "@/lib/shared/types";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
 	const itemId = createIdFromString("");
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("billingInfo")
-				.selectAll()
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
-		[itemId],
-	);
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("billingInfo")
+					.select(
+						(eb) =>
+							[
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("billingInfoAddress")
+											.select([
+												"billingInfoAddress.street as street",
+												"billingInfoAddress.descriptiveNumber as descriptiveNumber",
+												"billingInfoAddress.city as city",
+												"billingInfoAddress.postalCode as postalCode",
+											])
+											.whereRef("billingInfoAddress.id", "=", "billingInfo.id")
+											.where(
+												"billingInfoAddress.isDeleted",
+												"is not",
+												sqliteTrue,
+											),
+									)
+									.as("address"),
 
-	const addressQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("billingInfoAddress")
-				.selectAll()
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
-		[itemId],
-	);
-
-	const czQuery = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("billingInfoCz")
-				.selectAll()
-				.where("isDeleted", "is not", sqliteTrue)
-				.where("id", "=", itemId);
-		},
+								kysely
+									.jsonObjectFrom(
+										eb
+											.selectFrom("billingInfoCz")
+											.select([
+												"billingInfoCz.vatPayer as vatPayer",
+												"billingInfoCz.identificationNumber as identificationNumber",
+												"billingInfoCz.vatNumber as vatNumber",
+												"billingInfoCz.caseNumber as caseNumber",
+											])
+											.whereRef("billingInfoCz.id", "=", "billingInfo.id")
+											.where("isDeleted", "is not", sqliteTrue)
+											.where("vatPayer", "is not", null)
+											.$narrowType<{
+												vatPayer: NotNull;
+											}>(),
+									)
+									.as("cz"),
+							] as const,
+					)
+					.where("isDeleted", "is not", sqliteTrue)
+					.where("id", "=", itemId)
+					.where("name", "is not", null)
+					.where("countryCode", "is not", null)
+					.$narrowType<{
+						name: NotNull;
+						countryCode: NotNull;
+					}>();
+			}),
 		[itemId],
 	);
 
 	const { data } = useEvoluQuery(query);
-	const { data: addressData } = useEvoluQuery(addressQuery);
-	const { data: czData } = useEvoluQuery(czQuery);
-
-	const item = data && data[0];
-	const address = addressData && addressData[0];
-	const cz = czData && czData[0];
+	const item = data[0];
 
 	return (
 		<ResponsiveCard className="w-full max-w-xl">
@@ -61,18 +82,27 @@ export default function Home() {
 			</CardHeader>
 			<CardContent>
 				<BillingInfoForm
-					key={item && address && cz ? "yes" : "no"}
 					defaultValues={
-						item && address && cz
+						item
 							? {
 									...item,
-									address,
-									cz: {
-										vatPayer: cz.vatPayer === sqliteTrue,
-										vatNumber: cz.vatNumber ?? "",
-										identificationNumber: cz.identificationNumber ?? "",
-										caseNumber: cz.caseNumber ?? "",
-									},
+									address: item.address
+										? {
+												street: item.address.street ?? "",
+												descriptiveNumber: item.address.descriptiveNumber ?? "",
+												city: item.address.city ?? "",
+												postalCode: item.address.postalCode ?? "",
+											}
+										: undefined,
+									cz: item.cz
+										? {
+												vatPayer: item.cz.vatPayer === sqliteTrue,
+												vatNumber: item.cz.vatNumber ?? "",
+												identificationNumber:
+													item.cz.identificationNumber ?? "",
+												caseNumber: item.cz.caseNumber ?? "",
+											}
+										: undefined,
 								}
 							: undefined
 					}

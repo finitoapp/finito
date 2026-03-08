@@ -1,12 +1,18 @@
-import {
-	createIdFromString,
-	getOrThrow,
-	type Id,
-	sqliteFalse,
-	sqliteTrue,
-} from "@evolu/common";
+import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
+import { z } from "zod";
 import type { BackgroundProcess } from "@/lib/background/service";
+import { createQuery } from "@/lib/evolu";
 import { FioApiClient } from "@/lib/integrations/fio/client";
+import {
+	ConstantSymbol,
+	Currency,
+	Integer,
+	NonEmptyString,
+	NonEmptyString255,
+	SpecificSymbol,
+	type TimestampMs,
+	VariableSymbol,
+} from "@/lib/shared/types";
 
 const notificationId = createIdFromString("syncFioTransfers");
 
@@ -64,7 +70,7 @@ const toStableString = (value: unknown): string => {
 	return JSON.stringify(value);
 };
 
-const toOptionalText = (value: unknown, maxLength: number): string | null => {
+const toOptionalText = (value: unknown): NonEmptyString | null => {
 	const normalized =
 		typeof value === "number"
 			? `${value}`
@@ -76,10 +82,10 @@ const toOptionalText = (value: unknown, maxLength: number): string | null => {
 	const trimmed = normalized.trim();
 	if (trimmed.length === 0) return null;
 
-	return trimmed.slice(0, maxLength);
+	return NonEmptyString(trimmed);
 };
 
-const parseDateFromString = (value: string): number | null => {
+const parseDateFromString = (value: string): TimestampMs | null => {
 	const trimmed = value.trim();
 	if (trimmed.length === 0) return null;
 
@@ -102,7 +108,9 @@ const parseDateFromString = (value: string): number | null => {
 	return Number.isFinite(result) ? result : null;
 };
 
-const resolveOccurredAt = (transaction: Record<string, unknown>): number => {
+const resolveOccurredAt = (
+	transaction: Record<string, unknown>,
+): TimestampMs => {
 	const preferredDateKeys = [
 		"Datum",
 		"Datum připsání",
@@ -130,7 +138,7 @@ const resolveOccurredAt = (transaction: Record<string, unknown>): number => {
 
 const resolveBankReference = (
 	transaction: Record<string, unknown>,
-): string | null => {
+): NonEmptyString | null => {
 	const candidates = [
 		transaction.Komentář,
 		transaction["Zpráva pro příjemce"],
@@ -138,7 +146,7 @@ const resolveBankReference = (
 	];
 
 	for (const candidate of candidates) {
-		const value = toOptionalText(candidate, 1000);
+		const value = toOptionalText(candidate);
 		if (value !== null) return value;
 	}
 
@@ -184,7 +192,7 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 
 				const fioPluginId = createIdFromString("");
 				const fioPluginRows = await props.evolu.loadQuery(
-					props.evolu.createQuery((db) =>
+					createQuery((db) =>
 						db
 							.selectFrom("fioPlugin")
 							.select([
@@ -197,7 +205,7 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 					),
 				);
 				const fioPluginTokens = await props.evolu.loadQuery(
-					props.evolu.createQuery((db) =>
+					createQuery((db) =>
 						db
 							.selectFrom("fioPluginToken")
 							.select(["fioPluginToken.token as token"] as const)
@@ -253,7 +261,7 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 				}
 
 				const ibanAccounts = await props.evolu.loadQuery(
-					props.evolu.createQuery((db) =>
+					createQuery((db) =>
 						db
 							.selectFrom("account")
 							.innerJoin("accountIban", "accountIban.id", "account.id")
@@ -321,27 +329,37 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 						`fioTransfer:${account.id}:${toStableString(transactionRecord)}`,
 					);
 
-					getOrThrow(
-						props.evolu.upsert("transaction", {
-							id: transferId,
-							accountId: account.id,
-							_tag: "accountIban",
-							amount: transaction.Objem,
-							occurredAt: resolveOccurredAt(transactionRecord),
-							note: toOptionalText(transaction.Typ, 1000),
-							internalTransferGroupId: null,
-						}),
-					);
+					props.evolu.upsert("transaction", {
+						id: transferId,
+						accountId: account.id,
+						_tag: "accountIban",
+						amount: Integer(transaction.Objem),
+						currency: z.enum(Currency).parse(transaction.Měna),
+						occurredAt: resolveOccurredAt(transactionRecord),
+						note: toOptionalText(transaction.Typ),
+						internalTransferGroupId: null,
+					});
 
-					getOrThrow(
-						props.evolu.upsert("transactionIban", {
-							id: transferId,
-							variableSymbol: toOptionalText(transaction.VS, 100),
-							constantSymbol: toOptionalText(transactionRecord.KS, 100),
-							specificSymbol: toOptionalText(transactionRecord.SS, 100),
-							bankReference: resolveBankReference(transactionRecord),
-						}),
-					);
+					const variableSymbol = toOptionalText(transaction.VS);
+					const constantSymbol = toOptionalText(transactionRecord.KS);
+					const specificSymbol = toOptionalText(transactionRecord.SS);
+					const bankReference = resolveBankReference(transactionRecord);
+
+					props.evolu.upsert("transactionIban", {
+						id: transferId,
+						variableSymbol: variableSymbol
+							? VariableSymbol(variableSymbol)
+							: null,
+						constantSymbol: constantSymbol
+							? ConstantSymbol(constantSymbol)
+							: null,
+						specificSymbol: specificSymbol
+							? SpecificSymbol(specificSymbol)
+							: null,
+						bankReference: bankReference
+							? NonEmptyString255(bankReference)
+							: null,
+					});
 
 					processedTransfers += 1;
 				}

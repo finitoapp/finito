@@ -2,9 +2,9 @@
 
 import type { NDKUserProfile } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
-import { useTranslation } from "react-i18next";
 import type React from "react";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
@@ -27,26 +27,27 @@ export const accountSchema = z.object({
 	lud16: StringToUndefinedStringSchema.pipe(EmailSchema.optional()),
 });
 
-const createComponents = (t: TFunction) => createAutoFormLayout(accountSchema, ({ builder }) => ({
-	...builder.magicInput("name").text({
-		label: t("settings:form.account-form.label.name"),
-	}),
-	...builder.magicInput("displayName").text({
-		label: t("settings:form.account-form.label.display-name"),
-	}),
-	...builder.magicInput("website").text({
-		label: t("settings:form.account-form.label.website"),
-	}),
-	...builder.magicInput("about").textarea({
-		label: t("settings:form.account-form.label.about"),
-	}),
-	...builder.magicInput("bio").textarea({
-		label: t("settings:form.account-form.label.bio"),
-	}),
-	...builder.magicInput("lud16").text({
-		label: t("settings:form.account-form.label.lud16-address"),
-	}),
-}));
+const createComponents = (t: TFunction) =>
+	createAutoFormLayout(accountSchema, ({ builder }) => ({
+		...builder.magicInput("name").text({
+			label: t("settings:form.account-form.label.name"),
+		}),
+		...builder.magicInput("displayName").text({
+			label: t("settings:form.account-form.label.display-name"),
+		}),
+		...builder.magicInput("website").text({
+			label: t("settings:form.account-form.label.website"),
+		}),
+		...builder.magicInput("about").textarea({
+			label: t("settings:form.account-form.label.about"),
+		}),
+		...builder.magicInput("bio").textarea({
+			label: t("settings:form.account-form.label.bio"),
+		}),
+		...builder.magicInput("lud16").text({
+			label: t("settings:form.account-form.label.lud16-address"),
+		}),
+	}));
 
 export const AccountForm: React.FC<{
 	defaultValues: NDKUserProfile | null;

@@ -1,42 +1,30 @@
 "use client";
 
-import { SparkWallet } from "@buildonspark/spark-sdk";
-import {
-	createIdFromString,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
-import type NDK from "@nostr-dev-kit/ndk";
-import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
-import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
+import { sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import * as errore from "errore";
-import type { TFunction } from "i18next";
-import { type Atom, atom, useAtomValue, useStore } from "jotai";
+import {
+	atom,
+	type SetStateAction,
+	useAtomValue,
+	useStore,
+	type WritableAtom,
+} from "jotai";
 import { Bell, X } from "lucide-react";
-import { type ComponentProps, useEffect, useRef, useState } from "react";
+import {
+	type ComponentProps,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { NotificationItem } from "@/components/notification-item";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useNostr } from "@/hooks/use-nostr";
 import { runBackgroundProcesses } from "@/lib/background/service";
-import type { ScreenData } from "@/lib/bill/driver";
-import type { Evolu } from "@/lib/evolu";
-import type { DeviceEvolu } from "@/lib/evolu/device";
-import type { Notification } from "@/lib/evolu/model/notification";
-import { PaymentStatus } from "@/lib/evolu/model/payment-status";
-import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
-import { FioApiClient } from "@/lib/integrations/fio/client";
-import {
-	tableEventMessageBus,
-	tableRequestMessageBus,
-} from "@/lib/table/message-bus";
-import type { NonEmptyString } from "@/lib/shared/types";
-import { Uuid7 } from "@/lib/shared/types";
+import { createQuery } from "@/lib/evolu";
 import { Button } from "./ui/button";
 import {
 	Sheet,
@@ -61,690 +49,6 @@ export type NotificationUI = {
 	}[];
 };
 
-type BackgroundDef = {
-	subscribe: (props: {
-		ndk: NDK & {
-			signer: NDKSigner;
-			activeUser: NDKUser;
-		};
-		evolu: Evolu;
-		deviceEvolu: DeviceEvolu;
-		addNotification: (notification: NotificationUI) => {
-			update: (notification: NotificationUI) => void;
-			delete: () => void;
-		};
-		setNotification: (notification: NotificationUI) => void;
-		deleteNotification: () => void;
-	}) => Promise<() => void>;
-};
-
-export const resolveNotificationDef = (
-	t: TFunction,
-	notification: Notification & { id: Id; createdAt: number },
-): BackgroundDef => {
-	if (notification.type === "verifyPayment") {
-		const notificationData = notification;
-
-		return {
-			subscribe: async (props) => {
-				props.setNotification({
-					title: t("components:notificationItem.verifyPayment.title"),
-					type: "info",
-					progress: null,
-					canBeClosed: false,
-					description: t(
-						"components:notificationItem.verifyPayment.description",
-					),
-					id: notification.id,
-					timestamp: notification.createdAt,
-					actions: [
-						{
-							buttonProps: {
-								children: t(
-									"components:notificationItem.verifyPayment.actions.stopWaiting",
-								),
-							},
-							callback: ({ deleteNotification }) => {
-								deleteNotification();
-							},
-						},
-					],
-				});
-
-				let markAsPaid = false;
-				const paymentId = notificationData.paymentId as Id;
-				const paymentQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("payment")
-						.leftJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
-						.leftJoin("paymentLnSpark", "paymentLnSpark.id", "payment.id")
-						.leftJoin(
-							"paymentBankTransferCZ",
-							"paymentBankTransferCZ.id",
-							"payment.id",
-						)
-						.leftJoin("paymentCash", "paymentCash.id", "payment.id")
-						.select([
-							"payment.id as id",
-							"payment.type as type",
-							"payment.privateKey as privateKey",
-							"payment.billCurrency as billCurrency",
-							"paymentLnZap.lnInvoice as lnZapLnInvoice",
-							"paymentLnZap.walletPubkey as lnZapWalletPubkey",
-							"paymentLnZap.amount as lnZapAmount",
-							"paymentLnZap.expirationIn as lnZapExpirationIn",
-							"paymentLnSpark.accountId as lnSparkAccountId",
-							"paymentLnSpark.lnInvoice as lnSparkLnInvoice",
-							"paymentLnSpark.sparkInvoiceId as lnSparkSparkInvoiceId",
-							"paymentLnSpark.amount as lnSparkAmount",
-							"paymentLnSpark.expirationIn as lnSparkExpirationIn",
-							"paymentBankTransferCZ.iban as bankTransferIban",
-							"paymentBankTransferCZ.variableSymbol as bankTransferVariableSymbol",
-							"paymentCash.id as cashId",
-						] as const)
-						.where("payment.isDeleted", "is not", sqliteTrue)
-						.where("payment.id", "=", paymentId),
-				);
-				const paymentBillItemsQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("paymentBillItem")
-						.select([
-							"paymentBillItem.price as price",
-							"paymentBillItem.quantity as quantity",
-							"paymentBillItem.label as label",
-						] as const)
-						.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
-						.where("paymentBillItem.paymentId", "=", paymentId),
-				);
-
-				const paymentRows = await props.evolu.loadQuery(paymentQuery);
-				const paymentBillItemsRows = await props.evolu.loadQuery(
-					paymentBillItemsQuery,
-				);
-
-				const payment = paymentRows?.[0];
-				if (!payment || !payment.privateKey || !payment.billCurrency) {
-					return () => {};
-				}
-
-				const item = {
-					privateKey: payment.privateKey,
-					bill: {
-						currency: payment.billCurrency,
-						items: (paymentBillItemsRows ?? []).map((billItem) => ({
-							price: billItem.price ?? 0,
-							quantity: billItem.quantity ?? 0,
-							label: billItem.label ?? "",
-						})),
-					},
-					paymentOptions: [
-						payment.type === "lnZap" &&
-						payment.lnZapLnInvoice &&
-						payment.lnZapWalletPubkey &&
-						payment.lnZapAmount !== null &&
-						payment.lnZapExpirationIn !== null
-							? {
-									type: "lnZap" as const,
-									lnInvoice: payment.lnZapLnInvoice,
-									walletPubkey: payment.lnZapWalletPubkey,
-									amount: payment.lnZapAmount,
-									expirationIn: payment.lnZapExpirationIn,
-								}
-							: payment.type === "lnSpark" &&
-									payment.lnSparkAccountId &&
-									payment.lnSparkLnInvoice &&
-									payment.lnSparkSparkInvoiceId &&
-									payment.lnSparkAmount !== null &&
-									payment.lnSparkExpirationIn !== null
-								? {
-										type: "lnSpark" as const,
-										accountId: payment.lnSparkAccountId,
-										lnInvoice: payment.lnSparkLnInvoice,
-										sparkInvoiceId: payment.lnSparkSparkInvoiceId,
-										amount: payment.lnSparkAmount,
-										expirationIn: payment.lnSparkExpirationIn,
-									}
-								: payment.type === "bankTransferCZ" &&
-										payment.bankTransferIban &&
-										payment.bankTransferVariableSymbol
-									? {
-											type: "bankTransferCZ" as const,
-											iban: payment.bankTransferIban,
-											variableSymbol: payment.bankTransferVariableSymbol,
-										}
-									: payment.type === "cash" && payment.cashId
-										? { type: "cash" as const }
-										: null,
-					].filter((paymentOption) => paymentOption !== null),
-				};
-
-				const paymentStatusQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("paymentStatus")
-						.select(["paymentStatus.status as status"] as const)
-						.where("paymentStatus.isDeleted", "is not", sqliteTrue)
-						.where("paymentStatus.id", "=", notificationData.paymentId as Id),
-				);
-
-				const subscriptions: (() => void)[] = [];
-				subscriptions.push(
-					subscribeToEvoluQuery(
-						props.evolu,
-						paymentStatusQuery,
-						(paymentStatusRows) => {
-							const paymentStatus = paymentStatusRows[0];
-							if (paymentStatus?.status === PaymentStatus.Paid) {
-								props.deleteNotification();
-							}
-						},
-					),
-				);
-
-				// LN
-				{
-					const zapWallet = item.paymentOptions.find(
-						(paymentOption) => paymentOption.type === "lnZap",
-					);
-
-					if (zapWallet) {
-						const ndkSigner = new NDKPrivateKeySigner(item.privateKey);
-						const subscription = props.ndk.subscribe(
-							{
-								kinds: [9735], // zap receipt
-								authors: [zapWallet.walletPubkey],
-								"#p": [ndkSigner.pubkey],
-								limit: 1,
-							},
-							{},
-							{
-								onEvent: (zapReceipt) => {
-									if (!markAsPaid && zapReceipt) {
-										markAsPaid = true;
-
-										(async () => {
-											getOrThrow(
-												props.evolu.upsert("paymentStatus", {
-													id: notificationData.paymentId as Id,
-													status: PaymentStatus.Paid,
-													proveType: "lnZap",
-												}),
-											);
-											props.deleteNotification();
-										})();
-									}
-								},
-							},
-						);
-
-						subscriptions.push(() => subscription.stop());
-					}
-				}
-
-				// LN Spark
-				{
-					const sparkWallet = item.paymentOptions.find(
-						(paymentOption) => paymentOption.type === "lnSpark",
-					);
-
-					if (sparkWallet) {
-						const walletPromise = (async () => {
-							const accounts = await props.evolu.loadQuery(
-								props.evolu.createQuery((db) =>
-									db
-										.selectFrom("account")
-										.leftJoin("accountSpark", "accountSpark.id", "account.id")
-										.select([
-											"account._tag as _tag",
-											"accountSpark.mnemonic as mnemonic",
-										] as const)
-										.where("account.isDeleted", "is not", sqliteTrue)
-										.where("account.id", "=", sparkWallet.accountId as Id),
-								),
-							);
-
-							const account = accounts[0];
-							if (account === undefined) {
-								return;
-							}
-
-							if (account._tag !== "accountSpark" || !account.mnemonic) {
-								return;
-							}
-
-							const { wallet } = await SparkWallet.initialize({
-								mnemonicOrSeed: account.mnemonic,
-								options: {
-									network: "MAINNET",
-								},
-							});
-
-							return wallet;
-						})();
-
-						const timer = setInterval(async () => {
-							const wallet = await walletPromise;
-							if (wallet === undefined) {
-								return;
-							}
-
-							const invoiceResult = await wallet.getLightningReceiveRequest(
-								sparkWallet.sparkInvoiceId,
-							);
-							if (invoiceResult === null) {
-								return;
-							}
-
-							if (invoiceResult.status !== "TRANSFER_COMPLETED") {
-								return;
-							}
-
-							console.log("Spark OK");
-							markAsPaid = true;
-
-							getOrThrow(
-								props.evolu.upsert("paymentStatus", {
-									id: notificationData.paymentId as Id,
-									status: PaymentStatus.Paid,
-									proveType: "bankTransferCZ",
-								}),
-							);
-							props.deleteNotification();
-						}, 5 * 1000);
-
-						subscriptions.push(() => {
-							walletPromise.then((wallet) => {
-								if (wallet) {
-									void wallet.cleanupConnections();
-								}
-							});
-
-							clearInterval(timer);
-						});
-					}
-				}
-
-				// FIO
-				{
-					const fioPluginId = createIdFromString("");
-					const fioPluginQuery = props.evolu.createQuery((db) =>
-						db
-							.selectFrom("fioPlugin")
-							.selectAll()
-							.where("isDeleted", "is not", sqliteTrue)
-							.where("id", "=", fioPluginId),
-					);
-					const fioPluginRows = await props.evolu.loadQuery(fioPluginQuery);
-
-					const fioPluginTokenQuery = props.evolu.createQuery((db) =>
-						db
-							.selectFrom("fioPluginToken")
-							.select(["fioPluginToken.token as token"] as const)
-							.where("fioPluginToken.isDeleted", "is not", sqliteTrue)
-							.where("fioPluginToken.fioPluginId", "=", fioPluginId),
-					);
-					const fioPluginTokens =
-						await props.evolu.loadQuery(fioPluginTokenQuery);
-
-					const fioData = fioPluginRows && fioPluginRows[0];
-					if (fioData) {
-						const fioApiClient = (() => {
-							if (
-								!fioData?.apiUrl ||
-								!fioData?.numberOfSecondsBetweenChecks ||
-								!fioPluginTokens ||
-								fioPluginTokens.length === 0
-							) {
-								return null;
-							}
-
-							const tokens = fioPluginTokens
-								.map((token) => token.token)
-								.filter((token): token is string => token !== null);
-
-							if (tokens.length === 0) {
-								return null;
-							}
-
-							return new FioApiClient(tokens, fioData.apiUrl);
-						})();
-
-						if (fioApiClient) {
-							const totalAmount = item.bill.items.reduce((acc, item) => {
-								return item.price + acc;
-							}, 0);
-
-							const timer = setInterval(async () => {
-								const transactions = await fioApiClient.getTransactions();
-								console.log("FIO check", transactions);
-								for (const transaction of transactions.accountStatement
-									.transactionList.transaction) {
-									if (
-										[
-											"Bezhotovostní příjem",
-											"Příjem převodem uvnitř banky",
-										].includes(transaction.Typ) &&
-										transaction.Měna === item.bill.currency &&
-										transaction.Objem === totalAmount
-									) {
-										console.log("FIO OK");
-										markAsPaid = true;
-										getOrThrow(
-											props.evolu.upsert("paymentStatus", {
-												id: notificationData.paymentId as Id,
-												status: PaymentStatus.Paid,
-												proveType: "bankTransferCZ",
-											}),
-										);
-										props.deleteNotification();
-									}
-								}
-							}, fioData.numberOfSecondsBetweenChecks * 1000);
-
-							subscriptions.push(() => clearInterval(timer));
-						}
-					}
-				}
-
-				return () => {
-					for (const unsubscribe of subscriptions) {
-						unsubscribe();
-					}
-				};
-			},
-		};
-	} else if (notification.type === "backgroundTableProcessing") {
-		return {
-			subscribe: async (props) => {
-				props.setNotification({
-					title: t(
-						"components:notificationItem.backgroundTableProcessing.title",
-					),
-					type: "info",
-					canBeClosed: false,
-					description: t(
-						"components:notificationItem.backgroundTableProcessing.description",
-					),
-					id: notification.type,
-				});
-
-				const subscriptionRef = new Map<
-					Uuid7,
-					{
-						pubkey: string;
-						qrCodeId: NonEmptyString;
-						timeout: ReturnType<typeof setTimeout>;
-					}
-				>();
-
-				const tableCodesQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("tableCode")
-						.select([
-							"tableCode.code as code",
-							"tableCode.tableId as tableId",
-						] as const)
-						.where("tableCode.isDeleted", "is not", sqliteTrue),
-				);
-
-				const posBillsQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("posBill")
-						.leftJoin("table", "table.id", "posBill.tableId")
-						.select([
-							"posBill.id as id",
-							"posBill.tableId as tableId",
-							"posBill.currency as currency",
-							"table.label as tableLabel",
-						] as const)
-						.where("posBill.isDeleted", "is not", sqliteTrue),
-				);
-
-				const posBillItemsQuery = props.evolu.createQuery((db) =>
-					db
-						.selectFrom("posBillItem")
-						.select([
-							"posBillItem.billId as billId",
-							"posBillItem.sourceItemId as sourceItemId",
-							"posBillItem.name as name",
-							"posBillItem.price as price",
-							"posBillItem.quantity as quantity",
-						] as const)
-						.where("posBillItem.isDeleted", "is not", sqliteTrue),
-				);
-
-				let tableCodes: Array<{
-					code: string | null;
-					tableId: Id | null;
-				}> = [];
-				let posBills: Array<{
-					id: Id;
-					tableId: Id | null;
-					currency: string | null;
-					tableLabel: string | null;
-				}> = [];
-				let posBillItems: Array<{
-					billId: Id | null;
-					sourceItemId: string | null;
-					name: string | null;
-					price: number | null;
-					quantity: number | null;
-				}> = [];
-
-				const getBillByQrCode = (
-					qrCodeId: NonEmptyString,
-				): Omit<
-					Extract<ScreenData, { variant: "payment" | "refund" }>,
-					"pay"
-				> => {
-					const tableCode = tableCodes.find(({ code }) => code === qrCodeId);
-					if (tableCode === undefined || tableCode.tableId === null) {
-						return {
-							variant: "payment",
-							payload: {
-								bill: null,
-							},
-						};
-					}
-
-					const bill = posBills.find(
-						(item) => item.tableId === tableCode.tableId,
-					);
-					if (bill === undefined || !bill.tableLabel) {
-						return {
-							variant: "payment",
-							payload: {
-								bill: null,
-							},
-						};
-					}
-
-					const items = posBillItems
-						.filter(
-							(
-								item,
-							): item is {
-								billId: Id;
-								sourceItemId: string;
-								name: string;
-								price: number;
-								quantity: number;
-							} =>
-								item.billId === bill.id &&
-								item.sourceItemId !== null &&
-								item.name !== null &&
-								item.price !== null &&
-								item.quantity !== null,
-						)
-						.map((item) => ({
-							id: item.sourceItemId,
-							label: item.name,
-							price: item.price,
-							quantity: item.quantity,
-							optionality: {
-								checked: 0,
-							},
-						}));
-
-					return {
-						variant: "payment",
-						payload: {
-							bill: {
-								currency: bill.currency,
-								items,
-							},
-							merchant: {
-								name: bill.tableLabel as NonEmptyString,
-							},
-						},
-					};
-				};
-
-				const sendBillChange = (input: {
-					pubkey: string;
-					qrCodeId: NonEmptyString;
-					subscriptionId: Uuid7;
-				}) => {
-					tableEventMessageBus
-						.createInstance({
-							pubkey: input.pubkey,
-						})
-						.getClient({
-							ndk: props.ndk,
-						})
-						.call(
-							"billChange",
-							{
-								billScreenData: getBillByQrCode(input.qrCodeId),
-								subscriptionId: input.subscriptionId,
-							},
-							{
-								ignoreResponse: true,
-							},
-						)
-						.then((result) => {
-							if (errore.isError(result)) {
-								console.error(result);
-							}
-						});
-				};
-
-				const sendBillChangeToAll = () => {
-					for (const [
-						subscriptionId,
-						subscription,
-					] of subscriptionRef.entries()) {
-						sendBillChange({
-							pubkey: subscription.pubkey,
-							qrCodeId: subscription.qrCodeId,
-							subscriptionId,
-						});
-					}
-				};
-
-				const serverPromise = tableRequestMessageBus
-					.createInstance({
-						pubkey: props.ndk.signer.pubkey,
-					})
-					.listen(
-						{
-							ndk: props.ndk,
-						},
-						{
-							subscribeToBillByQrCode: async (input) => {
-								const subscriptionId = input.subscriptionId ?? Uuid7.random();
-								const subscription = subscriptionRef.get(subscriptionId);
-								if (subscription !== undefined) {
-									clearTimeout(subscription.timeout);
-									subscription.timeout = setTimeout(() => {
-										subscriptionRef.delete(subscriptionId);
-									}, 30_000);
-
-									sendBillChange({
-										pubkey: subscription.pubkey,
-										qrCodeId: subscription.qrCodeId,
-										subscriptionId,
-									});
-
-									return {
-										subscriptionId,
-									};
-								}
-
-								subscriptionRef.set(subscriptionId, {
-									pubkey: input.pubkey,
-									qrCodeId: input.qrCodeId,
-									timeout: setTimeout(() => {
-										subscriptionRef.delete(subscriptionId);
-									}, 30_000),
-								});
-
-								sendBillChange({
-									...input,
-									subscriptionId,
-								});
-
-								return {
-									subscriptionId,
-								};
-							},
-							unsubscribe: async (input) => {
-								const subscription = subscriptionRef.get(input.subscriptionId);
-								if (subscription) {
-									clearTimeout(subscription.timeout);
-								}
-								subscriptionRef.delete(input.subscriptionId);
-								return null;
-							},
-						},
-					);
-
-				const unsubscribeTableCodes = subscribeToEvoluQuery(
-					props.evolu,
-					tableCodesQuery,
-					(data) => {
-						tableCodes = [...data];
-						sendBillChangeToAll();
-					},
-				);
-				const unsubscribePosBills = subscribeToEvoluQuery(
-					props.evolu,
-					posBillsQuery,
-					(data) => {
-						posBills = [...data];
-						sendBillChangeToAll();
-					},
-				);
-				const unsubscribePosBillItems = subscribeToEvoluQuery(
-					props.evolu,
-					posBillItemsQuery,
-					(data) => {
-						posBillItems = [...data];
-						sendBillChangeToAll();
-					},
-				);
-
-				return () => {
-					unsubscribeTableCodes();
-					unsubscribePosBills();
-					unsubscribePosBillItems();
-					for (const subscription of subscriptionRef.values()) {
-						clearTimeout(subscription.timeout);
-					}
-					serverPromise.then((server) => {
-						if (errore.isError(server)) {
-							console.error(server);
-							return;
-						}
-						server.close();
-					});
-				};
-			},
-		};
-	}
-
-	throw new Error("Unsupported notification type");
-};
-
 export function NotificationCenter() {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
@@ -753,7 +57,11 @@ export function NotificationCenter() {
 		Record<
 			string,
 			{
-				atom: Atom<NotificationUI>;
+				atom: WritableAtom<
+					NotificationUI,
+					[SetStateAction<NotificationUI>],
+					void
+				>;
 				isUnread: boolean;
 			}
 		>
@@ -761,24 +69,26 @@ export function NotificationCenter() {
 	const { ndk } = useNostr();
 	const [, setForceRender] = useState(0);
 	const jotaiStore = useStore();
-	const query = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("notification")
-				.leftJoin(
-					"notificationVerifyPayment",
-					"notificationVerifyPayment.id",
-					"notification.id",
-				)
-				.select([
-					"notification.id as id",
-					"notification.type as type",
-					"notificationVerifyPayment.paymentId as paymentId",
-					"notification.createdAt as createdAt",
-				] as const)
-				.where("notification.isDeleted", "is not", sqliteTrue)
-				.orderBy("notification.createdAt", "desc")
-				.limit(5),
+	const query = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("notification")
+					.leftJoin(
+						"notificationVerifyPayment",
+						"notificationVerifyPayment.id",
+						"notification.id",
+					)
+					.select([
+						"notification.id as id",
+						"notification.type as type",
+						"notificationVerifyPayment.paymentId as paymentId",
+						"notification.createdAt as createdAt",
+					] as const)
+					.where("notification.isDeleted", "is not", sqliteTrue)
+					.orderBy("notification.createdAt", "desc")
+					.limit(5),
+			),
 		[],
 	);
 
@@ -790,11 +100,11 @@ export function NotificationCenter() {
 					jotaiStore.set(currentUi.atom, notificationUi);
 					currentUi.isUnread = notificationUi.isUnread === true;
 				} else {
-					currentUi = atom(notificationUi);
-					notificationUisRef.current[notificationUi.id] = {
-						atom: currentUi,
+					currentUi = {
+						atom: atom(notificationUi),
 						isUnread: notificationUi.isUnread === true,
 					};
+					notificationUisRef.current[notificationUi.id] = currentUi;
 				}
 
 				setForceRender((prev) => prev + 1);
@@ -841,12 +151,10 @@ export function NotificationCenter() {
 		useMutation({
 			mutationFn: async () => {
 				for (const item of actionableItems) {
-					getOrThrow(
-						evolu.update("notification", {
-							id: item.id,
-							isDeleted: sqliteTrue,
-						}),
-					);
+					evolu.update("notification", {
+						id: item.id,
+						isDeleted: sqliteTrue,
+					});
 				}
 			},
 		});

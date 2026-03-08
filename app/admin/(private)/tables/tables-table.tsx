@@ -1,15 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
-import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
+import { type Id, kysely, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
-import { jsonArrayFrom } from "kysely/helpers/sqlite";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -27,12 +26,17 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type { NonEmptyString255, PositiveInteger } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;
-	label: string;
-	numberOfSeats: string;
-	codes: string;
+	label: NonEmptyString255;
+	numberOfSeats: PositiveInteger;
+	codes: {
+		code: NonEmptyString255;
+	}[];
 };
 
 const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
@@ -47,19 +51,25 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	{
 		accessorKey: "codes",
 		header: createSortableHeader(t("tables:table.columns.codes")),
-		cell: ({ row }) =>
-			JSON.parse(row.original.codes)
-				.map(({ code }) => code)
-				.join(","),
+		cell: ({ row }) => row.original.codes.map(({ code }) => code).join(","),
 	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "label",
-		title: t("tables:table.columns.label"),
-	},
-] satisfies { id: keyof Task; title: string }[];
+const sortingFields = {
+	id: "table.id",
+	createdAt: "table.createdAt",
+	label: "table.label",
+	numberOfSeats: "table.numberOfSeats",
+	codes: "table.id",
+} as const satisfies Record<keyof Task | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "label",
+			title: t("tables:table.columns.label"),
+		},
+	] satisfies { id: keyof Task; title: string }[];
 
 export function TablesTable() {
 	const { t } = useTranslation();
@@ -69,16 +79,21 @@ export function TablesTable() {
 	const columns = useMemo(() => createColumns(t), [t]);
 	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 
-	const onFilterChange = useMemo<DataTableOnFilterChange<unknown>>(
+	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? { id: "createdAt", desc: true };
-				const sortingColumn = `table.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("table")
 						.select((eb) => [
@@ -86,26 +101,42 @@ export function TablesTable() {
 							"table.label as label",
 							"table.numberOfSeats as numberOfSeats",
 							"table.createdAt as createdAt",
-							jsonArrayFrom(
-								eb
-									.selectFrom("tableCode")
-									.select(["tableCode.code as code"])
-									.where("tableCode.isDeleted", "is not", sqliteTrue)
-									.whereRef("tableCode.tableId", "=", "table.id"),
-							).as("codes"),
+							kysely
+								.jsonArrayFrom(
+									eb
+										.selectFrom("tableCode")
+										.select([
+											"tableCode.id as id",
+											"tableCode.code as code",
+										] as const)
+										.whereRef("tableCode.tableId", "=", "table.id")
+										.where("tableCode.isDeleted", "is not", sqliteTrue)
+										.where("tableCode.code", "is not", null)
+										.$narrowType<{
+											code: NotNull;
+										}>(),
+								)
+								.as("codes"),
 						])
-						.where("table.isDeleted", "is not", sqliteTrue);
+						.where("table.isDeleted", "is not", sqliteTrue)
+						.where("table.label", "is not", null)
+						.where("table.numberOfSeats", "is not", null)
+						.$narrowType<{
+							codes: NotNull;
+							label: NotNull;
+							numberOfSeats: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("table.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -113,19 +144,23 @@ export function TablesTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("table.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "label") {
-							qb = qb.where("table.label", "like", `${filter.value}%`);
+							qb = qb.where(
+								"table.label",
+								"like",
+								`${filter.value}%` as NonEmptyString255,
+							);
 						}
 					}
 
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = (result) => {
+				return subscribeToEvoluQuery(evolu, query, (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -133,23 +168,15 @@ export function TablesTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					return {
-						data,
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					setData(formatData(rows));
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					setData(formatData(evolu.getQueryRows(query)));
+					});
 				});
 			},
 		[evolu],
@@ -160,7 +187,9 @@ export function TablesTable() {
 			<CardHeader>
 				<CardHeading className={"py-6"}>
 					<CardTitle>{t("tables:table.tables")}</CardTitle>
-					<CardDescription>{t("tables:table.listOfYourTables")}</CardDescription>
+					<CardDescription>
+						{t("tables:table.listOfYourTables")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/tables/new"}>
@@ -176,8 +205,6 @@ export function TablesTable() {
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					searchKey="label"
-					searchPlaceholder={t("tables:table.search.placeholder.by-label")}
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(

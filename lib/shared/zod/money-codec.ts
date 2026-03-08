@@ -3,6 +3,7 @@ import {
 	Currency,
 	Integer,
 	IntegerSchema,
+	NumberString,
 	NumberStringSchema,
 } from "@/lib/shared/types";
 
@@ -58,14 +59,14 @@ export const decimalStringToMinorUnits = (props: {
 	return isNegative ? Integer(-minorUnits) : minorUnits;
 };
 
-export const minorUnitsToDecimalString = (props: Money): string => {
+export const minorUnitsToDecimalString = (props: Money): NumberString => {
 	const fractionDigits = currencyFractionDigits[props.currency];
 	const isNegative = props.value < BigInt(0);
 	const abs = isNegative ? -props.value : props.value;
 
 	if (fractionDigits === 0) {
 		const result = abs.toString();
-		return isNegative && result !== "0" ? `-${result}` : result;
+		return NumberString(isNegative && result !== "0" ? `-${result}` : result);
 	}
 
 	const text = abs.toString().padStart(fractionDigits + 1, "0");
@@ -74,7 +75,7 @@ export const minorUnitsToDecimalString = (props: Money): string => {
 	const base =
 		fractionPart === "" ? integerPart : `${integerPart}.${fractionPart}`;
 
-	return isNegative && base !== "0" ? `-${base}` : base;
+	return NumberString(isNegative && base !== "0" ? `-${base}` : base);
 };
 
 export const minorUnitsToDecimalStringForUI = (props: Money): string => {

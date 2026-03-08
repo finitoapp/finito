@@ -1,9 +1,4 @@
-import {
-	createId,
-	createRandomBytes,
-	getOrThrow,
-	type Id,
-} from "@evolu/common";
+import { createId, createRandomBytes } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
 import type React from "react";
@@ -15,29 +10,28 @@ import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
-import { createActiveCategoriesQuery } from "@/lib/evolu/queries/category";
+import { activeCategoriesQuery } from "@/lib/evolu/queries/category";
+import { type Id, TableIdSchema } from "@/lib/evolu/types";
 import {
 	Currency,
+	NonEmptyString255Schema,
 	NonEmptyStringSchema,
+	NumberStringSchema,
 	ProductCodeType,
 	StringToNullableStringSchema,
-	StringToNumberSchema,
-	StringToUndefinedStringSchema,
 } from "@/lib/shared/types";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const itemSchema = z
 	.object({
-		id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-		priceValue: StringToNumberSchema,
-		priceCurrency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
-		label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+		id: TableIdSchema,
+		price: StringToNullableStringSchema.pipe(NumberStringSchema),
+		currency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
+		label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 		unitOfMeasure: StringToNullableStringSchema.pipe(
 			NonEmptyStringSchema.nullable(),
 		),
-		categoryId: StringToNullableStringSchema.pipe(
-			NonEmptyStringSchema.nullable(),
-		),
+		categoryId: StringToNullableStringSchema.pipe(TableIdSchema.nullable()),
 		productCodeType: z.enum(ProductCodeType),
 		productCodeValue: StringToNullableStringSchema.pipe(
 			NonEmptyStringSchema.nullable(),
@@ -48,32 +42,38 @@ const itemSchema = z
 	})
 	.transform((values) => ({
 		...values,
-		priceValue: moneyCodec.parse({
-			value: values.priceValue.toString(),
-			currency: values.priceCurrency,
+		price: moneyCodec.decode({
+			value: values.price,
+			currency: values.currency,
 		}).value,
 	}));
 
-const itemDefaultValues = {
-	id: "",
-	priceValue: "",
-	priceCurrency: null,
-	label: "",
-	unitOfMeasure: "",
-	categoryId: "",
-	productCodeType: ProductCodeType.EAN,
-	productCodeValue: "",
-	internalCode: "",
-} satisfies z.input<typeof itemSchema>;
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
+
+const createItemDefaultValues = () => {
+	return {
+		id: createId(createIdDeps),
+		price: "",
+		currency: null,
+		label: "",
+		unitOfMeasure: "",
+		categoryId: "",
+		productCodeType: ProductCodeType.EAN,
+		productCodeValue: "",
+		internalCode: "",
+	} satisfies z.input<typeof itemSchema>;
+};
 
 const createComponents = (t: TFunction) => {
 	const CategoryComboboxInput = createEvoluComboboxInput({
 		label: t("items:form.item-form.label.category-optional"),
 		placeholder: t("items:form.item-form.placeholder.select-a-category"),
-		createQuery: createActiveCategoriesQuery,
+		query: activeCategoriesQuery,
 		mapRowsToItems: (rows) =>
 			rows.flatMap((row) =>
-				row.name === null ? [] : [{ label: row.name, value: row.id as string }],
+				row.name === null ? [] : [{ label: row.name, value: row.id }],
 			),
 	});
 
@@ -85,13 +85,13 @@ const createComponents = (t: TFunction) => {
 			label: t("items:form.item-form.label.label"),
 		}),
 		...builder.line({
-			...builder.magicInput("priceValue").amount({
+			...builder.magicInput("price").amount({
 				label: t("items:form.item-form.label.price"),
 				placeholder: t("items:form.item-form.placeholder.0"),
 				type: "number",
 				currencyFieldName: "currency",
 			}),
-			...builder.magicInput("priceCurrency").select({
+			...builder.magicInput("currency").select({
 				values: Currency,
 				allowEmpty: true,
 				label: t("items:form.item-form.label.currency"),
@@ -125,33 +125,20 @@ export const ItemForm: React.FC<{
 }> = (params) => {
 	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
-		return merge(itemDefaultValues, params.defaultValues ?? {});
+		return merge(createItemDefaultValues(), params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
 	const components = useMemo(() => createComponents(t), [t]);
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const createIdDeps = {
-				randomBytes: createRandomBytes(),
-			};
-			const id = values.id ?? createId(createIdDeps);
-			getOrThrow(
-				evolu.upsert(
-					"item",
-					{
-						...values,
-						id,
-					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id as Id);
-							}
-						},
-					},
-				),
-			);
+			evolu.upsert("item", values, {
+				onComplete: () => {
+					if (params.onSuccess) {
+						params.onSuccess(values.id);
+					}
+				},
+			});
 		},
 	});
 

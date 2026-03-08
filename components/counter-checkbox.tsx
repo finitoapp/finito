@@ -1,10 +1,9 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Check, Minus, Plus } from "lucide-react";
 import type * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -119,7 +118,9 @@ export function CounterCheckbox({
 						}}
 					>
 						<Minus className="h-4 w-4" />
-						<span className="sr-only">{t("components:counterCheckbox.decreaseCount")}</span>
+						<span className="sr-only">
+							{t("components:counterCheckbox.decreaseCount")}
+						</span>
 					</Button>
 					<Button
 						type="button"
@@ -132,7 +133,9 @@ export function CounterCheckbox({
 						}}
 					>
 						<Plus className="h-4 w-4" />
-						<span className="sr-only">{t("components:counterCheckbox.increaseCount")}</span>
+						<span className="sr-only">
+							{t("components:counterCheckbox.increaseCount")}
+						</span>
 					</Button>
 				</ButtonGroup>
 			)}

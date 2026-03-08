@@ -1,15 +1,16 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { CategoryForm } from "@/app/admin/(private)/categories/category-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -20,19 +21,24 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("category")
-				.select(["category.id as id", "category.name as name"] as const)
-				.where("category.isDeleted", "is not", sqliteTrue)
-				.where("category.id", "=", id as never);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("category")
+					.select(["category.id as id", "category.name as name"] as const)
+					.where("category.isDeleted", "is not", sqliteTrue)
+					.where("category.id", "=", id as never)
+					.where("category.name", "is not", null)
+					.$narrowType<{
+						name: NotNull;
+					}>();
+			}),
 		[id],
 	);
 
 	const { data: categories } = useEvoluQuery(query);
-	const category = categories && categories[0];
+	const category = categories[0];
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -46,8 +52,7 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<CategoryForm
-						key={category ? "yes" : "no"}
-						defaultValues={category ? { ...category } : undefined}
+						defaultValues={category}
 						onSuccess={() => router.back()}
 					/>
 				</CardContent>

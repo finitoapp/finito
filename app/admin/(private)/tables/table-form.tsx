@@ -1,10 +1,4 @@
-import {
-	createId,
-	createRandomBytes,
-	getOrThrow,
-	type Id,
-	sqliteTrue,
-} from "@evolu/common";
+import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
 import type React from "react";
@@ -15,8 +9,9 @@ import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
+import { type Id, TableIdSchema } from "@/lib/evolu/types";
 import {
-	NonEmptyStringSchema,
+	NonEmptyString255Schema,
 	PositiveIntegerSchema,
 	StringToNullableStringSchema,
 	StringToNumberSchema,
@@ -24,23 +19,29 @@ import {
 } from "@/lib/shared/types";
 
 const tableSchema = z.object({
-	id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-	label: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
+	id: TableIdSchema,
+	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	numberOfSeats: StringToNumberSchema.pipe(PositiveIntegerSchema),
 	codes: z
 		.object({
-			id: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema.optional()),
-			code: StringToUndefinedStringSchema.pipe(NonEmptyStringSchema),
+			id: TableIdSchema,
+			code: StringToUndefinedStringSchema.pipe(NonEmptyString255Schema),
 		})
-		.array(),
+		.array()
+		.readonly(),
 });
 
-const tableDefaultValues = {
-	id: "",
-	numberOfSeats: "1",
-	label: "",
-	codes: [],
-} satisfies z.input<typeof tableSchema>;
+const createIdDeps = {
+	randomBytes: createRandomBytes(),
+};
+
+const createTableDefaultValues = () =>
+	({
+		id: createId(createIdDeps),
+		numberOfSeats: "1",
+		label: "",
+		codes: [],
+	}) satisfies z.input<typeof tableSchema>;
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(tableSchema, ({ builder }) => ({
@@ -59,10 +60,10 @@ const createComponents = (t: TFunction) =>
 			{
 				name: "codes",
 				addRowLabel: t("tables:form.codes.addRowLabel"),
-				defaultValue: {
-					id: "",
+				defaultValue: () => ({
+					id: createId(createIdDeps),
 					code: "",
-				},
+				}),
 				columns: [
 					{
 						hidden: true,
@@ -89,7 +90,7 @@ export const TableForm: React.FC<{
 }> = (params) => {
 	const { t } = useTranslation();
 	const [defaultValues] = useState(() => {
-		return merge(tableDefaultValues, params.defaultValues ?? {});
+		return merge(createTableDefaultValues(), params.defaultValues ?? {});
 	});
 	const evolu = useEvolu();
 	const components = useMemo(() => createComponents(t), [t]);
@@ -99,26 +100,15 @@ export const TableForm: React.FC<{
 			const createIdDeps = {
 				randomBytes: createRandomBytes(),
 			};
-			const id = values.id ?? createId(createIdDeps);
-
 			const { codes, ...table } = values;
 
-			getOrThrow(
-				evolu.upsert(
-					"table",
-					{
-						...table,
-						id,
-					},
-					{
-						onComplete: () => {
-							if (params.onSuccess) {
-								params.onSuccess(id as Id);
-							}
-						},
-					},
-				),
-			);
+			evolu.upsert("table", table, {
+				onComplete: () => {
+					if (params.onSuccess) {
+						params.onSuccess(table.id);
+					}
+				},
+			});
 
 			const originalCodes = new Set(
 				(params.defaultValues?.codes ?? []).map((code) => code.id),
@@ -128,24 +118,20 @@ export const TableForm: React.FC<{
 					originalCodes.delete(code.id);
 				}
 
-				getOrThrow(
-					evolu.upsert("tableCode", {
-						...code,
-						id: code.id ?? createId(createIdDeps),
-						tableId: id,
-					}),
-				);
+				evolu.upsert("tableCode", {
+					...code,
+					id: code.id ?? createId(createIdDeps),
+					tableId: table.id,
+				});
 			}
 
-			console.log("originalCodes", originalCodes);
-
 			for (const id of originalCodes) {
-				getOrThrow(
+				if (id) {
 					evolu.update("tableCode", {
 						id,
 						isDeleted: sqliteTrue,
-					}),
-				);
+					});
+				}
 			}
 		},
 	});

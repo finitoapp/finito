@@ -1,5 +1,6 @@
 import { addDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { TimestampMs } from "@/lib/shared/types";
 import type { DayRange } from "./types";
 
 export const CALENDAR_SETTINGS = {
@@ -42,8 +43,8 @@ export const createDayRange = (date: Date, timezone: string): DayRange => {
 	return {
 		dayStartMs,
 		dayEndMs: fromZonedTime(`${nextDay}T00:00:00`, timezone).getTime(),
-		openMs,
-		closeMs,
+		openMs: TimestampMs(openMs),
+		closeMs: TimestampMs(closeMs),
 	};
 };
 

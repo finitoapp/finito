@@ -1,15 +1,14 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
-import type { TFunction } from "i18next";
 import type { ColumnDef } from "@tanstack/react-table";
+import type { TFunction } from "i18next";
+import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { InvoiceStatusBadge } from "@/app/admin/(private)/invoices/invoice-status-badge";
+import { useTranslation } from "react-i18next";
 import {
 	createSortableHeader,
 	DataTable,
@@ -27,16 +26,24 @@ import {
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
-import { formatAmount } from "@/lib/shared/utils/format";
+import { createQuery } from "@/lib/evolu";
+import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import type {
+	Currency,
+	DateString,
+	Integer,
+	NonEmptyString255,
+} from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 type Row = {
 	id: Id;
 	invoiceNumber: string;
-	customerName: string;
-	issueDate: string; // ISO date string
-	dueDate: string; // ISO date string
-	currency: string;
-	amount: number; // computed client-side
+	customerName: string | null;
+	issueDate: DateString; // ISO date string
+	dueDate: DateString; // ISO date string
+	currency: Currency;
+	totalAmount: Integer; // computed client-side
 };
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
@@ -61,30 +68,46 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "amount",
 		header: createSortableHeader(t("invoices:table.columns.amount")),
-		cell: ({ row }) => formatAmount(row.original.amount, row.original.currency),
+		cell: ({ row }) =>
+			formatMoney({
+				value: row.original.totalAmount,
+				currency: row.original.currency,
+			}),
 	},
 	{
 		accessorKey: "status",
 		header: createSortableHeader(t("invoices:table.columns.status")),
-		cell: ({ row }) => (
-			<InvoiceStatusBadge
-				invoiceId={row.original.id}
-				dueDate={new Date(row.original.dueDate)}
-			/>
-		),
+		// cell: ({ row }) => (
+		// 	<InvoiceStatusBadge
+		// 		invoiceId={row.original.id}
+		// 		dueDate={new Date(row.original.dueDate)}
+		// 	/>
+		// ),
 	},
 ];
 
-const createFilterableColumns = (t: TFunction) => [
-	{
-		id: "invoiceNumber",
-		title: t("invoices:table.columns.invoice-number"),
-	},
-	{
-		id: "customerName",
-		title: t("invoices:table.columns.customer-name"),
-	},
-] satisfies { id: keyof Row; title: string }[];
+const sortingFields = {
+	id: "invoice.id",
+	createdAt: "invoice.createdAt",
+	invoiceNumber: "invoice.invoiceNumber",
+	customerName: "invoiceCustomerBillingInfo.name",
+	issueDate: "invoice.issueDate",
+	dueDate: "invoice.dueDate",
+	currency: "invoice.currency",
+	totalAmount: "totalAmount",
+} as const satisfies Record<keyof Row | "createdAt", string>;
+
+const createFilterableColumns = (t: TFunction) =>
+	[
+		{
+			id: "invoiceNumber",
+			title: t("invoices:table.columns.invoice-number"),
+		},
+		{
+			id: "customerName",
+			title: t("invoices:table.columns.customer-name"),
+		},
+	] satisfies { id: keyof Row; title: string }[];
 
 export function InvoicesTable() {
 	const { t } = useTranslation();
@@ -99,13 +122,15 @@ export function InvoicesTable() {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
-				const finalSorting = sorting ?? {
-					id: "createdAt",
-					desc: true,
-				};
-				const sortingColumn = `invoice.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("createdAt" as const);
+				const fullSortingField = sortingFields[sortingField];
 
-				const query = evolu.createQuery((db) => {
+				const finalSorting = {
+					id: fullSortingField,
+					desc: sorting ? sorting.desc : true,
+				};
+
+				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("invoice")
 						.leftJoin(
@@ -113,27 +138,52 @@ export function InvoicesTable() {
 							"invoiceCustomerBillingInfo.id",
 							"invoice.id",
 						)
-						.select([
-							"invoice.id as id",
-							"invoice.invoiceNumber as invoiceNumber",
-							"invoice.issueDate as issueDate",
-							"invoice.dueDate as dueDate",
-							"invoice.currency as currency",
-							"invoiceCustomerBillingInfo.name as customerName",
-							"invoice.createdAt as invoice.createdAt",
-						] as const)
-						.where("invoice.isDeleted", "is not", sqliteTrue);
+						.leftJoin(
+							"invoiceItemLine",
+							"invoiceItemLine.invoiceId",
+							"invoice.id",
+						)
+						.select(
+							(eb) =>
+								[
+									"invoice.id as id",
+									"invoice.invoiceNumber as invoiceNumber",
+									"invoice.issueDate as issueDate",
+									"invoice.dueDate as dueDate",
+									"invoice.currency as currency",
+									"invoiceCustomerBillingInfo.name as customerName",
+									"invoice.createdAt as createdAt",
+									eb.fn
+										.coalesce(
+											eb.fn.sum<Integer>("invoiceItemLine.totalAmount"),
+											eb.val(0),
+										)
+										.as("totalAmount"),
+								] as const,
+						)
+						.where("invoice.isDeleted", "is not", sqliteTrue)
+						.where("invoice.invoiceNumber", "is not", null)
+						.where("invoice.currency", "is not", null)
+						.where("invoice.dueDate", "is not", null)
+						.where("invoice.issueDate", "is not", null)
+						.groupBy("invoice.id")
+						.$narrowType<{
+							invoiceNumber: NotNull;
+							currency: NotNull;
+							dueDate: NotNull;
+							issueDate: NotNull;
+						}>();
 
 					if (previousCursor) {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
 									previousCursor[finalSorting.id],
 								),
 								eb.and([
-									eb(sortingColumn, "=", previousCursor[finalSorting.id]),
+									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
 									eb("invoice.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -141,7 +191,7 @@ export function InvoicesTable() {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("invoice.id", "desc");
 
 					for (const filter of filters) {
@@ -149,14 +199,14 @@ export function InvoicesTable() {
 							qb = qb.where(
 								"invoice.invoiceNumber",
 								"like",
-								`${filter.value}%`,
+								`${filter.value}%` as NonEmptyString255,
 							);
 						}
 						if (filter.id === "customerName") {
 							qb = qb.where(
 								"invoiceCustomerBillingInfo.name",
 								"like",
-								`${filter.value}%`,
+								`${filter.value}%` as NonEmptyString255,
 							);
 						}
 					}
@@ -164,7 +214,7 @@ export function InvoicesTable() {
 					return qb.limit(limit + 1);
 				});
 
-				const formatData = async (result) => {
+				return subscribeToEvoluQuery(evolu, query, async (result) => {
 					const data = result.length > limit ? result.slice(0, -1) : result;
 
 					let nextCursor: undefined | Record<string, unknown>;
@@ -172,49 +222,15 @@ export function InvoicesTable() {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id as keyof typeof last],
+							[sortingField]: last[sortingField],
 						};
 					}
 
-					const ids = data.map((d) => d.id);
-					let amounts = new Map<Id, number>();
-					if (ids.length > 0) {
-						const items = await evolu.loadQuery(
-							evolu.createQuery((db) =>
-								db
-									.selectFrom("invoiceItem")
-									.select([
-										"invoiceItem.invoiceId as invoiceId",
-										"invoiceItem.price as price",
-										"invoiceItem.quantity as quantity",
-									] as const)
-									.where("invoiceItem.isDeleted", "is not", sqliteTrue)
-									.where("invoiceItem.invoiceId", "in", ids as Id[]),
-							),
-						);
-						amounts = items.reduce((map, it) => {
-							const prev = map.get(it.invoiceId as Id) ?? 0;
-							map.set(it.invoiceId as Id, prev + it.price * it.quantity);
-							return map;
-						}, new Map<Id, number>());
-					}
-
-					return {
-						data: data.map((d) => ({
-							...d,
-							amount: amounts.get(d.id as Id) ?? 0,
-						})),
+					setData({
+						data: [...data],
 						cursor:
 							nextCursor !== undefined ? JSON.stringify(nextCursor) : undefined,
-					};
-				};
-
-				void evolu.loadQuery(query).then((rows) => {
-					void formatData(rows).then(setData);
-				});
-
-				return evolu.subscribeQuery(query)(() => {
-					void formatData(evolu.getQueryRows(query)).then(setData);
+					});
 				});
 			},
 		[evolu],
@@ -225,7 +241,9 @@ export function InvoicesTable() {
 			<CardHeader>
 				<CardHeading className={"py-6"}>
 					<CardTitle>{t("invoices:table.invoices")}</CardTitle>
-					<CardDescription>{t("invoices:table.listOfYourInvoices")}</CardDescription>
+					<CardDescription>
+						{t("invoices:table.listOfYourInvoices")}
+					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
 					<Link href={"/admin/invoices/new"}>

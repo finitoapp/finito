@@ -6,13 +6,14 @@ import { PosBillTabs } from "@/components/pos/pos-bill-tabs";
 import { PosItems } from "@/components/pos/pos-items";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { usePos } from "@/hooks/use-pos";
+import type { Id } from "@/lib/evolu/types";
 import type { Currency } from "@/lib/shared/types";
 
 export const POS: FC<{
 	defaultCurrency: Currency;
 }> = (props) => {
 	const searchParams = useSearchParams();
-	const id = searchParams.get("id");
+	const id = searchParams.get("id") as Id | null;
 	const pos = usePos();
 	const bill = id !== null ? (pos.bills[id] ?? undefined) : undefined;
 	const [flyingButtons, setFlyingButtons] = useState<

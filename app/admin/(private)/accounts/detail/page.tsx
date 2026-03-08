@@ -1,23 +1,23 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
+import { createQuery } from "@/lib/evolu";
 import { formatIban } from "@/lib/shared/utils/format";
 
 export default function Home() {
@@ -31,22 +31,26 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("account")
-				.leftJoin("accountIban", "accountIban.id", "account.id")
-				.leftJoin("accountLud16", "accountLud16.id", "account.id")
-				.selectAll()
-				.where("account.isDeleted", "is not", sqliteTrue)
-				.where("account.id", "=", id as Id);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("account")
+					.leftJoin("accountIban", "accountIban.id", "account.id")
+					.leftJoin("accountLud16", "accountLud16.id", "account.id")
+					.selectAll()
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("account.id", "=", id as Id)
+					.$narrowType<{
+						id: NotNull;
+					}>();
+			}),
 		[id],
 	);
 
 	const { data: items } = useEvoluQuery(query);
 
-	const item = items && items[0];
+	const item = items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -72,6 +76,16 @@ export default function Home() {
 		},
 	);
 
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/accounts");
+		}
+	}, [item, router]);
+
+	if (item === undefined) {
+		return null;
+	}
+
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
 			<div className={"mb-6"}>
@@ -81,22 +95,14 @@ export default function Home() {
 			<div className={"flex gap-4 flex-wrap"}>
 				<ResponsiveCard className={"flex-2"}>
 					<CardHeader>
-						<CardTitle>
-							{!item && <Skeleton />}
-							{item?.name}
-						</CardTitle>
+						<CardTitle>{item.name}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className={"flex flex-col gap-8"}>
 							<div className={"flex gap-4"}>
 								<StaticCard
 									title={"Type"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item?._tag}
-										</>
-									}
+									content={item._tag}
 									className={"flex-1"}
 								/>
 							</div>
@@ -116,7 +122,9 @@ export default function Home() {
 																? "-"
 																: item._tag === "accountNwc"
 																	? "-"
-																	: formatIban(item.iban)
+																	: item.iban
+																		? formatIban(item.iban)
+																		: "-"
 													: "-",
 											},
 										]}

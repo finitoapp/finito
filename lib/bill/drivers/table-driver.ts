@@ -4,16 +4,17 @@ import type {
 	BillSubscription,
 	ScreenDataPaymentPayFunction,
 } from "@/lib/bill/driver";
+import { NonEmptyStringSchema, Uuid7 } from "@/lib/shared/types";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
 } from "@/lib/table/message-bus";
-import { NonEmptyStringSchema, Uuid7 } from "@/lib/shared/types";
 
 export class TableDriver implements BillDriver {
 	public async subscribe({
 		billId,
 		callback,
+		screenStack,
 		ndk,
 	}: Parameters<BillDriver["subscribe"]>[0]) {
 		let isInsideThePayment = false;
@@ -29,7 +30,7 @@ export class TableDriver implements BillDriver {
 		}
 
 		const qrCodeId =
-			qrCodeIdFirstPart + (rest.length > 0 ? "-" + rest.join("-") : "");
+			qrCodeIdFirstPart + (rest.length > 0 ? `-${rest.join("-")}` : "");
 		const qrCodeIdResult = NonEmptyStringSchema.safeParse(qrCodeId);
 		if (!qrCodeIdResult.success) {
 			return null;
@@ -44,7 +45,6 @@ export class TableDriver implements BillDriver {
 			});
 
 		const pay: ScreenDataPaymentPayFunction = async (params) => {
-			console.log("pay", params);
 			const response = await tableRequestClient.call(
 				"createPaymentFromSubscribedBill",
 				{
@@ -63,22 +63,17 @@ export class TableDriver implements BillDriver {
 			if (errore.isError(response)) {
 				console.error(response);
 				callback({
-					type: "billLoading",
+					type: "close",
 					payload: {
-						text: "Failed to create payment...",
+						alertMessage: "Failed to create payment...",
 					},
 				});
 				return;
 			}
 
-			console.log("response", response);
-
 			isInsideThePayment = true;
 
-			callback({
-				type: "screen",
-				payload: response,
-			});
+			screenStack.push(response);
 		};
 
 		const server = await tableEventMessageBus
@@ -98,17 +93,14 @@ export class TableDriver implements BillDriver {
 						return null;
 					}
 
-					callback({
-						type: "screen",
-						payload: {
-							...billScreenData,
-							pay,
-						},
+					screenStack.replace({
+						variant: "table",
+						payload: billScreenData,
+						pay,
 					});
 					return null;
 				},
 				paymentFinished: async ({ billScreenData, subscriptionId }) => {
-					console.log("paymentFinished2", billScreenData, subscriptionId);
 					if (
 						billScreenData === null ||
 						expectedSubscriptionId !== subscriptionId
@@ -118,10 +110,10 @@ export class TableDriver implements BillDriver {
 
 					isInsideThePayment = true;
 
-					console.log("paymentFinished3", billScreenData, subscriptionId);
-					callback({
-						type: "screen",
+					screenStack.replace({
+						variant: "table",
 						payload: billScreenData,
+						pay,
 					});
 					return null;
 				},
@@ -129,9 +121,9 @@ export class TableDriver implements BillDriver {
 		if (errore.isError(server)) {
 			console.error(server);
 			callback({
-				type: "billLoading",
+				type: "close",
 				payload: {
-					text: "Failed to subscribe to table updates...",
+					alertMessage: "Failed to subscribe to table updates...",
 				},
 			});
 			return null;
@@ -150,9 +142,9 @@ export class TableDriver implements BillDriver {
 			console.error(subscribeResult);
 			server.close();
 			callback({
-				type: "billLoading",
+				type: "close",
 				payload: {
-					text: "Failed to subscribe to bill...",
+					alertMessage: "Failed to subscribe to bill...",
 				},
 			});
 			return null;
@@ -183,7 +175,6 @@ export class TableDriver implements BillDriver {
 		}, 20_000);
 
 		return {
-			refresh: async () => {},
 			close: async () => {
 				server.close();
 				clearInterval(interval);

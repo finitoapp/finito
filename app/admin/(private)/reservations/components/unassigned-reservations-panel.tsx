@@ -33,18 +33,18 @@ export const UnassignedReservationsPanel: React.FC<{
 					unassignedReservations.map((reservation) => (
 						<div key={reservation.id} className="rounded-md border p-3 text-sm">
 							<div className="font-medium">
-								{reservation._tag === "reservationBooking"
+								{reservation._tag === "booking"
 									? reservation.name
 									: reservation.label}
 							</div>
 							<div className="text-muted-foreground">
 								{toLocalTimeLabel(reservation.startAt, timezone)} -{" "}
 								{toLocalTimeLabel(reservation.endAt, timezone)}
-								{reservation._tag === "reservationBooking"
+								{reservation._tag === "booking"
 									? ` • ${reservation.numberOfPeople}`
 									: ` • ${t("reservations:form.tag.reservationBlock")}`}
 							</div>
-							{reservation._tag === "reservationBooking" && (
+							{reservation._tag === "booking" && (
 								<div className="text-xs text-muted-foreground">
 									{t(
 										`reservations:form.approval.${reservation.approvalStatus}` as const,

@@ -14,7 +14,7 @@ export const createDraftFromCreate = (params: {
 	startAt: number;
 	durationMinutes?: number;
 }): DraftReservation => ({
-	_tag: params._tag ?? "reservationBooking",
+	_tag: params._tag ?? "booking",
 	name: "",
 	phone: "",
 	email: "",
@@ -43,10 +43,10 @@ export const createDraftFromReservation = (params: {
 		),
 	);
 
-	if (params.reservation._tag === "reservationBlock") {
+	if (params.reservation._tag === "block") {
 		return {
 			id: params.reservation.id,
-			_tag: "reservationBlock",
+			_tag: "block",
 			name: "",
 			phone: "",
 			email: "",
@@ -68,7 +68,7 @@ export const createDraftFromReservation = (params: {
 
 	return {
 		id: params.reservation.id,
-		_tag: "reservationBooking",
+		_tag: "booking",
 		name: params.reservation.name,
 		phone: params.reservation.phone ?? "",
 		email: params.reservation.email ?? "",

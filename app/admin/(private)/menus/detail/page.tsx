@@ -3,12 +3,13 @@
 import {
 	createId,
 	createRandomBytes,
-	getOrThrow,
 	type Id,
+	kysely,
 	sqliteTrue,
 } from "@evolu/common";
 import { usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
+import type { NotNull } from "kysely";
 import {
 	CopyIcon,
 	EditIcon,
@@ -39,19 +40,20 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
+import { createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { publishRelevantMenusToStorage } from "@/lib/menu/service";
 import { isMenuVisibleForPublic } from "@/lib/menu/utils";
 import { downloadFile } from "@/lib/shared/files/file-utils";
+import { NonEmptyString255 } from "@/lib/shared/types";
 import { formatAmount } from "@/lib/shared/utils/format";
 import { clientBaseUrl } from "@/lib/shared/utils/window";
 
-const createNewId = () => createId({ randomBytes: createRandomBytes() }) as Id;
+const createNewId = () => createId({ randomBytes: createRandomBytes() });
 
 const getStatusLabel = (t: (key: string) => string, value: string) => {
 	if (value === MenuStatus.Draft) return t("menus:status.draft");
@@ -155,127 +157,136 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const menuQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menu")
-				.select([
-					"menu.id as id",
-					"menu.name as name",
-					"menu.status as status",
-					"menu.validFrom as validFrom",
-					"menu.validTo as validTo",
-					"menu.publishedAt as publishedAt",
-					"menu.createdAt as createdAt",
-				] as const)
-				.where("menu.isDeleted", "is not", sqliteTrue)
-				.where("menu.id", "=", id as Id),
-		[id],
-	);
-	const categoriesQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menuCategory")
-				.select([
-					"menuCategory.id as id",
-					"menuCategory.menuId as menuId",
-					"menuCategory.name as name",
-				] as const)
-				.where("menuCategory.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.menuId", "=", id as Id),
-		[id],
-	);
-	const itemsQuery = useCreateQuery(
-		(db) =>
-			db
-				.selectFrom("menuItem")
-				.innerJoin("menuCategory", "menuCategory.id", "menuItem.menuCategoryId")
-				.select([
-					"menuItem.id as id",
-					"menuItem.menuCategoryId as menuCategoryId",
-					"menuItem.sourceItemId as sourceItemId",
-					"menuItem.label as label",
-					"menuItem.availabilityStatus as availabilityStatus",
-					"menuItem.priceValue as priceValue",
-					"menuItem.priceCurrency as priceCurrency",
-					"menuItem.unitOfMeasure as unitOfMeasure",
-					"menuItem.internalCode as internalCode",
-					"menuItem.productCodeType as productCodeType",
-					"menuItem.productCodeValue as productCodeValue",
-				] as const)
-				.where("menuItem.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.isDeleted", "is not", sqliteTrue)
-				.where("menuCategory.menuId", "=", id as Id),
+	const menuQuery = useMemo(
+		() =>
+			createQuery((db) =>
+				db
+					.selectFrom("menu")
+					.select(
+						(eb) =>
+							[
+								"menu.id as id",
+								"menu.name as name",
+								"menu.status as status",
+								"menu.validFrom as validFrom",
+								"menu.validTo as validTo",
+								"menu.publishedAt as publishedAt",
+
+								kysely
+									.jsonArrayFrom(
+										eb
+											.selectFrom("menuCategory")
+											.select((eb) => [
+												"menuCategory.id as id",
+												"menuCategory.menuId as menuId",
+												"menuCategory.name as name",
+
+												kysely
+													.jsonArrayFrom(
+														eb
+															.selectFrom("menuItemLine")
+															.select(
+																(eb) =>
+																	[
+																		"menuItemLine.id as id",
+																		"menuItemLine.availabilityStatus as availabilityStatus",
+
+																		kysely
+																			.jsonObjectFrom(
+																				eb
+																					.selectFrom("menuItem")
+																					.select([
+																						"menuItem.id as id",
+																						"menuItem.categoryId as categoryId",
+																						"menuItem.sourceItemId as sourceItemId",
+																						"menuItem.label as label",
+																						"menuItem.price as price",
+																						"menuItem.currency as currency",
+																						"menuItem.unitOfMeasure as unitOfMeasure",
+																						"menuItem.internalCode as internalCode",
+																						"menuItem.productCodeType as productCodeType",
+																						"menuItem.productCodeValue as productCodeValue",
+																					])
+																					.whereRef(
+																						"menuItem.id",
+																						"=",
+																						"menuItemLine.id",
+																					)
+																					.where(
+																						"menuItem.isDeleted",
+																						"is not",
+																						sqliteTrue,
+																					)
+																					.where(
+																						"menuItem.label",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.price",
+																						"is not",
+																						null,
+																					)
+																					.where(
+																						"menuItem.currency",
+																						"is not",
+																						null,
+																					)
+																					.$narrowType<{
+																						label: NotNull;
+																						price: NotNull;
+																						currency: NotNull;
+																					}>(),
+																			)
+																			.as("item"),
+																	] as const,
+															)
+															.whereRef(
+																"menuItemLine.menuCategoryId",
+																"=",
+																"menuCategory.id",
+															)
+															.where(
+																"menuItemLine.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.$narrowType<{
+																item: NotNull;
+															}>(),
+													)
+													.as("items"),
+											])
+											.whereRef("menuCategory.menuId", "=", "menu.id")
+											.where("menuCategory.isDeleted", "is not", sqliteTrue)
+											.where("menuCategory.name", "is not", null)
+											.where("menuCategory.menuId", "=", id as Id)
+											.$narrowType<{
+												name: NotNull;
+											}>(),
+									)
+									.as("categories"),
+							] as const,
+					)
+					.where("menu.isDeleted", "is not", sqliteTrue)
+					.where("menu.name", "is not", null)
+					.where("menu.status", "is not", null)
+					.where("menu.id", "=", id as Id)
+					.$narrowType<{
+						name: NotNull;
+						status: NotNull;
+					}>(),
+			),
 		[id],
 	);
 
 	const { data: menus } = useEvoluQuery(menuQuery);
-	const { data: categoriesRows } = useEvoluQuery(categoriesQuery);
-	const { data: itemsRows } = useEvoluQuery(itemsQuery);
 
-	const menu = menus?.[0];
-	const categoriesCount = categoriesRows?.length ?? 0;
-	const itemsCount = itemsRows?.length ?? 0;
+	const menu = menus[0];
 	const isVisible = isMenuVisibleForPublic({
 		status: menu?.status ?? null,
 		publishedAt: menu?.publishedAt ?? null,
 	});
-
-	const groupedCategories = useMemo(() => {
-		const categoryMap = new Map<
-			string,
-			{
-				id: string;
-				name: string;
-				items: Array<{
-					id: string;
-					label: string;
-					priceValue: number;
-					priceCurrency: string;
-					unitOfMeasure: string | null;
-				}>;
-			}
-		>();
-		for (const category of categoriesRows ?? []) {
-			if (category.name === null) continue;
-
-			categoryMap.set(category.id, {
-				id: category.id,
-				name: category.name,
-				items: [],
-			});
-		}
-		for (const item of itemsRows ?? []) {
-			if (
-				item.label === null ||
-				item.priceValue === null ||
-				item.priceCurrency === null
-			) {
-				continue;
-			}
-
-			const category = categoryMap.get(item.menuCategoryId);
-			if (!category) continue;
-			category.items.push({
-				id: item.id,
-				label: item.label,
-				priceValue: item.priceValue,
-				priceCurrency: item.priceCurrency,
-				unitOfMeasure: item.unitOfMeasure,
-			});
-		}
-
-		return [...categoryMap.values()]
-			.map((category) => ({
-				...category,
-				items: [...category.items].sort((a, b) =>
-					a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
-				),
-			}))
-			.sort((a, b) =>
-				a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-			);
-	}, [categoriesRows, itemsRows]);
 
 	const menuPdfData = useMemo<MenuPdfData | null>(() => {
 		if (!menu) return null;
@@ -300,17 +311,17 @@ export default function Home() {
 			validityLabel,
 			emptyLabel: t("menus:common.none"),
 			categoriesLabel: t("menus:form.sections.categories"),
-			categories: groupedCategories.map((category) => ({
+			categories: menu.categories.map((category) => ({
 				id: category.id,
 				name: category.name,
 				items: category.items.map((item) => ({
 					id: item.id,
-					label: item.label,
-					amountLabel: `${formatAmount(item.priceValue, item.priceCurrency)}${item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}`,
+					label: item.item.label,
+					amountLabel: `${formatAmount(item.item.price, item.item.currency)}${item.item.unitOfMeasure ? ` / ${item.item.unitOfMeasure}` : ""}`,
 				})),
 			})),
 		};
-	}, [menu, t, i18n.language, groupedCategories]);
+	}, [menu, t, i18n.language]);
 	const menuPdfFileName = useMemo(
 		() => `menu-${toSafeFileName(menu?.name ?? "menu")}.pdf`,
 		[menu?.name],
@@ -321,27 +332,26 @@ export default function Home() {
 		mutationFn: async () => {
 			if (!menu) return;
 
-			getOrThrow(
-				evolu.update("menu", {
-					id: menu.id,
+			evolu.update("menu", {
+				id: menu.id,
+				isDeleted: sqliteTrue,
+			});
+			for (const category of menu.categories ?? []) {
+				evolu.update("menuCategory", {
+					id: category.id,
 					isDeleted: sqliteTrue,
-				}),
-			);
-			for (const category of categoriesRows ?? []) {
-				getOrThrow(
-					evolu.update("menuCategory", {
-						id: category.id as Id,
+				});
+
+				for (const item of category.items) {
+					evolu.update("menuItemLine", {
+						id: item.id,
 						isDeleted: sqliteTrue,
-					}),
-				);
-			}
-			for (const item of itemsRows ?? []) {
-				getOrThrow(
+					});
 					evolu.update("menuItem", {
-						id: item.id as Id,
+						id: item.id,
 						isDeleted: sqliteTrue,
-					}),
-				);
+					});
+				}
 			}
 
 			router.push("/admin/menus" as never);
@@ -358,13 +368,11 @@ export default function Home() {
 					: MenuStatus.Published;
 			const nextPublishedAt =
 				nextStatus === MenuStatus.Published ? Date.now() : menu.publishedAt;
-			getOrThrow(
-				evolu.update("menu", {
-					id: menu.id,
-					status: nextStatus,
-					publishedAt: nextPublishedAt,
-				}),
-			);
+			evolu.update("menu", {
+				id: menu.id,
+				status: nextStatus,
+				publishedAt: nextPublishedAt,
+			});
 
 			const publishResult = await publishRelevantMenusToStorage({
 				ndk,
@@ -385,49 +393,44 @@ export default function Home() {
 			if (!menu) return;
 
 			const newMenuId = createNewId();
-			getOrThrow(
-				evolu.upsert("menu", {
-					id: newMenuId,
-					name: `Kopie - ${menu.name}`,
-					status: MenuStatus.Draft,
-					validFrom: menu.validFrom,
-					validTo: menu.validTo,
-					publishedAt: null,
-				}),
-			);
+			evolu.upsert("menu", {
+				id: newMenuId,
+				name: NonEmptyString255(`Kopie - ${menu.name}`),
+				status: MenuStatus.Draft,
+				validFrom: menu.validFrom,
+				validTo: menu.validTo,
+				publishedAt: null,
+			});
 
 			const categoryIdMap = new Map<string, Id>();
-			for (const category of categoriesRows ?? []) {
+			for (const category of menu.categories) {
 				const newCategoryId = createNewId();
 				categoryIdMap.set(category.id, newCategoryId);
-				getOrThrow(
-					evolu.upsert("menuCategory", {
-						id: newCategoryId,
-						menuId: newMenuId,
-						name: category.name,
-					}),
-				);
-			}
+				evolu.upsert("menuCategory", {
+					id: newCategoryId,
+					menuId: newMenuId,
+					name: category.name,
+				});
 
-			for (const item of itemsRows ?? []) {
-				const newCategoryId = categoryIdMap.get(item.menuCategoryId);
-				if (!newCategoryId) continue;
-
-				getOrThrow(
-					evolu.upsert("menuItem", {
-						id: createNewId(),
+				for (const item of category.items) {
+					const itemId = createNewId();
+					evolu.upsert("menuItemLine", {
+						id: itemId,
 						menuCategoryId: newCategoryId,
-						sourceItemId: item.sourceItemId as Id | null,
-						label: item.label,
 						availabilityStatus: item.availabilityStatus,
-						priceValue: item.priceValue,
-						priceCurrency: item.priceCurrency,
-						unitOfMeasure: item.unitOfMeasure,
-						internalCode: item.internalCode,
-						productCodeType: item.productCodeType,
-						productCodeValue: item.productCodeValue,
-					}),
-				);
+					});
+					evolu.upsert("menuItem", {
+						id: itemId,
+						sourceItemId: item.item.sourceItemId,
+						label: item.item.label,
+						price: item.item.price,
+						currency: item.item.currency,
+						unitOfMeasure: item.item.unitOfMeasure,
+						internalCode: item.item.internalCode,
+						productCodeType: item.item.productCodeType,
+						productCodeValue: item.item.productCodeValue,
+					});
+				}
 			}
 
 			router.push(
@@ -449,6 +452,20 @@ export default function Home() {
 		},
 	);
 
+	useEffect(() => {
+		if (menu === undefined) {
+			router.replace("/admin/menus");
+		}
+	}, [menu, router]);
+
+	if (menu === undefined) {
+		return null;
+	}
+
+	const itemsCount = menu.categories.reduce((acc, category) => {
+		return acc + category.items.length;
+	}, 0);
+
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
 			<div className={"mb-6"}>
@@ -468,12 +485,7 @@ export default function Home() {
 							<div className={"flex gap-4 flex-wrap"}>
 								<StaticCard
 									title={t("menus:detail.stats.categories")}
-									content={
-										<>
-											{!menu && <Skeleton />}
-											{menu && categoriesCount.toString()}
-										</>
-									}
+									content={menu.categories.length.toString()}
 									className={"flex-1 min-w-40"}
 								/>
 								<StaticCard
@@ -543,12 +555,12 @@ export default function Home() {
 									<div className={"font-medium"}>
 										{t("menus:form.sections.categories")}
 									</div>
-									{groupedCategories.length === 0 && (
+									{menu.categories.length === 0 && (
 										<div className={"text-sm text-muted-foreground"}>
 											{t("menus:common.none")}
 										</div>
 									)}
-									{groupedCategories.map((category) => (
+									{menu.categories.map((category) => (
 										<div
 											key={category.id}
 											className={"rounded-md border p-3 space-y-1"}
@@ -556,7 +568,9 @@ export default function Home() {
 											<div className={"font-medium"}>{category.name}</div>
 											<div className={"text-sm text-muted-foreground"}>
 												{category.items.length > 0
-													? category.items.map((item) => item.label).join(", ")
+													? category.items
+															.map((item) => item.item.label)
+															.join(", ")
 													: t("menus:common.none")}
 											</div>
 										</div>

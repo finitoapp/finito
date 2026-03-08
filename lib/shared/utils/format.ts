@@ -1,5 +1,8 @@
 import type { Iban } from "@/lib/shared/types";
-import { type Money, minorUnitsToDecimalString } from "@/lib/shared/zod/money-codec";
+import {
+	type Money,
+	minorUnitsToDecimalString,
+} from "@/lib/shared/zod/money-codec";
 
 export function formatAmount(
 	amount: number,

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
 import { usePos } from "@/hooks/use-pos";
+import type { Id } from "@/lib/evolu/types";
 import type { Currency } from "@/lib/shared/types";
 
 export const PosBillTabs: FC<{
@@ -19,7 +20,7 @@ export const PosBillTabs: FC<{
 	const id = searchParams.get("id");
 
 	useEffect(() => {
-		if (id === null || pos.bills[id] === undefined) {
+		if (id === null || pos.bills[id as Id] === undefined) {
 			const firstBillId = Object.keys(pos.bills)[0];
 			if (firstBillId !== undefined) {
 				router.replace(`/admin/pos?id=${encodeURIComponent(firstBillId)}`);
@@ -42,7 +43,7 @@ export const PosBillTabs: FC<{
 						}
 					>
 						{bill.table
-							? bill.table.name
+							? bill.table.label
 							: bill.label !== ""
 								? bill.label
 								: `# ${bill.id}`}
@@ -50,7 +51,7 @@ export const PosBillTabs: FC<{
 							size={"lg"}
 							variant={"ghost"}
 							onClick={() => {
-								deleteBill(billId);
+								deleteBill(billId as Id);
 							}}
 						>
 							<CircleXIcon />

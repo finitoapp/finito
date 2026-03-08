@@ -1,16 +1,18 @@
 "use client";
 
-
-import { useTranslation } from "react-i18next";
 import { type Id, sqliteTrue } from "@evolu/common";
+import type { NotNull } from "kysely";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCreateQuery } from "@/hooks/use-create-query";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { createQuery } from "@/lib/evolu";
 import { ProductCodeType } from "@/lib/shared/types";
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -21,30 +23,48 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useCreateQuery(
-		(db) => {
-			return db
-				.selectFrom("item")
-				.select([
-					"item.id as id",
-					"item.label as label",
-					"item.priceValue as priceValue",
-					"item.priceCurrency as priceCurrency",
-					"item.unitOfMeasure as unitOfMeasure",
-					"item.categoryId as categoryId",
-					"item.productCodeType as productCodeType",
-					"item.productCodeValue as productCodeValue",
-					"item.internalCode as internalCode",
-				] as const)
-				.where("item.isDeleted", "is not", sqliteTrue)
-				.where("item.id", "=", id as Id);
-		},
+	const query = useMemo(
+		() =>
+			createQuery((db) => {
+				return db
+					.selectFrom("item")
+					.select([
+						"item.id as id",
+						"item.label as label",
+						"item.price as price",
+						"item.currency as currency",
+						"item.unitOfMeasure as unitOfMeasure",
+						"item.categoryId as categoryId",
+						"item.productCodeType as productCodeType",
+						"item.productCodeValue as productCodeValue",
+						"item.internalCode as internalCode",
+					] as const)
+					.where("item.id", "=", id as Id)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.label", "is not", null)
+					.where("item.price", "is not", null)
+					.where("item.currency", "is not", null)
+					.$narrowType<{
+						label: NotNull;
+						price: NotNull;
+						currency: NotNull;
+					}>();
+			}),
 		[id],
 	);
 
 	const { data: items } = useEvoluQuery(query);
-	const item = items && items[0];
-	console.log("item", item);
+	const item = items[0];
+
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/items");
+		}
+	}, [item, router]);
+
+	if (item === undefined) {
+		return null;
+	}
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
@@ -58,20 +78,19 @@ export default function Home() {
 				</CardHeader>
 				<CardContent>
 					<ItemForm
-						key={item ? "yes" : "no"}
-						defaultValues={
-							item
-								? {
-										...item,
-										priceValue: item.priceValue.toString(),
-										priceCurrency: item.priceCurrency,
-										categoryId: item.categoryId ?? "",
-										productCodeValue: item.productCodeValue ?? "",
-										productCodeType:
-											item.productCodeType ?? ProductCodeType.EAN,
-									}
-								: undefined
-						}
+						defaultValues={{
+							...item,
+							price: moneyCodec.encode({
+								value: item.price,
+								currency: item.currency,
+							}).value,
+							currency: item.currency,
+							categoryId: item.categoryId ?? "",
+							productCodeValue: item.productCodeValue ?? "",
+							productCodeType: item.productCodeType ?? ProductCodeType.EAN,
+							unitOfMeasure: item.unitOfMeasure ?? "",
+							internalCode: item.internalCode ?? "",
+						}}
 						onSuccess={() => router.back()}
 					/>
 				</CardContent>
