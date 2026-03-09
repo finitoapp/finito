@@ -17,6 +17,9 @@
     "check:tests": "bun test",
     "check:lint": "biome check"
   },
+  "patchedDependencies": {
+    "@evolu/monorepo@github:evoluhq/evolu#19030df": "patches/evolu_parse.patch"
+  },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",
     "@buildonspark/spark-sdk": "0.6.7",
