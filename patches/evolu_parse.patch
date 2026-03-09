@@ -1,0 +1,13 @@
+diff --git a/packages/common/src/local-first/Query.ts b/packages/common/src/local-first/Query.ts
+index 2f9006a..155de50 100644
+--- a/packages/common/src/local-first/Query.ts
++++ b/packages/common/src/local-first/Query.ts
+@@ -230,7 +230,7 @@ export const parseSqliteJsonArray = <T>(
+ 
+ const parse = (obj: unknown): unknown => {
+   if (String.is(obj) && obj.startsWith(kyselyJsonIdentifier)) {
+-    return JSON.parse(obj.slice(kyselyJsonIdentifier.length));
++    return parse(JSON.parse(obj.slice(kyselyJsonIdentifier.length)));
+   }
+ 
+   if (Array.isArray(obj)) {
