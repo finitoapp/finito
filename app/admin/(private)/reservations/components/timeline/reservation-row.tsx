@@ -64,7 +64,10 @@ export const ReservationRow: React.FC<{
 						{Array.from({ length: props.slotCount }).map((_, slotIndex) => (
 							<button
 								type="button"
-								key={`${props.table.id}-${slotIndex}`}
+								key={`${props.table.id}-${
+									// biome-ignore lint/suspicious/noArrayIndexKey: It's OK here
+									slotIndex
+								}`}
 								data-slot-index={slotIndex}
 								data-slot-table-id={props.table.id}
 								className={cn(
