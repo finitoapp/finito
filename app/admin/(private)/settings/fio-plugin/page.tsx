@@ -1,7 +1,10 @@
 "use client";
 
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FioPluginForm } from "@/app/admin/(private)/settings/fio-plugin/fio-plugin-form";
@@ -25,9 +28,9 @@ export default function Home() {
 					.where("numberOfSecondsBetweenChecks", "is not", null)
 					.where("isActive", "is not", null)
 					.$narrowType<{
-						apiUrl: NotNull;
-						numberOfSecondsBetweenChecks: NotNull;
-						isActive: NotNull;
+						apiUrl: KyselyNotNull;
+						numberOfSecondsBetweenChecks: KyselyNotNull;
+						isActive: KyselyNotNull;
 					}>();
 			}),
 		[itemId],
@@ -50,7 +53,7 @@ export default function Home() {
 					.where("fioPluginToken.fioPluginId", "=", itemId)
 					.where("fioPluginToken.token", "is not", null)
 					.$narrowType<{
-						token: NotNull;
+						token: KyselyNotNull;
 					}>();
 			}),
 		[itemId],

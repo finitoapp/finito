@@ -1,12 +1,16 @@
 "use client";
 
-import { createIdFromString, type Row, sqliteTrue } from "@evolu/common";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	type Row,
+	sqliteTrue,
+} from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { IconDownload, IconReload, IconUpload } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, format } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import type { NotNull } from "kysely";
 import { LoaderCircleIcon } from "lucide-react";
 import {
 	type ChangeEvent,
@@ -633,9 +637,9 @@ const RandomDataGenerator = () => {
 						.where("item.currency", "is not", null)
 						.orderBy("item.label", "asc")
 						.$narrowType<{
-							label: NotNull;
-							price: NotNull;
-							currency: NotNull;
+							label: KyselyNotNull;
+							price: KyselyNotNull;
+							currency: KyselyNotNull;
 						}>(),
 				),
 			);

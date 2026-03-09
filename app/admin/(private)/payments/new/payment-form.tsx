@@ -1,9 +1,13 @@
 "use client";
 
-import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -324,7 +328,7 @@ const createComponents = (t: TFunction) =>
 													.where("account.name", "is not", null)
 													.where("account._tag", "=", "accountLud16")
 													.$narrowType<{
-														name: NotNull;
+														name: KyselyNotNull;
 													}>(),
 											),
 										);
@@ -375,7 +379,7 @@ const createComponents = (t: TFunction) =>
 													.where("account.name", "is not", null)
 													.where("account._tag", "=", "accountSpark")
 													.$narrowType<{
-														name: NotNull;
+														name: KyselyNotNull;
 													}>(),
 											),
 										);
@@ -414,7 +418,7 @@ const createComponents = (t: TFunction) =>
 													.where("account.name", "is not", null)
 													.where("account._tag", "=", "accountCashRegister")
 													.$narrowType<{
-														name: NotNull;
+														name: KyselyNotNull;
 													}>(),
 											),
 										);

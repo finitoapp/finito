@@ -1,9 +1,13 @@
 "use client";
 
-import { type DateIso, type Id, sqliteTrue } from "@evolu/common";
+import {
+	type DateIso,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -118,9 +122,9 @@ export function ItemsTable() {
 						.where("item.isDeleted", "is not", sqliteTrue)
 						.where("item.label", "is not", null)
 						.$narrowType<{
-							label: NotNull;
-							price: NotNull;
-							currency: NotNull;
+							label: KyselyNotNull;
+							price: KyselyNotNull;
+							currency: KyselyNotNull;
 						}>();
 
 					if (previousCursor) {

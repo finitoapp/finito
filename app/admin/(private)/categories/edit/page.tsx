@@ -1,7 +1,6 @@
 "use client";
 
-import { sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,7 +30,7 @@ export default function Home() {
 					.where("category.id", "=", id as never)
 					.where("category.name", "is not", null)
 					.$narrowType<{
-						name: NotNull;
+						name: KyselyNotNull;
 					}>();
 			}),
 		[id],

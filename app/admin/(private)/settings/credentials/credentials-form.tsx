@@ -1,10 +1,15 @@
 "use client";
 
-import { createId, createRandomBytes, kysely, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
-import type { NotNull } from "kysely";
 import type React from "react";
 import { useEffect, useEffectEvent, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -294,8 +299,8 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 						.where("accountNostrRelay.isActive", "is not", null)
 						.where("accountNostrRelay.url", "is not", null)
 						.$narrowType<{
-							isActive: NotNull;
-							url: NotNull;
+							isActive: KyselyNotNull;
+							url: KyselyNotNull;
 						}>(),
 				),
 			),
@@ -308,32 +313,30 @@ export const CredentialsForm: React.FC<EmptyObject> = () => {
 							"accountEvoluTransport.type as type",
 							"accountEvoluTransport.isActive as isActive",
 
-							kysely
-								.jsonObjectFrom(
-									eb
-										.selectFrom("accountEvoluTransportWebsocket")
-										.select(["accountEvoluTransportWebsocket.url as url"])
-										.whereRef(
-											"accountEvoluTransportWebsocket.id",
-											"=",
-											"accountEvoluTransport.id",
-										)
-										.where(
-											"accountEvoluTransportWebsocket.isDeleted",
-											"is not",
-											sqliteTrue,
-										)
-										.where("accountEvoluTransportWebsocket.url", "is not", null)
-										.$narrowType<{
-											url: NotNull;
-										}>(),
-								)
-								.as("websocket"),
+							evoluJsonObjectFrom(
+								eb
+									.selectFrom("accountEvoluTransportWebsocket")
+									.select(["accountEvoluTransportWebsocket.url as url"])
+									.whereRef(
+										"accountEvoluTransportWebsocket.id",
+										"=",
+										"accountEvoluTransport.id",
+									)
+									.where(
+										"accountEvoluTransportWebsocket.isDeleted",
+										"is not",
+										sqliteTrue,
+									)
+									.where("accountEvoluTransportWebsocket.url", "is not", null)
+									.$narrowType<{
+										url: KyselyNotNull;
+									}>(),
+							).as("websocket"),
 						])
 						.where("accountEvoluTransport.accountId", "=", accountId)
 						.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
 						.$narrowType<{
-							type: NotNull;
+							type: KyselyNotNull;
 						}>(),
 				),
 			),

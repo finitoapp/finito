@@ -1,5 +1,4 @@
-import { type Id, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC } from "react";
 import { useMemo } from "react";
@@ -71,9 +70,9 @@ export const TransactionHistory = () => {
 					.orderBy("payment.createdAt", "desc")
 					.limit(20)
 					.$narrowType<{
-						currency: NotNull;
-						totalAmount: NotNull;
-						direction: NotNull;
+						currency: KyselyNotNull;
+						totalAmount: KyselyNotNull;
+						direction: KyselyNotNull;
 					}>(),
 			),
 		[],

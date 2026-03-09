@@ -1,9 +1,13 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import {
+	evoluJsonObjectFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -141,82 +145,72 @@ export function AccountsTable() {
 									"account.createdAt as createdAt",
 									"account._tag as _tag",
 
-									kysely
-										.jsonObjectFrom(
-											eb
-												.selectFrom("accountIban")
-												.select([
-													"accountIban.iban as iban",
-													"accountIban.currency as currency",
-												])
-												.whereRef("accountIban.id", "=", "account.id")
-												.where("accountIban.isDeleted", "is not", sqliteTrue)
-												.where("accountIban.iban", "is not", null)
-												.where("accountIban.currency", "is not", null)
-												.$narrowType<{
-													iban: NotNull;
-													currency: NotNull;
-												}>(),
-										)
-										.as("accountIban"),
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountIban")
+											.select([
+												"accountIban.iban as iban",
+												"accountIban.currency as currency",
+											])
+											.whereRef("accountIban.id", "=", "account.id")
+											.where("accountIban.isDeleted", "is not", sqliteTrue)
+											.where("accountIban.iban", "is not", null)
+											.where("accountIban.currency", "is not", null)
+											.$narrowType<{
+												iban: KyselyNotNull;
+												currency: KyselyNotNull;
+											}>(),
+									).as("accountIban"),
 
-									kysely
-										.jsonObjectFrom(
-											eb
-												.selectFrom("accountLud16")
-												.select(["accountLud16.lud16 as lud16"])
-												.whereRef("accountLud16.id", "=", "account.id")
-												.where("accountLud16.isDeleted", "is not", sqliteTrue)
-												.where("accountLud16.lud16", "is not", null)
-												.$narrowType<{
-													lud16: NotNull;
-												}>(),
-										)
-										.as("accountLud16"),
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountLud16")
+											.select(["accountLud16.lud16 as lud16"])
+											.whereRef("accountLud16.id", "=", "account.id")
+											.where("accountLud16.isDeleted", "is not", sqliteTrue)
+											.where("accountLud16.lud16", "is not", null)
+											.$narrowType<{
+												lud16: KyselyNotNull;
+											}>(),
+									).as("accountLud16"),
 
-									kysely
-										.jsonObjectFrom(
-											eb
-												.selectFrom("accountSpark")
-												.select(["accountSpark.id as id"])
-												.whereRef("accountSpark.id", "=", "account.id")
-												.where("accountSpark.isDeleted", "is not", sqliteTrue),
-										)
-										.as("accountSpark"),
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountSpark")
+											.select(["accountSpark.id as id"])
+											.whereRef("accountSpark.id", "=", "account.id")
+											.where("accountSpark.isDeleted", "is not", sqliteTrue),
+									).as("accountSpark"),
 
-									kysely
-										.jsonObjectFrom(
-											eb
-												.selectFrom("accountNwc")
-												.select(["accountNwc.id as id"])
-												.whereRef("accountNwc.id", "=", "account.id")
-												.where("accountNwc.isDeleted", "is not", sqliteTrue),
-										)
-										.as("accountNwc"),
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountNwc")
+											.select(["accountNwc.id as id"])
+											.whereRef("accountNwc.id", "=", "account.id")
+											.where("accountNwc.isDeleted", "is not", sqliteTrue),
+									).as("accountNwc"),
 
-									kysely
-										.jsonObjectFrom(
-											eb
-												.selectFrom("accountCashRegister")
-												.select(["accountCashRegister.currency as currency"])
-												.whereRef("accountCashRegister.id", "=", "account.id")
-												.where(
-													"accountCashRegister.isDeleted",
-													"is not",
-													sqliteTrue,
-												)
-												.where("accountCashRegister.currency", "is not", null)
-												.$narrowType<{
-													currency: NotNull;
-												}>(),
-										)
-										.as("accountCashRegister"),
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("accountCashRegister")
+											.select(["accountCashRegister.currency as currency"])
+											.whereRef("accountCashRegister.id", "=", "account.id")
+											.where(
+												"accountCashRegister.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("accountCashRegister.currency", "is not", null)
+											.$narrowType<{
+												currency: KyselyNotNull;
+											}>(),
+									).as("accountCashRegister"),
 								] as const,
 						)
 						.where("account.isDeleted", "is not", sqliteTrue)
 						.$narrowType<{
-							name: NotNull;
-							_tag: NotNull;
+							name: KyselyNotNull;
+							_tag: KyselyNotNull;
 						}>();
 
 					if (previousCursor) {

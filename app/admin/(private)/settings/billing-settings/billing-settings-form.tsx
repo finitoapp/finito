@@ -3,12 +3,12 @@ import {
 	createIdFromString,
 	createRandomBytes,
 	type Id,
+	type KyselyNotNull,
 	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -129,8 +129,8 @@ const createComponents = (t: TFunction) => {
 				.where("account.name", "is not", null)
 				.where("accountIban.iban", "is not", null)
 				.$narrowType<{
-					name: NotNull;
-					iban: NotNull;
+					name: KyselyNotNull;
+					iban: KyselyNotNull;
 				}>(),
 		),
 		mapRowsToItems: (rows) =>
@@ -149,7 +149,7 @@ const createComponents = (t: TFunction) => {
 				.where("_tag", "=", "accountLud16")
 				.where("isDeleted", "is not", sqliteTrue)
 				.$narrowType<{
-					name: NotNull;
+					name: KyselyNotNull;
 				}>(),
 		),
 		mapRowsToItems: (rows) =>
@@ -170,7 +170,7 @@ const createComponents = (t: TFunction) => {
 				.where("_tag", "=", "accountSpark")
 				.where("isDeleted", "is not", sqliteTrue)
 				.$narrowType<{
-					name: NotNull;
+					name: KyselyNotNull;
 				}>(),
 		),
 		mapRowsToItems: (rows) =>

@@ -17,16 +17,13 @@
     "check:tests": "bun test",
     "check:lint": "biome check"
   },
-  "patchedDependencies": {
-    "@evolu/monorepo@github:evoluhq/evolu#19030df": "patches/evolu_parse.patch"
-  },
   "dependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",
     "@buildonspark/spark-sdk": "0.6.7",
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
-    "@evolu/monorepo": "github:evoluhq/evolu#common-v8",
+    "@evolu/monorepo": "github:evoluhq/evolu#cd6b74d2361c6ca34b1c6634e5430f8029d8fe5b",
     "@evolu/sqlite-wasm": "2.2.4",
     "@faker-js/faker": "10.3.0",
     "@hookform/resolvers": "5.2.2",

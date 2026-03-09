@@ -1,8 +1,12 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import {
+	evoluJsonObjectFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -46,35 +50,31 @@ export default function Home() {
 								"client.email as email",
 								"client.countryCode as countryCode",
 
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("clientAddress")
-											.select([
-												"clientAddress.street as street",
-												"clientAddress.descriptiveNumber as descriptiveNumber",
-												"clientAddress.city as city",
-												"clientAddress.postalCode as postalCode",
-											])
-											.whereRef("clientAddress.id", "=", "client.id")
-											.where("client.isDeleted", "is not", sqliteTrue),
-									)
-									.as("address"),
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("clientAddress")
+										.select([
+											"clientAddress.street as street",
+											"clientAddress.descriptiveNumber as descriptiveNumber",
+											"clientAddress.city as city",
+											"clientAddress.postalCode as postalCode",
+										])
+										.whereRef("clientAddress.id", "=", "client.id")
+										.where("client.isDeleted", "is not", sqliteTrue),
+								).as("address"),
 
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("clientCz")
-											.select([
-												"clientCz.vatPayer as vatPayer",
-												"clientCz.identificationNumber as identificationNumber",
-												"clientCz.vatNumber as vatNumber",
-												"clientCz.caseNumber as caseNumber",
-											])
-											.whereRef("clientCz.id", "=", "client.id")
-											.where("client.isDeleted", "is not", sqliteTrue),
-									)
-									.as("cz"),
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("clientCz")
+										.select([
+											"clientCz.vatPayer as vatPayer",
+											"clientCz.identificationNumber as identificationNumber",
+											"clientCz.vatNumber as vatNumber",
+											"clientCz.caseNumber as caseNumber",
+										])
+										.whereRef("clientCz.id", "=", "client.id")
+										.where("client.isDeleted", "is not", sqliteTrue),
+								).as("cz"),
 							] as const,
 					)
 					.where("client.isDeleted", "is not", sqliteTrue)
@@ -82,8 +82,8 @@ export default function Home() {
 					.where("client.countryCode", "is not", null)
 					.where("client.id", "=", id as Id)
 					.$narrowType<{
-						name: NotNull;
-						countryCode: NotNull;
+						name: KyselyNotNull;
+						countryCode: KyselyNotNull;
 					}>();
 			}),
 		[id],

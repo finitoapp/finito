@@ -1,9 +1,13 @@
 "use client";
 
-import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
-import type { NotNull } from "kysely";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -283,7 +287,7 @@ const PosBillTable: React.FC<{
 					.where("table.isDeleted", "is not", sqliteTrue)
 					.where("table.label", "is not", null)
 					.$narrowType<{
-						label: NotNull;
+						label: KyselyNotNull;
 					}>(),
 			),
 		[],
@@ -303,8 +307,8 @@ const PosBillTable: React.FC<{
 					.where("tableCode.code", "is not", null)
 					.where("tableCode.tableId", "is not", null)
 					.$narrowType<{
-						code: NotNull;
-						tableId: NotNull;
+						code: KyselyNotNull;
+						tableId: KyselyNotNull;
 					}>(),
 			),
 		[],

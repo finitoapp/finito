@@ -1,7 +1,10 @@
 "use client";
 
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { SmtpForm } from "@/app/admin/(private)/settings/smtp/smtp-form";
@@ -27,11 +30,11 @@ export default function Home() {
 					.where("password", "is not", null)
 					.where("email", "is not", null)
 					.$narrowType<{
-						server: NotNull;
-						port: NotNull;
-						username: NotNull;
-						password: NotNull;
-						email: NotNull;
+						server: KyselyNotNull;
+						port: KyselyNotNull;
+						username: KyselyNotNull;
+						password: KyselyNotNull;
+						email: KyselyNotNull;
 					}>();
 			}),
 		[itemId],

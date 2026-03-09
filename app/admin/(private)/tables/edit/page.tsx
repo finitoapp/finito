@@ -1,7 +1,11 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	evoluJsonArrayFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,22 +37,20 @@ export default function Home() {
 								"table.label as label",
 								"table.numberOfSeats as numberOfSeats",
 
-								kysely
-									.jsonArrayFrom(
-										eb
-											.selectFrom("tableCode")
-											.select([
-												"tableCode.id as id",
-												"tableCode.code as code",
-											] as const)
-											.whereRef("tableCode.tableId", "=", "table.id")
-											.where("tableCode.isDeleted", "is not", sqliteTrue)
-											.where("tableCode.code", "is not", null)
-											.$narrowType<{
-												code: NotNull;
-											}>(),
-									)
-									.as("codes"),
+								evoluJsonArrayFrom(
+									eb
+										.selectFrom("tableCode")
+										.select([
+											"tableCode.id as id",
+											"tableCode.code as code",
+										] as const)
+										.whereRef("tableCode.tableId", "=", "table.id")
+										.where("tableCode.isDeleted", "is not", sqliteTrue)
+										.where("tableCode.code", "is not", null)
+										.$narrowType<{
+											code: KyselyNotNull;
+										}>(),
+								).as("codes"),
 							] as const,
 					)
 					.where("table.id", "=", id as Id)
@@ -56,8 +58,8 @@ export default function Home() {
 					.where("table.label", "is not", null)
 					.where("table.numberOfSeats", "is not", null)
 					.$narrowType<{
-						label: NotNull;
-						numberOfSeats: NotNull;
+						label: KyselyNotNull;
+						numberOfSeats: KyselyNotNull;
 					}>();
 			}),
 		[id],

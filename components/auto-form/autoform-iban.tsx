@@ -1,5 +1,4 @@
-import { sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { useMemo } from "react";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
@@ -29,8 +28,8 @@ export const AutoformIbanInput: AutoFormComponent<string> = (props) => {
 							.where("account.name", "is not", null)
 							.where("accountIban.iban", "is not", null)
 							.$narrowType<{
-								name: NotNull;
-								iban: NotNull;
+								name: KyselyNotNull;
+								iban: KyselyNotNull;
 							}>(),
 					);
 					const items = await evolu.loadQuery(query);

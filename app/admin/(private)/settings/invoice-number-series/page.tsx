@@ -1,7 +1,10 @@
 "use client";
 
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { InvoiceLastNumberForm } from "@/app/admin/(private)/settings/invoice-number-series/invoice-last-number-form";
@@ -32,10 +35,10 @@ export default function Home() {
 					.where("dayFormat", "is not", null)
 					.where("id", "=", itemId)
 					.$narrowType<{
-						serialNumberDigits: NotNull;
-						yearFormat: NotNull;
-						monthFormat: NotNull;
-						dayFormat: NotNull;
+						serialNumberDigits: KyselyNotNull;
+						yearFormat: KyselyNotNull;
+						monthFormat: KyselyNotNull;
+						dayFormat: KyselyNotNull;
 					}>();
 			}),
 		[itemId],
@@ -51,7 +54,7 @@ export default function Home() {
 					.where("serialNumber", "is not", null)
 					.where("id", "=", itemId)
 					.$narrowType<{
-						serialNumber: NotNull;
+						serialNumber: KyselyNotNull;
 					}>();
 			}),
 		[itemId],

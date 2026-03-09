@@ -1,6 +1,10 @@
-import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
-import type { NotNull } from "kysely";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -323,8 +327,8 @@ export const TransactionForm: React.FC<{
 					.where("account._tag", "is not", null)
 					.orderBy("account.name", "asc")
 					.$narrowType<{
-						name: NotNull;
-						_tag: NotNull;
+						name: KyselyNotNull;
+						_tag: KyselyNotNull;
 					}>(),
 			),
 		[],

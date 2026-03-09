@@ -1,9 +1,8 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -168,10 +167,10 @@ export function InvoicesTable() {
 						.where("invoice.issueDate", "is not", null)
 						.groupBy("invoice.id")
 						.$narrowType<{
-							invoiceNumber: NotNull;
-							currency: NotNull;
-							dueDate: NotNull;
-							issueDate: NotNull;
+							invoiceNumber: KyselyNotNull;
+							currency: KyselyNotNull;
+							dueDate: KyselyNotNull;
+							issueDate: KyselyNotNull;
 						}>();
 
 					if (previousCursor) {

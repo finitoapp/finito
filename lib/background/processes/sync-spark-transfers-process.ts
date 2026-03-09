@@ -1,6 +1,9 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import type { BackgroundProcess } from "@/lib/background/service";
 import { createQuery } from "@/lib/evolu";
 import {
@@ -48,7 +51,7 @@ export const syncSparkTransfersProcess: BackgroundProcess = {
 					.where("account.isDeleted", "is not", sqliteTrue)
 					.where("accountSpark.mnemonic", "is not", null)
 					.$narrowType<{
-						mnemonic: NotNull;
+						mnemonic: KyselyNotNull;
 					}>(),
 			),
 		);

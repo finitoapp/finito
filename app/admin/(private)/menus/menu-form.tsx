@@ -1,5 +1,9 @@
-import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createId,
+	createRandomBytes,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -202,9 +206,9 @@ export const MenuForm = (params: {
 					.where("item.currency", "is not", null)
 					.orderBy("item.label", "asc")
 					.$narrowType<{
-						label: NotNull;
-						price: NotNull;
-						currency: NotNull;
+						label: KyselyNotNull;
+						price: KyselyNotNull;
+						currency: KyselyNotNull;
 					}>(),
 			),
 		[],

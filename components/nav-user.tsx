@@ -1,9 +1,8 @@
 "use client";
 
-import { sqliteTrue } from "@evolu/common";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { IconPlus } from "@tabler/icons-react";
 import { useAtomValue, useSetAtom } from "jotai";
-import type { NotNull } from "kysely";
 import {
 	ChevronsUpDownIcon,
 	HardDriveDownloadIcon,
@@ -43,7 +42,7 @@ const accountsQuery = createDeviceQuery((db) =>
 		.where("name", "is not", null)
 		.orderBy("lastUseAt", "desc")
 		.$narrowType<{
-			name: NotNull;
+			name: KyselyNotNull;
 		}>(),
 );
 

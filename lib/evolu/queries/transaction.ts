@@ -1,5 +1,8 @@
-import { kysely, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { createQuery } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
 
@@ -20,95 +23,85 @@ export const createGetTransactionQuery = (params: { id: Id }) =>
 						"transaction.internalTransferGroupId as internalTransferGroupId",
 						"transaction._tag as _tag",
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("account")
-									.select(["account.name as name"] as const)
-									.whereRef("transaction.accountId", "=", "account.id")
-									.where("account.isDeleted", "is not", sqliteTrue)
-									.where("account.name", "is not", null)
-									.$narrowType<{
-										name: NotNull;
-									}>(),
-							)
-							.as("account"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("account")
+								.select(["account.name as name"] as const)
+								.whereRef("transaction.accountId", "=", "account.id")
+								.where("account.isDeleted", "is not", sqliteTrue)
+								.where("account.name", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+								}>(),
+						).as("account"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("transactionIban")
-									.select([
-										"transactionIban.variableSymbol as variableSymbol",
-										"transactionIban.constantSymbol as constantSymbol",
-										"transactionIban.specificSymbol as specificSymbol",
-										"transactionIban.bankReference as bankReference",
-									] as const)
-									.whereRef("transactionIban.id", "=", "transaction.id")
-									.where("transactionIban.isDeleted", "is not", sqliteTrue),
-							)
-							.as("transactionIban"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("transactionIban")
+								.select([
+									"transactionIban.variableSymbol as variableSymbol",
+									"transactionIban.constantSymbol as constantSymbol",
+									"transactionIban.specificSymbol as specificSymbol",
+									"transactionIban.bankReference as bankReference",
+								] as const)
+								.whereRef("transactionIban.id", "=", "transaction.id")
+								.where("transactionIban.isDeleted", "is not", sqliteTrue),
+						).as("transactionIban"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("transactionLud16")
-									.select([
-										"transactionLud16.lnInvoice as lnInvoice",
-										"transactionLud16.paymentHash as paymentHash",
-									] as const)
-									.whereRef("transactionLud16.id", "=", "transaction.id")
-									.where("transactionLud16.isDeleted", "is not", sqliteTrue)
-									.where("transactionLud16.paymentHash", "is not", null)
-									.$narrowType<{
-										paymentHash: NotNull;
-									}>(),
-							)
-							.as("transactionLud16"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("transactionLud16")
+								.select([
+									"transactionLud16.lnInvoice as lnInvoice",
+									"transactionLud16.paymentHash as paymentHash",
+								] as const)
+								.whereRef("transactionLud16.id", "=", "transaction.id")
+								.where("transactionLud16.isDeleted", "is not", sqliteTrue)
+								.where("transactionLud16.paymentHash", "is not", null)
+								.$narrowType<{
+									paymentHash: KyselyNotNull;
+								}>(),
+						).as("transactionLud16"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("transactionSpark")
-									.select([
-										"transactionSpark.sparkTransferId as sparkTransferId",
-										"transactionSpark.lnInvoice as lnInvoice",
-										"transactionSpark.preImage as preImage",
-										"transactionSpark.paymentHash as paymentHash",
-									] as const)
-									.whereRef("transactionSpark.id", "=", "transaction.id")
-									.where("transactionSpark.isDeleted", "is not", sqliteTrue)
-									.where("transactionSpark.sparkTransferId", "is not", null)
-									.where("transactionSpark.lnInvoice", "is not", null)
-									.where("transactionSpark.preImage", "is not", null)
-									.where("transactionSpark.paymentHash", "is not", null)
-									.$narrowType<{
-										sparkTransferId: NotNull;
-										lnInvoice: NotNull;
-										preImage: NotNull;
-										paymentHash: NotNull;
-									}>(),
-							)
-							.as("transactionSpark"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("transactionSpark")
+								.select([
+									"transactionSpark.sparkTransferId as sparkTransferId",
+									"transactionSpark.lnInvoice as lnInvoice",
+									"transactionSpark.preImage as preImage",
+									"transactionSpark.paymentHash as paymentHash",
+								] as const)
+								.whereRef("transactionSpark.id", "=", "transaction.id")
+								.where("transactionSpark.isDeleted", "is not", sqliteTrue)
+								.where("transactionSpark.sparkTransferId", "is not", null)
+								.where("transactionSpark.lnInvoice", "is not", null)
+								.where("transactionSpark.preImage", "is not", null)
+								.where("transactionSpark.paymentHash", "is not", null)
+								.$narrowType<{
+									sparkTransferId: KyselyNotNull;
+									lnInvoice: KyselyNotNull;
+									preImage: KyselyNotNull;
+									paymentHash: KyselyNotNull;
+								}>(),
+						).as("transactionSpark"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("transactionNwc")
-									.select([
-										"transactionNwc.nwcEventId as nwcEventId",
-										"transactionNwc.nwcRequestId as nwcRequestId",
-									] as const)
-									.whereRef("transactionNwc.id", "=", "transaction.id")
-									.where("transactionNwc.isDeleted", "is not", sqliteTrue)
-									.where("transactionNwc.nwcEventId", "is not", null)
-									.where("transactionNwc.nwcRequestId", "is not", null)
-									.$narrowType<{
-										nwcEventId: NotNull;
-										nwcRequestId: NotNull;
-									}>(),
-							)
-							.as("transactionNwc"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("transactionNwc")
+								.select([
+									"transactionNwc.nwcEventId as nwcEventId",
+									"transactionNwc.nwcRequestId as nwcRequestId",
+								] as const)
+								.whereRef("transactionNwc.id", "=", "transaction.id")
+								.where("transactionNwc.isDeleted", "is not", sqliteTrue)
+								.where("transactionNwc.nwcEventId", "is not", null)
+								.where("transactionNwc.nwcRequestId", "is not", null)
+								.$narrowType<{
+									nwcEventId: KyselyNotNull;
+									nwcRequestId: KyselyNotNull;
+								}>(),
+						).as("transactionNwc"),
 					] as const,
 			)
 			.where("transaction.isDeleted", "is not", sqliteTrue)
@@ -118,10 +111,10 @@ export const createGetTransactionQuery = (params: { id: Id }) =>
 			.where("transaction.accountId", "is not", null)
 			.where("transaction.id", "=", params.id)
 			.$narrowType<{
-				amount: NotNull;
-				currency: NotNull;
-				occurredAt: NotNull;
-				accountId: NotNull;
-				account: NotNull;
+				amount: KyselyNotNull;
+				currency: KyselyNotNull;
+				occurredAt: KyselyNotNull;
+				accountId: KyselyNotNull;
+				account: KyselyNotNull;
 			}>(),
 	);

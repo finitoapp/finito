@@ -4,12 +4,13 @@ import {
 	createId,
 	createIdFromString,
 	createRandomBytes,
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
 	type Id,
-	kysely,
+	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import {
 	BitcoinIcon,
 	CoinsIcon,
@@ -446,202 +447,180 @@ export default function Home() {
 								"payment.totalAmount as totalAmount",
 								"payment.currency as currency",
 
-								kysely
-									.jsonArrayFrom(
-										eb
-											.selectFrom("paymentItemLine")
-											.select(
-												(eb) =>
-													[
-														"paymentItemLine.totalAmount as totalAmount",
-														"paymentItemLine.quantity as quantity",
+								evoluJsonArrayFrom(
+									eb
+										.selectFrom("paymentItemLine")
+										.select(
+											(eb) =>
+												[
+													"paymentItemLine.totalAmount as totalAmount",
+													"paymentItemLine.quantity as quantity",
 
-														kysely
-															.jsonObjectFrom(
-																eb
-																	.selectFrom("paymentItem")
-																	.select(["paymentItem.label as label"])
-																	.whereRef(
-																		"paymentItem.id",
-																		"=",
-																		"paymentItemLine.id",
-																	)
-																	.where(
-																		"paymentItem.isDeleted",
-																		"is not",
-																		sqliteTrue,
-																	)
-																	.where("paymentItem.label", "is not", null)
-																	.$narrowType<{
-																		label: NotNull;
-																	}>(),
+													evoluJsonObjectFrom(
+														eb
+															.selectFrom("paymentItem")
+															.select(["paymentItem.label as label"])
+															.whereRef(
+																"paymentItem.id",
+																"=",
+																"paymentItemLine.id",
 															)
-															.as("item"),
-													] as const,
-											)
-											.whereRef("paymentItemLine.paymentId", "=", "payment.id")
-											.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
-											.where("paymentItemLine.totalAmount", "is not", null)
-											.where("paymentItemLine.quantity", "is not", null)
-											.$narrowType<{
-												totalAmount: NotNull;
-												quantity: NotNull;
-												item: NotNull;
-											}>(),
-									)
-									.as("items"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentBankTransferCZ")
-											.select(["iban", "variableSymbol"] as const)
-											.whereRef("paymentBankTransferCZ.id", "=", "payment.id")
-											.where(
-												"paymentBankTransferCZ.isDeleted",
-												"is not",
-												sqliteTrue,
-											)
-											.where("paymentBankTransferCZ.iban", "is not", null)
-											.where(
-												"paymentBankTransferCZ.variableSymbol",
-												"is not",
-												null,
-											)
-											.$narrowType<{
-												iban: NotNull;
-												variableSymbol: NotNull;
-											}>(),
-									)
-									.as("paymentBankTransferCZ"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentLnZap")
-											.select([
-												"lnInvoice",
-												"walletPubkey",
-												"expirationIn",
-											] as const)
-											.whereRef("paymentLnZap.id", "=", "payment.id")
-											.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
-											.where("paymentLnZap.lnInvoice", "is not", null)
-											.where("paymentLnZap.walletPubkey", "is not", null)
-											.where("paymentLnZap.expirationIn", "is not", null)
-											.$narrowType<{
-												lnInvoice: NotNull;
-												walletPubkey: NotNull;
-												expirationIn: NotNull;
-											}>(),
-									)
-									.as("paymentLnZap"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentLnSpark")
-											.select(["lnInvoice", "expirationIn"] as const)
-											.whereRef("paymentLnSpark.id", "=", "payment.id")
-											.where("paymentLnSpark.isDeleted", "is not", sqliteTrue)
-											.where("paymentLnSpark.lnInvoice", "is not", null)
-											.where("paymentLnSpark.expirationIn", "is not", null)
-											.$narrowType<{
-												lnInvoice: NotNull;
-												walletPubkey: NotNull;
-												expirationIn: NotNull;
-											}>(),
-									)
-									.as("paymentLnSpark"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentCash")
-											.select(["accountId"] as const)
-											.whereRef("paymentCash.id", "=", "payment.id")
-											.where("paymentCash.isDeleted", "is not", sqliteTrue)
-											.where("paymentCash.accountId", "is not", null)
-											.$narrowType<{
-												accountId: NotNull;
-											}>(),
-									)
-									.as("paymentCash"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentWebData")
-											.select(["privateKey", "webPaymentEventId"] as const)
-											.whereRef("paymentWebData.id", "=", "payment.id")
-											.where("paymentWebData.isDeleted", "is not", sqliteTrue)
-											.where("paymentWebData.privateKey", "is not", null)
-											.where("paymentWebData.webPaymentEventId", "is not", null)
-											.$narrowType<{
-												privateKey: NotNull;
-												webPaymentEventId: NotNull;
-											}>(),
-									)
-									.as("paymentWebData"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("paymentWatchingState")
-											.select([
-												"verifiedAt",
-												"proveType",
-												"transactionId",
-												"stoppedAt",
-												"stopReason",
-											] as const)
-											.whereRef("paymentWatchingState.id", "=", "payment.id")
-											.where(
-												"paymentWatchingState.isDeleted",
-												"is not",
-												sqliteTrue,
-											),
-									)
-									.as("paymentWatchingState"),
-
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("reconciliationClaim")
-											.innerJoin(
-												"reconciliationClaimAllocation",
-												"reconciliationClaimAllocation.claimId",
-												"reconciliationClaim.id",
-											)
-											.select(
-												(eb) =>
-													[
-														"reconciliationClaim.id as id",
-														eb.fn
-															.sum<Integer>(
-																"reconciliationClaimAllocation.amount",
+															.where(
+																"paymentItem.isDeleted",
+																"is not",
+																sqliteTrue,
 															)
-															.as("amount"),
-													] as const,
-											)
-											.whereRef(
-												"reconciliationClaim.entityId",
-												"=",
-												"payment.id",
-											)
-											.where(
-												"reconciliationClaim.isDeleted",
-												"is not",
-												sqliteTrue,
-											)
-											.where(
-												"reconciliationClaimAllocation.isDeleted",
-												"is not",
-												sqliteTrue,
-											)
-											.where("reconciliationClaim.entityType", "=", "payment"),
-									)
-									.as("reconciliationClaim"),
+															.where("paymentItem.label", "is not", null)
+															.$narrowType<{
+																label: KyselyNotNull;
+															}>(),
+													).as("item"),
+												] as const,
+										)
+										.whereRef("paymentItemLine.paymentId", "=", "payment.id")
+										.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+										.where("paymentItemLine.totalAmount", "is not", null)
+										.where("paymentItemLine.quantity", "is not", null)
+										.$narrowType<{
+											totalAmount: KyselyNotNull;
+											quantity: KyselyNotNull;
+											item: KyselyNotNull;
+										}>(),
+								).as("items"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentBankTransferCZ")
+										.select(["iban", "variableSymbol"] as const)
+										.whereRef("paymentBankTransferCZ.id", "=", "payment.id")
+										.where(
+											"paymentBankTransferCZ.isDeleted",
+											"is not",
+											sqliteTrue,
+										)
+										.where("paymentBankTransferCZ.iban", "is not", null)
+										.where(
+											"paymentBankTransferCZ.variableSymbol",
+											"is not",
+											null,
+										)
+										.$narrowType<{
+											iban: KyselyNotNull;
+											variableSymbol: KyselyNotNull;
+										}>(),
+								).as("paymentBankTransferCZ"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentLnZap")
+										.select([
+											"lnInvoice",
+											"walletPubkey",
+											"expirationIn",
+										] as const)
+										.whereRef("paymentLnZap.id", "=", "payment.id")
+										.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnZap.lnInvoice", "is not", null)
+										.where("paymentLnZap.walletPubkey", "is not", null)
+										.where("paymentLnZap.expirationIn", "is not", null)
+										.$narrowType<{
+											lnInvoice: KyselyNotNull;
+											walletPubkey: KyselyNotNull;
+											expirationIn: KyselyNotNull;
+										}>(),
+								).as("paymentLnZap"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentLnSpark")
+										.select(["lnInvoice", "expirationIn"] as const)
+										.whereRef("paymentLnSpark.id", "=", "payment.id")
+										.where("paymentLnSpark.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnSpark.lnInvoice", "is not", null)
+										.where("paymentLnSpark.expirationIn", "is not", null)
+										.$narrowType<{
+											lnInvoice: KyselyNotNull;
+											walletPubkey: KyselyNotNull;
+											expirationIn: KyselyNotNull;
+										}>(),
+								).as("paymentLnSpark"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentCash")
+										.select(["accountId"] as const)
+										.whereRef("paymentCash.id", "=", "payment.id")
+										.where("paymentCash.isDeleted", "is not", sqliteTrue)
+										.where("paymentCash.accountId", "is not", null)
+										.$narrowType<{
+											accountId: KyselyNotNull;
+										}>(),
+								).as("paymentCash"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentWebData")
+										.select(["privateKey", "webPaymentEventId"] as const)
+										.whereRef("paymentWebData.id", "=", "payment.id")
+										.where("paymentWebData.isDeleted", "is not", sqliteTrue)
+										.where("paymentWebData.privateKey", "is not", null)
+										.where("paymentWebData.webPaymentEventId", "is not", null)
+										.$narrowType<{
+											privateKey: KyselyNotNull;
+											webPaymentEventId: KyselyNotNull;
+										}>(),
+								).as("paymentWebData"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentWatchingState")
+										.select([
+											"verifiedAt",
+											"proveType",
+											"transactionId",
+											"stoppedAt",
+											"stopReason",
+										] as const)
+										.whereRef("paymentWatchingState.id", "=", "payment.id")
+										.where(
+											"paymentWatchingState.isDeleted",
+											"is not",
+											sqliteTrue,
+										),
+								).as("paymentWatchingState"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("reconciliationClaim")
+										.innerJoin(
+											"reconciliationClaimAllocation",
+											"reconciliationClaimAllocation.claimId",
+											"reconciliationClaim.id",
+										)
+										.select(
+											(eb) =>
+												[
+													"reconciliationClaim.id as id",
+													eb.fn
+														.sum<Integer>(
+															"reconciliationClaimAllocation.amount",
+														)
+														.as("amount"),
+												] as const,
+										)
+										.whereRef("reconciliationClaim.entityId", "=", "payment.id")
+										.where(
+											"reconciliationClaim.isDeleted",
+											"is not",
+											sqliteTrue,
+										)
+										.where(
+											"reconciliationClaimAllocation.isDeleted",
+											"is not",
+											sqliteTrue,
+										)
+										.where("reconciliationClaim.entityType", "=", "payment"),
+								).as("reconciliationClaim"),
 							] as const,
 					)
 					.where("payment.isDeleted", "is not", sqliteTrue)
@@ -650,9 +629,9 @@ export default function Home() {
 					.where("payment.currency", "is not", null)
 					.where("payment.id", "=", paymentId)
 					.$narrowType<{
-						direction: NotNull;
-						totalAmount: NotNull;
-						currency: NotNull;
+						direction: KyselyNotNull;
+						totalAmount: KyselyNotNull;
+						currency: KyselyNotNull;
 					}>(),
 			),
 		[paymentId],

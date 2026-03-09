@@ -1,8 +1,12 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import {
+	evoluJsonArrayFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import { EditIcon, ExternalLink, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -48,27 +52,25 @@ export default function Home() {
 						"table.label as label",
 						"table.numberOfSeats as numberOfSeats",
 
-						kysely
-							.jsonArrayFrom(
-								eb
-									.selectFrom("tableCode")
-									.select(["tableCode.code as code"] as const)
-									.whereRef("tableCode.tableId", "=", "table.id")
-									.where("tableCode.isDeleted", "is not", sqliteTrue)
-									.where("tableCode.code", "is not", null)
-									.$narrowType<{
-										code: NotNull;
-									}>(),
-							)
-							.as("codes"),
+						evoluJsonArrayFrom(
+							eb
+								.selectFrom("tableCode")
+								.select(["tableCode.code as code"] as const)
+								.whereRef("tableCode.tableId", "=", "table.id")
+								.where("tableCode.isDeleted", "is not", sqliteTrue)
+								.where("tableCode.code", "is not", null)
+								.$narrowType<{
+									code: KyselyNotNull;
+								}>(),
+						).as("codes"),
 					])
 					.where("table.isDeleted", "is not", sqliteTrue)
 					.where("table.label", "is not", null)
 					.where("table.numberOfSeats", "is not", null)
 					.where("table.id", "=", id as Id)
 					.$narrowType<{
-						label: NotNull;
-						numberOfSeats: NotNull;
+						label: KyselyNotNull;
+						numberOfSeats: KyselyNotNull;
 					}>();
 			}),
 		[id],

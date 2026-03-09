@@ -1,10 +1,16 @@
 "use client";
 
-import { createIdFromString, type Id, kysely, sqliteTrue } from "@evolu/common";
+import {
+	createIdFromString,
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { PDFViewer, usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import type { NotNull } from "kysely";
 import {
 	CoinsIcon,
 	EditIcon,
@@ -366,258 +372,204 @@ export default function Home() {
 						"invoice.paymentIban as paymentIban",
 						"invoice.createdAt as createdAt",
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceCustomerBillingInfo")
-									.select([
-										"invoiceCustomerBillingInfo.name as name",
-										"invoiceCustomerBillingInfo.label as label",
-										"invoiceCustomerBillingInfo.email as email",
-										"invoiceCustomerBillingInfo.countryCode as countryCode",
-									])
-									.whereRef("invoiceCustomerBillingInfo.id", "=", "invoice.id")
-									.where(
-										"invoiceCustomerBillingInfo.isDeleted",
-										"is not",
-										sqliteTrue,
-									)
-									.where("invoiceCustomerBillingInfo.name", "is not", null)
-									.where(
-										"invoiceCustomerBillingInfo.countryCode",
-										"is not",
-										null,
-									)
-									.$narrowType<{
-										name: NotNull;
-										countryCode: NotNull;
-									}>(),
-							)
-							.as("invoiceCustomerBillingInfo"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceCustomerBillingInfo")
+								.select([
+									"invoiceCustomerBillingInfo.name as name",
+									"invoiceCustomerBillingInfo.label as label",
+									"invoiceCustomerBillingInfo.email as email",
+									"invoiceCustomerBillingInfo.countryCode as countryCode",
+								])
+								.whereRef("invoiceCustomerBillingInfo.id", "=", "invoice.id")
+								.where(
+									"invoiceCustomerBillingInfo.isDeleted",
+									"is not",
+									sqliteTrue,
+								)
+								.where("invoiceCustomerBillingInfo.name", "is not", null)
+								.where("invoiceCustomerBillingInfo.countryCode", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+									countryCode: KyselyNotNull;
+								}>(),
+						).as("invoiceCustomerBillingInfo"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceCustomerBillingInfoAddress")
-									.select([
-										"invoiceCustomerBillingInfoAddress.street as street",
-										"invoiceCustomerBillingInfoAddress.descriptiveNumber as descriptiveNumber",
-										"invoiceCustomerBillingInfoAddress.city as city",
-										"invoiceCustomerBillingInfoAddress.postalCode as postalCode",
-									])
-									.whereRef(
-										"invoiceCustomerBillingInfoAddress.id",
-										"=",
-										"invoice.id",
-									)
-									.where(
-										"invoiceCustomerBillingInfoAddress.isDeleted",
-										"is not",
-										sqliteTrue,
-									),
-							)
-							.as("invoiceCustomerBillingInfoAddress"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceCustomerBillingInfoAddress")
+								.select([
+									"invoiceCustomerBillingInfoAddress.street as street",
+									"invoiceCustomerBillingInfoAddress.descriptiveNumber as descriptiveNumber",
+									"invoiceCustomerBillingInfoAddress.city as city",
+									"invoiceCustomerBillingInfoAddress.postalCode as postalCode",
+								])
+								.whereRef(
+									"invoiceCustomerBillingInfoAddress.id",
+									"=",
+									"invoice.id",
+								)
+								.where(
+									"invoiceCustomerBillingInfoAddress.isDeleted",
+									"is not",
+									sqliteTrue,
+								),
+						).as("invoiceCustomerBillingInfoAddress"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceCustomerBillingInfoCz")
-									.select([
-										"invoiceCustomerBillingInfoCz.vatPayer as vatPayer",
-										"invoiceCustomerBillingInfoCz.identificationNumber as identificationNumber",
-										"invoiceCustomerBillingInfoCz.vatNumber as vatNumber",
-										"invoiceCustomerBillingInfoCz.caseNumber as caseNumber",
-									])
-									.whereRef(
-										"invoiceCustomerBillingInfoCz.id",
-										"=",
-										"invoice.id",
-									)
-									.where(
-										"invoiceCustomerBillingInfoCz.isDeleted",
-										"is not",
-										sqliteTrue,
-									)
-									.where(
-										"invoiceCustomerBillingInfoCz.vatPayer",
-										"is not",
-										null,
-									)
-									.where(
-										"invoiceCustomerBillingInfoCz.identificationNumber",
-										"is not",
-										null,
-									)
-									.$narrowType<{
-										vatPayer: NotNull;
-										identificationNumber: NotNull;
-									}>(),
-							)
-							.as("invoiceCustomerBillingInfoCz"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceCustomerBillingInfoCz")
+								.select([
+									"invoiceCustomerBillingInfoCz.vatPayer as vatPayer",
+									"invoiceCustomerBillingInfoCz.identificationNumber as identificationNumber",
+									"invoiceCustomerBillingInfoCz.vatNumber as vatNumber",
+									"invoiceCustomerBillingInfoCz.caseNumber as caseNumber",
+								])
+								.whereRef("invoiceCustomerBillingInfoCz.id", "=", "invoice.id")
+								.where(
+									"invoiceCustomerBillingInfoCz.isDeleted",
+									"is not",
+									sqliteTrue,
+								)
+								.where("invoiceCustomerBillingInfoCz.vatPayer", "is not", null)
+								.where(
+									"invoiceCustomerBillingInfoCz.identificationNumber",
+									"is not",
+									null,
+								)
+								.$narrowType<{
+									vatPayer: KyselyNotNull;
+									identificationNumber: KyselyNotNull;
+								}>(),
+						).as("invoiceCustomerBillingInfoCz"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceSupplierBillingInfo")
-									.select([
-										"invoiceSupplierBillingInfo.name as name",
-										"invoiceSupplierBillingInfo.label as label",
-										"invoiceSupplierBillingInfo.email as email",
-										"invoiceSupplierBillingInfo.countryCode as countryCode",
-									])
-									.whereRef("invoiceSupplierBillingInfo.id", "=", "invoice.id")
-									.where(
-										"invoiceSupplierBillingInfo.isDeleted",
-										"is not",
-										sqliteTrue,
-									)
-									.where("invoiceSupplierBillingInfo.name", "is not", null)
-									.where(
-										"invoiceSupplierBillingInfo.countryCode",
-										"is not",
-										null,
-									)
-									.$narrowType<{
-										name: NotNull;
-										countryCode: NotNull;
-									}>(),
-							)
-							.as("invoiceSupplierBillingInfo"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceSupplierBillingInfo")
+								.select([
+									"invoiceSupplierBillingInfo.name as name",
+									"invoiceSupplierBillingInfo.label as label",
+									"invoiceSupplierBillingInfo.email as email",
+									"invoiceSupplierBillingInfo.countryCode as countryCode",
+								])
+								.whereRef("invoiceSupplierBillingInfo.id", "=", "invoice.id")
+								.where(
+									"invoiceSupplierBillingInfo.isDeleted",
+									"is not",
+									sqliteTrue,
+								)
+								.where("invoiceSupplierBillingInfo.name", "is not", null)
+								.where("invoiceSupplierBillingInfo.countryCode", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+									countryCode: KyselyNotNull;
+								}>(),
+						).as("invoiceSupplierBillingInfo"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceSupplierBillingInfoAddress")
-									.select([
-										"invoiceSupplierBillingInfoAddress.street as street",
-										"invoiceSupplierBillingInfoAddress.descriptiveNumber as descriptiveNumber",
-										"invoiceSupplierBillingInfoAddress.city as city",
-										"invoiceSupplierBillingInfoAddress.postalCode as postalCode",
-									])
-									.whereRef(
-										"invoiceSupplierBillingInfoAddress.id",
-										"=",
-										"invoice.id",
-									)
-									.where(
-										"invoiceSupplierBillingInfoAddress.isDeleted",
-										"is not",
-										sqliteTrue,
-									),
-							)
-							.as("invoiceSupplierBillingInfoAddress"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceSupplierBillingInfoAddress")
+								.select([
+									"invoiceSupplierBillingInfoAddress.street as street",
+									"invoiceSupplierBillingInfoAddress.descriptiveNumber as descriptiveNumber",
+									"invoiceSupplierBillingInfoAddress.city as city",
+									"invoiceSupplierBillingInfoAddress.postalCode as postalCode",
+								])
+								.whereRef(
+									"invoiceSupplierBillingInfoAddress.id",
+									"=",
+									"invoice.id",
+								)
+								.where(
+									"invoiceSupplierBillingInfoAddress.isDeleted",
+									"is not",
+									sqliteTrue,
+								),
+						).as("invoiceSupplierBillingInfoAddress"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("invoiceSupplierBillingInfoCz")
-									.select([
-										"invoiceSupplierBillingInfoCz.vatPayer as vatPayer",
-										"invoiceSupplierBillingInfoCz.identificationNumber as identificationNumber",
-										"invoiceSupplierBillingInfoCz.vatNumber as vatNumber",
-										"invoiceSupplierBillingInfoCz.caseNumber as caseNumber",
-									])
-									.whereRef(
-										"invoiceSupplierBillingInfoCz.id",
-										"=",
-										"invoice.id",
-									)
-									.where(
-										"invoiceSupplierBillingInfoCz.isDeleted",
-										"is not",
-										sqliteTrue,
-									)
-									.where(
-										"invoiceSupplierBillingInfoCz.vatPayer",
-										"is not",
-										null,
-									)
-									.where(
-										"invoiceSupplierBillingInfoCz.identificationNumber",
-										"is not",
-										null,
-									)
-									.$narrowType<{
-										vatPayer: NotNull;
-										identificationNumber: NotNull;
-									}>(),
-							)
-							.as("invoiceSupplierBillingInfoCz"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("invoiceSupplierBillingInfoCz")
+								.select([
+									"invoiceSupplierBillingInfoCz.vatPayer as vatPayer",
+									"invoiceSupplierBillingInfoCz.identificationNumber as identificationNumber",
+									"invoiceSupplierBillingInfoCz.vatNumber as vatNumber",
+									"invoiceSupplierBillingInfoCz.caseNumber as caseNumber",
+								])
+								.whereRef("invoiceSupplierBillingInfoCz.id", "=", "invoice.id")
+								.where(
+									"invoiceSupplierBillingInfoCz.isDeleted",
+									"is not",
+									sqliteTrue,
+								)
+								.where("invoiceSupplierBillingInfoCz.vatPayer", "is not", null)
+								.where(
+									"invoiceSupplierBillingInfoCz.identificationNumber",
+									"is not",
+									null,
+								)
+								.$narrowType<{
+									vatPayer: KyselyNotNull;
+									identificationNumber: KyselyNotNull;
+								}>(),
+						).as("invoiceSupplierBillingInfoCz"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("paymentWatchingState")
-									.select(["paymentWatchingState.verifiedAt as verifiedAt"])
-									.whereRef("paymentWatchingState.id", "=", "invoice.id")
-									.where(
-										"paymentWatchingState.isDeleted",
-										"is not",
-										sqliteTrue,
-									),
-							)
-							.as("paymentWatchingState"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("paymentWatchingState")
+								.select(["paymentWatchingState.verifiedAt as verifiedAt"])
+								.whereRef("paymentWatchingState.id", "=", "invoice.id")
+								.where("paymentWatchingState.isDeleted", "is not", sqliteTrue),
+						).as("paymentWatchingState"),
 
-						kysely
-							.jsonArrayFrom(
-								eb
-									.selectFrom("invoiceItemLine")
-									.select(
-										(eb) =>
-											[
-												"invoiceItemLine.id as id",
-												"invoiceItemLine.quantity as quantity",
-												"invoiceItemLine.totalAmount as totalAmount",
+						evoluJsonArrayFrom(
+							eb
+								.selectFrom("invoiceItemLine")
+								.select(
+									(eb) =>
+										[
+											"invoiceItemLine.id as id",
+											"invoiceItemLine.quantity as quantity",
+											"invoiceItemLine.totalAmount as totalAmount",
 
-												kysely
-													.jsonObjectFrom(
-														eb
-															.selectFrom("invoiceItem")
-															.select([
-																"invoiceItem.id as id",
-																"invoiceItem.categoryId as categoryId",
-																"invoiceItem.sourceItemId as sourceItemId",
-																"invoiceItem.label as label",
-																"invoiceItem.price as price",
-																"invoiceItem.currency as currency",
-																"invoiceItem.unitOfMeasure as unitOfMeasure",
-																"invoiceItem.internalCode as internalCode",
-																"invoiceItem.productCodeType as productCodeType",
-																"invoiceItem.productCodeValue as productCodeValue",
-															])
-															.whereRef(
-																"invoiceItem.id",
-																"=",
-																"invoiceItemLine.id",
-															)
-															.where(
-																"invoiceItem.isDeleted",
-																"is not",
-																sqliteTrue,
-															)
-															.where("invoiceItem.label", "is not", null)
-															.where("invoiceItem.price", "is not", null)
-															.where("invoiceItem.currency", "is not", null)
-															.$narrowType<{
-																label: NotNull;
-																price: NotNull;
-																currency: NotNull;
-															}>(),
-													)
-													.as("item"),
-											] as const,
-									)
-									.whereRef("invoiceItemLine.invoiceId", "=", "invoice.id")
-									.where("invoiceItemLine.isDeleted", "is not", sqliteTrue)
-									.where("invoiceItemLine.totalAmount", "is not", null)
-									.where("invoiceItemLine.quantity", "is not", null)
-									.$narrowType<{
-										quantity: NotNull;
-										totalAmount: NotNull;
-										item: NotNull;
-									}>(),
-							)
-							.as("items"),
+											evoluJsonObjectFrom(
+												eb
+													.selectFrom("invoiceItem")
+													.select([
+														"invoiceItem.id as id",
+														"invoiceItem.categoryId as categoryId",
+														"invoiceItem.sourceItemId as sourceItemId",
+														"invoiceItem.label as label",
+														"invoiceItem.price as price",
+														"invoiceItem.currency as currency",
+														"invoiceItem.unitOfMeasure as unitOfMeasure",
+														"invoiceItem.internalCode as internalCode",
+														"invoiceItem.productCodeType as productCodeType",
+														"invoiceItem.productCodeValue as productCodeValue",
+													])
+													.whereRef("invoiceItem.id", "=", "invoiceItemLine.id")
+													.where("invoiceItem.isDeleted", "is not", sqliteTrue)
+													.where("invoiceItem.label", "is not", null)
+													.where("invoiceItem.price", "is not", null)
+													.where("invoiceItem.currency", "is not", null)
+													.$narrowType<{
+														label: KyselyNotNull;
+														price: KyselyNotNull;
+														currency: KyselyNotNull;
+													}>(),
+											).as("item"),
+										] as const,
+								)
+								.whereRef("invoiceItemLine.invoiceId", "=", "invoice.id")
+								.where("invoiceItemLine.isDeleted", "is not", sqliteTrue)
+								.where("invoiceItemLine.totalAmount", "is not", null)
+								.where("invoiceItemLine.quantity", "is not", null)
+								.$narrowType<{
+									quantity: KyselyNotNull;
+									totalAmount: KyselyNotNull;
+									item: KyselyNotNull;
+								}>(),
+						).as("items"),
 					])
 					.where("invoice.id", "=", id as Id)
 					.where("invoice.isDeleted", "is not", sqliteTrue)
@@ -628,19 +580,19 @@ export default function Home() {
 					.where("invoice.currency", "is not", null)
 					.where("invoice.paymentMethod", "is not", null)
 					.$narrowType<{
-						items: NotNull;
-						invoiceId: NotNull;
-						invoiceNumber: NotNull;
-						issueDate: NotNull;
-						dueDate: NotNull;
-						currency: NotNull;
-						paymentMethod: NotNull;
-						invoiceSupplierBillingInfo: NotNull;
-						invoiceSupplierBillingInfoAddress: NotNull;
-						invoiceSupplierBillingInfoCz: NotNull;
-						invoiceCustomerBillingInfo: NotNull;
-						invoiceCustomerBillingInfoAddress: NotNull;
-						invoiceCustomerBillingInfoCz: NotNull;
+						items: KyselyNotNull;
+						invoiceId: KyselyNotNull;
+						invoiceNumber: KyselyNotNull;
+						issueDate: KyselyNotNull;
+						dueDate: KyselyNotNull;
+						currency: KyselyNotNull;
+						paymentMethod: KyselyNotNull;
+						invoiceSupplierBillingInfo: KyselyNotNull;
+						invoiceSupplierBillingInfoAddress: KyselyNotNull;
+						invoiceSupplierBillingInfoCz: KyselyNotNull;
+						invoiceCustomerBillingInfo: KyselyNotNull;
+						invoiceCustomerBillingInfoAddress: KyselyNotNull;
+						invoiceCustomerBillingInfoCz: KyselyNotNull;
 					}>(),
 			),
 		[id],
