@@ -63,7 +63,7 @@ export const PosBillTabs: FC<{
 					size={"lg"}
 					variant={"outline"}
 					onClick={() => {
-						const billId = createBill({
+						const { id: billId } = createBill({
 							defaultCurrency: props.defaultCurrency,
 						});
 						router.replace(`/admin/pos?id=${encodeURIComponent(billId)}`);

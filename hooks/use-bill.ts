@@ -19,15 +19,19 @@ export const useBill = () => {
 			billRows.reduce((max, bill) => Math.max(max, bill.displayId), 0) + 1,
 		);
 
-	const createBillInternal = (defaultCurrency: Currency): Id => {
-		const { id } = evolu.insert("posBill", {
+	const createBillInternal = (defaultCurrency: Currency) => {
+		const data = {
 			displayId: getNextDisplayId(),
 			label: null,
 			currency: defaultCurrency,
 			tableId: null,
-		});
+		};
+		const { id } = evolu.insert("posBill", data);
 
-		return id;
+		return {
+			id,
+			...data,
+		};
 	};
 
 	return {
@@ -68,8 +72,12 @@ export const useBill = () => {
 			defaultCurrency: Currency;
 			item: EvoluSchemaType["item"];
 		}) => {
-			const billId = props.billId ?? createBillInternal(props.defaultCurrency);
-			const bill = billRows.find((bill) => bill.id === billId);
+			const bill = props.billId
+				? billRows.find((bill) => bill.id === props.billId)
+				: {
+						...createBillInternal(props.defaultCurrency),
+						items: [],
+					};
 			if (bill === undefined) {
 				return;
 			}
@@ -88,7 +96,7 @@ export const useBill = () => {
 				});
 			} else {
 				const { id } = evolu.insert("posBillItemLine", {
-					posBillId: billId,
+					posBillId: bill.id,
 					totalAmount: props.item.price,
 					quantity: 1,
 				});
@@ -100,7 +108,7 @@ export const useBill = () => {
 				});
 			}
 
-			return billId;
+			return bill.id;
 		},
 		updateItemQuantity: (props: { billId: Id; itemId: Id; delta: -1 | 1 }) => {
 			const bill = billRows.find((bill) => bill.id === props.billId);
@@ -109,7 +117,7 @@ export const useBill = () => {
 			}
 
 			const currentItem = bill.items.find(
-				(item) => item.item.sourceItemId === props.itemId,
+				(item) => item.item.id === props.itemId,
 			);
 			if (currentItem === undefined) {
 				return;
