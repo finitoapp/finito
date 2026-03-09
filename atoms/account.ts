@@ -1,15 +1,15 @@
 import {
 	createOwnerSecret,
 	createRandomBytes,
+	evoluJsonArrayFrom,
 	type Id,
-	kysely,
+	type KyselyNotNull,
 	ownerSecretToMnemonic,
 	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { faker } from "@faker-js/faker";
 import { atom } from "jotai";
-import type { NotNull } from "kysely";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { createDeviceQuery } from "@/lib/evolu/device";
@@ -31,35 +31,33 @@ export const accountAtom = atom(async (get) => {
 				"account.mnemonic as mnemonic",
 				"account.name as name",
 
-				kysely
-					.jsonArrayFrom(
-						eb
-							.selectFrom("accountEvoluTransport")
-							.leftJoin(
-								"accountEvoluTransportWebsocket",
-								"accountEvoluTransportWebsocket.id",
-								"accountEvoluTransport.id",
-							)
-							.select([
-								"accountEvoluTransport.type as type",
-								"accountEvoluTransportWebsocket.url as url",
-							])
-							.whereRef("accountEvoluTransport.accountId", "=", "account.id")
-							.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
-							.where("accountEvoluTransport.type", "is not", null)
-							.where("accountEvoluTransportWebsocket.url", "is not", null)
-							.where("accountEvoluTransport.isActive", "=", sqliteTrue)
-							.where(
-								"accountEvoluTransportWebsocket.isDeleted",
-								"is not",
-								sqliteTrue,
-							)
-							.$narrowType<{
-								type: NotNull;
-								url: NotNull;
-							}>(),
-					)
-					.as("transports"),
+				evoluJsonArrayFrom(
+					eb
+						.selectFrom("accountEvoluTransport")
+						.leftJoin(
+							"accountEvoluTransportWebsocket",
+							"accountEvoluTransportWebsocket.id",
+							"accountEvoluTransport.id",
+						)
+						.select([
+							"accountEvoluTransport.type as type",
+							"accountEvoluTransportWebsocket.url as url",
+						])
+						.whereRef("accountEvoluTransport.accountId", "=", "account.id")
+						.where("accountEvoluTransport.isDeleted", "is not", sqliteTrue)
+						.where("accountEvoluTransport.type", "is not", null)
+						.where("accountEvoluTransportWebsocket.url", "is not", null)
+						.where("accountEvoluTransport.isActive", "=", sqliteTrue)
+						.where(
+							"accountEvoluTransportWebsocket.isDeleted",
+							"is not",
+							sqliteTrue,
+						)
+						.$narrowType<{
+							type: KyselyNotNull;
+							url: KyselyNotNull;
+						}>(),
+				).as("transports"),
 			])
 			.where("isDeleted", "is not", sqliteTrue)
 			.where("account.mnemonic", "is not", null)
@@ -67,8 +65,8 @@ export const accountAtom = atom(async (get) => {
 			.orderBy("lastUseAt", "desc")
 			.limit(1)
 			.$narrowType<{
-				name: NotNull;
-				mnemonic: NotNull;
+				name: KyselyNotNull;
+				mnemonic: KyselyNotNull;
 			}>(),
 	);
 

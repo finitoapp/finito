@@ -1,9 +1,8 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -83,7 +82,7 @@ export function CategoriesTable() {
 						.where("isDeleted", "is not", sqliteTrue)
 						.where("name", "is not", null)
 						.$narrowType<{
-							name: NotNull;
+							name: KyselyNotNull;
 						}>();
 
 					if (previousCursor) {

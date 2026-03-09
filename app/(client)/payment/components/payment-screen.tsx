@@ -1,6 +1,5 @@
-import { sqliteTrue } from "@evolu/common";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { motion } from "framer-motion";
-import type { NotNull } from "kysely";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,7 +24,7 @@ const btcWalletsQuery = createQuery((db) =>
 		.where("account.name", "is not", null)
 		.where("account._tag", "in", ["accountSpark", "accountNwc"])
 		.$narrowType<{
-			name: NotNull;
+			name: KyselyNotNull;
 		}>(),
 );
 

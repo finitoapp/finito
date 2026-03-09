@@ -1,7 +1,6 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -45,9 +44,9 @@ export default function Home() {
 					.where("item.price", "is not", null)
 					.where("item.currency", "is not", null)
 					.$narrowType<{
-						label: NotNull;
-						price: NotNull;
-						currency: NotNull;
+						label: KyselyNotNull;
+						price: KyselyNotNull;
+						currency: KyselyNotNull;
 					}>();
 			}),
 		[id],

@@ -2,15 +2,15 @@ import {
 	createId,
 	createIdFromString,
 	createRandomBytes,
+	evoluJsonObjectFrom,
 	type Id,
-	kysely,
+	type KyselyNotNull,
 	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { addDays } from "date-fns";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -323,44 +323,40 @@ const SupplierBillingInfo: AutoFormComponent<
 						"billingInfo.email as email",
 						"billingInfo.countryCode as countryCode",
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("billingInfoAddress")
-									.select([
-										"billingInfoAddress.street as street",
-										"billingInfoAddress.descriptiveNumber as descriptiveNumber",
-										"billingInfoAddress.city as city",
-										"billingInfoAddress.postalCode as postalCode",
-									])
-									.whereRef("billingInfoAddress.id", "=", "billingInfo.id")
-									.where("billingInfoAddress.isDeleted", "is not", sqliteTrue),
-							)
-							.as("address"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("billingInfoAddress")
+								.select([
+									"billingInfoAddress.street as street",
+									"billingInfoAddress.descriptiveNumber as descriptiveNumber",
+									"billingInfoAddress.city as city",
+									"billingInfoAddress.postalCode as postalCode",
+								])
+								.whereRef("billingInfoAddress.id", "=", "billingInfo.id")
+								.where("billingInfoAddress.isDeleted", "is not", sqliteTrue),
+						).as("address"),
 
-						kysely
-							.jsonObjectFrom(
-								eb
-									.selectFrom("billingInfoCz")
-									.select([
-										"billingInfoCz.vatPayer as vatPayer",
-										"billingInfoCz.identificationNumber as identificationNumber",
-										"billingInfoCz.vatNumber as vatNumber",
-										"billingInfoCz.caseNumber as caseNumber",
-									])
-									.whereRef("billingInfoCz.id", "=", "billingInfo.id")
-									.where("billingInfoCz.isDeleted", "is not", sqliteTrue),
-							)
-							.as("cz"),
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("billingInfoCz")
+								.select([
+									"billingInfoCz.vatPayer as vatPayer",
+									"billingInfoCz.identificationNumber as identificationNumber",
+									"billingInfoCz.vatNumber as vatNumber",
+									"billingInfoCz.caseNumber as caseNumber",
+								])
+								.whereRef("billingInfoCz.id", "=", "billingInfo.id")
+								.where("billingInfoCz.isDeleted", "is not", sqliteTrue),
+						).as("cz"),
 					])
 					.where("billingInfo.isDeleted", "is not", sqliteTrue)
 					.where("billingInfo.id", "=", createIdFromString(""))
 					.where("billingInfo.name", "is not", null)
 					.where("billingInfo.countryCode", "is not", null)
 					.$narrowType<{
-						name: NotNull;
-						countryCode: NotNull;
-						address: NotNull;
+						name: KyselyNotNull;
+						countryCode: KyselyNotNull;
+						address: KyselyNotNull;
 					}>();
 			}),
 		[],

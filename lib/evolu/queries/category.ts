@@ -1,5 +1,4 @@
-import { sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { createQuery } from "@/lib/evolu";
 
 export const activeCategoriesQuery = createQuery((db) =>
@@ -10,6 +9,6 @@ export const activeCategoriesQuery = createQuery((db) =>
 		.where("category.name", "is not", null)
 		.orderBy("category.name", "asc")
 		.$narrowType<{
-			name: NotNull;
+			name: KyselyNotNull;
 		}>(),
 );

@@ -1,6 +1,5 @@
-import { sqliteTrue } from "@evolu/common";
+import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { atom } from "jotai";
-import type { NotNull } from "kysely";
 import { accountAtom } from "@/atoms/account";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { createDeviceQuery } from "@/lib/evolu/device";
@@ -36,7 +35,7 @@ export const nostrRelaysAtom = atom<
 				.where("accountNostrRelay.accountId", "=", account.id)
 				.where("accountNostrRelay.url", "is not", null)
 				.$narrowType<{
-					url: NotNull;
+					url: KyselyNotNull;
 				}>(),
 		// We want to check existence of all, so no need to verify isDeleted=false
 		// .where("isDeleted", "is not", sqliteTrue)

@@ -1,6 +1,11 @@
-import { createId, createRandomBytes, kysely, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { motion } from "framer-motion";
-import type { NotNull } from "kysely";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
@@ -132,19 +137,17 @@ export const PosItemsList: React.FC<{
 								"item.productCodeValue as productCodeValue",
 								"item.categoryId as categoryId",
 
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("category")
-											.select(["category.name as name"])
-											.whereRef("category.id", "=", "item.categoryId")
-											.where("category.isDeleted", "is not", sqliteTrue)
-											.where("category.name", "is not", null)
-											.$narrowType<{
-												name: NotNull;
-											}>(),
-									)
-									.as("category"),
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("category")
+										.select(["category.name as name"])
+										.whereRef("category.id", "=", "item.categoryId")
+										.where("category.isDeleted", "is not", sqliteTrue)
+										.where("category.name", "is not", null)
+										.$narrowType<{
+											name: KyselyNotNull;
+										}>(),
+								).as("category"),
 							] as const,
 					)
 					.where("item.isDeleted", "is not", sqliteTrue)
@@ -152,9 +155,9 @@ export const PosItemsList: React.FC<{
 					.where("item.price", "is not", null)
 					.where("item.currency", "is not", null)
 					.$narrowType<{
-						label: NotNull;
-						price: NotNull;
-						currency: NotNull;
+						label: KyselyNotNull;
+						price: KyselyNotNull;
+						currency: KyselyNotNull;
 					}>(),
 			),
 		[],

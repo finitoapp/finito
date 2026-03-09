@@ -1,7 +1,11 @@
 "use client";
 
-import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	evoluJsonArrayFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMemo } from "react";
 import { BillingSettingsForm } from "@/app/admin/(private)/settings/billing-settings/billing-settings-form";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
@@ -28,18 +32,16 @@ export default function Home() {
 						"invoiceEmailSettingsSubject",
 						"invoiceEmailSettingsBody",
 
-						kysely
-							.jsonArrayFrom(
-								eb
-									.selectFrom("billingSettingsTaxRate")
-									.select(["id", "name", "rate"])
-									.where("isDeleted", "is not", sqliteTrue)
-									.where("rate", "is not", null)
-									.$narrowType<{
-										rate: NotNull;
-									}>(),
-							)
-							.as("rates"),
+						evoluJsonArrayFrom(
+							eb
+								.selectFrom("billingSettingsTaxRate")
+								.select(["id", "name", "rate"])
+								.where("isDeleted", "is not", sqliteTrue)
+								.where("rate", "is not", null)
+								.$narrowType<{
+									rate: KyselyNotNull;
+								}>(),
+						).as("rates"),
 					])
 					.where("isDeleted", "is not", sqliteTrue)
 					.where("defaultInvoiceDueDateDays", "is not", null)
@@ -49,11 +51,11 @@ export default function Home() {
 					.where("invoiceEmailSettingsEnable", "is not", null)
 					.where("id", "=", itemId)
 					.$narrowType<{
-						defaultInvoiceDueDateDays: NotNull;
-						defaultCurrency: NotNull;
-						defaultTimezone: NotNull;
-						defaultPaymentMethod: NotNull;
-						invoiceEmailSettingsEnable: NotNull;
+						defaultInvoiceDueDateDays: KyselyNotNull;
+						defaultCurrency: KyselyNotNull;
+						defaultTimezone: KyselyNotNull;
+						defaultPaymentMethod: KyselyNotNull;
+						invoiceEmailSettingsEnable: KyselyNotNull;
 					}>();
 			}),
 		[itemId],

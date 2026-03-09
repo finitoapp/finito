@@ -1,8 +1,7 @@
 "use client";
 
-import { type Id, sqliteTrue } from "@evolu/common";
+import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -42,7 +41,7 @@ export default function Home() {
 					.where("account.isDeleted", "is not", sqliteTrue)
 					.where("account.id", "=", id as Id)
 					.$narrowType<{
-						id: NotNull;
+						id: KyselyNotNull;
 					}>();
 			}),
 		[id],

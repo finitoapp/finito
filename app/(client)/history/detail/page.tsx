@@ -1,7 +1,12 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,50 +42,46 @@ export default function Page() {
 								"tipAmount",
 								"direction",
 
-								kysely
-									.jsonArrayFrom(
-										eb
-											.selectFrom("paymentItemLine")
-											.select(
-												(eb) =>
-													[
-														"paymentItemLine.totalAmount as totalAmount",
-														"paymentItemLine.quantity as quantity",
+								evoluJsonArrayFrom(
+									eb
+										.selectFrom("paymentItemLine")
+										.select(
+											(eb) =>
+												[
+													"paymentItemLine.totalAmount as totalAmount",
+													"paymentItemLine.quantity as quantity",
 
-														kysely
-															.jsonObjectFrom(
-																eb
-																	.selectFrom("paymentItem")
-																	.select(["paymentItem.label as label"])
-																	.whereRef(
-																		"paymentItem.id",
-																		"=",
-																		"paymentItemLine.id",
-																	)
-																	.where(
-																		"paymentItem.isDeleted",
-																		"is not",
-																		sqliteTrue,
-																	)
-																	.where("paymentItem.label", "is not", null)
-																	.$narrowType<{
-																		label: NotNull;
-																	}>(),
+													evoluJsonObjectFrom(
+														eb
+															.selectFrom("paymentItem")
+															.select(["paymentItem.label as label"])
+															.whereRef(
+																"paymentItem.id",
+																"=",
+																"paymentItemLine.id",
 															)
-															.as("item"),
-													] as const,
-											)
-											.whereRef("paymentItemLine.paymentId", "=", "payment.id")
-											.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
-											.where("paymentItemLine.totalAmount", "is not", null)
-											.where("paymentItemLine.quantity", "is not", null)
-											.$narrowType<{
-												totalAmount: NotNull;
-												quantity: NotNull;
-												item: NotNull;
-											}>(),
-									)
-									.as("items"),
+															.where(
+																"paymentItem.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.where("paymentItem.label", "is not", null)
+															.$narrowType<{
+																label: KyselyNotNull;
+															}>(),
+													).as("item"),
+												] as const,
+										)
+										.whereRef("paymentItemLine.paymentId", "=", "payment.id")
+										.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+										.where("paymentItemLine.totalAmount", "is not", null)
+										.where("paymentItemLine.quantity", "is not", null)
+										.$narrowType<{
+											totalAmount: KyselyNotNull;
+											quantity: KyselyNotNull;
+											item: KyselyNotNull;
+										}>(),
+								).as("items"),
 							] as const,
 					)
 					.where("payment.isDeleted", "is not", sqliteTrue)
@@ -90,9 +91,9 @@ export default function Page() {
 					.where("payment.id", "=", paymentId)
 					.limit(1)
 					.$narrowType<{
-						currency: NotNull;
-						totalAmount: NotNull;
-						direction: NotNull;
+						currency: KyselyNotNull;
+						totalAmount: KyselyNotNull;
+						direction: KyselyNotNull;
 					}>(),
 			),
 		[paymentId],

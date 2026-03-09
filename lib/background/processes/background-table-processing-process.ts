@@ -1,5 +1,10 @@
-import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import type { BackgroundProcess } from "@/lib/background/service";
 import type { ScreenData } from "@/lib/bill/driver";
 import { createQuery } from "@/lib/evolu";
@@ -50,92 +55,84 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 							"posBill.tableId as tableId",
 							"posBill.currency as currency",
 
-							kysely
-								.jsonObjectFrom(
-									eb
-										.selectFrom("table")
-										.select((eb) => [
-											"table.label as label",
+							evoluJsonObjectFrom(
+								eb
+									.selectFrom("table")
+									.select((eb) => [
+										"table.label as label",
 
-											kysely
-												.jsonArrayFrom(
+										evoluJsonArrayFrom(
+											eb
+												.selectFrom("tableCode")
+												.select(["tableCode.code as code"] as const)
+												.whereRef("tableCode.tableId", "=", "table.id")
+												.where("tableCode.isDeleted", "is not", sqliteTrue)
+												.where("tableCode.code", "is not", null)
+												.$narrowType<{
+													code: KyselyNotNull;
+												}>(),
+										).as("codes"),
+									])
+									.whereRef("posBill.tableId", "=", "table.id")
+									.where("table.isDeleted", "is not", sqliteTrue)
+									.where("table.label", "is not", null)
+									.$narrowType<{
+										label: KyselyNotNull;
+									}>(),
+							).as("table"),
+
+							evoluJsonArrayFrom(
+								eb
+									.selectFrom("posBillItemLine")
+									.select(
+										(eb) =>
+											[
+												"posBillItemLine.totalAmount as totalAmount",
+												"posBillItemLine.quantity as quantity",
+
+												evoluJsonObjectFrom(
 													eb
-														.selectFrom("tableCode")
-														.select(["tableCode.code as code"] as const)
-														.whereRef("tableCode.tableId", "=", "table.id")
-														.where("tableCode.isDeleted", "is not", sqliteTrue)
-														.where("tableCode.code", "is not", null)
-														.$narrowType<{
-															code: NotNull;
-														}>(),
-												)
-												.as("codes"),
-										])
-										.whereRef("posBill.tableId", "=", "table.id")
-										.where("table.isDeleted", "is not", sqliteTrue)
-										.where("table.label", "is not", null)
-										.$narrowType<{
-											label: NotNull;
-										}>(),
-								)
-								.as("table"),
-
-							kysely
-								.jsonArrayFrom(
-									eb
-										.selectFrom("posBillItemLine")
-										.select(
-											(eb) =>
-												[
-													"posBillItemLine.totalAmount as totalAmount",
-													"posBillItemLine.quantity as quantity",
-
-													kysely
-														.jsonObjectFrom(
-															eb
-																.selectFrom("posBillItem")
-																.select([
-																	"posBillItem.label as label",
-																	"posBillItem.price as price",
-																	"posBillItem.id as id",
-																])
-																.whereRef(
-																	"posBillItem.id",
-																	"=",
-																	"posBillItemLine.id",
-																)
-																.where(
-																	"posBillItem.isDeleted",
-																	"is not",
-																	sqliteTrue,
-																)
-																.where("posBillItem.label", "is not", null)
-																.where("posBillItem.price", "is not", null)
-																.$narrowType<{
-																	label: NotNull;
-																	price: NotNull;
-																}>(),
+														.selectFrom("posBillItem")
+														.select([
+															"posBillItem.label as label",
+															"posBillItem.price as price",
+															"posBillItem.id as id",
+														])
+														.whereRef(
+															"posBillItem.id",
+															"=",
+															"posBillItemLine.id",
 														)
-														.as("item"),
-												] as const,
-										)
-										.whereRef("posBillItemLine.posBillId", "=", "posBill.id")
-										.where("posBillItemLine.isDeleted", "is not", sqliteTrue)
-										.where("posBillItemLine.totalAmount", "is not", null)
-										.where("posBillItemLine.quantity", "is not", null)
-										.$narrowType<{
-											totalAmount: NotNull;
-											quantity: NotNull;
-											item: NotNull;
-										}>(),
-								)
-								.as("items"),
+														.where(
+															"posBillItem.isDeleted",
+															"is not",
+															sqliteTrue,
+														)
+														.where("posBillItem.label", "is not", null)
+														.where("posBillItem.price", "is not", null)
+														.$narrowType<{
+															label: KyselyNotNull;
+															price: KyselyNotNull;
+														}>(),
+												).as("item"),
+											] as const,
+									)
+									.whereRef("posBillItemLine.posBillId", "=", "posBill.id")
+									.where("posBillItemLine.isDeleted", "is not", sqliteTrue)
+									.where("posBillItemLine.totalAmount", "is not", null)
+									.where("posBillItemLine.quantity", "is not", null)
+									.$narrowType<{
+										totalAmount: KyselyNotNull;
+										quantity: KyselyNotNull;
+										item: KyselyNotNull;
+									}>(),
+							).as("items"),
 						] as const,
 				)
 				.where("posBill.isDeleted", "is not", sqliteTrue)
 				.where("posBill.currency", "is not", null)
 				.$narrowType<{
-					currency: NotNull;
+					currency: KyselyNotNull;
 				}>(),
 		);
 

@@ -3,13 +3,14 @@
 import {
 	createId,
 	createRandomBytes,
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
 	type Id,
-	kysely,
+	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
 import { usePDF } from "@react-pdf/renderer";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import {
 	CopyIcon,
 	EditIcon,
@@ -172,100 +173,78 @@ export default function Home() {
 								"menu.validTo as validTo",
 								"menu.publishedAt as publishedAt",
 
-								kysely
-									.jsonArrayFrom(
-										eb
-											.selectFrom("menuCategory")
-											.select((eb) => [
-												"menuCategory.id as id",
-												"menuCategory.menuId as menuId",
-												"menuCategory.name as name",
+								evoluJsonArrayFrom(
+									eb
+										.selectFrom("menuCategory")
+										.select((eb) => [
+											"menuCategory.id as id",
+											"menuCategory.menuId as menuId",
+											"menuCategory.name as name",
 
-												kysely
-													.jsonArrayFrom(
-														eb
-															.selectFrom("menuItemLine")
-															.select(
-																(eb) =>
-																	[
-																		"menuItemLine.id as id",
-																		"menuItemLine.availabilityStatus as availabilityStatus",
+											evoluJsonArrayFrom(
+												eb
+													.selectFrom("menuItemLine")
+													.select(
+														(eb) =>
+															[
+																"menuItemLine.id as id",
+																"menuItemLine.availabilityStatus as availabilityStatus",
 
-																		kysely
-																			.jsonObjectFrom(
-																				eb
-																					.selectFrom("menuItem")
-																					.select([
-																						"menuItem.id as id",
-																						"menuItem.categoryId as categoryId",
-																						"menuItem.sourceItemId as sourceItemId",
-																						"menuItem.label as label",
-																						"menuItem.price as price",
-																						"menuItem.currency as currency",
-																						"menuItem.unitOfMeasure as unitOfMeasure",
-																						"menuItem.internalCode as internalCode",
-																						"menuItem.productCodeType as productCodeType",
-																						"menuItem.productCodeValue as productCodeValue",
-																					])
-																					.whereRef(
-																						"menuItem.id",
-																						"=",
-																						"menuItemLine.id",
-																					)
-																					.where(
-																						"menuItem.isDeleted",
-																						"is not",
-																						sqliteTrue,
-																					)
-																					.where(
-																						"menuItem.label",
-																						"is not",
-																						null,
-																					)
-																					.where(
-																						"menuItem.price",
-																						"is not",
-																						null,
-																					)
-																					.where(
-																						"menuItem.currency",
-																						"is not",
-																						null,
-																					)
-																					.$narrowType<{
-																						label: NotNull;
-																						price: NotNull;
-																						currency: NotNull;
-																					}>(),
-																			)
-																			.as("item"),
-																	] as const,
-															)
-															.whereRef(
-																"menuItemLine.menuCategoryId",
-																"=",
-																"menuCategory.id",
-															)
-															.where(
-																"menuItemLine.isDeleted",
-																"is not",
-																sqliteTrue,
-															)
-															.$narrowType<{
-																item: NotNull;
-															}>(),
+																evoluJsonObjectFrom(
+																	eb
+																		.selectFrom("menuItem")
+																		.select([
+																			"menuItem.id as id",
+																			"menuItem.categoryId as categoryId",
+																			"menuItem.sourceItemId as sourceItemId",
+																			"menuItem.label as label",
+																			"menuItem.price as price",
+																			"menuItem.currency as currency",
+																			"menuItem.unitOfMeasure as unitOfMeasure",
+																			"menuItem.internalCode as internalCode",
+																			"menuItem.productCodeType as productCodeType",
+																			"menuItem.productCodeValue as productCodeValue",
+																		])
+																		.whereRef(
+																			"menuItem.id",
+																			"=",
+																			"menuItemLine.id",
+																		)
+																		.where(
+																			"menuItem.isDeleted",
+																			"is not",
+																			sqliteTrue,
+																		)
+																		.where("menuItem.label", "is not", null)
+																		.where("menuItem.price", "is not", null)
+																		.where("menuItem.currency", "is not", null)
+																		.$narrowType<{
+																			label: KyselyNotNull;
+																			price: KyselyNotNull;
+																			currency: KyselyNotNull;
+																		}>(),
+																).as("item"),
+															] as const,
 													)
-													.as("items"),
-											])
-											.whereRef("menuCategory.menuId", "=", "menu.id")
-											.where("menuCategory.isDeleted", "is not", sqliteTrue)
-											.where("menuCategory.name", "is not", null)
-											.where("menuCategory.menuId", "=", id as Id)
-											.$narrowType<{
-												name: NotNull;
-											}>(),
-									)
-									.as("categories"),
+													.whereRef(
+														"menuItemLine.menuCategoryId",
+														"=",
+														"menuCategory.id",
+													)
+													.where("menuItemLine.isDeleted", "is not", sqliteTrue)
+													.$narrowType<{
+														item: KyselyNotNull;
+													}>(),
+											).as("items"),
+										])
+										.whereRef("menuCategory.menuId", "=", "menu.id")
+										.where("menuCategory.isDeleted", "is not", sqliteTrue)
+										.where("menuCategory.name", "is not", null)
+										.where("menuCategory.menuId", "=", id as Id)
+										.$narrowType<{
+											name: KyselyNotNull;
+										}>(),
+								).as("categories"),
 							] as const,
 					)
 					.where("menu.isDeleted", "is not", sqliteTrue)
@@ -273,8 +252,8 @@ export default function Home() {
 					.where("menu.status", "is not", null)
 					.where("menu.id", "=", id as Id)
 					.$narrowType<{
-						name: NotNull;
-						status: NotNull;
+						name: KyselyNotNull;
+						status: KyselyNotNull;
 					}>(),
 			),
 		[id],

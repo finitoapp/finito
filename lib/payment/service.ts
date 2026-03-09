@@ -1,5 +1,10 @@
 import { SparkWallet } from "@buildonspark/spark-sdk";
-import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
+import {
+	createIdFromString,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import NDK, {
 	NDKEvent,
 	NDKPrivateKeySigner,
@@ -7,7 +12,6 @@ import NDK, {
 	type NDKUser,
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
-import type { NotNull } from "kysely";
 import { createQuery, type Evolu, type EvoluSchemaType } from "@/lib/evolu";
 import type { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import {
@@ -203,7 +207,7 @@ export async function createPayment(
 					.where("accountLud16.isDeleted", "is not", sqliteTrue)
 					.where("accountLud16.lud16", "is not", null)
 					.$narrowType<{
-						lud16: NotNull;
+						lud16: KyselyNotNull;
 					}>(),
 			),
 		);

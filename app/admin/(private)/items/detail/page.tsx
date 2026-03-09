@@ -1,8 +1,12 @@
 "use client";
 
-import { type Id, kysely, sqliteTrue } from "@evolu/common";
+import {
+	evoluJsonObjectFrom,
+	type Id,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import type { NotNull } from "kysely";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -54,18 +58,16 @@ export default function Home() {
 								"item.createdAt as createdAt",
 								"category.name as category.name",
 
-								kysely
-									.jsonObjectFrom(
-										eb
-											.selectFrom("category")
-											.select(["category.name as name"])
-											.whereRef("category.id", "=", "item.categoryId")
-											.where("category.name", "is not", null)
-											.$narrowType<{
-												name: NotNull;
-											}>(),
-									)
-									.as("category"),
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("category")
+										.select(["category.name as name"])
+										.whereRef("category.id", "=", "item.categoryId")
+										.where("category.name", "is not", null)
+										.$narrowType<{
+											name: KyselyNotNull;
+										}>(),
+								).as("category"),
 							] as const,
 					)
 					.where("item.isDeleted", "is not", sqliteTrue)
@@ -73,8 +75,8 @@ export default function Home() {
 					.where("item.currency", "is not", null)
 					.where("item.id", "=", id as Id)
 					.$narrowType<{
-						price: NotNull;
-						currency: NotNull;
+						price: KyselyNotNull;
+						currency: KyselyNotNull;
 					}>();
 			}),
 		[id],

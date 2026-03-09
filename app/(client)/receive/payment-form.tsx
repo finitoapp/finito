@@ -1,7 +1,11 @@
-import { createId, createRandomBytes, sqliteTrue } from "@evolu/common";
+import {
+	createId,
+	createRandomBytes,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
-import type { NotNull } from "kysely";
 import { BitcoinIcon } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
@@ -105,8 +109,8 @@ const createComponents = (t: TFunction) =>
 											.where("accountLud16.lud16", "is not", null)
 											.where("account._tag", "=", "accountLud16")
 											.$narrowType<{
-												name: NotNull;
-												lud16: NotNull;
+												name: KyselyNotNull;
+												lud16: KyselyNotNull;
 											}>(),
 									),
 								);
@@ -146,7 +150,7 @@ const createComponents = (t: TFunction) =>
 											.where("account.name", "is not", null)
 											.where("account._tag", "=", "accountSpark")
 											.$narrowType<{
-												name: NotNull;
+												name: KyselyNotNull;
 											}>(),
 									),
 								);

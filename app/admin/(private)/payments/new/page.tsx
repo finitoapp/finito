@@ -1,7 +1,10 @@
 "use client";
 
-import { createIdFromString, sqliteTrue } from "@evolu/common";
-import type { NotNull } from "kysely";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useMemo } from "react";
 import { PaymentForm } from "@/app/admin/(private)/payments/new/payment-form";
 import { BackButton } from "@/components/back-button";
@@ -19,7 +22,7 @@ export default function Home() {
 					.where("billingInfo.name", "is not", null)
 					.where("billingInfo.id", "=", createIdFromString(""))
 					.$narrowType<{
-						name: NotNull;
+						name: KyselyNotNull;
 					}>(),
 			),
 		[],
@@ -40,8 +43,8 @@ export default function Home() {
 					.where("billingSettings.defaultCurrency", "is not", null)
 					.where("billingSettings.id", "=", createIdFromString(""))
 					.$narrowType<{
-						defaultPaymentMethod: NotNull;
-						defaultCurrency: NotNull;
+						defaultPaymentMethod: KyselyNotNull;
+						defaultCurrency: KyselyNotNull;
 					}>(),
 			),
 		[],

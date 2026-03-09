@@ -1,12 +1,13 @@
 import {
 	createIdFromString,
-	kysely,
+	evoluJsonArrayFrom,
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
 	ok,
 	type Result,
 	sqliteTrue,
 	tryAsync,
 } from "@evolu/common";
-import type { NotNull } from "kysely";
 import { createQuery, type Evolu } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { menuStorage } from "@/lib/menu/nostr-storage";
@@ -69,95 +70,81 @@ export const publishRelevantMenusToStorage = async (params: {
 										"menu.validTo as validTo",
 										"menu.publishedAt as publishedAt",
 
-										kysely
-											.jsonArrayFrom(
-												eb
-													.selectFrom("menuCategory")
-													.select((eb) => [
-														"menuCategory.id as id",
-														"menuCategory.name as name",
+										evoluJsonArrayFrom(
+											eb
+												.selectFrom("menuCategory")
+												.select((eb) => [
+													"menuCategory.id as id",
+													"menuCategory.name as name",
 
-														kysely
-															.jsonArrayFrom(
-																eb
-																	.selectFrom("menuItemLine")
-																	.select(
-																		(eb) =>
-																			[
-																				"menuItemLine.id as id",
-																				"menuItemLine.menuCategoryId as menuCategoryId",
-																				"menuItemLine.availabilityStatus as availabilityStatus",
+													evoluJsonArrayFrom(
+														eb
+															.selectFrom("menuItemLine")
+															.select(
+																(eb) =>
+																	[
+																		"menuItemLine.id as id",
+																		"menuItemLine.menuCategoryId as menuCategoryId",
+																		"menuItemLine.availabilityStatus as availabilityStatus",
 
-																				kysely
-																					.jsonObjectFrom(
-																						eb
-																							.selectFrom("menuItem")
-																							.select([
-																								"menuItem.label as label",
-																								"menuItem.price as price",
-																								"menuItem.currency as currency",
-																								"menuItem.unitOfMeasure as unitOfMeasure",
-																								"menuItem.id as id",
-																								"menuItem.sourceItemId as sourceItemId",
-																							])
-																							.whereRef(
-																								"menuItem.id",
-																								"=",
-																								"menuItemLine.id",
-																							)
-																							.where(
-																								"menuItem.isDeleted",
-																								"is not",
-																								sqliteTrue,
-																							)
-																							.where(
-																								"menuItem.label",
-																								"is not",
-																								null,
-																							)
-																							.where(
-																								"menuItem.price",
-																								"is not",
-																								null,
-																							)
-																							.where(
-																								"menuItem.currency",
-																								"is not",
-																								null,
-																							)
-																							.$narrowType<{
-																								label: NotNull;
-																								price: NotNull;
-																								currency: NotNull;
-																							}>(),
-																					)
-																					.as("item"),
-																			] as const,
-																	)
-																	.whereRef(
-																		"menuItemLine.menuCategoryId",
-																		"=",
-																		"menuCategory.id",
-																	)
-																	.where(
-																		"menuItemLine.isDeleted",
-																		"is not",
-																		sqliteTrue,
-																	)
-																	.$narrowType<{
-																		item: NotNull;
-																	}>(),
+																		evoluJsonObjectFrom(
+																			eb
+																				.selectFrom("menuItem")
+																				.select([
+																					"menuItem.label as label",
+																					"menuItem.price as price",
+																					"menuItem.currency as currency",
+																					"menuItem.unitOfMeasure as unitOfMeasure",
+																					"menuItem.id as id",
+																					"menuItem.sourceItemId as sourceItemId",
+																				])
+																				.whereRef(
+																					"menuItem.id",
+																					"=",
+																					"menuItemLine.id",
+																				)
+																				.where(
+																					"menuItem.isDeleted",
+																					"is not",
+																					sqliteTrue,
+																				)
+																				.where("menuItem.label", "is not", null)
+																				.where("menuItem.price", "is not", null)
+																				.where(
+																					"menuItem.currency",
+																					"is not",
+																					null,
+																				)
+																				.$narrowType<{
+																					label: KyselyNotNull;
+																					price: KyselyNotNull;
+																					currency: KyselyNotNull;
+																				}>(),
+																		).as("item"),
+																	] as const,
 															)
-															.as("items"),
-													])
-													.whereRef("menuCategory.menuId", "=", "menu.id")
-													.where("menuCategory.isDeleted", "is not", sqliteTrue)
-													.where("menuCategory.name", "is not", null)
-													.$narrowType<{
-														name: NotNull;
-													}>(),
-											)
-											.as("categories"),
+															.whereRef(
+																"menuItemLine.menuCategoryId",
+																"=",
+																"menuCategory.id",
+															)
+															.where(
+																"menuItemLine.isDeleted",
+																"is not",
+																sqliteTrue,
+															)
+															.$narrowType<{
+																item: KyselyNotNull;
+															}>(),
+													).as("items"),
+												])
+												.whereRef("menuCategory.menuId", "=", "menu.id")
+												.where("menuCategory.isDeleted", "is not", sqliteTrue)
+												.where("menuCategory.name", "is not", null)
+												.$narrowType<{
+													name: KyselyNotNull;
+												}>(),
+										).as("categories"),
 									] as const,
 							)
 							.where("menu.isDeleted", "is not", sqliteTrue)
@@ -170,8 +157,8 @@ export const publishRelevantMenusToStorage = async (params: {
 								]),
 							)
 							.$narrowType<{
-								name: NotNull;
-								status: NotNull;
+								name: KyselyNotNull;
+								status: KyselyNotNull;
 							}>(),
 					),
 				),
