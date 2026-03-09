@@ -38,7 +38,10 @@ export const TimelineHeader: React.FC<{
 				>
 					{Array.from({ length: props.slotCount }).map((_, slotIndex) => (
 						<div
-							key={`time-${props.dayOpenMs + slotIndex * props.slotMs}`}
+							key={`time-${
+								// biome-ignore lint/suspicious/noArrayIndexKey: It's OK here
+								props.dayOpenMs + slotIndex * props.slotMs
+							}`}
 							className={cn(slotIndex % 2 === 0 && "border-l border-border/70")}
 							style={{ height: props.rowHeightPx }}
 						/>
