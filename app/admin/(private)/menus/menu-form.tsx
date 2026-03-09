@@ -461,10 +461,10 @@ export const MenuForm = (params: {
 				ndk,
 				evolu,
 			});
-			if (publishResult instanceof Error) {
+			if (!publishResult.ok) {
 				console.error(
 					"Failed to publish menus to Nostr storage",
-					publishResult,
+					publishResult.error,
 				);
 				toast("Nepodařilo se publikovat menu do veřejného náhledu.");
 			}

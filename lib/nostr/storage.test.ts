@@ -1,9 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { ok } from "@evolu/common";
+import type { JsonValue } from "type-fest";
 import {
 	createNostrStorage,
-	NostrStorageInvalidJsonEventError,
-	NostrStorageOlderEventIgnoredError,
-	NostrStorageSubscriptionClosedBeforeReadyError,
+	type NostrStorageEventResult,
 } from "@/lib/nostr/storage";
 
 type TestEvent = {
@@ -44,7 +44,7 @@ describe("createNostrStorage", () => {
 		const storage = createNostrStorage<{ foo: number }>({
 			namespace: "prefs",
 		});
-		const received: Array<unknown> = [];
+		const received: Array<NostrStorageEventResult<JsonValue>> = [];
 
 		const readyPromise = storage.subscribe(
 			{ ndk: ndk as never, pubkey: "pubkey123" },
@@ -72,39 +72,54 @@ describe("createNostrStorage", () => {
 		handlers?.onEvent?.({ id: "e5", content: '{"foo":4}' });
 
 		expect(received).toHaveLength(5);
-		expect(received[0]).toEqual({ foo: 1 });
+		expect(received[0]).toEqual(ok({ foo: 1 }));
 
 		const olderEventError1 = received[1];
-		if (!NostrStorageOlderEventIgnoredError.is(olderEventError1)) {
+		if (
+			!olderEventError1 ||
+			olderEventError1.ok ||
+			olderEventError1.error.type !== "NostrStorageOlderEventIgnoredError"
+		) {
 			throw new Error("Expected older event error");
 		}
-		expect(olderEventError1.eventId).toBe("e2");
-		expect(olderEventError1.createdAt).toBe(9);
-		expect(olderEventError1.latestCreatedAt).toBe(10);
+		expect(olderEventError1.error.eventId).toBe("e2");
+		expect(olderEventError1.error.createdAt).toBe(9);
+		expect(olderEventError1.error.latestCreatedAt).toBe(10);
 
 		const invalidJsonError = received[2];
-		if (!NostrStorageInvalidJsonEventError.is(invalidJsonError)) {
+		if (
+			!invalidJsonError ||
+			invalidJsonError.ok ||
+			invalidJsonError.error.type !== "NostrStorageInvalidJsonEventError"
+		) {
 			throw new Error("Expected invalid JSON error");
 		}
-		expect(invalidJsonError.eventId).toBe("e3");
+		expect(invalidJsonError.error.eventId).toBe("e3");
 
-		expect(received[3]).toEqual({ foo: 3 });
+		expect(received[3]).toEqual({
+			ok: true,
+			value: { foo: 3 },
+		});
 
 		const olderEventError2 = received[4];
-		if (!NostrStorageOlderEventIgnoredError.is(olderEventError2)) {
+		if (
+			!olderEventError2 ||
+			olderEventError2.ok ||
+			olderEventError2.error.type !== "NostrStorageOlderEventIgnoredError"
+		) {
 			throw new Error("Expected older event error");
 		}
-		expect(olderEventError2.eventId).toBe("e5");
-		expect(olderEventError2.createdAt).toBe(0);
-		expect(olderEventError2.latestCreatedAt).toBe(10);
+		expect(olderEventError2.error.eventId).toBe("e5");
+		expect(olderEventError2.error.createdAt).toBe(0);
+		expect(olderEventError2.error.latestCreatedAt).toBe(10);
 
 		handlers?.onEose?.();
 		const subscription = await readyPromise;
-		if (NostrStorageSubscriptionClosedBeforeReadyError.is(subscription)) {
-			throw subscription;
+		if (!subscription.ok) {
+			throw subscription.error;
 		}
 
-		subscription.close();
+		subscription.value.close();
 		expect(stopCalls).toBe(1);
 	});
 
@@ -136,12 +151,12 @@ describe("createNostrStorage", () => {
 		handlers?.onClose?.();
 
 		const error = await readyPromise;
-		if (!NostrStorageSubscriptionClosedBeforeReadyError.is(error)) {
-			throw new Error("Expected errore value");
+		if (error.ok) {
+			throw new Error("Expected error value");
 		}
-		expect(error._tag).toBe("NostrStorageSubscriptionClosedBeforeReadyError");
-		expect(error.message).toBe(
-			'Nostr storage "prefs" subscription closed before becoming ready',
-		);
+		expect(error.error).toEqual({
+			type: "NostrStorageSubscriptionClosedBeforeReadyError",
+			namespace: "prefs",
+		});
 	});
 });

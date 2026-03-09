@@ -1,4 +1,3 @@
-import * as errore from "errore";
 import type {
 	BillDriver,
 	BillSubscription,
@@ -45,7 +44,7 @@ export class TableDriver implements BillDriver {
 			});
 
 		const pay: ScreenDataPaymentPayFunction = async (params) => {
-			const response = await tableRequestClient.call(
+			const responseResult = await tableRequestClient.call(
 				"createPaymentFromSubscribedBill",
 				{
 					subscriptionId: expectedSubscriptionId,
@@ -60,8 +59,8 @@ export class TableDriver implements BillDriver {
 					},
 				},
 			);
-			if (errore.isError(response)) {
-				console.error(response);
+			if (!responseResult.ok) {
+				console.error(responseResult.error);
 				callback({
 					type: "close",
 					payload: {
@@ -73,10 +72,10 @@ export class TableDriver implements BillDriver {
 
 			isInsideThePayment = true;
 
-			screenStack.push(response);
+			screenStack.push(responseResult.value);
 		};
 
-		const server = await tableEventMessageBus
+		const serverResult = await tableEventMessageBus
 			.createInstance({
 				ndk,
 			})
@@ -118,8 +117,8 @@ export class TableDriver implements BillDriver {
 					return null;
 				},
 			});
-		if (errore.isError(server)) {
-			console.error(server);
+		if (!serverResult.ok) {
+			console.error(serverResult.error);
 			callback({
 				type: "close",
 				payload: {
@@ -138,9 +137,9 @@ export class TableDriver implements BillDriver {
 				subscriptionId: expectedSubscriptionId,
 			},
 		);
-		if (errore.isError(subscribeResult)) {
-			console.error(subscribeResult);
-			server.close();
+		if (!subscribeResult.ok) {
+			console.error(subscribeResult.error);
+			serverResult.value.close();
 			callback({
 				type: "close",
 				payload: {
@@ -168,15 +167,15 @@ export class TableDriver implements BillDriver {
 					},
 				)
 				.then((result) => {
-					if (errore.isError(result)) {
-						console.error(result);
+					if (!result.ok) {
+						console.error(result.error);
 					}
 				});
 		}, 20_000);
 
 		return {
 			close: async () => {
-				server.close();
+				serverResult.value.close();
 				clearInterval(interval);
 				void tableRequestClient
 					.call(
@@ -189,8 +188,8 @@ export class TableDriver implements BillDriver {
 						},
 					)
 					.then((result) => {
-						if (errore.isError(result)) {
-							console.error(result);
+						if (!result.ok) {
+							console.error(result.error);
 						}
 					});
 			},

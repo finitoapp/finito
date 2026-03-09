@@ -1,8 +1,9 @@
+import { err, isOk, ok, type Result, tryAsync } from "@evolu/common";
 import type NDK from "@nostr-dev-kit/ndk";
 import { NDKEvent, type NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
-import * as errore from "errore";
 import type { JsonValue } from "type-fest";
 import { z } from "zod";
+import { defineError } from "@/lib/shared/error";
 import { Uuid7, Uuid7Schema } from "@/lib/shared/types";
 import { jsonCodec } from "@/lib/shared/zod/json-codec";
 
@@ -67,66 +68,86 @@ const listenerReadyTimeoutMs = 10_000;
 const responseTimeoutMs = 12_000;
 const processedRequestCacheSize = 1024;
 
-export class RpcListenerClosedBeforeReadyError extends errore.createTaggedError(
-	{
-		name: "RpcListenerClosedBeforeReadyError",
-		message: 'RPC listener "$namespace" closed before becoming ready',
-	},
-) {}
+const createRpcListenerClosedBeforeReadyError = defineError(
+	"RpcListenerClosedBeforeReadyError",
+)<{
+	namespace: string;
+}>();
+type RpcListenerClosedBeforeReadyError = ReturnType<
+	typeof createRpcListenerClosedBeforeReadyError
+>;
 
-export class RpcListenerReadyTimeoutError extends errore.createTaggedError({
-	name: "RpcListenerReadyTimeoutError",
-	message: 'Timeout while waiting for RPC listener "$namespace" readiness',
-}) {}
+const createRpcListenerReadyTimeoutError = defineError(
+	"RpcListenerReadyTimeoutError",
+)<{
+	namespace: string;
+}>();
+type RpcListenerReadyTimeoutError = ReturnType<
+	typeof createRpcListenerReadyTimeoutError
+>;
 
-export class RpcMethodReturnedNonJsonPayloadError extends errore.createTaggedError(
-	{
-		name: "RpcMethodReturnedNonJsonPayloadError",
-		message: 'RPC method "$method" returned non-JSON payload',
-	},
-) {}
+const createRpcMethodReturnedNonJsonPayloadError = defineError(
+	"RpcMethodReturnedNonJsonPayloadError",
+)<{
+	method: string;
+}>();
 
-export class RpcClientListenerClosedBeforeReadyError extends errore.createTaggedError(
-	{
-		name: "RpcClientListenerClosedBeforeReadyError",
-		message: 'RPC client listener "$namespace" closed before becoming ready',
-	},
-) {}
+const createRpcClientListenerClosedBeforeReadyError = defineError(
+	"RpcClientListenerClosedBeforeReadyError",
+)<{
+	namespace: string;
+}>();
+type RpcClientListenerClosedBeforeReadyError = ReturnType<
+	typeof createRpcClientListenerClosedBeforeReadyError
+>;
 
-export class RpcClientListenerClosedError extends errore.createTaggedError({
-	name: "RpcClientListenerClosedError",
-	message: 'RPC client listener "$namespace" was closed',
-}) {}
+const createRpcClientListenerClosedError = defineError(
+	"RpcClientListenerClosedError",
+)<{
+	namespace: string;
+}>();
+type RpcClientListenerClosedError = ReturnType<
+	typeof createRpcClientListenerClosedError
+>;
 
-export class RpcClientListenerReadyTimeoutError extends errore.createTaggedError(
-	{
-		name: "RpcClientListenerReadyTimeoutError",
-		message:
-			'Timeout while waiting for RPC client listener "$namespace" readiness',
-	},
-) {}
+const createRpcClientListenerReadyTimeoutError = defineError(
+	"RpcClientListenerReadyTimeoutError",
+)<{
+	namespace: string;
+}>();
+type RpcClientListenerReadyTimeoutError = ReturnType<
+	typeof createRpcClientListenerReadyTimeoutError
+>;
 
-export class RpcRemoteError extends errore.createTaggedError({
-	name: "RpcRemoteError",
-	message: 'RPC "$method" failed: $remoteError',
-}) {}
+const createRpcRemoteError = defineError("RpcRemoteError")<{
+	method: string;
+	remoteError: string;
+}>();
+type RpcRemoteError = ReturnType<typeof createRpcRemoteError>;
 
-export class RpcCallNonJsonRequestPayloadError extends errore.createTaggedError(
-	{
-		name: "RpcCallNonJsonRequestPayloadError",
-		message: 'RPC call "$method" contains non-JSON request payload',
-	},
-) {}
+const createRpcCallNonJsonRequestPayloadError = defineError(
+	"RpcCallNonJsonRequestPayloadError",
+)<{
+	method: string;
+}>();
+type RpcCallNonJsonRequestPayloadError = ReturnType<
+	typeof createRpcCallNonJsonRequestPayloadError
+>;
 
-export class RpcResponseTimeoutError extends errore.createTaggedError({
-	name: "RpcResponseTimeoutError",
-	message: 'Timeout while waiting for RPC response "$method"',
-}) {}
+const createRpcResponseTimeoutError = defineError("RpcResponseTimeoutError")<{
+	method: string;
+}>();
+type RpcResponseTimeoutError = ReturnType<typeof createRpcResponseTimeoutError>;
 
-export class RpcPublishRequestFailedError extends errore.createTaggedError({
-	name: "RpcPublishRequestFailedError",
-	message: 'Failed to publish RPC request "$method"',
-}) {}
+const createRpcPublishRequestFailedError = defineError(
+	"RpcPublishRequestFailedError",
+)<{
+	method: string;
+	cause: unknown;
+}>();
+type RpcPublishRequestFailedError = ReturnType<
+	typeof createRpcPublishRequestFailedError
+>;
 
 type BusNdk = NDK & {
 	signer: NDKSigner;
@@ -145,9 +166,10 @@ export type NostrMessageBusListenError =
 	| RpcListenerClosedBeforeReadyError
 	| RpcListenerReadyTimeoutError;
 
-export type NostrMessageBusListenResult =
-	| NostrMessageBusListener
-	| NostrMessageBusListenError;
+export type NostrMessageBusListenResult = Result<
+	NostrMessageBusListener,
+	NostrMessageBusListenError
+>;
 
 export type NostrMessageBusCallError =
 	| RpcClientListenerClosedBeforeReadyError
@@ -158,9 +180,10 @@ export type NostrMessageBusCallError =
 	| RpcResponseTimeoutError
 	| RpcPublishRequestFailedError;
 
-export type NostrMessageBusCallResult<TValue extends JsonValue> =
-	| TValue
-	| NostrMessageBusCallError;
+export type NostrMessageBusCallResult<TValue extends JsonValue> = Result<
+	TValue,
+	NostrMessageBusCallError
+>;
 
 type PendingCall = {
 	method: string;
@@ -236,14 +259,14 @@ export type NostrMessageBus<TShape extends Record<string, FunctionDef>> = {
 					options: {
 						ignoreResponse: true;
 					},
-				): Promise<undefined | NostrMessageBusCallError>;
+				): Promise<Result<void, NostrMessageBusCallError>>;
 				<TName extends keyof TShape & string>(
 					name: TName,
 					value: TShape[TName]["input"],
 					options?: {
 						ignoreResponse?: false;
 					},
-				): Promise<TShape[TName]["output"] | NostrMessageBusCallError>;
+				): Promise<Result<TShape[TName]["output"], NostrMessageBusCallError>>;
 			};
 		};
 	};
@@ -303,11 +326,13 @@ export const createNostrMessageBus = <
 								if (readyTimeout) {
 									clearTimeout(readyTimeout);
 								}
-								resolve({
-									close: () => {
-										subscription.stop();
-									},
-								});
+								resolve(
+									ok({
+										close: () => {
+											subscription.stop();
+										},
+									}),
+								);
 							},
 							onClose: () => {
 								if (settled) {
@@ -318,9 +343,11 @@ export const createNostrMessageBus = <
 									clearTimeout(readyTimeout);
 								}
 								resolve(
-									new RpcListenerClosedBeforeReadyError({
-										namespace: props.namespace,
-									}),
+									err(
+										createRpcListenerClosedBeforeReadyError({
+											namespace: props.namespace,
+										}),
+									),
 								);
 							},
 							onEvent: (event) => {
@@ -372,13 +399,15 @@ export const createNostrMessageBus = <
 
 									const handler =
 										implementations[message.method as keyof TShape];
-									const output = await errore.tryAsync(() =>
-										handler(message.payload as TShape[keyof TShape]["input"]),
+									const output = await tryAsync(
+										() =>
+											handler(message.payload as TShape[keyof TShape]["input"]),
+										(error) => error,
 									);
-									if (errore.isError(output)) {
+									if (!output.ok) {
 										console.error(
 											`RPC listener "${props.namespace}" failed in method "${message.method}"`,
-											output,
+											output.error,
 										);
 
 										if (message.ignoreResponse) {
@@ -396,16 +425,16 @@ export const createNostrMessageBus = <
 												namespace: props.namespace,
 												type: "rpc_error",
 												reqId: message.reqId,
-												error: getErrorMessage(output),
+												error: getErrorMessage(output.error),
 											} satisfies RpcError,
 										});
 										return;
 									}
 
-									const parsedOutput = JsonValueSchema.safeParse(output);
+									const parsedOutput = JsonValueSchema.safeParse(output.value);
 									if (!parsedOutput.success) {
 										const nonJsonError =
-											new RpcMethodReturnedNonJsonPayloadError({
+											createRpcMethodReturnedNonJsonPayloadError({
 												method: message.method,
 											});
 										console.error(
@@ -469,9 +498,11 @@ export const createNostrMessageBus = <
 						settled = true;
 						subscription.stop();
 						resolve(
-							new RpcListenerReadyTimeoutError({
-								namespace: props.namespace,
-							}),
+							err(
+								createRpcListenerReadyTimeoutError({
+									namespace: props.namespace,
+								}),
+							),
 						);
 					}, listenerReadyTimeoutMs);
 				});
@@ -481,9 +512,11 @@ export const createNostrMessageBus = <
 				let responseSubscription: Stoppable | undefined;
 				let responseReadyPromise:
 					| Promise<
-							| undefined
-							| RpcClientListenerClosedBeforeReadyError
-							| RpcClientListenerReadyTimeoutError
+							Result<
+								void,
+								| RpcClientListenerClosedBeforeReadyError
+								| RpcClientListenerReadyTimeoutError
+							>
 					  >
 					| undefined;
 				const pendingCalls = new Map<string, PendingCall>();
@@ -502,7 +535,7 @@ export const createNostrMessageBus = <
 				const resolveAllPendingCalls = (error: NostrMessageBusCallError) => {
 					for (const reqId of pendingCalls.keys()) {
 						const pendingCall = clearPendingCall(reqId);
-						pendingCall?.resolve(error);
+						pendingCall?.resolve(err(error));
 					}
 				};
 
@@ -512,9 +545,11 @@ export const createNostrMessageBus = <
 					}
 
 					responseReadyPromise = new Promise<
-						| undefined
-						| RpcClientListenerClosedBeforeReadyError
-						| RpcClientListenerReadyTimeoutError
+						Result<
+							void,
+							| RpcClientListenerClosedBeforeReadyError
+							| RpcClientListenerReadyTimeoutError
+						>
 					>((resolve) => {
 						let settled = false;
 						let readyTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -527,7 +562,7 @@ export const createNostrMessageBus = <
 							if (readyTimeout) {
 								clearTimeout(readyTimeout);
 							}
-							resolve(undefined);
+							resolve(ok());
 						};
 
 						const resolveErrorOnce = (
@@ -545,10 +580,10 @@ export const createNostrMessageBus = <
 							responseSubscription?.stop();
 							responseSubscription = undefined;
 							responseReadyPromise = undefined;
-							resolve(error);
+							resolve(err(error));
 						};
 
-						const subscription = instanceProps.ndk.subscribe(
+						responseSubscription = instanceProps.ndk.subscribe(
 							{
 								kinds: [messageBusKind],
 								"#p": [instanceProps.ndk.activeUser.pubkey],
@@ -565,7 +600,7 @@ export const createNostrMessageBus = <
 								onClose: () => {
 									if (!settled) {
 										resolveErrorOnce(
-											new RpcClientListenerClosedBeforeReadyError({
+											createRpcClientListenerClosedBeforeReadyError({
 												namespace: props.namespace,
 											}),
 										);
@@ -575,7 +610,7 @@ export const createNostrMessageBus = <
 									responseSubscription = undefined;
 									responseReadyPromise = undefined;
 									resolveAllPendingCalls(
-										new RpcClientListenerClosedError({
+										createRpcClientListenerClosedError({
 											namespace: props.namespace,
 										}),
 									);
@@ -617,15 +652,17 @@ export const createNostrMessageBus = <
 										}
 
 										if (message.type === "rpc_result") {
-											pendingCall.resolve(message.payload);
+											pendingCall.resolve(ok(message.payload));
 											return;
 										}
 
 										pendingCall.resolve(
-											new RpcRemoteError({
-												method: pendingCall.method,
-												remoteError: message.error,
-											}),
+											err(
+												createRpcRemoteError({
+													method: pendingCall.method,
+													remoteError: message.error,
+												}),
+											),
 										);
 									})().catch((error) => {
 										console.error(
@@ -636,11 +673,9 @@ export const createNostrMessageBus = <
 								},
 							},
 						);
-
-						responseSubscription = subscription;
 						readyTimeout = setTimeout(() => {
 							resolveErrorOnce(
-								new RpcClientListenerReadyTimeoutError({
+								createRpcClientListenerReadyTimeoutError({
 									namespace: props.namespace,
 								}),
 							);
@@ -656,14 +691,14 @@ export const createNostrMessageBus = <
 					options: {
 						ignoreResponse: true;
 					},
-				): Promise<undefined | NostrMessageBusCallError>;
+				): Promise<Result<void, NostrMessageBusCallError>>;
 				function call<TName extends keyof TShape & string>(
 					name: TName,
 					input: TShape[TName]["input"],
 					options?: {
 						ignoreResponse?: false;
 					},
-				): Promise<TShape[TName]["output"] | NostrMessageBusCallError>;
+				): Promise<Result<TShape[TName]["output"], NostrMessageBusCallError>>;
 				async function call<TName extends keyof TShape & string>(
 					name: TName,
 					input: TShape[TName]["input"],
@@ -671,13 +706,14 @@ export const createNostrMessageBus = <
 						ignoreResponse?: boolean;
 					},
 				): Promise<
-					TShape[TName]["output"] | undefined | NostrMessageBusCallError
+					| Result<void, NostrMessageBusCallError>
+					| Result<TShape[TName]["output"], NostrMessageBusCallError>
 				> {
 					const parsedInput = JsonValueSchema.safeParse(input);
 					if (!parsedInput.success) {
-						return new RpcCallNonJsonRequestPayloadError({
-							method: name,
-						});
+						return err(
+							createRpcCallNonJsonRequestPayloadError({ method: name }),
+						);
 					}
 
 					const reqId = Uuid7.random();
@@ -692,8 +728,8 @@ export const createNostrMessageBus = <
 					} satisfies RpcRequest;
 
 					if (options?.ignoreResponse) {
-						const publishResult = await errore.tryAsync({
-							try: () =>
+						const publishResult = await tryAsync(
+							() =>
 								publishEncrypted({
 									ndk: instanceProps.ndk,
 									recipientPubkey: clientProps.recipientPubkey,
@@ -702,33 +738,29 @@ export const createNostrMessageBus = <
 									method: name,
 									payload: requestMessage,
 								}),
-							catch: (cause) =>
-								new RpcPublishRequestFailedError({
+							(error) =>
+								createRpcPublishRequestFailedError({
 									method: name,
-									cause,
+									cause: error,
 								}),
-						});
-						if (errore.isError(publishResult)) {
+						);
+						if (!publishResult.ok) {
 							return publishResult;
 						}
-						return undefined;
+						return ok();
 					}
 
 					const listenerReadyResult = await ensureResponseListener();
-					if (errore.isError(listenerReadyResult)) {
+					if (!isOk(listenerReadyResult)) {
 						return listenerReadyResult;
 					}
 
 					return new Promise<
-						TShape[TName]["output"] | NostrMessageBusCallError
+						Result<TShape[TName]["output"], NostrMessageBusCallError>
 					>((resolve) => {
 						const timeout = setTimeout(() => {
 							clearPendingCall(reqId);
-							resolve(
-								new RpcResponseTimeoutError({
-									method: name,
-								}),
-							);
+							resolve(err(createRpcResponseTimeoutError({ method: name })));
 						}, responseTimeoutMs);
 
 						pendingCalls.set(reqId, {
@@ -736,7 +768,10 @@ export const createNostrMessageBus = <
 							timeout,
 							resolve: (result) => {
 								resolve(
-									result as TShape[TName]["output"] | NostrMessageBusCallError,
+									result as Result<
+										TShape[TName]["output"],
+										NostrMessageBusCallError
+									>,
 								);
 							},
 						});
@@ -755,10 +790,12 @@ export const createNostrMessageBus = <
 							}
 							console.error(`Failed to publish RPC request "${name}"`, error);
 							pendingCall.resolve(
-								new RpcPublishRequestFailedError({
-									method: name,
-									cause: error,
-								}),
+								err(
+									createRpcPublishRequestFailedError({
+										method: name,
+										cause: error,
+									}),
+								),
 							);
 						});
 					});

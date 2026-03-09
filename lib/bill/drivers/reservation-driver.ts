@@ -1,4 +1,3 @@
-import * as errore from "errore";
 import type { BillDriver, BillSubscription } from "@/lib/bill/driver";
 import { ReservationFormData as ReservationFormDataSchema } from "@/lib/nostr/contracts/reservation";
 import { reservationStorage } from "@/lib/reservation/nostr-storage";
@@ -29,14 +28,14 @@ export class ReservationDriver implements BillDriver {
 			},
 		});
 
-		const subscription = await reservationStorage.subscribe(
+		const subscriptionResult = await reservationStorage.subscribe(
 			{
 				ndk,
 				pubkey: pubkey.toLowerCase(),
 			},
 			(resultOrError) => {
-				if (errore.isError(resultOrError)) {
-					console.error(resultOrError);
+				if (!resultOrError.ok) {
+					console.error(resultOrError.error);
 					return;
 				}
 
@@ -59,8 +58,8 @@ export class ReservationDriver implements BillDriver {
 			},
 		);
 
-		if (errore.isError(subscription)) {
-			console.error(subscription);
+		if (!subscriptionResult.ok) {
+			console.error(subscriptionResult.error);
 			callback({
 				type: "close",
 				payload: {
@@ -76,7 +75,7 @@ export class ReservationDriver implements BillDriver {
 
 		return {
 			close: async () => {
-				subscription.close();
+				subscriptionResult.value.close();
 			},
 		} satisfies BillSubscription;
 	}

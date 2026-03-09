@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
-import * as errore from "errore";
+import { isOk } from "@evolu/common";
 
 type MockPublishedEvent = {
 	ndk: unknown;
@@ -69,14 +69,7 @@ mock.module("@nostr-dev-kit/ndk", () => ({
 
 const messageBusModule = await import("@/lib/nostr/message-bus");
 
-const {
-	createNostrMessageBus,
-	RpcCallNonJsonRequestPayloadError,
-	RpcClientListenerClosedBeforeReadyError,
-	RpcListenerClosedBeforeReadyError,
-	RpcPublishRequestFailedError,
-	RpcRemoteError,
-} = messageBusModule;
+const { createNostrMessageBus } = messageBusModule;
 
 type SubscribeHandlers = {
 	onEose?: () => void;
@@ -202,13 +195,16 @@ describe("createNostrMessageBus", () => {
 		});
 
 		subscribeCalls[0]?.handlers.onEose?.();
-		const result = errore.unwrap(await listenPromise);
+		const result = await listenPromise;
+		if (!isOk(result)) {
+			throw new Error("Expected listener result to be ok");
+		}
 
-		result.close();
+		result.value.close();
 		expect(subscribeCalls[0]?.stopCalls).toBe(1);
 	});
 
-	it("listen resolves errore when listener closes before ready", async () => {
+	it("listen resolves err result when listener closes before ready", async () => {
 		const { ndk, subscribeCalls } = createFakeNdk();
 		const bus = createTestBus();
 
@@ -219,13 +215,16 @@ describe("createNostrMessageBus", () => {
 		subscribeCalls[0]?.handlers.onClose?.();
 		const result = await listenPromise;
 
-		if (!RpcListenerClosedBeforeReadyError.is(result)) {
+		if (
+			result.ok ||
+			result.error.type !== "RpcListenerClosedBeforeReadyError"
+		) {
 			throw new Error("Expected RpcListenerClosedBeforeReadyError");
 		}
-		expect(result.namespace).toBe("test-bus");
+		expect(result.error.namespace).toBe("test-bus");
 	});
 
-	it("call returns errore for non-JSON request payload", async () => {
+	it("call returns err result for non-JSON request payload", async () => {
 		const { ndk } = createFakeNdk();
 		const bus = createTestBus();
 		const client = bus
@@ -234,13 +233,16 @@ describe("createNostrMessageBus", () => {
 
 		const result = await client.call("ping", { n: (() => 1) as never });
 
-		if (!RpcCallNonJsonRequestPayloadError.is(result)) {
+		if (
+			result.ok ||
+			result.error.type !== "RpcCallNonJsonRequestPayloadError"
+		) {
 			throw new Error("Expected RpcCallNonJsonRequestPayloadError");
 		}
-		expect(result.method).toBe("ping");
+		expect(result.error.method).toBe("ping");
 	});
 
-	it("call resolves errore when client listener closes before ready", async () => {
+	it("call resolves err result when client listener closes before ready", async () => {
 		const { ndk, subscribeCalls } = createFakeNdk();
 		const bus = createTestBus();
 		const client = bus
@@ -253,10 +255,13 @@ describe("createNostrMessageBus", () => {
 		subscribeCalls[0]?.handlers.onClose?.();
 
 		const result = await callPromise;
-		if (!RpcClientListenerClosedBeforeReadyError.is(result)) {
+		if (
+			result.ok ||
+			result.error.type !== "RpcClientListenerClosedBeforeReadyError"
+		) {
 			throw new Error("Expected RpcClientListenerClosedBeforeReadyError");
 		}
-		expect(result.namespace).toBe("test-bus");
+		expect(result.error.namespace).toBe("test-bus");
 	});
 
 	it("call resolves payload for rpc_result response", async () => {
@@ -290,7 +295,7 @@ describe("createNostrMessageBus", () => {
 		});
 
 		const result = await callPromise;
-		expect(result).toEqual({ ok: 42 });
+		expect(result).toEqual({ ok: true, value: { ok: 42 } });
 	});
 
 	it("call resolves RpcRemoteError for rpc_error response", async () => {
@@ -318,11 +323,11 @@ describe("createNostrMessageBus", () => {
 		});
 
 		const result = await callPromise;
-		if (!RpcRemoteError.is(result)) {
+		if (result.ok || result.error.type !== "RpcRemoteError") {
 			throw new Error("Expected RpcRemoteError");
 		}
-		expect(result.method).toBe("ping");
-		expect(result.remoteError).toBe("boom");
+		expect(result.error.method).toBe("ping");
+		expect(result.error.remoteError).toBe("boom");
 	});
 
 	it("call(ignoreResponse) resolves RpcPublishRequestFailedError on publish failure", async () => {
@@ -339,10 +344,9 @@ describe("createNostrMessageBus", () => {
 			{ ignoreResponse: true },
 		);
 
-		expect(RpcPublishRequestFailedError.is(result)).toBeTrue();
-		if (!RpcPublishRequestFailedError.is(result)) {
+		if (result.ok || result.error.type !== "RpcPublishRequestFailedError") {
 			throw new Error("Expected RpcPublishRequestFailedError");
 		}
-		expect(result.method).toBe("ping");
+		expect(result.error.method).toBe("ping");
 	});
 });

@@ -1,5 +1,4 @@
 import { createIdFromString, kysely, sqliteTrue } from "@evolu/common";
-import * as errore from "errore";
 import type { NotNull } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
 import type { ScreenData } from "@/lib/bill/driver";
@@ -202,8 +201,8 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 					},
 				)
 				.then((result) => {
-					if (errore.isError(result)) {
-						console.error(result);
+					if (!result.ok) {
+						console.error(result.error);
 					}
 				});
 		};
@@ -295,11 +294,11 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				clearTimeout(subscription.timeout);
 			}
 			void serverPromise.then((server) => {
-				if (errore.isError(server)) {
-					console.error(server);
+				if (!server.ok) {
+					console.error(server.error);
 					return;
 				}
-				server.close();
+				server.value.close();
 			});
 		};
 	},

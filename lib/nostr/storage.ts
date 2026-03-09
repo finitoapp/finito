@@ -1,47 +1,64 @@
+import { err, ok, type Result } from "@evolu/common";
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import { NDKEvent } from "@nostr-dev-kit/ndk";
-import * as errore from "errore";
 import type { JsonValue } from "type-fest";
+import { defineError } from "@/lib/shared/error";
 
 const messageBusKind = 30078;
 
-export class NostrStorageSubscriptionClosedBeforeReadyError extends errore.createTaggedError(
-	{
-		name: "NostrStorageSubscriptionClosedBeforeReadyError",
-		message:
-			'Nostr storage "$namespace" subscription closed before becoming ready',
-	},
-) {}
+const createNostrStorageSubscriptionClosedBeforeReadyError = defineError(
+	"NostrStorageSubscriptionClosedBeforeReadyError",
+)<{
+	namespace: string;
+}>();
+export type NostrStorageSubscriptionClosedBeforeReadyError = ReturnType<
+	typeof createNostrStorageSubscriptionClosedBeforeReadyError
+>;
 
-export class NostrStorageOlderEventIgnoredError extends errore.createTaggedError(
-	{
-		name: "NostrStorageOlderEventIgnoredError",
-		message:
-			'Nostr storage "$namespace" ignored older event "$eventId" ($createdAt < $latestCreatedAt)',
-	},
-) {}
+const createNostrStorageOlderEventIgnoredError = defineError(
+	"NostrStorageOlderEventIgnoredError",
+)<{
+	namespace: string;
+	eventId: string;
+	createdAt: number;
+	latestCreatedAt: number;
+}>();
+export type NostrStorageOlderEventIgnoredError = ReturnType<
+	typeof createNostrStorageOlderEventIgnoredError
+>;
 
-export class NostrStorageInvalidJsonEventError extends errore.createTaggedError(
-	{
-		name: "NostrStorageInvalidJsonEventError",
-		message:
-			'Nostr storage "$namespace" received invalid JSON in event "$eventId"',
-	},
-) {}
+const createNostrStorageInvalidJsonEventError = defineError(
+	"NostrStorageInvalidJsonEventError",
+)<{
+	namespace: string;
+	eventId: string;
+	cause: unknown;
+}>();
+export type NostrStorageInvalidJsonEventError = ReturnType<
+	typeof createNostrStorageInvalidJsonEventError
+>;
 
 export type NostrStorageSubscription = {
 	close: () => void;
 };
 
-export type NostrStorageSubscribeResult =
-	| NostrStorageSubscription
-	| NostrStorageSubscriptionClosedBeforeReadyError;
+export type NostrStorageSubscribeError =
+	NostrStorageSubscriptionClosedBeforeReadyError;
 
-export type NostrStorageEventResult<TShape extends JsonValue> =
-	| TShape
+export type NostrStorageSubscribeResult = Result<
+	NostrStorageSubscription,
+	NostrStorageSubscribeError
+>;
+
+export type NostrStorageEventError =
 	| NostrStorageOlderEventIgnoredError
 	| NostrStorageInvalidJsonEventError;
+
+export type NostrStorageEventResult<TShape extends JsonValue> = Result<
+	TShape,
+	NostrStorageEventError
+>;
 
 export type NostrStorage<TShape extends JsonValue> = {
 	namespace: string;
@@ -116,11 +133,13 @@ export const createNostrStorage = <TShape extends JsonValue>(props: {
 							}
 
 							settled = true;
-							resolve({
-								close: () => {
-									subscription.stop();
-								},
-							});
+							resolve(
+								ok({
+									close: () => {
+										subscription.stop();
+									},
+								}),
+							);
 						},
 						onClose: () => {
 							if (settled) {
@@ -129,9 +148,11 @@ export const createNostrStorage = <TShape extends JsonValue>(props: {
 
 							settled = true;
 							resolve(
-								new NostrStorageSubscriptionClosedBeforeReadyError({
-									namespace: props.namespace,
-								}),
+								err(
+									createNostrStorageSubscriptionClosedBeforeReadyError({
+										namespace: props.namespace,
+									}),
+								),
 							);
 						},
 						onEvent: (event) => {
@@ -142,32 +163,33 @@ export const createNostrStorage = <TShape extends JsonValue>(props: {
 							const createdAt = event.created_at ?? 0;
 							if (createdAt < latestCreatedAt) {
 								callback(
-									new NostrStorageOlderEventIgnoredError({
-										namespace: props.namespace,
-										eventId: event.id,
-										createdAt,
-										latestCreatedAt,
-									}),
+									err(
+										createNostrStorageOlderEventIgnoredError({
+											namespace: props.namespace,
+											eventId: event.id,
+											createdAt,
+											latestCreatedAt,
+										}),
+									),
 								);
 								return;
 							}
 
-							const data = errore.tryFn({
-								try: () => JSON.parse(event.content),
-								catch: (cause) =>
-									new NostrStorageInvalidJsonEventError({
-										namespace: props.namespace,
-										eventId: event.id,
-										cause,
-									}),
-							});
-							if (errore.isError(data)) {
-								callback(data);
-								return;
+							try {
+								const data = JSON.parse(event.content) as TShape;
+								latestCreatedAt = createdAt;
+								callback(ok(data));
+							} catch (cause) {
+								callback(
+									err(
+										createNostrStorageInvalidJsonEventError({
+											namespace: props.namespace,
+											eventId: event.id,
+											cause,
+										}),
+									),
+								);
 							}
-
-							latestCreatedAt = createdAt;
-							callback(data as TShape);
 						},
 					},
 				);
