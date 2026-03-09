@@ -1,4 +1,3 @@
-import * as errore from "errore";
 import type { BillDriver, BillSubscription } from "@/lib/bill/driver";
 import { menuStorage } from "@/lib/menu/nostr-storage";
 import { NostrMenu as NostrMenuSchema } from "@/lib/nostr/contracts/menu";
@@ -29,14 +28,14 @@ export class MenuDriver implements BillDriver {
 			},
 		});
 
-		const subscription = await menuStorage.subscribe(
+		const subscriptionResult = await menuStorage.subscribe(
 			{
 				ndk,
 				pubkey: pubkey.toLowerCase(),
 			},
 			(resultOrError) => {
-				if (errore.isError(resultOrError)) {
-					console.error(resultOrError);
+				if (!resultOrError.ok) {
+					console.error(resultOrError.error);
 					return;
 				}
 
@@ -58,8 +57,8 @@ export class MenuDriver implements BillDriver {
 			},
 		);
 
-		if (errore.isError(subscription)) {
-			console.error(subscription);
+		if (!subscriptionResult.ok) {
+			console.error(subscriptionResult.error);
 			callback({
 				type: "close",
 				payload: {
@@ -74,7 +73,7 @@ export class MenuDriver implements BillDriver {
 
 		return {
 			close: async () => {
-				subscription.close();
+				subscriptionResult.value.close();
 			},
 		} satisfies BillSubscription;
 	}
