@@ -60,16 +60,21 @@ const AddressSchema = {
 	postalCode: NonEmptyString32Schema.nullable(),
 };
 
-const BillingInfoSchema = {
+const ContactSchema = {
 	id: TableIdSchema,
 	name: NonEmptyString255Schema,
 	label: NonEmptyString255Schema.nullable(),
 	email: EmailSchema.nullable(),
+	phone: PhoneSchema.nullable(),
+};
+
+const BillingInfoSchema = {
+	id: TableIdSchema,
 	countryCode: z.enum(CountryCode),
 };
 const BillingInfoCzSchema = {
 	id: TableIdSchema,
-	vatPayer: SqliteBoolSchema,
+	vatPayer: SqliteBoolSchema.nullable(),
 	identificationNumber: IdentificationNumberCzSchema.nullable(),
 	vatNumber: NonEmptyString255Schema.nullable(),
 	caseNumber: NonEmptyString255Schema.nullable(),
@@ -324,6 +329,19 @@ export const AppSchema = {
 		vatNumber: NonEmptyString255Schema.nullable(),
 		caseNumber: NonEmptyString255Schema.nullable(),
 	},
+	contact: ContactSchema,
+	contactAddress: AddressSchema,
+	contactBillingInfo: {
+		id: TableIdSchema,
+		countryCode: z.enum(CountryCode),
+	},
+	contactBillingInfoCz: {
+		id: TableIdSchema,
+		vatPayer: SqliteBoolSchema.nullable(),
+		identificationNumber: IdentificationNumberCzSchema.nullable(),
+		vatNumber: NonEmptyString255Schema.nullable(),
+		caseNumber: NonEmptyString255Schema.nullable(),
+	},
 	billingInfo: BillingInfoSchema,
 	billingInfoAddress: AddressSchema,
 	billingInfoCz: BillingInfoCzSchema,
@@ -368,6 +386,7 @@ export const AppSchema = {
 	},
 	billingSettings: {
 		id: TableIdSchema,
+		ownContactId: TableIdSchema.nullable(),
 		defaultInvoiceDueDateDays: NonNegativeIntegerSchema,
 		defaultCurrency: z.enum(FiatCurrency),
 		defaultTimezone: z.enum(Timezone),
@@ -400,11 +419,13 @@ export const AppSchema = {
 		paymentMethod: z.enum(InvoicePaymentMethod),
 		paymentIban: IbanSchema.nullable(),
 	},
+	invoiceCustomer: ContactSchema,
+	invoiceCustomerAddress: AddressSchema,
 	invoiceCustomerBillingInfo: BillingInfoSchema,
-	invoiceCustomerBillingInfoAddress: AddressSchema,
 	invoiceCustomerBillingInfoCz: BillingInfoCzSchema,
+	invoiceSupplier: ContactSchema,
+	invoiceSupplierAddress: AddressSchema,
 	invoiceSupplierBillingInfo: BillingInfoSchema,
-	invoiceSupplierBillingInfoAddress: AddressSchema,
 	invoiceSupplierBillingInfoCz: BillingInfoCzSchema,
 	invoiceItemLine: {
 		id: TableIdSchema,

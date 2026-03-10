@@ -4,9 +4,9 @@ import csApp from "@/locales/cs/app";
 import csAuth from "@/locales/cs/auth";
 import csCategories from "@/locales/cs/categories";
 import csClient from "@/locales/cs/client";
-import csClients from "@/locales/cs/clients";
 import csCommon from "@/locales/cs/common";
 import csComponents from "@/locales/cs/components";
+import csContacts from "@/locales/cs/contacts";
 import csInvoices from "@/locales/cs/invoices";
 import csItems from "@/locales/cs/items";
 import csLanding from "@/locales/cs/landing";
@@ -24,9 +24,9 @@ import enApp from "@/locales/en/app";
 import enAuth from "@/locales/en/auth";
 import enCategories from "@/locales/en/categories";
 import enClient from "@/locales/en/client";
-import enClients from "@/locales/en/clients";
 import enCommon from "@/locales/en/common";
 import enComponents from "@/locales/en/components";
+import enContacts from "@/locales/en/contacts";
 import enInvoices from "@/locales/en/invoices";
 import enItems from "@/locales/en/items";
 import enLanding from "@/locales/en/landing";
@@ -49,7 +49,7 @@ export const resources = {
 		settings: enSettings,
 		accounts: enAccounts,
 		categories: enCategories,
-		clients: enClients,
+		contacts: enContacts,
 		items: enItems,
 		menus: enMenus,
 		invoices: enInvoices,
@@ -71,7 +71,7 @@ export const resources = {
 		settings: csSettings,
 		accounts: csAccounts,
 		categories: csCategories,
-		clients: csClients,
+		contacts: csContacts,
 		items: csItems,
 		menus: csMenus,
 		invoices: csInvoices,

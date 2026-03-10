@@ -73,6 +73,7 @@ const locale = {
     },
     "billing-settings-form": {
       "title": {
+        "general-settings": "General settings",
         "invoice-default-settings": "Invoice default settings",
         "payment-default-settings": "Payment default settings",
         "invoice-email": "Invoice email",
@@ -82,6 +83,7 @@ const locale = {
         "rate": "Rate"
       },
       "label": {
+        "own-contact": "Own contact",
         "default-invoice-due-date": "Default invoice due date",
         "default-currency": "Default currency",
         "timezone": "Timezone",

@@ -1,10 +1,16 @@
 "use client";
 
-import { createIdFromString, sqliteTrue } from "@evolu/common";
+import {
+	createIdFromString,
+	evoluJsonObjectFrom,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { addDays } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { mapContactToFormContact } from "@/app/admin/(private)/contacts/contact-form";
 import { InvoiceForm } from "@/app/admin/(private)/invoices/invoice-form";
 import { BackButton } from "@/components/back-button";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -76,7 +82,7 @@ export default function Home() {
 						"account.id",
 					)
 					.leftJoin("accountIban", "accountIban.id", "account.id")
-					.select([
+					.select((eb) => [
 						"billingSettings.id as id",
 						"billingSettings.defaultCurrency as defaultCurrency",
 						"billingSettings.defaultInvoiceDueDateDays as defaultInvoiceDueDateDays",
@@ -85,6 +91,77 @@ export default function Home() {
 						"account.id as accountId",
 						"account._tag as accountTag",
 						"accountIban.iban as accountIban",
+
+						evoluJsonObjectFrom(
+							eb
+								.selectFrom("contact")
+								.select((eb) => [
+									"contact.id as id",
+									"contact.createdAt as createdAt",
+									"contact.name as name",
+									"contact.label as label",
+									"contact.email as email",
+									"contact.phone as phone",
+
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("contactAddress")
+											.select([
+												"contactAddress.street as street",
+												"contactAddress.descriptiveNumber as descriptiveNumber",
+												"contactAddress.city as city",
+												"contactAddress.postalCode as postalCode",
+											])
+											.whereRef("contactAddress.id", "=", "contact.id")
+											.where("contactAddress.isDeleted", "is not", sqliteTrue),
+									).as("address"),
+
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("contactBillingInfo")
+											.select((eb) => [
+												"contactBillingInfo.countryCode as countryCode",
+
+												evoluJsonObjectFrom(
+													eb
+														.selectFrom("contactBillingInfoCz")
+														.select([
+															"contactBillingInfoCz.vatPayer as vatPayer",
+															"contactBillingInfoCz.identificationNumber as identificationNumber",
+															"contactBillingInfoCz.vatNumber as vatNumber",
+															"contactBillingInfoCz.caseNumber as caseNumber",
+														])
+														.whereRef(
+															"contactBillingInfoCz.id",
+															"=",
+															"contact.id",
+														)
+														.where(
+															"contactBillingInfoCz.isDeleted",
+															"is not",
+															sqliteTrue,
+														),
+												).as("cz"),
+											])
+											.whereRef("contactBillingInfo.id", "=", "contact.id")
+											.where(
+												"contactBillingInfo.isDeleted",
+												"is not",
+												sqliteTrue,
+											)
+											.where("contactBillingInfo.countryCode", "is not", null)
+											.$narrowType<{
+												countryCode: KyselyNotNull;
+											}>(),
+									).as("billingInfo"),
+								])
+								.whereRef("contact.id", "=", "billingSettings.ownContactId")
+								.where("contact.isDeleted", "is not", sqliteTrue)
+								.where("contact.name", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+								}>(),
+						).as("invoiceSupplier"),
 					])
 					.where("billingSettings.isDeleted", "is not", sqliteTrue)
 					.where("account.isDeleted", "is not", sqliteTrue)
@@ -116,9 +193,9 @@ export default function Home() {
 				}}
 				defaultValues={{
 					invoiceNumber: serialNumber.invoiceNumber,
-					// supplier: {
-					// 	billingInfo: nestObjectSkipNullBranches(billingInfo),
-					// },
+					supplier: billingSettings?.invoiceSupplier
+						? mapContactToFormContact(billingSettings.invoiceSupplier)
+						: undefined,
 					issueDate: now,
 					dueDate: addDays(
 						now,

@@ -97,8 +97,8 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconCalendarEvent,
 			},
 			{
-				title: t("navigation:main.links.clients"),
-				url: "/admin/clients",
+				title: t("navigation:main.links.contacts"),
+				url: "/admin/contacts" as never,
 				icon: IconUsers,
 			},
 			{
@@ -108,11 +108,6 @@ const createNavigationData = (t: TFunction) =>
 			},
 		],
 		navSecondary: [
-			{
-				title: t("navigation:settings.links.billingInformation"),
-				url: "/admin/settings/billing-info",
-				icon: IconSettings,
-			},
 			{
 				title: t("navigation:settings.links.billingSettings"),
 				url: "/admin/settings/billing-settings",

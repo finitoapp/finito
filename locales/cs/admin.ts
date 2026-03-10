@@ -11,6 +11,7 @@ const locale = {
       "tables": "Stoly",
       "reservations": "Rezervace",
       "clients": "Klienti",
+      "contacts": "Kontakty",
       "accounts": "Účty",
       "transactions": "Transakce",
       "settings": "Nastavení",

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
-import { addressFormSchema } from "@/app/admin/(private)/clients/client-form";
+import { addressFormSchema } from "@/app/admin/(private)/contacts/contact-form";
 import {
 	AutoForm,
 	type AutoFormComponent,

@@ -14,6 +14,7 @@ export const I18N_NAMESPACES = [
 	"accounts",
 	"categories",
 	"clients",
+	"contacts",
 	"items",
 	"menus",
 	"invoices",
