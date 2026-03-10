@@ -80,7 +80,7 @@ export default function Page() {
 
 			<div className={"flex my-10 w-full justify-center"}>
 				<Link href={"/settings/wallets/new"}>
-					<Button variant="primary" size={"lg"}>
+					<Button variant="default" size={"lg"}>
 						<PlusIcon />
 						{t("settings:wallets.page.connectWallet")}
 					</Button>

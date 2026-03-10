@@ -20,8 +20,8 @@ export const InvoiceStatusBadge: FC<{
 				value === "unpaid" && props.dueDate > now
 					? "outline"
 					: value === "unpaid"
-						? "primary"
-						: "success"
+						? "destructive"
+						: "default"
 			}
 		>
 			{value}

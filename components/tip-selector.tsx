@@ -34,7 +34,7 @@ export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
 						<Button
 							key={percentage}
 							variant={
-								selectedTip === percentage && !isCustom ? "primary" : "outline"
+								selectedTip === percentage && !isCustom ? "default" : "outline"
 							}
 							onClick={() => handleTipSelect(percentage)}
 							className="h-10 flex-2"
@@ -52,7 +52,6 @@ export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
 						value={customTip}
 						onChange={(e) => handleCustomTip(e.target.value)}
 						className={`h-10 text-center ${isCustom ? "ring-2 ring-primary" : ""}`}
-						variant={"sm"}
 						min="0"
 						max="100"
 					/>

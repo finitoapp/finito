@@ -74,7 +74,8 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/components/ui/form";
-import { Input, InputAddon, InputGroup } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import {
 	Popover,
 	PopoverContent,
@@ -245,7 +246,7 @@ export const AutoFormInput = {
 							<FormControl>
 								<InputGroup className={"w-full"}>
 									{params.startAddon && (
-										<InputAddon>{params.startAddon}</InputAddon>
+										<InputGroupAddon>{params.startAddon}</InputGroupAddon>
 									)}
 									{params.secretContent ? (
 										<PasswordInput
@@ -262,7 +263,7 @@ export const AutoFormInput = {
 										/>
 									)}
 									{params.endAddon && (
-										<InputAddon>{params.endAddon}</InputAddon>
+										<InputGroupAddon>{params.endAddon}</InputGroupAddon>
 									)}
 								</InputGroup>
 							</FormControl>
@@ -402,9 +403,9 @@ export const AutoFormInput = {
 												}}
 											/>
 											{currencyValue === Currency.BTC && (
-												<InputAddon>
+												<InputGroupAddon>
 													{t("components:autoForm.units.sats")}
-												</InputAddon>
+												</InputGroupAddon>
 											)}
 										</InputGroup>
 									</FormControl>
@@ -443,7 +444,6 @@ export const AutoFormInput = {
 											<Button
 												type="button"
 												variant={"outline"}
-												mode="input"
 												className="w-full"
 											>
 												<CalendarIcon />
@@ -458,7 +458,7 @@ export const AutoFormInput = {
 											{field.value && (
 												<Button
 													type="button"
-													variant="dim"
+													variant="outline"
 													size="sm"
 													className="absolute top-1/2 -end-0 -translate-y-1/2"
 													onClick={(e) => {
@@ -1217,7 +1217,6 @@ const createBuilder = <
 				return (
 					<TableRow
 						key={props.field.id}
-						// @ts-expect-error
 						ref={setNodeRef}
 						style={style}
 						className={cn(

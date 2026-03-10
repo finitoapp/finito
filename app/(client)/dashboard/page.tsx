@@ -87,7 +87,7 @@ export default function Page() {
 					<Link href={"/receive"}>
 						<Button
 							type={"button"}
-							variant={"dim"}
+							variant={"outline"}
 							className={"h-14 w-36 px-8 text-foreground"}
 						>
 							<ArrowDownIcon className={"size-5 text-primary"} />
@@ -97,7 +97,7 @@ export default function Page() {
 					<Link href={"/scan"}>
 						<Button
 							type={"button"}
-							variant={"dim"}
+							variant={"outline"}
 							className={`size-20 -m-3 bg-background border rounded-full`}
 						>
 							<ScanQrCodeIcon className={"size-8 text-primary"} />
@@ -106,7 +106,7 @@ export default function Page() {
 					<Button
 						disabled={true}
 						type={"button"}
-						variant={"dim"}
+						variant={"outline"}
 						className={"h-14 w-36 px-8 text-foreground"}
 					>
 						<ArrowUpIcon className={"size-5 text-primary"} />

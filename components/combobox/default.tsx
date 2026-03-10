@@ -1,12 +1,17 @@
-import { CheckIcon, PencilIcon, PlusIcon, XIcon } from "lucide-react";
+import {
+	CheckIcon,
+	ChevronDown,
+	PencilIcon,
+	PlusIcon,
+	XIcon,
+} from "lucide-react";
 import * as React from "react";
 import { useMemo, useState } from "react";
 import type { JsonValue } from "type-fest";
 import { Overlay } from "@/components/overlay";
-import { Button, ButtonArrow } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
 	Command,
-	CommandCheck,
 	CommandEmpty,
 	CommandGroup,
 	CommandInput,
@@ -175,8 +180,6 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 								variant="outline"
 								role="combobox"
 								aria-expanded={open}
-								mode="input"
-								placeholder={!props.value}
 								className="w-full"
 							>
 								<span className={cn("truncate")}>
@@ -188,7 +191,10 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 											)?.label
 										: (props.placeholder ?? "")}
 								</span>
-								<ButtonArrow />
+								<ChevronDown
+									data-slot="button-arrow"
+									className={cn("ms-auto -me-1")}
+								/>
 							</Button>
 						</PopoverTrigger>
 						<div className={"absolute right-8 top-1/2 flex gap-2"}>
@@ -228,8 +234,7 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 						<Button
 							type={"button"}
 							variant="secondary"
-							className=""
-							radius={"full"}
+							className="raius-full"
 							size={"sm"}
 							title={"Add item"}
 							onClick={(e) => {
@@ -246,7 +251,7 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 					<Command>
 						<CommandInput placeholder="Search item..." />
 						<CommandList>
-							<ScrollArea viewportClassName="max-h-[300px] [&>div]:block!">
+							<ScrollArea className="max-h-[300px] [&>div]:block!">
 								<CommandEmpty>No item found.</CommandEmpty>
 								<CommandGroup>
 									{allItems.map((item, index) => (
@@ -266,7 +271,11 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 // @ts-expect-error */}
 											<span className="truncate">{item.label}</span>
 											{compareFunction(props.value, item.value) && (
-												<CommandCheck />
+												<CheckIcon
+													data-slot="command-check"
+													data-check="true"
+													className={cn("size-4 ms-auto text-primary")}
+												/>
 											)}
 										</CommandItem>
 									))}

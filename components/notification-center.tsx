@@ -178,7 +178,7 @@ export function NotificationCenter() {
 			</SheetTrigger>
 			<SheetContent
 				side="right"
-				close={false}
+				showCloseButton={false}
 				className="h-screen w-full max-w-md p-0"
 			>
 				<div className="flex h-full flex-col safe-area-t safe-area-b">

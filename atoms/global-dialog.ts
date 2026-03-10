@@ -1,12 +1,14 @@
+import type { VariantProps } from "class-variance-authority";
 import { atom } from "jotai";
 import type { ReactNode } from "react";
+import type { buttonVariants } from "@/components/ui/button";
 
 export type GlobalDialogBase = {
 	title: ReactNode;
 	description?: ReactNode;
 	confirmText?: string;
 	cancelText?: string;
-	confirmVariant?: "primary" | "destructive";
+	confirmVariant?: VariantProps<typeof buttonVariants>["variant"];
 };
 
 export type GlobalAlertDialog = GlobalDialogBase & {
