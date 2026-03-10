@@ -89,7 +89,7 @@ const sortingFields = {
 	id: "invoice.id",
 	createdAt: "invoice.createdAt",
 	invoiceNumber: "invoice.invoiceNumber",
-	customerName: "invoiceCustomerBillingInfo.name",
+	customerName: "invoiceCustomer.name",
 	issueDate: "invoice.issueDate",
 	dueDate: "invoice.dueDate",
 	currency: "invoice.currency",
@@ -132,11 +132,7 @@ export function InvoicesTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("invoice")
-						.leftJoin(
-							"invoiceCustomerBillingInfo",
-							"invoiceCustomerBillingInfo.id",
-							"invoice.id",
-						)
+						.leftJoin("invoiceCustomer", "invoiceCustomer.id", "invoice.id")
 						.leftJoin(
 							"invoiceItemLine",
 							"invoiceItemLine.invoiceId",
@@ -150,7 +146,7 @@ export function InvoicesTable() {
 									"invoice.issueDate as issueDate",
 									"invoice.dueDate as dueDate",
 									"invoice.currency as currency",
-									"invoiceCustomerBillingInfo.name as customerName",
+									"invoiceCustomer.name as customerName",
 									"invoice.createdAt as createdAt",
 									eb.fn
 										.coalesce(
@@ -203,7 +199,7 @@ export function InvoicesTable() {
 						}
 						if (filter.id === "customerName") {
 							qb = qb.where(
-								"invoiceCustomerBillingInfo.name",
+								"invoiceCustomer.name",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);

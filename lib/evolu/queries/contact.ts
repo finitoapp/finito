@@ -6,12 +6,13 @@ import {
 import { createQuery } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
 
-export const createGetClientsQuery = (params: { id?: Id } = {}) =>
+export const createGetContactsQuery = (params: { id?: Id } = {}) =>
 	createQuery((db) => {
 		let qb = db
 			.selectFrom("contact")
 			.select((eb) => [
 				"contact.id as id",
+				"contact.createdAt as createdAt",
 				"contact.name as name",
 				"contact.label as label",
 				"contact.email as email",
@@ -33,7 +34,7 @@ export const createGetClientsQuery = (params: { id?: Id } = {}) =>
 				evoluJsonObjectFrom(
 					eb
 						.selectFrom("contactBillingInfo")
-						.select([
+						.select((eb) => [
 							"contactBillingInfo.countryCode as countryCode",
 
 							evoluJsonObjectFrom(

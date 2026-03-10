@@ -8,7 +8,7 @@ export default function Layout(
 	}>,
 ) {
 	return (
-		<DefautLayout titleKey={"admin:layout.title.clients"}>
+		<DefautLayout titleKey={"admin:layout.title.contacts"}>
 			{props.children}
 		</DefautLayout>
 	);

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { ClientForm } from "@/app/admin/(private)/clients/client-form";
+import { ContactForm } from "@/app/admin/(private)/contacts/contact-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +19,10 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>{t("clients:page.newClient")}</CardTitle>
+					<CardTitle>{t("contacts:page.newContact")}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<ClientForm onSuccess={() => router.push("/admin/clients")} />
+					<ContactForm onSuccess={() => router.push("/admin/contacts")} />
 				</CardContent>
 			</ResponsiveCard>
 		</div>

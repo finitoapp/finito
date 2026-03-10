@@ -35,6 +35,7 @@ import {
 import { formatIban } from "@/lib/shared/utils/format";
 
 export const billingSettingsFormSchema = z.object({
+	ownContactId: TableIdSchema.nullable(),
 	defaultInvoiceDueDateDays: StringToNumberSchema.pipe(
 		NonNegativeIntegerSchema,
 	),
@@ -97,6 +98,7 @@ const createTaxRate = () => ({
 
 export const createBillingSettingsDefaultValues = () =>
 	({
+		ownContactId: null,
 		defaultInvoiceDueDateDays: "14",
 		defaultCurrency: FiatCurrency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
@@ -117,6 +119,25 @@ export const createBillingSettingsDefaultValues = () =>
 	}) satisfies z.input<typeof billingSettingsFormSchema>;
 
 const createComponents = (t: TFunction) => {
+	const OwnContactComboboxInput = createEvoluComboboxInput({
+		label: t("settings:form.billing-settings-form.label.own-contact"),
+		query: createQuery((db) =>
+			db
+				.selectFrom("contact")
+				.select(["contact.id", "contact.name"])
+				.where("contact.isDeleted", "is not", sqliteTrue)
+				.where("contact.name", "is not", null)
+				.$narrowType<{
+					name: KyselyNotNull;
+				}>(),
+		),
+		mapRowsToItems: (rows) =>
+			rows.map((row) => ({
+				label: row.name,
+				value: row.id,
+			})),
+	});
+
 	const DefaultBankAccountComboboxInput = createEvoluComboboxInput({
 		label: t("settings:form.billing-settings-form.label.default-bank-account"),
 		query: createQuery((db) =>
@@ -183,20 +204,12 @@ const createComponents = (t: TFunction) => {
 	return createAutoFormLayout(billingSettingsFormSchema, ({ builder }) => ({
 		...builder.card(
 			{
-				title: t(
-					"settings:form.billing-settings-form.title.invoice-default-settings",
-				),
+				title: t("settings:form.billing-settings-form.title.general-settings"),
 			},
 			{
-				...builder.magicInput("defaultInvoiceDueDateDays").text({
-					label: t(
-						"settings:form.billing-settings-form.label.default-invoice-due-date",
-					),
-					description: t(
-						"settings:form.billing-settings-form.description.in-days",
-					),
-				}),
-
+				...builder.createComponent("ownContactId", (props) => (
+					<OwnContactComboboxInput {...props} />
+				)),
 				...builder.magicInput("defaultCurrency").select({
 					values: FiatCurrency,
 					allowEmpty: false,
@@ -209,6 +222,24 @@ const createComponents = (t: TFunction) => {
 					values: Timezone,
 					allowEmpty: false,
 					label: t("settings:form.billing-settings-form.label.timezone"),
+				}),
+			},
+		),
+
+		...builder.card(
+			{
+				title: t(
+					"settings:form.billing-settings-form.title.invoice-default-settings",
+				),
+			},
+			{
+				...builder.magicInput("defaultInvoiceDueDateDays").text({
+					label: t(
+						"settings:form.billing-settings-form.label.default-invoice-due-date",
+					),
+					description: t(
+						"settings:form.billing-settings-form.description.in-days",
+					),
 				}),
 
 				...builder.nestedField("defaultPayment", ({ builder }) => ({
@@ -383,6 +414,7 @@ export const BillingSettingsForm: React.FC<{
 				"billingSettings",
 				{
 					id,
+					ownContactId: values.ownContactId,
 					defaultInvoiceDueDateDays: values.defaultInvoiceDueDateDays,
 					defaultCurrency: values.defaultCurrency,
 					defaultTimezone: values.defaultTimezone,

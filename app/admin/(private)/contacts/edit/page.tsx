@@ -4,12 +4,15 @@ import type { Id } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ClientForm } from "@/app/admin/(private)/clients/client-form";
+import {
+	ContactForm,
+	mapContactToFormContact,
+} from "@/app/admin/(private)/contacts/contact-form";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { createGetClientsQuery } from "@/lib/evolu/queries/client";
+import { createGetContactsQuery } from "@/lib/evolu/queries/contact";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -20,7 +23,7 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useMemo(() => createGetClientsQuery({ id: id as Id }), [id]);
+	const query = useMemo(() => createGetContactsQuery({ id: id as Id }), [id]);
 
 	const { data: items } = useEvoluQuery(query);
 
@@ -28,7 +31,7 @@ export default function Home() {
 
 	useEffect(() => {
 		if (item === undefined) {
-			router.replace("/admin/clients");
+			router.replace("/admin/contacts");
 		}
 	}, [item, router]);
 
@@ -44,30 +47,11 @@ export default function Home() {
 
 			<ResponsiveCard>
 				<CardHeader>
-					<CardTitle>{t("clients:page.editClient")}</CardTitle>
+					<CardTitle>{t("contacts:page.editContact")}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<ClientForm
-						defaultValues={{
-							...item,
-							label: item.label ?? "",
-							email: item.email ?? "",
-							address: {
-								...item.address,
-								street: item.address.street ?? "",
-								city: item.address.city ?? "",
-								postalCode: item.address.postalCode ?? "",
-								descriptiveNumber: item.address.descriptiveNumber ?? "",
-							},
-							cz: item.cz
-								? {
-										...item.cz,
-										vatNumber: item.cz.vatNumber ?? "",
-										identificationNumber: item.cz.identificationNumber ?? "",
-										caseNumber: item.cz.caseNumber ?? "",
-									}
-								: undefined,
-						}}
+					<ContactForm
+						defaultValues={mapContactToFormContact(item)}
 						onSuccess={() => router.back()}
 					/>
 				</CardContent>

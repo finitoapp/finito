@@ -73,6 +73,7 @@ const locale = {
     },
     "billing-settings-form": {
       "title": {
+        "general-settings": "Obecná nastavení",
         "invoice-default-settings": "Výchozí nastavení faktury",
         "payment-default-settings": "Výchozí nastavení plateb",
         "invoice-email": "E-mail faktury",
@@ -82,6 +83,7 @@ const locale = {
         "rate": "Sazba"
       },
       "label": {
+        "own-contact": "Vlastní kontakt",
         "default-invoice-due-date": "Výchozí splatnost faktury",
         "default-currency": "Výchozí měna",
         "timezone": "Časové pásmo",

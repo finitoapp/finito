@@ -9,26 +9,22 @@ export const InvoicePaymentMethod = {
 export type InvoicePaymentMethod = InferEnumType<typeof InvoicePaymentMethod>;
 
 export type Invoice = EvoluSchemaType["invoice"] & {
+	invoiceCustomer: Omit<EvoluSchemaType["invoiceCustomer"], "id">;
 	invoiceCustomerBillingInfo: Omit<
 		EvoluSchemaType["invoiceCustomerBillingInfo"],
 		"id"
 	>;
-	invoiceCustomerBillingInfoAddress: Omit<
-		EvoluSchemaType["invoiceCustomerBillingInfoAddress"],
-		"id"
-	>;
+	invoiceCustomerAddress: Omit<EvoluSchemaType["invoiceCustomerAddress"], "id">;
 	invoiceCustomerBillingInfoCz: Omit<
 		EvoluSchemaType["invoiceCustomerBillingInfoCz"],
 		"id"
 	>;
+	invoiceSupplier: Omit<EvoluSchemaType["invoiceSupplier"], "id">;
 	invoiceSupplierBillingInfo: Omit<
 		EvoluSchemaType["invoiceSupplierBillingInfo"],
 		"id"
 	>;
-	invoiceSupplierBillingInfoAddress: Omit<
-		EvoluSchemaType["invoiceSupplierBillingInfoAddress"],
-		"id"
-	>;
+	invoiceSupplierAddress: Omit<EvoluSchemaType["invoiceSupplierAddress"], "id">;
 	invoiceSupplierBillingInfoCz: Omit<
 		EvoluSchemaType["invoiceSupplierBillingInfoCz"],
 		"id"

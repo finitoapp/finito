@@ -5,7 +5,6 @@ import {
 	evoluJsonObjectFrom,
 	type Id,
 	type KyselyNotNull,
-	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { addDays } from "date-fns";
@@ -17,13 +16,10 @@ import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import {
-	ClientForm,
-	clientFormSchema,
-} from "@/app/admin/(private)/clients/client-form";
-import {
-	BillingInfoForm,
-	billingInfoFormSchema,
-} from "@/app/admin/(private)/settings/billing-info/billing-info-form";
+	ContactForm,
+	contactFormSchema,
+	mapContactToFormContact,
+} from "@/app/admin/(private)/contacts/contact-form";
 import {
 	AutoForm,
 	type AutoFormComponent,
@@ -46,7 +42,6 @@ import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { createGetClientsQuery } from "@/lib/evolu/queries/client";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
-	BoolToSqliteBoolSchema,
 	Currency,
 	DateToDateStringSchema,
 	FiatCurrency,
@@ -62,9 +57,7 @@ import {
 } from "@/lib/shared/types";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
-const BillingInfoFormSchema = billingInfoFormSchema;
-
-const ClientFormSchema = clientFormSchema;
+const ContactFormSchema = contactFormSchema;
 
 const itemSchema = z.object({
 	id: TableIdSchema,
@@ -103,39 +96,35 @@ const invoiceSchema = z.object({
 		}),
 	]),
 
-	supplier: z.object({
-		billingInfo: BillingInfoFormSchema.nullable().transform(
-			(value, ctx): z.output<typeof BillingInfoFormSchema> => {
-				if (value === null) {
-					ctx.addIssue({
-						code: "custom",
-						message: "It should be selected",
-					});
+	supplier: contactFormSchema
+		.nullable()
+		.transform((value, ctx): z.output<typeof contactFormSchema> => {
+			if (value === null) {
+				ctx.addIssue({
+					code: "custom",
+					message: "It should be selected",
+				});
 
-					return z.NEVER;
-				}
+				return z.NEVER;
+			}
 
-				return value;
-			},
-		),
-	}),
+			return value;
+		}),
 
-	customer: z.object({
-		billingInfo: ClientFormSchema.nullable().transform(
-			(value, ctx): z.output<typeof ClientFormSchema> => {
-				if (value === null) {
-					ctx.addIssue({
-						code: "custom",
-						message: "It should be selected",
-					});
+	customer: contactFormSchema
+		.nullable()
+		.transform((value, ctx): z.output<typeof contactFormSchema> => {
+			if (value === null) {
+				ctx.addIssue({
+					code: "custom",
+					message: "It should be selected",
+				});
 
-					return z.NEVER;
-				}
+				return z.NEVER;
+			}
 
-				return value;
-			},
-		),
-	}),
+			return value;
+		}),
 
 	items: itemSchema.array().readonly(),
 });
@@ -169,20 +158,15 @@ const createDefaultValues = () => {
 			iban: "",
 		},
 
-		supplier: {
-			billingInfo: null,
-		},
-
-		customer: {
-			billingInfo: null,
-		},
+		supplier: null,
+		customer: null,
 
 		items: [createItemDefaultValues()],
 	} satisfies z.input<typeof invoiceSchema>;
 };
 
 const CustomerEditForm = (
-	props: EditComponentProps<z.input<typeof ClientFormSchema>>,
+	props: EditComponentProps<z.input<typeof ContactFormSchema>>,
 ) => {
 	return (
 		<Dialog
@@ -203,7 +187,7 @@ const CustomerEditForm = (
 				</DialogHeader>
 
 				<ScrollArea>
-					<ClientForm
+					<ContactForm
 						defaultValues={props.defaultValue}
 						onBeforeSave={(values) => {
 							props.save(values);
@@ -217,7 +201,7 @@ const CustomerEditForm = (
 };
 
 const SupplierEditForm = (
-	props: EditComponentProps<z.input<typeof BillingInfoFormSchema>>,
+	props: EditComponentProps<z.input<typeof ContactFormSchema>>,
 ) => {
 	return (
 		<Dialog
@@ -237,7 +221,7 @@ const SupplierEditForm = (
 					<DialogTitle>Edit billing information</DialogTitle>
 				</DialogHeader>
 				<ScrollArea>
-					<BillingInfoForm
+					<ContactForm
 						defaultValues={props.defaultValue}
 						onBeforeSave={(values) => {
 							props.save(values);
@@ -251,7 +235,7 @@ const SupplierEditForm = (
 };
 
 const CustomerBillingInfo: AutoFormComponent<
-	z.input<typeof ClientFormSchema> | null
+	z.input<typeof ContactFormSchema> | null
 > = (props) => {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
@@ -270,30 +254,7 @@ const CustomerBillingInfo: AutoFormComponent<
 
 					return items.map((item) => ({
 						label: item.name,
-						value: {
-							...item,
-							label: item.label ?? "",
-							email: item.email ?? "",
-							address: {
-								...item.address,
-								street: item.address.street ?? "",
-								city: item.address.city ?? "",
-								postalCode: item.address.postalCode ?? "",
-								descriptiveNumber: item.address.descriptiveNumber ?? "",
-							},
-							cz: item.cz
-								? {
-										...item.cz,
-										vatNumber: item.cz.vatNumber ?? "",
-										identificationNumber: item.cz.identificationNumber ?? "",
-										caseNumber: item.cz.caseNumber ?? "",
-									}
-								: {
-										vatNumber: "",
-										identificationNumber: "",
-										caseNumber: "",
-									},
-						},
+						value: mapContactToFormContact(item),
 					}));
 				},
 				EditComponent: CustomerEditForm,
@@ -306,7 +267,7 @@ const CustomerBillingInfo: AutoFormComponent<
 };
 
 const SupplierBillingInfo: AutoFormComponent<
-	z.input<typeof BillingInfoFormSchema> | null
+	z.input<typeof ContactFormSchema> | null
 > = (props) => {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
@@ -315,47 +276,59 @@ const SupplierBillingInfo: AutoFormComponent<
 		() =>
 			createQuery((db) => {
 				return db
-					.selectFrom("billingInfo")
+					.selectFrom("contact")
 					.select((eb) => [
-						"billingInfo.id as id",
-						"billingInfo.name as name",
-						"billingInfo.label as label",
-						"billingInfo.email as email",
-						"billingInfo.countryCode as countryCode",
+						"contact.id as id",
+						"contact.name as name",
+						"contact.label as label",
+						"contact.email as email",
+						"contact.phone as phone",
 
 						evoluJsonObjectFrom(
 							eb
-								.selectFrom("billingInfoAddress")
+								.selectFrom("contactAddress")
 								.select([
-									"billingInfoAddress.street as street",
-									"billingInfoAddress.descriptiveNumber as descriptiveNumber",
-									"billingInfoAddress.city as city",
-									"billingInfoAddress.postalCode as postalCode",
+									"contactAddress.street as street",
+									"contactAddress.descriptiveNumber as descriptiveNumber",
+									"contactAddress.city as city",
+									"contactAddress.postalCode as postalCode",
 								])
-								.whereRef("billingInfoAddress.id", "=", "billingInfo.id")
-								.where("billingInfoAddress.isDeleted", "is not", sqliteTrue),
+								.whereRef("contactAddress.id", "=", "contactAddress.id")
+								.where("contactAddress.isDeleted", "is not", sqliteTrue),
 						).as("address"),
 
 						evoluJsonObjectFrom(
 							eb
-								.selectFrom("billingInfoCz")
-								.select([
-									"billingInfoCz.vatPayer as vatPayer",
-									"billingInfoCz.identificationNumber as identificationNumber",
-									"billingInfoCz.vatNumber as vatNumber",
-									"billingInfoCz.caseNumber as caseNumber",
+								.selectFrom("contactBillingInfo")
+								.select((eb) => [
+									"contactBillingInfo.countryCode as countryCode",
+
+									evoluJsonObjectFrom(
+										eb
+											.selectFrom("billingInfoCz")
+											.select([
+												"billingInfoCz.vatPayer as vatPayer",
+												"billingInfoCz.identificationNumber as identificationNumber",
+												"billingInfoCz.vatNumber as vatNumber",
+												"billingInfoCz.caseNumber as caseNumber",
+											])
+											.whereRef("billingInfoCz.id", "=", "contact.id")
+											.where("billingInfoCz.isDeleted", "is not", sqliteTrue),
+									).as("cz"),
 								])
-								.whereRef("billingInfoCz.id", "=", "billingInfo.id")
-								.where("billingInfoCz.isDeleted", "is not", sqliteTrue),
-						).as("cz"),
+								.whereRef("contactBillingInfo.id", "=", "contact.id")
+								.where("contactBillingInfo.isDeleted", "is not", sqliteTrue)
+								.where("contactBillingInfo.countryCode", "is not", null)
+								.$narrowType<{
+									countryCode: KyselyNotNull;
+								}>(),
+						).as("billingInfo"),
 					])
-					.where("billingInfo.isDeleted", "is not", sqliteTrue)
-					.where("billingInfo.id", "=", createIdFromString(""))
-					.where("billingInfo.name", "is not", null)
-					.where("billingInfo.countryCode", "is not", null)
+					.where("contact.isDeleted", "is not", sqliteTrue)
+					.where("contact.id", "=", createIdFromString(""))
+					.where("contact.name", "is not", null)
 					.$narrowType<{
 						name: KyselyNotNull;
-						countryCode: KyselyNotNull;
 						address: KyselyNotNull;
 					}>();
 			}),
@@ -377,32 +350,7 @@ const SupplierBillingInfo: AutoFormComponent<
 						? [
 								{
 									label: item.label ?? item.name,
-									value: {
-										...item,
-										label: item.label ?? "",
-										email: item.email ?? "",
-										address: {
-											...item.address,
-											street: item.address.street ?? "",
-											city: item.address.city ?? "",
-											postalCode: item.address.postalCode ?? "",
-											descriptiveNumber: item.address.descriptiveNumber ?? "",
-										},
-										cz: item.cz
-											? {
-													vatPayer: item.cz.vatPayer === sqliteTrue,
-													vatNumber: item.cz.vatNumber ?? "",
-													identificationNumber:
-														item.cz.identificationNumber ?? "",
-													caseNumber: item.cz.caseNumber ?? "",
-												}
-											: {
-													vatPayer: false,
-													vatNumber: "",
-													identificationNumber: "",
-													caseNumber: "",
-												},
-									},
+									value: mapContactToFormContact(item),
 								},
 							]
 						: [];
@@ -436,9 +384,7 @@ const createComponents = (t: TFunction) =>
 							label: t("invoices:form.invoice-form.label.invoice-number"),
 						}),
 						...builder.line({
-							...builder.nestedField("customer", ({ builder }) => ({
-								...builder.createComponent("billingInfo", CustomerBillingInfo),
-							})),
+							...builder.createComponent("customer", CustomerBillingInfo),
 						}),
 					}),
 					...builder.line({
@@ -462,12 +408,7 @@ const createComponents = (t: TFunction) =>
 						{},
 						{
 							...builder.line({
-								...builder.nestedField("supplier", ({ builder }) => ({
-									...builder.createComponent(
-										"billingInfo",
-										SupplierBillingInfo,
-									),
-								})),
+								...builder.createComponent("supplier", SupplierBillingInfo),
 								...builder.magicInput("currency").select({
 									values: FiatCurrency,
 									allowEmpty: false,
@@ -594,36 +535,50 @@ export const InvoiceForm: React.FC<{
 			});
 
 			{
-				const { address, cz, ...billingInfo } = customer.billingInfo;
-				evolu.upsert("invoiceCustomerBillingInfo", {
-					...billingInfo,
+				const {
+					address,
+					billingInfo: { cz, ...billingInfo },
+					...contact
+				} = customer;
+				evolu.upsert("invoiceCustomer", {
+					...contact,
 					id: invoice.id,
 				});
-				evolu.upsert("invoiceCustomerBillingInfoAddress", {
+				evolu.upsert("invoiceCustomerAddress", {
 					...address,
+					id: invoice.id,
+				});
+				evolu.upsert("invoiceCustomerBillingInfo", {
+					...billingInfo,
 					id: invoice.id,
 				});
 				evolu.upsert("invoiceCustomerBillingInfoCz", {
 					...cz,
 					id: invoice.id,
-					vatPayer: sqliteFalse,
 				});
 			}
 
 			{
-				const { address, cz, ...billingInfo } = supplier.billingInfo;
-				evolu.upsert("invoiceSupplierBillingInfo", {
-					...billingInfo,
+				const {
+					address,
+					billingInfo: { cz, ...billingInfo },
+					...contact
+				} = supplier;
+				evolu.upsert("invoiceSupplier", {
+					...contact,
 					id: invoice.id,
 				});
-				evolu.upsert("invoiceSupplierBillingInfoAddress", {
+				evolu.upsert("invoiceSupplierAddress", {
 					...address,
+					id: invoice.id,
+				});
+				evolu.upsert("invoiceSupplierBillingInfo", {
+					...billingInfo,
 					id: invoice.id,
 				});
 				evolu.upsert("invoiceSupplierBillingInfoCz", {
 					...cz,
 					id: invoice.id,
-					vatPayer: BoolToSqliteBoolSchema.decode(cz.vatPayer),
 				});
 			}
 

@@ -1,11 +1,7 @@
 "use client";
 
-import {
-	evoluJsonObjectFrom,
-	type Id,
-	type KyselyNotNull,
-	sqliteTrue,
-} from "@evolu/common";
+import type { Id } from "@evolu/common";
+import { sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { EditIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
@@ -22,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { createQuery } from "@/lib/evolu";
+import { createGetContactsQuery } from "@/lib/evolu/queries/contact";
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -35,65 +31,9 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useMemo(
-		() =>
-			createQuery((db) => {
-				return db
-					.selectFrom("client")
-					.select(
-						(eb) =>
-							[
-								"client.id as id",
-								"client.createdAt as createdAt",
-								"client.name as name",
-								"client.label as label",
-								"client.email as email",
-								"client.countryCode as countryCode",
-
-								evoluJsonObjectFrom(
-									eb
-										.selectFrom("clientAddress")
-										.select([
-											"clientAddress.street as street",
-											"clientAddress.descriptiveNumber as descriptiveNumber",
-											"clientAddress.city as city",
-											"clientAddress.postalCode as postalCode",
-										])
-										.whereRef("clientAddress.id", "=", "client.id")
-										.where("client.isDeleted", "is not", sqliteTrue),
-								).as("address"),
-
-								evoluJsonObjectFrom(
-									eb
-										.selectFrom("clientCz")
-										.select([
-											"clientCz.vatPayer as vatPayer",
-											"clientCz.identificationNumber as identificationNumber",
-											"clientCz.vatNumber as vatNumber",
-											"clientCz.caseNumber as caseNumber",
-										])
-										.whereRef("clientCz.id", "=", "client.id")
-										.where("client.isDeleted", "is not", sqliteTrue),
-								).as("cz"),
-							] as const,
-					)
-					.where("client.isDeleted", "is not", sqliteTrue)
-					.where("client.name", "is not", null)
-					.where("client.countryCode", "is not", null)
-					.where("client.id", "=", id as Id)
-					.$narrowType<{
-						name: KyselyNotNull;
-						countryCode: KyselyNotNull;
-					}>();
-			}),
-		[id],
-	);
-
+	const query = useMemo(() => createGetContactsQuery({ id: id as Id }), [id]);
 	const { data: items } = useEvoluQuery(query);
-
 	const item = items[0];
-
-	console.log("item", item, JSON.stringify(item));
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -101,8 +41,8 @@ export default function Home() {
 				return;
 			}
 
-			evolu.update("client", { id: item.id, isDeleted: sqliteTrue });
-			router.push("/admin/clients");
+			evolu.update("contact", { id: item.id, isDeleted: sqliteTrue });
+			router.push("/admin/contacts");
 		},
 	});
 
@@ -111,10 +51,10 @@ export default function Home() {
 			await deleteItem();
 		},
 		{
-			title: "Delete client?",
-			description: "This action cannot be undone.",
-			confirmText: "Delete",
-			cancelText: "Cancel",
+			title: t("contacts:detail.deleteDialog.title"),
+			description: t("contacts:detail.deleteDialog.description"),
+			confirmText: t("contacts:detail.deleteDialog.confirm"),
+			cancelText: t("contacts:detail.deleteDialog.cancel"),
 			confirmVariant: "destructive",
 		},
 	);
@@ -135,15 +75,27 @@ export default function Home() {
 					</CardHeader>
 					<CardContent>
 						<div className={"flex flex-col gap-8"}>
-							<div className={"flex gap-4"}>
+							<div className={"flex gap-4 flex-wrap"}>
 								<StaticCard
-									title={"VAT Number"}
-									content={item ? item.cz?.vatNumber : <Skeleton />}
+									title={t("contacts:detail.cards.phone")}
+									content={item ? (item.phone ?? "-") : <Skeleton />}
 									className={"flex-1"}
 								/>
 
 								<StaticCard
-									title={"Modified at"}
+									title={t("contacts:detail.cards.vatNumber")}
+									content={
+										item ? (
+											(item.billingInfo?.cz?.vatNumber ?? "-")
+										) : (
+											<Skeleton />
+										)
+									}
+									className={"flex-1"}
+								/>
+
+								<StaticCard
+									title={t("contacts:detail.cards.modifiedAt")}
 									content={
 										<>
 											{!item && <Skeleton />}
@@ -160,24 +112,24 @@ export default function Home() {
 									<KeyValueList
 										items={[
 											{
-												key: "Company name",
+												key: t("contacts:detail.fields.name"),
 												value: item?.name ?? "-",
 											},
 											{
-												key: "Street",
+												key: t("contacts:detail.fields.street"),
 												value: item?.address?.street ?? "-",
 											},
 											{
-												key: "City",
+												key: t("contacts:detail.fields.city"),
 												value: item?.address?.city ?? "-",
 											},
 											{
-												key: "Postal Code",
+												key: t("contacts:detail.fields.postalCode"),
 												value: item?.address?.postalCode ?? "-",
 											},
 											{
-												key: "Country",
-												value: item?.countryCode ?? "-",
+												key: t("contacts:detail.fields.country"),
+												value: item?.billingInfo?.countryCode ?? "-",
 											},
 										]}
 									/>
@@ -186,16 +138,21 @@ export default function Home() {
 									<KeyValueList
 										items={[
 											{
-												key: "VAT Number",
-												value: item?.cz?.vatNumber ?? "-",
+												key: t("contacts:detail.fields.vatNumber"),
+												value: item?.billingInfo?.cz?.vatNumber ?? "-",
 											},
 											{
-												key: "Identification Number",
-												value: item?.cz?.identificationNumber ?? "-",
+												key: t("contacts:detail.fields.identificationNumber"),
+												value:
+													item?.billingInfo?.cz?.identificationNumber ?? "-",
 											},
 											{
-												key: "E-mail",
+												key: t("contacts:detail.fields.email"),
 												value: item?.email ?? "-",
+											},
+											{
+												key: t("contacts:detail.fields.phone"),
+												value: item?.phone ?? "-",
 											},
 										]}
 									/>
@@ -212,14 +169,16 @@ export default function Home() {
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
 							<Button variant={"outline"} className={"w-full"} asChild>
-								<Link href={`/admin/clients/edit?id=${encodeURIComponent(id)}`}>
+								<Link
+									href={`/admin/contacts/edit?id=${encodeURIComponent(id)}`}
+								>
 									<EditIcon />
-									Edit
+									{t("contacts:detail.actions.edit")}
 								</Link>
 							</Button>
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
-								Delete
+								{t("contacts:detail.actions.delete")}
 							</Button>
 						</CardContent>
 					</ResponsiveCard>

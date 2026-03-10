@@ -11,6 +11,7 @@ const locale = {
       "tables": "Tables",
       "reservations": "Reservations",
       "clients": "Clients",
+      "contacts": "Contacts",
       "accounts": "Accounts",
       "transactions": "Transactions",
       "settings": "Settings",

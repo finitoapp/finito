@@ -12,31 +12,16 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
-	const billingInfoQuery = useMemo(
-		() =>
-			createQuery((db) =>
-				db
-					.selectFrom("billingInfo")
-					.select(["billingInfo.name as name"])
-					.where("billingInfo.isDeleted", "is not", sqliteTrue)
-					.where("billingInfo.name", "is not", null)
-					.where("billingInfo.id", "=", createIdFromString(""))
-					.$narrowType<{
-						name: KyselyNotNull;
-					}>(),
-			),
-		[],
-	);
-	const { data } = useEvoluQuery(billingInfoQuery);
-
 	const billingSettingsQuery = useMemo(
 		() =>
 			createQuery((db) =>
 				db
 					.selectFrom("billingSettings")
+					.leftJoin("contact", "billingSettings.ownContactId", "contact.id")
 					.select([
 						"billingSettings.defaultPaymentMethod as defaultPaymentMethod",
 						"billingSettings.defaultCurrency as defaultCurrency",
+						"contact.name as merchantName",
 					])
 					.where("billingSettings.isDeleted", "is not", sqliteTrue)
 					.where("billingSettings.defaultPaymentMethod", "is not", null)
@@ -51,7 +36,6 @@ export default function Home() {
 	);
 	const { data: billingSettingsRows } = useEvoluQuery(billingSettingsQuery);
 
-	const item = data[0];
 	const billingSettings = billingSettingsRows[0];
 
 	return (
@@ -62,7 +46,7 @@ export default function Home() {
 
 			<PaymentForm
 				defaultValues={{
-					merchantName: item?.name ?? "",
+					merchantName: billingSettings?.merchantName ?? "",
 					currency: billingSettings?.defaultCurrency,
 					type: billingSettings?.defaultPaymentMethod,
 				}}

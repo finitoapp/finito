@@ -14,22 +14,24 @@ const mapPaymentMethodToNumber: Record<InvoicePaymentMethod, number> = {
 };
 
 export const createIsdocXml = (invoice: Invoice) => {
-	const createParty = (props: {
-		billingInfo:
-			| Invoice["invoiceSupplierBillingInfo"]
-			| Invoice["invoiceCustomerBillingInfo"];
-		address:
-			| Invoice["invoiceSupplierBillingInfoAddress"]
-			| Invoice["invoiceCustomerBillingInfoAddress"];
-		countrySpecific:
-			| Invoice["invoiceSupplierBillingInfoCz"]
-			| Invoice["invoiceCustomerBillingInfoCz"];
-	}) => `<Party>
+	const createParty = (
+		props: Invoice["invoiceSupplier"] & {
+			billingInfo:
+				| Invoice["invoiceSupplierBillingInfo"]
+				| Invoice["invoiceCustomerBillingInfo"];
+			address:
+				| Invoice["invoiceSupplierAddress"]
+				| Invoice["invoiceCustomerAddress"];
+			countrySpecific:
+				| Invoice["invoiceSupplierBillingInfoCz"]
+				| Invoice["invoiceCustomerBillingInfoCz"];
+		},
+	) => `<Party>
       <PartyIdentification>
         <ID></ID>
       </PartyIdentification>
       <PartyName>
-        <Name>${props.billingInfo.name}</Name>
+        <Name>${props.name}</Name>
       </PartyName>
       <PostalAddress>
         <StreetName>${props.address.street}</StreetName>
@@ -74,13 +76,15 @@ export const createIsdocXml = (invoice: Invoice) => {
     </InvoiceLine>`;
 
 	const supplierParty = createParty({
+		...invoice.invoiceSupplier,
 		billingInfo: invoice.invoiceSupplierBillingInfo,
-		address: invoice.invoiceSupplierBillingInfoAddress,
+		address: invoice.invoiceSupplierAddress,
 		countrySpecific: invoice.invoiceSupplierBillingInfoCz,
 	});
 	const customerParty = createParty({
+		...invoice.invoiceCustomer,
 		billingInfo: invoice.invoiceCustomerBillingInfo,
-		address: invoice.invoiceCustomerBillingInfoAddress,
+		address: invoice.invoiceCustomerAddress,
 		countrySpecific: invoice.invoiceCustomerBillingInfoCz,
 	});
 

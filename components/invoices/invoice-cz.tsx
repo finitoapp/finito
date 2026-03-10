@@ -243,15 +243,15 @@ export const InvoiceTemplate: React.FC<{
 								{t("invoices:pdf.cz.dodavatel")}
 							</Text>
 							<Text style={styles.companyName}>
-								{invoice.invoiceSupplierBillingInfo.name}
+								{invoice.invoiceSupplier.name}
 							</Text>
 							<Text>
-								{invoice.invoiceSupplierBillingInfoAddress.street}{" "}
-								{invoice.invoiceSupplierBillingInfoAddress.descriptiveNumber}
+								{invoice.invoiceSupplierAddress.street}{" "}
+								{invoice.invoiceSupplierAddress.descriptiveNumber}
 							</Text>
 							<Text>
-								{invoice.invoiceSupplierBillingInfoAddress.postalCode},{" "}
-								{invoice.invoiceSupplierBillingInfoAddress.city}
+								{invoice.invoiceSupplierAddress.postalCode},{" "}
+								{invoice.invoiceSupplierAddress.city}
 							</Text>
 							<Text>
 								{
@@ -275,8 +275,8 @@ export const InvoiceTemplate: React.FC<{
 								<Text>{t("invoices:pdf.cz.neplatceDph")}</Text>
 							)}
 							<View style={{ height: 6, width: "100%" }}></View>
-							{invoice.invoiceSupplierBillingInfo.email && (
-								<Text>E-mail: {invoice.invoiceSupplierBillingInfo.email}</Text>
+							{invoice.invoiceSupplier.email && (
+								<Text>E-mail: {invoice.invoiceSupplier.email}</Text>
 							)}
 						</View>
 					</View>
@@ -286,15 +286,15 @@ export const InvoiceTemplate: React.FC<{
 								{t("invoices:pdf.cz.odberatel")}
 							</Text>
 							<Text style={styles.companyName}>
-								{invoice.invoiceCustomerBillingInfo.name}
+								{invoice.invoiceCustomer.name}
 							</Text>
 							<Text>
-								{invoice.invoiceCustomerBillingInfoAddress.street}{" "}
-								{invoice.invoiceCustomerBillingInfoAddress.descriptiveNumber}
+								{invoice.invoiceCustomerAddress.street}{" "}
+								{invoice.invoiceCustomerAddress.descriptiveNumber}
 							</Text>
 							<Text>
-								{invoice.invoiceCustomerBillingInfoAddress.postalCode},{" "}
-								{invoice.invoiceCustomerBillingInfoAddress.city}
+								{invoice.invoiceCustomerAddress.postalCode},{" "}
+								{invoice.invoiceCustomerAddress.city}
 							</Text>
 							<Text>
 								{
@@ -315,8 +315,8 @@ export const InvoiceTemplate: React.FC<{
 									DIČ: {invoice.invoiceCustomerBillingInfoCz.vatNumber}
 								</Text>
 							)}
-							{invoice.invoiceCustomerBillingInfo.email && (
-								<Text>E-mail: {invoice.invoiceCustomerBillingInfo.email}</Text>
+							{invoice.invoiceCustomer.email && (
+								<Text>E-mail: {invoice.invoiceCustomer.email}</Text>
 							)}
 						</View>
 					</View>
@@ -572,8 +572,7 @@ export const InvoiceTemplate: React.FC<{
 					{invoice.invoiceSupplierBillingInfoCz.caseNumber && (
 						<>{invoice.invoiceSupplierBillingInfoCz.caseNumber} • </>
 					)}
-					{invoice.invoiceSupplierBillingInfo.name} •{" "}
-					{invoice.invoiceSupplierBillingInfo.email}
+					{invoice.invoiceSupplier.name} • {invoice.invoiceSupplier.email}
 				</Text>
 			</Page>
 		</Document>

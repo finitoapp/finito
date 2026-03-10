@@ -59,7 +59,6 @@ import { formatIban, formatMoney } from "@/lib/shared/utils/format";
 const StatusButton: FC<{
 	invoiceId: Id;
 }> = (props) => {
-	const _evolu = useEvolu();
 	const query = useMemo(
 		() =>
 			createQuery((db) =>
@@ -255,8 +254,7 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 					invoice={props.invoice}
 					paymentQrCode={props.paymentQrCode}
 					onGenerated={async (params) => {
-						const customerEmail =
-							props.invoice.invoiceCustomerBillingInfo.email;
+						const customerEmail = props.invoice.invoiceCustomer.email;
 						if (customerEmail === undefined) {
 							return;
 						}
@@ -311,7 +309,7 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 								username: smtp.username,
 								password: smtp.password,
 								from: smtp.name ? `${smtp.name} <${smtp.email}>` : smtp.email,
-								to: `${props.invoice.invoiceCustomerBillingInfo.name} <${customerEmail}>`,
+								to: `${props.invoice.invoiceCustomer.name} <${customerEmail}>`,
 								subject: billingSettings.invoiceEmailSettingsSubject,
 								body: billingSettings.invoiceEmailSettingsBody,
 								attachmentName: params.fileName,
@@ -374,11 +372,25 @@ export default function Home() {
 
 						evoluJsonObjectFrom(
 							eb
+								.selectFrom("invoiceCustomer")
+								.select([
+									"invoiceCustomer.name as name",
+									"invoiceCustomer.label as label",
+									"invoiceCustomer.email as email",
+									"invoiceCustomer.phone as phone",
+								])
+								.whereRef("invoiceCustomer.id", "=", "invoice.id")
+								.where("invoiceCustomer.isDeleted", "is not", sqliteTrue)
+								.where("invoiceCustomer.name", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+								}>(),
+						).as("invoiceCustomer"),
+
+						evoluJsonObjectFrom(
+							eb
 								.selectFrom("invoiceCustomerBillingInfo")
 								.select([
-									"invoiceCustomerBillingInfo.name as name",
-									"invoiceCustomerBillingInfo.label as label",
-									"invoiceCustomerBillingInfo.email as email",
 									"invoiceCustomerBillingInfo.countryCode as countryCode",
 								])
 								.whereRef("invoiceCustomerBillingInfo.id", "=", "invoice.id")
@@ -387,7 +399,6 @@ export default function Home() {
 									"is not",
 									sqliteTrue,
 								)
-								.where("invoiceCustomerBillingInfo.name", "is not", null)
 								.where("invoiceCustomerBillingInfo.countryCode", "is not", null)
 								.$narrowType<{
 									name: KyselyNotNull;
@@ -397,24 +408,20 @@ export default function Home() {
 
 						evoluJsonObjectFrom(
 							eb
-								.selectFrom("invoiceCustomerBillingInfoAddress")
+								.selectFrom("invoiceCustomerAddress")
 								.select([
-									"invoiceCustomerBillingInfoAddress.street as street",
-									"invoiceCustomerBillingInfoAddress.descriptiveNumber as descriptiveNumber",
-									"invoiceCustomerBillingInfoAddress.city as city",
-									"invoiceCustomerBillingInfoAddress.postalCode as postalCode",
+									"invoiceCustomerAddress.street as street",
+									"invoiceCustomerAddress.descriptiveNumber as descriptiveNumber",
+									"invoiceCustomerAddress.city as city",
+									"invoiceCustomerAddress.postalCode as postalCode",
 								])
-								.whereRef(
-									"invoiceCustomerBillingInfoAddress.id",
-									"=",
-									"invoice.id",
-								)
+								.whereRef("invoiceCustomerAddress.id", "=", "invoice.id")
 								.where(
-									"invoiceCustomerBillingInfoAddress.isDeleted",
+									"invoiceCustomerAddress.isDeleted",
 									"is not",
 									sqliteTrue,
 								),
-						).as("invoiceCustomerBillingInfoAddress"),
+						).as("invoiceCustomerAddress"),
 
 						evoluJsonObjectFrom(
 							eb
@@ -431,7 +438,6 @@ export default function Home() {
 									"is not",
 									sqliteTrue,
 								)
-								.where("invoiceCustomerBillingInfoCz.vatPayer", "is not", null)
 								.where(
 									"invoiceCustomerBillingInfoCz.identificationNumber",
 									"is not",
@@ -445,11 +451,25 @@ export default function Home() {
 
 						evoluJsonObjectFrom(
 							eb
+								.selectFrom("invoiceSupplier")
+								.select([
+									"invoiceSupplier.name as name",
+									"invoiceSupplier.label as label",
+									"invoiceSupplier.email as email",
+									"invoiceSupplier.phone as phone",
+								])
+								.whereRef("invoiceSupplier.id", "=", "invoice.id")
+								.where("invoiceSupplier.isDeleted", "is not", sqliteTrue)
+								.where("invoiceSupplier.name", "is not", null)
+								.$narrowType<{
+									name: KyselyNotNull;
+								}>(),
+						).as("invoiceSupplier"),
+
+						evoluJsonObjectFrom(
+							eb
 								.selectFrom("invoiceSupplierBillingInfo")
 								.select([
-									"invoiceSupplierBillingInfo.name as name",
-									"invoiceSupplierBillingInfo.label as label",
-									"invoiceSupplierBillingInfo.email as email",
 									"invoiceSupplierBillingInfo.countryCode as countryCode",
 								])
 								.whereRef("invoiceSupplierBillingInfo.id", "=", "invoice.id")
@@ -458,34 +478,28 @@ export default function Home() {
 									"is not",
 									sqliteTrue,
 								)
-								.where("invoiceSupplierBillingInfo.name", "is not", null)
 								.where("invoiceSupplierBillingInfo.countryCode", "is not", null)
 								.$narrowType<{
-									name: KyselyNotNull;
 									countryCode: KyselyNotNull;
 								}>(),
 						).as("invoiceSupplierBillingInfo"),
 
 						evoluJsonObjectFrom(
 							eb
-								.selectFrom("invoiceSupplierBillingInfoAddress")
+								.selectFrom("invoiceSupplierAddress")
 								.select([
-									"invoiceSupplierBillingInfoAddress.street as street",
-									"invoiceSupplierBillingInfoAddress.descriptiveNumber as descriptiveNumber",
-									"invoiceSupplierBillingInfoAddress.city as city",
-									"invoiceSupplierBillingInfoAddress.postalCode as postalCode",
+									"invoiceSupplierAddress.street as street",
+									"invoiceSupplierAddress.descriptiveNumber as descriptiveNumber",
+									"invoiceSupplierAddress.city as city",
+									"invoiceSupplierAddress.postalCode as postalCode",
 								])
-								.whereRef(
-									"invoiceSupplierBillingInfoAddress.id",
-									"=",
-									"invoice.id",
-								)
+								.whereRef("invoiceSupplierAddress.id", "=", "invoice.id")
 								.where(
-									"invoiceSupplierBillingInfoAddress.isDeleted",
+									"invoiceSupplierAddress.isDeleted",
 									"is not",
 									sqliteTrue,
 								),
-						).as("invoiceSupplierBillingInfoAddress"),
+						).as("invoiceSupplierAddress"),
 
 						evoluJsonObjectFrom(
 							eb
@@ -502,7 +516,6 @@ export default function Home() {
 									"is not",
 									sqliteTrue,
 								)
-								.where("invoiceSupplierBillingInfoCz.vatPayer", "is not", null)
 								.where(
 									"invoiceSupplierBillingInfoCz.identificationNumber",
 									"is not",
@@ -587,11 +600,13 @@ export default function Home() {
 						dueDate: KyselyNotNull;
 						currency: KyselyNotNull;
 						paymentMethod: KyselyNotNull;
+						invoiceSupplier: KyselyNotNull;
 						invoiceSupplierBillingInfo: KyselyNotNull;
-						invoiceSupplierBillingInfoAddress: KyselyNotNull;
+						invoiceSupplierAddress: KyselyNotNull;
 						invoiceSupplierBillingInfoCz: KyselyNotNull;
+						invoiceCustomer: KyselyNotNull;
 						invoiceCustomerBillingInfo: KyselyNotNull;
-						invoiceCustomerBillingInfoAddress: KyselyNotNull;
+						invoiceCustomerAddress: KyselyNotNull;
 						invoiceCustomerBillingInfoCz: KyselyNotNull;
 					}>(),
 			),
@@ -736,7 +751,7 @@ export default function Home() {
 												},
 												{
 													key: "Name",
-													value: invoice.invoiceSupplierBillingInfo.name ?? "-",
+													value: invoice.invoiceSupplier.name ?? "-",
 												},
 												{
 													key: "VAT Number",
@@ -762,26 +777,24 @@ export default function Home() {
 													: []),
 												{
 													key: "E-mail",
-													value:
-														invoice.invoiceSupplierBillingInfo.email ?? "-",
+													value: invoice.invoiceSupplier.email ?? "-",
+												},
+												{
+													key: "Phone",
+													value: invoice.invoiceSupplier.phone ?? "-",
 												},
 												{
 													key: "Street",
-													value:
-														invoice.invoiceSupplierBillingInfoAddress.street ??
-														"-",
+													value: invoice.invoiceSupplierAddress.street ?? "-",
 												},
 												{
 													key: "City",
-													value:
-														invoice.invoiceSupplierBillingInfoAddress.city ??
-														"-",
+													value: invoice.invoiceSupplierAddress.city ?? "-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														invoice.invoiceSupplierBillingInfoAddress
-															.postalCode ?? "-",
+														invoice.invoiceSupplierAddress.postalCode ?? "-",
 												},
 												{
 													key: "Country",
@@ -797,7 +810,7 @@ export default function Home() {
 											items={[
 												{
 													key: "Customer",
-													value: invoice.invoiceCustomerBillingInfo.name ?? "-",
+													value: invoice.invoiceCustomer.name ?? "-",
 												},
 												{
 													key: "VAT Number",
@@ -816,26 +829,24 @@ export default function Home() {
 												},
 												{
 													key: "E-mail",
-													value:
-														invoice.invoiceCustomerBillingInfo.email ?? "-",
+													value: invoice.invoiceCustomer.email ?? "-",
+												},
+												{
+													key: "Phone",
+													value: invoice.invoiceCustomer.phone ?? "-",
 												},
 												{
 													key: "Street",
-													value:
-														invoice.invoiceCustomerBillingInfoAddress.street ??
-														"-",
+													value: invoice.invoiceCustomerAddress.street ?? "-",
 												},
 												{
 													key: "City",
-													value:
-														invoice.invoiceCustomerBillingInfoAddress.city ??
-														"-",
+													value: invoice.invoiceCustomerAddress.city ?? "-",
 												},
 												{
 													key: "Postal Code",
 													value:
-														invoice.invoiceCustomerBillingInfoAddress
-															.postalCode ?? "-",
+														invoice.invoiceCustomerAddress.postalCode ?? "-",
 												},
 												{
 													key: "Country",

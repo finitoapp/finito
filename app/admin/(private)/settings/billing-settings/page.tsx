@@ -19,6 +19,7 @@ export default function Home() {
 				return db
 					.selectFrom("billingSettings")
 					.select((eb) => [
+						"ownContactId",
 						"defaultInvoiceDueDateDays",
 						"defaultCurrency",
 						"defaultTimezone",
@@ -73,6 +74,7 @@ export default function Home() {
 						? {
 								defaultInvoiceDueDateDays:
 									item.defaultInvoiceDueDateDays.toString(),
+								ownContactId: item.ownContactId,
 								defaultCurrency: item.defaultCurrency,
 								defaultTimezone: item.defaultTimezone,
 								defaultPayment: {

@@ -46,6 +46,7 @@ import type {
 import type { z } from "zod";
 import { CollapsibleSeparator } from "@/components/collapsible-separator";
 import { CopyButton } from "@/components/copy-button";
+import { NullableSwitch } from "@/components/nullable-switch";
 import { PasswordInput } from "@/components/password-input";
 import { PasswordTextarea } from "@/components/password-textarea";
 import {
@@ -144,7 +145,6 @@ export const AutoForm = <
 	saveLabel?: React.ReactNode;
 }) => {
 	const { t } = useTranslation();
-	console.log(props.form.form.formState);
 
 	return (
 		<Form {...props.form.form}>
@@ -510,6 +510,30 @@ export const AutoFormInput = {
 									onCheckedChange={(value) => field.onChange(value === true)}
 									disabled={params.disabled}
 								/>
+							</FormControl>
+						</div>
+						{params.description && (
+							<FormDescription>{params.description}</FormDescription>
+						)}
+						<FormMessage />
+					</FormItem>
+				)}
+			/>
+		),
+	nullableSwitch:
+		(params: CheckboxParams): AutoFormComponent<boolean | null> =>
+		(props) => (
+			<FormField
+				control={props.control}
+				name={props.name}
+				render={({ field }) => (
+					<FormItem>
+						{params.label && (
+							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+						)}
+						<div className="flex gap-2">
+							<FormControl>
+								<NullableSwitch {...field} />
 							</FormControl>
 						</div>
 						{params.description && (

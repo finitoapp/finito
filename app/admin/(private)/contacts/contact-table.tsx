@@ -32,26 +32,37 @@ import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
-import { CountryCode, type NonEmptyString255 } from "@/lib/shared/types";
+import {
+	CountryCode,
+	type Email,
+	type NonEmptyString255,
+	type Phone,
+} from "@/lib/shared/types";
 
-type Task = {
+type ContactRow = {
 	id: Id;
 	name: string;
 	countryCode: CountryCode;
+	phone: Phone | null;
+	email: Email | null;
 	vatNumber: NonEmptyString255 | null;
 	identificationNumber: NonEmptyString255 | null;
 	createdAt: DateIso;
 };
 
-const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
+const createColumns = (t: TFunction): ColumnDef<ContactRow, ContactRow>[] => [
 	{
 		accessorKey: "name",
-		header: createSortableHeader(t("clients:table.columns.name")),
+		header: createSortableHeader(t("contacts:table.columns.name")),
+	},
+	{
+		accessorKey: "phone",
+		header: createSortableHeader(t("contacts:table.columns.phone")),
 	},
 	{
 		accessorKey: "identificationNumber",
 		header: createSortableHeader(
-			t("clients:table.columns.identification-number"),
+			t("contacts:table.columns.identification-number"),
 		),
 		cell: ({ row }) => {
 			return row.original.countryCode === CountryCode.CZ
@@ -61,7 +72,7 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	},
 	{
 		accessorKey: "vatNumber",
-		header: createSortableHeader(t("clients:table.columns.vat-number")),
+		header: createSortableHeader(t("contacts:table.columns.vat-number")),
 		cell: ({ row }) => {
 			return row.original.countryCode === CountryCode.CZ
 				? row.original.vatNumber
@@ -71,30 +82,32 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 ];
 
 const sortingFields = {
-	id: "client.id",
-	createdAt: "client.createdAt",
-	name: "client.name",
-	countryCode: "client.countryCode",
-	vatNumber: "clientCz.vatNumber",
-	identificationNumber: "clientCz.identificationNumber",
-} as const satisfies Record<keyof Task, string>;
+	id: "contact.id",
+	createdAt: "contact.createdAt",
+	name: "contact.name",
+	countryCode: "contactBillingInfo.countryCode",
+	phone: "contact.phone",
+	email: "contact.email",
+	vatNumber: "contactBillingInfoCz.vatNumber",
+	identificationNumber: "contactBillingInfoCz.identificationNumber",
+} as const satisfies Record<keyof ContactRow, string>;
 
 const createFilterableColumns = (t: TFunction) =>
 	[
 		{
 			id: "name",
-			title: t("clients:table.columns.name"),
+			title: t("contacts:table.columns.name"),
 		},
-	] satisfies { id: keyof Task; title: string }[];
+	] satisfies { id: keyof ContactRow; title: string }[];
 
-export function ClientTable() {
+export function ContactTable() {
 	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
-	const columnVisibilityDriver = useDataTableVisibilityDriver("clients");
+	const columnVisibilityDriver = useDataTableVisibilityDriver("contacts");
 	const columns = useMemo(() => createColumns(t), [t]);
 	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
-	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
+	const onFilterChange = useMemo<DataTableOnFilterChange<ContactRow>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
 				const previousCursor =
@@ -110,21 +123,31 @@ export function ClientTable() {
 
 				const query = createQuery((db) => {
 					let qb = db
-						.selectFrom("client")
-						.leftJoin("clientAddress", "clientAddress.id", "client.id")
-						.leftJoin("clientCz", "clientCz.id", "client.id")
+						.selectFrom("contact")
+						.leftJoin(
+							"contactBillingInfo",
+							"contactBillingInfo.id",
+							"contact.id",
+						)
+						.leftJoin(
+							"contactBillingInfoCz",
+							"contactBillingInfoCz.id",
+							"contact.id",
+						)
 						.select([
-							"client.id as id",
-							"client.name as name",
-							"client.label as label",
-							"client.countryCode as countryCode",
-							"client.createdAt as createdAt",
-							"clientCz.vatNumber as vatNumber",
-							"clientCz.identificationNumber as identificationNumber",
+							"contact.id as id",
+							"contact.name as name",
+							"contact.label as label",
+							"contactBillingInfo.countryCode as countryCode",
+							"contact.phone as phone",
+							"contact.email as email",
+							"contact.createdAt as createdAt",
+							"contactBillingInfoCz.vatNumber as vatNumber",
+							"contactBillingInfoCz.identificationNumber as identificationNumber",
 						] as const)
-						.where("client.isDeleted", "is not", sqliteTrue)
-						.where("client.name", "is not", null)
-						.where("client.countryCode", "is not", null)
+						.where("contact.isDeleted", "is not", sqliteTrue)
+						.where("contact.name", "is not", null)
+						.where("contactBillingInfo.countryCode", "is not", null)
 						.$narrowType<{
 							name: KyselyNotNull;
 							countryCode: KyselyNotNull;
@@ -140,7 +163,7 @@ export function ClientTable() {
 								),
 								eb.and([
 									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
-									eb("client.id", "<", previousCursor.id as Id),
+									eb("contact.id", "<", previousCursor.id as Id),
 								]),
 							]),
 						);
@@ -148,12 +171,12 @@ export function ClientTable() {
 
 					qb = qb
 						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
-						.orderBy("client.id", "desc");
+						.orderBy("contact.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "name") {
 							qb = qb.where(
-								"client.name",
+								"contact.name",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);
@@ -189,16 +212,16 @@ export function ClientTable() {
 		<ResponsiveCard>
 			<CardHeader>
 				<CardHeading className={"py-6"}>
-					<CardTitle>{t("clients:table.clients")}</CardTitle>
+					<CardTitle>{t("contacts:table.contacts")}</CardTitle>
 					<CardDescription>
-						{t("clients:table.listOfYourClients")}
+						{t("contacts:table.listOfYourContacts")}
 					</CardDescription>
 				</CardHeading>
 				<CardToolbar>
-					<Link href={"/admin/clients/new"}>
+					<Link href={"/admin/contacts/new"}>
 						<Button>
 							<PlusIcon />
-							{t("clients:table.actions.new-client")}
+							{t("contacts:table.actions.new-contact")}
 						</Button>
 					</Link>
 				</CardToolbar>
@@ -211,7 +234,7 @@ export function ClientTable() {
 					filterableColumns={filterableColumns}
 					onRowClick={(item) =>
 						router.push(
-							`/admin/clients/detail?id=${encodeURIComponent(item.id)}`,
+							`/admin/contacts/detail?id=${encodeURIComponent(item.id)}`,
 						)
 					}
 				/>
