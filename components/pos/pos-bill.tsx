@@ -711,7 +711,6 @@ export const PosBill: React.FC<{
 																<span>
 																	<Input
 																		className={"text-right"}
-																		variant={"sm"}
 																		type={"number"}
 																		value={
 																			props.bill?.rates

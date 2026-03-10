@@ -122,7 +122,7 @@ export function NotificationItem({
 						</p>
 					)}
 					{actionComponents.length > 0 && actionComponents.length > 1 ? (
-						<ButtonGroup size={"sm"}>{actionComponents}</ButtonGroup>
+						<ButtonGroup>{actionComponents}</ButtonGroup>
 					) : (
 						actionComponents
 					)}

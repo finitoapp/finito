@@ -418,7 +418,7 @@ export const LandingPageClient: React.FC = () => {
 								<CardTitle>{t("landing:page.faq.title")}</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<Accordion type="single" collapsible variant="outline">
+								<Accordion type="single" collapsible>
 									<AccordionItem value="q1">
 										<AccordionTrigger>
 											{t("landing:page.faq.q1")}

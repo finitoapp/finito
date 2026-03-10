@@ -124,7 +124,7 @@ export const useReservationDrag = (params: {
 				params.t("reservations:page.dragConfirm.description"),
 			confirmText: params.t("reservations:page.dragConfirm.confirm"),
 			cancelText: params.t("reservations:page.dragConfirm.cancel"),
-			confirmVariant: "primary",
+			confirmVariant: "default",
 		});
 		if (!accepted) {
 			previewReservationRef.current = null;

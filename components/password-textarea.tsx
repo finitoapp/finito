@@ -17,7 +17,7 @@ export const PasswordTextarea = React.forwardRef<
 		<div className="relative w-full">
 			<Textarea
 				className={cn(
-					"pr-10 font-mono",
+					"pr-10 font-mono wrap-anywhere",
 					showPassword ? "" : "password-mask",
 					className,
 				)}

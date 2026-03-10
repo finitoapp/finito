@@ -176,7 +176,6 @@ const CustomerEditForm = (
 			modal={false}
 		>
 			<DialogContent
-				variant={"fullscreen"}
 				style={{
 					top: "env(safe-area-inset-top)",
 					bottom: "env(safe-area-inset-bottom)",
@@ -211,7 +210,6 @@ const SupplierEditForm = (
 			modal={false}
 		>
 			<DialogContent
-				variant={"fullscreen"}
 				style={{
 					top: "env(safe-area-inset-top)",
 					bottom: "env(safe-area-inset-bottom)",
