@@ -45,7 +45,7 @@ const baseStaticPaymentSchema = z.object({
 	id: TableIdSchema,
 	totalAmount: StringToNullableStringSchema.pipe(NumberStringSchema),
 	currency: z.enum(Currency),
-	tipAmount: StringToNullableStringSchema.pipe(NumberStringSchema),
+	tipAmount: StringToNullableStringSchema.pipe(NumberStringSchema.nullable()),
 	amountInBtc: StringToNullableNumberSchema.pipe(IntegerSchema),
 	iban: z.string(),
 	lnZapAccountId: z.string(),
@@ -101,10 +101,12 @@ const staticPaymentSchema = z
 			value: values.totalAmount,
 			currency: values.currency,
 		}).value,
-		tipAmount: moneyCodec.parse({
-			value: values.totalAmount,
-			currency: values.currency,
-		}).value,
+		tipAmount: values.tipAmount
+			? moneyCodec.parse({
+					value: values.tipAmount,
+					currency: values.currency,
+				}).value
+			: null,
 	}));
 
 const itemDefaultValues = {
@@ -460,7 +462,7 @@ export const PaymentForm: React.FC<{
 					currency: values.currency,
 				},
 				totalAmount: values.totalAmount as NonNegativeInteger,
-				tipAmount: values.tipAmount as NonNegativeInteger,
+				tipAmount: values.tipAmount as NonNegativeInteger | null,
 				paymentBankTransferCZ:
 					values.type === "bankTransferCZ"
 						? {

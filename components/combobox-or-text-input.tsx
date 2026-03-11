@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useId } from "react";
+import { Controller } from "react-hook-form";
 import type { JsonValue } from "type-fest";
 import type { AutoFormComponent } from "@/components/auto-form";
 import {
@@ -7,13 +8,11 @@ import {
 	type ComboboxDefaultProps,
 } from "@/components/combobox/default";
 import {
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+} from "@/components/ui/field";
 
 export const createComboboxOrTextInput =
 	<TItem extends JsonValue>(
@@ -34,32 +33,30 @@ export const createComboboxOrTextInput =
 		});
 
 		return (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => {
+				render={({ field, fieldState }) => {
 					return (
-						<FormItem>
+						<Field data-invalid={fieldState.invalid}>
 							{params.label && (
-								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+								<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 							)}
 							<div className="flex flex-col gap-2">
-								<FormControl>
-									{/*
+								{/*
 // @ts-expect-error */}
-									<ComboboxDefault
-										{...field}
-										{...params}
-										items={data ?? []}
-										enableEdit={true}
-									/>
-								</FormControl>
+								<ComboboxDefault
+									{...field}
+									{...params}
+									items={data ?? []}
+									enableEdit={true}
+								/>
 							</div>
 							{params.description && (
-								<FormDescription>{params.description}</FormDescription>
+								<FieldDescription>{params.description}</FieldDescription>
 							)}
-							<FormMessage />
-						</FormItem>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
 					);
 				}}
 			/>

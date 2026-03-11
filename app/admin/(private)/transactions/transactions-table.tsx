@@ -21,12 +21,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -201,20 +200,18 @@ export function TransactionsTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("transactions:table.transactions")}</CardTitle>
-					<CardDescription>
-						{t("transactions:table.description.list-of-transactions")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("transactions:table.transactions")}</CardTitle>
+				<CardDescription>
+					{t("transactions:table.description.list-of-transactions")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/transactions/new"}>
 						<Button>
 							<PlusIcon />
 							{t("transactions:table.actions.new-transaction")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

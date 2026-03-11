@@ -161,20 +161,22 @@ export function NotificationCenter() {
 
 	return (
 		<Sheet open={isOpen} onOpenChange={setIsOpen}>
-			<SheetTrigger asChild>
-				<Button
-					size="icon"
-					variant="outline"
-					className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
-					aria-label={t("components:notifications.open")}
-				>
-					<Bell className="h-5 w-5" />
-					{unreadCount > 0 && (
-						<span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
-							{unreadCount > 9 ? "9+" : unreadCount}
-						</span>
-					)}
-				</Button>
+			<SheetTrigger
+				render={
+					<Button
+						size="icon"
+						variant="outline"
+						className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
+						aria-label={t("components:notifications.open")}
+					/>
+				}
+			>
+				<Bell className="h-5 w-5" />
+				{unreadCount > 0 && (
+					<span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+						{unreadCount > 9 ? "9+" : unreadCount}
+					</span>
+				)}
 			</SheetTrigger>
 			<SheetContent
 				side="right"
@@ -200,15 +202,17 @@ export function NotificationCenter() {
 									{t("components:notifications.clearAll")}
 								</Button>
 							)}
-							<SheetClose asChild>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="h-8 w-8"
-									aria-label={t("components:notifications.close")}
-								>
-									<X className="h-4 w-4" />
-								</Button>
+							<SheetClose
+								render={
+									<Button
+										variant="ghost"
+										size="icon"
+										className="h-8 w-8"
+										aria-label={t("components:notifications.close")}
+									/>
+								}
+							>
+								<X className="h-4 w-4" />
 							</SheetClose>
 						</div>
 					</div>

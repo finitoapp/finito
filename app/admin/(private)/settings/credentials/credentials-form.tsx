@@ -120,9 +120,7 @@ const createComponents = (t: TFunction) =>
 						],
 					},
 					({ builder }) => ({
-						...builder.magicInput("id").text({
-							type: "hidden",
-						}),
+						...builder.magicInput("id").hidden(undefined),
 						...builder.magicInput("type").text({
 							type: "hidden",
 						}),
@@ -181,9 +179,7 @@ const createComponents = (t: TFunction) =>
 						],
 					},
 					({ builder }) => ({
-						...builder.magicInput("id").text({
-							type: "hidden",
-						}),
+						...builder.magicInput("id").hidden(undefined),
 						...builder.magicInput("url").text({
 							label: t("settings:form.credentials-form.label.relay-url"),
 						}),

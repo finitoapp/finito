@@ -270,7 +270,6 @@ export const PosItemsList: React.FC<{
 					<Card
 						className="cursor-pointer hover:shadow-md transition-shadow"
 						onClick={() => router.push("/admin/items/new")}
-						variant={"accent"}
 					>
 						<CardContent className="p-4 text-center">
 							<PlusCircleIcon

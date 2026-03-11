@@ -45,9 +45,7 @@ const createTableDefaultValues = () =>
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(tableSchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("label").text({
 			label: t("tables:form.fields.label.label"),
 		}),
@@ -74,9 +72,7 @@ const createComponents = (t: TFunction) =>
 				],
 			},
 			({ builder }) => ({
-				...builder.magicInput("id").text({
-					type: "hidden",
-				}),
+				...builder.magicInput("id").hidden(undefined),
 				...builder.magicInput("code").text({
 					label: t("tables:form.codes.fields.code.label"),
 				}),

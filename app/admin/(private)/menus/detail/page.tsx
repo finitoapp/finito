@@ -572,15 +572,19 @@ export default function Home() {
 									menuPdfData={menuPdfData}
 								/>
 							)}
-							<Button variant={"outline"} className={"w-full"} asChild>
-								<Link
-									href={
-										`/admin/menus/edit?id=${encodeURIComponent(id)}` as never
-									}
-								>
-									<EditIcon />
-									{t("menus:detail.actions.edit")}
-								</Link>
+							<Button
+								variant={"outline"}
+								className={"w-full"}
+								render={
+									<Link
+										href={
+											`/admin/menus/edit?id=${encodeURIComponent(id)}` as never
+										}
+									/>
+								}
+							>
+								<EditIcon />
+								{t("menus:detail.actions.edit")}
 							</Button>
 							<Button
 								variant={"outline"}
@@ -592,18 +596,22 @@ export default function Home() {
 									? t("menus:detail.actions.moveToDraft")
 									: t("menus:detail.actions.publish")}
 							</Button>
-							<Button variant={"outline"} className={"w-full"} asChild>
-								<a href={menuPreviewUrl} target={"_blank"} rel={"noreferrer"}>
-									<ExternalLink />
-									Náhled
-								</a>
-							</Button>
+							<Button
+								variant={"outline"}
+								className={"w-full"}
+								render={
+									<a href={menuPreviewUrl} target={"_blank"} rel={"noreferrer"}>
+										<ExternalLink />
+										Náhled
+									</a>
+								}
+							></Button>
 							<Dialog>
-								<DialogTrigger asChild>
-									<Button variant={"outline"} className={"w-full"}>
-										<QrCodeIcon />
-										Zobraz QR kód
-									</Button>
+								<DialogTrigger
+									render={<Button variant={"outline"} className={"w-full"} />}
+								>
+									<QrCodeIcon />
+									Zobraz QR kód
 								</DialogTrigger>
 								<DialogContent>
 									<DialogHeader>

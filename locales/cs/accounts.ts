@@ -38,7 +38,7 @@ const locale = {
       "tag": {
         "account-iban": "Bankovní účet (IBAN)",
         "account-lud16": "BTC peněženka (LUD16)",
-        "account-nwc": "NWC protokol (Nostr Wallet Connect)",
+        "account-nwc": "NWC (Nostr Wallet Connect)",
         "account-spark": "Spark Bitcoin L2",
         "account-cash-register": "Pokladna"
       },

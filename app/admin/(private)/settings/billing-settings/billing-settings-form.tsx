@@ -376,7 +376,7 @@ const createComponents = (t: TFunction) => {
 						],
 					},
 					({ builder }) => ({
-						...builder.magicInput("id").text({ type: "hidden" }),
+						...builder.magicInput("id").hidden(undefined),
 						...builder.magicInput("name").text({}),
 						...builder.magicInput("rate").text({
 							placeholder: t(

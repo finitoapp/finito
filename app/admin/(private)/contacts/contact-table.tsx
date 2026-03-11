@@ -21,12 +21,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -211,20 +210,18 @@ export function ContactTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("contacts:table.contacts")}</CardTitle>
-					<CardDescription>
-						{t("contacts:table.listOfYourContacts")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("contacts:table.contacts")}</CardTitle>
+				<CardDescription>
+					{t("contacts:table.listOfYourContacts")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/contacts/new"}>
 						<Button>
 							<PlusIcon />
 							{t("contacts:table.actions.new-contact")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

@@ -23,16 +23,18 @@ export function LanguageToggle() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant="outline"
-					className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
-				>
-					<Languages className="h-[1.2rem] w-[1.2rem]" />
-					<span className="sr-only">
-						{t("components:languageToggle.toggleLanguage")}
-					</span>
-				</Button>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						variant="outline"
+						className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
+					/>
+				}
+			>
+				<Languages className="h-[1.2rem] w-[1.2rem]" />
+				<span className="sr-only">
+					{t("components:languageToggle.toggleLanguage")}
+				</span>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
 				<DropdownMenuItem

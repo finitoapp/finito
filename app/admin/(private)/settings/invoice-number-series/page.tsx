@@ -90,8 +90,6 @@ export default function Home() {
 			<ResponsiveCard className="w-full max-w-xl">
 				<CardHeader>
 					<CardTitle>{t("settings:page.lastInvoiceNumber")}</CardTitle>
-				</CardHeader>
-				<CardHeader>
 					<CardDescription>
 						The values are used when calculating the subsequent invoice number
 					</CardDescription>

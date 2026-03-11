@@ -175,10 +175,12 @@ export const TableScreen: FC<{
 					/>
 				</div>
 
-				<BillItemList
-					bill={props.screen.payload.bill}
-					selectedItemsAtom={selectedItemsAtom}
-				/>
+				<div className={"z-10"}>
+					<BillItemList
+						bill={props.screen.payload.bill}
+						selectedItemsAtom={selectedItemsAtom}
+					/>
+				</div>
 			</div>
 
 			<div

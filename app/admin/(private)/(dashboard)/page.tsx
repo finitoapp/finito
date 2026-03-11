@@ -19,10 +19,10 @@ import { FinitoLogo } from "@/components/finito-logo";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Badge } from "@/components/ui/badge";
 import {
+	CardAction,
 	CardContent,
 	CardHeader,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 
 export default function Home() {
@@ -108,12 +108,12 @@ export default function Home() {
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
 						<CardTitle>{t("admin:dashboard.orderPayments")}</CardTitle>
-						<CardToolbar>
+						<CardAction>
 							<Badge>
 								<ConstructionIcon />
 								{t("admin:dashboard.home.status.underDevelopment")}
 							</Badge>
-						</CardToolbar>
+						</CardAction>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
@@ -127,12 +127,12 @@ export default function Home() {
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
 						<CardTitle>{t("admin:dashboard.paymentWidgetsPaywalls")}</CardTitle>
-						<CardToolbar>
+						<CardAction>
 							<Badge variant={"secondary"}>
 								<CalendarIcon />
 								{t("admin:dashboard.home.status.planned")}
 							</Badge>
-						</CardToolbar>
+						</CardAction>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>
@@ -148,14 +148,14 @@ export default function Home() {
 						className={"flex flex-col items-center justify-center py-8 gap-8"}
 					>
 						<CardTitle>{t("admin:dashboard.reservations")}</CardTitle>
-						<CardToolbar>
+						<CardAction>
 							<Badge
 								variant={"secondary"}
 								aria-label={t("admin:dashboard.reservations")}
 							>
 								<CalendarClockIcon />
 							</Badge>
-						</CardToolbar>
+						</CardAction>
 					</CardHeader>
 					<CardContent>
 						<p className={"text-muted-foreground text-sm"}>

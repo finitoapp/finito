@@ -154,45 +154,49 @@ export const LandingPageClient: React.FC = () => {
 								{t("landing:page.hero.subtitle")}
 							</p>
 							<div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
-								<Button asChild size="lg" className="rounded-full">
-									<Link href="/">
-										<IconDeviceMobile />
-										{t("landing:page.hero.ctaClient")}
-									</Link>
+								<Button
+									size="lg"
+									className="rounded-full"
+									render={<Link href="/" />}
+								>
+									<IconDeviceMobile />
+									{t("landing:page.hero.ctaClient")}
 								</Button>
 								<Button
-									asChild
 									size="lg"
 									variant="outline"
 									className="rounded-full"
+									render={<Link href="/admin" />}
 								>
-									<Link href="/admin">
-										<IconBuildingStore />
-										{t("landing:page.hero.ctaAdmin")}
-									</Link>
+									<IconBuildingStore />
+									{t("landing:page.hero.ctaAdmin")}
 								</Button>
 								<Button
-									asChild
 									size="lg"
 									variant="ghost"
 									className="rounded-full"
-								>
-									<a href={githubUrl} target="_blank" rel="noopener noreferrer">
-										<IconBrandGithub />
-										{t("landing:page.hero.ctaGithub")}
-									</a>
-								</Button>
+									render={
+										<a
+											href={githubUrl}
+											target="_blank"
+											rel="noopener noreferrer"
+										>
+											<IconBrandGithub />
+											{t("landing:page.hero.ctaGithub")}
+										</a>
+									}
+								></Button>
 								<Button
-									asChild
 									size="lg"
 									variant="ghost"
 									className="rounded-full"
-								>
-									<a href={xUrl} target="_blank" rel="noopener noreferrer">
-										<IconBrandX />
-										{t("landing:page.hero.ctaX")}
-									</a>
-								</Button>
+									render={
+										<a href={xUrl} target="_blank" rel="noopener noreferrer">
+											<IconBrandX />
+											{t("landing:page.hero.ctaX")}
+										</a>
+									}
+								></Button>
 							</div>
 							<div className="mt-5 flex flex-wrap items-center justify-center gap-2">
 								<span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs text-muted-foreground">
@@ -385,16 +389,20 @@ export const LandingPageClient: React.FC = () => {
 									<div className="text-sm text-muted-foreground">
 										{t("landing:page.media.githubBody")}
 									</div>
-									<Button asChild variant="ghost" className="mt-2 px-0">
-										<a
-											href={githubUrl}
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											{t("landing:page.media.githubCta")}
-											<ArrowRightIcon />
-										</a>
-									</Button>
+									<Button
+										variant="ghost"
+										className="mt-2 px-0"
+										render={
+											<a
+												href={githubUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												{t("landing:page.media.githubCta")}
+												<ArrowRightIcon />
+											</a>
+										}
+									></Button>
 								</div>
 								<div className="rounded-md border border-border/70 p-3">
 									<div className="mb-1 flex items-center gap-2 font-medium">
@@ -404,12 +412,16 @@ export const LandingPageClient: React.FC = () => {
 									<div className="text-sm text-muted-foreground">
 										{t("landing:page.media.xBody")}
 									</div>
-									<Button asChild variant="ghost" className="mt-2 px-0">
-										<a href={xUrl} target="_blank" rel="noopener noreferrer">
-											{t("landing:page.media.xCta")}
-											<ArrowRightIcon />
-										</a>
-									</Button>
+									<Button
+										variant="ghost"
+										className="mt-2 px-0"
+										render={
+											<a href={xUrl} target="_blank" rel="noopener noreferrer">
+												{t("landing:page.media.xCta")}
+												<ArrowRightIcon />
+											</a>
+										}
+									></Button>
 								</div>
 							</CardContent>
 						</Card>
@@ -418,7 +430,7 @@ export const LandingPageClient: React.FC = () => {
 								<CardTitle>{t("landing:page.faq.title")}</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<Accordion type="single" collapsible>
+								<Accordion>
 									<AccordionItem value="q1">
 										<AccordionTrigger>
 											{t("landing:page.faq.q1")}
@@ -489,11 +501,15 @@ export const LandingPageClient: React.FC = () => {
 						{t("landing:page.footer.body")}
 					</p>
 					<div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-						<Button asChild className="rounded-full">
-							<Link href="/admin">{t("landing:page.hero.ctaAdmin")}</Link>
+						<Button className="rounded-full" render={<Link href="/admin" />}>
+							{t("landing:page.hero.ctaAdmin")}
 						</Button>
-						<Button asChild variant="outline" className="rounded-full">
-							<Link href="/">{t("landing:page.hero.ctaClient")}</Link>
+						<Button
+							variant="outline"
+							className="rounded-full"
+							render={<Link href="/" />}
+						>
+							{t("landing:page.hero.ctaClient")}
 						</Button>
 					</div>
 				</div>

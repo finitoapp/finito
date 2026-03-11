@@ -137,9 +137,7 @@ const createComponents = (t: TFunction) =>
 		_search: Search,
 		_separator: () => <Separator />,
 
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("invoices:form.billing-info-form.label.company-name"),
 		}),

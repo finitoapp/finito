@@ -123,16 +123,15 @@ const Item: React.FC<{
 								disabled={true}
 								variant="outline"
 								className={"w-10"}
-								asChild={true}
+								render={
+									<motion.div
+										key={props.item.quantity}
+										initial={{ scale: 1.5, opacity: 0 }}
+										animate={{ scale: 1, opacity: 1 }}
+									/>
+								}
 							>
-								<motion.div
-									key={props.item.quantity}
-									initial={{ scale: 1.5, opacity: 0 }}
-									animate={{ scale: 1, opacity: 1 }}
-									// className="flex justify-center text-sm font-medium"
-								>
-									{props.item.quantity}
-								</motion.div>
+								{props.item.quantity}
 							</Button>
 							<Button
 								size="sm"
@@ -226,19 +225,21 @@ const TableQrCode: React.FC<{
 	return (
 		<>
 			<Dialog>
-				<DialogTrigger asChild>
-					<Button
-						size={"icon"}
-						variant={"outline"}
-						disabled={props.tableQrCode === undefined}
-						title={
-							props.tableQrCode === undefined
-								? t("pos:bill.table-not-selected")
-								: undefined
-						}
-					>
-						<QrCodeIcon />
-					</Button>
+				<DialogTrigger
+					render={
+						<Button
+							size={"icon"}
+							variant={"outline"}
+							disabled={props.tableQrCode === undefined}
+							title={
+								props.tableQrCode === undefined
+									? t("pos:bill.table-not-selected")
+									: undefined
+							}
+						/>
+					}
+				>
+					<QrCodeIcon />
 				</DialogTrigger>
 				<DialogContent>
 					<DialogHeader>
@@ -258,12 +259,12 @@ const TableQrCode: React.FC<{
 				size={"icon"}
 				variant={"outline"}
 				disabled={props.tableQrCode === undefined}
-				asChild={true}
-			>
-				<a href={frontendUrl} target={"_blank"}>
-					<FullscreenIcon />
-				</a>
-			</Button>
+				render={
+					<a href={frontendUrl} target={"_blank"}>
+						<FullscreenIcon />
+					</a>
+				}
+			></Button>
 		</>
 	);
 };

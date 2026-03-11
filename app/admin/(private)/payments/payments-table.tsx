@@ -21,12 +21,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -179,20 +178,18 @@ export function PaymentsTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("payments:table.paymentMessages")}</CardTitle>
-					<CardDescription>
-						{t("payments:table.description.decrypted-payment-data")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("payments:table.paymentMessages")}</CardTitle>
+				<CardDescription>
+					{t("payments:table.description.decrypted-payment-data")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/payments/new"}>
 						<Button>
 							<PlusIcon />
 							{t("payments:table.actions.new-payment")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

@@ -175,12 +175,7 @@ const CustomerEditForm = (
 			// preventing portal in backdrop issue
 			modal={false}
 		>
-			<DialogContent
-				style={{
-					top: "env(safe-area-inset-top)",
-					bottom: "env(safe-area-inset-bottom)",
-				}}
-			>
+			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Edit billing information</DialogTitle>
 				</DialogHeader>
@@ -209,12 +204,7 @@ const SupplierEditForm = (
 			// preventing portal in backdrop issue
 			modal={false}
 		>
-			<DialogContent
-				style={{
-					top: "env(safe-area-inset-top)",
-					bottom: "env(safe-area-inset-bottom)",
-				}}
-			>
+			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Edit billing information</DialogTitle>
 				</DialogHeader>
@@ -365,9 +355,7 @@ const SupplierBillingInfo: AutoFormComponent<
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(invoiceSchema, ({ builder }) => {
 		return {
-			...builder.magicInput("id").text({
-				type: "hidden",
-			}),
+			...builder.magicInput("id").hidden(undefined),
 			...builder.magicInput("invoiceId").text({
 				type: "hidden",
 			}),
@@ -478,9 +466,7 @@ const createComponents = (t: TFunction) =>
 							],
 						},
 						({ builder }) => ({
-							...builder.magicInput("id").text({
-								type: "hidden",
-							}),
+							...builder.magicInput("id").hidden(undefined),
 							...builder.magicInput("label").text({
 								label: t("invoices:form.invoice-form.label.label"),
 							}),

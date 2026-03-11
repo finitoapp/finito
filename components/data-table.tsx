@@ -212,20 +212,22 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 							if (filterColumn.options) {
 								return (
 									<DropdownMenu key={filterColumn.id}>
-										<DropdownMenuTrigger asChild>
-											<Button
-												variant="outline"
-												size="sm"
-												className="h-9 bg-transparent"
-											>
-												{filterColumn.title}
-												{column.getFilterValue() ? (
-													<span className="ml-2 rounded-sm bg-primary px-1 text-xs text-primary-foreground">
-														1
-													</span>
-												) : null}
-												<ChevronDown className="ml-2 h-4 w-4" />
-											</Button>
+										<DropdownMenuTrigger
+											render={
+												<Button
+													variant="outline"
+													size="sm"
+													className="h-9 bg-transparent"
+												/>
+											}
+										>
+											{filterColumn.title}
+											{column.getFilterValue() ? (
+												<span className="ml-2 rounded-sm bg-primary px-1 text-xs text-primary-foreground">
+													1
+												</span>
+											) : null}
+											<ChevronDown className="ml-2 h-4 w-4" />
 										</DropdownMenuTrigger>
 										<DropdownMenuContent align="start" className="w-50">
 											{filterColumn.options.map((option) => {
@@ -275,11 +277,13 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 						)}
 					</div>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" className="ml-auto bg-transparent">
-								{t("components:dataTable.columns")}{" "}
-								<ChevronDown className="ml-2 h-4 w-4" />
-							</Button>
+						<DropdownMenuTrigger
+							render={
+								<Button variant="outline" className="ml-auto bg-transparent" />
+							}
+						>
+							{t("components:dataTable.columns")}{" "}
+							<ChevronDown className="ml-2 h-4 w-4" />
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							{table
@@ -348,10 +352,12 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 								>
 									{row.getVisibleCells().map((cell) => (
 										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
+											<div className={"p-2"}>
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
+											</div>
 										</TableCell>
 									))}
 								</TableRow>
@@ -362,7 +368,9 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									{t("components:dataTable.noResults")}
+									<div className={"p-2"}>
+										{t("components:dataTable.noResults")}
+									</div>
 								</TableCell>
 							</TableRow>
 						)}

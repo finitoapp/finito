@@ -33,15 +33,17 @@ export function SelectButton<TValue extends string = string>({
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant={variant}
-                    size={size}
-                    className={cn("justify-between font-normal", !selectedOption && "text-muted-foreground", className)}
-                >
-                    <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+            <DropdownMenuTrigger
+                render={
+                    <Button
+                        variant={variant}
+                        size={size}
+                        className={cn("justify-between font-normal", !selectedOption && "text-muted-foreground", className)}
+                    />
+                }
+            >
+                <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full min-w-[var(--radix-dropdown-menu-trigger-width)]">
                 {options.map((option) => (

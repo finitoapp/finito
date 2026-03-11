@@ -21,12 +21,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -192,20 +191,18 @@ export function ItemsTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("items:table.items")}</CardTitle>
-					<CardDescription>
-						{t("items:table.listOfYourSalesItems")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("items:table.items")}</CardTitle>
+				<CardDescription>
+					{t("items:table.listOfYourSalesItems")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/items/new"}>
 						<Button>
 							<PlusIcon />
 							{t("items:table.actions.new-item")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

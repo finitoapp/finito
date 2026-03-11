@@ -32,17 +32,17 @@ export function NavMain({
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton
-								asChild
+								render={
+									<Link href={item.url} onClick={() => setOpenMobile(false)} />
+								}
 								isActive={
 									item.url === pathname ||
 									(item.url !== "/admin" && pathname.startsWith(item.url))
 								}
 								tooltip={item.title}
 							>
-								<Link href={item.url} onClick={() => setOpenMobile(false)}>
-									{item.icon && <item.icon />}
-									{item.title}
-								</Link>
+								{item.icon && <item.icon />}
+								{item.title}
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}

@@ -4,7 +4,7 @@ import {
 	type Card,
 	CardContent,
 	CardHeader,
-	CardHeading,
+	CardTitle,
 } from "@/components/ui/card";
 
 export const StaticCard: React.FC<{
@@ -16,7 +16,7 @@ export const StaticCard: React.FC<{
 	return (
 		<ResponsiveCard className={params.className}>
 			<CardHeader className={"border-0 pb-0 pt-3"}>
-				<CardHeading>{params.title}</CardHeading>
+				<CardTitle>{params.title}</CardTitle>
 			</CardHeader>
 			<CardContent className="pt-2 pb-6 flex flex-col gap-2">
 				{params.content && (

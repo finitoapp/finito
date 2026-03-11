@@ -38,14 +38,14 @@ export function NavSecondary({
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton
-								asChild
+								render={
+									<Link href={item.url} onClick={() => setOpenMobile(false)} />
+								}
 								isActive={pathname.startsWith(item.url)}
 								tooltip={item.title}
 							>
-								<Link href={item.url} onClick={() => setOpenMobile(false)}>
-									<item.icon />
-									{item.title}
-								</Link>
+								<item.icon />
+								{item.title}
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}

@@ -2,7 +2,9 @@ import type { ComponentProps, FC } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/shared/ui/cn";
 
-export const ResponsiveCard: FC<ComponentProps<typeof Card>> = (props) => {
+export const ResponsiveCard: FC<
+	ComponentProps<typeof Card> & { variant?: "transparent" }
+> = (props) => {
 	return (
 		<Card
 			{...props}

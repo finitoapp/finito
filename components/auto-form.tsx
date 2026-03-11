@@ -31,6 +31,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import {
 	type Control,
+	Controller,
 	useFieldArray,
 	useFormContext,
 	useWatch,
@@ -66,14 +67,11 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-	Form,
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
 import {
@@ -148,40 +146,38 @@ export const AutoForm = <
 	const { t } = useTranslation();
 
 	return (
-		<Form {...props.form.form}>
-			<form
-				onSubmit={(e) => {
-					e.stopPropagation(); // Prevent bubbling to parent form
-					props.form.handleSubmitWithAction(e);
-				}}
-				className={"gap-4 flex flex-col space-y-4"}
-			>
-				<AutoFormInputLayer
-					components={props.components}
-					control={props.form.form.control}
-				/>
+		<form
+			onSubmit={(e) => {
+				e.stopPropagation(); // Prevent bubbling to parent form
+				props.form.handleSubmitWithAction(e);
+			}}
+			className={"gap-4 flex flex-col space-y-4"}
+		>
+			<AutoFormInputLayer
+				components={props.components}
+				control={props.form.form.control}
+			/>
 
-				<div className="flex justify-end gap-4">
-					<Button
-						type="submit"
-						className={props.saveClassName}
-						disabled={
-							props.form.form.formState.isSubmitting ||
-							props.form.form.formState.disabled
-						}
-					>
-						{props.form.form.formState.isSubmitting && (
-							<Loader2 className="animate-spin" />
-						)}
-						{props.saveLabel ?? (
-							<>
-								<Save /> {t("components:autoForm.actions.save")}
-							</>
-						)}
-					</Button>
-				</div>
-			</form>
-		</Form>
+			<div className="flex justify-end gap-4">
+				<Button
+					type="submit"
+					className={props.saveClassName}
+					disabled={
+						props.form.form.formState.isSubmitting ||
+						props.form.form.formState.disabled
+					}
+				>
+					{props.form.form.formState.isSubmitting && (
+						<Loader2 className="animate-spin" />
+					)}
+					{props.saveLabel ?? (
+						<>
+							<Save /> {t("components:autoForm.actions.save")}
+						</>
+					)}
+				</Button>
+			</div>
+		</form>
 	);
 };
 
@@ -226,6 +222,7 @@ const createComponent = <
 	}) as CreateComponentResult<TName, TComponent>;
 
 export const AutoFormInput = {
+	hidden: (): AutoFormComponent<string> => () => null,
 	text:
 		(
 			params: InputParams & {
@@ -234,48 +231,46 @@ export const AutoFormInput = {
 			},
 		): AutoFormComponent<string> =>
 		(props) => (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => (
-					<FormItem>
+				render={({ field, fieldState }) => (
+					<Field data-invalid={fieldState.invalid}>
 						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 						)}
 						<div className="flex gap-2">
-							<FormControl>
-								<InputGroup className={"w-full"}>
-									{params.startAddon && (
-										<InputGroupAddon>{params.startAddon}</InputGroupAddon>
-									)}
-									{params.secretContent ? (
-										<PasswordInput
-											{...field}
-											disabled={params.disabled}
-											placeholder={params.placeholder}
-										/>
-									) : (
-										<Input
-											{...field}
-											disabled={params.disabled}
-											type={params.type}
-											placeholder={params.placeholder}
-										/>
-									)}
-									{params.endAddon && (
-										<InputGroupAddon>{params.endAddon}</InputGroupAddon>
-									)}
-								</InputGroup>
-							</FormControl>
+							<InputGroup className={"w-full"}>
+								{params.startAddon && (
+									<InputGroupAddon>{params.startAddon}</InputGroupAddon>
+								)}
+								{params.secretContent ? (
+									<PasswordInput
+										{...field}
+										disabled={params.disabled}
+										placeholder={params.placeholder}
+									/>
+								) : (
+									<Input
+										{...field}
+										disabled={params.disabled}
+										type={params.type}
+										placeholder={params.placeholder}
+									/>
+								)}
+								{params.endAddon && (
+									<InputGroupAddon>{params.endAddon}</InputGroupAddon>
+								)}
+							</InputGroup>
 							{params.copyToClipboard && (
 								<CopyButton type={"button"} text={field.value} />
 							)}
 						</div>
 						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
+							<FieldDescription>{params.description}</FieldDescription>
 						)}
-						<FormMessage />
-					</FormItem>
+						{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+					</Field>
 				)}
 			/>
 		),
@@ -359,65 +354,65 @@ export const AutoFormInput = {
 				: () => null;
 
 			return (
-				<FormField
+				<Controller
 					control={props.control}
 					name={props.name}
-					render={({ field }) => {
+					render={({ field, fieldState }) => {
 						const currencyValue = useCurrency();
 						useComputedAmount({
 							targetCurrency: currencyValue,
 							onChange: field.onChange,
 						});
 						return (
-							<FormItem>
+							<Field data-invalid={fieldState.invalid}>
 								{params.label && (
-									<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+									<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 								)}
 								<div className="flex gap-2">
-									<FormControl>
-										<InputGroup className={"w-full"}>
-											<Input
-												{...field}
-												disabled={params.disabled}
-												type={params.type}
-												placeholder={params.placeholder}
-												value={field.value}
-												onChange={(e) => {
-													if (currencyValue === Currency.BTC) {
-														const value = NumberStringSchema.safeParse(
-															e.target.value,
-														);
+									<InputGroup className={"w-full"}>
+										<Input
+											{...field}
+											disabled={params.disabled}
+											type={params.type}
+											placeholder={params.placeholder}
+											value={field.value}
+											onChange={(e) => {
+												if (currencyValue === Currency.BTC) {
+													const value = NumberStringSchema.safeParse(
+														e.target.value,
+													);
 
-														return field.onChange({
-															...e,
-															target: {
-																...e.target,
-																value: value.success
-																	? shiftNumericString(value.data, -8)
-																	: e.target.value,
-															},
-														});
-													}
+													return field.onChange({
+														...e,
+														target: {
+															...e.target,
+															value: value.success
+																? shiftNumericString(value.data, -8)
+																: e.target.value,
+														},
+													});
+												}
 
-													return field.onChange(e);
-												}}
-											/>
-											{currencyValue === Currency.BTC && (
-												<InputGroupAddon>
-													{t("components:autoForm.units.sats")}
-												</InputGroupAddon>
-											)}
-										</InputGroup>
-									</FormControl>
+												return field.onChange(e);
+											}}
+										/>
+										{currencyValue === Currency.BTC && (
+											<InputGroupAddon>
+												{t("components:autoForm.units.sats")}
+											</InputGroupAddon>
+										)}
+									</InputGroup>
 									{params.copyToClipboard && (
 										<CopyButton type={"button"} text={field.value} />
 									)}
 								</div>
 								{params.description && (
-									<FormDescription>{params.description}</FormDescription>
+									<FieldDescription>{params.description}</FieldDescription>
 								)}
-								<FormMessage />
-							</FormItem>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
 						);
 					}}
 				/>
@@ -429,17 +424,17 @@ export const AutoFormInput = {
 		(props) => {
 			const { t } = useTranslation();
 			return (
-				<FormField
+				<Controller
 					control={props.control}
 					name={props.name}
-					render={({ field }) => (
-						<FormItem>
+					render={({ field, fieldState }) => (
+						<Field data-invalid={fieldState.invalid}>
 							{params.label && (
-								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+								<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 							)}
-							<FormControl>
-								<Popover>
-									<PopoverTrigger asChild>
+							<Popover>
+								<PopoverTrigger
+									render={
 										<div className="relative">
 											<Button
 												type="button"
@@ -470,22 +465,22 @@ export const AutoFormInput = {
 												</Button>
 											)}
 										</div>
-									</PopoverTrigger>
-									<PopoverContent className="w-auto p-0" align="start">
-										<Calendar
-											mode="single"
-											selected={field.value}
-											onSelect={field.onChange}
-											autoFocus
-										/>
-									</PopoverContent>
-								</Popover>
-							</FormControl>
+									}
+								></PopoverTrigger>
+								<PopoverContent className="w-auto p-0" align="start">
+									<Calendar
+										mode="single"
+										selected={field.value}
+										onSelect={field.onChange}
+										autoFocus
+									/>
+								</PopoverContent>
+							</Popover>
 							{params.description && (
-								<FormDescription>{params.description}</FormDescription>
+								<FieldDescription>{params.description}</FieldDescription>
 							)}
-							<FormMessage />
-						</FormItem>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
 					)}
 				/>
 			);
@@ -493,54 +488,50 @@ export const AutoFormInput = {
 	checkbox:
 		(params: CheckboxParams): AutoFormComponent<boolean> =>
 		(props) => (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => (
-					<FormItem>
+				render={({ field, fieldState }) => (
+					<Field data-invalid={fieldState.invalid}>
 						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 						)}
 						<div className="flex gap-2">
-							<FormControl>
-								<Checkbox
-									{...field}
-									checked={field.value}
-									onChange={undefined}
-									onCheckedChange={(value) => field.onChange(value === true)}
-									disabled={params.disabled}
-								/>
-							</FormControl>
+							<Checkbox
+								{...field}
+								checked={field.value}
+								onCheckedChange={(value) => field.onChange(value === true)}
+								inputRef={field.ref}
+								disabled={params.disabled}
+							/>
 						</div>
 						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
+							<FieldDescription>{params.description}</FieldDescription>
 						)}
-						<FormMessage />
-					</FormItem>
+						{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+					</Field>
 				)}
 			/>
 		),
 	nullableSwitch:
 		(params: CheckboxParams): AutoFormComponent<boolean | null> =>
 		(props) => (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => (
-					<FormItem>
+				render={({ field, fieldState }) => (
+					<Field data-invalid={fieldState.invalid}>
 						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 						)}
 						<div className="flex gap-2">
-							<FormControl>
-								<NullableSwitch {...field} />
-							</FormControl>
+							<NullableSwitch {...field} />
 						</div>
 						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
+							<FieldDescription>{params.description}</FieldDescription>
 						)}
-						<FormMessage />
-					</FormItem>
+						{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+					</Field>
 				)}
 			/>
 		),
@@ -551,41 +542,39 @@ export const AutoFormInput = {
 			},
 		): AutoFormComponent<string> =>
 		(props) => (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => (
-					<FormItem>
+				render={({ field, fieldState }) => (
+					<Field data-invalid={fieldState.invalid}>
 						{params.label && (
-							<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+							<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 						)}
 						<div className="flex gap-2">
-							<FormControl>
-								{params.secretContent ? (
-									<PasswordTextarea
-										rows={params.rows}
-										{...field}
-										placeholder={params.placeholder}
-										disabled={params.disabled}
-									/>
-								) : (
-									<Textarea
-										rows={params.rows}
-										{...field}
-										placeholder={params.placeholder}
-										disabled={params.disabled}
-									/>
-								)}
-							</FormControl>
+							{params.secretContent ? (
+								<PasswordTextarea
+									rows={params.rows}
+									{...field}
+									placeholder={params.placeholder}
+									disabled={params.disabled}
+								/>
+							) : (
+								<Textarea
+									rows={params.rows}
+									{...field}
+									placeholder={params.placeholder}
+									disabled={params.disabled}
+								/>
+							)}
 							{params.copyToClipboard && (
 								<CopyButton type={"button"} text={field.value} />
 							)}
 						</div>
 						{params.description && (
-							<FormDescription>{params.description}</FormDescription>
+							<FieldDescription>{params.description}</FieldDescription>
 						)}
-						<FormMessage />
-					</FormItem>
+						{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+					</Field>
 				)}
 			/>
 		),
@@ -614,23 +603,23 @@ export const AutoFormInput = {
 			}, []);
 
 			return (
-				<FormField
+				<Controller
 					control={props.control}
 					name={props.name}
-					render={({ field }) => {
+					render={({ field, fieldState }) => {
 						return (
-							<FormItem>
+							<Field data-invalid={fieldState.invalid}>
 								{params.label && (
-									<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+									<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 								)}
 
 								{params.variant === "toggle" ? (
 									<ToggleGroup
-										type="single"
 										variant="outline"
-										className={"w-min"}
+										className={"flex flex-wrap"}
 										value={field.value ?? ""}
-										onValueChange={(value) => {
+										onValueChange={(values) => {
+											const value = values[0];
 											if (!params.allowEmpty && value === "") {
 												return;
 											}
@@ -652,11 +641,9 @@ export const AutoFormInput = {
 											field.onChange(value === "_" ? null : value)
 										}
 									>
-										<FormControl>
-											<SelectTrigger>
-												<SelectValue placeholder={params.emptyTitle} />
-											</SelectTrigger>
-										</FormControl>
+										<SelectTrigger>
+											<SelectValue placeholder={params.emptyTitle} />
+										</SelectTrigger>
 										<SelectContent>
 											{params.allowEmpty && (
 												<SelectItem value={"_"}>
@@ -672,10 +659,12 @@ export const AutoFormInput = {
 									</Select>
 								)}
 								{params.description && (
-									<FormDescription>{params.description}</FormDescription>
+									<FieldDescription>{params.description}</FieldDescription>
 								)}
-								<FormMessage />
-							</FormItem>
+								{fieldState.invalid && (
+									<FieldError errors={[fieldState.error]} />
+								)}
+							</Field>
 						);
 					}}
 				/>
@@ -966,7 +955,7 @@ const createBuilder = <
 				})();
 
 				return (
-					<Accordion type="single" collapsible>
+					<Accordion>
 						<AccordionItem value="item" className={"group"}>
 							<AccordionTrigger>
 								<span className="group-data-[state=closed]:hidden">

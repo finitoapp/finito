@@ -174,11 +174,17 @@ export default function Home() {
 							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
-							<Button variant={"outline"} className={"w-full"} asChild>
-								<Link href={`/admin/tables/edit?id=${encodeURIComponent(id)}`}>
-									<EditIcon />
-									Edit
-								</Link>
+							<Button
+								variant={"outline"}
+								className={"w-full"}
+								render={
+									<Link
+										href={`/admin/tables/edit?id=${encodeURIComponent(id)}`}
+									/>
+								}
+							>
+								<EditIcon />
+								Edit
 							</Button>
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
@@ -200,12 +206,14 @@ export default function Home() {
 											/>
 										</div>
 										<Textarea readOnly={true} value={frontendUrl} />
-										<Button asChild>
-											<a href={frontendUrl} target={"_blank"}>
-												<ExternalLink />
-												Open
-											</a>
-										</Button>
+										<Button
+											render={
+												<a href={frontendUrl} target={"_blank"}>
+													<ExternalLink />
+													Open
+												</a>
+											}
+										></Button>
 									</div>
 								)}
 							</CardContent>

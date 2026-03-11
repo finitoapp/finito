@@ -158,9 +158,7 @@ export const ReservationForm: React.FC<{
 			items: tableItems,
 		});
 		return createAutoFormLayout(reservationFormSchema, ({ builder }) => ({
-			...builder.magicInput("id").text({
-				type: "hidden",
-			}),
+			...builder.magicInput("id").hidden(undefined),
 			...builder.magicInput("_tag").select({
 				label: t("reservations:form.fields._tag"),
 				variant: "toggle",
