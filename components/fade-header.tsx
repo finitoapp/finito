@@ -34,7 +34,7 @@ export const FadeHeader: FC<{
 	const startAddon =
 		props.startAddon === undefined ? (
 			<Button type={"button"} variant={"ghost"} onClick={() => router.back()}>
-				<ArrowLeftIcon className={"text-primary"} />
+				<ArrowLeftIcon className={"text-primary"} strokeWidth={3} />
 			</Button>
 		) : (
 			props.startAddon
@@ -49,7 +49,7 @@ export const FadeHeader: FC<{
 			<div className="relative flex flex-row w-full justify-center">
 				<div className="max-w-xl px-4 py-5 flex flex-1 flex-row justify-between gap-4">
 					<div className={"w-10"}>{startAddon}</div>
-					<h2 className="flex-1 shrink text-2xl font-bold text-foreground m-auto">
+					<h2 className="flex-1 shrink text-xl font-bold text-foreground m-auto">
 						{props.title}
 					</h2>
 					<div className={"w-10"}>{props.endAddon}</div>

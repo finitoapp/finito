@@ -6,6 +6,7 @@ import {
 	createRandomBytes,
 	sqliteTrue,
 } from "@evolu/common";
+import { useMutation } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
 import { BitcoinIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,7 @@ import {
 	SelectItem,
 	SelectTrigger,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useNostr } from "@/hooks/use-nostr";
 import { createQuery } from "@/lib/evolu";
@@ -265,6 +267,41 @@ export default function Page() {
 		})();
 	}, [debouncedFiatAmount, debouncedSatsAmount, fiatCurrency, sourceField]);
 
+	const { mutateAsync: createBtcPayment, isPending: isCreatePaymentPending } =
+		useMutation({
+			mutationFn: async () => {
+				if (selectedAccountId === null) {
+					return;
+				}
+
+				const totalAmountResult = StringToNumberSchema.pipe(
+					NonNegativeIntegerSchema,
+				).safeDecode(satsAmount);
+				if (!totalAmountResult.success) {
+					console.error("Invalid total amount:", totalAmountResult.error);
+					return;
+				}
+
+				const id = await createPayment({
+					evolu,
+					ndk,
+					totalAmount: totalAmountResult.data,
+					tipAmount: null,
+					payment: {
+						id: createId({
+							randomBytes: createRandomBytes(),
+						}),
+						currency: Currency.BTC,
+					},
+					paymentLnSpark: {
+						accountId: selectedAccountId,
+						amount: totalAmountResult.data,
+					},
+				});
+				router.push(`/history/detail?id=${encodeURIComponent(id)}`);
+			},
+		});
+
 	return (
 		<div className="space-y-8 w-full">
 			<div className={"h-10"} />
@@ -313,10 +350,11 @@ export default function Page() {
 					<FieldLabel>{t("client:receiveAmountForm.amountLabel")}</FieldLabel>
 					<div className="overflow-hidden rounded-xl border border-input bg-background shadow-xs">
 						<div className={cn("px-4 py-3 transition-colors", "bg-muted/40")}>
-							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent">
+							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 								<InputGroupInput
 									autoFocus
 									inputMode="decimal"
+									className={"focus:outline-none"}
 									value={fiatAmount}
 									onFocus={() => setSourceField("fiat")}
 									onChange={(event) => {
@@ -342,7 +380,7 @@ export default function Page() {
 						<div className="mx-4 border-t border-border/70" />
 
 						<div className={cn("px-4 py-3 transition-colors", "bg-muted/40")}>
-							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent">
+							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 								<InputGroupInput
 									inputMode="numeric"
 									value={satsAmount}
@@ -383,42 +421,14 @@ export default function Page() {
 				<Button
 					size={"lg"}
 					disabled={
+						isCreatePaymentPending ||
 						selectedAccountId === null ||
 						satsAmount === "" ||
 						satsAmount === "0"
 					}
-					onClick={async () => {
-						if (selectedAccountId === null) {
-							return;
-						}
-
-						const totalAmountResult = StringToNumberSchema.pipe(
-							NonNegativeIntegerSchema,
-						).safeDecode(satsAmount);
-						if (!totalAmountResult.success) {
-							console.error("Invalid total amount:", totalAmountResult.error);
-							return;
-						}
-
-						const id = await createPayment({
-							evolu,
-							ndk,
-							totalAmount: totalAmountResult.data,
-							tipAmount: null,
-							payment: {
-								id: createId({
-									randomBytes: createRandomBytes(),
-								}),
-								currency: Currency.BTC,
-							},
-							paymentLnSpark: {
-								accountId: selectedAccountId,
-								amount: totalAmountResult.data,
-							},
-						});
-						router.push(`/history/detail?id=${encodeURIComponent(id)}`);
-					}}
+					onClick={() => createBtcPayment()}
 				>
+					{isCreatePaymentPending && <Spinner data-icon="inline-start" />}
 					<BitcoinIcon className={"size-5"} />{" "}
 					{t("payments:form.payment-form.save-label.create-invoice")}
 				</Button>
