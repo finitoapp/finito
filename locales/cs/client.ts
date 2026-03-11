@@ -25,6 +25,30 @@ const locale = {
     "receivePayment": "Přijmout platbu",
     "useExample": "Použít ukázku"
   },
+  "receiveAmountForm": {
+    "title": "Zadat částku k přijetí",
+    "description": "Vyberte, jestli zadáváte fiat částku nebo sats. Druhé pole se automaticky dopočítá podle aktuálního kurzu.",
+    "amountLabel": "Částka",
+    "account": {
+      "placeholder": "Vyberte účet",
+      "empty": "Není dostupný žádný účet"
+    },
+    "source": {
+      "label": "Zdrojový vstup",
+      "fiat": "Zadávám fiat",
+      "sats": "Zadávám sats",
+      "description": "Kliknutí do pole přepne aktivní vstup také automaticky."
+    },
+    "fields": {
+      "fiat": "Fiat částka",
+      "sats": "Částka v sats"
+    },
+    "status": {
+      "ready": "Přepočet probíhá průběžně po zadání částky.",
+      "loading": "Počítám přepočet podle aktuálního kurzu.",
+      "unavailable": "Kurz teď není dostupný."
+    }
+  },
   "transactionHistory": {
     "title": "Historie transakcí",
     "unknownMerchant": "Neznámý obchodník",

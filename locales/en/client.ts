@@ -25,6 +25,30 @@ const locale = {
     "receivePayment": "Receive payment",
     "useExample": "Use example"
   },
+  "receiveAmountForm": {
+    "title": "Enter amount to receive",
+    "description": "Choose whether you enter a fiat amount or sats. The other field is recalculated automatically using the current rate.",
+    "amountLabel": "Amount",
+    "account": {
+      "placeholder": "Select account",
+      "empty": "No account available"
+    },
+    "source": {
+      "label": "Source input",
+      "fiat": "Entering fiat",
+      "sats": "Entering sats",
+      "description": "Focusing an input switches the active source automatically as well."
+    },
+    "fields": {
+      "fiat": "Fiat amount",
+      "sats": "Amount in sats"
+    },
+    "status": {
+      "ready": "The converted value updates continuously as you type.",
+      "loading": "Updating the conversion using the current rate.",
+      "unavailable": "The exchange rate is unavailable right now."
+    }
+  },
   "transactionHistory": {
     "title": "Transaction history",
     "unknownMerchant": "Unknown merchant",
