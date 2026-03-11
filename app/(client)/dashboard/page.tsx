@@ -84,7 +84,7 @@ export default function Page() {
 
 			<div className="fixed bottom-8 left-0 right-0 flex justify-center">
 				<div className="bg-card border-t rounded-full shadow-2xl transition-all duration-400 flex justify-around gap-2 relative">
-					<Link href={"/receive"}>
+					<Link href={"/receive2"}>
 						<Button
 							type={"button"}
 							variant={"default"}
