@@ -46,7 +46,7 @@ const WalletStatus = () => {
 			endAddon={
 				<Link href={"/settings"}>
 					<Button type={"button"} variant={"ghost"}>
-						<MenuIcon className={"text-primary"} />
+						<MenuIcon className={"text-primary"} strokeWidth={3} />
 					</Button>
 				</Link>
 			}
@@ -92,7 +92,10 @@ export default function Page() {
 								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-l-full"
 							}
 						>
-							<ArrowDownIcon className={"size-5 text-primary"} />
+							<ArrowDownIcon
+								className={"size-5 text-primary"}
+								strokeWidth={3}
+							/>
 							{t("client:home.actions.receive")}
 						</Button>
 					</Link>
@@ -115,7 +118,7 @@ export default function Page() {
 							"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full"
 						}
 					>
-						<ArrowUpIcon className={"size-5 text-primary"} />
+						<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />
 						{t("client:home.actions.send")}
 					</Button>
 				</div>
