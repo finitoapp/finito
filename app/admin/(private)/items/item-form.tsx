@@ -78,9 +78,7 @@ const createComponents = (t: TFunction) => {
 	});
 
 	return createAutoFormLayout(itemSchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("label").text({
 			label: t("items:form.item-form.label.label"),
 		}),

@@ -148,15 +148,19 @@ export default function Home() {
 							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
 						<CardContent className={"space-y-2"}>
-							<Button variant={"outline"} className={"w-full"} asChild>
-								<Link
-									href={
-										`/admin/categories/edit?id=${encodeURIComponent(id)}` as never
-									}
-								>
-									<EditIcon />
-									Edit
-								</Link>
+							<Button
+								variant={"outline"}
+								className={"w-full"}
+								render={
+									<Link
+										href={
+											`/admin/categories/edit?id=${encodeURIComponent(id)}` as never
+										}
+									/>
+								}
+							>
+								<EditIcon />
+								Edit
 							</Button>
 							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />

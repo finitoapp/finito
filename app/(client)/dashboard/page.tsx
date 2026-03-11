@@ -83,31 +83,37 @@ export default function Page() {
 			<TransactionHistory />
 
 			<div className="fixed bottom-8 left-0 right-0 flex justify-center">
-				<div className="bg-background border-t rounded-full shadow-2xl transition-all duration-400 flex justify-around gap-2 relative">
+				<div className="bg-card border-t rounded-full shadow-2xl transition-all duration-400 flex justify-around gap-2 relative">
 					<Link href={"/receive"}>
 						<Button
 							type={"button"}
-							variant={"outline"}
-							className={"h-14 w-36 px-8 text-foreground"}
+							variant={"default"}
+							className={
+								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-l-full"
+							}
 						>
 							<ArrowDownIcon className={"size-5 text-primary"} />
 							{t("client:home.actions.receive")}
 						</Button>
 					</Link>
-					<Link href={"/scan"}>
-						<Button
-							type={"button"}
-							variant={"outline"}
-							className={`size-20 -m-3 bg-background border rounded-full`}
-						>
-							<ScanQrCodeIcon className={"size-8 text-primary"} />
-						</Button>
-					</Link>
+					<div className={"size-20 -my-3 -mx-8 bg-card border-t rounded-full"}>
+						<Link href={"/scan"}>
+							<Button
+								type={"button"}
+								variant={"default"}
+								className={`size-20 bg-transparent rounded-full`}
+							>
+								<ScanQrCodeIcon className={"size-8 text-primary"} />
+							</Button>
+						</Link>
+					</div>
 					<Button
 						disabled={true}
 						type={"button"}
-						variant={"outline"}
-						className={"h-14 w-36 px-8 text-foreground"}
+						variant={"secondary"}
+						className={
+							"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full"
+						}
 					>
 						<ArrowUpIcon className={"size-5 text-primary"} />
 						{t("client:home.actions.send")}

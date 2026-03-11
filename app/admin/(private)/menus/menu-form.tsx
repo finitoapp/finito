@@ -61,14 +61,14 @@ type MenuItemState = {
 type MenuCategoryState = {
 	id: string;
 	name: string;
-	selectedItemId: string;
+	selectedItemId: string | null;
 	items: MenuItemState[];
 };
 
 type MenuFormState = {
 	id?: string;
 	name: string;
-	status: string;
+	status: string | null;
 	validFrom: string;
 	validTo: string;
 	publishedAt: string;
@@ -237,7 +237,7 @@ export const MenuForm = (params: {
 				{
 					id: createNewId() as string,
 					name: "",
-					selectedItemId: EmptySelectValue,
+					selectedItemId: null,
 					items: [],
 				},
 			],
@@ -257,7 +257,7 @@ export const MenuForm = (params: {
 		const category = state.categories.find((it) => it.id === categoryId);
 		if (!category) return;
 		if (
-			category.selectedItemId === EmptySelectValue ||
+			category.selectedItemId === null ||
 			category.selectedItemId.length === 0
 		) {
 			return;
@@ -301,7 +301,7 @@ export const MenuForm = (params: {
 
 			return {
 				...current,
-				selectedItemId: EmptySelectValue,
+				selectedItemId: null,
 				items: nextItems,
 			};
 		});
@@ -629,7 +629,7 @@ export const MenuForm = (params: {
 												/>
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value={EmptySelectValue}>
+												<SelectItem value={null}>
 													{t("menus:form.placeholder.selectItem")}
 												</SelectItem>
 												{itemCatalog.map((item) => (

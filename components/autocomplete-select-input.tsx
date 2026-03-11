@@ -1,6 +1,7 @@
 import { LoaderCircleIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { Controller } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import type { JsonValue } from "type-fest";
 import type { AutoFormComponent } from "@/components/auto-form";
@@ -14,7 +15,6 @@ import {
 	AutocompleteList,
 	AutocompleteStatus,
 } from "@/components/ui/base-autocomplete";
-import { FormField } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 
 export const createAutocompleteSelectInput =
@@ -31,7 +31,7 @@ export const createAutocompleteSelectInput =
 	(props) => {
 		const { t } = useTranslation();
 		return (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
 				render={({ field }) => {

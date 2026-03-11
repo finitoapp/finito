@@ -16,12 +16,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -143,20 +142,18 @@ export function CategoriesTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("categories:table.categories")}</CardTitle>
-					<CardDescription>
-						{t("categories:table.listOfProductCategories")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("categories:table.categories")}</CardTitle>
+				<CardDescription>
+					{t("categories:table.listOfProductCategories")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/categories/new" as never}>
 						<Button>
 							<PlusIcon />
 							{t("categories:table.actions.new-category")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

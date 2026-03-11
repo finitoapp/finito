@@ -53,10 +53,8 @@ export default function Page() {
 
 	const emptyAction = (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button variant="outline" size={"icon"}>
-					<ChevronDownIcon />
-				</Button>
+			<DropdownMenuTrigger render={<Button variant="outline" size={"icon"} />}>
+				<ChevronDownIcon />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="w-64">
 				<DropdownMenuGroup>
@@ -132,10 +130,10 @@ export default function Page() {
 						),
 						action: (
 							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button variant="outline" size={"icon"}>
-										<ChevronDownIcon />
-									</Button>
+								<DropdownMenuTrigger
+									render={<Button variant="outline" size={"icon"} />}
+								>
+									<ChevronDownIcon />
 								</DropdownMenuTrigger>
 								<DropdownMenuContent className="w-64">
 									<DropdownMenuGroup>

@@ -863,13 +863,12 @@ export default function Home() {
 
 					<CardHeader>
 						<CardTitle>{t("admin:dashboard.nostrUnpublishedEvents")}</CardTitle>
-
-						<CardContent>
-							<pre className={"text-xs"}>
-								{JSON.stringify(unpublishedEvents, null, 2)}
-							</pre>
-						</CardContent>
 					</CardHeader>
+					<CardContent>
+						<pre className={"text-xs"}>
+							{JSON.stringify(unpublishedEvents, null, 2)}
+						</pre>
+					</CardContent>
 				</ResponsiveCard>
 			)}
 		</div>

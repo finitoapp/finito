@@ -32,9 +32,7 @@ const createCategoryDefaultValues = () =>
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(categorySchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("categories:form.category-form.label.name"),
 		}),

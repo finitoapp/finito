@@ -35,7 +35,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" className={"h-dvh"}>
+		<html lang="en" className={"h-dvh"} suppressHydrationWarning>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased w-full flex flex-col safe-area min-h-full`}
 			>
@@ -46,10 +46,7 @@ export default function RootLayout({
 						enableSystem
 						disableTransitionOnChange
 					>
-						<Providers>
-							{children}
-							<div className="isolate"></div>
-						</Providers>
+						<Providers>{children}</Providers>
 						<Toaster />
 					</ThemeProvider>
 				</ClientOnly>

@@ -2,17 +2,16 @@ import type { Query, Row } from "@evolu/common";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { type DependencyList, useId } from "react";
+import { Controller } from "react-hook-form";
 import type { JsonValue } from "type-fest";
 import type { AutoFormComponent } from "@/components/auto-form";
 import { ComboboxDefault } from "@/components/combobox/default";
 import {
-	FormControl,
-	FormDescription,
-	FormField,
-	FormItem,
-	FormLabel,
-	FormMessage,
-} from "@/components/ui/form";
+	Field,
+	FieldDescription,
+	FieldError,
+	FieldLabel,
+} from "@/components/ui/field";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 
 type ComboboxItems<TItem extends JsonValue = JsonValue> = Array<{
@@ -59,27 +58,25 @@ export const createComboboxInput =
 		const items = "items" in params ? params.items : (data ?? []);
 
 		return (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => {
+				render={({ field, fieldState }) => {
 					return (
-						<FormItem>
+						<Field data-invalid={fieldState.invalid}>
 							{params.label && (
-								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+								<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 							)}
 							<div className="flex gap-2">
-								<FormControl>
-									{/*
+								{/*
 // @ts-expect-error */}
-									<ComboboxDefault {...field} {...params} items={items} />
-								</FormControl>
+								<ComboboxDefault {...field} {...params} items={items} />
 							</div>
 							{params.description && (
-								<FormDescription>{params.description}</FormDescription>
+								<FieldDescription>{params.description}</FieldDescription>
 							)}
-							<FormMessage />
-						</FormItem>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
 					);
 				}}
 			/>
@@ -99,27 +96,25 @@ export const createEvoluComboboxInput =
 		const items = params.mapRowsToItems((queryRows ?? []) as TRow[]);
 
 		return (
-			<FormField
+			<Controller
 				control={props.control}
 				name={props.name}
-				render={({ field }) => {
+				render={({ field, fieldState }) => {
 					return (
-						<FormItem>
+						<Field data-invalid={fieldState.invalid}>
 							{params.label && (
-								<FormLabel htmlFor={field.name}>{params.label}</FormLabel>
+								<FieldLabel htmlFor={field.name}>{params.label}</FieldLabel>
 							)}
 							<div className="flex gap-2">
-								<FormControl>
-									{/*
+								{/*
 // @ts-expect-error */}
-									<ComboboxDefault {...field} {...params} items={items} />
-								</FormControl>
+								<ComboboxDefault {...field} {...params} items={items} />
 							</div>
 							{params.description && (
-								<FormDescription>{params.description}</FormDescription>
+								<FieldDescription>{params.description}</FieldDescription>
 							)}
-							<FormMessage />
-						</FormItem>
+							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+						</Field>
 					);
 				}}
 			/>

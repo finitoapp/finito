@@ -54,7 +54,12 @@ export default function Page() {
 							...item,
 							accountIban: item.accountIban ?? undefined,
 							accountLud16: item.accountLud16 ?? undefined,
-							accountSpark: item.accountSpark ?? undefined,
+							accountSpark: item.accountSpark
+								? {
+										...item.accountSpark,
+										mnemonicVariant: "manual",
+									}
+								: undefined,
 							accountNwc: item.accountNwc ?? undefined,
 							accountCashRegister: item.accountCashRegister ?? undefined,
 						}}

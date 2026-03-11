@@ -39,10 +39,10 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardHeader,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
@@ -682,14 +682,14 @@ export default function Home() {
 					<ResponsiveCard>
 						<CardHeader>
 							<CardTitle>{invoice.invoiceNumber}</CardTitle>
-							<CardToolbar>
+							<CardAction>
 								{/*{item && (*/}
 								{/*	<InvoiceStatusBadge*/}
 								{/*		invoiceId={item.id}*/}
 								{/*		dueDate={new Date(item.dueDate)}*/}
 								{/*	/>*/}
 								{/*)}*/}
-							</CardToolbar>
+							</CardAction>
 						</CardHeader>
 						<CardContent>
 							<div className={"flex flex-wrap flex-col gap-8"}>
@@ -872,13 +872,17 @@ export default function Home() {
 							<DownloadPdf invoice={invoice} paymentQrCode={paymentQrCode} />
 							<SendPdf invoice={invoice} paymentQrCode={paymentQrCode} />
 							<ISDOCGenerator invoice={invoice} />
-							<Button variant={"outline"} className={"w-full"} asChild>
-								<Link
-									href={`/admin/invoices/edit?id=${encodeURIComponent(id)}`}
-								>
-									<EditIcon />
-									Edit
-								</Link>
+							<Button
+								variant={"outline"}
+								className={"w-full"}
+								render={
+									<Link
+										href={`/admin/invoices/edit?id=${encodeURIComponent(id)}`}
+									/>
+								}
+							>
+								<EditIcon />
+								Edit
 							</Button>
 							{<StatusButton invoiceId={invoice.id} />}
 							<Button className={"w-full"} onClick={() => void onDelete()}>

@@ -175,27 +175,29 @@ export const ComboboxDefault = <TItem extends JsonValue>(
 			<Popover open={open} onOpenChange={setOpen}>
 				<div className={"flex w-full gap-2 items-center"}>
 					<div className="relative w-full">
-						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								role="combobox"
-								aria-expanded={open}
-								className="w-full"
-							>
-								<span className={cn("truncate")}>
-									{/*
-// @ts-expect-error */}
-									{props.value
-										? allItems.find((item) =>
-												compareFunction(item.value, props.value),
-											)?.label
-										: (props.placeholder ?? "")}
-								</span>
-								<ChevronDown
-									data-slot="button-arrow"
-									className={cn("ms-auto -me-1")}
+						<PopoverTrigger
+							render={
+								<Button
+									variant="outline"
+									role="combobox"
+									aria-expanded={open}
+									className="w-full"
 								/>
-							</Button>
+							}
+						>
+							<span className={cn("truncate")}>
+								{/*
+// @ts-expect-error */}
+								{props.value
+									? allItems.find((item) =>
+											compareFunction(item.value, props.value),
+										)?.label
+									: (props.placeholder ?? "")}
+							</span>
+							<ChevronDown
+								data-slot="button-arrow"
+								className={cn("ms-auto -me-1")}
+							/>
 						</PopoverTrigger>
 						<div className={"absolute right-8 top-1/2 flex gap-2"}>
 							{props.enableEdit && props.value && (

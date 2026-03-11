@@ -73,9 +73,7 @@ const createStaticPaymentDefaultValues = () =>
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("type").select({
 			variant: "toggle",
 			allowEmpty: false,

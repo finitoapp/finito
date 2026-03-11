@@ -16,12 +16,11 @@ import {
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import {
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -234,20 +233,18 @@ export function InvoicesTable() {
 	return (
 		<ResponsiveCard>
 			<CardHeader>
-				<CardHeading className={"py-6"}>
-					<CardTitle>{t("invoices:table.invoices")}</CardTitle>
-					<CardDescription>
-						{t("invoices:table.listOfYourInvoices")}
-					</CardDescription>
-				</CardHeading>
-				<CardToolbar>
+				<CardTitle>{t("invoices:table.invoices")}</CardTitle>
+				<CardDescription>
+					{t("invoices:table.listOfYourInvoices")}
+				</CardDescription>
+				<CardAction>
 					<Link href={"/admin/invoices/new"}>
 						<Button>
 							<PlusIcon />
 							{t("invoices:table.actions.new-invoice")}
 						</Button>
 					</Link>
-				</CardToolbar>
+				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

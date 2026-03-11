@@ -139,9 +139,7 @@ const createComponents = (
 	options: { tagFilter?: (typeof tagKeys)[number][] } = {},
 ) =>
 	createAutoFormLayout(accountSchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("accounts:form.account-form.label.name"),
 		}),

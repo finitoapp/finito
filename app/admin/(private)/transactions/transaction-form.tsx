@@ -140,9 +140,7 @@ const createComponents = (
 	},
 ) =>
 	createAutoFormLayout(transactionSchema, ({ builder }) => ({
-		...builder.magicInput("id").text({
-			type: "hidden",
-		}),
+		...builder.magicInput("id").hidden(undefined),
 
 		...builder.card(
 			{},

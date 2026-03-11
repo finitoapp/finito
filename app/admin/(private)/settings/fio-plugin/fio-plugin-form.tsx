@@ -94,9 +94,7 @@ const createComponents = (t: TFunction) =>
 						],
 					},
 					({ builder }) => ({
-						...builder.magicInput("id").text({
-							type: "hidden",
-						}),
+						...builder.magicInput("id").hidden(undefined),
 						...builder.magicInput("token").text({
 							label: t("settings:form.fio-plugin-form.label.api-token"),
 							type: "password",

@@ -105,24 +105,24 @@ export function NavUser({
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
-							<Avatar className="h-8 w-8 rounded-lg grayscale">
-								<AvatarImage src={user.avatar} alt={user.name} />
-								<AvatarFallback className="rounded-lg">
-									{t("navigation:account.initials")}
-								</AvatarFallback>
-							</Avatar>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">
-									{activeAccountName}
-								</span>
-							</div>
-							<ChevronsUpDownIcon className="ml-auto" />
-						</SidebarMenuButton>
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							/>
+						}
+					>
+						<Avatar className="h-8 w-8 rounded-lg grayscale">
+							<AvatarImage src={user.avatar} alt={user.name} />
+							<AvatarFallback className="rounded-lg">
+								{t("navigation:account.initials")}
+							</AvatarFallback>
+						</Avatar>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate font-medium">{activeAccountName}</span>
+						</div>
+						<ChevronsUpDownIcon className="ml-auto" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
 						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
@@ -172,14 +172,16 @@ export function NavUser({
 								</DropdownMenuItem>
 							);
 						})}
-						<DropdownMenuItem asChild>
-							<Link
-								href={"/admin/settings/switch-account"}
-								onClick={() => setOpenMobile(false)}
-							>
-								<IconPlus />
-								{t("navigation:account.actions.addAccount")}
-							</Link>
+						<DropdownMenuItem
+							render={
+								<Link
+									href={"/admin/settings/switch-account"}
+									onClick={() => setOpenMobile(false)}
+								/>
+							}
+						>
+							<IconPlus />
+							{t("navigation:account.actions.addAccount")}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator
 							title={t("navigation:account.actions.label")}

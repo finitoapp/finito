@@ -79,12 +79,10 @@ export function CounterCheckbox({
 				className="relative h-8 w-8"
 			>
 				<Checkbox
-					// @ts-expect-error
 					checked={
-						maxCount > 1 && controlledCount > 0
-							? "hidden"
-							: controlledCount === 1
+						maxCount > 1 && controlledCount > 0 ? true : controlledCount === 1
 					}
+					hideIndicator={maxCount > 1 && controlledCount > 0}
 					onCheckedChange={select}
 					disabled={disabled}
 					className="h-8 w-8 border-3"

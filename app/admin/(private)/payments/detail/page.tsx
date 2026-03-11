@@ -28,17 +28,12 @@ import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { type FC, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
+import { FullscreenDialog } from "@/components/fullscreen-dialog";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -231,18 +226,23 @@ const FullscreenQrPayment: FC<{
 
 	return (
 		<>
-			<Button variant={"outline"} className={"w-full"} asChild>
-				<Link
-					href={`?id=${encodeURIComponent(id)}&focus=true${tab !== null ? `&tab=${encodeURIComponent(tab)}` : ""}`}
-					scroll={false}
-				>
-					<FocusIcon />
-					{t("payments:detail.actions.show-fullscreen-qr-payment")}
-				</Link>
+			<Button
+				variant={"outline"}
+				className={"w-full"}
+				render={
+					<Link
+						href={`?id=${encodeURIComponent(id)}&focus=true${tab !== null ? `&tab=${encodeURIComponent(tab)}` : ""}`}
+						scroll={false}
+					/>
+				}
+			>
+				<FocusIcon />
+				{t("payments:detail.actions.show-fullscreen-qr-payment")}
 			</Button>
 
-			<Dialog
-				open={isOpen}
+			<FullscreenDialog
+				title={t("payments:page.payment")}
+				isOpen={isOpen}
 				onOpenChange={() =>
 					router.replace(
 						`/admin/payments/detail?id=${encodeURIComponent(id)}${tab !== null ? `&tab=${encodeURIComponent(tab)}` : ""}`,
@@ -252,168 +252,151 @@ const FullscreenQrPayment: FC<{
 					)
 				}
 			>
-				<DialogContent
-					style={{
-						top: "env(safe-area-inset-top)",
-						bottom: "env(safe-area-inset-bottom)",
-					}}
-				>
-					<div>
-						<DialogHeader>
-							<DialogTitle>{t("payments:page.payment")}</DialogTitle>
-						</DialogHeader>
-
-						{isPaid ? (
-							<div className={"h-full w-full flex justify-center"}>
-								<LoadingIndicator
-									text={t("payments:detail.messages.payment-successfully-paid")}
-									open={true}
-									status={"success"}
-								/>
-							</div>
-						) : (
-							<Tabs value={tab ?? "web"} className="h-full">
-								<TabsList>
-									<TabsTrigger
-										value="web"
-										onClick={() =>
-											router.replace(
-												`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true`,
-												{
-													scroll: false,
-												},
-											)
-										}
-									>
-										{t("payments:detail.tabs.web-payment")}
-									</TabsTrigger>
-									{lnInvoice && (
-										<TabsTrigger
-											value="ln"
-											onClick={() =>
-												router.replace(
-													`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=ln`,
-													{
-														scroll: false,
-													},
-												)
-											}
-										>
-											{t("payments:detail.tabs.btc-ln-payment")}
-										</TabsTrigger>
-									)}
-									{czechQRCode && (
-										<TabsTrigger
-											value="bankTransferCZ"
-											onClick={() =>
-												router.replace(
-													`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=bankTransferCZ`,
-													{
-														scroll: false,
-													},
-												)
-											}
-										>
-											{t("payments:detail.tabs.cz-qr-payment")}
-										</TabsTrigger>
-									)}
-									{cashTabContent && (
-										<TabsTrigger
-											value="cash"
-											onClick={() =>
-												router.replace(
-													`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=cash`,
-													{
-														scroll: false,
-													},
-												)
-											}
-										>
-											{t("payments:detail.tabs.cash")}
-										</TabsTrigger>
-									)}
-								</TabsList>
-								{frontendUrl && (
-									<TabsContent value="web" className={"h-full"}>
-										<ResponsiveCard className={"h-full flex"}>
-											<CardContent className={"flex"}>
-												<div className={"flex flex-1 flex-col gap-2"}>
-													<div
-														className={
-															"rounded h-full flex justify-center items-center"
-														}
-													>
-														<QRCodeSVG
-															size={512}
-															value={frontendUrl}
-															marginSize={2}
-														/>
-													</div>
-												</div>
-											</CardContent>
-										</ResponsiveCard>
-									</TabsContent>
-								)}
-								{lnInvoice && (
-									<TabsContent value="ln" className={"h-full"}>
-										<ResponsiveCard className={"h-full flex"}>
-											<CardContent className={"flex"}>
-												<div className={"flex flex-1 flex-col gap-2"}>
-													<div
-														className={
-															"rounded h-full flex justify-center items-center"
-														}
-													>
-														<QRCodeSVG
-															size={512}
-															value={lnInvoice}
-															marginSize={2}
-														/>
-													</div>
-												</div>
-											</CardContent>
-										</ResponsiveCard>
-									</TabsContent>
-								)}
-								{czechQRCode && (
-									<TabsContent value="bankTransferCZ" className={"h-full"}>
-										<ResponsiveCard className={"h-full flex"}>
-											<CardContent className={"flex"}>
-												<div className={"flex flex-1 flex-col gap-2"}>
-													<div
-														className={
-															"rounded h-full flex justify-center items-center"
-														}
-													>
-														<QRCodeSVG
-															size={512}
-															value={czechQRCode}
-															marginSize={2}
-														/>
-													</div>
-												</div>
-											</CardContent>
-										</ResponsiveCard>
-									</TabsContent>
-								)}
-								{cashTabContent && (
-									<TabsContent value="cash" className={"h-full"}>
-										<ResponsiveCard className={"h-full flex"}>
-											<CardContent
-												className={"flex items-center justify-center"}
-											>
-												<div className={"w-full max-w-sm"}>
-													{cashTabContent}
-												</div>
-											</CardContent>
-										</ResponsiveCard>
-									</TabsContent>
-								)}
-							</Tabs>
-						)}
+				{isPaid ? (
+					<div className={"h-full w-full flex justify-center"}>
+						<LoadingIndicator
+							text={t("payments:detail.messages.payment-successfully-paid")}
+							open={true}
+							status={"success"}
+						/>
 					</div>
-				</DialogContent>
-			</Dialog>
+				) : (
+					<Tabs value={tab ?? "web"} className="h-full">
+						<TabsList>
+							<TabsTrigger
+								value="web"
+								onClick={() =>
+									router.replace(
+										`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true`,
+										{
+											scroll: false,
+										},
+									)
+								}
+							>
+								{t("payments:detail.tabs.web-payment")}
+							</TabsTrigger>
+							{lnInvoice && (
+								<TabsTrigger
+									value="ln"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=ln`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.btc-ln-payment")}
+								</TabsTrigger>
+							)}
+							{czechQRCode && (
+								<TabsTrigger
+									value="bankTransferCZ"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=bankTransferCZ`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.cz-qr-payment")}
+								</TabsTrigger>
+							)}
+							{cashTabContent && (
+								<TabsTrigger
+									value="cash"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=cash`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.cash")}
+								</TabsTrigger>
+							)}
+						</TabsList>
+						{frontendUrl && (
+							<TabsContent value="web" className={"h-full"}>
+								<ResponsiveCard className={"h-full flex"}>
+									<CardContent className={"flex"}>
+										<div className={"flex flex-1 flex-col gap-2"}>
+											<div
+												className={
+													"rounded h-full flex justify-center items-center"
+												}
+											>
+												<QRCodeSVG
+													size={512}
+													value={frontendUrl}
+													marginSize={2}
+												/>
+											</div>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{lnInvoice && (
+							<TabsContent value="ln" className={"h-full"}>
+								<ResponsiveCard className={"h-full flex"}>
+									<CardContent className={"flex"}>
+										<div className={"flex flex-1 flex-col gap-2"}>
+											<div
+												className={
+													"rounded h-full flex justify-center items-center"
+												}
+											>
+												<QRCodeSVG
+													size={512}
+													value={lnInvoice}
+													marginSize={2}
+												/>
+											</div>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{czechQRCode && (
+							<TabsContent value="bankTransferCZ" className={"h-full"}>
+								<ResponsiveCard className={"h-full flex"}>
+									<CardContent className={"flex"}>
+										<div className={"flex flex-1 flex-col gap-2"}>
+											<div
+												className={
+													"rounded h-full flex justify-center items-center"
+												}
+											>
+												<QRCodeSVG
+													size={512}
+													value={czechQRCode}
+													marginSize={2}
+												/>
+											</div>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{cashTabContent && (
+							<TabsContent value="cash" className={"h-full"}>
+								<ResponsiveCard className={"h-full flex"}>
+									<CardContent className={"flex items-center justify-center"}>
+										<div className={"w-full max-w-sm"}>{cashTabContent}</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+					</Tabs>
+				)}
+			</FullscreenDialog>
 		</>
 	);
 };
@@ -882,19 +865,21 @@ export default function Home() {
 					) : (
 						<Tabs value={tab ?? "web"} className="flex-1">
 							<TabsList>
-								<TabsTrigger
-									value="web"
-									onClick={() =>
-										router.replace(
-											`/admin/payments/detail?id=${encodeURIComponent(id)}`,
-											{
-												scroll: false,
-											},
-										)
-									}
-								>
-									{t("payments:detail.tabs.web-payment")}
-								</TabsTrigger>
+								{frontendUrl && (
+									<TabsTrigger
+										value="web"
+										onClick={() =>
+											router.replace(
+												`/admin/payments/detail?id=${encodeURIComponent(id)}`,
+												{
+													scroll: false,
+												},
+											)
+										}
+									>
+										{t("payments:detail.tabs.web-payment")}
+									</TabsTrigger>
+								)}
 								{lightningPayment && (
 									<TabsTrigger
 										value="ln"
@@ -954,12 +939,14 @@ export default function Home() {
 													/>
 												</div>
 												<Textarea readOnly={true} value={frontendUrl} />
-												<Button asChild>
-													<a href={frontendUrl} target={"_blank"}>
-														<ExternalLink />
-														{t("payments:detail.actions.open")}
-													</a>
-												</Button>
+												<Button
+													render={
+														<a href={frontendUrl} target={"_blank"}>
+															<ExternalLink />
+															{t("payments:detail.actions.open")}
+														</a>
+													}
+												></Button>
 											</div>
 										</CardContent>
 									</ResponsiveCard>
@@ -979,17 +966,20 @@ export default function Home() {
 												</div>
 												<Textarea
 													readOnly={true}
+													className={"wrap-anywhere"}
 													value={lightningPayment.lnInvoice}
 												/>
-												<Button asChild>
-													<a
-														href={`lightning:${lightningPayment.lnInvoice}`}
-														target={"_blank"}
-													>
-														<BitcoinIcon />
-														{t("payments:detail.actions.open-in-btc-wallet")}
-													</a>
-												</Button>
+												<Button
+													render={
+														<a
+															href={`lightning:${lightningPayment.lnInvoice}`}
+															target={"_blank"}
+														>
+															<BitcoinIcon />
+															{t("payments:detail.actions.open-in-btc-wallet")}
+														</a>
+													}
+												></Button>
 											</div>
 										</CardContent>
 									</ResponsiveCard>

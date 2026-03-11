@@ -18,12 +18,11 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Calendar } from "@/components/ui/calendar";
 import {
 	Card,
+	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
-	CardHeading,
 	CardTitle,
-	CardToolbar,
 } from "@/components/ui/card";
 import {
 	Popover,
@@ -46,14 +45,12 @@ export const ReservationBoard: React.FC<{
 		<>
 			<ReservationDataSync stateAtoms={props.stateAtoms} />
 			<Card>
-				<CardHeader className={"py-6"}>
-					<CardHeading>
-						<CardTitle>{t("reservations:page.calendar.title")}</CardTitle>
-						<CardDescription>
-							{t("reservations:page.calendar.description")}
-						</CardDescription>
-					</CardHeading>
-					<CardToolbar>
+				<CardHeader>
+					<CardTitle>{t("reservations:page.calendar.title")}</CardTitle>
+					<CardDescription>
+						{t("reservations:page.calendar.description")}
+					</CardDescription>
+					<CardAction>
 						<ButtonGroup>
 							<Button
 								variant="outline"
@@ -63,10 +60,8 @@ export const ReservationBoard: React.FC<{
 								{t("reservations:page.actions.previousDay")}
 							</Button>
 							<Popover>
-								<PopoverTrigger asChild>
-									<Button variant="outline">
-										{formatInTimeZone(selectedDay, timezone, "dd.MM.yyyy")}
-									</Button>
+								<PopoverTrigger render={<Button variant="outline" />}>
+									{formatInTimeZone(selectedDay, timezone, "dd.MM.yyyy")}
 								</PopoverTrigger>
 								<PopoverContent className="w-auto p-0" align="start">
 									<Calendar
@@ -99,7 +94,7 @@ export const ReservationBoard: React.FC<{
 							<PlusIcon />
 							{t("reservations:page.actions.newReservation")}
 						</Button>
-					</CardToolbar>
+					</CardAction>
 				</CardHeader>
 				<CardContent>
 					<ReservationWarnings stateAtoms={props.stateAtoms} />

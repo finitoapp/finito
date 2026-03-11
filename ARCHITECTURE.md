@@ -7,7 +7,7 @@ It focuses on where things live, how data flows, and which patterns must stay co
 
 - Stack: Next.js App Router + React + TypeScript + Bun.
 - State/data: Jotai atoms + Evolu (local-first DB/sync) + TanStack Query (API-style fetching).
-- UI: shared component library in `components/` (Radix-based primitives + app-specific components).
+- UI: shared component library in `components/` (Base-UI-based primitives + app-specific components).
 - Targets:
   - Web app (`app/`).
   - Desktop wrapper via Tauri (`src-tauri/`).
