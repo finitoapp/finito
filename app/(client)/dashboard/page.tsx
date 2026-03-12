@@ -34,8 +34,6 @@ const WalletStatus = () => {
 
 			const { balance } = await wallet.getBalance();
 
-			console.log("balance", balance);
-
 			return balance;
 		},
 	});
@@ -46,12 +44,12 @@ const WalletStatus = () => {
 			endAddon={
 				<Link href={"/settings"}>
 					<Button type={"button"} variant={"ghost"}>
-						<MenuIcon className={"text-primary"} strokeWidth={3} />
+						<MenuIcon className={"text-primary size-5"} strokeWidth={3} />
 					</Button>
 				</Link>
 			}
 			title={
-				<div className={"py-5"}>
+				<div className={"py-4"}>
 					<div>
 						{data !== undefined ? (
 							formatAmount(Number(data) / 100000000, Currency.BTC)
@@ -60,7 +58,7 @@ const WalletStatus = () => {
 						)}
 					</div>
 					<div
-						className={"text-xs mt-2 pt-2.5 font-medium text-muted-foreground"}
+						className={"text-xs mt-1 pt-2.5 font-medium text-muted-foreground"}
 					>
 						{data !== undefined ? (
 							formatAmount(Number(data), Currency.CZK)
@@ -78,18 +76,18 @@ export default function Page() {
 	const { t } = useTranslation();
 	return (
 		<div className="space-y-8 w-full p-4 flex flex-col">
-			<div className={"h-26"} />
+			<div className={"h-20"} />
 			<WalletStatus />
 			<TransactionHistory />
 
-			<div className="fixed bottom-8 left-0 right-0 flex justify-center">
-				<div className="bg-card border-t rounded-full shadow-2xl transition-all duration-400 flex justify-around gap-2 relative">
+			<div className="fixed bottom-8 left-0 right-0 flex justify-center ">
+				<div className="bg-card border-t rounded-full shadow-[0_0_48px_rgba(0,0,0,0.6)] transition-all duration-400 flex justify-around gap-2 relative">
 					<Link href={"/receive2"}>
 						<Button
 							type={"button"}
 							variant={"default"}
 							className={
-								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-l-full"
+								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-l-full text-md"
 							}
 						>
 							<ArrowDownIcon
@@ -99,7 +97,11 @@ export default function Page() {
 							{t("client:home.actions.receive")}
 						</Button>
 					</Link>
-					<div className={"size-20 -my-3 -mx-8 bg-card border-t rounded-full"}>
+					<div
+						className={
+							"size-20 -my-3 -mx-8 bg-card border-t rounded-full  shadow-[0_0_48px_rgba(0,0,0,0.4)]"
+						}
+					>
 						<Link href={"/scan"}>
 							<Button
 								type={"button"}
@@ -115,7 +117,7 @@ export default function Page() {
 						type={"button"}
 						variant={"secondary"}
 						className={
-							"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full"
+							"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full text-md"
 						}
 					>
 						<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />
