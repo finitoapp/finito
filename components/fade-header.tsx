@@ -34,7 +34,7 @@ export const FadeHeader: FC<{
 	const startAddon =
 		props.startAddon === undefined ? (
 			<Button type={"button"} variant={"ghost"} onClick={() => router.back()}>
-				<ArrowLeftIcon className={"text-primary"} strokeWidth={3} />
+				<ArrowLeftIcon className={"text-primary size-5"} strokeWidth={3} />
 			</Button>
 		) : (
 			props.startAddon

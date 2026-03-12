@@ -307,7 +307,7 @@ export default function Page() {
 			<div className={"h-10"} />
 			<FadeHeader title={t("client:page.receivePayment")} />
 
-			<div className={"w-full p-8 flex flex-col gap-8"}>
+			<div className={"w-full p-8 flex flex-col gap-6"}>
 				<Field>
 					<FieldLabel>
 						{t("payments:form.payment-form.label.spark-wallet-account")}
@@ -349,7 +349,7 @@ export default function Page() {
 				<Field>
 					<FieldLabel>{t("client:receiveAmountForm.amountLabel")}</FieldLabel>
 					<div className="overflow-hidden rounded-xl border border-input bg-background shadow-xs">
-						<div className={cn("px-4 py-3 transition-colors", "bg-muted/40")}>
+						<div className={cn("px-4 py-2 transition-colors", "bg-muted/40")}>
 							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 								<InputGroupInput
 									autoFocus
@@ -379,7 +379,7 @@ export default function Page() {
 
 						<div className="mx-4 border-t border-border/70" />
 
-						<div className={cn("px-4 py-3 transition-colors", "bg-muted/40")}>
+						<div className={cn("px-4 py-2 transition-colors", "bg-muted/40")}>
 							<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 								<InputGroupInput
 									inputMode="numeric"
@@ -400,7 +400,7 @@ export default function Page() {
 									align="inline-end"
 									className="pr-0 font-bold text-primary"
 								>
-									sats
+									Sats
 								</InputGroupAddon>
 							</InputGroup>
 						</div>
