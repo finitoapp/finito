@@ -35,6 +35,8 @@ import type { NonEmptyString255, PositiveInteger } from "@/lib/shared/types";
 
 type Task = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: NonEmptyString255 | null;
 	label: NonEmptyString255;
 	numberOfSeats: PositiveInteger;
 	codes: {
@@ -56,10 +58,31 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 		header: createSortableHeader(t("tables:table.columns.codes")),
 		cell: ({ row }) => row.original.codes.map(({ code }) => code).join(","),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={`/admin/tables/detail?id=${encodeURIComponent(row.original.deviceId)}`}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "table.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "table.createdAt",
 	label: "table.label",
 	numberOfSeats: "table.numberOfSeats",
@@ -99,11 +122,14 @@ export function TablesTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("table")
+						.leftJoin("device", "table.deviceId", "device.id")
 						.select((eb) => [
 							"table.id as id",
 							"table.label as label",
 							"table.numberOfSeats as numberOfSeats",
 							"table.createdAt as createdAt",
+							"device.id as deviceId",
+							"device.name as deviceName",
 
 							evoluJsonArrayFrom(
 								eb

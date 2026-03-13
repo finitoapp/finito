@@ -14,6 +14,7 @@ export const createGetAccountQuery = (params: { id: Id }) =>
 				(eb) =>
 					[
 						"account.id as id",
+						"account.deviceId as deviceId",
 						"account.name as name",
 						"account._tag as _tag",
 						evoluJsonObjectFrom(

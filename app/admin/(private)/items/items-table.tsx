@@ -36,8 +36,11 @@ import { formatMoney } from "@/lib/shared/utils/format";
 
 type Task = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	createdAt: DateIso;
 	label: NonEmptyString255;
+	categoryId: Id | null;
 	categoryName: string | null;
 	currency: Currency;
 	price: Integer;
@@ -51,7 +54,23 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 	{
 		accessorKey: "categoryName",
 		header: createSortableHeader(t("items:table.columns.category")),
-		cell: ({ row }) => row.original.categoryName ?? "-",
+		cell: ({ row }) =>
+			row.original.categoryName && row.original.categoryId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/categories/detail?id=${encodeURIComponent(row.original.categoryId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.categoryName}
+				</Button>
+			) : (
+				"-"
+			),
 	},
 	{
 		accessorKey: "price",
@@ -62,14 +81,38 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 				currency: row.original.currency,
 			}),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "item.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	label: "item.label",
 	price: "item.price",
 	currency: "item.currency",
 	createdAt: "item.createdAt",
+	categoryId: "category.id",
 	categoryName: "category.name",
 } as const satisfies Record<keyof Task, string>;
 
@@ -109,13 +152,17 @@ export function ItemsTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("item")
+						.leftJoin("device", "device.id", "item.deviceId")
 						.leftJoin("category", "category.id", "item.categoryId")
 						.select([
 							"item.id as id",
+							"device.id as deviceId",
+							"device.name as deviceName",
 							"item.label as label",
 							"item.price as price",
 							"item.currency as currency",
 							"item.createdAt as createdAt",
+							"category.id as categoryId",
 							"category.name as categoryName",
 						] as const)
 						.where("item.isDeleted", "is not", sqliteTrue)

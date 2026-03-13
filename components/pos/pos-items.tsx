@@ -1,25 +1,26 @@
-import {
-	createId,
-	createRandomBytes,
-	evoluJsonObjectFrom,
-	type KyselyNotNull,
-	sqliteTrue,
-} from "@evolu/common";
 import { motion } from "framer-motion";
+import { useAtomValue } from "jotai";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { accountAtom } from "@/atoms/account";
 import { PosDial } from "@/components/pos/pos-dial";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBill } from "@/hooks/use-bill";
+import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { Pos } from "@/hooks/use-pos";
-import { createQuery } from "@/lib/evolu";
+import { activeCategoriesQuery } from "@/lib/evolu/queries/category";
+import { getAllItemsQuery } from "@/lib/evolu/queries/item";
 import type { Id } from "@/lib/evolu/types";
+import {
+	convertItemToItemRevision,
+	createItemRevision,
+} from "@/lib/item/service";
 import {
 	type Currency,
 	NonEmptyString255,
@@ -36,18 +37,22 @@ export const PosItems: React.FC<{
 }> = (props) => {
 	const { t } = useTranslation();
 	const router = useRouter();
+	const evolu = useEvolu();
 	const searchParams = useSearchParams();
 	const variant = searchParams.get("variant") ?? "list";
 	const id = searchParams.get("id") ?? "";
 	const { addItem } = useBill();
+	const account = useAtomValue(accountAtom);
 
 	return (
 		<Tabs value={variant} className="flex w-full flex-col gap-4">
-			<TabsList className="grid w-full grid-cols-2" variant={"line"}>
+			<TabsList className="w-full">
 				<TabsTrigger
 					value="list"
 					onClick={() =>
-						router.replace(`/admin/pos?id=${encodeURIComponent(id)}`)
+						router.replace(
+							`/admin/pos?${id ? `id=${encodeURIComponent(id)}` : ""}`,
+						)
 					}
 				>
 					{t("pos:items.tabs.list")}
@@ -56,7 +61,7 @@ export const PosItems: React.FC<{
 					value="dial"
 					onClick={() =>
 						router.replace(
-							`/admin/pos?id=${encodeURIComponent(id)}&variant=${encodeURIComponent("dial")}`,
+							`/admin/pos?${id ? `id=${encodeURIComponent(id)}&` : ""}variant=${encodeURIComponent("dial")}`,
 						)
 					}
 				>
@@ -72,13 +77,10 @@ export const PosItems: React.FC<{
 						<CardContent>
 							<PosDial
 								onSubmit={(value) => {
-									const billId = addItem({
-										billId: props.billId,
-										defaultCurrency: props.defaultCurrency,
+									const itemRevision = createItemRevision({ evolu })({
 										item: {
-											id: createId({
-												randomBytes: createRandomBytes(),
-											}),
+											deviceId: account.device.id,
+											itemId: null,
 											label: NonEmptyString255(t("pos:items.unknownItem")),
 											price: moneyCodec.decode({
 												value: NumberString(value.toString()),
@@ -91,6 +93,11 @@ export const PosItems: React.FC<{
 											productCodeType: null,
 											productCodeValue: null,
 										},
+									});
+									const billId = addItem({
+										billId: props.billId,
+										defaultCurrency: props.defaultCurrency,
+										item: itemRevision,
 									});
 
 									if (billId !== undefined) {
@@ -119,63 +126,31 @@ export const PosItemsList: React.FC<{
 	const [searchTerm, setSearchTerm] = useState("");
 	const { addItem } = useBill();
 
-	const query = useMemo(
-		() =>
-			createQuery((db) =>
-				db
-					.selectFrom("item")
-					.select(
-						(eb) =>
-							[
-								"item.id as id",
-								"item.label as label",
-								"item.price as price",
-								"item.currency as currency",
-								"item.unitOfMeasure as unitOfMeasure",
-								"item.internalCode as internalCode",
-								"item.productCodeType as productCodeType",
-								"item.productCodeValue as productCodeValue",
-								"item.categoryId as categoryId",
+	const { data: items } = useEvoluQuery(getAllItemsQuery);
+	const { data: categories } = useEvoluQuery(activeCategoriesQuery);
 
-								evoluJsonObjectFrom(
-									eb
-										.selectFrom("category")
-										.select(["category.name as name"])
-										.whereRef("category.id", "=", "item.categoryId")
-										.where("category.isDeleted", "is not", sqliteTrue)
-										.where("category.name", "is not", null)
-										.$narrowType<{
-											name: KyselyNotNull;
-										}>(),
-								).as("category"),
-							] as const,
-					)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.label", "is not", null)
-					.where("item.price", "is not", null)
-					.where("item.currency", "is not", null)
-					.$narrowType<{
-						label: KyselyNotNull;
-						price: KyselyNotNull;
-						currency: KyselyNotNull;
-					}>(),
-			),
-		[],
+	const categoriesById = useMemo(
+		() => new Map(categories.map((category) => [category.id, category])),
+		[categories],
 	);
-	const { data: items } = useEvoluQuery(query);
 
 	const filteredItems = useMemo(
 		() =>
-			(items ?? []).filter((item) => {
-				return item.label.toLowerCase().includes(searchTerm.toLowerCase());
-			}),
+			(items ?? [])
+				.filter((item) => {
+					return item.label.toLowerCase().includes(searchTerm.toLowerCase());
+				})
+				.map(convertItemToItemRevision),
 		[items, searchTerm],
 	);
 	const groupedItems = useMemo(() => {
 		const map = new Map<string, typeof filteredItems>();
 
 		for (const item of filteredItems) {
-			const key = item.category?.name ?? t("pos:items.uncategorized");
+			const category =
+				item.categoryId !== null ? categoriesById.get(item.categoryId) : null;
+
+			const key = category?.name ?? t("pos:items.uncategorized");
 			const previous = map.get(key);
 			if (previous) {
 				previous.push(item);
@@ -190,7 +165,7 @@ export const PosItemsList: React.FC<{
 				categoryName,
 				items: [...items].sort((a, b) => a.label.localeCompare(b.label)),
 			}));
-	}, [filteredItems, t]);
+	}, [filteredItems, t, categoriesById]);
 
 	return (
 		<div className="flex w-full flex-col gap-4">

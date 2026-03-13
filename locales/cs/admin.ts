@@ -8,6 +8,7 @@ const locale = {
       "items": "Položky",
       "menus": "Nabídky",
       "categories": "Kategorie",
+      "devices": "Zařízení",
       "tables": "Stoly",
       "reservations": "Rezervace",
       "clients": "Klienti",

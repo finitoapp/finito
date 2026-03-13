@@ -35,6 +35,8 @@ import type { NonEmptyString255, TimestampMs } from "@/lib/shared/types";
 
 type Row = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	occurredAt: TimestampMs;
 	createdAt: DateIso;
 	accountName: string;
@@ -75,6 +77,27 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 		header: t("transactions:table.columns.note"),
 		cell: ({ row }) => row.original.note ?? "-",
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const createFilterableColumns = (t: TFunction) =>
@@ -87,6 +110,8 @@ const createFilterableColumns = (t: TFunction) =>
 
 const sortingFields = {
 	id: "transaction.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	occurredAt: "transaction.occurredAt",
 	createdAt: "transaction.createdAt",
 	amount: "transaction.amount",
@@ -119,9 +144,12 @@ export function TransactionsTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("transaction")
+						.leftJoin("device", "device.id", "transaction.deviceId")
 						.innerJoin("account", "account.id", "transaction.accountId")
 						.select([
 							"transaction.id as id",
+							"device.id as deviceId",
+							"device.name as deviceName",
 							"transaction.occurredAt as occurredAt",
 							"transaction.createdAt as createdAt",
 							"account.name as accountName",

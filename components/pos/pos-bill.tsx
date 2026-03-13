@@ -8,6 +8,7 @@ import {
 } from "@evolu/common";
 import { useDebounce } from "@uidotdev/usehooks";
 import { AnimatePresence, motion } from "framer-motion";
+import { useAtomValue } from "jotai";
 import {
 	FullscreenIcon,
 	Loader2,
@@ -28,6 +29,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { accountAtom } from "@/atoms/account";
 import { ComboboxDefault } from "@/components/combobox/default";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
@@ -109,7 +111,7 @@ const Item: React.FC<{
 								onClick={() =>
 									updateItemQuantity({
 										billId: props.billId,
-										itemId: props.item.id,
+										itemLineId: props.item.id,
 										delta: -1,
 									})
 								}
@@ -139,7 +141,7 @@ const Item: React.FC<{
 								onClick={() =>
 									updateItemQuantity({
 										billId: props.billId,
-										itemId: props.item.id,
+										itemLineId: props.item.id,
 										delta: 1,
 									})
 								}
@@ -156,7 +158,7 @@ const Item: React.FC<{
 								setTimeout(() => {
 									removeItem({
 										billId: props.billId,
-										itemId: props.item.id,
+										itemLineId: props.item.id,
 									});
 								}, 200);
 							}}
@@ -369,6 +371,7 @@ const PayButton: FC<{
 	const [isSaving, startTransition] = useTransition();
 	const { deleteBill } = useBill();
 	const asyncRoutePush = useAsyncRoutePush();
+	const account = useAtomValue(accountAtom);
 
 	return (
 		<Button
@@ -531,13 +534,12 @@ const PayButton: FC<{
 					// 	privateKey: NonEmptyString(paymentSigner.privateKey),
 					// };
 
-					const id = await createPayment({
-						evolu,
-						ndk,
+					const id = await createPayment({ evolu, ndk })({
 						payment: {
 							id: createId({
 								randomBytes: createRandomBytes(),
 							}),
+							deviceId: account.device.id,
 							currency: props.bill.currency,
 						},
 						totalAmount: props.total as NonNegativeInteger,

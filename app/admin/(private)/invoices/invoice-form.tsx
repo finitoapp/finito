@@ -41,12 +41,12 @@ import { createQuery } from "@/lib/evolu";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { createGetClientsQuery } from "@/lib/evolu/queries/client";
 import { TableIdSchema } from "@/lib/evolu/types";
+import { createInvoice } from "@/lib/invoice/service";
 import {
 	Currency,
 	DateToDateStringSchema,
 	FiatCurrency,
 	IbanSchema,
-	Integer,
 	NonEmptyString32Schema,
 	NonEmptyString255Schema,
 	NumberStringSchema,
@@ -71,6 +71,7 @@ const itemSchema = z.object({
 
 const invoiceSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	invoiceId: StringToNullableStringSchema.pipe(Uuid7Schema),
 	invoiceNumber: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	currency: z.enum(Currency),
@@ -147,6 +148,7 @@ const createDefaultValues = () => {
 
 	return {
 		id: createId(createIdDeps),
+		deviceId: null,
 		invoiceId: Uuid7.random(),
 		invoiceNumber: "",
 		currency: Currency.CZK,
@@ -184,7 +186,11 @@ const CustomerEditForm = (
 					<ContactForm
 						defaultValues={props.defaultValue}
 						onBeforeSave={(values) => {
-							props.save(values);
+							props.save({
+								...values,
+								id: createId(createIdDeps),
+								sourceContactId: values.id,
+							});
 							return false;
 						}}
 					/>
@@ -212,7 +218,11 @@ const SupplierEditForm = (
 					<ContactForm
 						defaultValues={props.defaultValue}
 						onBeforeSave={(values) => {
-							props.save(values);
+							props.save({
+								...values,
+								id: createId(createIdDeps),
+								sourceContactId: values.id,
+							});
 							return false;
 						}}
 					/>
@@ -240,10 +250,19 @@ const CustomerBillingInfo: AutoFormComponent<
 				fetchItems: async () => {
 					const items = await evolu.loadQuery(query);
 
-					return items.map((item) => ({
-						label: item.name,
-						value: mapContactToFormContact(item),
-					}));
+					return items.map((item) => {
+						const contact = mapContactToFormContact(item);
+						const value = {
+							...contact,
+							id: createId(createIdDeps),
+							sourceContactId: contact.id,
+						};
+
+						return {
+							label: item.name,
+							value,
+						};
+					});
 				},
 				EditComponent: CustomerEditForm,
 			}),
@@ -334,11 +353,18 @@ const SupplierBillingInfo: AutoFormComponent<
 					const items = await evolu.loadQuery(query);
 					const item = items[0];
 
+					const contact = mapContactToFormContact(item);
+					const value = {
+						...contact,
+						id: createId(createIdDeps),
+						sourceContactId: contact.id,
+					};
+
 					return item !== undefined
 						? [
 								{
 									label: item.label ?? item.name,
-									value: mapContactToFormContact(item),
+									value,
 								},
 							]
 						: [];
@@ -356,9 +382,8 @@ const createComponents = (t: TFunction) =>
 	createAutoFormLayout(invoiceSchema, ({ builder }) => {
 		return {
 			...builder.magicInput("id").hidden(undefined),
-			...builder.magicInput("invoiceId").text({
-				type: "hidden",
-			}),
+			...builder.magicInput("deviceId").hidden(undefined),
+			...builder.magicInput("invoiceId").hidden(undefined),
 
 			...builder.card(
 				{
@@ -507,101 +532,48 @@ export const InvoiceForm: React.FC<{
 		saveAction: async (values) => {
 			const { items, customer, supplier, payment, ...invoice } = values;
 
-			evolu.upsert("invoice", {
-				id: invoice.id,
-				invoiceId: invoice.invoiceId,
-				invoiceNumber: invoice.invoiceNumber,
-				issueDate: invoice.issueDate,
-				dueDate: invoice.dueDate,
-				currency: invoice.currency,
-				paymentMethod: payment.method,
-				paymentIban: payment.iban,
+			createInvoice({
+				evolu,
+			})({
+				originalItemLineIds: (params.defaultValues?.items ?? []).map(
+					(item) => item.id,
+				),
+				invoice: {
+					id: invoice.id,
+					deviceId: invoice.deviceId,
+					invoiceId: invoice.invoiceId,
+					invoiceNumber: invoice.invoiceNumber,
+					issueDate: invoice.issueDate,
+					dueDate: invoice.dueDate,
+					currency: invoice.currency,
+					paymentMethod: payment.method,
+					paymentIban: payment.iban,
+					items: items.map((item) => {
+						const price = moneyCodec.decode({
+							value: item.price,
+							currency: invoice.currency,
+						}).value;
+
+						return {
+							id: item.id,
+							quantity: item.quantity,
+							item: {
+								label: item.label,
+								price: price,
+								currency: invoice.currency,
+								unitOfMeasure: item.unitOfMeasure,
+								internalCode: null,
+								productCodeType: null,
+								productCodeValue: null,
+								categoryId: null,
+								itemId: null,
+							},
+						};
+					}),
+					customer,
+					supplier,
+				},
 			});
-
-			{
-				const {
-					address,
-					billingInfo: { cz, ...billingInfo },
-					...contact
-				} = customer;
-				evolu.upsert("invoiceCustomer", {
-					...contact,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceCustomerAddress", {
-					...address,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceCustomerBillingInfo", {
-					...billingInfo,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceCustomerBillingInfoCz", {
-					...cz,
-					id: invoice.id,
-				});
-			}
-
-			{
-				const {
-					address,
-					billingInfo: { cz, ...billingInfo },
-					...contact
-				} = supplier;
-				evolu.upsert("invoiceSupplier", {
-					...contact,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceSupplierAddress", {
-					...address,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceSupplierBillingInfo", {
-					...billingInfo,
-					id: invoice.id,
-				});
-				evolu.upsert("invoiceSupplierBillingInfoCz", {
-					...cz,
-					id: invoice.id,
-				});
-			}
-
-			const originalItems = new Set(
-				(params.defaultValues?.items ?? []).map((item) => item.id),
-			);
-
-			for (const item of items) {
-				originalItems.delete(item.id);
-
-				const price = moneyCodec.decode({
-					value: item.price,
-					currency: invoice.currency,
-				}).value;
-
-				evolu.upsert("invoiceItem", {
-					id: item.id,
-					sourceItemId: null,
-					label: item.label,
-					price,
-					currency: invoice.currency,
-					unitOfMeasure: item.unitOfMeasure,
-				});
-				evolu.upsert("invoiceItemLine", {
-					id: item.id,
-					invoiceId: invoice.id,
-					quantity: item.quantity,
-					totalAmount: Integer(Math.round(price * item.quantity)),
-				});
-			}
-
-			for (const itemId of originalItems) {
-				if (itemId) {
-					evolu.update("invoiceItem", {
-						id: itemId,
-						isDeleted: sqliteTrue,
-					});
-				}
-			}
 
 			if (params.onSuccess) {
 				params.onSuccess(invoice.id, values);

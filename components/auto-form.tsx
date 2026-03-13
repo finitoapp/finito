@@ -32,6 +32,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
 	type Control,
 	Controller,
+	FormProvider,
 	useFieldArray,
 	useFormContext,
 	useWatch,
@@ -146,38 +147,40 @@ export const AutoForm = <
 	const { t } = useTranslation();
 
 	return (
-		<form
-			onSubmit={(e) => {
-				e.stopPropagation(); // Prevent bubbling to parent form
-				props.form.handleSubmitWithAction(e);
-			}}
-			className={"gap-4 flex flex-col space-y-4"}
-		>
-			<AutoFormInputLayer
-				components={props.components}
-				control={props.form.form.control}
-			/>
+		<FormProvider {...props.form.form}>
+			<form
+				onSubmit={(e) => {
+					e.stopPropagation(); // Prevent bubbling to parent form
+					props.form.handleSubmitWithAction(e);
+				}}
+				className={"gap-4 flex flex-col space-y-4"}
+			>
+				<AutoFormInputLayer
+					components={props.components}
+					control={props.form.form.control}
+				/>
 
-			<div className="flex justify-end gap-4">
-				<Button
-					type="submit"
-					className={props.saveClassName}
-					disabled={
-						props.form.form.formState.isSubmitting ||
-						props.form.form.formState.disabled
-					}
-				>
-					{props.form.form.formState.isSubmitting && (
-						<Loader2 className="animate-spin" />
-					)}
-					{props.saveLabel ?? (
-						<>
-							<Save /> {t("components:autoForm.actions.save")}
-						</>
-					)}
-				</Button>
-			</div>
-		</form>
+				<div className="flex justify-end gap-4">
+					<Button
+						type="submit"
+						className={props.saveClassName}
+						disabled={
+							props.form.form.formState.isSubmitting ||
+							props.form.form.formState.disabled
+						}
+					>
+						{props.form.form.formState.isSubmitting && (
+							<Loader2 className="animate-spin" />
+						)}
+						{props.saveLabel ?? (
+							<>
+								<Save /> {t("components:autoForm.actions.save")}
+							</>
+						)}
+					</Button>
+				</div>
+			</form>
+		</FormProvider>
 	);
 };
 
@@ -222,7 +225,7 @@ const createComponent = <
 	}) as CreateComponentResult<TName, TComponent>;
 
 export const AutoFormInput = {
-	hidden: (): AutoFormComponent<string> => () => null,
+	hidden: (): AutoFormComponent<string | null> => () => null,
 	text:
 		(
 			params: InputParams & {

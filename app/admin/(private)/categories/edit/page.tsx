@@ -25,7 +25,11 @@ export default function Home() {
 			createQuery((db) => {
 				return db
 					.selectFrom("category")
-					.select(["category.id as id", "category.name as name"] as const)
+					.select([
+						"category.id as id",
+						"category.deviceId as deviceId",
+						"category.name as name",
+					] as const)
 					.where("category.isDeleted", "is not", sqliteTrue)
 					.where("category.id", "=", id as never)
 					.where("category.name", "is not", null)

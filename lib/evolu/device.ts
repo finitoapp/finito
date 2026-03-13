@@ -50,6 +50,14 @@ const DeviceSchema = {
 		id: TableIdSchema,
 		url: WssUrlSchema,
 	},
+	device: {
+		id: TableIdSchema,
+		name: NonEmptyString255Schema,
+		deviceType: z.string().nullable(),
+		deviceVendor: z.string().nullable(),
+		browserName: z.string().nullable(),
+		osName: z.string().nullable(),
+	},
 } as const;
 
 export const createDeviceQuery = createQueryBuilder(DeviceSchema);
@@ -72,10 +80,10 @@ export const createDeviceEvolu = async () => {
 		})(run),
 	);
 
-	(async () => {
-		console.log("deviceAppOwner", await evolu.appOwner);
-	})();
-
+	// (async () => {
+	// 	console.log("deviceAppOwner", await evolu.appOwner);
+	// })();
+	//
 	// evolu.subscribeError(() => {
 	// 	const error = evolu.getError();
 	// 	if (!error) return;

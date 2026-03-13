@@ -25,6 +25,10 @@ import { useNostr } from "@/hooks/use-nostr";
 import { createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { type Id, TableIdSchema } from "@/lib/evolu/types";
+import {
+	convertItemToItemRevision,
+	createItemRevision,
+} from "@/lib/item/service";
 import { publishRelevantMenusToStorage } from "@/lib/menu/service";
 import {
 	fromDatetimeLocalInputValue,
@@ -47,7 +51,7 @@ type MenuItemState = {
 	id: Id;
 	availabilityStatus: "soldOut" | "hidden" | null;
 	item: {
-		sourceItemId: Id | null;
+		itemId: Id | null;
 		label: NonEmptyString255;
 		price: Integer;
 		currency: Currency;
@@ -77,6 +81,7 @@ type MenuFormState = {
 
 export type MenuFormDefaultValues = {
 	id?: string;
+	deviceId?: string | null;
 	name?: string;
 	status?: string;
 	validFrom?: number | null;
@@ -89,7 +94,6 @@ export type MenuFormDefaultValues = {
 	}>;
 };
 
-const EmptySelectValue = "__empty__";
 const AvailableAvailabilityStatusSelectValue = "__available__";
 
 const menuStatusValues = [MenuStatus.Draft, MenuStatus.Published] as const;
@@ -98,6 +102,7 @@ const menuItemAvailabilityStatusValues = ["soldOut", "hidden"] as const;
 const menuPayloadSchema = z
 	.object({
 		id: TableIdSchema.optional(),
+		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
 		status: z.enum(menuStatusValues),
 		validFrom: TimestampMsSchema.nullable(),
@@ -112,7 +117,8 @@ const menuPayloadSchema = z
 						.array(
 							z.object({
 								id: TableIdSchema,
-								sourceItemId: TableIdSchema.nullable(),
+								deviceId: TableIdSchema.nullable(),
+								categoryId: TableIdSchema.nullable(),
 								label: NonEmptyString255Schema,
 								availabilityStatus: z
 									.enum(menuItemAvailabilityStatusValues)
@@ -163,7 +169,7 @@ const createInitialFormState = (
 			defaultValues?.categories?.map((category) => ({
 				id: category.id,
 				name: category.name,
-				selectedItemId: EmptySelectValue,
+				selectedItemId: null,
 				items: category.items.map((item) => ({
 					...item,
 					availabilityStatus: item.availabilityStatus ?? null,
@@ -192,6 +198,8 @@ export const MenuForm = (params: {
 					.selectFrom("item")
 					.select([
 						"item.id as id",
+						"item.deviceId as deviceId",
+						"item.categoryId as categoryId",
 						"item.label as label",
 						"item.price as price",
 						"item.currency as currency",
@@ -271,7 +279,7 @@ export const MenuForm = (params: {
 		updateCategory(categoryId, (current) => {
 			if (
 				current.items.some(
-					(item) => item.item.sourceItemId === current.selectedItemId,
+					(item) => item.item.itemId === current.selectedItemId,
 				)
 			) {
 				return current;
@@ -283,7 +291,7 @@ export const MenuForm = (params: {
 					id: createNewId(),
 					availabilityStatus: null,
 					item: {
-						sourceItemId: sourceItem.id,
+						itemId: sourceItem.id,
 						label: sourceItem.label,
 						price: sourceItem.price,
 						currency: sourceItem.currency,
@@ -356,21 +364,26 @@ export const MenuForm = (params: {
 			});
 
 			for (const item of category.items) {
-				nextItemIds.add(item.id);
-				evolu.upsert("menuItem", {
-					id: item.id,
-					sourceItemId: item.sourceItemId,
-					label: item.label,
-					price: item.price,
-					currency: item.currency,
-					unitOfMeasure: item.unitOfMeasure,
-					internalCode: item.internalCode,
-					productCodeType: item.productCodeType,
-					productCodeValue: item.productCodeValue,
+				const itemRevision = createItemRevision({ evolu })({
+					item: convertItemToItemRevision({
+						id: item.id,
+						deviceId: item.deviceId,
+						categoryId: item.categoryId,
+						label: item.label,
+						price: item.price,
+						currency: item.currency,
+						unitOfMeasure: item.unitOfMeasure,
+						internalCode: item.internalCode,
+						productCodeType: item.productCodeType,
+						productCodeValue: item.productCodeValue,
+					}),
 				});
+
+				nextItemIds.add(item.id);
 				evolu.upsert("menuItemLine", {
 					id: item.id,
 					menuCategoryId: category.id,
+					itemRevisionId: itemRevision.id,
 					availabilityStatus: item.availabilityStatus,
 				});
 			}
@@ -378,7 +391,7 @@ export const MenuForm = (params: {
 
 		for (const { id } of existingItems) {
 			if (!nextItemIds.has(id)) {
-				evolu.update("menuItem", {
+				evolu.update("menuItemLine", {
 					id: id as Id,
 					isDeleted: sqliteTrue,
 				});
@@ -426,7 +439,7 @@ export const MenuForm = (params: {
 				name: category.name.trim(),
 				items: category.items.map((item) => ({
 					id: item.id,
-					sourceItemId: item.item.sourceItemId,
+					itemId: item.item.itemId,
 					label: item.item.label.trim(),
 					availabilityStatus: item.availabilityStatus,
 					price: item.item.price,

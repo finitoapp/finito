@@ -12,6 +12,7 @@ import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import { activeCategoriesQuery } from "@/lib/evolu/queries/category";
 import { type Id, TableIdSchema } from "@/lib/evolu/types";
+import { createItem } from "@/lib/item/service";
 import {
 	Currency,
 	NonEmptyString255Schema,
@@ -25,6 +26,7 @@ import { moneyCodec } from "@/lib/shared/zod/money-codec";
 const itemSchema = z
 	.object({
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		price: StringToNullableStringSchema.pipe(NumberStringSchema),
 		currency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
 		label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
@@ -55,6 +57,7 @@ const createIdDeps = {
 const createItemDefaultValues = () => {
 	return {
 		id: createId(createIdDeps),
+		deviceId: null,
 		price: "",
 		currency: null,
 		label: "",
@@ -79,6 +82,7 @@ const createComponents = (t: TFunction) => {
 
 	return createAutoFormLayout(itemSchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 		...builder.magicInput("label").text({
 			label: t("items:form.item-form.label.label"),
 		}),
@@ -130,13 +134,15 @@ export const ItemForm: React.FC<{
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			evolu.upsert("item", values, {
-				onComplete: () => {
-					if (params.onSuccess) {
-						params.onSuccess(values.id);
-					}
-				},
+			createItem({
+				evolu,
+			})({
+				item: values,
 			});
+
+			if (params.onSuccess) {
+				params.onSuccess(values.id);
+			}
 		},
 	});
 

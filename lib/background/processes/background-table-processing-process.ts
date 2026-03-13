@@ -92,24 +92,24 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 
 												evoluJsonObjectFrom(
 													eb
-														.selectFrom("posBillItem")
+														.selectFrom("itemRevision")
 														.select([
-															"posBillItem.label as label",
-															"posBillItem.price as price",
-															"posBillItem.id as id",
+															"itemRevision.label as label",
+															"itemRevision.price as price",
+															"itemRevision.id as id",
 														])
 														.whereRef(
-															"posBillItem.id",
+															"itemRevision.id",
 															"=",
-															"posBillItemLine.id",
+															"posBillItemLine.itemRevisionId",
 														)
 														.where(
-															"posBillItem.isDeleted",
+															"itemRevision.isDeleted",
 															"is not",
 															sqliteTrue,
 														)
-														.where("posBillItem.label", "is not", null)
-														.where("posBillItem.price", "is not", null)
+														.where("itemRevision.label", "is not", null)
+														.where("itemRevision.price", "is not", null)
 														.$narrowType<{
 															label: KyselyNotNull;
 															price: KyselyNotNull;

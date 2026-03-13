@@ -89,29 +89,37 @@ export const publishRelevantMenusToStorage = async (params: {
 
 																		evoluJsonObjectFrom(
 																			eb
-																				.selectFrom("menuItem")
+																				.selectFrom("itemRevision")
 																				.select([
-																					"menuItem.label as label",
-																					"menuItem.price as price",
-																					"menuItem.currency as currency",
-																					"menuItem.unitOfMeasure as unitOfMeasure",
-																					"menuItem.id as id",
-																					"menuItem.sourceItemId as sourceItemId",
+																					"itemRevision.label as label",
+																					"itemRevision.price as price",
+																					"itemRevision.currency as currency",
+																					"itemRevision.unitOfMeasure as unitOfMeasure",
+																					"itemRevision.id as id",
+																					"itemRevision.itemId as itemId",
 																				])
 																				.whereRef(
-																					"menuItem.id",
+																					"itemRevision.id",
 																					"=",
-																					"menuItemLine.id",
+																					"menuItemLine.itemRevisionId",
 																				)
 																				.where(
-																					"menuItem.isDeleted",
+																					"itemRevision.isDeleted",
 																					"is not",
 																					sqliteTrue,
 																				)
-																				.where("menuItem.label", "is not", null)
-																				.where("menuItem.price", "is not", null)
 																				.where(
-																					"menuItem.currency",
+																					"itemRevision.label",
+																					"is not",
+																					null,
+																				)
+																				.where(
+																					"itemRevision.price",
+																					"is not",
+																					null,
+																				)
+																				.where(
+																					"itemRevision.currency",
 																					"is not",
 																					null,
 																				)

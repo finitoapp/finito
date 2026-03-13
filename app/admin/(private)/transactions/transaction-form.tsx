@@ -37,6 +37,7 @@ type AccountTag =
 
 const transactionSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	accountId: z.string().pipe(TableIdSchema),
 	occurredAt: z.date(),
 	amount: StringToNullableStringSchema.pipe(NumberStringSchema),
@@ -80,6 +81,7 @@ const createIdDeps = {
 const createItemDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		accountId: "",
 		occurredAt: new Date(),
 		amount: "0",
@@ -141,6 +143,7 @@ const createComponents = (
 ) =>
 	createAutoFormLayout(transactionSchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 
 		...builder.card(
 			{},

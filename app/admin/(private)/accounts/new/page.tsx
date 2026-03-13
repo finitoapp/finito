@@ -1,8 +1,10 @@
 "use client";
 
+import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { AccountForm } from "@/app/admin/(private)/accounts/account-form";
+import { accountAtom } from "@/atoms/account";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +12,7 @@ import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function Home() {
 	const { t } = useTranslation();
 	const router = useRouter();
+	const account = useAtomValue(accountAtom);
 
 	return (
 		<div className={"max-w-xl w-full"}>
@@ -22,7 +25,12 @@ export default function Home() {
 					<CardTitle>{t("accounts:page.newAccount")}</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<AccountForm onSuccess={() => router.back()} />
+					<AccountForm
+						defaultValues={{
+							deviceId: account.device.id,
+						}}
+						onSuccess={() => router.back()}
+					/>
 				</CardContent>
 			</ResponsiveCard>
 		</div>

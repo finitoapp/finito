@@ -17,6 +17,7 @@ import {
 
 const categorySchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 });
 
@@ -27,12 +28,14 @@ const createIdDeps = {
 const createCategoryDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		name: "",
 	}) satisfies z.input<typeof categorySchema>;
 
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(categorySchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("categories:form.category-form.label.name"),
 		}),

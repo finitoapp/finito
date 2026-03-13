@@ -66,6 +66,8 @@ const billingInfoFormSchema = z.discriminatedUnion("countryCode", [
 
 export const contactFormSchema = z.object({
 	id: TableIdSchema,
+	sourceContactId: TableIdSchema.nullable(),
+	deviceId: TableIdSchema.nullable(),
 	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
 	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
@@ -81,6 +83,8 @@ const createIdDeps = {
 export const createContactFormDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
+		sourceContactId: null,
 		name: "",
 		label: "",
 		email: "",
@@ -105,7 +109,7 @@ export const createContactFormDefaultValues = () =>
 export const mapContactToFormContact = (
 	contact: Omit<
 		z.output<typeof contactFormSchema>,
-		"address" | "billingInfo"
+		"address" | "billingInfo" | "deviceId" | "sourceContactId"
 	> & {
 		address: z.output<typeof addressFormSchema> | null;
 		billingInfo:
@@ -181,6 +185,8 @@ const createComponents = (t: TFunction) =>
 		_separator: () => <Separator />,
 
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
+		...builder.magicInput("sourceContactId").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("contacts:form.contact-form.label.contact-name"),
 		}),

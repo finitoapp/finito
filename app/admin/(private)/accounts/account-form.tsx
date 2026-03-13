@@ -36,6 +36,7 @@ const baseAccountSparkSchema = z.object({
 
 const baseAccountSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	accountIban: z.object({
 		iban: z.string(),
@@ -105,6 +106,7 @@ const createIdDeps = {
 const createItemDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		name: "",
 		_tag: "accountIban",
 		accountIban: {
@@ -140,6 +142,7 @@ const createComponents = (
 ) =>
 	createAutoFormLayout(accountSchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("accounts:form.account-form.label.name"),
 		}),

@@ -43,6 +43,7 @@ import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const baseStaticPaymentSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	totalAmount: StringToNullableStringSchema.pipe(NumberStringSchema),
 	currency: z.enum(Currency),
 	tipAmount: StringToNullableStringSchema.pipe(NumberStringSchema.nullable()),
@@ -127,6 +128,7 @@ const createIdDeps = {
 const createPaymentDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		merchantName: "",
 		type: "cash",
 		iban: "",
@@ -455,10 +457,10 @@ export const PaymentForm: React.FC<{
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id = await createPayment({
-				...storageDeps,
+			const id = await createPayment(storageDeps)({
 				payment: {
 					id: values.id,
+					deviceId: values.deviceId,
 					currency: values.currency,
 				},
 				totalAmount: values.totalAmount as NonNegativeInteger,

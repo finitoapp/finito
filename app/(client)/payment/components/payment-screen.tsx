@@ -1,8 +1,10 @@
 import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import { motion } from "framer-motion";
+import { useAtomValue } from "jotai";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { accountAtom } from "@/atoms/account";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -35,6 +37,7 @@ const PayButton: FC<{
 	const totalAmount = extractBtcAmountFromLightningInvoice(props.lnInvoice);
 	const [paymentMethod, setPaymentMethod] = useState("external");
 	const evolu = useEvolu();
+	const account = useAtomValue(accountAtom);
 
 	const { data: btcWallets } = useEvoluQuery(btcWalletsQuery);
 
@@ -63,11 +66,11 @@ const PayButton: FC<{
 				size={"lg"}
 				disabled={false}
 				onClick={async () => {
-					createOutgoingPayment({
-						evolu,
+					createOutgoingPayment({ evolu })({
 						payment: {
 							totalAmount,
 							currency: Currency.BTC,
+							deviceId: account.device.id,
 						},
 					});
 

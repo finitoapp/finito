@@ -14,6 +14,7 @@ export const createGetTransactionQuery = (params: { id: Id }) =>
 				(eb) =>
 					[
 						"transaction.id as id",
+						"transaction.deviceId as deviceId",
 						"transaction.createdAt as createdAt",
 						"transaction.accountId as accountId",
 						"transaction.occurredAt as occurredAt",
