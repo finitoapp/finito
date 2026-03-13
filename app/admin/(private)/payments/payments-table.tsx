@@ -36,6 +36,8 @@ import { formatMoney } from "@/lib/shared/utils/format";
 
 type Row = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	createdAt: DateIso;
 	totalAmount: Integer;
 	currency: Currency;
@@ -45,10 +47,12 @@ type Row = {
 
 const sortingFields = {
 	id: "payment.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "payment.createdAt",
 	totalAmount: "payment.totalAmount",
 	currency: "payment.currency",
-	label: "paymentItem.label",
+	label: "itemRevision.label",
 } as const satisfies Record<keyof Row | "createdAt", string>;
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
@@ -83,6 +87,27 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 		accessorKey: "label",
 		header: t("payments:table.columns.description"),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 export function PaymentsTable() {
@@ -108,18 +133,25 @@ export function PaymentsTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("payment")
+						.leftJoin("device", "device.id", "payment.deviceId")
 						.leftJoin(
 							"paymentItemLine",
 							"paymentItemLine.paymentId",
 							"payment.id",
 						)
-						.leftJoin("paymentItem", "paymentItem.id", "paymentItemLine.id")
+						.leftJoin(
+							"itemRevision",
+							"itemRevision.id",
+							"paymentItemLine.itemRevisionId",
+						)
 						.select([
 							"payment.id as id",
+							"device.id as deviceId",
+							"device.name as deviceName",
 							"payment.totalAmount as totalAmount",
 							"payment.currency as currency",
 							"payment.createdAt as createdAt",
-							"paymentItem.label as label",
+							"itemRevision.label as label",
 						] as const)
 						.where("payment.isDeleted", "is not", sqliteTrue)
 						.where("payment.totalAmount", "is not", null)

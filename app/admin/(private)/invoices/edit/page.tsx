@@ -31,6 +31,7 @@ export default function Home() {
 					.selectFrom("invoice")
 					.select((eb) => [
 						"invoice.id as id",
+						"invoice.deviceId as deviceId",
 						"invoice.invoiceId as invoiceId",
 						"invoice.invoiceNumber as invoiceNumber",
 						"invoice.issueDate as issueDate",
@@ -43,23 +44,23 @@ export default function Home() {
 							eb
 								.selectFrom("invoiceItemLine")
 								.innerJoin(
-									"invoiceItem",
-									"invoiceItemLine.id",
-									"invoiceItem.id",
+									"itemRevision",
+									"invoiceItemLine.itemRevisionId",
+									"itemRevision.id",
 								)
 								.select([
-									"invoiceItem.id as id",
-									"invoiceItem.label as label",
-									"invoiceItem.price as price",
-									"invoiceItem.currency as currency",
+									"itemRevision.id as id",
+									"itemRevision.label as label",
+									"itemRevision.price as price",
+									"itemRevision.currency as currency",
 									"invoiceItemLine.quantity as quantity",
-									"invoiceItem.unitOfMeasure as unitOfMeasure",
+									"itemRevision.unitOfMeasure as unitOfMeasure",
 								] as const)
 								.whereRef("invoiceItemLine.invoiceId", "=", "invoice.id")
-								.where("invoiceItem.isDeleted", "is not", sqliteTrue)
-								.where("invoiceItem.label", "is not", null)
-								.where("invoiceItem.price", "is not", null)
-								.where("invoiceItem.currency", "is not", null)
+								.where("itemRevision.isDeleted", "is not", sqliteTrue)
+								.where("itemRevision.label", "is not", null)
+								.where("itemRevision.price", "is not", null)
+								.where("itemRevision.currency", "is not", null)
 								.where("invoiceItemLine.quantity", "is not", null)
 								.$narrowType<{
 									label: KyselyNotNull;
@@ -74,6 +75,7 @@ export default function Home() {
 								.selectFrom("invoiceCustomer")
 								.select((eb) => [
 									"invoiceCustomer.id as id",
+									"invoiceCustomer.sourceContactId as sourceContactId",
 									"invoiceCustomer.name as name",
 									"invoiceCustomer.label as label",
 									"invoiceCustomer.email as email",
@@ -156,6 +158,7 @@ export default function Home() {
 								.selectFrom("invoiceSupplier")
 								.select((eb) => [
 									"invoiceSupplier.id as id",
+									"invoiceSupplier.sourceContactId as sourceContactId",
 									"invoiceSupplier.name as name",
 									"invoiceSupplier.label as label",
 									"invoiceSupplier.email as email",

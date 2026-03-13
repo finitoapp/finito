@@ -36,7 +36,11 @@ import { formatMoney } from "@/lib/shared/utils/format";
 
 type Row = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	invoiceNumber: string;
+	customerId: Id | null;
+	customerSourceContactId: Id | null;
 	customerName: string | null;
 	issueDate: DateString; // ISO date string
 	dueDate: DateString; // ISO date string
@@ -52,6 +56,27 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "customerName",
 		header: createSortableHeader(t("invoices:table.columns.customer-name")),
+		cell: ({ row }) =>
+			row.original.customerName && row.original.customerSourceContactId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							onClick={(event) => {
+								// event.preventDefault();
+								event.stopPropagation();
+							}}
+							href={
+								`/admin/contacts/detail?id=${encodeURIComponent(row.original.customerSourceContactId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.customerName}
+				</Button>
+			) : (
+				(row.original.customerName ?? "-")
+			),
 	},
 	{
 		accessorKey: "issueDate",
@@ -82,12 +107,37 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 		// 	/>
 		// ),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "invoice.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "invoice.createdAt",
 	invoiceNumber: "invoice.invoiceNumber",
+	customerId: "invoiceCustomer.id",
+	customerSourceContactId: "invoiceCustomer.sourceContactId",
 	customerName: "invoiceCustomer.name",
 	issueDate: "invoice.issueDate",
 	dueDate: "invoice.dueDate",
@@ -131,6 +181,7 @@ export function InvoicesTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("invoice")
+						.leftJoin("device", "invoice.deviceId", "device.id")
 						.leftJoin("invoiceCustomer", "invoiceCustomer.id", "invoice.id")
 						.leftJoin(
 							"invoiceItemLine",
@@ -141,10 +192,14 @@ export function InvoicesTable() {
 							(eb) =>
 								[
 									"invoice.id as id",
+									"device.id as deviceId",
+									"device.name as deviceName",
 									"invoice.invoiceNumber as invoiceNumber",
 									"invoice.issueDate as issueDate",
 									"invoice.dueDate as dueDate",
 									"invoice.currency as currency",
+									"invoiceCustomer.sourceContactId as customerSourceContactId",
+									"invoiceCustomer.id as customerId",
 									"invoiceCustomer.name as customerName",
 									"invoice.createdAt as createdAt",
 									eb.fn

@@ -1,4 +1,4 @@
-import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { createIdFromString, sqliteFalse, sqliteTrue } from "@evolu/common";
 import { useEvolu } from "@/hooks/use-evolu";
 import { usePosRows } from "@/hooks/use-pos";
 import type { EvoluSchemaType } from "@/lib/evolu";
@@ -51,10 +51,6 @@ export const useBill = () => {
 					id: item.id,
 					isDeleted: sqliteTrue,
 				});
-				evolu.update("posBillItem", {
-					id: item.id,
-					isDeleted: sqliteTrue,
-				});
 			}
 
 			for (const rate of bill.rates) {
@@ -70,7 +66,7 @@ export const useBill = () => {
 		addItem: (props: {
 			billId?: Id;
 			defaultCurrency: Currency;
-			item: EvoluSchemaType["item"];
+			item: EvoluSchemaType["itemRevision"];
 		}) => {
 			const bill = props.billId
 				? billRows.find((bill) => bill.id === props.billId)
@@ -82,12 +78,15 @@ export const useBill = () => {
 				return;
 			}
 
-			const currentItem = bill.items.find(
-				(item) => item.item.sourceItemId === props.item.id,
+			const posBillItemLineId = createIdFromString(
+				`posBillItemLine:${bill.id}:${props.item.id}`,
 			);
-
+			const currentItem = bill.items.find(
+				(item) => item.id === posBillItemLineId,
+			);
 			if (currentItem) {
 				evolu.update("posBillItemLine", {
+					isDeleted: sqliteFalse, // Let's undelete previously removed line
 					id: currentItem.id,
 					quantity: currentItem.quantity + 1,
 					totalAmount: Integer(
@@ -95,29 +94,30 @@ export const useBill = () => {
 					),
 				});
 			} else {
-				const { id } = evolu.insert("posBillItemLine", {
+				evolu.upsert("posBillItemLine", {
+					isDeleted: sqliteFalse, // Let's undelete previously removed line
+					id: posBillItemLineId,
 					posBillId: bill.id,
 					totalAmount: props.item.price,
 					quantity: 1,
-				});
-
-				evolu.upsert("posBillItem", {
-					...props.item,
-					id,
-					sourceItemId: props.item.id,
+					itemRevisionId: props.item.id,
 				});
 			}
 
 			return bill.id;
 		},
-		updateItemQuantity: (props: { billId: Id; itemId: Id; delta: -1 | 1 }) => {
+		updateItemQuantity: (props: {
+			billId: Id;
+			itemLineId: Id;
+			delta: -1 | 1;
+		}) => {
 			const bill = billRows.find((bill) => bill.id === props.billId);
 			if (bill === undefined) {
 				return;
 			}
 
 			const currentItem = bill.items.find(
-				(item) => item.item.id === props.itemId,
+				(item) => item.id === props.itemLineId,
 			);
 			if (currentItem === undefined) {
 				return;
@@ -126,10 +126,6 @@ export const useBill = () => {
 			const nextQuantity = currentItem.quantity + props.delta;
 			if (nextQuantity <= 0) {
 				evolu.update("posBillItemLine", {
-					id: currentItem.id,
-					isDeleted: sqliteTrue,
-				});
-				evolu.update("posBillItem", {
 					id: currentItem.id,
 					isDeleted: sqliteTrue,
 				});
@@ -142,22 +138,20 @@ export const useBill = () => {
 				totalAmount: Integer(Math.round(currentItem.item.price * nextQuantity)),
 			});
 		},
-		removeItem: (props: { billId: Id; itemId: Id }) => {
+		removeItem: (props: { billId: Id; itemLineId: Id }) => {
 			const bill = billRows.find((bill) => bill.id === props.billId);
 			if (bill === undefined) {
 				return;
 			}
 
-			const currentItem = bill.items.find((item) => item.id === props.itemId);
+			const currentItem = bill.items.find(
+				(item) => item.id === props.itemLineId,
+			);
 			if (currentItem === undefined) {
 				return;
 			}
 
 			evolu.update("posBillItemLine", {
-				id: currentItem.id,
-				isDeleted: sqliteTrue,
-			});
-			evolu.update("posBillItem", {
 				id: currentItem.id,
 				isDeleted: sqliteTrue,
 			});

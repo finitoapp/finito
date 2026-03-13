@@ -1,10 +1,12 @@
 "use client";
 
 import { createIdFromString, sqliteTrue } from "@evolu/common";
+import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ItemForm } from "@/app/admin/(private)/items/item-form";
+import { accountAtom } from "@/atoms/account";
 import { BackButton } from "@/components/back-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +17,7 @@ export default function Home() {
 	const { t } = useTranslation();
 	const router = useRouter();
 	const evolu = useEvolu();
+	const account = useAtomValue(accountAtom);
 
 	const [billingSettings, setBillingSettings] = useState<any>(undefined);
 	useEffect(() => {
@@ -45,6 +48,7 @@ export default function Home() {
 						key={[billingSettings ? "true" : false].join(",")}
 						onSuccess={() => router.back()}
 						defaultValues={{
+							deviceId: account.device.id,
 							currency: billingSettings?.defaultCurrency,
 						}}
 					/>

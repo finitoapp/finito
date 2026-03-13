@@ -14,6 +14,22 @@ export const evoluAtom = atom(async (get) => {
 
 	// Seed initial data
 	(async () => {
+		// Copy device identification to the shared evolu instance. Skip waiting
+		void (async () => {
+			const data = await evolu.loadQuery(
+				createQuery((db) =>
+					db
+						.selectFrom("device")
+						.selectAll()
+						.where("isDeleted", "is not", sqliteTrue)
+						.where("id", "=", account.device.id),
+				),
+			);
+			if (data.length === 0) {
+				evolu.upsert("device", account.device);
+			}
+		})();
+
 		const appOwner = await evolu.appOwner;
 		if (appOwner.mnemonic === null || appOwner.mnemonic === undefined)
 			throw new Error(
@@ -53,7 +69,7 @@ export const evoluAtom = atom(async (get) => {
 		}
 
 		// Create background table processing
-		{
+		void (async () => {
 			const id = createIdFromString(`backgroundTableProcessing`);
 			const data = await evolu.loadQuery(
 				createQuery((db) =>
@@ -74,7 +90,7 @@ export const evoluAtom = atom(async (get) => {
 					id,
 				});
 			}
-		}
+		})();
 	})();
 
 	return evolu;

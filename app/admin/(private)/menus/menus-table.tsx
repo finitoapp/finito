@@ -30,6 +30,8 @@ import { isMenuVisibleForPublic } from "@/lib/menu/utils";
 
 type MenuRow = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	name: string;
 	status: string;
 	publishedAt: number | null;
@@ -76,7 +78,37 @@ const createColumns = (t: TFunction): ColumnDef<MenuRow>[] => [
 				? t("menus:common.yes")
 				: t("menus:common.no"),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
+
+const sortingFields = {
+	id: "menu.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
+	name: "menu.name",
+	status: "menu.status",
+	publishedAt: "menu.publishedAt",
+} as const satisfies Record<keyof MenuRow, string>;
 
 const createFilterableColumns = (t: TFunction) =>
 	[
@@ -99,14 +131,21 @@ export const MenusTable = () => {
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
-				const finalSorting = sorting ?? { id: "name", desc: false };
-				const sortingColumn = `menu.${finalSorting.id}`;
+				const sortingField = sorting ? sorting.id : ("name" as const);
+				const sortingColumn = sortingFields[sortingField];
+				const finalSorting = {
+					id: sortingColumn,
+					desc: sorting?.desc ?? false,
+				};
 
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("menu")
+						.leftJoin("device", "device.id", "menu.deviceId")
 						.select([
 							"menu.id as id",
+							"device.id as deviceId",
+							"device.name as deviceName",
 							"menu.name as name",
 							"menu.status as status",
 							"menu.publishedAt as publishedAt",
@@ -117,16 +156,12 @@ export const MenusTable = () => {
 						qb = qb.where((eb) =>
 							eb.or([
 								eb(
-									sortingColumn as never,
+									finalSorting.id,
 									finalSorting.desc ? "<" : ">",
-									previousCursor[finalSorting.id],
+									previousCursor[sortingField],
 								),
 								eb.and([
-									eb(
-										sortingColumn as never,
-										"=",
-										previousCursor[finalSorting.id],
-									),
+									eb(finalSorting.id, "=", previousCursor[sortingField]),
 									eb("menu.id", "<", previousCursor.id as Id),
 								]),
 							]),
@@ -134,7 +169,7 @@ export const MenusTable = () => {
 					}
 
 					qb = qb
-						.orderBy(sortingColumn as never, finalSorting.desc ? "desc" : "asc")
+						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
 						.orderBy("menu.id", "desc");
 
 					for (const filter of filters) {
@@ -149,6 +184,8 @@ export const MenusTable = () => {
 				const normalizeRows = (
 					rows: ReadonlyArray<{
 						id: Id;
+						deviceId: Id | null;
+						deviceName: string | null;
 						name: string | null;
 						status: string | null;
 						publishedAt: number | null;
@@ -160,6 +197,8 @@ export const MenusTable = () => {
 							: [
 									{
 										id: row.id,
+										deviceId: row.deviceId,
+										deviceName: row.deviceName,
 										name: row.name,
 										status: row.status,
 										publishedAt: row.publishedAt,
@@ -175,7 +214,7 @@ export const MenusTable = () => {
 					if (result.length > limit && last) {
 						nextCursor = {
 							id: last.id,
-							[finalSorting.id]: last[finalSorting.id as keyof MenuRow],
+							[sortingField]: last[sortingField],
 						};
 					}
 

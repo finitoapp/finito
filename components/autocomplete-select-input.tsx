@@ -9,13 +9,12 @@ import {
 	Autocomplete,
 	AutocompleteClear,
 	AutocompleteContent,
-	AutocompleteControl,
 	AutocompleteInput,
 	AutocompleteItem,
 	AutocompleteList,
 	AutocompleteStatus,
-} from "@/components/ui/base-autocomplete";
-import { Label } from "@/components/ui/label";
+} from "@/components/reui/autocomplete";
+import { FieldLabel } from "@/components/ui/field";
 
 export const createAutocompleteSelectInput =
 	<TItem extends JsonValue>(params: {
@@ -97,7 +96,6 @@ export const createAutocompleteSelectInput =
 
 					return (
 						<Autocomplete
-							mode={"inline"}
 							openOnInputClick
 							items={searchResults}
 							value={searchValue}
@@ -114,18 +112,13 @@ export const createAutocompleteSelectInput =
 							}}
 							filter={null}
 						>
-							<Label className="flex flex-col gap-2">
-								<span className="text-sm font-medium">
+							<div className="flex flex-col items-start gap-2">
+								<FieldLabel htmlFor={field.name}>
 									{t("components:autocomplete.searchSubjects")}
-								</span>
-								<AutocompleteControl>
-									<AutocompleteInput
-										variant={"lg"}
-										placeholder={params.placeholder}
-									/>
-									{searchValue && <AutocompleteClear />}
-								</AutocompleteControl>
-							</Label>
+								</FieldLabel>
+								<AutocompleteInput placeholder={params.placeholder} />
+							</div>
+							{searchValue && <AutocompleteClear />}
 							<AutocompleteContent>
 								<AutocompleteStatus>{status}</AutocompleteStatus>
 								<AutocompleteList>

@@ -12,6 +12,7 @@ export const createGetContactsQuery = (params: { id?: Id } = {}) =>
 			.selectFrom("contact")
 			.select((eb) => [
 				"contact.id as id",
+				"contact.deviceId as deviceId",
 				"contact.createdAt as createdAt",
 				"contact.name as name",
 				"contact.label as label",

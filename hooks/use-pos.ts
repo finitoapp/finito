@@ -10,10 +10,13 @@ import type { Id } from "@/lib/evolu/types";
 
 export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
-	items: (Omit<EvoluSchemaType["posBillItemLine"], "posBillId"> & {
+	items: (Omit<
+		EvoluSchemaType["posBillItemLine"],
+		"posBillId" | "itemRevisionId"
+	> & {
 		item: Pick<
-			EvoluSchemaType["posBillItem"],
-			"label" | "price" | "currency" | "id" | "sourceItemId"
+			EvoluSchemaType["itemRevision"],
+			"label" | "price" | "currency" | "id" | "itemId"
 		>;
 	})[];
 	rates: EvoluSchemaType["posBillRate"][];
@@ -34,6 +37,7 @@ const posBillQuery = createQuery<PosBill>((db) =>
 			(eb) =>
 				[
 					"posBill.id as id",
+					"posBill.deviceId as deviceId",
 					"posBill.displayId as displayId",
 					"posBill.label as label",
 					"posBill.currency as currency",
@@ -63,19 +67,23 @@ const posBillQuery = createQuery<PosBill>((db) =>
 
 										evoluJsonObjectFrom(
 											eb
-												.selectFrom("posBillItem")
+												.selectFrom("itemRevision")
 												.select([
-													"posBillItem.label as label",
-													"posBillItem.price as price",
-													"posBillItem.currency as currency",
-													"posBillItem.id as id",
-													"posBillItem.sourceItemId as sourceItemId",
+													"itemRevision.label as label",
+													"itemRevision.price as price",
+													"itemRevision.currency as currency",
+													"itemRevision.id as id",
+													"itemRevision.itemId as itemId",
 												])
-												.whereRef("posBillItem.id", "=", "posBillItemLine.id")
-												.where("posBillItem.isDeleted", "is not", sqliteTrue)
-												.where("posBillItem.label", "is not", null)
-												.where("posBillItem.price", "is not", null)
-												.where("posBillItem.currency", "is not", null)
+												.whereRef(
+													"itemRevision.id",
+													"=",
+													"posBillItemLine.itemRevisionId",
+												)
+												.where("itemRevision.isDeleted", "is not", sqliteTrue)
+												.where("itemRevision.label", "is not", null)
+												.where("itemRevision.price", "is not", null)
+												.where("itemRevision.currency", "is not", null)
 												.$narrowType<{
 													label: KyselyNotNull;
 													price: KyselyNotNull;

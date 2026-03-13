@@ -84,6 +84,7 @@ const NullableTableIdSchema = TableIdSchema.nullable();
 
 const ItemSchema = {
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	label: NonEmptyString255Schema,
 	// Stored in minor units for `priceCurrency` (e.g. cents, satoshis).
 	price: IntegerSchema,
@@ -95,21 +96,30 @@ const ItemSchema = {
 	currency: z.enum(Currency),
 };
 
-const ItemSnapshotSchema = {
-	...ItemSchema,
-	// Optional link to the original item.
-	sourceItemId: NullableTableIdSchema,
-};
-
-// const Schema = RawSchema;
 export const AppSchema = {
 	category: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
 	},
+	device: {
+		id: TableIdSchema,
+		name: NonEmptyString255Schema,
+		deviceType: z.string().nullable(),
+		deviceVendor: z.string().nullable(),
+		browserName: z.string().nullable(),
+		osName: z.string().nullable(),
+	},
 	item: ItemSchema,
+	itemRevision: {
+		...ItemSchema,
+		// Link to the original item.
+		// It can be null when the itemRevision is used without original item.
+		itemId: NullableTableIdSchema,
+	},
 	menu: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
 		// Workflow state of menu publication.
 		status: z.enum(MenuStatus),
@@ -125,12 +135,13 @@ export const AppSchema = {
 	menuItemLine: {
 		id: TableIdSchema,
 		menuCategoryId: TableIdSchema,
+		itemRevisionId: TableIdSchema,
 		// `null` = available` for menu-specific availability.
 		availabilityStatus: z.enum(["soldOut", "hidden"]).nullable(),
 	},
-	menuItem: ItemSnapshotSchema,
 	table: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		label: NonEmptyString255Schema,
 		numberOfSeats: PositiveIntegerSchema,
 	},
@@ -141,6 +152,7 @@ export const AppSchema = {
 	},
 	posBill: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		displayId: PositiveIntegerSchema,
 		label: NonEmptyString255Schema.nullable(),
 		currency: z.enum(Currency),
@@ -149,10 +161,10 @@ export const AppSchema = {
 	posBillItemLine: {
 		id: TableIdSchema,
 		posBillId: TableIdSchema,
+		itemRevisionId: TableIdSchema,
 		totalAmount: IntegerSchema, // In posBill currency, not in item currency.
 		quantity: z.number(),
 	},
-	posBillItem: ItemSnapshotSchema,
 	posBillRate: {
 		id: TableIdSchema,
 		billId: TableIdSchema,
@@ -162,6 +174,7 @@ export const AppSchema = {
 	},
 	reservation: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		tableId: NullableTableIdSchema,
 		note: NonEmptyStringSchema.nullable(),
 		// Reservation type discriminator (booking/block/...).
@@ -188,6 +201,7 @@ export const AppSchema = {
 	},
 	account: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
 		// Account kind discriminator
 		_tag: z.enum([
@@ -221,6 +235,7 @@ export const AppSchema = {
 	},
 	transaction: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		// Logical account this transaction belongs to (bank, LN wallet, cash register...).
 		accountId: TableIdSchema,
 		// Transaction kind discriminator (incoming/outgoing/internal transfer legs...).
@@ -242,6 +257,7 @@ export const AppSchema = {
 	},
 	reconciliationClaim: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		// Source of settlement evidence (bankTransaction/manual/cash/terminal/...).
 		sourceType: z.enum(["transaction"]),
 		// Identifier unique within `sourceType`. For manual sourceType use the same value as reconciliationClaim.id
@@ -316,6 +332,7 @@ export const AppSchema = {
 	},
 	client: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
 		label: NonEmptyString255Schema.nullable(),
 		email: EmailSchema.nullable(),
@@ -329,7 +346,10 @@ export const AppSchema = {
 		vatNumber: NonEmptyString255Schema.nullable(),
 		caseNumber: NonEmptyString255Schema.nullable(),
 	},
-	contact: ContactSchema,
+	contact: {
+		...ContactSchema,
+		deviceId: TableIdSchema.nullable(),
+	},
 	contactAddress: AddressSchema,
 	contactBillingInfo: {
 		id: TableIdSchema,
@@ -411,6 +431,7 @@ export const AppSchema = {
 	},
 	invoice: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		invoiceId: Uuid7Schema,
 		invoiceNumber: NonEmptyString255Schema,
 		issueDate: DateStringSchema,
@@ -419,21 +440,27 @@ export const AppSchema = {
 		paymentMethod: z.enum(InvoicePaymentMethod),
 		paymentIban: IbanSchema.nullable(),
 	},
-	invoiceCustomer: ContactSchema,
+	invoiceCustomer: {
+		...ContactSchema,
+		sourceContactId: NullableTableIdSchema,
+	},
 	invoiceCustomerAddress: AddressSchema,
 	invoiceCustomerBillingInfo: BillingInfoSchema,
 	invoiceCustomerBillingInfoCz: BillingInfoCzSchema,
-	invoiceSupplier: ContactSchema,
+	invoiceSupplier: {
+		...ContactSchema,
+		sourceContactId: NullableTableIdSchema,
+	},
 	invoiceSupplierAddress: AddressSchema,
 	invoiceSupplierBillingInfo: BillingInfoSchema,
 	invoiceSupplierBillingInfoCz: BillingInfoCzSchema,
 	invoiceItemLine: {
 		id: TableIdSchema,
 		invoiceId: TableIdSchema,
+		itemRevisionId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
 	},
-	invoiceItem: ItemSnapshotSchema,
 	invoiceWatchingState: {
 		id: TableIdSchema,
 		// Epoch milliseconds when watcher marked payment as verified.
@@ -458,10 +485,10 @@ export const AppSchema = {
 	paymentInitItemLine: {
 		id: TableIdSchema,
 		paymentInitId: TableIdSchema,
+		itemRevisionId: TableIdSchema,
 		totalAmount: IntegerSchema, // In paymentInit currency, not in item currency.
 		quantity: z.number(),
 	},
-	paymentInitItem: ItemSnapshotSchema,
 	paymentReady: {
 		id: TableIdSchema,
 		billTip: NonNegativeIntegerSchema.nullable(),
@@ -489,6 +516,7 @@ export const AppSchema = {
 	},
 	payment: {
 		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
 		// Payment flow type discriminator (static/dynamic/...).
 		// type: z.enum(["lnZap", "lnSpark", "bankTransferCZ", "cash"]),
 		direction: z.enum(["incoming", "outgoing"]),
@@ -509,17 +537,14 @@ export const AppSchema = {
 		// // External event id used by web payment flow.
 		webPaymentEventId: NonEmptyStringSchema,
 	},
+	// It's optional. The payment does not have to contain the definition of the items.
 	paymentItemLine: {
 		id: TableIdSchema,
 		paymentId: TableIdSchema,
+		itemRevisionId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
 		optionalityChecked: NonNegativeIntegerSchema.nullable(),
-	},
-	// It's optional. The payment does not have to contain the definition of the items.
-	paymentItem: {
-		...ItemSnapshotSchema,
-		paymentId: TableIdSchema,
 	},
 	paymentLnZap: {
 		id: TableIdSchema,

@@ -34,6 +34,7 @@ export default function Home() {
 						(eb) =>
 							[
 								"table.id as id",
+								"table.deviceId as deviceId",
 								"table.label as label",
 								"table.numberOfSeats as numberOfSeats",
 

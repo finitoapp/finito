@@ -31,6 +31,7 @@ import {
 
 export const baseBillingInfoFormSchema = z.object({
 	id: TableIdSchema,
+	sourceContactId: TableIdSchema.nullable(),
 	name: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
 	email: StringToNullableStringSchema.pipe(EmailSchema.nullable()),
@@ -85,6 +86,7 @@ const createIdDeps = {
 export const createBillingInfoFormDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		sourceContactId: null,
 		name: "",
 		label: "",
 		email: "",
@@ -138,6 +140,7 @@ const createComponents = (t: TFunction) =>
 		_separator: () => <Separator />,
 
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("sourceContactId").hidden(undefined),
 		...builder.magicInput("name").text({
 			label: t("invoices:form.billing-info-form.label.company-name"),
 		}),

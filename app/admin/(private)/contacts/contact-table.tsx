@@ -40,6 +40,8 @@ import {
 
 type ContactRow = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	name: string;
 	countryCode: CountryCode;
 	phone: Phone | null;
@@ -78,10 +80,33 @@ const createColumns = (t: TFunction): ColumnDef<ContactRow, ContactRow>[] => [
 				: "-";
 		},
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "contact.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "contact.createdAt",
 	name: "contact.name",
 	countryCode: "contactBillingInfo.countryCode",
@@ -123,6 +148,7 @@ export function ContactTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("contact")
+						.leftJoin("device", "device.id", "contact.deviceId")
 						.leftJoin(
 							"contactBillingInfo",
 							"contactBillingInfo.id",
@@ -135,6 +161,8 @@ export function ContactTable() {
 						)
 						.select([
 							"contact.id as id",
+							"device.id as deviceId",
+							"device.name as deviceName",
 							"contact.name as name",
 							"contact.label as label",
 							"contactBillingInfo.countryCode as countryCode",

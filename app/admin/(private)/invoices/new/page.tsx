@@ -8,10 +8,12 @@ import {
 } from "@evolu/common";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { addDays } from "date-fns";
+import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { mapContactToFormContact } from "@/app/admin/(private)/contacts/contact-form";
 import { InvoiceForm } from "@/app/admin/(private)/invoices/invoice-form";
+import { accountAtom } from "@/atoms/account";
 import { BackButton } from "@/components/back-button";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
@@ -24,6 +26,7 @@ export default function Home() {
 	const evolu = useEvolu();
 	const router = useRouter();
 	const [now] = useState(() => new Date());
+	const account = useAtomValue(accountAtom);
 	const queryFn = useMemo(
 		() => () => resolveSubsequentInvoiceNumber(storageDeps),
 		[storageDeps],
@@ -36,40 +39,6 @@ export default function Home() {
 		gcTime: 0,
 		refetchOnMount: true,
 	});
-
-	// const billingInfoQuery = useMemo(
-	// 	() =>
-	// 		createQuery((db) =>
-	// 			db
-	// 				.selectFrom("billingInfo")
-	// 				.leftJoin(
-	// 					"billingInfoAddress",
-	// 					"billingInfoAddress.id",
-	// 					"billingInfo.id",
-	// 				)
-	// 				.leftJoin("billingInfoCz", "billingInfoCz.id", "billingInfo.id")
-	// 				.select([
-	// 					"billingInfo.id as id",
-	// 					"billingInfo.name as name",
-	// 					"billingInfo.label as label",
-	// 					"billingInfo.email as email",
-	// 					"billingInfo.countryCode as countryCode",
-	//
-	// 					"billingInfoAddress.street as address.street",
-	// 					"billingInfoAddress.descriptiveNumber as address.descriptiveNumber",
-	// 					"billingInfoAddress.city as address.city",
-	// 					"billingInfoAddress.postalCode as address.postalCode",
-	//
-	// 					"billingInfoCz.vatPayer as cz.vatPayer",
-	// 					"billingInfoCz.identificationNumber as cz.identificationNumber",
-	// 					"billingInfoCz.vatNumber as cz.vatNumber",
-	// 					"billingInfoCz.caseNumber as cz.caseNumber",
-	// 				])
-	// 				.where("billingInfo.id", "=", createIdFromString(""))
-	// 				.where("billingInfo.isDeleted", "is not", sqliteTrue),
-	// 		),
-	// 	[],
-	// );
 
 	const billingSettingsQuery = useMemo(
 		() =>
@@ -192,6 +161,7 @@ export default function Home() {
 					router.push("/admin/invoices");
 				}}
 				defaultValues={{
+					deviceId: account.device.id,
 					invoiceNumber: serialNumber.invoiceNumber,
 					supplier: billingSettings?.invoiceSupplier
 						? mapContactToFormContact(billingSettings.invoiceSupplier)

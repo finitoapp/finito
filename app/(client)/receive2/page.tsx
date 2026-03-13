@@ -8,10 +8,12 @@ import {
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import { useDebounce } from "@uidotdev/usehooks";
+import { useAtomValue } from "jotai";
 import { BitcoinIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { accountAtom } from "@/atoms/account";
 import { FadeHeader } from "@/components/fade-header";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -103,6 +105,7 @@ export default function Page() {
 	const router = useRouter();
 	const evolu = useEvolu();
 	const { ndk } = useNostr();
+	const account = useAtomValue(accountAtom);
 	const [accountOptions, setAccountOptions] = useState<
 		Array<{ id: string; name: string }>
 	>([]);
@@ -282,15 +285,14 @@ export default function Page() {
 					return;
 				}
 
-				const id = await createPayment({
-					evolu,
-					ndk,
+				const id = await createPayment({ evolu, ndk })({
 					totalAmount: totalAmountResult.data,
 					tipAmount: null,
 					payment: {
 						id: createId({
 							randomBytes: createRandomBytes(),
 						}),
+						deviceId: account.device.id,
 						currency: Currency.BTC,
 					},
 					paymentLnSpark: {

@@ -547,24 +547,29 @@ export default function Home() {
 
 											evoluJsonObjectFrom(
 												eb
-													.selectFrom("invoiceItem")
+													.selectFrom("itemRevision")
 													.select([
-														"invoiceItem.id as id",
-														"invoiceItem.categoryId as categoryId",
-														"invoiceItem.sourceItemId as sourceItemId",
-														"invoiceItem.label as label",
-														"invoiceItem.price as price",
-														"invoiceItem.currency as currency",
-														"invoiceItem.unitOfMeasure as unitOfMeasure",
-														"invoiceItem.internalCode as internalCode",
-														"invoiceItem.productCodeType as productCodeType",
-														"invoiceItem.productCodeValue as productCodeValue",
+														"itemRevision.id as id",
+														"itemRevision.deviceId as deviceId",
+														"itemRevision.categoryId as categoryId",
+														"itemRevision.itemId as itemId",
+														"itemRevision.label as label",
+														"itemRevision.price as price",
+														"itemRevision.currency as currency",
+														"itemRevision.unitOfMeasure as unitOfMeasure",
+														"itemRevision.internalCode as internalCode",
+														"itemRevision.productCodeType as productCodeType",
+														"itemRevision.productCodeValue as productCodeValue",
 													])
-													.whereRef("invoiceItem.id", "=", "invoiceItemLine.id")
-													.where("invoiceItem.isDeleted", "is not", sqliteTrue)
-													.where("invoiceItem.label", "is not", null)
-													.where("invoiceItem.price", "is not", null)
-													.where("invoiceItem.currency", "is not", null)
+													.whereRef(
+														"itemRevision.id",
+														"=",
+														"invoiceItemLine.itemRevisionId",
+													)
+													.where("itemRevision.isDeleted", "is not", sqliteTrue)
+													.where("itemRevision.label", "is not", null)
+													.where("itemRevision.price", "is not", null)
+													.where("itemRevision.currency", "is not", null)
 													.$narrowType<{
 														label: KyselyNotNull;
 														price: KyselyNotNull;

@@ -8,8 +8,11 @@ export const InvoicePaymentMethod = {
 } as const;
 export type InvoicePaymentMethod = InferEnumType<typeof InvoicePaymentMethod>;
 
-export type Invoice = EvoluSchemaType["invoice"] & {
-	invoiceCustomer: Omit<EvoluSchemaType["invoiceCustomer"], "id">;
+export type Invoice = Omit<EvoluSchemaType["invoice"], "deviceId"> & {
+	invoiceCustomer: Omit<
+		EvoluSchemaType["invoiceCustomer"],
+		"id" | "sourceContactId"
+	>;
 	invoiceCustomerBillingInfo: Omit<
 		EvoluSchemaType["invoiceCustomerBillingInfo"],
 		"id"
@@ -19,7 +22,10 @@ export type Invoice = EvoluSchemaType["invoice"] & {
 		EvoluSchemaType["invoiceCustomerBillingInfoCz"],
 		"id"
 	>;
-	invoiceSupplier: Omit<EvoluSchemaType["invoiceSupplier"], "id">;
+	invoiceSupplier: Omit<
+		EvoluSchemaType["invoiceSupplier"],
+		"id" | "sourceContactId"
+	>;
 	invoiceSupplierBillingInfo: Omit<
 		EvoluSchemaType["invoiceSupplierBillingInfo"],
 		"id"
@@ -29,7 +35,10 @@ export type Invoice = EvoluSchemaType["invoice"] & {
 		EvoluSchemaType["invoiceSupplierBillingInfoCz"],
 		"id"
 	>;
-	items: (Omit<EvoluSchemaType["invoiceItemLine"], "invoiceId"> & {
-		item: EvoluSchemaType["invoiceItem"];
+	items: (Omit<
+		EvoluSchemaType["invoiceItemLine"],
+		"invoiceId" | "itemRevisionId"
+	> & {
+		item: EvoluSchemaType["itemRevision"];
 	})[];
 };

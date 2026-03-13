@@ -29,6 +29,7 @@ export default function Home() {
 					.selectFrom("item")
 					.select([
 						"item.id as id",
+						"item.deviceId as deviceId",
 						"item.label as label",
 						"item.price as price",
 						"item.currency as currency",

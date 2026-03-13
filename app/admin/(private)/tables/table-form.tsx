@@ -20,6 +20,7 @@ import {
 
 const tableSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 	numberOfSeats: StringToNumberSchema.pipe(PositiveIntegerSchema),
 	codes: z
@@ -38,6 +39,7 @@ const createIdDeps = {
 const createTableDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		numberOfSeats: "1",
 		label: "",
 		codes: [],
@@ -46,6 +48,7 @@ const createTableDefaultValues = () =>
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(tableSchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 		...builder.magicInput("label").text({
 			label: t("tables:form.fields.label.label"),
 		}),
@@ -98,13 +101,7 @@ export const TableForm: React.FC<{
 			};
 			const { codes, ...table } = values;
 
-			evolu.upsert("table", table, {
-				onComplete: () => {
-					if (params.onSuccess) {
-						params.onSuccess(table.id);
-					}
-				},
-			});
+			evolu.upsert("table", table);
 
 			const originalCodes = new Set(
 				(params.defaultValues?.codes ?? []).map((code) => code.id),
@@ -128,6 +125,10 @@ export const TableForm: React.FC<{
 						isDeleted: sqliteTrue,
 					});
 				}
+			}
+
+			if (params.onSuccess) {
+				params.onSuccess(table.id);
 			}
 		},
 	});

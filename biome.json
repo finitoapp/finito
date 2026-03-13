@@ -13,6 +13,7 @@
 			"atoms/**/*",
 			"components/**/*",
 			"!components/ui/**/*",
+			"!components/reui/**/*",
 			"hooks/**/*",
 			"lib/**/*",
 			"scripts/**/*",

@@ -36,6 +36,8 @@ import { formatIban } from "@/lib/shared/utils/format";
 
 type Task = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	name: string;
 	_tag: string;
 	accountLud16: {
@@ -90,10 +92,33 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 					? row.original.accountCashRegister.currency
 					: "-",
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "account.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "account.createdAt",
 	name: "account.name",
 	_tag: "account._tag",
@@ -136,6 +161,7 @@ export function AccountsTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("account")
+						.leftJoin("device", "account.deviceId", "device.id")
 						.select(
 							(eb) =>
 								[
@@ -143,6 +169,8 @@ export function AccountsTable() {
 									"account.name as name",
 									"account.createdAt as createdAt",
 									"account._tag as _tag",
+									"device.id as deviceId",
+									"device.name as deviceName",
 
 									evoluJsonObjectFrom(
 										eb

@@ -31,6 +31,7 @@ import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const baseStaticPaymentSchema = z.object({
 	id: TableIdSchema,
+	deviceId: TableIdSchema.nullable(),
 	totalAmount: StringToNullableStringSchema.pipe(NumberStringSchema),
 	lud16: z.string(),
 	accountId: TableIdSchema.nullable(),
@@ -64,6 +65,7 @@ const createIdDeps = {
 const createStaticPaymentDefaultValues = () =>
 	({
 		id: createId(createIdDeps),
+		deviceId: null,
 		type: "lnSpark",
 		lud16: "",
 		accountId: null,
@@ -74,6 +76,7 @@ const createStaticPaymentDefaultValues = () =>
 const createComponents = (t: TFunction) =>
 	createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 		...builder.magicInput("id").hidden(undefined),
+		...builder.magicInput("deviceId").hidden(undefined),
 		...builder.magicInput("type").select({
 			variant: "toggle",
 			allowEmpty: false,
@@ -193,11 +196,10 @@ export const PaymentForm: React.FC<{
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			await createPayment({
-				ndk,
-				evolu,
+			await createPayment({ ndk, evolu })({
 				payment: {
 					id: values.id,
+					deviceId: values.deviceId,
 					currency: Currency.BTC,
 				},
 				totalAmount: values.totalAmount as NonNegativeInteger,

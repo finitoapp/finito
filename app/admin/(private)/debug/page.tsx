@@ -11,6 +11,7 @@ import { IconDownload, IconReload, IconUpload } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, format } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { useAtomValue } from "jotai";
 import { LoaderCircleIcon } from "lucide-react";
 import {
 	type ChangeEvent,
@@ -20,6 +21,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { accountAtom } from "@/atoms/account";
 import { FullscreenContainer } from "@/components/fullscreen-container";
 import { KeyValueList } from "@/components/key-value-list";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -31,6 +33,7 @@ import { useNostrRelays } from "@/hooks/use-nostr-relays";
 import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import type { Id } from "@/lib/evolu/types";
+import { createItem } from "@/lib/item/service";
 import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { downloadFile } from "@/lib/shared/files/file-utils";
 import { createZip, extractZip } from "@/lib/shared/files/zip";
@@ -340,6 +343,7 @@ const RandomDataGenerator = () => {
 	const { t } = useTranslation();
 	const [isLoading, setLoading] = useState(false);
 	const evolu = useEvolu();
+	const account = useAtomValue(accountAtom);
 
 	const generateData = async () => {
 		setLoading(true);
@@ -349,6 +353,7 @@ const RandomDataGenerator = () => {
 				.keys()
 				.forEach(() => {
 					evolu.insert("item", {
+						deviceId: account.device.id,
 						categoryId: null,
 						label: NonEmptyString255(faker.food.dish()),
 						price: Integer(faker.number.int({ min: 5000, max: 60000 })),
@@ -361,6 +366,7 @@ const RandomDataGenerator = () => {
 				.keys()
 				.forEach((index) => {
 					const { id } = evolu.insert("table", {
+						deviceId: account.device.id,
 						label: NonEmptyString255(
 							`Hall ${(index + 1).toString().padStart(2, "0")}`,
 						),
@@ -375,6 +381,7 @@ const RandomDataGenerator = () => {
 				.keys()
 				.forEach((index) => {
 					const { id } = evolu.insert("table", {
+						deviceId: account.device.id,
 						label: NonEmptyString255(
 							`Bar ${(index + 1).toString().padStart(2, "0")}`,
 						),
@@ -389,6 +396,7 @@ const RandomDataGenerator = () => {
 				.keys()
 				.forEach((index) => {
 					const { id } = evolu.insert("table", {
+						deviceId: account.device.id,
 						label: NonEmptyString255(
 							`Garden ${(index + 1).toString().padStart(2, "0")}`,
 						),
@@ -494,6 +502,7 @@ const RandomDataGenerator = () => {
 						);
 
 						const { id: reservationId } = evolu.insert("reservation", {
+							deviceId: account.device.id,
 							tableId,
 							note,
 							_tag: "booking",
@@ -553,6 +562,7 @@ const RandomDataGenerator = () => {
 							);
 
 							const { id: reservationId } = evolu.insert("reservation", {
+								deviceId: account.device.id,
 								tableId,
 								note,
 								_tag: "booking",
@@ -732,18 +742,21 @@ const RandomDataGenerator = () => {
 						});
 
 						for (const sourceItem of takeSourceItems(category.itemsCount)) {
-							const { id: menuItemId } = evolu.insert("menuItem", {
-								sourceItemId: sourceItem.id,
-								label: sourceItem.label,
-								price: sourceItem.price,
-								currency: sourceItem.currency,
-								unitOfMeasure: sourceItem.unitOfMeasure,
-								internalCode: sourceItem.internalCode,
-								productCodeType: sourceItem.productCodeType,
-								productCodeValue: sourceItem.productCodeValue,
+							const { itemRevisionId } = createItem({ evolu })({
+								item: {
+									deviceId: account.device.id,
+									categoryId: null,
+									label: sourceItem.label,
+									price: sourceItem.price,
+									currency: sourceItem.currency,
+									unitOfMeasure: sourceItem.unitOfMeasure,
+									internalCode: sourceItem.internalCode,
+									productCodeType: sourceItem.productCodeType,
+									productCodeValue: sourceItem.productCodeValue,
+								},
 							});
-							evolu.upsert("menuItemLine", {
-								id: menuItemId,
+							evolu.insert("menuItemLine", {
+								itemRevisionId,
 								menuCategoryId: menuCategoryId,
 								availabilityStatus: null,
 							});

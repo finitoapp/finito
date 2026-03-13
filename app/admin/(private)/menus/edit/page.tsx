@@ -35,6 +35,7 @@ export default function Home() {
 						(eb) =>
 							[
 								"menu.id as id",
+								"menu.deviceId as deviceId",
 								"menu.name as name",
 								"menu.status as status",
 								"menu.validFrom as validFrom",
@@ -60,32 +61,36 @@ export default function Home() {
 
 																evoluJsonObjectFrom(
 																	eb
-																		.selectFrom("menuItem")
+																		.selectFrom("itemRevision")
 																		.select([
-																			"menuItem.id as id",
-																			"menuItem.categoryId as categoryId",
-																			"menuItem.sourceItemId as sourceItemId",
-																			"menuItem.label as label",
-																			"menuItem.price as price",
-																			"menuItem.currency as currency",
-																			"menuItem.unitOfMeasure as unitOfMeasure",
-																			"menuItem.internalCode as internalCode",
-																			"menuItem.productCodeType as productCodeType",
-																			"menuItem.productCodeValue as productCodeValue",
+																			"itemRevision.id as id",
+																			"itemRevision.categoryId as categoryId",
+																			"itemRevision.itemId as itemId",
+																			"itemRevision.label as label",
+																			"itemRevision.price as price",
+																			"itemRevision.currency as currency",
+																			"itemRevision.unitOfMeasure as unitOfMeasure",
+																			"itemRevision.internalCode as internalCode",
+																			"itemRevision.productCodeType as productCodeType",
+																			"itemRevision.productCodeValue as productCodeValue",
 																		])
 																		.whereRef(
-																			"menuItem.id",
+																			"itemRevision.id",
 																			"=",
-																			"menuItemLine.id",
+																			"menuItemLine.itemRevisionId",
 																		)
 																		.where(
-																			"menuItem.isDeleted",
+																			"itemRevision.isDeleted",
 																			"is not",
 																			sqliteTrue,
 																		)
-																		.where("menuItem.label", "is not", null)
-																		.where("menuItem.price", "is not", null)
-																		.where("menuItem.currency", "is not", null)
+																		.where("itemRevision.label", "is not", null)
+																		.where("itemRevision.price", "is not", null)
+																		.where(
+																			"itemRevision.currency",
+																			"is not",
+																			null,
+																		)
 																		.$narrowType<{
 																			label: KyselyNotNull;
 																			price: KyselyNotNull;

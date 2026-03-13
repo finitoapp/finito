@@ -29,6 +29,8 @@ import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
 
 type Task = {
 	id: Id;
+	deviceId: Id | null;
+	deviceName: string | null;
 	name: string;
 };
 
@@ -37,10 +39,33 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 		accessorKey: "name",
 		header: createSortableHeader(t("categories:table.columns.name")),
 	},
+	{
+		accessorKey: "deviceName",
+		header: createSortableHeader(t("tables:table.columns.device-name")),
+		cell: ({ row }) =>
+			row.original.deviceName && row.original.deviceId ? (
+				<Button
+					variant="link"
+					render={
+						<Link
+							href={
+								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+							}
+						/>
+					}
+				>
+					{row.original.deviceName}
+				</Button>
+			) : (
+				"-"
+			),
+	},
 ];
 
 const sortingFields = {
 	id: "category.id",
+	deviceId: "device.id",
+	deviceName: "device.name",
 	createdAt: "category.createdAt",
 	name: "category.name",
 } as const satisfies Record<keyof Task | "createdAt", string>;
@@ -77,9 +102,16 @@ export function CategoriesTable() {
 				const query = createQuery((db) => {
 					let qb = db
 						.selectFrom("category")
-						.selectAll()
-						.where("isDeleted", "is not", sqliteTrue)
-						.where("name", "is not", null)
+						.leftJoin("device", "category.deviceId", "device.id")
+						.select([
+							"category.id as id",
+							"category.deviceId as deviceId",
+							"category.name as name",
+							"device.name as deviceName",
+							"category.createdAt as createdAt",
+						] as const)
+						.where("category.isDeleted", "is not", sqliteTrue)
+						.where("category.name", "is not", null)
 						.$narrowType<{
 							name: KyselyNotNull;
 						}>();

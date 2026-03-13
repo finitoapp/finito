@@ -13,6 +13,7 @@ import {
 	type TimestampMs,
 	VariableSymbol,
 } from "@/lib/shared/types";
+import { stableStringify } from "@/lib/shared/utils/json";
 
 const notificationId = createIdFromString("syncFioTransfers");
 
@@ -54,21 +55,6 @@ const toRecord = (value: unknown): Record<string, unknown> =>
 	value !== null && typeof value === "object"
 		? (value as Record<string, unknown>)
 		: {};
-
-const toStableString = (value: unknown): string => {
-	if (Array.isArray(value)) {
-		return `[${value.map((item) => toStableString(item)).join(",")}]`;
-	}
-	if (value !== null && typeof value === "object") {
-		const entries = Object.entries(value as Record<string, unknown>).sort(
-			([a], [b]) => a.localeCompare(b),
-		);
-		return `{${entries
-			.map(([key, item]) => `${JSON.stringify(key)}:${toStableString(item)}`)
-			.join(",")}}`;
-	}
-	return JSON.stringify(value);
-};
 
 const toOptionalText = (value: unknown): NonEmptyString | null => {
 	const normalized =
@@ -326,7 +312,7 @@ export const syncFioTransfersProcess: BackgroundProcess = {
 
 					const transactionRecord = toRecord(transaction);
 					const transferId = createIdFromString(
-						`fioTransfer:${account.id}:${toStableString(transactionRecord)}`,
+						`fioTransfer:${account.id}:${stableStringify(transactionRecord)}`,
 					);
 
 					props.evolu.upsert("transaction", {
