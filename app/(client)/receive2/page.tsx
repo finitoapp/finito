@@ -308,10 +308,10 @@ export default function Page() {
 
 	return (
 		<div className="space-y-8 w-full">
-			<div className={"h-10"} />
+			<div className={"h-12"} />
 			<FadeHeader title={t("client:page.receivePayment")} />
 
-			<div className={"w-full p-8 flex flex-col gap-6"}>
+			<div className={"w-full px-8 flex flex-col gap-6"}>
 				<Field>
 					<FieldLabel>
 						{t("payments:form.payment-form.label.spark-wallet-account")}

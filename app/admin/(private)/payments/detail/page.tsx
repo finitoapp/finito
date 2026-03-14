@@ -47,7 +47,10 @@ import {
 	resolvePaymentWatchingStatus,
 } from "@/lib/evolu/model/payment-watching-state";
 import { generateCzechBankQrCode } from "@/lib/payment/czech-bank-qr-generator";
-import { stopPaymentWatching } from "@/lib/payment/service";
+import {
+	resolvePaymentStatus,
+	stopPaymentWatching,
+} from "@/lib/payment/service";
 import { shareImageOrDownload } from "@/lib/shared/files/file-utils";
 import {
 	type Currency,
@@ -671,15 +674,7 @@ export default function Home() {
 		return null;
 	}
 
-	const paymentStatus: PaymentStatus =
-		payment && payment.reconciliationClaim.amount
-			? payment.reconciliationClaim.amount > payment.totalAmount
-				? PaymentStatus.Overpaid
-				: payment.reconciliationClaim.amount < payment.totalAmount
-					? PaymentStatus.Underpaid
-					: PaymentStatus.Paid
-			: PaymentStatus.Unpaid;
-
+	const paymentStatus = resolvePaymentStatus({ payment });
 	const lightningPayment = payment.paymentLnSpark ?? payment.paymentLnZap;
 
 	return (

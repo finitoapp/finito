@@ -18,12 +18,12 @@ export const FadeHeader: FC<{
 			// Calculate opacity based on scroll position
 			// Fade out completely after scrolling 300px
 			const scrollY = window.scrollY;
-			const fadeDistance = 50;
+			const fadeDistance = 75;
 			const newOpacity = Math.max(0, 1 - scrollY / fadeDistance);
 
 			if (divRef.current) {
 				divRef.current.style.opacity = newOpacity.toString();
-				divRef.current.style.top = `calc(env(safe-area-inset-top) + ${(0 - scrollY / 3).toString()}px)`;
+				divRef.current.style.top = `calc(env(safe-area-inset-top) + ${(0 - scrollY / 2.5).toString()}px)`;
 			}
 		};
 
