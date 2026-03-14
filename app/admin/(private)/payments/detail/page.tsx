@@ -940,7 +940,11 @@ export default function Home() {
 												<Textarea readOnly={true} value={frontendUrl} />
 												<Button
 													render={
-														<a href={frontendUrl} target={"_blank"}>
+														<a
+															href={frontendUrl}
+															target={"_blank"}
+															rel="noopener"
+														>
 															<ExternalLink />
 															{t("payments:detail.actions.open")}
 														</a>
@@ -973,6 +977,7 @@ export default function Home() {
 														<a
 															href={`lightning:${lightningPayment.lnInvoice}`}
 															target={"_blank"}
+															rel="noopener"
 														>
 															<BitcoinIcon />
 															{t("payments:detail.actions.open-in-btc-wallet")}

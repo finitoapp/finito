@@ -208,7 +208,7 @@ export default function Home() {
 										<Textarea readOnly={true} value={frontendUrl} />
 										<Button
 											render={
-												<a href={frontendUrl} target={"_blank"}>
+												<a href={frontendUrl} target={"_blank"} rel="noopener">
 													<ExternalLink />
 													Open
 												</a>
