@@ -108,54 +108,6 @@ export default function Page() {
 			<div className={"h-20"} />
 			<FadeHeader title={t("client:page.paymentDetail")} />
 
-			{/*<LoadingIndicator*/}
-			{/*	text={*/}
-			{/*		paymentFinishedRows === undefined*/}
-			{/*			? t("client:historyDetail.status.loading")*/}
-			{/*			: paymentFinished*/}
-			{/*				? paymentFinished.type === "success"*/}
-			{/*					? t("client:historyDetail.status.paid")*/}
-			{/*					: (paymentFinished.reason ??*/}
-			{/*						t("client:historyDetail.status.failed"))*/}
-			{/*				: t("client:historyDetail.status.inProgressOrExpired")*/}
-			{/*	}*/}
-			{/*	open={true}*/}
-			{/*	status={*/}
-			{/*		paymentFinishedRows === undefined*/}
-			{/*			? "loading"*/}
-			{/*			: paymentFinished*/}
-			{/*				? paymentFinished.type === "success"*/}
-			{/*					? "success"*/}
-			{/*					: "failure"*/}
-			{/*				: "failure"*/}
-			{/*	}*/}
-			{/*/>*/}
-
-			{/*<ResponsiveCard>*/}
-			{/*	<CardContent>*/}
-			{/*		<KeyValueList*/}
-			{/*			items={[*/}
-			{/*				{*/}
-			{/*					key: t("client:historyDetail.fields.name"),*/}
-			{/*					value: payment ? (*/}
-			{/*						payment.merchantName*/}
-			{/*					) : (*/}
-			{/*						<Skeleton className={"h-5 w-50"} />*/}
-			{/*					),*/}
-			{/*				},*/}
-			{/*				{*/}
-			{/*					key: t("client:historyDetail.fields.phone"),*/}
-			{/*					value: payment ? (*/}
-			{/*						(payment.merchantPhone ?? "-")*/}
-			{/*					) : (*/}
-			{/*						<Skeleton className={"h-5 w-50"} />*/}
-			{/*					),*/}
-			{/*				},*/}
-			{/*			]}*/}
-			{/*		/>*/}
-			{/*	</CardContent>*/}
-			{/*</ResponsiveCard>*/}
-
 			<ResponsiveCard>
 				<CardContent>
 					<KeyValueList

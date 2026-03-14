@@ -260,7 +260,7 @@ const FullscreenQrPayment: FC<{
 						/>
 					</div>
 				) : (
-					<Tabs value={tab ?? "web"} className="h-full">
+					<Tabs value={tab ?? "web"} className="flex flex-col">
 						<TabsList>
 							<TabsTrigger
 								value="web"
@@ -322,7 +322,7 @@ const FullscreenQrPayment: FC<{
 							)}
 						</TabsList>
 						{frontendUrl && (
-							<TabsContent value="web" className={"h-full"}>
+							<TabsContent value="web">
 								<ResponsiveCard className={"h-full flex"}>
 									<CardContent className={"flex"}>
 										<div className={"flex flex-1 flex-col gap-2"}>
@@ -353,6 +353,7 @@ const FullscreenQrPayment: FC<{
 												}
 											>
 												<QRCodeSVG
+													className={"w-full"}
 													size={512}
 													value={lnInvoice}
 													marginSize={2}
@@ -862,7 +863,7 @@ export default function Home() {
 							className={"mt-10"}
 						/>
 					) : (
-						<Tabs value={tab ?? "web"} className="flex-1">
+						<Tabs value={tab ?? "web"} className="flex flex-col">
 							<TabsList>
 								{frontendUrl && (
 									<TabsTrigger

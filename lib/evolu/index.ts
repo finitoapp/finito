@@ -271,7 +271,11 @@ export const AppSchema = {
 		rule: z.enum(["lnPaymentHash", "manualCashRegisterSettlement"]),
 		// Optional actor/process identifier that authored this claim.
 		createdBy: z
-			.enum(["syncLnZapTransfersProcess", "adminPaymentsDetail"])
+			.enum([
+				"syncLnZapTransfersProcess",
+				"syncSparkTransfersProcess",
+				"adminPaymentsDetail",
+			])
 			.nullable(),
 	},
 	reconciliationClaimAllocation: {
