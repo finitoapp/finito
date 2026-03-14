@@ -582,9 +582,8 @@ export default function Home() {
 										.select(
 											(eb) =>
 												[
-													"reconciliationClaim.id as id",
 													eb.fn
-														.sum<Integer>(
+														.sum<Integer | null>(
 															"reconciliationClaimAllocation.amount",
 														)
 														.as("amount"),
@@ -614,42 +613,13 @@ export default function Home() {
 						direction: KyselyNotNull;
 						totalAmount: KyselyNotNull;
 						currency: KyselyNotNull;
+						reconciliationClaim: KyselyNotNull;
 					}>(),
 			),
 		[paymentId],
 	);
-	// const paymentBillItemsQuery = useMemo(
-	// 	() =>
-	// 		createQuery((db) =>
-	// 			db
-	// 				.selectFrom("paymentBillItem")
-	// 				.select([
-	// 					"paymentBillItem.label as label",
-	// 					"paymentBillItem.price as price",
-	// 					"paymentBillItem.quantity as quantity",
-	// 				] as const)
-	// 				.where("paymentBillItem.isDeleted", "is not", sqliteTrue)
-	// 				.where("paymentBillItem.paymentId", "=", paymentId),
-	// 		),
-	// 	[paymentId],
-	// );
+
 	const { data: paymentRows } = useEvoluQuery(paymentQuery);
-	// const { data: paymentBillItemsRows } = useEvoluQuery(paymentBillItemsQuery);
-	// const paymentReconciliationQuery = useMemo(
-	// 	() =>
-	// 		createQuery((db) =>
-	// 			db
-	// 				.selectFrom("reconciliationClaim")
-	// 				.select(["reconciliationClaim.id as id"] as const)
-	// 				.where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
-	// 				.where("reconciliationClaim.entityType", "=", "payment")
-	// 				.where("reconciliationClaim.entityId", "=", paymentId),
-	// 		),
-	// 	[paymentId],
-	// );
-	// const { data: paymentReconciliationRows } = useEvoluQuery(
-	// 	paymentReconciliationQuery,
-	// );
 
 	const payment = paymentRows[0];
 
@@ -702,7 +672,7 @@ export default function Home() {
 	}
 
 	const paymentStatus: PaymentStatus =
-		payment && payment.reconciliationClaim
+		payment && payment.reconciliationClaim.amount
 			? payment.reconciliationClaim.amount > payment.totalAmount
 				? PaymentStatus.Overpaid
 				: payment.reconciliationClaim.amount < payment.totalAmount

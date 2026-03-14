@@ -198,9 +198,8 @@ export default function Page() {
 										.select(
 											(eb) =>
 												[
-													"reconciliationClaim.id as id",
 													eb.fn
-														.sum<Integer>(
+														.sum<Integer | null>(
 															"reconciliationClaimAllocation.amount",
 														)
 														.as("amount"),
@@ -231,6 +230,7 @@ export default function Page() {
 						currency: KyselyNotNull;
 						totalAmount: KyselyNotNull;
 						direction: KyselyNotNull;
+						reconciliationClaim: KyselyNotNull;
 					}>(),
 			),
 		[paymentId],
@@ -259,7 +259,7 @@ export default function Page() {
 		undefined;
 
 	const paymentStatus: PaymentStatus =
-		payment && payment.reconciliationClaim
+		payment && payment.reconciliationClaim.amount
 			? payment.reconciliationClaim.amount > payment.totalAmount
 				? PaymentStatus.Overpaid
 				: payment.reconciliationClaim.amount < payment.totalAmount
