@@ -13,6 +13,7 @@ import NDK, {
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
+import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import type { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import { createItemRevision } from "@/lib/item/service";
 import type { EvoluDep, NdkDep } from "@/lib/shared/dependencies";
@@ -27,6 +28,25 @@ import {
 	extractExpirationFromLightningInvoice,
 	extractPaymentHashFromLnInvoice,
 } from "@/lib/shared/utils/ln";
+
+export const resolvePaymentStatus = (params: {
+	payment: Pick<EvoluSchemaType["payment"], "totalAmount"> & {
+		reconciliationClaim: {
+			amount: Integer | null;
+		};
+	};
+}) => {
+	const paymentStatus: PaymentStatus =
+		params.payment && params.payment.reconciliationClaim.amount
+			? params.payment.reconciliationClaim.amount > params.payment.totalAmount
+				? PaymentStatus.Overpaid
+				: params.payment.reconciliationClaim.amount < params.payment.totalAmount
+					? PaymentStatus.Underpaid
+					: PaymentStatus.Paid
+			: PaymentStatus.Unpaid;
+
+	return paymentStatus;
+};
 
 export const createZapPayment =
 	(deps: NdkDep) =>

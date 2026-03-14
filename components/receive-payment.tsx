@@ -110,7 +110,7 @@ export const ReceivePayment: FC<{
 			{lnInvoice && (
 				<TabsContent value="ln">
 					<Button
-						className={"w-full aspect-square h-auto p-4"}
+						className={"w-full aspect-square h-auto p-6 bg-white"}
 						variant={"outline"}
 						onClick={() =>
 							copy(lnInvoice, {
@@ -122,7 +122,6 @@ export const ReceivePayment: FC<{
 							className={"w-full h-full size-6"}
 							size={512}
 							value={lnInvoice}
-							marginSize={2}
 						/>
 					</Button>
 				</TabsContent>

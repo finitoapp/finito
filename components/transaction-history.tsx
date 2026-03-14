@@ -1,40 +1,34 @@
-import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
-import { CheckIcon, LoaderCircleIcon, ReceiptIcon, XIcon } from "lucide-react";
-import type { FC } from "react";
-import { useMemo } from "react";
+import { CheckIcon, ReceiptIcon, XIcon } from "lucide-react";
+import type { FC, ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { createQuery } from "@/lib/evolu";
+import { PaymentStatus } from "@/lib/evolu/model/payment-status";
+import { getLatestPayments } from "@/lib/evolu/queries/payment";
+import { resolvePaymentStatus } from "@/lib/payment/service";
 import { cn } from "@/lib/shared/ui/cn";
 import { formatMoney } from "@/lib/shared/utils/format";
 
-const PaymentStatus: FC<{
-	paymentId: Id;
-}> = (props) => {
-	const query = useMemo(
-		() =>
-			createQuery((db) =>
-				db
-					.selectFrom("paymentFinished")
-					.select(["paymentFinished.type as type"] as const)
-					.where("paymentFinished.isDeleted", "is not", sqliteTrue)
-					.where("paymentFinished.id", "=", props.paymentId)
-					.limit(1),
-			),
-		[props.paymentId],
-	);
-	const { data: rows } = useEvoluQuery(query);
+const paymentStatusData = {
+	[PaymentStatus.Unpaid]: ["bg-red-700", <XIcon key={1} className="size-4" />],
+	[PaymentStatus.Underpaid]: [
+		"bg-red-700",
+		<XIcon key={1} className="size-4" />,
+	],
+	[PaymentStatus.Paid]: [
+		"bg-green-500",
+		<CheckIcon key={1} className="size-4" />,
+	],
+	[PaymentStatus.Overpaid]: [
+		"bg-green-500",
+		<CheckIcon key={1} className="size-4" />,
+	],
+} satisfies Record<PaymentStatus, [string, ReactElement]>;
 
-	const [className, icon] = (() => {
-		if (rows === undefined) {
-			return ["", <LoaderCircleIcon key={1} className="animate-spin size-4" />];
-		}
-		if (rows[0]?.type === "success") {
-			return ["bg-green-500", <CheckIcon key={1} className="size-4" />];
-		}
-		return ["bg-red-700", <XIcon key={1} className="size-4" />];
-	})();
+const PaymentStatusIcon: FC<{
+	paymentStatus: PaymentStatus;
+}> = (props) => {
+	const [className, icon] = paymentStatusData[props.paymentStatus];
 
 	return (
 		<div
@@ -50,35 +44,7 @@ const PaymentStatus: FC<{
 
 export const TransactionHistory = () => {
 	const { t } = useTranslation();
-	const paymentInitQuery = useMemo(
-		() =>
-			createQuery((db) =>
-				db
-					.selectFrom("payment")
-					.select([
-						"id",
-						"createdAt",
-						"totalAmount",
-						"currency",
-						"tipAmount",
-						"direction",
-					] as const)
-					.where("payment.isDeleted", "is not", sqliteTrue)
-					.where("payment.currency", "is not", null)
-					.where("payment.totalAmount", "is not", null)
-					.where("payment.direction", "is not", null)
-					.orderBy("payment.createdAt", "desc")
-					.limit(20)
-					.$narrowType<{
-						currency: KyselyNotNull;
-						totalAmount: KyselyNotNull;
-						direction: KyselyNotNull;
-					}>(),
-			),
-		[],
-	);
-
-	const { data: items } = useEvoluQuery(paymentInitQuery);
+	const { data: items } = useEvoluQuery(getLatestPayments);
 
 	const navItems = items.length === 0 ? ([false] as const) : items;
 
@@ -127,7 +93,9 @@ export const TransactionHistory = () => {
 					),
 					icon: (
 						<div className={"p-2"}>
-							<PaymentStatus paymentId={item.id} />
+							<PaymentStatusIcon
+								paymentStatus={resolvePaymentStatus({ payment: item })}
+							/>
 						</div>
 					),
 					nextLink: `/history/detail?id=${encodeURIComponent(item.id)}`,
