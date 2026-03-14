@@ -262,7 +262,7 @@ const TableQrCode: React.FC<{
 				variant={"outline"}
 				disabled={props.tableQrCode === undefined}
 				render={
-					<a href={frontendUrl} target={"_blank"}>
+					<a href={frontendUrl} target={"_blank"} rel="noopener">
 						<FullscreenIcon />
 					</a>
 				}
