@@ -65,6 +65,9 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					onClick={(event) => {
+						event.stopPropagation();
+					}}
 					render={
 						<Link
 							href={`/admin/tables/detail?id=${encodeURIComponent(row.original.deviceId)}`}

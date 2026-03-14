@@ -8,8 +8,6 @@ import {
 } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { PlusIcon } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,9 +17,7 @@ import {
 	type DataTableOnFilterChange,
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
-import { Button } from "@/components/ui/button";
 import {
-	CardAction,
 	CardContent,
 	CardDescription,
 	CardHeader,
@@ -195,14 +191,6 @@ export function DevicesTable() {
 				<CardDescription>
 					{t("devices:table.listOfYourDevices")}
 				</CardDescription>
-				<CardAction>
-					<Link href={"/admin/devices/new" as never}>
-						<Button>
-							<PlusIcon />
-							{t("devices:table.actions.new-device")}
-						</Button>
-					</Link>
-				</CardAction>
 			</CardHeader>
 			<CardContent>
 				<DataTable

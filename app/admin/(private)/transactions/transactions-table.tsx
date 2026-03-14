@@ -84,6 +84,9 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					onClick={(event) => {
+						event.stopPropagation();
+					}}
 					render={
 						<Link
 							href={

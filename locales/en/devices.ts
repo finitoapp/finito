@@ -7,13 +7,9 @@ const locale = {
 		}
 	},
 	"page": {
-		"editDevice": "Edit device",
-		"newDevice": "New device"
+		"editDevice": "Edit device"
 	},
 	"table": {
-		"actions": {
-			"new-device": "New device"
-		},
 		"columns": {
 			"browser-name": "Browser",
 			"created-at": "Created at",
