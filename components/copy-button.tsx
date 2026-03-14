@@ -7,60 +7,25 @@
  */
 
 import { Copy } from "lucide-react";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useClipboard } from "@/components/use-clipboard";
 
 interface CopyButtonProps extends React.ComponentProps<typeof Button> {
 	/**
 	 * Plain text content to copy to clipboard. Takes precedence over auto-generated plain-text version if HTML is provided.
 	 */
-	text?: string;
-
-	/**
-	 * HTML content to copy to clipboard. Will be converted to markdown for plain text format.
-	 * Used when text prop is not provided.
-	 */
-	html?: string;
-
-	/**
-	 * React ref to an HTML element whose innerHTML will be copied.
-	 * Used as fallback when neither text nor html props are provided.
-	 */
-	htmlRef?: React.RefObject<HTMLElement | null>;
+	text: string;
 }
 
-export function CopyButton({
-	text,
-	html,
-	htmlRef,
-	className,
-	...props
-}: CopyButtonProps) {
-	const [copied, setCopied] = useState(false);
-
-	const copyToClipboard = async () => {
-		try {
-			if (!text && !html && !htmlRef?.current) {
-				console.error("No text, HTML, or HTML reference to copy");
-				return;
-			}
-
-			// @ts-expect-error
-			await navigator.clipboard.writeText(text);
-
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error("Failed to copy text:", err);
-		}
-	};
+export function CopyButton({ text, className, ...props }: CopyButtonProps) {
+	const { copy, copied } = useClipboard();
 
 	return (
 		<Button
 			variant="outline"
 			className={className}
-			onClick={copyToClipboard}
+			onClick={() => copy(text)}
 			{...props}
 		>
 			{copied ? (
