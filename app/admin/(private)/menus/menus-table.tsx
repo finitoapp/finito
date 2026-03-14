@@ -85,6 +85,9 @@ const createColumns = (t: TFunction): ColumnDef<MenuRow>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					onClick={(event) => {
+						event.stopPropagation();
+					}}
 					render={
 						<Link
 							href={

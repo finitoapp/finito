@@ -7,13 +7,9 @@ const locale = {
 		}
 	},
 	"page": {
-		"editDevice": "Upravit zařízení",
-		"newDevice": "Nové zařízení"
+		"editDevice": "Upravit zařízení"
 	},
 	"table": {
-		"actions": {
-			"new-device": "Nové zařízení"
-		},
 		"columns": {
 			"browser-name": "Prohlížeč",
 			"created-at": "Vytvořeno",
