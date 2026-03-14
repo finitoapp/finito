@@ -300,7 +300,9 @@ export default function Page() {
 						amount: totalAmountResult.data,
 					},
 				});
-				router.push(`/history/detail/receive?id=${encodeURIComponent(id)}`);
+				router.push(
+					`/history/detail/receive?id=${encodeURIComponent(id)}&tab=ln`,
+				);
 			},
 		});
 

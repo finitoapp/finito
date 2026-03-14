@@ -296,6 +296,9 @@ export default function Page() {
 					frontendUrl={frontendUrl}
 					lnInvoice={lightningPayment?.lnInvoice}
 					czechQRCode={czechQRCode}
+					totalAmount={payment.totalAmount}
+					currency={payment.currency}
+					note={lightningPayment?.lnInvoice}
 				/>
 			)}
 
