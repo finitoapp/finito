@@ -297,5 +297,9 @@ export const ContactForm: React.FC<{
 		},
 	});
 
+	useEffect(() => {
+		form.form.setFocus("name");
+	}, [form.form]);
+
 	return <AutoForm form={form} components={components} />;
 };
