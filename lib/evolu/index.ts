@@ -354,6 +354,29 @@ export const AppSchema = {
 		...ContactSchema,
 		deviceId: TableIdSchema.nullable(),
 	},
+	contactAccount: {
+		id: TableIdSchema,
+		contactId: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
+		name: NonEmptyString255Schema.nullable(),
+		// Account kind discriminator
+		_tag: z.enum(["accountIban", "accountLud16"]),
+	},
+	contactAccountIban: {
+		id: TableIdSchema,
+		iban: IbanSchema,
+		currency: z.enum(FiatCurrency),
+	},
+	contactAccountLud16: {
+		id: TableIdSchema,
+		lud16: EmailSchema,
+	},
+	contactNostr: {
+		id: TableIdSchema,
+		contactId: TableIdSchema,
+		npub: NonEmptyStringSchema,
+		name: NonEmptyString255Schema.nullable(),
+	},
 	contactAddress: AddressSchema,
 	contactBillingInfo: {
 		id: TableIdSchema,

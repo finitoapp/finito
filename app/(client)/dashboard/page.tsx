@@ -112,17 +112,18 @@ export default function Page() {
 							</Button>
 						</Link>
 					</div>
-					<Button
-						disabled={true}
-						type={"button"}
-						variant={"secondary"}
-						className={
-							"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full text-md"
-						}
-					>
-						<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />
-						{t("client:home.actions.send")}
-					</Button>
+					<Link href={"/contacts" as never}>
+						<Button
+							type={"button"}
+							variant={"secondary"}
+							className={
+								"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full text-md"
+							}
+						>
+							<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />
+							{t("client:home.actions.send")}
+						</Button>
+					</Link>
 				</div>
 			</div>
 		</div>

@@ -19,11 +19,18 @@ const locale = {
     }
   },
   "page": {
+    "contacts": "Contacts",
     "scanQrCode": "Scan QR Code",
     "paymentDetail": "Payment detail",
     "paymentHistory": "Payment history",
     "receivePayment": "Receive payment",
     "useExample": "Use example"
+  },
+  "contactsPage": {
+    "empty": {
+      "title": "You do not have any contacts yet",
+      "description": "As soon as you add a contact to the system, it will appear here."
+    }
   },
   "receiveAmountForm": {
     "title": "Enter amount to receive",
