@@ -20,3 +20,5 @@ next-env.d.ts
 
 # experiments
 /scripts/*Test.ts
+
+certificates

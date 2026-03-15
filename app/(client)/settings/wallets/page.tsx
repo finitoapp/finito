@@ -73,7 +73,7 @@ export default function Page() {
 
 	return (
 		<div className="space-y-14 w-full px-4">
-			<div className={"h-10"} />
+			<div className={"h-8"} />
 			<FadeHeader title={t("settings:page.navigation.connectedWallets")} />
 
 			<div className={"flex my-10 w-full justify-center"}>

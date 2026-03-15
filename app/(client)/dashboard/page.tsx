@@ -76,7 +76,7 @@ export default function Page() {
 	const { t } = useTranslation();
 	return (
 		<div className="space-y-8 w-full p-4 flex flex-col">
-			<div className={"h-20"} />
+			<div className={"h-18"} />
 			<WalletStatus />
 			<TransactionHistory />
 

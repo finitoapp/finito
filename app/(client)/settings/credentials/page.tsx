@@ -10,7 +10,7 @@ export default function Page() {
 	const { t } = useTranslation();
 	return (
 		<div className="space-y-8 w-full">
-			<div className={"h-10"} />
+			<div className={"h-8"} />
 			<FadeHeader title={t("settings:page.navigation.credentials")} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>
