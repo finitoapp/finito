@@ -19,11 +19,18 @@ const locale = {
     }
   },
   "page": {
+    "contacts": "Kontakty",
     "scanQrCode": "Naskenovat QR kód",
     "paymentDetail": "Detail platby",
     "paymentHistory": "Historie plateb",
     "receivePayment": "Přijmout platbu",
     "useExample": "Použít ukázku"
+  },
+  "contactsPage": {
+    "empty": {
+      "title": "Zatím nemáte žádné kontakty",
+      "description": "Jakmile přidáte kontakt do systému, objeví se zde."
+    }
   },
   "receiveAmountForm": {
     "title": "Zadat částku k přijetí",
