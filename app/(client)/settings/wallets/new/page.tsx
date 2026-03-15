@@ -13,7 +13,7 @@ export default function Page() {
 
 	return (
 		<div className="space-y-8 w-full px-4">
-			<div className={"h-10"} />
+			<div className={"h-8"} />
 			<FadeHeader title={t("settings:page.navigation.connectedWallets")} />
 
 			<ResponsiveCard className="w-full max-w-xl" variant={"transparent"}>

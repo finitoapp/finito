@@ -271,7 +271,7 @@ export default function Page() {
 
 	return (
 		<div className="space-y-8 w-full px-8">
-			<div className={"h-10"} />
+			<div className={"h-8"} />
 			<FadeHeader title={t("client:page.paymentDetail")} />
 
 			{paymentStatus === PaymentStatus.Paid ? (

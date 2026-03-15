@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowLeftIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FC, useEffect, useEffectEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +10,6 @@ import { PaymentScreen } from "@/app/(client)/payment/components/payment-screen"
 import { ReservationScreen } from "@/app/(client)/payment/components/reservation-screen";
 import { TableScreen } from "@/app/(client)/payment/components/table-screen";
 import { FadeHeader } from "@/components/fade-header";
-import { Button } from "@/components/ui/button";
 import { useNostr } from "@/hooks/use-nostr";
 import { useOnMountUnsafe } from "@/hooks/use-on-mount-unsafe";
 import type {
@@ -176,22 +174,14 @@ export default function Page() {
 						? screen.payload.merchant?.name
 						: "Restaurace v pangejtu"
 				}
-				startAddon={
-					<Button
-						type={"button"}
-						variant={"ghost"}
-						onClick={() => {
-							if (screens.length > 1) {
-								setScreens((screens) => screens.slice(0, -1));
-								return;
-							}
+				customStartAddonOnClick={() => {
+					if (screens.length > 1) {
+						setScreens((screens) => screens.slice(0, -1));
+						return;
+					}
 
-							router.replace("/");
-						}}
-					>
-						<ArrowLeftIcon className={"text-primary"} />
-					</Button>
-				}
+					router.replace("/");
+				}}
 			/>
 
 			<Screen screen={screen} />

@@ -12,7 +12,7 @@ export default function Page() {
 
 	return (
 		<div className="flex-1 flex flex-col px-8 justify-evenly gap-4">
-			<div className={"h-10"} />
+			<div className={"h-8"} />
 			<FadeHeader title={t("client:page.scanQrCode")} />
 
 			<div className="text-center">

@@ -1,5 +1,3 @@
-"use client";
-
 import { ArrowLeftIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FC, type ReactNode, useEffect, useRef } from "react";
@@ -9,6 +7,7 @@ export const FadeHeader: FC<{
 	title: ReactNode;
 	endAddon?: React.ReactNode;
 	startAddon?: React.ReactNode | null;
+	customStartAddonOnClick?: () => void;
 }> = (props) => {
 	const divRef = useRef<HTMLDivElement>(null);
 	const router = useRouter();
@@ -33,7 +32,11 @@ export const FadeHeader: FC<{
 
 	const startAddon =
 		props.startAddon === undefined ? (
-			<Button type={"button"} variant={"ghost"} onClick={() => router.back()}>
+			<Button
+				type={"button"}
+				variant={"ghost"}
+				onClick={props.customStartAddonOnClick ?? (() => router.back())}
+			>
 				<ArrowLeftIcon className={"text-primary size-5"} strokeWidth={3} />
 			</Button>
 		) : (
@@ -47,7 +50,7 @@ export const FadeHeader: FC<{
 			style={{ opacity: 1, top: "env(safe-area-inset-top)" }}
 		>
 			<div className="relative flex flex-row w-full justify-center">
-				<div className="max-w-xl px-4 py-5 flex flex-1 flex-row justify-between gap-4">
+				<div className="max-w-xl px-4 py-3 flex flex-1 flex-row justify-between gap-4">
 					<div className={"w-10"}>{startAddon}</div>
 					<h2 className="flex-1 shrink text-xl font-bold text-foreground m-auto">
 						{props.title}
