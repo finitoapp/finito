@@ -2,7 +2,7 @@ import { createId, createRandomBytes } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PartialDeep } from "type-fest";
 import { z } from "zod";
@@ -58,6 +58,10 @@ export const DeviceForm: React.FC<{
 			}
 		},
 	});
+
+	useEffect(() => {
+		form.form.setFocus("name");
+	}, [form.form]);
 
 	return <AutoForm form={form} components={components} />;
 };
