@@ -58,7 +58,7 @@ const locale = {
   },
   "transactionHistory": {
     "title": "Historie transakcí",
-    "unknownMerchant": "Neznámý obchodník",
+    "unknownCounterparty": "Neznámá protistrana",
     "empty": {
       "title": "Vaše historie transakcí je prázdná",
       "description": "Vaše platební transakce se zde zobrazí, jakmile provedete první nákup nebo prodej."

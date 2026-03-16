@@ -16,8 +16,9 @@ import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Currency } from "@/lib/shared/types";
-import { formatAmount } from "@/lib/shared/utils/format";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { Currency, Integer } from "@/lib/shared/types";
+import { formatMoney } from "@/lib/shared/utils/format";
 
 const WalletStatus = () => {
 	const { mnemonic } = useAtomValue(accountAtom);
@@ -38,6 +39,17 @@ const WalletStatus = () => {
 		},
 	});
 
+	const { data: amountInFiat } = useQuery({
+		queryKey: ["walletAmountInFiat"],
+		queryFn: async () => {
+			return await currencyConverter.convert({
+				amount: Integer(Math.round(Number(data))),
+				sourceCurrency: Currency.BTC,
+				targetCurrency: Currency.CZK,
+			});
+		},
+	});
+
 	return (
 		<FadeHeader
 			startAddon={null}
@@ -49,19 +61,27 @@ const WalletStatus = () => {
 				</Link>
 			}
 			title={
-				<div className={"py-4"}>
-					<div>
+				<div className={"py-4 text-center"}>
+					<div className={"flex justify-center"}>
 						{data !== undefined ? (
-							formatAmount(Number(data) / 100000000, Currency.BTC)
+							formatMoney({
+								value: Integer(Math.round(Number(data))),
+								currency: Currency.BTC,
+							})
 						) : (
 							<Skeleton className={"h-7 w-30"} />
 						)}
 					</div>
 					<div
-						className={"text-xs mt-1 pt-2.5 font-medium text-muted-foreground"}
+						className={
+							"text-xs mt-1 pt-2.5 font-medium text-muted-foreground flex justify-center"
+						}
 					>
-						{data !== undefined ? (
-							formatAmount(Number(data), Currency.CZK)
+						{amountInFiat ? (
+							formatMoney({
+								value: Integer(Math.round(Number(amountInFiat))),
+								currency: Currency.CZK,
+							})
 						) : (
 							<Skeleton className={"h-5 w-30"} />
 						)}
@@ -99,7 +119,7 @@ export default function Page() {
 					</Link>
 					<div
 						className={
-							"size-20 -my-3 -mx-8 bg-card border-t rounded-full shadow-[0_0_48px_rgba(0,0,0,0.1)] dark:shadow-[0_0_48px_rgba(0,0,0,0.4)]"
+							"z-10 size-20 -my-3 -mx-8 bg-card border-t rounded-full shadow-[0_0_48px_rgba(0,0,0,0.1)] dark:shadow-[0_0_48px_rgba(0,0,0,0.4)]"
 						}
 					>
 						<Link href={"/scan"}>
@@ -115,9 +135,9 @@ export default function Page() {
 					<Link href={"/contacts" as never}>
 						<Button
 							type={"button"}
-							variant={"secondary"}
+							variant={"default"}
 							className={
-								"h-14 w-43 px-0 bg-transparent text-foreground rounded-r-full text-md"
+								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-r-full text-md"
 							}
 						>
 							<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />

@@ -1,7 +1,7 @@
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
-import type { NotificationUI } from "@/components/notification-center";
+import type { NotificationUI } from "@/hooks/use-background-processes";
 import { backgroundTableProcessingProcess } from "@/lib/background/processes/background-table-processing-process";
 import { syncFioTransfersProcess } from "@/lib/background/processes/sync-fio-transfers-process";
 import { syncLnZapTransfersProcess } from "@/lib/background/processes/sync-ln-zap-transfers-process";

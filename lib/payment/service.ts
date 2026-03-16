@@ -48,6 +48,25 @@ export const resolvePaymentStatus = (params: {
 	return paymentStatus;
 };
 
+export const createLud16Payment = async (params: {
+	lud16: Email;
+	amountInSats: Integer;
+}) => {
+	const [username, domain] = params.lud16.split("@");
+	const httpUrl = `https://${domain}/.well-known/lnurlp/${username}`;
+	const lnurlResult = await fetch(httpUrl).then((result) => result.json());
+
+	const amountInMilliSats = (params.amountInSats * 1000).toFixed(0);
+
+	const createInvoiceResult = await fetch(
+		`${lnurlResult.callback}?amount=${amountInMilliSats}`,
+	).then((result) => result.json());
+
+	return {
+		lnInvoice: createInvoiceResult.pr,
+	} as const;
+};
+
 export const createZapPayment =
 	(deps: NdkDep) =>
 	async (params: {
