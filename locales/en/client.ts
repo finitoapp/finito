@@ -58,7 +58,7 @@ const locale = {
   },
   "transactionHistory": {
     "title": "Transaction history",
-    "unknownMerchant": "Unknown merchant",
+    "unknownCounterparty": "Unknown counterparty",
     "empty": {
       "title": "Your transaction history is empty",
       "description": "Your payment transactions will appear here once you make your first purchase or sale."

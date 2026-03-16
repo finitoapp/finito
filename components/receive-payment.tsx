@@ -110,7 +110,9 @@ export const ReceivePayment: FC<{
 			{lnInvoice && (
 				<TabsContent value="ln">
 					<Button
-						className={"w-full aspect-square h-auto p-6 bg-white"}
+						className={
+							"w-full aspect-square h-auto p-6 bg-white dark:bg-white dark:hover:bg-gray-300"
+						}
 						variant={"outline"}
 						onClick={() =>
 							copy(lnInvoice, {

@@ -1,12 +1,15 @@
 "use client";
 
 import { ViewTransition } from "react";
+import { useBackgroundProcesses } from "@/hooks/use-background-processes";
 
 export default function Layout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	useBackgroundProcesses();
+
 	return (
 		<div className="flex flex-col w-full justify-center flex-1 items-center">
 			<ViewTransition>

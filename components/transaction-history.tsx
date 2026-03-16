@@ -76,7 +76,9 @@ export const TransactionHistory = () => {
 				return {
 					label: (
 						<div className={"flex flex-col gap-2 items-start w-max"}>
-							<strong>{t("client:transactionHistory.unknownMerchant")}</strong>
+							<strong>
+								{t("client:transactionHistory.unknownCounterparty")}
+							</strong>
 							<div className={"flex justify-between w-full text-xs"}>
 								<span>
 									{formatMoney({
