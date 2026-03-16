@@ -42,8 +42,13 @@ const WalletStatus = () => {
 	const { data: amountInFiat } = useQuery({
 		queryKey: ["walletAmountInFiat"],
 		queryFn: async () => {
+			const amount = Integer(Math.round(Number(data)));
+			if (amount === 0) {
+				return amount;
+			}
+
 			return await currencyConverter.convert({
-				amount: Integer(Math.round(Number(data))),
+				amount: amount,
 				sourceCurrency: Currency.BTC,
 				targetCurrency: Currency.CZK,
 			});
@@ -77,7 +82,7 @@ const WalletStatus = () => {
 							"text-xs mt-1 pt-2.5 font-medium text-muted-foreground flex justify-center"
 						}
 					>
-						{amountInFiat ? (
+						{amountInFiat !== null && amountInFiat !== undefined ? (
 							formatMoney({
 								value: Integer(Math.round(Number(amountInFiat))),
 								currency: Currency.CZK,
