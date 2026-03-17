@@ -47,8 +47,8 @@ export default function Page() {
 	);
 
 	return (
-		<div className="space-y-8 w-full">
-			<div className={"h-10"} />
+		<div className="space-y-8 w-full px-4">
+			<div className={"h-8"} />
 			<FadeHeader title={t("client:page.receivePayment")} />
 
 			<SendOrReceivePayment variant={"receive"} onSubmit={save} />

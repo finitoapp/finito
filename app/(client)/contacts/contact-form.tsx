@@ -1,9 +1,11 @@
 import { createId, createRandomBytes } from "@evolu/common";
+import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { PartialDeep } from "type-fest";
 import { z } from "zod";
 import { accountAtom } from "@/atoms/account";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
@@ -66,12 +68,15 @@ const createComponents = (t: TFunction) =>
 	}));
 
 export const ContactForm: React.FC<{
+	defaultValues?: PartialDeep<z.input<typeof contactFormSchema>>;
 	onSuccess?: (contactId: string) => unknown;
 }> = (props) => {
 	const { t } = useTranslation();
+	const [defaultValues] = useState(() => {
+		return merge(createContactFormDefaultValues(), props.defaultValues ?? {});
+	});
 	const evolu = useEvolu();
 	const account = useAtomValue(accountAtom);
-	const [defaultValues] = useState(createContactFormDefaultValues);
 	const components = useMemo(() => createComponents(t), [t]);
 
 	const form = useActionForm(contactFormSchema, {

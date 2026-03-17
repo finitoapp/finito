@@ -126,7 +126,7 @@ export default function Page() {
 							type={"button"}
 							variant={"default"}
 							className={
-								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-l-full text-md"
+								"h-14 w-40 px-0 bg-transparent pr-4 text-foreground rounded-l-full text-md"
 							}
 						>
 							<ArrowDownIcon
@@ -156,7 +156,7 @@ export default function Page() {
 							type={"button"}
 							variant={"default"}
 							className={
-								"h-14 w-43 px-0 bg-transparent pr-0 text-foreground rounded-r-full text-md"
+								"h-14 w-40 px-0 bg-transparent pl-4 text-foreground rounded-r-full text-md"
 							}
 						>
 							<ArrowUpIcon className={"size-5 text-primary"} strokeWidth={3} />

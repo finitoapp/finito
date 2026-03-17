@@ -288,7 +288,7 @@ export const SendOrReceivePayment: React.FC<{
 		});
 
 	return (
-		<div className={"w-full px-8 flex flex-col gap-6"}>
+		<div className={"w-full px-4 flex flex-col gap-6"}>
 			<Field>
 				<FieldLabel>
 					{t("form.payment-form.label.spark-wallet-account")}
