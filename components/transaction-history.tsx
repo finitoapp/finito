@@ -1,4 +1,10 @@
-import { CheckIcon, ReceiptIcon, XIcon } from "lucide-react";
+import {
+	ArrowDownIcon,
+	ArrowUpIcon,
+	CheckIcon,
+	ReceiptIcon,
+	XIcon,
+} from "lucide-react";
 import type { FC, ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
@@ -6,6 +12,7 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import { getLatestPayments } from "@/lib/evolu/queries/payment";
 import { resolvePaymentStatus } from "@/lib/payment/service";
+import { Integer } from "@/lib/shared/types";
 import { cn } from "@/lib/shared/ui/cn";
 import { formatMoney } from "@/lib/shared/utils/format";
 
@@ -75,21 +82,47 @@ export const TransactionHistory = () => {
 
 				return {
 					label: (
-						<div className={"flex flex-col gap-2 items-start w-max"}>
-							<strong>
-								{t("client:transactionHistory.unknownCounterparty")}
-							</strong>
-							<div className={"flex justify-between w-full text-xs"}>
-								<span>
-									{formatMoney({
-										value: item.totalAmount,
-										currency: item.currency,
-									})}
-								</span>
-								&nbsp;&nbsp;•&nbsp;&nbsp;
-								<span className={"text-muted-foreground"}>
-									{new Date(item.createdAt).toLocaleString()}
-								</span>
+						<div className={"flex gap-2 justify-between"}>
+							<div className={"flex flex-col gap-2 items-start w-max"}>
+								<strong>
+									{item.counterparty?.label ??
+										item.counterparty?.name ??
+										t("client:transactionHistory.unknownCounterparty")}
+								</strong>
+								<div className={"flex justify-between w-full text-xs"}>
+									<span
+										className={
+											item.direction === "outgoing" ? "text-red-700" : undefined
+										}
+									>
+										{formatMoney({
+											value:
+												item.direction === "outgoing"
+													? Integer(-item.totalAmount)
+													: item.totalAmount,
+											currency: item.currency,
+										})}
+									</span>
+									&nbsp;&nbsp;•&nbsp;&nbsp;
+									<span className={"text-muted-foreground"}>
+										{new Date(item.createdAt).toLocaleString()}
+									</span>
+								</div>
+							</div>
+							<div className={"shrink-0 flex items-center justify-center"}>
+								{item.direction === "outgoing" ? (
+									<ArrowUpIcon
+										size={24}
+										className={"inline-block mr-2 text-red-700"}
+										strokeWidth={3}
+									/>
+								) : (
+									<ArrowDownIcon
+										size={24}
+										className={"inline-block mr-2 text-green-500"}
+										strokeWidth={3}
+									/>
+								)}
 							</div>
 						</div>
 					),

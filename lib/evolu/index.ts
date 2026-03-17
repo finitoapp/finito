@@ -283,7 +283,7 @@ export const AppSchema = {
 		// FK-like reference to reconciliationClaim.id.
 		claimId: TableIdSchema,
 		// Allocation bucket: product/tip/overpayment/refund.
-		componentType: z.enum(["product", "tip", "overpayment"]),
+		componentType: z.enum(["product", "tip", "overpayment", "fee"]),
 		// Signed minor units (allows correction rows).
 		amount: IntegerSchema,
 	},
@@ -552,6 +552,10 @@ export const AppSchema = {
 		currency: z.enum(Currency),
 		// Optional expected tip amount in minor units.
 		tipAmount: NonNegativeIntegerSchema.nullable(),
+	},
+	paymentCounterparty: {
+		...ContactSchema,
+		sourceContactId: NullableTableIdSchema,
 	},
 	paymentWebData: {
 		id: TableIdSchema,

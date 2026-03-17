@@ -18,6 +18,7 @@ const locale = {
 		search: {
 			placeholder: {
 				"by-name": "Hledat podle jména...",
+				"by-name-or-label": "Hledat podle jména nebo štítku...",
 			},
 		},
 	},
