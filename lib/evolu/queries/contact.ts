@@ -21,6 +21,32 @@ export const createGetContactsQuery = (params: { id?: Id } = {}) =>
 
 				evoluJsonObjectFrom(
 					eb
+						.selectFrom("contactNostr")
+						.select(["contactNostr.name as name", "contactNostr.npub as npub"])
+						.whereRef("contactNostr.contactId", "=", "contact.id")
+						.where("contactNostr.isDeleted", "is not", sqliteTrue),
+				).as("nostr"),
+
+				evoluJsonObjectFrom(
+					eb
+						.selectFrom("contactAccount")
+						.select((eb) => [
+							"contactAccount.name as name",
+
+							evoluJsonObjectFrom(
+								eb
+									.selectFrom("contactAccountLud16")
+									.select(["contactAccountLud16.lud16 as lud16"])
+									.whereRef("contactAccountLud16.id", "=", "contactAccount.id")
+									.where("contactAccountLud16.isDeleted", "is not", sqliteTrue),
+							).as("lud16"),
+						])
+						.whereRef("contactAccount.contactId", "=", "contact.id")
+						.where("contactAccount.isDeleted", "is not", sqliteTrue),
+				).as("account"),
+
+				evoluJsonObjectFrom(
+					eb
 						.selectFrom("contactAddress")
 						.select([
 							"contactAddress.street as street",
