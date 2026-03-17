@@ -58,6 +58,10 @@ const DeviceSchema = {
 		browserName: z.string().nullable(),
 		osName: z.string().nullable(),
 	},
+	keyValueCache: {
+		id: TableIdSchema,
+		value: z.union([z.string(), z.number()]).nullable(),
+	},
 } as const;
 
 export const createDeviceQuery = createQueryBuilder(DeviceSchema);

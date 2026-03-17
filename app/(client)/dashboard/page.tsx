@@ -16,15 +16,16 @@ import { FadeHeader } from "@/components/fade-header";
 import { TransactionHistory } from "@/components/transaction-history";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryWithCached } from "@/hooks/use-query-with-cached";
 import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
 import { Currency, Integer } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
 
 const WalletStatus = () => {
-	const { mnemonic } = useAtomValue(accountAtom);
+	const { mnemonic, id } = useAtomValue(accountAtom);
 
-	const { data } = useQuery<bigint>({
-		queryKey: ["walletStatus"],
+	const { data } = useQueryWithCached<Integer>({
+		queryKey: `${id}:walletStatus`,
 		queryFn: async () => {
 			const { wallet } = await SparkWallet.initialize({
 				mnemonicOrSeed: mnemonic,
@@ -35,20 +36,20 @@ const WalletStatus = () => {
 
 			const { balance } = await wallet.getBalance();
 
-			return balance;
+			return Integer(Math.round(Number(balance)));
 		},
 	});
 
 	const { data: amountInFiat } = useQuery({
-		queryKey: ["walletAmountInFiat"],
+		queryKey: [`${id}:walletAmountInFiat`],
+		enabled: data !== undefined,
 		queryFn: async () => {
-			const amount = Integer(Math.round(Number(data)));
-			if (amount === 0) {
-				return amount;
+			if (data === 0 || data === undefined) {
+				return data;
 			}
 
 			return await currencyConverter.convert({
-				amount: amount,
+				amount: data,
 				sourceCurrency: Currency.BTC,
 				targetCurrency: Currency.CZK,
 			});
@@ -70,7 +71,7 @@ const WalletStatus = () => {
 					<div className={"flex justify-center"}>
 						{data !== undefined ? (
 							formatMoney({
-								value: Integer(Math.round(Number(data))),
+								value: data,
 								currency: Currency.BTC,
 							})
 						) : (
