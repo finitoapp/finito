@@ -119,12 +119,24 @@ export const createZapPayment =
 export const createOutgoingPayment =
 	(deps: EvoluDep) =>
 	(params: {
-		payment: Omit<EvoluSchemaType["payment"], "direction" | "id" | "tipAmount">;
+		payment: Omit<EvoluSchemaType["payment"], "direction" | "tipAmount"> & {
+			counterparty?: EvoluSchemaType["contact"];
+		};
 	}) => {
-		deps.evolu.insert("payment", {
-			...params.payment,
+		const { counterparty, ...payment } = params.payment;
+
+		deps.evolu.upsert("payment", {
+			...payment,
 			direction: "outgoing",
 		});
+
+		if (counterparty) {
+			deps.evolu.upsert("paymentCounterparty", {
+				...counterparty,
+				sourceContactId: counterparty.id,
+				id: payment.id,
+			});
+		}
 	};
 
 export const createPayment =

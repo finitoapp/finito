@@ -82,7 +82,7 @@ export const sparkBtcWalletAdapter: BtcWalletAdapter<"accountSpark"> = {
 			const payment = await wallet.payLightningInvoice({
 				invoice: params.input.invoice,
 				maxFeeSats: params.input.maxFeeSats ?? 0,
-				amountSatsToSend: params.input.amountSats ?? 0,
+				// amountSatsToSend: params.input.amountSats ?? 0,
 			});
 
 			const paymentHash = extractPaymentHashFromLnInvoice(params.input.invoice);

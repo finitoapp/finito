@@ -1,7 +1,12 @@
-import { type KyselyNotNull, sqliteTrue } from "@evolu/common";
+import {
+	createIdFromString,
+	type KyselyNotNull,
+	sqliteTrue,
+} from "@evolu/common";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { accountAtom } from "@/atoms/account";
@@ -13,8 +18,15 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { ScreenData } from "@/lib/bill/driver";
 import { createQuery } from "@/lib/evolu";
+import type { Id } from "@/lib/evolu/types";
+import { getBtcWalletAdapter } from "@/lib/payment/btc-wallet/registry";
 import { createOutgoingPayment } from "@/lib/payment/service";
-import { Currency, type NonEmptyString } from "@/lib/shared/types";
+import {
+	Currency,
+	Integer,
+	NonEmptyString,
+	NonNegativeInteger,
+} from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
 import { extractBtcAmountFromLightningInvoice } from "@/lib/shared/utils/ln";
 
@@ -35,9 +47,12 @@ const PayButton: FC<{
 }> = (props) => {
 	const { t } = useTranslation();
 	const totalAmount = extractBtcAmountFromLightningInvoice(props.lnInvoice);
-	const [paymentMethod, setPaymentMethod] = useState("external");
+	const [paymentMethod, setPaymentMethod] = useState<Id | "external" | null>(
+		"external",
+	);
 	const evolu = useEvolu();
 	const account = useAtomValue(accountAtom);
+	const router = useRouter();
 
 	const { data: btcWallets } = useEvoluQuery(btcWalletsQuery);
 
@@ -45,16 +60,19 @@ const PayButton: FC<{
 		{
 			value: "external",
 			label: t("client:paymentPage.wallets.external"),
-		},
-		...btcWallets.map((btcWallet) => ({
-			value: btcWallet.id,
-			label: btcWallet.name,
-		})),
+		} as const,
+		...btcWallets.map(
+			(btcWallet) =>
+				({
+					value: btcWallet.id,
+					label: btcWallet.name,
+				}) as const,
+		),
 	];
 
 	return (
 		<>
-			<SelectButton
+			<SelectButton<typeof paymentMethod>
 				value={paymentMethod}
 				onValueChange={setPaymentMethod}
 				options={options}
@@ -66,8 +84,14 @@ const PayButton: FC<{
 				size={"lg"}
 				disabled={false}
 				onClick={async () => {
+					if (paymentMethod === null) {
+						return;
+					}
+
+					const paymentId = createIdFromString(props.lnInvoice);
 					createOutgoingPayment({ evolu })({
 						payment: {
+							id: paymentId,
 							totalAmount,
 							currency: Currency.BTC,
 							deviceId: account.device.id,
@@ -85,6 +109,92 @@ const PayButton: FC<{
 						document.body.removeChild(a);
 						return;
 					}
+
+					const accounts = await evolu.loadQuery(
+						createQuery((db) =>
+							db
+								.selectFrom("account")
+								.leftJoin("accountSpark", "accountSpark.id", "account.id")
+								.select([
+									"account.id as id",
+									"account._tag as _tag",
+									"accountSpark.mnemonic as mnemonic",
+								] as const)
+								.where("account.isDeleted", "is not", sqliteTrue)
+								.where("accountSpark.mnemonic", "is not", null)
+								.where("account.id", "=", paymentMethod)
+								.where("account._tag", "in", ["accountSpark", "accountNwc"])
+								.$narrowType<{
+									_tag: KyselyNotNull;
+									mnemonic: KyselyNotNull;
+								}>(),
+						),
+					);
+
+					const moneyAccount = accounts[0];
+					if (moneyAccount === undefined) {
+						return;
+					}
+
+					const btcWalletAdapter = getBtcWalletAdapter(
+						moneyAccount._tag as "accountSpark" | "accountNwc",
+					);
+					const { feePaidSats } = await btcWalletAdapter.payInvoice({
+						config: moneyAccount,
+						input: {
+							invoice: props.lnInvoice,
+							maxFeeSats: NonNegativeInteger(3),
+						},
+					});
+
+					const transactionId = createIdFromString(`outgoingLn:${paymentId}`);
+					evolu.upsert("transaction", {
+						id: transactionId,
+						accountId: paymentMethod,
+						_tag: "accountLud16",
+						amount: Integer((feePaidSats ?? 0) + totalAmount),
+						currency: Currency.BTC,
+						occurredAt: Date.now(),
+						note: NonEmptyString("Outgoing LN payment"),
+						internalTransferGroupId: null,
+					});
+					const claimId = createIdFromString(
+						`reconciliationClaim:lnPaymentHash:${transactionId}:${paymentId}`,
+					);
+					evolu.upsert("reconciliationClaim", {
+						id: claimId,
+						sourceType: "transaction",
+						sourceId: transactionId,
+						entityType: "payment",
+						entityId: paymentId,
+						confidence: 1,
+						rule: "lnPaymentHash",
+						createdBy: "syncLnZapTransfersProcess",
+					});
+					const allocationId = createIdFromString(
+						`reconciliationClaimAllocation:${claimId}:product`,
+					);
+					evolu.upsert("reconciliationClaimAllocation", {
+						id: allocationId,
+						claimId,
+						componentType: "product",
+						amount: totalAmount,
+					});
+					{
+						if (feePaidSats !== null && feePaidSats > 0) {
+							const allocationId = createIdFromString(
+								`reconciliationClaimAllocation:${claimId}:fee`,
+							);
+							evolu.upsert("reconciliationClaimAllocation", {
+								id: allocationId,
+								claimId,
+								componentType: "fee",
+								amount: feePaidSats,
+							});
+						}
+					}
+
+					router.push(`/history/detail?id=${encodeURIComponent(paymentId)}`);
 				}}
 			>
 				{t("client:paymentPage.actions.pay")}

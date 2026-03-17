@@ -18,6 +18,7 @@ const locale = {
 		search: {
 			placeholder: {
 				"by-name": "Search by name...",
+				"by-name-or-label": "Search by name or label...",
 			},
 		},
 	},

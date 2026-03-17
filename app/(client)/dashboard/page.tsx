@@ -2,10 +2,12 @@
 
 import { SparkWallet } from "@buildonspark/spark-sdk";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import {
 	ArrowDownIcon,
 	ArrowUpIcon,
+	ContactIcon,
 	MenuIcon,
 	ScanQrCodeIcon,
 } from "lucide-react";
@@ -41,7 +43,7 @@ const WalletStatus = () => {
 	});
 
 	const { data: amountInFiat } = useQuery({
-		queryKey: [`${id}:walletAmountInFiat`],
+		queryKey: [`walletAmountInFiat:${data}`],
 		enabled: data !== undefined,
 		queryFn: async () => {
 			if (data === 0 || data === undefined) {
@@ -58,7 +60,13 @@ const WalletStatus = () => {
 
 	return (
 		<FadeHeader
-			startAddon={null}
+			startAddon={
+				<Link href={"/contacts"}>
+					<Button type={"button"} variant={"ghost"}>
+						<ContactIcon className={"text-primary size-5"} strokeWidth={3} />
+					</Button>
+				</Link>
+			}
 			endAddon={
 				<Link href={"/settings"}>
 					<Button type={"button"} variant={"ghost"}>
@@ -68,7 +76,12 @@ const WalletStatus = () => {
 			}
 			title={
 				<div className={"py-4 text-center"}>
-					<div className={"flex justify-center"}>
+					<motion.div
+						className={"flex justify-center"}
+						key={`${data}`}
+						initial={{ scale: 1.1, opacity: 0.5 }}
+						animate={{ scale: 1, opacity: 1 }}
+					>
 						{data !== undefined ? (
 							formatMoney({
 								value: data,
@@ -77,7 +90,7 @@ const WalletStatus = () => {
 						) : (
 							<Skeleton className={"h-7 w-30"} />
 						)}
-					</div>
+					</motion.div>
 					<div
 						className={
 							"text-xs mt-1 pt-2.5 font-medium text-muted-foreground flex justify-center"
@@ -138,7 +151,7 @@ export default function Page() {
 							</Button>
 						</Link>
 					</div>
-					<Link href={"/contacts" as never}>
+					<Link href={"/send" as never}>
 						<Button
 							type={"button"}
 							variant={"default"}

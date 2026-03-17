@@ -23,6 +23,7 @@ const locale = {
     "scanQrCode": "Scan QR Code",
     "paymentDetail": "Payment detail",
     "paymentHistory": "Payment history",
+    "sendPayment": "Send payment",
     "receivePayment": "Receive payment",
     "useExample": "Use example"
   },
@@ -30,6 +31,10 @@ const locale = {
     "empty": {
       "title": "You do not have any contacts yet",
       "description": "As soon as you add a contact to the system, it will appear here."
+    },
+    "filteredEmpty": {
+      "title": "No matching contacts",
+      "description": "Try a different name or label."
     }
   },
   "receiveAmountForm": {
@@ -165,6 +170,9 @@ const locale = {
         "spark-wallet-account": "Spark wallet account",
         "price-in-btc": "Price in BTC",
         "note-for-recipient-optional": "Note for recipient (optional)"
+      },
+      "save-label": {
+        "create-invoice": "Create invoice"
       },
       "placeholder": {
         "0": "0"

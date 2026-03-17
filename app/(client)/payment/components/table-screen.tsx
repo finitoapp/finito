@@ -33,8 +33,9 @@ const PayButton: FC<{
 	selectedTipAtom: SelectedTipAtom;
 }> = (props) => {
 	const { t } = useTranslation();
-	const [paymentMethod, setPaymentMethod] =
-		useState<BillPaymentOption>("btcLn");
+	const [paymentMethod, setPaymentMethod] = useState<BillPaymentOption | null>(
+		"btcLn",
+	);
 	const selectedItems = useAtomValue(props.selectedItemsAtom);
 	const selectedTip = useAtomValue(props.selectedTipAtom);
 
@@ -81,6 +82,10 @@ const PayButton: FC<{
 				size={"lg"}
 				disabled={totalAmount.eq(0)}
 				onClick={async () => {
+					if (paymentMethod === null) {
+						return;
+					}
+
 					const bill = props.screen.payload.bill;
 					if (bill === null) {
 						return;

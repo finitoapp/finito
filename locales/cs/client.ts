@@ -23,6 +23,7 @@ const locale = {
     "scanQrCode": "Naskenovat QR kód",
     "paymentDetail": "Detail platby",
     "paymentHistory": "Historie plateb",
+    "sendPayment": "Odeslat platbu",
     "receivePayment": "Přijmout platbu",
     "useExample": "Použít ukázku"
   },
@@ -30,6 +31,10 @@ const locale = {
     "empty": {
       "title": "Zatím nemáte žádné kontakty",
       "description": "Jakmile přidáte kontakt do systému, objeví se zde."
+    },
+    "filteredEmpty": {
+      "title": "Žádné odpovídající kontakty",
+      "description": "Zkuste jiné jméno nebo štítek."
     }
   },
   "receiveAmountForm": {
@@ -165,6 +170,9 @@ const locale = {
         "spark-wallet-account": "Spark peněženka",
         "price-in-btc": "Cena v BTC",
         "note-for-recipient-optional": "Poznámka pro příjemce (volitelné)"
+      },
+      "save-label": {
+        "create-invoice": "Vytvořit fakturu"
       },
       "placeholder": {
         "0": "0"

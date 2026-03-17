@@ -21,6 +21,17 @@ export const getLatestPayments = createQuery((db) =>
 
 					evoluJsonObjectFrom(
 						eb
+							.selectFrom("paymentCounterparty")
+							.select([
+								"paymentCounterparty.label as label",
+								"paymentCounterparty.name as name",
+							])
+							.whereRef("paymentCounterparty.id", "=", "payment.id")
+							.where("paymentCounterparty.isDeleted", "is not", sqliteTrue),
+					).as("counterparty"),
+
+					evoluJsonObjectFrom(
+						eb
 							.selectFrom("reconciliationClaim")
 							.innerJoin(
 								"reconciliationClaimAllocation",
