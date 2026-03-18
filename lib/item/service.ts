@@ -1,4 +1,5 @@
 import { createIdFromString } from "@evolu/common";
+import { pick } from "es-toolkit";
 import type { SetOptional } from "type-fest";
 import type { EvoluSchemaType } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
@@ -30,7 +31,21 @@ export const createItem =
 export const createItemRevisionId = (
 	item: Omit<EvoluSchemaType["itemRevision"], "id">,
 ) => {
-	return createIdFromString(stableStringify(item));
+	return createIdFromString(
+		stableStringify(
+			pick(item, [
+				"deviceId",
+				"label",
+				"price",
+				"unitOfMeasure",
+				"internalCode",
+				"productCodeType",
+				"productCodeValue",
+				"categoryId",
+				"currency",
+			]),
+		),
+	);
 };
 
 export const convertItemToItemRevision = ({

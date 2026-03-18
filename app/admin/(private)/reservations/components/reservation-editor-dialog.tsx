@@ -92,31 +92,33 @@ export const ReservationEditorDialog: React.FC<{
 							: t("reservations:page.form.editTitle")}
 					</DialogTitle>
 				</DialogHeader>
-				{draft !== null && (
-					<ReservationForm
-						key={`${editingReservationId ?? "new"}:${timezone}`}
-						defaultValues={draft}
-						timezone={timezone}
-						tables={tableOptions}
-						onSuccess={() => {
-							setDialogOpen(false);
-							setDraft(null);
-						}}
-					/>
-				)}
+				<div className="-mx-4 no-scrollbar max-h-[50vh] overflow-y-auto px-4">
+					{draft !== null && (
+						<ReservationForm
+							key={`${editingReservationId ?? "new"}:${timezone}`}
+							defaultValues={draft}
+							timezone={timezone}
+							tables={tableOptions}
+							onSuccess={() => {
+								setDialogOpen(false);
+								setDraft(null);
+							}}
+						/>
+					)}
 
-				{editingReservationId !== null && (
-					<div className="flex justify-end">
-						<Button
-							type="button"
-							variant="destructive"
-							onClick={removeReservation}
-						>
-							<Trash2Icon />
-							{t("reservations:page.delete.confirm")}
-						</Button>
-					</div>
-				)}
+					{editingReservationId !== null && (
+						<div className="flex justify-end">
+							<Button
+								type="button"
+								variant="destructive"
+								onClick={removeReservation}
+							>
+								<Trash2Icon />
+								{t("reservations:page.delete.confirm")}
+							</Button>
+						</div>
+					)}
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

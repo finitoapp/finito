@@ -94,7 +94,7 @@ const ItemSchema = {
 	productCodeValue: NonEmptyStringSchema.nullable(),
 	categoryId: NullableTableIdSchema,
 	currency: z.enum(Currency),
-};
+} as const;
 
 export const AppSchema = {
 	category: {
