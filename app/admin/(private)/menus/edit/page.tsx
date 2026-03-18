@@ -64,6 +64,7 @@ export default function Home() {
 																		.selectFrom("itemRevision")
 																		.select([
 																			"itemRevision.id as id",
+																			"itemRevision.deviceId as deviceId",
 																			"itemRevision.categoryId as categoryId",
 																			"itemRevision.itemId as itemId",
 																			"itemRevision.label as label",

@@ -39,7 +39,7 @@ export class MenuDriver implements BillDriver {
 					return;
 				}
 
-				const result = NostrMenuSchema.safeParse(resultOrError);
+				const result = NostrMenuSchema.safeParse(resultOrError.value);
 				if (!result.success) {
 					callback({
 						type: "close",

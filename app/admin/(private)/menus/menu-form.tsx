@@ -51,7 +51,9 @@ type MenuItemState = {
 	id: Id;
 	availabilityStatus: "soldOut" | "hidden" | null;
 	item: {
-		itemId: Id | null;
+		id: Id | null;
+		categoryId: Id | null;
+		deviceId: Id | null;
 		label: NonEmptyString255;
 		price: Integer;
 		currency: Currency;
@@ -94,10 +96,7 @@ export type MenuFormDefaultValues = {
 	}>;
 };
 
-const AvailableAvailabilityStatusSelectValue = "__available__";
-
 const menuStatusValues = [MenuStatus.Draft, MenuStatus.Published] as const;
-const menuItemAvailabilityStatusValues = ["soldOut", "hidden"] as const;
 
 const menuPayloadSchema = z
 	.object({
@@ -116,19 +115,19 @@ const menuPayloadSchema = z
 					items: z
 						.array(
 							z.object({
-								id: TableIdSchema,
-								deviceId: TableIdSchema.nullable(),
-								categoryId: TableIdSchema.nullable(),
-								label: NonEmptyString255Schema,
-								availabilityStatus: z
-									.enum(menuItemAvailabilityStatusValues)
-									.nullable(),
-								price: IntegerSchema,
-								currency: z.enum(Currency),
-								unitOfMeasure: NonEmptyStringSchema.nullable(),
-								internalCode: NonEmptyStringSchema.nullable(),
-								productCodeType: z.enum(ProductCodeType).nullable(),
-								productCodeValue: NonEmptyStringSchema.nullable(),
+								availabilityStatus: z.enum(["soldOut", "hidden"]).nullable(),
+								item: z.object({
+									id: TableIdSchema,
+									deviceId: TableIdSchema.nullable(),
+									categoryId: TableIdSchema.nullable(),
+									label: NonEmptyString255Schema,
+									price: IntegerSchema,
+									currency: z.enum(Currency),
+									unitOfMeasure: NonEmptyStringSchema.nullable(),
+									internalCode: NonEmptyStringSchema.nullable(),
+									productCodeType: z.enum(ProductCodeType).nullable(),
+									productCodeValue: NonEmptyStringSchema.nullable(),
+								}),
 							}),
 						)
 						.min(1),
@@ -221,9 +220,7 @@ export const MenuForm = (params: {
 			),
 		[],
 	);
-	const { data: itemCatalogRows } = useEvoluQuery(itemCatalogQuery);
-
-	const itemCatalog = useMemo(() => itemCatalogRows ?? [], [itemCatalogRows]);
+	const { data: itemCatalog } = useEvoluQuery(itemCatalogQuery);
 
 	const updateCategory = (
 		categoryId: string,
@@ -278,9 +275,7 @@ export const MenuForm = (params: {
 
 		updateCategory(categoryId, (current) => {
 			if (
-				current.items.some(
-					(item) => item.item.itemId === current.selectedItemId,
-				)
+				current.items.some((item) => item.item.id === current.selectedItemId)
 			) {
 				return current;
 			}
@@ -290,16 +285,7 @@ export const MenuForm = (params: {
 				{
 					id: createNewId(),
 					availabilityStatus: null,
-					item: {
-						itemId: sourceItem.id,
-						label: sourceItem.label,
-						price: sourceItem.price,
-						currency: sourceItem.currency,
-						unitOfMeasure: sourceItem.unitOfMeasure,
-						internalCode: sourceItem.internalCode,
-						productCodeType: sourceItem.productCodeType,
-						productCodeValue: sourceItem.productCodeValue,
-					},
+					item: sourceItem,
 				} satisfies MenuItemState,
 			].sort((a, b) =>
 				a.item.label.localeCompare(b.item.label, undefined, {
@@ -363,20 +349,9 @@ export const MenuForm = (params: {
 				name: category.name,
 			});
 
-			for (const item of category.items) {
+			for (const { item, availabilityStatus } of category.items) {
 				const itemRevision = createItemRevision({ evolu })({
-					item: convertItemToItemRevision({
-						id: item.id,
-						deviceId: item.deviceId,
-						categoryId: item.categoryId,
-						label: item.label,
-						price: item.price,
-						currency: item.currency,
-						unitOfMeasure: item.unitOfMeasure,
-						internalCode: item.internalCode,
-						productCodeType: item.productCodeType,
-						productCodeValue: item.productCodeValue,
-					}),
+					item: convertItemToItemRevision(item),
 				});
 
 				nextItemIds.add(item.id);
@@ -384,7 +359,7 @@ export const MenuForm = (params: {
 					id: item.id,
 					menuCategoryId: category.id,
 					itemRevisionId: itemRevision.id,
-					availabilityStatus: item.availabilityStatus,
+					availabilityStatus: availabilityStatus,
 				});
 			}
 		}
@@ -439,15 +414,19 @@ export const MenuForm = (params: {
 				name: category.name.trim(),
 				items: category.items.map((item) => ({
 					id: item.id,
-					itemId: item.item.itemId,
-					label: item.item.label.trim(),
 					availabilityStatus: item.availabilityStatus,
-					price: item.item.price,
-					currency: item.item.currency,
-					unitOfMeasure: normalizeNullableString(item.item.unitOfMeasure),
-					internalCode: normalizeNullableString(item.item.internalCode),
-					productCodeType: normalizeNullableString(item.item.productCodeType),
-					productCodeValue: normalizeNullableString(item.item.productCodeValue),
+					item: {
+						id: item.item.id,
+						label: item.item.label.trim(),
+						price: item.item.price,
+						currency: item.item.currency,
+						unitOfMeasure: normalizeNullableString(item.item.unitOfMeasure),
+						internalCode: normalizeNullableString(item.item.internalCode),
+						productCodeType: normalizeNullableString(item.item.productCodeType),
+						productCodeValue: normalizeNullableString(
+							item.item.productCodeValue,
+						),
+					},
 				})),
 			})),
 		});
@@ -499,13 +478,21 @@ export const MenuForm = (params: {
 		[MenuStatus.Draft]: t("menus:status.draft"),
 		[MenuStatus.Published]: t("menus:status.published"),
 	};
-	const availabilityStatusLabels: Record<
-		(typeof menuItemAvailabilityStatusValues)[number],
-		string
-	> = {
-		soldOut: t("menus:form.availabilityStatus.soldOut"),
-		hidden: t("menus:form.availabilityStatus.hidden"),
-	};
+
+	const availabilityStatusLabels = [
+		{
+			value: null,
+			label: t("menus:form.availabilityStatus.available"),
+		},
+		{
+			value: "soldOut",
+			label: t("menus:form.availabilityStatus.soldOut"),
+		},
+		{
+			value: "hidden",
+			label: t("menus:form.availabilityStatus.hidden"),
+		},
+	];
 
 	return (
 		<div className={"space-y-6"}>
@@ -692,10 +679,8 @@ export const MenuForm = (params: {
 										<div className={"flex items-center gap-2"}>
 											<div className={"w-40"}>
 												<Select
-													value={
-														item.availabilityStatus ??
-														AvailableAvailabilityStatusSelectValue
-													}
+													value={item.availabilityStatus}
+													items={availabilityStatusLabels}
 													onValueChange={(value) =>
 														updateCategory(category.id, (current) => ({
 															...current,
@@ -704,11 +689,7 @@ export const MenuForm = (params: {
 																	? currentItem
 																	: {
 																			...currentItem,
-																			availabilityStatus:
-																				value ===
-																				AvailableAvailabilityStatusSelectValue
-																					? null
-																					: (value as (typeof menuItemAvailabilityStatusValues)[number]),
+																			availabilityStatus: value,
 																		},
 															),
 														}))
@@ -722,16 +703,13 @@ export const MenuForm = (params: {
 														/>
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem
-															value={AvailableAvailabilityStatusSelectValue}
-														>
-															{t("menus:form.availabilityStatus.available")}
-														</SelectItem>
-														{menuItemAvailabilityStatusValues.map((status) => (
-															<SelectItem key={status} value={status}>
-																{availabilityStatusLabels[status]}
-															</SelectItem>
-														))}
+														{availabilityStatusLabels.map(
+															({ value, label }) => (
+																<SelectItem key={value} value={value}>
+																	{label}
+																</SelectItem>
+															),
+														)}
 													</SelectContent>
 												</Select>
 											</div>

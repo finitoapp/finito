@@ -3,7 +3,12 @@
 import { addDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import {
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	ExternalLink,
+	PlusIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ReservationControls } from "@/app/admin/(private)/reservations/components/reservation-controls";
 import { ReservationDataSync } from "@/app/admin/(private)/reservations/components/reservation-data-sync";
@@ -29,6 +34,8 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { useNostr } from "@/hooks/use-nostr";
+import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 export const ReservationBoard: React.FC<{
 	stateAtoms: ReservationStateAtoms;
@@ -40,6 +47,8 @@ export const ReservationBoard: React.FC<{
 	const dayRange = useAtomValue(props.stateAtoms.dayRangeAtom);
 	const timezone = useAtomValue(props.stateAtoms.timezoneAtom);
 	const openCreateDialog = useSetAtom(props.stateAtoms.openCreateDialogAtom);
+	const { ndk } = useNostr();
+	const menuPreviewUrl = `${clientBaseUrl}#r-${ndk.signer.pubkey}`;
 
 	return (
 		<>
@@ -50,7 +59,7 @@ export const ReservationBoard: React.FC<{
 					<CardDescription>
 						{t("reservations:page.calendar.description")}
 					</CardDescription>
-					<CardAction>
+					<CardAction className={"flex gap-2"}>
 						<ButtonGroup>
 							<Button
 								variant="outline"
@@ -83,6 +92,15 @@ export const ReservationBoard: React.FC<{
 								<ChevronRightIcon />
 							</Button>
 						</ButtonGroup>
+						<Button
+							variant={"outline"}
+							render={
+								<a href={menuPreviewUrl} target={"_blank"} rel={"noreferrer"}>
+									<ExternalLink />
+									Náhled
+								</a>
+							}
+						></Button>
 						<Button
 							onClick={() =>
 								openCreateDialog({
