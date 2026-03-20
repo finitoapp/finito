@@ -704,7 +704,6 @@ export type Builder<
 		name: TName,
 	) => CreateComponentResults<
 		TName,
-		// @ts-expect-error
 		ConditionalPick<
 			typeof AutoFormInput,
 			// biome-ignore lint/suspicious/noExplicitAny: don't be shy to improve it
