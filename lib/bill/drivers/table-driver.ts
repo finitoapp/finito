@@ -3,7 +3,11 @@ import type {
 	BillSubscription,
 	ScreenDataPaymentPayFunction,
 } from "@/lib/bill/driver";
-import { NonEmptyStringSchema, Uuid7 } from "@/lib/shared/types";
+import {
+	NonEmptyString,
+	NonEmptyStringSchema,
+	Uuid7,
+} from "@/lib/shared/types";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -75,6 +79,8 @@ export class TableDriver implements BillDriver {
 			screenStack.push(responseResult.value);
 		};
 
+		let tableScreen: null | ReturnType<typeof screenStack.replaceLast> = null;
+
 		const serverResult = await tableEventMessageBus
 			.createInstance({
 				ndk,
@@ -92,11 +98,19 @@ export class TableDriver implements BillDriver {
 						return null;
 					}
 
-					screenStack.replace({
-						variant: "table",
-						payload: billScreenData,
-						pay,
-					});
+					if (tableScreen) {
+						tableScreen.replace({
+							variant: "table",
+							payload: billScreenData,
+							pay,
+						});
+					} else {
+						tableScreen = screenStack.replaceLast({
+							variant: "table",
+							payload: billScreenData,
+							pay,
+						});
+					}
 					return null;
 				},
 				paymentFinished: async ({ billScreenData, subscriptionId }) => {
@@ -109,11 +123,22 @@ export class TableDriver implements BillDriver {
 
 					isInsideThePayment = true;
 
-					screenStack.replace({
-						variant: "table",
-						payload: billScreenData,
-						pay,
+					screenStack.replaceLast({
+						variant: "info",
+						payload: {
+							status: "success",
+							text: NonEmptyString("The bill is successfully paid!"),
+						},
 					});
+
+					if (tableScreen) {
+						tableScreen.replace({
+							variant: "table",
+							payload: billScreenData,
+							pay,
+						});
+					}
+
 					return null;
 				},
 			});

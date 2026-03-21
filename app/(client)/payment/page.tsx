@@ -1,7 +1,8 @@
 "use client";
 
+import { type Atom, atom, useAtomValue, useStore } from "jotai";
 import { useRouter } from "next/navigation";
-import { type FC, useEffect, useEffectEvent, useState } from "react";
+import { type FC, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InfoScreen } from "@/app/(client)/payment/components/info-screen";
 import { LoadingScreen } from "@/app/(client)/payment/components/loading-screen";
@@ -18,7 +19,6 @@ import type {
 	ScreenData,
 } from "@/lib/bill/driver";
 import { billManager } from "@/lib/bill/manager";
-import { Uuid7 } from "@/lib/shared/types";
 import { assertNever } from "@/lib/shared/utils/type";
 
 const screenComponents = {
@@ -31,32 +31,50 @@ const screenComponents = {
 } as Record<ScreenData["variant"], React.FC<{ screen: ScreenData }>>;
 
 const Screen: FC<{
-	screen: ScreenData | null;
+	screenAtom: Atom<ScreenData>;
+	onHeaderBackClick?: () => void;
 }> = (props) => {
-	if (props.screen === null) {
-		return null;
-	}
+	const screen = useAtomValue(props.screenAtom);
 
-	const Component = screenComponents[props.screen.variant];
+	const Component = screenComponents[screen.variant];
 	if (Component === undefined) {
 		return null;
 	}
 
-	return <Component screen={props.screen}></Component>;
+	return (
+		<>
+			<FadeHeader
+				title={
+					screen.variant === "payment" || screen.variant === "table"
+						? screen.payload.merchant?.name
+						: "Restaurace v pangejtu"
+				}
+				customStartAddonOnClick={props.onHeaderBackClick}
+			/>
+
+			{Component && <Component screen={screen}></Component>}
+		</>
+	);
 };
 
 export default function Page() {
 	const { t } = useTranslation();
-	const [sessionId, setSessionId] = useState<Uuid7 | null>(null);
 	const router = useRouter();
 	const { ndk } = useNostr();
-	const fallbackScreen: ScreenData = {
-		variant: "loading",
-		payload: {
-			text: t("client:paymentPage.loading.loadingData"),
-		},
-	};
-	const [screens, setScreens] = useState<ScreenData[]>([fallbackScreen]);
+	const jotaiStore = useStore();
+	const fallbackScreen: Atom<ScreenData> = useMemo(
+		() =>
+			atom({
+				variant: "loading",
+				payload: {
+					text: t("client:paymentPage.loading.loadingData"),
+				},
+			}),
+		[t],
+	);
+	const [screens, setScreens] = useState<Atom<ScreenData>[]>(() => [
+		fallbackScreen,
+	]);
 	const [qrCode, setQrCode] = useState<string | null>(null);
 
 	const subscriptionHandler = useEffectEvent(
@@ -76,7 +94,7 @@ export default function Page() {
 		let subscriptionPromise: Promise<null | BillSubscription> =
 			Promise.resolve(null);
 
-		if (qrCode === null || sessionId === null) {
+		if (qrCode === null) {
 			return;
 		}
 
@@ -102,17 +120,35 @@ export default function Page() {
 					},
 					push: (screen: ScreenData) => {
 						if (finished) {
-							return;
+							return {
+								replace: () => {},
+							};
 						}
 
-						setScreens((screens) => [...screens, screen]);
+						const screenAtom = atom(screen);
+						setScreens((screens) => [...screens, screenAtom]);
+
+						return {
+							replace: (screen: ScreenData) => {
+								jotaiStore.set(screenAtom, screen);
+							},
+						};
 					},
-					replace: (screen: ScreenData) => {
+					replaceLast: (screen: ScreenData) => {
 						if (finished) {
-							return;
+							return {
+								replace: () => {},
+							};
 						}
 
-						setScreens((screens) => [...screens.slice(0, -1), screen]);
+						const screenAtom = atom(screen);
+						setScreens((screens) => [...screens.slice(0, -1), screenAtom]);
+
+						return {
+							replace: (screen: ScreenData) => {
+								jotaiStore.set(screenAtom, screen);
+							},
+						};
 					},
 				},
 			});
@@ -142,10 +178,10 @@ export default function Page() {
 				});
 			}
 		};
-	}, [qrCode, ndk, sessionId, router, t]);
+	}, [qrCode, ndk, router, t, jotaiStore.set]);
 
 	useOnMountUnsafe(() => {
-		(async () => {
+		(() => {
 			const hash = (() => {
 				const [hash, ...rest] = decodeURIComponent(window.location.hash)
 					.replace(/^#/, "")
@@ -159,7 +195,6 @@ export default function Page() {
 			})();
 
 			setQrCode(hash);
-			setSessionId(Uuid7.random());
 		})();
 	});
 
@@ -168,13 +203,9 @@ export default function Page() {
 	return (
 		<div className="w-full flex flex-col justify-between min-h-full">
 			<div className={"h-24"} />
-			<FadeHeader
-				title={
-					screen.variant === "payment"
-						? screen.payload.merchant?.name
-						: "Restaurace v pangejtu"
-				}
-				customStartAddonOnClick={() => {
+			<Screen
+				screenAtom={screen}
+				onHeaderBackClick={() => {
 					if (screens.length > 1) {
 						setScreens((screens) => screens.slice(0, -1));
 						return;
@@ -183,16 +214,6 @@ export default function Page() {
 					router.replace("/");
 				}}
 			/>
-
-			<Screen screen={screen} />
-
-			{/*<BottomPanel*/}
-			{/*	subscription={subscription}*/}
-			{/*	screen={screen}*/}
-			{/*	selectedItemsAtom={selectedItemsAtom}*/}
-			{/*	selectedTipAtom={selectedTipAtom}*/}
-			{/*	loadingAtom={loadingAtom}*/}
-			{/*/>*/}
 		</div>
 	);
 }

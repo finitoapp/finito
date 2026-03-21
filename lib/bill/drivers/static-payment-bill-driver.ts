@@ -63,7 +63,7 @@ export class StaticPaymentBillDriver implements BillDriver {
 
 		const pay: ScreenDataPaymentPayFunction = async (params) => {
 			if (staticOfflinePayment === null) {
-				screenStack.replace({
+				screenStack.replaceLast({
 					variant: "info",
 					payload: {
 						status: "failure",
@@ -85,7 +85,7 @@ export class StaticPaymentBillDriver implements BillDriver {
 			);
 
 			if (paymentOption === undefined) {
-				screenStack.replace({
+				screenStack.replaceLast({
 					variant: "info",
 					payload: {
 						status: "failure",
@@ -102,7 +102,7 @@ export class StaticPaymentBillDriver implements BillDriver {
 				payload: {
 					payment: {
 						id: params.paymentId as unknown as NonEmptyString,
-						direction: "incoming",
+						direction: "outgoing",
 						totalAmount,
 						currency: staticOfflinePayment.bill.currency,
 						paymentSpecification: {
@@ -197,7 +197,7 @@ export class StaticPaymentBillDriver implements BillDriver {
 								{},
 								{
 									onEvent: async () => {
-										screenStack.replace({
+										screenStack.replaceLast({
 											variant: "info",
 											payload: {
 												status: "success",

@@ -21,7 +21,7 @@ export class ReservationDriver implements BillDriver {
 			return null;
 		}
 
-		screenStack.replace({
+		screenStack.replaceLast({
 			variant: "loading",
 			payload: {
 				text: "Loading reservation...",
@@ -51,7 +51,7 @@ export class ReservationDriver implements BillDriver {
 					return;
 				}
 
-				screenStack.replace({
+				screenStack.replaceLast({
 					variant: "reservation",
 					payload: result.data,
 				});

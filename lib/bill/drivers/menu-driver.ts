@@ -21,7 +21,7 @@ export class MenuDriver implements BillDriver {
 			return null;
 		}
 
-		screenStack.replace({
+		screenStack.replaceLast({
 			variant: "loading",
 			payload: {
 				text: "Loading menu...",
@@ -50,7 +50,7 @@ export class MenuDriver implements BillDriver {
 					return;
 				}
 
-				screenStack.replace({
+				screenStack.replaceLast({
 					variant: "menu",
 					payload: result.data,
 				});

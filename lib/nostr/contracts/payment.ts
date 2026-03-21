@@ -17,7 +17,7 @@ const BasePaymentSchema = z.object({
 
 const PaymentSchema = z.discriminatedUnion("type", [
 	BasePaymentSchema.extend({
-		direction: z.literal("incoming"),
+		direction: z.literal("outgoing"),
 		paymentSpecification: z.discriminatedUnion("type", [
 			z.object({
 				type: z.literal("lnInvoice"),
@@ -28,7 +28,7 @@ const PaymentSchema = z.discriminatedUnion("type", [
 		]),
 	}),
 	BasePaymentSchema.extend({
-		direction: z.literal("outgoing"),
+		direction: z.literal("incoming"),
 		paymentSpecification: z.discriminatedUnion("type", [
 			z.object({
 				type: z.literal("lnurlWithdraw"),
