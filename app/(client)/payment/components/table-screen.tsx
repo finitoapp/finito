@@ -1,4 +1,5 @@
 import { createId, createRandomBytes } from "@evolu/common";
+import { useMutation } from "@tanstack/react-query";
 import { BigNumber } from "bignumber.js";
 import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
+import { Spinner } from "@/components/ui/spinner";
 import type { BillPaymentOption, ScreenData } from "@/lib/bill/driver";
 import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
 import { Currency, Integer, NonNegativeInteger } from "@/lib/shared/types";
@@ -38,6 +40,62 @@ const PayButton: FC<{
 	);
 	const selectedItems = useAtomValue(props.selectedItemsAtom);
 	const selectedTip = useAtomValue(props.selectedTipAtom);
+	const { mutateAsync: pay, isPending } = useMutation({
+		mutationFn: async () => {
+			if (paymentMethod === null) {
+				return;
+			}
+
+			const bill = props.screen.payload.bill;
+			if (bill === null) {
+				return;
+			}
+
+			const items: PaymentInit["items"] = [];
+
+			for (const item of bill.items) {
+				const quantity =
+					item.optionality === undefined
+						? item.quantity
+						: Math.min(
+								selectedItems[item.id] ?? item.optionality.checked,
+								item.quantity,
+							);
+
+				if (quantity <= 0) {
+					continue;
+				}
+
+				items.push({
+					id: item.id,
+					price: item.item.price,
+					label: item.item.label,
+					quantity: quantity,
+				});
+			}
+
+			if (items.length === 0) {
+				return;
+			}
+
+			const paymentInit: PaymentInit = {
+				paymentId: createId({
+					randomBytes: createRandomBytes(),
+				}),
+				items,
+				tip: NonNegativeInteger(
+					totalAmount.times(selectedTip).div(100).integerValue().toNumber(),
+				),
+				currency: bill.currency,
+				merchant: props.screen.payload.merchant,
+				paymentOption: {
+					type: paymentMethod,
+				},
+			};
+
+			await props.screen.pay(paymentInit);
+		},
+	});
 
 	const itemsAmount =
 		props.screen.payload.bill !== null
@@ -78,77 +136,30 @@ const PayButton: FC<{
 				className={"h-12 flex-1"}
 			/>
 			<Button
-				className={"h-12 w-60"}
+				className={"h-12 w-50"}
 				size={"lg"}
-				disabled={totalAmount.eq(0)}
-				onClick={async () => {
-					if (paymentMethod === null) {
-						return;
-					}
-
-					const bill = props.screen.payload.bill;
-					if (bill === null) {
-						return;
-					}
-
-					const items: PaymentInit["items"] = [];
-
-					for (const item of bill.items) {
-						const quantity =
-							item.optionality === undefined
-								? item.quantity
-								: Math.min(
-										selectedItems[item.id] ?? item.optionality.checked,
-										item.quantity,
-									);
-
-						if (quantity <= 0) {
-							continue;
-						}
-
-						items.push({
-							id: item.id,
-							price: item.item.price,
-							label: item.item.label,
-							quantity: quantity,
-						});
-					}
-
-					if (items.length === 0) {
-						return;
-					}
-
-					const paymentInit: PaymentInit = {
-						paymentId: createId({
-							randomBytes: createRandomBytes(),
-						}),
-						items,
-						tip: NonNegativeInteger(
-							totalAmount.times(selectedTip).div(100).integerValue().toNumber(),
-						),
-						currency: bill.currency,
-						merchant: props.screen.payload.merchant,
-						paymentOption: {
-							type: paymentMethod,
-						},
-					};
-
-					await props.screen.pay(paymentInit);
-				}}
+				disabled={totalAmount.eq(0) || isPending}
+				onClick={() => void pay()}
 			>
-				{totalAmount.gte(0)
-					? t("client:paymentPage.actions.pay")
-					: t("client:paymentPage.actions.refund")}
-				<motion.span
-					key={`${totalAmount} ${props.screen.payload.bill?.currency}`}
-					initial={{ scale: 1.1, opacity: 0.5 }}
-					animate={{ scale: 1, opacity: 1 }}
-				>
-					{formatMoney({
-						value: Integer(totalAmount.integerValue().toNumber()),
-						currency: props.screen.payload.bill?.currency ?? Currency.USD,
-					})}
-				</motion.span>
+				{isPending ? (
+					<Spinner />
+				) : (
+					<>
+						{totalAmount.gte(0)
+							? t("client:paymentPage.actions.pay")
+							: t("client:paymentPage.actions.refund")}
+						<motion.span
+							key={`${totalAmount} ${props.screen.payload.bill?.currency}`}
+							initial={{ scale: 1.1, opacity: 0.5 }}
+							animate={{ scale: 1, opacity: 1 }}
+						>
+							{formatMoney({
+								value: Integer(totalAmount.integerValue().toNumber()),
+								currency: props.screen.payload.bill?.currency ?? Currency.USD,
+							})}
+						</motion.span>
+					</>
+				)}
 			</Button>
 		</>
 	);
@@ -204,7 +215,7 @@ export const TableScreen: FC<{
 									props.screen.payload.bill.allowTip === true && (
 										<div
 											className={
-												"text-xs text-muted-foreground font-bold flex flex-col gap-2"
+												"text-xs text-muted-foreground flex flex-col gap-2"
 											}
 										>
 											<span className={"uppercase"}>

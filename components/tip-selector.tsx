@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import type { SelectedTipAtom } from "@/app/(client)/bill-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PercentSchema, StringToNumberSchema } from "@/lib/shared/types";
 
 const TIP_PERCENTAGES = [0, 5, 10, 15, 20];
 
@@ -22,8 +23,12 @@ export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
 	};
 
 	const handleCustomTip = (value: string) => {
+		const result = StringToNumberSchema.pipe(PercentSchema).safeParse(value);
 		setCustomTip(value);
 		setIsCustom(true);
+		if (result.success) {
+			setSelectedTip(result.data);
+		}
 	};
 
 	return (
@@ -45,7 +50,7 @@ export function TipSelector(props: { selectedTipAtom: SelectedTipAtom }) {
 						</Button>
 					))}
 				</div>
-				<div className="relative flex-1">
+				<div className="flex-1">
 					<Input
 						type="number"
 						placeholder={t("components:tipSelector.custom")}
