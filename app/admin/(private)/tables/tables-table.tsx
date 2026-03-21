@@ -111,6 +111,7 @@ export function TablesTable() {
 	const onFilterChange = useMemo<DataTableOnFilterChange<Task>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
+				console.log("limit", limit);
 				const previousCursor =
 					cursor !== undefined ? JSON.parse(cursor) : undefined;
 
@@ -227,7 +228,7 @@ export function TablesTable() {
 					</Link>
 				</CardAction>
 			</CardHeader>
-			<CardContent>
+			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
