@@ -101,7 +101,7 @@ export class ExampleBillDriver implements BillDriver {
 		}
 
 		if (exampleBillItemId === "loading") {
-			screenStack.replace({
+			screenStack.replaceLast({
 				variant: "loading",
 				payload: {
 					text: "Loading screen...",
@@ -169,7 +169,7 @@ export class ExampleBillDriver implements BillDriver {
 
 				timeout = setTimeout(() => {
 					if (Math.random() >= 0.5) {
-						screenStack.replace({
+						screenStack.replaceLast({
 							variant: "info",
 							payload: {
 								status: "failure",
@@ -180,7 +180,7 @@ export class ExampleBillDriver implements BillDriver {
 						return;
 					}
 
-					screenStack.replace({
+					screenStack.replaceLast({
 						variant: "info",
 						payload: {
 							status: "success",
@@ -201,7 +201,7 @@ export class ExampleBillDriver implements BillDriver {
 					payload: {
 						payment: {
 							id: params.paymentId as unknown as NonEmptyString,
-							direction: "incoming",
+							direction: "outgoing",
 							totalAmount: Integer(
 								Math.round(totalAmount.div(rate).integerValue().toNumber()),
 							),
@@ -220,10 +220,10 @@ export class ExampleBillDriver implements BillDriver {
 
 		timeout = setTimeout(() => {
 			timeout = setTimeout(() => {
-				screenStack.replace(rootScreen);
+				screenStack.replaceLast(rootScreen);
 			}, 1200);
 
-			screenStack.replace({
+			screenStack.replaceLast({
 				variant: "loading",
 				payload: {
 					text: "Collecting items...",

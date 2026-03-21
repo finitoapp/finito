@@ -20,7 +20,7 @@ export const PaymentInitSchema = z.object({
 	items: z
 		.object({
 			// The POS must verify that the item ID exists on the current bill.
-			id: TableIdSchema,
+			id: z.string(),
 			// The POS must verify that the item price is still the same.
 			price: IntegerSchema,
 			// The POS must verify that the requested quantity can be paid.
@@ -50,7 +50,7 @@ const BasePaymentReadySchema = z.object({
 	bill: z.object({
 		items: z
 			.object({
-				id: TableIdSchema,
+				id: z.string(),
 				price: IntegerSchema,
 				quantity: z.number(),
 				label: z.string(),

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useAtomValue } from "jotai";
 import { LoaderCircleIcon, SquircleDashedIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { type FC, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { accountAtom } from "@/atoms/account";
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
+import { useClipboard } from "@/components/use-clipboard";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { ScreenData } from "@/lib/bill/driver";
@@ -57,10 +59,6 @@ const PayButton: FC<{
 	const { data: btcWallets } = useEvoluQuery(btcWalletsQuery);
 
 	const options = [
-		{
-			value: "external",
-			label: t("client:paymentPage.wallets.external"),
-		} as const,
 		...btcWallets.map(
 			(btcWallet) =>
 				({
@@ -68,6 +66,10 @@ const PayButton: FC<{
 					label: btcWallet.name,
 				}) as const,
 		),
+		{
+			value: "external",
+			label: t("client:paymentPage.wallets.external"),
+		} as const,
 	];
 
 	return (
@@ -222,6 +224,7 @@ export const PaymentScreen: FC<{
 	>;
 }> = (props) => {
 	const { t } = useTranslation();
+	const { copy } = useClipboard();
 
 	return (
 		<>
@@ -252,6 +255,42 @@ export const PaymentScreen: FC<{
 							</strong>
 						</div>
 					</div>
+
+					{props.screen.payload.payment.paymentSpecification.type ===
+						"lnInvoice" && (
+						<div className={"px-16"}>
+							<Button
+								className={
+									"w-full aspect-square h-auto p-6 bg-white dark:bg-white dark:hover:bg-gray-300"
+								}
+								variant={"outline"}
+								onClick={() => {
+									if (
+										props.screen.payload.payment.paymentSpecification.type !==
+										"lnInvoice"
+									) {
+										return;
+									}
+
+									return copy(
+										props.screen.payload.payment.paymentSpecification.lnInvoice,
+										{
+											customMessage:
+												"LN invoice successfully copied to clipboard",
+										},
+									);
+								}}
+							>
+								<QRCodeSVG
+									className={"w-full h-full size-6"}
+									size={512}
+									value={
+										props.screen.payload.payment.paymentSpecification.lnInvoice
+									}
+								/>
+							</Button>
+						</div>
+					)}
 
 					<div className={"flex flex-col items-center gap-4"}>
 						<LoaderCircleIcon className="animate-spin size-12 text-muted-foreground" />

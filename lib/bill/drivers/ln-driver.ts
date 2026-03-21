@@ -36,12 +36,12 @@ export class LnDriver implements BillDriver {
 			return null;
 		}
 
-		screenStack.replace({
+		screenStack.replaceLast({
 			variant: "payment",
 			payload: {
 				payment: {
 					id: Uuid7.random(),
-					direction: "incoming",
+					direction: "outgoing",
 					totalAmount: amount,
 					currency: Currency.BTC,
 					paymentSpecification: {
