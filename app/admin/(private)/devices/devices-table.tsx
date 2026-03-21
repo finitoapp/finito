@@ -192,7 +192,7 @@ export function DevicesTable() {
 					{t("devices:table.listOfYourDevices")}
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}

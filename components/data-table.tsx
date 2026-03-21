@@ -3,20 +3,31 @@
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
-	flexRender,
 	getCoreRowModel,
 	getFilteredRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
 	type OnChangeFn,
+	type PaginationState,
 	type SortingState,
 	useReactTable,
 	type VisibilityState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Settings2Icon } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { DataGrid } from "@/components/reui/data-grid/data-grid";
+import { DataGridColumnVisibility } from "@/components/reui/data-grid/data-grid-column-visibility";
+import { DataGridScrollArea } from "@/components/reui/data-grid/data-grid-scroll-area";
+import { DataGridTable } from "@/components/reui/data-grid/data-grid-table";
 import { Button } from "@/components/ui/button";
+import {
+	Card,
+	CardAction,
+	CardContent,
+	CardFooter,
+	CardHeader,
+} from "@/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -24,14 +35,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 
 export type FilterValue<TData extends Record<string, unknown>> = {
 	id: keyof TData;
@@ -85,7 +88,6 @@ interface DataTableProps<TData extends Record<string, unknown>, TValue> {
 export function DataTable<TData extends Record<string, unknown>, TValue>({
 	columns,
 	data: initialData,
-	pageSize = 15,
 	onFilterChange,
 	filterableColumns = [],
 	onRowClick,
@@ -106,6 +108,10 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 	const [nextCursor, setNextCursor] = React.useState<string | undefined>(
 		undefined,
 	);
+	const [pagination, setPagination] = React.useState<PaginationState>({
+		pageIndex: 0,
+		pageSize: 15,
+	});
 	const [currentCursor, setCurrentCursor] = React.useState<string | undefined>(
 		undefined,
 	);
@@ -152,7 +158,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 						},
 						pagination: {
 							cursor: currentCursor,
-							limit: pageSize,
+							limit: pagination.pageSize,
 						},
 					})
 				: () => {};
@@ -164,7 +170,13 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 		} catch (error) {
 			console.error("[v0] Error fetching filtered data:", error);
 		}
-	}, [debouncedFilters, sorting, onFilterChange, pageSize, currentCursor]);
+	}, [
+		debouncedFilters,
+		sorting,
+		onFilterChange,
+		pagination.pageSize,
+		currentCursor,
+	]);
 
 	// Reset cursor when filters or sorting change
 	// biome-ignore lint/correctness/useExhaustiveDependencies: It's OK
@@ -193,18 +205,25 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 			columnFilters,
 			columnVisibility: columnVisibility ?? {},
 			rowSelection,
-			pagination: {
-				pageIndex: 0,
-				pageSize,
-			},
+			pagination,
 		},
+		onPaginationChange: setPagination,
+		manualPagination: true,
 	});
 
 	return (
-		<div className="w-full">
-			<div className="flex flex-col gap-4 py-4">
-				<div className="flex items-center gap-4">
-					<div className="flex flex-wrap items-center gap-4">
+		<DataGrid
+			table={table}
+			recordCount={data.length}
+			tableLayout={{ rowsPinnable: true }}
+			tableClassNames={{
+				edgeCell: "px-6",
+			}}
+			onRowClick={onRowClick}
+		>
+			<Card className="w-full gap-3 py-0 ring-0">
+				<CardHeader className="flex items-center justify-between border-none">
+					<div className={"flex items-center gap-2.5"}>
 						{filterableColumns.map((filterColumn) => {
 							const column = table.getColumn(filterColumn.id);
 							if (!column) return null;
@@ -262,7 +281,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 									onChange={(event) =>
 										column.setFilterValue(event.target.value)
 									}
-									className="h-9 w-50"
+									className="w-50"
 								/>
 							);
 						})}
@@ -270,119 +289,36 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 							<Button
 								variant="ghost"
 								onClick={() => table.resetColumnFilters()}
-								className="h-9 px-2 lg:px-3"
+								className="px-2 lg:px-3"
 							>
 								{t("components:dataTable.reset")}
 							</Button>
 						)}
 					</div>
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={
-								<Button variant="outline" className="ml-auto bg-transparent" />
+					<CardAction>
+						<DataGridColumnVisibility
+							table={table}
+							trigger={
+								<Button variant="outline">
+									<Settings2Icon aria-hidden="true" />
+									Columns
+								</Button>
 							}
-						>
-							{t("components:dataTable.columns")}{" "}
-							<ChevronDown className="ml-2 h-4 w-4" />
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							{table
-								.getAllColumns()
-								.filter((column) => column.getCanHide())
-								.map((column) => {
-									return (
-										<DropdownMenuCheckboxItem
-											key={column.id}
-											className="capitalize"
-											checked={column.getIsVisible()}
-											onCheckedChange={(value) =>
-												column.toggleVisibility(!!value)
-											}
-										>
-											{column.id}
-										</DropdownMenuCheckboxItem>
-									);
-								})}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</div>
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => {
-									return (
-										<TableHead key={header.id}>
-											{header.isPlaceholder
-												? null
-												: flexRender(
-														header.column.columnDef.header,
-														header.getContext(),
-													)}
-										</TableHead>
-									);
-								})}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody>
-						{isLoading || columnVisibility === null ? (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									<div className="flex items-center justify-center">
-										<div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-										<span className="ml-2 text-sm text-muted-foreground">
-											{t("components:dataTable.loading")}
-										</span>
-									</div>
-								</TableCell>
-							</TableRow>
-						) : table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
-									onClick={() => onRowClick?.(row.original)}
-									className={onRowClick ? "cursor-pointer" : undefined}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									<div className={"p-2"}>
-										{t("components:dataTable.noResults")}
-									</div>
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
-			<div className="flex items-center justify-end gap-2 py-4">
-				<div className="flex-1 text-sm text-muted-foreground">
-					{t("components:dataTable.selectedRows", {
-						selected: table.getFilteredSelectedRowModel().rows.length,
-						total: table.getFilteredRowModel().rows.length,
-					})}
-				</div>
-				<div className="flex items-center gap-2">
+						/>
+					</CardAction>
+				</CardHeader>
+				<CardContent className="border-y px-0">
+					<DataGridScrollArea>
+						<DataGridTable />
+					</DataGridScrollArea>
+				</CardContent>
+				<CardFooter className="border-none bg-transparent! py-0 justify-end gap-2">
+					<div className="flex-1 text-sm text-muted-foreground">
+						{t("components:dataTable.selectedRows", {
+							selected: table.getFilteredSelectedRowModel().rows.length,
+							total: table.getFilteredRowModel().rows.length,
+						})}
+					</div>
 					{onFilterChange ? (
 						<>
 							<Button
@@ -431,9 +367,9 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 							</Button>
 						</>
 					)}
-				</div>
-			</div>
-		</div>
+				</CardFooter>
+			</Card>
+		</DataGrid>
 	);
 }
 

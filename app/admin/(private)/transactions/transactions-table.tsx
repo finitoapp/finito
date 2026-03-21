@@ -244,7 +244,7 @@ export function TransactionsTable() {
 					</Link>
 				</CardAction>
 			</CardHeader>
-			<CardContent>
+			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
