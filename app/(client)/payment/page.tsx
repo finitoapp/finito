@@ -2,7 +2,14 @@
 
 import { type Atom, atom, useAtomValue, useStore } from "jotai";
 import { useRouter } from "next/navigation";
-import { type FC, useEffect, useEffectEvent, useMemo, useState } from "react";
+import {
+	type FC,
+	Suspense,
+	useEffect,
+	useEffectEvent,
+	useMemo,
+	useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { InfoScreen } from "@/app/(client)/payment/components/info-screen";
 import { LoadingScreen } from "@/app/(client)/payment/components/loading-screen";
@@ -42,7 +49,11 @@ const Screen: FC<{
 	}
 
 	return (
-		<>
+		<Suspense
+			fallback={
+				<FadeHeader customStartAddonOnClick={props.onHeaderBackClick} />
+			}
+		>
 			<FadeHeader
 				title={
 					screen.variant === "payment" || screen.variant === "table"
@@ -53,7 +64,7 @@ const Screen: FC<{
 			/>
 
 			{Component && <Component screen={screen}></Component>}
-		</>
+		</Suspense>
 	);
 };
 

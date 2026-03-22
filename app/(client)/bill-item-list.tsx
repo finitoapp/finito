@@ -32,7 +32,7 @@ export function BillItemList({
 }: VerticalNavProps) {
 	const { t } = useTranslation();
 
-	if (bill === null || bill.items.length === 0) {
+	if (bill === null || bill.itemLines.length === 0) {
 		return (
 			<div
 				className={cn(
@@ -52,10 +52,10 @@ export function BillItemList({
 	return (
 		<div className={cn("flex flex-col", className)}>
 			<nav>
-				{bill.items.map((item) => (
+				{bill.itemLines.map((itemLine) => (
 					<NavItemComponent
-						key={item.id}
-						item={item}
+						key={itemLine.item.id}
+						itemLine={itemLine}
 						bill={bill}
 						selectedItemsAtom={selectedItemsAtom}
 					/>
@@ -66,26 +66,26 @@ export function BillItemList({
 }
 
 function NavItemComponent({
-	item,
+	itemLine,
 	bill,
 	selectedItemsAtom,
 }: {
-	item: NonNullable<Bill>["items"][number];
+	itemLine: NonNullable<Bill>["itemLines"][number];
 	bill: NonNullable<Bill>;
 	selectedItemsAtom: SelectedItemsAtom;
 }) {
 	const { t } = useTranslation();
 	const setSelectedItems = useSetAtom(selectedItemsAtom);
 	const [checked, setChecked] = useState(
-		(item.optionality && item.optionality.checked) ?? item.quantity,
+		(itemLine.optionality && itemLine.optionality.checked) ?? itemLine.quantity,
 	);
 
 	const quantity =
-		item.optionality === undefined
-			? item.quantity
-			: Math.min(item.quantity, checked);
+		itemLine.optionality === undefined
+			? itemLine.quantity
+			: Math.min(itemLine.quantity, checked);
 
-	const quantityLeft = item.quantity - quantity;
+	const quantityLeft = itemLine.quantity - quantity;
 
 	return (
 		<div
@@ -102,29 +102,29 @@ function NavItemComponent({
 			<div className={"p-1 flex w-full items-center"}>
 				<div className="flex items-center gap-4 w-full p-0.5">
 					<CounterCheckbox
-						maxCount={item.quantity}
+						maxCount={itemLine.quantity}
 						value={quantity}
 						onCountChange={(value) => {
 							setChecked(value);
 							setSelectedItems((values) => ({
 								...values,
-								[item.id]: value,
+								[itemLine.item.id]: value,
 							}));
 						}}
 						minCount={0}
-						disabled={item.optionality === undefined}
+						disabled={itemLine.optionality === undefined}
 					>
 						<motion.div
-							key={`${item.item.label} ${item.quantity}x ${item.item.price} ${bill.currency}`}
+							key={`${itemLine.item.label} ${itemLine.quantity}x ${itemLine.item.price} ${bill.currency}`}
 							initial={{ scale: 1.1, opacity: 0.5 }}
 							animate={{ scale: 1, opacity: 1 }}
 							className={"flex flex-col items-start"}
 						>
-							<strong>{item.item.label}</strong>
+							<strong>{itemLine.item.label}</strong>
 							<small>
-								{item.quantity}×&nbsp;&nbsp;•&nbsp;&nbsp;
+								{itemLine.quantity}×&nbsp;&nbsp;•&nbsp;&nbsp;
 								{formatMoney({
-									value: item.item.price,
+									value: itemLine.item.price,
 									currency: bill.currency,
 								})}
 							</small>

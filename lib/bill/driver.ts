@@ -28,37 +28,6 @@ export type ScreenDataPaymentPayFunction = (
 ) => Promise<void>;
 
 export type ScreenData =
-	// | {
-	// 		variant: "payment" | "refund"; // Default payment
-	// 		parentScreen?: ScreenData;
-	// 		pay: ScreenDataPaymentPayFunction;
-	// 		payload: {
-	// 			bill: Bill | null; // Null when the bill does not exist
-	// 			allowManualRefresh?: boolean;
-	// 			table?: {
-	// 				name: string;
-	// 			};
-	// 			merchant?: PaymentMerchant;
-	// 			paymentOptions?: (
-	// 				| {
-	// 						type: (typeof BillPaymentOption)["BtcLn"];
-	// 				  }
-	// 				| {
-	// 						type: (typeof BillPaymentOption)["BankTransferCZ"];
-	// 				  }
-	// 			)[];
-	// 		};
-	//   }
-	// | {
-	// 		variant: "paymentReady";
-	// 		parentScreen?: ScreenData;
-	// 		payload: PaymentReady;
-	//   }
-	// | {
-	// 		variant: "paymentFinished";
-	// 		parentScreen?: ScreenData;
-	// 		payload: PaymentFinished;
-	//   }
 	| {
 			variant: "payment";
 			parentScreen?: ScreenData;
@@ -85,13 +54,13 @@ export type ScreenData =
 				bill: null | {
 					currency: Currency;
 					allowTip?: boolean;
-					items: {
-						id: string;
+					itemLines: {
 						quantity: number;
 						optionality?: {
 							checked: NonNegativeInteger;
 						};
 						item: {
+							id: string;
 							label: string;
 							price: Integer;
 						};

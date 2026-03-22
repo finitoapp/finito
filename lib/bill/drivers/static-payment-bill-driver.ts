@@ -1,4 +1,3 @@
-import { createIdFromString } from "@evolu/common";
 import NDK, {
 	NDKPrivateKeySigner,
 	type NDKSubscription,
@@ -74,8 +73,8 @@ export class StaticPaymentBillDriver implements BillDriver {
 			}
 
 			const totalAmount = Integer(
-				staticOfflinePayment.bill.items.reduce((acc, row) => {
-					return acc + Math.round(row.price * row.quantity);
+				staticOfflinePayment.bill.itemLines.reduce((acc, row) => {
+					return acc + Math.round(row.item.price * row.quantity);
 				}, 0),
 			);
 
@@ -165,14 +164,10 @@ export class StaticPaymentBillDriver implements BillDriver {
 							bill: {
 								allowTip: staticOfflinePayment.bill.allowTip,
 								currency: staticOfflinePayment.bill.currency,
-								items: Array.from(
-									staticOfflinePayment.bill.items.map((item) => ({
-										id: createIdFromString(item.id),
+								itemLines: Array.from(
+									staticOfflinePayment.bill.itemLines.map((item) => ({
 										quantity: item.quantity,
-										item: {
-											label: item.label,
-											price: item.price,
-										},
+										item: item.item,
 									})),
 								),
 							},
