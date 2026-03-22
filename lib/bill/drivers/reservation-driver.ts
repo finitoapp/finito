@@ -1,5 +1,5 @@
 import type { BillDriver, BillSubscription } from "@/lib/bill/driver";
-import { ReservationFormData as ReservationFormDataSchema } from "@/lib/nostr/contracts/reservation";
+import { ReservationFormData as ReservationFormDataSchema } from "@/lib/contracts/reservation";
 import { reservationStorage } from "@/lib/reservation/nostr-storage";
 
 const reservationBillIdRegex = /^(r|reservation|reservations)-([0-9a-f]{64})$/i;

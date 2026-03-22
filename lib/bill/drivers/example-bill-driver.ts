@@ -5,7 +5,6 @@ import type {
 	BillSubscription,
 	ScreenData,
 } from "@/lib/bill/driver";
-import type { PaymentReady } from "@/lib/evolu/model/payment-progress";
 import { Currency, Integer, NonEmptyString } from "@/lib/shared/types";
 import {
 	extractExpirationFromLightningInvoice,
@@ -148,26 +147,17 @@ export class ExampleBillDriver implements BillDriver {
 			return new Promise((resolve) => {
 				const rate = 1_913_775;
 
-				const finalItems: PaymentReady["bill"]["items"] = [];
-
+				let totalAmount = new BigNumber(0);
 				for (const item of params.items) {
 					const finalItem = items.get(item.id);
 					if (finalItem === undefined) {
 						return;
 					}
-					finalItems.push({
-						...finalItem,
-						id: item.id,
-						price: finalItem.item.price,
-						label: finalItem.item.label,
-					});
-				}
 
-				const totalAmount = finalItems.reduce(
-					(acc, value) =>
-						acc.plus(new BigNumber(value.price).times(value.quantity)),
-					new BigNumber(0),
-				);
+					totalAmount = totalAmount.plus(
+						new BigNumber(finalItem.item.price).times(finalItem.quantity),
+					);
+				}
 
 				timeout = setTimeout(() => {
 					if (Math.random() >= 0.5) {

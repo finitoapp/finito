@@ -1,5 +1,5 @@
-import type { NostrMenu } from "@/lib/nostr/contracts/menu";
-import type { NostrPayment } from "@/lib/nostr/contracts/payment";
+import type { NostrMenu } from "@/lib/contracts/menu";
+import type { NostrPayment } from "@/lib/contracts/payment";
 import { createNostrStorage } from "@/lib/nostr/storage";
 
 export const menuStorage = createNostrStorage<NostrMenu>({

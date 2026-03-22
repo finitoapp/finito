@@ -1,6 +1,6 @@
 import type { BillDriver, BillSubscription } from "@/lib/bill/driver";
+import { NostrMenu as NostrMenuSchema } from "@/lib/contracts/menu";
 import { menuStorage } from "@/lib/menu/nostr-storage";
-import { NostrMenu as NostrMenuSchema } from "@/lib/nostr/contracts/menu";
 
 const menuBillIdRegex = /^(m|menu|menus)-([0-9a-f]{64})$/i;
 
@@ -52,7 +52,7 @@ export class MenuDriver implements BillDriver {
 
 				screenStack.replaceLast({
 					variant: "menu",
-					payload: result.data,
+					payload: result.data.payload,
 				});
 			},
 		);

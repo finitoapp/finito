@@ -1,12 +1,11 @@
 import { z } from "zod";
-import { MerchantSchema } from "@/lib/nostr/contracts/merchant";
+import { MerchantSchema } from "@/lib/contracts/merchant";
 import {
 	Currency,
 	IntegerSchema,
 	NonEmptyStringSchema,
 	TimestampMsSchema,
 	TimestampSecSchema,
-	Timezone,
 } from "@/lib/shared/types";
 
 const BasePaymentSchema = z.object({
@@ -15,7 +14,7 @@ const BasePaymentSchema = z.object({
 	currency: z.enum(Currency),
 });
 
-const PaymentSchema = z.discriminatedUnion("type", [
+const PaymentDetailSchema = z.discriminatedUnion("type", [
 	BasePaymentSchema.extend({
 		direction: z.literal("outgoing"),
 		paymentSpecification: z.discriminatedUnion("type", [
@@ -38,12 +37,16 @@ const PaymentSchema = z.discriminatedUnion("type", [
 	}),
 ]);
 
-export const NostrPayment = z.object({
-	version: z.literal(1),
-	generatedAt: TimestampMsSchema,
-	timezone: z.enum(Timezone),
-	payment: PaymentSchema,
+const PaymentSchema = z.object({
+	payment: PaymentDetailSchema,
 	merchant: MerchantSchema.optional(),
 });
 
+export const NostrPayment = z.object({
+	version: z.literal(1),
+	generatedAt: TimestampMsSchema,
+	payload: PaymentSchema,
+});
+
 export type NostrPayment = z.output<typeof NostrPayment>;
+export type Payment = z.output<typeof PaymentSchema>;

@@ -14,7 +14,9 @@ export const MerchantSchema = z.object({
 export const NostrMerchantSchema = z.object({
 	version: z.literal(1),
 	generatedAt: TimestampMsSchema,
-	merchant: MerchantSchema,
+	payload: z.object({
+		merchant: MerchantSchema,
+	}),
 });
 
 export type NostrMerchant = z.output<typeof NostrMerchantSchema>;
