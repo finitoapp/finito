@@ -4,7 +4,7 @@ import { type FC, type ReactNode, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 
 export const FadeHeader: FC<{
-	title: ReactNode;
+	title?: ReactNode;
 	endAddon?: React.ReactNode;
 	startAddon?: React.ReactNode | null;
 	customStartAddonOnClick?: () => void;

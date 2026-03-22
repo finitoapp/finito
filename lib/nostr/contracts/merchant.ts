@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { NonEmptyStringSchema, PhoneSchema } from "@/lib/shared/types";
+import {
+	NonEmptyStringSchema,
+	PhoneSchema,
+	TimestampMsSchema,
+} from "@/lib/shared/types";
 
 export const MerchantSchema = z.object({
 	name: NonEmptyStringSchema,
@@ -9,6 +13,7 @@ export const MerchantSchema = z.object({
 
 export const NostrMerchantSchema = z.object({
 	version: z.literal(1),
+	generatedAt: TimestampMsSchema,
 	merchant: MerchantSchema,
 });
 

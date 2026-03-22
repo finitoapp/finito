@@ -17,8 +17,6 @@ export default function Layout({
 
 				<div className={"h-18 max-w-xl"}></div>
 			</ViewTransition>
-
-			{/*<Nav />*/}
 		</div>
 	);
 }

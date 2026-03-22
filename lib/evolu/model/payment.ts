@@ -26,19 +26,23 @@ export type PaymentMethod = InferEnumType<typeof PaymentMethod>;
 const BillItemSchema = z.object({
 	id: z.string(),
 	price: integerStringToInteger,
-	quantity: z.number(),
 	label: z.string(),
+});
+
+const BillItemLineSchema = z.object({
+	quantity: z.number(),
 	optionality: z
 		.object({
 			checked: NonNegativeIntegerSchema,
 		})
 		.optional(), // false when missing
+	item: BillItemSchema,
 });
 
 export const BillSchema = z.object({
 	currency: z.enum(Currency),
 	allowTip: z.boolean().optional(),
-	items: BillItemSchema.array(),
+	itemLines: BillItemLineSchema.array(),
 });
 
 export type BillItem = z.output<typeof BillItemSchema>;

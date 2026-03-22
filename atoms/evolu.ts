@@ -3,7 +3,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { atom } from "jotai";
 import { accountAtom } from "@/atoms/account";
 import { createAppEvolu, createQuery } from "@/lib/evolu";
-import { NonEmptyString64, NonEmptyString255 } from "@/lib/shared/types";
+import { NonEmptyString255 } from "@/lib/shared/types";
 
 export const evoluAtom = atom(async (get) => {
 	const account = await get(accountAtom);
@@ -67,30 +67,6 @@ export const evoluAtom = atom(async (get) => {
 				});
 			}
 		}
-
-		// Create background table processing
-		void (async () => {
-			const id = createIdFromString(`backgroundTableProcessing`);
-			const data = await evolu.loadQuery(
-				createQuery((db) =>
-					db
-						.selectFrom("notification")
-						.selectAll()
-						.where("isDeleted", "is not", sqliteTrue)
-						.where("id", "=", id),
-				),
-			);
-
-			if (data.length === 0) {
-				evolu.upsert("notification", {
-					id,
-					type: NonEmptyString64("backgroundTableProcessing"),
-				});
-				evolu.upsert("notificationBackgroundTableProcessing", {
-					id,
-				});
-			}
-		})();
 	})();
 
 	return evolu;

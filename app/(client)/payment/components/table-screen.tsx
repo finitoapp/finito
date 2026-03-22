@@ -53,13 +53,13 @@ const PayButton: FC<{
 
 			const items: PaymentInit["items"] = [];
 
-			for (const item of bill.items) {
+			for (const itemLine of bill.itemLines) {
 				const quantity =
-					item.optionality === undefined
-						? item.quantity
+					itemLine.optionality === undefined
+						? itemLine.quantity
 						: Math.min(
-								selectedItems[item.id] ?? item.optionality.checked,
-								item.quantity,
+								selectedItems[itemLine.item.id] ?? itemLine.optionality.checked,
+								itemLine.quantity,
 							);
 
 				if (quantity <= 0) {
@@ -67,9 +67,9 @@ const PayButton: FC<{
 				}
 
 				items.push({
-					id: item.id,
-					price: item.item.price,
-					label: item.item.label,
+					id: itemLine.item.id,
+					price: itemLine.item.price,
+					label: itemLine.item.label,
 					quantity: quantity,
 				});
 			}
@@ -99,17 +99,18 @@ const PayButton: FC<{
 
 	const itemsAmount =
 		props.screen.payload.bill !== null
-			? props.screen.payload.bill.items.reduce((acc, item) => {
+			? props.screen.payload.bill.itemLines.reduce((acc, itemLine) => {
 					const quantity =
-						item.optionality === undefined
-							? item.quantity
+						itemLine.optionality === undefined
+							? itemLine.quantity
 							: Math.min(
-									selectedItems[item.id] ?? item.optionality.checked,
-									item.quantity,
+									selectedItems[itemLine.item.id] ??
+										itemLine.optionality.checked,
+									itemLine.quantity,
 								);
 
 					return acc.plus(
-						new BigNumber(item.item.price).times(quantity).integerValue(),
+						new BigNumber(itemLine.item.price).times(quantity).integerValue(),
 					);
 				}, new BigNumber(0))
 			: new BigNumber(0);

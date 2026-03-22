@@ -18,6 +18,7 @@ const exampleBillItems = {
 			"1",
 			{
 				item: {
+					id: createIdFromString("Maďarský guláš"),
 					label: "Maďarský guláš",
 					price: Integer(190),
 				},
@@ -28,6 +29,7 @@ const exampleBillItems = {
 			"2",
 			{
 				item: {
+					id: createIdFromString("Řízek"),
 					label: "Řízek",
 					price: Integer(219),
 				},
@@ -38,6 +40,7 @@ const exampleBillItems = {
 			"3",
 			{
 				item: {
+					id: createIdFromString("Pivo"),
 					label: "Pivo",
 					price: Integer(49),
 				},
@@ -51,6 +54,7 @@ const exampleBillItems = {
 			"4",
 			{
 				item: {
+					id: createIdFromString("Volitelné párátko"),
 					label: "Volitelné párátko",
 					price: Integer(2),
 				},
@@ -66,6 +70,7 @@ const exampleBillItems = {
 			"1",
 			{
 				item: {
+					id: createIdFromString("Refund"),
 					label: "Refund",
 					price: Integer(-190),
 				},
@@ -77,12 +82,9 @@ const exampleBillItems = {
 	string,
 	Map<
 		string,
-		Omit<
-			NonNullable<
-				Extract<ScreenData, { variant: "table" }>["payload"]["bill"]
-			>["items"][number],
-			"id"
-		>
+		NonNullable<
+			Extract<ScreenData, { variant: "table" }>["payload"]["bill"]
+		>["itemLines"][number]
 	>
 >;
 
@@ -128,7 +130,7 @@ export class ExampleBillDriver implements BillDriver {
 				bill: {
 					allowTip: exampleBillItemId !== "2",
 					currency: "CZK",
-					items: Array.from(
+					itemLines: Array.from(
 						items.entries().map(([id, values]) => ({
 							id: createIdFromString(id),
 							...values,

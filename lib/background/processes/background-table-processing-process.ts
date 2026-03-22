@@ -152,22 +152,18 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 				};
 			}
 
-			const items = bill.items.map((item) => ({
-				id: item.item.id,
+			const itemLines = bill.items.map((item) => ({
 				quantity: item.quantity,
 				optionality: {
 					checked: NonNegativeInteger(0),
 				},
-				item: {
-					label: item.item.label,
-					price: item.item.price,
-				},
+				item: item.item,
 			}));
 
 			return {
 				bill: {
 					currency: bill.currency,
-					items,
+					itemLines,
 				},
 				merchant: {
 					name: bill.table?.label ?? NonEmptyString("Unknown"),

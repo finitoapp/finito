@@ -7,8 +7,6 @@ import {
 	getOrThrow,
 	type Mnemonic,
 	mnemonicToOwnerSecret,
-	NonEmptyTrimmedString100,
-	NonNegativeInt,
 	type OwnerTransport,
 	type Evolu as RawEvolu,
 	type EvoluSchema as RawEvoluSchema,
@@ -16,7 +14,6 @@ import {
 } from "@evolu/common";
 import { createEvoluDeps, createRun } from "@evolu/web";
 import { z } from "zod";
-import { BillPaymentOption } from "@/lib/bill/driver";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
@@ -34,7 +31,6 @@ import {
 	IdentificationNumberCzSchema,
 	IntegerSchema,
 	NonEmptyString32Schema,
-	NonEmptyString64Schema,
 	NonEmptyString255Schema,
 	NonEmptyStringSchema,
 	NonNegativeIntegerSchema,
@@ -320,20 +316,6 @@ export const AppSchema = {
 	transactionCashRegister: {
 		id: TableIdSchema,
 	},
-	notification: {
-		id: TableIdSchema,
-		// Notification kind discriminator consumed by notification center/background jobs.
-		type: NonEmptyString64Schema,
-	},
-	notificationVerifyPayment: {
-		id: TableIdSchema,
-		// Points to `payment.id` that should be re-verified asynchronously.
-		paymentId: TableIdSchema,
-	},
-	notificationBackgroundTableProcessing: {
-		id: TableIdSchema,
-		// Marker row used to trigger one background table processing cycle.
-	},
 	client: {
 		id: TableIdSchema,
 		deviceId: TableIdSchema.nullable(),
@@ -500,46 +482,6 @@ export const AppSchema = {
 		stoppedAt: TimestampMsSchema.nullable(),
 		// Reason for stopping active watching.
 		stopReason: z.enum(PaymentWatchingStopReason).nullable(),
-	},
-	paymentInit: {
-		id: TableIdSchema,
-		tip: NonNegativeIntegerSchema,
-		currency: z.enum(Currency),
-		paymentOptionType: z.enum(BillPaymentOption),
-		merchantName: NonEmptyStringSchema.nullable(),
-		merchantPhone: PhoneSchema.nullable(),
-	},
-	paymentInitItemLine: {
-		id: TableIdSchema,
-		paymentInitId: TableIdSchema,
-		itemRevisionId: TableIdSchema,
-		totalAmount: IntegerSchema, // In paymentInit currency, not in item currency.
-		quantity: z.number(),
-	},
-	paymentReady: {
-		id: TableIdSchema,
-		billTip: NonNegativeIntegerSchema.nullable(),
-		billCurrency: z.enum(Currency),
-		// Expected amount to settle in smallest unit for `amountExpectedToPayCurrency`.
-		amountExpectedToPayValue: NonNegativeIntegerSchema.nullable(),
-		// Optional conversion rate used to derive expected amount.
-		amountExpectedToPayRate: NonNegativeIntegerSchema.nullable(),
-		amountExpectedToPayCurrency: z.enum(Currency).nullable(),
-	},
-	paymentReadyItem: {
-		id: TableIdSchema,
-		paymentReadyId: TableIdSchema,
-		itemId: TableIdSchema,
-		price: NonNegativeInt,
-		quantity: NonNegativeInt,
-		label: NonEmptyString255Schema,
-	},
-	paymentFinished: {
-		id: TableIdSchema,
-		type: NonEmptyTrimmedString100,
-		reason: NonEmptyStringSchema.nullable(),
-		refundType: NonEmptyStringSchema.nullable(),
-		refundLnInvoice: NonEmptyStringSchema.nullable(),
 	},
 	payment: {
 		id: TableIdSchema,
