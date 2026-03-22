@@ -52,15 +52,7 @@ export class TableDriver implements BillDriver {
 				"createPaymentFromSubscribedBill",
 				{
 					subscriptionId: expectedSubscriptionId,
-					payment: {
-						paymentId: params.paymentId,
-						paymentOption: {
-							type: "btcLn",
-						},
-						currency: params.currency,
-						items: params.items,
-						tip: params.tip,
-					},
+					payment: params,
 				},
 			);
 			if (!responseResult.ok) {

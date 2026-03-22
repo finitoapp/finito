@@ -1,11 +1,11 @@
 import type NDK from "@nostr-dev-kit/ndk";
 import type { NDKSigner, NDKUser } from "@nostr-dev-kit/ndk";
 import type { TFunction } from "i18next";
+import type { Menu } from "@/lib/contracts/menu";
+import type { Payment } from "@/lib/contracts/payment";
+import type { ReservationFormData } from "@/lib/contracts/reservation";
+import type { TablePaymentRequest } from "@/lib/contracts/table";
 import type { PaymentMerchant } from "@/lib/evolu/model/payment";
-import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
-import type { NostrMenu } from "@/lib/nostr/contracts/menu";
-import type { NostrPayment } from "@/lib/nostr/contracts/payment";
-import type { ReservationFormData } from "@/lib/nostr/contracts/reservation";
 import type {
 	Currency,
 	InferEnumType,
@@ -24,22 +24,19 @@ export type BillSubscription = {
 };
 
 export type ScreenDataPaymentPayFunction = (
-	params: PaymentInit,
+	params: TablePaymentRequest,
 ) => Promise<void>;
 
 export type ScreenData =
 	| {
 			variant: "payment";
 			parentScreen?: ScreenData;
-			payload: {
-				payment: NostrPayment["payment"];
-				merchant?: NostrPayment["merchant"];
-			};
+			payload: Payment;
 	  }
 	| {
 			variant: "menu";
 			parentScreen?: ScreenData;
-			payload: NostrMenu;
+			payload: Menu;
 	  }
 	| {
 			variant: "table";

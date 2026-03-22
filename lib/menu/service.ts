@@ -196,50 +196,55 @@ export const publishRelevantMenusToStorage = async (params: {
 	const payload: Parameters<typeof menuStorage.write>[1] = {
 		version: 1,
 		generatedAt: now,
-		timezone,
-		menus: menuRows
-			.map((menu) => ({
-				id: menu.id,
-				name: menu.name,
-				validFrom: menu.validFrom ?? undefined,
-				validTo: menu.validTo ?? undefined,
-				publishedAt: menu.publishedAt ?? undefined,
-				categories: menu.categories
-					.map((category) => ({
-						id: category.id,
-						name: category.name,
-						items: category.items
-							.sort((a, b) =>
-								a.item.label.localeCompare(b.item.label, undefined, {
-									sensitivity: "base",
-								}),
-							)
-							.map((item) => ({
-								id: item.id,
-								label: item.item.label,
-								isSoldOut:
-									item.availabilityStatus === "soldOut" ? true : undefined,
-								price: item.item.price,
-								currency: item.item.currency,
-								unitOfMeasure: item.item.unitOfMeasure ?? undefined,
-							})),
-					}))
-					.filter((category) => category.items.length > 0)
-					.sort((a, b) =>
-						a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-					),
-			}))
-			.sort((a, b) => {
-				if (a.validTo === undefined && b.validTo === undefined) {
+		payload: {
+			timezone,
+			generatedAt: now,
+			menus: menuRows
+				.map((menu) => ({
+					id: menu.id,
+					name: menu.name,
+					validFrom: menu.validFrom ?? undefined,
+					validTo: menu.validTo ?? undefined,
+					publishedAt: menu.publishedAt ?? undefined,
+					categories: menu.categories
+						.map((category) => ({
+							id: category.id,
+							name: category.name,
+							items: category.items
+								.sort((a, b) =>
+									a.item.label.localeCompare(b.item.label, undefined, {
+										sensitivity: "base",
+									}),
+								)
+								.map((item) => ({
+									id: item.id,
+									label: item.item.label,
+									isSoldOut:
+										item.availabilityStatus === "soldOut" ? true : undefined,
+									price: item.item.price,
+									currency: item.item.currency,
+									unitOfMeasure: item.item.unitOfMeasure ?? undefined,
+								})),
+						}))
+						.filter((category) => category.items.length > 0)
+						.sort((a, b) =>
+							a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+						),
+				}))
+				.sort((a, b) => {
+					if (a.validTo === undefined && b.validTo === undefined) {
+						return a.name.localeCompare(b.name, undefined, {
+							sensitivity: "base",
+						});
+					}
+					if (a.validTo === undefined) return 1;
+					if (b.validTo === undefined) return -1;
+					if (a.validTo !== b.validTo) return a.validTo - b.validTo;
 					return a.name.localeCompare(b.name, undefined, {
 						sensitivity: "base",
 					});
-				}
-				if (a.validTo === undefined) return 1;
-				if (b.validTo === undefined) return -1;
-				if (a.validTo !== b.validTo) return a.validTo - b.validTo;
-				return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-			}),
+				}),
+		},
 	};
 
 	const writeResult = await tryAsync(

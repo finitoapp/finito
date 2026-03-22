@@ -20,7 +20,7 @@ import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
 import { Spinner } from "@/components/ui/spinner";
 import type { BillPaymentOption, ScreenData } from "@/lib/bill/driver";
-import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
+import type { TablePaymentRequest } from "@/lib/contracts/table";
 import { Currency, Integer, NonNegativeInteger } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
 
@@ -51,7 +51,7 @@ const PayButton: FC<{
 				return;
 			}
 
-			const items: PaymentInit["items"] = [];
+			const items: TablePaymentRequest["items"] = [];
 
 			for (const itemLine of bill.itemLines) {
 				const quantity =
@@ -78,7 +78,7 @@ const PayButton: FC<{
 				return;
 			}
 
-			const paymentInit: PaymentInit = {
+			const tablePaymentRequest: TablePaymentRequest = {
 				paymentId: createId({
 					randomBytes: createRandomBytes(),
 				}),
@@ -93,7 +93,7 @@ const PayButton: FC<{
 				},
 			};
 
-			await props.screen.pay(paymentInit);
+			await props.screen.pay(tablePaymentRequest);
 		},
 	});
 

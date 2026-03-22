@@ -39,8 +39,7 @@ const MenuPublicSchema = z.object({
 	categories: z.array(MenuCategoryPublicSchema),
 });
 
-export const NostrMenu = z.object({
-	version: z.literal(1),
+const MenuSchema = z.object({
 	generatedAt: TimestampMsSchema,
 	// IANA timezone string used to interpret validity windows (e.g. Europe/Prague).
 	timezone: z.enum(Timezone),
@@ -51,4 +50,11 @@ export const NostrMenu = z.object({
 	menus: z.array(MenuPublicSchema),
 });
 
+export const NostrMenu = z.object({
+	version: z.literal(1),
+	generatedAt: TimestampMsSchema,
+	payload: MenuSchema,
+});
+
 export type NostrMenu = z.output<typeof NostrMenu>;
+export type Menu = z.output<typeof MenuSchema>;

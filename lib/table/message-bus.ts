@@ -1,5 +1,5 @@
 import type { ScreenData } from "@/lib/bill/driver";
-import type { PaymentInit } from "@/lib/evolu/model/payment-progress";
+import type { TablePaymentRequest } from "@/lib/contracts/table";
 import { createNostrMessageBus } from "@/lib/nostr/message-bus";
 import type { NonEmptyString, Uuid7 } from "@/lib/shared/types";
 
@@ -19,7 +19,7 @@ export const tableRequestMessageBus = createNostrMessageBus<{
 	createPaymentFromSubscribedBill: {
 		input: {
 			subscriptionId: Uuid7;
-			payment: PaymentInit;
+			payment: TablePaymentRequest;
 		};
 		output:
 			| {
