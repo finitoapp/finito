@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -130,78 +131,80 @@ export function NavUser({
 						align="end"
 						sideOffset={4}
 					>
-						<DropdownMenuLabel>
-							{t("navigation:account.accounts")}
-						</DropdownMenuLabel>
-						{accounts.map((account) => {
-							return (
-								<DropdownMenuItem
-									disabled={account.id === activeAccountId}
-									key={account.id}
-									className="p-0 font-normal"
-									onClick={async () => {
-										await new Promise<void>((resolve) => {
-											deviceEvolu.update(
-												"account",
-												{
-													id: account.id,
-													lastUseAt: TimestampMs(Date.now()),
-												},
-												{
-													onComplete: resolve,
-												},
-											);
-										});
+						<DropdownMenuGroup>
+							<DropdownMenuLabel>
+								{t("navigation:account.accounts")}
+							</DropdownMenuLabel>
+							{accounts.map((account) => {
+								return (
+									<DropdownMenuItem
+										disabled={account.id === activeAccountId}
+										key={account.id}
+										className="p-0 font-normal"
+										onClick={async () => {
+											await new Promise<void>((resolve) => {
+												deviceEvolu.update(
+													"account",
+													{
+														id: account.id,
+														lastUseAt: TimestampMs(Date.now()),
+													},
+													{
+														onComplete: resolve,
+													},
+												);
+											});
 
-										setEvoluCounter((value) => value + 1); // Reload
-									}}
-								>
-									<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-										<Avatar className="h-8 w-8 rounded-lg">
-											<AvatarImage src={user.avatar} alt={account.name} />
-											<AvatarFallback className="rounded-lg">
-												{t("navigation:account.initials")}
-											</AvatarFallback>
-										</Avatar>
-										<div className="grid flex-1 text-left text-sm leading-tight">
-											<span className="truncate font-medium">
-												{account.name}
-											</span>
+											setEvoluCounter((value) => value + 1); // Reload
+										}}
+									>
+										<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+											<Avatar className="h-8 w-8 rounded-lg">
+												<AvatarImage src={user.avatar} alt={account.name} />
+												<AvatarFallback className="rounded-lg">
+													{t("navigation:account.initials")}
+												</AvatarFallback>
+											</Avatar>
+											<div className="grid flex-1 text-left text-sm leading-tight">
+												<span className="truncate font-medium">
+													{account.name}
+												</span>
+											</div>
 										</div>
-									</div>
-								</DropdownMenuItem>
-							);
-						})}
-						<DropdownMenuItem
-							render={
-								<Link
-									href={"/admin/settings/switch-account"}
-									onClick={() => setOpenMobile(false)}
-								/>
-							}
-						>
-							<IconPlus />
-							{t("navigation:account.actions.addAccount")}
-						</DropdownMenuItem>
-						<DropdownMenuSeparator
-							title={t("navigation:account.actions.label")}
-						/>
-						<DropdownMenuLabel>
-							{t("navigation:account.currentAccount")}
-						</DropdownMenuLabel>
-						<DropdownMenuItem
-							onClick={() => void logoutWithConfirm()}
-							disabled={accounts.length <= 1}
-						>
-							<LogOutIcon />
-							{t("navigation:account.actions.logout")}
-						</DropdownMenuItem>
-						{isPwaSupported && (
-							<DropdownMenuItem>
-								<HardDriveDownloadIcon onClick={onClick} />
-								{t("navigation:account.actions.install")}
+									</DropdownMenuItem>
+								);
+							})}
+							<DropdownMenuItem
+								render={
+									<Link
+										href={"/admin/settings/switch-account"}
+										onClick={() => setOpenMobile(false)}
+									/>
+								}
+							>
+								<IconPlus />
+								{t("navigation:account.actions.addAccount")}
 							</DropdownMenuItem>
-						)}
+							<DropdownMenuSeparator
+								title={t("navigation:account.actions.label")}
+							/>
+							<DropdownMenuLabel>
+								{t("navigation:account.currentAccount")}
+							</DropdownMenuLabel>
+							<DropdownMenuItem
+								onClick={() => void logoutWithConfirm()}
+								disabled={accounts.length <= 1}
+							>
+								<LogOutIcon />
+								{t("navigation:account.actions.logout")}
+							</DropdownMenuItem>
+							{isPwaSupported && (
+								<DropdownMenuItem>
+									<HardDriveDownloadIcon onClick={onClick} />
+									{t("navigation:account.actions.install")}
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuGroup>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

@@ -11,13 +11,12 @@ import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FadeHeader } from "@/components/fade-header";
+import { FieldRow } from "@/components/field-row";
 import { KeyValueList } from "@/components/key-value-list";
-import { ResponsiveCard } from "@/components/responsive-card";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery } from "@/lib/evolu";
-import { formatMoney } from "@/lib/shared/utils/format";
+import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 
 export default function Page() {
 	const { t } = useTranslation();
@@ -103,52 +102,45 @@ export default function Page() {
 
 	const payment = paymentInitRows[0];
 
+	if (payment === undefined) return null;
+
 	return (
-		<div className="space-y-8 w-full">
+		<div className="space-y-8 w-full px-4">
 			<div className={"h-20"} />
 			<FadeHeader title={t("client:page.paymentDetail")} />
 
-			<ResponsiveCard>
+			<Card>
 				<CardContent>
-					<KeyValueList
-						items={[
-							{
-								key: t("client:historyDetail.fields.spending"),
-								value: payment ? (
-									formatMoney({
-										value: payment.totalAmount,
-										currency: payment.currency,
-									})
-								) : (
-									<Skeleton className={"h-5 w-50"} />
-								),
-							},
-							...(payment.tipAmount
-								? [
-										{
-											key: t("client:bill.tipForStaff"),
-											value: formatMoney({
-												value: payment.tipAmount,
-												currency: payment.currency,
-											}),
-										},
-									]
-								: []),
-							{
-								key: t("client:historyDetail.fields.date"),
-								value: payment ? (
-									new Date(payment.createdAt).toLocaleString()
-								) : (
-									<Skeleton className={"h-5 w-50"} />
-								),
-							},
-						]}
+					<FieldRow
+						label={t("client:historyDetail.fields.spending")}
+						value={formatMoney({
+							value: payment.totalAmount,
+							currency: payment.currency,
+						})}
+						emptyLabel={t("items:detail.empty.category")}
+					/>
+
+					{payment.tipAmount && (
+						<FieldRow
+							label={t("client:bill.tipForStaff")}
+							value={formatMoney({
+								value: payment.tipAmount,
+								currency: payment.currency,
+							})}
+							emptyLabel={t("items:detail.empty.category")}
+						/>
+					)}
+
+					<FieldRow
+						label={t("client:historyDetail.fields.date")}
+						value={formatDateTime(new Date(payment.createdAt))}
+						emptyLabel={t("items:detail.empty.category")}
 					/>
 				</CardContent>
-			</ResponsiveCard>
+			</Card>
 
 			{payment.items.length > 0 && (
-				<ResponsiveCard>
+				<Card>
 					<CardHeader>
 						<CardTitle>{t("client:bill.itemsTitle")}</CardTitle>
 					</CardHeader>
@@ -163,7 +155,7 @@ export default function Page() {
 							}))}
 						/>
 					</CardContent>
-				</ResponsiveCard>
+				</Card>
 			)}
 
 			{/*<div className={"flex justify-center px-4"}>*/}

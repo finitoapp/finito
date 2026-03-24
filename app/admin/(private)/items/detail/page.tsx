@@ -9,12 +9,12 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { Trash2Icon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import Barcode from "react-barcode";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
 import { CopyButton } from "@/components/copy-button";
+import { FieldRow } from "@/components/field-row";
 import { InlineEdit } from "@/components/inline-edit/inline-edit";
 import {
 	nonEmptyNullableString255Plugin,
@@ -43,36 +43,6 @@ import {
 } from "@/lib/shared/types";
 import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
-
-function FieldRow(props: {
-	label?: string;
-	value: ReactNode;
-	isEmpty?: (value: unknown) => boolean;
-	emptyLabel: string;
-	action?: ReactNode;
-}) {
-	const isEmpty = (props.isEmpty ?? ((value) => value === null))(props.value);
-
-	return (
-		<div className="flex items-start justify-between gap-4 py-3">
-			<div className="min-w-0 flex-1">
-				<div className="text-sm text-muted-foreground">{props.label}</div>
-
-				<div
-					className={
-						isEmpty
-							? "mt-1 text-muted-foreground italic"
-							: "mt-1 text-foreground"
-					}
-				>
-					{isEmpty ? props.emptyLabel : props.value}
-				</div>
-			</div>
-
-			{props.action}
-		</div>
-	);
-}
 
 export default function Home() {
 	const { t } = useTranslation();
