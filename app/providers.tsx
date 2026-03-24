@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
+import { BuildUpdateToast } from "@/components/build-update-toast";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { I18nProvider } from "@/components/i18n-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -27,6 +28,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 					<TooltipProvider>
 						{children}
 						<Toaster />
+						<BuildUpdateToast />
 						<GlobalDialogHost />
 					</TooltipProvider>
 				</QueryClientProvider>
