@@ -45,3 +45,19 @@ export function formatIban(iban: Iban) {
 export function formatPostalCode(postalCode: string) {
 	return postalCode.replace(/(.{3})/g, "$1\u00A0");
 }
+
+export const formatDate = (value: Date) =>
+	value.toLocaleDateString(undefined, {
+		dateStyle: "medium",
+	});
+
+export const formatTime = (value: Date) =>
+	value.toLocaleTimeString(undefined, {
+		timeStyle: "short",
+	});
+
+export const formatDateTime = (value: Date) =>
+	value.toLocaleString(undefined, {
+		timeStyle: "short",
+		dateStyle: "medium",
+	});

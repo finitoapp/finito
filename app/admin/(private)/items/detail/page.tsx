@@ -7,24 +7,72 @@ import {
 	sqliteTrue,
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import { EditIcon, Trash2Icon } from "lucide-react";
-import Link from "next/link";
+import { Trash2Icon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useMemo } from "react";
 import Barcode from "react-barcode";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
-import { KeyValueList } from "@/components/key-value-list";
-import { ResponsiveCard } from "@/components/responsive-card";
-import { StaticCard } from "@/components/static-card";
+import { CopyButton } from "@/components/copy-button";
+import { InlineEdit } from "@/components/inline-edit/inline-edit";
+import {
+	nonEmptyNullableString255Plugin,
+	nonEmptyString255Plugin,
+	selectPlugin,
+	textPlugin,
+} from "@/components/inline-edit/inline-edit-plugins";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { createQuery } from "@/lib/evolu";
-import { formatMoney } from "@/lib/shared/utils/format";
+import {
+	type Integer,
+	IntegerSchema,
+	NumberStringSchema,
+	ProductCodeType,
+} from "@/lib/shared/types";
+import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
+import { moneyCodec } from "@/lib/shared/zod/money-codec";
+
+function FieldRow(props: {
+	label?: string;
+	value: ReactNode;
+	isEmpty?: (value: unknown) => boolean;
+	emptyLabel: string;
+	action?: ReactNode;
+}) {
+	const isEmpty = (props.isEmpty ?? ((value) => value === null))(props.value);
+
+	return (
+		<div className="flex items-start justify-between gap-4 py-3">
+			<div className="min-w-0 flex-1">
+				<div className="text-sm text-muted-foreground">{props.label}</div>
+
+				<div
+					className={
+						isEmpty
+							? "mt-1 text-muted-foreground italic"
+							: "mt-1 text-foreground"
+					}
+				>
+					{isEmpty ? props.emptyLabel : props.value}
+				</div>
+			</div>
+
+			{props.action}
+		</div>
+	);
+}
 
 export default function Home() {
 	const { t } = useTranslation();
@@ -33,6 +81,7 @@ export default function Home() {
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
 	const router = useRouter();
+
 	if (id === null) {
 		throw Promise.reject();
 	}
@@ -47,6 +96,7 @@ export default function Home() {
 						(eb) =>
 							[
 								"item.id as id",
+								"item.deviceId as deviceId",
 								"item.label as label",
 								"item.price as price",
 								"item.currency as currency",
@@ -56,6 +106,7 @@ export default function Home() {
 								"item.productCodeValue as productCodeValue",
 								"item.internalCode as internalCode",
 								"item.createdAt as createdAt",
+								"item.updatedAt as updatedAt",
 								"category.name as category.name",
 
 								evoluJsonObjectFrom(
@@ -75,6 +126,7 @@ export default function Home() {
 					.where("item.currency", "is not", null)
 					.where("item.id", "=", id as Id)
 					.$narrowType<{
+						label: KyselyNotNull;
 						price: KyselyNotNull;
 						currency: KyselyNotNull;
 					}>();
@@ -83,8 +135,7 @@ export default function Home() {
 	);
 
 	const { data: items } = useEvoluQuery(query);
-
-	const item = items && items[0];
+	const item = items[0];
 
 	const { mutateAsync: deleteItem } = useMutation({
 		mutationFn: async () => {
@@ -106,150 +157,236 @@ export default function Home() {
 			await deleteItem();
 		},
 		{
-			title: "Delete item?",
-			description: "This action cannot be undone.",
-			confirmText: "Delete",
-			cancelText: "Cancel",
+			title: t("items:detail.deleteDialog.title"),
+			description: t("items:detail.deleteDialog.description"),
+			confirmText: t("items:detail.actions.delete"),
+			cancelText: t("items:detail.actions.cancel"),
 			confirmVariant: "destructive",
 		},
 	);
 
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/items");
+		}
+	}, [item, router]);
+
+	if (item === undefined) {
+		return null;
+	}
+
 	return (
-		<div className={"w-full lg:max-w-7xl"}>
-			<div className={"mb-6"}>
+		<div className="w-full lg:max-w-7xl">
+			<div className="mb-4">
 				<BackButton />
 			</div>
 
-			<div className={"flex gap-4 flex-wrap"}>
-				<ResponsiveCard className={"flex-2"}>
-					<CardHeader>
-						<CardTitle>
-							{!item && <Skeleton />}
-							{item?.label}
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className={"flex flex-col gap-8"}>
-							<div className={"flex gap-4"}>
-								<StaticCard
-									title={"Price"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item &&
-												`${formatMoney({ value: item.price, currency: item.currency })}${item.unitOfMeasure ? ` / ${item.unitOfMeasure}` : ""}`}
-										</>
-									}
-									className={"flex-1"}
-								/>
-
-								<StaticCard
-									title={"Modified at"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item && new Date(item.createdAt).toLocaleDateString()}
-										</>
-									}
-									footer={item && new Date(item.createdAt).toLocaleTimeString()}
-									className={"flex-1"}
-								/>
-							</div>
-
-							<div className={"flex flex-wrap gap-8"}>
-								<div className={"flex-1"}>
-									<KeyValueList
-										items={[
-											{
-												key: "Name",
-												value: item?.label ?? "-",
-											},
-											{
-												key: "Price",
-												value: item
-													? formatMoney({
-															value: item.price,
-															currency: item.currency,
-														})
-													: "-",
-											},
-											{
-												key: "Unit of measure",
-												value: item?.unitOfMeasure ?? "-",
-											},
-											{
-												key: "Category",
-												value: item?.category?.name ?? "-",
-											},
-										]}
-									/>
-								</div>
-								<div className={"flex-1"}>
-									<KeyValueList
-										items={[
-											{
-												key: "Product code",
-												value:
-													item?.productCodeType && item?.productCodeValue
-														? `${item.productCodeType} ${item.productCodeValue}`
-														: "-",
-												help: "Setting up a product code makes it easier to work with a barcode reader.",
-											},
-											{
-												key: "Internal code (SKU)",
-												value: item?.internalCode ?? "-",
-											},
-										]}
-									/>
-								</div>
-								<div className={"flex-1"}></div>
-							</div>
-						</div>
-					</CardContent>
-				</ResponsiveCard>
-
-				<div className={"flex-1 flex flex-col gap-4"}>
-					<ResponsiveCard>
+			<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">
+				<div className="flex min-w-0 flex-col gap-4">
+					<Card>
 						<CardHeader>
-							<CardTitle>{t("common:table.actions")}</CardTitle>
+							<CardTitle>
+								<InlineEdit
+									value={item.label}
+									PluginComponent={nonEmptyString255Plugin}
+									onSave={(value) => {
+										evolu.update("item", {
+											id: item.id,
+											label: value,
+										});
+									}}
+								/>
+							</CardTitle>
 						</CardHeader>
-						<CardContent className={"space-y-2"}>
-							<Button
-								variant={"outline"}
-								className={"w-full"}
-								render={
-									<Link
-										href={`/admin/items/edit?id=${encodeURIComponent(id)}`}
-									/>
-								}
-							>
-								<EditIcon />
-								Edit
-							</Button>
-							<Button className={"w-full"} onClick={() => void onDelete()}>
-								<Trash2Icon />
-								Delete
-							</Button>
+						<CardContent className="grid gap-8 md:grid-cols-2">
+							<div>
+								<InlineEdit
+									label={t("items:form.item-form.label.price")}
+									value={
+										moneyCodec.encode({
+											value: item.price,
+											currency: item.currency,
+										}).value
+									}
+									renderValue={() =>
+										formatMoney({ value: item.price, currency: item.currency })
+									}
+									PluginComponent={textPlugin({
+										schema: NumberStringSchema.transform(
+											(value) =>
+												moneyCodec.decode({
+													value: value,
+													currency: item.currency,
+												}).value,
+										).pipe(IntegerSchema),
+									})}
+									onSave={(value: Integer) => {
+										evolu.update("item", {
+											id: item.id,
+											price: value,
+										});
+									}}
+								/>
+								<Separator />
+								<FieldRow
+									label={t("items:form.item-form.label.category-optional")}
+									value={item.category?.name}
+									emptyLabel={t("items:detail.empty.category")}
+								/>
+							</div>
+							<div>
+								<InlineEdit
+									value={item.unitOfMeasure}
+									label={t(
+										"items:form.item-form.label.unit-of-measure-uom-optional",
+									)}
+									PluginComponent={nonEmptyNullableString255Plugin}
+									onSave={(value) => {
+										evolu.update("item", {
+											id: item.id,
+											unitOfMeasure: value,
+										});
+									}}
+								/>
+							</div>
 						</CardContent>
-					</ResponsiveCard>
+					</Card>
 
-					{item && item.productCodeValue && item.productCodeType && (
-						<ResponsiveCard>
-							<CardHeader>
-								<CardTitle>{t("items:page.barcode")}</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className={"flex flex-col gap-2"}>
-									<div className={"bg-white flex rounded justify-center"}>
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								{t("items:detail.sections.codesAndScanning")}
+							</CardTitle>
+							<CardDescription>
+								{t("items:detail.sections.codesAndScanningDescription")}
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+							<div>
+								<InlineEdit
+									label={t("items:form.item-form.label.type")}
+									value={item.productCodeType}
+									PluginComponent={selectPlugin({
+										options: ProductCodeType,
+										allowNull: true,
+									})}
+									onSave={(value) => {
+										evolu.update("item", {
+											id: item.id,
+											productCodeType: value,
+										});
+									}}
+								/>
+								<Separator />
+								<InlineEdit
+									value={item.productCodeValue}
+									label={t("items:form.item-form.label.product-code-optional")}
+									PluginComponent={nonEmptyNullableString255Plugin}
+									onSave={(value) => {
+										evolu.update("item", {
+											id: item.id,
+											productCodeValue: value,
+										});
+									}}
+								/>
+								<Separator />
+								<InlineEdit
+									value={item.internalCode}
+									label={t(
+										"items:form.item-form.label.internal-code-sku-optional",
+									)}
+									PluginComponent={nonEmptyNullableString255Plugin}
+									onSave={(value) => {
+										evolu.update("item", {
+											id: item.id,
+											internalCode: value,
+										});
+									}}
+								/>
+							</div>
+
+							<div>
+								<div className="mb-3 text-sm text-muted-foreground">
+									{t("items:detail.fields.barcode")}
+								</div>
+								{item.productCodeValue ? (
+									<div className="flex min-h-52 items-center justify-center rounded-md border bg-white p-4">
 										<Barcode
 											value={item.productCodeValue}
 											displayValue={true}
 										/>
 									</div>
-								</div>
-							</CardContent>
-						</ResponsiveCard>
-					)}
+								) : (
+									<div className="flex min-h-52 items-center justify-center rounded-md border border-dashed p-6 text-center">
+										<p className="max-w-52 text-sm text-muted-foreground">
+											{t("items:detail.empty.barcode")}
+										</p>
+									</div>
+								)}
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+
+				<div className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
+					<Card>
+						<CardHeader>
+							<CardTitle>{t("common:table.actions")}</CardTitle>
+						</CardHeader>
+						<CardContent className="flex flex-col gap-3">
+							<Button
+								variant="destructive"
+								className="w-full"
+								onClick={() => void onDelete()}
+							>
+								<Trash2Icon />
+								{t("items:detail.actions.delete")}
+							</Button>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>{t("items:detail.sections.metadata")}</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<FieldRow
+								label={t("items:detail.fields.recordId")}
+								value={item.id}
+								emptyLabel="..."
+								action={
+									<CopyButton
+										text={item.id}
+										size="sm"
+										className="shrink-0"
+										aria-label={t("items:detail.actions.copyRecordId")}
+									/>
+								}
+							/>
+							<Separator />
+							<FieldRow
+								label={t("items:detail.fields.added")}
+								value={formatDateTime(new Date(item.createdAt))}
+								emptyLabel="..."
+							/>
+							<Separator />
+							<FieldRow
+								label={t("items:detail.fields.updated")}
+								value={
+									item.updatedAt
+										? formatDateTime(new Date(item.updatedAt))
+										: null
+								}
+								emptyLabel="..."
+							/>
+							<Separator />
+							<FieldRow
+								label={t("items:detail.fields.deviceId")}
+								value={item.deviceId}
+								emptyLabel="..."
+							/>
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 		</div>

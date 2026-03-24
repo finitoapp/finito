@@ -8,7 +8,7 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useClipboard } from "@/components/use-clipboard";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useSetQueryParam } from "@/hooks/use-set-query-parameter";
 import type { Currency, Integer } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
