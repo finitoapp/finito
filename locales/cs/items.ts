@@ -1,8 +1,34 @@
 const locale = {
   "page": {
-    "barcode": "Čárový kód",
     "editItem": "Upravit položku",
     "newItem": "Nová položka"
+  },
+  "detail": {
+    "sections": {
+      "codesAndScanning": "Kódy a skenování",
+      "codesAndScanningDescription": "Čárový kód, SKU a identifikační údaje položky na jednom místě.",
+      "metadata": "Metadata"
+    },
+    "fields": {
+      "barcode": "Čárový kód",
+      "recordId": "ID záznamu",
+      "added": "Přidáno",
+      "updated": "Naposledy upraveno",
+      "deviceId": "ID zařízení"
+    },
+    "actions": {
+      "copyRecordId": "Zkopírovat ID záznamu",
+      "delete": "Smazat",
+      "cancel": "Zrušit"
+    },
+    "deleteDialog": {
+      "title": "Smazat položku?",
+      "description": "Tuto akci už nepůjde vrátit zpět."
+    },
+    "empty": {
+      "category": "Přidat kategorii",
+      "barcode": "Po doplnění kódu produktu se tady zobrazí čárový kód."
+    }
   },
   "table": {
     "items": "Položky",

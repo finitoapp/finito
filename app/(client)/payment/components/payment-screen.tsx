@@ -17,7 +17,7 @@ import { ButtonGroup } from "@/components/ui/button-group";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { SelectButton } from "@/components/ui/select-button";
 import { Spinner } from "@/components/ui/spinner";
-import { useClipboard } from "@/components/use-clipboard";
+import { useClipboard } from "@/hooks/use-clipboard";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { ScreenData } from "@/lib/bill/driver";

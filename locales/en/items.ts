@@ -1,8 +1,34 @@
 const locale = {
   "page": {
-    "barcode": "Barcode",
     "editItem": "Edit item",
     "newItem": "New item"
+  },
+  "detail": {
+    "sections": {
+      "codesAndScanning": "Codes and scanning",
+      "codesAndScanningDescription": "Barcode, SKU, and identification details in one place.",
+      "metadata": "Metadata"
+    },
+    "fields": {
+      "barcode": "Barcode",
+      "recordId": "Record ID",
+      "added": "Added",
+      "updated": "Last updated",
+      "deviceId": "Device ID"
+    },
+    "actions": {
+      "copyRecordId": "Copy record ID",
+      "delete": "Delete",
+      "cancel": "Cancel"
+    },
+    "deleteDialog": {
+      "title": "Delete item?",
+      "description": "This action cannot be undone."
+    },
+    "empty": {
+      "category": "Add category",
+      "barcode": "The barcode preview will appear here after adding a product code."
+    }
   },
   "table": {
     "items": "Items",

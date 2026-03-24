@@ -6,10 +6,10 @@
  * @see https://github.com/shadcn-ui/ui/discussions/4052
  */
 
-import { Copy } from "lucide-react";
+import { CheckIcon, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useClipboard } from "@/components/use-clipboard";
+import { useClipboard } from "@/hooks/use-clipboard";
 
 interface CopyButtonProps extends React.ComponentProps<typeof Button> {
 	/**
@@ -29,10 +29,7 @@ export function CopyButton({ text, className, ...props }: CopyButtonProps) {
 			{...props}
 		>
 			{copied ? (
-				<>
-					<Copy className="mr-2 h-4 w-4" />
-					Copied!
-				</>
+				<CheckIcon className="h-4 w-4" />
 			) : (
 				<Copy className="h-4 w-4" />
 			)}
