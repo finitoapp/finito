@@ -1,10 +1,4 @@
-import {
-	ArrowDownIcon,
-	ArrowUpIcon,
-	CheckIcon,
-	ReceiptIcon,
-	XIcon,
-} from "lucide-react";
+import { CheckIcon, ReceiptIcon, XIcon } from "lucide-react";
 import type { FC, ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { VerticalNav } from "@/app/(client)/settings/vertial-nav";
@@ -17,17 +11,20 @@ import { cn } from "@/lib/shared/ui/cn";
 import { formatMoney } from "@/lib/shared/utils/format";
 
 const paymentStatusData = {
-	[PaymentStatus.Unpaid]: ["bg-red-700", <XIcon key={1} className="size-4" />],
+	[PaymentStatus.Unpaid]: [
+		"bg-background",
+		<XIcon key={1} className="size-4" />,
+	],
 	[PaymentStatus.Underpaid]: [
-		"bg-red-700",
+		"bg-background",
 		<XIcon key={1} className="size-4" />,
 	],
 	[PaymentStatus.Paid]: [
-		"bg-green-500",
+		"bg-secondary",
 		<CheckIcon key={1} className="size-4" />,
 	],
 	[PaymentStatus.Overpaid]: [
-		"bg-green-500",
+		"bg-secondary",
 		<CheckIcon key={1} className="size-4" />,
 	],
 } satisfies Record<PaymentStatus, [string, ReactElement]>;
@@ -92,7 +89,7 @@ export const TransactionHistory = () => {
 								<div className={"flex justify-between w-full text-xs"}>
 									<span
 										className={
-											item.direction === "outgoing" ? "text-red-700" : undefined
+											item.direction === "outgoing" ? "text-red-600" : undefined
 										}
 									>
 										{formatMoney({
@@ -108,21 +105,6 @@ export const TransactionHistory = () => {
 										{new Date(item.createdAt).toLocaleString()}
 									</span>
 								</div>
-							</div>
-							<div className={"shrink-0 flex items-center justify-center"}>
-								{item.direction === "outgoing" ? (
-									<ArrowUpIcon
-										size={24}
-										className={"inline-block mr-2 text-red-700"}
-										strokeWidth={3}
-									/>
-								) : (
-									<ArrowDownIcon
-										size={24}
-										className={"inline-block mr-2 text-green-500"}
-										strokeWidth={3}
-									/>
-								)}
 							</div>
 						</div>
 					),
