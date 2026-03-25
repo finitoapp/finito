@@ -1,13 +1,14 @@
 "use client";
 
 import { ViewTransition } from "react";
+import { OnboardingGuard } from "@/components/onboarding-guard";
 import { useBackgroundProcesses } from "@/hooks/use-background-processes";
 
-export default function Layout({
+const ClientLayoutContent = ({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
-}>) {
+}>) => {
 	useBackgroundProcesses();
 
 	return (
@@ -18,5 +19,17 @@ export default function Layout({
 				<div className={"h-18 max-w-xl"}></div>
 			</ViewTransition>
 		</div>
+	);
+};
+
+export default function Layout({
+	children,
+}: Readonly<{
+	children: React.ReactNode;
+}>) {
+	return (
+		<OnboardingGuard>
+			<ClientLayoutContent>{children}</ClientLayoutContent>
+		</OnboardingGuard>
 	);
 }
