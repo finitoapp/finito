@@ -14,7 +14,8 @@ const locale = {
     "preparingWorkspace": "Preparing workspace"
   },
   "onboarding": {
-    "title": "Set up your account",
+    "title": "Account preparation",
+    "welcome": "Welcome to",
     "description": "Choose whether to create a new account or restore an existing one from your seed phrase.",
     "options": {
       "new": {
@@ -42,6 +43,11 @@ const locale = {
     "new": {
       "title": "Back up your seed phrase",
       "description": "Store this seed phrase safely. You will need it to restore your account.",
+      "settings": {
+        "title": "Basic setup",
+        "description": "Set your account name, default currency, and timezone.",
+        "submit": "Create account"
+      },
       "security": {
         "intro": "Your seed phrase is the only key to your account and funds.",
         "recoveryNote": "Use this phrase to recover your account on a new device or after losing access.",

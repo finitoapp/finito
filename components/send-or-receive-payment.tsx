@@ -329,7 +329,7 @@ export const SendOrReceivePayment: React.FC<{
 
 			<Field>
 				<FieldLabel>{t("receiveAmountForm.amountLabel")}</FieldLabel>
-				<div className="overflow-hidden rounded-xl border border-input bg-background shadow-xs">
+				<div className="overflow-hidden rounded-xl border border-input bg-background">
 					<div className={cn("px-4 py-2 transition-colors", "bg-muted/40")}>
 						<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 							<InputGroupInput
@@ -358,7 +358,9 @@ export const SendOrReceivePayment: React.FC<{
 						</InputGroup>
 					</div>
 
-					<div className="mx-4 border-t border-border/70" />
+					<div className={"px-4 bg-muted/40"}>
+						<div className="border-t border-border/70" />
+					</div>
 
 					<div className={cn("px-4 py-2 transition-colors", "bg-muted/40")}>
 						<InputGroup className="h-auto border-0 bg-transparent shadow-none dark:bg-transparent has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0">

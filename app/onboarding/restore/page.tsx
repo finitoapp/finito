@@ -1,48 +1,22 @@
 "use client";
 
-import { type Mnemonic, mnemonicToOwnerSecret } from "@evolu/common";
+import { Mnemonic } from "@evolu/common";
 import { useAtomValue, useSetAtom } from "jotai";
 import { ArrowLeftIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type SubmitEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getSafeReturnTo, withReturnTo } from "@/app/onboarding/utils";
 import { activateOrCreateAccountWithMnemonic } from "@/atoms/account";
 import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import { evoluCounterAtom } from "@/atoms/evolu-counter";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Field,
-	FieldDescription,
-	FieldError,
-	FieldLabel,
-} from "@/components/ui/field";
+import { CardDescription, CardFooter, CardTitle } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 
 const normalizeMnemonic = (value: string) =>
 	value.trim().toLowerCase().split(/\s+/).filter(Boolean).join(" ");
-
-const validateMnemonic = (value: string): "ok" | "wordCount" | "invalid" => {
-	const words = value.split(" ");
-	if (words.length !== 24) {
-		return "wordCount";
-	}
-
-	try {
-		mnemonicToOwnerSecret(value as Mnemonic);
-		return "ok";
-	} catch {
-		return "invalid";
-	}
-};
 
 export default function Page() {
 	const { t } = useTranslation();
@@ -58,47 +32,46 @@ export default function Page() {
 	);
 	const [isSaving, setIsSaving] = useState(false);
 
-	const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+	const onSubmit = async (event: SubmitEvent) => {
 		event.preventDefault();
 
 		const normalizedSeed = normalizeMnemonic(seed);
-		const validation = validateMnemonic(normalizedSeed);
+		const validation = Mnemonic.fromUnknown(normalizedSeed);
 
-		if (validation !== "ok") {
-			setErrorKey(validation);
+		if (!validation.ok) {
+			const words = normalizedSeed.split(" ");
+			if (words.length !== 24) {
+				setErrorKey("wordCount");
+				return "wordCount";
+			}
+
+			setErrorKey("invalid");
 			return;
 		}
 
 		setIsSaving(true);
 		setErrorKey(null);
-		await activateOrCreateAccountWithMnemonic(
-			deviceEvolu,
-			normalizedSeed as Mnemonic,
-		);
+		await activateOrCreateAccountWithMnemonic(deviceEvolu, validation.value);
 		setEvoluCounter((value) => value + 1);
 		router.replace(returnTo as never);
 	};
 
 	return (
 		<form onSubmit={(event) => void onSubmit(event)}>
-			<Card className="max-h-[calc(100dvh-1rem)] overflow-y-auto">
-				<CardHeader>
-					<CardTitle>{t("app:onboarding.restore.title")}</CardTitle>
-					<CardDescription>
-						{t("app:onboarding.restore.description")}
-					</CardDescription>
-				</CardHeader>
+			<div className={"p-4 md:p-6 grid gap-6"}>
+				<CardTitle>{t("app:onboarding.restore.title")}</CardTitle>
+				<CardDescription>
+					{t("app:onboarding.restore.description")}
+				</CardDescription>
 
-				<CardContent>
+				<div className="grid gap-6">
 					<Field>
 						<FieldLabel htmlFor="onboarding-seed">
 							{t("settings:form.credentials-form.label.seed")}
 						</FieldLabel>
-						<FieldDescription>
-							{t("app:onboarding.restore.description")}
-						</FieldDescription>
 						<Textarea
 							id="onboarding-seed"
+							autoFocus
 							value={seed}
 							onChange={(event) => {
 								setSeed(event.target.value);
@@ -107,7 +80,6 @@ export default function Page() {
 								}
 							}}
 							rows={5}
-							placeholder={t("app:onboarding.restore.seedPlaceholder")}
 						/>
 						{errorKey !== null && (
 							<FieldError>
@@ -115,9 +87,9 @@ export default function Page() {
 							</FieldError>
 						)}
 					</Field>
-				</CardContent>
+				</div>
 
-				<CardFooter className="justify-between">
+				<CardFooter className="justify-between p-0">
 					<Button
 						type="button"
 						variant="outline"
@@ -132,7 +104,7 @@ export default function Page() {
 						{t("app:onboarding.restore.submit")}
 					</Button>
 				</CardFooter>
-			</Card>
+			</div>
 		</form>
 	);
 }

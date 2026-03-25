@@ -121,7 +121,7 @@ export default function Page() {
 
 			<div className="fixed bottom-8 left-0 right-0 flex justify-center ">
 				<div className="bg-card border-t rounded-full shadow-[0_0_48px_rgba(0,0,0,0.1)] dark:shadow-[0_0_48px_rgba(0,0,0,0.6)] transition-all duration-400 flex justify-around gap-2 relative">
-					<Link href={"/receive2"}>
+					<Link href={"/receive"}>
 						<Button
 							type={"button"}
 							variant={"default"}

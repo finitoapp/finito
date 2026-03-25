@@ -1,97 +1,146 @@
 "use client";
 
-import { useAtomValue, useSetAtom } from "jotai";
-import { ArrowLeftIcon, CheckIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+	clearOnboardingSettings,
+	loadOnboardingSettings,
+	saveOnboardingSettings,
+} from "@/app/onboarding/new/state";
 import { getSafeReturnTo, withReturnTo } from "@/app/onboarding/utils";
-import {
-	activateOrCreateAccountWithMnemonic,
-	createAccountMnemonic,
-} from "@/atoms/account";
-import { deviceEvoluAtom } from "@/atoms/device-evolu";
-import { evoluCounterAtom } from "@/atoms/evolu-counter";
-import { PasswordTextarea } from "@/components/password-textarea";
+import { createDefaultAccountName } from "@/atoms/account";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { CardDescription, CardFooter, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { FiatCurrency, Timezone } from "@/lib/shared/types";
+
+type DefaultCurrency = (typeof FiatCurrency)[keyof typeof FiatCurrency];
+type DefaultTimezone = (typeof Timezone)[keyof typeof Timezone];
+
+const defaultCurrencyValues = Object.values(FiatCurrency) as DefaultCurrency[];
+const defaultTimezoneValues = Object.values(Timezone) as DefaultTimezone[];
+
+const createDefaultTimezone = (): DefaultTimezone => {
+	const resolvedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+	return defaultTimezoneValues.includes(resolvedTimezone as DefaultTimezone)
+		? (resolvedTimezone as DefaultTimezone)
+		: Timezone["Europe/Prague"];
+};
 
 export default function Page() {
 	const { t } = useTranslation();
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
-	const deviceEvolu = useAtomValue(deviceEvoluAtom);
-	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 
-	const [mnemonic] = useState(() => createAccountMnemonic());
-	const [isBackedUp, setIsBackedUp] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
+	const [accountName, setAccountName] = useState<string>(() =>
+		createDefaultAccountName(),
+	);
+	const [defaultCurrency, setDefaultCurrency] = useState<DefaultCurrency>(
+		FiatCurrency.USD,
+	);
+	const [defaultTimezone, setDefaultTimezone] = useState<DefaultTimezone>(() =>
+		createDefaultTimezone(),
+	);
+	const normalizedAccountName = accountName.trim();
+
+	useEffect(() => {
+		const storedSettings = loadOnboardingSettings();
+		if (storedSettings === null) {
+			return;
+		}
+
+		setAccountName(storedSettings.accountName);
+		setDefaultCurrency(storedSettings.defaultCurrency);
+		setDefaultTimezone(storedSettings.defaultTimezone);
+	}, []);
 
 	return (
-		<Card className="max-h-[calc(100dvh-1rem)] overflow-y-auto">
-			<CardHeader>
-				<CardTitle>{t("app:onboarding.new.title")}</CardTitle>
-				<CardDescription>{t("app:onboarding.new.description")}</CardDescription>
-			</CardHeader>
+		<div className={"p-4 md:p-6 grid gap-6"}>
+			<CardTitle>{t("app:onboarding.new.settings.title")}</CardTitle>
+			<CardDescription>
+				{t("app:onboarding.new.settings.description")}
+			</CardDescription>
 
-			<CardContent className="grid gap-4">
-				<div className="grid gap-2 text-sm text-muted-foreground">
-					<p className="bg-muted/40 flex items-start gap-2 rounded-md px-3 py-2 leading-relaxed">
-						<CheckIcon className="mt-0.5 size-4 shrink-0 text-foreground" />
-						<span>{t("app:onboarding.new.security.rules.neverShare")}</span>
-					</p>
-					<p className="bg-muted/40 flex items-start gap-2 rounded-md px-3 py-2 leading-relaxed">
-						<CheckIcon className="mt-0.5 size-4 shrink-0 text-foreground" />
-						<span>{t("app:onboarding.new.security.rules.storeOffline")}</span>
-					</p>
-					<p className="bg-muted/40 flex items-start gap-2 rounded-md px-3 py-2 leading-relaxed">
-						<CheckIcon className="mt-0.5 size-4 shrink-0 text-foreground" />
-						<span>{t("app:onboarding.new.security.rules.keepWordOrder")}</span>
-					</p>
-				</div>
-
+			<div className="grid gap-6">
 				<Field>
-					<FieldLabel htmlFor="onboarding-generated-seed">
-						{t("settings:form.credentials-form.label.seed")}
+					<FieldLabel htmlFor="onboarding-account-name">
+						{t("accounts:form.account-form.label.name")}
 					</FieldLabel>
-					<PasswordTextarea
-						id="onboarding-generated-seed"
-						readOnly
-						value={mnemonic}
-						rows={5}
+					<Input
+						id="onboarding-account-name"
+						value={accountName}
+						onChange={(event) => {
+							setAccountName(event.target.value);
+						}}
+						autoFocus
 					/>
 				</Field>
 
-				<div className="flex items-center gap-3">
-					<Checkbox
-						id="seed-backup"
-						checked={isBackedUp}
-						onCheckedChange={(checked) => {
-							setIsBackedUp(checked === true);
+				<Field>
+					<FieldLabel>
+						{t("settings:form.billing-settings-form.label.default-currency")}
+					</FieldLabel>
+					<Select
+						value={defaultCurrency}
+						onValueChange={(value) => {
+							setDefaultCurrency(value as DefaultCurrency);
 						}}
-					/>
-					<Label htmlFor="seed-backup">
-						{t("app:onboarding.new.backupConfirmation")}
-					</Label>
-				</div>
-			</CardContent>
+					>
+						<SelectTrigger className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{defaultCurrencyValues.map((currency) => (
+								<SelectItem key={currency} value={currency}>
+									{currency}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</Field>
 
-			<CardFooter className="justify-between">
+				<Field>
+					<FieldLabel>
+						{t("settings:form.billing-settings-form.label.timezone")}
+					</FieldLabel>
+					<Select
+						value={defaultTimezone}
+						onValueChange={(value) => {
+							setDefaultTimezone(value as DefaultTimezone);
+						}}
+					>
+						<SelectTrigger className="w-full">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{defaultTimezoneValues.map((timezone) => (
+								<SelectItem key={timezone} value={timezone}>
+									{timezone}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</Field>
+			</div>
+
+			<CardFooter className="justify-between p-0">
 				<Button
 					type="button"
 					variant="outline"
 					onClick={() => {
+						clearOnboardingSettings();
 						router.push(withReturnTo("/onboarding", returnTo) as never);
 					}}
 				>
@@ -100,17 +149,21 @@ export default function Page() {
 				</Button>
 				<Button
 					type="button"
-					disabled={!isBackedUp || isSaving}
-					onClick={async () => {
-						setIsSaving(true);
-						await activateOrCreateAccountWithMnemonic(deviceEvolu, mnemonic);
-						setEvoluCounter((value) => value + 1);
-						router.replace(returnTo as never);
+					disabled={normalizedAccountName.length === 0}
+					onClick={() => {
+						saveOnboardingSettings({
+							accountName: normalizedAccountName,
+							defaultCurrency,
+							defaultTimezone,
+						});
+						router.push(
+							withReturnTo("/onboarding/new/seed", returnTo) as never,
+						);
 					}}
 				>
 					{t("app:onboarding.new.submit")}
 				</Button>
 			</CardFooter>
-		</Card>
+		</div>
 	);
 }

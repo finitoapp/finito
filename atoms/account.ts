@@ -118,12 +118,15 @@ const createRandomAccountName = () =>
 const insertAccount = (
 	deviceEvolu: DeviceEvolu,
 	mnemonic: Mnemonic,
+	accountName: string | undefined,
 	onComplete: () => void,
 ) => {
 	const { id: accountId } = deviceEvolu.insert(
 		"account",
 		{
-			name: createRandomAccountName(),
+			name: accountName
+				? NonEmptyString255(accountName)
+				: createRandomAccountName(),
 			mnemonic,
 			lastUseAt: TimestampMs(Date.now()),
 		},
@@ -142,9 +145,14 @@ const insertAccount = (
 	});
 };
 
+export const createDefaultAccountName = () => createRandomAccountName();
+
 export const activateOrCreateAccountWithMnemonic = async (
 	deviceEvolu: DeviceEvolu,
 	mnemonic: Mnemonic,
+	options?: {
+		accountName?: string;
+	},
 ) => {
 	const existingAccount = await deviceEvolu.loadQuery(
 		createDeviceQuery((db) =>
@@ -173,7 +181,7 @@ export const activateOrCreateAccountWithMnemonic = async (
 			return;
 		}
 
-		insertAccount(deviceEvolu, mnemonic, resolve);
+		insertAccount(deviceEvolu, mnemonic, options?.accountName, resolve);
 	});
 };
 
