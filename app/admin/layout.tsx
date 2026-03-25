@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OnboardingGuard } from "@/components/onboarding-guard";
 
 export const metadata: Metadata = {
 	title: "Finito POS",
@@ -11,5 +12,5 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	return <>{children}</>;
+	return <OnboardingGuard>{children}</OnboardingGuard>;
 }
