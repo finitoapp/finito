@@ -8,8 +8,7 @@ import { jsonCodec } from "@/lib/shared/zod/json-codec";
 
 const VERSION_ENDPOINT = "/version.json";
 // Polling every 10 minutes keeps checks outside short CDN edge cache windows.
-// const CHECK_PERIOD_MS = 10 * 60 * 1000;
-const CHECK_PERIOD_MS = 5 * 1000;
+const CHECK_PERIOD_MS = 10 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8 * 1000;
 
 const currentBuildVersion = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "unknown";

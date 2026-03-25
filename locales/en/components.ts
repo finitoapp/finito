@@ -116,6 +116,10 @@ const locale = {
     "dark": "Dark",
     "system": "System"
   },
+  "onboardingPreferences": {
+    "language": "Language",
+    "theme": "Theme"
+  },
   "tipSelector": {
     "custom": "Custom %"
   }

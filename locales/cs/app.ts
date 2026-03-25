@@ -14,7 +14,8 @@ const locale = {
     "preparingWorkspace": "Příprava pracovního prostoru"
   },
   "onboarding": {
-    "title": "Nastavení účtu",
+    "title": "Příprava účtu",
+    "welcome": "Vítejte ve",
     "description": "Vyberte, jestli chcete založit nový účet, nebo obnovit existující pomocí seed fráze.",
     "options": {
       "new": {
@@ -42,6 +43,11 @@ const locale = {
     "new": {
       "title": "Zazálohujte seed frázi",
       "description": "Uložte seed frázi na bezpečné místo. Budete ji potřebovat pro obnovu účtu.",
+      "settings": {
+        "title": "Základní nastavení",
+        "description": "Nastavte název účtu, výchozí měnu a časové pásmo.",
+        "submit": "Vytvořit účet"
+      },
       "security": {
         "intro": "Seed fráze je jediný klíč k vašemu účtu a prostředkům.",
         "recoveryNote": "Pomocí této fráze obnovíte účet na jiném zařízení nebo po ztrátě přístupu.",

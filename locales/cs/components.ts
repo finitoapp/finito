@@ -116,6 +116,10 @@ const locale = {
     "dark": "Tmavý",
     "system": "Systém"
   },
+  "onboardingPreferences": {
+    "language": "Jazyk",
+    "theme": "Motiv"
+  },
   "tipSelector": {
     "custom": "Vlastní %"
   }
