@@ -73,14 +73,33 @@ const locale = {
     "status": {
       "loading": "loading",
       "paid": "Paid",
+      "unpaid": "Unpaid",
+      "underpaid": "Underpaid",
+      "overpaid": "Overpaid",
       "failed": "Failed",
       "inProgressOrExpired": "Still in progress or expired"
     },
     "fields": {
       "name": "Name",
       "phone": "Phone",
+      "counterparty": "Counterparty",
+      "status": "Status",
       "spending": "Spending",
       "date": "Date"
+    },
+    "metadata": {
+      "title": "Payment metadata",
+      "fields": {
+        "lnZapInvoice": "LN Zap invoice",
+        "lnZapWalletPubkey": "LN Zap wallet pubkey",
+        "lnZapExpiration": "LN Zap expiration",
+        "lnSparkInvoice": "LN Spark invoice",
+        "lnSparkExpiration": "LN Spark expiration",
+        "lnNwcInvoice": "LN NWC invoice",
+        "lnNwcExpiration": "LN NWC expiration",
+        "bankTransferIban": "Bank transfer IBAN",
+        "bankTransferVariableSymbol": "Bank transfer variable symbol"
+      }
     },
     "actions": {
       "downloadReceipt": "Download receipt"
