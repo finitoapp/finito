@@ -270,6 +270,7 @@ export const AppSchema = {
 			.enum([
 				"syncLnZapTransfersProcess",
 				"syncSparkTransfersProcess",
+				"syncNwcTransfersProcess",
 				"adminPaymentsDetail",
 			])
 			.nullable(),
@@ -546,6 +547,17 @@ export const AppSchema = {
 		// UNIX timestamp in seconds (invoice expiry).
 		expirationIn: TimestampSecSchema,
 	},
+	paymentLnNwc: {
+		id: TableIdSchema,
+		accountId: TableIdSchema,
+		lnInvoice: NonEmptyStringSchema,
+		// Payment hash for LN reconciliation.
+		paymentHash: NonEmptyStringSchema,
+		// Satoshis.
+		amount: NonNegativeIntegerSchema,
+		// UNIX timestamp in seconds (invoice expiry).
+		expirationIn: TimestampSecSchema,
+	},
 	paymentBankTransferCZ: {
 		id: TableIdSchema,
 		iban: IbanSchema,
@@ -561,7 +573,7 @@ export const AppSchema = {
 		// Epoch milliseconds when watcher marked payment as verified.
 		verifiedAt: TimestampMsSchema.nullable(),
 		// Verification source/type
-		proveType: z.enum(["lnZap", "lnSpark"]).nullable(),
+		proveType: z.enum(["lnZap", "lnSpark", "lnNwc"]).nullable(),
 		// Related transaction id created by verification process.
 		transactionId: NullableTableIdSchema,
 		// Epoch milliseconds when active watching was interrupted.
@@ -647,6 +659,9 @@ export const createAppEvolu = async (props: {
 						.column("paymentHash"),
 					create(`paymentLnSpark_paymentHash`)
 						.on(`paymentLnSpark`)
+						.column("paymentHash"),
+					create(`paymentLnNwc_paymentHash`)
+						.on(`paymentLnNwc`)
 						.column("paymentHash"),
 					// Partial index for actively watched payments (verifiedAt/stoppedAt are null).
 					create(`paymentWatchingState_watching_by_timestamps`)

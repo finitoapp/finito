@@ -73,14 +73,33 @@ const locale = {
     "status": {
       "loading": "načítání",
       "paid": "Zaplaceno",
+      "unpaid": "Nezaplaceno",
+      "underpaid": "Nedoplatek",
+      "overpaid": "Přeplatek",
       "failed": "Selhalo",
       "inProgressOrExpired": "Stále probíhá nebo vypršelo"
     },
     "fields": {
       "name": "Název",
       "phone": "Telefon",
+      "counterparty": "Protistrana",
+      "status": "Stav",
       "spending": "Útrata",
       "date": "Datum"
+    },
+    "metadata": {
+      "title": "Metadata platby",
+      "fields": {
+        "lnZapInvoice": "LN Zap faktura",
+        "lnZapWalletPubkey": "LN Zap wallet pubkey",
+        "lnZapExpiration": "LN Zap expirace",
+        "lnSparkInvoice": "LN Spark faktura",
+        "lnSparkExpiration": "LN Spark expirace",
+        "lnNwcInvoice": "LN NWC faktura",
+        "lnNwcExpiration": "LN NWC expirace",
+        "bankTransferIban": "IBAN bankovního převodu",
+        "bankTransferVariableSymbol": "Variabilní symbol bankovního převodu"
+      }
     },
     "actions": {
       "downloadReceipt": "Stáhnout účtenku"

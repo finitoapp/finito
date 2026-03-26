@@ -5,6 +5,7 @@ import type { NotificationUI } from "@/hooks/use-background-processes";
 import { backgroundTableProcessingProcess } from "@/lib/background/processes/background-table-processing-process";
 import { syncFioTransfersProcess } from "@/lib/background/processes/sync-fio-transfers-process";
 import { syncLnZapTransfersProcess } from "@/lib/background/processes/sync-ln-zap-transfers-process";
+import { syncNwcTransfersProcess } from "@/lib/background/processes/sync-nwc-transfers-process";
 import { syncSparkTransfersProcess } from "@/lib/background/processes/sync-spark-transfers-process";
 import { watchNdkRelaysStatusProcess } from "@/lib/background/processes/watch-ndk-relays-status-process";
 import type { Evolu } from "@/lib/evolu";
@@ -30,6 +31,7 @@ export type BackgroundProcess = {
 const backgroundProcesses: BackgroundProcess[] = [
 	syncSparkTransfersProcess,
 	syncLnZapTransfersProcess,
+	syncNwcTransfersProcess,
 	syncFioTransfersProcess,
 	backgroundTableProcessingProcess,
 	watchNdkRelaysStatusProcess,

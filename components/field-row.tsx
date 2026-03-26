@@ -17,8 +17,8 @@ export function FieldRow(props: {
 				<div
 					className={
 						isEmpty
-							? "mt-1 text-muted-foreground italic"
-							: "mt-1 text-foreground"
+							? "mt-1 wrap-anywhere text-muted-foreground italic"
+							: "mt-1 wrap-anywhere text-foreground"
 					}
 				>
 					{isEmpty ? (props.emptyLabel ?? "-") : props.value}

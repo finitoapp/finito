@@ -1,12 +1,12 @@
 import { createIdFromString, type Id, sqliteTrue } from "@evolu/common";
 import { NDKPrivateKeySigner } from "@nostr-dev-kit/ndk";
-import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
 import { createQuery } from "@/lib/evolu";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
+import { createUpsertLnPaymentHashReconciliationClaims } from "@/lib/reconciliation/service";
 import {
 	Currency,
-	Integer,
+	type Integer,
 	NonEmptyString,
 	TimestampMs,
 } from "@/lib/shared/types";
@@ -24,32 +24,6 @@ type WatchedLnZapPayment = {
 	walletPubkey: NonEmptyString | null;
 	lnInvoice: NonEmptyString | null;
 	amount: Integer | null;
-};
-
-const splitAmountByExpectedAllocation = (params: {
-	amount: Integer;
-	expectedProductAmount: Integer;
-	expectedTipAmount: Integer;
-}) => {
-	let remainingAmount = Math.max(0, params.amount);
-
-	const productAmount = Math.min(
-		Math.max(0, params.expectedProductAmount),
-		remainingAmount,
-	) as Integer;
-	remainingAmount -= productAmount;
-
-	const tipAmount = Math.min(
-		Math.max(0, params.expectedTipAmount),
-		remainingAmount,
-	) as Integer;
-	remainingAmount -= tipAmount;
-
-	return {
-		productAmount: productAmount,
-		tipAmount,
-		overpaymentAmount: remainingAmount as Integer,
-	};
 };
 
 const createZapPairKey = (authorPubkey: string, recipientPubkey: string) =>
@@ -78,120 +52,10 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 		let syncInProgress = false;
 		let queuedWatchedPayments: ReadonlyArray<WatchedLnZapPayment> | null = null;
 
-		const findPaymentIdsByPaymentHash = async (paymentHash: NonEmptyString) => {
-			const paymentRows = await props.evolu.loadQuery(
-				createQuery((db) =>
-					db
-						.selectFrom("payment")
-						.innerJoin("paymentLnZap", "paymentLnZap.id", "payment.id")
-						.select(["payment.id as id"] as const)
-						.where("payment.isDeleted", "is not", sqliteTrue)
-						.where("paymentLnZap.isDeleted", "is not", sqliteTrue)
-						.where("paymentLnZap.paymentHash", "=", paymentHash),
-				),
-			);
-
-			return paymentRows.map((row) => row.id);
-		};
-
-		const findExpectedAllocationByPaymentId = async (paymentId: Id) => {
-			const paymentRows = await props.evolu.loadQuery(
-				createQuery((db) =>
-					db
-						.selectFrom("payment")
-						.leftJoin("paymentItemLine", (join) =>
-							join
-								.onRef("paymentItemLine.paymentId", "=", "payment.id")
-								.on("paymentItemLine.isDeleted", "is not", sqliteTrue),
-						)
-						.select([
-							"payment.tipAmount as tipAmount",
-							sql<Integer>`
-								coalesce(
-									sum("paymentItemLine"."totalAmount"),
-									0
-								)
-							`.as("expectedProductAmount"),
-						] as const)
-						.where("payment.isDeleted", "is not", sqliteTrue)
-						.where("payment.id", "=", paymentId)
-						.groupBy("payment.id")
-						.groupBy("payment.tipAmount")
-						.limit(1),
-				),
-			);
-
-			const payment = paymentRows[0];
-			if (payment === undefined) {
-				return null;
-			}
-
-			return {
-				expectedProductAmount: payment.expectedProductAmount ?? Integer(0),
-				expectedTipAmount: payment.tipAmount ?? Integer(0),
-			};
-		};
-
-		const upsertPaymentMatchingClaims = async (payload: {
-			transactionId: Id;
-			paymentHash: NonEmptyString;
-			amount: Integer;
-		}) => {
-			const paymentIds = await findPaymentIdsByPaymentHash(payload.paymentHash);
-
-			for (const paymentId of paymentIds) {
-				const expectedAllocation =
-					await findExpectedAllocationByPaymentId(paymentId);
-				if (expectedAllocation === null) {
-					continue;
-				}
-
-				const splitAllocation = splitAmountByExpectedAllocation({
-					amount: payload.amount,
-					expectedProductAmount: expectedAllocation.expectedProductAmount,
-					expectedTipAmount: expectedAllocation.expectedTipAmount,
-				});
-
-				const claimId = createIdFromString(
-					`reconciliationClaim:lnPaymentHash:${payload.transactionId}:${paymentId}`,
-				);
-				props.evolu.upsert("reconciliationClaim", {
-					id: claimId,
-					sourceType: "transaction",
-					sourceId: payload.transactionId,
-					entityType: "payment",
-					entityId: paymentId,
-					confidence: 1,
-					rule: "lnPaymentHash",
-					createdBy: "syncLnZapTransfersProcess",
-				});
-				const allocationId = createIdFromString(
-					`reconciliationClaimAllocation:${claimId}:product`,
-				);
-				props.evolu.upsert("reconciliationClaimAllocation", {
-					id: allocationId,
-					claimId,
-					componentType: "product",
-					amount: splitAllocation.productAmount,
-				});
-				props.evolu.upsert("reconciliationClaimAllocation", {
-					id: createIdFromString(
-						`reconciliationClaimAllocation:${claimId}:tip`,
-					),
-					claimId,
-					componentType: "tip",
-					amount: splitAllocation.tipAmount,
-				});
-				props.evolu.upsert("reconciliationClaimAllocation", {
-					id: createIdFromString(
-						`reconciliationClaimAllocation:${claimId}:overpayment`,
-					),
-					claimId,
-					componentType: "overpayment",
-					amount: splitAllocation.overpaymentAmount,
-				});
-			}
-		};
+		const upsertPaymentMatchingClaims =
+			createUpsertLnPaymentHashReconciliationClaims({
+				evolu: props.evolu,
+			});
 
 		const upsertTransactionFromReceipt = async (params: {
 			payment: WatchedLnZapPayment;
@@ -236,8 +100,11 @@ export const syncLnZapTransfersProcess: BackgroundProcess = {
 				});
 				await upsertPaymentMatchingClaims({
 					transactionId,
+					accountId: payment.accountId,
 					paymentHash,
 					amount,
+					source: "paymentLnZap",
+					createdBy: "syncLnZapTransfersProcess",
 				});
 				props.evolu.update("paymentWatchingState", {
 					id: payment.id,

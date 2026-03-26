@@ -15,6 +15,7 @@
         "@evolu/monorepo": "github:evoluhq/evolu#e57867ea9c3b2b7c180969c1a45271e713341e64",
         "@evolu/sqlite-wasm": "2.2.4",
         "@faker-js/faker": "10.3.0",
+        "@getalby/sdk": "7.0.0",
         "@hookform/resolvers": "5.2.2",
         "@noble/ciphers": "2.1.1",
         "@noble/hashes": "2.0.1",
@@ -160,6 +161,10 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.6", "", { "dependencies": { "@floating-ui/dom": "^1.7.4" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-4JX6rEatQEvlmgU80wZyq9RT96HZJa88q8hp0pBd+LrczeDI4o6uA2M+uvxngVHo4Ihr8uibXxH6+70zhAFrVw=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
+
+    "@getalby/lightning-tools": ["@getalby/lightning-tools@6.1.0", "", {}, "sha512-rGurar9X4Gm+9xwoNYS8s9YLK7ZYqvbqv4KbHLYV0LEeB0HxZHRgmxblGqg+fYfp6iiYHx+edIgUpt9rS3VwFw=="],
+
+    "@getalby/sdk": ["@getalby/sdk@7.0.0", "", { "dependencies": { "@getalby/lightning-tools": "^6.0.0", "nostr-tools": "^2.17.0" } }, "sha512-0c8gyvFbRDHZIgHmOD/dfyPukxZLeidx/hx7SXlMIS/hsx4mXpKpo9Gx1zW90buElnd3k9TVB/S/bnFSEZPE7w=="],
 
     "@grpc/grpc-js": ["@grpc/grpc-js@1.14.2", "", { "dependencies": { "@grpc/proto-loader": "^0.8.0", "@js-sdsl/ordered-map": "^4.4.2" } }, "sha512-QzVUtEFyu05UNx2xr0fCQmStUO17uVQhGNowtxs00IgTZT6/W2PBLfUkj30s0FKJ29VtTa3ArVNIhNP6akQhqA=="],
 

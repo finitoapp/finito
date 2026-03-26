@@ -28,6 +28,7 @@
     "@evolu/monorepo": "github:evoluhq/evolu#e57867ea9c3b2b7c180969c1a45271e713341e64",
     "@evolu/sqlite-wasm": "2.2.4",
     "@faker-js/faker": "10.3.0",
+    "@getalby/sdk": "7.0.0",
     "@hookform/resolvers": "5.2.2",
     "@noble/ciphers": "2.1.1",
     "@noble/hashes": "2.0.1",
