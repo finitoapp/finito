@@ -25,10 +25,25 @@ const locale = {
 	"detail": {
 		"createdAt": "Created at",
 		"modifiedAt": "Modified at",
+		"sections": {
+			"environment": "Environment",
+			"environmentDescription": "Technical details captured from this device.",
+			"metadata": "Metadata"
+		},
 		"fields": {
+			"added": "Added",
 			"createdAt": "Created at",
 			"id": "ID",
-			"name": "Name"
+			"name": "Name",
+			"recordId": "Record ID",
+			"tablesCount": "Assigned tables",
+			"updated": "Last updated"
+		},
+		"actions": {
+			"copyRecordId": "Copy record ID"
+		},
+		"empty": {
+			"unknown": "Unknown"
 		}
 	}
 } as const;

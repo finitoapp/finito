@@ -1,12 +1,19 @@
 "use client";
 
-import type { Nullable } from "kysely";
 import type * as React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import type { IsNever } from "type-fest";
-import { z } from "zod";
+import type { z } from "zod";
 import type { $ZodIssueBase } from "zod/v4/core";
 import type { InlineEditPlugin } from "@/components/inline-edit/inline-edit-types";
+import { TagInput } from "@/components/tag-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -94,41 +101,130 @@ export const nonEmptyNullableString255Plugin = textPlugin({
 	schema: StringToNullableStringSchema.pipe(NonEmptyString255Schema.nullable()),
 });
 
+export function tagsPlugin<
+	// biome-ignore lint/suspicious/noExplicitAny: It's OK here
+	TSchema extends z.ZodType<any, string[]> = never,
+>(
+	props: { schema?: TSchema; placeholder?: string } = {},
+): InlineEditPlugin<
+	string[],
+	IsNever<TSchema> extends true ? string[] : z.output<TSchema>
+> {
+	return ({ defaultValue, registerOnSave, onSave, onExit, id }) => {
+		const [value, setValue] = useState<string[]>(defaultValue);
+		const [errors, setErrors] = useState<$ZodIssueBase[] | null>(null);
+
+		const save = useCallback(() => {
+			if (props.schema === undefined)
+				return value as IsNever<TSchema> extends true
+					? string[]
+					: z.output<TSchema>;
+
+			const result = props.schema.safeParse(value);
+			if (result.success) {
+				setErrors(null);
+				return result.data as IsNever<TSchema> extends true
+					? string[]
+					: z.output<TSchema>;
+			}
+
+			setErrors(result.error.issues);
+			return undefined;
+		}, [value]);
+
+		useEffect(() => registerOnSave(save), [registerOnSave, save]);
+
+		return (
+			<Field data-invalid={errors}>
+				<TagInput
+					id={id}
+					value={value}
+					onValueChange={(nextValue) => {
+						setErrors(null);
+						setValue(nextValue);
+					}}
+					onEscape={onExit}
+					onSubmit={() => {
+						const result = save();
+						if (result === undefined) return;
+
+						onSave(result);
+					}}
+					placeholder={props.placeholder}
+					autoFocus
+				/>
+				{errors && <FieldError errors={errors} />}
+			</Field>
+		);
+	};
+}
+
 /**
  * selectPlugin — output type is inferred as a union of the option values.
  * No external schema needed: the plugin builds it from the provided options.
  */
-export type SelectOption<T extends string = string> = Record<T, string>;
+export type SelectOption<T extends string = string> =
+	| Record<T, string>
+	| ReadonlyArray<{
+			label: React.ReactNode;
+			value: T;
+	  }>;
 
-export function selectPlugin<
+export function useSyncExternalStoreWithValue<T>(
+	subscribeWithValue: (cb: (value: T) => void) => () => void,
+	getInitialValue: () => T,
+): T {
+	const snapshotRef = useRef<T | undefined>(undefined);
+
+	if (snapshotRef.current === undefined) {
+		snapshotRef.current = getInitialValue();
+	}
+
+	return useSyncExternalStore(
+		(onStoreChange) => {
+			return subscribeWithValue((value) => {
+				if (Object.is(snapshotRef.current, value)) return;
+				snapshotRef.current = value;
+				console.log("items----------22", value);
+				onStoreChange();
+			});
+		},
+		() => snapshotRef.current as T,
+	);
+}
+
+function selectPlugin<
 	const T extends string,
 	const TAllowNull extends boolean,
 >(params: {
-	options: SelectOption<T>;
+	options:
+		| SelectOption<T>
+		| ((callback: (values: SelectOption<T>) => void) => () => void);
 	emptyTitle?: string;
 	show?: TAllowNull;
 	allowNull?: TAllowNull;
-}): InlineEditPlugin<T | null, TAllowNull extends true ? Nullable<T> : T> {
-	const schema = params.allowNull
-		? z.enum(Object.keys(params.options)).nullable()
-		: z.enum(Object.keys(params.options));
-
+}): InlineEditPlugin<T | null, TAllowNull extends true ? T | null : T> {
 	return ({ defaultValue, registerOnSave, id, onExit }) => {
 		const valueRef = useRef<string | null>(defaultValue);
-		const [errors, setErrors] = useState<$ZodIssueBase[] | null>(null);
+		const [errors] = useState<$ZodIssueBase[] | null>(null);
 
-		const save = useCallback(() => {
-			if (schema === undefined) return valueRef.current as T;
-
-			const result = schema.safeParse(valueRef.current);
-			if (result.success) {
-				setErrors(null);
-				return result.data as T;
+		const externalStore = useMemo(() => {
+			if (typeof params.options === "function") {
+				return params.options;
 			}
 
-			setErrors(result.error.issues);
+			const options = params.options;
 
-			return undefined;
+			return (callback: (values: SelectOption<T>) => void) => {
+				callback(options);
+				return () => {};
+			};
+		}, []);
+
+		const items = useSyncExternalStoreWithValue(externalStore, () => ({}));
+
+		const save = useCallback(() => {
+			return valueRef.current as T;
 		}, []);
 
 		useEffect(() => registerOnSave(save), [registerOnSave, save]);
@@ -141,7 +237,7 @@ export function selectPlugin<
 					onValueChange={(value) => {
 						valueRef.current = value;
 					}}
-					items={params.options}
+					items={items}
 				>
 					<SelectTrigger
 						autoFocus
@@ -166,11 +262,19 @@ export function selectPlugin<
 						{(params.allowNull || valueRef.current === null) && (
 							<SelectItem value={null}>&nbsp;</SelectItem>
 						)}
-						{Object.entries(params.options).map(([key, value]) => (
-							<SelectItem key={key} value={key}>
-								{value as string}
-							</SelectItem>
-						))}
+						{Array.isArray(items)
+							? items.map((value) => {
+									return (
+										<SelectItem key={value.value} value={value.value}>
+											{value.label as string}
+										</SelectItem>
+									);
+								})
+							: Object.entries(items).map(([key, value]) => (
+									<SelectItem key={key} value={key}>
+										{value as string}
+									</SelectItem>
+								))}
 					</SelectContent>
 				</Select>
 				{errors && <FieldError errors={errors} />}
@@ -178,6 +282,8 @@ export function selectPlugin<
 		);
 	};
 }
+
+export default selectPlugin;
 
 export function checkboxPlugin(): InlineEditPlugin<boolean, boolean> {
 	return ({ defaultValue, id, registerOnSave, onExit, onSave }) => {

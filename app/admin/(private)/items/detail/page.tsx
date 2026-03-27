@@ -16,10 +16,9 @@ import { BackButton } from "@/components/back-button";
 import { CopyButton } from "@/components/copy-button";
 import { FieldRow } from "@/components/field-row";
 import { InlineEdit } from "@/components/inline-edit/inline-edit";
-import {
+import selectPlugin, {
 	nonEmptyNullableString255Plugin,
 	nonEmptyString255Plugin,
-	selectPlugin,
 	textPlugin,
 } from "@/components/inline-edit/inline-edit-plugins";
 import { Button } from "@/components/ui/button";
@@ -35,6 +34,8 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { createQuery } from "@/lib/evolu";
+import { activeCategoryLabelsQuery } from "@/lib/evolu/queries/category";
+import { createExternalStoreForEvoluQuery } from "@/lib/evolu/utils";
 import {
 	type Integer,
 	IntegerSchema,
@@ -61,7 +62,6 @@ export default function Home() {
 			createQuery((db) => {
 				return db
 					.selectFrom("item")
-					.leftJoin("category", "category.id", "item.categoryId")
 					.select(
 						(eb) =>
 							[
@@ -77,7 +77,6 @@ export default function Home() {
 								"item.internalCode as internalCode",
 								"item.createdAt as createdAt",
 								"item.updatedAt as updatedAt",
-								"category.name as category.name",
 
 								evoluJsonObjectFrom(
 									eb
@@ -134,6 +133,16 @@ export default function Home() {
 			confirmVariant: "destructive",
 		},
 	);
+
+	const CategoryPlugin = useMemo(() => {
+		return selectPlugin({
+			options: createExternalStoreForEvoluQuery(
+				evolu,
+				activeCategoryLabelsQuery,
+			),
+			allowNull: true,
+		});
+	}, [evolu]);
 
 	useEffect(() => {
 		if (item === undefined) {
@@ -198,10 +207,17 @@ export default function Home() {
 									}}
 								/>
 								<Separator />
-								<FieldRow
+								<InlineEdit
 									label={t("items:form.item-form.label.category-optional")}
-									value={item.category?.name}
-									emptyLabel={t("items:detail.empty.category")}
+									value={item.categoryId ?? null}
+									renderValue={() => item.category?.name ?? null}
+									PluginComponent={CategoryPlugin}
+									onSave={(value: Id | null) => {
+										evolu.update("item", {
+											id: item.id,
+											categoryId: value,
+										});
+									}}
 								/>
 							</div>
 							<div>
@@ -323,7 +339,6 @@ export default function Home() {
 							<FieldRow
 								label={t("items:detail.fields.recordId")}
 								value={item.id}
-								emptyLabel="..."
 								action={
 									<CopyButton
 										text={item.id}
@@ -337,7 +352,6 @@ export default function Home() {
 							<FieldRow
 								label={t("items:detail.fields.added")}
 								value={formatDateTime(new Date(item.createdAt))}
-								emptyLabel="..."
 							/>
 							<Separator />
 							<FieldRow
@@ -347,13 +361,11 @@ export default function Home() {
 										? formatDateTime(new Date(item.updatedAt))
 										: null
 								}
-								emptyLabel="..."
 							/>
 							<Separator />
 							<FieldRow
 								label={t("items:detail.fields.deviceId")}
 								value={item.deviceId}
-								emptyLabel="..."
 							/>
 						</CardContent>
 					</Card>

@@ -1,32 +1,48 @@
 "use client";
 
 import {
+	createIdFromString,
 	evoluJsonArrayFrom,
 	type Id,
 	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
-import { EditIcon, ExternalLink, Trash2Icon } from "lucide-react";
-import Link from "next/link";
+import { ExternalLink, Trash2Icon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
-import { KeyValueList } from "@/components/key-value-list";
-import { ResponsiveCard } from "@/components/responsive-card";
-import { StaticCard } from "@/components/static-card";
+import { CopyButton } from "@/components/copy-button";
+import { FieldRow } from "@/components/field-row";
+import { InlineEdit } from "@/components/inline-edit/inline-edit";
+import {
+	nonEmptyString255Plugin,
+	tagsPlugin,
+	textPlugin,
+} from "@/components/inline-edit/inline-edit-plugins";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useNostr } from "@/hooks/use-nostr";
 import { createQuery } from "@/lib/evolu";
-import { formatAmount } from "@/lib/shared/utils/format";
+import {
+	NonEmptyString255Schema,
+	type PositiveInteger,
+	PositiveIntegerSchema,
+	StringToNumberSchema,
+} from "@/lib/shared/types";
+import { formatDateTime } from "@/lib/shared/utils/format";
 import { clientBaseUrl } from "@/lib/shared/utils/window";
 
 export default function Home() {
@@ -48,7 +64,9 @@ export default function Home() {
 					.selectFrom("table")
 					.select((eb) => [
 						"table.id as id",
+						"table.deviceId as deviceId",
 						"table.createdAt as createdAt",
+						"table.updatedAt as updatedAt",
 						"table.label as label",
 						"table.numberOfSeats as numberOfSeats",
 
@@ -76,149 +94,247 @@ export default function Home() {
 		[id],
 	);
 
-	const { data: items } = useEvoluQuery(query);
-	const item = items[0];
+	const { data: tables } = useEvoluQuery(query);
+	const table = tables[0];
 
-	const { mutateAsync: deleteItem } = useMutation({
+	const { mutateAsync: deleteTable } = useMutation({
 		mutationFn: async () => {
-			if (item === undefined) {
+			if (table === undefined) {
 				return;
 			}
 
-			evolu.update("table", { id: item.id, isDeleted: sqliteTrue });
+			evolu.update("table", { id: table.id, isDeleted: sqliteTrue });
 			router.push("/admin/tables");
 		},
 	});
 
 	const onDelete = withConfirm(
 		async () => {
-			await deleteItem();
+			await deleteTable();
 		},
 		{
-			title: "Delete table?",
-			description: "This action cannot be undone.",
-			confirmText: "Delete",
-			cancelText: "Cancel",
+			title: t("tables:detail.deleteDialog.title"),
+			description: t("tables:detail.deleteDialog.description"),
+			confirmText: t("tables:detail.actions.delete"),
+			cancelText: t("tables:detail.actions.cancel"),
 			confirmVariant: "destructive",
 		},
 	);
 
-	const qrCode = item?.codes[0];
+	useEffect(() => {
+		if (table === undefined) {
+			router.replace("/admin/tables");
+		}
+	}, [table, router]);
+
+	if (table === undefined) {
+		return null;
+	}
+
+	const qrCode = table.codes[0];
+	const allCodesValue = table.codes.map(({ code }) => code);
+	const signerPubkey = ndk.signer?.pubkey;
 	const frontendUrl =
-		qrCode && `${clientBaseUrl}#t-${ndk.signer.pubkey}-${qrCode.code}`;
+		qrCode && signerPubkey
+			? `${clientBaseUrl}#t-${signerPubkey}-${qrCode.code}`
+			: null;
 
 	return (
-		<div className={"w-full lg:max-w-7xl"}>
-			<div className={"mb-6"}>
+		<div className="w-full lg:max-w-7xl">
+			<div className="mb-4">
 				<BackButton />
 			</div>
 
-			<div className={"flex gap-4 flex-wrap"}>
-				<ResponsiveCard className={"flex-2"}>
-					<CardHeader>
-						<CardTitle>
-							{!item && <Skeleton />}
-							{item?.label}
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className={"flex flex-col gap-8"}>
-							<div className={"flex gap-4"}>
-								<StaticCard
-									title={"Number of Seats"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item && formatAmount(item.numberOfSeats)}
-										</>
-									}
-									className={"flex-1"}
+			<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">
+				<div className="flex min-w-0 flex-col gap-4">
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								<InlineEdit
+									value={table.label}
+									PluginComponent={nonEmptyString255Plugin}
+									onSave={(value) => {
+										evolu.update("table", {
+											id: table.id,
+											label: value,
+										});
+									}}
 								/>
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="grid gap-8">
+							<div>
+								<InlineEdit
+									label={t("tables:form.fields.numberOfSeats.label")}
+									value={table.numberOfSeats.toString()}
+									renderValue={() => table.numberOfSeats.toLocaleString()}
+									PluginComponent={textPlugin({
+										inputProps: {
+											type: "number",
+											min: 1,
+											step: 1,
+										},
+										schema: StringToNumberSchema.pipe(PositiveIntegerSchema),
+									})}
+									onSave={(value: PositiveInteger) => {
+										evolu.update("table", {
+											id: table.id,
+											numberOfSeats: value,
+										});
+									}}
+								/>
+								<Separator />
+								<InlineEdit
+									label={t("tables:detail.fields.codesCount")}
+									value={allCodesValue}
+									renderValue={() => allCodesValue.join(", ") || "—"}
+									PluginComponent={tagsPlugin({
+										schema: NonEmptyString255Schema.array(),
+									})}
+									onSave={async (values) => {
+										const origCodes = new Set(allCodesValue);
 
-								<StaticCard
-									title={"Modified at"}
-									content={
-										<>
-											{!item && <Skeleton />}
-											{item && new Date(item.createdAt).toLocaleDateString()}
-										</>
+										for (const code of values) {
+											const removed = origCodes.delete(code);
+											if (removed) {
+												continue;
+											}
+
+											evolu.upsert("tableCode", {
+												id: createIdFromString(code),
+												tableId: table.id,
+												code,
+											});
+										}
+
+										for (const code of origCodes) {
+											evolu.update("tableCode", {
+												id: createIdFromString(code),
+												isDeleted: sqliteTrue,
+											});
+										}
+									}}
+								/>
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>
+								{t("tables:detail.sections.codesAndScanning")}
+							</CardTitle>
+							<CardDescription>
+								{t("tables:detail.sections.codesAndScanningDescription")}
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+							<div>
+								<FieldRow
+									label={t("tables:detail.fields.accessUrl")}
+									value={frontendUrl}
+									emptyLabel={t("tables:detail.empty.accessUrl")}
+									action={
+										frontendUrl ? (
+											<Button
+												variant="outline"
+												size="sm"
+												className="shrink-0"
+												render={
+													<a
+														href={frontendUrl}
+														target="_blank"
+														rel="noopener noreferrer"
+													>
+														<ExternalLink />
+														{t("tables:detail.actions.open")}
+													</a>
+												}
+											/>
+										) : null
 									}
-									footer={item && new Date(item.createdAt).toLocaleTimeString()}
-									className={"flex-1"}
 								/>
 							</div>
 
-							<div className={"flex flex-wrap gap-8"}>
-								<div className={"flex-1"}>
-									<KeyValueList
-										items={[
-											{
-												key: "Name",
-												value: item?.label ?? "-",
-											},
-											{
-												key: "Number of Seats",
-												value: item ? formatAmount(item.numberOfSeats) : "-",
-											},
-										]}
-									/>
+							<div>
+								<div className="mb-3 text-sm text-muted-foreground">
+									{t("tables:detail.fields.qrCode")}
 								</div>
+								{frontendUrl ? (
+									<div className="flex min-h-52 items-center justify-center rounded-md border bg-white p-4">
+										<QRCodeSVG
+											className="w-full"
+											size={256}
+											value={frontendUrl}
+										/>
+									</div>
+								) : (
+									<div className="flex min-h-52 items-center justify-center rounded-md border border-dashed p-6 text-center">
+										<p className="max-w-52 text-sm text-muted-foreground">
+											{t("tables:detail.empty.qrCode")}
+										</p>
+									</div>
+								)}
 							</div>
-						</div>
-					</CardContent>
-				</ResponsiveCard>
+						</CardContent>
+					</Card>
+				</div>
 
-				<div className={"flex-1 flex flex-col gap-4"}>
-					<ResponsiveCard>
+				<div className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
+					<Card>
 						<CardHeader>
 							<CardTitle>{t("common:table.actions")}</CardTitle>
 						</CardHeader>
-						<CardContent className={"space-y-2"}>
+						<CardContent className="flex flex-col gap-3">
 							<Button
-								variant={"outline"}
-								className={"w-full"}
-								render={
-									<Link
-										href={`/admin/tables/edit?id=${encodeURIComponent(id)}`}
-									/>
-								}
+								variant="destructive"
+								className="w-full"
+								onClick={() => void onDelete()}
 							>
-								<EditIcon />
-								Edit
-							</Button>
-							<Button className={"w-full"} onClick={() => void onDelete()}>
 								<Trash2Icon />
-								Delete
+								{t("tables:detail.actions.delete")}
 							</Button>
 						</CardContent>
-					</ResponsiveCard>
+					</Card>
 
-					{frontendUrl && (
-						<ResponsiveCard>
-							<CardContent>
-								{item && (
-									<div className={"flex flex-col gap-2"}>
-										<div className={"py-4 bg-white flex rounded"}>
-											<QRCodeSVG
-												className={"w-full"}
-												size={256}
-												value={frontendUrl}
-											/>
-										</div>
-										<Textarea readOnly={true} value={frontendUrl} />
-										<Button
-											render={
-												<a href={frontendUrl} target={"_blank"} rel="noopener">
-													<ExternalLink />
-													Open
-												</a>
-											}
-										></Button>
-									</div>
-								)}
-							</CardContent>
-						</ResponsiveCard>
-					)}
+					<Card>
+						<CardHeader>
+							<CardTitle>{t("tables:detail.sections.metadata")}</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<FieldRow
+								label={t("tables:detail.fields.recordId")}
+								value={table.id}
+								action={
+									<CopyButton
+										text={table.id}
+										size="sm"
+										className="shrink-0"
+										aria-label={t("tables:detail.actions.copyRecordId")}
+									/>
+								}
+							/>
+							<Separator />
+							<FieldRow
+								label={t("tables:detail.fields.added")}
+								value={formatDateTime(new Date(table.createdAt))}
+							/>
+							<Separator />
+							<FieldRow
+								label={t("tables:detail.fields.updated")}
+								value={
+									table.updatedAt
+										? formatDateTime(new Date(table.updatedAt))
+										: null
+								}
+							/>
+							<Separator />
+							<FieldRow
+								label={t("tables:detail.fields.deviceId")}
+								value={table.deviceId}
+							/>
+						</CardContent>
+					</Card>
 				</div>
 			</div>
 		</div>
