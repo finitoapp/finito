@@ -12,7 +12,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import Barcode from "react-barcode";
 import { useTranslation } from "react-i18next";
-import { BackButton } from "@/components/back-button";
 import { CopyButton } from "@/components/copy-button";
 import { FieldRow } from "@/components/field-row";
 import { InlineEdit } from "@/components/inline-edit/inline-edit";
@@ -156,10 +155,6 @@ export default function Home() {
 
 	return (
 		<div className="w-full lg:max-w-7xl">
-			<div className="mb-4">
-				<BackButton />
-			</div>
-
 			<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">
 				<div className="flex min-w-0 flex-col gap-4">
 					<Card>
