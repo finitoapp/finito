@@ -9,6 +9,22 @@ const locale = {
       "codesAndScanningDescription": "Čárový kód, SKU a identifikační údaje položky na jednom místě.",
       "metadata": "Metadata"
     },
+    "tabs": {
+      "sections": "Sekce",
+      "detail": "Detail",
+      "inventory": "Sklad",
+      "history": "Historie"
+    },
+    "history": {
+      "title": "Historie revizí položky",
+      "description": "Přehled všech uložených revizí položky z tabulky itemRevision.",
+      "columns": {
+        "changedAt": "Změněno",
+        "unitOfMeasure": "MJ",
+        "internalCode": "Interní kód",
+        "productCode": "Kód produktu"
+      }
+    },
     "fields": {
       "barcode": "Čárový kód",
       "recordId": "ID záznamu",

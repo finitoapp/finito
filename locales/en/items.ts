@@ -9,6 +9,22 @@ const locale = {
       "codesAndScanningDescription": "Barcode, SKU, and identification details in one place.",
       "metadata": "Metadata"
     },
+    "tabs": {
+      "sections": "Sections",
+      "detail": "Detail",
+      "inventory": "Inventory",
+      "history": "History"
+    },
+    "history": {
+      "title": "Item revision history",
+      "description": "Overview of all saved item revisions from the itemRevision table.",
+      "columns": {
+        "changedAt": "Changed at",
+        "unitOfMeasure": "UOM",
+        "internalCode": "Internal code",
+        "productCode": "Product code"
+      }
+    },
     "fields": {
       "barcode": "Barcode",
       "recordId": "Record ID",
