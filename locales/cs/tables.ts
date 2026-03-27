@@ -29,6 +29,38 @@ const locale = {
     "editTable": "Upravit tabulku",
     "newTable": "Nový stůl"
   },
+  "detail": {
+    "sections": {
+      "codesAndScanning": "QR přístup a skenování",
+      "codesAndScanningDescription": "Správa QR kódu stolu a zákaznického přístupového odkazu.",
+      "metadata": "Metadata"
+    },
+    "fields": {
+      "qrCode": "QR kód",
+      "accessUrl": "Přístupová URL",
+      "primaryCode": "Primární kód",
+      "codesCount": "QR kódy",
+      "recordId": "ID záznamu",
+      "added": "Přidáno",
+      "updated": "Naposledy upraveno",
+      "deviceId": "ID zařízení"
+    },
+    "actions": {
+      "copyRecordId": "Zkopírovat ID záznamu",
+      "open": "Otevřít",
+      "delete": "Smazat",
+      "cancel": "Zrušit"
+    },
+    "deleteDialog": {
+      "title": "Smazat stůl?",
+      "description": "Tuto akci nelze vrátit zpět."
+    },
+    "empty": {
+      "primaryCode": "Přidejte ke stolu QR kód.",
+      "accessUrl": "Přístupová URL se zobrazí po přidání QR kódu.",
+      "qrCode": "Náhled QR kódu se zobrazí po přidání QR kódu."
+    }
+  },
   "table": {
     "actions": {
       "new-table": "Nový stůl"

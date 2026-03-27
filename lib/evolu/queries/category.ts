@@ -12,3 +12,15 @@ export const activeCategoriesQuery = createQuery((db) =>
 			name: KyselyNotNull;
 		}>(),
 );
+
+export const activeCategoryLabelsQuery = createQuery((db) =>
+	db
+		.selectFrom("category")
+		.select(["category.id as value", "category.name as label"])
+		.where("category.isDeleted", "is not", sqliteTrue)
+		.where("category.name", "is not", null)
+		.orderBy("category.name", "asc")
+		.$narrowType<{
+			label: KyselyNotNull;
+		}>(),
+);

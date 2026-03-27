@@ -25,10 +25,25 @@ const locale = {
 	"detail": {
 		"createdAt": "Vytvořeno",
 		"modifiedAt": "Upraveno",
+		"sections": {
+			"environment": "Prostředí",
+			"environmentDescription": "Technické informace získané z tohoto zařízení.",
+			"metadata": "Metadata"
+		},
 		"fields": {
+			"added": "Přidáno",
 			"createdAt": "Vytvořeno",
 			"id": "ID",
-			"name": "Název"
+			"name": "Název",
+			"recordId": "ID záznamu",
+			"tablesCount": "Přiřazené stoly",
+			"updated": "Naposledy upraveno"
+		},
+		"actions": {
+			"copyRecordId": "Zkopírovat ID záznamu"
+		},
+		"empty": {
+			"unknown": "Neznámé"
 		}
 	}
 } as const;
