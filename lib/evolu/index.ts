@@ -131,6 +131,7 @@ export const AppSchema = {
 	menuItemLine: {
 		id: TableIdSchema,
 		menuCategoryId: TableIdSchema,
+		itemId: TableIdSchema.nullable(),
 		itemRevisionId: TableIdSchema,
 		// `null` = available` for menu-specific availability.
 		availabilityStatus: z.enum(["soldOut", "hidden"]).nullable(),
@@ -157,6 +158,7 @@ export const AppSchema = {
 	posBillItemLine: {
 		id: TableIdSchema,
 		posBillId: TableIdSchema,
+		itemId: TableIdSchema.nullable(),
 		itemRevisionId: TableIdSchema,
 		totalAmount: IntegerSchema, // In posBill currency, not in item currency.
 		quantity: z.number(),
@@ -467,6 +469,7 @@ export const AppSchema = {
 	invoiceItemLine: {
 		id: TableIdSchema,
 		invoiceId: TableIdSchema,
+		itemId: TableIdSchema.nullable(),
 		itemRevisionId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
@@ -515,6 +518,7 @@ export const AppSchema = {
 	paymentItemLine: {
 		id: TableIdSchema,
 		paymentId: TableIdSchema,
+		itemId: TableIdSchema.nullable(),
 		itemRevisionId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.

@@ -324,7 +324,7 @@ export const createPayment =
 			for (const [index, { item, line }] of params.items.entries()) {
 				const itemId = createIdFromString(`${id}:billItem:${index}`);
 
-				const itemRevision = createItemRevision(deps)({
+				const itemRevision = await createItemRevision(deps)({
 					item: item,
 				});
 

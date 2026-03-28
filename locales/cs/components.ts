@@ -38,6 +38,31 @@ const locale = {
     "previous": "Předchozí",
     "next": "Další"
   },
+  "recordDiff": {
+    "title": "Porovnání záznamů",
+    "actions": {
+      "showUnchanged": "Zobrazit beze změny"
+    },
+    "columns": {
+      "field": "Pole",
+      "type": "Typ",
+      "before": "Před",
+      "after": "Po"
+    },
+    "summary": {
+      "added": "přidáno",
+      "removed": "odebráno",
+      "changed": "změněno",
+      "unchanged": "beze změny"
+    },
+    "kind": {
+      "added": "Přidáno",
+      "removed": "Odebráno",
+      "changed": "Změněno",
+      "unchanged": "Beze změny"
+    },
+    "empty": "Záznamy jsou identické"
+  },
   "hiddenInput": {
     "actions": "Akce",
     "apiKey": "Klíč API",

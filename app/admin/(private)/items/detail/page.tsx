@@ -1,13 +1,6 @@
 "use client";
 
-import {
-	evoluJsonObjectFrom,
-	type Id,
-	type KyselyNotNull,
-	sqliteTrue,
-} from "@evolu/common";
-import { useMutation } from "@tanstack/react-query";
-import { Trash2Icon } from "lucide-react";
+import type { Id } from "@evolu/common";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import Barcode from "react-barcode";
@@ -20,7 +13,6 @@ import selectPlugin, {
 	nonEmptyString255Plugin,
 	textPlugin,
 } from "@/components/inline-edit/inline-edit-plugins";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -31,8 +23,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
-import { useGlobalDialog } from "@/hooks/use-global-dialog";
-import { createQuery } from "@/lib/evolu";
 import { activeCategoryLabelsQuery } from "@/lib/evolu/queries/category";
 import { createExternalStoreForEvoluQuery } from "@/lib/evolu/utils";
 import {
@@ -43,11 +33,11 @@ import {
 } from "@/lib/shared/types";
 import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
+import { createItemDetailQuery } from "./item-detail-query";
 
 export default function Home() {
 	const { t } = useTranslation();
 	const evolu = useEvolu();
-	const { withConfirm } = useGlobalDialog();
 	const searchParams = useSearchParams();
 	const id = searchParams.get("id");
 	const router = useRouter();
@@ -56,82 +46,10 @@ export default function Home() {
 		throw Promise.reject();
 	}
 
-	const query = useMemo(
-		() =>
-			createQuery((db) => {
-				return db
-					.selectFrom("item")
-					.select(
-						(eb) =>
-							[
-								"item.id as id",
-								"item.deviceId as deviceId",
-								"item.label as label",
-								"item.price as price",
-								"item.currency as currency",
-								"item.unitOfMeasure as unitOfMeasure",
-								"item.categoryId as categoryId",
-								"item.productCodeType as productCodeType",
-								"item.productCodeValue as productCodeValue",
-								"item.internalCode as internalCode",
-								"item.createdAt as createdAt",
-								"item.updatedAt as updatedAt",
+	const itemDetailQuery = useMemo(() => createItemDetailQuery(id as Id), [id]);
 
-								evoluJsonObjectFrom(
-									eb
-										.selectFrom("category")
-										.select(["category.name as name"])
-										.whereRef("category.id", "=", "item.categoryId")
-										.where("category.name", "is not", null)
-										.$narrowType<{
-											name: KyselyNotNull;
-										}>(),
-								).as("category"),
-							] as const,
-					)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.price", "is not", null)
-					.where("item.currency", "is not", null)
-					.where("item.id", "=", id as Id)
-					.$narrowType<{
-						label: KyselyNotNull;
-						price: KyselyNotNull;
-						currency: KyselyNotNull;
-					}>();
-			}),
-		[id],
-	);
-
-	const { data: items } = useEvoluQuery(query);
+	const { data: items } = useEvoluQuery(itemDetailQuery);
 	const item = items[0];
-
-	const { mutateAsync: deleteItem } = useMutation({
-		mutationFn: async () => {
-			if (item === undefined) {
-				return;
-			}
-
-			evolu.update("item", {
-				id: item.id,
-				isDeleted: sqliteTrue,
-			});
-
-			router.push("/admin/items");
-		},
-	});
-
-	const onDelete = withConfirm(
-		async () => {
-			await deleteItem();
-		},
-		{
-			title: t("items:detail.deleteDialog.title"),
-			description: t("items:detail.deleteDialog.description"),
-			confirmText: t("items:detail.actions.delete"),
-			cancelText: t("items:detail.actions.cancel"),
-			confirmVariant: "destructive",
-		},
-	);
 
 	const CategoryPlugin = useMemo(() => {
 		return selectPlugin({
@@ -310,22 +228,6 @@ export default function Home() {
 				</div>
 
 				<div className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
-					<Card>
-						<CardHeader>
-							<CardTitle>{t("common:table.actions")}</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-3">
-							<Button
-								variant="destructive"
-								className="w-full"
-								onClick={() => void onDelete()}
-							>
-								<Trash2Icon />
-								{t("items:detail.actions.delete")}
-							</Button>
-						</CardContent>
-					</Card>
-
 					<Card>
 						<CardHeader>
 							<CardTitle>{t("items:detail.sections.metadata")}</CardTitle>

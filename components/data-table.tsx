@@ -222,8 +222,8 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 			onRowClick={onRowClick}
 		>
 			<Card className="w-full gap-3 py-0 ring-0">
-				<CardHeader className="flex items-center justify-between border-none">
-					<div className={"flex items-center gap-2.5"}>
+				<CardHeader className="flex flex-wrap items-start justify-between gap-2 border-none">
+					<div className={"flex min-w-0 flex-1 flex-wrap items-center gap-2.5"}>
 						{filterableColumns.map((filterColumn) => {
 							const column = table.getColumn(filterColumn.id);
 							if (!column) return null;
@@ -236,7 +236,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 												<Button
 													variant="outline"
 													size="sm"
-													className="h-9 bg-transparent"
+													className="h-9 max-w-full bg-transparent"
 												/>
 											}
 										>
@@ -281,7 +281,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 									onChange={(event) =>
 										column.setFilterValue(event.target.value)
 									}
-									className="w-50"
+									className="w-50 max-w-full min-w-40"
 								/>
 							);
 						})}
@@ -295,7 +295,7 @@ export function DataTable<TData extends Record<string, unknown>, TValue>({
 							</Button>
 						)}
 					</div>
-					<CardAction>
+					<CardAction className="ml-auto">
 						<DataGridColumnVisibility
 							table={table}
 							trigger={

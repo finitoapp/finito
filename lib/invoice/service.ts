@@ -7,13 +7,13 @@ import { Integer } from "@/lib/shared/types";
 
 export const createInvoice =
 	(deps: EvoluDep) =>
-	(params: {
+	async (params: {
 		originalItemLineIds: Id[];
 		invoice: EvoluSchemaType["invoice"] & {
 			items: ReadonlyArray<
 				Omit<
 					EvoluSchemaType["invoiceItemLine"],
-					"invoiceId" | "itemRevisionId" | "totalAmount"
+					"invoiceId" | "itemRevisionId" | "itemId" | "totalAmount"
 				> & {
 					item: Omit<EvoluSchemaType["itemRevision"], "id" | "deviceId">;
 				}
@@ -104,7 +104,7 @@ export const createInvoice =
 		for (const item of items) {
 			originalItemLineIds.delete(item.id);
 
-			const itemRevision = createItemRevision(deps)({
+			const itemRevision = await createItemRevision(deps)({
 				item: {
 					...item.item,
 					deviceId: invoice.deviceId,

@@ -1,11 +1,35 @@
 "use client";
 
-import { BoxIcon, HistoryIcon, InfoIcon } from "lucide-react";
+import { type Id, sqliteTrue } from "@evolu/common";
+import { useMutation } from "@tanstack/react-query";
+import {
+	BoxIcon,
+	CheckIcon,
+	CopyIcon,
+	HistoryIcon,
+	InfoIcon,
+	MenuIcon,
+	Trash2Icon,
+} from "lucide-react";
 import type { Route } from "next";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { BackButton } from "@/components/back-button";
+import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useClipboard } from "@/hooks/use-clipboard";
+import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { cn } from "@/lib/shared/ui/cn";
+import { createItemDetailQuery } from "./item-detail-query";
 
 type DetailTab = "detail" | "inventory" | "history";
 
@@ -48,10 +72,22 @@ export default function Layout(
 	}>,
 ) {
 	const { t } = useTranslation();
+	const evolu = useEvolu();
+	const { withConfirm } = useGlobalDialog();
+	const { copy, copied } = useClipboard();
 	const pathname = usePathname();
 	const router = useRouter();
 	const searchParams = useSearchParams();
+	const id = searchParams.get("id");
+
+	if (id === null) {
+		throw Promise.reject();
+	}
+
 	const activeTab = resolveActiveTab(pathname);
+	const itemDetailQuery = useMemo(() => createItemDetailQuery(id as Id), [id]);
+	const { data: items } = useEvoluQuery(itemDetailQuery);
+	const item = items[0];
 
 	const navigateToTab = (tab: DetailTab) => {
 		const query = new URLSearchParams(searchParams.toString());
@@ -60,6 +96,40 @@ export default function Layout(
 		const href = queryString ? `${path}?${queryString}` : path;
 		router.replace(href as Route);
 	};
+
+	const { mutateAsync: deleteItem } = useMutation({
+		mutationFn: async () => {
+			if (item === undefined) {
+				return;
+			}
+
+			evolu.update("item", {
+				id: item.id,
+				isDeleted: sqliteTrue,
+			});
+
+			router.push("/admin/items");
+		},
+	});
+
+	const onDelete = withConfirm(
+		async () => {
+			await deleteItem();
+		},
+		{
+			title: t("items:detail.deleteDialog.title"),
+			description: t("items:detail.deleteDialog.description"),
+			confirmText: t("items:detail.actions.delete"),
+			cancelText: t("items:detail.actions.cancel"),
+			confirmVariant: "destructive",
+		},
+	);
+
+	useEffect(() => {
+		if (item === undefined) {
+			router.replace("/admin/items");
+		}
+	}, [item, router]);
 
 	return (
 		<div className="flex w-full flex-col gap-1 xl:flex-row">
@@ -91,8 +161,52 @@ export default function Layout(
 				</div>
 			</aside>
 
-			<div className="min-w-0 flex-1 [&>*]:w-full [&>*]:max-w-7xl">
-				{props.children}
+			<div className="flex min-w-0 flex-1 flex-col gap-4">
+				<div className="w-full max-w-7xl">
+					<div className="flex flex-col gap-3 pl-4 sm:flex-row sm:items-center sm:justify-between">
+						<h1 className="text-xl font-semibold tracking-tight">
+							{item?.label ?? t("items:detail.header.productNamePlaceholder")}
+						</h1>
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={
+									<Button
+										variant="outline"
+										size="icon-sm"
+										disabled={item === undefined}
+										aria-label={t("common:table.actions")}
+									/>
+								}
+							>
+								<MenuIcon />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-52">
+								<DropdownMenuItem
+									onClick={() => {
+										if (item !== undefined) {
+											void copy(item.id);
+										}
+									}}
+								>
+									{copied ? <CheckIcon /> : <CopyIcon />}
+									{t("items:detail.actions.copyRecordId")}
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									variant="destructive"
+									onClick={() => void onDelete()}
+								>
+									<Trash2Icon />
+									{t("items:detail.actions.delete")}
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				</div>
+
+				<div className="min-w-0 flex-1 [&>*]:w-full [&>*]:max-w-7xl">
+					{props.children}
+				</div>
 			</div>
 		</div>
 	);

@@ -350,7 +350,7 @@ export const MenuForm = (params: {
 			});
 
 			for (const { item, availabilityStatus } of category.items) {
-				const itemRevision = createItemRevision({ evolu })({
+				const itemRevision = await createItemRevision({ evolu })({
 					item: convertItemToItemRevision(item),
 				});
 
