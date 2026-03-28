@@ -532,7 +532,7 @@ export const InvoiceForm: React.FC<{
 		saveAction: async (values) => {
 			const { items, customer, supplier, payment, ...invoice } = values;
 
-			createInvoice({
+			await createInvoice({
 				evolu,
 			})({
 				originalItemLineIds: (params.defaultValues?.items ?? []).map(

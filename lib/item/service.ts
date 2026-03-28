@@ -1,7 +1,7 @@
-import { createIdFromString } from "@evolu/common";
+import { createIdFromString, sqliteTrue } from "@evolu/common";
 import { pick } from "es-toolkit";
 import type { SetOptional } from "type-fest";
-import type { EvoluSchemaType } from "@/lib/evolu";
+import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
 import { stableStringify } from "@/lib/shared/utils/json";
 
@@ -19,13 +19,10 @@ export const createItem =
 				})
 			: deps.evolu.insert("item", item);
 
-		const itemRevision = convertItemToItemRevision({
+		return {
 			...item,
 			id,
-		});
-		deps.evolu.upsert("itemRevision", itemRevision);
-
-		return { itemRevisionId: itemRevision.id };
+		};
 	};
 
 export const createItemRevisionId = (
@@ -63,18 +60,44 @@ export const convertItemToItemRevision = ({
 	};
 };
 
+export const createItemRevisionFromItem =
+	(deps: EvoluDep) =>
+	async (params: {
+		item: EvoluSchemaType["item"];
+	}): Promise<EvoluSchemaType["itemRevision"]> => {
+		return await createItemRevision(deps)({
+			item: {
+				...params.item,
+				itemId: params.item.id,
+			},
+		});
+	};
+
 export const createItemRevision =
 	(deps: EvoluDep) =>
-	(params: {
+	async (params: {
 		item: Omit<EvoluSchemaType["itemRevision"], "id">;
-	}): EvoluSchemaType["itemRevision"] => {
+	}): Promise<EvoluSchemaType["itemRevision"]> => {
 		const itemRevisionId = createItemRevisionId(params.item);
+
+		const existingItem = await deps.evolu.loadQuery(
+			createQuery((db) =>
+				db
+					.selectFrom("itemRevision")
+					.select(["itemRevision.id as id"] as const)
+					.where("itemRevision.isDeleted", "is not", sqliteTrue)
+					.where("itemRevision.id", "=", itemRevisionId),
+			),
+		);
+
 		const itemRevision = {
 			...params.item,
 			id: itemRevisionId,
 		};
 
-		deps.evolu.upsert("itemRevision", itemRevision);
+		if (existingItem.length === 0) {
+			deps.evolu.upsert("itemRevision", itemRevision);
+		}
 
 		return itemRevision;
 	};

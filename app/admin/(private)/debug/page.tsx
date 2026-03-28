@@ -33,7 +33,7 @@ import { useNostrRelays } from "@/hooks/use-nostr-relays";
 import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import type { Id } from "@/lib/evolu/types";
-import { createItem } from "@/lib/item/service";
+import { createItem, createItemRevisionFromItem } from "@/lib/item/service";
 import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { downloadFile } from "@/lib/shared/files/file-utils";
 import { createZip, extractZip } from "@/lib/shared/files/zip";
@@ -742,7 +742,7 @@ const RandomDataGenerator = () => {
 						});
 
 						for (const sourceItem of takeSourceItems(category.itemsCount)) {
-							const { itemRevisionId } = createItem({ evolu })({
+							const item = createItem({ evolu })({
 								item: {
 									deviceId: account.device.id,
 									categoryId: null,
@@ -755,8 +755,11 @@ const RandomDataGenerator = () => {
 									productCodeValue: sourceItem.productCodeValue,
 								},
 							});
+							const itemRevision = await createItemRevisionFromItem({ evolu })({
+								item,
+							});
 							evolu.insert("menuItemLine", {
-								itemRevisionId,
+								itemRevisionId: itemRevision.id,
 								menuCategoryId: menuCategoryId,
 								availabilityStatus: null,
 							});

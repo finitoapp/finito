@@ -38,6 +38,31 @@ const locale = {
     "previous": "Previous",
     "next": "Next"
   },
+  "recordDiff": {
+    "title": "Record comparison",
+    "actions": {
+      "showUnchanged": "Show unchanged"
+    },
+    "columns": {
+      "field": "Field",
+      "type": "Type",
+      "before": "Before",
+      "after": "After"
+    },
+    "summary": {
+      "added": "added",
+      "removed": "removed",
+      "changed": "changed",
+      "unchanged": "unchanged"
+    },
+    "kind": {
+      "added": "Added",
+      "removed": "Removed",
+      "changed": "Changed",
+      "unchanged": "Unchanged"
+    },
+    "empty": "Records are identical"
+  },
   "hiddenInput": {
     "actions": "Actions",
     "apiKey": "API Key",

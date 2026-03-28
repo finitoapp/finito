@@ -15,6 +15,9 @@ const locale = {
       "inventory": "Sklad",
       "history": "Historie"
     },
+    "header": {
+      "productNamePlaceholder": "Název produktu"
+    },
     "history": {
       "title": "Historie revizí položky",
       "description": "Přehled všech uložených revizí položky z tabulky itemRevision.",
@@ -22,7 +25,17 @@ const locale = {
         "changedAt": "Změněno",
         "unitOfMeasure": "MJ",
         "internalCode": "Interní kód",
-        "productCode": "Kód produktu"
+        "productCode": "Kód produktu",
+        "actions": "Akce"
+      },
+      "actions": {
+        "viewChanges": "Zobrazit změny"
+      },
+      "diff": {
+        "title": "Porovnání stavu položky",
+        "description": "Porovnání vůči revizi z {{changedAt}}.",
+        "current": "Aktuální položka",
+        "revision": "Vybraná revize"
       }
     },
     "fields": {

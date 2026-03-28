@@ -76,8 +76,8 @@ export const PosItems: React.FC<{
 					<Card>
 						<CardContent>
 							<PosDial
-								onSubmit={(value) => {
-									const itemRevision = createItemRevision({ evolu })({
+								onSubmit={async (value) => {
+									const itemRevision = await createItemRevision({ evolu })({
 										item: {
 											deviceId: account.device.id,
 											itemId: null,

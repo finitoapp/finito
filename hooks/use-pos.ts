@@ -12,7 +12,7 @@ export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
 	items: (Omit<
 		EvoluSchemaType["posBillItemLine"],
-		"posBillId" | "itemRevisionId"
+		"posBillId" | "itemRevisionId" | "itemId"
 	> & {
 		item: Pick<
 			EvoluSchemaType["itemRevision"],

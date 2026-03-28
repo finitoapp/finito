@@ -15,6 +15,9 @@ const locale = {
       "inventory": "Inventory",
       "history": "History"
     },
+    "header": {
+      "productNamePlaceholder": "Product name"
+    },
     "history": {
       "title": "Item revision history",
       "description": "Overview of all saved item revisions from the itemRevision table.",
@@ -22,7 +25,17 @@ const locale = {
         "changedAt": "Changed at",
         "unitOfMeasure": "UOM",
         "internalCode": "Internal code",
-        "productCode": "Product code"
+        "productCode": "Product code",
+        "actions": "Actions"
+      },
+      "actions": {
+        "viewChanges": "View changes"
+      },
+      "diff": {
+        "title": "Compare item state",
+        "description": "Comparison against revision from {{changedAt}}.",
+        "current": "Current item",
+        "revision": "Selected revision"
       }
     },
     "fields": {
