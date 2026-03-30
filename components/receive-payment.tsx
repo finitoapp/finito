@@ -116,7 +116,9 @@ export const ReceivePayment: FC<{
 						variant={"outline"}
 						onClick={() =>
 							copy(lnInvoice, {
-								customMessage: "LN invoice successfully copied to clipboard",
+								customMessage: t(
+									"payments:detail.messages.ln-invoice-copied-to-clipboard",
+								),
 							})
 						}
 					>

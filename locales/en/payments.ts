@@ -29,7 +29,8 @@ const locale = {
       "payment-successfully-paid": "The payment is successfully paid",
       "share-qr-description": "Share this QR code in your banking app",
       "no-cash-register-account-configured": "No cash register account is configured for this payment.",
-      "cash-payment-enabled-no-cash-register-account": "Cash payment is enabled, but no cash register account is configured."
+      "cash-payment-enabled-no-cash-register-account": "Cash payment is enabled, but no cash register account is configured.",
+      "ln-invoice-copied-to-clipboard": "LN invoice successfully copied to clipboard"
     },
     "tabs": {
       "web-payment": "Web payment",
