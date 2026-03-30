@@ -29,7 +29,8 @@ const locale = {
       "payment-successfully-paid": "Platba byla úspěšně zaplacena",
       "share-qr-description": "Sdílejte tento QR kód ve své bankovní aplikaci",
       "no-cash-register-account-configured": "Pro tuto platbu není nakonfigurován pokladní účet.",
-      "cash-payment-enabled-no-cash-register-account": "Hotovostní platba je povolena, ale není nakonfigurován pokladní účet."
+      "cash-payment-enabled-no-cash-register-account": "Hotovostní platba je povolena, ale není nakonfigurován pokladní účet.",
+      "ln-invoice-copied-to-clipboard": "LN faktura byla úspěšně zkopírována do schránky"
     },
     "tabs": {
       "web-payment": "Webová platba",
