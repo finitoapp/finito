@@ -24,6 +24,7 @@ const locale = {
       "pointOfSale": "Pokladna",
       "invoices": "Faktury",
       "items": "Položky",
+      "aiAssistant": "AI asistent",
       "menus": "Nabídky",
       "categories": "Kategorie",
       "devices": "Zařízení",
@@ -44,6 +45,7 @@ const locale = {
       "fioPlugin": "Fio plugin",
       "emailPlugin": "Email plugin",
       "credentials": "Přihlašovací údaje",
+      "aiAssistant": "AI asistent",
       "debug": "Debug"
     }
   }

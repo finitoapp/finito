@@ -13,7 +13,8 @@ const locale = {
       "sections": "Sections",
       "detail": "Detail",
       "inventory": "Inventory",
-      "history": "History"
+      "history": "History",
+      "analytics": "Analytics"
     },
     "header": {
       "productNamePlaceholder": "Product name"
@@ -36,6 +37,35 @@ const locale = {
         "description": "Comparison against revision from {{changedAt}}.",
         "current": "Current item",
         "revision": "Selected revision"
+      }
+    },
+    "analytics": {
+      "cards": {
+        "orders": "Orders",
+        "units": "Units sold",
+        "revenue": "Revenue",
+        "averageOrder": "Average per order",
+        "lastSale": "Last sale"
+      },
+      "charts": {
+        "salesTrend": {
+          "title": "Sales trend",
+          "description": "Order count and sold units in the last {{days}} days."
+        },
+        "revenueTrend": {
+          "title": "Revenue trend",
+          "description": "Daily item revenue in the last {{days}} days."
+        }
+      },
+      "legend": {
+        "orders": "Orders",
+        "units": "Units",
+        "revenue": "Revenue"
+      },
+      "empty": {
+        "title": "No sales yet",
+        "description": "Charts and stats will appear here as soon as this item starts selling.",
+        "noSales": "No data"
       }
     },
     "fields": {

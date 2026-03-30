@@ -4,6 +4,9 @@ const locale = {
     "accountSettings": "Nastavení účtu",
     "billingInformation": "Fakturační údaje",
     "credentialsSettings": "Nastavení přihlašovacích údajů",
+    "aiAssistant": "AI asistent",
+    "aiAssistantDescription": "Chatujte s modelem a nechte ho vykonávat lokální akce v aplikaci.",
+    "aiAssistantSettings": "Nastavení AI asistenta",
     "emailSendingSettingsSmtpConfiguration": "Nastavení odesílání e-mailů (konfigurace SMTP)",
     "fioBankPlugin": "Plugin Fio banky",
     "invoiceNumberSeries": "Číselná řada faktury",
@@ -139,6 +142,14 @@ const locale = {
       "addRowLabel": {
         "add-transport": "Přidat transport",
         "add-relay": "Přidat relay"
+      }
+    },
+    "ai-assistant-form": {
+      "label": {
+        "google-api-key": "Google API klíč"
+      },
+      "description": {
+        "google-api-key": "Klíč je uložen lokálně v Evolu a používá se přímo z prohlížeče."
       }
     },
     "fio-plugin-form": {

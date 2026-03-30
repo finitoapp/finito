@@ -13,7 +13,8 @@ const locale = {
       "sections": "Sekce",
       "detail": "Detail",
       "inventory": "Sklad",
-      "history": "Historie"
+      "history": "Historie",
+      "analytics": "Statistiky"
     },
     "header": {
       "productNamePlaceholder": "Název produktu"
@@ -36,6 +37,35 @@ const locale = {
         "description": "Porovnání vůči revizi z {{changedAt}}.",
         "current": "Aktuální položka",
         "revision": "Vybraná revize"
+      }
+    },
+    "analytics": {
+      "cards": {
+        "orders": "Počet objednávek",
+        "units": "Prodané množství",
+        "revenue": "Tržba",
+        "averageOrder": "Průměr na objednávku",
+        "lastSale": "Poslední prodej"
+      },
+      "charts": {
+        "salesTrend": {
+          "title": "Trend prodejů",
+          "description": "Počet objednávek a prodané množství za posledních {{days}} dní."
+        },
+        "revenueTrend": {
+          "title": "Trend tržby",
+          "description": "Denní tržba položky za posledních {{days}} dní."
+        }
+      },
+      "legend": {
+        "orders": "Objednávky",
+        "units": "Množství",
+        "revenue": "Tržba"
+      },
+      "empty": {
+        "title": "Zatím bez prodejů",
+        "description": "Jakmile se tato položka začne prodávat, grafy i statistiky se zobrazí tady.",
+        "noSales": "Žádná data"
       }
     },
     "fields": {

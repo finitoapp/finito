@@ -416,6 +416,10 @@ export const AppSchema = {
 		name: NonEmptyStringSchema.nullable(),
 		email: EmailSchema,
 	},
+	aiAssistantSettings: {
+		id: TableIdSchema,
+		googleApiKey: NonEmptyStringSchema.nullable(),
+	},
 	billingSettings: {
 		id: TableIdSchema,
 		ownContactId: TableIdSchema.nullable(),

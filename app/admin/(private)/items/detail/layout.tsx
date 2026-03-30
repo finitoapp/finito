@@ -3,6 +3,7 @@
 import { type Id, sqliteTrue } from "@evolu/common";
 import { useMutation } from "@tanstack/react-query";
 import {
+	BarChart3Icon,
 	BoxIcon,
 	CheckIcon,
 	CopyIcon,
@@ -31,7 +32,7 @@ import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { cn } from "@/lib/shared/ui/cn";
 import { createItemDetailQuery } from "./item-detail-query";
 
-type DetailTab = "detail" | "inventory" | "history";
+type DetailTab = "detail" | "inventory" | "history" | "analytics";
 
 const detailTabs = [
 	{
@@ -49,6 +50,11 @@ const detailTabs = [
 		labelKey: "items:detail.tabs.history",
 		icon: HistoryIcon,
 	},
+	{
+		value: "analytics",
+		labelKey: "items:detail.tabs.analytics",
+		icon: BarChart3Icon,
+	},
 ] as const;
 
 const resolveActiveTab = (pathname: string): DetailTab => {
@@ -58,6 +64,10 @@ const resolveActiveTab = (pathname: string): DetailTab => {
 
 	if (pathname.endsWith("/history")) {
 		return "history";
+	}
+
+	if (pathname.endsWith("/analytics")) {
+		return "analytics";
 	}
 
 	return "detail";

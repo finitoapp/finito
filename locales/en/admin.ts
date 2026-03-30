@@ -6,6 +6,7 @@ const locale = {
       "pointOfSale": "Point of Sale",
       "invoices": "Invoices",
       "items": "Items",
+      "aiAssistant": "AI Assistant",
       "menus": "Menus",
       "categories": "Categories",
       "devices": "Devices",
