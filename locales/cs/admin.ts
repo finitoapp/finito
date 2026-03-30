@@ -6,6 +6,7 @@ const locale = {
       "pointOfSale": "Pokladna",
       "invoices": "Faktury",
       "items": "Položky",
+      "aiAssistant": "AI asistent",
       "menus": "Nabídky",
       "categories": "Kategorie",
       "devices": "Zařízení",

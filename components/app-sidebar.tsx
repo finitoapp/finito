@@ -111,6 +111,11 @@ const createNavigationData = (t: TFunction) =>
 				url: "/admin/accounts",
 				icon: IconBuildingBank,
 			},
+			{
+				title: t("navigation:main.links.aiAssistant"),
+				url: "/admin/ai-assistant",
+				icon: IconListDetails,
+			},
 		],
 		navSecondary: [
 			{
@@ -142,6 +147,11 @@ const createNavigationData = (t: TFunction) =>
 				title: t("navigation:settings.links.credentials"),
 				url: "/admin/settings/credentials",
 				icon: IconKey,
+			},
+			{
+				title: t("navigation:settings.links.aiAssistant"),
+				url: "/admin/settings/ai-assistant",
+				icon: IconSettings,
 			},
 			{
 				title: t("navigation:settings.links.debug"),

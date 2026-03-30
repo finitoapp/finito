@@ -4,6 +4,9 @@ const locale = {
     "accountSettings": "Account settings",
     "billingInformation": "Billing information",
     "credentialsSettings": "Credentials settings",
+    "aiAssistant": "AI Assistant",
+    "aiAssistantDescription": "Chat with the model and let it execute local actions in the app.",
+    "aiAssistantSettings": "AI Assistant settings",
     "emailSendingSettingsSmtpConfiguration": "Email sending settings (SMTP configuration)",
     "fioBankPlugin": "Fio bank plugin",
     "invoiceNumberSeries": "Invoice number series",
@@ -139,6 +142,14 @@ const locale = {
       "addRowLabel": {
         "add-transport": "Add transport",
         "add-relay": "Add relay"
+      }
+    },
+    "ai-assistant-form": {
+      "label": {
+        "google-api-key": "Google API key"
+      },
+      "description": {
+        "google-api-key": "Saved locally in Evolu and used directly from the browser."
       }
     },
     "fio-plugin-form": {
