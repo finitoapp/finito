@@ -23,15 +23,15 @@ export function ModeToggle() {
 					<Button
 						variant="outline"
 						className="relative h-8 w-8 rounded-full bg-card shadow-lg hover:bg-accent"
-					/>
+					>
+						<Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+						<Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+						<span className="sr-only">
+							{t("components:themeToggle.toggleTheme")}
+						</span>
+					</Button>
 				}
-			>
-				<Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-				<Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-				<span className="sr-only">
-					{t("components:themeToggle.toggleTheme")}
-				</span>
-			</DropdownMenuTrigger>
+			></DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
 				<DropdownMenuItem onClick={() => setTheme("light")}>
 					{t("components:themeToggle.light")}
