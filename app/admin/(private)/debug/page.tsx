@@ -90,7 +90,7 @@ const DownloadSqliteData = () => {
 		const iframe = iframeRef.current;
 
 		window.addEventListener("message", async (event) => {
-			if (event.origin !== "https://vwh.github.io") return;
+			if (event.origin !== "https://yzua.github.io") return;
 
 			if (event.data.type === "loadDatabaseBufferReady") {
 				if (dbSentRef.current) {
@@ -115,7 +115,7 @@ const DownloadSqliteData = () => {
 							type: "invokeLoadDatabaseBuffer",
 							buffer: databaseFileBytes, // Send Uint8Array to iframe
 						},
-						"https://vwh.github.io/sqlite-online/",
+						"https://yzua.github.io/sqlite-online/",
 					);
 				} else {
 					console.error("Failed to load the database file");
@@ -141,7 +141,7 @@ const DownloadSqliteData = () => {
 				<iframe
 					title={t("admin:debug.sqlite.explorerTitle")}
 					ref={iframeRef}
-					src="https://vwh.github.io/sqlite-online/"
+					src="https://yzua.github.io/sqlite-online/"
 					style={{
 						width: "100%",
 						height: "100%",

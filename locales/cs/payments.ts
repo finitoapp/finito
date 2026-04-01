@@ -38,6 +38,28 @@ const locale = {
       "cz-qr-payment": "CZ QR platba",
       "cash": "Hotovost"
     },
+    "sections": {
+      "sections": "Sekce detailu",
+      "overview": "Přehled",
+      "messages": "Zprávy",
+      "timeline": "Historie",
+      "reconciliation": "Párování"
+    },
+    "reconciliation": {
+      "title": "Záznamy párování",
+      "description": "Claimy z tabulky reconciliationClaim pro tuto platbu.",
+      "empty": "Pro tuto platbu nebyly nalezeny žádné claimy.",
+      "columns": {
+        "created-at": "Vytvořeno",
+        "id": "ID claimu",
+        "device-id": "ID zařízení",
+        "source-type": "Typ zdroje",
+        "source-id": "ID zdroje",
+        "rule": "Pravidlo",
+        "confidence": "Důvěra",
+        "created-by": "Vytvořil"
+      }
+    },
     "labels": {
       "price": "Cena",
       "created-at": "Vytvořeno",

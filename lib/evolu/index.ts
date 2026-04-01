@@ -423,11 +423,8 @@ export const AppSchema = {
 	billingSettings: {
 		id: TableIdSchema,
 		ownContactId: TableIdSchema.nullable(),
-		defaultInvoiceDueDateDays: NonNegativeIntegerSchema,
 		defaultCurrency: z.enum(FiatCurrency),
 		defaultTimezone: z.enum(Timezone),
-		// Persisted payment method enum used as default for new invoices/payments.
-		defaultPaymentMethodMethod: z.enum(InvoicePaymentMethod).nullable(),
 		// Optional FK to account row used for bank transfer defaults.
 		defaultPaymentMethodBankAccountKey: NullableTableIdSchema,
 		defaultPaymentMethod: z.enum(PaymentMethod),
@@ -435,10 +432,19 @@ export const AppSchema = {
 		defaultBankTransferCzKey: NullableTableIdSchema,
 		defaultLnZapKey: NullableTableIdSchema,
 		defaultLnSparkKey: NullableTableIdSchema,
-		invoiceEmailSettingsEnable: SqliteBoolSchema,
-		invoiceEmailSettingsSubject: NonEmptyString255Schema.nullable(),
+	},
+	invoiceSettings: {
+		id: TableIdSchema,
+		defaultDueDateDays: NonNegativeIntegerSchema,
+		// Persisted invoice payment method used as default for new invoices.
+		defaultPaymentMethod: z.enum(InvoicePaymentMethod).nullable(),
+	},
+	invoiceEmailSettings: {
+		id: TableIdSchema,
+		enable: SqliteBoolSchema,
+		subject: NonEmptyString255Schema.nullable(),
 		// Templated email body that can include placeholders.
-		invoiceEmailSettingsBody: NonEmptyStringSchema.nullable(),
+		body: NonEmptyStringSchema.nullable(),
 	},
 	billingSettingsTaxRate: {
 		id: TableIdSchema,

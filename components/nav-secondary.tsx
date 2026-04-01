@@ -5,11 +5,9 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type * as React from "react";
-import { useTranslation } from "react-i18next";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
-	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -26,14 +24,12 @@ export function NavSecondary({
 		icon: Icon;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
-	const { t } = useTranslation();
 	const pathname = usePathname();
 	const { setOpenMobile } = useSidebar();
 
 	return (
 		<SidebarGroup {...props}>
 			<SidebarGroupContent className="flex flex-col gap-2">
-				<SidebarGroupLabel>{t("navigation:main.settings")}</SidebarGroupLabel>
 				<SidebarMenu>
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>

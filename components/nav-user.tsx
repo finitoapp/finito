@@ -177,7 +177,7 @@ export function NavUser({
 							<DropdownMenuItem
 								render={
 									<Link
-										href={"/admin/settings/switch-account"}
+										href={"/admin/switch-account"}
 										onClick={() => setOpenMobile(false)}
 									/>
 								}

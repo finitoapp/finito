@@ -12,12 +12,9 @@ export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
 	items: (Omit<
 		EvoluSchemaType["posBillItemLine"],
-		"posBillId" | "itemRevisionId" | "itemId"
+		"posBillId" | "itemRevisionId"
 	> & {
-		item: Pick<
-			EvoluSchemaType["itemRevision"],
-			"label" | "price" | "currency" | "id" | "itemId"
-		>;
+		item: Omit<EvoluSchemaType["itemRevision"], "id">;
 	})[];
 	rates: EvoluSchemaType["posBillRate"][];
 };
@@ -64,16 +61,23 @@ const posBillQuery = createQuery<PosBill>((db) =>
 										"posBillItemLine.id as id",
 										"posBillItemLine.totalAmount as totalAmount",
 										"posBillItemLine.quantity as quantity",
+										"posBillItemLine.itemId as itemId",
 
 										evoluJsonObjectFrom(
 											eb
 												.selectFrom("itemRevision")
 												.select([
+													"itemRevision.deviceId as deviceId",
 													"itemRevision.label as label",
 													"itemRevision.price as price",
 													"itemRevision.currency as currency",
 													"itemRevision.id as id",
 													"itemRevision.itemId as itemId",
+													"itemRevision.unitOfMeasure as unitOfMeasure",
+													"itemRevision.internalCode as internalCode",
+													"itemRevision.productCodeType as productCodeType",
+													"itemRevision.productCodeValue as productCodeValue",
+													"itemRevision.categoryId as categoryId",
 												])
 												.whereRef(
 													"itemRevision.id",

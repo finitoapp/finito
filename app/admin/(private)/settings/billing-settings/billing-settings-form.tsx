@@ -4,7 +4,6 @@ import {
 	createRandomBytes,
 	type Id,
 	type KyselyNotNull,
-	sqliteFalse,
 	sqliteTrue,
 } from "@evolu/common";
 import { merge } from "es-toolkit";
@@ -19,14 +18,11 @@ import { createEvoluComboboxInput } from "@/components/combobox-input";
 import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
-import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	FiatCurrency,
 	NonEmptyString255Schema,
-	NonEmptyStringSchema,
-	NonNegativeIntegerSchema,
 	PercentSchema,
 	StringToNullableStringSchema,
 	StringToNumberSchema,
@@ -36,9 +32,6 @@ import { formatIban } from "@/lib/shared/utils/format";
 
 export const billingSettingsFormSchema = z.object({
 	ownContactId: TableIdSchema.nullable(),
-	defaultInvoiceDueDateDays: StringToNumberSchema.pipe(
-		NonNegativeIntegerSchema,
-	),
 	defaultCurrency: z.enum(FiatCurrency),
 	defaultTimezone: z.enum(Timezone),
 	taxRates: z
@@ -50,36 +43,6 @@ export const billingSettingsFormSchema = z.object({
 			rate: StringToNumberSchema.pipe(PercentSchema),
 		})
 		.array(),
-	defaultPayment: z.discriminatedUnion("method", [
-		z.object({
-			method: z.null(),
-			bankAccountKey: z.string().nullable().pipe(TableIdSchema.nullable()),
-		}),
-		z.object({
-			method: z.literal(InvoicePaymentMethod.BankTransfer),
-			bankAccountKey: z.string().nullable().pipe(TableIdSchema),
-		}),
-		z.object({
-			method: z.literal(InvoicePaymentMethod.Cash),
-			bankAccountKey: z.string().nullable().pipe(TableIdSchema.nullable()),
-		}),
-		z.object({
-			method: z.literal(InvoicePaymentMethod.PaymentCard),
-			bankAccountKey: z.string().nullable().pipe(TableIdSchema),
-		}),
-	]),
-	invoiceEmailSettings: z.discriminatedUnion("enable", [
-		z.object({
-			enable: z.literal(false),
-			subject: z.string(),
-			body: z.string(),
-		}),
-		z.object({
-			enable: z.literal(true),
-			subject: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
-			body: StringToNullableStringSchema.pipe(NonEmptyStringSchema),
-		}),
-	]),
 	defaultPaymentMethod: z.enum(PaymentMethod),
 	defaultBankTransferCzKey: TableIdSchema.nullable(),
 	defaultLnZapKey: TableIdSchema.nullable(),
@@ -99,19 +62,9 @@ const createTaxRate = () => ({
 export const createBillingSettingsDefaultValues = () =>
 	({
 		ownContactId: null,
-		defaultInvoiceDueDateDays: "14",
 		defaultCurrency: FiatCurrency.USD,
 		defaultTimezone: Timezone["Europe/Prague"],
 		taxRates: [createTaxRate()],
-		defaultPayment: {
-			method: null,
-			bankAccountKey: null,
-		},
-		invoiceEmailSettings: {
-			enable: false,
-			subject: "",
-			body: "",
-		},
 		defaultPaymentMethod: PaymentMethod.Cash,
 		defaultBankTransferCzKey: null,
 		defaultLnZapKey: null,
@@ -229,61 +182,6 @@ const createComponents = (t: TFunction) => {
 		...builder.card(
 			{
 				title: t(
-					"settings:form.billing-settings-form.title.invoice-default-settings",
-				),
-			},
-			{
-				...builder.magicInput("defaultInvoiceDueDateDays").text({
-					label: t(
-						"settings:form.billing-settings-form.label.default-invoice-due-date",
-					),
-					description: t(
-						"settings:form.billing-settings-form.description.in-days",
-					),
-				}),
-
-				...builder.nestedField("defaultPayment", ({ builder }) => ({
-					...builder.magicInput("method").select({
-						values: {
-							[InvoicePaymentMethod.BankTransfer]: t(
-								"settings:form.billing-settings-form.payment-method.bank-transfer",
-							),
-							[InvoicePaymentMethod.PaymentCard]: t(
-								"settings:form.billing-settings-form.payment-method.payment-card",
-							),
-							[InvoicePaymentMethod.Cash]: t(
-								"settings:form.billing-settings-form.payment-method.cash",
-							),
-						} satisfies Record<InvoicePaymentMethod, string>,
-						allowEmpty: true,
-						label: t(
-							"settings:form.billing-settings-form.label.default-invoice-payment-method",
-						),
-					}),
-
-					...builder.when(
-						"defaultPayment.method",
-						(value) =>
-							value !== null &&
-							(
-								[
-									InvoicePaymentMethod.BankTransfer,
-									InvoicePaymentMethod.PaymentCard,
-								] as string[]
-							).includes(value),
-						{
-							...builder.createComponent("bankAccountKey", (props) => (
-								<DefaultBankAccountComboboxInput {...props} />
-							)),
-						},
-					),
-				})),
-			},
-		),
-
-		...builder.card(
-			{
-				title: t(
 					"settings:form.billing-settings-form.title.payment-default-settings",
 				),
 			},
@@ -320,32 +218,6 @@ const createComponents = (t: TFunction) => {
 				...builder.createComponent("defaultLnSparkKey", (props) => (
 					<DefaultLnSparkComboboxInput {...props} />
 				)),
-			},
-		),
-
-		...builder.card(
-			{
-				title: t("settings:form.billing-settings-form.title.invoice-email"),
-			},
-			{
-				...builder.nestedField("invoiceEmailSettings", ({ builder }) => ({
-					...builder.magicInput("enable").checkbox({
-						label: t(
-							"settings:form.billing-settings-form.label.enable-invoice-emails",
-						),
-					}),
-					...builder.when("invoiceEmailSettings.enable", true, {
-						...builder.magicInput("subject").text({
-							label: t(
-								"settings:form.billing-settings-form.label.email-subject",
-							),
-						}),
-						...builder.magicInput("body").textarea({
-							label: t("settings:form.billing-settings-form.label.email-body"),
-							rows: 8,
-						}),
-					}),
-				})),
 			},
 		),
 
@@ -415,25 +287,12 @@ export const BillingSettingsForm: React.FC<{
 				{
 					id,
 					ownContactId: values.ownContactId,
-					defaultInvoiceDueDateDays: values.defaultInvoiceDueDateDays,
 					defaultCurrency: values.defaultCurrency,
 					defaultTimezone: values.defaultTimezone,
-					defaultPaymentMethodMethod: values.defaultPayment.method,
-					defaultPaymentMethodBankAccountKey:
-						values.defaultPayment.bankAccountKey,
 					defaultPaymentMethod: values.defaultPaymentMethod,
 					defaultBankTransferCzKey: values.defaultBankTransferCzKey,
 					defaultLnZapKey: values.defaultLnZapKey,
 					defaultLnSparkKey: values.defaultLnSparkKey,
-					invoiceEmailSettingsEnable: values.invoiceEmailSettings.enable
-						? sqliteTrue
-						: sqliteFalse,
-					invoiceEmailSettingsSubject: values.invoiceEmailSettings.enable
-						? values.invoiceEmailSettings.subject
-						: null,
-					invoiceEmailSettingsBody: values.invoiceEmailSettings.enable
-						? values.invoiceEmailSettings.body
-						: null,
 				},
 				{
 					onComplete: () => {

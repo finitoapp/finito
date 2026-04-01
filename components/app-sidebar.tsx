@@ -1,16 +1,14 @@
 "use client";
 
 import {
+	IconAiAgent,
 	IconBug,
 	IconBuildingBank,
 	IconCalendarEvent,
-	IconCashBanknote,
 	IconCashRegister,
 	IconDashboard,
 	IconInvoice,
-	IconKey,
 	IconListDetails,
-	IconMail,
 	IconPackage,
 	IconPicnicTable,
 	IconSettings,
@@ -57,11 +55,6 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconListDetails,
 			},
 			{
-				title: t("navigation:main.links.transactions"),
-				url: "/admin/transactions",
-				icon: IconListDetails,
-			},
-			{
 				title: t("navigation:main.links.pointOfSale"),
 				url: "/admin/pos",
 				icon: IconCashRegister,
@@ -72,13 +65,8 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconInvoice,
 			},
 			{
-				title: t("navigation:main.links.items"),
-				url: "/admin/items",
-				icon: IconPackage,
-			},
-			{
-				title: t("navigation:main.links.categories"),
-				url: "/admin/categories" as never,
+				title: t("navigation:main.links.catalog"),
+				url: "/admin/catalog",
 				icon: IconPackage,
 			},
 			{
@@ -87,13 +75,8 @@ const createNavigationData = (t: TFunction) =>
 				icon: IconPackage,
 			},
 			{
-				title: t("navigation:main.links.devices"),
-				url: "/admin/devices" as never,
-				icon: IconListDetails,
-			},
-			{
-				title: t("navigation:main.links.tables"),
-				url: "/admin/tables",
+				title: t("navigation:main.links.venue"),
+				url: "/admin/venue/tables",
 				icon: IconPicnicTable,
 			},
 			{
@@ -114,49 +97,24 @@ const createNavigationData = (t: TFunction) =>
 			{
 				title: t("navigation:main.links.aiAssistant"),
 				url: "/admin/ai-assistant",
-				icon: IconListDetails,
+				icon: IconAiAgent,
 			},
 		],
 		navSecondary: [
 			{
-				title: t("navigation:settings.links.billingSettings"),
-				url: "/admin/settings/billing-settings",
-				icon: IconSettings,
-			},
-			{
-				title: t("navigation:settings.links.invoiceNumberSeries"),
-				url: "/admin/settings/invoice-number-series",
-				icon: IconSettings,
-			},
-			{
-				title: t("navigation:settings.links.account"),
-				url: "/admin/settings/account",
-				icon: IconUserCircle,
-			},
-			{
-				title: t("navigation:settings.links.fioPlugin"),
-				url: "/admin/settings/fio-plugin",
-				icon: IconCashBanknote,
-			},
-			{
-				title: t("navigation:settings.links.emailPlugin"),
-				url: "/admin/settings/smtp",
-				icon: IconMail,
-			},
-			{
-				title: t("navigation:settings.links.credentials"),
-				url: "/admin/settings/credentials",
-				icon: IconKey,
-			},
-			{
-				title: t("navigation:settings.links.aiAssistant"),
-				url: "/admin/settings/ai-assistant",
+				title: t("navigation:main.settings"),
+				url: "/admin/settings",
 				icon: IconSettings,
 			},
 			{
 				title: t("navigation:settings.links.debug"),
 				url: "/admin/debug",
 				icon: IconBug,
+			},
+			{
+				title: t("settings:page.switchAccount"),
+				url: "/admin/switch-account",
+				icon: IconUserCircle,
 			},
 		],
 	}) satisfies {

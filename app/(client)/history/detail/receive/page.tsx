@@ -284,6 +284,7 @@ export default function Page() {
 
 					<Button
 						variant={"outline"}
+						nativeButton={false}
 						render={
 							<Link href={`/history/detail?id=${encodeURIComponent(id)}`} />
 						}

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { SwitchAccountForm } from "@/app/admin/(private)/settings/switch-account/switch-account-form";
+import { SwitchAccountForm } from "@/app/admin/(private)/switch-account/switch-account-form";
 import { LoginForm } from "@/components/login-form";
 
 export default function LoginPage() {

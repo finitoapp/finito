@@ -171,6 +171,7 @@ export default function Home() {
 							<Button
 								variant={"outline"}
 								className={"w-full"}
+								nativeButton={false}
 								render={
 									<Link
 										href={`/admin/contacts/edit?id=${encodeURIComponent(id)}`}

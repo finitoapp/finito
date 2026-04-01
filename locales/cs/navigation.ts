@@ -23,11 +23,13 @@ const locale = {
       "payments": "Platby",
       "pointOfSale": "Pokladna",
       "invoices": "Faktury",
+      "catalog": "Katalog",
       "items": "Položky",
       "aiAssistant": "AI asistent",
       "menus": "Nabídky",
       "categories": "Kategorie",
       "devices": "Zařízení",
+      "venue": "Provozovna",
       "tables": "Stoly",
       "reservations": "Rezervace",
       "clients": "Klienti",
@@ -40,12 +42,12 @@ const locale = {
     "links": {
       "billingInformation": "Fakturační údaje",
       "billingSettings": "Fakturační nastavení",
-      "invoiceNumberSeries": "Číselná řada faktur",
+      "generalSettings": "Obecné nastavení",
+      "devices": "Zařízení",
       "account": "Účet",
       "fioPlugin": "Fio plugin",
       "emailPlugin": "Email plugin",
       "credentials": "Přihlašovací údaje",
-      "aiAssistant": "AI asistent",
       "debug": "Debug"
     }
   }

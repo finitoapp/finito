@@ -67,6 +67,7 @@ const locale = {
     },
     "columns": {
       "label": "Název",
+      "device-name": "Zařízení",
       "number-of-seats": "Počet míst",
       "codes": "Kódy"
     },

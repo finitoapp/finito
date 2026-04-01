@@ -172,13 +172,12 @@ export const createPayment =
 			tipAmount: NonNegativeInteger | null;
 		} & (
 			| {
-					items: {
-						line: Omit<
-							EvoluSchemaType["paymentItemLine"],
-							"id" | "paymentId" | "itemRevisionId"
-						>;
-						item: Omit<EvoluSchemaType["itemRevision"], "id" | "paymentId">;
-					}[];
+					items: (Omit<
+						EvoluSchemaType["paymentItemLine"],
+						"id" | "paymentId" | "itemRevisionId"
+					> & {
+						item: Omit<EvoluSchemaType["itemRevision"], "id">;
+					})[];
 					totalAmount?: undefined;
 			  }
 			| {
@@ -293,7 +292,7 @@ export const createPayment =
 				(params.tipAmount ?? 0) +
 					(params.totalAmount ??
 						params.items.reduce((acc, value) => {
-							return acc + value.line.totalAmount;
+							return acc + value.totalAmount;
 						}, 0)),
 			),
 		});
@@ -321,7 +320,7 @@ export const createPayment =
 		// });
 
 		if (params.items) {
-			for (const [index, { item, line }] of params.items.entries()) {
+			for (const [index, { item, ...line }] of params.items.entries()) {
 				const itemId = createIdFromString(`${id}:billItem:${index}`);
 
 				const itemRevision = await createItemRevision(deps)({

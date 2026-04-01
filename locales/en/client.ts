@@ -42,6 +42,7 @@ const locale = {
     "description": "Choose whether you enter a fiat amount or sats. The other field is recalculated automatically using the current rate.",
     "amountLabel": "Amount",
     "account": {
+      "sparkWalletAccount": "Spark wallet account",
       "placeholder": "Select account",
       "empty": "No account available"
     },
@@ -53,7 +54,8 @@ const locale = {
     },
     "fields": {
       "fiat": "Fiat amount",
-      "sats": "Amount in sats"
+      "sats": "Amount in sats",
+      "noteForRecipientOptional": "Note for recipient (optional)"
     },
     "status": {
       "ready": "The converted value updates continuously as you type.",
@@ -179,22 +181,6 @@ const locale = {
         "contactRequirements": "Contact: email {{emailRequirement}}, phone {{phoneRequirement}}",
         "noteEnabled": "Note is enabled.",
         "noteEnabledWithMax": "Note is enabled (max {{max}} characters)."
-      }
-    }
-  },
-  "form": {
-    "payment-form": {
-      "label": {
-        "lud16-wallet-address-with-lightning-zaps-support": "lud16 wallet address with `Lightning Zaps` support",
-        "spark-wallet-account": "Spark wallet account",
-        "price-in-btc": "Price in BTC",
-        "note-for-recipient-optional": "Note for recipient (optional)"
-      },
-      "save-label": {
-        "create-invoice": "Create invoice"
-      },
-      "placeholder": {
-        "0": "0"
       }
     }
   }

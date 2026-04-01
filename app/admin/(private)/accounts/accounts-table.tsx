@@ -10,7 +10,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -58,6 +57,15 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 	{
 		accessorKey: "name",
 		header: createSortableHeader(t("accounts:table.columns.name")),
+		cell: ({ row }) => (
+			<Link
+				href={
+					`/admin/accounts/detail?id=${encodeURIComponent(row.original.id)}` as never
+				}
+			>
+				<Button variant={"link"}>{row.original.name}</Button>
+			</Link>
+		),
 	},
 	{
 		accessorKey: "_tag",
@@ -99,13 +107,14 @@ const createColumns = (t: TFunction): ColumnDef<Task, Task>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					nativeButton={false}
 					onClick={(event) => {
 						event.stopPropagation();
 					}}
 					render={
 						<Link
 							href={
-								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+								`/admin/settings/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
 							}
 						/>
 					}
@@ -142,7 +151,6 @@ const createFilterableColumns = (t: TFunction) =>
 
 export function AccountsTable() {
 	const { t } = useTranslation();
-	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("accounts");
 	const columns = useMemo(() => createColumns(t), [t]);
@@ -320,11 +328,6 @@ export function AccountsTable() {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					filterableColumns={filterableColumns}
-					onRowClick={(item) =>
-						router.push(
-							`/admin/accounts/detail?id=${encodeURIComponent(item.id)}`,
-						)
-					}
 				/>
 			</CardContent>
 		</ResponsiveCard>

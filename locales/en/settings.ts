@@ -7,6 +7,7 @@ const locale = {
     "aiAssistant": "AI Assistant",
     "aiAssistantDescription": "Chat with the model and let it execute local actions in the app.",
     "aiAssistantSettings": "AI Assistant settings",
+    "aiAssistantTabsSections": "Sections",
     "emailSendingSettingsSmtpConfiguration": "Email sending settings (SMTP configuration)",
     "fioBankPlugin": "Fio bank plugin",
     "invoiceNumberSeries": "Invoice number series",
@@ -53,25 +54,6 @@ const locale = {
         "about": "About",
         "bio": "Bio",
         "lud16-address": "lud16 address"
-      }
-    },
-    "billing-info-form": {
-      "label": {
-        "company-name": "Company name",
-        "label": "Label",
-        "email": "Email",
-        "street": "Street",
-        "descriptive-number": "Descriptive Number",
-        "city": "City",
-        "postal-code": "Postal Code",
-        "country-code": "Country code",
-        "identification-number": "Identification Number",
-        "vat-payer": "VAT Payer",
-        "vat-number": "VAT Number",
-        "case-number": "Case Number"
-      },
-      "description": {
-        "your-private-name-for-internal-purposes": "Your private name for internal purposes"
       }
     },
     "billing-settings-form": {

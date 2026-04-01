@@ -8,9 +8,7 @@ import {
 } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,13 +18,7 @@ import {
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
-import {
-	CardAction,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
@@ -59,7 +51,17 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "createdAt",
 		header: createSortableHeader(t("payments:table.columns.created-at")),
-		cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
+		cell: ({ row }) => (
+			<Link
+				href={
+					`/admin/payments/detail?id=${encodeURIComponent(row.original.id)}` as never
+				}
+			>
+				<Button variant={"link"}>
+					{new Date(row.original.createdAt).toLocaleString()}
+				</Button>
+			</Link>
+		),
 	},
 	{
 		accessorKey: "amount",
@@ -94,13 +96,14 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					nativeButton={false}
 					onClick={(event) => {
 						event.stopPropagation();
 					}}
 					render={
 						<Link
 							href={
-								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+								`/admin/settings/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
 							}
 						/>
 					}
@@ -115,7 +118,6 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 
 export function PaymentsTable() {
 	const { t } = useTranslation();
-	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("payments");
 	const columns = useMemo(() => createColumns(t), [t]);
@@ -212,30 +214,11 @@ export function PaymentsTable() {
 
 	return (
 		<ResponsiveCard>
-			<CardHeader>
-				<CardTitle>{t("payments:table.paymentMessages")}</CardTitle>
-				<CardDescription>
-					{t("payments:table.description.decrypted-payment-data")}
-				</CardDescription>
-				<CardAction>
-					<Link href={"/admin/payments/new"}>
-						<Button>
-							<PlusIcon />
-							{t("payments:table.actions.new-payment")}
-						</Button>
-					</Link>
-				</CardAction>
-			</CardHeader>
 			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
-					onRowClick={(payment) =>
-						router.push(
-							`/admin/payments/detail?id=${encodeURIComponent(payment.id)}`,
-						)
-					}
 				/>
 			</CardContent>
 		</ResponsiveCard>

@@ -46,6 +46,11 @@ export default function Home() {
 				db
 					.selectFrom("billingSettings")
 					.leftJoin(
+						"invoiceSettings",
+						"invoiceSettings.id",
+						"billingSettings.id",
+					)
+					.leftJoin(
 						"account",
 						"billingSettings.defaultPaymentMethodBankAccountKey",
 						"account.id",
@@ -54,8 +59,8 @@ export default function Home() {
 					.select((eb) => [
 						"billingSettings.id as id",
 						"billingSettings.defaultCurrency as defaultCurrency",
-						"billingSettings.defaultInvoiceDueDateDays as defaultInvoiceDueDateDays",
-						"billingSettings.defaultPaymentMethodMethod as defaultPaymentMethodMethod",
+						"invoiceSettings.defaultDueDateDays as defaultDueDateDays",
+						"invoiceSettings.defaultPaymentMethod as defaultPaymentMethod",
 						"account.id as account",
 						"account.id as accountId",
 						"account._tag as accountTag",
@@ -167,13 +172,10 @@ export default function Home() {
 						? mapContactToFormContact(billingSettings.invoiceSupplier)
 						: undefined,
 					issueDate: now,
-					dueDate: addDays(
-						now,
-						billingSettings?.defaultInvoiceDueDateDays ?? 14,
-					),
+					dueDate: addDays(now, billingSettings?.defaultDueDateDays ?? 14),
 					currency: billingSettings?.defaultCurrency ?? undefined,
 					payment: {
-						method: billingSettings?.defaultPaymentMethodMethod ?? undefined,
+						method: billingSettings?.defaultPaymentMethod ?? undefined,
 						iban:
 							billingSettings?.accountTag === "accountIban"
 								? (billingSettings?.accountIban ?? "")

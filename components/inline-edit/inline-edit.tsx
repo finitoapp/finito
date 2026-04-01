@@ -118,18 +118,13 @@ export function InlineEdit<TRaw, TOut = TRaw>({
 							id={id}
 						/>
 					) : typeof displayValue === "string" ? (
-						<button
-							type={"button"}
-							tabIndex={0}
+						<div
 							className={
 								"w-full h-9 px-2.5 py-2 rounded-md border border-transparent text-left"
 							}
-							onKeyDown={() => {
-								setEditing(true);
-							}}
 						>
 							{displayValue}
-						</button>
+						</div>
 					) : (
 						displayValue
 					)}

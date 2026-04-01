@@ -42,6 +42,7 @@ const locale = {
     "description": "Vyberte, jestli zadáváte fiat částku nebo sats. Druhé pole se automaticky dopočítá podle aktuálního kurzu.",
     "amountLabel": "Částka",
     "account": {
+      "sparkWalletAccount": "Spark peněženka",
       "placeholder": "Vyberte účet",
       "empty": "Není dostupný žádný účet"
     },
@@ -53,7 +54,8 @@ const locale = {
     },
     "fields": {
       "fiat": "Fiat částka",
-      "sats": "Částka v sats"
+      "sats": "Částka v sats",
+      "noteForRecipientOptional": "Poznámka pro příjemce (volitelné)"
     },
     "status": {
       "ready": "Přepočet probíhá průběžně po zadání částky.",
@@ -179,22 +181,6 @@ const locale = {
         "contactRequirements": "Kontakt: e-mail {{emailRequirement}}, telefon {{phoneRequirement}}",
         "noteEnabled": "Poznámka je povolená.",
         "noteEnabledWithMax": "Poznámka je povolená (max {{max}} znaků)."
-      }
-    }
-  },
-  "form": {
-    "payment-form": {
-      "label": {
-        "lud16-wallet-address-with-lightning-zaps-support": "Adresa lud16 peněženky s podporou Lightning Zapů",
-        "spark-wallet-account": "Spark peněženka",
-        "price-in-btc": "Cena v BTC",
-        "note-for-recipient-optional": "Poznámka pro příjemce (volitelné)"
-      },
-      "save-label": {
-        "create-invoice": "Vytvořit fakturu"
-      },
-      "placeholder": {
-        "0": "0"
       }
     }
   }

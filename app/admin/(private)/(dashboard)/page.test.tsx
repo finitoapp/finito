@@ -40,6 +40,6 @@ describe("(dashboard) / page", () => {
 		itemsCard.click();
 
 		expect(mockRouterPush).toHaveBeenCalledTimes(1);
-		expect(mockRouterPush).toHaveBeenLastCalledWith("/admin/items");
+		expect(mockRouterPush).toHaveBeenLastCalledWith("/admin/catalog");
 	});
 });

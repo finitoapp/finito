@@ -38,6 +38,28 @@ const locale = {
       "cz-qr-payment": "CZ QR Payment",
       "cash": "Cash"
     },
+    "sections": {
+      "sections": "Detail sections",
+      "overview": "Overview",
+      "messages": "Messages",
+      "timeline": "Timeline",
+      "reconciliation": "Reconciliation"
+    },
+    "reconciliation": {
+      "title": "Reconciliation claims",
+      "description": "Claims from reconciliationClaim table for this payment.",
+      "empty": "No claims found for this payment.",
+      "columns": {
+        "created-at": "Created at",
+        "id": "Claim ID",
+        "device-id": "Device ID",
+        "source-type": "Source type",
+        "source-id": "Source ID",
+        "rule": "Rule",
+        "confidence": "Confidence",
+        "created-by": "Created by"
+      }
+    },
     "labels": {
       "price": "Price",
       "created-at": "Created at",

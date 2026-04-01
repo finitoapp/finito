@@ -12,7 +12,9 @@ const locale = {
         "descriptive-number": "Descriptive Number",
         "country-code": "Country code",
         "identification-number": "Identification Number",
-        "vat-number": "VAT Number"
+        "vat-payer": "VAT Payer",
+        "vat-number": "VAT Number",
+        "case-number": "Case Number"
       },
       "description": {
         "your-private-name-for-internal-purposes": "Your private name for internal purposes"
@@ -54,7 +56,8 @@ const locale = {
     }
   },
   "page": {
-    "pdfInvoicePreview": "PDF invoice preview"
+    "pdfInvoicePreview": "PDF invoice preview",
+    "tabsSections": "Sections"
   },
   "pdf": {
     "cz": {
