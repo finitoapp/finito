@@ -3,7 +3,7 @@
 import { useAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import type { ReservationStateAtoms } from "@/app/admin/(private)/reservations/lib/state-atoms";
-import { TableForm } from "@/app/admin/(private)/tables/table-form";
+import { TableForm } from "@/app/admin/(private)/venue/tables/table-form";
 import {
 	Dialog,
 	DialogContent,

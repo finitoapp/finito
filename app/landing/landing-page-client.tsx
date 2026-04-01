@@ -157,6 +157,7 @@ export const LandingPageClient: React.FC = () => {
 								<Button
 									size="lg"
 									className="rounded-full"
+									nativeButton={false}
 									render={<Link href="/" />}
 								>
 									<IconDeviceMobile />
@@ -166,6 +167,7 @@ export const LandingPageClient: React.FC = () => {
 									size="lg"
 									variant="outline"
 									className="rounded-full"
+									nativeButton={false}
 									render={<Link href="/admin" />}
 								>
 									<IconBuildingStore />
@@ -501,12 +503,17 @@ export const LandingPageClient: React.FC = () => {
 						{t("landing:page.footer.body")}
 					</p>
 					<div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-						<Button className="rounded-full" render={<Link href="/admin" />}>
+						<Button
+							className="rounded-full"
+							nativeButton={false}
+							render={<Link href="/admin" />}
+						>
 							{t("landing:page.hero.ctaAdmin")}
 						</Button>
 						<Button
 							variant="outline"
 							className="rounded-full"
+							nativeButton={false}
 							render={<Link href="/" />}
 						>
 							{t("landing:page.hero.ctaClient")}

@@ -65,7 +65,6 @@ import {
 	Integer,
 	type NonEmptyString255,
 	NonEmptyString255Schema,
-	type NonNegativeInteger,
 	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
@@ -542,7 +541,11 @@ const PayButton: FC<{
 							deviceId: account.device.id,
 							currency: props.bill.currency,
 						},
-						totalAmount: props.total as NonNegativeInteger,
+						// totalAmount: props.total as NonNegativeInteger,
+						items: props.bill.items.map((item) => ({
+							...item,
+							optionalityChecked: null,
+						})),
 						tipAmount: null,
 					});
 
@@ -584,6 +587,8 @@ export const PosBill: React.FC<{
 	const billId = props.billId;
 
 	for (const item of props.bill?.items ?? []) {
+		console.log("item", item);
+
 		hasDifferentCurrency =
 			hasDifferentCurrency || item.item.currency !== props.bill?.currency;
 

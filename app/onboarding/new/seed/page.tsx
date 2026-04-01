@@ -136,23 +136,29 @@ export default function Page() {
 									{
 										id: createIdFromString(""),
 										ownContactId: null,
-										defaultInvoiceDueDateDays: NonNegativeInteger(14),
 										defaultCurrency: settings.defaultCurrency,
 										defaultTimezone: settings.defaultTimezone,
-										defaultPaymentMethodMethod: null,
 										defaultPaymentMethodBankAccountKey: null,
 										defaultPaymentMethod: PaymentMethod.Cash,
 										defaultBankTransferCzKey: null,
 										defaultLnZapKey: null,
 										defaultLnSparkKey: null,
-										invoiceEmailSettingsEnable: sqliteFalse,
-										invoiceEmailSettingsSubject: null,
-										invoiceEmailSettingsBody: null,
 									},
 									{
 										onComplete: resolve,
 									},
 								);
+								evolu.upsert("invoiceSettings", {
+									id: createIdFromString(""),
+									defaultDueDateDays: NonNegativeInteger(14),
+									defaultPaymentMethod: null,
+								});
+								evolu.upsert("invoiceEmailSettings", {
+									id: createIdFromString(""),
+									enable: sqliteFalse,
+									subject: null,
+									body: null,
+								});
 							});
 
 							clearOnboardingSettings();

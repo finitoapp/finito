@@ -5,13 +5,16 @@ import {
 	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { PaymentForm } from "@/app/admin/(private)/payments/new/payment-form";
+import { accountAtom } from "@/atoms/account";
 import { BackButton } from "@/components/back-button";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery } from "@/lib/evolu";
 
 export default function Home() {
+	const account = useAtomValue(accountAtom);
 	const billingSettingsQuery = useMemo(
 		() =>
 			createQuery((db) =>
@@ -49,6 +52,7 @@ export default function Home() {
 					merchantName: billingSettings?.merchantName ?? "",
 					currency: billingSettings?.defaultCurrency,
 					type: billingSettings?.defaultPaymentMethod,
+					deviceId: account.device.id,
 				}}
 			/>
 		</div>

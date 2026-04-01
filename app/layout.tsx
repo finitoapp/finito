@@ -38,16 +38,16 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased w-full flex flex-col safe-area min-h-full`}
 			>
-				<ClientOnly>
-					<ThemeProvider
-						attribute="class"
-						defaultTheme="system"
-						enableSystem
-						disableTransitionOnChange
-					>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+				>
+					<ClientOnly>
 						<Providers>{children}</Providers>
-					</ThemeProvider>
-				</ClientOnly>
+					</ClientOnly>
+				</ThemeProvider>
 			</body>
 		</html>
 	);

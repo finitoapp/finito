@@ -94,7 +94,7 @@ export const PosItems: React.FC<{
 											productCodeValue: null,
 										},
 									});
-									const billId = addItem({
+									const billId = await addItem({
 										billId: props.billId,
 										defaultCurrency: props.defaultCurrency,
 										item: itemRevision,
@@ -193,12 +193,12 @@ export const PosItemsList: React.FC<{
 								<Card
 									key={item.id}
 									className="cursor-pointer hover:shadow-md transition-shadow"
-									onClick={(event) => {
+									onClick={async (event) => {
 										if (props.onItemClick) {
 											props.onItemClick(event);
 										}
 
-										const billId = addItem({
+										const billId = await addItem({
 											billId: props.billId,
 											defaultCurrency: props.defaultCurrency,
 											item,
@@ -244,7 +244,7 @@ export const PosItemsList: React.FC<{
 				<div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
 					<Card
 						className="cursor-pointer hover:shadow-md transition-shadow"
-						onClick={() => router.push("/admin/items/new")}
+						onClick={() => router.push("/admin/catalog/new")}
 					>
 						<CardContent className="p-4 text-center">
 							<PlusCircleIcon

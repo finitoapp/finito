@@ -67,6 +67,7 @@ const locale = {
     },
     "columns": {
       "label": "Label",
+      "device-name": "Device name",
       "number-of-seats": "Number of seats",
       "codes": "Codes"
     },

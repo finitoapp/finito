@@ -5,7 +5,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -47,6 +46,15 @@ const createColumns = (t: TFunction): ColumnDef<MenuRow>[] => [
 	{
 		accessorKey: "name",
 		header: createSortableHeader(t("menus:table.columns.name")),
+		cell: ({ row }) => (
+			<Link
+				href={
+					`/admin/menus/detail?id=${encodeURIComponent(row.original.id)}` as never
+				}
+			>
+				<Button variant={"link"}>{row.original.name}</Button>
+			</Link>
+		),
 	},
 	{
 		accessorKey: "status",
@@ -85,13 +93,14 @@ const createColumns = (t: TFunction): ColumnDef<MenuRow>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					nativeButton={false}
 					onClick={(event) => {
 						event.stopPropagation();
 					}}
 					render={
 						<Link
 							href={
-								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+								`/admin/settings/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
 							}
 						/>
 					}
@@ -123,7 +132,6 @@ const createFilterableColumns = (t: TFunction) =>
 
 export const MenusTable = () => {
 	const { t } = useTranslation();
-	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("menus");
 	const columns = useMemo(() => createColumns(t), [t]);
@@ -259,11 +267,6 @@ export const MenusTable = () => {
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					filterableColumns={filterableColumns}
-					onRowClick={(menu) =>
-						router.push(
-							`/admin/menus/detail?id=${encodeURIComponent(menu.id)}` as never,
-						)
-					}
 				/>
 			</CardContent>
 		</ResponsiveCard>

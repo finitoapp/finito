@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { NewAccountForm } from "@/app/(client)/settings/switch-account/new-account-form";
-import { SwitchAccountForm } from "@/app/admin/(private)/settings/switch-account/switch-account-form";
+import { SwitchAccountForm } from "@/app/admin/(private)/switch-account/switch-account-form";
 import { FadeHeader } from "@/components/fade-header";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { CardContent } from "@/components/ui/card";

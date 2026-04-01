@@ -3,9 +3,7 @@
 import { type Id, type KyselyNotNull, sqliteTrue } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -15,13 +13,7 @@ import {
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
-import {
-	CardAction,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
@@ -52,6 +44,15 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 	{
 		accessorKey: "invoiceNumber",
 		header: createSortableHeader(t("invoices:table.columns.invoice-number")),
+		cell: ({ row }) => (
+			<Link
+				href={
+					`/admin/invoices/detail?id=${encodeURIComponent(row.original.id)}` as never
+				}
+			>
+				<Button variant={"link"}>{row.original.invoiceNumber}</Button>
+			</Link>
+		),
 	},
 	{
 		accessorKey: "customerName",
@@ -60,6 +61,7 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 			row.original.customerName && row.original.customerSourceContactId ? (
 				<Button
 					variant="link"
+					nativeButton={false}
 					render={
 						<Link
 							onClick={(event) => {
@@ -114,13 +116,14 @@ const createColumns = (t: TFunction): ColumnDef<Row>[] => [
 			row.original.deviceName && row.original.deviceId ? (
 				<Button
 					variant="link"
+					nativeButton={false}
 					onClick={(event) => {
 						event.stopPropagation();
 					}}
 					render={
 						<Link
 							href={
-								`/admin/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
+								`/admin/settings/devices/detail?id=${encodeURIComponent(row.original.deviceId)}` as never
 							}
 						/>
 					}
@@ -162,7 +165,6 @@ const createFilterableColumns = (t: TFunction) =>
 
 export function InvoicesTable() {
 	const { t } = useTranslation();
-	const router = useRouter();
 	const evolu = useEvolu();
 	const columnVisibilityDriver = useDataTableVisibilityDriver("invoices");
 	const columns = useMemo(() => createColumns(t), [t]);
@@ -290,31 +292,12 @@ export function InvoicesTable() {
 
 	return (
 		<ResponsiveCard>
-			<CardHeader>
-				<CardTitle>{t("invoices:table.invoices")}</CardTitle>
-				<CardDescription>
-					{t("invoices:table.listOfYourInvoices")}
-				</CardDescription>
-				<CardAction>
-					<Link href={"/admin/invoices/new"}>
-						<Button>
-							<PlusIcon />
-							{t("invoices:table.actions.new-invoice")}
-						</Button>
-					</Link>
-				</CardAction>
-			</CardHeader>
 			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}
 					columnVisibilityDriver={columnVisibilityDriver}
 					onFilterChange={onFilterChange}
 					filterableColumns={filterableColumns}
-					onRowClick={(item) =>
-						router.push(
-							`/admin/invoices/detail?id=${encodeURIComponent(item.id)}`,
-						)
-					}
 				/>
 			</CardContent>
 		</ResponsiveCard>

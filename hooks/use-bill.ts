@@ -3,6 +3,7 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { usePosRows } from "@/hooks/use-pos";
 import type { EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
+import { createItemRevision } from "@/lib/item/service";
 import {
 	type Currency,
 	Integer,
@@ -63,7 +64,7 @@ export const useBill = () => {
 		createBill: (props: { defaultCurrency: Currency }) => {
 			return createBillInternal(props.defaultCurrency);
 		},
-		addItem: (props: {
+		addItem: async (props: {
 			billId?: Id;
 			defaultCurrency: Currency;
 			item: EvoluSchemaType["itemRevision"];
@@ -77,6 +78,8 @@ export const useBill = () => {
 			if (bill === undefined) {
 				return;
 			}
+
+			await createItemRevision({ evolu })({ item: props.item });
 
 			const posBillItemLineId = createIdFromString(
 				`posBillItemLine:${bill.id}:${props.item.id}`,
@@ -101,6 +104,7 @@ export const useBill = () => {
 					totalAmount: props.item.price,
 					quantity: 1,
 					itemRevisionId: props.item.id,
+					itemId: props.item.itemId,
 				});
 			}
 

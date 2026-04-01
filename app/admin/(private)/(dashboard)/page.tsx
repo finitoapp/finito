@@ -82,7 +82,7 @@ export default function Home() {
 					description={t(
 						"admin:dashboard.home.cards.itemManagement.description",
 					)}
-					onClick={() => router.push("/admin/items")}
+					onClick={() => router.push("/admin/catalog")}
 					className={"@container/card min-w-sm"}
 				>
 					<div className={"w-full flex justify-center"}>

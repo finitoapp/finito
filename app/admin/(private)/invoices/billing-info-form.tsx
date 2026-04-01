@@ -172,23 +172,23 @@ const createComponents = (t: TFunction) =>
 		...builder.magicInput("countryCode").select({
 			values: CountryCode,
 			allowEmpty: false,
-			label: t("settings:form.billing-info-form.label.country-code"),
+			label: t("invoices:form.billing-info-form.label.country-code"),
 		}),
 		...builder.nestedField("cz", ({ builder }) => ({
 			...builder.when("countryCode", CountryCode.CZ, {
 				...builder.magicInput("identificationNumber").text({
 					label: t(
-						"settings:form.billing-info-form.label.identification-number",
+						"invoices:form.billing-info-form.label.identification-number",
 					),
 				}),
 				...builder.magicInput("vatPayer").checkbox({
-					label: t("settings:form.billing-info-form.label.vat-payer"),
+					label: t("invoices:form.billing-info-form.label.vat-payer"),
 				}),
 				...builder.magicInput("vatNumber").text({
-					label: t("settings:form.billing-info-form.label.vat-number"),
+					label: t("invoices:form.billing-info-form.label.vat-number"),
 				}),
 				...builder.magicInput("caseNumber").textarea({
-					label: t("settings:form.billing-info-form.label.case-number"),
+					label: t("invoices:form.billing-info-form.label.case-number"),
 				}),
 			}),
 		})),

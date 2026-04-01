@@ -291,7 +291,7 @@ export const SendOrReceivePayment: React.FC<{
 		<div className={"w-full px-4 flex flex-col gap-6"}>
 			<Field>
 				<FieldLabel>
-					{t("form.payment-form.label.spark-wallet-account")}
+					{t("receiveAmountForm.account.sparkWalletAccount")}
 				</FieldLabel>
 				<Select
 					value={selectedAccountId ?? "_"}
@@ -392,7 +392,7 @@ export const SendOrReceivePayment: React.FC<{
 
 			<Field>
 				<FieldLabel>
-					{t("form.payment-form.label.note-for-recipient-optional")}
+					{t("receiveAmountForm.fields.noteForRecipientOptional")}
 				</FieldLabel>
 				<Input
 					className="py-2"

@@ -20,14 +20,12 @@ import {
 	LoaderCircleIcon,
 	PauseIcon,
 	PlayIcon,
-	Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { type FC, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { BackButton } from "@/components/back-button";
 import { FullscreenDialog } from "@/components/fullscreen-dialog";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { ResponsiveCard } from "@/components/responsive-card";
@@ -231,6 +229,7 @@ const FullscreenQrPayment: FC<{
 			<Button
 				variant={"outline"}
 				className={"w-full"}
+				nativeButton={false}
 				render={
 					<Link
 						href={`?id=${encodeURIComponent(id)}&focus=true${tab !== null ? `&tab=${encodeURIComponent(tab)}` : ""}`}
@@ -407,7 +406,6 @@ const FullscreenQrPayment: FC<{
 export default function Home() {
 	const { t } = useTranslation();
 	const searchParams = useSearchParams();
-	const { withConfirm } = useGlobalDialog();
 	const id = searchParams.get("id");
 	const tab = searchParams.get("tab");
 	const router = useRouter();
@@ -626,26 +624,6 @@ export default function Home() {
 
 	const payment = paymentRows[0];
 
-	const { mutateAsync: deletePayment, isPending: isDeleting } = useMutation({
-		mutationFn: async () => {
-			// @TODO
-			router.push("/admin/payments");
-		},
-	});
-
-	const onDelete = withConfirm(
-		async () => {
-			await deletePayment();
-		},
-		{
-			title: t("payments:detail.confirm.delete-payment.title"),
-			description: t("payments:detail.confirm.delete-payment.description"),
-			confirmText: t("payments:detail.actions.delete"),
-			cancelText: t("payments:detail.actions.cancel"),
-			confirmVariant: "destructive",
-		},
-	);
-
 	const czechQRCode =
 		(payment &&
 			payment.paymentBankTransferCZ &&
@@ -679,10 +657,6 @@ export default function Home() {
 
 	return (
 		<div className={"w-full lg:max-w-7xl"}>
-			<div className={"mb-6"}>
-				<BackButton />
-			</div>
-
 			<div className={"flex gap-4 flex-wrap"}>
 				<ResponsiveCard className={"flex-2"}>
 					<CardHeader>
@@ -809,14 +783,6 @@ export default function Home() {
 								stoppedAt={payment.paymentWatchingState?.stoppedAt ?? null}
 								className={"w-full"}
 							/>
-							<Button className={"w-full"} onClick={() => void onDelete()}>
-								{isDeleting ? (
-									<LoaderCircleIcon className="animate-spin" />
-								) : (
-									<Trash2Icon />
-								)}
-								{t("payments:detail.actions.delete")}
-							</Button>
 						</CardContent>
 					</ResponsiveCard>
 

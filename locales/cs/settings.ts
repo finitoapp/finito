@@ -7,6 +7,7 @@ const locale = {
     "aiAssistant": "AI asistent",
     "aiAssistantDescription": "Chatujte s modelem a nechte ho vykonávat lokální akce v aplikaci.",
     "aiAssistantSettings": "Nastavení AI asistenta",
+    "aiAssistantTabsSections": "Sekce",
     "emailSendingSettingsSmtpConfiguration": "Nastavení odesílání e-mailů (konfigurace SMTP)",
     "fioBankPlugin": "Plugin Fio banky",
     "invoiceNumberSeries": "Číselná řada faktury",
@@ -53,25 +54,6 @@ const locale = {
         "about": "O mně",
         "bio": "Bio",
         "lud16-address": "lud16 adresa"
-      }
-    },
-    "billing-info-form": {
-      "label": {
-        "company-name": "Název společnosti",
-        "label": "Štítek",
-        "email": "E-mail",
-        "street": "Ulice",
-        "descriptive-number": "Číslo popisné",
-        "city": "Město",
-        "postal-code": "PSČ",
-        "country-code": "Kód země",
-        "identification-number": "IČO",
-        "vat-payer": "Plátce DPH",
-        "vat-number": "DIČ",
-        "case-number": "Spisová značka"
-      },
-      "description": {
-        "your-private-name-for-internal-purposes": "Váš interní název pro soukromé použití"
       }
     },
     "billing-settings-form": {

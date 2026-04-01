@@ -12,7 +12,9 @@ const locale = {
         "descriptive-number": "Číslo popisné",
         "country-code": "Kód země",
         "identification-number": "IČO",
-        "vat-number": "DIČ"
+        "vat-payer": "Plátce DPH",
+        "vat-number": "DIČ",
+        "case-number": "Spisová značka"
       },
       "description": {
         "your-private-name-for-internal-purposes": "Váš interní název pro soukromé použití"
@@ -54,7 +56,8 @@ const locale = {
     }
   },
   "page": {
-    "pdfInvoicePreview": "PDF náhled faktury"
+    "pdfInvoicePreview": "PDF náhled faktury",
+    "tabsSections": "Sekce"
   },
   "pdf": {
     "cz": {

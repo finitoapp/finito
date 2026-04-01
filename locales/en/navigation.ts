@@ -23,11 +23,13 @@ const locale = {
       "payments": "Payments",
       "pointOfSale": "Point of Sale",
       "invoices": "Invoices",
+      "catalog": "Catalog",
       "items": "Items",
       "aiAssistant": "AI Assistant",
       "menus": "Menus",
       "categories": "Categories",
       "devices": "Devices",
+      "venue": "Venue",
       "tables": "Tables",
       "reservations": "Reservations",
       "clients": "Clients",
@@ -40,12 +42,12 @@ const locale = {
     "links": {
       "billingInformation": "Billing information",
       "billingSettings": "Billing settings",
-      "invoiceNumberSeries": "Invoice number series",
+      "generalSettings": "General settings",
+      "devices": "Devices",
       "account": "Account",
       "fioPlugin": "Fio plugin",
       "emailPlugin": "Email plugin",
       "credentials": "Credentials",
-      "aiAssistant": "AI Assistant",
       "debug": "Debug"
     }
   }

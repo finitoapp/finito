@@ -226,7 +226,8 @@ export function AiAssistantChat() {
 					Pro použití asistenta nejprve uložte Google API klíč v nastavení.
 				</div>
 				<Button
-					render={<Link href="/admin/settings/ai-assistant" />}
+					nativeButton={false}
+					render={<Link href="/admin/ai-assistant/settings" />}
 					variant="outline"
 				>
 					Otevřít nastavení asistenta

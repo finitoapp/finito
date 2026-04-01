@@ -259,11 +259,11 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 							return;
 						}
 
-						const [billingSettingsRows, smtpRows] = await Promise.all([
+						const [invoiceEmailSettingsRows, smtpRows] = await Promise.all([
 							(async () => {
 								const query = createQuery((db) =>
 									db
-										.selectFrom("billingSettings")
+										.selectFrom("invoiceEmailSettings")
 										.selectAll()
 										.where("isDeleted", "is not", sqliteTrue)
 										.where("id", "=", createIdFromString("")),
@@ -287,10 +287,10 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 							return;
 						}
 
-						const billingSettings = billingSettingsRows[0];
+						const invoiceEmailSettings = invoiceEmailSettingsRows[0];
 						if (
-							billingSettings === undefined ||
-							billingSettings.invoiceEmailSettingsEnable !== sqliteTrue
+							invoiceEmailSettings === undefined ||
+							invoiceEmailSettings.enable !== sqliteTrue
 						) {
 							return;
 						}
@@ -310,8 +310,8 @@ const SendPdf = (props: { invoice: Invoice; paymentQrCode: string | null }) => {
 								password: smtp.password,
 								from: smtp.name ? `${smtp.name} <${smtp.email}>` : smtp.email,
 								to: `${props.invoice.invoiceCustomer.name} <${customerEmail}>`,
-								subject: billingSettings.invoiceEmailSettingsSubject,
-								body: billingSettings.invoiceEmailSettingsBody,
+								subject: invoiceEmailSettings.subject,
+								body: invoiceEmailSettings.body,
 								attachmentName: params.fileName,
 								attachmentMimetype: params.mimetype,
 								attachment: base64data,
@@ -880,6 +880,7 @@ export default function Home() {
 							<Button
 								variant={"outline"}
 								className={"w-full"}
+								nativeButton={false}
 								render={
 									<Link
 										href={`/admin/invoices/edit?id=${encodeURIComponent(id)}`}
