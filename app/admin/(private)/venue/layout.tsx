@@ -22,7 +22,7 @@ const venueTabs = [
 	},
 	{
 		value: "waiters",
-		label: "Waiters",
+		labelKey: "navigation:main.links.waiters",
 		icon: IconUsers,
 	},
 ] as const;

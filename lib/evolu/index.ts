@@ -147,6 +147,11 @@ export const AppSchema = {
 		tableId: TableIdSchema,
 		code: NonEmptyString255Schema,
 	},
+	waiter: {
+		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
+		name: NonEmptyString255Schema,
+	},
 	posBill: {
 		id: TableIdSchema,
 		deviceId: TableIdSchema.nullable(),

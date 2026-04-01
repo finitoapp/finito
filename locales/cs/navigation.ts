@@ -31,6 +31,7 @@ const locale = {
       "devices": "Zařízení",
       "venue": "Provozovna",
       "tables": "Stoly",
+      "waiters": "Obsluha",
       "reservations": "Rezervace",
       "clients": "Klienti",
       "contacts": "Kontakty",
