@@ -31,6 +31,7 @@ const locale = {
       "devices": "Devices",
       "venue": "Venue",
       "tables": "Tables",
+      "waiters": "Waiters",
       "reservations": "Reservations",
       "clients": "Clients",
       "contacts": "Contacts",
