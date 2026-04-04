@@ -76,7 +76,7 @@ const Item: React.FC<{
 }> = (props) => {
 	const { t } = useTranslation();
 	const [isRemoving, setIsRemoving] = useState(false);
-	const { removeItem, updateItemQuantity } = useBill();
+	const { addExistingItem } = useBill();
 
 	return (
 		<AnimatePresence>
@@ -108,10 +108,9 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									updateItemQuantity({
-										billId: props.billId,
-										itemLineId: props.item.id,
-										delta: -1,
+									addExistingItem({
+										item: props.item,
+										quantity: -1,
 									})
 								}
 								className="h-8 w-8 p-0"
@@ -138,10 +137,9 @@ const Item: React.FC<{
 								size="sm"
 								variant="outline"
 								onClick={() =>
-									updateItemQuantity({
-										billId: props.billId,
-										itemLineId: props.item.id,
-										delta: 1,
+									addExistingItem({
+										item: props.item,
+										quantity: 1,
 									})
 								}
 								className="h-8 w-8 p-0"
@@ -155,9 +153,9 @@ const Item: React.FC<{
 							onClick={() => {
 								setIsRemoving(true);
 								setTimeout(() => {
-									removeItem({
-										billId: props.billId,
-										itemLineId: props.item.id,
+									void addExistingItem({
+										item: props.item,
+										quantity: -props.item.quantity,
 									});
 								}, 200);
 							}}
@@ -587,8 +585,6 @@ export const PosBill: React.FC<{
 	const billId = props.billId;
 
 	for (const item of props.bill?.items ?? []) {
-		console.log("item", item);
-
 		hasDifferentCurrency =
 			hasDifferentCurrency || item.item.currency !== props.bill?.currency;
 
@@ -643,7 +639,11 @@ export const PosBill: React.FC<{
 								<p className="text-center">{t("pos:bill.noItemsInCart")}</p>
 							) : (
 								props.bill.items.map((item) => (
-									<Item key={item.id} billId={billId} item={item}></Item>
+									<Item
+										key={`${item.itemRevisionId}:${item.quantity}`}
+										billId={billId}
+										item={item}
+									></Item>
 								))
 							)}
 						</div>

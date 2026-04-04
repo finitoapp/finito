@@ -4,16 +4,15 @@ import {
 	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
+import { sql } from "kysely";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
+import type { PositiveNumber } from "@/lib/shared/types";
 
 export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
-	items: (Omit<
-		EvoluSchemaType["posBillItemLine"],
-		"posBillId" | "itemRevisionId"
-	> & {
+	items: (EvoluSchemaType["posBillItemLine"] & {
 		item: Omit<EvoluSchemaType["itemRevision"], "id">;
 	})[];
 	rates: EvoluSchemaType["posBillRate"][];
@@ -59,9 +58,26 @@ const posBillQuery = createQuery<PosBill>((db) =>
 								(eb) =>
 									[
 										"posBillItemLine.id as id",
+										"posBillItemLine.posBillId as posBillId",
+										"posBillItemLine.deviceId as deviceId",
+										"posBillItemLine._tag as _tag",
 										"posBillItemLine.totalAmount as totalAmount",
-										"posBillItemLine.quantity as quantity",
+										eb.fn
+											.sum<PositiveNumber>(
+												eb
+													.case()
+													.when("posBillItemLine._tag", "=", "add")
+													.then(eb.ref("posBillItemLine.quantity"))
+													.when("posBillItemLine._tag", "=", "remove")
+													.then(
+														sql<number>`- ${eb.ref("posBillItemLine.quantity")}`,
+													)
+													.else(0)
+													.end(),
+											)
+											.as("quantity"),
 										"posBillItemLine.itemId as itemId",
+										"posBillItemLine.itemRevisionId as itemRevisionId",
 
 										evoluJsonObjectFrom(
 											eb
@@ -100,10 +116,33 @@ const posBillQuery = createQuery<PosBill>((db) =>
 							.where("posBillItemLine.isDeleted", "is not", sqliteTrue)
 							.where("posBillItemLine.totalAmount", "is not", null)
 							.where("posBillItemLine.quantity", "is not", null)
+							.where("posBillItemLine._tag", "is not", null)
+							.where("posBillItemLine.itemRevisionId", "is not", null)
+							.having(
+								(eb) =>
+									eb.fn.sum<PositiveNumber>(
+										eb
+											.case()
+											.when("posBillItemLine._tag", "=", "add")
+											.then(eb.ref("posBillItemLine.quantity"))
+											.when("posBillItemLine._tag", "=", "remove")
+											.then(
+												sql<number>`- ${eb.ref("posBillItemLine.quantity")}`,
+											)
+											.else(0)
+											.end(),
+									),
+								">",
+								0 as PositiveNumber,
+							)
+							.groupBy("posBillItemLine.itemRevisionId")
 							.$narrowType<{
 								totalAmount: KyselyNotNull;
 								quantity: KyselyNotNull;
 								item: KyselyNotNull;
+								posBillId: KyselyNotNull;
+								_tag: KyselyNotNull;
+								itemRevisionId: KyselyNotNull;
 							}>(),
 					).as("items"),
 

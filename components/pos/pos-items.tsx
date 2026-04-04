@@ -98,6 +98,7 @@ export const PosItems: React.FC<{
 										billId: props.billId,
 										defaultCurrency: props.defaultCurrency,
 										item: itemRevision,
+										quantity: 1,
 									});
 
 									if (billId !== undefined) {
@@ -202,6 +203,7 @@ export const PosItemsList: React.FC<{
 											billId: props.billId,
 											defaultCurrency: props.defaultCurrency,
 											item,
+											quantity: 1,
 										});
 
 										if (billId !== undefined) {

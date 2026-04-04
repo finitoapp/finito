@@ -37,13 +37,18 @@ export const Integer = <T extends number>(value: T): Integer =>
 	IntegerSchema.parse(value);
 export type Integer = z.output<typeof IntegerSchema>;
 
-export const PositiveIntegerSchema = z
+export const PositiveNumberSchema = z
 	.number()
-	.int("Expected to be an integer")
-	.min(1, "Expected to be a positive integer")
-	.brand<"Integer", "inout">()
-	.brand<"NonNegativeInteger", "inout">()
-	.brand<"PositiveInteger", "inout">();
+	.min(1, "Expected to be a positive number")
+	.brand<"NonNegative", "inout">()
+	.brand<"Positive", "inout">();
+export const PositiveNumber = <T extends number>(value: T): PositiveNumber =>
+	PositiveNumberSchema.parse(value);
+export type PositiveNumber = z.output<typeof PositiveNumberSchema>;
+
+export const PositiveIntegerSchema = PositiveNumberSchema.int(
+	"Expected to be an integer",
+).brand<"Integer", "inout">();
 export const PositiveInteger = <T extends number>(value: T): PositiveInteger =>
 	PositiveIntegerSchema.parse(value);
 export type PositiveInteger = z.output<typeof PositiveIntegerSchema>;
@@ -53,7 +58,7 @@ export const TimestampMsSchema = z
 	.int("Expected to be an integer")
 	.min(1, "Expected to be a positive integer")
 	.brand<"Integer", "inout">()
-	.brand<"PositiveInteger", "inout">()
+	.brand<"Positive", "inout">()
 	.brand<"TimestampMs", "inout">();
 export const TimestampMs = <T extends number>(value: T): TimestampMs =>
 	TimestampMsSchema.parse(value);
@@ -64,7 +69,7 @@ export const TimestampSecSchema = z
 	.int("Expected to be an integer")
 	.min(1, "Expected to be a positive integer")
 	.brand<"Integer", "inout">()
-	.brand<"PositiveInteger", "inout">()
+	.brand<"Positive", "inout">()
 	.brand<"TimestampSec", "inout">();
 export const TimestampSec = <T extends number>(value: T): TimestampSec =>
 	TimestampSecSchema.parse(value);
@@ -75,7 +80,7 @@ export const NonNegativeIntegerSchema = z
 	.int("Expected to be an integer")
 	.min(0, "Expected to be an non-negative integer")
 	.brand<"Integer", "inout">()
-	.brand<"NonNegativeInteger", "inout">();
+	.brand<"NonNegative", "inout">();
 export const NonNegativeInteger = <T extends number>(
 	value: T,
 ): NonNegativeInteger => NonNegativeIntegerSchema.parse(value);
