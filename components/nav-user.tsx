@@ -29,7 +29,7 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
-import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query";
 import { useGlobalDialog } from "@/hooks/use-global-dialog";
 import { useInstallPwa } from "@/hooks/use-install-pwa";
 import { createDeviceQuery } from "@/lib/evolu/device";
@@ -63,7 +63,7 @@ export function NavUser({
 	const deviceEvolu = useAtomValue(deviceEvoluAtom);
 	const setEvoluCounter = useSetAtom(evoluCounterAtom);
 
-	const { data: accounts } = useEvoluQuery(accountsQuery, deviceEvolu);
+	const { data: accounts } = useDeviceEvoluQuery(accountsQuery);
 	const activeAccountId = accounts[0]?.id;
 	const activeAccountName =
 		accounts[0]?.name ?? t("navigation:account.unknown");

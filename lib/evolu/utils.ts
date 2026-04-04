@@ -1,10 +1,9 @@
-import type { Query, QueryRows, Row } from "@evolu/common";
-import type { Evolu } from "@/lib/evolu/index";
+import type { Evolu, EvoluSchema, Query, QueryRows, Row } from "@evolu/common";
 
-export function subscribeToEvoluQuery<T extends Row>(
-	evolu: Evolu,
-	query: Query<T>,
-	callback: (values: QueryRows<T>) => void,
+export function subscribeToEvoluQuery<S extends EvoluSchema, R extends Row>(
+	evolu: Evolu<S>,
+	query: Query<S, R>,
+	callback: (values: QueryRows<R>) => void,
 ) {
 	void evolu.loadQuery(query);
 	callback(evolu.getQueryRows(query));
@@ -15,8 +14,8 @@ export function subscribeToEvoluQuery<T extends Row>(
 }
 
 export const createExternalStoreForEvoluQuery =
-	<T extends Row>(evolu: Evolu, query: Query<T>) =>
-	(callback: (values: QueryRows<T>) => void) => {
+	<S extends EvoluSchema, R extends Row>(evolu: Evolu<S>, query: Query<S, R>) =>
+	(callback: (values: QueryRows<R>) => void) => {
 		void evolu.loadQuery(query);
 		callback(evolu.getQueryRows(query));
 

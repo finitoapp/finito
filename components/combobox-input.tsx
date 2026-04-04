@@ -13,6 +13,7 @@ import {
 	FieldLabel,
 } from "@/components/ui/field";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
+import type { EvoluSchema } from "@/lib/evolu";
 
 type ComboboxItems<TItem extends JsonValue = JsonValue> = Array<{
 	value: TItem;
@@ -86,7 +87,7 @@ export const createComboboxInput =
 export const createEvoluComboboxInput =
 	<TRow extends Row>(
 		params: {
-			query: Query<TRow>;
+			query: Query<EvoluSchema, TRow>;
 			queryDeps?: DependencyList;
 			mapRowsToItems: (rows: readonly TRow[]) => ComboboxItems;
 		} & ComboboxParams,
