@@ -694,9 +694,9 @@ export const createAppEvolu = async (props: {
 		})(run),
 	);
 
-	(async () => {
-		console.log("appOwner", await evolu.appOwner, props.mnemonic);
-	})();
+	// (async () => {
+	// 	console.log("appOwner", await evolu.appOwner, props.mnemonic);
+	// })();
 
 	// evolu.resetAppOwner();
 

@@ -100,4 +100,5 @@ export const createDeviceEvolu = async () => {
 	return evolu;
 };
 
-export type DeviceEvolu = RawEvolu<typeof DeviceSchema>;
+export type DeviceEvoluSchema = typeof DeviceSchema;
+export type DeviceEvolu = RawEvolu<DeviceEvoluSchema>;

@@ -1,14 +1,19 @@
 import type { Query, QueryRows, Row } from "@evolu/common";
 import { use, useMemo, useSyncExternalStore } from "react";
 import { useEvolu } from "@/hooks/use-evolu";
+import type { EvoluSchema } from "@/lib/evolu";
 
 export const useEvoluQuery = <R extends Row>(
-	query: Query<R>,
+	query: Query<EvoluSchema, R>,
 	evoluOverride?: {
-		loadQuery: (query: Query<NoInfer<R>>) => Promise<QueryRows<NoInfer<R>>>;
-		getQueryRows: (query: Query<NoInfer<R>>) => QueryRows<NoInfer<R>>;
+		loadQuery: (
+			query: Query<EvoluSchema, NoInfer<R>>,
+		) => Promise<QueryRows<NoInfer<R>>>;
+		getQueryRows: (
+			query: Query<EvoluSchema, NoInfer<R>>,
+		) => QueryRows<NoInfer<R>>;
 		subscribeQuery: (
-			query: Query<NoInfer<R>>,
+			query: Query<EvoluSchema, NoInfer<R>>,
 		) => (callback: () => void) => () => void;
 	},
 ): { data: QueryRows<R> } => {

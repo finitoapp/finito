@@ -34,7 +34,12 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" className={"h-dvh"} suppressHydrationWarning>
+		<html
+			lang="en"
+			className={"h-dvh"}
+			suppressHydrationWarning
+			data-scroll-behavior="smooth"
+		>
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased w-full flex flex-col safe-area min-h-full`}
 			>
