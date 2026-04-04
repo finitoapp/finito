@@ -5,11 +5,17 @@ import {
 	type KyselyNotNull,
 	sqliteTrue,
 } from "@evolu/common";
+import { sql } from "kysely";
 import type { BackgroundProcess } from "@/lib/background/service";
 import type { ScreenData } from "@/lib/bill/driver";
 import { createQuery } from "@/lib/evolu";
 import { subscribeToEvoluQuery } from "@/lib/evolu/utils";
-import { NonEmptyString, NonNegativeInteger, Uuid7 } from "@/lib/shared/types";
+import {
+	NonEmptyString,
+	NonNegativeInteger,
+	type PositiveNumber,
+	Uuid7,
+} from "@/lib/shared/types";
 import {
 	tableEventMessageBus,
 	tableRequestMessageBus,
@@ -88,7 +94,20 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 										(eb) =>
 											[
 												"posBillItemLine.totalAmount as totalAmount",
-												"posBillItemLine.quantity as quantity",
+												eb.fn
+													.sum<PositiveNumber>(
+														eb
+															.case()
+															.when("posBillItemLine._tag", "=", "add")
+															.then(eb.ref("posBillItemLine.quantity"))
+															.when("posBillItemLine._tag", "=", "remove")
+															.then(
+																sql<number>`- ${eb.ref("posBillItemLine.quantity")}`,
+															)
+															.else(0)
+															.end(),
+													)
+													.as("quantity"),
 
 												evoluJsonObjectFrom(
 													eb
@@ -121,6 +140,24 @@ export const backgroundTableProcessingProcess: BackgroundProcess = {
 									.where("posBillItemLine.isDeleted", "is not", sqliteTrue)
 									.where("posBillItemLine.totalAmount", "is not", null)
 									.where("posBillItemLine.quantity", "is not", null)
+									.having(
+										(eb) =>
+											eb.fn.sum<PositiveNumber>(
+												eb
+													.case()
+													.when("posBillItemLine._tag", "=", "add")
+													.then(eb.ref("posBillItemLine.quantity"))
+													.when("posBillItemLine._tag", "=", "remove")
+													.then(
+														sql<number>`- ${eb.ref("posBillItemLine.quantity")}`,
+													)
+													.else(0)
+													.end(),
+											),
+										">",
+										0 as PositiveNumber,
+									)
+									.groupBy("posBillItemLine.itemRevisionId")
 									.$narrowType<{
 										totalAmount: KyselyNotNull;
 										quantity: KyselyNotNull;

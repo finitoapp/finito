@@ -38,6 +38,7 @@ import {
 	PercentSchema,
 	PhoneSchema,
 	PositiveIntegerSchema,
+	PositiveNumberSchema,
 	ProductCodeType,
 	SpecificSymbolSchema,
 	SqliteBoolSchema,
@@ -163,10 +164,19 @@ export const AppSchema = {
 	posBillItemLine: {
 		id: TableIdSchema,
 		posBillId: TableIdSchema,
+		// Device that created this bill item change event.
+		deviceId: TableIdSchema.nullable(),
+		// Original catalog item reference kept for audit/debugging.
+		// Bill projection intentionally merges by `itemRevisionId` only.
 		itemId: TableIdSchema.nullable(),
+		// Stable snapshot of the item at the time the change was recorded.
 		itemRevisionId: TableIdSchema,
-		totalAmount: IntegerSchema, // In posBill currency, not in item currency.
-		quantity: z.number(),
+		// Append-only change type. Existing rows must never be mutated in place.
+		_tag: z.enum(["add", "remove"]),
+		// Positive amount of this event in bill currency.
+		totalAmount: IntegerSchema,
+		// Positive quantity of this event. The sign is represented by `_tag`.
+		quantity: PositiveNumberSchema,
 	},
 	posBillRate: {
 		id: TableIdSchema,
