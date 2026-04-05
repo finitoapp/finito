@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finito Commit"
+  short_description: "Review git changes and create a commit"
+  default_prompt: "Use $finito-commit to inspect the current git worktree, derive a conventional commit message, stage the current changes, and create the commit."
