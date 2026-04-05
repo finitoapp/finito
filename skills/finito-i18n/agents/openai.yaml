@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finito i18n"
+  short_description: "Maintain Finito translation keys and locales"
+  default_prompt: "Analyze or update Finito i18n namespaces, locale keys, and EN/CS parity using project conventions."
