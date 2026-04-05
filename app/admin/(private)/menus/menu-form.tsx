@@ -25,10 +25,7 @@ import { useNostr } from "@/hooks/use-nostr";
 import { createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { type Id, TableIdSchema } from "@/lib/evolu/types";
-import {
-	convertItemToItemRevision,
-	createItemRevision,
-} from "@/lib/item/service";
+import { convertCatalogItemToItem, createItem } from "@/lib/item/service";
 import { publishRelevantMenusToStorage } from "@/lib/menu/service";
 import {
 	fromDatetimeLocalInputValue,
@@ -194,24 +191,24 @@ export const MenuForm = (params: {
 		() =>
 			createQuery((db) =>
 				db
-					.selectFrom("item")
+					.selectFrom("catalogItem")
 					.select([
-						"item.id as id",
-						"item.deviceId as deviceId",
-						"item.categoryId as categoryId",
-						"item.label as label",
-						"item.price as price",
-						"item.currency as currency",
-						"item.unitOfMeasure as unitOfMeasure",
-						"item.internalCode as internalCode",
-						"item.productCodeType as productCodeType",
-						"item.productCodeValue as productCodeValue",
+						"catalogItem.id as id",
+						"catalogItem.deviceId as deviceId",
+						"catalogItem.categoryId as categoryId",
+						"catalogItem.label as label",
+						"catalogItem.price as price",
+						"catalogItem.currency as currency",
+						"catalogItem.unitOfMeasure as unitOfMeasure",
+						"catalogItem.internalCode as internalCode",
+						"catalogItem.productCodeType as productCodeType",
+						"catalogItem.productCodeValue as productCodeValue",
 					] as const)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.label", "is not", null)
-					.where("item.price", "is not", null)
-					.where("item.currency", "is not", null)
-					.orderBy("item.label", "asc")
+					.where("catalogItem.isDeleted", "is not", sqliteTrue)
+					.where("catalogItem.label", "is not", null)
+					.where("catalogItem.price", "is not", null)
+					.where("catalogItem.currency", "is not", null)
+					.orderBy("catalogItem.label", "asc")
 					.$narrowType<{
 						label: KyselyNotNull;
 						price: KyselyNotNull;
@@ -349,16 +346,17 @@ export const MenuForm = (params: {
 				name: category.name,
 			});
 
-			for (const { item, availabilityStatus } of category.items) {
-				const itemRevision = await createItemRevision({ evolu })({
-					item: convertItemToItemRevision(item),
+			for (const { item: catalogItem, availabilityStatus } of category.items) {
+				const item = await createItem({ evolu })({
+					item: convertCatalogItemToItem(catalogItem),
 				});
 
 				nextItemIds.add(item.id);
 				evolu.upsert("menuItemLine", {
 					id: item.id,
 					menuCategoryId: category.id,
-					itemRevisionId: itemRevision.id,
+					itemId: item.id,
+					catalogItemId: item.catalogItemId,
 					availabilityStatus: availabilityStatus,
 				});
 			}

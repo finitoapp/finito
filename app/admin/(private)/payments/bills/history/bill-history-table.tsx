@@ -149,8 +149,8 @@ const sortingFields = {
 	id: "posBillItemLine.id",
 	deviceId: "device.id",
 	deviceName: "device.name",
-	itemId: "item.id",
-	itemLabel: "itemRevision.label",
+	itemId: "catalogItem.id",
+	itemLabel: "item.label",
 	createdAt: "posBillItemLine.createdAt",
 	type: "posBillItemLine._tag",
 	quantity: "posBillItemLine.quantity",
@@ -182,19 +182,15 @@ export function BillHistoryTable(props: Readonly<{ billId: Id }>) {
 					let qb = db
 						.selectFrom("posBillItemLine")
 						.leftJoin("device", "device.id", "posBillItemLine.deviceId")
-						.leftJoin(
-							"itemRevision",
-							"itemRevision.id",
-							"posBillItemLine.itemRevisionId",
-						)
-						.leftJoin("item", "item.id", "itemRevision.itemId")
+						.leftJoin("item", "item.id", "posBillItemLine.itemId")
+						.leftJoin("catalogItem", "catalogItem.id", "item.catalogItemId")
 						.innerJoin("posBill", "posBill.id", "posBillItemLine.posBillId")
 						.select([
 							"posBillItemLine.id as id",
 							"device.id as deviceId",
 							"device.name as deviceName",
-							"item.id as itemId",
-							"itemRevision.label as itemLabel",
+							"catalogItem.id as itemId",
+							"item.label as itemLabel",
 							"posBillItemLine.createdAt as createdAt",
 							"posBillItemLine._tag as type",
 							"posBillItemLine.quantity as quantity",
@@ -238,7 +234,7 @@ export function BillHistoryTable(props: Readonly<{ billId: Id }>) {
 					for (const filter of filters) {
 						if (filter.id === "itemLabel") {
 							qb = qb.where(
-								"itemRevision.label",
+								"item.label",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);

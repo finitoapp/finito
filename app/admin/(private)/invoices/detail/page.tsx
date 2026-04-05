@@ -547,29 +547,25 @@ export default function Home() {
 
 											evoluJsonObjectFrom(
 												eb
-													.selectFrom("itemRevision")
+													.selectFrom("item")
 													.select([
-														"itemRevision.id as id",
-														"itemRevision.deviceId as deviceId",
-														"itemRevision.categoryId as categoryId",
-														"itemRevision.itemId as itemId",
-														"itemRevision.label as label",
-														"itemRevision.price as price",
-														"itemRevision.currency as currency",
-														"itemRevision.unitOfMeasure as unitOfMeasure",
-														"itemRevision.internalCode as internalCode",
-														"itemRevision.productCodeType as productCodeType",
-														"itemRevision.productCodeValue as productCodeValue",
+														"item.id as id",
+														"item.deviceId as deviceId",
+														"item.categoryId as categoryId",
+														"item.catalogItemId as catalogItemId",
+														"item.label as label",
+														"item.price as price",
+														"item.currency as currency",
+														"item.unitOfMeasure as unitOfMeasure",
+														"item.internalCode as internalCode",
+														"item.productCodeType as productCodeType",
+														"item.productCodeValue as productCodeValue",
 													])
-													.whereRef(
-														"itemRevision.id",
-														"=",
-														"invoiceItemLine.itemRevisionId",
-													)
-													.where("itemRevision.isDeleted", "is not", sqliteTrue)
-													.where("itemRevision.label", "is not", null)
-													.where("itemRevision.price", "is not", null)
-													.where("itemRevision.currency", "is not", null)
+													.whereRef("item.id", "=", "invoiceItemLine.itemId")
+													.where("item.isDeleted", "is not", sqliteTrue)
+													.where("item.label", "is not", null)
+													.where("item.price", "is not", null)
+													.where("item.currency", "is not", null)
 													.$narrowType<{
 														label: KyselyNotNull;
 														price: KyselyNotNull;

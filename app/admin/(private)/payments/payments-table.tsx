@@ -44,7 +44,7 @@ const sortingFields = {
 	createdAt: "payment.createdAt",
 	totalAmount: "payment.totalAmount",
 	currency: "payment.currency",
-	label: "itemRevision.label",
+	label: "item.label",
 } as const satisfies Record<keyof Row | "createdAt", string>;
 
 const createColumns = (t: TFunction): ColumnDef<Row>[] => [
@@ -144,11 +144,7 @@ export function PaymentsTable() {
 							"paymentItemLine.paymentId",
 							"payment.id",
 						)
-						.leftJoin(
-							"itemRevision",
-							"itemRevision.id",
-							"paymentItemLine.itemRevisionId",
-						)
+						.leftJoin("item", "item.id", "paymentItemLine.itemId")
 						.select([
 							"payment.id as id",
 							"device.id as deviceId",
@@ -156,7 +152,7 @@ export function PaymentsTable() {
 							"payment.totalAmount as totalAmount",
 							"payment.currency as currency",
 							"payment.createdAt as createdAt",
-							"itemRevision.label as label",
+							"item.label as label",
 						] as const)
 						.where("payment.isDeleted", "is not", sqliteTrue)
 						.where("payment.totalAmount", "is not", null)

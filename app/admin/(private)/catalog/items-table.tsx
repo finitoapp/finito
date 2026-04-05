@@ -111,13 +111,13 @@ const createColumns = (t: TFunction): ColumnDef<Task>[] => [
 ];
 
 const sortingFields = {
-	id: "item.id",
+	id: "catalogItem.id",
 	deviceId: "device.id",
 	deviceName: "device.name",
-	label: "item.label",
-	price: "item.price",
-	currency: "item.currency",
-	createdAt: "item.createdAt",
+	label: "catalogItem.label",
+	price: "catalogItem.price",
+	currency: "catalogItem.currency",
+	createdAt: "catalogItem.createdAt",
 	categoryId: "category.id",
 	categoryName: "category.name",
 } as const satisfies Record<keyof Task, string>;
@@ -156,22 +156,22 @@ export function ItemsTable() {
 
 				const query = createQuery((db) => {
 					let qb = db
-						.selectFrom("item")
-						.leftJoin("device", "device.id", "item.deviceId")
-						.leftJoin("category", "category.id", "item.categoryId")
+						.selectFrom("catalogItem")
+						.leftJoin("device", "device.id", "catalogItem.deviceId")
+						.leftJoin("category", "category.id", "catalogItem.categoryId")
 						.select([
-							"item.id as id",
+							"catalogItem.id as id",
 							"device.id as deviceId",
 							"device.name as deviceName",
-							"item.label as label",
-							"item.price as price",
-							"item.currency as currency",
-							"item.createdAt as createdAt",
+							"catalogItem.label as label",
+							"catalogItem.price as price",
+							"catalogItem.currency as currency",
+							"catalogItem.createdAt as createdAt",
 							"category.id as categoryId",
 							"category.name as categoryName",
 						] as const)
-						.where("item.isDeleted", "is not", sqliteTrue)
-						.where("item.label", "is not", null)
+						.where("catalogItem.isDeleted", "is not", sqliteTrue)
+						.where("catalogItem.label", "is not", null)
 						.$narrowType<{
 							label: KyselyNotNull;
 							price: KyselyNotNull;
@@ -188,7 +188,7 @@ export function ItemsTable() {
 								),
 								eb.and([
 									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
-									eb("item.id", "<", previousCursor.id as Id),
+									eb("catalogItem.id", "<", previousCursor.id as Id),
 								]),
 							]),
 						);
@@ -196,12 +196,12 @@ export function ItemsTable() {
 
 					qb = qb
 						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
-						.orderBy("item.id", "desc");
+						.orderBy("catalogItem.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "label") {
 							qb = qb.where(
-								"item.label",
+								"catalogItem.label",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);

@@ -21,7 +21,7 @@ const locale = {
     },
     "history": {
       "title": "Item revision history",
-      "description": "Overview of all saved item revisions from the itemRevision table.",
+      "description": "Overview of all saved item revisions from the item table.",
       "columns": {
         "changedAt": "Changed at",
         "unitOfMeasure": "UOM",

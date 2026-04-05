@@ -5,7 +5,7 @@ import { useEvolu } from "@/hooks/use-evolu";
 import { type PosBill, usePosRows } from "@/hooks/use-pos";
 import type { EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
-import { createItemRevision } from "@/lib/item/service";
+import { createItem } from "@/lib/item/service";
 import {
 	type Currency,
 	Integer,
@@ -42,8 +42,8 @@ export const useBill = () => {
 
 	const createPosBillItemLineChange = (props: {
 		billId: Id;
-		itemRevisionId: EvoluSchemaType["itemRevision"]["id"];
-		itemId: EvoluSchemaType["itemRevision"]["itemId"];
+		itemId: EvoluSchemaType["item"]["id"];
+		catalogItemId: EvoluSchemaType["item"]["catalogItemId"];
 		quantity: PositiveNumber;
 		totalAmount: EvoluSchemaType["posBillItemLine"]["totalAmount"];
 		_tag: EvoluSchemaType["posBillItemLine"]["_tag"];
@@ -55,8 +55,8 @@ export const useBill = () => {
 		evolu.insert("posBillItemLine", {
 			posBillId: props.billId,
 			deviceId: account.device.id,
+			catalogItemId: props.catalogItemId,
 			itemId: props.itemId,
-			itemRevisionId: props.itemRevisionId,
 			_tag: props._tag,
 			totalAmount: props.totalAmount,
 			quantity: props.quantity,
@@ -91,7 +91,7 @@ export const useBill = () => {
 		}) => {
 			createPosBillItemLineChange({
 				billId: props.item.posBillId,
-				itemRevisionId: props.item.itemRevisionId,
+				catalogItemId: props.item.catalogItemId,
 				itemId: props.item.itemId,
 				_tag: props.quantity > 0 ? "add" : "remove",
 				quantity: PositiveNumber(Math.abs(props.quantity)),
@@ -103,7 +103,7 @@ export const useBill = () => {
 		addItem: async (props: {
 			billId?: Id;
 			defaultCurrency: Currency;
-			item: EvoluSchemaType["itemRevision"];
+			item: EvoluSchemaType["item"];
 			quantity: number;
 		}) => {
 			const bill = props.billId
@@ -116,12 +116,12 @@ export const useBill = () => {
 				return;
 			}
 
-			await createItemRevision({ evolu })({ item: props.item });
+			await createItem({ evolu })({ item: props.item });
 
 			createPosBillItemLineChange({
 				billId: bill.id,
-				itemRevisionId: props.item.id,
-				itemId: props.item.itemId,
+				catalogItemId: props.item.catalogItemId,
+				itemId: props.item.id,
 				_tag: props.quantity > 0 ? "add" : "remove",
 				quantity: PositiveNumber(Math.abs(props.quantity)),
 				totalAmount: Integer(Math.round(props.item.price * props.quantity)),

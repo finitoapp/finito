@@ -118,12 +118,12 @@ export const AppSchema = {
 		browserName: z.string().nullable(),
 		osName: z.string().nullable(),
 	},
-	item: ItemSchema,
-	itemRevision: {
+	catalogItem: ItemSchema,
+	item: {
 		...ItemSchema,
-		// Link to the original item.
-		// It can be null when the itemRevision is used without original item.
-		itemId: NullableTableIdSchema,
+		// Link to the original catalog item.
+		// It can be null when the item is used without original catalog item.
+		catalogItemId: NullableTableIdSchema,
 	},
 	menu: {
 		id: TableIdSchema,
@@ -143,8 +143,8 @@ export const AppSchema = {
 	menuItemLine: {
 		id: TableIdSchema,
 		menuCategoryId: TableIdSchema,
-		itemId: TableIdSchema.nullable(),
-		itemRevisionId: TableIdSchema,
+		catalogItemId: NullableTableIdSchema,
+		itemId: TableIdSchema,
 		// `null` = available` for menu-specific availability.
 		availabilityStatus: z.enum(["soldOut", "hidden"]).nullable(),
 	},
@@ -221,10 +221,10 @@ export const AppSchema = {
 		// Device that created this bill item change event.
 		deviceId: TableIdSchema.nullable(),
 		// Original catalog item reference kept for audit/debugging.
-		// Bill projection intentionally merges by `itemRevisionId` only.
-		itemId: TableIdSchema.nullable(),
+		// Bill projection intentionally merges by `itemId` only.
+		catalogItemId: NullableTableIdSchema,
 		// Stable snapshot of the item at the time the change was recorded.
-		itemRevisionId: TableIdSchema,
+		itemId: TableIdSchema,
 		// Append-only change type. Existing rows must never be mutated in place.
 		_tag: z.enum(["add", "remove"]),
 		// Positive amount of this event in bill currency.
@@ -548,8 +548,8 @@ export const AppSchema = {
 	invoiceItemLine: {
 		id: TableIdSchema,
 		invoiceId: TableIdSchema,
-		itemId: TableIdSchema.nullable(),
-		itemRevisionId: TableIdSchema,
+		catalogItemId: NullableTableIdSchema,
+		itemId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
 	},
@@ -597,8 +597,8 @@ export const AppSchema = {
 	paymentItemLine: {
 		id: TableIdSchema,
 		paymentId: TableIdSchema,
-		itemId: TableIdSchema.nullable(),
-		itemRevisionId: TableIdSchema,
+		catalogItemId: NullableTableIdSchema,
+		itemId: TableIdSchema,
 		quantity: z.number(),
 		totalAmount: IntegerSchema, // In invoice currency, not in item currency.
 		optionalityChecked: NonNegativeIntegerSchema.nullable(),

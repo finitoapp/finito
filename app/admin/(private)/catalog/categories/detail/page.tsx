@@ -64,10 +64,10 @@ export default function Home() {
 		() =>
 			createQuery((db) =>
 				db
-					.selectFrom("item")
-					.select(["item.id as id"] as const)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.categoryId", "=", id as Id),
+					.selectFrom("catalogItem")
+					.select(["catalogItem.id as id"] as const)
+					.where("catalogItem.isDeleted", "is not", sqliteTrue)
+					.where("catalogItem.categoryId", "=", id as Id),
 			),
 		[id],
 	);

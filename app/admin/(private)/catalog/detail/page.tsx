@@ -82,7 +82,7 @@ export default function Home() {
 									value={item.label}
 									PluginComponent={nonEmptyString255Plugin}
 									onSave={(value) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											label: value,
 										});
@@ -113,7 +113,7 @@ export default function Home() {
 										).pipe(IntegerSchema),
 									})}
 									onSave={(value: Integer) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											price: value,
 										});
@@ -126,7 +126,7 @@ export default function Home() {
 									renderValue={() => item.category?.name ?? null}
 									PluginComponent={CategoryPlugin}
 									onSave={(value: Id | null) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											categoryId: value,
 										});
@@ -141,7 +141,7 @@ export default function Home() {
 									)}
 									PluginComponent={nonEmptyNullableString255Plugin}
 									onSave={(value) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											unitOfMeasure: value,
 										});
@@ -170,7 +170,7 @@ export default function Home() {
 										allowNull: true,
 									})}
 									onSave={(value) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											productCodeType: value,
 										});
@@ -182,7 +182,7 @@ export default function Home() {
 									label={t("items:form.item-form.label.product-code-optional")}
 									PluginComponent={nonEmptyNullableString255Plugin}
 									onSave={(value) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											productCodeValue: value,
 										});
@@ -196,7 +196,7 @@ export default function Home() {
 									)}
 									PluginComponent={nonEmptyNullableString255Plugin}
 									onSave={(value) => {
-										evolu.update("item", {
+										evolu.update("catalogItem", {
 											id: item.id,
 											internalCode: value,
 										});

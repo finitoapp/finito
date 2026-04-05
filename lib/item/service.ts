@@ -5,29 +5,27 @@ import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
 import { stableStringify } from "@/lib/shared/utils/json";
 
-export const createItem =
+export const createCatalogItem =
 	(deps: EvoluDep) =>
 	({
-		item: { id: itemId, ...item },
+		catalogItem: { id: catalogItemId, ...catalogItem },
 	}: {
-		item: SetOptional<EvoluSchemaType["item"], "id">;
+		catalogItem: SetOptional<EvoluSchemaType["catalogItem"], "id">;
 	}) => {
-		const { id } = itemId
-			? deps.evolu.upsert("item", {
-					id: itemId,
-					...item,
+		const { id } = catalogItemId
+			? deps.evolu.upsert("catalogItem", {
+					id: catalogItemId,
+					...catalogItem,
 				})
-			: deps.evolu.insert("item", item);
+			: deps.evolu.insert("catalogItem", catalogItem);
 
 		return {
-			...item,
+			...catalogItem,
 			id,
 		};
 	};
 
-export const createItemRevisionId = (
-	item: Omit<EvoluSchemaType["itemRevision"], "id">,
-) => {
+export const createItemId = (item: Omit<EvoluSchemaType["item"], "id">) => {
 	return createIdFromString(
 		stableStringify(
 			pick(item, [
@@ -45,59 +43,59 @@ export const createItemRevisionId = (
 	);
 };
 
-export const convertItemToItemRevision = ({
+export const convertCatalogItemToItem = ({
 	id,
 	...item
-}: EvoluSchemaType["item"]): EvoluSchemaType["itemRevision"] => {
+}: EvoluSchemaType["catalogItem"]): EvoluSchemaType["item"] => {
 	const data = {
 		...item,
-		itemId: id,
+		catalogItemId: id,
 	};
 
 	return {
 		...data,
-		id: createItemRevisionId(data),
+		id: createItemId(data),
 	};
 };
 
-export const createItemRevisionFromItem =
+export const createItemFromCatalogItem =
 	(deps: EvoluDep) =>
 	async (params: {
-		item: EvoluSchemaType["item"];
-	}): Promise<EvoluSchemaType["itemRevision"]> => {
-		return await createItemRevision(deps)({
+		catalogItem: EvoluSchemaType["catalogItem"];
+	}): Promise<EvoluSchemaType["item"]> => {
+		return await createItem(deps)({
 			item: {
-				...params.item,
-				itemId: params.item.id,
+				...params.catalogItem,
+				catalogItemId: params.catalogItem.id,
 			},
 		});
 	};
 
-export const createItemRevision =
+export const createItem =
 	(deps: EvoluDep) =>
 	async (params: {
-		item: Omit<EvoluSchemaType["itemRevision"], "id">;
-	}): Promise<EvoluSchemaType["itemRevision"]> => {
-		const itemRevisionId = createItemRevisionId(params.item);
+		item: Omit<EvoluSchemaType["item"], "id">;
+	}): Promise<EvoluSchemaType["item"]> => {
+		const itemId = createItemId(params.item);
 
 		const existingItem = await deps.evolu.loadQuery(
 			createQuery((db) =>
 				db
-					.selectFrom("itemRevision")
-					.select(["itemRevision.id as id"] as const)
-					.where("itemRevision.isDeleted", "is not", sqliteTrue)
-					.where("itemRevision.id", "=", itemRevisionId),
+					.selectFrom("item")
+					.select(["item.id as id"] as const)
+					.where("item.isDeleted", "is not", sqliteTrue)
+					.where("item.id", "=", itemId),
 			),
 		);
 
-		const itemRevision = {
+		const item = {
 			...params.item,
-			id: itemRevisionId,
+			id: itemId,
 		};
 
 		if (existingItem.length === 0) {
-			deps.evolu.upsert("itemRevision", itemRevision);
+			deps.evolu.upsert("item", item);
 		}
 
-		return itemRevision;
+		return item;
 	};

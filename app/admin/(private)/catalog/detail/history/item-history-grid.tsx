@@ -46,7 +46,7 @@ import type {
 } from "@/lib/shared/types";
 import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 
-type ItemRevisionRow = {
+type ItemRow = {
 	id: Id;
 	deviceId: Id | null;
 	itemId: Id | null;
@@ -98,7 +98,7 @@ const toCurrentItemDiffData = (row: CurrentItemRow): DiffRowData => ({
 	productCodeValue: row.productCodeValue,
 });
 
-const toRevisionDiffData = (row: ItemRevisionRow): DiffRowData => ({
+const toRevisionDiffData = (row: ItemRow): DiffRowData => ({
 	label: row.label,
 	price: row.price,
 	currency: row.currency,
@@ -124,7 +124,7 @@ const createColumns = (
 	t: TFunction,
 	currentItem: CurrentItemRow | undefined,
 	diffLabels: Record<string, string>,
-): ColumnDef<ItemRevisionRow>[] => [
+): ColumnDef<ItemRow>[] => [
 	{
 		accessorKey: "createdAt",
 		header: createSortableHeader(t("items:detail.history.columns.changedAt")),
@@ -221,20 +221,20 @@ const createColumns = (
 ];
 
 const sortingFields = {
-	id: "itemRevision.id",
-	deviceId: "itemRevision.deviceId",
-	itemId: "itemRevision.itemId",
-	categoryId: "itemRevision.categoryId",
-	createdAt: "itemRevision.createdAt",
-	label: "itemRevision.label",
-	price: "itemRevision.price",
-	currency: "itemRevision.currency",
+	id: "item.id",
+	deviceId: "item.deviceId",
+	itemId: "item.catalogItemId",
+	categoryId: "item.categoryId",
+	createdAt: "item.createdAt",
+	label: "item.label",
+	price: "item.price",
+	currency: "item.currency",
 	categoryName: "category.name",
-	unitOfMeasure: "itemRevision.unitOfMeasure",
-	internalCode: "itemRevision.internalCode",
-	productCodeType: "itemRevision.productCodeType",
-	productCodeValue: "itemRevision.productCodeValue",
-} as const satisfies Record<keyof ItemRevisionRow, string>;
+	unitOfMeasure: "item.unitOfMeasure",
+	internalCode: "item.internalCode",
+	productCodeType: "item.productCodeType",
+	productCodeValue: "item.productCodeValue",
+} as const satisfies Record<keyof ItemRow, string>;
 
 const createFilterableColumns = (t: TFunction) =>
 	[
@@ -254,7 +254,7 @@ const createFilterableColumns = (t: TFunction) =>
 			id: "productCodeValue",
 			title: t("items:detail.history.columns.productCode"),
 		},
-	] satisfies { id: keyof ItemRevisionRow; title: string }[];
+	] satisfies { id: keyof ItemRow; title: string }[];
 
 export const ItemHistoryGrid = (props: { itemId: Id }) => {
 	const { t } = useTranslation();
@@ -263,26 +263,26 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 		() =>
 			createQuery((db) => {
 				return db
-					.selectFrom("item")
-					.leftJoin("category", "category.id", "item.categoryId")
+					.selectFrom("catalogItem")
+					.leftJoin("category", "category.id", "catalogItem.categoryId")
 					.select([
-						"item.id as id",
-						"item.deviceId as deviceId",
-						"item.categoryId as categoryId",
-						"item.label as label",
-						"item.price as price",
-						"item.currency as currency",
-						"item.unitOfMeasure as unitOfMeasure",
-						"item.internalCode as internalCode",
-						"item.productCodeType as productCodeType",
-						"item.productCodeValue as productCodeValue",
+						"catalogItem.id as id",
+						"catalogItem.deviceId as deviceId",
+						"catalogItem.categoryId as categoryId",
+						"catalogItem.label as label",
+						"catalogItem.price as price",
+						"catalogItem.currency as currency",
+						"catalogItem.unitOfMeasure as unitOfMeasure",
+						"catalogItem.internalCode as internalCode",
+						"catalogItem.productCodeType as productCodeType",
+						"catalogItem.productCodeValue as productCodeValue",
 						"category.name as categoryName",
 					] as const)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.id", "=", props.itemId)
-					.where("item.label", "is not", null)
-					.where("item.price", "is not", null)
-					.where("item.currency", "is not", null)
+					.where("catalogItem.isDeleted", "is not", sqliteTrue)
+					.where("catalogItem.id", "=", props.itemId)
+					.where("catalogItem.label", "is not", null)
+					.where("catalogItem.price", "is not", null)
+					.where("catalogItem.currency", "is not", null)
 					.$narrowType<{
 						label: KyselyNotNull;
 						price: KyselyNotNull;
@@ -301,7 +301,7 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 	);
 	const filterableColumns = useMemo(() => createFilterableColumns(t), [t]);
 
-	const onFilterChange = useMemo<DataTableOnFilterChange<ItemRevisionRow>>(
+	const onFilterChange = useMemo<DataTableOnFilterChange<ItemRow>>(
 		() =>
 			({ filters, sorting, setData, pagination: { limit, cursor } }) => {
 				const previousCursor =
@@ -317,28 +317,28 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 
 				const query = createQuery((db) => {
 					let qb = db
-						.selectFrom("itemRevision")
-						.leftJoin("category", "category.id", "itemRevision.categoryId")
+						.selectFrom("item")
+						.leftJoin("category", "category.id", "item.categoryId")
 						.select([
-							"itemRevision.id as id",
-							"itemRevision.deviceId as deviceId",
-							"itemRevision.itemId as itemId",
-							"itemRevision.categoryId as categoryId",
-							"itemRevision.createdAt as createdAt",
-							"itemRevision.label as label",
-							"itemRevision.price as price",
-							"itemRevision.currency as currency",
-							"itemRevision.unitOfMeasure as unitOfMeasure",
-							"itemRevision.internalCode as internalCode",
-							"itemRevision.productCodeType as productCodeType",
-							"itemRevision.productCodeValue as productCodeValue",
+							"item.id as id",
+							"item.deviceId as deviceId",
+							"item.catalogItemId as itemId",
+							"item.categoryId as categoryId",
+							"item.createdAt as createdAt",
+							"item.label as label",
+							"item.price as price",
+							"item.currency as currency",
+							"item.unitOfMeasure as unitOfMeasure",
+							"item.internalCode as internalCode",
+							"item.productCodeType as productCodeType",
+							"item.productCodeValue as productCodeValue",
 							"category.name as categoryName",
 						] as const)
-						.where("itemRevision.isDeleted", "is not", sqliteTrue)
-						.where("itemRevision.itemId", "=", props.itemId)
-						.where("itemRevision.label", "is not", null)
-						.where("itemRevision.price", "is not", null)
-						.where("itemRevision.currency", "is not", null)
+						.where("item.isDeleted", "is not", sqliteTrue)
+						.where("item.catalogItemId", "=", props.itemId)
+						.where("item.label", "is not", null)
+						.where("item.price", "is not", null)
+						.where("item.currency", "is not", null)
 						.$narrowType<{
 							label: KyselyNotNull;
 							price: KyselyNotNull;
@@ -355,7 +355,7 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 								),
 								eb.and([
 									eb(finalSorting.id, "=", previousCursor[finalSorting.id]),
-									eb("itemRevision.id", "<", previousCursor.id as Id),
+									eb("item.id", "<", previousCursor.id as Id),
 								]),
 							]),
 						);
@@ -363,12 +363,12 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 
 					qb = qb
 						.orderBy(finalSorting.id, finalSorting.desc ? "desc" : "asc")
-						.orderBy("itemRevision.id", "desc");
+						.orderBy("item.id", "desc");
 
 					for (const filter of filters) {
 						if (filter.id === "label") {
 							qb = qb.where(
-								"itemRevision.label",
+								"item.label",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);
@@ -382,14 +382,14 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 						}
 						if (filter.id === "internalCode") {
 							qb = qb.where(
-								"itemRevision.internalCode",
+								"item.internalCode",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);
 						}
 						if (filter.id === "productCodeValue") {
 							qb = qb.where(
-								"itemRevision.productCodeValue",
+								"item.productCodeValue",
 								"like",
 								`${filter.value}%` as NonEmptyString255,
 							);

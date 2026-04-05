@@ -13,7 +13,7 @@ import type { PositiveNumber } from "@/lib/shared/types";
 export type PosBill = EvoluSchemaType["posBill"] & {
 	table: Pick<EvoluSchemaType["table"], "id" | "label"> | null;
 	items: (EvoluSchemaType["posBillItemLine"] & {
-		item: Omit<EvoluSchemaType["itemRevision"], "id">;
+		item: Omit<EvoluSchemaType["item"], "id">;
 	})[];
 	rates: EvoluSchemaType["posBillRate"][];
 };
@@ -76,34 +76,30 @@ const posBillQuery = createQuery<PosBill>((db) =>
 													.end(),
 											)
 											.as("quantity"),
+										"posBillItemLine.catalogItemId as catalogItemId",
 										"posBillItemLine.itemId as itemId",
-										"posBillItemLine.itemRevisionId as itemRevisionId",
 
 										evoluJsonObjectFrom(
 											eb
-												.selectFrom("itemRevision")
+												.selectFrom("item")
 												.select([
-													"itemRevision.deviceId as deviceId",
-													"itemRevision.label as label",
-													"itemRevision.price as price",
-													"itemRevision.currency as currency",
-													"itemRevision.id as id",
-													"itemRevision.itemId as itemId",
-													"itemRevision.unitOfMeasure as unitOfMeasure",
-													"itemRevision.internalCode as internalCode",
-													"itemRevision.productCodeType as productCodeType",
-													"itemRevision.productCodeValue as productCodeValue",
-													"itemRevision.categoryId as categoryId",
+													"item.deviceId as deviceId",
+													"item.label as label",
+													"item.price as price",
+													"item.currency as currency",
+													"item.id as id",
+													"item.catalogItemId as catalogItemId",
+													"item.unitOfMeasure as unitOfMeasure",
+													"item.internalCode as internalCode",
+													"item.productCodeType as productCodeType",
+													"item.productCodeValue as productCodeValue",
+													"item.categoryId as categoryId",
 												])
-												.whereRef(
-													"itemRevision.id",
-													"=",
-													"posBillItemLine.itemRevisionId",
-												)
-												.where("itemRevision.isDeleted", "is not", sqliteTrue)
-												.where("itemRevision.label", "is not", null)
-												.where("itemRevision.price", "is not", null)
-												.where("itemRevision.currency", "is not", null)
+												.whereRef("item.id", "=", "posBillItemLine.itemId")
+												.where("item.isDeleted", "is not", sqliteTrue)
+												.where("item.label", "is not", null)
+												.where("item.price", "is not", null)
+												.where("item.currency", "is not", null)
 												.$narrowType<{
 													label: KyselyNotNull;
 													price: KyselyNotNull;
@@ -117,7 +113,7 @@ const posBillQuery = createQuery<PosBill>((db) =>
 							.where("posBillItemLine.totalAmount", "is not", null)
 							.where("posBillItemLine.quantity", "is not", null)
 							.where("posBillItemLine._tag", "is not", null)
-							.where("posBillItemLine.itemRevisionId", "is not", null)
+							.where("posBillItemLine.itemId", "is not", null)
 							.having(
 								(eb) =>
 									eb.fn.sum<PositiveNumber>(
@@ -135,14 +131,15 @@ const posBillQuery = createQuery<PosBill>((db) =>
 								">",
 								0 as PositiveNumber,
 							)
-							.groupBy("posBillItemLine.itemRevisionId")
+							.groupBy("posBillItemLine.itemId")
 							.$narrowType<{
 								totalAmount: KyselyNotNull;
 								quantity: KyselyNotNull;
 								item: KyselyNotNull;
 								posBillId: KyselyNotNull;
 								_tag: KyselyNotNull;
-								itemRevisionId: KyselyNotNull;
+								catalogItemId: KyselyNotNull;
+								itemId: KyselyNotNull;
 							}>(),
 					).as("items"),
 

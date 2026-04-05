@@ -26,24 +26,24 @@ export default function Home() {
 		() =>
 			createQuery((db) => {
 				return db
-					.selectFrom("item")
+					.selectFrom("catalogItem")
 					.select([
-						"item.id as id",
-						"item.deviceId as deviceId",
-						"item.label as label",
-						"item.price as price",
-						"item.currency as currency",
-						"item.unitOfMeasure as unitOfMeasure",
-						"item.categoryId as categoryId",
-						"item.productCodeType as productCodeType",
-						"item.productCodeValue as productCodeValue",
-						"item.internalCode as internalCode",
+						"catalogItem.id as id",
+						"catalogItem.deviceId as deviceId",
+						"catalogItem.label as label",
+						"catalogItem.price as price",
+						"catalogItem.currency as currency",
+						"catalogItem.unitOfMeasure as unitOfMeasure",
+						"catalogItem.categoryId as categoryId",
+						"catalogItem.productCodeType as productCodeType",
+						"catalogItem.productCodeValue as productCodeValue",
+						"catalogItem.internalCode as internalCode",
 					] as const)
-					.where("item.id", "=", id as Id)
-					.where("item.isDeleted", "is not", sqliteTrue)
-					.where("item.label", "is not", null)
-					.where("item.price", "is not", null)
-					.where("item.currency", "is not", null)
+					.where("catalogItem.id", "=", id as Id)
+					.where("catalogItem.isDeleted", "is not", sqliteTrue)
+					.where("catalogItem.label", "is not", null)
+					.where("catalogItem.price", "is not", null)
+					.where("catalogItem.currency", "is not", null)
 					.$narrowType<{
 						label: KyselyNotNull;
 						price: KyselyNotNull;

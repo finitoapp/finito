@@ -11,28 +11,28 @@ import { createQuery } from "@/lib/evolu";
 export const createItemDetailQuery = (id: Id) =>
 	createQuery((db) => {
 		return db
-			.selectFrom("item")
+			.selectFrom("catalogItem")
 			.select(
 				(eb) =>
 					[
-						"item.id as id",
-						"item.deviceId as deviceId",
-						"item.label as label",
-						"item.price as price",
-						"item.currency as currency",
-						"item.unitOfMeasure as unitOfMeasure",
-						"item.categoryId as categoryId",
-						"item.productCodeType as productCodeType",
-						"item.productCodeValue as productCodeValue",
-						"item.internalCode as internalCode",
-						"item.createdAt as createdAt",
-						"item.updatedAt as updatedAt",
+						"catalogItem.id as id",
+						"catalogItem.deviceId as deviceId",
+						"catalogItem.label as label",
+						"catalogItem.price as price",
+						"catalogItem.currency as currency",
+						"catalogItem.unitOfMeasure as unitOfMeasure",
+						"catalogItem.categoryId as categoryId",
+						"catalogItem.productCodeType as productCodeType",
+						"catalogItem.productCodeValue as productCodeValue",
+						"catalogItem.internalCode as internalCode",
+						"catalogItem.createdAt as createdAt",
+						"catalogItem.updatedAt as updatedAt",
 
 						evoluJsonObjectFrom(
 							eb
 								.selectFrom("category")
 								.select(["category.name as name"])
-								.whereRef("category.id", "=", "item.categoryId")
+								.whereRef("category.id", "=", "catalogItem.categoryId")
 								.where("category.name", "is not", null)
 								.$narrowType<{
 									name: KyselyNotNull;
@@ -40,10 +40,10 @@ export const createItemDetailQuery = (id: Id) =>
 						).as("category"),
 					] as const,
 			)
-			.where("item.isDeleted", "is not", sqliteTrue)
-			.where("item.price", "is not", null)
-			.where("item.currency", "is not", null)
-			.where("item.id", "=", id)
+			.where("catalogItem.isDeleted", "is not", sqliteTrue)
+			.where("catalogItem.price", "is not", null)
+			.where("catalogItem.currency", "is not", null)
+			.where("catalogItem.id", "=", id)
 			.$narrowType<{
 				label: KyselyNotNull;
 				price: KyselyNotNull;
