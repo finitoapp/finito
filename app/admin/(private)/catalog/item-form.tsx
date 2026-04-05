@@ -12,7 +12,7 @@ import { useActionForm } from "@/hooks/use-action-form";
 import { useEvolu } from "@/hooks/use-evolu";
 import { activeCategoriesQuery } from "@/lib/evolu/queries/category";
 import { type Id, TableIdSchema } from "@/lib/evolu/types";
-import { createItem } from "@/lib/item/service";
+import { createCatalogItem } from "@/lib/item/service";
 import {
 	Currency,
 	NonEmptyString255Schema,
@@ -134,10 +134,10 @@ export const ItemForm: React.FC<{
 	const form = useActionForm(itemSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			createItem({
+			createCatalogItem({
 				evolu,
 			})({
-				item: values,
+				catalogItem: values,
 			});
 
 			if (params.onSuccess) {

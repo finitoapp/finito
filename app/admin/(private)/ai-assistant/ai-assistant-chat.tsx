@@ -24,7 +24,7 @@ import {
 	createItemToolName,
 } from "@/lib/ai/item-assistant";
 import { createQuery } from "@/lib/evolu";
-import { createItem } from "@/lib/item/service";
+import { createCatalogItem } from "@/lib/item/service";
 import { NonEmptyString, NonEmptyString255 } from "@/lib/shared/types";
 import { decimalStringToMinorUnits } from "@/lib/shared/zod/money-codec";
 
@@ -153,10 +153,10 @@ export function AiAssistantChat() {
 								};
 							}
 
-							const item = createItem({
+							const catalogItem = createCatalogItem({
 								evolu,
 							})({
-								item: {
+								catalogItem: {
 									deviceId: account.device.id,
 									label: NonEmptyString255(input.label.trim()),
 									price,
@@ -172,12 +172,12 @@ export function AiAssistantChat() {
 								},
 							});
 
-							toast.success(`Položka "${item.label}" byla vytvořena.`);
+							toast.success(`Položka "${catalogItem.label}" byla vytvořena.`);
 
 							return {
 								success: true,
-								message: `Položka "${item.label}" byla vytvořena.`,
-								itemId: item.id,
+								message: `Položka "${catalogItem.label}" byla vytvořena.`,
+								itemId: catalogItem.id,
 							};
 						},
 					}),

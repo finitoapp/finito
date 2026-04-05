@@ -14,13 +14,10 @@ import { useBill } from "@/hooks/use-bill";
 import { useEvolu } from "@/hooks/use-evolu";
 import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import type { Pos } from "@/hooks/use-pos";
+import { getAllCatalogItemsQuery } from "@/lib/evolu/queries/catalog-item";
 import { activeCategoriesQuery } from "@/lib/evolu/queries/category";
-import { getAllItemsQuery } from "@/lib/evolu/queries/item";
 import type { Id } from "@/lib/evolu/types";
-import {
-	convertItemToItemRevision,
-	createItemRevision,
-} from "@/lib/item/service";
+import { convertCatalogItemToItem, createItem } from "@/lib/item/service";
 import {
 	type Currency,
 	NonEmptyString255,
@@ -77,10 +74,10 @@ export const PosItems: React.FC<{
 						<CardContent>
 							<PosDial
 								onSubmit={async (value) => {
-									const itemRevision = await createItemRevision({ evolu })({
+									const item = await createItem({ evolu })({
 										item: {
 											deviceId: account.device.id,
-											itemId: null,
+											catalogItemId: null,
 											label: NonEmptyString255(t("pos:items.unknownItem")),
 											price: moneyCodec.decode({
 												value: NumberString(value.toString()),
@@ -97,7 +94,7 @@ export const PosItems: React.FC<{
 									const billId = await addItem({
 										billId: props.billId,
 										defaultCurrency: props.defaultCurrency,
-										item: itemRevision,
+										item: item,
 										quantity: 1,
 									});
 
@@ -127,7 +124,7 @@ export const PosItemsList: React.FC<{
 	const [searchTerm, setSearchTerm] = useState("");
 	const { addItem } = useBill();
 
-	const { data: items } = useEvoluQuery(getAllItemsQuery);
+	const { data: items } = useEvoluQuery(getAllCatalogItemsQuery);
 	const { data: categories } = useEvoluQuery(activeCategoriesQuery);
 
 	const categoriesById = useMemo(
@@ -141,7 +138,7 @@ export const PosItemsList: React.FC<{
 				.filter((item) => {
 					return item.label.toLowerCase().includes(searchTerm.toLowerCase());
 				})
-				.map(convertItemToItemRevision),
+				.map(convertCatalogItemToItem),
 		[items, searchTerm],
 	);
 	const groupedItems = useMemo(() => {

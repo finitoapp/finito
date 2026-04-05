@@ -56,19 +56,15 @@ export default function Page() {
 
 													evoluJsonObjectFrom(
 														eb
-															.selectFrom("itemRevision")
-															.select(["itemRevision.label as label"])
+															.selectFrom("item")
+															.select(["item.label as label"])
 															.whereRef(
-																"itemRevision.id",
+																"item.id",
 																"=",
-																"paymentItemLine.itemRevisionId",
+																"paymentItemLine.itemId",
 															)
-															.where(
-																"itemRevision.isDeleted",
-																"is not",
-																sqliteTrue,
-															)
-															.where("itemRevision.label", "is not", null)
+															.where("item.isDeleted", "is not", sqliteTrue)
+															.where("item.label", "is not", null)
 															.$narrowType<{
 																label: KyselyNotNull;
 															}>(),

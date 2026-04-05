@@ -117,7 +117,7 @@ export default function Layout(
 				return;
 			}
 
-			evolu.update("item", {
+			evolu.update("catalogItem", {
 				id: item.id,
 				isDeleted: sqliteTrue,
 			});

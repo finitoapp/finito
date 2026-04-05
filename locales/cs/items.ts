@@ -21,7 +21,7 @@ const locale = {
     },
     "history": {
       "title": "Historie revizí položky",
-      "description": "Přehled všech uložených revizí položky z tabulky itemRevision.",
+      "description": "Přehled všech uložených revizí položky z tabulky item.",
       "columns": {
         "changedAt": "Změněno",
         "unitOfMeasure": "MJ",

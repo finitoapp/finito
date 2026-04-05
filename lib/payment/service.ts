@@ -15,7 +15,7 @@ import { bech32 } from "@scure/base";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import type { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
-import { createItemRevision } from "@/lib/item/service";
+import { createItem } from "@/lib/item/service";
 import type { EvoluDep, NdkDep } from "@/lib/shared/dependencies";
 import {
 	type Email,
@@ -174,9 +174,9 @@ export const createPayment =
 			| {
 					items: (Omit<
 						EvoluSchemaType["paymentItemLine"],
-						"id" | "paymentId" | "itemRevisionId"
+						"id" | "paymentId" | "catalogItemId" | "itemId"
 					> & {
-						item: Omit<EvoluSchemaType["itemRevision"], "id">;
+						item: Omit<EvoluSchemaType["item"], "id">;
 					})[];
 					totalAmount?: undefined;
 			  }
@@ -323,15 +323,16 @@ export const createPayment =
 			for (const [index, { item, ...line }] of params.items.entries()) {
 				const itemId = createIdFromString(`${id}:billItem:${index}`);
 
-				const itemRevision = await createItemRevision(deps)({
-					item: item,
+				const createdItem = await createItem(deps)({
+					item,
 				});
 
 				deps.evolu.upsert("paymentItemLine", {
 					...line,
 					id: itemId,
 					paymentId: id,
-					itemRevisionId: itemRevision.id,
+					catalogItemId: createdItem.catalogItemId,
+					itemId: createdItem.id,
 				});
 			}
 		}

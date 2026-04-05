@@ -189,40 +189,36 @@ export default function Home() {
 															[
 																"menuItemLine.id as id",
 																"menuItemLine.availabilityStatus as availabilityStatus",
-																"menuItemLine.itemRevisionId as itemRevisionId",
+																"menuItemLine.itemId as itemId",
 
 																evoluJsonObjectFrom(
 																	eb
-																		.selectFrom("itemRevision")
+																		.selectFrom("item")
 																		.select([
-																			"itemRevision.id as id",
-																			"itemRevision.categoryId as categoryId",
-																			"itemRevision.itemId as itemId",
-																			"itemRevision.label as label",
-																			"itemRevision.price as price",
-																			"itemRevision.currency as currency",
-																			"itemRevision.unitOfMeasure as unitOfMeasure",
-																			"itemRevision.internalCode as internalCode",
-																			"itemRevision.productCodeType as productCodeType",
-																			"itemRevision.productCodeValue as productCodeValue",
+																			"item.id as id",
+																			"item.categoryId as categoryId",
+																			"item.catalogItemId as itemId",
+																			"item.label as label",
+																			"item.price as price",
+																			"item.currency as currency",
+																			"item.unitOfMeasure as unitOfMeasure",
+																			"item.internalCode as internalCode",
+																			"item.productCodeType as productCodeType",
+																			"item.productCodeValue as productCodeValue",
 																		])
 																		.whereRef(
-																			"itemRevision.id",
+																			"item.id",
 																			"=",
-																			"menuItemLine.itemRevisionId",
+																			"menuItemLine.itemId",
 																		)
 																		.where(
-																			"itemRevision.isDeleted",
+																			"item.isDeleted",
 																			"is not",
 																			sqliteTrue,
 																		)
-																		.where("itemRevision.label", "is not", null)
-																		.where("itemRevision.price", "is not", null)
-																		.where(
-																			"itemRevision.currency",
-																			"is not",
-																			null,
-																		)
+																		.where("item.label", "is not", null)
+																		.where("item.price", "is not", null)
+																		.where("item.currency", "is not", null)
 																		.$narrowType<{
 																			label: KyselyNotNull;
 																			price: KyselyNotNull;
@@ -237,10 +233,10 @@ export default function Home() {
 														"menuCategory.id",
 													)
 													.where("menuItemLine.isDeleted", "is not", sqliteTrue)
-													.where("menuItemLine.itemRevisionId", "is not", null)
+													.where("menuItemLine.itemId", "is not", null)
 													.$narrowType<{
 														item: KyselyNotNull;
-														itemRevisionId: KyselyNotNull;
+														itemId: KyselyNotNull;
 													}>(),
 											).as("items"),
 										])
@@ -400,7 +396,7 @@ export default function Home() {
 						id: itemId,
 						menuCategoryId: newCategoryId,
 						availabilityStatus: item.availabilityStatus,
-						itemRevisionId: item.itemRevisionId,
+						itemId: item.itemId,
 					});
 				}
 			}

@@ -89,40 +89,28 @@ export const publishRelevantMenusToStorage = async (params: {
 
 																		evoluJsonObjectFrom(
 																			eb
-																				.selectFrom("itemRevision")
+																				.selectFrom("item")
 																				.select([
-																					"itemRevision.label as label",
-																					"itemRevision.price as price",
-																					"itemRevision.currency as currency",
-																					"itemRevision.unitOfMeasure as unitOfMeasure",
-																					"itemRevision.id as id",
-																					"itemRevision.itemId as itemId",
+																					"item.label as label",
+																					"item.price as price",
+																					"item.currency as currency",
+																					"item.unitOfMeasure as unitOfMeasure",
+																					"item.id as id",
+																					"item.catalogItemId as itemId",
 																				])
 																				.whereRef(
-																					"itemRevision.id",
+																					"item.id",
 																					"=",
-																					"menuItemLine.itemRevisionId",
+																					"menuItemLine.itemId",
 																				)
 																				.where(
-																					"itemRevision.isDeleted",
+																					"item.isDeleted",
 																					"is not",
 																					sqliteTrue,
 																				)
-																				.where(
-																					"itemRevision.label",
-																					"is not",
-																					null,
-																				)
-																				.where(
-																					"itemRevision.price",
-																					"is not",
-																					null,
-																				)
-																				.where(
-																					"itemRevision.currency",
-																					"is not",
-																					null,
-																				)
+																				.where("item.label", "is not", null)
+																				.where("item.price", "is not", null)
+																				.where("item.currency", "is not", null)
 																				.$narrowType<{
 																					label: KyselyNotNull;
 																					price: KyselyNotNull;

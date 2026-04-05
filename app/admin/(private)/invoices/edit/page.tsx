@@ -43,24 +43,20 @@ export default function Home() {
 						evoluJsonArrayFrom(
 							eb
 								.selectFrom("invoiceItemLine")
-								.innerJoin(
-									"itemRevision",
-									"invoiceItemLine.itemRevisionId",
-									"itemRevision.id",
-								)
+								.innerJoin("item", "invoiceItemLine.itemId", "item.id")
 								.select([
-									"itemRevision.id as id",
-									"itemRevision.label as label",
-									"itemRevision.price as price",
-									"itemRevision.currency as currency",
+									"item.id as id",
+									"item.label as label",
+									"item.price as price",
+									"item.currency as currency",
 									"invoiceItemLine.quantity as quantity",
-									"itemRevision.unitOfMeasure as unitOfMeasure",
+									"item.unitOfMeasure as unitOfMeasure",
 								] as const)
 								.whereRef("invoiceItemLine.invoiceId", "=", "invoice.id")
-								.where("itemRevision.isDeleted", "is not", sqliteTrue)
-								.where("itemRevision.label", "is not", null)
-								.where("itemRevision.price", "is not", null)
-								.where("itemRevision.currency", "is not", null)
+								.where("item.isDeleted", "is not", sqliteTrue)
+								.where("item.label", "is not", null)
+								.where("item.price", "is not", null)
+								.where("item.currency", "is not", null)
 								.where("invoiceItemLine.quantity", "is not", null)
 								.$narrowType<{
 									label: KyselyNotNull;

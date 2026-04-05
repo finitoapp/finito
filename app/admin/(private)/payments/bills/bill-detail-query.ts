@@ -22,7 +22,7 @@ export type BillDetail = {
 	currency: Currency;
 	totalAmount: Integer;
 	items: {
-		itemRevisionId: Id;
+		itemId: Id;
 		label: string;
 		quantity: number;
 		totalAmount: Integer;
@@ -72,16 +72,12 @@ export const createBillDetailQuery = (id: Id) =>
 						evoluJsonArrayFrom(
 							eb
 								.selectFrom("posBillItemLine")
-								.leftJoin(
-									"itemRevision",
-									"itemRevision.id",
-									"posBillItemLine.itemRevisionId",
-								)
+								.leftJoin("item", "item.id", "posBillItemLine.itemId")
 								.select(
 									(eb) =>
 										[
-											"posBillItemLine.itemRevisionId as itemRevisionId",
-											"itemRevision.label as label",
+											"posBillItemLine.itemId as itemId",
+											"item.label as label",
 											eb.fn
 												.sum<number>(
 													eb
@@ -117,10 +113,10 @@ export const createBillDetailQuery = (id: Id) =>
 								.where("posBillItemLine.totalAmount", "is not", null)
 								.where("posBillItemLine.quantity", "is not", null)
 								.where("posBillItemLine._tag", "is not", null)
-								.where("posBillItemLine.itemRevisionId", "is not", null)
-								.where("itemRevision.isDeleted", "is not", sqliteTrue)
-								.where("itemRevision.label", "is not", null)
-								.groupBy("posBillItemLine.itemRevisionId")
+								.where("posBillItemLine.itemId", "is not", null)
+								.where("item.isDeleted", "is not", sqliteTrue)
+								.where("item.label", "is not", null)
+								.groupBy("posBillItemLine.itemId")
 								.having(
 									(eb) =>
 										eb.fn.sum<number>(
@@ -138,9 +134,9 @@ export const createBillDetailQuery = (id: Id) =>
 									">",
 									0,
 								)
-								.orderBy("itemRevision.label", "asc")
+								.orderBy("item.label", "asc")
 								.$narrowType<{
-									itemRevisionId: KyselyNotNull;
+									itemId: KyselyNotNull;
 									label: KyselyNotNull;
 									quantity: KyselyNotNull;
 									totalAmount: KyselyNotNull;

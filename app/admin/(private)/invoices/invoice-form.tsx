@@ -566,7 +566,7 @@ export const InvoiceForm: React.FC<{
 								productCodeType: null,
 								productCodeValue: null,
 								categoryId: null,
-								itemId: null,
+								catalogItemId: null,
 							},
 						};
 					}),

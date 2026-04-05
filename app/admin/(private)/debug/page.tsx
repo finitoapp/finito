@@ -33,7 +33,10 @@ import { useNostrRelays } from "@/hooks/use-nostr-relays";
 import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import type { Id } from "@/lib/evolu/types";
-import { createItem, createItemRevisionFromItem } from "@/lib/item/service";
+import {
+	createCatalogItem,
+	createItemFromCatalogItem,
+} from "@/lib/item/service";
 import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { downloadFile } from "@/lib/shared/files/file-utils";
 import { createZip, extractZip } from "@/lib/shared/files/zip";
@@ -352,7 +355,7 @@ const RandomDataGenerator = () => {
 			Array(100)
 				.keys()
 				.forEach(() => {
-					evolu.insert("item", {
+					evolu.insert("catalogItem", {
 						deviceId: account.device.id,
 						categoryId: null,
 						label: NonEmptyString255(faker.food.dish()),
@@ -630,22 +633,22 @@ const RandomDataGenerator = () => {
 			const sourceItems = await evolu.loadQuery(
 				createQuery((db) =>
 					db
-						.selectFrom("item")
+						.selectFrom("catalogItem")
 						.select([
-							"item.id as id",
-							"item.label as label",
-							"item.price as price",
-							"item.currency as currency",
-							"item.unitOfMeasure as unitOfMeasure",
-							"item.internalCode as internalCode",
-							"item.productCodeType as productCodeType",
-							"item.productCodeValue as productCodeValue",
+							"catalogItem.id as id",
+							"catalogItem.label as label",
+							"catalogItem.price as price",
+							"catalogItem.currency as currency",
+							"catalogItem.unitOfMeasure as unitOfMeasure",
+							"catalogItem.internalCode as internalCode",
+							"catalogItem.productCodeType as productCodeType",
+							"catalogItem.productCodeValue as productCodeValue",
 						] as const)
-						.where("item.isDeleted", "is not", sqliteTrue)
-						.where("item.label", "is not", null)
-						.where("item.price", "is not", null)
-						.where("item.currency", "is not", null)
-						.orderBy("item.label", "asc")
+						.where("catalogItem.isDeleted", "is not", sqliteTrue)
+						.where("catalogItem.label", "is not", null)
+						.where("catalogItem.price", "is not", null)
+						.where("catalogItem.currency", "is not", null)
+						.orderBy("catalogItem.label", "asc")
 						.$narrowType<{
 							label: KyselyNotNull;
 							price: KyselyNotNull;
@@ -742,8 +745,8 @@ const RandomDataGenerator = () => {
 						});
 
 						for (const sourceItem of takeSourceItems(category.itemsCount)) {
-							const item = createItem({ evolu })({
-								item: {
+							const catalogItem = createCatalogItem({ evolu })({
+								catalogItem: {
 									deviceId: account.device.id,
 									categoryId: null,
 									label: sourceItem.label,
@@ -755,11 +758,12 @@ const RandomDataGenerator = () => {
 									productCodeValue: sourceItem.productCodeValue,
 								},
 							});
-							const itemRevision = await createItemRevisionFromItem({ evolu })({
-								item,
+							const item = await createItemFromCatalogItem({ evolu })({
+								catalogItem,
 							});
 							evolu.insert("menuItemLine", {
-								itemRevisionId: itemRevision.id,
+								itemId: item.id,
+								catalogItemId: catalogItem.id,
 								menuCategoryId: menuCategoryId,
 								availabilityStatus: null,
 							});

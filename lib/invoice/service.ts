@@ -1,7 +1,7 @@
 import { sqliteTrue } from "@evolu/common";
 import type { EvoluSchemaType } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
-import { createItemRevision } from "@/lib/item/service";
+import { createItem } from "@/lib/item/service";
 import type { EvoluDep } from "@/lib/shared/dependencies";
 import { Integer } from "@/lib/shared/types";
 
@@ -13,9 +13,9 @@ export const createInvoice =
 			items: ReadonlyArray<
 				Omit<
 					EvoluSchemaType["invoiceItemLine"],
-					"invoiceId" | "itemRevisionId" | "itemId" | "totalAmount"
+					"invoiceId" | "catalogItemId" | "itemId" | "totalAmount"
 				> & {
-					item: Omit<EvoluSchemaType["itemRevision"], "id" | "deviceId">;
+					item: Omit<EvoluSchemaType["item"], "id" | "deviceId">;
 				}
 			>;
 			customer: Omit<EvoluSchemaType["invoiceCustomer"], "id"> & {
@@ -101,22 +101,25 @@ export const createInvoice =
 
 		const originalItemLineIds = new Set(params.originalItemLineIds);
 
-		for (const item of items) {
-			originalItemLineIds.delete(item.id);
+		for (const lineItem of items) {
+			originalItemLineIds.delete(lineItem.id);
 
-			const itemRevision = await createItemRevision(deps)({
+			const item = await createItem(deps)({
 				item: {
-					...item.item,
+					...lineItem.item,
 					deviceId: invoice.deviceId,
 				},
 			});
 
 			deps.evolu.upsert("invoiceItemLine", {
-				id: item.id,
+				id: lineItem.id,
 				invoiceId: invoice.id,
-				itemRevisionId: itemRevision.id,
-				quantity: item.quantity,
-				totalAmount: Integer(Math.round(item.item.price * item.quantity)),
+				catalogItemId: item.catalogItemId,
+				itemId: item.id,
+				quantity: lineItem.quantity,
+				totalAmount: Integer(
+					Math.round(lineItem.item.price * lineItem.quantity),
+				),
 			});
 		}
 

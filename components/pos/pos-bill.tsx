@@ -640,7 +640,7 @@ export const PosBill: React.FC<{
 							) : (
 								props.bill.items.map((item) => (
 									<Item
-										key={`${item.itemRevisionId}:${item.quantity}`}
+										key={`${item.itemId}:${item.quantity}`}
 										billId={billId}
 										item={item}
 									></Item>

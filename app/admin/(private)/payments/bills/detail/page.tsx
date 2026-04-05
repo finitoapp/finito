@@ -150,7 +150,7 @@ export default function Home() {
 								</TableHeader>
 								<TableBody>
 									{bill.items.map((item) => (
-										<TableRow key={item.itemRevisionId}>
+										<TableRow key={item.itemId}>
 											<TableCell className="px-6 whitespace-normal">
 												{item.label}
 											</TableCell>

@@ -37,8 +37,8 @@ export type Invoice = Omit<EvoluSchemaType["invoice"], "deviceId"> & {
 	>;
 	items: (Omit<
 		EvoluSchemaType["invoiceItemLine"],
-		"invoiceId" | "itemRevisionId" | "itemId"
+		"invoiceId" | "catalogItemId" | "itemId"
 	> & {
-		item: EvoluSchemaType["itemRevision"];
+		item: EvoluSchemaType["item"];
 	})[];
 };
