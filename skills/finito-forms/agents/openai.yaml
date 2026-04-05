@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finito Forms"
+  short_description: "Build and update forms in Finito patterns"
+  default_prompt: "Implement or refactor forms in Finito using AutoForm, useActionForm, Zod schemas, and Evolu write rules."
