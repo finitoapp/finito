@@ -118,6 +118,17 @@ export const DateString = <T extends string>(value: T): DateString =>
 	DateStringSchema.parse(value);
 export type DateString = z.output<typeof DateStringSchema>;
 
+export const TimeStringSchema = z.iso
+	.time()
+	.brand<"Time", "inout">()
+	.brand<"NonEmptyString", "inout">()
+	.brand<"NonEmptyString32", "inout">()
+	.brand<"NonEmptyString64", "inout">()
+	.brand<"NonEmptyString255", "inout">();
+export const TimeString = <T extends string>(value: T): TimeString =>
+	TimeStringSchema.parse(value);
+export type TimeString = z.output<typeof TimeStringSchema>;
+
 export const IbanSchema = z
 	.string()
 	.min(1, "Expected to be a non empty string")

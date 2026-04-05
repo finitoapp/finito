@@ -42,6 +42,7 @@ import {
 	ProductCodeType,
 	SpecificSymbolSchema,
 	SqliteBoolSchema,
+	TimeStringSchema,
 	TimestampMsSchema,
 	TimestampSecSchema,
 	Timezone,
@@ -78,6 +79,16 @@ const BillingInfoCzSchema = {
 };
 
 const NullableTableIdSchema = TableIdSchema.nullable();
+
+const Weekday = {
+	mon: "mon",
+	tue: "tue",
+	wed: "wed",
+	thu: "thu",
+	fri: "fri",
+	sat: "sat",
+	sun: "sun",
+} as const;
 
 const ItemSchema = {
 	id: TableIdSchema,
@@ -152,6 +163,49 @@ export const AppSchema = {
 		id: TableIdSchema,
 		deviceId: TableIdSchema.nullable(),
 		name: NonEmptyString255Schema,
+	},
+	// Opening hours evaluation priority (highest to lowest):
+	// 1) openingHoursExceptionDay (+ openingHoursExceptionSlot for mode="custom")
+	// 2) global holiday policy in openingHoursSettings
+	// 3) openingHoursRegularSlot
+	openingHoursSettings: {
+		id: TableIdSchema,
+		deviceId: TableIdSchema.nullable(),
+		timezone: z.enum(Timezone),
+		holidayMode: z.enum(["manualOnly", "closeOnPublicHolidays"]),
+		holidayCountryCode: z.enum(CountryCode).nullable(),
+		holidayRegionCode: NonEmptyString32Schema.nullable(),
+		holidayObservedMode: z.enum(["none", "observed"]),
+	},
+	openingHoursRegularSlot: {
+		id: TableIdSchema,
+		openingHoursSettingsId: TableIdSchema,
+		weekday: z.enum(Weekday),
+		// Local wall-clock time in openingHoursSettings.timezone.
+		openMinute: TimeStringSchema,
+		// Local wall-clock time in openingHoursSettings.timezone.
+		closeMinute: TimeStringSchema,
+		sortOrder: NonNegativeIntegerSchema,
+		// Optional seasonal applicability for this regular slot.
+		validFrom: DateStringSchema.nullable(),
+		// Optional seasonal applicability for this regular slot.
+		validTo: DateStringSchema.nullable(),
+	},
+	openingHoursExceptionDay: {
+		id: TableIdSchema,
+		openingHoursSettingsId: TableIdSchema,
+		date: DateStringSchema,
+		mode: z.enum(["closed", "custom"]),
+		note: NonEmptyString255Schema.nullable(),
+	},
+	openingHoursExceptionSlot: {
+		id: TableIdSchema,
+		openingHoursExceptionDayId: TableIdSchema,
+		// Local wall-clock time in openingHoursSettings.timezone.
+		openMinute: TimeStringSchema,
+		// Local wall-clock time in openingHoursSettings.timezone.
+		closeMinute: TimeStringSchema,
+		sortOrder: NonNegativeIntegerSchema,
 	},
 	posBill: {
 		id: TableIdSchema,
@@ -660,6 +714,19 @@ export const createAppEvolu = async (props: {
 					create(`reservationBooking_serviceStatus`)
 						.on(`reservationBooking`)
 						.column("serviceStatus"),
+					create(`openingHoursRegularSlot_settings_weekday_sortOrder`)
+						.on(`openingHoursRegularSlot`)
+						.column("openingHoursSettingsId")
+						.column("weekday")
+						.column("sortOrder"),
+					create(`openingHoursExceptionDay_settings_date`)
+						.on(`openingHoursExceptionDay`)
+						.column("openingHoursSettingsId")
+						.column("date"),
+					create(`openingHoursExceptionSlot_exceptionDay_sortOrder`)
+						.on(`openingHoursExceptionSlot`)
+						.column("openingHoursExceptionDayId")
+						.column("sortOrder"),
 					create(`transaction_tag`).on(`transaction`).column("_tag"),
 					create(`transaction_occurredAt`)
 						.on(`transaction`)
