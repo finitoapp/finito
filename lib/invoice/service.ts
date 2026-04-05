@@ -105,10 +105,7 @@ export const createInvoice =
 			originalItemLineIds.delete(lineItem.id);
 
 			const item = await createItem(deps)({
-				item: {
-					...lineItem.item,
-					deviceId: invoice.deviceId,
-				},
+				item: lineItem.item,
 			});
 
 			deps.evolu.upsert("invoiceItemLine", {

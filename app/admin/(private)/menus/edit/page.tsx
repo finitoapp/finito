@@ -64,7 +64,6 @@ export default function Home() {
 																		.selectFrom("item")
 																		.select([
 																			"item.id as id",
-																			"item.deviceId as deviceId",
 																			"item.categoryId as categoryId",
 																			"item.catalogItemId as itemId",
 																			"item.label as label",

@@ -550,7 +550,6 @@ export default function Home() {
 													.selectFrom("item")
 													.select([
 														"item.id as id",
-														"item.deviceId as deviceId",
 														"item.categoryId as categoryId",
 														"item.catalogItemId as catalogItemId",
 														"item.label as label",

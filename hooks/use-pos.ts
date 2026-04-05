@@ -83,7 +83,6 @@ const posBillQuery = createQuery<PosBill>((db) =>
 											eb
 												.selectFrom("item")
 												.select([
-													"item.deviceId as deviceId",
 													"item.label as label",
 													"item.price as price",
 													"item.currency as currency",

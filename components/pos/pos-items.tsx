@@ -1,11 +1,9 @@
 import { motion } from "framer-motion";
-import { useAtomValue } from "jotai";
 import { PackageOpenIcon, PlusCircleIcon, Search } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { accountAtom } from "@/atoms/account";
 import { PosDial } from "@/components/pos/pos-dial";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,7 +37,6 @@ export const PosItems: React.FC<{
 	const variant = searchParams.get("variant") ?? "list";
 	const id = searchParams.get("id") ?? "";
 	const { addItem } = useBill();
-	const account = useAtomValue(accountAtom);
 
 	return (
 		<Tabs value={variant} className="flex w-full flex-col gap-4">
@@ -76,7 +73,6 @@ export const PosItems: React.FC<{
 								onSubmit={async (value) => {
 									const item = await createItem({ evolu })({
 										item: {
-											deviceId: account.device.id,
 											catalogItemId: null,
 											label: NonEmptyString255(t("pos:items.unknownItem")),
 											price: moneyCodec.decode({
