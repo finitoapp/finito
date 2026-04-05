@@ -29,7 +29,6 @@ export const createItemId = (item: Omit<EvoluSchemaType["item"], "id">) => {
 	return createIdFromString(
 		stableStringify(
 			pick(item, [
-				"deviceId",
 				"label",
 				"price",
 				"unitOfMeasure",

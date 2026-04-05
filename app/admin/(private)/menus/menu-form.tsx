@@ -50,7 +50,6 @@ type MenuItemState = {
 	item: {
 		id: Id | null;
 		categoryId: Id | null;
-		deviceId: Id | null;
 		label: NonEmptyString255;
 		price: Integer;
 		currency: Currency;

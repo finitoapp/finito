@@ -92,7 +92,6 @@ const Weekday = {
 
 const ItemSchema = {
 	id: TableIdSchema,
-	deviceId: TableIdSchema.nullable(),
 	label: NonEmptyString255Schema,
 	// Stored in minor units for `priceCurrency` (e.g. cents, satoshis).
 	price: IntegerSchema,
@@ -118,7 +117,10 @@ export const AppSchema = {
 		browserName: z.string().nullable(),
 		osName: z.string().nullable(),
 	},
-	catalogItem: ItemSchema,
+	catalogItem: {
+		...ItemSchema,
+		deviceId: TableIdSchema.nullable(),
+	},
 	item: {
 		...ItemSchema,
 		// Link to the original catalog item.

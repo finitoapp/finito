@@ -48,7 +48,6 @@ import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 
 type ItemRow = {
 	id: Id;
-	deviceId: Id | null;
 	itemId: Id | null;
 	categoryId: Id | null;
 	createdAt: DateIso;
@@ -64,7 +63,6 @@ type ItemRow = {
 
 type CurrentItemRow = {
 	id: Id;
-	deviceId: Id | null;
 	categoryId: Id | null;
 	label: NonEmptyString255;
 	price: Integer;
@@ -222,7 +220,6 @@ const createColumns = (
 
 const sortingFields = {
 	id: "item.id",
-	deviceId: "item.deviceId",
 	itemId: "item.catalogItemId",
 	categoryId: "item.categoryId",
 	createdAt: "item.createdAt",
@@ -321,7 +318,6 @@ export const ItemHistoryGrid = (props: { itemId: Id }) => {
 						.leftJoin("category", "category.id", "item.categoryId")
 						.select([
 							"item.id as id",
-							"item.deviceId as deviceId",
 							"item.catalogItemId as itemId",
 							"item.categoryId as categoryId",
 							"item.createdAt as createdAt",
