@@ -2,6 +2,7 @@ import csAccounts from "@/locales/cs/accounts";
 import csAdmin from "@/locales/cs/admin";
 import csApp from "@/locales/cs/app";
 import csAuth from "@/locales/cs/auth";
+import csBills from "@/locales/cs/bills";
 import csCategories from "@/locales/cs/categories";
 import csClient from "@/locales/cs/client";
 import csCommon from "@/locales/cs/common";
@@ -24,6 +25,7 @@ import enAccounts from "@/locales/en/accounts";
 import enAdmin from "@/locales/en/admin";
 import enApp from "@/locales/en/app";
 import enAuth from "@/locales/en/auth";
+import enBills from "@/locales/en/bills";
 import enCategories from "@/locales/en/categories";
 import enClient from "@/locales/en/client";
 import enCommon from "@/locales/en/common";
@@ -59,6 +61,7 @@ export const resources = {
 		menus: enMenus,
 		invoices: enInvoices,
 		payments: enPayments,
+		bills: enBills,
 		tables: enTables,
 		waiters: enWaiters,
 		transactions: enTransactions,
@@ -83,6 +86,7 @@ export const resources = {
 		menus: csMenus,
 		invoices: csInvoices,
 		payments: csPayments,
+		bills: csBills,
 		tables: csTables,
 		waiters: csWaiters,
 		transactions: csTransactions,

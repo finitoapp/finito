@@ -1,0 +1,4 @@
+interface:
+  display_name: "Finito Tables"
+  short_description: "Build Finito admin data tables"
+  default_prompt: "Use $finito-tables to implement or refactor a Finito admin DataTable in the project style."

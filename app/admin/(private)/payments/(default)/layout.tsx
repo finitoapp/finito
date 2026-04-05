@@ -1,6 +1,10 @@
 "use client";
 
-import { IconCashBanknote, IconListDetails } from "@tabler/icons-react";
+import {
+	IconCashBanknote,
+	IconInvoice,
+	IconListDetails,
+} from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { DefautLayout } from "@/app/admin/defaut-layout";
 import { SubNavShellRoot } from "@/components/sub-nav-shell";
@@ -17,6 +21,12 @@ const paymentsTabs = [
 		labelKey: "navigation:main.links.transactions",
 		icon: IconListDetails,
 		nextUrl: "/admin/payments/transactions",
+	},
+	{
+		value: "bills",
+		labelKey: "navigation:main.links.bills",
+		icon: IconInvoice,
+		nextUrl: "/admin/payments/bills" as never,
 	},
 ] as const;
 

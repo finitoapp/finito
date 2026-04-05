@@ -36,7 +36,8 @@ const locale = {
       "clients": "Klienti",
       "contacts": "Kontakty",
       "moneyAccounts": "Peněžní účty",
-      "transactions": "Transakce"
+      "transactions": "Transakce",
+      "bills": "Účty"
     }
   },
   "settings": {
