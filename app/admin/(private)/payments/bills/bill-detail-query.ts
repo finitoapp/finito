@@ -23,6 +23,7 @@ export type BillDetail = {
 	totalAmount: Integer;
 	items: {
 		itemId: Id;
+		catalogItemId: Id | null;
 		label: string;
 		quantity: number;
 		totalAmount: Integer;
@@ -77,6 +78,7 @@ export const createBillDetailQuery = (id: Id) =>
 									(eb) =>
 										[
 											"posBillItemLine.itemId as itemId",
+											"item.catalogItemId as catalogItemId",
 											"item.label as label",
 											eb.fn
 												.sum<number>(

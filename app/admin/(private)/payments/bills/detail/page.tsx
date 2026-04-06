@@ -152,7 +152,18 @@ export default function Home() {
 									{bill.items.map((item) => (
 										<TableRow key={item.itemId}>
 											<TableCell className="px-6 whitespace-normal">
-												{item.label}
+												{item.catalogItemId ? (
+													<Link
+														href={
+															`/admin/catalog/detail?id=${encodeURIComponent(item.catalogItemId)}` as never
+														}
+														className="text-primary hover:underline"
+													>
+														{item.label}
+													</Link>
+												) : (
+													item.label
+												)}
 											</TableCell>
 											<TableCell>{item.quantity.toLocaleString()}</TableCell>
 											<TableCell className="px-6 text-right">

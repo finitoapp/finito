@@ -1,6 +1,8 @@
 const locale = {
   "page": {
-    "payment": "Platba"
+    "payment": "Platba",
+    "settings": "Nastavení plateb",
+    "settings-description": "Nastavte, které platební varianty se mají automaticky generovat pro každou novou platbu."
   },
   "detail": {
     "actions": {
@@ -41,9 +43,20 @@ const locale = {
     "sections": {
       "sections": "Sekce detailu",
       "overview": "Přehled",
+      "items": "Položky",
       "messages": "Zprávy",
       "timeline": "Historie",
       "reconciliation": "Párování"
+    },
+    "empty": {
+      "items": "Pro tuto platbu nebyly nalezeny žádné položky."
+    },
+    "items": {
+      "columns": {
+        "item": "Položka",
+        "quantity": "Množství",
+        "total": "Celkem"
+      }
     },
     "reconciliation": {
       "title": "Záznamy párování",
@@ -107,7 +120,8 @@ const locale = {
         "label": "Štítek",
         "price": "Cena",
         "quantity": "Množství",
-        "payment-method": "Způsob platby"
+        "payment-method": "Způsob platby",
+        "generated-payment-methods": "Generované platební metody"
       },
       "label": {
         "merchant-name": "Název obchodníka",
@@ -130,10 +144,53 @@ const locale = {
         "https": "https://"
       },
       "description": {
-        "the-customer-will-be-redirected-to-this-url-when-they-complete-the-payment-via-t": "Zákazník bude po dokončení platby přes webové rozhraní přesměrován na tuto URL."
+        "the-customer-will-be-redirected-to-this-url-when-they-complete-the-payment-via-t": "Zákazník bude po dokončení platby přes webové rozhraní přesměrován na tuto URL.",
+        "generated-payment-methods": "Tyto platební metody se automaticky vytvoří podle nastavení v sekci Platby."
+      },
+      "message": {
+        "no-active-payment-methods": "Není nastavena žádná aktivní platební metoda. Tato platba se vytvoří bez platebních variant.",
+        "ignored-invalid-payment-methods": "Některé aktivní platební metody jsou ignorovány, protože jejich cílový účet už není k dispozici."
+      },
+      "generated-payment-method": {
+        "cash": "Hotovost: {{account}}",
+        "bank-transfer-cz": "Bankovní převod CZ: {{account}}",
+        "btc-ln": "BTC LN ({{provider}}): {{account}}"
       },
       "save-label": {
         "create-invoice": "Vytvořit fakturu"
+      }
+    },
+    "payment-default-methods-form": {
+      "title": {
+        "default-payment-methods": "Výchozí platební metody",
+        "type": "Typ",
+        "account": "Účet",
+        "status": "Stav"
+      },
+      "description": {
+        "default-payment-methods": "Každá nová platba vytvoří tyto platební varianty v nastaveném pořadí."
+      },
+      "label": {
+        "type": "Typ",
+        "account": "Účet",
+        "status": "Stav"
+      },
+      "type": {
+        "cash": "Hotovost",
+        "btc-ln": "BTC LN",
+        "bank-transfer-cz": "Bankovní převod (CZ)"
+      },
+      "status": {
+        "active": "Aktivní",
+        "paused": "Pozastaveno"
+      },
+      "placeholder": {
+        "select-type": "Vyberte typ",
+        "select-type-first": "Nejdřív vyberte typ",
+        "select-account": "Vyberte účet"
+      },
+      "value": {
+        "missing-account": "Chybějící účet: {{id}}"
       }
     }
   }

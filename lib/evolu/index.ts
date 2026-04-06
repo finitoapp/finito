@@ -17,6 +17,7 @@ import { z } from "zod";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
+import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
 import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
@@ -521,6 +522,12 @@ export const AppSchema = {
 		id: TableIdSchema,
 		name: NonEmptyString255Schema.nullable(),
 		rate: PercentSchema,
+	},
+	paymentDefaultMethod: {
+		id: TableIdSchema,
+		type: z.enum(PaymentDefaultMethodType),
+		accountId: TableIdSchema,
+		pausedAt: TimestampMsSchema.nullable(),
 	},
 	invoice: {
 		id: TableIdSchema,

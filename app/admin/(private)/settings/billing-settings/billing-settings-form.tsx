@@ -28,7 +28,6 @@ import {
 	StringToNumberSchema,
 	Timezone,
 } from "@/lib/shared/types";
-import { formatIban } from "@/lib/shared/utils/format";
 
 export const billingSettingsFormSchema = z.object({
 	ownContactId: TableIdSchema.nullable(),
@@ -91,70 +90,12 @@ const createComponents = (t: TFunction) => {
 			})),
 	});
 
-	const DefaultBankAccountComboboxInput = createEvoluComboboxInput({
-		label: t("settings:form.billing-settings-form.label.default-bank-account"),
-		query: createQuery((db) =>
-			db
-				.selectFrom("account")
-				.innerJoin("accountIban", "accountIban.id", "account.id")
-				.select(["account.id", "account.name", "accountIban.iban"])
-				.where("_tag", "=", "accountIban")
-				.where("account.isDeleted", "is not", sqliteTrue)
-				.where("account.name", "is not", null)
-				.where("accountIban.iban", "is not", null)
-				.$narrowType<{
-					name: KyselyNotNull;
-					iban: KyselyNotNull;
-				}>(),
-		),
-		mapRowsToItems: (rows) =>
-			rows.map((row) => ({
-				label: `${formatIban(row.iban)} (${row.name})`,
-				value: row.id,
-			})),
-	});
-
-	const DefaultLnZapComboboxInput = createEvoluComboboxInput({
-		label: t("settings:form.billing-settings-form.label.default-ln-zap-wallet"),
-		query: createQuery((db) =>
-			db
-				.selectFrom("account")
-				.selectAll()
-				.where("_tag", "=", "accountLud16")
-				.where("isDeleted", "is not", sqliteTrue)
-				.$narrowType<{
-					name: KyselyNotNull;
-				}>(),
-		),
-		mapRowsToItems: (rows) =>
-			rows.map((row) => ({
-				label: row.name,
-				value: row.id,
-			})),
-	});
-
-	const DefaultLnSparkComboboxInput = createEvoluComboboxInput({
-		label: t(
-			"settings:form.billing-settings-form.label.default-ln-spark-wallet",
-		),
-		query: createQuery((db) =>
-			db
-				.selectFrom("account")
-				.selectAll()
-				.where("_tag", "=", "accountSpark")
-				.where("isDeleted", "is not", sqliteTrue)
-				.$narrowType<{
-					name: KyselyNotNull;
-				}>(),
-		),
-		mapRowsToItems: (rows) =>
-			rows.map((row) => ({
-				label: row.name,
-				value: row.id,
-			})),
-	});
-
 	return createAutoFormLayout(billingSettingsFormSchema, ({ builder }) => ({
+		...builder.magicInput("defaultPaymentMethod").hidden(undefined),
+		...builder.magicInput("defaultBankTransferCzKey").hidden(undefined),
+		...builder.magicInput("defaultLnZapKey").hidden(undefined),
+		...builder.magicInput("defaultLnSparkKey").hidden(undefined),
+
 		...builder.card(
 			{
 				title: t("settings:form.billing-settings-form.title.general-settings"),
@@ -176,48 +117,6 @@ const createComponents = (t: TFunction) => {
 					allowEmpty: false,
 					label: t("settings:form.billing-settings-form.label.timezone"),
 				}),
-			},
-		),
-
-		...builder.card(
-			{
-				title: t(
-					"settings:form.billing-settings-form.title.payment-default-settings",
-				),
-			},
-			{
-				...builder.magicInput("defaultPaymentMethod").select({
-					values: {
-						[PaymentMethod.Cash]: t(
-							"settings:form.billing-settings-form.default-payment-method.cash",
-						),
-						[PaymentMethod.LnZap]: t(
-							"settings:form.billing-settings-form.default-payment-method.ln-zap",
-						),
-						[PaymentMethod.LnSpark]: t(
-							"settings:form.billing-settings-form.default-payment-method.ln-spark",
-						),
-						[PaymentMethod.BankTransferCZ]: t(
-							"settings:form.billing-settings-form.default-payment-method.bank-transfer-cz",
-						),
-					} satisfies Record<PaymentMethod, string>,
-					allowEmpty: false,
-					label: t(
-						"settings:form.billing-settings-form.label.default-payment-method",
-					),
-				}),
-
-				...builder.createComponent("defaultBankTransferCzKey", (props) => (
-					<DefaultBankAccountComboboxInput {...props} />
-				)),
-
-				...builder.createComponent("defaultLnZapKey", (props) => (
-					<DefaultLnZapComboboxInput {...props} />
-				)),
-
-				...builder.createComponent("defaultLnSparkKey", (props) => (
-					<DefaultLnSparkComboboxInput {...props} />
-				)),
 			},
 		),
 

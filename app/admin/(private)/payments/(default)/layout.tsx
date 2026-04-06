@@ -4,6 +4,7 @@ import {
 	IconCashBanknote,
 	IconInvoice,
 	IconListDetails,
+	IconSettings,
 } from "@tabler/icons-react";
 import { useTranslation } from "react-i18next";
 import { DefautLayout } from "@/app/admin/defaut-layout";
@@ -27,6 +28,12 @@ const paymentsTabs = [
 		labelKey: "navigation:main.links.bills",
 		icon: IconInvoice,
 		nextUrl: "/admin/payments/bills" as never,
+	},
+	{
+		value: "settings",
+		labelKey: "navigation:main.settings",
+		icon: IconSettings,
+		nextUrl: "/admin/payments/settings" as never,
 	},
 ] as const;
 

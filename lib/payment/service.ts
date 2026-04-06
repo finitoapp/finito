@@ -13,15 +13,19 @@ import NDK, {
 } from "@nostr-dev-kit/ndk";
 import { bech32 } from "@scure/base";
 import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
+import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
 import { PaymentStatus } from "@/lib/evolu/model/payment-status";
 import type { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
+import { createPaymentDefaultMethodsQuery } from "@/lib/evolu/queries/payment-default-method";
 import { createItem } from "@/lib/item/service";
+import { getBtcWalletAdapter } from "@/lib/payment/btc-wallet/registry";
 import type { EvoluDep, NdkDep } from "@/lib/shared/dependencies";
 import {
 	type Email,
 	Integer,
 	NonEmptyString,
 	type NonNegativeInteger,
+	VariableSymbol,
 } from "@/lib/shared/types";
 import { lazy } from "@/lib/shared/utils/lazy";
 import {
@@ -139,53 +143,61 @@ export const createOutgoingPayment =
 		}
 	};
 
+type CreatePaymentAmountOrItems =
+	| {
+			items: (Omit<
+				EvoluSchemaType["paymentItemLine"],
+				"id" | "paymentId" | "catalogItemId" | "itemId"
+			> & {
+				item: Omit<EvoluSchemaType["item"], "id">;
+			})[];
+			totalAmount?: undefined;
+	  }
+	| {
+			items?: undefined;
+			totalAmount: NonNegativeInteger;
+	  };
+
+type CreatePaymentParams = {
+	payment: Omit<
+		EvoluSchemaType["payment"],
+		"direction" | "totalAmount" | "tipAmount"
+	>;
+	webData?: Omit<
+		EvoluSchemaType["paymentWebData"],
+		"id" | "privateKey" | "webPaymentEventId"
+	>;
+	paymentLnZap?: Omit<
+		EvoluSchemaType["paymentLnZap"],
+		| "id"
+		| "expirationIn"
+		| "paymentHash"
+		| "lnInvoice"
+		| "privateKey"
+		| "walletPubkey"
+	>;
+	paymentLnSpark?: Omit<
+		EvoluSchemaType["paymentLnSpark"],
+		"id" | "expirationIn" | "paymentHash" | "lnInvoice" | "sparkInvoiceId"
+	>;
+	paymentLnNwc?: Omit<
+		EvoluSchemaType["paymentLnNwc"],
+		"id" | "expirationIn" | "paymentHash" | "lnInvoice"
+	>;
+	paymentBankTransferCZ?: Omit<EvoluSchemaType["paymentBankTransferCZ"], "id">;
+	paymentCash?: Omit<EvoluSchemaType["paymentCash"], "id">;
+	tipAmount: NonNegativeInteger | null;
+} & CreatePaymentAmountOrItems;
+
+type CreatePaymentWithDefaultMethodsParams = {
+	payment: CreatePaymentParams["payment"];
+	webData?: CreatePaymentParams["webData"];
+	tipAmount: CreatePaymentParams["tipAmount"];
+	amountInBtc?: NonNegativeInteger;
+} & CreatePaymentAmountOrItems;
+
 export const createPayment =
-	(deps: EvoluDep & NdkDep) =>
-	async (
-		params: {
-			payment: Omit<
-				EvoluSchemaType["payment"],
-				"direction" | "totalAmount" | "tipAmount"
-			>;
-			webData?: Omit<
-				EvoluSchemaType["paymentWebData"],
-				"id" | "privateKey" | "webPaymentEventId"
-			>;
-			paymentLnZap?: Omit<
-				EvoluSchemaType["paymentLnZap"],
-				| "id"
-				| "expirationIn"
-				| "paymentHash"
-				| "lnInvoice"
-				| "privateKey"
-				| "walletPubkey"
-			>;
-			paymentLnSpark?: Omit<
-				EvoluSchemaType["paymentLnSpark"],
-				"id" | "expirationIn" | "paymentHash" | "lnInvoice" | "sparkInvoiceId"
-			>;
-			paymentBankTransferCZ?: Omit<
-				EvoluSchemaType["paymentBankTransferCZ"],
-				"id"
-			>;
-			paymentCash?: Omit<EvoluSchemaType["paymentCash"], "id">;
-			tipAmount: NonNegativeInteger | null;
-		} & (
-			| {
-					items: (Omit<
-						EvoluSchemaType["paymentItemLine"],
-						"id" | "paymentId" | "catalogItemId" | "itemId"
-					> & {
-						item: Omit<EvoluSchemaType["item"], "id">;
-					})[];
-					totalAmount?: undefined;
-			  }
-			| {
-					items?: undefined;
-					totalAmount: NonNegativeInteger;
-			  }
-		),
-	) => {
+	(deps: EvoluDep & NdkDep) => async (params: CreatePaymentParams) => {
 		const id = params.payment.id;
 
 		let webPaymentEventId: NonEmptyString | null = null;
@@ -235,6 +247,17 @@ export const createPayment =
 			sparkPaymentResult = await createSparkPayment(deps)({
 				amountInSats: paymentLnSpark.amount,
 				accountId: paymentLnSpark.accountId,
+			});
+		}
+
+		const paymentLnNwc = params.paymentLnNwc;
+		let nwcPaymentResult: Awaited<
+			ReturnType<ReturnType<typeof createNwcPayment>>
+		> | null = null;
+		if (paymentLnNwc) {
+			nwcPaymentResult = await createNwcPayment(deps)({
+				amountInSats: paymentLnNwc.amount,
+				accountId: paymentLnNwc.accountId,
 			});
 		}
 
@@ -308,17 +331,6 @@ export const createPayment =
 			});
 		}
 
-		// deps.evolu.upsert("paymentWebData", {
-		// 	id,
-		// 	merchantName: params.paymentData.merchant?.name ?? null,
-		// 	onSuccessfulPaymentTag:
-		// 		params.paymentData.onSuccessfulPayment?._tag ?? null,
-		// 	onSuccessfulPaymentRedirectUrl:
-		// 		params.paymentData.onSuccessfulPayment?.redirectUrl ?? null,
-		// 	webPaymentEventId: NonEmptyString(event.id),
-		// 	privateKey: params.paymentData.privateKey,
-		// });
-
 		if (params.items) {
 			for (const [index, { item, ...line }] of params.items.entries()) {
 				const itemId = createIdFromString(`${id}:billItem:${index}`);
@@ -369,6 +381,20 @@ export const createPayment =
 			});
 		}
 
+		if (params.paymentLnNwc && nwcPaymentResult) {
+			deps.evolu.upsert("paymentLnNwc", {
+				...params.paymentLnNwc,
+				lnInvoice: nwcPaymentResult.lnInvoice,
+				paymentHash: extractPaymentHashFromLnInvoice(
+					nwcPaymentResult.lnInvoice,
+				),
+				expirationIn: extractExpirationFromLightningInvoice(
+					nwcPaymentResult.lnInvoice,
+				),
+				id,
+			});
+		}
+
 		if (params.paymentBankTransferCZ) {
 			deps.evolu.upsert("paymentBankTransferCZ", {
 				...params.paymentBankTransferCZ,
@@ -383,55 +409,7 @@ export const createPayment =
 			});
 		}
 
-		// const paymentOption = params.paymentData.paymentOptions?.[0];
-		// if (paymentOption?.type === "lnZap") {
-		// 	console.log("paymentOption", paymentOption);
-		// 	deps.evolu.upsert("paymentLnZap", {
-		// 		id,
-		// 		accountId: paymentOption.accountId as Id,
-		// 		lnInvoice: paymentOption.lnInvoice,
-		// 		paymentHash: extractPaymentHashFromLnInvoice(paymentOption.lnInvoice),
-		// 		walletPubkey: paymentOption.walletPubkey,
-		// 		amount: Number(paymentOption.amount),
-		// 		expirationIn: paymentOption.expirationIn.getTime(),
-		// 	});
-		// } else if (paymentOption?.type === "lnSpark") {
-		// 	deps.evolu.upsert("paymentLnSpark", {
-		// 		id,
-		// 		accountId: paymentOption.accountId as Id,
-		// 		lnInvoice: paymentOption.lnInvoice,
-		// 		paymentHash: extractPaymentHashFromLnInvoice(paymentOption.lnInvoice),
-		// 		sparkInvoiceId: paymentOption.sparkInvoiceId,
-		// 		amount: Number(paymentOption.amount),
-		// 		expirationIn: paymentOption.expirationIn.getTime(),
-		// 	});
-		// } else if (paymentOption?.type === "bankTransferCZ") {
-		// 	deps.evolu.upsert("paymentBankTransferCZ", {
-		// 		id,
-		// 		iban: paymentOption.iban,
-		// 		variableSymbol: paymentOption.variableSymbol,
-		// 	});
-		// } else if (paymentOption?.type === "cash" || paymentOption === undefined) {
-		// 	deps.evolu.upsert("paymentCash", {
-		// 		id,
-		// 		accountId: paymentOption?.accountId
-		// 			? (paymentOption.accountId as Id)
-		// 			: null,
-		// 	});
-		// }
-		//
-		// if (paymentOption?.type === "lnZap" || paymentOption?.type === "lnSpark") {
-		// 	deps.evolu.upsert("paymentWatchingState", {
-		// 		id,
-		// 		verifiedAt: null,
-		// 		proveType: null,
-		// 		transactionId: null,
-		// 		stoppedAt: null,
-		// 		stopReason: null,
-		// 	});
-		// }
-
-		if (params.paymentLnSpark || params.paymentLnZap) {
+		if (params.paymentLnSpark || params.paymentLnZap || params.paymentLnNwc) {
 			deps.evolu.upsert("paymentWatchingState", {
 				id,
 				verifiedAt: null,
@@ -443,6 +421,154 @@ export const createPayment =
 		}
 
 		return id;
+	};
+
+export const createPaymentWithDefaultMethods =
+	(deps: EvoluDep & NdkDep) =>
+	async (params: CreatePaymentWithDefaultMethodsParams) => {
+		const { amountInBtc } = params;
+		const defaultMethods = await deps.evolu.loadQuery(
+			createPaymentDefaultMethodsQuery({
+				onlyActive: true,
+			}),
+		);
+		const usedTypes = new Set<string>();
+
+		let paymentLnZap:
+			| Omit<
+					EvoluSchemaType["paymentLnZap"],
+					| "id"
+					| "expirationIn"
+					| "paymentHash"
+					| "lnInvoice"
+					| "privateKey"
+					| "walletPubkey"
+			  >
+			| undefined;
+		let paymentLnSpark:
+			| Omit<
+					EvoluSchemaType["paymentLnSpark"],
+					"id" | "expirationIn" | "paymentHash" | "lnInvoice" | "sparkInvoiceId"
+			  >
+			| undefined;
+		let paymentLnNwc:
+			| Omit<
+					EvoluSchemaType["paymentLnNwc"],
+					"id" | "expirationIn" | "paymentHash" | "lnInvoice"
+			  >
+			| undefined;
+		let paymentBankTransferCZ:
+			| Omit<EvoluSchemaType["paymentBankTransferCZ"], "id">
+			| undefined;
+		let paymentCash: Omit<EvoluSchemaType["paymentCash"], "id"> | undefined;
+
+		for (const defaultMethod of defaultMethods) {
+			if (usedTypes.has(defaultMethod.type)) {
+				throw new Error(
+					`Duplicate active default payment method type: ${defaultMethod.type}`,
+				);
+			}
+
+			usedTypes.add(defaultMethod.type);
+
+			if (defaultMethod.accountTag === null) {
+				continue;
+			}
+
+			if (defaultMethod.type === PaymentDefaultMethodType.Cash) {
+				if (defaultMethod.accountTag !== "accountCashRegister") {
+					throw new Error(
+						"Cash payment default method must target a cash account.",
+					);
+				}
+
+				paymentCash = {
+					accountId: defaultMethod.accountId,
+				};
+				continue;
+			}
+
+			if (defaultMethod.type === PaymentDefaultMethodType.BankTransferCZ) {
+				if (
+					defaultMethod.accountTag !== "accountIban" ||
+					defaultMethod.accountIban === null
+				) {
+					throw new Error(
+						"Bank transfer default method must target an account with IBAN.",
+					);
+				}
+
+				paymentBankTransferCZ = {
+					iban: defaultMethod.accountIban,
+					variableSymbol: VariableSymbol("1"),
+				};
+				continue;
+			}
+
+			if (defaultMethod.type !== PaymentDefaultMethodType.BtcLn) {
+				continue;
+			}
+
+			if (defaultMethod.accountTag === "accountLud16") {
+				if (amountInBtc === undefined) {
+					throw new Error("BTC amount is required for BTC LN payment methods.");
+				}
+				paymentLnZap = {
+					accountId: defaultMethod.accountId,
+					amount: amountInBtc,
+				};
+				continue;
+			}
+
+			if (defaultMethod.accountTag === "accountSpark") {
+				if (amountInBtc === undefined) {
+					throw new Error("BTC amount is required for BTC LN payment methods.");
+				}
+				paymentLnSpark = {
+					accountId: defaultMethod.accountId,
+					amount: amountInBtc,
+				};
+				continue;
+			}
+
+			if (defaultMethod.accountTag === "accountNwc") {
+				if (amountInBtc === undefined) {
+					throw new Error("BTC amount is required for BTC LN payment methods.");
+				}
+				paymentLnNwc = {
+					accountId: defaultMethod.accountId,
+					amount: amountInBtc,
+				};
+				continue;
+			}
+
+			throw new Error(
+				"BTC LN payment default method must target an LN account.",
+			);
+		}
+
+		const commonParams = {
+			payment: params.payment,
+			webData: params.webData,
+			tipAmount: params.tipAmount,
+			paymentLnZap,
+			paymentLnSpark,
+			paymentLnNwc,
+			paymentBankTransferCZ,
+			paymentCash,
+		} satisfies Omit<CreatePaymentParams, "items" | "totalAmount">;
+
+		if ("items" in params && params.items !== undefined) {
+			return await createPayment(deps)({
+				...commonParams,
+				items: params.items,
+			});
+		}
+
+		return await createPayment(deps)({
+			...commonParams,
+			totalAmount: params.totalAmount,
+		});
 	};
 
 export const stopPaymentWatching =
@@ -482,7 +608,7 @@ export const stopPaymentWatching =
 
 const createSparkPayment =
 	(deps: EvoluDep & NdkDep) =>
-	async (params: { accountId: Id; amountInSats: Integer }) => {
+	async (params: { accountId: Id; amountInSats: NonNegativeInteger }) => {
 		const accounts = await deps.evolu.loadQuery(
 			createQuery((db) =>
 				db
@@ -522,5 +648,54 @@ const createSparkPayment =
 			lnInvoice: NonEmptyString(invoice.invoice.encodedInvoice),
 			sparkInvoiceId: NonEmptyString(invoice.id),
 			expirationAt: new Date(invoice.invoice.expiresAt),
+		} as const;
+	};
+
+const createNwcPayment =
+	(deps: EvoluDep) =>
+	async (params: { accountId: Id; amountInSats: NonNegativeInteger }) => {
+		const accounts = await deps.evolu.loadQuery(
+			createQuery((db) =>
+				db
+					.selectFrom("account")
+					.innerJoin("accountNwc", "accountNwc.id", "account.id")
+					.select([
+						"account._tag as _tag",
+						"accountNwc.credentials as credentials",
+					] as const)
+					.where("account.isDeleted", "is not", sqliteTrue)
+					.where("accountNwc.isDeleted", "is not", sqliteTrue)
+					.where("account.id", "=", params.accountId)
+					.where("accountNwc.credentials", "is not", null)
+					.$narrowType<{
+						_tag: KyselyNotNull;
+						credentials: KyselyNotNull;
+					}>(),
+			),
+		);
+
+		const account = accounts[0];
+		if (account === undefined) {
+			return;
+		}
+
+		if (account._tag !== "accountNwc") {
+			return;
+		}
+
+		const btcWalletAdapter = getBtcWalletAdapter("accountNwc");
+		const invoice = await btcWalletAdapter.receiveInvoice({
+			config: {
+				id: params.accountId,
+				credentials: account.credentials,
+			},
+			input: {
+				amountSats: params.amountInSats,
+			},
+		});
+
+		return {
+			lnInvoice: invoice.invoice,
+			expirationAt: new Date(invoice.expiresAt),
 		} as const;
 	};
