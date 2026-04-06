@@ -6,7 +6,10 @@
 
 # next.js
 /.next/
+/.next-e2e/
 /out/
+/playwright-report/
+/test-results/
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -23,3 +26,4 @@ next-env.d.ts
 /scripts/*Test/*
 
 certificates
+e2e/.auth/
