@@ -7,6 +7,7 @@ import { deviceEvoluAtom } from "@/atoms/device-evolu";
 import type { DeviceEvolu } from "@/lib/evolu/device";
 import {
 	bootstrapE2eAccount,
+	resetE2eBrowserState,
 	seedCatalogScenario,
 } from "@/lib/testing/e2e-catalog";
 
@@ -42,6 +43,12 @@ export default function Page() {
 		}
 
 		window.__finitoE2E = {
+			resetBrowserState: async () => {
+				setStatus("running");
+				await resetE2eBrowserState();
+				setLastResult("{}");
+				setStatus("ready");
+			},
 			bootstrap: async () => {
 				setStatus("running");
 				const result = await bootstrapE2eAccount(deviceEvoluState.data);

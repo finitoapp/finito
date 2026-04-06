@@ -23,6 +23,7 @@ export type CatalogSeedResult = {
 };
 
 export type FinitoE2EHarness = {
+	resetBrowserState: () => Promise<void>;
 	bootstrap: () => Promise<{
 		deviceId: string;
 		mnemonic: string;
