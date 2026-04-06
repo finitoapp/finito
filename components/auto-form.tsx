@@ -250,12 +250,14 @@ export const AutoFormInput = {
 								{params.secretContent ? (
 									<PasswordInput
 										{...field}
+										id={field.name}
 										disabled={params.disabled}
 										placeholder={params.placeholder}
 									/>
 								) : (
 									<Input
 										{...field}
+										id={field.name}
 										disabled={params.disabled}
 										type={params.type}
 										placeholder={params.placeholder}
@@ -375,6 +377,7 @@ export const AutoFormInput = {
 									<InputGroup className={"w-full"}>
 										<Input
 											{...field}
+											id={field.name}
 											disabled={params.disabled}
 											type={params.type}
 											placeholder={params.placeholder}
@@ -502,6 +505,7 @@ export const AutoFormInput = {
 						<div className="flex gap-2">
 							<Checkbox
 								{...field}
+								id={field.name}
 								checked={field.value}
 								onCheckedChange={(value) => field.onChange(value === true)}
 								inputRef={field.ref}
@@ -558,6 +562,7 @@ export const AutoFormInput = {
 								<PasswordTextarea
 									rows={params.rows}
 									{...field}
+									id={field.name}
 									placeholder={params.placeholder}
 									disabled={params.disabled}
 								/>
@@ -565,6 +570,7 @@ export const AutoFormInput = {
 								<Textarea
 									rows={params.rows}
 									{...field}
+									id={field.name}
 									placeholder={params.placeholder}
 									disabled={params.disabled}
 								/>
