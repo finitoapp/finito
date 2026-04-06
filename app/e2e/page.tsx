@@ -49,9 +49,12 @@ export default function Page() {
 				setLastResult("{}");
 				setStatus("ready");
 			},
-			bootstrap: async () => {
+			bootstrap: async (context) => {
 				setStatus("running");
-				const result = await bootstrapE2eAccount(deviceEvoluState.data);
+				const result = await bootstrapE2eAccount(
+					deviceEvoluState.data,
+					context,
+				);
 				const payload = {
 					deviceId: result.device.id,
 					mnemonic: result.mnemonic,
@@ -60,9 +63,14 @@ export default function Page() {
 				setStatus("ready");
 				return payload;
 			},
-			runScenario: async (name, input) => {
+			runScenario: async (name, input, context) => {
 				setStatus("running");
-				const result = await runE2EScenario(deviceEvoluState.data, name, input);
+				const result = await runE2EScenario(
+					deviceEvoluState.data,
+					name,
+					input,
+					context,
+				);
 				setLastResult(JSON.stringify(result));
 				setStatus("ready");
 				return result;

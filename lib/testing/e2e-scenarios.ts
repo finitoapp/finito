@@ -6,11 +6,13 @@ import type {
 	E2EScenarioInputMap,
 	E2EScenarioName,
 	E2EScenarioResultMap,
+	E2EWorkerContext,
 } from "@/lib/testing/e2e-types";
 
 type ScenarioRunner<TInput, TResult> = (
 	deviceEvolu: DeviceEvolu,
 	input: TInput,
+	context: E2EWorkerContext,
 ) => Promise<TResult>;
 
 const scenarioRegistry: {
@@ -29,6 +31,7 @@ export const runE2EScenario = <TName extends E2EScenarioName>(
 	deviceEvolu: DeviceEvolu,
 	name: TName,
 	input: E2EScenarioInputMap[TName],
+	context: E2EWorkerContext,
 ): Promise<E2EScenarioResultMap[TName]> => {
-	return scenarioRegistry[name](deviceEvolu, input);
+	return scenarioRegistry[name](deviceEvolu, input, context);
 };

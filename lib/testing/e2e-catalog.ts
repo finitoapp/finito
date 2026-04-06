@@ -17,20 +17,21 @@ import {
 import type {
 	CatalogScenarioInput,
 	CatalogScenarioResult,
+	E2EWorkerContext,
 } from "@/lib/testing/e2e-types";
 
-const e2eDevice = {
-	id: createIdFromString("e2e-device") as Id,
-	name: NonEmptyString255("E2E Browser"),
+const createE2eDevice = (context: E2EWorkerContext) => ({
+	id: createIdFromString(context.deviceKey) as Id,
+	name: NonEmptyString255(`E2E Browser ${context.workerId}`),
 	deviceType: "desktop",
 	deviceVendor: "Playwright",
 	browserName: "Chromium",
 	osName: "Linux",
-};
+});
 
-const persistE2eBrowserState = () => {
+const persistE2eBrowserState = (deviceId: Id) => {
 	window.localStorage.setItem("finito:language", "en");
-	window.localStorage.setItem("finito.deviceId", e2eDevice.id);
+	window.localStorage.setItem("finito.deviceId", deviceId);
 };
 
 const deleteIndexedDb = async (name: string) =>
@@ -60,9 +61,12 @@ export const resetE2eBrowserState = async () => {
 	}
 };
 
-const ensureDeviceRow = async (deviceEvolu: DeviceEvolu) => {
+const ensureDeviceRow = async (
+	deviceEvolu: DeviceEvolu,
+	device: ReturnType<typeof createE2eDevice>,
+) => {
 	await new Promise<void>((resolve) => {
-		deviceEvolu.upsert("device", e2eDevice, {
+		deviceEvolu.upsert("device", device, {
 			onComplete: resolve,
 		});
 	});
@@ -70,13 +74,15 @@ const ensureDeviceRow = async (deviceEvolu: DeviceEvolu) => {
 
 export const bootstrapE2eAccount = async (
 	deviceEvolu: DeviceEvolu,
+	context: E2EWorkerContext,
 	mnemonic: Mnemonic = createAccountMnemonic(),
 ) => {
-	persistE2eBrowserState();
+	const e2eDevice = createE2eDevice(context);
+	persistE2eBrowserState(e2eDevice.id);
 	await activateOrCreateAccountWithMnemonic(deviceEvolu, mnemonic, {
 		accountName: "E2E Admin",
 	});
-	await ensureDeviceRow(deviceEvolu);
+	await ensureDeviceRow(deviceEvolu, e2eDevice);
 
 	return {
 		mnemonic,
@@ -87,8 +93,9 @@ export const bootstrapE2eAccount = async (
 export const runCatalogScenario = async (
 	deviceEvolu: DeviceEvolu,
 	scenario: CatalogScenarioInput,
+	context: E2EWorkerContext,
 ): Promise<CatalogScenarioResult> => {
-	const { mnemonic, device } = await bootstrapE2eAccount(deviceEvolu);
+	const { mnemonic, device } = await bootstrapE2eAccount(deviceEvolu, context);
 	const evolu = await createAppEvolu({
 		mnemonic,
 		transports: [],

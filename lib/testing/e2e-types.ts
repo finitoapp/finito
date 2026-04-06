@@ -32,14 +32,24 @@ export type E2EScenarioResultMap = {
 	catalog: CatalogScenarioResult;
 };
 
+export type E2EWorkerContext = {
+	workerId: string;
+	deviceKey: string;
+};
+
+export type E2EScenarioContext = E2EWorkerContext & {
+	testId: string;
+};
+
 export type FinitoE2EHarness = {
 	resetBrowserState: () => Promise<void>;
-	bootstrap: () => Promise<{
+	bootstrap: (context: E2EWorkerContext) => Promise<{
 		deviceId: string;
 		mnemonic: string;
 	}>;
 	runScenario: <TName extends E2EScenarioName>(
 		name: TName,
 		input: E2EScenarioInputMap[TName],
+		context: E2EScenarioContext,
 	) => Promise<E2EScenarioResultMap[TName]>;
 };
