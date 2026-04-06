@@ -49,6 +49,7 @@ Read these files before changing e2e behavior:
 5. Write robust specs:
 - Seed state first, then navigate UI.
 - Prefer role-based locators and stable form field names over fragile CSS selectors.
+- When role/text locators are not a stable UI contract, add a narrow `data-testid` in the app code and target that instead of asserting broad page text.
 - Use explicit waits only for real async boundaries such as navigation.
 - Assert user-visible outcomes, not internal implementation details, unless the test explicitly validates persisted IDs.
 

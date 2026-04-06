@@ -126,7 +126,7 @@ export default function Home() {
 				<div className="flex min-w-0 flex-col gap-4">
 					<Card>
 						<CardHeader>
-							<CardTitle>
+							<CardTitle data-testid="catalog-category-detail-name">
 								<InlineEdit
 									value={category.name}
 									PluginComponent={nonEmptyString255Plugin}
@@ -139,10 +139,14 @@ export default function Home() {
 								/>
 							</CardTitle>
 						</CardHeader>
-						<CardContent>
+						<CardContent data-testid="catalog-category-summary">
 							<FieldRow
 								label={t("categories:detail.fields.itemsCount")}
-								value={linkedItemsCount.toLocaleString()}
+								value={
+									<span data-testid="catalog-category-items-count">
+										{linkedItemsCount.toLocaleString()}
+									</span>
+								}
 							/>
 						</CardContent>
 					</Card>

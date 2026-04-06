@@ -133,8 +133,10 @@ test("opens a linked category from the categories list and shows its usage", asy
 	await expect(page).toHaveURL(
 		new RegExp(`/admin/catalog/categories/detail\\?id=${seed.category.id}`),
 	);
-	await expect(page.getByText(categoryName)).toBeVisible();
-	await expect(page.getByText("Items count").first()).toBeVisible();
+	await expect(page.getByTestId("catalog-category-detail-name")).toContainText(
+		categoryName,
+	);
+	await expect(page.getByTestId("catalog-category-items-count")).toHaveText("1");
 	await expect(page.getByText("In use")).toBeVisible();
 });
 
