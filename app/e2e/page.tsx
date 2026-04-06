@@ -8,8 +8,8 @@ import type { DeviceEvolu } from "@/lib/evolu/device";
 import {
 	bootstrapE2eAccount,
 	resetE2eBrowserState,
-	seedCatalogScenario,
 } from "@/lib/testing/e2e-catalog";
+import { runE2EScenario } from "@/lib/testing/e2e-scenarios";
 
 type DeviceEvoluState =
 	| { state: "loading" }
@@ -60,12 +60,9 @@ export default function Page() {
 				setStatus("ready");
 				return payload;
 			},
-			seedCatalogScenario: async (scenario) => {
+			runScenario: async (name, input) => {
 				setStatus("running");
-				const result = await seedCatalogScenario(
-					deviceEvoluState.data,
-					scenario,
-				);
+				const result = await runE2EScenario(deviceEvoluState.data, name, input);
 				setLastResult(JSON.stringify(result));
 				setStatus("ready");
 				return result;

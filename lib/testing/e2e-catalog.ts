@@ -14,6 +14,10 @@ import {
 	ProductCodeType,
 	Timezone,
 } from "@/lib/shared/types";
+import type {
+	CatalogScenarioInput,
+	CatalogScenarioResult,
+} from "@/lib/testing/e2e-types";
 
 const e2eDevice = {
 	id: createIdFromString("e2e-device") as Id,
@@ -64,28 +68,6 @@ const ensureDeviceRow = async (deviceEvolu: DeviceEvolu) => {
 	});
 };
 
-export type CatalogSeedScenario =
-	| {
-			name: "empty-catalog";
-	  }
-	| {
-			name: "single-item";
-			item?: {
-				label?: string;
-				price?: number;
-				currency?: Currency;
-			};
-	  };
-
-export type CatalogSeedResult = {
-	mnemonic: Mnemonic;
-	deviceId: Id;
-	item?: {
-		id: Id;
-		label: string;
-	};
-};
-
 export const bootstrapE2eAccount = async (
 	deviceEvolu: DeviceEvolu,
 	mnemonic: Mnemonic = createAccountMnemonic(),
@@ -102,10 +84,10 @@ export const bootstrapE2eAccount = async (
 	};
 };
 
-export const seedCatalogScenario = async (
+export const runCatalogScenario = async (
 	deviceEvolu: DeviceEvolu,
-	scenario: CatalogSeedScenario,
-): Promise<CatalogSeedResult> => {
+	scenario: CatalogScenarioInput,
+): Promise<CatalogScenarioResult> => {
 	const { mnemonic, device } = await bootstrapE2eAccount(deviceEvolu);
 	const evolu = await createAppEvolu({
 		mnemonic,

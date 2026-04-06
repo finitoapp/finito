@@ -1,6 +1,6 @@
 import type { Currency } from "@/lib/shared/types";
 
-export type CatalogSeedScenario =
+export type CatalogScenarioInput =
 	| {
 			name: "empty-catalog";
 	  }
@@ -13,7 +13,13 @@ export type CatalogSeedScenario =
 			};
 	  };
 
-export type CatalogSeedResult = {
+export type E2EScenarioName = "catalog";
+
+export type E2EScenarioInputMap = {
+	catalog: CatalogScenarioInput;
+};
+
+export type CatalogScenarioResult = {
 	mnemonic: string;
 	deviceId: string;
 	item?: {
@@ -22,13 +28,18 @@ export type CatalogSeedResult = {
 	};
 };
 
+export type E2EScenarioResultMap = {
+	catalog: CatalogScenarioResult;
+};
+
 export type FinitoE2EHarness = {
 	resetBrowserState: () => Promise<void>;
 	bootstrap: () => Promise<{
 		deviceId: string;
 		mnemonic: string;
 	}>;
-	seedCatalogScenario: (
-		scenario: CatalogSeedScenario,
-	) => Promise<CatalogSeedResult>;
+	runScenario: <TName extends E2EScenarioName>(
+		name: TName,
+		input: E2EScenarioInputMap[TName],
+	) => Promise<E2EScenarioResultMap[TName]>;
 };
