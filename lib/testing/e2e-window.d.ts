@@ -5,5 +5,3 @@ declare global {
 		__finitoE2E?: FinitoE2EHarness;
 	}
 }
-
-export {};

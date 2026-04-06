@@ -1,14 +1,14 @@
-import { expect, test } from "@playwright/test";
-import { seedCatalog } from "./helpers/harness";
+import { expect, test } from "./fixtures";
 
 const createUniqueLabel = (prefix: string) =>
 	`${prefix} ${Date.now()} ${Math.round(Math.random() * 10_000)}`;
 
 test("shows a seeded catalog item in the list and opens its detail", async ({
 	page,
+	harness,
 }) => {
 	const label = createUniqueLabel("Catalog smoke");
-	const seed = await seedCatalog(page, {
+	const seed = await harness.seedCatalog({
 		name: "single-item",
 		item: {
 			label,
@@ -29,10 +29,13 @@ test("shows a seeded catalog item in the list and opens its detail", async ({
 	await expect(page.getByText(seed.item.id)).toBeVisible();
 });
 
-test("creates a new catalog item from the list page", async ({ page }) => {
+test("creates a new catalog item from the list page", async ({
+	page,
+	harness,
+}) => {
 	const label = createUniqueLabel("Catalog create");
 
-	await seedCatalog(page, {
+	await harness.seedCatalog({
 		name: "empty-catalog",
 	});
 
@@ -49,9 +52,12 @@ test("creates a new catalog item from the list page", async ({ page }) => {
 	await expect(page.getByRole("link", { name: label })).toBeVisible();
 });
 
-test("deletes a catalog item from the detail menu", async ({ page }) => {
+test("deletes a catalog item from the detail menu", async ({
+	page,
+	harness,
+}) => {
 	const label = createUniqueLabel("Catalog delete");
-	const seed = await seedCatalog(page, {
+	const seed = await harness.seedCatalog({
 		name: "single-item",
 		item: {
 			label,

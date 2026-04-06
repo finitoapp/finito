@@ -3,12 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3000;
 const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
 const baseURL = externalBaseURL ?? `http://127.0.0.1:${port}`;
-const authFile = "e2e/.auth/admin.json";
 
 export default defineConfig({
 	testDir: "./e2e",
-	fullyParallel: false,
-	workers: 1,
+	fullyParallel: true,
+	workers: 2,
 	retries: process.env.CI ? 2 : 0,
 	reporter: [["list"], ["html", { open: "never" }]],
 	use: {
@@ -19,15 +18,9 @@ export default defineConfig({
 	},
 	projects: [
 		{
-			name: "setup",
-			testMatch: /.*\.setup\.ts/,
-		},
-		{
 			name: "chromium",
-			dependencies: ["setup"],
 			use: {
 				...devices["Desktop Chrome"],
-				storageState: authFile,
 			},
 		},
 	],
@@ -41,4 +34,4 @@ export default defineConfig({
 			},
 });
 
-export { authFile, baseURL };
+export { baseURL };
