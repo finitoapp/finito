@@ -1,0 +1,157 @@
+import { createIdFromString, type Id, type Mnemonic } from "@evolu/common";
+import {
+	activateOrCreateAccountWithMnemonic,
+	createAccountMnemonic,
+} from "@/atoms/account";
+import { createAppEvolu } from "@/lib/evolu";
+import type { DeviceEvolu } from "@/lib/evolu/device";
+import { PaymentMethod } from "@/lib/evolu/model/payment";
+import {
+	Currency,
+	FiatCurrency,
+	Integer,
+	NonEmptyString255,
+	ProductCodeType,
+	Timezone,
+} from "@/lib/shared/types";
+
+const e2eDevice = {
+	id: createIdFromString("e2e-device") as Id,
+	name: NonEmptyString255("E2E Browser"),
+	deviceType: "desktop",
+	deviceVendor: "Playwright",
+	browserName: "Chromium",
+	osName: "Linux",
+};
+
+const persistE2eBrowserState = () => {
+	window.localStorage.setItem("finito:language", "en");
+	window.localStorage.setItem("finito.deviceId", e2eDevice.id);
+};
+
+const ensureDeviceRow = async (deviceEvolu: DeviceEvolu) => {
+	await new Promise<void>((resolve) => {
+		deviceEvolu.upsert("device", e2eDevice, {
+			onComplete: resolve,
+		});
+	});
+};
+
+export type CatalogSeedScenario =
+	| {
+			name: "empty-catalog";
+	  }
+	| {
+			name: "single-item";
+			item?: {
+				label?: string;
+				price?: number;
+				currency?: Currency;
+			};
+	  };
+
+export type CatalogSeedResult = {
+	mnemonic: Mnemonic;
+	deviceId: Id;
+	item?: {
+		id: Id;
+		label: string;
+	};
+};
+
+export const bootstrapE2eAccount = async (
+	deviceEvolu: DeviceEvolu,
+	mnemonic: Mnemonic = createAccountMnemonic(),
+) => {
+	persistE2eBrowserState();
+	await activateOrCreateAccountWithMnemonic(deviceEvolu, mnemonic, {
+		accountName: "E2E Admin",
+	});
+	await ensureDeviceRow(deviceEvolu);
+
+	return {
+		mnemonic,
+		device: e2eDevice,
+	};
+};
+
+export const seedCatalogScenario = async (
+	deviceEvolu: DeviceEvolu,
+	scenario: CatalogSeedScenario,
+): Promise<CatalogSeedResult> => {
+	const { mnemonic, device } = await bootstrapE2eAccount(deviceEvolu);
+	const evolu = await createAppEvolu({
+		mnemonic,
+		transports: [],
+	});
+
+	await new Promise<void>((resolve) => {
+		evolu.upsert("device", device, {
+			onComplete: resolve,
+		});
+	});
+
+	await new Promise<void>((resolve) => {
+		evolu.upsert(
+			"billingSettings",
+			{
+				id: createIdFromString(""),
+				ownContactId: null,
+				defaultCurrency: FiatCurrency.CZK,
+				defaultTimezone: Timezone["Europe/Prague"],
+				defaultPaymentMethodBankAccountKey: null,
+				defaultPaymentMethod: PaymentMethod.Cash,
+				defaultBankTransferCzKey: null,
+				defaultLnZapKey: null,
+				defaultLnSparkKey: null,
+			},
+			{
+				onComplete: resolve,
+			},
+		);
+	});
+
+	if (scenario.name === "single-item") {
+		const label = NonEmptyString255(
+			scenario.item?.label ?? "E2E Seeded Catalog Item",
+		);
+		const price = Integer(scenario.item?.price ?? 15_900);
+		const currency = scenario.item?.currency ?? Currency.CZK;
+
+		const itemId = await new Promise<Id>((resolve) => {
+			const { id } = evolu.insert(
+				"catalogItem",
+				{
+					deviceId: device.id,
+					categoryId: null,
+					label,
+					price,
+					currency,
+					unitOfMeasure: null,
+					internalCode: null,
+					productCodeType: ProductCodeType.EAN,
+					productCodeValue: null,
+				},
+				{
+					onComplete: () => {
+						resolve(id);
+					},
+				},
+			);
+		});
+
+		return {
+			mnemonic,
+			deviceId: device.id,
+			item: {
+				id: itemId,
+				label,
+			},
+		};
+	}
+
+	return {
+		mnemonic,
+		deviceId: device.id,
+	};
+};

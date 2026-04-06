@@ -9,8 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Bun ${{ matrix.bun-version }}
+      - name: Use Bun 1.3.11
         uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
 
       - name: Install
         run: bun install --frozen-lockfile

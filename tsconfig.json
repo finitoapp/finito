@@ -22,7 +22,9 @@
         "name": "next"
       }
     ],
-    "types": ["bun"],
+    "types": [
+      "bun"
+    ],
     "paths": {
       "@/*": [
         "./*"

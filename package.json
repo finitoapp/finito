@@ -10,6 +10,10 @@
     "typegen": "next typegen",
     "format": "biome check --write",
     "i18n:localize": "node scripts/i18n/localize-safe.mjs",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:ui": "playwright test --ui",
+    "e2e:serve": "FINITO_E2E=1 next build && bunx serve .next-e2e -l 3000",
     "check": "bun check:lint && bun typegen && bun check:types && bun check:tests",
     "check:types": "tsc --incremental --noEmit",
     "check:tests": "bun test",
@@ -87,6 +91,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
     "@happy-dom/global-registrator": "20.8.9",
+    "@playwright/test": "1.59.1",
     "@tailwindcss/postcss": "4.2.2",
     "@tauri-apps/cli": "2.10.1",
     "@testing-library/dom": "10.4.1",
