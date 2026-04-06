@@ -29,6 +29,33 @@ const persistE2eBrowserState = () => {
 	window.localStorage.setItem("finito.deviceId", e2eDevice.id);
 };
 
+const deleteIndexedDb = async (name: string) =>
+	await new Promise<void>((resolve) => {
+		const request = window.indexedDB.deleteDatabase(name);
+		request.onsuccess = () => resolve();
+		request.onerror = () => resolve();
+		request.onblocked = () => resolve();
+	});
+
+export const resetE2eBrowserState = async () => {
+	window.localStorage.clear();
+	window.sessionStorage.clear();
+
+	if ("databases" in window.indexedDB) {
+		const databases = await window.indexedDB.databases();
+		for (const database of databases) {
+			if (database.name) {
+				await deleteIndexedDb(database.name);
+			}
+		}
+	}
+
+	if ("caches" in window) {
+		const cacheKeys = await window.caches.keys();
+		await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
+	}
+};
+
 const ensureDeviceRow = async (deviceEvolu: DeviceEvolu) => {
 	await new Promise<void>((resolve) => {
 		deviceEvolu.upsert("device", e2eDevice, {
