@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import type {
-	CatalogSeedResult,
-	CatalogSeedScenario,
+	CatalogScenarioInput,
+	CatalogScenarioResult,
 } from "@/lib/testing/e2e-types";
 
 export const openHarness = async (page: Page) => {
@@ -35,8 +35,8 @@ export const bootstrapE2EAuth = async (page: Page) => {
 
 export const seedCatalog = async (
 	page: Page,
-	scenario: CatalogSeedScenario,
-): Promise<CatalogSeedResult> => {
+	scenario: CatalogScenarioInput,
+): Promise<CatalogScenarioResult> => {
 	await resetBrowserState(page);
 
 	return await page.evaluate(async (inputScenario) => {
@@ -44,6 +44,6 @@ export const seedCatalog = async (
 			throw new Error("E2E harness is not available.");
 		}
 
-		return await window.__finitoE2E.seedCatalogScenario(inputScenario);
+		return await window.__finitoE2E.runScenario("catalog", inputScenario);
 	}, scenario);
 };
