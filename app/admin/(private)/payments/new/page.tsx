@@ -22,16 +22,13 @@ export default function Home() {
 					.selectFrom("billingSettings")
 					.leftJoin("contact", "billingSettings.ownContactId", "contact.id")
 					.select([
-						"billingSettings.defaultPaymentMethod as defaultPaymentMethod",
 						"billingSettings.defaultCurrency as defaultCurrency",
 						"contact.name as merchantName",
 					])
 					.where("billingSettings.isDeleted", "is not", sqliteTrue)
-					.where("billingSettings.defaultPaymentMethod", "is not", null)
 					.where("billingSettings.defaultCurrency", "is not", null)
 					.where("billingSettings.id", "=", createIdFromString(""))
 					.$narrowType<{
-						defaultPaymentMethod: KyselyNotNull;
 						defaultCurrency: KyselyNotNull;
 					}>(),
 			),
@@ -51,7 +48,6 @@ export default function Home() {
 				defaultValues={{
 					merchantName: billingSettings?.merchantName ?? "",
 					currency: billingSettings?.defaultCurrency,
-					type: billingSettings?.defaultPaymentMethod,
 					deviceId: account.device.id,
 				}}
 			/>

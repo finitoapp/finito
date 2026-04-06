@@ -59,12 +59,14 @@ import { useNostr } from "@/hooks/use-nostr";
 import type { Pos } from "@/hooks/use-pos";
 import { createQuery } from "@/lib/evolu";
 import type { Id } from "@/lib/evolu/types";
-import { createPayment } from "@/lib/payment/service";
+import { currencyConverter } from "@/lib/integrations/currency-converter/currency-converter";
+import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
 import {
 	Currency,
 	Integer,
 	type NonEmptyString255,
 	NonEmptyString255Schema,
+	type NonNegativeInteger,
 	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 import { formatMoney } from "@/lib/shared/utils/format";
@@ -531,7 +533,16 @@ const PayButton: FC<{
 					// 	privateKey: NonEmptyString(paymentSigner.privateKey),
 					// };
 
-					const id = await createPayment({ evolu, ndk })({
+					const amountInBtc =
+						props.bill.currency === Currency.BTC
+							? (props.total as NonNegativeInteger)
+							: (((await currencyConverter.convert({
+									amount: props.total,
+									sourceCurrency: props.bill.currency,
+									targetCurrency: Currency.BTC,
+								})) as NonNegativeInteger | null) ?? undefined);
+
+					const id = await createPaymentWithDefaultMethods({ evolu, ndk })({
 						payment: {
 							id: createId({
 								randomBytes: createRandomBytes(),
@@ -545,6 +556,7 @@ const PayButton: FC<{
 							optionalityChecked: null,
 						})),
 						tipAmount: null,
+						amountInBtc,
 					});
 
 					asyncRoutePush(

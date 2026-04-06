@@ -32,6 +32,14 @@ import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useEvolu } from "@/hooks/use-evolu";
@@ -436,13 +444,17 @@ export default function Home() {
 										.select(
 											(eb) =>
 												[
+													"paymentItemLine.id as id",
 													"paymentItemLine.totalAmount as totalAmount",
 													"paymentItemLine.quantity as quantity",
 
 													evoluJsonObjectFrom(
 														eb
 															.selectFrom("item")
-															.select(["item.label as label"])
+															.select([
+																"item.label as label",
+																"item.catalogItemId as catalogItemId",
+															])
 															.whereRef(
 																"item.id",
 																"=",
@@ -458,9 +470,11 @@ export default function Home() {
 										)
 										.whereRef("paymentItemLine.paymentId", "=", "payment.id")
 										.where("paymentItemLine.isDeleted", "is not", sqliteTrue)
+										.where("paymentItemLine.id", "is not", null)
 										.where("paymentItemLine.totalAmount", "is not", null)
 										.where("paymentItemLine.quantity", "is not", null)
 										.$narrowType<{
+											id: KyselyNotNull;
 											totalAmount: KyselyNotNull;
 											quantity: KyselyNotNull;
 											item: KyselyNotNull;
@@ -523,6 +537,20 @@ export default function Home() {
 											expirationIn: KyselyNotNull;
 										}>(),
 								).as("paymentLnSpark"),
+
+								evoluJsonObjectFrom(
+									eb
+										.selectFrom("paymentLnNwc")
+										.select(["lnInvoice", "expirationIn"] as const)
+										.whereRef("paymentLnNwc.id", "=", "payment.id")
+										.where("paymentLnNwc.isDeleted", "is not", sqliteTrue)
+										.where("paymentLnNwc.lnInvoice", "is not", null)
+										.where("paymentLnNwc.expirationIn", "is not", null)
+										.$narrowType<{
+											lnInvoice: KyselyNotNull;
+											expirationIn: KyselyNotNull;
+										}>(),
+								).as("paymentLnNwc"),
 
 								evoluJsonObjectFrom(
 									eb
@@ -649,12 +677,13 @@ export default function Home() {
 	}
 
 	const paymentStatus = resolvePaymentStatus({ payment });
-	const lightningPayment = payment.paymentLnSpark ?? payment.paymentLnZap;
+	const lightningPayment =
+		payment.paymentLnSpark ?? payment.paymentLnNwc ?? payment.paymentLnZap;
 
 	return (
-		<div className={"w-full lg:max-w-7xl"}>
-			<div className={"flex gap-4 flex-wrap"}>
-				<ResponsiveCard className={"flex-2"}>
+		<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">
+			<div className="flex min-w-0 flex-col gap-4">
+				<ResponsiveCard>
 					<CardHeader>
 						<CardTitle>{payment.items[0]?.item.label}</CardTitle>
 					</CardHeader>
@@ -742,267 +771,323 @@ export default function Home() {
 					</CardContent>
 				</ResponsiveCard>
 
-				<div className={"flex-1 flex flex-col gap-10"}>
-					<ResponsiveCard>
-						<CardHeader>
-							<CardTitle>{t("common:table.actions")}</CardTitle>
-						</CardHeader>
-						<CardContent className={"space-y-2"}>
-							<FullscreenQrPayment
-								frontendUrl={frontendUrl}
-								lnInvoice={lightningPayment?.lnInvoice}
-								czechQRCode={czechQRCode}
-								isPaid={paymentStatus === PaymentStatus.Paid}
-								cashTabContent={
-									payment.paymentCash ? (
-										<StatusButton
-											paymentId={payment.id}
-											amount={payment.totalAmount}
-											currency={payment.currency}
-											cashAccountId={payment.paymentCash.accountId}
-											className={"w-full"}
-										/>
-									) : undefined
-								}
-							/>
-							{!payment.paymentCash && (
-								<p className={"text-sm text-muted-foreground"}>
-									{t(
-										"payments:detail.messages.cash-payment-enabled-no-cash-register-account",
-									)}
-								</p>
-							)}
-							<PaymentWatchingToggleButton
-								paymentId={paymentId}
-								hasPaymentWatchingState={payment.paymentWatchingState !== null}
-								verifiedAt={payment.paymentWatchingState?.verifiedAt ?? null}
-								stoppedAt={payment.paymentWatchingState?.stoppedAt ?? null}
-								className={"w-full"}
-							/>
-						</CardContent>
-					</ResponsiveCard>
+				<ResponsiveCard>
+					<CardHeader>
+						<CardTitle>{t("payments:detail.sections.items")}</CardTitle>
+					</CardHeader>
+					<CardContent className="px-0">
+						{payment.items.length === 0 ? (
+							<div className="px-6 py-4 text-sm text-muted-foreground">
+								{t("payments:detail.empty.items")}
+							</div>
+						) : (
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead className="px-6">
+											{t("payments:detail.items.columns.item")}
+										</TableHead>
+										<TableHead>
+											{t("payments:detail.items.columns.quantity")}
+										</TableHead>
+										<TableHead className="px-6 text-right">
+											{t("payments:detail.items.columns.total")}
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{payment.items.map((item) => (
+										<TableRow key={item.id}>
+											<TableCell className="px-6 whitespace-normal">
+												{item.item.catalogItemId ? (
+													<Link
+														href={
+															`/admin/catalog/detail?id=${encodeURIComponent(item.item.catalogItemId)}` as never
+														}
+														className="text-primary hover:underline"
+													>
+														{item.item.label}
+													</Link>
+												) : (
+													item.item.label
+												)}
+											</TableCell>
+											<TableCell>{item.quantity.toLocaleString()}</TableCell>
+											<TableCell className="px-6 text-right">
+												{formatMoney({
+													value: item.totalAmount,
+													currency: payment.currency,
+												})}
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						)}
+					</CardContent>
+				</ResponsiveCard>
+			</div>
 
-					{paymentStatus === PaymentStatus.Paid ? (
-						<LoadingIndicator
-							text={t("payments:detail.messages.payment-successfully-paid")}
-							open={true}
-							status={"success"}
-							className={"mt-10"}
+			<div className="min-w-72 flex flex-col gap-10">
+				<ResponsiveCard>
+					<CardHeader>
+						<CardTitle>{t("common:table.actions")}</CardTitle>
+					</CardHeader>
+					<CardContent className={"space-y-2"}>
+						<FullscreenQrPayment
+							frontendUrl={frontendUrl}
+							lnInvoice={lightningPayment?.lnInvoice}
+							czechQRCode={czechQRCode}
+							isPaid={paymentStatus === PaymentStatus.Paid}
+							cashTabContent={
+								payment.paymentCash ? (
+									<StatusButton
+										paymentId={payment.id}
+										amount={payment.totalAmount}
+										currency={payment.currency}
+										cashAccountId={payment.paymentCash.accountId}
+										className={"w-full"}
+									/>
+								) : undefined
+							}
 						/>
-					) : (
-						<Tabs value={tab ?? "web"} className="flex flex-col">
-							<TabsList>
-								{frontendUrl && (
-									<TabsTrigger
-										value="web"
-										onClick={() =>
-											router.replace(
-												`/admin/payments/detail?id=${encodeURIComponent(id)}`,
-												{
-													scroll: false,
-												},
-											)
-										}
-									>
-										{t("payments:detail.tabs.web-payment")}
-									</TabsTrigger>
+						{!payment.paymentCash && (
+							<p className={"text-sm text-muted-foreground"}>
+								{t(
+									"payments:detail.messages.cash-payment-enabled-no-cash-register-account",
 								)}
-								{lightningPayment && (
-									<TabsTrigger
-										value="ln"
-										onClick={() =>
-											router.replace(
-												`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=ln`,
-												{
-													scroll: false,
-												},
-											)
-										}
-									>
-										{t("payments:detail.tabs.btc-ln-payment")}
-									</TabsTrigger>
-								)}
-								{czechQRCode && (
-									<TabsTrigger
-										value="bankTransferCZ"
-										onClick={() =>
-											router.replace(
-												`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=bankTransferCZ`,
-												{
-													scroll: false,
-												},
-											)
-										}
-									>
-										{t("payments:detail.tabs.cz-qr-payment")}
-									</TabsTrigger>
-								)}
-								{payment.paymentCash && (
-									<TabsTrigger
-										value="cash"
-										onClick={() =>
-											router.replace(
-												`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=cash`,
-												{
-													scroll: false,
-												},
-											)
-										}
-									>
-										{t("payments:detail.tabs.cash")}
-									</TabsTrigger>
-								)}
-							</TabsList>
+							</p>
+						)}
+						<PaymentWatchingToggleButton
+							paymentId={paymentId}
+							hasPaymentWatchingState={payment.paymentWatchingState !== null}
+							verifiedAt={payment.paymentWatchingState?.verifiedAt ?? null}
+							stoppedAt={payment.paymentWatchingState?.stoppedAt ?? null}
+							className={"w-full"}
+						/>
+					</CardContent>
+				</ResponsiveCard>
+
+				{paymentStatus === PaymentStatus.Paid ? (
+					<LoadingIndicator
+						text={t("payments:detail.messages.payment-successfully-paid")}
+						open={true}
+						status={"success"}
+						className={"mt-10"}
+					/>
+				) : (
+					<Tabs value={tab ?? "web"} className="flex flex-col">
+						<TabsList>
 							{frontendUrl && (
-								<TabsContent value="web">
-									<ResponsiveCard>
-										<CardContent>
-											<div className={"flex flex-col gap-2"}>
-												<div className={"py-4 bg-white flex rounded"}>
-													<QRCodeSVG
-														className={"w-full"}
-														size={256}
-														value={frontendUrl}
-													/>
-												</div>
-												<Textarea readOnly={true} value={frontendUrl} />
-												<Button
-													render={
-														<a
-															href={frontendUrl}
-															target={"_blank"}
-															rel="noopener"
-														>
-															<ExternalLink />
-															{t("payments:detail.actions.open")}
-														</a>
-													}
-												></Button>
-											</div>
-										</CardContent>
-									</ResponsiveCard>
-								</TabsContent>
+								<TabsTrigger
+									value="web"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.web-payment")}
+								</TabsTrigger>
 							)}
 							{lightningPayment && (
-								<TabsContent value="ln">
-									<ResponsiveCard>
-										<CardContent>
-											<div className={"flex flex-col gap-2"}>
-												<div className={"py-4 bg-white flex rounded"}>
-													<QRCodeSVG
-														className={"w-full"}
-														size={256}
-														value={lightningPayment.lnInvoice}
-													/>
-												</div>
-												<Textarea
-													readOnly={true}
-													className={"wrap-anywhere"}
-													value={lightningPayment.lnInvoice}
-												/>
-												<Button
-													render={
-														<a
-															href={`lightning:${lightningPayment.lnInvoice}`}
-															target={"_blank"}
-															rel="noopener"
-														>
-															<BitcoinIcon />
-															{t("payments:detail.actions.open-in-btc-wallet")}
-														</a>
-													}
-												></Button>
-											</div>
-										</CardContent>
-									</ResponsiveCard>
-								</TabsContent>
+								<TabsTrigger
+									value="ln"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=ln`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.btc-ln-payment")}
+								</TabsTrigger>
 							)}
 							{czechQRCode && (
-								<TabsContent value="bankTransferCZ">
-									<ResponsiveCard>
-										<CardContent>
-											<div className={"flex flex-col gap-2"}>
-												<div className={"py-4 bg-white flex rounded"}>
-													<QRCodeSVG
-														className={"w-full"}
-														size={256}
-														value={czechQRCode}
-													/>
-													<QRCodeCanvas
-														className={"hidden"}
-														size={256}
-														value={czechQRCode}
-														ref={czechQRCodeRef}
-														marginSize={4}
-													/>
-												</div>
-												<Textarea readOnly={true} value={czechQRCode} />
-												<Button
-													onClick={async () => {
-														const node = czechQRCodeRef.current;
-														if (node == null) {
-															return;
-														}
-
-														const mimetype = "image/jpeg";
-														node.toBlob(
-															async (blob) => {
-																if (blob === null) {
-																	return;
-																}
-
-																await shareImageOrDownload({
-																	fileName: `qr-payment.jpg`,
-																	mimetype,
-																	blob,
-																	title: t(
-																		"payments:detail.actions.share-qr-code",
-																	),
-																	text: t(
-																		"payments:detail.messages.share-qr-description",
-																	),
-																});
-															},
-															mimetype,
-															0.8,
-														);
-													}}
-												>
-													<DownloadIcon />
-													{t("payments:detail.actions.download-qr-code")}
-												</Button>
-											</div>
-										</CardContent>
-									</ResponsiveCard>
-								</TabsContent>
+								<TabsTrigger
+									value="bankTransferCZ"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=bankTransferCZ`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.cz-qr-payment")}
+								</TabsTrigger>
 							)}
 							{payment.paymentCash && (
-								<TabsContent value="cash">
-									<ResponsiveCard>
-										<CardContent>
-											<div className={"flex flex-col gap-3"}>
-												<StatusButton
-													paymentId={payment.id}
-													amount={payment.totalAmount}
-													currency={payment.currency}
-													cashAccountId={payment.paymentCash.accountId}
-													className={"w-full"}
-												/>
-												{/*{cashAccountId === null && (*/}
-												{/*	<p className={"text-sm text-muted-foreground"}>*/}
-												{/*		{t(*/}
-												{/*			"payments:detail.messages.no-cash-register-account-configured",*/}
-												{/*		)}*/}
-												{/*	</p>*/}
-												{/*)}*/}
-											</div>
-										</CardContent>
-									</ResponsiveCard>
-								</TabsContent>
+								<TabsTrigger
+									value="cash"
+									onClick={() =>
+										router.replace(
+											`/admin/payments/detail?id=${encodeURIComponent(id)}&tab=cash`,
+											{
+												scroll: false,
+											},
+										)
+									}
+								>
+									{t("payments:detail.tabs.cash")}
+								</TabsTrigger>
 							)}
-						</Tabs>
-					)}
-				</div>
+						</TabsList>
+						{frontendUrl && (
+							<TabsContent value="web">
+								<ResponsiveCard>
+									<CardContent>
+										<div className={"flex flex-col gap-2"}>
+											<div className={"py-4 bg-white flex rounded"}>
+												<QRCodeSVG
+													className={"w-full"}
+													size={256}
+													value={frontendUrl}
+												/>
+											</div>
+											<Textarea readOnly={true} value={frontendUrl} />
+											<Button
+												render={
+													<a
+														href={frontendUrl}
+														target={"_blank"}
+														rel="noopener"
+													>
+														<ExternalLink />
+														{t("payments:detail.actions.open")}
+													</a>
+												}
+											></Button>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{lightningPayment && (
+							<TabsContent value="ln">
+								<ResponsiveCard>
+									<CardContent>
+										<div className={"flex flex-col gap-2"}>
+											<div className={"py-4 bg-white flex rounded"}>
+												<QRCodeSVG
+													className={"w-full"}
+													size={256}
+													value={lightningPayment.lnInvoice}
+												/>
+											</div>
+											<Textarea
+												readOnly={true}
+												className={"wrap-anywhere"}
+												value={lightningPayment.lnInvoice}
+											/>
+											<Button
+												render={
+													<a
+														href={`lightning:${lightningPayment.lnInvoice}`}
+														target={"_blank"}
+														rel="noopener"
+													>
+														<BitcoinIcon />
+														{t("payments:detail.actions.open-in-btc-wallet")}
+													</a>
+												}
+											></Button>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{czechQRCode && (
+							<TabsContent value="bankTransferCZ">
+								<ResponsiveCard>
+									<CardContent>
+										<div className={"flex flex-col gap-2"}>
+											<div className={"py-4 bg-white flex rounded"}>
+												<QRCodeSVG
+													className={"w-full"}
+													size={256}
+													value={czechQRCode}
+												/>
+												<QRCodeCanvas
+													className={"hidden"}
+													size={256}
+													value={czechQRCode}
+													ref={czechQRCodeRef}
+													marginSize={4}
+												/>
+											</div>
+											<Textarea readOnly={true} value={czechQRCode} />
+											<Button
+												onClick={async () => {
+													const node = czechQRCodeRef.current;
+													if (node == null) {
+														return;
+													}
+
+													const mimetype = "image/jpeg";
+													node.toBlob(
+														async (blob) => {
+															if (blob === null) {
+																return;
+															}
+
+															await shareImageOrDownload({
+																fileName: `qr-payment.jpg`,
+																mimetype,
+																blob,
+																title: t(
+																	"payments:detail.actions.share-qr-code",
+																),
+																text: t(
+																	"payments:detail.messages.share-qr-description",
+																),
+															});
+														},
+														mimetype,
+														0.8,
+													);
+												}}
+											>
+												<DownloadIcon />
+												{t("payments:detail.actions.download-qr-code")}
+											</Button>
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+						{payment.paymentCash && (
+							<TabsContent value="cash">
+								<ResponsiveCard>
+									<CardContent>
+										<div className={"flex flex-col gap-3"}>
+											<StatusButton
+												paymentId={payment.id}
+												amount={payment.totalAmount}
+												currency={payment.currency}
+												cashAccountId={payment.paymentCash.accountId}
+												className={"w-full"}
+											/>
+											{/*{cashAccountId === null && (*/}
+											{/*	<p className={"text-sm text-muted-foreground"}>*/}
+											{/*		{t(*/}
+											{/*			"payments:detail.messages.no-cash-register-account-configured",*/}
+											{/*		)}*/}
+											{/*	</p>*/}
+											{/*)}*/}
+										</div>
+									</CardContent>
+								</ResponsiveCard>
+							</TabsContent>
+						)}
+					</Tabs>
+				)}
 			</div>
 		</div>
 	);

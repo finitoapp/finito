@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	createId,
-	createRandomBytes,
-	type KyselyNotNull,
-	sqliteTrue,
-} from "@evolu/common";
+import { createId, createRandomBytes } from "@evolu/common";
 import { merge } from "es-toolkit";
 import type { TFunction } from "i18next";
 import { useRouter } from "next/navigation";
@@ -15,19 +10,17 @@ import { useFormContext, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { AutoForm, createAutoFormLayout } from "@/components/auto-form";
-import { AutoformIbanInput } from "@/components/auto-form/autoform-iban";
-import { createComboboxOrTextInput } from "@/components/combobox-or-text-input";
 import { useActionForm } from "@/hooks/use-action-form";
-import { useEvolu } from "@/hooks/use-evolu";
+import { useEvoluQuery } from "@/hooks/use-evolu-query";
 import { useStorageDeps } from "@/hooks/use-storage-deps";
-import { createQuery } from "@/lib/evolu";
-import { type Id, TableIdSchema } from "@/lib/evolu/types";
-import { createPayment } from "@/lib/payment/service";
+import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
+import { createPaymentDefaultMethodsQuery } from "@/lib/evolu/queries/payment-default-method";
+import { TableIdSchema } from "@/lib/evolu/types";
+import { createPaymentWithDefaultMethods } from "@/lib/payment/service";
 import {
 	Currency,
 	FiatCurrency,
 	HttpsUrlSchema,
-	IbanSchema,
 	IntegerSchema,
 	NonEmptyStringSchema,
 	type NonNegativeInteger,
@@ -35,10 +28,9 @@ import {
 	StringToNullableNumberSchema,
 	StringToNullableStringSchema,
 	StringToNumberSchema,
-	StringToUndefinedStringSchema,
 	type Uuid7,
-	VariableSymbol,
 } from "@/lib/shared/types";
+import { formatIban } from "@/lib/shared/utils/format";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
 
 const baseStaticPaymentSchema = z.object({
@@ -48,9 +40,6 @@ const baseStaticPaymentSchema = z.object({
 	currency: z.enum(Currency),
 	tipAmount: StringToNullableStringSchema.pipe(NumberStringSchema.nullable()),
 	amountInBtc: StringToNullableNumberSchema.pipe(IntegerSchema),
-	iban: z.string(),
-	lnZapAccountId: z.string(),
-	accountId: z.string(),
 	redirectUrl: StringToNullableStringSchema.pipe(HttpsUrlSchema.nullable()),
 	merchantName: StringToNullableStringSchema.pipe(
 		NonEmptyStringSchema.nullable(),
@@ -75,40 +64,19 @@ const baseStaticPaymentSchema = z.object({
 		.array(),
 });
 
-const staticPaymentSchema = z
-	.discriminatedUnion("type", [
-		baseStaticPaymentSchema.extend({
-			type: z.literal("lnZap"),
-			lnZapAccountId: z.string().pipe(TableIdSchema),
-		}),
-		baseStaticPaymentSchema.extend({
-			type: z.literal("lnSpark"),
-			accountId: z.string().pipe(TableIdSchema),
-		}),
-		baseStaticPaymentSchema.extend({
-			type: z.literal("cash"),
-			accountId: z.string().pipe(TableIdSchema),
-		}),
-		baseStaticPaymentSchema.extend({
-			type: z.literal("bankTransferCZ"),
-			iban: StringToUndefinedStringSchema.transform((value) =>
-				value ? value.replace(/ /g, "") : value,
-			).pipe(IbanSchema),
-		}),
-	])
-	.transform((values) => ({
-		...values,
-		totalAmount: moneyCodec.parse({
-			value: values.totalAmount,
-			currency: values.currency,
-		}).value,
-		tipAmount: values.tipAmount
-			? moneyCodec.parse({
-					value: values.tipAmount,
-					currency: values.currency,
-				}).value
-			: null,
-	}));
+const staticPaymentSchema = baseStaticPaymentSchema.transform((values) => ({
+	...values,
+	totalAmount: moneyCodec.parse({
+		value: values.totalAmount,
+		currency: values.currency,
+	}).value,
+	tipAmount: values.tipAmount
+		? moneyCodec.parse({
+				value: values.tipAmount,
+				currency: values.currency,
+			}).value
+		: null,
+}));
 
 const itemDefaultValues = {
 	label: "",
@@ -130,10 +98,6 @@ const createPaymentDefaultValues = () =>
 		id: createId(createIdDeps),
 		deviceId: null,
 		merchantName: "",
-		type: "cash",
-		iban: "",
-		lnZapAccountId: "",
-		accountId: "",
 		totalAmount: "0",
 		currency: Currency.USD,
 		tipAmount: "",
@@ -142,7 +106,100 @@ const createPaymentDefaultValues = () =>
 		itemLines: [createItemLineDefaultValues()],
 	}) satisfies z.input<typeof staticPaymentSchema>;
 
-const createComponents = (t: TFunction) =>
+type PaymentDefaultMethodPreviewItem = {
+	id: string;
+	type: string;
+	accountName: string | null;
+	accountTag: string | null;
+	accountIban: string | null;
+	accountLud16: string | null;
+};
+
+const getPaymentMethodLabel = (
+	t: ReturnType<typeof useTranslation>["t"],
+	params: {
+		type: string;
+		accountName: string | null;
+		accountTag: string | null;
+		accountIban: string | null;
+		accountLud16: string | null;
+	},
+) => {
+	if (params.type === PaymentDefaultMethodType.Cash) {
+		return t("payments:form.payment-form.generated-payment-method.cash", {
+			account: params.accountName ?? "-",
+		});
+	}
+
+	if (params.type === PaymentDefaultMethodType.BankTransferCZ) {
+		return t(
+			"payments:form.payment-form.generated-payment-method.bank-transfer-cz",
+			{
+				account:
+					params.accountIban && params.accountName
+						? `${formatIban(params.accountIban as never)} (${params.accountName})`
+						: (params.accountName ?? "-"),
+			},
+		);
+	}
+
+	const accountLabel =
+		params.accountTag === "accountLud16" && params.accountLud16
+			? `${params.accountLud16} (${params.accountName ?? "-"})`
+			: (params.accountName ?? "-");
+	const provider =
+		params.accountTag === "accountSpark"
+			? "Spark"
+			: params.accountTag === "accountNwc"
+				? "NWC"
+				: "LUD16";
+
+	return t("payments:form.payment-form.generated-payment-method.btc-ln", {
+		account: accountLabel,
+		provider,
+	});
+};
+
+const DefaultPaymentMethodsPreview: React.FC<{
+	methods: PaymentDefaultMethodPreviewItem[];
+	ignoredActiveMethodCount: number;
+}> = ({ methods, ignoredActiveMethodCount }) => {
+	const { t } = useTranslation();
+
+	if (methods.length === 0) {
+		return (
+			<p className="text-sm text-muted-foreground">
+				{t("payments:form.payment-form.message.no-active-payment-methods")}
+			</p>
+		);
+	}
+
+	return (
+		<div className="space-y-3">
+			<ul className="space-y-2 text-sm">
+				{methods.map((method) => (
+					<li key={method.id}>{getPaymentMethodLabel(t, method)}</li>
+				))}
+			</ul>
+			{ignoredActiveMethodCount > 0 && (
+				<p className="text-sm text-muted-foreground">
+					{t(
+						"payments:form.payment-form.message.ignored-invalid-payment-methods",
+					)}
+				</p>
+			)}
+		</div>
+	);
+};
+
+const createComponents = (
+	t: TFunction,
+	props: {
+		activeDefaultMethods: PaymentDefaultMethodPreviewItem[];
+		ignoredActiveMethodCount: number;
+		hasLnPaymentMethod: boolean;
+	},
+) =>
 	createAutoFormLayout(staticPaymentSchema, ({ builder }) => ({
 		...builder.card(
 			{
@@ -275,170 +332,32 @@ const createComponents = (t: TFunction) =>
 
 		...builder.card(
 			{
-				title: t("payments:form.payment-form.title.payment-method"),
+				title: t("payments:form.payment-form.title.generated-payment-methods"),
+				description: t(
+					"payments:form.payment-form.description.generated-payment-methods",
+				),
 			},
 			{
-				...builder.magicInput("type").select({
-					variant: "toggle",
-					allowEmpty: false,
-					values: {
-						cash: "Cash",
-						lnZap: "LN (Zap)",
-						lnSpark: "LN (Spark)",
-						bankTransferCZ: "Bank transfer (CZ QR payment)",
-					},
-				}),
-
-				...builder.when("type", (value) => value === "bankTransferCZ", {
-					...builder.createComponent("iban", AutoformIbanInput),
-				}),
-
-				...builder.when("type", (value) => value === "lnZap", {
-					...builder.magicInput("amountInBtc").amount({
-						label: t("payments:form.payment-form.label.price-in-btc"),
-						type: "number",
-						placeholder: t("payments:form.payment-form.placeholder.0"),
-						currency: Currency.BTC,
-						disabled: true,
-						computeAmount: {
-							sourceAmountFieldName: "totalAmount.value",
-							sourceCurrencyFieldName: "totalAmount.currency",
-						},
-					}),
-					...builder.createComponent("lnZapAccountId", (props) => {
-						const evolu = useEvolu();
-						const ComboboxInput = useMemo(
-							() =>
-								createComboboxOrTextInput<string>({
-									label: t(
-										"payments:form.payment-form.label.lud16-wallet-address-with-lightning-zaps-support",
-									),
-									fetchItems: async () => {
-										const items = await evolu.loadQuery(
-											createQuery((db) =>
-												db
-													.selectFrom("account")
-													.innerJoin(
-														"accountLud16",
-														"accountLud16.id",
-														"account.id",
-													)
-													.select([
-														"account.id as id",
-														"account.name as name",
-														"accountLud16.lud16 as lud16",
-													] as const)
-													.where("account.isDeleted", "is not", sqliteTrue)
-													.where("account.name", "is not", null)
-													.where("account._tag", "=", "accountLud16")
-													.$narrowType<{
-														name: KyselyNotNull;
-													}>(),
-											),
-										);
-
-										return items.map((item) => ({
-											label: `${item.lud16} (${item.name})`,
-											value: item.id,
-										}));
-									},
-								}),
-							[evolu],
-						);
-
-						return <ComboboxInput {...props} />;
-					}),
-				}),
-
-				...builder.when("type", (value) => value === "lnSpark", {
-					...builder.magicInput("amountInBtc").amount({
-						label: t("payments:form.payment-form.label.price-in-btc"),
-						type: "number",
-						placeholder: t("payments:form.payment-form.placeholder.0"),
-						currency: Currency.BTC,
-						disabled: true,
-						computeAmount: {
-							sourceAmountFieldName: "totalAmount",
-							sourceCurrencyFieldName: "currency",
-						},
-					}),
-					...builder.createComponent("accountId", (props) => {
-						const evolu = useEvolu();
-						const ComboboxInput = useMemo(
-							() =>
-								createComboboxOrTextInput<string>({
-									label: t(
-										"payments:form.payment-form.label.spark-wallet-account",
-									),
-									fetchItems: async () => {
-										const items = await evolu.loadQuery(
-											createQuery((db) =>
-												db
-													.selectFrom("account")
-													.select([
-														"account.id as id",
-														"account.name as name",
-													] as const)
-													.where("account.isDeleted", "is not", sqliteTrue)
-													.where("account.name", "is not", null)
-													.where("account._tag", "=", "accountSpark")
-													.$narrowType<{
-														name: KyselyNotNull;
-													}>(),
-											),
-										);
-
-										return items.map((item) => ({
-											label: item.name,
-											value: item.id,
-										}));
-									},
-								}),
-							[evolu],
-						);
-
-						return <ComboboxInput {...props} />;
-					}),
-				}),
-				...builder.when("type", (value) => value === "cash", {
-					...builder.createComponent("accountId", (props) => {
-						const evolu = useEvolu();
-						const ComboboxInput = useMemo(
-							() =>
-								createComboboxOrTextInput<string>({
-									label: t(
-										"payments:form.payment-form.label.cash-register-account",
-									),
-									fetchItems: async () => {
-										const items = await evolu.loadQuery(
-											createQuery((db) =>
-												db
-													.selectFrom("account")
-													.select([
-														"account.id as id",
-														"account.name as name",
-													] as const)
-													.where("account.isDeleted", "is not", sqliteTrue)
-													.where("account.name", "is not", null)
-													.where("account._tag", "=", "accountCashRegister")
-													.$narrowType<{
-														name: KyselyNotNull;
-													}>(),
-											),
-										);
-
-										return items.map((item) => ({
-											label: item.name,
-											value: item.id,
-										}));
-									},
-								}),
-							[evolu],
-						);
-
-						return <ComboboxInput {...props} />;
-					}),
-				}),
+				...(props.hasLnPaymentMethod
+					? builder.magicInput("amountInBtc").amount({
+							label: t("payments:form.payment-form.label.price-in-btc"),
+							type: "number",
+							placeholder: t("payments:form.payment-form.placeholder.0"),
+							currency: Currency.BTC,
+							disabled: true,
+							computeAmount: {
+								sourceAmountFieldName: "totalAmount",
+								sourceCurrencyFieldName: "currency",
+							},
+						})
+					: {}),
+				// @ts-expect-error
+				...builder.createComponent("_defaultMethodsPreview", () => (
+					<DefaultPaymentMethodsPreview
+						methods={props.activeDefaultMethods}
+						ignoredActiveMethodCount={props.ignoredActiveMethodCount}
+					/>
+				)),
 			},
 		),
 	}));
@@ -449,15 +368,46 @@ export const PaymentForm: React.FC<{
 	const { t } = useTranslation();
 	const storageDeps = useStorageDeps();
 	const router = useRouter();
-	console.log("params.defaultValues", params.defaultValues);
-	const [defaultValues] = useState(() => {
-		return merge(createPaymentDefaultValues(), params.defaultValues ?? {});
-	});
-	const components = useMemo(() => createComponents(t), [t]);
+	const activePaymentDefaultMethodsQuery = useMemo(
+		() =>
+			createPaymentDefaultMethodsQuery({
+				onlyActive: true,
+			}),
+		[],
+	);
+	const { data: activePaymentDefaultMethods } = useEvoluQuery(
+		activePaymentDefaultMethodsQuery,
+	);
+	const validActivePaymentDefaultMethods = activePaymentDefaultMethods.filter(
+		(method) => method.accountTag !== null,
+	);
+	const ignoredActiveMethodCount =
+		activePaymentDefaultMethods.length -
+		validActivePaymentDefaultMethods.length;
+	const hasLnPaymentMethod = validActivePaymentDefaultMethods.some(
+		(method) => method.type === PaymentDefaultMethodType.BtcLn,
+	);
+	const [defaultValues] = useState(() =>
+		merge(createPaymentDefaultValues(), params.defaultValues ?? {}),
+	);
+	const components = useMemo(
+		() =>
+			createComponents(t, {
+				activeDefaultMethods: validActivePaymentDefaultMethods,
+				ignoredActiveMethodCount,
+				hasLnPaymentMethod,
+			}),
+		[
+			t,
+			validActivePaymentDefaultMethods,
+			ignoredActiveMethodCount,
+			hasLnPaymentMethod,
+		],
+	);
 	const form = useActionForm(staticPaymentSchema, {
 		defaultValues,
 		saveAction: async (values) => {
-			const id = await createPayment(storageDeps)({
+			const id = await createPaymentWithDefaultMethods(storageDeps)({
 				payment: {
 					id: values.id,
 					deviceId: values.deviceId,
@@ -465,33 +415,7 @@ export const PaymentForm: React.FC<{
 				},
 				totalAmount: values.totalAmount as NonNegativeInteger,
 				tipAmount: values.tipAmount as NonNegativeInteger | null,
-				paymentBankTransferCZ:
-					values.type === "bankTransferCZ"
-						? {
-								iban: values.iban,
-								variableSymbol: VariableSymbol("1"),
-							}
-						: undefined,
-				paymentCash:
-					values.type === "cash"
-						? {
-								accountId: values.accountId,
-							}
-						: undefined,
-				paymentLnZap:
-					values.type === "lnZap"
-						? {
-								accountId: values.accountId as Id,
-								amount: values.amountInBtc as NonNegativeInteger,
-							}
-						: undefined,
-				paymentLnSpark:
-					values.type === "lnSpark"
-						? {
-								accountId: values.accountId as Id,
-								amount: values.amountInBtc as NonNegativeInteger,
-							}
-						: undefined,
+				amountInBtc: values.amountInBtc as NonNegativeInteger,
 			});
 
 			router.push(
