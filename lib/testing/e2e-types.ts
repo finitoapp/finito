@@ -5,11 +5,20 @@ export type CatalogScenarioInput =
 			name: "empty-catalog";
 	  }
 	| {
+			name: "single-category";
+			category?: {
+				name?: string;
+			};
+	  }
+	| {
 			name: "single-item";
 			item?: {
 				label?: string;
 				price?: number;
 				currency?: Currency;
+			};
+			category?: {
+				name?: string;
 			};
 	  };
 
@@ -25,6 +34,10 @@ export type CatalogScenarioResult = {
 	item?: {
 		id: string;
 		label: string;
+	};
+	category?: {
+		id: string;
+		name: string;
 	};
 };
 

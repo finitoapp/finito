@@ -5,6 +5,7 @@ import {
 	ensureBillingSettings,
 	ensureDeviceRow,
 	insertCatalogItem,
+	insertCategory,
 	resetE2eBrowserState,
 } from "@/lib/testing/e2e-primitives";
 import type {
@@ -26,18 +27,39 @@ export const runCatalogScenario = async (
 	await ensureDeviceRow(deviceEvolu, device);
 	await ensureBillingSettings(evolu);
 
+	if (scenario.name === "single-category") {
+		const category = await insertCategory(evolu, {
+			deviceId: device.id,
+			name: scenario.category?.name ?? "E2E Seeded Category",
+		});
+
+		return {
+			mnemonic,
+			deviceId: device.id,
+			category,
+		};
+	}
+
 	if (scenario.name === "single-item") {
+		const category = scenario.category
+			? await insertCategory(evolu, {
+					deviceId: device.id,
+					name: scenario.category.name ?? "E2E Seeded Category",
+				})
+			: undefined;
 		const item = await insertCatalogItem(evolu, {
 			deviceId: device.id,
 			label: scenario.item?.label ?? "E2E Seeded Catalog Item",
 			price: scenario.item?.price,
 			currency: scenario.item?.currency,
+			categoryId: category?.id ?? null,
 		});
 
 		return {
 			mnemonic,
 			deviceId: device.id,
 			item,
+			category,
 		};
 	}
 

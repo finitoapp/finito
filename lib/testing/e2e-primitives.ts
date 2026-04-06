@@ -123,6 +123,7 @@ export const insertCatalogItem = async (
 		label: string;
 		price?: number;
 		currency?: Currency;
+		categoryId?: Id | null;
 	},
 ) => {
 	const label = NonEmptyString255(input.label);
@@ -134,7 +135,7 @@ export const insertCatalogItem = async (
 			"catalogItem",
 			{
 				deviceId: input.deviceId,
-				categoryId: null,
+				categoryId: input.categoryId ?? null,
 				label,
 				price,
 				currency,
@@ -154,5 +155,35 @@ export const insertCatalogItem = async (
 	return {
 		id: itemId,
 		label,
+	};
+};
+
+export const insertCategory = async (
+	evolu: Awaited<ReturnType<typeof createAppEvolu>>,
+	input: {
+		deviceId: Id;
+		name: string;
+	},
+) => {
+	const name = NonEmptyString255(input.name);
+
+	const categoryId = await new Promise<Id>((resolve) => {
+		const { id } = evolu.insert(
+			"category",
+			{
+				deviceId: input.deviceId,
+				name,
+			},
+			{
+				onComplete: () => {
+					resolve(id);
+				},
+			},
+		);
+	});
+
+	return {
+		id: categoryId,
+		name,
 	};
 };
