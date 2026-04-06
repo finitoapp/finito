@@ -78,3 +78,88 @@ test("deletes a catalog item from the detail menu", async ({
 	await expect(page).toHaveURL(/\/admin\/catalog$/);
 	await expect(page.getByRole("link", { name: label })).toHaveCount(0);
 });
+
+test("creates a new catalog category from the categories page", async ({
+	page,
+	harness,
+}) => {
+	const name = createUniqueLabel("Catalog category");
+
+	await harness.seedCatalog({
+		name: "empty-catalog",
+	});
+
+	await page.goto("/admin/catalog");
+	await Promise.all([
+		page.waitForURL(/\/admin\/catalog\/categories$/, { timeout: 20_000 }),
+		page.getByRole("button", { name: "Categories" }).click(),
+	]);
+	await Promise.all([
+		page.waitForURL(/\/admin\/catalog\/categories\/new$/, { timeout: 20_000 }),
+		page.getByRole("link", { name: "New category" }).click(),
+	]);
+	await page.locator('[name="name"]').fill(name);
+	await page.getByRole("button", { name: "Save" }).click();
+
+	await expect(page).toHaveURL(/\/admin\/catalog\/categories$/, {
+		timeout: 20_000,
+	});
+	await expect(page.getByRole("link", { name })).toBeVisible();
+});
+
+test("opens a linked category from the categories list and shows its usage", async ({
+	page,
+	harness,
+}) => {
+	const categoryName = createUniqueLabel("Catalog linked category");
+	const seed = await harness.seedCatalog({
+		name: "single-item",
+		item: {
+			label: createUniqueLabel("Catalog linked item"),
+		},
+		category: {
+			name: categoryName,
+		},
+	});
+	if (!seed.category) {
+		throw new Error("Expected a seeded category for the linked category scenario.");
+	}
+
+	await page.goto("/admin/catalog/categories");
+	await expect(page.getByRole("link", { name: categoryName })).toBeVisible();
+
+	await page.getByRole("link", { name: categoryName }).click();
+
+	await expect(page).toHaveURL(
+		new RegExp(`/admin/catalog/categories/detail\\?id=${seed.category.id}`),
+	);
+	await expect(page.getByText(categoryName)).toBeVisible();
+	await expect(page.getByText("Items count").first()).toBeVisible();
+	await expect(page.getByText("In use")).toBeVisible();
+});
+
+test("deletes a catalog category from the detail page", async ({
+	page,
+	harness,
+}) => {
+	const name = createUniqueLabel("Catalog category delete");
+	const seed = await harness.seedCatalog({
+		name: "single-category",
+		category: {
+			name,
+		},
+	});
+	if (!seed.category) {
+		throw new Error("Expected a seeded category for the delete scenario.");
+	}
+
+	await page.goto(`/admin/catalog/categories/detail?id=${seed.category.id}`);
+	await page.getByRole("button", { name: "Delete" }).click();
+	await page
+		.getByRole("alertdialog")
+		.getByRole("button", { name: "Delete" })
+		.click();
+
+	await expect(page).toHaveURL(/\/admin\/catalog\/categories$/);
+	await expect(page.getByRole("link", { name })).toHaveCount(0);
+});
