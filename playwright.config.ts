@@ -7,6 +7,7 @@ const baseURL = externalBaseURL ?? `http://127.0.0.1:${port}`;
 export default defineConfig({
 	testDir: "./e2e",
 	fullyParallel: true,
+	forbidOnly: !!process.env.CI,
 	workers: 2,
 	retries: process.env.CI ? 2 : 0,
 	reporter: [["list"], ["html", { open: "never" }]],
