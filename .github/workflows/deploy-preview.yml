@@ -8,13 +8,19 @@ permissions:
   contents: read
   pull-requests: read
 
+concurrency:
+  group: preview-pr-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   prepare-pr:
     if: >
       github.event.issue.pull_request &&
+      contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
       startsWith(github.event.comment.body, '/preview')
     runs-on: ubuntu-latest
     outputs:
+      pr_number: ${{ steps.pr.outputs.pr_number }}
       head_sha: ${{ steps.pr.outputs.head_sha }}
       head_repo: ${{ steps.pr.outputs.head_repo }}
     steps:
@@ -29,6 +35,7 @@ jobs:
               pull_number: context.issue.number,
             });
 
+            core.setOutput("pr_number", String(pr.number));
             core.setOutput("head_sha", pr.head.sha);
             core.setOutput("head_repo", pr.head.repo.full_name);
 
@@ -66,13 +73,10 @@ jobs:
 #      - name: Deploy Project Artifacts to Vercel
 #        run: bun vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Install Netlify
-        run: bun add --dev netlify-cli@23.2.1
-
       - name: Deploy to Netlify
         id: netlify_deploy
         run: |
-          bun run netlify deploy \
+          bunx netlify deploy \
             --dir out \
             --no-build \
             --site ${{ secrets.NETLIFY_SITE_ID }} \

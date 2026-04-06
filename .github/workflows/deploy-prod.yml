@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: true
+
 jobs:
   Deploy-Production:
     runs-on: ubuntu-latest
@@ -13,7 +17,7 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Use Bun
         uses: oven-sh/setup-bun@v2
@@ -39,13 +43,10 @@ jobs:
 #      - name: Deploy Project Artifacts to Vercel
 #        run: bun vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Install Netlify
-        run: bun add --dev netlify-cli@23.2.1
-
       - name: Deploy to Netlify
         id: netlify_deploy
         run: |
-          bun run netlify deploy \
+          bunx netlify deploy \
             --dir out \
             --no-build \
             --prod \
