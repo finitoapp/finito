@@ -1,53 +1,24 @@
 name: Vercel Preview Deployment
 
 on:
-  issue_comment:
-    types: [created]
+  repository_dispatch:
+    types: [preview-command]
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
-  group: preview-pr-${{ github.event.issue.number }}
+  group: preview-pr-${{ github.event.client_payload.github.payload.issue.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  prepare-pr:
-    if: >
-      github.event.issue.pull_request &&
-      contains(fromJson('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
-      startsWith(github.event.comment.body, '/preview')
-    runs-on: ubuntu-latest
-    outputs:
-      pr_number: ${{ steps.pr.outputs.pr_number }}
-      head_sha: ${{ steps.pr.outputs.head_sha }}
-      head_repo: ${{ steps.pr.outputs.head_repo }}
-    steps:
-      - name: Read pull request metadata
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-
-            core.setOutput("pr_number", String(pr.number));
-            core.setOutput("head_sha", pr.head.sha);
-            core.setOutput("head_repo", pr.head.repo.full_name);
-
   Deploy-Preview:
-    needs: prepare-pr
-    if: needs.prepare-pr.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: ${{ needs.prepare-pr.outputs.head_repo }}
-          ref: ${{ needs.prepare-pr.outputs.head_sha }}
+          repository: ${{ github.event.client_payload.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.client_payload.pull_request.head.sha }}
 
       - name: Use Bun
         uses: oven-sh/setup-bun@v2

@@ -1,0 +1,31 @@
+name: Slash Command Dispatch
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: slash-command-${{ github.event.comment.id }}
+  cancel-in-progress: true
+
+jobs:
+  dispatch:
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dispatch slash commands
+        uses: peter-evans/slash-command-dispatch@v5
+        with:
+          token: ${{ secrets.COMMAND_DISPATCH_PAT }}
+          reaction-token: ${{ github.token }}
+          permission: write
+          issue-type: pull-request
+          commands: |
+            preview
+            e2e
