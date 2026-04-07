@@ -2,6 +2,7 @@ const locale = {
 	page: {
 		editContact: "Upravit kontakt",
 		newContact: "Nový kontakt",
+		tabsSections: "Sekce",
 	},
 	table: {
 		contacts: "Kontakty",
@@ -45,6 +46,11 @@ const locale = {
 		},
 	},
 	detail: {
+		tabs: {
+			sections: "Sekce",
+			detail: "Detail",
+			history: "Historie",
+		},
 		cards: {
 			phone: "Telefon",
 			vatNumber: "DIČ",

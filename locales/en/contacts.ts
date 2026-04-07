@@ -2,6 +2,7 @@ const locale = {
 	page: {
 		editContact: "Edit contact",
 		newContact: "New contact",
+		tabsSections: "Sections",
 	},
 	table: {
 		contacts: "Contacts",
@@ -45,6 +46,11 @@ const locale = {
 		},
 	},
 	detail: {
+		tabs: {
+			sections: "Sections",
+			detail: "Detail",
+			history: "History",
+		},
 		cards: {
 			phone: "Phone",
 			vatNumber: "VAT Number",
