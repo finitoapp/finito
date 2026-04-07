@@ -91,6 +91,19 @@ Or run everything at once:
 bun run check
 ```
 
+For iterating on a single E2E test while editing the implementation, keep the
+development server running:
+
+```bash
+bun run dev
+```
+
+Then run the test against that server:
+
+```bash
+bun run e2e:dev:headed e2e/path/to/test.spec.ts
+```
+
 ## Build
 
 ```bash
