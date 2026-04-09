@@ -8,7 +8,6 @@ import {
 } from "@evolu/common";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { TFunction } from "i18next";
-import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,13 +18,7 @@ import {
 } from "@/components/data-table";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { Button } from "@/components/ui/button";
-import {
-	CardAction,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { useDataTableVisibilityDriver } from "@/hooks/use-data-table-visibility-driver";
 import { useEvolu } from "@/hooks/use-evolu";
 import { createQuery } from "@/lib/evolu";
@@ -308,20 +301,6 @@ export function AccountsTable() {
 
 	return (
 		<ResponsiveCard>
-			<CardHeader>
-				<CardTitle>{t("accounts:table.accounts")}</CardTitle>
-				<CardDescription>
-					{t("accounts:table.description.list-of-your-accounts")}
-				</CardDescription>
-				<CardAction>
-					<Link href={"/admin/accounts/new"}>
-						<Button>
-							<PlusIcon />
-							{t("accounts:table.actions.new-account")}
-						</Button>
-					</Link>
-				</CardAction>
-			</CardHeader>
 			<CardContent className={"px-0"}>
 				<DataTable
 					columns={columns}

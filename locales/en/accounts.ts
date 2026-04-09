@@ -1,7 +1,8 @@
 const locale = {
   "page": {
     "editAccount": "Edit account",
-    "newAccount": "New account"
+    "newAccount": "New account",
+    "tabsSections": "Sections"
   },
   "table": {
     "accounts": "Accounts",
@@ -46,6 +47,26 @@ const locale = {
         "new": "Generate new random seed",
         "manual": "Use existing seed"
       }
+    }
+  },
+  "detail": {
+    "tabs": {
+      "sections": "Sections",
+      "detail": "Detail"
+    },
+    "fields": {
+      "type": "Type",
+      "address": "Address"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "deleteDialog": {
+      "title": "Delete account?",
+      "description": "This action cannot be undone.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
     }
   }
 } as const;
