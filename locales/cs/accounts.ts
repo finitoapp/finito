@@ -1,7 +1,8 @@
 const locale = {
   "page": {
     "editAccount": "Upravit účet",
-    "newAccount": "Nový účet"
+    "newAccount": "Nový účet",
+    "tabsSections": "Sekce"
   },
   "table": {
     "accounts": "Účty",
@@ -46,6 +47,26 @@ const locale = {
         "new": "Vygenerovat nový náhodný seed",
         "manual": "Použít existující seed"
       }
+    }
+  },
+  "detail": {
+    "tabs": {
+      "sections": "Sekce",
+      "detail": "Detail"
+    },
+    "fields": {
+      "type": "Typ",
+      "address": "Adresa"
+    },
+    "actions": {
+      "edit": "Upravit",
+      "delete": "Smazat"
+    },
+    "deleteDialog": {
+      "title": "Smazat účet?",
+      "description": "Tuto akci nelze vrátit zpět.",
+      "confirm": "Smazat",
+      "cancel": "Zrušit"
     }
   }
 } as const;

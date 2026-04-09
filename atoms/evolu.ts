@@ -12,6 +12,7 @@ export const evoluAtom = atom(async (get) => {
 		mnemonic: account.mnemonic,
 		transports: account.transports,
 	});
+	const deviceId = account.device.id;
 
 	// Seed initial data
 	(async () => {
@@ -68,6 +69,7 @@ export const evoluAtom = atom(async (get) => {
 			if (sparkAccount.length === 0) {
 				evolu.upsert("account", {
 					id: sparkAccountId,
+					deviceId,
 					name: NonEmptyString255("Default"),
 					_tag: "accountSpark",
 				});
@@ -90,6 +92,7 @@ export const evoluAtom = atom(async (get) => {
 			if (cashRegisterAccount.length === 0) {
 				evolu.upsert("account", {
 					id: cashRegisterAccountId,
+					deviceId,
 					name: NonEmptyString255("Cash Register"),
 					_tag: "accountCashRegister",
 				});
