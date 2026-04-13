@@ -1,6 +1,13 @@
 const locale = {
   "error": {
-    "generic": "Something went wrong!"
+    "generic": {
+      "title": "Something went wrong!",
+      "description": "Try the action again. If the problem persists, reload the app or come back later."
+    },
+    "sharedWorkerUnsupported": {
+      "title": "This browser is not supported",
+      "description": "Finito requires SharedWorker support to run. Open the app in a compatible modern browser."
+    }
   },
   "buildUpdate": {
     "available": {

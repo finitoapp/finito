@@ -1,6 +1,13 @@
 const locale = {
   "error": {
-    "generic": "Něco se pokazilo!"
+    "generic": {
+      "title": "Něco se pokazilo!",
+      "description": "Zkuste akci zopakovat. Pokud problém přetrvá, obnovte aplikaci nebo se vraťte později."
+    },
+    "sharedWorkerUnsupported": {
+      "title": "Tento prohlížeč není podporovaný",
+      "description": "Finito ke svému běhu potřebuje SharedWorker. Otevřete aplikaci v kompatibilním moderním prohlížeči."
+    }
   },
   "buildUpdate": {
     "available": {
