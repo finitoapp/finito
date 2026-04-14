@@ -18,15 +18,15 @@ export const useInstallPwa = () => {
 			setState(e);
 		};
 		window.addEventListener(
-			"beforeinstallprompt",
 			// @ts-expect-error
+			"beforeinstallprompt",
 			handler,
 		);
 
 		return () => {
 			window.removeEventListener(
-				"beforeinstallprompt",
 				// @ts-expect-error
+				"beforeinstallprompt",
 				handler,
 			);
 		};

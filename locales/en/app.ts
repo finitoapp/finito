@@ -17,6 +17,11 @@ const locale = {
       "later": "Later"
     }
   },
+  "offline": {
+    "title": "You're offline",
+    "description": "This screen is not available without a connection yet.",
+    "hint": "Reconnect to the internet and try loading the page again."
+  },
   "loading": {
     "preparingWorkspace": "Preparing workspace"
   },
