@@ -1,5 +1,6 @@
 "use client";
 
+import { SerwistProvider } from "@serwist/turbopack/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
 import { BuildUpdateToast } from "@/components/build-update-toast";
@@ -22,17 +23,19 @@ const jotaiStore = createStore();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
-		<I18nProvider>
-			<Provider store={jotaiStore}>
-				<QueryClientProvider client={browserQueryClient}>
-					<TooltipProvider>
-						{children}
-						<Toaster />
-						<BuildUpdateToast />
-						<GlobalDialogHost />
-					</TooltipProvider>
-				</QueryClientProvider>
-			</Provider>
-		</I18nProvider>
+		<SerwistProvider swUrl="/serwist/sw.js">
+			<I18nProvider>
+				<Provider store={jotaiStore}>
+					<QueryClientProvider client={browserQueryClient}>
+						<TooltipProvider>
+							{children}
+							<Toaster />
+							<BuildUpdateToast />
+							<GlobalDialogHost />
+						</TooltipProvider>
+					</QueryClientProvider>
+				</Provider>
+			</I18nProvider>
+		</SerwistProvider>
 	);
 }

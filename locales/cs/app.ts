@@ -17,6 +17,11 @@ const locale = {
       "later": "Později"
     }
   },
+  "offline": {
+    "title": "Jste offline",
+    "description": "Tuto obrazovku zatím bez připojení nelze otevřít.",
+    "hint": "Znovu se připojte k internetu a zkuste stránku načíst znovu."
+  },
   "loading": {
     "preparingWorkspace": "Příprava pracovního prostoru"
   },
