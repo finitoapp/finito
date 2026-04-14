@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack --experimental-https",
     "build": "next build --turbopack",
-    "start": "bunx serve out",
+    "start": "bunx serve --ssl-cert certificates/localhost.pem --ssl-key certificates/localhost-key.pem out",
     "lint": "next lint",
     "typegen": "next typegen",
     "format": "biome check --write",
