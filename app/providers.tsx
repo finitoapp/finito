@@ -23,7 +23,7 @@ const jotaiStore = createStore();
 
 export default function Providers({ children }: { children: React.ReactNode }) {
 	return (
-		<SerwistProvider swUrl="/serwist/sw.js">
+		<SerwistProvider swUrl="/sw.js">
 			<I18nProvider>
 				<Provider store={jotaiStore}>
 					<QueryClientProvider client={browserQueryClient}>
