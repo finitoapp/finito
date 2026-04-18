@@ -1,7 +1,6 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
-
-type PrecacheEntry = { url: string; revision: string };
+import type { ManifestEntry } from "@serwist/build";
 
 function toPosix(path: string) {
 	return path.split(sep).join("/");
@@ -73,7 +72,8 @@ export function getStaticAppRoutes(): string[] {
 	const files = walk(appDir);
 	const urls = files
 		.map((file) => appFileToUrl(appDir, file))
-		.filter((x): x is string => Boolean(x));
+		.filter((x): x is string => Boolean(x))
+		.flatMap((value) => [value, value === "/" ? "/index.txt" : `${value}.txt`]);
 
 	return Array.from(new Set(urls)).sort();
 }
@@ -89,7 +89,7 @@ export async function getDynamicAppRoutes(): Promise<string[]> {
 
 export async function getPrecacheEntries(
 	revision: string,
-): Promise<PrecacheEntry[]> {
+): Promise<(string | ManifestEntry)[]> {
 	const staticRoutes = getStaticAppRoutes();
 	const dynamicRoutes = await getDynamicAppRoutes();
 

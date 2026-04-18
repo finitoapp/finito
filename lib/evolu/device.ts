@@ -7,8 +7,9 @@ import {
 	type Evolu as RawEvolu,
 	testAppOwner,
 } from "@evolu/common";
-import { createEvoluDeps, createRun } from "@evolu/web";
+import { createRun } from "@evolu/web";
 import { z } from "zod";
+import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
 	NonEmptyString255Schema,
@@ -67,7 +68,7 @@ const DeviceSchema = {
 export const createDeviceQuery = createQueryBuilder(DeviceSchema);
 
 export const createDeviceEvolu = async () => {
-	const run = createRun(createEvoluDeps());
+	const run = createRun(createFinitoEvoluDeps());
 	const evolu = getOrThrow(
 		await createEvolu(DeviceSchema, {
 			appName: AppName.orThrow("FinitoDevice"),
