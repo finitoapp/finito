@@ -3,6 +3,7 @@
 import { SerwistProvider } from "@serwist/turbopack/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createStore, Provider } from "jotai";
+import { AdditionalPrecacheProgressToast } from "@/components/additional-precache-progress-toast";
 import { BuildUpdateToast } from "@/components/build-update-toast";
 import { GlobalDialogHost } from "@/components/global-dialog-host";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -30,6 +31,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 						<TooltipProvider>
 							{children}
 							<Toaster />
+							<AdditionalPrecacheProgressToast />
 							<BuildUpdateToast />
 							<GlobalDialogHost />
 						</TooltipProvider>
