@@ -17,6 +17,16 @@ const locale = {
       "later": "Později"
     }
   },
+  "precacheProgress": {
+    "running": {
+      "title": "Připravuji offline soubory",
+      "description": "V mezipaměti je {{completed}} z {{total}} souborů"
+    },
+    "complete": {
+      "title": "Offline soubory jsou připravené",
+      "description": "Do mezipaměti se uložilo {{total}} souborů pro rychlejší další načtení."
+    }
+  },
   "offline": {
     "title": "Jste offline",
     "description": "Tuto obrazovku zatím bez připojení nelze otevřít.",

@@ -17,6 +17,16 @@ const locale = {
       "later": "Later"
     }
   },
+  "precacheProgress": {
+    "running": {
+      "title": "Preparing offline files",
+      "description": "{{completed}} of {{total}} files cached"
+    },
+    "complete": {
+      "title": "Offline files are ready",
+      "description": "{{total}} files are cached for faster reloads."
+    }
+  },
   "offline": {
     "title": "You're offline",
     "description": "This screen is not available without a connection yet.",
