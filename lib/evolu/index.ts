@@ -12,8 +12,9 @@ import {
 	type EvoluSchema as RawEvoluSchema,
 	type StandardSchemaV1,
 } from "@evolu/common";
-import { createEvoluDeps, createRun } from "@evolu/web";
+import { createRun } from "@evolu/web";
 import { z } from "zod";
+import { createFinitoEvoluDeps } from "@/lib/evolu/deps";
 import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
@@ -681,7 +682,7 @@ export const createAppEvolu = async (props: {
 	mnemonic: Mnemonic;
 	transports: ReadonlyArray<OwnerTransport>;
 }) => {
-	const run = createRun(createEvoluDeps());
+	const run = createRun(createFinitoEvoluDeps());
 	const evolu = getOrThrow(
 		await createEvolu(AppSchema, {
 			appName: AppName.orThrow(`Finito${createIdFromString(props.mnemonic)}`),

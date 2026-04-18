@@ -3,9 +3,9 @@ import { createSerwistRoute } from "@serwist/turbopack";
 import { getPrecacheEntries } from "@/lib/serwist/get-precache-routes";
 
 const revision =
-	spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout ??
-	crypto.randomUUID();
-
+	spawnSync("git", ["rev-parse", "HEAD"], {
+		encoding: "utf-8",
+	}).stdout.trim() || crypto.randomUUID();
 const additionalPrecacheEntries = await getPrecacheEntries(revision);
 
 const route = createSerwistRoute({

@@ -2,10 +2,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/turbopack/worker";
-
-import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-
-import { Serwist } from "serwist";
+import { type PrecacheEntry, Serwist, type SerwistGlobalConfig } from "serwist";
 
 // This declares the value of `injectionPoint` to TypeScript.
 // `injectionPoint` is the string that will be replaced by the
@@ -34,6 +31,10 @@ const serwist = new Serwist({
 				},
 			},
 		],
+	},
+	precacheOptions: {
+		ignoreURLParametersMatching: [/.*/],
+		cleanupOutdatedCaches: true,
 	},
 });
 
