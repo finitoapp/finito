@@ -1,13 +1,37 @@
 "use client";
 
+import { useAtomValue } from "jotai";
 import { Loader2Icon } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { hasDeviceAccountAtom } from "@/atoms/account";
 import { FinitoLogo } from "@/components/finito-logo";
+
+const createReturnToUrl = (pathname: string, query: string) =>
+	`${pathname}${query !== "" ? `?${query}` : ""}`;
+
+const createOnboardingUrl = (returnTo: string) => {
+	const params = new URLSearchParams();
+	params.set("returnTo", returnTo);
+
+	return `/onboarding?${params.toString()}`;
+};
 
 export default function Loading() {
 	const { t } = useTranslation();
 	const rootRef = useRef<HTMLDivElement | null>(null);
+	const accountState = useAtomValue(hasDeviceAccountAtom);
+	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
+
+	useEffect(() => {
+		if (!accountState && !pathname.startsWith("/onboarding")) {
+			const returnTo = createReturnToUrl(pathname, searchParams.toString());
+			router.replace(createOnboardingUrl(returnTo) as never);
+		}
+	}, [accountState, pathname, searchParams, router.replace]);
 
 	useEffect(() => {
 		const mountedNode = rootRef.current;
