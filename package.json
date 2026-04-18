@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "evolu:workers": "node scripts/build-evolu-workers.mts",
+    "evolu:workers": "bun scripts/build-evolu-workers.ts",
     "predev": "bun run evolu:workers",
     "prebuild": "bun run evolu:workers",
     "pree2e:serve": "bun run evolu:workers",
