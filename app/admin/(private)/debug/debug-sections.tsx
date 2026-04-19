@@ -74,7 +74,7 @@ const DownloadSqliteData = () => {
 		try {
 			const result = await evolu.exportDatabase();
 
-			return new Uint8Array(result); // Convert to Uint8Array
+			return new Uint8Array(result);
 		} catch (error) {
 			console.error("Error fetching the database file:", error);
 			return null;
@@ -104,16 +104,14 @@ const DownloadSqliteData = () => {
 					return;
 				}
 
-				// Fetch the static database file from the same host
 				const databaseFileBytes = await fetchDatabaseFile();
 
 				if (databaseFileBytes) {
 					console.log("Sending data to the iframe");
-					// Sending the database file bytes to the iframe
 					win.postMessage(
 						{
 							type: "invokeLoadDatabaseBuffer",
-							buffer: databaseFileBytes, // Send Uint8Array to iframe
+							buffer: databaseFileBytes,
 						},
 						"https://yzua.github.io/sqlite-online/",
 					);
@@ -169,12 +167,14 @@ const DownloadStorageData = () => {
 		setLoading(true);
 
 		try {
-			const tableNames = Object.keys(AppSchema).sort();
+			const tableNames = Object.keys(AppSchema).sort() as Array<
+				keyof typeof AppSchema
+			>;
 			const files: Array<{ name: string; data: Uint8Array }> = [];
 
 			for (const tableName of tableNames) {
 				const rows = await evolu.loadQuery<Row>(
-					createQuery((db) => db.selectFrom(tableName as any).selectAll()),
+					createQuery((db) => db.selectFrom(tableName).selectAll()),
 				);
 				files.push({
 					name: `${tableName}.csv`,
@@ -259,11 +259,11 @@ const UploadStorageData = () => {
 					})
 					.filter((row) => typeof row.id === "string");
 
-				for (let i = 0; i < upsertRows.length; i += batchSize) {
-					const batch = upsertRows.slice(i, i + batchSize);
+				for (let index = 0; index < upsertRows.length; index += batchSize) {
+					const batch = upsertRows.slice(index, index + batchSize);
 					await new Promise<void>((resolve) => {
-						for (const [index, importRow] of batch.entries()) {
-							const isLast = index === batch.length - 1;
+						for (const [batchIndex, importRow] of batch.entries()) {
+							const isLast = batchIndex === batch.length - 1;
 							evolu.upsert(
 								tableName as never,
 								importRow as never,
@@ -357,6 +357,7 @@ const RandomDataGenerator = () => {
 						categoryId: null,
 						label: NonEmptyString255(faker.food.dish()),
 						price: Integer(faker.number.int({ min: 5000, max: 60000 })),
+						costPrice: null,
 						currency: Currency.CZK,
 					});
 				});
@@ -531,13 +532,12 @@ const RandomDataGenerator = () => {
 					}
 
 					if (insertedForDay === 0) {
-						// Fallback: make sure each target table gets at least one reservation
 						for (
 							let candidateStart = windowStartMs;
 							candidateStart + 2 * slotMs <= windowEndMs;
 							candidateStart += slotMs
 						) {
-							const candidateEnd = candidateStart + 2 * slotMs; // 60 min
+							const candidateEnd = candidateStart + 2 * slotMs;
 							if (hasOverlap(intervals, candidateStart, candidateEnd)) {
 								continue;
 							}
@@ -637,6 +637,7 @@ const RandomDataGenerator = () => {
 							"catalogItem.categoryId as categoryId",
 							"catalogItem.label as label",
 							"catalogItem.price as price",
+							"catalogItem.costPrice as costPrice",
 							"catalogItem.currency as currency",
 							"catalogItem.unitOfMeasure as unitOfMeasure",
 							"catalogItem.internalCode as internalCode",
@@ -774,24 +775,13 @@ const RandomDataGenerator = () => {
 	);
 };
 
-export default function Home() {
+export const ApplicationDebugSection = () => {
 	const { t } = useTranslation();
 	const commitHash =
 		process.env.NEXT_PUBLIC_GIT_COMMIT || t("admin:debug.application.unknown");
-	const { ndk } = useNostr();
-	const nostrRelays = useNostrRelays();
-	const { data: unpublishedEvents } = useQuery({
-		queryKey: [],
-		queryFn: () =>
-			ndk.cacheAdapter && ndk.cacheAdapter.getUnpublishedEvents
-				? ndk.cacheAdapter.getUnpublishedEvents()
-				: null,
-	});
-
-	const getRelayStatus = ndk.cacheAdapter && ndk.cacheAdapter.getRelayStatus;
 
 	return (
-		<div className="w-full lg:max-w-7xl flex flex-col gap-4">
+		<div className="flex w-full flex-col gap-4 lg:max-w-7xl">
 			<ResponsiveCard className="w-full">
 				<CardHeader>
 					<CardTitle>{t("admin:dashboard.applicationInformation")}</CardTitle>
@@ -807,7 +797,15 @@ export default function Home() {
 					/>
 				</CardContent>
 			</ResponsiveCard>
+		</div>
+	);
+};
 
+export const StorageDebugSection = () => {
+	const { t } = useTranslation();
+
+	return (
+		<div className="flex w-full flex-col gap-4 lg:max-w-7xl">
 			<ResponsiveCard className="w-full">
 				<CardHeader>
 					<CardTitle>{t("admin:dashboard.sqliteData")}</CardTitle>
@@ -837,7 +835,15 @@ export default function Home() {
 					</div>
 				</CardContent>
 			</ResponsiveCard>
+		</div>
+	);
+};
 
+export const GeneratorDebugSection = () => {
+	const { t } = useTranslation();
+
+	return (
+		<div className="flex w-full flex-col gap-4 lg:max-w-7xl">
 			<ResponsiveCard className="w-full">
 				<CardHeader>
 					<CardTitle>{t("admin:dashboard.randomDataGenerator")}</CardTitle>
@@ -848,35 +854,57 @@ export default function Home() {
 					</div>
 				</CardContent>
 			</ResponsiveCard>
-
-			{ndk.cacheAdapter && (
-				<ResponsiveCard className="w-full">
-					<CardHeader>
-						<CardTitle>{t("admin:dashboard.nostrRelays")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						{getRelayStatus !== undefined && (
-							<KeyValueList
-								items={nostrRelays.map((nostrRelay) => ({
-									key: nostrRelay.url,
-									value: JSON.stringify(
-										getRelayStatus.bind(ndk.cacheAdapter)(nostrRelay.url),
-									),
-								}))}
-							/>
-						)}
-					</CardContent>
-
-					<CardHeader>
-						<CardTitle>{t("admin:dashboard.nostrUnpublishedEvents")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<pre className={"text-xs"}>
-							{JSON.stringify(unpublishedEvents, null, 2)}
-						</pre>
-					</CardContent>
-				</ResponsiveCard>
-			)}
 		</div>
 	);
-}
+};
+
+export const NostrDebugSection = () => {
+	const { t } = useTranslation();
+	const { ndk } = useNostr();
+	const nostrRelays = useNostrRelays();
+	const cacheAdapter = ndk.cacheAdapter;
+	const { data: unpublishedEvents } = useQuery({
+		queryKey: ["debug", "nostr", "unpublishedEvents"],
+		queryFn: () =>
+			cacheAdapter && cacheAdapter.getUnpublishedEvents
+				? cacheAdapter.getUnpublishedEvents()
+				: null,
+	});
+
+	if (cacheAdapter === undefined) {
+		return null;
+	}
+
+	const getRelayStatus = cacheAdapter.getRelayStatus;
+
+	return (
+		<div className="flex w-full flex-col gap-4 lg:max-w-7xl">
+			<ResponsiveCard className="w-full">
+				<CardHeader>
+					<CardTitle>{t("admin:dashboard.nostrRelays")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{getRelayStatus !== undefined && (
+						<KeyValueList
+							items={nostrRelays.map((nostrRelay) => ({
+								key: nostrRelay.url,
+								value: JSON.stringify(
+									getRelayStatus.bind(cacheAdapter)(nostrRelay.url),
+								),
+							}))}
+						/>
+					)}
+				</CardContent>
+
+				<CardHeader>
+					<CardTitle>{t("admin:dashboard.nostrUnpublishedEvents")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<pre className={"text-xs"}>
+						{JSON.stringify(unpublishedEvents, null, 2)}
+					</pre>
+				</CardContent>
+			</ResponsiveCard>
+		</div>
+	);
+};
