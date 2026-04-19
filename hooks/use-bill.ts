@@ -40,6 +40,29 @@ export const useBill = () => {
 		};
 	};
 
+	const copyBillRates = (props: {
+		sourceBill: PosBill;
+		targetBillId: Id;
+		existingCurrencies?: Iterable<Currency>;
+	}) => {
+		const existingCurrencies = new Set(props.existingCurrencies ?? []);
+
+		for (const rate of props.sourceBill.rates) {
+			if (existingCurrencies.has(rate.currency)) {
+				continue;
+			}
+
+			evolu.upsert("posBillRate", {
+				id: createIdFromString(
+					`posBillRate:${props.targetBillId}:${rate.currency}`,
+				),
+				billId: props.targetBillId,
+				currency: rate.currency,
+				rate: rate.rate,
+			});
+		}
+	};
+
 	const createPosBillItemLineChange = (props: {
 		billId: Id;
 		itemId: EvoluSchemaType["item"]["id"];
@@ -82,8 +105,40 @@ export const useBill = () => {
 				});
 			}
 		},
-		createBill: (props: { defaultCurrency: Currency }) => {
-			return createBillInternal(props.defaultCurrency);
+		createBill: (props: {
+			defaultCurrency: Currency;
+			currency?: Currency;
+			label?: NonEmptyString255 | null;
+			tableId?: Id | null;
+			rates?: PosBill["rates"];
+		}) => {
+			const bill = createBillInternal(props.currency ?? props.defaultCurrency);
+
+			evolu.update("posBill", {
+				id: bill.id,
+				label: props.label ?? null,
+				tableId: props.tableId ?? null,
+			});
+
+			if (props.rates) {
+				copyBillRates({
+					sourceBill: {
+						...bill,
+						label: props.label ?? null,
+						tableId: props.tableId ?? null,
+						table: null,
+						items: [],
+						rates: props.rates,
+					},
+					targetBillId: bill.id,
+				});
+			}
+
+			return {
+				...bill,
+				label: props.label ?? null,
+				tableId: props.tableId ?? null,
+			};
 		},
 		addExistingItem: (props: {
 			item: PosBill["items"][number];
@@ -158,6 +213,97 @@ export const useBill = () => {
 				currency: props.currency,
 				rate: props.rate,
 			});
+		},
+		moveItemsToBill: (props: {
+			sourceBillId: Id;
+			targetBillId?: Id;
+			targetTableId?: Id | null;
+			items: Array<{
+				item: PosBill["items"][number];
+				quantity: number;
+			}>;
+		}) => {
+			const sourceBill = billRows.find(
+				(bill) => bill.id === props.sourceBillId,
+			);
+			if (sourceBill === undefined) {
+				return;
+			}
+
+			const items = props.items
+				.map(({ item, quantity }) => ({
+					item,
+					quantity: Math.min(item.quantity, Math.max(0, quantity)),
+				}))
+				.filter((value) => value.quantity > 0);
+			if (items.length === 0) {
+				return;
+			}
+
+			let targetBill = props.targetBillId
+				? billRows.find((bill) => bill.id === props.targetBillId)
+				: undefined;
+			if (props.targetBillId !== undefined && targetBill === undefined) {
+				return;
+			}
+			if (
+				targetBill !== undefined &&
+				(targetBill.id === sourceBill.id ||
+					targetBill.currency !== sourceBill.currency)
+			) {
+				return;
+			}
+
+			if (targetBill === undefined) {
+				const createdBill = createBillInternal(sourceBill.currency);
+
+				evolu.update("posBill", {
+					id: createdBill.id,
+					tableId: props.targetTableId ?? sourceBill.tableId,
+				});
+
+				copyBillRates({
+					sourceBill,
+					targetBillId: createdBill.id,
+				});
+
+				targetBill = {
+					...createdBill,
+					label: null,
+					tableId: props.targetTableId ?? sourceBill.tableId,
+					table: null,
+					items: [],
+					rates: sourceBill.rates,
+				};
+			} else {
+				copyBillRates({
+					sourceBill,
+					targetBillId: targetBill.id,
+					existingCurrencies: targetBill.rates.map((rate) => rate.currency),
+				});
+			}
+
+			for (const { item, quantity } of items) {
+				createPosBillItemLineChange({
+					billId: sourceBill.id,
+					catalogItemId: item.catalogItemId,
+					itemId: item.itemId,
+					_tag: "remove",
+					quantity: PositiveNumber(quantity),
+					totalAmount: Integer(Math.round(item.item.price * quantity)),
+				});
+
+				createPosBillItemLineChange({
+					billId: targetBill.id,
+					catalogItemId: item.catalogItemId,
+					itemId: item.itemId,
+					_tag: "add",
+					quantity: PositiveNumber(quantity),
+					totalAmount: Integer(Math.round(item.item.price * quantity)),
+				});
+			}
+
+			return targetBill.id;
 		},
 	};
 };

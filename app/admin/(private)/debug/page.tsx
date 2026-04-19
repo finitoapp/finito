@@ -33,10 +33,7 @@ import { useNostrRelays } from "@/hooks/use-nostr-relays";
 import { AppSchema, createQuery } from "@/lib/evolu";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import type { Id } from "@/lib/evolu/types";
-import {
-	createCatalogItem,
-	createItemFromCatalogItem,
-} from "@/lib/item/service";
+import { createItemFromCatalogItem } from "@/lib/item/service";
 import { decodeCsv, encodeCsv } from "@/lib/shared/files/csv";
 import { downloadFile } from "@/lib/shared/files/file-utils";
 import { createZip, extractZip } from "@/lib/shared/files/zip";
@@ -636,6 +633,8 @@ const RandomDataGenerator = () => {
 						.selectFrom("catalogItem")
 						.select([
 							"catalogItem.id as id",
+							"catalogItem.deviceId as deviceId",
+							"catalogItem.categoryId as categoryId",
 							"catalogItem.label as label",
 							"catalogItem.price as price",
 							"catalogItem.currency as currency",
@@ -745,25 +744,12 @@ const RandomDataGenerator = () => {
 						});
 
 						for (const sourceItem of takeSourceItems(category.itemsCount)) {
-							const catalogItem = createCatalogItem({ evolu })({
-								catalogItem: {
-									deviceId: account.device.id,
-									categoryId: null,
-									label: sourceItem.label,
-									price: sourceItem.price,
-									currency: sourceItem.currency,
-									unitOfMeasure: sourceItem.unitOfMeasure,
-									internalCode: sourceItem.internalCode,
-									productCodeType: sourceItem.productCodeType,
-									productCodeValue: sourceItem.productCodeValue,
-								},
-							});
 							const item = await createItemFromCatalogItem({ evolu })({
-								catalogItem,
+								catalogItem: sourceItem,
 							});
 							evolu.insert("menuItemLine", {
 								itemId: item.id,
-								catalogItemId: catalogItem.id,
+								catalogItemId: sourceItem.id,
 								menuCategoryId: menuCategoryId,
 								availabilityStatus: null,
 							});
