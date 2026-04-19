@@ -25,7 +25,9 @@ export const createCatalogItem =
 		};
 	};
 
-export const createItemId = (item: Omit<EvoluSchemaType["item"], "id">) => {
+export const createItemId = (
+	item: Omit<EvoluSchemaType["item"], "id" | "catalogItemId">,
+) => {
 	return createIdFromString(
 		stableStringify(
 			pick(item, [
@@ -46,14 +48,10 @@ export const convertCatalogItemToItem = ({
 	id,
 	...item
 }: EvoluSchemaType["catalogItem"]): EvoluSchemaType["item"] => {
-	const data = {
-		...item,
-		catalogItemId: id,
-	};
-
 	return {
-		...data,
-		id: createItemId(data),
+		...item,
+		id: createItemId(item),
+		catalogItemId: id,
 	};
 };
 
