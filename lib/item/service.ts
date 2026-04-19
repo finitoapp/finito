@@ -5,6 +5,10 @@ import { createQuery, type EvoluSchemaType } from "@/lib/evolu";
 import type { EvoluDep } from "@/lib/shared/dependencies";
 import { stableStringify } from "@/lib/shared/utils/json";
 
+type CatalogItemLike = Omit<EvoluSchemaType["catalogItem"], "costPrice"> & {
+	costPrice?: EvoluSchemaType["catalogItem"]["costPrice"];
+};
+
 export const createCatalogItem =
 	(deps: EvoluDep) =>
 	({
@@ -46,8 +50,9 @@ export const createItemId = (
 
 export const convertCatalogItemToItem = ({
 	id,
+	costPrice: _costPrice,
 	...item
-}: EvoluSchemaType["catalogItem"]): EvoluSchemaType["item"] => {
+}: CatalogItemLike): EvoluSchemaType["item"] => {
 	return {
 		...item,
 		id: createItemId(item),
@@ -58,12 +63,14 @@ export const convertCatalogItemToItem = ({
 export const createItemFromCatalogItem =
 	(deps: EvoluDep) =>
 	async (params: {
-		catalogItem: EvoluSchemaType["catalogItem"];
+		catalogItem: CatalogItemLike;
 	}): Promise<EvoluSchemaType["item"]> => {
+		const { id, costPrice: _costPrice, ...item } = params.catalogItem;
+
 		return await createItem(deps)({
 			item: {
-				...params.catalogItem,
-				catalogItemId: params.catalogItem.id,
+				...item,
+				catalogItemId: id,
 			},
 		});
 	};

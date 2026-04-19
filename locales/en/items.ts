@@ -70,6 +70,7 @@ const locale = {
     },
     "fields": {
       "barcode": "Barcode",
+      "costPrice": "Cost price",
       "recordId": "Record ID",
       "added": "Added",
       "updated": "Last updated",
@@ -87,6 +88,9 @@ const locale = {
     "empty": {
       "category": "Add category",
       "barcode": "The barcode preview will appear here after adding a product code."
+    },
+    "warning": {
+      "priceBelowCost": "Selling price {{price}} is lower than cost price {{costPrice}}."
     }
   },
   "table": {
@@ -111,12 +115,16 @@ const locale = {
       "label": {
         "label": "Label",
         "price": "Price",
+        "cost-price-optional": "Cost price (optional)",
         "currency": "Currency",
         "unit-of-measure-uom-optional": "Unit of Measure (UOM) (optional)",
         "category-optional": "Category (optional)",
         "product-code-optional": "Product code (optional)",
         "type": "Type",
         "internal-code-sku-optional": "Internal code (SKU) (optional)"
+      },
+      "description": {
+        "cost-price": "Internal reference cost used to check whether the selling price drops below your purchase cost."
       },
       "placeholder": {
         "0": "0",

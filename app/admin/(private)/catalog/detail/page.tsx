@@ -1,6 +1,7 @@
 "use client";
 
 import type { Id } from "@evolu/common";
+import { TriangleAlertIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import Barcode from "react-barcode";
@@ -30,6 +31,7 @@ import {
 	IntegerSchema,
 	NumberStringSchema,
 	ProductCodeType,
+	StringToNullableStringSchema,
 } from "@/lib/shared/types";
 import { formatDateTime, formatMoney } from "@/lib/shared/utils/format";
 import { moneyCodec } from "@/lib/shared/zod/money-codec";
@@ -71,6 +73,20 @@ export default function Home() {
 		return null;
 	}
 
+	const belowCostWarning =
+		item.costPrice !== null && item.price < item.costPrice
+			? {
+					price: formatMoney({
+						value: item.price,
+						currency: item.currency,
+					}),
+					costPrice: formatMoney({
+						value: item.costPrice,
+						currency: item.currency,
+					}),
+				}
+			: null;
+
 	return (
 		<div className="w-full lg:max-w-7xl">
 			<div className="grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_22rem]">
@@ -92,6 +108,19 @@ export default function Home() {
 						</CardHeader>
 						<CardContent className="grid gap-8 md:grid-cols-2">
 							<div>
+								{belowCostWarning && (
+									<div className="mb-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700">
+										<div className="flex items-start gap-2">
+											<TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+											<span>
+												{t(
+													"items:detail.warning.priceBelowCost",
+													belowCostWarning,
+												)}
+											</span>
+										</div>
+									</div>
+								)}
 								<InlineEdit
 									label={t("items:form.item-form.label.price")}
 									value={
@@ -119,6 +148,56 @@ export default function Home() {
 										});
 									}}
 								/>
+								<Separator />
+								<div>
+									<InlineEdit
+										label={t("items:detail.fields.costPrice")}
+										value={
+											item.costPrice === null
+												? null
+												: moneyCodec.encode({
+														value: item.costPrice,
+														currency: item.currency,
+													}).value
+										}
+										renderValue={() =>
+											item.costPrice === null
+												? "—"
+												: formatMoney({
+														value: item.costPrice,
+														currency: item.currency,
+													})
+										}
+										PluginComponent={textPlugin({
+											inputProps: {
+												type: "number",
+												step: "any",
+												inputMode: "decimal",
+											},
+											schema: StringToNullableStringSchema.pipe(
+												NumberStringSchema.nullable(),
+											)
+												.transform((value) =>
+													value === null
+														? null
+														: moneyCodec.decode({
+																value,
+																currency: item.currency,
+															}).value,
+												)
+												.pipe(IntegerSchema.nullable()),
+										})}
+										onSave={(value: Integer | null) => {
+											evolu.update("catalogItem", {
+												id: item.id,
+												costPrice: value,
+											});
+										}}
+									/>
+									<p className="mt-1 px-2.5 text-sm text-muted-foreground">
+										{t("items:form.item-form.description.cost-price")}
+									</p>
+								</div>
 								<Separator />
 								<InlineEdit
 									label={t("items:form.item-form.label.category-optional")}

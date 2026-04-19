@@ -19,6 +19,7 @@ export const createItemDetailQuery = (id: Id) =>
 						"catalogItem.deviceId as deviceId",
 						"catalogItem.label as label",
 						"catalogItem.price as price",
+						"catalogItem.costPrice as costPrice",
 						"catalogItem.currency as currency",
 						"catalogItem.unitOfMeasure as unitOfMeasure",
 						"catalogItem.categoryId as categoryId",

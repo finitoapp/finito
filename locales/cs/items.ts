@@ -70,6 +70,7 @@ const locale = {
     },
     "fields": {
       "barcode": "Čárový kód",
+      "costPrice": "Nákupní cena",
       "recordId": "ID záznamu",
       "added": "Přidáno",
       "updated": "Naposledy upraveno",
@@ -87,6 +88,9 @@ const locale = {
     "empty": {
       "category": "Přidat kategorii",
       "barcode": "Po doplnění kódu produktu se tady zobrazí čárový kód."
+    },
+    "warning": {
+      "priceBelowCost": "Prodejní cena {{price}} je nižší než nákupní cena {{costPrice}}."
     }
   },
   "table": {
@@ -111,12 +115,16 @@ const locale = {
       "label": {
         "label": "Štítek",
         "price": "Cena",
+        "cost-price-optional": "Nákupní cena (volitelné)",
         "currency": "Měna",
         "unit-of-measure-uom-optional": "Měrná jednotka (MJ) (volitelné)",
         "category-optional": "Kategorie (volitelné)",
         "product-code-optional": "Kód produktu (volitelné)",
         "type": "Typ",
         "internal-code-sku-optional": "Interní kód (SKU) (volitelné)"
+      },
+      "description": {
+        "cost-price": "Interní orientační náklad pro kontrolu, jestli prodejní cena neklesá pod nákupní cenu."
       },
       "placeholder": {
         "0": "0",
