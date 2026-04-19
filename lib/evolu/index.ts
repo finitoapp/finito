@@ -121,6 +121,8 @@ export const AppSchema = {
 	},
 	catalogItem: {
 		...ItemSchema,
+		// Internal reference cost in item currency for margin checks.
+		costPrice: IntegerSchema.nullable(),
 		deviceId: TableIdSchema.nullable(),
 	},
 	item: {

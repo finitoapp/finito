@@ -28,6 +28,7 @@ const itemSchema = z
 		id: TableIdSchema,
 		deviceId: TableIdSchema.nullable(),
 		price: StringToNullableStringSchema.pipe(NumberStringSchema),
+		costPrice: StringToNullableStringSchema.pipe(NumberStringSchema.nullable()),
 		currency: z.enum(Currency).nullable().pipe(z.enum(Currency)),
 		label: StringToNullableStringSchema.pipe(NonEmptyString255Schema),
 		unitOfMeasure: StringToNullableStringSchema.pipe(
@@ -48,6 +49,13 @@ const itemSchema = z
 			value: values.price,
 			currency: values.currency,
 		}).value,
+		costPrice:
+			values.costPrice === null
+				? null
+				: moneyCodec.decode({
+						value: values.costPrice,
+						currency: values.currency,
+					}).value,
 	}));
 
 const createIdDeps = {
@@ -59,6 +67,7 @@ const createItemDefaultValues = () => {
 		id: createId(createIdDeps),
 		deviceId: null,
 		price: "",
+		costPrice: "",
 		currency: null,
 		label: "",
 		unitOfMeasure: "",
@@ -98,6 +107,13 @@ const createComponents = (t: TFunction) => {
 				allowEmpty: true,
 				label: t("items:form.item-form.label.currency"),
 			}),
+		}),
+		...builder.magicInput("costPrice").amount({
+			label: t("items:form.item-form.label.cost-price-optional"),
+			description: t("items:form.item-form.description.cost-price"),
+			placeholder: t("items:form.item-form.placeholder.0"),
+			type: "number",
+			currencyFieldName: "currency",
 		}),
 		...builder.magicInput("unitOfMeasure").text({
 			label: t("items:form.item-form.label.unit-of-measure-uom-optional"),

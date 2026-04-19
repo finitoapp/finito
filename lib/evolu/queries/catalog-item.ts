@@ -9,6 +9,7 @@ export const getAllCatalogItemsQuery = createQuery((db) =>
 			"catalogItem.deviceId as deviceId",
 			"catalogItem.label as label",
 			"catalogItem.price as price",
+			"catalogItem.costPrice as costPrice",
 			"catalogItem.currency as currency",
 			"catalogItem.unitOfMeasure as unitOfMeasure",
 			"catalogItem.internalCode as internalCode",

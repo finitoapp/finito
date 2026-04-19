@@ -32,6 +32,7 @@ export default function Home() {
 						"catalogItem.deviceId as deviceId",
 						"catalogItem.label as label",
 						"catalogItem.price as price",
+						"catalogItem.costPrice as costPrice",
 						"catalogItem.currency as currency",
 						"catalogItem.unitOfMeasure as unitOfMeasure",
 						"catalogItem.categoryId as categoryId",
@@ -84,6 +85,13 @@ export default function Home() {
 								value: item.price,
 								currency: item.currency,
 							}).value,
+							costPrice:
+								item.costPrice === null
+									? ""
+									: moneyCodec.encode({
+											value: item.costPrice,
+											currency: item.currency,
+										}).value,
 							currency: item.currency,
 							categoryId: item.categoryId ?? "",
 							productCodeValue: item.productCodeValue ?? "",

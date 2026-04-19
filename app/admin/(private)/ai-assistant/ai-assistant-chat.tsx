@@ -160,6 +160,7 @@ export function AiAssistantChat() {
 									deviceId: account.device.id,
 									label: NonEmptyString255(input.label.trim()),
 									price,
+									costPrice: null,
 									currency,
 									unitOfMeasure:
 										input.unitOfMeasure && input.unitOfMeasure.trim() !== ""
