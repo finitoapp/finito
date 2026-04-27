@@ -28,6 +28,7 @@ import { type FC, type ReactNode, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { FullscreenDialog } from "@/components/fullscreen-dialog";
 import { LoadingIndicator } from "@/components/loading-indicator";
+import { DownloadPaymentReceiptButton } from "@/components/payments/download-payment-receipt-button";
 import { ResponsiveCard } from "@/components/responsive-card";
 import { StaticCard } from "@/components/static-card";
 import { Button } from "@/components/ui/button";
@@ -864,6 +865,10 @@ export default function Home() {
 							verifiedAt={payment.paymentWatchingState?.verifiedAt ?? null}
 							stoppedAt={payment.paymentWatchingState?.stoppedAt ?? null}
 							className={"w-full"}
+						/>
+						<DownloadPaymentReceiptButton
+							paymentId={payment.id}
+							paymentStatus={paymentStatus}
 						/>
 					</CardContent>
 				</ResponsiveCard>

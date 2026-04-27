@@ -15,7 +15,10 @@ const locale = {
       "open": "Otevřít",
       "open-in-btc-wallet": "Otevřít v BTC peněžence",
       "share-qr-code": "Sdílet QR kód",
-      "download-qr-code": "Stáhnout QR kód"
+      "download-qr-code": "Stáhnout QR kód",
+      "issue-receipt": "Vystavit účtenku",
+      "download-receipt": "Stáhnout účtenku",
+      "preparing-receipt": "Připravuji účtenku"
     },
     "confirm": {
       "pay-in-cash": {
@@ -32,7 +35,16 @@ const locale = {
       "share-qr-description": "Sdílejte tento QR kód ve své bankovní aplikaci",
       "no-cash-register-account-configured": "Pro tuto platbu není nakonfigurován pokladní účet.",
       "cash-payment-enabled-no-cash-register-account": "Hotovostní platba je povolena, ale není nakonfigurován pokladní účet.",
-      "ln-invoice-copied-to-clipboard": "LN faktura byla úspěšně zkopírována do schránky"
+      "ln-invoice-copied-to-clipboard": "LN faktura byla úspěšně zkopírována do schránky",
+      "receipt-can-be-issued-after-settlement": "Účtenku lze vystavit až po zaúčtování platby.",
+      "receipt-issued": "Účtenka {{receiptNumber}} byla vystavena {{issuedAt}}.",
+      "receipt-errors": {
+        "payment-not-found": "Platbu se nepodařilo najít.",
+        "unsupported-direction": "Účtenku lze vystavit jen pro příchozí platby.",
+        "payment-not-settled": "Účtenku lze vystavit jen pro zaúčtovanou platbu.",
+        "supplier-not-configured": "Fakturační údaje firmy nejsou nastavené.",
+        "supplier-billing-info-missing": "Fakturační údaje firmy nejsou kompletní."
+      }
     },
     "tabs": {
       "web-payment": "Webová platba",
@@ -84,6 +96,9 @@ const locale = {
     },
     "status": {
       "paid": "Zaplaceno",
+      "unpaid": "Nezaplaceno",
+      "underpaid": "Nedoplatek",
+      "overpaid": "Přeplatek",
       "waiting": "Čeká na zaplacení",
       "unknown": "Neznámý"
     },
@@ -94,6 +109,35 @@ const locale = {
     "help": {
       "redirect": "Zákazník bude po úspěšné platbě přesměrován na tuto adresu, pokud platí přes webovou aplikaci.",
       "tip": "Statické platby nepodporují spropitné"
+    }
+  },
+  "receipt": {
+    "line": {
+      "tip": "Spropitné",
+      "payment": "Platba",
+      "settlement-adjustment": "Rozdíl úhrady"
+    },
+    "pdf": {
+      "title": "Účtenka",
+      "receiptNumber": "Číslo účtenky",
+      "issuedAt": "Vystaveno:",
+      "paymentDate": "Datum platby:",
+      "supplier": "Dodavatel",
+      "identificationNumber": "IČO:",
+      "vatNumber": "DIČ:",
+      "amountReceived": "Přijatá částka",
+      "itemCount": "Počet řádků",
+      "total": "Celkem",
+      "columns": {
+        "label": "Položka",
+        "quantity": "Množství",
+        "unit": "MJ",
+        "unitPrice": "Cena za MJ",
+        "total": "Celkem"
+      },
+      "country": {
+        "cz": "Česká republika"
+      }
     }
   },
   "table": {

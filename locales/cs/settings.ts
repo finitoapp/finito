@@ -12,6 +12,9 @@ const locale = {
     "fioBankPlugin": "Plugin Fio banky",
     "invoiceNumberSeries": "Číselná řada faktury",
     "lastInvoiceNumber": "Číslo poslední faktury",
+    "receiptNumberSeries": "Číselná řada účtenek",
+    "lastReceiptNumber": "Číslo poslední účtenky",
+    "lastReceiptNumberDescription": "Tyto hodnoty se používají při výpočtu následujícího čísla účtenky",
     "orUseExistingAccount": "Nebo použijte svůj existující účet",
     "plugins": "Pluginy",
     "externalLinks": "Externí odkazy",
@@ -174,6 +177,29 @@ const locale = {
       },
       "description": {
         "if-you-dont-issue-more-than-9999-invoices-per-time-period-number-4-will-be-optim": "Pokud nevystavíte více než 9 999 faktur za dané období, hodnota 4 bude optimální."
+      }
+    },
+    "receipt-last-number-form": {
+      "label": {
+        "last-receipt-serial-number": "Poslední pořadové číslo účtenky",
+        "last-receipt-date": "Datum poslední účtenky"
+      }
+    },
+    "receipt-number-series-form": {
+      "label": {
+        "number-of-digits": "Počet číslic",
+        "year-format": "Formát roku",
+        "month-format": "Formát měsíce",
+        "day-format": "Formát dne",
+        "receipt-number-prefix": "Prefix čísla účtenky"
+      },
+      "option": {
+        "default": "výchozí",
+        "short": "zkrácený",
+        "hidden": "skrytý"
+      },
+      "description": {
+        "if-you-dont-issue-more-than-9999-receipts-per-time-period-number-4-will-be-opt": "Pokud nevystavíte více než 9 999 účtenek za dané období, hodnota 4 bude optimální."
       }
     },
     "smtp-form": {

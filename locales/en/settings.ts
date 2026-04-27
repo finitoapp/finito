@@ -12,6 +12,9 @@ const locale = {
     "fioBankPlugin": "Fio bank plugin",
     "invoiceNumberSeries": "Invoice number series",
     "lastInvoiceNumber": "Last invoice number",
+    "receiptNumberSeries": "Receipt number series",
+    "lastReceiptNumber": "Last receipt number",
+    "lastReceiptNumberDescription": "The values are used when calculating the subsequent receipt number",
     "orUseExistingAccount": "Or use your existing account",
     "plugins": "Plugins",
     "externalLinks": "External links",
@@ -174,6 +177,29 @@ const locale = {
       },
       "description": {
         "if-you-dont-issue-more-than-9999-invoices-per-time-period-number-4-will-be-optim": "If you don't issue more than 9999 invoices per time period, number 4 will be optimal for you."
+      }
+    },
+    "receipt-last-number-form": {
+      "label": {
+        "last-receipt-serial-number": "Last receipt serial number",
+        "last-receipt-date": "Last receipt date"
+      }
+    },
+    "receipt-number-series-form": {
+      "label": {
+        "number-of-digits": "Number of digits",
+        "year-format": "Year format",
+        "month-format": "Month format",
+        "day-format": "Day format",
+        "receipt-number-prefix": "Receipt number prefix"
+      },
+      "option": {
+        "default": "default",
+        "short": "short",
+        "hidden": "hidden"
+      },
+      "description": {
+        "if-you-dont-issue-more-than-9999-receipts-per-time-period-number-4-will-be-opt": "If you don't issue more than 9999 receipts per time period, number 4 will be optimal for you."
       }
     },
     "smtp-form": {

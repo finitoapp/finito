@@ -6,6 +6,7 @@ import {
 	IconListDetails,
 	IconSettings,
 } from "@tabler/icons-react";
+import { HashIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DefautLayout } from "@/app/admin/defaut-layout";
 import { SubNavShellRoot } from "@/components/sub-nav-shell";
@@ -28,6 +29,12 @@ const paymentsTabs = [
 		labelKey: "navigation:main.links.bills",
 		icon: IconInvoice,
 		nextUrl: "/admin/payments/bills" as never,
+	},
+	{
+		value: "receiptNumberSeries",
+		labelKey: "settings:page.receiptNumberSeries",
+		icon: HashIcon,
+		nextUrl: "/admin/payments/receipt-number-series" as never,
 	},
 	{
 		value: "settings",
