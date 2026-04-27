@@ -31,131 +31,168 @@ Font.register({
 	],
 });
 
+const RECEIPT_PAGE_WIDTH = 298;
+const RECEIPT_PAGE_MIN_HEIGHT = 420;
+const RECEIPT_PAGE_BASE_HEIGHT = 320;
+const RECEIPT_PAGE_ITEM_HEIGHT = 34;
+
 const styles = StyleSheet.create({
 	page: {
 		backgroundColor: "#ffffff",
-		padding: 36,
+		paddingVertical: 12,
+		paddingHorizontal: 12,
 		fontFamily: "Roboto",
-		fontSize: 9,
-		lineHeight: 1.45,
-	},
-	header: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: 18,
-	},
-	title: {
-		fontSize: 18,
-		fontWeight: "bold",
+		fontSize: 7,
+		lineHeight: 1.4,
 		color: "#111827",
-		marginBottom: 6,
 	},
-	subtitle: {
-		fontSize: 10,
-		color: "#4b5563",
+	receipt: {
+		paddingHorizontal: 6,
+		paddingVertical: 4,
+	},
+	centered: {
+		alignItems: "center",
+		textAlign: "center",
 	},
 	section: {
-		marginBottom: 18,
+		marginBottom: 8,
 	},
-	sectionTitle: {
-		fontSize: 8,
+	separator: {
+		borderBottomWidth: 1,
+		borderBottomColor: "#e5e7eb",
+		borderBottomStyle: "dashed",
+		marginVertical: 8,
+	},
+	supplierName: {
+		fontSize: 10,
 		fontWeight: "bold",
-		color: "#374151",
-		marginBottom: 6,
-		letterSpacing: 0.4,
+		marginBottom: 2,
 	},
-	grid: {
+	title: {
+		fontSize: 11,
+		fontWeight: "bold",
+		letterSpacing: 0.8,
+		marginBottom: 2,
+	},
+	subtitle: {
+		fontSize: 6.5,
+		color: "#4b5563",
+		letterSpacing: 0.5,
+		textTransform: "uppercase",
+	},
+	muted: {
+		color: "#6b7280",
+	},
+	metaBlock: {
+		paddingVertical: 2,
+	},
+	metaRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
+		alignItems: "center",
+		paddingVertical: 1,
 	},
-	card: {
-		width: "48%",
-		padding: 12,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-		borderRadius: 6,
+	metaLabel: {
+		fontSize: 6.5,
+		color: "#6b7280",
+		paddingRight: 12,
 	},
-	cardLabel: {
-		fontSize: 8,
+	metaValue: {
+		fontSize: 7,
+		textAlign: "right",
+	},
+	sectionTitle: {
+		fontSize: 6,
+		fontWeight: "bold",
+		letterSpacing: 0.7,
+		textTransform: "uppercase",
 		color: "#6b7280",
 		marginBottom: 3,
 	},
-	cardValue: {
-		fontSize: 11,
-		fontWeight: "bold",
-		color: "#111827",
+	supplierBlock: {
+		paddingBottom: 2,
 	},
-	divider: {
-		marginVertical: 14,
+	addressText: {
+		fontSize: 7,
+		marginBottom: 1,
+	},
+	itemsHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		paddingBottom: 3,
 		borderBottomWidth: 1,
 		borderBottomColor: "#e5e7eb",
 	},
-	tableHeader: {
-		flexDirection: "row",
-		backgroundColor: "#f3f4f6",
-		borderTopLeftRadius: 6,
-		borderTopRightRadius: 6,
-		paddingVertical: 8,
-		paddingHorizontal: 8,
-	},
-	tableRow: {
-		flexDirection: "row",
-		paddingVertical: 7,
-		paddingHorizontal: 8,
-		borderBottomWidth: 1,
-		borderBottomColor: "#f3f4f6",
-	},
-	tableHeaderText: {
-		fontSize: 8,
+	itemsHeaderText: {
+		fontSize: 6,
 		fontWeight: "bold",
-		color: "#374151",
+		letterSpacing: 0.6,
+		textTransform: "uppercase",
+		color: "#6b7280",
 	},
-	tableText: {
-		fontSize: 8,
-		color: "#111827",
+	itemRow: {
+		paddingVertical: 5,
+		borderBottomWidth: 1,
+		borderBottomColor: "#f5f5f5",
 	},
-	labelCol: {
-		width: "44%",
+	itemTopRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-start",
+		marginBottom: 1,
 	},
-	qtyCol: {
-		width: "14%",
-		textAlign: "center",
+	itemLabel: {
+		fontSize: 7,
+		width: "68%",
+		paddingRight: 8,
 	},
-	unitCol: {
-		width: "12%",
-		textAlign: "center",
-	},
-	priceCol: {
-		width: "15%",
+	itemTotal: {
+		fontSize: 7,
+		fontWeight: "bold",
 		textAlign: "right",
 	},
-	totalCol: {
-		width: "15%",
-		textAlign: "right",
+	itemMeta: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "center",
 	},
-	totals: {
-		marginTop: 18,
-		alignSelf: "flex-end",
-		minWidth: 220,
+	itemDetails: {
+		fontSize: 6.5,
+		color: "#6b7280",
+	},
+	totalBlock: {
+		marginTop: 4,
+		borderTopWidth: 1,
+		borderTopColor: "#d1d5db",
+		paddingTop: 6,
+		paddingBottom: 2,
 	},
 	totalRow: {
 		flexDirection: "row",
 		justifyContent: "space-between",
-		paddingVertical: 8,
-		paddingHorizontal: 12,
-		borderRadius: 6,
-		backgroundColor: "#111827",
+		alignItems: "center",
 	},
 	totalLabel: {
-		fontSize: 10,
+		fontSize: 7,
 		fontWeight: "bold",
-		color: "#ffffff",
+		color: "#374151",
+		letterSpacing: 0.5,
+		textTransform: "uppercase",
 	},
 	totalValue: {
-		fontSize: 10,
+		fontSize: 9,
 		fontWeight: "bold",
-		color: "#ffffff",
+		color: "#111827",
+	},
+	footer: {
+		marginTop: 8,
+		paddingTop: 6,
+		borderTopWidth: 1,
+		borderTopColor: "#e5e7eb",
+		borderTopStyle: "dashed",
+		textAlign: "center",
+		fontSize: 6,
+		color: "#6b7280",
 	},
 });
 
@@ -194,167 +231,179 @@ export const PaymentReceiptTemplate: React.FC<{
 }> = ({ receipt }) => {
 	const { i18n, t } = useTranslation();
 	const locale = i18n.language.startsWith("cs") ? "cs-CZ" : "en-US";
+	const pageHeight = Math.max(
+		RECEIPT_PAGE_MIN_HEIGHT,
+		RECEIPT_PAGE_BASE_HEIGHT + receipt.items.length * RECEIPT_PAGE_ITEM_HEIGHT,
+	);
 
 	return (
 		<Document>
-			<Page size="A4" style={styles.page}>
-				<View style={styles.header}>
-					<View>
-						<Text style={styles.title}>{t("payments:receipt.pdf.title")}</Text>
-						<Text style={styles.subtitle}>
-							{t("payments:receipt.pdf.receiptNumber")} {receipt.receiptNumber}
+			<Page
+				size={{ width: RECEIPT_PAGE_WIDTH, height: pageHeight }}
+				style={styles.page}
+				wrap={false}
+			>
+				<View style={styles.receipt}>
+					<View style={[styles.section, styles.centered]}>
+						<Text style={styles.supplierName}>
+							{receipt.paymentReceiptSupplier.name}
 						</Text>
-					</View>
-					<View>
-						<Text style={styles.subtitle}>
-							{t("payments:receipt.pdf.issuedAt")}{" "}
-							{new Date(receipt.issuedAt).toLocaleString(locale)}
-						</Text>
-						<Text style={styles.subtitle}>
-							{t("payments:receipt.pdf.paymentDate")}{" "}
-							{new Date(receipt.paymentCreatedAt).toLocaleString(locale)}
-						</Text>
-					</View>
-				</View>
-
-				<View style={styles.section}>
-					<Text style={styles.sectionTitle}>
-						{t("payments:receipt.pdf.supplier")}
-					</Text>
-					<Text>{receipt.paymentReceiptSupplier.name}</Text>
-					{receipt.paymentReceiptSupplierAddress.street && (
-						<Text>
-							{receipt.paymentReceiptSupplierAddress.street}{" "}
-							{receipt.paymentReceiptSupplierAddress.descriptiveNumber ?? ""}
-						</Text>
-					)}
-					{(receipt.paymentReceiptSupplierAddress.city ||
-						receipt.paymentReceiptSupplierAddress.postalCode) && (
-						<Text>
-							{receipt.paymentReceiptSupplierAddress.city ?? ""}
-							{receipt.paymentReceiptSupplierAddress.city &&
-							receipt.paymentReceiptSupplierAddress.postalCode
-								? ", "
-								: ""}
-							{receipt.paymentReceiptSupplierAddress.postalCode
-								? formatPostalCode(
-										receipt.paymentReceiptSupplierAddress.postalCode,
-									)
-								: ""}
-						</Text>
-					)}
-					<Text>
-						{resolveCountryLabel(
-							t,
-							receipt.paymentReceiptSupplierBillingInfo.countryCode,
+						{receipt.paymentReceiptSupplierAddress.street && (
+							<Text>
+								{receipt.paymentReceiptSupplierAddress.street}{" "}
+								{receipt.paymentReceiptSupplierAddress.descriptiveNumber ?? ""}
+							</Text>
 						)}
-					</Text>
-					{receipt.paymentReceiptSupplierBillingInfoCz.identificationNumber && (
-						<Text>
-							{t("payments:receipt.pdf.identificationNumber")}{" "}
-							{receipt.paymentReceiptSupplierBillingInfoCz.identificationNumber}
-						</Text>
-					)}
-					{receipt.paymentReceiptSupplierBillingInfoCz.vatNumber && (
-						<Text>
-							{t("payments:receipt.pdf.vatNumber")}{" "}
-							{receipt.paymentReceiptSupplierBillingInfoCz.vatNumber}
-						</Text>
-					)}
-				</View>
-
-				<View style={styles.grid}>
-					<View style={styles.card}>
-						<Text style={styles.cardLabel}>
-							{t("payments:receipt.pdf.amountReceived")}
-						</Text>
-						<Text style={styles.cardValue}>
-							{formatMoney(
-								{
-									value: receipt.totalAmount,
-									currency: receipt.currency,
-								},
-								locale,
+						{(receipt.paymentReceiptSupplierAddress.city ||
+							receipt.paymentReceiptSupplierAddress.postalCode) && (
+							<Text>
+								{receipt.paymentReceiptSupplierAddress.city ?? ""}
+								{receipt.paymentReceiptSupplierAddress.city &&
+								receipt.paymentReceiptSupplierAddress.postalCode
+									? ", "
+									: ""}
+								{receipt.paymentReceiptSupplierAddress.postalCode
+									? formatPostalCode(
+											receipt.paymentReceiptSupplierAddress.postalCode,
+										)
+									: ""}
+							</Text>
+						)}
+						<Text style={styles.muted}>
+							{resolveCountryLabel(
+								t,
+								receipt.paymentReceiptSupplierBillingInfo.countryCode,
 							)}
 						</Text>
 					</View>
-					<View style={styles.card}>
-						<Text style={styles.cardLabel}>
-							{t("payments:receipt.pdf.itemCount")}
-						</Text>
-						<Text style={styles.cardValue}>
-							{receipt.items.length.toLocaleString(locale)}
-						</Text>
+
+					<View style={[styles.section, styles.centered]}>
+						<Text style={styles.title}>{t("payments:receipt.pdf.title")}</Text>
+						<Text style={styles.subtitle}>#{receipt.receiptNumber}</Text>
 					</View>
-				</View>
 
-				<View style={styles.divider} />
-
-				<View style={styles.tableHeader}>
-					<Text style={[styles.tableHeaderText, styles.labelCol]}>
-						{t("payments:receipt.pdf.columns.label")}
-					</Text>
-					<Text style={[styles.tableHeaderText, styles.qtyCol]}>
-						{t("payments:receipt.pdf.columns.quantity")}
-					</Text>
-					<Text style={[styles.tableHeaderText, styles.unitCol]}>
-						{t("payments:receipt.pdf.columns.unit")}
-					</Text>
-					<Text style={[styles.tableHeaderText, styles.priceCol]}>
-						{t("payments:receipt.pdf.columns.unitPrice")}
-					</Text>
-					<Text style={[styles.tableHeaderText, styles.totalCol]}>
-						{t("payments:receipt.pdf.columns.total")}
-					</Text>
-				</View>
-
-				{receipt.items.map((line) => (
-					<View key={line.id} style={styles.tableRow}>
-						<Text style={[styles.tableText, styles.labelCol]}>
-							{resolveLineLabel(t, line)}
-						</Text>
-						<Text style={[styles.tableText, styles.qtyCol]}>
-							{line.quantity.toLocaleString(locale)}
-						</Text>
-						<Text style={[styles.tableText, styles.unitCol]}>
-							{line.unitOfMeasure ?? "-"}
-						</Text>
-						<Text style={[styles.tableText, styles.priceCol]}>
-							{formatMoney(
-								{
-									value: line.unitPrice,
-									currency: receipt.currency,
-								},
-								locale,
-							)}
-						</Text>
-						<Text style={[styles.tableText, styles.totalCol]}>
-							{formatMoney(
-								{
-									value: line.totalAmount,
-									currency: receipt.currency,
-								},
-								locale,
-							)}
-						</Text>
+					<View style={styles.metaBlock}>
+						<View style={styles.metaRow}>
+							<Text style={styles.metaLabel}>
+								{t("payments:receipt.pdf.issuedAt")}
+							</Text>
+							<Text style={styles.metaValue}>
+								{new Date(receipt.issuedAt).toLocaleString(locale)}
+							</Text>
+						</View>
+						<View style={styles.metaRow}>
+							<Text style={styles.metaLabel}>
+								{t("payments:receipt.pdf.paymentDate")}
+							</Text>
+							<Text style={styles.metaValue}>
+								{new Date(receipt.paymentCreatedAt).toLocaleString(locale)}
+							</Text>
+						</View>
+						<View style={styles.metaRow}>
+							<Text style={styles.metaLabel}>
+								{t("payments:receipt.pdf.receiptNumber")}
+							</Text>
+							<Text style={styles.metaValue}>{receipt.receiptNumber}</Text>
+						</View>
 					</View>
-				))}
 
-				<View style={styles.totals}>
-					<View style={styles.totalRow}>
-						<Text style={styles.totalLabel}>
-							{t("payments:receipt.pdf.total")}
+					<View style={styles.separator} />
+
+					<View style={styles.section}>
+						<Text style={styles.sectionTitle}>
+							{t("payments:receipt.pdf.supplier")}
 						</Text>
-						<Text style={styles.totalValue}>
-							{formatMoney(
-								{
-									value: receipt.totalAmount,
-									currency: receipt.currency,
-								},
-								locale,
+						<View style={styles.supplierBlock}>
+							<Text style={styles.addressText}>
+								{receipt.paymentReceiptSupplier.name}
+							</Text>
+							{receipt.paymentReceiptSupplierBillingInfoCz
+								.identificationNumber && (
+								<Text style={styles.addressText}>
+									{t("payments:receipt.pdf.identificationNumber")}{" "}
+									{
+										receipt.paymentReceiptSupplierBillingInfoCz
+											.identificationNumber
+									}
+								</Text>
 							)}
-						</Text>
+							{receipt.paymentReceiptSupplierBillingInfoCz.vatNumber && (
+								<Text style={styles.addressText}>
+									{t("payments:receipt.pdf.vatNumber")}{" "}
+									{receipt.paymentReceiptSupplierBillingInfoCz.vatNumber}
+								</Text>
+							)}
+						</View>
 					</View>
+
+					<View style={styles.separator} />
+
+					<View style={styles.section}>
+						<View style={styles.itemsHeader}>
+							<Text style={styles.itemsHeaderText}>
+								{t("payments:receipt.pdf.columns.label")}
+							</Text>
+							<Text style={styles.itemsHeaderText}>
+								{t("payments:receipt.pdf.columns.total")}
+							</Text>
+						</View>
+
+						{receipt.items.map((line) => (
+							<View key={line.id} style={styles.itemRow}>
+								<View style={styles.itemTopRow}>
+									<Text style={styles.itemLabel}>
+										{resolveLineLabel(t, line)}
+									</Text>
+									<Text style={styles.itemTotal}>
+										{formatMoney(
+											{
+												value: line.totalAmount,
+												currency: receipt.currency,
+											},
+											locale,
+										)}
+									</Text>
+								</View>
+								<View style={styles.itemMeta}>
+									<Text style={styles.itemDetails}>
+										{line.quantity.toLocaleString(locale)}{" "}
+										{line.unitOfMeasure ?? "-"} x{" "}
+										{formatMoney(
+											{
+												value: line.unitPrice,
+												currency: receipt.currency,
+											},
+											locale,
+										)}
+									</Text>
+									<Text style={styles.itemDetails}>
+										{t("payments:receipt.pdf.columns.unit")}
+									</Text>
+								</View>
+							</View>
+						))}
+					</View>
+
+					<View style={styles.totalBlock}>
+						<View style={styles.totalRow}>
+							<Text style={styles.totalLabel}>
+								{t("payments:receipt.pdf.total")}
+							</Text>
+							<Text style={styles.totalValue}>
+								{formatMoney(
+									{
+										value: receipt.totalAmount,
+										currency: receipt.currency,
+									},
+									locale,
+								)}
+							</Text>
+						</View>
+					</View>
+
+					<Text style={styles.footer}>
+						{t("payments:receipt.pdf.title")} • {receipt.receiptNumber}
+					</Text>
 				</View>
 			</Page>
 		</Document>
