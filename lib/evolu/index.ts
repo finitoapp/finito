@@ -19,6 +19,7 @@ import { InvoicePaymentMethod } from "@/lib/evolu/model/invoice";
 import { MenuStatus } from "@/lib/evolu/model/menu";
 import { PaymentMethod } from "@/lib/evolu/model/payment";
 import { PaymentDefaultMethodType } from "@/lib/evolu/model/payment-default-method";
+import { PaymentReceiptLineKind } from "@/lib/evolu/model/payment-receipt";
 import { PaymentWatchingStopReason } from "@/lib/evolu/model/payment-watching-state";
 import { TableIdSchema } from "@/lib/evolu/types";
 import {
@@ -482,6 +483,22 @@ export const AppSchema = {
 		// Anchor date used for reset logic depending on configured formats.
 		date: DateStringSchema.nullable(),
 	},
+	paymentReceiptNumberSeries: {
+		id: TableIdSchema,
+		// Number of digits used for left-padded sequence in generated receipt number.
+		serialNumberDigits: PositiveIntegerSchema,
+		yearFormat: z.enum(["default", "short"]),
+		monthFormat: z.enum(["default", "hidden"]),
+		dayFormat: z.enum(["default", "hidden"]),
+		prefix: NonEmptyString32Schema.nullable(),
+	},
+	paymentReceiptLastNumber: {
+		id: TableIdSchema,
+		// Last used serial number for receipt generation.
+		serialNumber: NonNegativeIntegerSchema,
+		// Anchor date used for reset logic depending on configured formats.
+		date: DateStringSchema.nullable(),
+	},
 	smtp: {
 		id: TableIdSchema,
 		server: NonEmptyStringSchema,
@@ -675,6 +692,30 @@ export const AppSchema = {
 		stoppedAt: TimestampMsSchema.nullable(),
 		// Reason for stopping active watching.
 		stopReason: z.enum(PaymentWatchingStopReason).nullable(),
+	},
+	paymentReceipt: {
+		id: TableIdSchema,
+		deviceId: NullableTableIdSchema,
+		receiptNumber: NonEmptyString255Schema,
+		issuedAt: TimestampMsSchema,
+		paymentCreatedAt: NonEmptyString255Schema,
+		totalAmount: IntegerSchema,
+		currency: z.enum(Currency),
+	},
+	paymentReceiptSupplier: ContactSchema,
+	paymentReceiptSupplierAddress: AddressSchema,
+	paymentReceiptSupplierBillingInfo: BillingInfoSchema,
+	paymentReceiptSupplierBillingInfoCz: BillingInfoCzSchema,
+	paymentReceiptItemLine: {
+		id: TableIdSchema,
+		paymentReceiptId: TableIdSchema,
+		kind: z.enum(PaymentReceiptLineKind),
+		sortOrder: PositiveIntegerSchema,
+		label: NonEmptyString255Schema.nullable(),
+		quantity: z.number(),
+		unitOfMeasure: NonEmptyStringSchema.nullable(),
+		unitPrice: IntegerSchema,
+		totalAmount: IntegerSchema,
 	},
 } satisfies RawEvoluSchema;
 

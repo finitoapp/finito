@@ -15,7 +15,10 @@ const locale = {
       "open": "Open",
       "open-in-btc-wallet": "Open in BTC wallet",
       "share-qr-code": "Share QR code",
-      "download-qr-code": "Download QR code"
+      "download-qr-code": "Download QR code",
+      "issue-receipt": "Issue receipt",
+      "download-receipt": "Download receipt",
+      "preparing-receipt": "Preparing receipt"
     },
     "confirm": {
       "pay-in-cash": {
@@ -32,7 +35,16 @@ const locale = {
       "share-qr-description": "Share this QR code in your banking app",
       "no-cash-register-account-configured": "No cash register account is configured for this payment.",
       "cash-payment-enabled-no-cash-register-account": "Cash payment is enabled, but no cash register account is configured.",
-      "ln-invoice-copied-to-clipboard": "LN invoice successfully copied to clipboard"
+      "ln-invoice-copied-to-clipboard": "LN invoice successfully copied to clipboard",
+      "receipt-can-be-issued-after-settlement": "A receipt can be issued after the payment has been settled.",
+      "receipt-issued": "Receipt {{receiptNumber}} was issued on {{issuedAt}}.",
+      "receipt-errors": {
+        "payment-not-found": "The payment could not be found.",
+        "unsupported-direction": "A receipt can only be issued for incoming payments.",
+        "payment-not-settled": "A receipt can only be issued for a settled payment.",
+        "supplier-not-configured": "Billing information for your business is not configured.",
+        "supplier-billing-info-missing": "Your business billing information is incomplete."
+      }
     },
     "tabs": {
       "web-payment": "Web payment",
@@ -84,6 +96,9 @@ const locale = {
     },
     "status": {
       "paid": "Paid",
+      "unpaid": "Unpaid",
+      "underpaid": "Underpaid",
+      "overpaid": "Overpaid",
       "waiting": "Waiting",
       "unknown": "Unknown"
     },
@@ -94,6 +109,35 @@ const locale = {
     "help": {
       "redirect": "The customer will be redirected to this address after successful payment if they use payment via the web application.",
       "tip": "Static payments do not support tips"
+    }
+  },
+  "receipt": {
+    "line": {
+      "tip": "Tip",
+      "payment": "Payment",
+      "settlement-adjustment": "Settlement adjustment"
+    },
+    "pdf": {
+      "title": "Receipt",
+      "receiptNumber": "Receipt no.",
+      "issuedAt": "Issued at:",
+      "paymentDate": "Payment date:",
+      "supplier": "Supplier",
+      "identificationNumber": "ID:",
+      "vatNumber": "VAT ID:",
+      "amountReceived": "Amount received",
+      "itemCount": "Line count",
+      "total": "Total",
+      "columns": {
+        "label": "Item",
+        "quantity": "Qty",
+        "unit": "Unit",
+        "unitPrice": "Unit price",
+        "total": "Total"
+      },
+      "country": {
+        "cz": "Czech Republic"
+      }
     }
   },
   "table": {
