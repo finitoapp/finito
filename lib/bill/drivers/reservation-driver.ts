@@ -39,7 +39,7 @@ export class ReservationDriver implements BillDriver {
 					return;
 				}
 
-				const result = ReservationFormDataSchema.safeParse(resultOrError);
+				const result = ReservationFormDataSchema.safeParse(resultOrError.value);
 				if (!result.success) {
 					console.error(result.error);
 					callback({
