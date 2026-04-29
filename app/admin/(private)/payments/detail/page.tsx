@@ -271,21 +271,11 @@ const FullscreenQrPayment: FC<{
 						/>
 					</div>
 				) : (
-					<Tabs value={tab ?? "web"} className="flex flex-col">
+					<Tabs
+						value={tab ?? (lnInvoice ? "ln" : "web")}
+						className="flex flex-col"
+					>
 						<TabsList>
-							<TabsTrigger
-								value="web"
-								onClick={() =>
-									router.replace(
-										`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true`,
-										{
-											scroll: false,
-										},
-									)
-								}
-							>
-								{t("payments:detail.tabs.web-payment")}
-							</TabsTrigger>
 							{lnInvoice && (
 								<TabsTrigger
 									value="ln"
@@ -331,6 +321,19 @@ const FullscreenQrPayment: FC<{
 									{t("payments:detail.tabs.cash")}
 								</TabsTrigger>
 							)}
+							<TabsTrigger
+								value="web"
+								onClick={() =>
+									router.replace(
+										`/admin/payments/detail?id=${encodeURIComponent(id)}&focus=true&tab=web`,
+										{
+											scroll: false,
+										},
+									)
+								}
+							>
+								{t("payments:detail.tabs.web-payment")}
+							</TabsTrigger>
 						</TabsList>
 						{frontendUrl && (
 							<TabsContent value="web">
