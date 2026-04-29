@@ -10,7 +10,9 @@ export const defaultRelays = [
 	// WssUrl("wss://relay.damus.io"),
 	// WssUrl("wss://relay.iris.to"),
 	// WssUrl("wss://relay.snort.social"),
-	WssUrl("wss://relay.utxo.one"),
+	// WssUrl("wss://relay.utxo.one"),
+	// WssUrl("wss://offchain.pub"),
+	WssUrl("wss://relay.nostr.net"),
 ];
 
 export const nostrRelaysAtom = atom<
