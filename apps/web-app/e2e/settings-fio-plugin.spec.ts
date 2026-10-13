@@ -2,11 +2,12 @@ import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
 import { fillInlineField } from "./support/inline-edit.ts"
 import { gotoPage, reloadPage } from "./support/navigation.ts"
+import { seedActiveFioPlugin } from "./support/self-pay.ts"
 
 test("save Fio settings and add a token, in either order", async ({
   seededPage: page,
 }) => {
-  // This page has no other coverage, and its two moving parts are exactly the
+  // Its two moving parts are exactly the
   // ones that used to be wrong: the token was written by the settings form
   // (so every save duplicated it), and everything was gated on whether the
   // `fioPlugin` row existed yet.
@@ -84,4 +85,32 @@ test("save Fio settings and add a token, in either order", async ({
   })
 
   expect(consoleErrors).toEqual([])
+})
+
+test("a browser saving the interval keeps the plugin on for the devices that sync Fio", async ({
+  seededPage: page,
+}) => {
+  const intervalField = page.getByRole("textbox", {
+    name: translate("en", "settings.fioPlugin.interval.label"),
+  })
+  const pluginIsActive = () =>
+    page.evaluate(async () => (await window.__e2eReadFioPlugin?.())?.isActive)
+
+  await test.step("a device that syncs Fio switched the plugin on", async () => {
+    await seedActiveFioPlugin(page)
+    await gotoPage(
+      page,
+      "/settings/payment-accounts/iban/fio-plugin",
+      "en",
+      "settings.fioPlugin.title"
+    )
+    await expect.poll(pluginIsActive).toBe(true)
+  })
+
+  await test.step("the browser saves the interval and the plugin stays on", async () => {
+    await fillInlineField(page, intervalField, "45")
+    await reloadPage(page, "en", "settings.fioPlugin.title")
+    await expect(intervalField).toHaveValue("45")
+    await expect.poll(pluginIsActive).toBe(true)
+  })
 })
