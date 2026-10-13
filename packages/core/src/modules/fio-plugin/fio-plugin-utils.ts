@@ -1,5 +1,7 @@
 import { createIdFromString } from "@evolu/common"
 
+import type { DeviceId } from "../device/device-types.ts"
+
 /**
  * The Fio plugin is a singleton, like the accounts it syncs against: there is
  * one fiat bank account (`fiatBankAccountQuery`) and so at most one Fio
@@ -14,3 +16,6 @@ import { createIdFromString } from "@evolu/common"
  * written and active.
  */
 export const fioPluginId = createIdFromString<"FioPlugin">("payky-fio-plugin")
+
+export const fioSyncDeviceUptimeId = (deviceId: DeviceId) =>
+  createIdFromString<"FioSyncDeviceUptime">(deviceId)

@@ -34,12 +34,14 @@ Settings → Access.
 It runs until SIGINT or SIGTERM, then stops its jobs. A second signal stops it
 at once.
 
-Keep its computer's clock synced, since it signs the Lightning rate, and give it
-Fio tokens no other device uses, or Fio refuses whichever device asks second.
+Keep its computer's clock synced, since it signs the Lightning rate. It shares
+the Fio tokens with the app, and one device polls at a time, the one that runs
+the most ([`decisions/payment/0012`](decisions/payment/0012-the-device-that-runs-the-most-polls-fio.md)).
 
 A browser or PWA cannot call the Fio API, so it never syncs Fio transactions.
-Its Fio settings show the plugin off and cannot switch it on. The CLI syncs and
-switches the plugin on under the same recovery phrase:
+Its Fio settings show the plugin off and cannot switch it on, though saving the
+interval or the lookback there leaves it as it is. The CLI syncs and switches
+the plugin on under the same recovery phrase:
 
 ```bash
 # Write PAYKY_RECOVERY_MNEMONIC="word1 ... word20" into the git-ignored .env.cli

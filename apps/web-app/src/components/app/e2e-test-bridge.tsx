@@ -42,6 +42,7 @@ import { DeviceId } from "@payky/core/modules/device/device-types"
 import { createEetSale } from "@payky/core/modules/eet/eet-actions"
 import { toEetCashRegisterId } from "@payky/core/modules/eet/eet-utils"
 import { saveFioPlugin } from "@payky/core/modules/fio-plugin/fio-plugin-actions"
+import { fiatBankAccountFioPluginQuery } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
 import { upsertItemSnapshot } from "@payky/core/modules/item/item-actions"
 import { createStandaloneItemSnapshot } from "@payky/core/modules/item/item-utils"
 import {
@@ -131,6 +132,7 @@ declare global {
     }) => Promise<void>
     __e2eAccountShareAnswers?: () => ReadonlyArray<E2eAccountShareAnswer>
     __e2eSeedActiveFioPlugin?: () => Promise<void>
+    __e2eReadFioPlugin?: () => Promise<{ readonly isActive: boolean } | null>
     __e2eReceiveBankTransfer?: (transfer: {
       readonly amount: number
       readonly currency: FiatCurrency
@@ -352,6 +354,16 @@ export function E2eTestBridge() {
           isActive: sqliteTrue,
         })
       )
+    }
+
+    window.__e2eReadFioPlugin = async () => {
+      await using run = appRun()
+      const [plugin] = await run.deps.evolu.loadQuery(
+        fiatBankAccountFioPluginQuery
+      )
+      return plugin === undefined
+        ? null
+        : { isActive: plugin.isActive === sqliteTrue }
     }
 
     window.__e2eReceiveBankTransfer = async (transfer) => {
@@ -859,6 +871,7 @@ export function E2eTestBridge() {
       delete window.__e2eCancelBill
       delete window.__e2eSeedEetSaleFromAnotherDevice
       delete window.__e2eSeedActiveFioPlugin
+      delete window.__e2eReadFioPlugin
       delete window.__e2eReceiveBankTransfer
       delete window.__e2eReceiveLightningPayment
       delete window.__e2eAddBillLines

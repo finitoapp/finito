@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import {
   appFetchAsJson,
+  type DateDep,
   type FetchDep,
   type FetchError,
   type FetchJsonError,
@@ -28,33 +29,68 @@ const FIO_BASE_URL = "https://fioapi.fio.cz"
 export interface FioApiOptions {
   readonly tokens: readonly [string, ...string[]]
   readonly baseUrl?: string
+  readonly restingUntilByToken?: Map<string, number>
 }
+
+const FIO_TOKEN_REST_MS = 30 * 1000
 
 export interface FioApiDep {
   readonly fioApi: {
     readonly baseUrl: string
-    readonly getToken: () => string
+    readonly takeToken: (now: Date) => Result<string, FioAllTokensRestingError>
+    readonly restToken: (token: string, usedAt: Date) => void
   }
 }
 
 export const createFioApiDep = ({
   tokens,
   baseUrl = FIO_BASE_URL,
+  restingUntilByToken = new Map(),
 }: FioApiOptions): FioApiDep => {
   let tokenIndex = 0
 
   return {
     fioApi: {
       baseUrl,
-      getToken: () => {
-        const token = tokens[tokenIndex] ?? tokens[0]
-        tokenIndex = tokenIndex + 1 >= tokens.length ? 0 : tokenIndex + 1
+      takeToken: (now) => {
+        for (let offset = 0; offset < tokens.length; offset++) {
+          const index = (tokenIndex + offset) % tokens.length
+          const token = tokens[index] ?? tokens[0]
+          const restingUntil = restingUntilByToken.get(token) ?? 0
+          if (restingUntil <= now.getTime()) {
+            tokenIndex = (index + 1) % tokens.length
+            restingUntilByToken.set(token, now.getTime() + FIO_TOKEN_REST_MS)
+            return ok(token)
+          }
+        }
 
-        return token
+        return err(
+          createFioAllTokensRestingError({
+            retryAt: Math.min(
+              ...tokens.map((token) => restingUntilByToken.get(token) ?? 0)
+            ),
+          })
+        )
+      },
+      restToken: (token, usedAt) => {
+        restingUntilByToken.set(
+          token,
+          Math.max(
+            restingUntilByToken.get(token) ?? 0,
+            usedAt.getTime() + FIO_TOKEN_REST_MS
+          )
+        )
       },
     },
   }
 }
+
+const createFioAllTokensRestingError = defineError("FioAllTokensRestingError")<{
+  readonly retryAt: number
+}>()
+export type FioAllTokensRestingError = ReturnType<
+  typeof createFioAllTokensRestingError
+>
 
 const createFioApiError = defineError("FioApiError")<{
   readonly message: string
@@ -255,12 +291,13 @@ export interface FioAccountStatement {
 
 type FioTask<TResult> = Task<
   TResult,
+  | FioAllTokensRestingError
   | FioApiError
   | FioHttpError
   | FioRateLimitError
   | FioStrongAuthorizationRequiredError
   | FetchError,
-  FioApiDep & FetchDep
+  FioApiDep & FetchDep & DateDep
 >
 
 export const fetchFioLastTransactions = (): FioTask<FioAccountStatement> =>
@@ -281,9 +318,7 @@ export const setFioLastDate =
   ({ date }: { readonly date: DateString }): FioTask<string> =>
   async (run) => {
     const response = await run(
-      fetchFioApi(
-        `/v1/rest/set-last-date/${getEncodedFioToken(run.deps)}/${date}/`
-      )
+      fetchFioApi((token) => `/v1/rest/set-last-date/${token}/${date}/`)
     )
     if (!response.ok) return response
     if (!response.value.ok) {
@@ -303,9 +338,7 @@ const getFioStatement =
     createPath: (encodedToken: string) => string
   ): FioTask<FioAccountStatement> =>
   async (run) => {
-    const response = await run(
-      fetchFioApi(createPath(getEncodedFioToken(run.deps)))
-    )
+    const response = await run(fetchFioApi(createPath))
     if (!response.ok) return response
 
     const parsed = validateJsonResponse(response.value, {
@@ -332,24 +365,40 @@ const getFioStatement =
 
 const fetchFioApi =
   (
-    path: string
+    createPath: (encodedToken: string) => string
   ): Task<
     Pick<Response, "ok" | "status"> & {
       readonly text: string
       readonly json: Result<JsonValue, FetchJsonError>
     },
-    FetchError,
-    FioApiDep & FetchDep
+    FioAllTokensRestingError | FetchError,
+    FioApiDep & FetchDep & DateDep
   > =>
-  (run) =>
-    run(
-      appFetchAsJson(new URL(path, run.deps.fioApi.baseUrl), {
-        method: "GET",
-        headers: {
-          Accept: "application/json, text/plain",
-        },
-      })
+  async (run) => {
+    const token = run.deps.fioApi.takeToken(run.deps.date.now())
+    if (!token.ok) return token
+
+    const encodedToken = encodeURIComponent(token.value)
+    const response = await run(
+      appFetchAsJson(
+        new URL(createPath(encodedToken), run.deps.fioApi.baseUrl),
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json, text/plain",
+          },
+        }
+      )
     )
+    return response.ok
+      ? response
+      : err({
+          ...response.error,
+          error: String(response.error.error)
+            .replaceAll(encodedToken, "<token>")
+            .replaceAll(token.value, "<token>"),
+        })
+  }
 
 /** FIO's failed HTTP responses, two of which it explains in its own way. */
 const toFioHttpError = ({
@@ -389,6 +438,3 @@ const isFioStrongAuthorizationRequiredResponse = (
 ): boolean =>
   responseStatus === 422 &&
   responseBody.includes("Data není možné poskytnout bez silné autorizace")
-
-const getEncodedFioToken = (deps: FioApiDep): string =>
-  encodeURIComponent(deps.fioApi.getToken())

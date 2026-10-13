@@ -1,10 +1,12 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
-import type { FetchDep } from "../../deps.ts"
+import type { DateDep, FetchDep } from "../../deps.ts"
 import { DateStringSchema } from "../../modules/shared/schema.ts"
+import { createTestDateDep } from "../../testing/date-dep.ts"
 import {
   createFioApiDep,
+  type FioAllTokensRestingError,
   type FioApiDep,
   type FioApiError,
   type FioRateLimitError,
@@ -72,8 +74,9 @@ const fetchStatementWithAmount = async (value: unknown) => {
       tokens: ["token-a"],
       baseUrl: "https://example.test",
     }),
+    ...createTestDateDep(),
     fetch: async () => statementWithAmount(value),
-  } satisfies FioApiDep & FetchDep
+  } satisfies FioApiDep & FetchDep & DateDep
   await using run = testCreateRun(deps)
 
   return await run(fetchFioLastTransactions())
@@ -87,11 +90,12 @@ describe("fio client", () => {
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async (input) => {
         requestedUrls.push(inputToString(input))
         return statementResponse([transaction])
       },
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await expect(run(fetchFioLastTransactions())).resolves.toMatchObject({
@@ -131,8 +135,9 @@ describe("fio client", () => {
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async () => statementResponse(transaction),
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     const result = await run(fetchFioLastTransactions())
@@ -145,20 +150,24 @@ describe("fio client", () => {
 
   test("rotates tokens across requests", async () => {
     const requestedUrls: string[] = []
+    const clock = createTestDateDep()
     const deps = {
       ...createFioApiDep({
         tokens: ["token-a", "token-b"],
         baseUrl: "https://example.test",
       }),
+      ...clock,
       fetch: async (input) => {
         requestedUrls.push(inputToString(input))
         return statementResponse([])
       },
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await run(fetchFioLastTransactions())
+    clock.advance(15_000)
     await run(fetchFioLastTransactions())
+    clock.advance(15_000)
     await run(fetchFioLastTransactions())
 
     expect(requestedUrls).toEqual([
@@ -175,11 +184,12 @@ describe("fio client", () => {
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async (input) => {
         requestedUrls.push(inputToString(input))
         return statementResponse([])
       },
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await run(
@@ -201,11 +211,12 @@ describe("fio client", () => {
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async (input) => {
         requestedUrls.push(inputToString(input))
         return new Response(null, { status: 204 })
       },
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await expect(
@@ -267,14 +278,38 @@ describe("fio client", () => {
     })
   })
 
+  test("keeps the token out of a failed request's error", async () => {
+    const deps = {
+      ...createFioApiDep({
+        tokens: ["token/a"],
+        baseUrl: "https://example.test",
+      }),
+      ...createTestDateDep(),
+      fetch: async (input) => {
+        throw Object.assign(
+          new TypeError(`Unable to connect to ${inputToString(input)}`),
+          { path: inputToString(input) }
+        )
+      },
+    } satisfies FioApiDep & FetchDep & DateDep
+    await using run = testCreateRun(deps)
+
+    const result = await run(fetchFioLastTransactions())
+
+    expect(result).toMatchObject({ ok: false, error: { type: "FetchError" } })
+    expect(JSON.stringify(result)).not.toMatch(/token(%2F|\/)a/u)
+    expect(JSON.stringify(result)).toContain("Unable to connect")
+  })
+
   test("returns a typed rate limit error", async () => {
     const deps = {
       ...createFioApiDep({
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async () => new Response("Too many requests", { status: 409 }),
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await expect(run(fetchFioLastTransactions())).resolves.toMatchObject({
@@ -289,6 +324,84 @@ describe("fio client", () => {
     })
   })
 
+  test("rests each token for 30 s after asking FIO with it", async () => {
+    const requestedTokens: string[] = []
+    const clock = createTestDateDep()
+    const deps = {
+      ...createFioApiDep({
+        tokens: ["token-a", "token-b"],
+        baseUrl: "https://example.test",
+      }),
+      ...clock,
+      fetch: async (input) => {
+        requestedTokens.push(inputToString(input).split("/")[6] ?? "")
+        return statementResponse([])
+      },
+    } satisfies FioApiDep & FetchDep & DateDep
+    await using run = testCreateRun(deps)
+
+    await run(fetchFioLastTransactions())
+    clock.advance(20_000)
+    await run(fetchFioLastTransactions())
+    clock.advance(5000)
+    const tooSoon = await run(fetchFioLastTransactions())
+    clock.advance(5000)
+    await run(fetchFioLastTransactions())
+
+    expect(tooSoon).toMatchObject({
+      ok: false,
+      error: { type: "FioAllTokensRestingError" },
+    })
+    expect(requestedTokens).toEqual(["token-a", "token-b", "token-a"])
+  })
+
+  test("keeps a token's later rest when an earlier use rests it again", () => {
+    const { fioApi } = createFioApiDep({ tokens: ["token-a"] })
+    const now = new Date("2026-05-31T10:00:00.000Z")
+
+    fioApi.restToken("token-a", now)
+    fioApi.restToken("token-a", new Date(now.getTime() - 20_000))
+
+    expect(fioApi.takeToken(new Date(now.getTime() + 15_000))).toEqual({
+      ok: false,
+      error: {
+        type: "FioAllTokensRestingError",
+        retryAt: now.getTime() + 30_000,
+      } satisfies FioAllTokensRestingError,
+    })
+  })
+
+  test("does not ask FIO while every token rests", async () => {
+    let requestCount = 0
+    const clock = createTestDateDep()
+    const deps = {
+      ...createFioApiDep({
+        tokens: ["token-a"],
+        baseUrl: "https://example.test",
+      }),
+      ...clock,
+      fetch: async () => {
+        requestCount += 1
+        return statementResponse([])
+      },
+    } satisfies FioApiDep & FetchDep & DateDep
+    await using run = testCreateRun(deps)
+
+    await run(fetchFioLastTransactions())
+    clock.advance(10_000)
+
+    await expect(
+      run(setFioLastDate({ date: dateString("2026-05-27") }))
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "FioAllTokensRestingError",
+        retryAt: clock.date.now().getTime() + 20_000,
+      } satisfies FioAllTokensRestingError,
+    })
+    expect(requestCount).toBe(1)
+  })
+
   test("returns a typed strong authorization error", async () => {
     const responseBody =
       "Data není možné poskytnout bez silné autorizace. Pokyn k zobrazení dat si autorizujte ve Vašem Internetovém bankovnictví a data si vyžádejte znovu. Platnost ověření je 10 minut od autorizace. Nebo požádejte o data, která nejsou starší jak 90 dní (od 28.02.2026), v takovém případě není autorizace třeba."
@@ -297,8 +410,9 @@ describe("fio client", () => {
         tokens: ["token-a"],
         baseUrl: "https://example.test",
       }),
+      ...createTestDateDep(),
       fetch: async () => new Response(responseBody, { status: 422 }),
-    } satisfies FioApiDep & FetchDep
+    } satisfies FioApiDep & FetchDep & DateDep
     await using run = testCreateRun(deps)
 
     await expect(run(fetchFioLastTransactions())).resolves.toMatchObject({

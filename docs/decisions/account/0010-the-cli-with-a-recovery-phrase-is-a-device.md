@@ -55,9 +55,8 @@ everything a device needs.
   that created the payment. In EET it only takes over another device's
   sale after 10 minutes, as eet/0009 lets any device do. For withdrawals
   it is another device, so withdraw/0007's 24 hours still apply to it.
-- An app and a CLI polling Fio with the same tokens each start the
-  rotation at the first token, and Fio refuses one of them. Give each
-  device its own tokens.
+- An app and a CLI that share the Fio tokens poll one at a time, the one
+  that runs the most (payment/0012).
 - Every new data directory is a new device row, which the owner removes in
   Settings → Access when it is stale.
 

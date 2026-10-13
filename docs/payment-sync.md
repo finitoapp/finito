@@ -52,7 +52,7 @@ repair rows created before this batching existed.
 | | FIO | MONETA | Spark |
 |---|---|---|---|
 | Trigger | per-plugin timer | per-plugin timer + the payment-wait screen | account-wide timer + wallet events (`transfer:claimed`, `balance:update`, `deposit:confirmed`) |
-| Default interval | 30s (`numberOfSecondsBetweenChecks`) | 300s (`numberOfSecondsBetweenChecks`, at least 60s); 4s per page read on the payment-wait screen for its first 10 minutes (`moneta/0002`) | 60s (`DEFAULT_RECHECK_INTERVAL_MS`) |
+| Default interval | 30s per token (`numberOfSecondsBetweenChecks`), divided by the number of tokens, which are used in turn | 300s (`numberOfSecondsBetweenChecks`, at least 60s); 4s per page read on the payment-wait screen for its first 10 minutes (`moneta/0002`) | 60s (`DEFAULT_RECHECK_INTERVAL_MS`) |
 | Sync pointer | `fioPluginSyncPointer.lastSyncedDate` | `monetaPluginSyncPointer.lastSyncedDate` (the job only) | `sparkAccountSyncPointer.lastSyncedAt` |
 | Lookback overlap | `syncLookbackDays`, default **1 day**, per-plugin | none — the job reads from the pointer's day, the screen from the payment's day; the bank filters by `bookingDate`, whole days in Prague's time zone sent as bare dates (`moneta/0004`, `moneta/0008`) | `SPARK_SYNC_LOOKBACK_HOURS` = **72h**, fixed |
 | Cold-start scan | 2 months back (`FIO_FIRST_SYNC_LOOKBACK_MONTHS`) | 2 months back (`monetaFirstSyncStartDate`), read a week per call, narrowed to a day when the bank lists more (`MONETA_SYNC_WINDOWS`), a day still too long passed and logged (`moneta/0006`), never past the two years a token reads (`earliestMonetaReadableDay`) | unbounded (full history) |
@@ -88,9 +88,13 @@ check for the rest of the wait.
 
 ## Multi-device & idempotency
 
-A FIO or MONETA plugin / Spark account is normal synced Evolu data — every device
-independently runs its own sync job for it, with no leader election. Safety
-comes from convergence, not coordination:
+A FIO or MONETA plugin / Spark account is normal synced Evolu data. Every
+device runs its own Spark and MONETA sync. FIO allows one request per token
+every 30 s across all clients, so one device polls a FIO plugin at a time: it
+holds a synced lease (`fioPluginSyncLease`), and a device that runs clearly
+more of the day (`fioSyncDeviceUptime`) takes it over
+(`docs/decisions/payment/0012`). The lease is advisory, since Evolu has no
+arbiter, so safety still comes from convergence:
 
 - `accountTransaction.id` derives from `accountId` + bank reference (FIO,
   MONETA's `entryReference`) or

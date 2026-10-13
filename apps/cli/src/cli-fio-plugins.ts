@@ -7,7 +7,7 @@ import {
   sqliteTrue,
   type Task,
 } from "@evolu/common"
-import type { EvoluOwnerDep } from "@payky/core/deps"
+import { createDateDep, type EvoluOwnerDep } from "@payky/core/deps"
 import { createQuery } from "@payky/core/evolu/schema"
 import {
   createFioApiDep,
@@ -149,7 +149,7 @@ export const registerFioPluginsCommand =
             accountId: AccountId.describe("a;IBAN account id"),
             numberOfSecondsBetweenChecks:
               PositiveIntegerFromStringSchema.describe(
-                "i;Polling interval seconds"
+                "i;Seconds between uses of one token; the plugin checks this often divided by its token count"
               ),
             isActive: SqliteBooleanFromStringSchema.describe(
               "x;Whether background sync is active"
@@ -207,7 +207,7 @@ export const registerFioPluginsCommand =
             accountId: AccountId.describe("a;IBAN account id"),
             numberOfSecondsBetweenChecks:
               PositiveIntegerFromStringSchema.describe(
-                "i;Polling interval seconds"
+                "i;Seconds between uses of one token; the plugin checks this often divided by its token count"
               ),
             syncLookbackDays:
               PositiveIntegerFromStringSchema.optional().describe(
@@ -261,6 +261,7 @@ export const registerFioPluginsCommand =
             await using fioRun = createRun({
               console: run.deps.console,
               ...createFetchDep(),
+              ...createDateDep(),
               ...createFioApiDep({
                 tokens: [
                   firstToken.token,

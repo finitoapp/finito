@@ -1,29 +1,46 @@
+import { mkdtempSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import {
   type SqliteBoolean,
   sqliteFalse,
   sqliteTrue,
+  type TestConsole,
   testCreateConsole,
   testCreateRun,
 } from "@evolu/common"
-import { describe, expect, test, vi } from "vitest"
+import { afterEach, describe, expect, onTestFinished, test, vi } from "vitest"
+
 import { createQuery } from "../../evolu/schema.ts"
 import { createAccount } from "../../modules/account/account-actions.ts"
 import type { AccountId } from "../../modules/account/account-types.ts"
 import { createAccountTransaction } from "../../modules/account-transaction/account-transaction-actions.ts"
 import { loadBillStatus } from "../../modules/bill/bill-guards.ts"
 import type { BillId } from "../../modules/bill/bill-types.ts"
+import type { DeviceId } from "../../modules/device/device-types.ts"
 import {
   addFioPluginToken,
+  deleteFioPlugin,
   deleteFioPluginToken,
   saveFioPlugin,
 } from "../../modules/fio-plugin/fio-plugin-actions.ts"
+import {
+  fioPluginSyncLeaseByPluginIdQuery,
+  fioPluginTokensByPluginIdQuery,
+  fioSyncDeviceUptimeByDeviceIdQuery,
+} from "../../modules/fio-plugin/fio-plugin-queries.ts"
 import type { FioPluginId } from "../../modules/fio-plugin/fio-plugin-types.ts"
+import { fioSyncDeviceUptimeId } from "../../modules/fio-plugin/fio-plugin-utils.ts"
 import { createPayment } from "../../modules/payment/payment-actions.ts"
 import {
   dateStringToDate,
   dateToDateString,
 } from "../../modules/shared/date-string-utils.ts"
-import { runMutationWithCompletion } from "../../modules/shared/evolu-utils.ts"
+import type { EvoluDep } from "../../modules/shared/evolu-deps.ts"
+import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../../modules/shared/evolu-utils.ts"
 import {
   DateStringSchema,
   IbanSchema,
@@ -32,6 +49,7 @@ import {
   NonNegativeInteger,
   PositiveInteger,
   SpecificSymbol,
+  TimestampMs,
   VariableSymbol,
 } from "../../modules/shared/schema.ts"
 import { formatSelfPayBankMessage } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
@@ -43,11 +61,18 @@ import {
   selfPayPointersByBillIdQuery,
 } from "../../modules/table-self-pay/table-self-pay-test-fixtures.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
+import { createNodeEvolu } from "../../runtime/node-evolu.ts"
 import { testNotificationsDep } from "../../testing/background-jobs.ts"
-import { createTestDateDep } from "../../testing/date-dep.ts"
+import { createTestDateDep, type TestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
-import { createFioAccountTransactionSyncJob } from "./fio-account-transaction-sync-job.ts"
+import {
+  createFioAccountTransactionSyncJob,
+  decideFioSyncLease,
+  fioSyncUptimeAfterOff,
+  fioSyncUptimeAfterRunning,
+  getFioCheckIntervalMs,
+} from "./fio-account-transaction-sync-job.ts"
 
 const ibanTransactionsByAccountIdQuery = (accountId: AccountId) =>
   createQuery((db) =>
@@ -191,6 +216,7 @@ const startSelfPayFioSync = async (
 ): Promise<AsyncDisposable> => {
   const jobRun = testCreateRun({
     ...context.deps,
+    deviceId: context.deviceId,
     onError: (error: unknown) => {
       errors.push(error)
     },
@@ -210,7 +236,142 @@ const billStatusOf = async (context: SelfPayTestContext, billId: BillId) => {
   return await run.orThrow(loadBillStatus(billId))
 }
 
+const fioTestStart = new Date("2026-05-31T10:00:00.000Z")
+
+const secondsSinceFioTestStart = (clock: TestDateDep) =>
+  (clock.date.now().getTime() - fioTestStart.getTime()) / 1000
+
+const activateFioPlugin = async (
+  evolu: EvoluDep["evolu"],
+  {
+    secondsPerToken,
+    tokens,
+  }: {
+    readonly secondsPerToken: number
+    readonly tokens: ReadonlyArray<string>
+  }
+) => {
+  await using run = testCreateRun(evoluTestDeps(evolu))
+  const accountId = await run.ok(
+    createAccount({
+      deviceId: null,
+      name: NonEmptyString255("Bank account"),
+      iban: {
+        iban: IbanSchema.decode("CZ6508000000192000145399"),
+        currency: "CZK",
+      },
+    })
+  )
+  const fioPluginId = await run.ok(
+    saveFioPlugin({
+      accountId,
+      numberOfSecondsBetweenChecks: PositiveInteger(secondsPerToken),
+      isActive: sqliteTrue,
+    })
+  )
+  for (const token of tokens) {
+    await run.ok(
+      addFioPluginToken({ fioPluginId, token: NonEmptyString255(token) })
+    )
+  }
+  return fioPluginId
+}
+
+const createSharedFio = (clock: TestDateDep) => {
+  const lastAnsweredAtByToken = new Map<string, number>()
+  const requests: string[] = []
+  const as =
+    (device: string) =>
+    async (input: RequestInfo | URL): Promise<Response> => {
+      const token = inputToString(input).split("/")[6] ?? ""
+      const now = clock.date.now().getTime()
+      const lastAnsweredAt = lastAnsweredAtByToken.get(token)
+      const second = secondsSinceFioTestStart(clock)
+      if (lastAnsweredAt !== undefined && now - lastAnsweredAt < 30_000) {
+        requests.push(`${device} ${second} s 409`)
+        return new Response("Interval between requests was not respected.", {
+          status: 409,
+        })
+      }
+      lastAnsweredAtByToken.set(token, now)
+      requests.push(`${device} ${second} s 200`)
+      return statementResponse({ transactions: [] })
+    }
+  return { requests, as }
+}
+
+const createRefusingFio = (clock: TestDateDep) => {
+  const requestedAtSeconds: number[] = []
+  const fetch = async (): Promise<Response> => {
+    requestedAtSeconds.push(secondsSinceFioTestStart(clock))
+    return new Response("Interval between requests was not respected.", {
+      status: 409,
+    })
+  }
+  return { requestedAtSeconds, fetch }
+}
+
+const createFioDeviceRun = ({
+  evolu,
+  clock,
+  fetch,
+  deviceId = createRowId<"Device">(),
+  console = testCreateConsole(),
+}: {
+  readonly evolu: EvoluDep["evolu"]
+  readonly clock: TestDateDep
+  readonly fetch: (input: RequestInfo | URL) => Promise<Response>
+  readonly deviceId?: DeviceId
+  readonly console?: TestConsole
+}) =>
+  testCreateRun({
+    console,
+    ...evoluTestDeps(evolu),
+    lockManager: createInProcessLockManager(),
+    ...testNotificationsDep(),
+    deviceId,
+    onError: () => undefined,
+    fetch,
+    date: clock.date,
+  })
+
+const loggedMessages = (console: TestConsole) =>
+  console.getEntriesSnapshot().map(({ args }) => args[0])
+
+const advanceFioClock = async (clock: TestDateDep, milliseconds: number) => {
+  clock.advance(milliseconds)
+  await vi.advanceTimersByTimeAsync(milliseconds)
+}
+
+const saveFioSyncUptime = (
+  evolu: EvoluDep["evolu"],
+  {
+    deviceId,
+    uptimePerMille,
+    measuredAt,
+  }: {
+    readonly deviceId: DeviceId
+    readonly uptimePerMille: number
+    readonly measuredAt: number
+  }
+) =>
+  runMutationWithCompletion((options) =>
+    evolu.upsert(
+      "fioSyncDeviceUptime",
+      {
+        id: fioSyncDeviceUptimeId(deviceId),
+        uptimePerMille: NonNegativeInteger(uptimePerMille),
+        measuredAt: TimestampMs(measuredAt),
+      },
+      { ...options, owner: evolu.appOwner }
+    )
+  )
+
 describe("fio account transaction sync job", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   test("downloads FIO transactions into IBAN account transactions without duplicates", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu
@@ -267,6 +428,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -391,6 +553,7 @@ describe("fio account transaction sync job", () => {
           ],
         }),
       ...createTestDateDep(new Date("2026-05-31T10:00:00.000Z")),
+      deviceId: createRowId<"Device">(),
     })
     await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
 
@@ -479,6 +642,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -561,6 +725,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -651,6 +816,7 @@ describe("fio account transaction sync job", () => {
         ...evoluTestDeps(evolu),
         lockManager,
         ...testNotificationsDep(),
+        deviceId: createRowId<"Device">(),
         onError: (error: unknown) => {
           errors.push(error)
         },
@@ -714,6 +880,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -740,6 +907,85 @@ describe("fio account transaction sync job", () => {
         ],
       })
     expect(errors).toEqual([])
+  })
+
+  test("backs off after a 409 instead of asking FIO at every check", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createRefusingFio(clock)
+    await using jobRun = createFioDeviceRun({ evolu, clock, fetch: fio.fetch })
+    await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
+
+    await expect.poll(() => fio.requestedAtSeconds).toEqual([0])
+    for (let second = 30; second <= 120; second += 30) {
+      await advanceFioClock(clock, 30_000)
+      if (second === 30 || second === 90) {
+        await expect.poll(() => fio.requestedAtSeconds).toContain(second)
+      }
+    }
+
+    expect(fio.requestedAtSeconds).toEqual([0, 30, 90])
+  })
+
+  test("waits for a resting token instead of counting the wait as a failed sync", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 10,
+      tokens: ["fio-token-1"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createRefusingFio(clock)
+    await using jobRun = createFioDeviceRun({ evolu, clock, fetch: fio.fetch })
+    await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
+    const expectedSeconds = [0, 30, 60, 100, 180]
+
+    await expect.poll(() => fio.requestedAtSeconds).toEqual([0])
+    for (let second = 10; second <= 180; second += 10) {
+      await advanceFioClock(clock, 10_000)
+      if (expectedSeconds.includes(second)) {
+        await expect.poll(() => fio.requestedAtSeconds).toContain(second)
+      }
+    }
+
+    expect(fio.requestedAtSeconds).toEqual(expectedSeconds)
+  })
+
+  test("asks FIO again the moment a resting token comes free", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const console = testCreateConsole()
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+      console,
+    })
+    await using _job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200"])
+
+    clock.advance(29_995)
+    await vi.advanceTimersByTimeAsync(30_000)
+    await expect
+      .poll(() => loggedMessages(console))
+      .toContain("Skipped FIO sync while every token rests.")
+    await advanceFioClock(clock, 5)
+
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200", "A 30 s 200"])
   })
 
   test("rotates FIO tokens between sync cycles", async () => {
@@ -777,11 +1023,15 @@ describe("fio account transaction sync job", () => {
         token: NonEmptyString255("fio-token-2"),
       })
     )
+    const [firstToken, secondToken] = (
+      await evolu.loadQuery(fioPluginTokensByPluginIdQuery(fioPluginId))
+    ).map(({ token }) => token)
     await using jobRun = testCreateRun({
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -800,10 +1050,523 @@ describe("fio account transaction sync job", () => {
       .toBeGreaterThanOrEqual(2)
 
     expect(requestedUrls.slice(0, 2)).toEqual([
-      "https://fioapi.fio.cz/v1/rest/periods/fio-token-1/2026-03-31/2026-05-31/transactions.json",
-      "https://fioapi.fio.cz/v1/rest/periods/fio-token-2/2026-05-30/2026-05-31/transactions.json",
+      `https://fioapi.fio.cz/v1/rest/periods/${firstToken}/2026-03-31/2026-05-31/transactions.json`,
+      `https://fioapi.fio.cz/v1/rest/periods/${secondToken}/2026-05-30/2026-05-31/transactions.json`,
     ])
     expect(errors).toEqual([])
+  })
+
+  test("checks n times as often with n tokens, using them in turn", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    const requestedTokens: string[] = []
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Bank account"),
+        iban: {
+          iban: IbanSchema.decode("CZ6508000000192000145399"),
+          currency: "CZK",
+        },
+      })
+    )
+    const fioPluginId = await run.ok(
+      saveFioPlugin({
+        accountId,
+        numberOfSecondsBetweenChecks: PositiveInteger(4),
+        isActive: sqliteTrue,
+      })
+    )
+    for (const token of [
+      "fio-token-1",
+      "fio-token-2",
+      "fio-token-3",
+      "fio-token-4",
+    ]) {
+      await run.ok(
+        addFioPluginToken({ fioPluginId, token: NonEmptyString255(token) })
+      )
+    }
+    const tokensInTurn = (
+      await evolu.loadQuery(fioPluginTokensByPluginIdQuery(fioPluginId))
+    ).map(({ token }) => token)
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
+      onError: () => undefined,
+      fetch: async (input: RequestInfo | URL) => {
+        requestedTokens.push(inputToString(input).split("/")[6] ?? "")
+        return statementResponse({ transactions: [] })
+      },
+      ...createTestDateDep(new Date("2026-05-31T10:00:00.000Z")),
+    })
+    await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
+
+    await expect
+      .poll(() => requestedTokens.length, { timeout: 3_000 })
+      .toBeGreaterThanOrEqual(3)
+
+    expect(requestedTokens.slice(0, 3)).toEqual(tokensInTurn.slice(0, 3))
+  })
+
+  test("two devices sharing tokens never use one inside FIO's 30 s limit", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1", "fio-token-2"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    await using deviceA = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+    })
+    await using deviceB = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("B"),
+    })
+    await using _jobA = await deviceA.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toHaveLength(1)
+    await using _jobB = await deviceB.ok(createFioAccountTransactionSyncJob())
+
+    for (let step = 0; step < 8; step++) {
+      const requestCount = fio.requests.length
+      await advanceFioClock(clock, 15_000)
+      await expect.poll(() => fio.requests.length).toBeGreaterThan(requestCount)
+    }
+
+    expect(fio.requests).toEqual(
+      [0, 15, 30, 45, 60, 75, 90, 105, 120].map((second) => `A ${second} s 200`)
+    )
+  })
+
+  test("the other device polls 30 s after the poller stops", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1", "fio-token-2"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const consoleB = testCreateConsole()
+    await using deviceA = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+    })
+    await using deviceB = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("B"),
+      console: consoleB,
+    })
+    const jobA = await deviceA.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200"])
+    await using _jobB = await deviceB.ok(createFioAccountTransactionSyncJob())
+    await expect
+      .poll(() => loggedMessages(consoleB))
+      .toContain("Skipped FIO sync while another device holds the lease.")
+
+    await jobA[Symbol.asyncDispose]()
+    await advanceFioClock(clock, 15_000)
+    await expect
+      .poll(() => loggedMessages(consoleB))
+      .toContain("Skipped FIO sync while every token rests.")
+    await advanceFioClock(clock, 15_000)
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200", "B 30 s 200"])
+    await advanceFioClock(clock, 15_000)
+
+    await expect
+      .poll(() => fio.requests)
+      .toEqual(["A 0 s 200", "B 30 s 200", "B 45 s 200"])
+  })
+
+  test("a device that runs clearly more takes the lease over without a 409", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1", "fio-token-2"],
+    })
+    const deviceBId = createRowId<"Device">()
+    await saveFioSyncUptime(evolu, {
+      deviceId: deviceBId,
+      uptimePerMille: 950,
+      measuredAt: fioTestStart.getTime(),
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const consoleA = testCreateConsole()
+    const consoleB = testCreateConsole()
+    await using deviceA = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+      console: consoleA,
+    })
+    await using deviceB = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("B"),
+      deviceId: deviceBId,
+      console: consoleB,
+    })
+    await using _jobA = await deviceA.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200"])
+    await using _jobB = await deviceB.ok(createFioAccountTransactionSyncJob())
+    await expect
+      .poll(() => loggedMessages(consoleB))
+      .toContain("Skipped FIO sync while every token rests.")
+
+    await advanceFioClock(clock, 15_000)
+    await expect
+      .poll(() => loggedMessages(consoleA))
+      .toContain("Skipped FIO sync while another device holds the lease.")
+    for (const second of [30, 45, 60]) {
+      await advanceFioClock(clock, 15_000)
+      await expect.poll(() => fio.requests).toContain(`B ${second} s 200`)
+    }
+
+    expect(fio.requests).toEqual([
+      "A 0 s 200",
+      "B 30 s 200",
+      "B 45 s 200",
+      "B 60 s 200",
+    ])
+  })
+
+  test("a poller in a backoff longer than the lease loses it", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 60,
+      tokens: ["fio-token-1"],
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const consoleB = testCreateConsole()
+    const failedAtSeconds: number[] = []
+    await using deviceA = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: async () => {
+        failedAtSeconds.push(secondsSinceFioTestStart(clock))
+        return new Response("Service unavailable", { status: 500 })
+      },
+    })
+    await using deviceB = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("B"),
+      console: consoleB,
+    })
+    await using _jobA = await deviceA.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => failedAtSeconds).toEqual([0])
+    await using _jobB = await deviceB.ok(createFioAccountTransactionSyncJob())
+
+    const checkSeconds = 60
+    const backoffFailures = [0, 60, 180, 420, 900]
+    const leaseLapsesAt = 900 + 600
+    const firstPollByB = leaseLapsesAt + checkSeconds
+    for (
+      let second = checkSeconds;
+      second <= firstPollByB;
+      second += checkSeconds
+    ) {
+      await advanceFioClock(clock, checkSeconds * 1000)
+      if (backoffFailures.includes(second)) {
+        await expect.poll(() => failedAtSeconds).toContain(second)
+      }
+      if (second === leaseLapsesAt) {
+        await expect
+          .poll(() => loggedMessages(consoleB))
+          .toContain("Skipped FIO sync while every token rests.")
+      }
+    }
+
+    await expect.poll(() => fio.requests).toEqual([`B ${firstPollByB} s 200`])
+    expect(failedAtSeconds).toEqual(backoffFailures)
+  })
+
+  test("a device keeps its uptime across restarts and counts a suspension as off", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deviceId = createRowId<"Device">()
+    const minute = 60_000
+    const hour = 60 * minute
+    const day = 24 * hour
+    await saveFioSyncUptime(evolu, {
+      deviceId,
+      uptimePerMille: 800,
+      measuredAt: fioTestStart.getTime() - day,
+    })
+    const clock = createTestDateDep(fioTestStart)
+    const console = testCreateConsole()
+    await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: createSharedFio(clock).as("A"),
+      deviceId,
+      console,
+    })
+    const job = await device.ok(createFioAccountTransactionSyncJob())
+    const afterADayOff = fioSyncUptimeAfterOff({ uptime: 0.8, elapsedMs: day })
+    await expect
+      .poll(() => evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId)))
+      .toEqual([
+        {
+          uptimePerMille: Math.round(afterADayOff * 1000),
+          measuredAt: fioTestStart.getTime(),
+        },
+      ])
+
+    for (let step = 0; step < 30; step++) {
+      await advanceFioClock(clock, minute)
+    }
+    const afterHalfAnHour = fioSyncUptimeAfterRunning({
+      uptime: afterADayOff,
+      elapsedMs: 30 * minute,
+    })
+    await expect
+      .poll(() => evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId)))
+      .toEqual([
+        {
+          uptimePerMille: Math.round(afterHalfAnHour * 1000),
+          measuredAt: fioTestStart.getTime() + 30 * minute,
+        },
+      ])
+
+    clock.advance(hour)
+    await advanceFioClock(clock, minute)
+    await job[Symbol.asyncDispose]()
+    const afterSuspension = fioSyncUptimeAfterOff({
+      uptime: afterHalfAnHour,
+      elapsedMs: hour + minute,
+    })
+
+    await expect
+      .poll(() => evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId)))
+      .toEqual([
+        {
+          uptimePerMille: Math.round(afterSuspension * 1000),
+          measuredAt: fioTestStart.getTime() + 91 * minute,
+        },
+      ])
+  })
+
+  test("a device keeps its lease when the plugin's tokens change", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deviceId = createRowId<"Device">()
+    const clock = createTestDateDep(fioTestStart)
+    const console = testCreateConsole()
+    const fioPluginId = await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    const upsert = vi.spyOn(evolu, "upsert")
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: createSharedFio(clock).as("A"),
+      deviceId,
+      console,
+    })
+    const job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect
+      .poll(() => loggedMessages(console))
+      .toContain("Finished FIO transaction sync.")
+
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    await run.ok(
+      addFioPluginToken({
+        fioPluginId,
+        token: NonEmptyString255("fio-token-2"),
+      })
+    )
+    await expect
+      .poll(() => loggedMessages(console))
+      .toContain("Started FIO transaction sync.")
+    const leaseWrites = upsert.mock.calls.filter(
+      ([table]) => table === "fioPluginSyncLease"
+    )
+    await job[Symbol.asyncDispose]()
+
+    expect(leaseWrites).toHaveLength(1)
+  })
+
+  test("a replaced sync never asks FIO with a token inside the 30 s its predecessor started", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const console = testCreateConsole()
+    const fioPluginId = await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+      console,
+    })
+    await using _job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200"])
+
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    await run.ok(
+      addFioPluginToken({
+        fioPluginId,
+        token: NonEmptyString255("fio-token-2"),
+      })
+    )
+    const messages: unknown[] = []
+    await expect
+      .poll(() => {
+        messages.push(...loggedMessages(console))
+        return messages.filter(
+          (message) => message === "Started FIO transaction sync."
+        )
+      })
+      .toHaveLength(2)
+    await advanceFioClock(clock, 15_000)
+    await advanceFioClock(clock, 15_000)
+
+    await expect.poll(() => fio.requests).toContain("A 30 s 200")
+    expect(fio.requests.filter((request) => request.endsWith("409"))).toEqual(
+      []
+    )
+  })
+
+  test("a device whose last FIO plugin stops measures no more uptime", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deviceId = createRowId<"Device">()
+    const clock = createTestDateDep(fioTestStart)
+    const fio = createSharedFio(clock)
+    const fioPluginId = await activateFioPlugin(evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: fio.as("A"),
+      deviceId,
+    })
+    const job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect.poll(() => fio.requests).toEqual(["A 0 s 200"])
+    await advanceFioClock(clock, 10 * 60_000)
+    const stoppedAt = clock.date.now().getTime()
+
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    await run.ok(deleteFioPlugin(fioPluginId))
+    await expect
+      .poll(() => evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId)))
+      .toMatchObject([{ measuredAt: stoppedAt }])
+    await advanceFioClock(clock, 60 * 60_000)
+    await job[Symbol.asyncDispose]()
+
+    expect(
+      await evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId))
+    ).toMatchObject([{ measuredAt: stoppedAt }])
+  })
+
+  test("a device that syncs no FIO plugin measures no uptime", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deviceId = createRowId<"Device">()
+    const clock = createTestDateDep(fioTestStart)
+    const console = testCreateConsole()
+    await using device = createFioDeviceRun({
+      evolu,
+      clock,
+      fetch: createSharedFio(clock).as("A"),
+      deviceId,
+      console,
+    })
+    const job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect
+      .poll(() => loggedMessages(console))
+      .toContain("Refreshing FIO plugin syncs.")
+    await advanceFioClock(clock, 60 * 60_000)
+    await job[Symbol.asyncDispose]()
+
+    expect(
+      await evolu.loadQuery(fioSyncDeviceUptimeByDeviceIdQuery(deviceId))
+    ).toEqual([])
+  })
+
+  test("a device that stops releases its lease and saves its uptime before its database closes", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] })
+    const cwd = process.cwd()
+    process.chdir(mkdtempSync(join(tmpdir(), "payky-fio-sync-")))
+    onTestFinished(() => process.chdir(cwd))
+    const deviceId = createRowId<"Device">()
+    const minute = 60_000
+    const clock = createTestDateDep(fioTestStart)
+    const console = testCreateConsole()
+    await using closing = await createNodeEvolu("file")
+    const fioPluginId = await activateFioPlugin(closing.evolu, {
+      secondsPerToken: 30,
+      tokens: ["fio-token-1"],
+    })
+    await using device = createFioDeviceRun({
+      evolu: closing.evolu,
+      clock,
+      fetch: createSharedFio(clock).as("A"),
+      deviceId,
+      console,
+    })
+    const job = await device.ok(createFioAccountTransactionSyncJob())
+    await expect
+      .poll(() => loggedMessages(console))
+      .toContain("Finished FIO transaction sync.")
+    await advanceFioClock(clock, minute)
+
+    await job[Symbol.asyncDispose]()
+    await closing[Symbol.asyncDispose]()
+    await using reopened = await createNodeEvolu("file")
+
+    expect(
+      await reopened.evolu.loadQuery(
+        fioPluginSyncLeaseByPluginIdQuery(fioPluginId)
+      )
+    ).toEqual([{ deviceId, expiresAt: fioTestStart.getTime() + minute }])
+    expect(
+      await reopened.evolu.loadQuery(
+        fioSyncDeviceUptimeByDeviceIdQuery(deviceId)
+      )
+    ).toEqual([
+      {
+        uptimePerMille: Math.round(
+          fioSyncUptimeAfterRunning({ uptime: 0, elapsedMs: minute }) * 1000
+        ),
+        measuredAt: fioTestStart.getTime() + minute,
+      },
+    ])
   })
 
   test("switches to a replacement token set without restarting the job", async () => {
@@ -812,6 +1575,7 @@ describe("fio account transaction sync job", () => {
     await using run = testCreateRun(evoluTestDeps(evolu))
     const errors: unknown[] = []
     const requestedUrls: string[] = []
+    const clock = createTestDateDep(new Date("2026-05-31T10:00:00.000Z"))
     const accountId = await run.ok(
       createAccount({
         deviceId: null,
@@ -840,6 +1604,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -847,7 +1612,7 @@ describe("fio account transaction sync job", () => {
         requestedUrls.push(inputToString(input))
         return statementResponse({ transactions: [] })
       },
-      ...createTestDateDep(new Date("2026-05-31T10:00:00.000Z")),
+      ...clock,
     })
     await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
 
@@ -870,23 +1635,28 @@ describe("fio account transaction sync job", () => {
     )
     await run.ok(deleteFioPluginToken(staleTokenId))
 
-    const staleRequestsAtRotation = requestedUrls.filter((url) =>
-      url.includes("fio-token-stale")
-    ).length
-
     await expect
       .poll(
-        () => requestedUrls.some((url) => url.includes("fio-token-fresh")),
+        () => {
+          clock.advance(30_000)
+          return requestedUrls.filter((url) => url.includes("fio-token-fresh"))
+            .length
+        },
         {
           timeout: 5_000,
         }
       )
-      .toBe(true)
+      .toBeGreaterThanOrEqual(2)
 
     // And nothing went back to the revoked token after it was removed.
+    const firstFresh = requestedUrls.findIndex((url) =>
+      url.includes("fio-token-fresh")
+    )
     expect(
-      requestedUrls.filter((url) => url.includes("fio-token-stale")).length
-    ).toBe(staleRequestsAtRotation)
+      requestedUrls
+        .slice(firstFresh)
+        .some((url) => url.includes("fio-token-stale"))
+    ).toBe(false)
     expect(errors).toEqual([])
   }, 20_000)
 
@@ -923,6 +1693,7 @@ describe("fio account transaction sync job", () => {
       ...evoluTestDeps(evolu),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      deviceId: createRowId<"Device">(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -1133,5 +1904,111 @@ describe("FIO sync date helpers", () => {
     } finally {
       process.env.TZ = originalTimeZone
     }
+  })
+})
+
+describe("FIO sync lease", () => {
+  const deviceId = createRowId<"Device">()
+  const otherDeviceId = createRowId<"Device">()
+  const now = fioTestStart.getTime()
+  const minute = 60_000
+
+  test("the first device to check takes a free plugin", () => {
+    expect(
+      decideFioSyncLease({
+        lease: undefined,
+        deviceId,
+        uptime: 0,
+        holderUptime: 0,
+        now,
+      })
+    ).toEqual({ poll: true, renewLease: true, takenOverAt: null })
+  })
+
+  test("a device renews its own lease once 5 minutes or less are left", () => {
+    const decide = (expiresAt: number) =>
+      decideFioSyncLease({
+        lease: { deviceId, expiresAt },
+        deviceId,
+        uptime: 0,
+        holderUptime: 0,
+        now,
+      })
+
+    expect(decide(now + 6 * minute)).toEqual({
+      poll: true,
+      renewLease: false,
+      takenOverAt: null,
+    })
+    expect(decide(now + 5 * minute)).toEqual({
+      poll: true,
+      renewLease: true,
+      takenOverAt: null,
+    })
+  })
+
+  test("a device leaves a live lease to a device that runs about as much", () => {
+    expect(
+      decideFioSyncLease({
+        lease: { deviceId: otherDeviceId, expiresAt: now + minute },
+        deviceId,
+        uptime: 0.45,
+        holderUptime: 0.4,
+        now,
+      })
+    ).toEqual({ poll: false })
+  })
+
+  test("a device that runs 10 points more takes a live lease over from now", () => {
+    expect(
+      decideFioSyncLease({
+        lease: { deviceId: otherDeviceId, expiresAt: now + minute },
+        deviceId,
+        uptime: 0.5,
+        holderUptime: 0.4,
+        now,
+      })
+    ).toEqual({ poll: true, renewLease: true, takenOverAt: now })
+  })
+
+  test("an expired or released lease is taken over from the moment it ended", () => {
+    expect(
+      decideFioSyncLease({
+        lease: { deviceId: otherDeviceId, expiresAt: now - 10_000 },
+        deviceId,
+        uptime: 0,
+        holderUptime: 1,
+        now,
+      })
+    ).toEqual({ poll: true, renewLease: true, takenOverAt: now - 10_000 })
+  })
+})
+
+describe("FIO sync uptime", () => {
+  const day = 24 * 60 * 60 * 1000
+
+  test("a day running moves uptime 1 - 1/e of the way to 100 %", () => {
+    expect(
+      fioSyncUptimeAfterRunning({ uptime: 0, elapsedMs: day })
+    ).toBeCloseTo(1 - 1 / Math.E)
+  })
+
+  test("a day off keeps 1/e of the uptime", () => {
+    expect(fioSyncUptimeAfterOff({ uptime: 1, elapsedMs: day })).toBeCloseTo(
+      1 / Math.E
+    )
+  })
+
+  test("a clock that steps back leaves uptime as it was", () => {
+    expect(fioSyncUptimeAfterRunning({ uptime: 0, elapsedMs: -60_000 })).toBe(0)
+    expect(fioSyncUptimeAfterOff({ uptime: 1, elapsedMs: -60_000 })).toBe(1)
+  })
+})
+
+describe("FIO check interval", () => {
+  test("divides one token's interval among the tokens", () => {
+    expect(getFioCheckIntervalMs(30, 1)).toBe(30_000)
+    expect(getFioCheckIntervalMs(30, 3)).toBe(10_000)
+    expect(getFioCheckIntervalMs(30, 7)).toBe(4286)
   })
 })

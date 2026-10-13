@@ -520,10 +520,10 @@ export const enSettings = {
     "The plugin currently uses the deterministic fiat bank account.",
   "settings.fioPlugin.form.title": "Basic settings",
   "settings.fioPlugin.interval.description":
-    "How often the plugin should check for new transactions.",
+    "Fio answers one token at most once every 30 seconds. The plugin uses the tokens in turn, so it checks this often divided by the number of tokens.",
   "settings.fioPlugin.interval.invalid":
     "Enter a whole number greater than zero.",
-  "settings.fioPlugin.interval.label": "Seconds between checks",
+  "settings.fioPlugin.interval.label": "Seconds between uses of one token",
   "settings.fioPlugin.lastSyncedDate.description":
     "Local sync pointer. If no pointer exists yet, yesterday is used.",
   "settings.fioPlugin.lastSyncedDate.invalid": "Enter a valid date.",

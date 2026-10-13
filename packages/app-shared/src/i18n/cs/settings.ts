@@ -520,9 +520,9 @@ export const csSettings = {
     "Plugin teď používá deterministický fiat bankovní účet.",
   "settings.fioPlugin.form.title": "Základní nastavení",
   "settings.fioPlugin.interval.description":
-    "Jak často má plugin kontrolovat nové transakce.",
+    "Fio odpoví na jeden token nejvýš jednou za 30 sekund. Plugin tokeny střídá postupně, takže kontroluje tak často, jak je tu nastaveno, děleno počtem tokenů.",
   "settings.fioPlugin.interval.invalid": "Zadejte celé číslo větší než nula.",
-  "settings.fioPlugin.interval.label": "Sekund mezi kontrolami",
+  "settings.fioPlugin.interval.label": "Sekund mezi použitími jednoho tokenu",
   "settings.fioPlugin.lastSyncedDate.description":
     "Lokální zarážka synchronizace. Pokud ještě neexistuje, použije se včerejší datum.",
   "settings.fioPlugin.lastSyncedDate.invalid": "Zadejte platné datum.",

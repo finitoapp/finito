@@ -2,13 +2,20 @@ import { SqliteBoolean } from "@evolu/common"
 import type { IndexesConfig } from "@evolu/common/local-first"
 
 import { AccountId } from "../account/account-types.ts"
+import { DeviceId } from "../device/device-types.ts"
 import {
   DateStringSchema,
   type InferTable,
   NonEmptyString255Schema,
+  NonNegativeIntegerSchema,
   PositiveIntegerSchema,
+  TimestampMsSchema,
 } from "../shared/schema.ts"
-import { FioPluginId, FioPluginTokenId } from "./fio-plugin-types.ts"
+import {
+  FioPluginId,
+  FioPluginTokenId,
+  FioSyncDeviceUptimeId,
+} from "./fio-plugin-types.ts"
 
 export const fioPlugin = {
   id: FioPluginId,
@@ -21,6 +28,18 @@ export const fioPlugin = {
 export const fioPluginSyncPointer = {
   id: FioPluginId,
   lastSyncedDate: DateStringSchema,
+} as const
+
+export const fioPluginSyncLease = {
+  id: FioPluginId,
+  deviceId: DeviceId,
+  expiresAt: TimestampMsSchema,
+} as const
+
+export const fioSyncDeviceUptime = {
+  id: FioSyncDeviceUptimeId,
+  uptimePerMille: NonNegativeIntegerSchema,
+  measuredAt: TimestampMsSchema,
 } as const
 
 export const fioPluginToken = {
