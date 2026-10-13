@@ -1,7 +1,6 @@
 import type {
   AppBackgroundJob,
   AppDeviceBackgroundJob,
-  BackgroundJob,
   CashuBackgroundJob,
 } from "./background-job-types.ts"
 import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
@@ -28,7 +27,7 @@ import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing
 export const bankBackgroundJobs = [
   startFioAccountTransactionSyncJob,
   startMonetaAccountTransactionSyncJob,
-] satisfies ReadonlyArray<BackgroundJob>
+] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**
  * Right for the CLI, which reaches the banks directly.
