@@ -16,6 +16,10 @@ import {
 } from "../../modules/bill/bill-actions.ts"
 import { loadBillStatusSnapshot } from "../../modules/bill/bill-guards.ts"
 import type { BillId } from "../../modules/bill/bill-types.ts"
+import {
+  appendBillLines,
+  loadCalculatedBillLineSummaries,
+} from "../../modules/bill-line/bill-line-actions.ts"
 import type { DeviceId } from "../../modules/device/device-types.ts"
 import {
   createEetSale,
@@ -42,6 +46,7 @@ import {
   formatEetDateTime,
   toEetCashRegisterId,
 } from "../../modules/eet/eet-utils.ts"
+import { recordOverpaymentResolution } from "../../modules/overpayment-resolution/overpayment-resolution-actions.ts"
 import { markPaymentPaidIban } from "../../modules/payment/payment-actions.ts"
 import {
   paymentClaimsQuery,
@@ -70,6 +75,7 @@ import {
 import { upsertBillSelfPayReferences } from "../../modules/table-self-pay/table-self-pay-actions.ts"
 import { deriveBillSelfPayReference } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
 import { createSparkWalletDep } from "../../spark/spark-wallet.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import {
   createTestDeviceAccountDep,
   testNotificationsDep,
@@ -129,6 +135,7 @@ const startJob = async (
     ...connectivity,
     ...createSparkWalletDep(),
     ...createYadioApiDep(),
+    ...testSyncedAppOwner,
     tableSelfPayRoot: new Uint8Array(32),
     selfPayDefaultRelays: [],
     nostrRelayClient: createNostrRelayClient(),
@@ -836,7 +843,7 @@ describe("eet reporting job: reversals", () => {
     expect(job.errors).toEqual([])
   })
 
-  test("reverses a refund recorded before its sale was created", async () => {
+  test("keeps a refund recorded before its sale was created out of EET", async () => {
     await using context = await createEetTestContext()
     await configureEet(context)
     const paymentId = await createTestPayment(context)
@@ -847,11 +854,13 @@ describe("eet reporting job: reversals", () => {
     await using job = await startJob(context)
 
     await expect
-      .poll(() => reversalsOf(context, paymentId))
-      .toMatchObject([{ amount: 5_000, pok: expect.stringMatching(/-ff$/u) }])
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ pok: expect.stringMatching(/-ff$/u) }])
+    await settleLater(300)
+    await expect(reversalsOf(context, paymentId)).resolves.toEqual([])
     expect(
       context.responder.requests.map(({ data }) => data.celk_trzba)
-    ).toEqual(["250.00", "-50.00"])
+    ).toEqual(["250.00"])
     expect(job.errors).toEqual([])
   })
 
@@ -1457,10 +1466,10 @@ describe("eet reporting job: reversals of extra money", () => {
 
     await expect
       .poll(() => reversalsOf(context, paymentId))
-      .toMatchObject([{ amount: 25_000, pok: expect.any(String) }])
+      .toMatchObject([{ amount: 15_000, pok: expect.any(String) }])
     expect(
       context.responder.requests.map(({ data }) => data.celk_trzba)
-    ).toEqual(["150.00", "100.00", "-250.00"])
+    ).toEqual(["150.00", "100.00", "-150.00"])
     expect(job.errors).toEqual([])
   })
 
@@ -1626,6 +1635,356 @@ describe("eet reporting job: self-pay", () => {
 
     expect(await saleOf(context, paymentId)).toEqual([])
     expect(context.responder.requests).toEqual([])
+    expect(job.errors).toEqual([])
+  })
+})
+
+const billWithReportedPaymentAndUnreportedDuplicate = async (
+  context: EetTestContext
+) => {
+  const billId = await createTestBill(context)
+  {
+    await using run = testCreateRun(context.deps)
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: context.deviceId,
+        totalAmount: NonNegativeInteger(25_000),
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+      })
+    )
+  }
+  const first = await createTestPayment(context, { billId })
+  const duplicate = await createTestPayment(context, {
+    billId,
+    amount: 5_000,
+  })
+  await settleInCash(context, first)
+  await expect
+    .poll(() => saleOf(context, first))
+    .toMatchObject([{ pok: expect.any(String) }])
+  await setEetEnabled(context, false)
+  await settleInCash(context, duplicate)
+  return { billId, first, duplicate }
+}
+
+const setEetEnabled = async (context: EetTestContext, enabled: boolean) => {
+  context.clock.advance(1_000)
+  await using run = testCreateRun(context.deps)
+  if (enabled) await run.orThrow(enableEet())
+  else await run.ok(disableEet())
+  context.clock.advance(1_000)
+}
+
+const refundWith = async (
+  context: EetTestContext,
+  input: Parameters<typeof refundPayment>[0]
+) => {
+  await using run = testCreateRun(context.deps)
+  return await run.orThrow(refundPayment(input))
+}
+
+const reportedTotals =
+  () => (requests: EetTestContext["responder"]["requests"]) =>
+    requests.map(({ data }) => data.celk_trzba)
+
+describe("eet reporting job: money EET never received", () => {
+  test("Duplicate payment that EET never received", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const { first } =
+      await billWithReportedPaymentAndUnreportedDuplicate(context)
+
+    await refundWith(context, {
+      paymentId: first,
+      method: "cashRegister",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(5_000),
+      purpose: "overpayment",
+    })
+    await settleLater(300)
+
+    await expect(reversalsOf(context, first)).resolves.toEqual([])
+    expect(reportedTotals()(context.responder.requests)).toEqual(["250.00"])
+    expect(job.errors).toEqual([])
+  })
+
+  test("Unreported extra money inside one payment", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const paymentId = await createTestPayment(context)
+    await settleInCash(context, paymentId)
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ pok: expect.any(String) }])
+    await setEetEnabled(context, false)
+    await settleByTransfer(context, paymentId, { deviceId: context.deviceId })
+    await setEetEnabled(context, true)
+
+    await refundWith(context, {
+      paymentId,
+      method: "outside",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(25_000),
+      purpose: "overpayment",
+    })
+    await settleLater(300)
+
+    await expect(reversalsOf(context, paymentId)).resolves.toEqual([])
+    expect(reportedTotals()(context.responder.requests)).toEqual(["250.00"])
+    expect(job.errors).toEqual([])
+  })
+
+  test("Kept, then returned after all", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const { first, duplicate } =
+      await billWithReportedPaymentAndUnreportedDuplicate(context)
+    {
+      await using run = testCreateRun(context.deps)
+      await run.orThrow(
+        recordOverpaymentResolution({
+          paymentId: duplicate,
+          kind: "kept",
+          amount: PositiveInteger(5_000),
+          deviceId: context.deviceId,
+        })
+      )
+    }
+
+    await refundWith(context, {
+      paymentId: first,
+      method: "outside",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(5_000),
+    })
+    await settleLater(300)
+
+    await expect(reversalsOf(context, first)).resolves.toEqual([])
+    expect(reportedTotals()(context.responder.requests)).toEqual(["250.00"])
+    expect(job.errors).toEqual([])
+  })
+
+  test("reverses only the part of a return that EET received", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const paymentId = await createTestPayment(context)
+    await settleInCash(context, paymentId)
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ pok: expect.any(String) }])
+    await setEetEnabled(context, false)
+    await settleByTransfer(context, paymentId, { deviceId: context.deviceId })
+    await setEetEnabled(context, true)
+
+    await refundWith(context, {
+      paymentId,
+      method: "outside",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(30_000),
+      purpose: "overpayment",
+    })
+
+    await expect
+      .poll(() => reversalsOf(context, paymentId))
+      .toMatchObject([{ amount: 5_000, pok: expect.any(String) }])
+    expect(reportedTotals()(context.responder.requests)).toEqual([
+      "250.00",
+      "-50.00",
+    ])
+    expect(job.errors).toEqual([])
+  })
+})
+
+const billOfTotal = async (context: EetTestContext, total: number) => {
+  const billId = await createTestBill(context)
+  await using run = testCreateRun(context.deps)
+  await run.orThrow(
+    addManualAmountToBill({
+      billId,
+      deviceId: context.deviceId,
+      totalAmount: NonNegativeInteger(total),
+      name: NonEmptyString255("Dinner"),
+      currency: "CZK",
+    })
+  )
+  return billId
+}
+
+const cardPaymentSettledWithMore = async (context: EetTestContext) => {
+  const billId = await billOfTotal(context, 25_000)
+  const paymentId = await createTestPayment(context, { billId })
+  await settleByTransfer(context, paymentId, {
+    amount: 30_000,
+    deviceId: context.deviceId,
+  })
+  await expect
+    .poll(() => salesOf(context, paymentId))
+    .toMatchObject([{ pok: expect.any(String) }, { pok: expect.any(String) }])
+  return { billId, paymentId }
+}
+
+const resolveOverpayment = async (
+  context: EetTestContext,
+  input: Parameters<typeof recordOverpaymentResolution>[0]
+) => {
+  await using run = testCreateRun(context.deps)
+  return await run.orThrow(recordOverpaymentResolution(input))
+}
+
+const heldInEet = async (context: EetTestContext, paymentId: PaymentId) => {
+  const sales = await salesOf(context, paymentId)
+  const reversals = await reversalsOf(context, paymentId)
+  return (
+    sales.reduce((sum, { amount }) => sum + amount, 0) -
+    reversals.reduce((sum, { amount }) => sum + amount, 0)
+  )
+}
+
+describe("eet reporting job: overpayment resolutions", () => {
+  test("Tip while tips belong to employees", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    {
+      await using run = testCreateRun(context.deps)
+      await run.ok(saveEetTipOwner("employees"))
+    }
+    await using job = await startJob(context)
+    const { paymentId } = await cardPaymentSettledWithMore(context)
+
+    await resolveOverpayment(context, {
+      paymentId,
+      kind: "tip",
+      amount: PositiveInteger(5_000),
+      deviceId: context.deviceId,
+    })
+    await settleLater(300)
+
+    expect(reportedTotals()(context.responder.requests)).toEqual([
+      "250.00",
+      "50.00",
+    ])
+    await expect(heldInEet(context, paymentId)).resolves.toBe(30_000)
+    expect(job.errors).toEqual([])
+  })
+
+  test("Overpayment returned to EET", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const { paymentId } = await cardPaymentSettledWithMore(context)
+
+    await refundWith(context, {
+      paymentId,
+      method: "outside",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(5_000),
+      purpose: "overpayment",
+    })
+
+    await expect
+      .poll(() => reversalsOf(context, paymentId))
+      .toMatchObject([{ amount: 5_000, pok: expect.any(String) }])
+    await expect(heldInEet(context, paymentId)).resolves.toBe(25_000)
+    expect(job.errors).toEqual([])
+  })
+
+  test("Overpayment kept", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const { paymentId } = await cardPaymentSettledWithMore(context)
+
+    await resolveOverpayment(context, {
+      paymentId,
+      kind: "kept",
+      amount: PositiveInteger(5_000),
+      deviceId: context.deviceId,
+    })
+    await settleLater(300)
+
+    expect(reportedTotals()(context.responder.requests)).toEqual([
+      "250.00",
+      "50.00",
+    ])
+    await expect(reversalsOf(context, paymentId)).resolves.toEqual([])
+    expect(job.errors).toEqual([])
+  })
+
+  test("EET disabled between the money and its tip", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const { paymentId } = await cardPaymentSettledWithMore(context)
+    await setEetEnabled(context, false)
+
+    await resolveOverpayment(context, {
+      paymentId,
+      kind: "tip",
+      amount: PositiveInteger(5_000),
+      deviceId: context.deviceId,
+    })
+    await settleLater(300)
+
+    await expect(salesOf(context, paymentId)).resolves.toHaveLength(2)
+    await expect(reversalsOf(context, paymentId)).resolves.toEqual([])
+    expect(reportedTotals()(context.responder.requests)).toEqual([
+      "250.00",
+      "50.00",
+    ])
+    expect(job.errors).toEqual([])
+  })
+
+  test("Cash returned in full", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const billId = await billOfTotal(context, 4_540)
+    const paymentId = await createTestPayment(context, {
+      billId,
+      amount: 4_540,
+    })
+    await settleInCash(context, paymentId, { receivedAmount: 4_500 })
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ amount: 4_500, pok: expect.any(String) }])
+    {
+      await using run = testCreateRun(context.deps)
+      const [dinner] = await run.ok(loadCalculatedBillLineSummaries(billId))
+      if (dinner === undefined) throw new Error("Expected the dinner line.")
+      await run.ok(
+        appendBillLines([
+          {
+            billId,
+            deviceId: null,
+            catalogItemId: dinner.catalogItemId,
+            itemId: dinner.itemId,
+            type: dinner.type,
+            kind: "remove",
+            quantity: dinner.quantity,
+            totalAmount: dinner.totalAmount,
+          },
+        ])
+      )
+    }
+
+    await refundWith(context, {
+      paymentId,
+      method: "cashRegister",
+      deviceId: context.deviceId,
+      amount: NonNegativeInteger(4_500),
+      purpose: "overpayment",
+    })
+
+    await expect
+      .poll(() => reversalsOf(context, paymentId))
+      .toMatchObject([{ amount: 4_500, pok: expect.any(String) }])
+    await expect(heldInEet(context, paymentId)).resolves.toBe(0)
     expect(job.errors).toEqual([])
   })
 })

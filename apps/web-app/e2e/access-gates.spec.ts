@@ -8,8 +8,14 @@ import {
   typePin,
 } from "./support/access.ts"
 import { addCatalogItem, startNewBill } from "./support/bill.ts"
+import { simulateBillModifiedDuringPayment } from "./support/collisions.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { nameParam, translate, translateValue } from "./support/i18n.ts"
+import {
+  nameParam,
+  translate,
+  translateParams,
+  translateValue,
+} from "./support/i18n.ts"
 import {
   gotoPage,
   menuHome,
@@ -17,7 +23,16 @@ import {
   openMenuTabFromHome,
 } from "./support/navigation.ts"
 import { completeOnboardingDefaults } from "./support/onboarding.ts"
-import { createPayment, prepareIbanPayment } from "./support/payment.ts"
+import {
+  overpaymentCard,
+  submitOverpaymentResolution,
+} from "./support/overpayment.ts"
+import {
+  createPayment,
+  markCashPaidAndSettle,
+  prepareIbanPayment,
+  startBillAndBeginCashPayment,
+} from "./support/payment.ts"
 
 const newPin = "99887766"
 
@@ -186,6 +201,43 @@ test("cancelling a payment and confirming money by hand ask a Basic device for t
     ).toBeVisible()
     await typePin(page, "en", ownerPin)
     await expect(paidPanel).toBeVisible()
+  })
+})
+
+test("keeping money paid above a bill asks a Basic device for the PIN", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  const billId =
+    await test.step("pay 5.00 for a bill whose lines are then removed", async () => {
+      const id = await startBillAndBeginCashPayment(page, "en")
+      await simulateBillModifiedDuringPayment(page, id, "removeAll")
+      await markCashPaidAndSettle(page, "en")
+      return id
+    })
+  await test.step("turn access control on, this device set to Basic", () =>
+    turnOnAccessControl(page, "en"))
+
+  await test.step("keeping 3.00 takes the PIN, which names the choice, the amount and the bill", async () => {
+    await gotoPage(page, `/activity/bills/${billId}`, "en", "billDetail.title")
+    await submitOverpaymentResolution(page, "en", {
+      kind: "kept",
+      amount: "3",
+    })
+    const prompt = pinPrompt(page, "en", "access.action.resolveOverpayment")
+    await expect(prompt).toBeVisible()
+    await expect(prompt.getByTestId("pin-prompt-detail")).toHaveText(
+      translateParams("en", "overpayment.pinDetail", {
+        action: translateParams("en", "overpayment.dialog.confirm.keep", {
+          amount: "$3.00",
+        }),
+        bill: translateParams("en", "bill.list.label", { number: 1 }),
+      })
+    )
+    await typePin(page, "en", ownerPin)
+    await expect(overpaymentCard(page)).toContainText(
+      translateParams("en", "overpayment.title", { amount: "$2.00" })
+    )
   })
 })
 

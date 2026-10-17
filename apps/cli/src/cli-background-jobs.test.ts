@@ -1,6 +1,7 @@
 import { testCreateRun } from "@evolu/common"
 import { startEetReportingJob } from "@payky/core/background-jobs/jobs/eet-reporting-job"
 import { createDateDep } from "@payky/core/deps"
+import { testSyncedAppOwner } from "@payky/core/testing/app-owner-sync"
 import { createEvoluTest } from "@payky/core/testing/evolu"
 import { createCommand } from "commander"
 import { afterEach, describe, expect, test } from "vitest"
@@ -22,6 +23,7 @@ describe("background-jobs run", () => {
     await using run = testCreateRun({
       evolu,
       evoluOwner: evolu.appOwner,
+      ...testSyncedAppOwner,
       dataDir: ".data",
     })
     const program = createCommand()

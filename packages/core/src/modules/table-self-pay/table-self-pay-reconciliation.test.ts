@@ -12,9 +12,11 @@ import {
 import { createCardSwitchioAccountId } from "../account/account-utils.ts"
 import type { CreateAccountTransactionInput } from "../account-transaction/account-transaction-actions.ts"
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
-import { cancelBill } from "../bill/bill-actions.ts"
+import { appendRemoveBillLine, cancelBill } from "../bill/bill-actions.ts"
 import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
+import { openBillsQuery } from "../bill/bill-queries.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import {
   createPayment,
   markPaymentPaidCash,
@@ -24,6 +26,7 @@ import { preparePaymentMethod } from "../payment/payment-preparation-actions.ts"
 import { paymentWithDetailsByIdQuery } from "../payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { loadAutomaticReconciliation } from "../reconciliation-claim/reconciliation-claim-actions.ts"
+import { refundPayment } from "../refund/refund-actions.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
   Integer,
@@ -1351,5 +1354,50 @@ describe("several payments on one bill", () => {
       claimedSum: 80_000,
       coverage: "overpaid",
     })
+  })
+})
+
+describe("a bill guests paid part of, emptied by staff and refunded", () => {
+  test("reads closed on the floor view as in its detail", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Pizza", amount: 500 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference, {
+      kind: "fractionOfBill",
+      denominator: 2,
+    })
+    const { paymentId } = await receiveBankTransfer(context, {
+      amount: 275,
+      variableSymbol: reference,
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    if (paymentId === null) throw new Error("Expected a self-pay payment.")
+    await using run = testCreateRun(context.deps)
+    const [pizza] = await run.ok(loadCalculatedBillLineSummaries(billId))
+    if (pizza === undefined) throw new Error("Expected the pizza line.")
+
+    await run.orThrow(
+      appendRemoveBillLine({
+        billId,
+        deviceId: context.deviceId,
+        lineSummary: pizza,
+        quantity: pizza.quantity,
+        totalAmount: pizza.totalAmount,
+      })
+    )
+    await run.orThrow(
+      refundPayment({
+        paymentId,
+        method: "outside",
+        deviceId: context.deviceId,
+        amount: NonNegativeInteger(250),
+      })
+    )
+
+    expect(await loadStatus(context, billId)).toBe("closed")
+    expect(
+      (await context.deps.evolu.loadQuery(openBillsQuery)).map(({ id }) => id)
+    ).not.toContain(billId)
   })
 })

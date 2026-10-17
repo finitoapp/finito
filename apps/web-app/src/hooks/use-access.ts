@@ -77,8 +77,10 @@ export function useRequirePermission() {
   )
 
   const require = useCallback(
-    async (permission: Permission, action: TranslationKey) =>
-      effectiveRef.current.has(permission) ? true : prompt(permission, action),
+    async (permission: Permission, action: TranslationKey, detail?: string) =>
+      effectiveRef.current.has(permission)
+        ? true
+        : prompt(permission, action, detail),
     [prompt]
   )
 

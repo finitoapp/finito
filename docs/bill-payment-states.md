@@ -54,15 +54,14 @@ query performance.
   an existing collision, not a way to mark an arbitrary payment paid without
   a claim behind it, and it never feeds into [Bill payment
   coverage](#bill-payment-coverage), which keeps reading claims only.
-- `payment.excessAcknowledgedAt: timestamp | null` — set once, never
-  cleared, by `acknowledgePaymentExcessSettlement`. Staff's explicit
-  resolution of the duplicate-settlement collision described in ["Duplicate
-  settlement"](#duplicate-settlement) below: it acknowledges that this
-  payment has been claimed for more than its own `amount` (e.g. two offline
-  devices each independently settling it through a different method) and
-  silences the warning. Unlike `confirmedPaidAt`, it doesn't change what
-  `derivePaymentStatus` returns — the payment is unambiguously Paid either
-  way — it only silences a separate, additive warning about the *amount*.
+- `payment.excessAcknowledgedAt: timestamp | null` — written only by app
+  versions before the overpayment card, which let staff silence a payment
+  claimed for more than its own `amount` without saying where the money
+  went. Nothing writes it now. An acknowledgement counts as a kept amount of
+  that payment's extra money from the claims recorded before the first write
+  of the column, at most the bill's overpayment then — see
+  ["Overpayment"](#overpayment) below. It never changes what
+  `derivePaymentStatus` returns.
 - `payment.expiresAt: timestamp | null` — set at creation time from the
   payment method's own expiry (e.g. a Lightning invoice's `expirySeconds`,
   or the expiry of the invoice the merchant's Lightning address issued,
@@ -188,13 +187,12 @@ Either way, [Bill payment coverage](#bill-payment-coverage) sums the
 *distinct claimed transactions*' real amounts (deduplicated by transaction
 id, not payment id), so a payment claimed for more than its own `amount`
 correctly shows up as extra money rather than being silently capped at the
-nominal amount. `acknowledgePaymentExcessSettlement` is staff's explicit
-resolution: it requires the payment to actually be claimed for more than its
-`amount`, rejecting with `PaymentNotOverpaidError` otherwise, and sets
-`excessAcknowledgedAt` once that's confirmed. This is a separate collision
-from canceled+claimed above — a payment can be simultaneously
-Canceled-despite-claimed *and* over-claimed, and resolving one never writes
-to the other's field.
+nominal amount. That money is part of its bill's overpayment, and a payment
+without a bill counts as its own bill, so staff answers it on the
+overpayment card like any other — see ["Overpayment"](#overpayment). A
+payment can be Canceled-despite-claimed *and* over-claimed at once; the card
+then asks staff to confirm the canceled payment paid before it offers to
+resolve its money.
 
 ### Refunds
 
@@ -212,14 +210,23 @@ amount, the payment's `amount` otherwise, plus what its claims brought
 beyond `amount`, less the payment's tip and every earlier refund of goods.
 In cash with a received amount, the tip is what the cash brought above the
 goods rounded to whole crowns (see
-[`payment/0003`](decisions/payment/0003-a-cash-tip-is-what-the-goods-leave.md)). When there is such an excess, the refund dialog prefills it, capped
-at what is left. A refund of a CZK payment from the cash register is
-prefilled in whole crowns, never above what is left. The refund keeps the
-exact amount it returns, and a refund from the cash register records beside
-it the cash it hands out (`refundCashRegister.handedAmount`): that amount
-rounded to the whole crown, the goods and the tip of a whole refund rounded
-once as one sum. The cash register's transaction and the EET storno carry
-the cash handed out (see
+[`payment/0003`](decisions/payment/0003-a-cash-tip-is-what-the-goods-leave.md)).
+While the payment can return some of its bill's overpayment (the bill has
+an unresolved overpayment, or is underpaid and the payment's claims brought
+more than its `amount`), the refund screen offers the overpayment first and
+starts on it, prefilled with what the payment can return of it, capped at
+what is left; a part of the goods is prefilled with what is left. The refund
+records at write time the part of it that returns the overpayment
+(`overpaymentAmount`) and the transactions its device knew
+(`knownTransactionIdsJson`) — see
+[`refund/0014`](decisions/refund/0014-a-refund-records-what-it-returns-of-the-overpayment.md).
+A refund of a CZK payment from the cash register is prefilled in whole
+crowns, never above what is left. The refund keeps the exact amount it
+returns, and a refund from the cash register records beside it the cash it
+hands out (`refundCashRegister.handedAmount`): that amount rounded to the
+whole crown, the goods and the tip of a whole refund rounded once as one
+sum. The cash register's transaction and the EET storno carry the cash
+handed out (see
 [`refund/0012`](decisions/refund/0012-a-cash-refund-hands-out-whole-crowns.md)).
 
 The tip is refunded on its own: `refundPaymentTip` returns the whole tip as
@@ -244,7 +251,11 @@ It is refused once part of the payment is refunded another way, and
 
 A refund is not a state. It never touches `canceledAt`, `confirmedPaidAt` or
 any claim, so the payment stays Paid, and coverage still sums the claimed
-transactions, so its bill stays covered and closed. The payment detail, the
+transactions, so its bill stays covered and closed. What a refund returns
+of the overpayment answers it — see ["Overpayment"](#overpayment). The
+part of a refund that EET never received is written as a second row without
+a device (`mainRefundId`), shown and counted with its main row as one refund
+(see [`docs/eet.md`](eet.md)). The payment detail, the
 bill's payment rows and the payment history derive "partly refunded" or
 "refunded" from the refunds of goods alone, so a tip refund never changes
 that state and the refund list labels it as the tip. A cash refund writes a
@@ -267,10 +278,11 @@ keeps it out of every coverage sum.
   same shape and role as `payment.confirmedPaidAt`.
 - `bill.closedAt: timestamp | null` — **not** a source of truth for
   anything. A best-effort, self-healing *cache*: written (idempotently)
-  whenever a claim brings the bill's coverage out of `underpaid`, regardless
-  of `canceledAt` — see ["`closedAt` is a cache, not a
-  status"](#closedat-is-a-cache-not-a-status) below for why it exists and
-  what its one job is.
+  whenever a claim, or a line edit on a bill that already has one, brings
+  the bill's coverage out of `underpaid`, regardless of `canceledAt`, and
+  kept equal to the derived status by the bill closing job — see
+  ["`closedAt` is a cache, not a status"](#closedat-is-a-cache-not-a-status)
+  below for why it exists and what its one job is.
 
 There is no `bill.status` column. `open`/`closed`/`canceled` is derived at
 read time — see the next section — the same way a payment's display status
@@ -374,24 +386,41 @@ of cases, because `closedAt` is written (via `loadBillClosedAtIfCovered`,
 folded into the same mutation batch as the confirming claim — see
 `reconciliation-claim-actions.ts`) the moment a claim brings the bill out of
 `underpaid`, the same trigger `deriveBillStatus`'s priority 3 reacts to live.
+Lines leaving the bill are the other way out of `underpaid`: once a guest
+has paid a share, staff can remove, undo or split off what is left. Each of
+those writes `closedAt` in the same batch as the lines when the claimed money
+covers what remains, so the bill leaves the floor view, its table's self-pay
+view and the open-bill lists the moment its detail reads `closed`.
 
 The two can disagree, briefly: under CRDT/multi-device concurrency, two
 split payments on the same bill confirmed at nearly the same time can each
 compute "still underpaid" from a pre-write snapshot that doesn't yet include
 the other's claim, and neither writes `closedAt`. Once both facts have
 synced, `deriveBillStatus` reflects the true, covered status on the very
-next read anywhere it's consulted live — but `openBillsQuery`'s cache can
-lag until something else writes to that bill again. The bill lingers in the
-floor view's "open" list a little longer than it should; nothing incorrect
-happens with editing or guards. With self-pay on, the bill also stays in its
-table's view until the cache catches up, so guests can still pay it and
-their codes decode against the bill as it stands. `closeBill` (see below) is the
-manual repair tool for exactly this lag.
+next read anywhere it's consulted live — but `openBillsQuery`'s cache lags
+until a device that runs background jobs has synced both. The bill closing
+job (`bill-closing-job.ts`) starts after the app owner's first sync and
+reads `evolu_history` from a rowid cursor it keeps in the local
+`_billClosingCursor` table, as `cashu-booking.ts` does. Every bill whose
+lines, payments, claims, claimed transactions or `closedAt` changed since
+its last run is a candidate. On its first run, so is every bill with no
+`closedAt` and no `canceledAt`, and every closed bill with a deleted claim
+or claimed transaction. For each candidate without `canceledAt`, it writes
+`closedAt` when the bill derives closed and its `closedAt` is missing or
+more than a minute off the moment coverage last left `underpaid`, replaying
+the bill's lines and claims in sync-clock order, and clears it when the bill
+derives open again. It writes only what the derived status says, so a write
+by another device cannot make it loop. Until it runs, the bill lingers in
+the floor view's "open" list a little longer than it should; nothing
+incorrect happens with editing or guards. With self-pay on, the bill also
+stays in its table's view until then, so guests can still pay it and their
+codes decode against the bill as it stands. `closeBill` (see below) remains
+a manual repair tool.
 
-`closedAt`'s value, once set, is preserved across any later re-close instead
-of being overwritten with a newer claim's time (`loadBillClosedAtIfCovered`'s
-`billResult.value.closedAt ?? now()`) — it always reflects the first time
-this bill was observed covered, i.e. roughly when the money arrived.
+A claim or an edit keeps an existing `closedAt`
+(`billResult.value.closedAt ?? now()` in `loadBillClosedAtIfCovered`), and
+the job corrects it when it is more than a minute off, so it reflects when
+the money covered the bill, which self-pay's 7 days count from.
 
 ### `closeBill` and `confirmBillClosedDespiteCancellation`
 
@@ -522,6 +551,42 @@ bill (`table-self-pay/0001`). Coverage and status never read them, so an
 allocation that arrives after the bill closed changes nothing staff has to
 resolve.
 
+## Overpayment
+
+A bill's overpayment is the money its claimed transactions brought above
+the goods it keeps (`deriveBillOverpayment`, `bill-utils.ts`), and a payment
+without a bill counts as its own bill, priced at its `amount` less its tip.
+Staff answers it on the overpayment card in the bill detail, or in the
+detail of a payment without a bill: a return through the refund dialog (see
+[Refunds](#refunds)), a tip the guest confirmed leaving, or an amount kept
+for the business. Tips and kept amounts are `overpaymentResolution` rows.
+Neither is ever edited; a mistaken one is withdrawn by a further row naming
+it, and a withdrawal is final. All of them need the refund permission.
+
+The money above the total is attributed to the claimed transactions, and
+each answer draws only from transactions its device knew that are still
+there, its own payment's first, then the newest. Returns draw first, then
+tips, kept amounts and acknowledgements in recording order, each capped by
+what its payment holds less the earlier ones on it, and all of them together
+by the money the bill still holds above the goods. Records are ordered by
+the sync clock of their first write in `evolu_history`, because an upsert
+rewrites `createdAt`. What no answer covers is the **unresolved
+overpayment**. The card, the bill and payment histories and the payment
+detail flag a bill overpaid only while it is above zero; once it is zero the
+card lists how it was resolved, with the part of an answer beyond what the
+money allows shown as not counted. A canceled bill has none. Tips from an
+overpayment count in the sales statistics on the day they were recorded.
+See [`payment/0013`](decisions/payment/0013-an-overpayment-is-returned-tipped-or-kept.md).
+
+Before an edit, undo, redo or split that would leave an open bill covered,
+the cart says whether the bill would be paid and closed or by how much it
+would be overpaid (`loadBillEditOutcome`), and canceling leaves the bill as
+it was. After an edit that overpays it, the bill detail offers the three
+answers or deciding later. A split that would leave its source overpaid is
+refused (`requireSplitLeavingNoOverpayment`), since nothing moves money
+between bills. Two devices out of sync can still overpay a bill; the
+derivation then shows it.
+
 ## Reading the combination
 
 | Derived `bill` status | coverage | editable? | Meaning |
@@ -530,7 +595,7 @@ resolve.
 | `open` | underpaid | **no** (locked) | checkout in progress — a live payment is pending |
 | `open` | underpaid (>0) | yes | a split/partial payment was confirmed but didn't cover the total, and nothing is currently pending — bill stays open for the rest |
 | `closed` | paid | — (final) | fully settled — the expected happy path |
-| `closed` | overpaid | — (final) | more money confirmed than the bill is currently worth — see [why coverage can diverge](#bill-payment-coverage); needs a human to look at it |
+| `closed` | overpaid | — (final) | more money confirmed than the bill is currently worth — see [why coverage can diverge](#bill-payment-coverage); staff answers it on the overpayment card until its unresolved overpayment is zero — see [Overpayment](#overpayment) |
 | `canceled` | underpaid (0) | — (final) | ordinary discarded cart, no payment was ever involved |
 | `canceled` | paid or overpaid | — (final, until resolved) | a bill was discarded while a payment was still pending, and that payment was confirmed anyway — see below |
 
@@ -565,21 +630,21 @@ the other's fields.
 
 ## Non-goals / explicitly out of scope
 
-- No automatic reopening of a `closed` or `canceled` bill back to `open`,
-  ever, under any combination of payment outcomes.
+- No reopening of a `canceled` bill, and no payment outcome reopens a
+  `closed` one. A closed bill derives `open` again only when the money under
+  its claims is deleted or another device changed its lines after it closed,
+  and the bill closing job then clears its `closedAt`.
 - No automatic refund or reconciliation action when a bill is found
-  `overpaid` — it is surfaced to staff visually; resolving it is a manual,
-  out-of-band process. This includes the "Refund" action surfaced next to a
-  canceled+claimed payment's, canceled+funded bill's, and duplicate-settlement
-  payment's collisions in the UI — it is the same placeholder in all three
-  places, not the [refund](#refunds) of a Paid payment, which returns at
-  most what the payment itself took.
-- No automatic resolution of any of the three collisions (payment
-  canceled+claimed, bill canceled+funded, payment duplicate-settlement) —
-  `confirmPaymentPaidDespiteCancellation`, `confirmBillClosedDespiteCancellation`,
-  and `acknowledgePaymentExcessSettlement` are all manual, explicit staff
-  actions, not something the app resolves on its own when a sync merge
-  produces the collision.
+  `overpaid` — staff answers it on the overpayment card (see
+  [Overpayment](#overpayment)). The "Refund" action surfaced next to a
+  canceled+claimed payment's and canceled+funded bill's collisions in the UI
+  is the same placeholder in both places, not the [refund](#refunds) of a
+  Paid payment, which returns at most what the payment itself took.
+- No automatic resolution of either collision (payment canceled+claimed,
+  bill canceled+funded) or of an overpayment —
+  `confirmPaymentPaidDespiteCancellation`, `confirmBillClosedDespiteCancellation`
+  and the overpayment card's answers are all manual, explicit staff actions,
+  not something the app resolves on its own when a sync merge produces them.
 - No enforcement that stops a bill from accumulating more than one
   concurrent payment attempt — multiple payments per bill (split payments)
   are an intended capability, not a bug to guard against, and creating a new

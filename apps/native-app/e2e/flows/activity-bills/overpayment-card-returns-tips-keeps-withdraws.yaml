@@ -1,0 +1,135 @@
+# web activity-bills.spec.ts: "the bill detail's overpayment card returns, tips, keeps and withdraws money paid above the bill".
+appId: ${APP_ID}
+tags: [activity-bills]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateBillModifiedDuringPayment
+      QUERY: billId=${output.billId}&mode=removeAll
+- runFlow: ../../subflows/reopen-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills
+      TEXT: ${output.t["activity.title"]}
+- extendedWaitUntil:
+    visible: ${output.t["billHistory.overpaid"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.tip"]}
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["overpayment.dialog.amount"]}
+      VALUE: "2"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["overpayment.dialog.tipConfirm"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.confirm.tip", { amount: "\u00242" })}'
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00243" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.withdraw"]}
+- extendedWaitUntil:
+    visible: ${output.t["overpayment.withdraw.title"]}
+    timeout: 10000
+- tapOn:
+    text: ${output.t["overpayment.withdraw"]}
+    below: ${output.re(output.t["overpayment.withdraw.description"])}
+    above: ${output.t["overpayment.dialog.cancel"]}
+- extendedWaitUntil:
+    visible: ${output.t["overpayment.breakdown.withdrawn"]}
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.keep"]}
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["overpayment.dialog.amount"]}
+      VALUE: "1"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.confirm.keep", { amount: "\u00241" })}'
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00244" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.return"]}
+- extendedWaitUntil:
+    visible:
+      id: ${output.re(output.t["refund.dialog.amount.label"])}
+      text: "4"
+    timeout: 15000
+- assertVisible: ${output.t["refund.page.choice.overpayment"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["refund.page.choice.overpayment"]}
+      BY_TEXT: "true"
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("refund.dialog.confirm", { amount: "\u00244" })}'
+- extendedWaitUntil:
+    visible: ${output.t["overpayment.resolved.title"]}
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("overpayment.resolved.total", { amount: "\u00245" }))}'
+- assertVisible: ${output.t["overpayment.breakdown.withdrawn"]}
+- assertVisible: \$2
+- assertVisible: ${output.t["overpayment.breakdown.return"]}
+- assertVisible: \$4
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills
+      TEXT: ${output.t["activity.title"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.status.closed"]}
+    timeout: 15000
+- assertNotVisible: ${output.t["billHistory.overpaid"]}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity
+      TEXT: ${output.t["activity.title"]}
+- extendedWaitUntil:
+    visible: ${output.t["payment.status.paid"]}
+    timeout: 15000
+- assertNotVisible: ${output.t["paymentHistory.billOverpaid"]}

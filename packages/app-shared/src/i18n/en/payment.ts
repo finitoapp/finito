@@ -70,7 +70,11 @@ export const enPayment = {
   "paymentDetail.refunds.method.cardSwitchio": "To the card",
   "paymentDetail.refunds.title": "Refunds",
   "paymentDetail.refunds.tip": "Tip",
+  "paymentDetail.refunds.overpayment": "Returned overpayment",
+  "paymentDetail.refunds.overpaymentIncluded":
+    "Includes {amount} returned overpayment",
   "paymentDetail.tipIncluded": "Includes {amount} tip",
+  "paymentDetail.overpaymentTip": "Tip from the overpayment {amount}",
   "paymentDetail.canceledAtValue": "Canceled {date}",
   "paymentDetail.expiresAt": "Expires at {time}",
   "paymentDetail.technical": "Technical details",
@@ -83,15 +87,12 @@ export const enPayment = {
   "paymentDetail.bill.open": "Open bill",
   "paymentDetail.backToPayment": "Back to payment",
   "paymentDetail.bill.coverage.changesTitle": "Changes since this payment",
-  "paymentDetail.bill.coverage.delta.overpaid":
-    "Paid {amount} more than the bill is worth",
   "paymentDetail.bill.coverage.delta.underpaid": "Still missing {amount}",
   "paymentDetail.bill.coverage.expectedAmount": "Expected",
   "paymentDetail.bill.coverage.overpaid.fact":
     "This bill has been paid for more than it's currently worth.",
   "paymentDetail.bill.coverage.overpaid.factWithReason":
     "This bill has been paid for more than it's currently worth. {reason}",
-  "paymentDetail.bill.coverage.overpaid.title": "Overpaid",
   "paymentDetail.bill.coverage.paidAmount": "Paid",
   "paymentDetail.bill.coverage.reason.billLinesChanged":
     "Another device likely changed the bill's items while this payment was already in progress.",
@@ -115,11 +116,6 @@ export const enPayment = {
   "paymentDetail.collision.title": "Canceled, but money arrived",
   "paymentDetail.deviceId": "Device",
   "paymentDetail.emptyValue": "—",
-  "paymentDetail.excessCollision.acknowledge": "Mark as resolved",
-  "paymentDetail.excessCollision.acknowledge.error":
-    "Couldn't mark the collision as resolved. Try again.",
-  "paymentDetail.excessCollision.description":
-    "This payment was settled more than once — likely two offline devices each confirmed a different payment method for it. Resolve the collision below.",
   "paymentDetail.excessCollision.title": "Paid more than once",
   "paymentDetail.invalidId": "Invalid payment id.",
   "paymentDetail.notFound": "Payment was not found.",
@@ -403,6 +399,7 @@ export const enPayment = {
   "refund.page.choice.part": "Part",
   "refund.page.choice.part.left": "{amount} left",
   "refund.page.choice.tip": "Only the tip",
+  "refund.page.choice.overpayment": "The overpayment",
   "refund.page.amount.label": "How much",
   "refund.page.method.qerkoPayment": "Back through Qerko",
   "refund.page.qerko.done": "The money went back to the card.",
@@ -463,6 +460,7 @@ export const enPayment = {
   "refund.dialog.amount.label": "Amount to refund",
   "refund.dialog.confirm": "Refund {amount}",
   "refund.dialog.confirmEmpty": "Refund",
+  "refund.dialog.goodsPart": "{amount} of this is refunded as goods.",
   "refund.dialog.items.available": "Up to {quantity}",
   "refund.dialog.items.decrease": "Fewer {name}",
   "refund.dialog.items.increase": "More {name}",
@@ -517,4 +515,62 @@ export const enPayment = {
   "refundDetail.qerko.description":
     "Qerko canceled the payment and returned the money to the customer.",
   "refundDetail.lines.title": "Items",
+  "refund.state.overpayment": "Returned overpayment {amount}",
+  "overpayment.title": "Overpaid by {amount}",
+  "overpayment.description":
+    "The guest paid more than the bill costs. Say where the money went.",
+  "overpayment.resolved.title": "Overpayment resolved",
+  "overpayment.resolved.total": "Resolved {amount}",
+  "overpayment.action.return": "Return it",
+  "overpayment.action.tip": "It's a tip",
+  "overpayment.action.keep": "Keep it",
+  "overpayment.decideLater": "Decide later",
+  "overpayment.resolveOnBill": "Resolve on the bill",
+  "overpayment.dialog.tip.title": "Record a tip",
+  "overpayment.dialog.keep.title": "Keep the money",
+  "overpayment.dialog.tip.consequence":
+    "The guest left it on purpose. It counts with the day's tips.",
+  "overpayment.dialog.keep.consequence":
+    "The money stays with the business. Use it when the guest cannot be asked.",
+  "overpayment.dialog.description": "Up to {amount} can be resolved this way.",
+  "overpayment.dialog.payment": "Payment",
+  "overpayment.dialog.paymentOption": "#{number} · {method} · up to {amount}",
+  "overpayment.dialog.paymentOption.unnumbered":
+    "{time} · {method} · up to {amount}",
+  "overpayment.dialog.amount": "Amount",
+  "overpayment.dialog.amount.invalid": "Enter an amount up to {amount}.",
+  "overpayment.dialog.amount.aboveTip":
+    "At most {amount} can be recorded as a tip.",
+  "overpayment.dialog.amount.aboveKeep": "At most {amount} can be kept.",
+  "overpayment.dialog.tipConfirm": "The guest left this money as a tip",
+  "overpayment.dialog.cancel": "Cancel",
+  "overpayment.dialog.confirm.tip": "Record tip {amount}",
+  "overpayment.dialog.confirm.keep": "Keep {amount}",
+  "overpayment.dialog.confirmEmpty.tip": "Record tip",
+  "overpayment.dialog.confirmEmpty.keep": "Keep",
+  "overpayment.recorded.tip": "Tip recorded.",
+  "overpayment.recorded.keep": "Kept amount recorded.",
+  "overpayment.breakdown.return": "Returned",
+  "overpayment.breakdown.tip": "Tip",
+  "overpayment.breakdown.kept": "Kept",
+  "overpayment.breakdown.acknowledgement": "Marked as resolved",
+  "overpayment.breakdown.notCounted": "{amount} not counted",
+  "overpayment.breakdown.withdrawn": "Withdrawn",
+  "overpayment.withdraw": "Withdraw",
+  "overpayment.withdraw.title": "Withdraw this record?",
+  "overpayment.withdraw.description":
+    "The money becomes unresolved again. A withdrawal can't be undone.",
+  "overpayment.withdrawn": "Record withdrawn.",
+  "overpayment.withdraw.amount": "Withdraw {amount}",
+  "overpayment.pinDetail": "{action} · {bill}",
+  "overpayment.collision.description":
+    "Money arrived for a canceled payment. Confirm it as paid first.",
+  "overpayment.collision.confirm": "Confirm {amount} as paid",
+  "overpayment.error.aboveUnresolved":
+    "That's more than the unresolved overpayment.",
+  "overpayment.error.abovePayment":
+    "That's more than this payment still holds.",
+  "overpayment.error.canceled": "This payment is canceled.",
+  "overpayment.error.notWithdrawable": "This record is already withdrawn.",
+  "overpayment.error.notFound": "This record no longer exists.",
 } as const

@@ -852,15 +852,10 @@ test("a payment settled twice reports the extra money, and refunding it reverses
 
   await test.step("the refund offers the extra money and reverses only it", async () => {
     const extraSale = fakeEet.production.requests.at(1)
-    // The collision's refund opens the screen on a part of the payment,
-    // prefilled with the extra money.
-    await page
-      .getByRole("button", {
-        name: translate("en", "paymentDetail.collision.refund"),
-        exact: true,
-      })
-      .click()
-    await expect(refundChoiceButton(page, "en", "part")).toBeChecked()
+    // The refund screen starts on the money above the bill, prefilled with
+    // the extra money (refund/0014).
+    await openRefundScreen(page, "en")
+    await expect(refundChoiceButton(page, "en", "overpayment")).toBeChecked()
     const refundAmount = page.getByLabel(
       translate("en", "refund.dialog.amount.label")
     )
@@ -882,11 +877,11 @@ test("a payment settled twice reports the extra money, and refunding it reverses
     await expect(refundAction(page, "en")).toBeVisible()
   })
 
-  await test.step("the history shows the payment partly refunded", async () => {
+  await test.step("the history shows the overpayment returned", async () => {
     await gotoPage(page, "/activity", "en", "activity.title")
     await expect(page.getByTestId("refund-badge").first()).toHaveText(
       new RegExp(
-        `^${translate("en", "refund.state.partial").split("{amount}")[0] ?? ""}`,
+        `^${translate("en", "refund.state.overpayment").split("{amount}")[0] ?? ""}`,
         "u"
       )
     )

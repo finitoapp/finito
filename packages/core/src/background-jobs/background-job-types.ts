@@ -3,6 +3,7 @@ import type { CashuBookingDeps } from "../cashu/cashu-booking.ts"
 import type { CashuTokenListenerDeps } from "../cashu/cashu-token-listener.ts"
 import type { CashuTopupDeps } from "../cashu/cashu-topup.ts"
 import type {
+  AppOwnerSyncDep,
   ConnectivityDep,
   DateDep,
   DeviceIdDep,
@@ -40,6 +41,7 @@ export type BackgroundJobContext = EvoluDep &
 export type BackgroundJob = Task<AsyncDisposable, never, BackgroundJobContext>
 
 export type AppBackgroundJobContext = BackgroundJobContext &
+  AppOwnerSyncDep &
   DeviceIdDep &
   ConnectivityDep &
   EetApiDep &

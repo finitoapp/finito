@@ -11,6 +11,7 @@ import {
   gotoPosOverview,
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
+import { startPartlyPaidBill } from "./support/overpayment.ts"
 
 /**
  * Starts a bill assigned to `tableName` (an already-added table) and adds
@@ -267,4 +268,43 @@ test("a partial split into an existing bill stays on the source bill", async ({
       translateValue("en", "bill.itemsCount", 1)
     )
   })
+})
+
+test("Split that leaves the bill paid exactly", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  const sourceBillId = await startPartlyPaidBill(page, "en")
+
+  await page
+    .getByRole("button", { name: translate("en", "bill.split.button.aria") })
+    .click()
+  await page
+    .getByRole("button", {
+      name: nameParam("bill.split.increase.aria", "e2e: concurrent addition"),
+    })
+    .click()
+  await page
+    .getByRole("button", {
+      name: translate("en", "bill.split.confirm"),
+      exact: true,
+    })
+    .click()
+
+  const question = page.getByRole("alertdialog")
+  await expect(question).toContainText(translate("en", "bill.cover.paid.title"))
+  await expect(question).toContainText(
+    translate("en", "bill.cover.split.description")
+  )
+  await question
+    .getByRole("button", { name: translate("en", "bill.cover.confirm") })
+    .click()
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("billId"))
+    .not.toBe(sourceBillId)
+
+  await page.goto(`/bill?billId=${sourceBillId}`, {
+    waitUntil: "domcontentloaded",
+  })
+  await page.waitForURL(/\/activity\/bills\//u)
 })

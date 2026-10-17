@@ -15,6 +15,7 @@ import {
   receiveBankTransfer,
   type SelfPayTestContext,
 } from "../../modules/table-self-pay/table-self-pay-test-fixtures.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import { createTestDeviceAccountDep } from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
@@ -36,6 +37,7 @@ const startJob = async (context: SelfPayTestContext) => {
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(),
     ...createYadioApiDep(),
+    ...testSyncedAppOwner,
     fetch,
     deviceId: context.deviceId,
     connectivity: { onOnline: () => () => undefined },

@@ -38,10 +38,16 @@ export const billStateQueries = (billId: BillId) => [
 ]
 
 export function useBillLineSummaries(
-  billId: BillId
+  billId: BillId | undefined
 ): ReadonlyArray<BillLineSummary> {
-  const lineQuery = useMemo(() => billLinesByBillIdQuery(billId), [billId])
-  const itemQuery = useMemo(() => itemsByBillIdQuery(billId), [billId])
+  const lineQuery = useMemo(
+    () => (billId === undefined ? null : billLinesByBillIdQuery(billId)),
+    [billId]
+  )
+  const itemQuery = useMemo(
+    () => (billId === undefined ? null : itemsByBillIdQuery(billId)),
+    [billId]
+  )
   const { data: lineRows } = useOptionalEvoluQuery(lineQuery)
   const { data: itemRows } = useOptionalEvoluQuery(itemQuery)
 
@@ -78,10 +84,14 @@ export function usePendingPayments(billId: BillId): ReadonlyArray<PaymentId> {
 }
 
 /** The bill's derived status; `undefined` until its row exists. */
-export function useBillStatus(billId: BillId) {
-  const billQuery = useMemo(() => billByIdQuery(billId), [billId])
+export function useBillStatus(billId: BillId | undefined) {
+  const billQuery = useMemo(
+    () => (billId === undefined ? null : billByIdQuery(billId)),
+    [billId]
+  )
   const claimedQuery = useMemo(
-    () => claimedTransactionsByBillIdQuery(billId),
+    () =>
+      billId === undefined ? null : claimedTransactionsByBillIdQuery(billId),
     [billId]
   )
   const { data: billRows } = useOptionalEvoluQuery(billQuery)

@@ -41,7 +41,9 @@ reporting more than was sold. A reversal waits for good if a sale of its
 payment is never confirmed. A reversal created while EET is off, or in
 another environment or for another taxpayer than its sale, is never sent and
 is listed among the unconfirmed sales in the EET settings. A tip refund
-reverses no more than it returned (see payment/0003).
+reverses no more than it returned (see payment/0003). The part of a refund
+up to money EET never received, a refund recorded before its sale exists
+included, gets no reversal (see eet/0013).
 
 ## Enforced by
 
@@ -50,7 +52,6 @@ reverses no more than it returned (see payment/0003).
 - `packages/core/src/modules/eet/eet-actions.test.ts > createEetReversal > caps refunds at what every sale of the payment reports, whichever sale they name`
 - `packages/core/src/modules/eet/eet-actions.test.ts > deliverEetReversal > sends the negative amount at the moment of the refund`
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals > sends a reversal only once its sale is confirmed`
-- `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals > reverses a refund recorded before its sale was created`
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals of extra money > returning the duplicate leaves the real sale reported`
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals of extra money > returning everything reverses the sale and the extra money`
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals of extra money > sends the reversal only once the extra sale is confirmed`

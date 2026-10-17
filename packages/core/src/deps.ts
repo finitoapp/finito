@@ -228,6 +228,13 @@ export type LocalStorageDep = {
   readonly localStorage: Pick<Storage, "getItem" | "removeItem">
 }
 
+export type AppOwnerSyncDep = {
+  readonly appOwnerSync: {
+    readonly isSynced: () => boolean
+    readonly subscribe: (listener: () => void) => () => void
+  }
+}
+
 export type ConnectivityDep = {
   readonly connectivity: {
     readonly onOnline: (listener: () => void) => () => void

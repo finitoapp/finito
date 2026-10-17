@@ -266,10 +266,16 @@ test("salesKpis averages gross per sale, 0 without sales", () => {
     salesKpis({
       hourRows: [{ ...hourRow("2026-06-05T08", 1_000), count: 3, tips: 100 }],
       refundRows: [],
+      overpaymentTips: [],
       accountCurrency: "CZK",
     })
   ).toMatchObject([{ averageSale: 333, salesCount: 3, tips: 100 }])
   expect(
-    salesKpis({ hourRows: [], refundRows: [], accountCurrency: "CZK" })
+    salesKpis({
+      hourRows: [],
+      refundRows: [],
+      overpaymentTips: [],
+      accountCurrency: "CZK",
+    })
   ).toEqual([])
 })

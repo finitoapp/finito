@@ -57,13 +57,9 @@ export const calculateBillLineSummaries = (
       itemId: line.itemId,
       type: line.type,
     })
-    const existing = projected.get(idValue)
-    const direction = line.kind === "add" ? 1 : -1
-    const nextQuantity = (existing?.quantity ?? 0) + direction * line.quantity
-    const nextTotalAmount =
-      (existing?.totalAmount ?? 0) + direction * line.totalAmount
+    const amounts = foldBillLineAmounts(projected.get(idValue), line)
 
-    if (nextQuantity <= 0) {
+    if (amounts === null) {
       projected.delete(idValue)
       continue
     }
@@ -77,13 +73,64 @@ export const calculateBillLineSummaries = (
       name: item.name,
       description: item.description,
       currency: item.currency,
-      quantity: PositiveNumber(nextQuantity),
-      totalAmount: NonNegativeInteger(Math.max(0, nextTotalAmount)),
+      ...amounts,
       taxRateId: item.taxRateId,
     })
   }
 
   return [...projected.values()]
+}
+
+const foldBillLineAmounts = (
+  existing: Pick<BillLineSummary, "quantity" | "totalAmount"> | undefined,
+  line: Pick<BillLineRow, "kind" | "quantity" | "totalAmount">
+): Pick<BillLineSummary, "quantity" | "totalAmount"> | null => {
+  const direction = line.kind === "add" ? 1 : -1
+  const nextQuantity = (existing?.quantity ?? 0) + direction * line.quantity
+  const nextTotalAmount =
+    (existing?.totalAmount ?? 0) + direction * line.totalAmount
+
+  return nextQuantity <= 0
+    ? null
+    : {
+        quantity: PositiveNumber(nextQuantity),
+        totalAmount: NonNegativeInteger(Math.max(0, nextTotalAmount)),
+      }
+}
+
+export const deriveBillTotalAfterLines = (
+  summaries: ReadonlyArray<BillLineSummary>,
+  lines: ReadonlyArray<
+    Pick<
+      BillLineRow,
+      | "billId"
+      | "catalogItemId"
+      | "itemId"
+      | "type"
+      | "kind"
+      | "quantity"
+      | "totalAmount"
+    >
+  >
+): NonNegativeInteger => {
+  const amounts = new Map<
+    BillLineSummaryId,
+    Pick<BillLineSummary, "quantity" | "totalAmount">
+  >(summaries.map((summary) => [summary.id, summary]))
+
+  for (const line of lines) {
+    const idValue = createBillLineSummaryId(line)
+    const next = foldBillLineAmounts(amounts.get(idValue), line)
+    if (next === null) {
+      amounts.delete(idValue)
+    } else {
+      amounts.set(idValue, next)
+    }
+  }
+
+  return NonNegativeInteger(
+    [...amounts.values()].reduce((sum, { totalAmount }) => sum + totalAmount, 0)
+  )
 }
 
 /**

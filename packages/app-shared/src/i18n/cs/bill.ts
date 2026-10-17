@@ -21,6 +21,16 @@ export const csBill = {
   "bill.collision.title": "Zrušeno, ale platby ho pokrývají",
   "bill.collision.viewPayment": "Zobrazit platbu",
   "bill.collision.viewPayment.numbered": "Zobrazit platbu {number}",
+  "bill.cover.cancel": "Zrušit",
+  "bill.cover.confirm": "Pokračovat",
+  "bill.cover.overpaid.description":
+    "Tím se účet uzavře. Pak zvolíte, zda se peníze vrátí, zda šlo o spropitné, nebo zůstanou podniku.",
+  "bill.cover.overpaid.title": "Účet by byl přeplacen o {amount}",
+  "bill.cover.paid.description":
+    "Na účtu zůstane přesně tolik, kolik bylo zaplaceno.",
+  "bill.cover.paid.title": "Účet by byl zaplacen a uzavřen",
+  "bill.cover.split.description":
+    "Zaplacené peníze zůstanou u tohoto účtu a pokryjí, co na něm zůstane.",
   "bill.discard": "Zahodit účet",
   "bill.discard.confirm.cancel": "Zachovat účet",
   "bill.discard.confirm.confirm": "Zahodit",
@@ -68,6 +78,8 @@ export const csBill = {
   "bill.split.destination.new": "Nový účet",
   "bill.split.error": "Rozdělení účtu se nezdařilo. Zkus to prosím znovu.",
   "bill.split.increase.aria": "Přidat jeden kus {name} do rozdělení",
+  "bill.split.leavesOverpayment":
+    "Peníze zaplacené za účet na něm zůstávají, takže z něj nejde oddělit položky za víc, než kolik zbývá zaplatit.",
   "bill.split.selectAll": "Vybrat vše",
   "bill.split.selectedCount": "Vybráno:",
   "bill.split.staleSelection":
@@ -110,6 +122,7 @@ export const csBill = {
   "billDetail.notFound": "Účet nebyl nalezen.",
   "billDetail.payments": "Platby",
   "billDetail.payments.empty": "K tomuto účtu zatím neproběhla žádná platba.",
+  "billDetail.payments.numberedAmount": "č. {number} · {amount}",
   "billDetail.title": "Detail účtu",
   "billHistory.empty.description": "Vytvořené účty se zobrazí zde.",
   "billHistory.empty.title": "Zatím žádné účty",

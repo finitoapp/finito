@@ -1,4 +1,5 @@
 import {
+  deriveOverpaymentEntry,
   derivePaymentHistoryRowState,
   formatActivityDayTitle,
   hasAnyIssue,
@@ -10,6 +11,7 @@ import {
 import { paymentStatusLabelKey } from "@payky/app-shared/activity-labels"
 import { groupByDay } from "@payky/app-shared/group-by-day"
 import { useNow } from "@payky/app-shared/use-now"
+import { deriveBillOverpayment } from "@payky/core/modules/bill/bill-utils"
 import { latestPaymentsQuery } from "@payky/core/modules/payment/payment-queries"
 import { refundSummariesQuery } from "@payky/core/modules/refund/refund-queries"
 import { summarizeRefundsByPayment } from "@payky/core/modules/refund/refund-utils"
@@ -24,6 +26,7 @@ import {
 } from "@/features/activity/activity-row.tsx"
 import { PaymentStatusIcon } from "@/features/activity/payment-status-display.tsx"
 import { RefundBadge } from "@/features/shared/refund-badge.tsx"
+import { useOverpaymentInputs } from "@/features/shared/use-overpayment-input.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useInfiniteEvoluQuery } from "@/hooks/use-infinite-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
@@ -50,6 +53,16 @@ export const PaymentHistory = () => {
     sentinelRef,
   } = useInfiniteEvoluQuery([], latestPaymentsQuery)
   const { data: refunds } = useEvoluQuery(refundSummariesQuery)
+  const overpaymentInputs = useOverpaymentInputs(
+    items.flatMap((item) => {
+      const entry = deriveOverpaymentEntry(item)
+      return entry === null ? [] : [entry]
+    })
+  )
+  const hasUnresolvedOverpayment = (item: PaymentHistoryRow) => {
+    const input = overpaymentInputs.get(item.billId ?? item.id)
+    return input !== undefined && deriveBillOverpayment(input).unresolved > 0
+  }
   const refundsByPayment = summarizeRefundsByPayment(refunds)
   // Nothing writes a row when a payment expires, so the clock has to tick on
   // its own or a listed pending payment never becomes Expired.
@@ -75,7 +88,7 @@ export const PaymentHistory = () => {
 
   const dayGroups = groupByDay(items, (item) => new Date(item.createdAt))
   const stateOf = (item: PaymentHistoryRow) =>
-    derivePaymentHistoryRowState(item, now)
+    derivePaymentHistoryRowState(item, now, hasUnresolvedOverpayment(item))
 
   return (
     <div className="flex flex-col gap-4">

@@ -2,6 +2,7 @@ import {
   deriveQerkoPaymentRefund,
   deriveRefundAvailability,
   deriveRefundOptions,
+  deriveRefundOverpayment,
 } from "@payky/app-shared/refund-form"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
 import { eetReversalsByPaymentIdQuery } from "@payky/core/modules/eet/eet-queries"
@@ -25,6 +26,7 @@ import type {
 } from "@payky/core/modules/shared/schema"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useIsSwitchioInstalled } from "../../hooks/use-is-switchio-installed.ts"
+import { useOverpaymentInput } from "../shared/use-overpayment-input.ts"
 
 /**
  * Every query the payment's refund panel and the refund screen read, for
@@ -89,6 +91,15 @@ export function usePaymentRefundState({
   const qerkoPaymentAttempts = useEvoluQuery(
     qerkoPaymentAttemptsByPaymentIdQuery(payment.id)
   ).data
+  const overpaymentInput = useOverpaymentInput(
+    payment.billId === null
+      ? { paymentId: payment.id }
+      : { billId: payment.billId }
+  )
+  const { returnableOverpayment, overpaidBy } = deriveRefundOverpayment(
+    overpaymentInput,
+    payment.id
+  )
   const switchioSource = useEvoluQuery(
     paymentCardSwitchioRefundSourceQuery(payment.id)
   ).data[0]
@@ -134,6 +145,7 @@ export function usePaymentRefundState({
     qerkoPaymentRefundable: qerkoPaymentRefundAmount !== null,
     qerkoTerminalRefundable,
     switchioRefundable,
+    returnableOverpayment,
   })
   // A refund to the card the terminal has not settled: another one could
   // refund the card twice, so the actions refuse it (qerko/0004, refund/0007).
@@ -151,5 +163,8 @@ export function usePaymentRefundState({
     switchioAttempts,
     options,
     cardAttemptRunning,
+    overpaymentInput,
+    returnableOverpayment,
+    overpaidBy,
   }
 }

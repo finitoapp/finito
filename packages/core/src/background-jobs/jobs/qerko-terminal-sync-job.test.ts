@@ -38,6 +38,7 @@ import {
 } from "../../modules/shared/schema.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import {
   createTestDeviceAccountDep,
   testNotificationsDep,
@@ -215,6 +216,7 @@ const setup = async ({
       tableSelfPayRoot: new Uint8Array(32),
       selfPayDefaultRelays: [],
       nostrRelayClient: createNostrRelayClient(),
+      ...testSyncedAppOwner,
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),

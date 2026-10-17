@@ -22,6 +22,16 @@ export const skBill = {
   "bill.collision.title": "Zrušené, ale platby ho pokrývajú",
   "bill.collision.viewPayment": "Zobraziť platbu",
   "bill.collision.viewPayment.numbered": "Zobraziť platbu {number}",
+  "bill.cover.cancel": "Zrušiť",
+  "bill.cover.confirm": "Pokračovať",
+  "bill.cover.overpaid.description":
+    "Tým sa účet uzavrie. Potom zvolíte, či sa peniaze vrátia, či išlo o prepitné, alebo zostanú podniku.",
+  "bill.cover.overpaid.title": "Účet by bol preplatený o {amount}",
+  "bill.cover.paid.description":
+    "Na účte zostane presne toľko, koľko bolo zaplatené.",
+  "bill.cover.paid.title": "Účet by bol zaplatený a uzavretý",
+  "bill.cover.split.description":
+    "Zaplatené peniaze zostanú pri tomto účte a pokryjú, čo na ňom zostane.",
   "bill.discard": "Zahodiť účet",
   "bill.discard.confirm.cancel": "Zachovať účet",
   "bill.discard.confirm.confirm": "Zahodiť",
@@ -70,6 +80,8 @@ export const skBill = {
   "bill.split.destination.new": "Nový účet",
   "bill.split.error": "Rozdelenie účtu sa nepodarilo. Skús to prosím znova.",
   "bill.split.increase.aria": "Pridať jeden kus {name} do rozdelenia",
+  "bill.split.leavesOverpayment":
+    "Peniaze zaplatené za účet na ňom zostávajú, takže z neho nejde oddeliť položky za viac, ako zostáva zaplatiť.",
   "bill.split.selectAll": "Vybrať všetko",
   "bill.split.selectedCount": "Vybrané:",
   "bill.split.staleSelection":
@@ -112,6 +124,7 @@ export const skBill = {
   "billDetail.notFound": "Účet nebol nájdený.",
   "billDetail.payments": "Platby",
   "billDetail.payments.empty": "K tomuto účtu zatiaľ neprebehla žiadna platba.",
+  "billDetail.payments.numberedAmount": "č. {number} · {amount}",
   "billDetail.title": "Detail účtu",
   "billHistory.empty.description": "Vytvorené účty sa zobrazia tu.",
   "billHistory.empty.title": "Zatiaľ žiadne účty",

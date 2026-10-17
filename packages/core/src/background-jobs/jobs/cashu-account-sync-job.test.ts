@@ -25,6 +25,7 @@ import {
 } from "../../modules/shared/key-derivation.ts"
 import { NonNegativeInteger } from "../../modules/shared/schema.ts"
 import { createSparkWalletDep } from "../../spark/spark-wallet.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import {
   createCashuTest,
@@ -55,6 +56,7 @@ const setup = async () => {
       ...createQerkoApiDep({ posId: "test" }),
       ...createQerkoSocketDep(),
       ...createQerkoConnectionStatusDep(),
+      ...testSyncedAppOwner,
       ...createEetApiDep({ ...dateDep, ...fetchDep }),
       ...createSparkWalletDep(),
       tableSelfPayRoot: new Uint8Array(32),

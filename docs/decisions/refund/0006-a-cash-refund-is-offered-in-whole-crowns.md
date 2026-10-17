@@ -15,7 +15,7 @@ developers, slide 58), so it must carry the money actually handed back.
 When a CZK payment is refunded from the cash register, the refund dialog
 prefills the amount rounded to the whole crown, 50 haléř up, or one crown
 lower when that would exceed what is left. Staff record the cash they hand
-back, and the reversal sends that. The limit stays as refund/0005 sets it,
+back, and the reversal sends that. The limit stays as refund/0014 sets it,
 so the rounding the customer paid can still be returned.
 
 ## Alternatives considered

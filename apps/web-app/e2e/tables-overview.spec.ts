@@ -1,10 +1,21 @@
 import { addCatalogItem, addTable } from "./support/bill.ts"
-import { expect, test } from "./support/fixtures.ts"
-import { nameParam, translate } from "./support/i18n.ts"
+import { expect, screenshotDir, test } from "./support/fixtures.ts"
+import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
+  gotoPage,
   gotoPosOverview,
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
+import {
+  confirmRefund,
+  openOverpaymentReturn,
+  overpaymentCard,
+} from "./support/overpayment.ts"
+import {
+  payAllOfTheBeer,
+  routeFakeNostrRelays,
+  seedPizzaAndBeerBill,
+} from "./support/self-pay.ts"
 
 test("shows a free table, starts a cart from it, then shows it occupied", async ({
   seededPage: page,
@@ -237,5 +248,88 @@ test("a table with multiple open bills lists each one, and each links straight t
     await expect(
       page.getByRole("button", { name: translate("en", "bill.table.aria") })
     ).toContainText("Table B")
+  })
+})
+
+test("a self-paid bill whose lines staff remove leaves the overview and its overpayment goes back", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress, billId } = await seedPizzaAndBeerBill(page, "Table 9")
+  const tableTile = page
+    .getByTestId("table-tile")
+    .filter({ hasText: "Table 9" })
+
+  await test.step("a guest pays the beer and the table reads partly paid", async () => {
+    const guest = await context.newPage()
+    await guest.goto(guestAddress)
+    await payAllOfTheBeer(page, guest)
+    await guest.close()
+    await gotoPosOverview(page, "en")
+    await expect(tableTile).toContainText(
+      translate("en", "tables.tile.partiallyPaid"),
+      { timeout: 30_000 }
+    )
+  })
+
+  await test.step("staff remove every line after the question", async () => {
+    await page.goto(`/bill?billId=${billId}`)
+    await page.getByTestId("bill-summary-trigger").click()
+    await page
+      .getByTestId("bill-summary-panel")
+      .getByRole("button", { name: translate("en", "bill.summary.clear") })
+      .click()
+    const question = page.getByRole("alertdialog")
+    await expect(question).toContainText(
+      translateParams("en", "bill.cover.overpaid.title", { amount: "$45.00" })
+    )
+    await question
+      .getByRole("button", { name: translate("en", "bill.cover.confirm") })
+      .click()
+    await page.waitForURL(/\/activity\/bills\//u)
+  })
+
+  await test.step("the card offers the three ways", async () => {
+    const card = overpaymentCard(page)
+    await expect(card).toContainText("$45.00")
+    for (const key of [
+      "overpayment.action.return",
+      "overpayment.action.tip",
+      "overpayment.action.keep",
+    ] as const) {
+      await expect(
+        card.getByRole("button", { name: translate("en", key) })
+      ).toBeVisible()
+    }
+    await page.screenshot({
+      path: `${screenshotDir}/iam-231-overpaid-after-removal.png`,
+      fullPage: true,
+    })
+  })
+
+  await test.step("the bill leaves the tables overview", async () => {
+    await gotoPosOverview(page, "en")
+    await expect(tableTile).toContainText(translate("en", "tables.tile.free"))
+    await expect(tableTile).not.toContainText(
+      translate("en", "tables.tile.partiallyPaid")
+    )
+  })
+
+  await test.step("returning the money clears it", async () => {
+    await gotoPage(page, `/activity/bills/${billId}`, "en", "billDetail.title")
+    const dialog = await openOverpaymentReturn(page, "en")
+    await expect(
+      dialog.getByLabel(translate("en", "refund.dialog.amount.label"))
+    ).toHaveValue(/^45([.,]00)?$/u)
+    await confirmRefund(dialog)
+    await expect(overpaymentCard(page)).toContainText(
+      translate("en", "overpayment.resolved.title")
+    )
+    await page.screenshot({
+      path: `${screenshotDir}/iam-231-overpayment-returned.png`,
+      fullPage: true,
+    })
   })
 })

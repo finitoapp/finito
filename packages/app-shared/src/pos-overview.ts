@@ -1,6 +1,7 @@
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import {
   claimedPaymentIdSet,
+  deriveOpenBillTableId,
   derivePendingPaymentIds,
 } from "@payky/core/modules/bill/bill-utils"
 import {
@@ -54,11 +55,13 @@ export const buildBillRows = (
     .sort((a, b) => b.bill.displayNumber - a.bill.displayNumber)
 
 export const groupBillRowsByTableId = (
-  rows: ReadonlyArray<BillWithStats>
+  rows: ReadonlyArray<BillWithStats>,
+  liveTableIds: ReadonlySet<TableId>
 ): ReadonlyMap<TableId | null, ReadonlyArray<BillWithStats>> => {
   const map = new Map<TableId | null, ReadonlyArray<BillWithStats>>()
   for (const row of rows) {
-    map.set(row.bill.tableId, [...(map.get(row.bill.tableId) ?? []), row])
+    const tableId = deriveOpenBillTableId(row.bill.tableId, liveTableIds)
+    map.set(tableId, [...(map.get(tableId) ?? []), row])
   }
   return map
 }

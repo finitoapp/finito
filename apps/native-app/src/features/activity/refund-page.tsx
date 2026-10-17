@@ -3,6 +3,7 @@ import { derivePaymentDetailState } from "@payky/app-shared/activity-detail"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { qerkoStepKeys } from "@payky/app-shared/qerko-terminal-flow"
 import {
+  deriveGoodsPartOfReturn,
   deriveRefundAmountText,
   deriveRefundForm,
   describeQerkoRefundError,
@@ -46,7 +47,7 @@ import {
 import { chooseSwitchioRefundKind } from "@payky/core/modules/refund/refund-switchio-utils"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
 import type { LucideIcon } from "lucide-react-native"
@@ -55,6 +56,7 @@ import CreditCard from "lucide-react-native/icons/credit-card"
 import ExternalLink from "lucide-react-native/icons/external-link"
 import Minus from "lucide-react-native/icons/minus"
 import Plus from "lucide-react-native/icons/plus"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import {
   type ReactNode,
   Suspense,
@@ -113,12 +115,15 @@ import {
 } from "./use-payment-refund-state.ts"
 
 /** The `choice` search param the payment's collision opens the screen with. */
-const RefundChoiceParam = z.enum(["whole", "part", "tip"]).optional()
+const RefundChoiceParam = z
+  .enum(["overpayment", "whole", "part", "tip"])
+  .optional()
 
 /**
  * `/activity/[paymentId]/refund`: the one screen every refund starts from
- * (refund-flow): what to refund (the whole payment, a part of the goods or
- * the tip alone), how much of a part, and how the money goes back, each
+ * (refund-flow): what to refund (the money above the bill, the whole
+ * payment, a part of the goods or the tip alone), how much of the money above
+ * the bill or of a part, and how the money goes back, each
  * method saying what confirming it does. Its route asks for `refund`
  * (access/0002), so its actions ask nothing more. `?choice=` starts it on
  * a choice other than the default, as the payment's collision does.
@@ -240,6 +245,7 @@ const refundMethodIcons = {
 
 /** The success toast of each choice refunded by a recorded method. */
 const recordedRefundDoneKeys = {
+  overpayment: "refund.created",
   whole: "refund.created",
   part: "refund.created",
   tip: "refund.tipCreated",
@@ -272,6 +278,9 @@ function RefundForm({
     qerkoAttempts,
     switchioSource,
     options,
+    overpaymentInput,
+    returnableOverpayment,
+    overpaidBy,
   } = usePaymentRefundState({ payment, excess, isPaid, paymentMethodKinds })
   const { remainingAmount, refundableTipAmount, refundableLines } = availability
   const money = (value: NonNegativeInteger) =>
@@ -299,13 +308,19 @@ function RefundForm({
           choice,
           method: pickedMethod ?? options.defaultMethod ?? "outside",
         })
-  const mode = options.partModes.includes(pickedMode) ? pickedMode : "amount"
+  const mode =
+    choice !== "overpayment" && options.partModes.includes(pickedMode)
+      ? pickedMode
+      : "amount"
   /** The amount field and the form as they stand for a method. */
   const formOf = (forMethod: RefundMethod) => {
     const text = deriveRefundAmountText({
       typedAmountText,
       remainingAmount,
-      excess,
+      returnableOverpayment:
+        choice === "overpayment"
+          ? returnableOverpayment
+          : NonNegativeInteger(0),
       method: forMethod,
       currency: payment.currency,
     })
@@ -325,12 +340,20 @@ function RefundForm({
   const refundAmountOf = (forMethod: RefundMethod) =>
     choiceOption === undefined
       ? null
-      : choiceOption.choice === "part"
+      : choiceOption.choice === "part" || choiceOption.choice === "overpayment"
         ? formOf(forMethod).refundAmount
         : choiceOption.amount
   const form = formOf(method ?? "outside")
   const { amountText } = form
   const refundAmount = refundAmountOf(method ?? "outside")
+  const goodsPartOfReturn =
+    choice === "overpayment"
+      ? deriveGoodsPartOfReturn({
+          overpaymentInput,
+          paymentId: payment.id,
+          amount: refundAmount,
+        })
+      : NonNegativeInteger(0)
   const switchioRefundKind = useSwitchioRefundKind(
     choiceOption?.choice === "whole" &&
       options.methods.whole.includes("cardSwitchio") &&
@@ -385,6 +408,7 @@ function RefundForm({
 
   const changeChoice = (next: RefundChoice) => {
     setPickedChoice(next)
+    setTypedAmountText(null)
     if (method !== null) {
       setPickedMethod(selectRefundMethod({ options, choice: next, method }))
     }
@@ -461,7 +485,11 @@ function RefundForm({
       const result = await run(
         refundPayment(
           "amount" in what
-            ? { ...base, amount: what.amount }
+            ? {
+                ...base,
+                amount: what.amount,
+                purpose: choice === "overpayment" ? "overpayment" : "goods",
+              }
             : { ...base, lines: what.lines }
         )
       )
@@ -583,12 +611,17 @@ function RefundForm({
           </FieldSet>
         ) : null}
 
-        {choice === "part" ? (
+        {choice === "part" || choice === "overpayment" ? (
           <FieldSet>
             <FieldLegend variant="label">
               {t("refund.page.amount.label")}
             </FieldLegend>
-            {refundableTipAmount > 0 ? (
+            {choice === "overpayment" && overpaidBy > 0 ? (
+              <Text fontSize={fontSize.sm} fontWeight={fontWeight.semibold}>
+                {t("overpayment.title", { amount: money(overpaidBy) })}
+              </Text>
+            ) : null}
+            {choice === "part" && refundableTipAmount > 0 ? (
               <Text
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
@@ -599,7 +632,7 @@ function RefundForm({
                 })}
               </Text>
             ) : null}
-            {options.partModes.includes("items") ? (
+            {choice === "part" && options.partModes.includes("items") ? (
               <ToggleGroup
                 aria-label={t("refund.page.amount.label")}
                 value={mode}
@@ -634,6 +667,15 @@ function RefundForm({
                       })
                     : undefined}
                 </FieldError>
+                {goodsPartOfReturn > 0 ? (
+                  <Alert variant="warning" icon={TriangleAlert}>
+                    <AlertDescription>
+                      {t("refund.dialog.goodsPart", {
+                        amount: money(goodsPartOfReturn),
+                      })}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
               </Field>
             ) : (
               <YStack gap={8}>

@@ -248,14 +248,19 @@ export interface SalesKpis {
 export const salesKpis = ({
   hourRows,
   refundRows,
+  overpaymentTips,
   accountCurrency,
 }: {
   readonly hourRows: ReadonlyArray<SalesByHourRow>
   readonly refundRows: ReadonlyArray<RefundsRow>
+  readonly overpaymentTips: ReadonlyArray<{
+    readonly currency: Currency
+    readonly amount: number
+  }>
   readonly accountCurrency: Currency
 }): ReadonlyArray<SalesKpis> =>
   orderCurrencies(
-    [...hourRows, ...refundRows].map((row) => row.currency),
+    [...hourRows, ...refundRows, ...overpaymentTips].map((row) => row.currency),
     accountCurrency
   ).map((currency) => {
     const sales = hourRows
@@ -274,7 +279,12 @@ export const salesKpis = ({
       salesCount: sales.count,
       averageSale:
         sales.count === 0 ? 0 : Math.round(sales.gross / sales.count),
-      tips: sales.tips - refundSum(1),
+      tips:
+        sales.tips -
+        refundSum(1) +
+        overpaymentTips
+          .filter((tip) => tip.currency === currency)
+          .reduce((sum, tip) => sum + tip.amount, 0),
       tipsReceived: sales.tips,
       refundCount: refunds.reduce((sum, row) => sum + row.count, 0),
       refundAmount: refunds.reduce((sum, row) => sum + row.amount, 0),

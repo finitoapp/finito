@@ -16,6 +16,8 @@ import {
   calculateBillLineSummaries,
   createBillLineSummaryId,
   deriveBillLineSummaryDiff,
+  deriveBillSummaryTotal,
+  deriveBillTotalAfterLines,
   getBillLineSummaryUnitAmount,
   getLatestCatalogItemSummary,
 } from "./bill-line-utils.ts"
@@ -99,6 +101,59 @@ describe("bill line summaries", () => {
     )
     expect(createBillLineSummaryId({ ...identity, type: "tip" })).not.toBe(
       createBillLineSummaryId(identity)
+    )
+  })
+})
+
+describe("deriveBillTotalAfterLines", () => {
+  const items: ReadonlyArray<ItemRow> = ["coffee", "cake"].map((name) => ({
+    id: `item-${name}` as ItemId,
+    catalogItemId: null,
+    name: NonEmptyString255(name),
+    description: null,
+    currency: "CZK",
+    unitAmount: NonNegativeInteger(0),
+    taxRateId: null,
+  }))
+  const line = (
+    name: string,
+    kind: BillLineRow["kind"],
+    quantity: number,
+    totalAmount: number
+  ): BillLineRow => ({
+    id: `line-${name}-${kind}-${quantity}` as BillLineId,
+    billId,
+    deviceId: null,
+    catalogItemId: null,
+    itemId: `item-${name}` as ItemId,
+    type: "manualAmount",
+    kind,
+    quantity: PositiveNumber(quantity),
+    totalAmount: NonNegativeInteger(totalAmount),
+  })
+  const threeCoffees = [line("coffee", "add", 3, 1_000)]
+
+  test.each([
+    { edit: "a partial removal", lines: [line("coffee", "remove", 1, 333)] },
+    {
+      edit: "a removal that leaves a rounding remainder",
+      lines: [line("coffee", "remove", 3, 999)],
+    },
+    {
+      edit: "a removal of more than is left",
+      lines: [line("coffee", "remove", 2, 1_200)],
+    },
+    { edit: "an added line", lines: [line("cake", "add", 1, 450)] },
+  ])("totals $edit as the summaries would", ({ lines }) => {
+    expect(
+      deriveBillTotalAfterLines(
+        calculateBillLineSummaries(threeCoffees, items),
+        lines
+      )
+    ).toBe(
+      deriveBillSummaryTotal(
+        calculateBillLineSummaries([...threeCoffees, ...lines], items)
+      )
     )
   })
 })

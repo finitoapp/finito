@@ -15,7 +15,14 @@ import { useNow } from "@payky/app-shared/use-now"
 import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client"
 import { claimedPaymentsByBillIdQuery } from "@payky/core/modules/bill/bill-coverage-queries"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
-import type { BillId } from "@payky/core/modules/bill/bill-types"
+import type {
+  BillId,
+  OverpaymentScope,
+} from "@payky/core/modules/bill/bill-types"
+import {
+  deriveBillOverpayment,
+  deriveOverpaymentTip,
+} from "@payky/core/modules/bill/bill-utils"
 import {
   calculateTaxRecap,
   hasTaxableLines,
@@ -38,7 +45,10 @@ import {
 } from "@payky/core/modules/payment/payment-queries"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-number/payment-number-queries"
-import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import {
+  type FiatCurrency,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { parseISO } from "date-fns"
@@ -98,6 +108,7 @@ import {
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
+import { useOverpaymentInput } from "../shared/use-overpayment-input.ts"
 import { BillStatusBadge } from "./bill-status-display.tsx"
 import {
   BillCoverageWarning,
@@ -106,6 +117,7 @@ import {
   OptionalRow,
   Technical,
 } from "./detail-parts.tsx"
+import { OverpaymentCard } from "./overpayment-card.tsx"
 import { PaymentQerkoAttempts } from "./payment-qerko-attempts.tsx"
 import { PaymentRefunds } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
@@ -195,7 +207,6 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
   const {
     status,
     hasCancellationCollision,
-    hasExcessSettlementCollision,
     excess,
     receivedTipAmount,
     paymentMethodKinds,
@@ -290,6 +301,15 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                 })}
               </Text>
             ) : null}
+            <PaymentDetailOverpaymentTip
+              scope={
+                payment.billId === null
+                  ? { paymentId }
+                  : { billId: payment.billId }
+              }
+              paymentId={paymentId}
+              currency={payment.currency}
+            />
             {paymentMethodKinds.length > 0 ? (
               <XStack flexWrap="wrap" gap={12} rowGap={4}>
                 {paymentMethodKinds.map((kind) => (
@@ -343,24 +363,29 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
               />
             </CollisionAlert>
           ) : null}
-          {hasExcessSettlementCollision ? (
-            <CollisionAlert
-              title={t("paymentDetail.excessCollision.title")}
-              description={t("paymentDetail.excessCollision.description")}
-            >
-              <Button
-                size="lg"
-                label={t("paymentDetail.excessCollision.acknowledge")}
-                pending={collision.excessResolvePending}
-                onPress={() => void collision.acknowledgeExcess()}
-              />
-              <Button
-                size="lg"
-                variant="outline"
-                label={t("paymentDetail.collision.refund")}
-                onPress={collision.refund}
-              />
-            </CollisionAlert>
+          {payment.billId === null ? (
+            <OverpaymentCard
+              scope={{ paymentId }}
+              billLabel={
+                paymentNumber === undefined
+                  ? t("paymentHistory.payment")
+                  : t("paymentDetail.number", {
+                      number: paymentNumber.serialNumber,
+                    })
+              }
+              currency={payment.currency}
+              payments={[
+                {
+                  id: payment.id,
+                  number: paymentNumber?.serialNumber ?? null,
+                  amount: payment.amount,
+                  methods: paymentMethodKinds,
+                  createdAt: payment.createdAt,
+                  canceledAt: payment.canceledAt,
+                  confirmedPaidAt: payment.confirmedPaidAt,
+                },
+              ]}
+            />
           ) : null}
         </CardContent>
       </Card>
@@ -529,6 +554,36 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
   )
 }
 
+function PaymentDetailOverpaymentTip({
+  scope,
+  paymentId,
+  currency,
+}: {
+  readonly scope: OverpaymentScope
+  readonly paymentId: PaymentId
+  readonly currency: FiatCurrency
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const input = useOverpaymentInput(scope)
+  const tip =
+    input === undefined
+      ? 0
+      : deriveOverpaymentTip(deriveBillOverpayment(input), paymentId)
+  if (tip === 0) return null
+  return (
+    <Text
+      fontSize={fontSize.sm}
+      lineHeight={fontSize.sm}
+      color="muted-foreground"
+    >
+      {t("paymentDetail.overpaymentTip", {
+        amount: formatMoney({ value: tip, currency }, locale),
+      })}
+    </Text>
+  )
+}
+
 function PaymentBillCard({
   billId,
   paymentId,
@@ -559,6 +614,7 @@ function PaymentBillCard({
   const billStatus = useBillStatus(billId)
   const { claimedSum, coverage } = useBillCoverage(billId)
   const lineDiff = useBillLineSummaryDiff(paymentId, billId)
+  const overpaymentInput = useOverpaymentInput({ billId })
   const claimedPayments = useEvoluQuery(
     claimedPaymentsByBillIdQuery(billId)
   ).data
@@ -580,6 +636,10 @@ function PaymentBillCard({
     claimedSum,
     lineDiff,
     otherClaimedPaymentCount: otherClaimedPaymentIds.length,
+    unresolvedOverpayment:
+      overpaymentInput === undefined
+        ? 0
+        : deriveBillOverpayment(overpaymentInput).unresolved,
   })
   const taxRecapRows = calculateTaxRecap(summaries, taxRates)
 
@@ -682,6 +742,19 @@ function PaymentBillCard({
             currency={bill.currency}
             reason={notice.reason satisfies BillCoverageMismatchReason | null}
           >
+            {notice.warning.type === "overpaid" ? (
+              <Button
+                size="lg"
+                variant="outline"
+                label={t("overpayment.resolveOnBill")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/activity/bills/[billId]",
+                    params: { billId },
+                  })
+                }
+              />
+            ) : null}
             {notice.reason === "multiplePayments"
               ? otherClaimedPaymentIds.map((otherPaymentId, index) => (
                   <Button

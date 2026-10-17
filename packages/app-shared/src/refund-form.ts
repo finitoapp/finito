@@ -2,7 +2,14 @@ import type { sqliteTrue } from "@evolu/common"
 import { describeQerkoPaymentError } from "@payky/app-shared/qerko-terminal-flow"
 import type { QerkoNotStartedReason } from "@payky/core/integrations/qerko/qerko-client"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
+import {
+  type BillOverpaymentInput,
+  deriveBillOverpayment,
+  deriveRefundOverpaymentAmount,
+  deriveReturnableOverpayment,
+} from "@payky/core/modules/bill/bill-utils"
 import type { ItemLineType } from "@payky/core/modules/item/item-types"
+import type { PaymentId } from "@payky/core/modules/payment/payment-types"
 import type { PaymentLineId } from "@payky/core/modules/payment-line/payment-line-types"
 import type {
   RefundPaymentError,
@@ -19,6 +26,7 @@ import {
   deriveRefundableTipAmount,
   deriveRefundPrefillAmount,
   type RefundableLine,
+  returnedOverpaymentOf,
   sumGoodsRefundAmounts,
   sumRefundAmounts,
 } from "@payky/core/modules/refund/refund-utils"
@@ -32,6 +40,9 @@ import {
   PositiveNumber,
 } from "@payky/core/modules/shared/schema"
 import type { TranslationKey } from "./i18n/resources.ts"
+import type { createTranslate } from "./i18n/translate.ts"
+
+type Translate = ReturnType<typeof createTranslate>
 
 /** The refund form's two ways to say what comes back (refund/0002). */
 export type RefundMode = "amount" | "items"
@@ -54,8 +65,30 @@ export const refundMethodLabelKey = {
   outside: "paymentDetail.refunds.method.outside",
 } satisfies Record<RefundMethod, TranslationKey>
 
+export const returnedOverpaymentLabel = ({
+  refund,
+  t,
+  format,
+}: {
+  readonly refund: {
+    readonly amount: NonNegativeInteger
+    readonly isTip: typeof sqliteTrue | null
+    readonly overpaymentAmount: NonNegativeInteger | null
+  }
+  readonly t: Translate
+  readonly format: (value: NonNegativeInteger) => string
+}): string => {
+  const returned = returnedOverpaymentOf(refund)
+  return returned < refund.amount
+    ? t("paymentDetail.refunds.overpaymentIncluded", {
+        amount: format(returned),
+      })
+    : t("paymentDetail.refunds.overpayment")
+}
+
 export const refundErrorKeys = {
   PaymentNotFound: "paymentDetail.notFound",
+  BillNotFound: "billDetail.notFound",
   RefundPaymentNotPaid: "refund.error.notPaid",
   RefundAmountInvalid: "refund.error.amount",
   RefundItemsUnavailable: "refund.error.items",
@@ -205,17 +238,62 @@ export const deriveRefundAvailability = ({
   }
 }
 
+export const deriveRefundOverpayment = (
+  overpaymentInput: BillOverpaymentInput | undefined,
+  paymentId: PaymentId
+) => {
+  if (overpaymentInput === undefined) {
+    return {
+      returnableOverpayment: NonNegativeInteger(0),
+      overpaidBy: NonNegativeInteger(0),
+    }
+  }
+  const returnableOverpayment = deriveReturnableOverpayment(
+    overpaymentInput,
+    paymentId
+  )
+  return {
+    returnableOverpayment,
+    overpaidBy: NonNegativeInteger(
+      Math.min(
+        returnableOverpayment,
+        deriveBillOverpayment(overpaymentInput).unresolved
+      )
+    ),
+  }
+}
+
+export const deriveGoodsPartOfReturn = ({
+  overpaymentInput,
+  paymentId,
+  amount,
+}: {
+  readonly overpaymentInput: BillOverpaymentInput | undefined
+  readonly paymentId: PaymentId
+  readonly amount: NonNegativeInteger | null
+}): NonNegativeInteger =>
+  overpaymentInput === undefined || amount === null
+    ? NonNegativeInteger(0)
+    : NonNegativeInteger(
+        amount -
+          deriveRefundOverpaymentAmount(overpaymentInput, {
+            paymentId,
+            amount,
+            kind: { type: "return" },
+          })
+      )
+
 /** The amount field's text: what staff typed, else the prefill for the method (refund/0005, 0012). */
 export const deriveRefundAmountText = ({
   typedAmountText,
   remainingAmount,
-  excess,
+  returnableOverpayment,
   method,
   currency,
 }: {
   readonly typedAmountText: string | null
   readonly remainingAmount: NonNegativeInteger
-  readonly excess: NonNegativeInteger
+  readonly returnableOverpayment: NonNegativeInteger
   readonly method: RefundMethod
   readonly currency: FiatCurrency
 }): string =>
@@ -223,7 +301,7 @@ export const deriveRefundAmountText = ({
   minorUnitsToDecimalString({
     value: deriveRefundPrefillAmount({
       remainingAmount,
-      excess,
+      returnableOverpayment,
       method,
       currency,
     }),
@@ -307,14 +385,15 @@ export const stepRefundQuantity = (
 }
 
 /**
- * What the refund screen gives back: everything left, goods and tip (`whole`);
- * goods only, by amount or items (`part`, refund/0011, 0005); or the whole tip
- * alone (`tip`).
+ * What the refund screen gives back: the money above the bill (`overpayment`,
+ * refund/0014); everything left, goods and tip (`whole`); goods only, by
+ * amount or items (`part`, refund/0011, 0005); or the whole tip alone (`tip`).
  */
-export type RefundChoice = "whole" | "part" | "tip"
+export type RefundChoice = "overpayment" | "whole" | "part" | "tip"
 
 /** How the refund screen names each of its choices. */
 export const refundChoiceLabelKey = {
+  overpayment: "refund.page.choice.overpayment",
   whole: "refund.page.choice.whole",
   part: "refund.page.choice.part",
   tip: "refund.page.choice.tip",
@@ -336,8 +415,9 @@ export const refundOptionMethodLabelKey = {
 export interface RefundChoiceOption {
   readonly choice: RefundChoice
   /**
-   * What the choice returns: for `whole` the goods left and the tip, for
-   * `part` the most it may (the goods left), for `tip` the tip.
+   * What the choice returns: for `overpayment` what the payment can return
+   * of it, for `whole` the goods left and the tip, for `part` the most it may
+   * (the goods left), for `tip` the tip.
    */
   readonly amount: NonNegativeInteger
   /** The tip `whole` returns beside the goods, 0 when none is left. */
@@ -377,17 +457,18 @@ const arrivalRefundMethods = [
  * already reads: which of whole, part and tip are left, the methods each
  * allows, and where the screen starts.
  *
- * - `whole` while goods are left (or Qerko can still cancel the whole
- *   payment), with the tip if it was not refunded; `part` while goods are
- *   left; `tip` while the tip is (refund/0011). With only the tip left, only
- *   `tip` is offered.
+ * - `overpayment` while goods are left and the payment can return some of
+ *   the bill's overpayment (refund/0014); `whole` while goods are left (or
+ *   Qerko can still cancel the whole payment), with the tip if it was not
+ *   refunded; `part` while goods are left; `tip` while the tip is
+ *   (refund/0011). With only the tip left, only `tip` is offered.
  * - The cash register and outside the app suit every choice. A refund to the
  *   card through SwitchioPay (refund/0007, 0008) or the Qerko terminal
  *   (qerko/0004, 0006) suits every choice where this device can make it.
  *   A Qerko payment is refunded only whole, and only while nothing of it was
  *   refunded (qerko/0010).
- * - It starts on `whole`, by the method the payment came in (the card back to
- *   the card), else outside the app.
+ * - It starts on `overpayment` when offered, else on `whole`, by the method
+ *   the payment came in (the card back to the card), else outside the app.
  */
 export const deriveRefundOptions = ({
   paymentMethodKinds,
@@ -395,6 +476,7 @@ export const deriveRefundOptions = ({
   qerkoPaymentRefundable,
   qerkoTerminalRefundable,
   switchioRefundable,
+  returnableOverpayment = NonNegativeInteger(0),
 }: {
   /** The kinds of the transactions that settled the payment. */
   readonly paymentMethodKinds: ReadonlyArray<string>
@@ -415,6 +497,8 @@ export const deriveRefundOptions = ({
    * can run SwitchioPay.
    */
   readonly switchioRefundable: boolean
+  /** What the payment can return of the bill's overpayment (`deriveRefundOverpayment`). */
+  readonly returnableOverpayment?: NonNegativeInteger
 }): RefundOptions => {
   const {
     remainingAmount,
@@ -425,11 +509,19 @@ export const deriveRefundOptions = ({
   } = availability
   const tipLeft = canRefundTip ? refundableTipAmount : NonNegativeInteger(0)
   const offered = {
+    overpayment: canRefund && returnableOverpayment > 0,
     whole: canRefund || qerkoPaymentRefundable,
     part: canRefund,
     tip: canRefundTip,
   } satisfies Record<RefundChoice, boolean>
   const choices = [
+    {
+      choice: "overpayment",
+      amount: NonNegativeInteger(
+        Math.min(returnableOverpayment, remainingAmount)
+      ),
+      tipAmount: NonNegativeInteger(0),
+    },
     {
       choice: "whole",
       amount: NonNegativeInteger(remainingAmount + tipLeft),
@@ -454,6 +546,7 @@ export const deriveRefundOptions = ({
       ? refundMethodOrder.filter((method) => allowed[method](choice))
       : []
   const methods = {
+    overpayment: methodsOf("overpayment"),
     whole: methodsOf("whole"),
     part: methodsOf("part"),
     tip: methodsOf("tip"),

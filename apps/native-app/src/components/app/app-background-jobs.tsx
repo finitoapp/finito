@@ -5,6 +5,7 @@ import {
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
+import { createAppOwnerSync } from "@payky/core/evolu/app-owner-sync"
 import type {
   DeviceAccountId,
   DeviceEvolu,
@@ -72,6 +73,7 @@ const createJobDeps = ({
   return {
     evolu,
     evoluOwner: evolu.appOwner,
+    appOwnerSync: createAppOwnerSync(nativeRun.deps.syncState, evolu),
     deviceEvolu,
     deviceAccountId,
     deviceId,

@@ -33,6 +33,7 @@ import { useStore } from "jotai"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { accountAtom } from "@/atoms/account.ts"
+import { useCoveringEditQuestion } from "@/features/bill/use-covering-edit-question.ts"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConsole } from "@/hooks/use-console.ts"
@@ -98,10 +99,13 @@ export function useCartBill({
   const jotaiStore = useStore()
   const { t } = useTranslation()
   const { require } = useRequirePermission()
+  const coveringEdit = useCoveringEditQuestion(currency)
   /** The one place the cart checks `discard`, on the lines about to be written. */
-  const mayWrite = async (lines: ReadonlyArray<Pick<CartLine, "kind">>) =>
-    !linesNeedDiscard(lines) ||
-    (await require("discard", "access.action.removeLines"))
+  const mayWrite = async (lines: ReadonlyArray<CartLine>) => {
+    if (!linesNeedDiscard(lines)) return { type: "staysOpen" } as const
+    if (!(await require("discard", "access.action.removeLines"))) return null
+    return coveringEdit.ask(billId, lines, "edit")
+  }
   // The stacks live in refs, with only the two derived booleans in state to
   // drive re-renders. They're read from callbacks that outlive the render
   // that created them — `bill-page.tsx`'s undo toast is clicked seconds
@@ -292,8 +296,19 @@ export function useCartBill({
     totalAmount: NonNegativeInteger
   ) =>
     runQueued(async () => {
-      if (!(await mayWrite([{ kind: "remove" }]))) return false
       const { device } = await jotaiStore.get(accountAtom)
+      const line: CartLine = {
+        billId,
+        deviceId: device.id,
+        catalogItemId: summary.catalogItemId,
+        itemId: summary.itemId,
+        type: summary.type,
+        kind: "remove",
+        quantity,
+        totalAmount,
+      }
+      const outcome = await mayWrite([line])
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(
         appendRemoveBillLine({
@@ -311,18 +326,11 @@ export function useCartBill({
         return false
       }
 
-      record([
-        {
-          billId,
-          deviceId: device.id,
-          catalogItemId: summary.catalogItemId,
-          itemId: summary.itemId,
-          type: summary.type,
-          kind: "remove",
-          quantity,
-          totalAmount,
-        },
-      ])
+      if (outcome.type !== "staysOpen") {
+        await coveringEdit.followUp(billId, outcome)
+        return false
+      }
+      record([line])
 
       return true
     })
@@ -353,7 +361,8 @@ export function useCartBill({
         totalAmount: summary.totalAmount,
       }))
 
-      if (!(await mayWrite(lines))) return false
+      const outcome = await mayWrite(lines)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
@@ -363,6 +372,10 @@ export function useCartBill({
         return false
       }
 
+      if (outcome.type !== "staysOpen") {
+        await coveringEdit.followUp(billId, outcome)
+        return false
+      }
       record(lines)
 
       return true
@@ -406,7 +419,8 @@ export function useCartBill({
       if (entry === undefined) return false
 
       const lines = entry.map(invertLine)
-      if (!(await mayWrite(lines))) return false
+      const outcome = await mayWrite(lines)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
@@ -420,6 +434,7 @@ export function useCartBill({
         ...redoStackRef.current,
         entry,
       ])
+      await coveringEdit.followUp(billId, outcome)
 
       return true
     })
@@ -429,7 +444,8 @@ export function useCartBill({
       const entry = redoStackRef.current.at(-1)
       if (entry === undefined) return false
 
-      if (!(await mayWrite(entry))) return false
+      const outcome = await mayWrite(entry)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, entry))
       if (!result.ok) {
@@ -443,6 +459,7 @@ export function useCartBill({
         [...undoStackRef.current, entry],
         redoStackRef.current.slice(0, -1)
       )
+      await coveringEdit.followUp(billId, outcome)
 
       return true
     })

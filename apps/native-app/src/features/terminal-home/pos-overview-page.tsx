@@ -107,7 +107,10 @@ export function PosOverviewPage() {
   }, [])
 
   const rows = useMemo(() => buildBillRows(openBills), [openBills])
-  const rowsByTableId = useMemo(() => groupBillRowsByTableId(rows), [rows])
+  const rowsByTableId = useMemo(
+    () => groupBillRowsByTableId(rows, new Set(tables.map(({ id }) => id))),
+    [rows, tables]
+  )
   const tiles = tables.map((table) => ({
     table,
     rows: rowsByTableId.get(table.id) ?? [],

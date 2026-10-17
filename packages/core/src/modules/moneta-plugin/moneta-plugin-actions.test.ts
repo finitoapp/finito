@@ -13,10 +13,10 @@ import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { saveFiatBankAccount } from "../account/account-actions.ts"
 import type { AccountId } from "../account/account-types.ts"
 import { loadBillStatus } from "../bill/bill-guards.ts"
-import {
-  acknowledgePaymentExcessSettlement,
-  createPayment,
-} from "../payment/payment-actions.ts"
+import { createPayment } from "../payment/payment-actions.ts"
+import type { PaymentId } from "../payment/payment-types.ts"
+import { activeClaimedTransactionsByPaymentIdQuery } from "../reconciliation-claim/reconciliation-claim-queries.ts"
+import { calculatePaymentExcess } from "../shared/claimed-amount.ts"
 import {
   DateStringSchema,
   IbanSchema,
@@ -175,6 +175,17 @@ const createIbanPayment = async (
       },
     })
   )
+
+const paymentExcess = async (
+  context: Awaited<ReturnType<typeof setUp>>,
+  paymentId: PaymentId
+) =>
+  calculatePaymentExcess({
+    claims: await context.evolu.loadQuery(
+      activeClaimedTransactionsByPaymentIdQuery(paymentId)
+    ),
+    amount: NonNegativeInteger(19_950),
+  })
 
 const range = {
   fromDate: DateStringSchema.decode("2026-05-25"),
@@ -509,9 +520,7 @@ describe("syncMonetaTransactions", () => {
       value: { recordedCount: 2, claimedPaymentIds: [paymentId, paymentId] },
     })
     await expect(context.evolu.loadQuery(claimsQuery)).resolves.toHaveLength(2)
-    await expect(
-      context.run(acknowledgePaymentExcessSettlement(paymentId))
-    ).resolves.toMatchObject({ ok: true })
+    expect(await paymentExcess(context, paymentId)).toBe(19_950)
   })
 
   test("a transfer synced after its payment was paid claims it as overpaid", async () => {
@@ -530,9 +539,7 @@ describe("syncMonetaTransactions", () => {
       ok: true,
       value: { recordedCount: 1, claimedPaymentIds: [paymentId] },
     })
-    await expect(
-      context.run(acknowledgePaymentExcessSettlement(paymentId))
-    ).resolves.toMatchObject({ ok: true })
+    expect(await paymentExcess(context, paymentId)).toBe(19_950)
   })
 
   test("two transfers recorded before their payment existed both claim it", async () => {

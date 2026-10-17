@@ -88,6 +88,13 @@ where it is specified; the specification wins over this page.
   (`docs/payment-sync.md`).
 - **Coverage** — `paid`/`underpaid`/`overpaid`, derived for a **bill** only
   by comparing its claimed money with its total. A payment has no coverage.
+- **Unresolved overpayment** — the money a bill's payments brought above its
+  total that no return, tip or kept amount answers yet. Derived, never
+  stored. A payment without a bill counts as its own bill.
+- **Overpayment resolution** (`overpayment-resolution`) — staff saying where
+  money above a bill's total went: a `tip` the guest left, money the business
+  `kept`, or a `withdrawal` of a mistaken one. Returning the money is a
+  refund whose `purpose` is `overpayment`.
 - **Refund** (`refund`) — its own record against one payment, never an edit of
   it (`docs/decisions/refund/0001`); its `refund-line`s point at payment lines.
   - **Cash handed out** (`refundCashRegister.handedAmount`) — the cash a

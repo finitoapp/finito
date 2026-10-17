@@ -31,4 +31,4 @@ sale stands. Returning everything leaves nothing reported in EET.
 - `packages/core/src/modules/refund/refund-actions.test.ts > refundPayment > returns the excess of a payment settled twice as well`
 - `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundableAmount > adds what the payment received beyond its amount`
 - `packages/core/src/modules/refund/refund-utils.test.ts > summarizeRefundsByPayment > measures a returned duplicate against everything the payment received`
-- `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundPrefillAmount > prefills $prefill of $remaining left with $excess excess`
+- `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundPrefillAmount > prefills $prefill of $remaining left with $returnable of overpayment to return`

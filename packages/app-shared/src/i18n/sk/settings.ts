@@ -1223,7 +1223,6 @@ export const skSettings = {
   "settings.tips.nav.off": "Vypnuté",
   "settings.paymentAccounts.nav.none": "Žiadne",
   "settings.taxRates.nav.description": "Sadzby DPH pre vaše položky",
-  "access.action.acknowledgeExcess": "Potvrdiť preplatok",
   "access.action.aiAccess": "Zmeniť prístup AI k dátam",
   "access.action.cashuMints": "Zmeniť minty Cashu",
   "access.action.moveCashuFunds": "Presunúť prostriedky medzi mintami",
@@ -1241,6 +1240,7 @@ export const skSettings = {
   "access.action.enable": "Zapnúť riadenie prístupu so súčasným PINom",
   "access.action.markCashPaid": "Potvrdiť prijatie hotovosti",
   "access.action.markIbanPaid": "Potvrdiť príchod prevodu",
+  "access.action.resolveOverpayment": "Vyriešiť preplatok",
   "access.action.removeAccount": "Odobrať účet z tohto zariadenia",
   "access.action.removeLines": "Odobrať položky z účtu",
   "access.action.switchAccount": "Prepnúť účet",
@@ -1295,7 +1295,7 @@ export const skSettings = {
   "access.permission.discard.description":
     "Zahodiť účet, odobrať z neho položky, zrušiť platbu",
   "access.permission.refund": "Vratky",
-  "access.permission.refund.description": "Vratky a potvrdenie preplatku",
+  "access.permission.refund.description": "Vratky a vyriešenie preplatku",
   "access.permission.sell": "Predaj",
   "access.permission.sell.description":
     "Domovská obrazovka, účty, rozdelenie účtu, platby a sprepitné",

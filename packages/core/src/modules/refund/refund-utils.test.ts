@@ -146,16 +146,16 @@ describe("deriveCashRefundHandedAmounts", () => {
 
 describe("deriveRefundPrefillAmount", () => {
   test.each([
-    { remaining: 25_000, excess: 0, prefill: 25_000 },
-    { remaining: 50_000, excess: 25_000, prefill: 25_000 },
-    { remaining: 10_000, excess: 25_000, prefill: 10_000 },
+    { remaining: 25_000, returnable: 0, prefill: 25_000 },
+    { remaining: 50_000, returnable: 25_000, prefill: 25_000 },
+    { remaining: 10_000, returnable: 25_000, prefill: 10_000 },
   ])(
-    "prefills $prefill of $remaining left with $excess excess",
-    ({ remaining, excess, prefill }) => {
+    "prefills $prefill of $remaining left with $returnable of overpayment to return",
+    ({ remaining, returnable, prefill }) => {
       expect(
         deriveRefundPrefillAmount({
           remainingAmount: NonNegativeInteger(remaining),
-          excess: NonNegativeInteger(excess),
+          returnableOverpayment: NonNegativeInteger(returnable),
           method: "outside",
           currency: "CZK",
         })
@@ -195,7 +195,7 @@ describe("deriveRefundPrefillAmount", () => {
       expect(
         deriveRefundPrefillAmount({
           remainingAmount: NonNegativeInteger(remaining),
-          excess: NonNegativeInteger(0),
+          returnableOverpayment: NonNegativeInteger(0),
           method,
           currency,
         })
@@ -212,12 +212,21 @@ describe("summarizeRefundsByPayment", () => {
     {
       isTip = null,
       tipAmount = 0,
-    }: { readonly isTip?: 1 | null; readonly tipAmount?: number } = {}
+      returnedOverpayment = null,
+    }: {
+      readonly isTip?: 1 | null
+      readonly tipAmount?: number
+      readonly returnedOverpayment?: number | null
+    } = {}
   ) => ({
     paymentId,
     amount: NonNegativeInteger(amount),
     currency: "CZK" as const,
     isTip,
+    overpaymentAmount:
+      returnedOverpayment === null
+        ? null
+        : NonNegativeInteger(returnedOverpayment),
     paymentAmount: NonNegativeInteger(25_000),
     paymentTipAmount: NonNegativeInteger(tipAmount),
     paymentCurrency: "CZK" as const,
@@ -237,6 +246,7 @@ describe("summarizeRefundsByPayment", () => {
 
     expect(summary).toEqual({
       refundedAmount: 25_000,
+      returnedOverpaymentAmount: 0,
       refundableAmount: 50_000,
       returnedAmount: 25_000,
       currency: "CZK",
@@ -272,6 +282,18 @@ describe("summarizeRefundsByPayment", () => {
     expect(goodsOnly === undefined ? null : deriveRefundState(goodsOnly)).toBe(
       "full"
     )
+  })
+
+  test("reads what a return gave back of the overpayment apart from goods", () => {
+    const summary = summarizeRefundsByPayment([
+      refundOf(7_000, [25_000, 25_000], { returnedOverpayment: 5_000 }),
+      refundOf(1_000, [25_000, 25_000]),
+    ]).get(paymentId)
+
+    expect(summary).toMatchObject({
+      refundedAmount: 8_000,
+      returnedOverpaymentAmount: 5_000,
+    })
   })
 
   test("reads a payment settled once and refunded in full as full", () => {

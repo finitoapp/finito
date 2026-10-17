@@ -3,6 +3,7 @@ import { derivePaymentDetailState } from "@payky/app-shared/activity-detail"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { qerkoStepKeys } from "@payky/app-shared/qerko-terminal-flow"
 import {
+  deriveGoodsPartOfReturn,
   deriveRefundAmountText,
   deriveRefundForm,
   describeQerkoRefundError,
@@ -38,10 +39,11 @@ import { refundQerkoPayment } from "@payky/core/modules/refund/refund-qerko-paym
 import type { qerkoTerminalRefundAttemptsByPaymentIdQuery } from "@payky/core/modules/refund/refund-queries"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import {
+  AlertTriangleIcon,
   BanknoteIcon,
   CreditCardIcon,
   ExternalLinkIcon,
@@ -63,6 +65,7 @@ import { accountAtom } from "@/atoms/account.ts"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { NotFoundCard } from "@/components/not-found-card.tsx"
 import { QerkoIcon } from "@/components/qerko-icon.tsx"
+import { Alert, AlertDescription } from "@/components/reui/alert.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
   Field,
@@ -98,8 +101,9 @@ import { formatMoney } from "@/lib/format-utils.ts"
 
 /**
  * `/activity/$paymentId/refund`: the one screen every refund starts from
- * (refund-flow): what to refund (the whole payment, a part of the goods or
- * the tip alone), how much of a part, and how the money goes back, each
+ * (refund-flow): what to refund (the money above the bill, the whole
+ * payment, a part of the goods or the tip alone), how much of the money above
+ * the bill or of a part, and how the money goes back, each
  * method saying what confirming it does. Its route asks for `refund`
  * (access/0002), so its actions ask nothing more. `initialChoice` starts it
  * on a choice other than the default, as the payment's collision does.
@@ -215,6 +219,7 @@ const choiceCardClassName =
 
 /** The success toast of each choice refunded by a recorded method. */
 const recordedRefundDoneKeys = {
+  overpayment: "refund.created",
   whole: "refund.created",
   part: "refund.created",
   tip: "refund.tipCreated",
@@ -241,8 +246,16 @@ function RefundForm({
   const router = useRouter()
   const navigate = useNavigate()
   const { device } = useAtomValue(accountAtom)
-  const { refunds, availability, qerkoTerminalTid, qerkoAttempts, options } =
-    usePaymentRefundState({ payment, excess, isPaid, paymentMethodKinds })
+  const {
+    refunds,
+    availability,
+    qerkoTerminalTid,
+    qerkoAttempts,
+    options,
+    overpaymentInput,
+    returnableOverpayment,
+    overpaidBy,
+  } = usePaymentRefundState({ payment, excess, isPaid, paymentMethodKinds })
   const { remainingAmount, refundableTipAmount, refundableLines } = availability
   const money = (value: NonNegativeInteger) =>
     formatMoney({ value, currency: payment.currency }, locale)
@@ -269,13 +282,19 @@ function RefundForm({
           choice,
           method: pickedMethod ?? options.defaultMethod ?? "outside",
         })
-  const mode = options.partModes.includes(pickedMode) ? pickedMode : "amount"
+  const mode =
+    choice !== "overpayment" && options.partModes.includes(pickedMode)
+      ? pickedMode
+      : "amount"
   /** The amount field and the form as they stand for a method. */
   const formOf = (forMethod: RefundMethod) => {
     const text = deriveRefundAmountText({
       typedAmountText,
       remainingAmount,
-      excess,
+      returnableOverpayment:
+        choice === "overpayment"
+          ? returnableOverpayment
+          : NonNegativeInteger(0),
       method: forMethod,
       currency: payment.currency,
     })
@@ -295,12 +314,20 @@ function RefundForm({
   const refundAmountOf = (forMethod: RefundMethod) =>
     choiceOption === undefined
       ? null
-      : choiceOption.choice === "part"
+      : choiceOption.choice === "part" || choiceOption.choice === "overpayment"
         ? formOf(forMethod).refundAmount
         : choiceOption.amount
   const form = formOf(method ?? "outside")
   const { amountText } = form
   const refundAmount = refundAmountOf(method ?? "outside")
+  const goodsPartOfReturn =
+    choice === "overpayment"
+      ? deriveGoodsPartOfReturn({
+          overpaymentInput,
+          paymentId: payment.id,
+          amount: refundAmount,
+        })
+      : NonNegativeInteger(0)
 
   const backToPayment = useCallback(() => {
     if (router.history.canGoBack()) router.history.back()
@@ -342,6 +369,7 @@ function RefundForm({
 
   const changeChoice = (next: RefundChoice) => {
     setPickedChoice(next)
+    setTypedAmountText(null)
     if (method !== null) {
       setPickedMethod(selectRefundMethod({ options, choice: next, method }))
     }
@@ -396,7 +424,11 @@ function RefundForm({
       const result = await run(
         refundPayment(
           "amount" in what
-            ? { ...base, amount: what.amount }
+            ? {
+                ...base,
+                amount: what.amount,
+                purpose: choice === "overpayment" ? "overpayment" : "goods",
+              }
             : { ...base, lines: what.lines }
         )
       )
@@ -525,19 +557,24 @@ function RefundForm({
           </FieldSet>
         ) : null}
 
-        {choice === "part" ? (
+        {choice === "part" || choice === "overpayment" ? (
           <FieldSet>
             <FieldLegend variant="label">
               {t("refund.page.amount.label")}
             </FieldLegend>
-            {refundableTipAmount > 0 ? (
+            {choice === "overpayment" && overpaidBy > 0 ? (
+              <p className="text-sm font-semibold">
+                {t("overpayment.title", { amount: money(overpaidBy) })}
+              </p>
+            ) : null}
+            {choice === "part" && refundableTipAmount > 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t("refund.dialog.tipHint", {
                   amount: money(refundableTipAmount),
                 })}
               </p>
             ) : null}
-            {options.partModes.includes("items") ? (
+            {choice === "part" && options.partModes.includes("items") ? (
               <ToggleGroup
                 aria-label={t("refund.page.amount.label")}
                 className="grid w-full grid-cols-2"
@@ -580,6 +617,16 @@ function RefundForm({
                       })
                     : null}
                 </FieldError>
+                {goodsPartOfReturn > 0 ? (
+                  <Alert variant="warning">
+                    <AlertTriangleIcon />
+                    <AlertDescription>
+                      {t("refund.dialog.goodsPart", {
+                        amount: money(goodsPartOfReturn),
+                      })}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
               </Field>
             ) : (
               <div className="flex flex-col gap-2">

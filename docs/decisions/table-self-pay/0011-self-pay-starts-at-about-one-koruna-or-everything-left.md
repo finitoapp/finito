@@ -65,3 +65,4 @@ always money the bill still owes, and never more than it owes.
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by Lightning > credits 0.50 EUR on a euro bill, above the euro minimum`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by Lightning > ignores a flood of one-satoshi payments`
 - `packages/core/src/modules/table-self-pay/table-self-pay-eet.test.ts > self-pay in EET > money too small to match a bill is never reported`
+- `apps/web-app/e2e/table-self-pay.spec.ts > a guest pays at least five cents, or everything left on the bill`

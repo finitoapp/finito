@@ -7,7 +7,10 @@ import { RefundPage } from "@/features/activity/refund-page.tsx"
 // would escape to the global error boundary. `choice` only preselects what
 // the screen offers, as the payment's collision does.
 const RefundSearchSchema = z.object({
-  choice: z.enum(["whole", "part", "tip"]).optional().catch(undefined),
+  choice: z
+    .enum(["overpayment", "whole", "part", "tip"])
+    .optional()
+    .catch(undefined),
 })
 
 export const Route = createFileRoute("/_terminal/activity_/$paymentId_/refund")(

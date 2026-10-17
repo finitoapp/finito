@@ -1,4 +1,9 @@
-import { type InferRow, kyselySql, sqliteTrue } from "@evolu/common"
+import {
+  type InferRow,
+  type KyselyNotNull,
+  kyselySql,
+  sqliteTrue,
+} from "@evolu/common"
 import type { SqlBool } from "kysely"
 
 import { createQuery } from "../../evolu/schema.ts"
@@ -246,7 +251,9 @@ export const refundsQuery = (range: StatsRange) =>
         >`case when "refund"."isTip" = ${sqliteTrue} then 1 else 0 end`.as(
           "isTip"
         ),
-        kyselySql<number>`count(*)`.as("count"),
+        kyselySql<number>`sum(case when "refund"."mainRefundId" is null then 1 else 0 end)`.as(
+          "count"
+        ),
         kyselySql<number>`sum("refund"."amount")`.as("amount"),
       ])
       .where("refund.refundedAt", ">=", fromMs)
@@ -258,6 +265,27 @@ export const refundsQuery = (range: StatsRange) =>
       .groupBy(["currency", "method", "isTip"])
   })
 export type RefundsRow = InferRow<ReturnType<typeof refundsQuery>>
+
+export const overpaymentTipsQuery = ({ fromIso, toIso }: StatsRange) =>
+  createQuery((db) =>
+    db
+      .selectFrom("overpaymentResolution")
+      .innerJoin("payment", "payment.id", "overpaymentResolution.paymentId")
+      .select([
+        "overpaymentResolution.id",
+        "overpaymentResolution.paymentId",
+        "payment.billId as billId",
+        "overpaymentResolution.currency",
+      ])
+      .where("overpaymentResolution.kind", "=", "tip")
+      .where("overpaymentResolution.createdAt", ">=", fromIso)
+      .where("overpaymentResolution.createdAt", "<", toIso)
+      .where("overpaymentResolution.isDeleted", "is not", sqliteTrue)
+      .where("payment.isDeleted", "is not", sqliteTrue)
+      .where("overpaymentResolution.paymentId", "is not", null)
+      .where("overpaymentResolution.currency", "is not", null)
+      .$narrowType<{ paymentId: KyselyNotNull; currency: KyselyNotNull }>()
+  )
 
 /**
  * Paid sales per `payment.deviceId`, named by `device.name` — a removed

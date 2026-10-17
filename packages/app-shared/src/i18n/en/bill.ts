@@ -20,6 +20,16 @@ export const enBill = {
   "bill.collision.title": "Canceled, but payments cover it",
   "bill.collision.viewPayment": "View payment",
   "bill.collision.viewPayment.numbered": "View payment {number}",
+  "bill.cover.cancel": "Cancel",
+  "bill.cover.confirm": "Continue",
+  "bill.cover.overpaid.description":
+    "This closes the bill. Then choose whether the money goes back, was a tip or stays with the business.",
+  "bill.cover.overpaid.title": "The bill would be overpaid by {amount}",
+  "bill.cover.paid.description":
+    "What stays on the bill is exactly what was paid.",
+  "bill.cover.paid.title": "The bill would be paid and closed",
+  "bill.cover.split.description":
+    "The money paid stays with this bill and covers what stays on it.",
   "bill.discard": "Discard bill",
   "bill.discard.confirm.cancel": "Keep bill",
   "bill.discard.confirm.confirm": "Discard",
@@ -67,6 +77,8 @@ export const enBill = {
   "bill.split.destination.new": "New bill",
   "bill.split.error": "Couldn't split the bill. Please try again.",
   "bill.split.increase.aria": "Add one {name} to the split",
+  "bill.split.leavesOverpayment":
+    "The bill keeps the money paid for it, so it can't give away items worth more than what is still unpaid.",
   "bill.split.selectAll": "Select all",
   "bill.split.selectedCount": "Selected:",
   "bill.split.staleSelection":
@@ -108,6 +120,7 @@ export const enBill = {
   "billDetail.notFound": "Bill was not found.",
   "billDetail.payments": "Payments",
   "billDetail.payments.empty": "No payments have been made on this bill yet.",
+  "billDetail.payments.numberedAmount": "#{number} · {amount}",
   "billDetail.title": "Bill detail",
   "billHistory.empty.description": "Bills you create will show up here.",
   "billHistory.empty.title": "No bills yet",

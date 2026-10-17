@@ -3,7 +3,9 @@ import { useNow } from "@payky/app-shared/use-now"
 import type { EvoluSchema } from "@payky/core/evolu/schema"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { loadAnsweredOverpaymentTips } from "@payky/core/modules/bill/bill-overpayment-guards"
 import {
+  overpaymentTipsQuery,
   refundsQuery,
   type SalesByHourRow,
   salesByHourQuery,
@@ -23,6 +25,7 @@ import {
   salesKpis,
   statsPeriodRanges,
 } from "@payky/core/modules/sales-stats/sales-stats-utils"
+import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { TimestampMs } from "@payky/core/modules/shared/schema"
 import {
@@ -34,6 +37,7 @@ import {
 import { useAtomValue } from "jotai"
 import { useMemo } from "react"
 import { evoluAtom } from "../../atoms/evolu.ts"
+import { useAppRun } from "../../hooks/use-app-run.ts"
 import {
   useEvoluQuery,
   useOptionalEvoluQuery,
@@ -114,6 +118,33 @@ export interface SalesStats {
   readonly cash: ReadonlyArray<ExpectedCash>
 }
 
+function useOverpaymentTips(range: StatsRange, live: boolean) {
+  const appRun = useAppRun()
+  const rows = useStatsRows(
+    "overpaymentTips",
+    overpaymentTipsQuery,
+    range,
+    live
+  )
+  const { data: history } = useOptionalEvoluQuery(
+    live ? evoluHistoryMaxRowidQuery : null
+  )
+  const { data } = useQuery({
+    queryKey: [
+      "stats",
+      "answeredOverpaymentTips",
+      rows,
+      history[0]?.maxRowid ?? null,
+    ],
+    queryFn: async () => {
+      await using run = appRun()
+      return await run.ok(loadAnsweredOverpaymentTips(rows ?? []))
+    },
+    enabled: rows !== undefined,
+  })
+  return data
+}
+
 /**
  * The figures of the screen's first sections for `period`, `null` while any
  * of them loads. The comparison period is never live: it is in the past.
@@ -157,6 +188,8 @@ export function useSalesStats(
     comparison,
     false
   )
+  const overpaymentTips = useOverpaymentTips(range, live)
+  const comparisonOverpaymentTips = useOverpaymentTips(comparison, false)
 
   const derived = useMemo(() => {
     if (
@@ -165,7 +198,9 @@ export function useSalesStats(
       refundRows === undefined ||
       comparisonHourRows === undefined ||
       comparisonWholeHourRows === undefined ||
-      comparisonRefundRows === undefined
+      comparisonRefundRows === undefined ||
+      overpaymentTips === undefined ||
+      comparisonOverpaymentTips === undefined
     ) {
       return null
     }
@@ -173,10 +208,16 @@ export function useSalesStats(
       hourRows,
       comparisonHourRows,
       comparisonWholeHourRows,
-      kpis: salesKpis({ hourRows, refundRows, accountCurrency }),
+      kpis: salesKpis({
+        hourRows,
+        refundRows,
+        overpaymentTips,
+        accountCurrency,
+      }),
       comparisonKpis: salesKpis({
         hourRows: comparisonHourRows,
         refundRows: comparisonRefundRows,
+        overpaymentTips: comparisonOverpaymentTips,
         accountCurrency,
       }),
       methods: methodBreakdown({ methodRows, hourRows, accountCurrency }),
@@ -189,6 +230,8 @@ export function useSalesStats(
     comparisonHourRows,
     comparisonWholeHourRows,
     comparisonRefundRows,
+    overpaymentTips,
+    comparisonOverpaymentTips,
     accountCurrency,
   ])
 

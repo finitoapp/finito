@@ -6,7 +6,11 @@ import { cancelBillDirectly } from "./support/collisions.ts"
 import { colorContrast } from "./support/color-contrast.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
-import { waitForLocalWriteToSettle } from "./support/navigation.ts"
+import {
+  gotoPage,
+  gotoPosOverview,
+  waitForLocalWriteToSettle,
+} from "./support/navigation.ts"
 import { seedOnboarding } from "./support/onboarding.ts"
 import {
   addBillLines,
@@ -15,6 +19,7 @@ import {
   fakeSelfPayLightning,
   newGuestContext,
   openTableBill,
+  payAllOfTheBeer,
   pickEqualShares,
   pickLineUnits,
   pickShareChoice,
@@ -24,6 +29,7 @@ import {
   receiveShownBankTransfer,
   routeFakeNostrRelays,
   seedActiveFioPlugin,
+  seedPizzaAndBeerBill,
   shareLine,
 } from "./support/self-pay.ts"
 
@@ -34,33 +40,6 @@ const paidForRows = (guest: Page) =>
   guest
     .getByRole("region", { name: translate("en", "selfPay.paidFor.title") })
     .getByRole("listitem")
-
-const seedPizzaAndBeerBill = async (page: Page, table: string) => {
-  await seedActiveFioPlugin(page)
-  await addTable(page, "en", { name: table, seatCount: "4" })
-  await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
-  await addCatalogItem(page, "en", { name: "Beer", price: "45" })
-  const guestAddress = await enableTableSelfPay(page, "en", table)
-  const billId = await openTableBill(page, "en", {
-    table,
-    items: ["Pizza", "Beer"],
-  })
-  return { guestAddress, billId }
-}
-
-const payAllOfTheBeer = async (page: Page, guest: Page) => {
-  await pickShareChoice(guest, "selfPay.choice.items")
-  await pickLineUnits(guest, { line: "Beer", units: 1 })
-  await guest
-    .getByRole("button", { name: guestText("selfPay.pay.total", "$45.00") })
-    .click()
-  await receiveShownBankTransfer(page, {
-    payer: guest,
-    language: "en",
-    amount: 4500,
-    currency: "USD",
-  })
-}
 
 const openPosBillSummary = async (page: Page, billId: string) => {
   await page.goto(`/bill?billId=${billId}`)
@@ -635,6 +614,58 @@ test("the till charges only what guests have not paid, lines or no lines", async
       .getByRole("heading", { name: translate("en", "paymentTip.title") })
       .waitFor()
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("$81.00")
+  })
+})
+
+test("a table whose guest paid the beer reads partly paid, then free once staff remove the pizza", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress, billId } =
+    await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+      seedPizzaAndBeerBill(page, "Table 12"))
+  const tableTile = page
+    .getByTestId("table-tile")
+    .filter({ hasText: "Table 12" })
+
+  await test.step("a guest pays all of the beer and the table reads partly paid", async () => {
+    const guest = await context.newPage()
+    await guest.goto(guestAddress)
+    await payAllOfTheBeer(page, guest)
+    await guest.close()
+    await gotoPosOverview(page, "en")
+    await expect(tableTile).toContainText(
+      translate("en", "tables.tile.partiallyPaid"),
+      { timeout: 30_000 }
+    )
+  })
+
+  await test.step("staff remove the pizza the guest left", async () => {
+    await page.goto(`/bill?billId=${billId}`)
+    await page
+      .getByRole("button", {
+        name: nameParam("bill.brick.remove.aria", "Pizza"),
+      })
+      .click()
+    const question = page.getByRole("alertdialog")
+    await expect(question).toContainText(
+      translate("en", "bill.cover.paid.title")
+    )
+    await question
+      .getByRole("button", { name: translate("en", "bill.cover.confirm") })
+      .click()
+    await waitForLocalWriteToSettle(page)
+  })
+
+  await test.step("the table is free and the bill reads closed", async () => {
+    await gotoPosOverview(page, "en")
+    await expect(tableTile).toContainText(translate("en", "tables.tile.free"))
+    await gotoPage(page, `/activity/bills/${billId}`, "en", "billDetail.title")
+    await expect(
+      page.getByText(translate("en", "bill.status.closed"), { exact: true })
+    ).toBeVisible()
   })
 })
 

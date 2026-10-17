@@ -253,6 +253,7 @@ export const escapeRegExp = (text: string) =>
 
 /** What the refund screen offers to give back, by its translation key. */
 const refundChoiceKeys = {
+  overpayment: "refund.page.choice.overpayment",
   whole: "refund.page.choice.whole",
   part: "refund.page.choice.part",
   tip: "refund.page.choice.tip",
@@ -276,7 +277,8 @@ export const refundAction = (page: Page, language: Language) =>
   })
 
 /**
- * One of the refund screen's choices: the whole payment, a part, the tip. A
+ * One of the refund screen's choices: the overpayment, the whole payment, a
+ * part, the tip. A
  * choice card's radio is named after the whole card, so its name starts with
  * the choice and goes on with its amount.
  */

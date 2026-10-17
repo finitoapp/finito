@@ -43,9 +43,7 @@ import {
   loadBillClosedAtForPayment,
   upsertReconciliationClaimRows,
 } from "../reconciliation-claim/reconciliation-claim-actions.ts"
-import { activeClaimedTransactionsByPaymentIdQuery } from "../reconciliation-claim/reconciliation-claim-queries.ts"
 import { deriveManualReconciliationClaimId } from "../reconciliation-claim/reconciliation-claim-utils.ts"
-import { sumDistinctClaimedAmounts } from "../shared/claimed-amount.ts"
 import { dateToDateString } from "../shared/date-string-utils.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
@@ -93,7 +91,6 @@ import {
   createPaymentNotCanceledError,
   createPaymentNotClaimedError,
   createPaymentNotFoundError,
-  createPaymentNotOverpaidError,
   createSwitchioAttemptUnresolvedError,
   createSwitchioRestoredResultUnmatchedError,
   type MarkPaymentPaidCashError,
@@ -103,7 +100,6 @@ import {
   type PaymentNotCanceledError,
   type PaymentNotClaimedError,
   type PaymentNotFoundError,
-  type PaymentNotOverpaidError,
   type PayPaymentWithBoltCardError,
   type PayPaymentWithSwitchioCardError,
   type SettleRestoredSwitchioCardPaymentError,
@@ -1018,63 +1014,6 @@ export const confirmPaymentPaidDespiteCancellation =
         {
           id: paymentId,
           confirmedPaidAt: TimestampMsSchema.decode(
-            run.deps.date.now().getTime()
-          ),
-        },
-        { ...options, owner: evoluOwner }
-      )
-    )
-
-    return ok(paymentId)
-  }
-
-export type AcknowledgePaymentExcessSettlementError =
-  | PaymentNotFoundError
-  | PaymentNotOverpaidError
-
-/**
- * Resolves the duplicate-settlement collision described in
- * docs/bill-payment-states.md and `payment.ts`'s `excessAcknowledgedAt` doc
- * comment: two offline devices can each independently claim the same
- * payment through a different method (e.g. one settles it in cash while
- * another reconciles a matching incoming bank transfer), and since each
- * claim is real money, neither is discarded on merge — the payment simply
- * ends up claimed for more than its own `amount`.
- *
- * This lets staff explicitly acknowledge that (e.g. once they've refunded
- * the excess, or decided to keep it) via `excessAcknowledgedAt`, set once
- * and never cleared. Requires the payment to actually be claimed for more
- * than its `amount` — this resolves an existing collision, it does not
- * silence a warning that isn't there.
- */
-export const acknowledgePaymentExcessSettlement =
-  (
-    paymentId: PaymentId
-  ): Task<
-    PaymentId,
-    AcknowledgePaymentExcessSettlementError,
-    EvoluDep & EvoluOwnerDep & DateDep
-  > =>
-  async (run) => {
-    const paymentResult = await run(loadPayment(paymentId))
-    if (!paymentResult.ok) return paymentResult
-
-    const claimedTransactions = await run.deps.evolu.loadQuery(
-      activeClaimedTransactionsByPaymentIdQuery(paymentId)
-    )
-    const claimedSum = sumDistinctClaimedAmounts(claimedTransactions)
-    if (claimedSum <= paymentResult.value.amount) {
-      return err(createPaymentNotOverpaidError({ id: paymentId }))
-    }
-
-    const { evoluOwner } = run.deps
-
-    await runMutationWithCompletion((options) =>
-      run.deps.evolu.update(
-        "payment",
-        {
-          id: paymentId,
-          excessAcknowledgedAt: TimestampMsSchema.decode(
             run.deps.date.now().getTime()
           ),
         },

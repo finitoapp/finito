@@ -8,7 +8,12 @@ import {
 } from "./support/bill.ts"
 import { startCollisionBill } from "./support/collisions.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
-import { nameParam, translate, translateValue } from "./support/i18n.ts"
+import {
+  nameParam,
+  translate,
+  translateParams,
+  translateValue,
+} from "./support/i18n.ts"
 import { fillInlineField } from "./support/inline-edit.ts"
 import {
   contentNav,
@@ -16,6 +21,7 @@ import {
   gotoPosOverview,
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
+import { overpaymentCard, startPartlyPaidBill } from "./support/overpayment.ts"
 import {
   createPayment,
   markCashPaid,
@@ -1193,5 +1199,64 @@ test("a double-tapped charge creates only one payment", async ({
         exact: true,
       })
     ).toBeVisible()
+  })
+})
+
+test("removing lines a guest has paid for asks first and offers to resolve the overpayment", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  const billId = await startPartlyPaidBill(page, "en")
+  const summaryTrigger = page.getByTestId("bill-summary-trigger")
+  const clearButton = page
+    .getByTestId("bill-summary-panel")
+    .getByRole("button", { name: translate("en", "bill.summary.clear") })
+  const question = page.getByRole("alertdialog")
+
+  await test.step("Removing every line after a guest paid", async () => {
+    await summaryTrigger.click()
+    await clearButton.click()
+    await expect(question).toContainText(
+      translateParams("en", "bill.cover.overpaid.title", { amount: "$5.00" })
+    )
+  })
+
+  await test.step("Removal canceled", async () => {
+    await question
+      .getByRole("button", { name: translate("en", "bill.cover.cancel") })
+      .click()
+    await expect(question).toBeHidden()
+    await expect(summaryTrigger).toContainText(
+      translateValue("en", "bill.itemsCount", 2)
+    )
+    await expect(clearButton).toBeEnabled()
+  })
+
+  await test.step("Decide later", async () => {
+    await clearButton.click()
+    await question
+      .getByRole("button", { name: translate("en", "bill.cover.confirm") })
+      .click()
+    await page.waitForURL(/\/activity\/bills\//u)
+    await expect(overpaymentCard(page)).toContainText("$5.00")
+    await page.screenshot({
+      path: `${screenshotDir}/bill-removal-overpaid-decide.png`,
+      fullPage: true,
+    })
+    await overpaymentCard(page)
+      .getByRole("button", {
+        name: translate("en", "overpayment.decideLater"),
+      })
+      .click()
+    await gotoPage(page, `/activity/bills/${billId}`, "en", "billDetail.title")
+    await expect(
+      page.getByText(translate("en", "bill.status.closed")).first()
+    ).toBeVisible()
+    await expect(overpaymentCard(page)).toContainText("$5.00")
+    await expect(
+      overpaymentCard(page).getByRole("button", {
+        name: translate("en", "overpayment.decideLater"),
+      })
+    ).toHaveCount(0)
   })
 })
