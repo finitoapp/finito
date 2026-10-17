@@ -8,7 +8,11 @@ import { billStatusLabelKey } from "@payky/app-shared/activity-labels"
 import { groupByDay } from "@payky/app-shared/group-by-day"
 import { useNow } from "@payky/app-shared/use-now"
 import { latestBillsQuery } from "@payky/core/modules/bill/bill-queries"
-import type { BillHistoryItemSummary } from "@payky/core/modules/bill/bill-utils"
+import type { BillId } from "@payky/core/modules/bill/bill-types"
+import {
+  type BillHistoryItemSummary,
+  deriveBillOverpayment,
+} from "@payky/core/modules/bill/bill-utils"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import {
   AlertTriangleIcon,
@@ -26,6 +30,7 @@ import {
   activityIssueRowClassName,
   PaymentMethodIcons,
 } from "@/features/activity/activity-row.tsx"
+import { useOverpaymentInputs } from "@/features/shared/use-overpayment-input.ts"
 import { useInfiniteEvoluQuery } from "@/hooks/use-infinite-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -74,6 +79,23 @@ export const BillHistory = () => {
     isPending,
     sentinelRef,
   } = useInfiniteEvoluQuery([], latestBillsQuery)
+  const rows = items.map((bill) => ({
+    bill,
+    summary: summarizeBillHistoryRow(bill),
+  }))
+  const overpaymentInputs = useOverpaymentInputs(
+    rows
+      .filter(({ summary }) => summary.coverage === "overpaid")
+      .map(({ bill, summary }) => ({
+        billId: bill.id,
+        billTotal: summary.billTotal,
+        isCanceled: summary.status === "canceled",
+      }))
+  )
+  const hasUnresolvedOverpayment = (billId: BillId) => {
+    const input = overpaymentInputs.get(billId)
+    return input !== undefined && deriveBillOverpayment(input).unresolved > 0
+  }
 
   const empty = (
     <div className={"flex flex-col justify-center items-center gap-8 py-10"}>
@@ -93,10 +115,6 @@ export const BillHistory = () => {
     )
   }
 
-  const rows = items.map((bill) => ({
-    bill,
-    summary: summarizeBillHistoryRow(bill),
-  }))
   const dayGroups = groupByDay(rows, ({ bill }) => new Date(bill.createdAt))
 
   return (
@@ -121,7 +139,11 @@ export const BillHistory = () => {
             isComplete: !hasMore || groupIndex < dayGroups.length - 1,
           })}
           items={group.items.map(({ bill, summary }) => {
-            const issues = billHistoryIssueLabels(summary, t)
+            const issues = billHistoryIssueLabels(
+              summary,
+              t,
+              hasUnresolvedOverpayment(bill.id)
+            )
             const tips = sumSettledTips(bill)
 
             return {

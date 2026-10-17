@@ -20,6 +20,7 @@ import {
   RefundId,
   RefundLineId,
   RefundMethodSchema,
+  RefundPurposeSchema,
 } from "./refund-types.ts"
 
 export const refund = {
@@ -31,6 +32,10 @@ export const refund = {
   method: RefundMethodSchema,
   refundedAt: TimestampMsSchema,
   isTip: SqliteTrueSchema.nullable(),
+  purpose: RefundPurposeSchema.nullable(),
+  overpaymentAmount: NonNegativeIntegerSchema.nullable(),
+  knownTransactionIdsJson: z.string().nullable(),
+  mainRefundId: RefundId.nullable(),
 } as const
 
 /**

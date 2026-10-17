@@ -13,7 +13,6 @@ import {
   cashuBookingCursorId,
   cashuBookingCursorQuery,
   changedCashuOperationIdsQuery,
-  evoluHistoryMaxRowidQuery,
 } from "../modules/cashu/cashu-queries.ts"
 import {
   CashuOperationId,
@@ -24,6 +23,7 @@ import {
   upsertAutomaticReconciliationRows,
 } from "../modules/reconciliation-claim/reconciliation-claim-actions.ts"
 import type { DeviceEvoluDep, EvoluDep } from "../modules/shared/evolu-deps.ts"
+import { evoluHistoryMaxRowidQuery } from "../modules/shared/evolu-history-queries.ts"
 import { runMutationWithCompletion } from "../modules/shared/evolu-utils.ts"
 import { IntegerSchema, TimestampMsSchema } from "../modules/shared/schema.ts"
 import type { CashuShardStoreDep } from "./cashu-shard-store.ts"

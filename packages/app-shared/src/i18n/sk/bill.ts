@@ -129,6 +129,7 @@ export const skBill = {
   "billDetail.notFound": "Účet nebol nájdený.",
   "billDetail.payments": "Platby",
   "billDetail.payments.empty": "K tomuto účtu zatiaľ neprebehla žiadna platba.",
+  "billDetail.payments.numberedAmount": "č. {number} · {amount}",
   "billDetail.title": "Detail účtu",
   "billHistory.empty.description": "Vytvorené účty sa zobrazia tu.",
   "billHistory.empty.title": "Zatiaľ žiadne účty",

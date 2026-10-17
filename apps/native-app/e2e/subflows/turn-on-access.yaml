@@ -68,4 +68,4 @@ appId: ${APP_ID}
       true: ${typeof KEEP === "undefined" || KEEP !== "true"}
     file: relaunch.yaml
     env:
-      TEXT: ${output.re(output.t["home.pay"])}|This screen needs .*
+      TEXT: ${output.re(output.t["home.pay"])}|${output.re(output.t["bill.table.dialog.none"])}|This screen needs .*

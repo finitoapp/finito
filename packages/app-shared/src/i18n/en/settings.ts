@@ -1258,7 +1258,6 @@ export const enSettings = {
   "settings.tips.nav.off": "Off",
   "settings.paymentAccounts.nav.none": "None",
   "settings.taxRates.nav.description": "VAT rates for your items",
-  "access.action.acknowledgeExcess": "Acknowledge the excess payment",
   "access.action.addDiscount": "Add a discount to the bill",
   "access.action.moveDiscount": "Move a discount to another bill",
   "access.action.aiAccess": "Change AI data access",
@@ -1280,6 +1279,7 @@ export const enSettings = {
   "access.action.finishBill": "Finish the bill without a payment",
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
+  "access.action.resolveOverpayment": "Resolve an overpayment",
   "access.action.removeAccount": "Remove the account from this device",
   "access.action.removeLines": "Remove items from the bill",
   "access.action.switchAccount": "Switch account",
@@ -1334,7 +1334,7 @@ export const enSettings = {
     "Discard a bill, remove items from it, cancel a payment",
   "access.permission.refund": "Refunds",
   "access.permission.refund.description":
-    "Refunds and acknowledging an excess payment",
+    "Refunds and resolving an overpayment",
   "access.permission.sell": "Sell",
   "access.permission.sell.description":
     "Home screen, bills, splitting a bill, payments and tips",

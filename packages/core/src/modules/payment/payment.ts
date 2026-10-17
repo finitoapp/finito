@@ -35,8 +35,9 @@ export const payment = {
   canceledAt: TimestampMsSchema.nullable(),
   confirmedPaidAt: TimestampMsSchema.nullable(),
   /**
-   * Set once, never cleared, by `acknowledgePaymentExcessSettlement`.
-   * Staff's explicit resolution of the duplicate-settlement collision: two
+   * Set once, never cleared, by app versions before overpayment
+   * resolutions, which now read it as keeping the extra money claimed
+   * before its first write. It resolved the duplicate-settlement collision: two
    * offline devices can each independently claim the same payment through a
    * different method (e.g. one settles it in cash while another
    * reconciles an incoming bank transfer for the same amount) — both

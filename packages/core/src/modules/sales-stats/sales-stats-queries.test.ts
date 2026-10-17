@@ -25,6 +25,7 @@ import {
   confirmBillClosedDespiteCancellation,
   createBill,
 } from "../bill/bill-actions.ts"
+import { loadAnsweredOverpaymentTips } from "../bill/bill-overpayment-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import {
   appendBillLines,
@@ -47,6 +48,10 @@ import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { registerDevice } from "../device/device-actions.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { itemsByPaymentIdQuery } from "../item/item-queries.ts"
+import {
+  recordOverpaymentResolution,
+  withdrawOverpaymentResolution,
+} from "../overpayment-resolution/overpayment-resolution-actions.ts"
 import {
   cancelPayment,
   confirmPaymentPaidDespiteCancellation,
@@ -91,6 +96,7 @@ import {
   discountedBillLinesQuery,
   itemSalesQuery,
   keypadSalesQuery,
+  overpaymentTipsQuery,
   refundsQuery,
   salesByDeviceQuery,
   salesByHourQuery,
@@ -500,6 +506,7 @@ describe("refunds", () => {
       salesKpis({
         hourRows: await context.load(salesByHourQuery(range)),
         refundRows: await context.load(refundsQuery(range)),
+        overpaymentTips: [],
         accountCurrency: "CZK",
       })
 
@@ -552,6 +559,60 @@ describe("refunds", () => {
         saleRefundAmount: 3_000,
         tipRefundAmount: 1_000,
       },
+    ])
+  })
+})
+
+describe("tips from an overpayment", () => {
+  test("Tips of the day", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await context.pay({ amount: 14_000, tipAmount: 4_000 })
+    const overpaid = await context.pay({ amount: 10_000 })
+    await context.claimExtra({
+      paymentId: overpaid,
+      accountId: context.ibanAccountId,
+      amount: 3_000,
+    })
+    await using r = context.run()
+    await r.orThrow(
+      recordOverpaymentResolution({
+        paymentId: overpaid,
+        kind: "tip",
+        amount: PositiveInteger(2_000),
+        deviceId: null,
+      })
+    )
+    context.at("2026-06-06T10:00:00.000Z")
+    const withdrawn = await r.orThrow(
+      recordOverpaymentResolution({
+        paymentId: overpaid,
+        kind: "tip",
+        amount: PositiveInteger(1_000),
+        deviceId: null,
+      })
+    )
+    await r.orThrow(
+      withdrawOverpaymentResolution({ resolutionId: withdrawn, deviceId: null })
+    )
+
+    const tipsOf = async (range: StatsRange) =>
+      salesKpis({
+        hourRows: await context.load(salesByHourQuery(range)),
+        refundRows: await context.load(refundsQuery(range)),
+        overpaymentTips: await r.ok(
+          loadAnsweredOverpaymentTips(
+            await context.load(overpaymentTipsQuery(range))
+          )
+        ),
+        accountCurrency: "CZK",
+      }).map(({ currency, tips }) => ({ currency, tips }))
+
+    await expect(tipsOf(june5)).resolves.toEqual([
+      { currency: "CZK", tips: 6_000 },
+    ])
+    await expect(tipsOf(days("2026-06-06"))).resolves.toEqual([
+      { currency: "CZK", tips: 0 },
     ])
   })
 })
@@ -1425,9 +1486,16 @@ describe("currencies", () => {
     const hourRows = await context.load(salesByHourQuery(june5))
     const refundRows = await context.load(refundsQuery(june5))
     expect(
-      salesKpis({ hourRows, refundRows, accountCurrency: "EUR" }).map(
-        ({ currency, netRevenue, tips }) => ({ currency, netRevenue, tips })
-      )
+      salesKpis({
+        hourRows,
+        refundRows,
+        overpaymentTips: [],
+        accountCurrency: "EUR",
+      }).map(({ currency, netRevenue, tips }) => ({
+        currency,
+        netRevenue,
+        tips,
+      }))
     ).toEqual([
       { currency: "EUR", netRevenue: 1_000, tips: 200 },
       { currency: "CZK", netRevenue: 30_000, tips: 0 },

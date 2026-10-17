@@ -97,6 +97,10 @@ vi.mock("@/atoms/evolu.ts", async () => {
     cashuWalletDepAtom: atom({ cashuWallet: {} }),
   }
 })
+vi.mock("@/atoms/run.ts", async () => {
+  const { atom } = await import("jotai")
+  return { runAtom: atom({ deps: { syncState: {} } }) }
+})
 vi.mock("@/atoms/service-proxy.ts", async () => {
   const { atom } = await import("jotai")
   return { serviceProxyConsentAtom: atom(() => () => false) }

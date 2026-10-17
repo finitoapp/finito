@@ -63,6 +63,7 @@ vi.mock("@payky/core/background-jobs/run-background-jobs", () => {
 vi.mock("../../core/native-runtime.ts", () => ({
   nativeConsole: { error: () => {}, debug: () => {} },
   nativeRun: {
+    deps: { syncState: {} },
     create: (deps: unknown) => {
       const run: {
         group?: string

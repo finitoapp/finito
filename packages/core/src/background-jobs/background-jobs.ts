@@ -3,6 +3,7 @@ import type {
   AppDeviceBackgroundJob,
   CashuBackgroundJob,
 } from "./background-job-types.ts"
+import { startBillClosingJob } from "./jobs/bill-closing-job.ts"
 import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
 import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
 import { startFioAccountTransactionSyncJob } from "./jobs/fio-account-transaction-sync-job.ts"
@@ -40,6 +41,7 @@ export const cliBackgroundJobs = [
   startLightningAddressVerifyJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
+  startBillClosingJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**
@@ -59,6 +61,7 @@ export const appBackgroundJobs: ReadonlyArray<AppDeviceBackgroundJob> = [
   startRecoveryBackupReminderJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
+  startBillClosingJob,
 ]
 
 /**
