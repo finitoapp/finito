@@ -93,6 +93,11 @@ export const paymentsWithClaimsByBillIdQuery = (billId: BillId) =>
   createQuery((db) =>
     db
       .selectFrom("payment")
+      .leftJoin("paymentNumber", (join) =>
+        join
+          .onRef("paymentNumber.id", "=", "payment.id")
+          .on("paymentNumber.isDeleted", "is not", sqliteTrue)
+      )
       .select([
         "payment.id",
         "payment.amount",
@@ -102,6 +107,7 @@ export const paymentsWithClaimsByBillIdQuery = (billId: BillId) =>
         "payment.confirmedPaidAt",
         "payment.expiresAt",
         "payment.createdAt",
+        "paymentNumber.serialNumber",
       ])
       .select((eb) =>
         evoluJsonArrayFrom(
@@ -742,8 +748,7 @@ export const paymentReconciliationsQuery = (paymentId: PaymentId) =>
  * trip instead of a per-row Suspense waterfall:
  *
  * - `ownClaimedTransactions` — this payment's own claimed transactions
- *   (mirrors `activeClaimedTransactionsByPaymentIdQuery`), for
- *   `derivePaymentHasExcessSettlement`.
+ *   (mirrors `activeClaimedTransactionsByPaymentIdQuery`).
  * - `billLines` — the bill's line ledger (mirrors `billLinesByBillIdQuery`),
  *   reduced via `calculateBillLineSummaries` for the bill's total.
  * - `billClaimedTransactions` — every claimed transaction across every
@@ -789,6 +794,8 @@ export const latestPaymentsQuery = cacheQueryByLimit((limit: number) =>
         "payment.billId",
         "bill.label as billLabel",
         "bill.displayNumber as billDisplayNumber",
+        "bill.canceledAt as billCanceledAt",
+        "bill.confirmedClosedAt as billConfirmedClosedAt",
         "table.name as tableName",
         "paymentNumber.serialNumber as paymentSerialNumber",
         "payment.amount",

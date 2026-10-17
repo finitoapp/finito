@@ -30,6 +30,7 @@ import {
   startDbWorker,
 } from "@evolu/common/local-first"
 import { createNodeJsSqliteDriver } from "@evolu/nodejs"
+import { createAppOwnerSync } from "../evolu/app-owner-sync.ts"
 import { createAppEvolu, createTestAppEvolu } from "../evolu/client.ts"
 import {
   deriveTableSelfPayRoot,
@@ -179,6 +180,7 @@ export const createNodeEvolu = async (
 
   return {
     evolu,
+    appOwnerSync: createAppOwnerSync(run.deps.syncState, evolu),
     tableSelfPayRoot:
       account === undefined
         ? undefined

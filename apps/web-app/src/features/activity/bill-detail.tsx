@@ -6,6 +6,7 @@ import {
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
+import { deriveBillOverpayment } from "@payky/core/modules/bill/bill-utils"
 import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
@@ -56,6 +57,7 @@ import { PaymentMethodIcons } from "@/features/activity/activity-row.tsx"
 import { BillCancellationCollisionPanel } from "@/features/activity/bill-cancellation-collision-panel.tsx"
 import { BillCoverageWarning } from "@/features/activity/bill-coverage-warning.tsx"
 import { billStatusBadgeClassName } from "@/features/activity/bill-status-display.ts"
+import { OverpaymentCard } from "@/features/activity/overpayment-card.tsx"
 import {
   PaymentDetailCopyRow,
   PaymentDetailTechnical,
@@ -71,6 +73,7 @@ import { RefundBadge } from "@/features/shared/refund-badge.tsx"
 import { TaxRecap } from "@/features/shared/tax-recap.tsx"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
 import { useBillStatus } from "@/features/shared/use-bill-status.ts"
+import { useOverpaymentInput } from "@/features/shared/use-overpayment-input.ts"
 import {
   useEvoluQuery,
   usePreloadEvoluQueries,
@@ -121,6 +124,7 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   const { data: allocations } = useEvoluQuery(
     selfPayAllocationsByBillIdQuery(billId)
   )
+  const overpaymentInput = useOverpaymentInput({ billId })
   const bill = bills[0]
 
   if (!bill || billStatus === undefined) {
@@ -128,12 +132,33 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   }
 
   const table = tables.find((candidate) => candidate.id === bill.tableId)
+  const billLabel =
+    bill.label ?? t("bill.list.label", { number: bill.displayNumber })
   const totalAmount = deriveBillSummaryTotal(summaries)
   // VAT of the net lines, the bill's discount spread over its goods
   // (catalog/0003).
   const taxRecapRows = calculateTaxRecap(allocateDiscount(summaries), taxRates)
   const hasTaxRecap = hasTaxableLines(taxRecapRows)
   const selfPayAllocated = sumSelfPayAllocationsByLineKey(allocations)
+  const isOverpaymentUnresolved =
+    overpaymentInput !== undefined &&
+    deriveBillOverpayment(overpaymentInput).unresolved > 0
+  const overpaymentCard = (
+    <OverpaymentCard
+      scope={{ billId }}
+      billLabel={billLabel}
+      currency={bill.currency}
+      payments={payments.map((payment) => ({
+        id: payment.id,
+        number: payment.serialNumber,
+        amount: payment.amount,
+        methods: payment.claimedTransactions.map(({ kind }) => kind),
+        createdAt: payment.createdAt,
+        canceledAt: payment.canceledAt,
+        confirmedPaidAt: payment.confirmedPaidAt,
+      }))}
+    />
+  )
 
   const closedOrCanceledLabel =
     billStatus.status === "closed" && bill.closedAt !== null
@@ -160,9 +185,7 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            {bill.label ?? t("bill.list.label", { number: bill.displayNumber })}
-          </CardTitle>
+          <CardTitle>{billLabel}</CardTitle>
           <CardDescription>
             {formatDateTime(new Date(bill.createdAt), locale)}
           </CardDescription>
@@ -191,6 +214,8 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
               </span>
             )}
           </div>
+
+          {isOverpaymentUnresolved ? overpaymentCard : null}
 
           {/*
            * Spelled out rather than "—": a counter sale with no table is a
@@ -273,17 +298,19 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
             </>
           ) : null}
 
-          {coverage === "paid" ? null : (
+          {coverage === "underpaid" ? (
             <>
               <Separator />
               <BillCoverageWarning
-                coverage={coverage}
+                coverage={{ type: "underpaid" }}
                 expectedAmount={totalAmount}
                 claimedSum={claimedSum}
                 currency={bill.currency}
               />
             </>
-          )}
+          ) : null}
+
+          {isOverpaymentUnresolved ? null : overpaymentCard}
         </CardContent>
       </Card>
 
@@ -384,6 +411,10 @@ function BillDetailPaymentRow({
     confirmedPaidAt: payment.confirmedPaidAt,
     hasActiveClaim: claimCount > 0,
   })
+  const amount = formatMoney(
+    { value: payment.amount, currency: payment.currency },
+    locale
+  )
 
   return (
     <Link
@@ -397,10 +428,12 @@ function BillDetailPaymentRow({
       />
       <div className="flex flex-1 flex-col gap-0.5">
         <span className="text-sm font-medium">
-          {formatMoney(
-            { value: payment.amount, currency: payment.currency },
-            locale
-          )}
+          {payment.serialNumber === null
+            ? amount
+            : t("billDetail.payments.numberedAmount", {
+                number: payment.serialNumber,
+                amount,
+              })}
         </span>
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {formatDateTime(new Date(payment.createdAt), locale)}

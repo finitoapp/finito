@@ -1,3 +1,4 @@
+import type { SyncStateDep } from "@evolu/common/local-first"
 import { createRun } from "@evolu/web"
 import {
   appBackgroundJobs,
@@ -7,6 +8,7 @@ import {
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
+import { createAppOwnerSync } from "@payky/core/evolu/app-owner-sync"
 import type {
   DeviceAccountId,
   DeviceEvolu,
@@ -36,6 +38,7 @@ import {
 } from "@/atoms/evolu.ts"
 import { notificationStoreAtom } from "@/atoms/notifications.ts"
 import { qerkoConnectionStatusStore } from "@/atoms/qerko-connection-status.ts"
+import { runAtom } from "@/atoms/run.ts"
 import { serviceProxyConsentAtom } from "@/atoms/service-proxy.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConsole } from "@/hooks/use-console.ts"
@@ -56,6 +59,7 @@ type Console = ReturnType<typeof useConsole>
  */
 const createAppJobDeps = ({
   evolu,
+  syncState,
   deviceEvolu,
   deviceAccountId,
   deviceId,
@@ -65,6 +69,7 @@ const createAppJobDeps = ({
   isServiceProxyEnabled,
 }: {
   readonly evolu: Evolu
+  readonly syncState: SyncStateDep["syncState"]
   readonly deviceEvolu: DeviceEvolu
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
@@ -78,6 +83,7 @@ const createAppJobDeps = ({
   return {
     evolu,
     evoluOwner: evolu.appOwner,
+    appOwnerSync: createAppOwnerSync(syncState, evolu),
     deviceEvolu,
     deviceAccountId,
     deviceId,
@@ -178,10 +184,12 @@ export function AppBackgroundJobs() {
   const deviceId = account.device.id
   const deviceAccountId = account.id
   const { masterKey } = account
+  const { syncState } = useAtomValue(runAtom).deps
   const start = useCallback(() => {
     const run = createRun(
       createAppJobDeps({
         evolu,
+        syncState,
         deviceEvolu,
         deviceAccountId,
         deviceId,
@@ -202,6 +210,7 @@ export function AppBackgroundJobs() {
     evolu,
     masterKey,
     notificationStore,
+    syncState,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })
@@ -225,10 +234,12 @@ export function CashuBackgroundJobs() {
   const deviceId = account.device.id
   const deviceAccountId = account.id
   const { masterKey } = account
+  const { syncState } = useAtomValue(runAtom).deps
   const start = useCallback(() => {
     const run = createRun({
       ...createAppJobDeps({
         evolu,
+        syncState,
         deviceEvolu,
         deviceAccountId,
         deviceId,
@@ -252,6 +263,7 @@ export function CashuBackgroundJobs() {
     evolu,
     masterKey,
     notificationStore,
+    syncState,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })
@@ -284,6 +296,7 @@ function RunningBankBackgroundJobs() {
   const notificationStore = useAtomValue(notificationStoreAtom)
   const isServiceProxyEnabled = useAtomValue(serviceProxyConsentAtom)
   const console = useConsole()
+  const { syncState } = useAtomValue(runAtom).deps
   const deviceId = account.device.id
   const deviceAccountId = account.id
   const { masterKey } = account
@@ -291,6 +304,7 @@ function RunningBankBackgroundJobs() {
     const run = createRun(
       createAppJobDeps({
         evolu,
+        syncState,
         deviceEvolu,
         deviceAccountId,
         deviceId,
@@ -313,6 +327,7 @@ function RunningBankBackgroundJobs() {
     isServiceProxyEnabled,
     masterKey,
     notificationStore,
+    syncState,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })

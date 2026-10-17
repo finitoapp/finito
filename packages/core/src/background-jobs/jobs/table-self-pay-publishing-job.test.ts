@@ -69,6 +69,7 @@ import {
   SelfPayViewSchema,
 } from "../../modules/table-self-pay/table-self-pay-view-utils.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import { createTestDeviceAccountDep } from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import { createTableSelfPayPublishingJob } from "./table-self-pay-publishing-job.ts"
@@ -125,6 +126,7 @@ const startJob = async (
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(),
     ...createYadioApiDep(),
+    ...testSyncedAppOwner,
     fetch,
     deviceId: context.deviceId,
     connectivity: { onOnline: () => () => undefined },

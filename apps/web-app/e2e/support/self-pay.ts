@@ -10,7 +10,7 @@ import {
   expect,
   type Page,
 } from "@playwright/test"
-import { injectScanCode } from "./bill.ts"
+import { addCatalogItem, addTable, injectScanCode } from "./bill.ts"
 import { nameParam, translate, translateParams } from "./i18n.ts"
 import {
   gotoPage,
@@ -385,4 +385,36 @@ export async function checkTableSticker(
     })
     .click()
   await injectScanCode(page, address)
+}
+
+export async function seedPizzaAndBeerBill(
+  page: Page,
+  table: string
+): Promise<{ readonly guestAddress: string; readonly billId: string }> {
+  await seedActiveFioPlugin(page)
+  await addTable(page, "en", { name: table, seatCount: "4" })
+  await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+  await addCatalogItem(page, "en", { name: "Beer", price: "45" })
+  const guestAddress = await enableTableSelfPay(page, "en", table)
+  const billId = await openTableBill(page, "en", {
+    table,
+    items: ["Pizza", "Beer"],
+  })
+  return { guestAddress, billId }
+}
+
+export async function payAllOfTheBeer(page: Page, guest: Page): Promise<void> {
+  await pickShareChoice(guest, "selfPay.choice.items")
+  await pickLineUnits(guest, { line: "Beer", units: 1 })
+  await guest
+    .getByRole("button", {
+      name: translateParams("en", "selfPay.pay.total", { amount: "$45.00" }),
+    })
+    .click()
+  await receiveShownBankTransfer(page, {
+    payer: guest,
+    language: "en",
+    amount: 4500,
+    currency: "USD",
+  })
 }

@@ -1257,7 +1257,6 @@ export const csSettings = {
   "settings.tips.nav.off": "Vypnuto",
   "settings.paymentAccounts.nav.none": "Žádné",
   "settings.taxRates.nav.description": "Sazby DPH pro vaše položky",
-  "access.action.acknowledgeExcess": "Potvrdit přeplatek",
   "access.action.addDiscount": "Přidat slevu na účet",
   "access.action.moveDiscount": "Přesunout slevu na jiný účet",
   "access.action.aiAccess": "Změnit přístup AI k datům",
@@ -1279,6 +1278,7 @@ export const csSettings = {
   "access.action.finishBill": "Dokončit účet bez platby",
   "access.action.markCashPaid": "Potvrdit přijetí hotovosti",
   "access.action.markIbanPaid": "Potvrdit příchod převodu",
+  "access.action.resolveOverpayment": "Vyřešit přeplatek",
   "access.action.removeAccount": "Odebrat účet z tohoto zařízení",
   "access.action.removeLines": "Odebrat položky z účtu",
   "access.action.switchAccount": "Přepnout účet",
@@ -1332,7 +1332,7 @@ export const csSettings = {
   "access.permission.discard.description":
     "Zahodit účet, odebrat z něj položky, zrušit platbu",
   "access.permission.refund": "Vratky",
-  "access.permission.refund.description": "Vratky a potvrzení přeplatku",
+  "access.permission.refund.description": "Vratky a vyřešení přeplatku",
   "access.permission.sell": "Prodej",
   "access.permission.sell.description":
     "Domovská obrazovka, účty, rozdělení účtu, platby a spropitné",

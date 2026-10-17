@@ -127,6 +127,7 @@ export const csBill = {
   "billDetail.notFound": "Účet nebyl nalezen.",
   "billDetail.payments": "Platby",
   "billDetail.payments.empty": "K tomuto účtu zatím neproběhla žádná platba.",
+  "billDetail.payments.numberedAmount": "č. {number} · {amount}",
   "billDetail.title": "Detail účtu",
   "billHistory.empty.description": "Vytvořené účty se zobrazí zde.",
   "billHistory.empty.title": "Zatím žádné účty",

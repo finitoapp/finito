@@ -9,6 +9,7 @@ import { installPolyfills } from "@evolu/common/polyfills"
 import type { AiModelDep } from "@payky/core/ai/ai-model"
 import { createAiModelDep } from "@payky/core/ai/ai-model"
 import {
+  type AppOwnerSyncDep,
   createDateDep,
   type DateDep,
   type EvoluOwnerDep,
@@ -53,6 +54,7 @@ const commands: ((
   never,
   EvoluDep &
     EvoluOwnerDep &
+    AppOwnerSyncDep &
     ConsoleDep &
     DateDep &
     AiModelDep &
@@ -90,7 +92,7 @@ const main = async () => {
   navigatorWithLocks.locks ??= createInProcessLockManager()
 
   await using evoluCli = await createCliEvoluFromEnv()
-  const { evolu, tableSelfPayRoot, dataDir } = evoluCli
+  const { evolu, appOwnerSync, tableSelfPayRoot, dataDir } = evoluCli
   const evoluOwner = evolu.appOwner
   const console = createConsole({
     level: "debug",
@@ -99,6 +101,7 @@ const main = async () => {
   await using run = createRun({
     evolu,
     evoluOwner,
+    appOwnerSync,
     console,
     lockManager: navigatorWithLocks.locks,
     ...createDateDep(),

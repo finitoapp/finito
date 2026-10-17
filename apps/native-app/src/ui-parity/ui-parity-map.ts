@@ -335,6 +335,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/activity/choice-toggle-item.tsx",
+    web: ["apps/web-app/src/features/activity/choice-toggle-item.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/activity/overpayment-card.tsx",
+    web: ["apps/web-app/src/features/activity/overpayment-card.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/activity/payment-detail-page.tsx",
     web: ["apps/web-app/src/features/activity/payment-detail.tsx"],
     status: "matched",

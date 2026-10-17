@@ -205,8 +205,7 @@ const selfPayArrivalDeps = (masterKey: MasterKey) => ({
  * is null` guard). A genuine CRDT merge race bypasses that same exclusion
  * for the same reason `__e2eSimulateCancelAfterClaim` does: each device only
  * sees its own writes until sync. Used to exercise the duplicate-settlement
- * collision UI (the payment-detail warning and
- * `acknowledgePaymentExcessSettlement`) without two real devices.
+ * collision UI (the payment-detail warning) without two real devices.
  *
  * Also exposes `window.__e2eSimulateBillModifiedDuringPayment`, which edits
  * a bill's line items directly (bypassing `requireEditableBill`'s lock —

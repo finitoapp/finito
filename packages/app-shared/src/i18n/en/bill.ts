@@ -127,6 +127,7 @@ export const enBill = {
   "billDetail.notFound": "Bill was not found.",
   "billDetail.payments": "Payments",
   "billDetail.payments.empty": "No payments have been made on this bill yet.",
+  "billDetail.payments.numberedAmount": "#{number} · {amount}",
   "billDetail.title": "Bill detail",
   "billHistory.empty.description": "Bills you create will show up here.",
   "billHistory.empty.title": "No bills yet",

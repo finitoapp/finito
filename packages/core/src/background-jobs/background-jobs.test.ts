@@ -10,6 +10,7 @@ import {
   cashuBackgroundJobs,
   cliBackgroundJobs,
 } from "./background-jobs.ts"
+import { startBillClosingJob } from "./jobs/bill-closing-job.ts"
 import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
 import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
 import { startFioAccountTransactionSyncJob } from "./jobs/fio-account-transaction-sync-job.ts"
@@ -42,6 +43,7 @@ describe("background job groups", () => {
       startRecoveryBackupReminderJob,
       startTableSelfPayPublishingJob,
       startSelfPayPointerJob,
+      startBillClosingJob,
     ])
   })
 

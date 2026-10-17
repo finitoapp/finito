@@ -75,7 +75,10 @@ export function PosOverviewPage() {
   // a query per bill meant the floor view opened two more for every bill on
   // screen. Newest first, in every tile.
   const rows = useMemo(() => buildBillRows(openBills), [openBills])
-  const rowsByTableId = useMemo(() => groupBillRowsByTableId(rows), [rows])
+  const rowsByTableId = useMemo(
+    () => groupBillRowsByTableId(rows, new Set(tables.map(({ id }) => id))),
+    [rows, tables]
+  )
 
   const tableTiles = tables.map((table) => ({
     table,

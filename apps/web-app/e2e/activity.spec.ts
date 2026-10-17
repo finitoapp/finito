@@ -6,12 +6,17 @@ import {
   simulateDuplicateSettlement,
 } from "./support/collisions.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
-import { translate, translateValue } from "./support/i18n.ts"
+import { translate, translateParams, translateValue } from "./support/i18n.ts"
 import {
   contentNav,
   gotoPage,
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
+import {
+  overpaidByPattern,
+  overpaymentCard,
+  resolveOverpayment,
+} from "./support/overpayment.ts"
 import {
   createPayment,
   markCashPaid,
@@ -209,33 +214,19 @@ test("a duplicate-settlement payment collision is flagged in the payment detail 
     await page
       .getByRole("heading", { name: translate("en", "paymentDetail.title") })
       .waitFor()
-    await expect(
-      page.getByText(translate("en", "paymentDetail.excessCollision.title"))
-    ).toBeVisible()
+    await expect(overpaymentCard(page)).toContainText(overpaidByPattern("en"))
+    await expect(overpaymentCard(page)).toContainText("$5.90")
     await page.screenshot({
       path: `${screenshotDir}/payment-detail-excess-collision.png`,
       fullPage: true,
     })
   })
 
-  await test.step("resolving the collision hides the warning and keeps the payment paid", async () => {
-    await page
-      .getByRole("button", {
-        name: translate("en", "paymentDetail.excessCollision.acknowledge"),
-      })
-      .click()
-    await expect(
-      page.getByText(translate("en", "paymentDetail.excessCollision.title"))
-    ).toBeHidden()
-    await expect(
-      page.getByText(translate("en", "payment.status.paid"), {
-        exact: true,
-      })
-    ).toBeVisible()
-    await page.screenshot({
-      path: `${screenshotDir}/payment-detail-excess-resolved.png`,
-      fullPage: true,
-    })
+  await test.step("keeping the second settlement resolves it", async () => {
+    await resolveOverpayment(page, "en", { kind: "kept", amount: "5.9" })
+    await expect(overpaymentCard(page)).toContainText(
+      translate("en", "overpayment.resolved.title")
+    )
   })
 })
 
@@ -297,7 +288,7 @@ test("the payment detail shows the bill's coverage as underpaid or overpaid when
       .waitFor()
     await expect(
       page.getByText(
-        translate("en", "paymentDetail.bill.coverage.overpaid.title")
+        translateParams("en", "overpayment.title", { amount: "$5.00" })
       )
     ).toBeVisible()
     await expect(
@@ -367,7 +358,7 @@ test("a bill overpaid by two separately paid payments is flagged on the payment 
       .getByRole("heading", { name: translate("en", "paymentDetail.title") })
       .waitFor()
     const overpaidAlert = page.getByRole("alert").filter({
-      hasText: translate("en", "paymentDetail.bill.coverage.overpaid.title"),
+      hasText: translateParams("en", "overpayment.title", { amount: "$5.00" }),
     })
     await expect(overpaidAlert).toBeVisible()
     await expect(overpaidAlert).toContainText("$5.00")
@@ -380,7 +371,61 @@ test("a bill overpaid by two separately paid payments is flagged on the payment 
   })
 })
 
-test("the activity list flags a payment's own duplicate settlement without also flagging its bill as overpaid", async ({
+test("after part of an overpayment is kept, the payment detail shows what is left and leads to resolving it on the bill", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  const billId = await startBillAndBeginCashPayment(page, "en")
+  await simulateBillModifiedDuringPayment(page, billId, "removeAll")
+  await markCashPaid(page, "en")
+  await waitForLocalWriteToSettle(page)
+
+  await test.step("keep 2.00 of the 5.00 on the bill", async () => {
+    await gotoPage(page, `/activity/bills/${billId}`, "en", "billDetail.title")
+    await resolveOverpayment(page, "en", { kind: "kept", amount: "2" })
+    await expect(overpaymentCard(page)).toContainText(
+      translateParams("en", "overpayment.title", { amount: "$3.00" })
+    )
+  })
+
+  await test.step("the payment opened from the Payments list reads overpaid by 3.00", async () => {
+    await gotoPage(page, "/activity", "en", "activity.title")
+    await page
+      .getByRole("link")
+      .filter({
+        hasText: translateParams("en", "bill.list.label", { number: 1 }),
+      })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "paymentDetail.title") })
+      .waitFor()
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: translateParams("en", "overpayment.title", {
+          amount: "$3.00",
+        }),
+      })
+    ).toBeVisible()
+  })
+
+  await test.step("Resolve on the bill is at least 44 px tall and opens the bill's overpayment card", async () => {
+    const resolveOnBill = page.getByRole("button", {
+      name: translate("en", "overpayment.resolveOnBill"),
+    })
+    expect(
+      (await resolveOnBill.boundingBox())?.height ?? 0
+    ).toBeGreaterThanOrEqual(44)
+    await resolveOnBill.click()
+    await page
+      .getByRole("heading", { name: translate("en", "billDetail.title") })
+      .waitFor()
+    await expect(overpaymentCard(page)).toContainText(
+      translateParams("en", "overpayment.title", { amount: "$3.00" })
+    )
+  })
+})
+
+test("the activity list flags a duplicate settlement of a bill payment as its bill overpaid", async ({
   seededPage: page,
 }) => {
   await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
@@ -404,13 +449,13 @@ test("the activity list flags a payment's own duplicate settlement without also 
   const row = contentNav(page, "en").getByRole("link")
   await expect(row).toHaveCount(1)
   await expect(row).toContainText(
-    translate("en", "paymentDetail.excessCollision.title")
-  )
-  await expect(row).not.toContainText(
     translate("en", "paymentHistory.billOverpaid")
   )
+  await expect(row).not.toContainText(
+    translate("en", "paymentDetail.excessCollision.title")
+  )
   await page.screenshot({
-    path: `${screenshotDir}/activity-list-excess-settlement-only.png`,
+    path: `${screenshotDir}/activity-list-duplicate-settlement-bill-overpaid.png`,
     fullPage: true,
   })
 })
