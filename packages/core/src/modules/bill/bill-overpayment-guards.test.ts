@@ -1,5 +1,6 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
+import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import { recordOverpaymentResolution } from "../overpayment-resolution/overpayment-resolution-actions.ts"
 import {
   createOverpaymentContext,
@@ -8,7 +9,19 @@ import {
 import type { PaymentId } from "../payment/payment-types.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import { PositiveInteger, TimestampMs } from "../shared/schema.ts"
-import { loadOverpaymentInput } from "./bill-overpayment-guards.ts"
+import { formatSelfPayBankMessage } from "../table-self-pay/table-self-pay-reference-utils.ts"
+import {
+  createSelfPayTestContext,
+  openSelfPayBill,
+  publishSelfPayTestSelection,
+  publishSelfPayTestView,
+  receiveBankTransfer,
+} from "../table-self-pay/table-self-pay-test-fixtures.ts"
+import {
+  loadGuestPaidRemoval,
+  loadOverpaymentInput,
+} from "./bill-overpayment-guards.ts"
+import type { BillId } from "./bill-types.ts"
 
 const acknowledgeAsAnOlderVersion = async (
   context: OverpaymentContext,
@@ -109,5 +122,81 @@ describe("Acknowledged extra money counts as kept", () => {
         25_000
       )
     }
+  })
+})
+
+describe("an edit that removes what guests paid for", () => {
+  const guestPaidBeer = async () => {
+    const context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [
+        { name: "Pizza", amount: 10_100 },
+        { name: "Beer", amount: 4500 },
+      ],
+    })
+    const { view } = await publishSelfPayTestView(context)
+    const bill = view.bills.find((shown) => shown.reference === reference)
+    const beer = bill?.lines.find(({ name }) => name === "Beer")
+    if (bill === undefined || beer === undefined) {
+      throw new Error("Expected the beer in the view.")
+    }
+    const pointer = await publishSelfPayTestSelection(context, bill, {
+      kind: "lines",
+      fractions: [{ key: beer.key, numerator: 1, denominator: 1 }],
+    })
+    await receiveBankTransfer(context, {
+      amount: 4500,
+      variableSymbol: reference,
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    return { context, billId }
+  }
+
+  const removing = async (
+    context: Awaited<ReturnType<typeof guestPaidBeer>>["context"],
+    billId: BillId,
+    name: string
+  ) => {
+    await using run = testCreateRun(context.deps)
+    const summaries = await run.ok(loadCalculatedBillLineSummaries(billId))
+    return summaries
+      .filter((summary) => summary.name === name)
+      .map((summary) => ({
+        billId,
+        deviceId: null,
+        catalogItemId: summary.catalogItemId,
+        itemId: summary.itemId,
+        type: summary.type,
+        kind: "remove" as const,
+        quantity: summary.quantity,
+        totalAmount: summary.totalAmount,
+      }))
+  }
+
+  test("names the line and what guests paid for it", async () => {
+    const { context, billId } = await guestPaidBeer()
+    await using _context = context
+    await using run = testCreateRun(context.deps)
+
+    expect(
+      await run.orThrow(
+        loadGuestPaidRemoval(billId, await removing(context, billId, "Beer"))
+      )
+    ).toEqual({
+      lineNames: ["Beer"],
+      guestPaid: 4500,
+    })
+  })
+
+  test("asks nothing about a line nobody paid for", async () => {
+    const { context, billId } = await guestPaidBeer()
+    await using _context = context
+    await using run = testCreateRun(context.deps)
+
+    expect(
+      await run.orThrow(
+        loadGuestPaidRemoval(billId, await removing(context, billId, "Pizza"))
+      )
+    ).toBeNull()
   })
 })

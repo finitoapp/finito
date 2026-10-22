@@ -50,6 +50,7 @@ import { isSameDay } from "date-fns"
 import { Redirect, router, useLocalSearchParams } from "expo-router"
 import { type Atom, useAtomValue } from "jotai"
 import ArrowLeft from "lucide-react-native/icons/arrow-left"
+import CircleCheck from "lucide-react-native/icons/circle-check"
 import Eraser from "lucide-react-native/icons/eraser"
 import Minus from "lucide-react-native/icons/minus"
 import Plus from "lucide-react-native/icons/plus"
@@ -157,6 +158,7 @@ import { ScanCodeCollisionDialog } from "./scan-code-collision-dialog.tsx"
 import { SplitBillDialog } from "./split-bill-dialog.tsx"
 import { useCartBill } from "./use-cart-bill.ts"
 import { useFinishBill } from "./use-finish-bill.ts"
+import { useGuestMoneyArrivals } from "./use-guest-money-arrivals.ts"
 import { useSplitBill } from "./use-split-bill.ts"
 
 /** The category filters, plus "on the bill": only what the bill holds. */
@@ -238,6 +240,12 @@ function BillPage({
   const summaries = useBillLineSummaries(billId)
   const pendingPaymentIds = usePendingPayments(billId)
   const billStatus = useBillStatus(billId)
+  const currency = bill?.currency ?? getFiatCurrency(settings)
+  const { guestsClosedBill } = useGuestMoneyArrivals({
+    billId,
+    billStatus,
+    currency,
+  })
 
   // As web: a bill that is already closed when opened (Back, a stale link)
   // goes to its detail, which `sell` alone cannot read, so the PIN gate asks.
@@ -267,6 +275,9 @@ function BillPage({
         <ActivityIndicator size="large" />
       </YStack>
     )
+  if (bill !== undefined && guestsClosedBill) {
+    return <GuestsPaidBillMessage billId={billId} />
+  }
   if (bill !== undefined && billStatus?.status !== "open")
     return billStatus?.hasCancellationCollision ? (
       <BillCancellationCollisionMessage
@@ -297,7 +308,7 @@ function BillPage({
           ? t("bill.title")
           : (bill.label ?? t("bill.list.label", { number: bill.displayNumber }))
       }
-      currency={bill?.currency ?? getFiatCurrency(settings)}
+      currency={currency}
       tipsEnabled={settings?.tipsEnabled === sqliteTrue}
       summaries={summaries}
       claimedSum={billStatus?.claimedSum ?? NonNegativeInteger(0)}
@@ -338,6 +349,30 @@ function BillMessage({
           }
         />
         <Button size="lg" label={t("paymentWait.back")} onPress={goHome} />
+      </YStack>
+    </SafeAreaView>
+  )
+}
+
+function GuestsPaidBillMessage({ billId }: { readonly billId: BillId }) {
+  const { t } = useTranslation()
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <YStack mt={64} px={24} gap={16} items="center">
+        <Alert variant="success" icon={CircleCheck}>
+          <AlertTitle>{t("bill.guestMoney.closed")}</AlertTitle>
+        </Alert>
+        <Button
+          size="lg"
+          variant="outline"
+          label={t("bill.guestMoney.openDetail")}
+          onPress={() =>
+            router.push({
+              pathname: "/activity/bills/[billId]",
+              params: { billId },
+            })
+          }
+        />
       </YStack>
     </SafeAreaView>
   )
@@ -597,8 +632,12 @@ function BillCart({
     release()
   }
   const catalogItems = useEvoluQuery(catalogItemsQuery).data
-  const selfPayAllocated = sumSelfPayAllocationsByLineKey(
-    useEvoluQuery(selfPayAllocationsByBillIdQuery(billId)).data
+  const selfPayAllocations = useEvoluQuery(
+    selfPayAllocationsByBillIdQuery(billId)
+  ).data
+  const selfPayAllocated = useMemo(
+    () => sumSelfPayAllocationsByLineKey(selfPayAllocations),
+    [selfPayAllocations]
   )
   const catalogItemsById = useMemo(
     () => new Map(catalogItems.map((item) => [item.id, item])),
@@ -672,20 +711,30 @@ function BillCart({
   // the bill, rather than each brick scanning it.
   const brickStates = useMemo(() => {
     const quantities = new Map<CatalogItemId, number>()
+    const guestPaid = new Map<CatalogItemId, number>()
     for (const summary of summaries) {
       if (summary.catalogItemId === null) continue
       quantities.set(
         summary.catalogItemId,
         (quantities.get(summary.catalogItemId) ?? 0) + summary.quantity
       )
+      guestPaid.set(
+        summary.catalogItemId,
+        (guestPaid.get(summary.catalogItemId) ?? 0) +
+          projectSelfPayViewLine(summary, selfPayAllocated).allocatedAmount
+      )
     }
     return new Map(
       [...quantities].map(([id, quantity]) => [
         id,
-        { quantity, latestSummary: getLatestCatalogItemSummary(summaries, id) },
+        {
+          quantity,
+          latestSummary: getLatestCatalogItemSummary(summaries, id),
+          guestPaid: NonNegativeInteger(guestPaid.get(id) ?? 0),
+        },
       ])
     )
-  }, [summaries])
+  }, [summaries, selfPayAllocated])
   const brickStateOf = (id: CatalogItemId) =>
     brickStates.get(id) ?? emptyBrickState
   // Kept while its items stay the same, so a tap that only changes a
@@ -779,7 +828,12 @@ function BillCart({
     if (!billExists) return
     const confirmed = await confirm({
       title: t("bill.discard.confirm.title"),
-      description: t("bill.discard.confirm.description"),
+      description:
+        claimedSum > 0
+          ? t("bill.discard.confirm.paid.description", {
+              amount: formatMoney({ value: claimedSum, currency }, locale),
+            })
+          : t("bill.discard.confirm.description"),
       confirmLabel: t("bill.discard.confirm.confirm"),
       cancelLabel: t("bill.discard.confirm.cancel"),
       variant: "destructive",
@@ -1120,6 +1174,14 @@ function BillCart({
                         </Text>
                       </XStack>
                       <XStack items="center" gap={8}>
+                        {claimedSum > 0 && (
+                          <Text
+                            fontSize={fontSize.base}
+                            lineHeight={fontSize.base}
+                          >
+                            {t("bill.summary.leftToPay")}
+                          </Text>
+                        )}
                         <Animated.View style={amountDuePulse}>
                           <Text
                             fontSize={fontSize.base}
@@ -1780,9 +1842,14 @@ interface BrickActions {
 interface BrickState {
   readonly quantity: number
   readonly latestSummary: BillLineSummary | undefined
+  readonly guestPaid: NonNegativeInteger
 }
 
-const emptyBrickState: BrickState = { quantity: 0, latestSummary: undefined }
+const emptyBrickState: BrickState = {
+  quantity: 0,
+  latestSummary: undefined,
+  guestPaid: NonNegativeInteger(0),
+}
 
 const noItemIds: ReadonlyArray<CatalogItemId> = []
 
@@ -1800,6 +1867,7 @@ function ItemBrick({
   pictureUrl,
   quantity,
   latestSummary,
+  guestPaid,
   locale,
   actions,
   onOpenQuantity,
@@ -1824,6 +1892,15 @@ function ItemBrick({
     { value: catalogItem.unitAmount, currency: catalogItem.currency },
     locale
   )
+  const guestPaidLabel =
+    guestPaid > 0
+      ? t("bill.brick.guestPaid", {
+          amount: formatMoney(
+            { value: guestPaid, currency: catalogItem.currency },
+            locale
+          ),
+        })
+      : null
 
   return (
     <Card aspectRatio={1} p={0} gap={0}>
@@ -1906,6 +1983,21 @@ function ItemBrick({
           >
             {price}
           </Text>
+          {guestPaidLabel === null ? null : (
+            <Text
+              numberOfLines={1}
+              fontSize={fontSize.xs}
+              lineHeight={fontSize.xs}
+              fontWeight={fontWeight.medium}
+              fontVariant={["tabular-nums"]}
+              color="photo-foreground"
+              textShadowColor="photo-shadow"
+              textShadowOffset={{ width: 0, height: 1 }}
+              textShadowRadius={2}
+            >
+              {guestPaidLabel}
+            </Text>
+          )}
         </YStack>
       ) : (
         <YStack
@@ -1926,16 +2018,29 @@ function ItemBrick({
           >
             {name}
           </Text>
-          <Text
-            numberOfLines={1}
-            fontSize={fontSize.sm}
-            lineHeight={fontSize.sm}
-            fontWeight={fontWeight.semibold}
-            fontVariant={["tabular-nums"]}
-            color="muted-foreground"
-          >
-            {price}
-          </Text>
+          <YStack gap={2}>
+            <Text
+              numberOfLines={1}
+              fontSize={fontSize.sm}
+              lineHeight={fontSize.sm}
+              fontWeight={fontWeight.semibold}
+              fontVariant={["tabular-nums"]}
+              color="muted-foreground"
+            >
+              {price}
+            </Text>
+            {guestPaidLabel === null ? null : (
+              <Text
+                numberOfLines={1}
+                fontSize={fontSize.xs}
+                lineHeight={fontSize.xs}
+                fontWeight={fontWeight.medium}
+                fontVariant={["tabular-nums"]}
+              >
+                {guestPaidLabel}
+              </Text>
+            )}
+          </YStack>
         </YStack>
       )}
       {/*

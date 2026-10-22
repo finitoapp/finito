@@ -23,6 +23,7 @@ import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { useGuestPaidQuestion } from "./use-guest-paid-question.ts"
 
 /**
  * Runs a confirmed split, as web's `handleConfirmSplit`: a new bill is always
@@ -52,6 +53,7 @@ export function useSplitBill({
   // otherwise run the split twice.
   const pendingRef = useRef(false)
   const [pending, setPending] = useState(false)
+  const askGuestPaid = useGuestPaidQuestion(currency)
 
   const fail = (error: SplitBillError) => {
     nativeConsole.error("Failed to split bill", error)
@@ -69,6 +71,21 @@ export function useSplitBill({
       ) {
         return
       }
+      const asked = await askGuestPaid(
+        billId,
+        input.items.map((item) => ({
+          billId,
+          deviceId: null,
+          catalogItemId: item.catalogItemId,
+          itemId: item.itemId,
+          type: item.type,
+          kind: "remove",
+          quantity: item.quantity,
+          totalAmount: item.totalAmount,
+        })),
+        "split"
+      )
+      if (!asked) return
       await using run = appRun()
 
       if (input.destination === "new") {
