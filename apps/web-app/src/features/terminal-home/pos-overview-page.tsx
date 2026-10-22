@@ -2,13 +2,14 @@ import { useTimestamp } from "@dedalik/use-react"
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
+  type BillPaymentState,
   type BillWithStats,
   billPaymentState,
   buildBillRows,
   elapsedSeverity,
+  formatRowsSum,
   groupBillRowsByTableId,
   matchesTableFilter,
-  sumBillRows,
   type TableFilter,
   TableFilterSchema,
   tablePaymentState,
@@ -23,7 +24,13 @@ import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { useLocalStorageState } from "@payky/web-shared/use-local-storage-state"
 import { Link } from "@tanstack/react-router"
-import { PlusIcon, UsersIcon } from "lucide-react"
+import {
+  ChartPieIcon,
+  HourglassIcon,
+  type LucideIcon,
+  PlusIcon,
+  UsersIcon,
+} from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
 import { buttonVariants } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
@@ -88,7 +95,9 @@ export function PosOverviewPage() {
   const visibleTiles = tableTiles.filter((tile) =>
     matchesTableFilter(tableFilter, tile.rows.length > 0)
   )
-  const floorTotal = formatRowsTotal(rows, locale)
+  const floorTotal = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
 
   return (
     <div className="mt-4 flex flex-col gap-3 pb-4">
@@ -179,14 +188,10 @@ function FloorStat({
   )
 }
 
-/** The summed total of `rows`, formatted — `undefined` when it has no sum. */
-const formatRowsTotal = (
-  rows: ReadonlyArray<BillWithStats>,
-  locale: string
-): string | undefined => {
-  const total = sumBillRows(rows)
-  return total === undefined ? undefined : formatMoney(total, locale)
-}
+const billPaymentStateIcons = {
+  paymentPending: HourglassIcon,
+  partiallyPaid: ChartPieIcon,
+} satisfies Record<BillPaymentState, LucideIcon>
 
 /** Covers the whole tile, so its most likely next step needs no aiming. */
 const stretchedLinkClassName =
@@ -256,7 +261,13 @@ function TableTile({
   const locale = useLocale()
   const occupied = rows.length > 0
   const onlyBill = rows.length === 1 ? rows[0]?.bill : undefined
-  const total = formatRowsTotal(rows, locale)
+  const left = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
+  const isPartlyPaid = rows.some(({ paid }) => paid > 0)
+  const paid = isPartlyPaid
+    ? formatRowsSum(rows, "paid", (money) => formatMoney(money, locale))
+    : undefined
   const openedAt = Math.min(
     ...rows.map(({ bill }) => new Date(bill.createdAt).getTime())
   )
@@ -299,8 +310,15 @@ function TableTile({
           </div>
         )}
         <div className="flex min-w-0 flex-col gap-0.5">
-          {total !== undefined && (
-            <p className="truncate text-xl font-bold tabular-nums">{total}</p>
+          {left !== undefined && (
+            <p
+              className={cn(
+                "text-xl font-bold tabular-nums",
+                isPartlyPaid ? "line-clamp-2" : "truncate"
+              )}
+            >
+              {isPartlyPaid ? t("tables.tile.left", { amount: left }) : left}
+            </p>
           )}
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
             {occupied ? (
@@ -310,9 +328,10 @@ function TableTile({
                 </span>
                 <span>{t("tables.tile.itemCount", { value: itemCount })}</span>
                 {paymentState !== undefined && (
-                  <span className="rounded-sm bg-info/15 px-1 text-xs font-semibold text-info">
-                    {t(`tables.tile.${paymentState}`)}
-                  </span>
+                  <BillPaymentStateBadge
+                    paymentState={paymentState}
+                    paid={paymentState === "partiallyPaid" ? paid : undefined}
+                  />
                 )}
               </>
             ) : (
@@ -346,6 +365,26 @@ function TableTile({
         />
       )}
     </div>
+  )
+}
+
+function BillPaymentStateBadge({
+  paymentState,
+  paid,
+}: {
+  readonly paymentState: BillPaymentState
+  readonly paid?: string | undefined
+}) {
+  const { t } = useTranslation()
+  const Icon = billPaymentStateIcons[paymentState]
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-sm bg-info/15 px-1 text-xs font-semibold text-info-foreground">
+      <Icon aria-hidden className="size-3.5 shrink-0" />
+      {paid === undefined
+        ? t(`tables.tile.${paymentState}`)
+        : t("tables.tile.partiallyPaidAmount", { amount: paid })}
+    </span>
   )
 }
 
@@ -384,12 +423,11 @@ const billLabel = (
 
 /**
  * One open bill as a chip, where a table holds several or the bill is on
- * no table: its total and, off a table, how long it has been open, a dot while its
- * payment is under way, and its label when it has one.
+ * no table: what is left to pay on it and, off a table, how long it has been open, and its label when it has one.
  */
 function BillChip({
   bill,
-  stats,
+  left,
   now,
   showElapsed = true,
 }: BillWithStats & {
@@ -401,20 +439,25 @@ function BillChip({
   const locale = useLocale()
   const elapsedMs = now - new Date(bill.createdAt).getTime()
   const paymentState = billPaymentState(bill, now)
+  const PaymentStateIcon =
+    paymentState === undefined ? undefined : billPaymentStateIcons[paymentState]
 
   return (
     <Link
       to="/bill"
       search={{ billId: bill.id }}
-      aria-label={billLabel(bill, t)}
+      aria-label={
+        paymentState === undefined
+          ? billLabel(bill, t)
+          : t("tables.tile.billWithState", {
+              label: billLabel(bill, t),
+              state: t(`tables.tile.${paymentState}`),
+            })
+      }
       className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-background/70 px-2.5 text-sm ring-1 ring-foreground/10 ring-inset transition-colors hover:bg-background"
     >
-      {paymentState !== undefined && (
-        <span
-          aria-hidden
-          title={t(`tables.tile.${paymentState}`)}
-          className="size-2 rounded-full bg-info"
-        />
+      {PaymentStateIcon !== undefined && (
+        <PaymentStateIcon aria-hidden className="size-4 shrink-0 text-info" />
       )}
       {bill.label !== null && (
         <span className="max-w-24 truncate text-muted-foreground">
@@ -422,10 +465,7 @@ function BillChip({
         </span>
       )}
       <span className="font-semibold tabular-nums">
-        {formatMoney(
-          { value: stats.totalAmount, currency: bill.currency },
-          locale
-        )}
+        {formatMoney({ value: left, currency: bill.currency }, locale)}
       </span>
       {showElapsed && (
         <span

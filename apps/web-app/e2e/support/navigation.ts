@@ -130,3 +130,10 @@ export async function gotoPosOverview(
 export async function waitForLocalWriteToSettle(page: Page): Promise<void> {
   await page.waitForTimeout(1000)
 }
+
+export async function switchToCzech(page: Page): Promise<void> {
+  await gotoPage(page, "/settings/language", "en", "settings.language.title")
+  await page.getByRole("button", { name: "Čeština" }).click()
+  await page.getByRole("button", { name: "Čeština", pressed: true }).waitFor()
+  await waitForLocalWriteToSettle(page)
+}

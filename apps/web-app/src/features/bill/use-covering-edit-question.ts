@@ -1,3 +1,7 @@
+import {
+  type BillChange,
+  billEditQuestion,
+} from "@payky/app-shared/bill-edit-question"
 import type { CartLine } from "@payky/app-shared/cart-lines"
 import {
   type BillEditOutcome,
@@ -24,31 +28,22 @@ export function useCoveringEditQuestion(currency: FiatCurrency) {
   const ask = async (
     billId: BillId,
     lines: ReadonlyArray<CartLine>,
-    change: "edit" | "split"
+    change: BillChange
   ): Promise<BillEditOutcome | null> => {
     await using run = appRun()
     const result = await run(loadBillEditOutcome(billId, lines))
     if (!result.ok) return staysOpen
-    const outcome = result.value
-    if (outcome.type === "staysOpen") return outcome
-    if (change === "split" && outcome.type === "overpaid") return outcome
+    const { outcome, question } = billEditQuestion(result.value, change, {
+      t,
+      format: (value) => formatMoney({ value, currency }, locale),
+      formatList: (items) => new Intl.ListFormat(locale).format(items),
+    })
+    if (question === null) {
+      return outcome
+    }
 
     const confirmed = await confirm({
-      title:
-        outcome.type === "paid"
-          ? t("bill.cover.paid.title")
-          : t("bill.cover.overpaid.title", {
-              amount: formatMoney(
-                { value: outcome.unresolved, currency },
-                locale
-              ),
-            }),
-      description:
-        change === "split"
-          ? t("bill.cover.split.description")
-          : outcome.type === "paid"
-            ? t("bill.cover.paid.description")
-            : t("bill.cover.overpaid.description"),
+      ...question,
       confirmLabel: t("bill.cover.confirm"),
       cancelLabel: t("bill.cover.cancel"),
     })

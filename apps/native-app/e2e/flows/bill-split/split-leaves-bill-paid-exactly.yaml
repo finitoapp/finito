@@ -1,0 +1,46 @@
+# web bill-split.spec.ts: "Split that leaves the bill paid exactly".
+appId: ${APP_ID}
+tags: [bill-split]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateBillModifiedDuringPayment
+      QUERY: billId=${output.billId}&mode=add
+- runFlow: ../../subflows/reopen-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.tv("bill.itemsCount", { value: 2 })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.split.button.aria"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.split.title"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.split.increase.aria", { name: "e2e: concurrent addition" })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.split.confirm"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.cover.paid.title"]}
+    timeout: 10000
+- assertVisible: ${output.t["bill.cover.split.description"]}
+- tapOn: ${output.t["bill.cover.confirm"]}
+- extendedWaitUntil:
+    visible: '${output.tv("bill.itemsCount", { value: 1 })}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: ${output.t["billDetail.title"]}

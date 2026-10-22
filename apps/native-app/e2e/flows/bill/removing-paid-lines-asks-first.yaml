@@ -1,0 +1,67 @@
+# web bill.spec.ts: "removing lines a guest has paid for asks first and
+# offers to resolve the overpayment".
+appId: ${APP_ID}
+tags: [bill]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateBillModifiedDuringPayment
+      QUERY: billId=${output.billId}&mode=add
+- runFlow: ../../subflows/reopen-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.tv("bill.itemsCount", { value: 2 })}'
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: bill-summary-trigger
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.summary.clear"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.cover.overpaid.title", { amount: "\u00245" }))}'
+    timeout: 10000
+- tapOn: ${output.t["bill.cover.cancel"]}
+- extendedWaitUntil:
+    notVisible: '${output.re(output.tv("bill.cover.overpaid.title", { amount: "\u00245" }))}'
+    timeout: 10000
+- assertVisible: '${output.tv("bill.itemsCount", { value: 2 })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.summary.clear"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.cover.overpaid.title", { amount: "\u00245" }))}'
+    timeout: 10000
+- tapOn: ${output.t["bill.cover.confirm"]}
+- extendedWaitUntil:
+    visible: ${output.t["billDetail.title"]}
+    timeout: 15000
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.decideLater"]}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- assertVisible: ${output.t["bill.status.closed"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.decideLater"]}
+      HIDDEN: "true"

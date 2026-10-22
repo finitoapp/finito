@@ -129,12 +129,46 @@ export const openBillsQuery = createQuery((db) =>
         eb
           .selectFrom("reconciliationClaim")
           .innerJoin("payment", "payment.id", "reconciliationClaim.paymentId")
-          .select(["reconciliationClaim.paymentId"])
+          .innerJoin(
+            "accountTransaction",
+            "accountTransaction.id",
+            "reconciliationClaim.accountTransactionId"
+          )
+          .leftJoin("paymentBtc", (join) =>
+            join
+              .onRef("paymentBtc.id", "=", "payment.id")
+              .on("paymentBtc.isDeleted", "is not", sqliteTrue)
+          )
+          .select([
+            "reconciliationClaim.paymentId",
+            "payment.tipAmount",
+            "payment.amount as paymentAmount",
+            "payment.currency as paymentCurrency",
+            "paymentBtc.amountSats as paymentAmountSats",
+            "reconciliationClaim.accountTransactionId",
+            "accountTransaction.amount",
+            "accountTransaction.currency",
+          ])
           .whereRef("payment.billId", "=", "bill.id")
           .where("payment.isDeleted", "is not", sqliteTrue)
+          .where("payment.tipAmount", "is not", null)
+          .where("payment.amount", "is not", null)
+          .where("payment.currency", "is not", null)
           .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
           .where("reconciliationClaim.paymentId", "is not", null)
-          .$narrowType<{ paymentId: KyselyNotNull }>()
+          .where("reconciliationClaim.accountTransactionId", "is not", null)
+          .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+          .where("accountTransaction.amount", "is not", null)
+          .where("accountTransaction.currency", "is not", null)
+          .$narrowType<{
+            paymentId: KyselyNotNull
+            tipAmount: KyselyNotNull
+            paymentAmount: KyselyNotNull
+            paymentCurrency: KyselyNotNull
+            accountTransactionId: KyselyNotNull
+            amount: KyselyNotNull
+            currency: KyselyNotNull
+          }>()
       ).as("claims"),
     ])
     .where("canceledAt", "is", null)

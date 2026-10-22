@@ -188,10 +188,13 @@ export const csCommon = {
   "stats.top.title": "Nejprodávanější",
   "tables.seatCount": "{value} míst",
   "tables.tile.billNumber": "#{number}",
+  "tables.tile.billWithState": "{label}, {state}",
   "tables.tile.free": "Volný",
   "tables.tile.itemCount": "{value} ks",
+  "tables.tile.left": "zbývá {amount}",
   "tables.tile.multipleBills": "{value} otevřených účtů",
   "tables.tile.newBill": "Nový účet",
   "tables.tile.partiallyPaid": "Částečně zaplaceno",
+  "tables.tile.partiallyPaidAmount": "Částečně zaplaceno · {amount}",
   "tables.tile.paymentPending": "Probíhá platba",
 } satisfies Record<keyof typeof enCommon, string>

@@ -3,7 +3,10 @@ import { type Id, ok, type Task } from "@evolu/common"
 import type { EvoluOwnerDep } from "../../deps.ts"
 import type { AppSchema } from "../../evolu/schema.ts"
 import type { BillLineRow } from "../bill-line/bill-line.ts"
-import { deriveBillTotalAfterLines } from "../bill-line/bill-line-utils.ts"
+import {
+  deriveBillLineAmountsAfterLines,
+  deriveBillTotalAfterLines,
+} from "../bill-line/bill-line-utils.ts"
 import { eetReportedGoodsQuery } from "../eet/eet-queries.ts"
 import { overpaymentResolutionsQuery } from "../overpayment-resolution/overpayment-resolution-queries.ts"
 import type { OverpaymentResolutionId } from "../overpayment-resolution/overpayment-resolution-types.ts"
@@ -16,11 +19,17 @@ import {
 } from "../shared/evolu-history-queries.ts"
 import { type FiatCurrency, NonNegativeInteger } from "../shared/schema.ts"
 import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "../table-self-pay/table-self-pay-projection-utils.ts"
+import { selfPayAllocationsByBillIdQuery } from "../table-self-pay/table-self-pay-queries.ts"
+import {
   overpaymentPaymentsQuery,
   overpaymentTransactionsQuery,
 } from "./bill-coverage-queries.ts"
 import {
   type BillNotFoundError,
+  type BillStatusSnapshot,
   loadBillStatusSnapshot,
 } from "./bill-guards.ts"
 import {
@@ -161,45 +170,93 @@ export const loadReportedGoodsByPayment =
       )
     )
 
-export type BillEditOutcome =
+type BillCoveringOutcome =
   | { readonly type: "staysOpen" }
   | { readonly type: "paid" }
   | { readonly type: "overpaid"; readonly unresolved: NonNegativeInteger }
 
-export const loadBillEditOutcome =
+export type BillEditOutcome =
+  | BillCoveringOutcome
+  | {
+      readonly type: "removesGuestPaid"
+      readonly lineNames: ReadonlyArray<string>
+      readonly guestPaid: NonNegativeInteger
+      readonly after: BillCoveringOutcome
+    }
+
+type BillEditLine = Pick<
+  BillLineRow,
+  | "billId"
+  | "catalogItemId"
+  | "itemId"
+  | "type"
+  | "kind"
+  | "quantity"
+  | "totalAmount"
+>
+
+const loadBillCoveringOutcome =
   (
-    billId: BillId,
-    lines: ReadonlyArray<
-      Pick<
-        BillLineRow,
-        | "billId"
-        | "catalogItemId"
-        | "itemId"
-        | "type"
-        | "kind"
-        | "quantity"
-        | "totalAmount"
-      >
-    >
-  ): Task<BillEditOutcome, BillNotFoundError, EvoluDep & EvoluOwnerDep> =>
+    snapshot: BillStatusSnapshot,
+    billLines: ReadonlyArray<BillEditLine>
+  ): Task<BillCoveringOutcome, BillNotFoundError, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
-    const snapshot = await run(loadBillStatusSnapshot(billId))
-    if (!snapshot.ok) return snapshot
-    const { status, items, hasActiveClaim, claimedSum } = snapshot.value
-    const billTotal = deriveBillTotalAfterLines(
-      items,
-      lines.filter((line) => line.billId === billId)
-    )
+    const { bill, status, items, hasActiveClaim, claimedSum } = snapshot
+    const billTotal = deriveBillTotalAfterLines(items, billLines)
     if (status !== "open" || !hasActiveClaim || claimedSum < billTotal) {
       return ok({ type: "staysOpen" })
     }
 
-    const input = await run(loadOverpaymentInput({ billId }))
+    const input = await run(loadOverpaymentInput({ billId: bill.id }))
     if (!input.ok) return input
     const { unresolved } = deriveBillOverpayment({ ...input.value, billTotal })
     return ok(
       unresolved === 0 ? { type: "paid" } : { type: "overpaid", unresolved }
     )
+  }
+
+export const loadBillEditOutcome =
+  (
+    billId: BillId,
+    lines: ReadonlyArray<BillEditLine>
+  ): Task<BillEditOutcome, BillNotFoundError, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const snapshot = await run(loadBillStatusSnapshot(billId))
+    if (!snapshot.ok) return snapshot
+    const billLines = lines.filter((line) => line.billId === billId)
+    const after = await run(loadBillCoveringOutcome(snapshot.value, billLines))
+    if (!after.ok) return after
+
+    const allocatedByKey = sumSelfPayAllocationsByLineKey(
+      await run.deps.evolu.loadQuery(selfPayAllocationsByBillIdQuery(billId))
+    )
+    const amountsAfter = deriveBillLineAmountsAfterLines(
+      snapshot.value.items,
+      billLines
+    )
+    const removedPaid = snapshot.value.items.flatMap((summary) => {
+      const { allocatedAmount } = projectSelfPayViewLine(
+        summary,
+        allocatedByKey
+      )
+      const quantityAfter = amountsAfter.get(summary.id)?.quantity ?? 0
+      return allocatedAmount > 0 && quantityAfter < summary.quantity
+        ? [{ name: summary.name, allocatedAmount }]
+        : []
+    })
+    if (removedPaid.length === 0) return after
+
+    return ok({
+      type: "removesGuestPaid",
+      lineNames: removedPaid.map(({ name }) => name),
+      guestPaid: NonNegativeInteger(
+        removedPaid.reduce(
+          (sum, { allocatedAmount }) => sum + allocatedAmount,
+          0
+        )
+      ),
+      after: after.value,
+    })
   }
 
 export interface AnsweredOverpaymentTip {

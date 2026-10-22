@@ -2,6 +2,7 @@ import type { enBill } from "../en/bill.ts"
 
 export const csBill = {
   "bill.brick.add.aria": "Přidat {name}",
+  "bill.brick.guestPaid": "Hosté zaplatili {amount}",
   "bill.brick.quantity.cancel": "Zrušit",
   "bill.brick.quantity.confirm": "Přidat",
   "bill.brick.quantity.description": "Kolik kusů chcete přidat do účtu?",
@@ -36,8 +37,17 @@ export const csBill = {
   "bill.discard.confirm.confirm": "Zahodit",
   "bill.discard.confirm.description":
     "Všechny položky v tomto účtu budou odstraněny. Tuto akci nelze vrátit.",
+  "bill.discard.confirm.paid.description":
+    "Na účtu je už zaplaceno {amount}. Peníze zůstanou na zrušeném účtu a bude potřeba je vyřešit. Všechny položky v tomto účtu budou odstraněny a tuto akci nelze vrátit.",
   "bill.discard.confirm.title": "Zahodit tento účet?",
   "bill.emptySearch": "Hledání nenašlo žádné položky.",
+  "bill.guestMoney.arrived": "Hosté zaplatili {paid} · zbývá {remaining}",
+  "bill.guestMoney.closed": "Hosté tento účet zaplatili",
+  "bill.guestMoney.openDetail": "Otevřít detail účtu",
+  "bill.guestPaid.description":
+    "Hosté za {names} zaplatili {amount}. Peníze zůstanou na účtu.",
+  "bill.guestPaid.remove.title": "Odebrat {names}?",
+  "bill.guestPaid.split.title": "Přesunout {names} na jiný účet?",
   "bill.invalidId": "Neplatné id účtu.",
   "bill.itemsCount": "{value} ks",
   "bill.openedAt": "Otevřen {time}",

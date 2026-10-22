@@ -47,7 +47,9 @@ assertions.
 - Copy comes from the translations: `${output.t["pay.request"]}`, templated
   strings `'${output.tv("bill.itemsCount", { value: 3 })}'` (quote it for
   YAML). `src/e2e/e2e-strings.test.ts` fails on a key `en` does not have.
-  Text selectors are regexes that also match literally.
+  Text selectors are regexes that also match literally. Maestro leaves a
+  `${}` holding a literal `$` unevaluated, so an amount spells it `\u0024`
+  in single quotes: `'${output.tv("overpayment.title", { amount: "\u00245.00" })}'`.
 - Subflows (env in brackets) replace web's `support/` helpers:
   `goto` (`ROUTE`, `TEXT`) is `gotoPage`; `e2e-action` (`ACTION`, `QUERY`)
   runs a bridge action and waits for `E2E OK`; `complete-onboarding` is
@@ -138,7 +140,10 @@ assertions.
   strings, parsed with zod. Opening the same action URL twice in a row is
   not guaranteed to rerun it — navigate elsewhere in between. `next=<path>`
   moves on to that screen in-app after a successful action (web reloads on
-  every link, losing in-memory state).
+  every link, losing in-memory state). `during=<path>` moves on to it as the
+  action starts, which then finishes behind that screen and prints nothing:
+  the flow waits for what the screen shows of it (guest money arriving on
+  the open bill).
 - `fake` swaps in outside services until the app restarts, so run it after
   `seed-onboarding` and, on web, move on with `next=`: `spark=funded`
   (`e2e-spark-presets.ts`), `cashu=manual|autopay` (`e2e-cashu-mint.ts`, web's

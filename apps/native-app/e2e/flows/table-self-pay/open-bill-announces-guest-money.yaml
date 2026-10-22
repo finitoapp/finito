@@ -1,0 +1,28 @@
+# web table-self-pay.spec.ts: "the open bill announces guest money, labels
+# what is left and links to the bill guests close".
+appId: ${APP_ID}
+tags: [table-self-pay]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 14
+- openLink: ${BASE_URL}e2e/receiveGuestBankTransfer?billId=${output.billId}&lines=Beer:1/1&during=${encodeURIComponent("/bill?billId=" + output.billId)}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.guestMoney.arrived", { paid: "\u002445", remaining: "\u0024101" }))}'
+    timeout: 45000
+- assertVisible:
+    text: \$101
+    rightOf: ${output.t["bill.summary.leftToPay"]}
+- openLink: ${BASE_URL}e2e/receiveGuestBankTransfer?billId=${output.billId}&during=${encodeURIComponent("/bill?billId=" + output.billId)}
+- extendedWaitUntil:
+    visible: ${output.t["bill.guestMoney.closed"]}
+    timeout: 45000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.guestMoney.openDetail"]}
+- extendedWaitUntil:
+    visible: ${output.t["billDetail.title"]}
+    timeout: 15000

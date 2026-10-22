@@ -98,21 +98,24 @@ const foldBillLineAmounts = (
       }
 }
 
-export const deriveBillTotalAfterLines = (
+type BillEditLine = Pick<
+  BillLineRow,
+  | "billId"
+  | "catalogItemId"
+  | "itemId"
+  | "type"
+  | "kind"
+  | "quantity"
+  | "totalAmount"
+>
+
+export const deriveBillLineAmountsAfterLines = (
   summaries: ReadonlyArray<BillLineSummary>,
-  lines: ReadonlyArray<
-    Pick<
-      BillLineRow,
-      | "billId"
-      | "catalogItemId"
-      | "itemId"
-      | "type"
-      | "kind"
-      | "quantity"
-      | "totalAmount"
-    >
-  >
-): NonNegativeInteger => {
+  lines: ReadonlyArray<BillEditLine>
+): ReadonlyMap<
+  BillLineSummaryId,
+  Pick<BillLineSummary, "quantity" | "totalAmount">
+> => {
   const amounts = new Map<
     BillLineSummaryId,
     Pick<BillLineSummary, "quantity" | "totalAmount">
@@ -127,11 +130,19 @@ export const deriveBillTotalAfterLines = (
       amounts.set(idValue, next)
     }
   }
-
-  return NonNegativeInteger(
-    [...amounts.values()].reduce((sum, { totalAmount }) => sum + totalAmount, 0)
-  )
+  return amounts
 }
+
+export const deriveBillTotalAfterLines = (
+  summaries: ReadonlyArray<BillLineSummary>,
+  lines: ReadonlyArray<BillEditLine>
+): NonNegativeInteger =>
+  NonNegativeInteger(
+    [...deriveBillLineAmountsAfterLines(summaries, lines).values()].reduce(
+      (sum, { totalAmount }) => sum + totalAmount,
+      0
+    )
+  )
 
 /**
  * A bill's item count and total, from its already-calculated summaries —

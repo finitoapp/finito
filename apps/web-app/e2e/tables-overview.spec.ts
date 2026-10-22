@@ -1,9 +1,11 @@
 import { addCatalogItem, addTable } from "./support/bill.ts"
+import { colorContrast } from "./support/color-contrast.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
   gotoPage,
   gotoPosOverview,
+  switchToCzech,
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
 import {
@@ -12,6 +14,7 @@ import {
   overpaymentCard,
 } from "./support/overpayment.ts"
 import {
+  openTableBill,
   payAllOfTheBeer,
   routeFakeNostrRelays,
   seedPizzaAndBeerBill,
@@ -331,5 +334,114 @@ test("a self-paid bill whose lines staff remove leaves the overview and its over
       path: `${screenshotDir}/iam-231-overpayment-returned.png`,
       fullPage: true,
     })
+  })
+})
+
+test("a partly paid table states it in text at AA contrast, and its bill's chip is read with it", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress } = await seedPizzaAndBeerBill(page, "Table 13")
+  const tableTile = page
+    .getByTestId("table-tile")
+    .filter({ hasText: "Table 13" })
+  const partlyPaid = translate("en", "tables.tile.partiallyPaid")
+
+  await test.step("a guest pays the beer and staff open a second bill on the table", async () => {
+    const guest = await context.newPage()
+    await guest.goto(guestAddress)
+    await payAllOfTheBeer(page, guest)
+    await guest.close()
+    await openTableBill(page, "en", { table: "Table 13", items: ["Pizza"] })
+  })
+
+  await test.step("the partly paid bill's chip is read with its state, the other without", async () => {
+    await gotoPosOverview(page, "en")
+    await expect(
+      tableTile.getByRole("link", {
+        name: new RegExp(`^Bill #\\d+, ${partlyPaid}$`, "u"),
+      })
+    ).toHaveCount(1, { timeout: 30_000 })
+    await expect(
+      tableTile.getByRole("link", { name: /^Bill #\d+$/u })
+    ).toHaveCount(1)
+  })
+
+  await test.step("the table's state text reaches 4.5:1 in light and dark mode", async () => {
+    const state = tableTile.getByText(
+      translateParams("en", "tables.tile.partiallyPaidAmount", {
+        amount: "$45.00",
+      }),
+      { exact: true }
+    )
+    const contrast = () =>
+      colorContrast([state, "color"], [state, "background"])
+    expect(await contrast()).toBeGreaterThanOrEqual(4.5)
+    await page.emulateMedia({ colorScheme: "dark" })
+    await expect(page.locator("html")).toHaveClass(/\bdark\b/u)
+    expect(await contrast()).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+test("a table guests partly paid shows what is left, and the floor counts only that", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress } = await seedPizzaAndBeerBill(page, "Table 14")
+  const guest = await context.newPage()
+  await guest.goto(guestAddress)
+  await payAllOfTheBeer(page, guest)
+  await guest.close()
+
+  await gotoPosOverview(page, "en")
+  const tableTile = page
+    .getByTestId("table-tile")
+    .filter({ hasText: "Table 14" })
+  await expect(
+    tableTile.getByText(
+      translateParams("en", "tables.tile.left", { amount: "$101.00" }),
+      { exact: true }
+    )
+  ).toBeVisible({ timeout: 30_000 })
+  await expect(
+    tableTile.getByText(
+      translateParams("en", "tables.tile.partiallyPaidAmount", {
+        amount: "$45.00",
+      }),
+      { exact: true }
+    )
+  ).toBeVisible()
+  await expect(
+    page
+      .getByText(translate("en", "home.pos.stats.total"), { exact: true })
+      .locator("..")
+      .getByRole("definition")
+  ).toHaveText("$101.00")
+
+  await test.step("in Czech at 320 px what is left reads in full", async () => {
+    await switchToCzech(page)
+    await page.setViewportSize({ width: 320, height: 640 })
+    await gotoPosOverview(page, "cs")
+    const left = page
+      .getByTestId("table-tile")
+      .filter({ hasText: "Table 14" })
+      .getByText(
+        new RegExp(
+          `^${translateParams("cs", "tables.tile.left", { amount: "" }).trim()} `,
+          "u"
+        )
+      )
+    await expect(left).toBeVisible({ timeout: 30_000 })
+    expect(
+      await left.evaluate(
+        (element) =>
+          element.scrollWidth <= element.clientWidth &&
+          element.scrollHeight <= element.clientHeight
+      )
+    ).toBe(true)
   })
 })

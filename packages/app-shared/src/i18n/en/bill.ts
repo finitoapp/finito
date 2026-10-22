@@ -1,5 +1,6 @@
 export const enBill = {
   "bill.brick.add.aria": "Add {name}",
+  "bill.brick.guestPaid": "Guests paid {amount}",
   "bill.brick.quantity.cancel": "Cancel",
   "bill.brick.quantity.confirm": "Add",
   "bill.brick.quantity.description":
@@ -35,8 +36,17 @@ export const enBill = {
   "bill.discard.confirm.confirm": "Discard",
   "bill.discard.confirm.description":
     "All items in this bill will be removed. This can't be undone.",
+  "bill.discard.confirm.paid.description":
+    "{amount} is already paid. It stays on the canceled bill to resolve. All items in this bill will be removed, and this can't be undone.",
   "bill.discard.confirm.title": "Discard this bill?",
   "bill.emptySearch": "No items match your search.",
+  "bill.guestMoney.arrived": "Guests paid {paid} · {remaining} left",
+  "bill.guestMoney.closed": "Guests paid this bill",
+  "bill.guestMoney.openDetail": "Open bill detail",
+  "bill.guestPaid.description":
+    "Guests paid {amount} for {names}. The money stays on the bill.",
+  "bill.guestPaid.remove.title": "Remove {names}?",
+  "bill.guestPaid.split.title": "Move {names} to another bill?",
   "bill.invalidId": "Invalid bill id.",
   "bill.itemsCount": "{value} pcs",
   "bill.openedAt": "Opened {time}",

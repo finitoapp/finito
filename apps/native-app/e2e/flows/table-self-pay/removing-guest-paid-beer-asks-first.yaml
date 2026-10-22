@@ -1,0 +1,50 @@
+# web table-self-pay.spec.ts: "removing the beer guests paid for asks first
+# with the amount, and so does discarding the bill".
+appId: ${APP_ID}
+tags: [table-self-pay]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 15
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Beer:1/1
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.re(output.tv("bill.brick.guestPaid", { amount: "\u002445" }))}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.remove.aria", { name: "Beer" })}'
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.guestPaid.remove.title", { names: "Beer" }))}'
+    timeout: 10000
+- assertVisible: '${output.re(output.tv("bill.guestPaid.description", { amount: "\u002445", names: "Beer" }))}'
+- tapOn: ${output.t["bill.cover.cancel"]}
+- extendedWaitUntil:
+    notVisible: '${output.re(output.tv("bill.guestPaid.remove.title", { names: "Beer" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.remove.aria", { name: "Beer" })}'
+- assertVisible:
+    text: \$101
+    rightOf: ${output.t["bill.summary.leftToPay"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.discard"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.discard.confirm.paid.description", { amount: "\u002445" }))}'
+    timeout: 10000
+- tapOn: ${output.t["bill.discard.confirm.cancel"]}
+- extendedWaitUntil:
+    notVisible: '${output.re(output.tv("bill.discard.confirm.paid.description", { amount: "\u002445" }))}'
+    timeout: 10000
