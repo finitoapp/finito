@@ -330,7 +330,7 @@ test("Charge on a partly paid bill asks only for what is still due", async ({
 
   await test.step("Charge goes to the tip step with the rest only", async () => {
     await page
-      .getByRole("button", { name: translate("en", "home.pay") })
+      .getByRole("button", { name: translate("en", "home.pay"), exact: true })
       .click()
     await page
       .getByRole("heading", { name: translate("en", "paymentTip.title") })

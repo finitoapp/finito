@@ -21,8 +21,9 @@ export function E2eBridgePage() {
   const {
     action = "",
     next,
+    during,
     ...params
-  } = useLocalSearchParams<{ action: string; next?: string }>()
+  } = useLocalSearchParams<{ action: string; next?: string; during?: string }>()
   const appRun = useAppRun()
   const { device } = useAtomValue(accountAtom)
   const store = useStore()
@@ -57,10 +58,13 @@ export function E2eBridgePage() {
       }
     }
     void perform()
+    if (during !== undefined) {
+      router.replace(during as Href)
+    }
     return () => {
       cancelled = true
     }
-  }, [action, appRun, device.id, store, paramsKey, next])
+  }, [action, appRun, device.id, store, paramsKey, next, during])
 
   if (!nativeEnv.EXPO_PUBLIC_PAYKY_E2E) return <Redirect href="/" />
   return (

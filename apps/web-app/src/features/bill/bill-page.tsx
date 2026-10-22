@@ -65,6 +65,7 @@ import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   ChevronDown,
+  CircleCheckIcon,
   Eraser,
   Minus,
   Plus,
@@ -98,7 +99,7 @@ import {
   AlertTitle,
 } from "@/components/reui/alert.tsx"
 import { SearchInput } from "@/components/search-input.tsx"
-import { Button } from "@/components/ui/button.tsx"
+import { Button, buttonVariants } from "@/components/ui/button.tsx"
 import { Card, CardContent } from "@/components/ui/card.tsx"
 import {
   Collapsible,
@@ -118,6 +119,8 @@ import { useBillScanHandler } from "@/features/bill/use-bill-scan-handler.tsx"
 import { useCartBill } from "@/features/bill/use-cart-bill.ts"
 import { useChangePulse } from "@/features/bill/use-change-pulse.ts"
 import { useFinishBill } from "@/features/bill/use-finish-bill.ts"
+import { useGuestMoneyArrivals } from "@/features/bill/use-guest-money-arrivals.ts"
+import { useGuestPaidQuestion } from "@/features/bill/use-guest-paid-question.ts"
 import { usePendingPayments } from "@/features/bill/use-pending-payments.ts"
 import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import { CategoryFilterBar } from "@/features/shared/category-filter-bar.tsx"
@@ -224,6 +227,11 @@ export function BillPage({
   const summaries = useBillLineSummaries(billId)
   const pendingPaymentIds = usePendingPayments(billId)
   const billStatus = useBillStatus(billId)
+  const { guestsClosedBill } = useGuestMoneyArrivals({
+    billId,
+    billStatus,
+    currency: bill?.currency ?? fallbackCurrency,
+  })
   // A cancellation collision stays: confirming the bill despite it is `sell`.
   const closedOnOpen = useRedirectIfClosedOnOpen(
     billId,
@@ -259,6 +267,8 @@ export function BillPage({
   } else if (finishBill.closing && billStatus?.status === "closed") {
     // Finished here: home is on its way, so no "bill closed" message first.
     content = null
+  } else if (bill !== undefined && guestsClosedBill) {
+    content = <GuestsPaidBillMessage billId={bill.id} />
   } else if (bill !== undefined && billStatus?.status !== "open") {
     content = billStatus?.hasCancellationCollision ? (
       <BillCancellationCollisionMessage
@@ -404,6 +414,26 @@ function BillPageLayout({
 function BillMessage({ message }: { readonly message: string }) {
   return (
     <p className="mt-16 px-6 text-center text-muted-foreground">{message}</p>
+  )
+}
+
+function GuestsPaidBillMessage({ billId }: { readonly billId: BillId }) {
+  const { t } = useTranslation()
+
+  return (
+    <div className="mt-16 flex flex-col items-center gap-4 px-6">
+      <Alert variant="success">
+        <CircleCheckIcon />
+        <AlertTitle>{t("bill.guestMoney.closed")}</AlertTitle>
+      </Alert>
+      <Link
+        to="/activity/bills/$billId"
+        params={{ billId }}
+        className={cn(buttonVariants({ variant: "outline" }), "h-12")}
+      >
+        {t("bill.guestMoney.openDetail")}
+      </Link>
+    </div>
   )
 }
 
@@ -575,6 +605,7 @@ function BillCartView({
   const confirm = useConfirmDialog()
   const console = useConsole()
   const createTerminalPayment = useCreateTerminalPayment()
+  const askGuestPaid = useGuestPaidQuestion(currency)
   const { data: settingsData } = useEvoluQuery(settingsQuery)
   const [settings] = settingsData
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
@@ -821,7 +852,12 @@ function BillCartView({
 
     const confirmed = await confirm({
       title: t("bill.discard.confirm.title"),
-      description: t("bill.discard.confirm.description"),
+      description:
+        claimedSum > 0
+          ? t("bill.discard.confirm.paid.description", {
+              amount: formatMoney({ value: claimedSum, currency }, locale),
+            })
+          : t("bill.discard.confirm.description"),
       confirmLabel: t("bill.discard.confirm.confirm"),
       cancelLabel: t("bill.discard.confirm.cancel"),
       variant: "destructive",
@@ -859,6 +895,21 @@ function BillCartView({
       ) {
         return
       }
+      const asked = await askGuestPaid(
+        billId,
+        input.items.map((item) => ({
+          billId,
+          deviceId: null,
+          catalogItemId: item.catalogItemId,
+          itemId: item.itemId,
+          type: item.type,
+          kind: "remove",
+          quantity: item.quantity,
+          totalAmount: item.totalAmount,
+        })),
+        "split"
+      )
+      if (!asked) return
       await using run = appRun()
 
       if (input.destination === "new") {
@@ -1047,6 +1098,7 @@ function BillCartView({
                         <ItemBrick
                           catalogItem={catalogItem}
                           summaries={summaries}
+                          selfPayAllocated={selfPayAllocated}
                           locale={locale}
                           onAdd={() => void cart.addOne(catalogItem)}
                           onAddQuantity={(quantity) =>
@@ -1134,6 +1186,11 @@ function BillCartView({
                     {t("bill.itemsCount", { value: itemCount })}
                   </div>
                   <div className="flex items-center gap-2 text-base font-semibold">
+                    {claimedSum > 0 && (
+                      <span className="font-normal">
+                        {t("bill.summary.leftToPay")}
+                      </span>
+                    )}
                     <motion.span animate={amountDuePulseControls}>
                       {formatMoney({ value: amountDue, currency }, locale)}
                     </motion.span>
@@ -1550,6 +1607,7 @@ function SelfPayLineStatus({
 function ItemBrick({
   catalogItem,
   summaries,
+  selfPayAllocated,
   locale,
   onAdd,
   onAddQuantity,
@@ -1557,6 +1615,7 @@ function ItemBrick({
 }: {
   readonly catalogItem: CatalogItemRow
   readonly summaries: ReadonlyArray<BillLineSummary>
+  readonly selfPayAllocated: ReadonlyMap<string, number>
   readonly locale: string
   readonly onAdd: () => void
   readonly onAddQuantity: (quantity: PositiveNumber) => void
@@ -1575,6 +1634,13 @@ function ItemBrick({
   const latestSummary = useMemo(
     () => getLatestCatalogItemSummary(matchingSummaries, catalogItem.id),
     [catalogItem.id, matchingSummaries]
+  )
+  const guestPaid = NonNegativeInteger(
+    matchingSummaries.reduce(
+      (sum, summary) =>
+        sum + projectSelfPayViewLine(summary, selfPayAllocated).allocatedAmount,
+      0
+    )
   )
 
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false)
@@ -1612,7 +1678,19 @@ function ItemBrick({
        * drops it.
        */}
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 pt-0.5 font-medium lg:text-base">{name}</p>
+        <div className="min-w-0 pt-0.5">
+          <p className="font-medium lg:text-base">{name}</p>
+          {guestPaid > 0 && (
+            <p className="text-xs font-medium tabular-nums">
+              {t("bill.brick.guestPaid", {
+                amount: formatMoney(
+                  { value: guestPaid, currency: catalogItem.currency },
+                  locale
+                ),
+              })}
+            </p>
+          )}
+        </div>
         <Button
           type="button"
           size="sm"

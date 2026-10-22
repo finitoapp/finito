@@ -1,0 +1,32 @@
+# web tables-overview.spec.ts: "a table guests partly paid shows what is
+# left, and the floor counts only that". Web's Czech 320 px step is not
+# ported: Maestro sets no viewport.
+appId: ${APP_ID}
+tags: [tables-overview]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 14
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Beer:1/1
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: catalog/sales
+      TEXT: ${output.t["bill.table.dialog.none"]}
+- extendedWaitUntil:
+    visible:
+      text: '${output.re(output.tv("tables.tile.left", { amount: "\u0024101" }))}'
+      below: Table 14
+    timeout: 30000
+- assertVisible:
+    text: '${output.re(output.tv("tables.tile.partiallyPaidAmount", { amount: "\u002445" }))}'
+    below: Table 14
+- assertVisible:
+    text: \$101
+    below: ${output.t["home.pos.stats.total"]}

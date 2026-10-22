@@ -48,7 +48,7 @@ export function TableTileShell({
 }) {
   return (
     <Card
-      flex={1}
+      grow={1}
       minH={112}
       p={16}
       gap={12}
