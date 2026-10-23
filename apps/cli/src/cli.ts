@@ -2,6 +2,7 @@ import {
   type ConsoleDep,
   createConsole,
   createRun,
+  type LockManagerDep,
   type Task,
 } from "@evolu/common"
 import { installPolyfills } from "@evolu/common/polyfills"
@@ -55,7 +56,8 @@ const commands: ((
     AiModelDep &
     FetchDep &
     SparkWalletDep &
-    YadioApiDep
+    YadioApiDep &
+    LockManagerDep
 >)[] = [
   registerCatalogItemsCommand,
   registerBillsCommand,
@@ -94,6 +96,7 @@ const main = async () => {
     evolu,
     evoluOwner,
     console,
+    lockManager: navigatorWithLocks.locks,
     ...createDateDep(),
     ...createFetchDep(),
     ...createSparkWalletDep(),

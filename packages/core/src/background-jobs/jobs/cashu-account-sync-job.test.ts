@@ -8,6 +8,7 @@ import { createCashuWalletDep } from "../../cashu/cashu-wallet.ts"
 import { deriveDeviceAccountId } from "../../evolu/device-account.ts"
 import type { DeviceAccountId } from "../../evolu/device-client.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
+import { createNostrRelayClient } from "../../integrations/nostr/nostr-relay-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
 import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
@@ -27,6 +28,7 @@ import {
   deriveNostrSecretKey,
 } from "../../modules/shared/key-derivation.ts"
 import { NonNegativeInteger } from "../../modules/shared/schema.ts"
+import { createSparkWalletDep } from "../../spark/spark-wallet.ts"
 import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import {
   createCashuTest,
@@ -58,6 +60,10 @@ const setup = async () => {
       ...createQerkoSocketDep(),
       ...createQerkoConnectionStatusDep(),
       ...createEetApiDep({ ...dateDep, ...fetchDep }),
+      ...createSparkWalletDep(),
+      tableSelfPayRoot: new Uint8Array(32),
+      selfPayDefaultRelays: [],
+      nostrRelayClient: createNostrRelayClient(),
       masterKey: testCashuMasterKey,
       deviceAccountId: deriveDeviceAccountId(testCashuMasterKey),
       ...testNotificationsDep(),

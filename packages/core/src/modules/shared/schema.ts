@@ -44,8 +44,11 @@ export const NonEmptyString255 = NonEmptyString255Schema.decode
 
 export const SqliteTrueSchema = z.literal(1)
 
+export const HexSchema = (bytes: number) =>
+  z.string().regex(new RegExp(`^[0-9a-f]{${bytes * 2}}$`, "u"))
+
 export const WssUrlSchema = z
-  .url({ protocol: /^wss$/ })
+  .url({ protocol: /^wss$/, abort: true })
   // `wss://user:pass@host` would put a credential into a stored, synced and
   // shown URL (and into error payloads); relays here are reached anonymously.
   .refine((value) => {

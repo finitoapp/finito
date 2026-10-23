@@ -1,0 +1,45 @@
+# table-self-pay.spec's seedPizzaAndBeerBill: bank sync on, TABLE taking
+# self-pay, Pizza ($101) and Beer ($45) in the catalog, and an open bill of
+# one of each on TABLE, its id kept as `output.billId` (read-ids: it leaves
+# the app on the bridge page).
+appId: ${APP_ID}
+---
+- runFlow:
+    file: e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: add-table.yaml
+    env:
+      NAME: ${TABLE}
+      SEATS: "4"
+- runFlow:
+    file: add-catalog-item.yaml
+    env:
+      NAME: Pizza
+      PRICE: "101"
+- runFlow:
+    file: add-catalog-item.yaml
+    env:
+      NAME: Beer
+      PRICE: "45"
+- runFlow:
+    file: enable-table-self-pay.yaml
+    env:
+      TABLE: ${TABLE}
+- runFlow:
+    file: open-table-bill.yaml
+    env:
+      TABLE: ${TABLE}
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.add.aria", { name: "Pizza" })}'
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.add.aria", { name: "Beer" })}'
+- extendedWaitUntil:
+    visible: '${output.tv("bill.itemsCount", { value: 2 })}'
+    timeout: 10000
+- runFlow: read-ids.yaml

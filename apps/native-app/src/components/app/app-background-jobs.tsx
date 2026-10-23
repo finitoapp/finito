@@ -13,10 +13,17 @@ import type {
 import type { Evolu } from "@payky/core/evolu/schema"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import { createQerkoApiDep } from "@payky/core/integrations/qerko/qerko-client"
 import { createQerkoConnectionStatusDep } from "@payky/core/integrations/qerko/qerko-connection-status"
 import { createQerkoSocketDep } from "@payky/core/integrations/qerko/qerko-socket"
+import { createYadioApiDep } from "@payky/core/integrations/yadio/yadio-client"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
+import {
+  deriveTableSelfPayRoot,
+  type MasterKey,
+} from "@payky/core/modules/shared/key-derivation"
+import { createSparkWalletDep } from "@payky/core/spark/spark-wallet"
 import { useAtomValue } from "jotai"
 import {
   Component,
@@ -36,6 +43,7 @@ import { qerkoConnectionStatusStore } from "../../atoms/qerko-connection-status.
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { nativeEnv } from "../../core/native-env.ts"
 import { nativeConsole, nativeRun } from "../../core/native-runtime.ts"
+import { createE2eSparkWalletDep } from "../../e2e/e2e-spark-presets.ts"
 import { useCanReachBanks } from "../../hooks/use-service-proxy.ts"
 import { eetNativeCrypto } from "../../platform/eet-crypto"
 import { lockManager } from "../../platform/evolu-runtime"
@@ -55,12 +63,14 @@ const createJobDeps = ({
   deviceAccountId,
   deviceId,
   notificationStore,
+  masterKey,
 }: {
   readonly evolu: Evolu
   readonly deviceEvolu: DeviceEvolu
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
+  readonly masterKey: MasterKey
 }) => {
   const dateDep = createDateDep()
   const fetchDep = createFetchDep({ deviceEvolu })
@@ -88,6 +98,11 @@ const createJobDeps = ({
     }),
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(qerkoConnectionStatusStore),
+    ...(createE2eSparkWalletDep() ?? createSparkWalletDep()),
+    ...createYadioApiDep({ baseUrl: nativeEnv.EXPO_PUBLIC_PAYKY_YADIO_URL }),
+    tableSelfPayRoot: deriveTableSelfPayRoot(masterKey),
+    selfPayDefaultRelays: nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+    nostrRelayClient: createNostrRelayClient(),
     // The one lock authority of this JS runtime, shared with `nativeRun`.
     lockManager,
     console: nativeConsole,
@@ -169,6 +184,7 @@ function AppBackgroundJobs() {
 
   const deviceId = account.device.id
   const deviceAccountId = account.id
+  const { masterKey } = account
   const start = useCallback(() => {
     const run = nativeRun.create(
       createJobDeps({
@@ -177,10 +193,18 @@ function AppBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
       })
     )
     return { run, jobs: run.ok(runBackgroundJobs(appBackgroundJobs)) }
-  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
+  }, [
+    evolu,
+    deviceEvolu,
+    deviceAccountId,
+    deviceId,
+    notificationStore,
+    masterKey,
+  ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
@@ -208,6 +232,7 @@ function RunningBankBackgroundJobs() {
 
   const deviceId = account.device.id
   const deviceAccountId = account.id
+  const { masterKey } = account
   const start = useCallback(() => {
     const run = nativeRun.create(
       createJobDeps({
@@ -216,10 +241,18 @@ function RunningBankBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
       })
     )
     return { run, jobs: run.ok(runBackgroundJobs(bankBackgroundJobs)) }
-  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
+  }, [
+    evolu,
+    deviceEvolu,
+    deviceAccountId,
+    deviceId,
+    notificationStore,
+    masterKey,
+  ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
@@ -250,6 +283,7 @@ function CashuBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
       }),
       masterKey,
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),

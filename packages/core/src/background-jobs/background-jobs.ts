@@ -12,7 +12,9 @@ import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-
 import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
+import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
+import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
 
 /**
  * The Fio and MONETA sync jobs. They run apart from the others
@@ -50,6 +52,8 @@ export const appBackgroundJobs = [
   startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
   startRecoveryBackupReminderJob,
+  startTableSelfPayPublishingJob,
+  startSelfPayPointerJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**

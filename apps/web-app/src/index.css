@@ -111,6 +111,14 @@
   --invert-foreground: oklch(0.985 0 89.9);
 }
 
+.guest-page:not(.dark) {
+  --muted-foreground: oklch(0.5 0.016 250);
+}
+
+.guest-page.dark {
+  --destructive: oklch(0.64 0.186 19.2);
+}
+
 /** Theme Setup **/
 @theme inline {
   --color-background: var(--background);
@@ -382,5 +390,23 @@ html:active-view-transition-type(backward)::view-transition-new(root) {
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
+  }
+}
+
+@media print {
+  :where(body:has(.self-pay-sticker)) * {
+    visibility: hidden;
+  }
+
+  .self-pay-sticker,
+  .self-pay-sticker * {
+    visibility: visible;
+  }
+
+  .self-pay-sticker {
+    position: fixed;
+    inset: 0;
+    height: fit-content;
+    margin: auto;
   }
 }

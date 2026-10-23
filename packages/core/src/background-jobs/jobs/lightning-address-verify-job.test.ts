@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
+import { createNostrRelayClient } from "../../integrations/nostr/nostr-relay-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
 import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
@@ -70,6 +71,9 @@ const setup = async () => {
       ...createQerkoSocketDep(),
       ...createQerkoConnectionStatusDep(),
       ...connectivity,
+      tableSelfPayRoot: new Uint8Array(32),
+      selfPayDefaultRelays: [],
+      nostrRelayClient: createNostrRelayClient(),
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),

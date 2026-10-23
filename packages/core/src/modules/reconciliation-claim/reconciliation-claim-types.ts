@@ -42,6 +42,7 @@ export interface BankTransaction {
   readonly currency: FiatCurrency
   readonly occurredAt: TimestampMs
   readonly note: NonEmptyString | null
+  readonly recipientMessage: NonEmptyString | null
   readonly variableSymbol: VariableSymbol | null
   readonly constantSymbol: ConstantSymbol | null
   readonly specificSymbol: SpecificSymbol | null

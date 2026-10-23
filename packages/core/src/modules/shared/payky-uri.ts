@@ -2,7 +2,7 @@ import { err, ok, type Result } from "@evolu/common"
 import { z } from "zod"
 
 import { defineError } from "../../error.ts"
-import { WssUrlSchema } from "./schema.ts"
+import { HexSchema, WssUrlSchema } from "./schema.ts"
 
 /**
  * `payky:<type>?v=<version>[&<param>=<value>]...` — every QR code Payky shows
@@ -10,9 +10,6 @@ import { WssUrlSchema } from "./schema.ts"
  * an OS deep link. Each type versions on its own; params are form-encoded,
  * binary values lowercase hex, unknown params ignored.
  */
-
-const HexSchema = (bytes: number) =>
-  z.string().regex(new RegExp(`^[0-9a-f]{${bytes * 2}}$`, "u"))
 
 /** `pair` v1: the source's ephemeral pubkey, session secret and relays. */
 const PairUriV1Schema = z.object({

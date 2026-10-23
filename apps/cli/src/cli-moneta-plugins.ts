@@ -1,6 +1,7 @@
 import {
   type ConsoleDep,
   createRun,
+  type LockManagerDep,
   ok,
   sqliteFalse,
   sqliteTrue,
@@ -61,7 +62,7 @@ export const registerMonetaPluginsCommand =
   ): Task<
     void,
     never,
-    EvoluDep & EvoluOwnerDep & ConsoleDep & DateDep & FetchDep
+    EvoluDep & EvoluOwnerDep & ConsoleDep & DateDep & FetchDep & LockManagerDep
   > =>
   (run) => {
     const { evolu } = run.deps

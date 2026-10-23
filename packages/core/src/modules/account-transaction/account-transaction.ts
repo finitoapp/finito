@@ -50,6 +50,7 @@ export const accountTransactionIban = {
   constantSymbol: ConstantSymbolSchema.nullable(),
   specificSymbol: SpecificSymbolSchema.nullable(),
   bankReference: NonEmptyString255Schema.nullable(),
+  recipientMessage: NonEmptyStringSchema.nullable(),
 } as const
 
 export const accountTransactionSpark = {

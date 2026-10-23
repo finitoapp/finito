@@ -12,6 +12,7 @@ import { z } from "zod"
 import { defineError } from "./error.ts"
 import type { DeviceId } from "./modules/device/device-types.ts"
 import type { MasterKey } from "./modules/shared/key-derivation.ts"
+import type { WssUrl } from "./modules/shared/schema.ts"
 import { jsonCodec } from "./zod-utils.ts"
 
 export interface FetchDep {
@@ -211,6 +212,14 @@ export type UuidDep = { readonly uuid: { readonly create: () => string } }
 export type EvoluOwnerDep = { readonly evoluOwner: AppOwner }
 
 export type MasterKeyDep = { readonly masterKey: MasterKey }
+
+export interface TableSelfPayRootDep {
+  readonly tableSelfPayRoot: Uint8Array
+}
+
+export interface SelfPayDefaultRelaysDep {
+  readonly selfPayDefaultRelays: ReadonlyArray<WssUrl>
+}
 
 export type DeviceIdDep = { readonly deviceId: DeviceId }
 

@@ -26,6 +26,7 @@ const transaction: MonetaTransaction = {
   constantSymbol: null,
   specificSymbol: null,
   note: null,
+  recipientMessage: null,
   raw: null,
 }
 
