@@ -15,11 +15,12 @@ is a `<meta>` tag (`vite.config.ts`), where browsers ignore
 ## Decision
 
 Vercel serves `/t` only on a host whose name starts with `t.`, which must
-be the host of `VITE_PAYKY_SELF_PAY_ORIGIN`, and every other page on that
-host is sandboxed, so the guest page never shares an origin with the
-merchant app. On any other host, `/t` is sandboxed with `default-src
-'none'`. Every `/t` response carries `frame-ancestors 'none'` as a header,
-so no site may frame the guest page on any host (`vercel.json`).
+be the host of every guest origin a sticker names (`table-self-pay/0024`),
+and every other page on that host is sandboxed, so the guest page never
+shares an origin with the merchant app. On any other host, `/t` is
+sandboxed with `default-src 'none'`. Every `/t` response carries
+`frame-ancestors 'none'` as a header, so no site may frame the guest page
+on any host (`vercel.json`).
 
 ## Alternatives considered
 

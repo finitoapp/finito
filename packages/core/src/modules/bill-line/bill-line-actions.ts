@@ -29,6 +29,16 @@ export const insertBillLineRows = (
   }
 }
 
+export const upsertBillLineRows = (
+  evolu: EvoluDep["evolu"],
+  lines: ReadonlyArray<BillLineRow>,
+  options: MutationOptions
+): void => {
+  for (const line of lines) {
+    evolu.upsert("billLine", removeUndefinedValues(line), options)
+  }
+}
+
 /**
  * A bill's line ledger and the item snapshots it refers to — what
  * `calculateBillLineSummaries` folds. Loaded raw, rather than only as the

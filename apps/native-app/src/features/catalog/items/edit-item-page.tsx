@@ -19,6 +19,8 @@ import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/cat
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   deleteCatalogItem,
+  setCatalogItemInMenu,
+  setCatalogItemSoldOut,
   updateCatalogItem,
 } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import {
@@ -51,6 +53,7 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
@@ -63,6 +66,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select.tsx"
+import { Switch } from "../../../components/ui/switch.tsx"
 import { useConfirmedRun } from "../../../hooks/use-confirmed-run.ts"
 import {
   useEvoluQuery,
@@ -383,6 +387,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
           </FieldGroup>
         </CardContent>
       </Card>
+      <CatalogItemMenuCard item={item} />
       <Button
         label={t("catalog.items.delete")}
         iconStart={Trash}
@@ -411,5 +416,64 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
         onClose={() => setEditedCategory(null)}
       />
     </Screen>
+  )
+}
+
+function CatalogItemMenuCard({ item }: { readonly item: CatalogItemRow }) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const inMenu = useInlineChoice(item.inMenu !== null, (checked) =>
+    runToast(async (run) => {
+      await run.ok(setCatalogItemInMenu({ id: item.id, inMenu: checked }))
+    })
+  )
+  const soldOut = useInlineChoice(item.soldOut !== null, (checked) =>
+    runToast(async (run) => {
+      await run.ok(setCatalogItemSoldOut({ id: item.id, soldOut: checked }))
+    })
+  )
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.items.form.menu.title")}</CardTitle>
+        <CardDescription>
+          {t("catalog.items.form.menu.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent gap={16}>
+        <Field orientation="horizontal">
+          <Switch
+            aria-label={t("catalog.items.form.inMenu.label")}
+            checked={inMenu.value}
+            disabled={inMenu.saving}
+            onCheckedChange={(checked) => {
+              void inMenu.choose(checked)
+            }}
+          />
+          <FieldContent>
+            <FieldLabel>{t("catalog.items.form.inMenu.label")}</FieldLabel>
+          </FieldContent>
+        </Field>
+        {item.inMenu !== null && (
+          <Field orientation="horizontal">
+            <Switch
+              aria-label={t("catalog.items.form.soldOut.label")}
+              checked={soldOut.value}
+              disabled={soldOut.saving}
+              onCheckedChange={(checked) => {
+                void soldOut.choose(checked)
+              }}
+            />
+            <FieldContent>
+              <FieldLabel>{t("catalog.items.form.soldOut.label")}</FieldLabel>
+              <FieldDescription>
+                {t("catalog.items.form.soldOut.description")}
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        )}
+      </CardContent>
+    </Card>
   )
 }

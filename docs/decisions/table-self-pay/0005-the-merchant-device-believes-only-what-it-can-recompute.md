@@ -8,7 +8,7 @@ Date: 2026-10-14
 Anyone with the sticker can pay with any message, so everything a payment
 claims besides the money is a stranger's text. The money itself is the
 only input a stranger cannot fake: it arrived on the merchant's own
-account, seen by the merchant device's FIO or Spark sync
+account, seen by the merchant device's bank or Spark sync
 (docs/table-self-pay-design.md, "Proof instead of permission").
 
 ## Decision
@@ -26,7 +26,7 @@ lines. The check for each claim is in docs/table-self-pay-design.md §4.
 Allocations only mark lines paid. Coverage and status read money alone.
 Every row a match writes derives from the transaction, its message and the
 bill, and the payment id derives from `self-pay:{transactionId}`
-(`createSelfPayArrival`), so two merchant devices that see the same
+(`loadSelfPayArrival`), so two merchant devices that see the same
 arrival write the same rows. Two values are the exception: the claim time
 of a bank transfer (`table-self-pay/0008`), and the `closedAt` of a bill
 the match closes, which the device stamps with its own clock.
@@ -46,6 +46,7 @@ decisions rest on.
 
 ## Enforced by
 
+- `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by Lightning > keeps the lines and tip of the first of two jobs on one device that reconcile one payment at once`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > credits exactly what arrived with another bill's reference`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > leaves money with %s unmatched`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > leaves a transfer in another currency than the bill unmatched`

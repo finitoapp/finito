@@ -373,6 +373,7 @@ function GuestsPaidBillMessage({ billId }: { readonly billId: BillId }) {
             })
           }
         />
+        <Button size="lg" label={t("paymentWait.back")} onPress={goHome} />
       </YStack>
     </SafeAreaView>
   )

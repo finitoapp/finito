@@ -80,6 +80,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/components/app/menu-order-announcer.tsx",
+    web: ["apps/web-app/src/components/app/menu-order-announcer.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Toast:
+        "Web keeps sonner's toast up by its id; native draws the kit Toast inside ToastHost for as long as an order waits.",
+    },
+  },
+  {
     native: "src/components/app/pin-prompt-host.tsx",
     web: ["apps/web-app/src/components/app/pin-prompt-host.tsx"],
     status: "matched",
@@ -577,6 +586,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       RouteMessage:
         "web answers an invalid tip link in its route file (_terminal.payment.custom-tip.tsx); native's route renders this page, which does it",
+    },
+  },
+  {
+    native: "src/features/orders/orders-to-serve-page.tsx",
+    web: ["apps/web-app/src/features/orders/orders-to-serve-page.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      CardAction:
+        "native's CardAction sits absolutely in the header's corner, so an order's badges beside a long table name covered it; they wrap under the time instead",
     },
   },
   {
@@ -1266,7 +1284,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/features/catalog/items/edit-item-page.tsx",
-    web: ["apps/web-app/src/features/catalog/items/item-form-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/items/item-form-page.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
+    ],
     status: "matched",
     allowedDifferences: {
       FieldError:
@@ -1285,7 +1306,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/features/catalog/items/items-page.tsx",
-    web: ["apps/web-app/src/features/catalog/items/items-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/items/items-page.tsx",
+      "apps/web-app/src/features/catalog/items/items-list.tsx",
+    ],
     status: "matched",
   },
   {
@@ -1951,6 +1975,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/catalog/tables/self-pay-guest-name-card.tsx",
     web: [
       "apps/web-app/src/features/catalog/tables/self-pay-guest-name-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
+    native: "src/features/catalog/tables/self-pay-options-card.tsx",
+    web: [
+      "apps/web-app/src/features/catalog/tables/self-pay-options-card.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-select.tsx",
     ],
     status: "matched",
   },

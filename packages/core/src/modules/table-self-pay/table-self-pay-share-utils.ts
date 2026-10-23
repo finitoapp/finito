@@ -191,8 +191,8 @@ export const calculateSelfPayShare = (
   const chosen = calculateChosenSelfPayShare(bill, split)
   const rest = bill.remainder - chosen.amount
   const leavesTooLittle = rest > 0 && rest < selfPayMinimum(currency)
-  const typesMoreThanOwed = split.kind === "amount" && rest < 0
-  return chosen.amount > 0 && (leavesTooLittle || typesMoreThanOwed)
+  const asksMoreThanOwed = rest < 0
+  return chosen.amount > 0 && (leavesTooLittle || asksMoreThanOwed)
     ? calculateChosenSelfPayShare(bill, { kind: "remainder" })
     : chosen
 }

@@ -14,11 +14,14 @@ import {
   TableFilterSchema,
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
   type OpenBillRow,
   openBillsQuery,
 } from "@payky/core/modules/bill/bill-queries"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
@@ -26,6 +29,7 @@ import { useLocalStorageState } from "@payky/web-shared/use-local-storage-state"
 import { Link } from "@tanstack/react-router"
 import {
   ChartPieIcon,
+  ChevronRightIcon,
   HourglassIcon,
   type LucideIcon,
   PlusIcon,
@@ -135,6 +139,7 @@ export function PosOverviewPage() {
           </ToggleGroup>
         )}
       </div>
+      <ToServeStrip />
       <NoTableStrip rows={rowsByTableId.get(null) ?? []} now={now} />
       {visibleTiles.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]">
@@ -196,6 +201,29 @@ const billPaymentStateIcons = {
 /** Covers the whole tile, so its most likely next step needs no aiming. */
 const stretchedLinkClassName =
   "absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+function ToServeStrip() {
+  const { t } = useTranslation()
+  const {
+    data: [settings],
+  } = useEvoluQuery(selfPaySettingsQuery)
+  const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
+
+  if (!offersOrders(settings) && orders.length === 0) return null
+
+  return (
+    <Link
+      to="/orders"
+      className="flex items-center gap-3 rounded-xl bg-card p-3 pl-4 ring-1 ring-foreground/10 ring-inset"
+    >
+      <span className="flex-1 text-sm font-semibold">{t("nav.orders")}</span>
+      <span className="text-lg font-semibold tabular-nums">
+        {orders.length}
+      </span>
+      <ChevronRightIcon className="size-4 text-muted-foreground" />
+    </Link>
+  )
+}
 
 /**
  * The open bills on no table and the quick bill that starts another. Always
@@ -284,15 +312,7 @@ function TableTile({
         // row stretches its tiles, when one of them lists several bills.
         className="min-h-36 justify-between gap-2"
         icon={
-          occupied ? (
-            <NewBillLink
-              tableId={table.id}
-              aria-label={t("tables.tile.newBill")}
-              className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
-            >
-              <PlusIcon className="size-4" />
-            </NewBillLink>
-          ) : (
+          occupied ? null : (
             <PlusIcon className="size-5 shrink-0 text-muted-foreground" />
           )
         }
@@ -320,33 +340,46 @@ function TableTile({
               {isPartlyPaid ? t("tables.tile.left", { amount: left }) : left}
             </p>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
-            {occupied ? (
-              <>
-                <span className={elapsedClassName(now - openedAt)}>
-                  {formatElapsed(now - openedAt, locale)}
-                </span>
-                <span>{t("tables.tile.itemCount", { value: itemCount })}</span>
-                {paymentState !== undefined && (
-                  <BillPaymentStateBadge
-                    paymentState={paymentState}
-                    paid={paymentState === "partiallyPaid" ? paid : undefined}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <span>{t("tables.tile.free")}</span>
-                {table.seatCount !== null && (
-                  <span className="flex items-center gap-0.5">
-                    <UsersIcon aria-hidden className="size-3.5" />
-                    <span aria-hidden>{table.seatCount}</span>
-                    <span className="sr-only">
-                      {t("tables.seatCount", { value: table.seatCount })}
-                    </span>
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
+              {occupied ? (
+                <>
+                  <span className={elapsedClassName(now - openedAt)}>
+                    {formatElapsed(now - openedAt, locale)}
                   </span>
-                )}
-              </>
+                  <span>
+                    {t("tables.tile.itemCount", { value: itemCount })}
+                  </span>
+                  {paymentState !== undefined && (
+                    <BillPaymentStateBadge
+                      paymentState={paymentState}
+                      paid={paymentState === "partiallyPaid" ? paid : undefined}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>{t("tables.tile.free")}</span>
+                  {table.seatCount !== null && (
+                    <span className="flex items-center gap-0.5">
+                      <UsersIcon aria-hidden className="size-3.5" />
+                      <span aria-hidden>{table.seatCount}</span>
+                      <span className="sr-only">
+                        {t("tables.seatCount", { value: table.seatCount })}
+                      </span>
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            {occupied && (
+              <NewBillLink
+                tableId={table.id}
+                aria-label={t("tables.tile.newBill")}
+                className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
+              >
+                <PlusIcon className="size-4" />
+              </NewBillLink>
             )}
           </div>
         </div>

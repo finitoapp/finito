@@ -26,6 +26,7 @@ import {
   upsertNewCatalogItems,
 } from "../catalog-item/catalog-item-actions.ts"
 import type { CatalogItemPricingError } from "../catalog-item/catalog-item-utils.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { CountryCode } from "../legal-entity/legal-entity-types.ts"
@@ -412,3 +413,26 @@ export const finishOnboarding =
     })
     return ok()
   }
+
+export const setSelfPayBillsHidden = (
+  hidden: boolean
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ selfPayBillsHidden: hidden ? sqliteTrue : null })
+
+export const setMenuOrdering = ({
+  on,
+  deviceId,
+}: {
+  readonly on: boolean
+  readonly deviceId: DeviceId
+}): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings(
+    on
+      ? { menuOrdering: sqliteTrue, orderDeviceId: deviceId }
+      : { menuOrdering: null }
+  )
+
+export const setOrderDevice = (
+  deviceId: DeviceId
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ orderDeviceId: deviceId })

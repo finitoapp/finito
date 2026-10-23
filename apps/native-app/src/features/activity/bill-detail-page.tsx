@@ -269,7 +269,7 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
               <TaxRecap rows={taxRecapRows} currency={bill.currency} />
             </>
           ) : null}
-          {coverage === "underpaid" ? (
+          {coverage === "underpaid" && billStatus.status !== "canceled" ? (
             <>
               <Separator />
               <BillCoverageWarning

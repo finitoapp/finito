@@ -27,6 +27,8 @@ import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-it
 import {
   createCatalogItemAtEnd,
   deleteCatalogItem,
+  setCatalogItemInMenu,
+  setCatalogItemSoldOut,
   updateCatalogItem,
 } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import {
@@ -93,6 +95,7 @@ import {
   useInlineChoice,
 } from "@/features/shared/forms/inline-edit-save.tsx"
 import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
+import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useIsConfirmDialogOpen } from "@/hooks/use-confirm-dialog.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
@@ -831,6 +834,8 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
         </CardContent>
       </Card>
 
+      <CatalogItemMenuCard item={item} />
+
       <ScanCodeScannerDialog
         open={scannerDialogOpen}
         onOpenChange={setScannerDialogOpen}
@@ -913,5 +918,47 @@ function InlineEditCategory({
         {justSaved && <InlineEditSavedTick className="right-3" />}
       </div>
     </Field>
+  )
+}
+
+function CatalogItemMenuCard({ item }: { readonly item: CatalogItemRow }) {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const inMenu = item.inMenu !== null
+
+  const saveInMenu = async (checked: boolean) => {
+    await using run = appRun()
+    await run.ok(setCatalogItemInMenu({ id: item.id, inMenu: checked }))
+  }
+
+  const saveSoldOut = async (checked: boolean) => {
+    await using run = appRun()
+    await run.ok(setCatalogItemSoldOut({ id: item.id, soldOut: checked }))
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.items.form.menu.title")}</CardTitle>
+        <CardDescription>
+          {t("catalog.items.form.menu.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <InlineEditSwitch
+          label={t("catalog.items.form.inMenu.label")}
+          defaultValue={inMenu}
+          onSave={saveInMenu}
+        />
+        {inMenu && (
+          <InlineEditSwitch
+            label={t("catalog.items.form.soldOut.label")}
+            description={t("catalog.items.form.soldOut.description")}
+            defaultValue={item.soldOut !== null}
+            onSave={saveSoldOut}
+          />
+        )}
+      </CardContent>
+    </Card>
   )
 }

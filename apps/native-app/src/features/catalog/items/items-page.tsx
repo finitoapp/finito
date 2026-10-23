@@ -20,6 +20,7 @@ import {
 } from "../../../components/library-picture.tsx"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
+import { Badge } from "../../../components/ui/badge.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
@@ -194,6 +195,12 @@ function ItemsList({
             />
           ),
         title: getStaffDisplayName(item),
+        badge:
+          item.inMenu === null ? undefined : item.soldOut === null ? (
+            <Badge variant="secondary" label={t("catalog.items.inMenu")} />
+          ) : (
+            <Badge variant="destructive" label={t("catalog.items.soldOut")} />
+          ),
         href: `/settings/items/${item.id}`,
         subtitle:
           item.categoryId === null

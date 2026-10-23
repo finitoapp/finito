@@ -17,6 +17,7 @@ import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
 import { SelfPayGuestNameCard } from "./self-pay-guest-name-card.tsx"
+import { SelfPayOptionsCard } from "./self-pay-options-card.tsx"
 import { TableStickerCheck } from "./table-sticker-check.tsx"
 
 /** Tables, as web's `TablesPage`, under Settings (navigation/0003). */
@@ -58,6 +59,7 @@ function TablesSettingsBody() {
           <TablesList search={debouncedSearch} hasAny={hasAny} />
         </Suspense>
         {takesSelfPay && <SelfPayGuestNameCard />}
+        {takesSelfPay && <SelfPayOptionsCard />}
       </YStack>
     </ScrollView>
   )

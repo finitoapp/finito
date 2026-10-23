@@ -1,4 +1,9 @@
-import { testCreateConsole, testCreateRun } from "@evolu/common"
+import {
+  createIdFromString,
+  sqliteFalse,
+  testCreateConsole,
+  testCreateRun,
+} from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import { createDateDep } from "../../deps.ts"
 import type { Evolu } from "../../evolu/schema.ts"
@@ -29,21 +34,33 @@ import {
   openBillsQuery,
 } from "../../modules/bill/bill-queries.ts"
 import type { BillId } from "../../modules/bill/bill-types.ts"
-import { deriveOpenBillTableId } from "../../modules/bill/bill-utils.ts"
+import {
+  calculateClaimedSum,
+  deriveOpenBillTableId,
+} from "../../modules/bill/bill-utils.ts"
 import {
   appendBillLines,
   loadCalculatedBillLineSummaries,
 } from "../../modules/bill-line/bill-line-actions.ts"
+import {
+  CashuQuoteIdSchema,
+  MintUrlSchema,
+} from "../../modules/cashu/cashu-types.ts"
 import { createPayment } from "../../modules/payment/payment-actions.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
 import { claimManualReconciliation } from "../../modules/reconciliation-claim/reconciliation-claim-actions.ts"
-import { createRowId } from "../../modules/shared/evolu-utils.ts"
+import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../../modules/shared/evolu-utils.ts"
 import {
   IbanSchema,
   Integer,
   NonEmptyString255,
+  NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
+  PositiveNumberSchema,
   TimestampMs,
 } from "../../modules/shared/schema.ts"
 import { createTable, deleteTable } from "../../modules/table/table-actions.ts"
@@ -214,6 +231,73 @@ const settleOn = async (
   return accountTransactionId
 }
 
+const settleByCashuOn = async (
+  evolu: Evolu,
+  paymentId: PaymentId,
+  sats: number
+): Promise<void> => {
+  const { evoluOwner } = evoluTestDeps(evolu)
+  const accountId = createIdFromString<"Account">("cashu")
+  const accountTransactionId = createRowId<"AccountTransaction">()
+  await runMutationWithCompletion((options) => {
+    evolu.upsert(
+      "accountCashu",
+      { id: accountId },
+      { ...options, owner: evoluOwner }
+    )
+    evolu.upsert(
+      "account",
+      {
+        id: accountId,
+        deviceId: null,
+        name: NonEmptyString255("Cashu"),
+        kind: "cashu",
+        isDeleted: sqliteFalse,
+      },
+      { ...options, owner: evoluOwner }
+    )
+    evolu.upsert(
+      "paymentCashu",
+      {
+        id: paymentId,
+        accountId,
+        amountSats: NonNegativeInteger(sats),
+        exchangeRate: PositiveNumberSchema.decode(2.5),
+        exchangeRateSource: "yadio",
+        exchangeRateFetchedAt: TimestampMs(Date.now()),
+        mintUrl: MintUrlSchema.decode("https://mint.example.com"),
+        quoteId: CashuQuoteIdSchema.decode("quote"),
+        lnInvoice: NonEmptyStringSchema.decode("lnbc1"),
+        quoteExpiresAt: null,
+        receiveOperationId: null,
+      },
+      { ...options, owner: evoluOwner }
+    )
+    evolu.upsert(
+      "accountTransaction",
+      {
+        id: accountTransactionId,
+        accountId,
+        kind: "cashu",
+        amount: Integer(sats),
+        currency: "BTC",
+        occurredAt: TimestampMs(Date.now()),
+        note: null,
+        internalTransferGroupId: null,
+      },
+      { ...options, owner: evoluOwner }
+    )
+  })
+  await using run = testCreateRun(depsOf(evolu))
+  await run.ok(
+    claimManualReconciliation({
+      paymentId,
+      accountTransactionId,
+      deviceId: null,
+    })
+  )
+}
+
 const removeLineOn = async (
   evolu: Evolu,
   billId: BillId,
@@ -361,6 +445,37 @@ describe("The bill reads the same everywhere", () => {
     await expect.poll(() => openBillIdsOn(evolu)).toContain(billId)
     expect(await closedAtOn(evolu, billId)).toBeNull()
     expect(job.errors).toEqual([])
+  })
+
+  test("Bill paid by Cashu alone", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const tableId = await createTableOn(evolu)
+    const billId = await openBillOn(evolu, tableId, [["Dinner", 10_000]])
+    const paymentId = await createPaymentOn(evolu, billId, 10_000)
+    await using job = await startClosingJob(evolu)
+
+    await settleByCashuOn(evolu, paymentId, 4000)
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(await closedAtOn(evolu, billId)).not.toBeNull()
+    expect(await openBillIdsOn(evolu)).not.toContain(billId)
+    expect(job.errors).toEqual([])
+  })
+
+  test("Bill partly paid by Cashu shows on the floor what arrived", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const tableId = await createTableOn(evolu)
+    const billId = await openBillOn(evolu, tableId, [["Dinner", 10_000]])
+    const paymentId = await createPaymentOn(evolu, billId, 4000)
+
+    await settleByCashuOn(evolu, paymentId, 1600)
+
+    const open = (await evolu.loadQuery(openBillsQuery)).find(
+      ({ id }) => id === billId
+    )
+    expect(calculateClaimedSum(open?.claims ?? [])).toBe(4000)
   })
 
   test("Closed by two devices at once", async () => {

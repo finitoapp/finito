@@ -35,6 +35,7 @@ export interface SelfPayInstructions {
   readonly bank: SelfPayView["bank"]
   readonly lightning: SelfPayView["lightning"]
   readonly selectionKey: SelfPayView["selectionKey"]
+  readonly menu: SelfPayView["menu"]
 }
 
 export const deriveSelfPayLineKey = (summaryId: BillLineSummaryId): string =>

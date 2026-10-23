@@ -9,6 +9,7 @@ import type { AccountTransactionId } from "../account-transaction/account-transa
 import type { BillLineId } from "../bill-line/bill-line-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { ReconciliationClaimId } from "../reconciliation-claim/reconciliation-claim-types.ts"
+import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { BillId } from "./bill-types.ts"
 
 export const billClosingCursorId = createIdFromString<"BillClosingCursor">(
@@ -125,6 +126,16 @@ export const closingClaimsByBillIdQuery = (billId: BillId) =>
           .onRef("paymentBtc.id", "=", "payment.id")
           .on("paymentBtc.isDeleted", "is not", sqliteTrue)
       )
+      .leftJoin("paymentCashu", (join) =>
+        join
+          .onRef("paymentCashu.id", "=", "payment.id")
+          .on("paymentCashu.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("paymentLightningAddress", (join) =>
+        join
+          .onRef("paymentLightningAddress.id", "=", "payment.id")
+          .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
+      )
       .select([
         "reconciliationClaim.id as claimId",
         "reconciliationClaim.isDeleted as isClaimDeleted",
@@ -133,7 +144,12 @@ export const closingClaimsByBillIdQuery = (billId: BillId) =>
         "payment.tipAmount",
         "payment.amount as paymentAmount",
         "payment.currency as paymentCurrency",
-        "paymentBtc.amountSats as paymentAmountSats",
+        quotedAmountSatsSql({
+          kind: "accountTransaction.kind",
+          btc: "paymentBtc.amountSats",
+          cashu: "paymentCashu.amountSats",
+          lightningAddress: "paymentLightningAddress.amountSats",
+        }).as("paymentAmountSats"),
         "reconciliationClaim.accountTransactionId",
         "accountTransaction.amount",
         "accountTransaction.currency",

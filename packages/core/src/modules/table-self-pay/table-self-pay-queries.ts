@@ -7,6 +7,7 @@ import {
 
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { NonEmptyString255, TimestampMs } from "../shared/schema.ts"
 import type { TableId } from "../table/table-types.ts"
 import type { SelfPayReference } from "./table-self-pay-reference-utils.ts"
@@ -171,12 +172,27 @@ export const tableSelfPayBillsQuery = (tableId: TableId) =>
                 .onRef("paymentBtc.id", "=", "payment.id")
                 .on("paymentBtc.isDeleted", "is not", sqliteTrue)
             )
+            .leftJoin("paymentCashu", (join) =>
+              join
+                .onRef("paymentCashu.id", "=", "payment.id")
+                .on("paymentCashu.isDeleted", "is not", sqliteTrue)
+            )
+            .leftJoin("paymentLightningAddress", (join) =>
+              join
+                .onRef("paymentLightningAddress.id", "=", "payment.id")
+                .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
+            )
             .select([
               "payment.id as paymentId",
               "payment.tipAmount",
               "payment.amount as paymentAmount",
               "payment.currency as paymentCurrency",
-              "paymentBtc.amountSats as paymentAmountSats",
+              quotedAmountSatsSql({
+                kind: "accountTransaction.kind",
+                btc: "paymentBtc.amountSats",
+                cashu: "paymentCashu.amountSats",
+                lightningAddress: "paymentLightningAddress.amountSats",
+              }).as("paymentAmountSats"),
               "reconciliationClaim.accountTransactionId",
               "accountTransaction.amount",
               "accountTransaction.currency",
@@ -248,6 +264,17 @@ export const tableSelfPayConfirmationsQuery = (
         "bill.canceledAt",
       ])
       .where("bill.tableId", "=", tableId)
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            eb
+              .selectFrom("menuOrder")
+              .select("menuOrder.id")
+              .whereRef("menuOrder.billId", "=", "bill.id")
+              .where("menuOrder.isDeleted", "is not", sqliteTrue)
+          )
+        )
+      )
       .where((eb) =>
         eb.or([
           eb("bill.closedAt", "is", null),
@@ -392,6 +419,14 @@ export const tableSelfPayVersionQuery = (tableId: TableId) =>
               .select([
                 "monetaPlugin.createdAt as createdAt",
                 "monetaPlugin.updatedAt as updatedAt",
+              ])
+          )
+          .unionAll(
+            eb
+              .selectFrom("appSettings")
+              .select([
+                "appSettings.createdAt as createdAt",
+                "appSettings.updatedAt as updatedAt",
               ])
           )
           .as("changes")

@@ -39,7 +39,7 @@ tags: [bill]
     env:
       LABEL: '${output.tv("bill.brick.add.aria", { name: "Coffee" })}'
 - extendedWaitUntil:
-    visible: '${output.tv("bill.list.label", { number: "\\d+" })}'
+    visible: '.*${output.tv("bill.list.label", { number: "\\d+" })}.*'
     timeout: 10000
 - assertVisible: Patio 1
 # The tables home shows the bill on Patio 1's tile.

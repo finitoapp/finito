@@ -648,6 +648,7 @@ export const enSettings = {
   "catalog.items.form.discount.existing":
     "This item is a discount: the amount is taken off the bill. Whether an item is a discount is set only when it is added.",
   "catalog.items.form.discount.label": "Discount",
+  "catalog.items.form.inMenu.label": "In the menu",
   "catalog.items.form.internalDescription.invalid":
     "Internal description is too long (255 characters max).",
   "catalog.items.form.internalDescription.label": "Internal description",
@@ -661,6 +662,9 @@ export const enSettings = {
   "catalog.items.form.internalName.placeholder":
     "Optional — shown to staff instead of the public name",
   "catalog.items.form.invalidId": "Invalid item id.",
+  "catalog.items.form.menu.description":
+    "Guests ordering at the table see the items in the menu, with their public name, description and price.",
+  "catalog.items.form.menu.title": "Menu",
   "catalog.items.form.name.invalid": "Enter a name.",
   "catalog.items.form.name.label": "Name",
   "catalog.items.form.name.placeholder": "e.g. Coffee",
@@ -684,14 +688,19 @@ export const enSettings = {
   "catalog.items.form.sku.invalid": "SKU is too long (255 characters max).",
   "catalog.items.form.sku.label": "SKU",
   "catalog.items.form.sku.placeholder": "Optional",
+  "catalog.items.form.soldOut.description":
+    "Guests do not see it until it is available again. It stays in the menu.",
+  "catalog.items.form.soldOut.label": "Sold out",
   "catalog.items.form.taxRate.description":
     "Applies to bills and payments once this item is used. Manage rates in Settings › Tax rates.",
   "catalog.items.form.taxRate.label": "Tax rate",
   "catalog.items.form.taxRate.none": "No tax rate",
   "catalog.items.form.title.create": "Add item",
   "catalog.items.form.title.edit": "Edit item",
+  "catalog.items.inMenu": "In the menu",
   "catalog.items.search": "Search items...",
   "catalog.items.search.clear.aria": "Clear search",
+  "catalog.items.soldOut": "Sold out",
   "catalog.items.title": "Items",
   "settings.language.locale.czech.title": "Czechia",
   "settings.language.locale.description":
@@ -1149,6 +1158,25 @@ export const enSettings = {
   "catalog.tables.selfPayGuestName.error": "Use at most 255 characters.",
   "catalog.tables.selfPayGuestName.label": "Name guests see",
   "catalog.tables.selfPayGuestName.placeholder": "Café on the Corner",
+  "catalog.tables.selfPayOptions.menu.empty.description":
+    "No item in the menu is available. Put items in the menu on their detail, or mark them available again.",
+  "catalog.tables.selfPayOptions.menu.empty.title": "Guests cannot order",
+  "catalog.tables.selfPayOptions.menu.leftOut":
+    "Items that do not fit the menu: {count}. Guests do not see them.",
+  "catalog.tables.selfPayOptions.menu.otherCurrency":
+    "Items not priced in {currency}: {count}. Guests do not see them.",
+  "catalog.tables.selfPayOptions.menu.visible":
+    "Items guests can order: {count}",
+  "catalog.tables.selfPayOptions.order": "Guests order from the menu",
+  "catalog.tables.selfPayOptions.order.description":
+    "Guests order the items in the menu and pay for them. Staff see the paid orders under To serve.",
+  "catalog.tables.selfPayOptions.orderDevice.description":
+    "It publishes the menu and records the paid orders, so keep it online.",
+  "catalog.tables.selfPayOptions.orderDevice.label": "Device that takes orders",
+  "catalog.tables.selfPayOptions.orderDevice.placeholder": "Choose a device",
+  "catalog.tables.selfPayOptions.orderDevice.this": "{name} (this device)",
+  "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
+  "catalog.tables.selfPayOptions.title": "What guests can do",
   "catalog.tables.sticker.check": "Check a sticker",
   "catalog.tables.sticker.current": "This sticker belongs to {name}.",
   "catalog.tables.sticker.dismiss": "Dismiss",
@@ -1280,6 +1308,7 @@ export const enSettings = {
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
   "access.action.resolveOverpayment": "Resolve an overpayment",
+  "access.action.rejectOrder": "Reject an order",
   "access.action.removeAccount": "Remove the account from this device",
   "access.action.removeLines": "Remove items from the bill",
   "access.action.switchAccount": "Switch account",
