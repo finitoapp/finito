@@ -38,6 +38,7 @@ import {
   isCustomTipUnreadable,
   NO_TIP,
   resolveGuestTip,
+  useTipReveal,
 } from "./guest-tip-picker.tsx"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
@@ -46,7 +47,7 @@ type SplitMode = SelfPaySplit["kind"]
 const NOT_PICKED: GuestLinePick = { units: 0, people: null }
 const NOTHING_CHOSEN: SelfPaySplit = { kind: "amount", amount: 0 }
 
-function Stepper({
+export function Stepper({
   value,
   min,
   max,
@@ -267,7 +268,7 @@ export interface GuestPaymentChoice {
   readonly tip: number
 }
 
-const usePayBarScrollPadding = () => {
+export const usePayBarScrollPadding = () => {
   const payBar = useRef<HTMLElement>(null)
   const { height } = useElementSize(payBar)
   useEffect(() => {
@@ -305,6 +306,7 @@ export function GuestCheckout({
   const choiceTitle = useRef<HTMLHeadingElement>(null)
   const amountField = useRef<HTMLInputElement>(null)
   const payBar = usePayBarScrollPadding()
+  const { tipPicker, revealTipsAfterTyping } = useTipReveal()
   const format = (amount: number) => formatGuestAmount(amount, bill, locale)
   const payableLines = bill.lines.filter((line) => remainingOnLine(line) > 0)
   const typedAmount = decimalAmountToMinorUnits({
@@ -328,7 +330,7 @@ export function GuestCheckout({
     share.amount - calculateChosenSelfPayShare(bill, split).amount
   const tipAmount = guestTipAmount(
     share.amount,
-    resolveGuestTip(tipChoice, bill)
+    resolveGuestTip(tipChoice, bill.currency)
   )
   const total = share.amount + tipAmount
   const minimum = selfPayMinimum(bill.currency)
@@ -461,6 +463,7 @@ export function GuestCheckout({
                 ref={amountField}
                 id="guest-amount"
                 inputMode="decimal"
+                enterKeyHint="done"
                 autoComplete="off"
                 placeholder="0"
                 className="h-11 pr-12"
@@ -474,8 +477,12 @@ export function GuestCheckout({
                 onChange={(event) => {
                   setAmountText(event.currentTarget.value)
                 }}
-                onBlur={() => {
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur()
+                }}
+                onBlur={(event) => {
                   setHasLeftAmount(true)
+                  if (share.amount > 0) revealTipsAfterTyping(event)
                 }}
               />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
@@ -509,7 +516,8 @@ export function GuestCheckout({
       </section>
 
       <GuestTipPicker
-        bill={bill}
+        ref={tipPicker}
+        currency={bill.currency}
         share={share.amount}
         choice={tipChoice}
         onChange={setTipChoice}
@@ -542,7 +550,7 @@ export function GuestCheckout({
             disabled={
               isPreparing ||
               isBelowMinimum ||
-              isCustomTipUnreadable(tipChoice, bill)
+              isCustomTipUnreadable(tipChoice, bill.currency)
             }
             onClick={() => {
               onContinue({ amount: total, split, share, tip: tipAmount })

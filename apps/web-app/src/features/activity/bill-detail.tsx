@@ -298,7 +298,7 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
             </>
           ) : null}
 
-          {coverage === "underpaid" ? (
+          {coverage === "underpaid" && billStatus.status !== "canceled" ? (
             <>
               <Separator />
               <BillCoverageWarning

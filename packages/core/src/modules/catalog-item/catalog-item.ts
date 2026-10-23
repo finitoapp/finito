@@ -8,6 +8,7 @@ import {
   IntegerSchema,
   NonEmptyString255Schema,
   NonNegativeIntegerSchema,
+  SqliteTrueSchema,
 } from "../shared/schema.ts"
 import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { CatalogItemId } from "./catalog-item-types.ts"
@@ -34,6 +35,8 @@ export const catalogItem = {
    * part of what was sold.
    */
   libraryProductId: NonEmptyString255Schema.nullable(),
+  inMenu: SqliteTrueSchema.nullable(),
+  soldOut: SqliteTrueSchema.nullable(),
 } as const
 
 /**

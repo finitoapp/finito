@@ -101,6 +101,7 @@ const view = (bills: ReadonlyArray<SelfPayViewBill>): SelfPayView => ({
   },
   lightning: { identityPublicKey: `02${"ab".repeat(32)}` },
   selectionKey: "cd".repeat(32),
+  menu: null,
   bills: [...bills],
   confirmations: [],
 })

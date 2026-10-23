@@ -17,6 +17,7 @@ import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-c
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { saveFiatBankAccount } from "../../modules/account/account-actions.ts"
+import { setSelfPayBillsHidden } from "../../modules/app-settings/app-settings-actions.ts"
 import { addManualAmountToBill } from "../../modules/bill/bill-actions.ts"
 import { saveFioPlugin } from "../../modules/fio-plugin/fio-plugin-actions.ts"
 import { connectMonetaPlugin } from "../../modules/moneta-plugin/moneta-plugin-actions.ts"
@@ -398,6 +399,37 @@ describe("table self-pay publishing job", () => {
     )
 
     expect(publishedView(context)?.bills[0]?.lines).toHaveLength(2)
+  })
+
+  test("lets a device that missed a settings change displace the view published before it", async () => {
+    await using context = await createSelfPayTestContext()
+    await openSelfPayBill(context, {
+      lines: [{ name: "Pizza", amount: 10_100 }],
+    })
+    await using run = testCreateRun(context.deps)
+    const [table] = await context.deps.evolu.loadQuery(selfPayTablesQuery)
+    if (table === undefined) throw new Error("Expected the self-pay table.")
+    const { version } = await run.ok(loadTableSelfPayView(table))
+
+    {
+      await using _first = await startJob(context)
+      await expect.poll(() => publishedView(context)?.bills).toHaveLength(1)
+      context.deps.evolu.setMutationBackdate((version + 5) * 1000)
+      await run.ok(setSelfPayBillsHidden(true))
+      await expect.poll(() => publishedView(context)?.bills).toHaveLength(0)
+    }
+    context.deps.evolu.setMutationBackdate((version + 10) * 1000)
+    await run.ok(setSelfPayBillsHidden(false))
+    context.deps.evolu.setMutationBackdate(null)
+    expect((await run.ok(loadTableSelfPayView(table))).version).toBe(
+      version + 10
+    )
+
+    await using _second = await startJob(context, {
+      deviceId: createRowId<"Device">(),
+    })
+
+    await expect.poll(() => publishedView(context)?.bills).toHaveLength(1)
   })
 
   test("confirms the table every interval with a rate the terminal accepts", async () => {

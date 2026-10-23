@@ -7,8 +7,8 @@ Date: 2026-10-17
 
 A table's view reaches guests only through relays that store a kind 30078
 event from a key they have never seen. Payky reads nostr profiles from
-Linky's relays (`VITE_PAYKY_NOSTR_RELAYS`), and Payky runs cache relays of
-its own at `nostr1`, `nostr2` and `nostr3.agora.gripe`.
+Linky's relays (`VITE_PAYKY_NOSTR_RELAYS`), and one of Payky's developers runs
+cache relays at `nostr1`, `nostr2` and `nostr3.agora.gripe`.
 
 On 2026-10-17 a fresh table key published a view, its liveness and a newer
 view to each of those relays and read them back:

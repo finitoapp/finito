@@ -1,0 +1,83 @@
+# web menu-orders.spec.ts: "an item goes into the menu, sells out and comes
+# back".
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Goulash
+      PRICE: "189"
+- extendedWaitUntil:
+    visible: Goulash
+    timeout: 10000
+- assertNotVisible: ${output.re(output.t["catalog.items.inMenu"])}
+- tapOn: Goulash
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.form.title.edit"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.inMenu.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.inMenu.label"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.inMenu.label"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- back
+- extendedWaitUntil:
+    visible: ${output.re(output.t["catalog.items.soldOut"])}
+    timeout: 10000
+- tapOn: Goulash
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.form.title.edit"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.inMenu.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.soldOut.label"]}
+      CHECKED: "false"
+- back
+- extendedWaitUntil:
+    visible: ${output.re(output.t["catalog.items.inMenu"])}
+    timeout: 10000
+- assertNotVisible: ${output.re(output.t["catalog.items.soldOut"])}

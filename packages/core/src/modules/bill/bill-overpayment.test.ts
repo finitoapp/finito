@@ -210,7 +210,7 @@ describe("The unresolved overpayment of a bill", () => {
     expect(deriveBillOverpayment(tipRefunded).unresolved).toBe(5_000)
   })
 
-  test("Canceled bill", () => {
+  test("Canceled bill keeps no goods, so all its money is unresolved", () => {
     const overpayment = deriveBillOverpayment(
       billOf({
         billTotal: 10_000,
@@ -220,7 +220,7 @@ describe("The unresolved overpayment of a bill", () => {
       })
     )
 
-    expect(overpayment.unresolved).toBe(0)
+    expect(overpayment.unresolved).toBe(15_000)
     expect(overpayment.answers).toEqual([])
   })
 })

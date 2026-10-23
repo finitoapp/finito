@@ -27,9 +27,10 @@ It loses Wi-Fi, it is off for the night, and a transfer a guest sends from
 home tomorrow must still land. There is no Payky server, and none should be
 needed.
 
-The same path from guest to merchant device is the one ordering and menu
-browsing will need later. Finito carried it as nostr RPC (kind 23195, NIP-04),
-and public relays banned that traffic over time.
+The same path carries orders from the menu
+([menu-ordering/0001](decisions/menu-ordering/0001-guests-order-from-a-published-menu-and-a-paid-order-is-a-bill.md)).
+Finito carried guest messages as nostr RPC (kind 23195, NIP-04), and public
+relays banned that traffic over time.
 
 ## The trilemma
 
@@ -80,7 +81,7 @@ device carries its own proof, and anything without one is ignored:
 | Input | Proof | Who can produce it |
 |---|---|---|
 | The view a guest reads | a signature by the table's key | only the merchant's devices |
-| The money | it arrived on the merchant's own account, seen by the merchant device's FIO or Spark sync | anyone, at the price of the money |
+| The money | it arrived on the merchant's own account, seen by the merchant device's FIO, MONETA or Spark sync | anyone, at the price of the money |
 | The selection a payment points to | its content hashes to the pointer, and it is signed and encrypted under keys derived from the pointer and the account's selection key | only someone holding both the pointer and a sticker of the merchant, which is the payer |
 | The Lightning rate | an 80-bit MAC under a key derived from the merchant's master key | only the merchant's devices |
 
@@ -96,7 +97,7 @@ sequenceDiagram
   G->>G: choose lines, price the share, derive the pointer
   G->>R: the selection, signed and encrypted under keys of the pointer
   G->>P: pay, with the bill's reference and PK1 and the pointer
-  P-->>T: the transaction arrives through FIO or Spark sync
+  P-->>T: the transaction arrives through FIO, MONETA or Spark sync
   T->>R: read the event whose author derives from the pointer
   Note right of T: verify the hash, price against the stored version or the open bill, credit, allocate, keep the tip
   T->>R: next view shows the lines as paid
@@ -115,8 +116,8 @@ decisions below keep it true.
 | posts junk events for the table | none, guests filter by author and the merchant device reads no guest events | nothing, and nobody sees them |
 | publishes selections without paying | none, a selection is looked up only for money that names it | nothing, and the relays carry it |
 | floods a relay after seeing a guest's selection | none, the merchant device asks only for the pointer's own author, which nobody else can sign as | nothing gained |
-| pays with a garbage or foreign pointer | one parse of at most 140 characters and one relay query, repeated for 10 minutes | the money, which the merchant keeps |
-| sends a thousand payments of one satoshi | one parse each, no payment because each credit is below the self-pay minimum and short of what the bill still owes | a thousand Lightning payments |
+| pays with a garbage or foreign pointer | one parse of at most 140 characters and one relay query, repeated for 10 minutes, then hourly for 7 days while the money stays unmatched | the money, which the merchant keeps |
+| sends a thousand payments of one satoshi | one parse and the relay queries of the row above each, no payment because each credit is below the self-pay minimum and short of what the bill still owes | a thousand Lightning payments |
 | shows staff a faked success screen | none, staff sees only arrived money | nothing gained |
 
 Every row that costs a merchant device work also costs the stranger a real
@@ -182,7 +183,7 @@ Recorded in [table-self-pay/0020](decisions/table-self-pay/0020-a-payment-points
 | how much | the credit is the money that arrived. On Lightning it is the lower of the stated amount and the sats at the signed rate (`loadLightningArrival`) | the guest cannot claim more than they paid |
 | the rate | its MAC, the invoice's own time inside the rate's hour, and the money arriving at most 10 minutes after it | the money stays unmatched |
 | which lines | the selection the pointer names hashes to the pointer, names this bill, and its version is one this merchant device stored or, while the bill is open on its table, the bill as it stands | the money counts without paying lines |
-| the share | the merchant device prices it with `calculateSelfPayShare`, the function the page used. A fraction rounds down, and the lines of a share, a fraction of the bill included, round once together ([table-self-pay/0016](decisions/table-self-pay/0016-a-self-pay-share-rounds-down-once-for-all-of-its-lines.md)). A share that would leave the bill less than the minimum, or a typed amount above what it owes, is the whole remainder. A credit below the share pays no lines (`allocateSelfPaySelection`) | the money counts without paying lines |
+| the share | the merchant device prices it with `calculateSelfPayShare`, the function the page used. A fraction rounds down, and the lines of a share, a fraction of the bill included, round once together ([table-self-pay/0016](decisions/table-self-pay/0016-a-self-pay-share-rounds-down-once-for-all-of-its-lines.md)). A share that would leave the bill less than the minimum, or any share above what it owes, is the whole remainder. A credit below the share pays no lines (`allocateSelfPaySelection`) | the money counts without paying lines |
 | a line's share | only lines the bill still has, each capped at what remained on it in the version the guest chose from (`remainingOnLine`) | that part pays no line |
 | that it is worth recording | the self-pay minimum, 1.00 CZK, 0.05 EUR or 0.05 USD, or everything the bill still owes (`meetsSelfPayMinimum`, [table-self-pay/0011](decisions/table-self-pay/0011-self-pay-starts-at-about-one-koruna-or-everything-left.md)) | the money stays unmatched |
 
@@ -230,3 +231,15 @@ Recorded in [table-self-pay/0007](decisions/table-self-pay/0007-nothing-is-reser
   version. A version only another merchant device published, and not yet
   synced, falls back to the bill as it stands while it is open on its table,
   and otherwise to no allocation.
+
+## Ordering from the menu
+
+An order is a selection too: menu items and quantities, the table and a note.
+Its payment carries a reference that starts with 9, which no bill reference
+does, and the device that takes orders records it as a bill of its own, priced
+from the menu version the guest ordered from
+([menu-ordering/0001](decisions/menu-ordering/0001-guests-order-from-a-published-menu-and-a-paid-order-is-a-bill.md),
+[menu-ordering/0002](decisions/menu-ordering/0002-one-device-takes-orders.md)).
+With bill paying switched off, a table's view lists no bill and names only the
+menu, so a sticker reveals nothing about what the table ordered
+([menu-ordering/0003](decisions/menu-ordering/0003-a-table-publishes-nothing-about-what-it-ordered.md)).

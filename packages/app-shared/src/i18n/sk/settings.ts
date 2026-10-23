@@ -649,6 +649,7 @@ export const skSettings = {
   "catalog.items.form.discount.existing":
     "Táto položka je zľava: suma sa odpočíta od účtu. To, či je položka zľavou, sa dá nastaviť len pri jej pridaní.",
   "catalog.items.form.discount.label": "Zľava",
+  "catalog.items.form.inMenu.label": "V menu",
   "catalog.items.form.internalDescription.invalid":
     "Interný popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalDescription.label": "Interný popis",
@@ -662,6 +663,9 @@ export const skSettings = {
   "catalog.items.form.internalName.placeholder":
     "Nepovinné – zobrazí sa personálu namiesto verejného názvu",
   "catalog.items.form.invalidId": "Neplatné ID položky.",
+  "catalog.items.form.menu.description":
+    "Hostia, ktorí objednávajú pri stole, vidia položky z menu s ich verejným názvom, popisom a cenou.",
+  "catalog.items.form.menu.title": "Menu",
   "catalog.items.form.name.invalid": "Zadajte názov.",
   "catalog.items.form.name.label": "Názov",
   "catalog.items.form.name.placeholder": "napr. Káva",
@@ -685,14 +689,19 @@ export const skSettings = {
   "catalog.items.form.sku.invalid": "SKU je príliš dlhé (max. 255 znakov).",
   "catalog.items.form.sku.label": "SKU",
   "catalog.items.form.sku.placeholder": "Nepovinné",
+  "catalog.items.form.soldOut.description":
+    "Hostia ju neuvidia, kým nebude znova k dispozícii. V menu zostane.",
+  "catalog.items.form.soldOut.label": "Vypredané",
   "catalog.items.form.taxRate.description":
     "Uplatní sa na účtoch a platbách po použití tejto položky. Sadzby správte v Nastaveniach › Daňové sadzby.",
   "catalog.items.form.taxRate.label": "Daňová sadzba",
   "catalog.items.form.taxRate.none": "Bez daňovej sadzby",
   "catalog.items.form.title.create": "Pridať položku",
   "catalog.items.form.title.edit": "Upraviť položku",
+  "catalog.items.inMenu": "V menu",
   "catalog.items.search": "Hľadať položky...",
   "catalog.items.search.clear.aria": "Vymazať hľadanie",
+  "catalog.items.soldOut": "Vypredané",
   "catalog.items.title": "Položky",
   "settings.language.locale.czech.title": "Česko",
   "settings.language.locale.description":
@@ -1152,6 +1161,26 @@ export const skSettings = {
   "catalog.tables.selfPayGuestName.error": "Zadajte najviac 255 znakov.",
   "catalog.tables.selfPayGuestName.label": "Meno pre hostí",
   "catalog.tables.selfPayGuestName.placeholder": "Kaviareň Pod Lipou",
+  "catalog.tables.selfPayOptions.menu.empty.description":
+    "V menu nie je žiadna dostupná položka. Pridajte položky do menu v ich detaile alebo ich označte ako znova dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.title": "Hostia si nemôžu objednať",
+  "catalog.tables.selfPayOptions.menu.leftOut":
+    "Položiek, ktoré sa do menu nezmestia: {count}. Hostia ich nevidia.",
+  "catalog.tables.selfPayOptions.menu.otherCurrency":
+    "Položiek s cenou mimo {currency}: {count}. Hostia ich nevidia.",
+  "catalog.tables.selfPayOptions.menu.visible":
+    "Položiek, ktoré si hostia môžu objednať: {count}",
+  "catalog.tables.selfPayOptions.order": "Hostia objednávajú z menu",
+  "catalog.tables.selfPayOptions.order.description":
+    "Hostia si objednajú položky z menu a zaplatia ich. Zaplatené objednávky obsluha uvidí v sekcii Na výdaj.",
+  "catalog.tables.selfPayOptions.orderDevice.description":
+    "Zverejňuje menu a zapisuje zaplatené objednávky, preto ho nechajte online.",
+  "catalog.tables.selfPayOptions.orderDevice.label":
+    "Zariadenie, ktoré prijíma objednávky",
+  "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zariadenie",
+  "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zariadenie)",
+  "catalog.tables.selfPayOptions.payBill": "Hostia platia účet stola",
+  "catalog.tables.selfPayOptions.title": "Čo môžu hostia",
   "catalog.tables.sticker.check": "Skontrolovať nálepku",
   "catalog.tables.sticker.current": "Táto nálepka patrí k stolu {name}.",
   "catalog.tables.sticker.dismiss": "Zavrieť",
@@ -1283,6 +1312,7 @@ export const skSettings = {
   "access.action.markCashPaid": "Potvrdiť prijatie hotovosti",
   "access.action.markIbanPaid": "Potvrdiť príchod prevodu",
   "access.action.resolveOverpayment": "Vyriešiť preplatok",
+  "access.action.rejectOrder": "Odmietnuť objednávku",
   "access.action.removeAccount": "Odobrať účet z tohto zariadenia",
   "access.action.removeLines": "Odobrať položky z účtu",
   "access.action.switchAccount": "Prepnúť účet",

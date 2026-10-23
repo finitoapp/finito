@@ -100,7 +100,7 @@ export function GuestBankPayment({
   pointer,
 }: {
   readonly bank: NonNullable<SelfPayView["bank"]>
-  readonly bill: SelfPayViewBill
+  readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly amount: number
   readonly pointer: SelfPayPointer
 }) {

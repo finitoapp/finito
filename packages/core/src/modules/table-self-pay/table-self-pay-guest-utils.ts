@@ -172,7 +172,7 @@ export const selfPayRateChangesAt = (
 
 export const findSelfPayBank = (
   view: SelfPayView,
-  bill: SelfPayViewBill
+  bill: Pick<SelfPayViewBill, "currency">
 ): SelfPayView["bank"] =>
   view.bank?.currency === bill.currency ? view.bank : null
 
@@ -188,7 +188,7 @@ const fitSpaydValue = (value: string, maxLength: number): string => {
 
 interface SelfPayBankPayment {
   readonly bank: NonNullable<SelfPayView["bank"]>
-  readonly bill: SelfPayViewBill
+  readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly amount: number
   readonly pointer: SelfPayPointer
 }
@@ -273,7 +273,7 @@ export const createSelfPayLightningRequest = ({
   pointer,
   rate,
 }: {
-  readonly bill: SelfPayViewBill
+  readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly amount: number
   readonly pointer: SelfPayPointer
   readonly rate: SelfPaySignedRate

@@ -19,7 +19,7 @@ tags: [table-self-pay]
     file: ../../subflows/goto.yaml
     env:
       ROUTE: bill?billId=${output.billId}
-      TEXT: '${output.tv("bill.list.label", { number: 1 })}'
+      TEXT: '.*${output.re(output.tv("bill.list.label", { number: 1 }))}.*'
 - tapOn:
     id: bill-summary-trigger
 - extendedWaitUntil:

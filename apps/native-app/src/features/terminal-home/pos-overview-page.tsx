@@ -13,12 +13,15 @@ import {
   TableFilterSchema,
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import { openBillsQuery } from "@payky/core/modules/bill/bill-queries"
 import {
   type BillId,
   createRandomBillId,
 } from "@payky/core/modules/bill/bill-types"
+import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
@@ -26,6 +29,7 @@ import { router, useFocusEffect } from "expo-router"
 import { useAtom } from "jotai"
 import type { LucideIcon } from "lucide-react-native"
 import ChartPie from "lucide-react-native/icons/chart-pie"
+import ChevronRight from "lucide-react-native/icons/chevron-right"
 import Hourglass from "lucide-react-native/icons/hourglass"
 import Plus from "lucide-react-native/icons/plus"
 import Users from "lucide-react-native/icons/users"
@@ -215,6 +219,7 @@ export function PosOverviewPage() {
               </ToggleGroup>
             )}
           </XStack>
+          <ToServeStrip />
           <NoTableStrip rows={rowsByTableId.get(null) ?? noRows} now={now} />
         </YStack>
       }
@@ -295,6 +300,47 @@ function FloorStat({
         {value}
       </Text>
     </YStack>
+  )
+}
+
+function ToServeStrip() {
+  const { t } = useTranslation()
+  const [settings] = useEvoluQuery(selfPaySettingsQuery).data
+  const orders = useEvoluQuery(menuOrdersToServeQuery).data
+
+  if (!offersOrders(settings) && orders.length === 0) return null
+
+  return (
+    <Pressable role="link" onPress={() => router.push("/orders")}>
+      <XStack
+        items="center"
+        gap={12}
+        p={12}
+        pl={16}
+        rounded={radius.xl}
+        borderWidth={1}
+        borderColor="card-ring"
+        bg="card"
+      >
+        <Text
+          flex={1}
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+        >
+          {t("nav.orders")}
+        </Text>
+        <Text
+          fontSize={fontSize.lg}
+          lineHeight={fontSize.lg}
+          fontWeight={fontWeight.semibold}
+          fontVariant={["tabular-nums"]}
+        >
+          {orders.length}
+        </Text>
+        <Icon icon={ChevronRight} size={16} color="muted-foreground" />
+      </XStack>
+    </Pressable>
   )
 }
 
@@ -405,18 +451,7 @@ function TableTile({
       justify="space-between"
       gap={8}
       icon={
-        occupied ? (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            m={-6}
-            rounded={radius.full}
-            fillColors={{ rest: "background-60", pressed: "background" }}
-            iconStart={Plus}
-            aria-label={t("tables.tile.newBill")}
-            onPress={newBill}
-          />
-        ) : (
+        occupied ? null : (
           <Icon icon={Plus} size={20} color="muted-foreground" />
         )
       }
@@ -454,27 +489,39 @@ function TableTile({
           </Text>
         )}
         {occupied ? (
-          <XStack gap={6} flexWrap="wrap" items="center">
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color={elapsedColors[elapsedSeverity(elapsedMs)]}
-            >
-              {formatElapsed(elapsedMs, locale)}
-            </Text>
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color="muted-foreground"
-            >
-              {t("tables.tile.itemCount", { value: itemCount })}
-            </Text>
-            {paymentState !== undefined && (
-              <BillPaymentStateBadge
-                paymentState={paymentState}
-                paid={paymentState === "partiallyPaid" ? paid : undefined}
-              />
-            )}
+          <XStack items="center" gap={8}>
+            <XStack flex={1} minW={0} gap={6} flexWrap="wrap" items="center">
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color={elapsedColors[elapsedSeverity(elapsedMs)]}
+              >
+                {formatElapsed(elapsedMs, locale)}
+              </Text>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {t("tables.tile.itemCount", { value: itemCount })}
+              </Text>
+              {paymentState !== undefined && (
+                <BillPaymentStateBadge
+                  paymentState={paymentState}
+                  paid={paymentState === "partiallyPaid" ? paid : undefined}
+                />
+              )}
+            </XStack>
+            <Button
+              variant="ghost"
+              size="icon"
+              m={-6}
+              rounded={radius.full}
+              fillColors={{ rest: "background-60", pressed: "background" }}
+              iconStart={Plus}
+              aria-label={t("tables.tile.newBill")}
+              onPress={newBill}
+            />
           </XStack>
         ) : (
           <XStack gap={6} items="center">

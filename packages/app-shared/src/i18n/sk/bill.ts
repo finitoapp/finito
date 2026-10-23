@@ -206,7 +206,7 @@ export const skBill = {
   "selfPay.lightning.qr": "QR kód Lightning faktúry",
   "selfPay.lightning.restart": "Vytvoriť novú faktúru",
   "selfPay.lightning.unavailable":
-    "Lightning bude opäť dostupný, keď reštaurácia účet znova potvrdí.",
+    "Platby cez Lightning majú práve výpadok. Zaplaťte inak alebo u obsluhy.",
   "selfPay.line.fullyPaid": "Zaplatené",
   "selfPay.line.paid": "Zaplatené {paid} z {total}",
   "selfPay.line.people": "bolo nás",
@@ -225,10 +225,48 @@ export const skBill = {
   "selfPay.line.unshare.label": "Zrušiť delenie: {name}",
   "selfPay.language.label": "Jazyk",
   "selfPay.loading": "Načítava sa účet…",
+  "selfPay.menu.loading": "Načítava sa menu…",
+  "selfPay.menu.other": "Ostatné",
+  "selfPay.menu.quantity.decrease": "Ubrať kus: {name}",
+  "selfPay.menu.quantity.increase": "Pridať kus: {name}",
+  "selfPay.menu.quantity.label": "Koľko kusov: {name}",
+  "selfPay.menu.tab.bill": "Účet",
+  "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankový prevod",
   "selfPay.method.lightning": "Lightning",
   "selfPay.noMethod.description":
     "Platenie pri stole teraz nie je k dispozícii.",
+  "selfPay.order.back": "Späť do menu",
+  "selfPay.order.hide": "Skryť",
+  "selfPay.order.items": "{summary} · {total}",
+  "selfPay.order.left":
+    "Objednávka {number} je potvrdená. Zostáva zaplatiť {amount}.",
+  "selfPay.order.list.title": "Vaše objednávky",
+  "selfPay.order.note.label": "Poznámka pre kuchyňu",
+  "selfPay.order.note.length": "{length}/{max}",
+  "selfPay.order.paid": "Objednávka {number} je zaplatená. Čaká na obsluhu.",
+  "selfPay.order.payRest": "Doplatiť {amount}",
+  "selfPay.order.preparing": "Objednávka {number} sa pripravuje.",
+  "selfPay.order.preparing.left":
+    "Objednávka {number} sa pripravuje. Zostáva zaplatiť {amount}.",
+  "selfPay.order.refused":
+    "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
+  "selfPay.order.rejected":
+    "Objednávka {number} bola odmietnutá. Peniaze vám vráti obsluha.",
+  "selfPay.order.remove": "Nezaplatené, odstrániť",
+  "selfPay.order.served": "Objednávka {number} je vydaná.",
+  "selfPay.order.served.left":
+    "Objednávka {number} je vydaná. Zostáva zaplatiť {amount}.",
+  "selfPay.order.summary": "Vaša objednávka {amount}",
+  "selfPay.order.title": "Vaša objednávka",
+  "selfPay.order.unavailable.description": "Objednajte si, prosím, u obsluhy.",
+  "selfPay.order.unavailable.title": "Objednávať teraz nejde",
+  "selfPay.order.unseen": "Platbu sme zatiaľ nevideli.",
+  "selfPay.order.unseen.description":
+    "Ak ste zaplatili, ukážte túto obrazovku obsluhe.",
+  "selfPay.order.waiting": "Reštaurácia vašu objednávku zatiaľ nepotvrdila.",
+  "selfPay.order.waiting.description":
+    "Ak ste už zaplatili, čakáme na potvrdenie platby.",
   "selfPay.paidFor.equal": "1/{people} účtu",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "Platíte za",
