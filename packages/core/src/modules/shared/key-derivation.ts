@@ -7,6 +7,7 @@ import {
   type OwnerSecret,
   ownerIdBytesToOwnerId,
 } from "@evolu/common"
+import { schnorr } from "@noble/curves/secp256k1.js"
 import { hmac } from "@noble/hashes/hmac.js"
 import { sha512 } from "@noble/hashes/sha2.js"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
@@ -22,6 +23,7 @@ import { z } from "zod"
 import { derivePrivateKey, parseDerivationPath } from "./bip32.ts"
 import { mnemonicToBip39Seed } from "./bip39-seed.ts"
 import { hmacSha512 } from "./hmac-sha512.ts"
+import { deriveLabeledKey } from "./labeled-key.ts"
 
 const Hex16Schema = z.string().regex(/^[0-9a-f]{32}$/u)
 
@@ -273,3 +275,33 @@ export const sparkSecretToMnemonic = (secret: SparkSecret): SparkMnemonic =>
 /** The inverse of `sparkSecretToMnemonic`, for a wallet the user brings. */
 export const sparkMnemonicToSecret = (mnemonic: SparkMnemonic): SparkSecret =>
   SparkSecret(bytesToHex(mnemonicToEntropy(mnemonic, wordlist)))
+
+export interface TableSelfPayKeys {
+  readonly signingKey: Uint8Array
+  readonly publicKey: Uint8Array
+  readonly viewKey: Uint8Array
+}
+
+export const deriveTableSelfPayRoot = (masterKey: MasterKey): Uint8Array =>
+  deriveLabeledKey(hexToBytes(masterKey), "payky/table-self-pay/v1")
+
+export const deriveTableSelfPayKeys = (
+  root: Uint8Array,
+  tableId: string,
+  epoch: number
+): TableSelfPayKeys => {
+  const tableSecret = deriveLabeledKey(root, `table:${tableId}:${epoch}`)
+  const signingKey = deriveLabeledKey(tableSecret, "sign")
+
+  return {
+    signingKey,
+    publicKey: schnorr.getPublicKey(signingKey),
+    viewKey: deriveLabeledKey(tableSecret, "view"),
+  }
+}
+
+export const deriveSelfPayRateKey = (root: Uint8Array): Uint8Array =>
+  deriveLabeledKey(root, "rate")
+
+export const deriveSelfPaySelectionKey = (root: Uint8Array): Uint8Array =>
+  deriveLabeledKey(root, "selection")

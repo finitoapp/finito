@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core"
+import { SelfPayRelaysSchema } from "@payky/core/integrations/nostr/nostr-default-relays"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { appBrand } from "./app-brand.ts"
@@ -43,6 +44,8 @@ export const appEnv = createEnv({
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
     // Unset leaves error reporting unavailable, whatever the device opted.
     VITE_SENTRY_DSN: z.string().optional(),
+    VITE_PAYKY_SELF_PAY_ORIGIN: z.url().default(appBrand.selfPayOrigin),
+    VITE_PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
   },
   runtimeEnv: import.meta.env,
   emptyStringAsUndefined: true,

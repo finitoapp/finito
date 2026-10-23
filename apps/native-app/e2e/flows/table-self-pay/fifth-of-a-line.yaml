@@ -1,0 +1,71 @@
+# web table-self-pay.spec.ts: "guests pay a fifth of a line at the table
+# while nobody reserves anything", from the fifth's arrival on. The steps on
+# the guest pages have no native counterpart: the bridge's
+# receiveGuestBankTransfer is the guest who shares the pizza among five.
+appId: ${APP_ID}
+tags: [table-self-pay]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 7
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Pizza
+      PRICE: "101"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Table 7
+- runFlow:
+    file: ../../subflows/open-table-bill.yaml
+    env:
+      TABLE: Table 7
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.add.aria", { name: "Pizza" })}'
+- extendedWaitUntil:
+    visible: '${output.tv("bill.itemsCount", { value: 1 })}'
+    timeout: 10000
+- runFlow: ../../subflows/read-ids.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Pizza:1/5
+# The fifth arrives and the terminal shows it paid, with the bill still
+# editable.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("billDetail.selfPay.linePaid", { paid: "\u002420.20", total: "\u0024101" }))}'
+    timeout: 30000
+- assertVisible: ${output.re(output.t["billDetail.selfPay"])}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.tv("bill.list.label", { number: 1 })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.add.aria", { name: "Pizza" })}'
+- extendedWaitUntil:
+    visible: \$181\.80
+    timeout: 10000
+- tapOn:
+    id: bill-summary-trigger
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("bill.summary.selfPay.partlyPaid", { paid: "\u002420.20", remaining: "\u0024181.80" }))}'
+    timeout: 10000

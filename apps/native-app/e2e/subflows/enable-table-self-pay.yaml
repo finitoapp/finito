@@ -1,0 +1,29 @@
+# web's enableTableSelfPay: opens TABLE's form from the tables settings,
+# switches self-pay on and waits for the table's QR.
+appId: ${APP_ID}
+---
+- runFlow:
+    file: goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- tapOn: ${TABLE}
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.form.title.edit"]}
+    timeout: 10000
+- runFlow:
+    file: scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPay.enabled"]}
+- runFlow:
+    file: tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPay.enabled"]}
+- runFlow:
+    file: scroll-to-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.tables.selfPay.qr", { name: TABLE })}'
+- runFlow:
+    file: assert-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.tables.selfPay.qr", { name: TABLE })}'

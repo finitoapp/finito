@@ -1,0 +1,51 @@
+# web table-self-pay.spec.ts: "the till charges only what guests have not
+# paid, lines or no lines". The guests' pages are the bridge's
+# receiveGuestBankTransfer: one guest pays the beer, another one's transfer
+# names no lines.
+appId: ${APP_ID}
+tags: [table-self-pay]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 11
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Beer:1/1
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&amount=2000&message=Dinner
+# The till shows both payments and charges the rest.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.tv("bill.list.label", { number: 1 })}'
+- tapOn:
+    id: bill-summary-trigger
+- extendedWaitUntil:
+    visible:
+      text: \$65
+      rightOf: ${output.t["bill.summary.alreadyPaid"]}
+    timeout: 30000
+- assertVisible:
+    text: \$81
+    rightOf: ${output.t["bill.summary.leftToPay"]}
+    below: ${output.t["bill.summary.alreadyPaid"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["home.pay"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentTip.title"]}
+    timeout: 15000
+- assertVisible: \$81
+# Its percentages are of what is left: 10 % of $81.00 makes $89.10.
+- assertVisible:
+    text: \$89\.10
+    below: '${output.re(output.tv("settings.tips.percentages.value", { value: 10 }))}'

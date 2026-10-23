@@ -38,6 +38,10 @@ Several devices may take over at once. Each sends the same body marked as a
 repeat, so EET sees one sale. Retry on another device waits the same 10
 minutes unless the record already has an attempt.
 
+A self-pay payment names the device that opened its bill, not the device
+that matched the money (table-self-pay/0013), so its sale belongs to that
+device.
+
 ## Enforced by
 
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: takeover > reports a payment on the device that settled it in cash`

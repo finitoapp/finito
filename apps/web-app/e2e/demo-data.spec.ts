@@ -1,5 +1,7 @@
+import { paykyBrand } from "@payky/app-shared/brand"
+import { createDefaultEvoluTransportUrls } from "@payky/core/evolu/device-account"
 import { expect, test } from "./support/fixtures.ts"
-import { translate } from "./support/i18n.ts"
+import { translate, translateParams } from "./support/i18n.ts"
 import { gotoPage } from "./support/navigation.ts"
 
 test("a demo account generates from today back until stopped, with its relays locked off", async ({
@@ -51,9 +53,15 @@ test("a demo account generates from today back until stopped, with its relays lo
     await expect(
       page.getByText(translate("en", "settings.security.transports.demo"))
     ).toBeVisible()
-    const switches = page.getByRole("switch")
-    await expect(switches).toHaveCount(2)
-    for (const toggle of await switches.all()) {
+    for (const url of createDefaultEvoluTransportUrls(
+      paykyBrand.liveRelayHost
+    )) {
+      const toggle = page.getByRole("switch", {
+        name: translateParams("en", "settings.security.transports.toggle", {
+          url,
+        }),
+        exact: true,
+      })
       await expect(toggle).not.toBeChecked()
       await expect(toggle).toBeDisabled()
     }

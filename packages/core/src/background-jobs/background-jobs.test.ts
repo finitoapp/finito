@@ -1,5 +1,9 @@
-import { describe, expect, test } from "vitest"
+import type { ValueOf } from "type-fest"
+import { describe, expect, expectTypeOf, test } from "vitest"
 
+import type { MasterKey } from "../modules/shared/key-derivation.ts"
+
+import type { AppBackgroundJobContext } from "./background-job-types.ts"
 import {
   cashuBackgroundJobs,
   cliBackgroundJobs,
@@ -14,7 +18,9 @@ import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-
 import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
+import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
+import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
 
 describe("getBackgroundJobsForRuntime", () => {
   test("does not schedule the Fio or MONETA jobs in a regular web runtime", () => {
@@ -26,6 +32,8 @@ describe("getBackgroundJobsForRuntime", () => {
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
       startRecoveryBackupReminderJob,
+      startTableSelfPayPublishingJob,
+      startSelfPayPointerJob,
     ])
   })
 
@@ -49,6 +57,8 @@ describe("getBackgroundJobsForRuntime", () => {
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
       startRecoveryBackupReminderJob,
+      startTableSelfPayPublishingJob,
+      startSelfPayPointerJob,
     ])
   })
 
@@ -80,5 +90,14 @@ describe("getBackgroundJobsForRuntime", () => {
       startCashuAccountSyncJob
     )
     expect(cashuBackgroundJobs).toEqual([startCashuAccountSyncJob])
+  })
+})
+
+describe("AppBackgroundJobContext", () => {
+  test("hands jobs the self-pay root and never the master key", () => {
+    expectTypeOf<AppBackgroundJobContext>().toHaveProperty("tableSelfPayRoot")
+    expectTypeOf<
+      Extract<ValueOf<AppBackgroundJobContext>, MasterKey>
+    >().toBeNever()
   })
 })

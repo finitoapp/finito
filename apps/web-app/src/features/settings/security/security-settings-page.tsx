@@ -4,6 +4,7 @@ import { accountAtom } from "@/atoms/account.ts"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { EvoluTransportCard } from "@/features/settings/security/evolu-transport-card.tsx"
 import { RecoveryBackupCard } from "@/features/settings/security/recovery-backup-card.tsx"
+import { SelfPayRelayCard } from "@/features/settings/security/self-pay-relay-card.tsx"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 export function SecuritySettingsPage() {
@@ -20,6 +21,7 @@ export function SecuritySettingsPage() {
           accountId={account.id}
           isDemo={account.demo !== null}
         />
+        <SelfPayRelayCard />
       </div>
     </>
   )

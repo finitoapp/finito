@@ -143,6 +143,17 @@ const hasActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
 const hasNoActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
   eb.not(hasActiveClaim(eb))
 
+const isNotSelfPayPayment = (eb: ExpressionBuilder<AppDb, "payment">) =>
+  eb.not(
+    eb.exists(
+      eb
+        .selectFrom("paymentSelfPay")
+        .select("paymentSelfPay.id")
+        .whereRef("paymentSelfPay.id", "=", "payment.id")
+        .where("paymentSelfPay.isDeleted", "is not", sqliteTrue)
+    )
+  )
+
 /**
  * A canceled payment stays a candidate on purpose: money that arrives after
  * the cancellation is claimed and surfaces as the canceled+claimed collision
@@ -201,6 +212,7 @@ const selectIbanReconciliationCandidates = (
     .where("payment.isDeleted", "is not", sqliteTrue)
     .whereRef("payment.amount", "=", "accountTransaction.amount")
     .whereRef("payment.currency", "=", "accountTransaction.currency")
+    .where(isNotSelfPayPayment)
 
 export const ibanReconciliationCandidateByAccountTransactionIdQuery = (
   accountTransactionId: AccountTransactionId
@@ -235,6 +247,34 @@ export const ibanTransactionsWithReconciliationCandidateQuery = (
       .orderBy("accountTransaction.id")
   )
 
+export const ibanTransactionsNamingSelfPayQuery = (
+  accountTransactionIds: ReadonlyArray<AccountTransactionId>
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("accountTransactionIban")
+      .select(["accountTransactionIban.id as accountTransactionId"])
+      .where("accountTransactionIban.id", "in", accountTransactionIds)
+      .where("accountTransactionIban.isDeleted", "is not", sqliteTrue)
+      .where((eb) =>
+        eb.or([
+          eb("accountTransactionIban.recipientMessage", "is not", null),
+          eb.exists(
+            eb
+              .selectFrom("billSelfPayReference")
+              .select("billSelfPayReference.id")
+              .whereRef(
+                "billSelfPayReference.reference",
+                "=",
+                "accountTransactionIban.variableSymbol"
+              )
+              .where("billSelfPayReference.isDeleted", "is not", sqliteTrue)
+          ),
+        ])
+      )
+      .orderBy("accountTransactionIban.id")
+  )
+
 export const ibanReconciliationCandidateByValuesQuery = ({
   accountId,
   amount,
@@ -258,6 +298,7 @@ export const ibanReconciliationCandidateByValuesQuery = ({
       .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "=", amount)
       .where("payment.currency", "=", currency)
+      .where(isNotSelfPayPayment)
       .orderBy(hasActiveClaim)
       .orderBy(liveBeforeCanceled)
       .orderBy("payment.id")

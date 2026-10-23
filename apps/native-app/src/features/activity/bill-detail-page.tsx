@@ -24,6 +24,8 @@ import {
   summarizeRefundsByPayment,
 } from "@payky/core/modules/refund/refund-utils"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
+import { sumSelfPayAllocationsByLineKey } from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { router, useLocalSearchParams } from "expo-router"
 import { Suspense, useMemo } from "react"
@@ -33,6 +35,7 @@ import { AmountFigure } from "../../components/amount-figure.tsx"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { NotFoundCard } from "../../components/not-found-card.tsx"
+import { Badge } from "../../components/ui/badge.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
   Card,
@@ -126,6 +129,9 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
   const refunds = useEvoluQuery(refundSummariesByBillIdQuery(billId)).data
   const refundsByPayment = summarizeRefundsByPayment(refunds)
   const eetSales = useEvoluQuery(eetSalesByBillIdQuery(billId)).data
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(
+    useEvoluQuery(selfPayAllocationsByBillIdQuery(billId)).data
+  )
 
   // A deleted or never-synced id: the same page, not an error.
   if (bill === undefined || billStatus === undefined)
@@ -222,6 +228,7 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
           <BillLines
             summaries={summaries}
             emptyMessage={t("billDetail.items.empty")}
+            selfPayAllocated={selfPayAllocated}
           />
           {hasTaxableLines(taxRecapRows) ? (
             <>
@@ -364,6 +371,9 @@ function BillPaymentRowView({
             label={t(paymentStatusLabelKey[status])}
           />
           <RefundBadge summary={refundSummary} />
+          {payment.selfPayId === null ? null : (
+            <Badge variant="outline" label={t("billDetail.selfPay")} />
+          )}
           {eetSale === undefined ? null : <EetSaleStatusLabel sale={eetSale} />}
         </YStack>
       </XStack>

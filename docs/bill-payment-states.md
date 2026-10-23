@@ -359,11 +359,13 @@ Nothing that decides money-correctness — the editing lock, `requireEditableBil
 page's badge — reads `bill.closedAt`. They all go through
 `loadBillStatusSnapshot`/`useBillStatus`, and so through `deriveBillStatus`,
 which recomputes status live from `canceledAt`/`confirmedClosedAt` and a
-fresh coverage calculation every time. `closedAt` exists for exactly one
-consumer: `openBillsQuery`, the reactive list behind
-the POS floor overview and the assign-table dialog.
+fresh coverage calculation every time. `closedAt` exists mainly for
+`openBillsQuery`, the reactive list behind the POS floor overview and the
+assign-table dialog. Table self-pay reads it too: it offers a bill in its
+table's view while it is open, and credits money naming it up to 7 days
+after it closed.
 
-That query needs to cheaply answer "which bills are still open" without
+`openBillsQuery` needs to cheaply answer "which bills are still open" without
 computing coverage (a bill-line-ledger sum vs. a claimed-payments sum) for
 every bill the account has ever had — a scan that only grows over the
 account's lifetime. `closedAt IS NULL AND canceledAt IS NULL` is a plain
@@ -381,7 +383,9 @@ synced, `deriveBillStatus` reflects the true, covered status on the very
 next read anywhere it's consulted live — but `openBillsQuery`'s cache can
 lag until something else writes to that bill again. The bill lingers in the
 floor view's "open" list a little longer than it should; nothing incorrect
-happens with money, editing, or guards. `closeBill` (see below) is the
+happens with editing or guards. With self-pay on, the bill also stays in its
+table's view until the cache catches up, so guests can still pay it and
+their codes decode against the bill as it stands. `closeBill` (see below) is the
 manual repair tool for exactly this lag.
 
 `closedAt`'s value, once set, is preserved across any later re-close instead
@@ -497,6 +501,26 @@ against a line present on only the other side, so "removed: old-price
 Coffee, added: new-price Coffee" is reported as a single `changed` entry
 instead of two unrelated-looking lines. Only what's left after that is a
 genuine `added`/`removed`.
+
+### Self-pay payments
+
+A guest paying at the table creates nothing until the money arrives. The
+sync job that records the money writes the self-pay `payment` together with
+its claim, so it is never pending, never locks the bill for editing, and
+nothing a guest does without paying reserves a line or an amount. Two
+guests paying the same remainder both land, and the bill reads `overpaid`.
+Money naming a closed or canceled bill's reference still credits that bill,
+never the next one at the table, when it arrives at most 7 days after the
+bill ended. Later money stays unmatched.
+"Pay" on the POS bill offers the total minus the bill's `claimedSum`, the
+claimed money less each payment's tip, never below zero, so staff never
+charge guests' money twice (`table-self-pay/0002`).
+
+`selfPayAllocation` rows record which lines a self-pay payment paid for.
+They only mark lines paid for guests, on the bill detail and on the POS
+bill (`table-self-pay/0001`). Coverage and status never read them, so an
+allocation that arrives after the bill closed changes nothing staff has to
+resolve.
 
 ## Reading the combination
 

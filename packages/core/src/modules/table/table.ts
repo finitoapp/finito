@@ -1,9 +1,12 @@
+import { nullOr, SqliteBoolean } from "@evolu/common"
+
 import { DeviceId } from "../device/device-types.ts"
 import {
   type InferTable,
   NonEmptyString255Schema,
   NonNegativeIntegerSchema,
   PositiveIntegerSchema,
+  TimestampMsSchema,
 } from "../shared/schema.ts"
 import { TableId } from "./table-types.ts"
 
@@ -12,10 +15,11 @@ export const table = {
   deviceId: DeviceId.nullable(),
   name: NonEmptyString255Schema,
   seatCount: PositiveIntegerSchema,
-  // Not read or written by any feature yet — reserved for a future QR code
-  // sticker on the physical table that resolves straight to it.
   code: NonEmptyString255Schema,
   sortOrder: NonNegativeIntegerSchema,
+  selfPayEnabled: nullOr(SqliteBoolean),
+  selfPayEpoch: NonNegativeIntegerSchema.nullable(),
+  selfPayPublishRequestedAt: TimestampMsSchema.nullable(),
 } as const
 
 export type Table = typeof table

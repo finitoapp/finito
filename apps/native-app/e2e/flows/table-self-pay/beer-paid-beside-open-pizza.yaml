@@ -1,0 +1,37 @@
+# web table-self-pay.spec.ts: "a guest pays the beer in full and the till
+# shows it paid beside the open pizza". Maestro cannot count the line marks
+# web counts: the amounts show that guests paid the beer and nothing of the
+# pizza.
+appId: ${APP_ID}
+tags: [table-self-pay]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 10
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Beer:1/1
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: bill?billId=${output.billId}
+      TEXT: '${output.tv("bill.list.label", { number: 1 })}'
+- tapOn:
+    id: bill-summary-trigger
+- extendedWaitUntil:
+    visible:
+      id: bill-summary-self-pay
+      text: ${output.re(output.t["bill.summary.selfPay.paid"])}
+    timeout: 30000
+- assertNotVisible: '${output.re(output.tv("bill.summary.selfPay.partlyPaid", { paid: "@", remaining: "@" })).replace(/@/g, ".+")}'
+- assertVisible:
+    text: \$45
+    rightOf: ${output.t["bill.summary.alreadyPaid"]}
+- assertVisible:
+    text: \$101
+    rightOf: ${output.t["bill.summary.leftToPay"]}
+    below: ${output.t["bill.summary.alreadyPaid"]}

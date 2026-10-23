@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import { CatalogFormEmptyState } from "@/features/catalog/catalog-form-empty-state.tsx"
+import { TableSelfPayCard } from "@/features/catalog/tables/table-self-pay-card.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
@@ -301,6 +302,11 @@ function EditTableForm({ table }: { readonly table: TableRow }) {
           </FieldGroup>
         </CardContent>
       </Card>
+
+      <TableSelfPayCard
+        table={table}
+        onSave={(selfPayEnabled) => saveTable({ selfPayEnabled })}
+      />
 
       <Button
         variant="destructive"

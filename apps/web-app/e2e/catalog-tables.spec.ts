@@ -1,7 +1,13 @@
-import { addTable } from "./support/bill.ts"
+import { addTable, injectScanCode } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { translate } from "./support/i18n.ts"
+import { nameParam, translate } from "./support/i18n.ts"
 import { gotoPage, reloadPage } from "./support/navigation.ts"
+import {
+  checkTableSticker,
+  enableTableSelfPay,
+  routeFakeNostrRelays,
+  seedActiveFioPlugin,
+} from "./support/self-pay.ts"
 
 test("create, edit and delete a table", async ({ seededPage: page }) => {
   await test.step("open table settings and see the empty state", () =>
@@ -187,5 +193,106 @@ test("search filters the tables list", async ({ seededPage: page }) => {
     await expect(searchInput).toHaveValue("")
     await expect(patio1Row).toBeVisible()
     await expect(patio2Row).toBeVisible()
+  })
+})
+
+test("the tables list marks self-pay tables, and a sticker's verdict stays until dismissed", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(90_000)
+  await routeFakeNostrRelays(context)
+  let guestAddress = ""
+  const selfPayMark = translate("en", "catalog.tables.selfPay.title")
+  const verdict = page.getByRole("alert")
+
+  await test.step("add two tables and switch self-pay on for one", async () => {
+    await addTable(page, "en", { name: "Table 7", seatCount: "4" })
+    await addTable(page, "en", { name: "Table 8", seatCount: "2" })
+    guestAddress = await enableTableSelfPay(page, "en", "Table 7")
+  })
+
+  await test.step("the list marks only the self-pay table", async () => {
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await expect(page.getByRole("link", { name: /Table 7/u })).toContainText(
+      selfPayMark
+    )
+    await expect(
+      page.getByRole("link", { name: /Table 8/u })
+    ).not.toContainText(selfPayMark)
+  })
+
+  await test.step("a foreign sticker's verdict is still on screen 6 s later", async () => {
+    await checkTableSticker(
+      page,
+      "en",
+      guestAddress.replace(
+        new URL(guestAddress).origin,
+        "https://t.example.com"
+      )
+    )
+    await expect(verdict).toContainText(
+      translate("en", "catalog.tables.sticker.foreign")
+    )
+    await page.waitForTimeout(6_000)
+    await expect(verdict).toContainText(
+      translate("en", "catalog.tables.sticker.foreign")
+    )
+  })
+
+  await test.step("the next sticker replaces the verdict, and dismissing clears it", async () => {
+    await page
+      .getByRole("button", {
+        name: translate("en", "catalog.tables.sticker.next"),
+      })
+      .click()
+    await injectScanCode(page, guestAddress)
+    await expect(verdict).toContainText(
+      nameParam("catalog.tables.sticker.current", "Table 7")
+    )
+    await verdict
+      .getByRole("button", {
+        name: translate("en", "catalog.tables.sticker.dismiss"),
+      })
+      .click()
+    await expect(verdict).toBeHidden()
+    await expect(
+      page.getByRole("button", {
+        name: translate("en", "catalog.tables.sticker.check"),
+      })
+    ).toBeVisible()
+  })
+})
+
+test("a self-pay table no payment method reaches says so and links to the payment accounts", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(90_000)
+  await routeFakeNostrRelays(context)
+  const cannotPay = page.getByRole("alert").filter({
+    hasText: translate("en", "catalog.tables.selfPay.noPaymentMethod.title"),
+  })
+
+  await test.step("switch self-pay on with cash and a bank account without bank sync", async () => {
+    await addTable(page, "en", { name: "Table 4", seatCount: "4" })
+    await enableTableSelfPay(page, "en", "Table 4")
+  })
+
+  await test.step("the card says guests cannot pay yet, names what is missing and links to fix it", async () => {
+    await expect(cannotPay).toBeVisible()
+    await expect(cannotPay).toContainText(
+      translate("en", "catalog.tables.selfPay.noPaymentMethod.description")
+    )
+    await expect(
+      cannotPay.getByRole("link", {
+        name: translate("en", "catalog.tables.selfPay.noPaymentMethod.link"),
+      })
+    ).toHaveAttribute("href", "/settings/payment-accounts")
+  })
+
+  await test.step("turning bank sync on clears the warning", async () => {
+    await seedActiveFioPlugin(page)
+    await expect(cannotPay).toBeHidden()
   })
 })

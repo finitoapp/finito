@@ -25,7 +25,16 @@ import {
   type PaymentRefundSummary,
   summarizeRefundsByPayment,
 } from "@payky/core/modules/refund/refund-utils"
+import {
+  type FiatCurrency,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
+import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link } from "@tanstack/react-router"
 import { DetailRow } from "@/components/detail-row.tsx"
@@ -107,6 +116,9 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   const { data: eetSales } = useEvoluQuery(eetSalesByBillIdQuery(billId))
   const { data: refunds } = useEvoluQuery(refundSummariesByBillIdQuery(billId))
   const refundsByPayment = summarizeRefundsByPayment(refunds)
+  const { data: allocations } = useEvoluQuery(
+    selfPayAllocationsByBillIdQuery(billId)
+  )
   const bill = bills[0]
 
   if (!bill || billStatus === undefined) {
@@ -117,6 +129,7 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   const totalAmount = deriveBillSummaryTotal(summaries)
   const taxRecapRows = calculateTaxRecap(summaries, taxRates)
   const hasTaxRecap = hasTaxableLines(taxRecapRows)
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(allocations)
 
   const closedOrCanceledLabel =
     billStatus.status === "closed" && bill.closedAt !== null
@@ -221,6 +234,15 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
                         locale
                       )}
                     </p>
+                    <SelfPayLinePaid
+                      paid={
+                        projectSelfPayViewLine(summary, selfPayAllocated)
+                          .allocatedAmount
+                      }
+                      total={summary.totalAmount}
+                      currency={summary.currency}
+                      locale={locale}
+                    />
                   </div>
                   <p className="text-sm font-semibold">
                     {formatMoney(
@@ -305,6 +327,33 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
   )
 }
 
+function SelfPayLinePaid({
+  paid,
+  total,
+  currency,
+  locale,
+}: {
+  readonly paid: number
+  readonly total: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (paid === 0) return null
+
+  return (
+    <p className="text-xs text-primary">
+      {t("billDetail.selfPay.linePaid", {
+        paid: formatMoney(
+          { value: NonNegativeInteger(paid), currency },
+          locale
+        ),
+        total: formatMoney({ value: total, currency }, locale),
+      })}
+    </p>
+  )
+}
+
 function BillDetailPaymentRow({
   payment,
   eetSale,
@@ -364,6 +413,9 @@ function BillDetailPaymentRow({
           {t(paymentStatusLabelKey[status])}
         </Badge>
         <RefundBadge summary={refundSummary} />
+        {payment.selfPayId === null ? null : (
+          <Badge variant="outline">{t("billDetail.selfPay")}</Badge>
+        )}
         {eetSale === undefined ? null : <EetSaleStatusBadge sale={eetSale} />}
       </span>
     </Link>

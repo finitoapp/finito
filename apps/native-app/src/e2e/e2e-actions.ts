@@ -1,15 +1,17 @@
-import { sqliteFalse } from "@evolu/common"
+import { sqliteFalse, sqliteTrue } from "@evolu/common"
 import { accessLastActivityAtom } from "@payky/app-shared/access-state"
 import {
   accountListQuery,
   updateDeviceSettings,
 } from "@payky/core/evolu/device-account"
 import { getDeviceLocaleForLanguage } from "@payky/core/evolu/device-client"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import {
   saveCashRegisterAccount,
   saveFiatBankAccount,
   saveSparkAccount,
 } from "@payky/core/modules/account/account-actions"
+import { fiatBankAccountQuery } from "@payky/core/modules/account/account-queries"
 import {
   createCashRegisterAccountId,
   legacyFiatBankAccountId,
@@ -40,6 +42,7 @@ import { deviceByIdQuery } from "@payky/core/modules/device/device-queries"
 import { DeviceId } from "@payky/core/modules/device/device-types"
 import { createEetSale } from "@payky/core/modules/eet/eet-actions"
 import { toEetCashRegisterId } from "@payky/core/modules/eet/eet-utils"
+import { saveFioPlugin } from "@payky/core/modules/fio-plugin/fio-plugin-actions"
 import { upsertItemSnapshot } from "@payky/core/modules/item/item-actions"
 import { createStandaloneItemSnapshot } from "@payky/core/modules/item/item-utils"
 import {
@@ -63,12 +66,14 @@ import {
 } from "@payky/core/modules/shared/evolu-utils"
 import {
   createMasterKey,
+  deriveTableSelfPayRoot,
   masterKeyToMnemonic,
 } from "@payky/core/modules/shared/key-derivation"
 import { createTestInvoice } from "@payky/core/modules/shared/lightning-invoice-test-fixtures"
 import {
   BankAccountInputIbanSchema,
   FiatCurrency,
+  Integer,
   NonEmptyString255,
   NonEmptyString255Schema,
   NonEmptyStringSchema,
@@ -76,11 +81,14 @@ import {
   PositiveInteger,
   PositiveNumber,
   TimestampMsSchema,
+  VariableSymbol,
 } from "@payky/core/modules/shared/schema"
+import { formatSelfPayBankMessage } from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
 import { router } from "expo-router"
 import type { createStore } from "jotai"
 import type { SetStateAction } from "react"
 import { z } from "zod"
+import { nativeEnv } from "../core/native-env.ts"
 import type { NativeAppRun } from "../hooks/use-app-run.ts"
 import { payE2eCashuQuotes, setE2eCashu } from "./e2e-cashu-mint.ts"
 import {
@@ -88,6 +96,7 @@ import {
   releaseE2eMigrations,
 } from "./e2e-hold-migration.ts"
 import { setE2eOffline } from "./e2e-network.ts"
+import { selectSelfPayShare } from "./e2e-self-pay-guest.ts"
 import { e2eSparkPresetNames, setE2eSparkPreset } from "./e2e-spark-presets.ts"
 
 /**
@@ -117,6 +126,35 @@ const SeedOnboardingParams = z.object({
 const FakeParams = z.object({
   spark: z.enum(e2eSparkPresetNames).optional(),
   cashu: z.enum(["manual", "autopay", "off"]).optional(),
+})
+
+const PositiveIntegerParam = z
+  .string()
+  .regex(/^[1-9]\d*$/u)
+  .transform(Number)
+
+const GuestLineShareParam = z
+  .string()
+  .transform((share) => share.split(/[:/]/u))
+  .pipe(
+    z.tuple([z.string().min(1), PositiveIntegerParam, PositiveIntegerParam])
+  )
+  .transform(([name, numerator, denominator]) => ({
+    name,
+    numerator,
+    denominator,
+  }))
+
+const GuestBankTransferParams = z.object({
+  billId: BillId,
+  lines: z
+    .string()
+    .transform((lines) => lines.split(","))
+    .pipe(z.array(GuestLineShareParam))
+    .optional(),
+  people: z.coerce.number().int().min(2).optional(),
+  amount: z.coerce.number().int().positive().optional(),
+  message: z.string().min(1).optional(),
 })
 
 export const e2eActions: Readonly<Record<string, E2eAction>> = {
@@ -215,6 +253,19 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
         mutationOptions
       )
     })
+    return undefined
+  },
+
+  seedActiveFioPlugin: async (run) => {
+    const [bankAccount] = await run.deps.evolu.loadQuery(fiatBankAccountQuery)
+    if (bankAccount === undefined) throw new Error("No bank account seeded.")
+    await run.ok(
+      saveFioPlugin({
+        accountId: bankAccount.id,
+        numberOfSecondsBetweenChecks: PositiveInteger(300),
+        isActive: sqliteTrue,
+      })
+    )
     return undefined
   },
 
@@ -365,6 +416,20 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
       `e2e:${paymentId}`
     )
     await run.ok(reconcileAccountTransaction(accountTransactionId))
+    return undefined
+  },
+
+  receiveGuestBankTransfer: async (run, params) => {
+    const { billId, amount, message, ...pick } =
+      GuestBankTransferParams.parse(params)
+    const selection = await selectSelfPayShare(run, billId, pick)
+    await receiveBankTransfer(run, {
+      amount: amount ?? selection.amount,
+      currency: selection.bill.currency,
+      variableSymbol: selection.bill.reference,
+      recipientMessage:
+        message ?? formatSelfPayBankMessage({ pointer: selection.pointer }),
+    })
     return undefined
   },
 
@@ -660,4 +725,46 @@ async function createIbanTransaction(
       },
     })
   )
+}
+
+async function receiveBankTransfer(
+  run: NativeAppRun,
+  transfer: {
+    readonly amount: number
+    readonly currency: FiatCurrency
+    readonly variableSymbol: string
+    readonly recipientMessage: string
+  }
+) {
+  const [bankAccount] = await run.deps.evolu.loadQuery(fiatBankAccountQuery)
+  if (bankAccount === undefined) throw new Error("No bank account seeded.")
+  const accountTransactionId = await run.ok(
+    createAccountTransaction({
+      accountId: bankAccount.id,
+      amount: Integer(transfer.amount),
+      currency: transfer.currency,
+      occurredAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+      note: null,
+      internalTransferGroupId: null,
+      source: { deviceId: null, source: "auto" },
+      iban: {
+        variableSymbol: VariableSymbol(transfer.variableSymbol),
+        constantSymbol: null,
+        specificSymbol: null,
+        bankReference: NonEmptyString255Schema.decode(
+          `e2e:${createRowId<"Transfer">()}`
+        ),
+        recipientMessage: NonEmptyStringSchema.decode(
+          transfer.recipientMessage
+        ),
+      },
+    })
+  )
+  await using selfPayRun = run.create({
+    ...run.deps,
+    tableSelfPayRoot: deriveTableSelfPayRoot(run.deps.masterKey),
+    nostrRelayClient: createNostrRelayClient(),
+    selfPayDefaultRelays: nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+  })
+  await selfPayRun.ok(reconcileAccountTransaction(accountTransactionId))
 }

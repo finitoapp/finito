@@ -2,7 +2,6 @@ import type { Query } from "@evolu/common"
 import {
   err,
   type InsertValues,
-  type MutationOptions,
   ok,
   type Result,
   sqliteTrue,
@@ -121,6 +120,10 @@ import {
   paymentLightningAddressByIdQuery,
   paymentSparkDetailsByIdQuery,
 } from "./payment-queries.ts"
+import {
+  type PaymentBtcInput,
+  upsertPaymentSparkDetails,
+} from "./payment-row-actions.ts"
 import { createVariableSymbolFromSerialNumber } from "./payment-symbol-utils.ts"
 import { calculatePaymentBaseAmount } from "./payment-tip-utils.ts"
 import type { PaymentAccountKind, PaymentId } from "./payment-types.ts"
@@ -140,64 +143,11 @@ export const optionalNonEmptyString255 = (
   return parsed.success ? parsed.data : null
 }
 
-export type PaymentBtcInput = WithSparkDetails<
-  Omit<InsertValues<typeof paymentBtc>, "id">,
-  Omit<InsertValues<typeof paymentBtcLightning>, "id">,
-  Omit<InsertValues<typeof paymentBtcSpark>, "id">
->
-
 type PaymentBtcUpdateInput = WithSparkDetails<
   Omit<UpdateValues<typeof paymentBtc>, "id">,
   Omit<UpdateValues<typeof paymentBtcLightning>, "id">,
   Omit<UpdateValues<typeof paymentBtcSpark>, "id">
 >
-
-/**
- * Writes a payment's Spark detail rows: the `paymentBtc` base row plus
- * whichever of `paymentBtcLightning`/`paymentBtcSpark` the quote produced.
- * Shared by `createPayment` and `preparePaymentMethod`, which must agree on
- * exactly this field set — a payment prepared through one path would
- * otherwise carry different Spark details than through the other.
- *
- * Upsert only. `updatePayment` writes the same three tables with `update`,
- * whose values are all-optional where `UpsertValues` requires every
- * non-nullable column, so folding both modes in here would mean widening this
- * to accept a partial `paymentBtc` — losing the guarantee that a created
- * payment has a complete Spark row.
- */
-export const upsertPaymentSparkDetails = (
-  evolu: EvoluDep["evolu"],
-  id: PaymentId,
-  spark: PaymentBtcInput,
-  options: MutationOptions
-): void => {
-  evolu.upsert(
-    "paymentBtc",
-    removeUndefinedValues({
-      accountId: spark.accountId,
-      amountSats: spark.amountSats,
-      exchangeRate: spark.exchangeRate,
-      exchangeRateSource: spark.exchangeRateSource,
-      exchangeRateFetchedAt: spark.exchangeRateFetchedAt,
-      id,
-    }),
-    options
-  )
-  if (spark.lightning) {
-    evolu.upsert(
-      "paymentBtcLightning",
-      removeUndefinedValues({ ...spark.lightning, id }),
-      options
-    )
-  }
-  if (spark.sparkInvoice) {
-    evolu.upsert(
-      "paymentBtcSpark",
-      removeUndefinedValues({ ...spark.sparkInvoice, id }),
-      options
-    )
-  }
-}
 
 export const loadPayment =
   (idValue: PaymentId): Task<PaymentRow, PaymentNotFoundError, EvoluDep> =>

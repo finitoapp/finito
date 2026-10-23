@@ -37,6 +37,7 @@ import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogFormEmptyState } from "../catalog-form-empty-state.tsx"
+import { TableSelfPayCard } from "./table-self-pay-card.tsx"
 
 /** Edits one table, as web's `EditTablePage`: name and seats save themselves. */
 export function EditTablePage() {
@@ -151,6 +152,10 @@ function EditTableForm({ table }: { readonly table: TableRow }) {
             </FieldGroup>
           </CardContent>
         </Card>
+        <TableSelfPayCard
+          table={table}
+          onSave={(selfPayEnabled) => saveTable({ selfPayEnabled })}
+        />
         <Button
           label={t("catalog.tables.delete")}
           iconStart={Trash}

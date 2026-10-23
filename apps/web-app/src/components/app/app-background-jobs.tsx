@@ -14,10 +14,17 @@ import type {
 import type { Evolu } from "@payky/core/evolu/schema"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import { createQerkoApiDep } from "@payky/core/integrations/qerko/qerko-client"
 import { createQerkoConnectionStatusDep } from "@payky/core/integrations/qerko/qerko-connection-status"
 import { createQerkoSocketDep } from "@payky/core/integrations/qerko/qerko-socket"
+import { createYadioApiDep } from "@payky/core/integrations/yadio/yadio-client"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
+import {
+  deriveTableSelfPayRoot,
+  type MasterKey,
+} from "@payky/core/modules/shared/key-derivation"
+import { createSparkWalletDep } from "@payky/core/spark/spark-wallet"
 import { useAtomValue } from "jotai"
 import { useCallback, useEffect } from "react"
 import { accountAtom } from "@/atoms/account.ts"
@@ -31,6 +38,7 @@ import { notificationStoreAtom } from "@/atoms/notifications.ts"
 import { qerkoConnectionStatusStore } from "@/atoms/qerko-connection-status.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConsole } from "@/hooks/use-console.ts"
+import { createE2eSparkWalletDep } from "@/platform/e2e-spark-wallet.ts"
 import {
   createConnectivityDep,
   createFetchDep,
@@ -45,6 +53,7 @@ const createAppJobDeps = ({
   deviceAccountId,
   deviceId,
   notificationStore,
+  masterKey,
   console,
 }: {
   readonly evolu: Evolu
@@ -52,6 +61,7 @@ const createAppJobDeps = ({
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
+  readonly masterKey: MasterKey
   readonly console: Console
 }) => {
   const dateDep = createDateDep()
@@ -73,6 +83,11 @@ const createAppJobDeps = ({
     ...createQerkoApiDep({ posId: appEnv.VITE_PAYKY_QERKO_POS_ID }),
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(qerkoConnectionStatusStore),
+    ...(createE2eSparkWalletDep() ?? createSparkWalletDep()),
+    ...createYadioApiDep(),
+    tableSelfPayRoot: deriveTableSelfPayRoot(masterKey),
+    selfPayDefaultRelays: appEnv.VITE_PAYKY_SELF_PAY_RELAYS,
+    nostrRelayClient: createNostrRelayClient(),
     lockManager: navigator.locks,
     console,
     onError: (error: unknown) => {
@@ -148,6 +163,7 @@ export function AppBackgroundJobs() {
   const console = useConsole()
   const deviceId = account.device.id
   const deviceAccountId = account.id
+  const { masterKey } = account
   const start = useCallback(() => {
     const run = createRun(
       createAppJobDeps({
@@ -156,6 +172,7 @@ export function AppBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
         console,
       })
     )
@@ -173,6 +190,7 @@ export function AppBackgroundJobs() {
     deviceEvolu,
     deviceId,
     evolu,
+    masterKey,
     notificationStore,
   ])
 
@@ -205,6 +223,7 @@ export function CashuBackgroundJobs() {
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
         console,
       }),
       masterKey,

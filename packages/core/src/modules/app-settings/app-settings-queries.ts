@@ -23,3 +23,10 @@ export const settingsQuery = createQuery((db) =>
       defaultPaymentMethod: KyselyNotNull
     }>()
 )
+
+export const selfPaySettingsQuery = createQuery((db) =>
+  db
+    .selectFrom("appSettings")
+    .select(["selfPayGuestName"])
+    .where("id", "=", settingsId)
+)

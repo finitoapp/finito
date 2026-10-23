@@ -369,6 +369,11 @@ const areTokensEqual = (
   left.length === right.length &&
   left.every((token, index) => token.token === right[index]?.token)
 
+const createRecipientMessage = ({ recipientMessage }: FioTransaction) => {
+  const parsed = NonEmptyStringSchema.safeParse(recipientMessage)
+  return parsed.success ? parsed.data : null
+}
+
 const createTransactionNote = (transaction: FioTransaction) => {
   const parts = [
     transaction.counterAccountName,
@@ -390,6 +395,7 @@ const toBankTransaction = (transaction: FioTransaction): BankTransaction => ({
     dateStringToDate(transaction.bookedDate).getTime()
   ),
   note: createTransactionNote(transaction),
+  recipientMessage: createRecipientMessage(transaction),
   variableSymbol: transaction.variableSymbol,
   constantSymbol: transaction.constantSymbol,
   specificSymbol: transaction.specificSymbol,

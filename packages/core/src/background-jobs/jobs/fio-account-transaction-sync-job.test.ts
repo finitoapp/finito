@@ -1,9 +1,17 @@
-import { sqliteTrue, testCreateConsole, testCreateRun } from "@evolu/common"
+import {
+  type SqliteBoolean,
+  sqliteFalse,
+  sqliteTrue,
+  testCreateConsole,
+  testCreateRun,
+} from "@evolu/common"
 import { describe, expect, test, vi } from "vitest"
 import { createQuery } from "../../evolu/schema.ts"
 import { createAccount } from "../../modules/account/account-actions.ts"
 import type { AccountId } from "../../modules/account/account-types.ts"
 import { createAccountTransaction } from "../../modules/account-transaction/account-transaction-actions.ts"
+import { loadBillStatus } from "../../modules/bill/bill-guards.ts"
+import type { BillId } from "../../modules/bill/bill-types.ts"
 import {
   addFioPluginToken,
   deleteFioPluginToken,
@@ -15,6 +23,7 @@ import {
   dateStringToDate,
   dateToDateString,
 } from "../../modules/shared/date-string-utils.ts"
+import { runMutationWithCompletion } from "../../modules/shared/evolu-utils.ts"
 import {
   DateStringSchema,
   IbanSchema,
@@ -25,6 +34,14 @@ import {
   SpecificSymbol,
   VariableSymbol,
 } from "../../modules/shared/schema.ts"
+import { formatSelfPayBankMessage } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
+import {
+  createSelfPayTestContext,
+  openSelfPayBill,
+  type SelfPayTestContext,
+  selectSelfPayTestShare,
+  selfPayPointersByBillIdQuery,
+} from "../../modules/table-self-pay/table-self-pay-test-fixtures.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
@@ -51,6 +68,7 @@ const ibanTransactionsByAccountIdQuery = (accountId: AccountId) =>
         "accountTransactionIban.constantSymbol",
         "accountTransactionIban.specificSymbol",
         "accountTransactionIban.bankReference",
+        "accountTransactionIban.recipientMessage",
       ])
       .where("accountTransaction.accountId", "=", accountId)
       .where("accountTransaction.isDeleted", "is not", sqliteTrue)
@@ -125,6 +143,72 @@ const statementResponse = ({
 
 const inputToString = (input: RequestInfo | URL): string =>
   input instanceof URL ? input.toString() : String(input)
+
+const selfPayStatementLine = ({
+  id,
+  reference,
+  amount,
+  message = null,
+}: {
+  readonly id: number
+  readonly reference: string
+  readonly amount: number
+  readonly message?: string | null
+}) => ({
+  ...fioTransaction,
+  column0: { value: id, name: "ID pohybu" },
+  column1: { value: "2026-06-05+02:00", name: "Datum" },
+  column2: { value: amount, name: "Objem" },
+  column8: null,
+  column9: { value: reference, name: "VS" },
+  column10: null,
+  column12:
+    message === null ? null : { value: message, name: "Zpráva pro příjemce" },
+})
+
+const activateSelfPayFioPlugin = async (context: SelfPayTestContext) => {
+  await using run = testCreateRun(context.deps)
+  const fioPluginId = await run.ok(
+    saveFioPlugin({
+      accountId: context.ibanAccountId,
+      numberOfSecondsBetweenChecks: PositiveInteger(60),
+      isActive: sqliteTrue,
+    })
+  )
+  await run.ok(
+    addFioPluginToken({
+      fioPluginId,
+      token: NonEmptyString255("fio-token-1"),
+    })
+  )
+  return fioPluginId
+}
+
+const startSelfPayFioSync = async (
+  context: SelfPayTestContext,
+  transactions: ReadonlyArray<ReturnType<typeof selfPayStatementLine>>,
+  errors: unknown[]
+): Promise<AsyncDisposable> => {
+  const jobRun = testCreateRun({
+    ...context.deps,
+    onError: (error: unknown) => {
+      errors.push(error)
+    },
+    fetch: async () => statementResponse({ transactions }),
+  })
+  const job = await jobRun.ok(createFioAccountTransactionSyncJob())
+  return {
+    [Symbol.asyncDispose]: async () => {
+      await job[Symbol.asyncDispose]()
+      await jobRun[Symbol.asyncDispose]()
+    },
+  }
+}
+
+const billStatusOf = async (context: SelfPayTestContext, billId: BillId) => {
+  await using run = testCreateRun(context.deps)
+  return await run.orThrow(loadBillStatus(billId))
+}
 
 describe("fio account transaction sync job", () => {
   test("downloads FIO transactions into IBAN account transactions without duplicates", async () => {
@@ -211,6 +295,7 @@ describe("fio account transaction sync job", () => {
           constantSymbol: "0308",
           specificSymbol: "789",
           bankReference: "123456789",
+          recipientMessage: "Thanks",
         },
       ])
 
@@ -426,6 +511,7 @@ describe("fio account transaction sync job", () => {
         constantSymbol: null,
         specificSymbol: "789",
         bankReference: "123456789",
+        recipientMessage: null,
       },
     ])
     expect(accountTransactionId).toBeTruthy()
@@ -854,6 +940,179 @@ describe("fio account transaction sync job", () => {
     expect(
       await evolu.loadQuery(ibanTransactionsByAccountIdQuery(accountId))
     ).toEqual([])
+    expect(errors).toEqual([])
+  })
+})
+
+describe("fio account transaction sync job, self-pay", () => {
+  test("credits a self-pay bill from the reference and pointer a statement carries", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    await activateSelfPayFioPlugin(context)
+    const errors: unknown[] = []
+
+    await using _sync = await startSelfPayFioSync(
+      context,
+      [
+        selfPayStatementLine({
+          id: 1,
+          reference,
+          amount: 450,
+          message: formatSelfPayBankMessage({ pointer }),
+        }),
+      ],
+      errors
+    )
+
+    await expect.poll(() => billStatusOf(context, billId)).toBe("closed")
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toEqual([{ pointer }])
+    expect(errors).toEqual([])
+  })
+
+  test("credits each bill of one statement with its own transfer", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const soup = await openSelfPayBill(context, {
+      lines: [{ name: "Soup", amount: 30_000 }],
+    })
+    await activateSelfPayFioPlugin(context)
+    const errors: unknown[] = []
+
+    await using _sync = await startSelfPayFioSync(
+      context,
+      [
+        selfPayStatementLine({ id: 1, reference: menu.reference, amount: 450 }),
+        selfPayStatementLine({ id: 2, reference: soup.reference, amount: 300 }),
+      ],
+      errors
+    )
+
+    await expect.poll(() => billStatusOf(context, menu.billId)).toBe("closed")
+    await expect.poll(() => billStatusOf(context, soup.billId)).toBe("closed")
+    expect(errors).toEqual([])
+  })
+
+  test("pays a self-pay bill once from a statement downloaded twice", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    const fioPluginId = await activateSelfPayFioPlugin(context)
+    const statement = [
+      selfPayStatementLine({
+        id: 1,
+        reference,
+        amount: 450,
+        message: formatSelfPayBankMessage({ pointer }),
+      }),
+    ]
+    const errors: unknown[] = []
+    {
+      await using _sync = await startSelfPayFioSync(context, statement, errors)
+      await expect.poll(() => billStatusOf(context, billId)).toBe("closed")
+    }
+    context.clock.advance(24 * 60 * 60 * 1000)
+
+    {
+      await using _sync = await startSelfPayFioSync(context, statement, errors)
+      await expect
+        .poll(() =>
+          context.deps.evolu.loadQuery(fioPluginSyncPointerQuery(fioPluginId))
+        )
+        .toMatchObject([{ lastSyncedDate: "2026-06-06" }])
+    }
+
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toEqual([{ pointer }])
+    expect(errors).toEqual([])
+  })
+
+  test("pairs a self-pay transfer recorded by a sync that stopped before pairing it", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    await using run = testCreateRun(context.deps)
+    await run.ok(
+      createAccountTransaction({
+        accountId: context.ibanAccountId,
+        amount: Integer(45_000),
+        currency: "CZK",
+        occurredAt: context.clock.date.now().getTime(),
+        note: null,
+        internalTransferGroupId: null,
+        source: { deviceId: null, source: "auto" },
+        iban: {
+          variableSymbol: VariableSymbol(reference),
+          constantSymbol: null,
+          specificSymbol: null,
+          bankReference: NonEmptyString255("1"),
+        },
+      })
+    )
+    await activateSelfPayFioPlugin(context)
+    const errors: unknown[] = []
+
+    await using _sync = await startSelfPayFioSync(
+      context,
+      [selfPayStatementLine({ id: 1, reference, amount: 450 })],
+      errors
+    )
+
+    await expect.poll(() => billStatusOf(context, billId)).toBe("closed")
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toHaveLength(1)
+    expect(
+      await context.deps.evolu.loadQuery(
+        ibanTransactionsByAccountIdQuery(context.ibanAccountId)
+      )
+    ).toHaveLength(1)
+    expect(errors).toEqual([])
+  })
+
+  test("pairs a transfer that arrived before this device knew the bill on a later sync", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const setReferenceDeleted = (isDeleted: SqliteBoolean) =>
+      runMutationWithCompletion((options) =>
+        context.deps.evolu.update(
+          "billSelfPayReference",
+          { id: billId, isDeleted },
+          { ...options, owner: context.deps.evoluOwner }
+        )
+      )
+    await activateSelfPayFioPlugin(context)
+    const statement = [selfPayStatementLine({ id: 1, reference, amount: 450 })]
+    const errors: unknown[] = []
+    await setReferenceDeleted(sqliteTrue)
+    {
+      await using _sync = await startSelfPayFioSync(context, statement, errors)
+      await expect
+        .poll(() =>
+          context.deps.evolu.loadQuery(
+            ibanTransactionsByAccountIdQuery(context.ibanAccountId)
+          )
+        )
+        .toHaveLength(1)
+    }
+    expect(await billStatusOf(context, billId)).toBe("open")
+    await setReferenceDeleted(sqliteFalse)
+
+    await using _sync = await startSelfPayFioSync(context, statement, errors)
+
+    await expect.poll(() => billStatusOf(context, billId)).toBe("closed")
     expect(errors).toEqual([])
   })
 })

@@ -134,6 +134,7 @@ export interface BillHistoryItemSummary {
   readonly hasCancellationCollision: boolean
   readonly billTotal: NonNegativeInteger
   readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
   readonly coverage: BillCoverage
 }
 
@@ -174,6 +175,7 @@ export const deriveBillHistoryItemSummary = ({
       coverage !== "underpaid",
     billTotal,
     claimedSum,
+    amountDue: NonNegativeInteger(Math.max(0, billTotal - claimedSum)),
     coverage,
   }
 }

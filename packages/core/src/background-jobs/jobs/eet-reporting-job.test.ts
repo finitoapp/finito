@@ -1,11 +1,15 @@
 import { sqliteTrue, testCreateRun } from "@evolu/common"
+import { startOfDay } from "date-fns"
 import { describe, expect, test } from "vitest"
 import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
+import { createNostrRelayClient } from "../../integrations/nostr/nostr-relay-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
 import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
+import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { createAccount } from "../../modules/account/account-actions.ts"
+import { createAccountTransaction } from "../../modules/account-transaction/account-transaction-actions.ts"
 import {
   addManualAmountToBill,
   createBill,
@@ -34,7 +38,10 @@ import {
   settleInCash,
   settleWithLightning,
 } from "../../modules/eet/eet-test-fixtures.ts"
-import { toEetCashRegisterId } from "../../modules/eet/eet-utils.ts"
+import {
+  formatEetDateTime,
+  toEetCashRegisterId,
+} from "../../modules/eet/eet-utils.ts"
 import { markPaymentPaidIban } from "../../modules/payment/payment-actions.ts"
 import {
   paymentClaimsQuery,
@@ -42,6 +49,7 @@ import {
 } from "../../modules/payment/payment-queries.ts"
 import { derivePaymentStatus } from "../../modules/payment/payment-status-utils.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
+import { reconcileAccountTransaction } from "../../modules/reconciliation-claim/reconciliation-claim-actions.ts"
 import {
   refundPayment,
   refundWholePayment,
@@ -52,11 +60,16 @@ import {
 } from "../../modules/shared/evolu-utils.ts"
 import {
   IbanSchema,
+  Integer,
   NonEmptyString255,
   NonNegativeInteger,
   PositiveInteger,
   TimestampMs,
+  VariableSymbol,
 } from "../../modules/shared/schema.ts"
+import { upsertBillSelfPayReferences } from "../../modules/table-self-pay/table-self-pay-actions.ts"
+import { deriveBillSelfPayReference } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
+import { createSparkWalletDep } from "../../spark/spark-wallet.ts"
 import {
   createTestDeviceAccountDep,
   testNotificationsDep,
@@ -114,6 +127,11 @@ const startJob = async (
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(),
     ...connectivity,
+    ...createSparkWalletDep(),
+    ...createYadioApiDep(),
+    tableSelfPayRoot: new Uint8Array(32),
+    selfPayDefaultRelays: [],
+    nostrRelayClient: createNostrRelayClient(),
     deviceId,
     onError: (error) => {
       errors.push(error)
@@ -1508,6 +1526,106 @@ describe("eet reporting job: reversals of extra money", () => {
       .poll(() => reversalsOf(context, second))
       .toMatchObject([{ amount: 25_000, pok: expect.any(String) }])
     await expect(reversalsOf(context, first)).resolves.toEqual([])
+    expect(job.errors).toEqual([])
+  })
+})
+
+const paySelfPayBillByTransfer = async (
+  context: EetTestContext,
+  bookedAt: Date
+): Promise<PaymentId> => {
+  await using run = testCreateRun(context.deps)
+  const billId = await createTestBill(context)
+  await run.orThrow(
+    addManualAmountToBill({
+      billId,
+      deviceId: context.deviceId,
+      totalAmount: NonNegativeInteger(25_000),
+      name: NonEmptyString255("Menu"),
+      currency: "CZK",
+    })
+  )
+  const reference = deriveBillSelfPayReference(billId)
+  await runMutationWithCompletion((options) =>
+    upsertBillSelfPayReferences(context.deps.evolu, [{ billId, reference }], {
+      ...options,
+      owner: context.deps.evoluOwner,
+    })
+  )
+  const accountId = await run.ok(
+    createAccount({
+      deviceId: null,
+      name: NonEmptyString255("Bank account"),
+      iban: {
+        iban: IbanSchema.decode("CZ6508000000192000145399"),
+        currency: "CZK",
+      },
+    })
+  )
+  const accountTransactionId = await run.ok(
+    createAccountTransaction({
+      accountId,
+      amount: Integer(25_000),
+      currency: "CZK",
+      occurredAt: TimestampMs(bookedAt.getTime()),
+      note: null,
+      internalTransferGroupId: null,
+      source: { deviceId: null, source: "auto" },
+      iban: {
+        variableSymbol: VariableSymbol(reference),
+        constantSymbol: null,
+        specificSymbol: null,
+        bankReference: NonEmptyString255(`bank-${billId}`),
+      },
+    })
+  )
+  const paymentId = await run.ok(
+    reconcileAccountTransaction(accountTransactionId)
+  )
+  if (paymentId === null) throw new Error("Expected a self-pay payment.")
+  return paymentId
+}
+
+describe("eet reporting job: self-pay", () => {
+  test("reports a self-pay transfer at the time it was matched, not at midnight of its booking date", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const matchedAt = context.clock.date.now()
+
+    const paymentId = await paySelfPayBillByTransfer(
+      context,
+      startOfDay(matchedAt)
+    )
+
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([
+        {
+          deviceId: context.deviceId,
+          saleAt: formatEetDateTime(matchedAt),
+          pok: expect.any(String),
+        },
+      ])
+    expect(job.errors).toEqual([])
+  })
+
+  test("never reports a self-pay transfer matched before EET was enabled", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context, { enabled: false })
+    await using job = await startJob(context)
+    const paymentId = await paySelfPayBillByTransfer(
+      context,
+      startOfDay(context.clock.date.now())
+    )
+    context.clock.advance(1_000)
+    await using run = testCreateRun(context.deps)
+
+    await run.orThrow(enableEet())
+    await settleLater(100)
+
+    expect(await saleOf(context, paymentId)).toEqual([])
+    expect(context.responder.requests).toEqual([])
     expect(job.errors).toEqual([])
   })
 })

@@ -1,0 +1,128 @@
+# web self-pay-relays.spec.ts: "the security card keeps the last active relay
+# on". Maestro's web driver reads no checked or disabled state, so those
+# checks run on Android; on web the "last active" note stands for them.
+appId: ${APP_ID}
+tags: [self-pay-relays]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/security
+      TEXT: ${output.t["settings.security.title"]}
+# The whole card fits on screen once its Add button shows, so what is not
+# visible below is not there.
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["settings.security.selfPayRelays.add"]}
+# The card lists the five default relays, all on.
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nos.lol" })}'
+- assertVisible: ${output.t["settings.security.selfPayRelays.default"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nos.lol" })}'
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr3.agora.gripe" })}'
+- assertNotVisible: ${output.re(output.t["settings.security.selfPayRelays.lastActive"])}
+# Switching four off leaves the fifth on, locked and explained.
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nos.lol" })}'
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr.linky.fit" })}'
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr1.agora.gripe" })}'
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr2.agora.gripe" })}'
+- extendedWaitUntil:
+    visible: ${output.re(output.t["settings.security.selfPayRelays.lastActive"])}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr2.agora.gripe" })}'
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr3.agora.gripe" })}'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          id: '${output.re(output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr3.agora.gripe" }))}'
+          enabled: false
+# A tap on the fifth leaves it on: the note stays, and the relay added below
+# then lifts it.
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr3.agora.gripe" })}'
+- assertVisible: ${output.re(output.t["settings.security.selfPayRelays.lastActive"])}
+# An https URL is rejected.
+- runFlow:
+    file: ../../subflows/type-input.yaml
+    env:
+      LABEL: ${output.t["settings.security.selfPayRelays.url.label"]}
+      VALUE: https://relay.payky.test
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["settings.security.selfPayRelays.add"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["settings.security.selfPayRelays.url.invalid"])}
+    timeout: 10000
+# Adding a wss relay unlocks the fifth.
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["settings.security.selfPayRelays.url.label"]}
+      VALUE: wss://relay.payky.test
+      PLACEHOLDER: wss://nos.lol
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["settings.security.selfPayRelays.add"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://relay.payky.test" })}'
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: '${output.tv("settings.security.selfPayRelays.toggle", { url: "wss://relay.payky.test" })}'
+- extendedWaitUntil:
+    notVisible: ${output.re(output.t["settings.security.selfPayRelays.lastActive"])}
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertVisible:
+          id: '${output.re(output.tv("settings.security.selfPayRelays.toggle", { url: "wss://nostr3.agora.gripe" }))}'
+          enabled: true

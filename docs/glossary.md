@@ -78,6 +78,10 @@ where it is specified; the specification wins over this page.
 - **Account transaction** (`account-transaction`) — money that actually moved
   on an account: a bank transfer from FIO, a Spark transfer, cash taken, a
   withdrawal. A payment says money is expected; a transaction says it came.
+- **Pointer** — the 32 characters after `PK1` in a self-pay payment's
+  message or memo, naming the selection the guest published
+  (`docs/decisions/table-self-pay/0020`). Not the variable symbol, which is
+  the bill's **reference**.
 - **Reconciliation claim** (`reconciliation-claim`) — the link that says this
   transaction pays that payment, written by the sync jobs (`source: "auto"`)
   or by hand (`"manual"`). A payment is paid because a claim exists

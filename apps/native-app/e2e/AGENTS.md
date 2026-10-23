@@ -64,7 +64,11 @@ assertions.
   `assert-checked` (`LABEL`, `CHECKED`) checks a switch, on Android only;
   `add-catalog-item`, `add-table` are web's `addCatalogItem`, `addTable`
   (there is no `add-category`: a category is typed on the item,
-  navigation/0003); `start-new-bill` is `startNewBill`,
+  navigation/0003); `enable-table-self-pay` (`TABLE`) is
+  `enableTableSelfPay` and waits for the table's QR; `open-table-bill`
+  (`TABLE`) is `openTableBill` up to its items; `pizza-and-beer-bill`
+  (`TABLE`) is table-self-pay's `seedPizzaAndBeerBill`, keeping the bill's id
+  as `output.billId`; `start-new-bill` is `startNewBill`,
   `new-bill` the same from the tables home; `charge-cash` pays the open bill
   in cash and returns home; `read-ids` is web's `new URL(page.url())` for
   ids: the newest bill's and payment's ids as `output.billId` and
@@ -170,6 +174,10 @@ assertions.
   `mocks/nostr.ts` is the only nostr relay of an e2e build (`/nostr`,
   websocket) and decides by the business name: "Café Skip" is refused,
   "Café Retry" refused once, a profile that is not the trimmed name refused.
+  It keeps every event it accepts and answers a `REQ` by its `kinds`,
+  `authors` and `#d`. The build's default self-pay relays lead to it too
+  (`src/e2e/e2e-self-pay-relays.ts`, web's `routeFakeNostrRelays`), so table
+  views and guest selections never leave the machine.
 - `mocks/open-facts.ts` answers every Open Food Facts lookup with web's
   Coca-Cola product and counts them: `open-facts-mock` (`PATH`) calls
   `/__mock/open-facts/reset` or `.../expect?count=N` (web's `lookedUpUrls`)
@@ -191,6 +199,15 @@ assertions.
 - `seedEetSaleFromAnotherDevice` (`paymentId`, `minutes`) records the
   payment's EET sale as another device's, `minutes` ago, printing
   `pokl=<cash register id>`.
+- Self-pay (web's `support/self-pay.ts`): `seedActiveFioPlugin` is web's.
+  `receiveGuestBankTransfer` (`billId`) is `receiveShownBankTransfer` with
+  the guest page's part done in-app (`src/e2e/e2e-self-pay-guest.ts`): it
+  reads the table's view from the relays until it shows the bill as the till
+  has it, picks a share, publishes that selection, then receives the
+  transfer naming its pointer and reconciles it. The share is
+  `lines=Beer:1/1,Pizza:1/5` (a fraction of each line, by name),
+  `people=<n>` (an equal share) or, with neither, the rest of the bill;
+  `amount` (minor units) and `message` replace what the transfer carries.
 
 ## Selectors
 

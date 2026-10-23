@@ -15,6 +15,7 @@ import { createQuery } from "../../evolu/schema.ts"
 import { createAccount } from "../../modules/account/account-actions.ts"
 import type { AccountId } from "../../modules/account/account-types.ts"
 import { createAccountTransaction } from "../../modules/account-transaction/account-transaction-actions.ts"
+import { loadBillStatus } from "../../modules/bill/bill-guards.ts"
 import { createPayment } from "../../modules/payment/payment-actions.ts"
 import type { EvoluDep } from "../../modules/shared/evolu-deps.ts"
 import {
@@ -22,7 +23,10 @@ import {
   runMutationWithCompletion,
 } from "../../modules/shared/evolu-utils.ts"
 import type { SparkSecret } from "../../modules/shared/key-derivation.ts"
-import { createTestInvoice } from "../../modules/shared/lightning-invoice-test-fixtures.ts"
+import {
+  createTestInvoice,
+  testSparkIdentity,
+} from "../../modules/shared/lightning-invoice-test-fixtures.ts"
 import {
   Integer,
   NonEmptyString255,
@@ -32,7 +36,18 @@ import {
   PositiveNumber,
   TimestampMs,
 } from "../../modules/shared/schema.ts"
+import { createSelfPayLightningRequest } from "../../modules/table-self-pay/table-self-pay-guest-utils.ts"
+import { formatSelfPayLightningMemo } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
+import {
+  createSelfPayTestContext,
+  createTestLightningInvoice,
+  openSelfPayBill,
+  selectSelfPayTestShare,
+  selfPayPointersByBillIdQuery,
+  signTestSelfPayRate,
+} from "../../modules/table-self-pay/table-self-pay-test-fixtures.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
+import { createGuestLightningInvoice } from "../../spark/spark-guest-invoice.ts"
 import type { SparkWalletTransfer } from "../../spark/spark-wallet.ts"
 import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
@@ -232,6 +247,19 @@ const createCompletedTransfer = (
   },
   ...override,
 })
+
+const createSelfPayTransfer = (encodedInvoice: string, receivedAt: Date) =>
+  createCompletedTransfer({
+    id: "spark-transfer-self-pay",
+    valueReceivedByWallet: 18_000,
+    createdTime: receivedAt,
+    updatedTime: receivedAt,
+    sparkInvoice: undefined,
+    userRequest: {
+      invoice: { encodedInvoice, paymentHash: "payment-hash-self-pay" },
+      paymentPreimage: "preimage-self-pay",
+    },
+  })
 
 let uniqueSecretCounter = 0
 
@@ -846,6 +874,117 @@ describe("spark account transaction sync job", () => {
     expect(
       await evolu.loadQuery(sparkTransactionsByAccountIdQuery(accountId))
     ).toEqual([])
+    expect(errors).toEqual([])
+  })
+
+  test("credits a self-pay bill from the memo of the invoice a guest paid", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { bill, pointer } = await selectSelfPayTestShare(context, reference)
+    const rate = {
+      currency: "CZK" as const,
+      ...signTestSelfPayRate(context.clock.date.now()),
+    }
+    const invoice = await createGuestLightningInvoice({
+      ...createSelfPayLightningRequest({ bill, amount: 45_000, pointer, rate }),
+      receiverIdentityPubkey: testSparkIdentity,
+      wallet: Promise.resolve({
+        createLightningInvoice: async ({ amountSats, memo }) => ({
+          invoice: {
+            encodedInvoice: createTestLightningInvoice({
+              amountSats,
+              memo,
+              createdAt: rate.validFrom + 60,
+            }),
+          },
+        }),
+      }),
+    })
+    const errors: unknown[] = []
+    const wallet = new FakeSparkWallet([
+      createSelfPayTransfer(invoice, context.clock.date.now()),
+    ])
+    await using jobRun = testCreateRun({
+      ...context.deps,
+      fetch: unimplementedFetch,
+      onError: (error: unknown) => {
+        errors.push(error)
+      },
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: async () => wallet,
+        recheckIntervalMs: 10,
+      })
+    )
+    await using run = testCreateRun(context.deps)
+
+    await expect.poll(() => run.orThrow(loadBillStatus(billId))).toBe("closed")
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toEqual([{ pointer }])
+    expect(errors).toEqual([])
+  })
+
+  test("pays a self-pay bill once when Spark reports the transfer in its history and live", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    const rate = signTestSelfPayRate(context.clock.date.now())
+    const transfer = createSelfPayTransfer(
+      createTestLightningInvoice({
+        amountSats: 18_000,
+        createdAt: rate.validFrom + 60,
+        memo: formatSelfPayLightningMemo({
+          reference,
+          pointer,
+          amount: 45_000,
+          rate,
+        }),
+      }),
+      context.clock.date.now()
+    )
+    const wallet = new FakeSparkWallet([transfer])
+    const errors: unknown[] = []
+    await using run = testCreateRun(context.deps)
+    {
+      await using jobRun = testCreateRun({
+        ...context.deps,
+        fetch: unimplementedFetch,
+        onError: (error: unknown) => {
+          errors.push(error)
+        },
+      })
+      await using _job = await jobRun.ok(
+        createSparkAccountTransactionSyncJob({
+          walletFactory: async () => wallet,
+          recheckIntervalMs: 60_000,
+        })
+      )
+      await expect
+        .poll(() => run.orThrow(loadBillStatus(billId)))
+        .toBe("closed")
+      await expect
+        .poll(() => wallet.listenerCount(SparkWalletEvent.TransferClaimed))
+        .toBe(1)
+
+      wallet.emit(SparkWalletEvent.TransferClaimed, transfer.id)
+
+      await expect.poll(() => wallet.getTransferIds).toEqual([transfer.id])
+    }
+
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toEqual([{ pointer }])
+    expect(
+      await context.deps.evolu.loadQuery(
+        sparkTransactionsByAccountIdQuery(context.sparkAccountId)
+      )
+    ).toHaveLength(1)
     expect(errors).toEqual([])
   })
 })

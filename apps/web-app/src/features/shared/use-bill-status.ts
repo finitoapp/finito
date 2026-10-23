@@ -3,6 +3,7 @@ import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import type { BillId, BillStatus } from "@payky/core/modules/bill/bill-types"
 import { deriveBillHistoryItemSummary } from "@payky/core/modules/bill/bill-utils"
 import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
+import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useMemo } from "react"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
 import { useOptionalEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -16,6 +17,8 @@ interface BillStatusInfo {
    * resolves it via `confirmBillClosedDespiteCancellation`.
    */
   readonly hasCancellationCollision: boolean
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
 }
 
 /**
@@ -47,12 +50,11 @@ export function useBillStatus(
   return useMemo(() => {
     if (bill === undefined) return undefined
 
-    const { status, hasCancellationCollision } = deriveBillHistoryItemSummary({
+    return deriveBillHistoryItemSummary({
       canceledAt: bill.canceledAt,
       confirmedClosedAt: bill.confirmedClosedAt,
       billTotal: deriveBillSummaryTotal(summaries),
       claimedTransactions,
     })
-    return { status, hasCancellationCollision }
   }, [bill, summaries, claimedTransactions])
 }

@@ -118,6 +118,14 @@ export const paymentsWithClaimsByBillIdQuery = (billId: BillId) =>
             .$narrowType<{ kind: KyselyNotNull }>()
         ).as("claimedTransactions")
       )
+      .select((eb) =>
+        eb
+          .selectFrom("paymentSelfPay")
+          .select("paymentSelfPay.id")
+          .whereRef("paymentSelfPay.id", "=", "payment.id")
+          .where("paymentSelfPay.isDeleted", "is not", sqliteTrue)
+          .as("selfPayId")
+      )
       .where("payment.billId", "=", billId)
       .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "is not", null)

@@ -34,6 +34,13 @@ import {
 } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { TableId } from "@payky/core/modules/table/table-types"
+import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
+import { remainingOnLine } from "@payky/core/modules/table-self-pay/table-self-pay-share-utils"
+import type { SelfPayViewLine } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { isSameDay } from "date-fns"
 import { Redirect, router, useLocalSearchParams } from "expo-router"
 import Minus from "lucide-react-native/icons/minus"
@@ -270,6 +277,8 @@ function BillPage({
       currency={bill?.currency ?? getFiatCurrency(settings)}
       tipsEnabled={settings?.tipsEnabled === sqliteTrue}
       summaries={summaries}
+      claimedSum={billStatus?.claimedSum ?? NonNegativeInteger(0)}
+      amountDue={billStatus?.amountDue ?? deriveBillSummaryTotal(summaries)}
       initialScanCode={initialScanCode}
     />
   )
@@ -419,6 +428,8 @@ function BillCart({
   currency,
   tipsEnabled,
   summaries,
+  claimedSum,
+  amountDue,
   initialScanCode,
 }: {
   readonly billId: BillId
@@ -434,16 +445,18 @@ function BillCart({
   readonly currency: FiatCurrency
   readonly tipsEnabled: boolean
   readonly summaries: ReadonlyArray<BillLineSummary>
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
   readonly initialScanCode: string | undefined
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const theme = useTheme()
-  const { totalAmount, itemCount } = useMemo(
+  const { itemCount } = useMemo(
     () => deriveBillSummaryStats(summaries),
     [summaries]
   )
-  const totalAmountPulse = useChangePulse(totalAmount)
+  const amountDuePulse = useChangePulse(amountDue)
   const cart = useCartBill({ billId, currency, tableId, onTableSeedChange })
   const toast = useToast()
   const runToast = useRunToast()
@@ -485,12 +498,12 @@ function BillCart({
       if (tipsEnabled) {
         router.push({
           pathname: "/payment/tip",
-          params: { amount: String(totalAmount), currency, billId },
+          params: { amount: String(amountDue), currency, billId },
         })
         return
       }
       await createTerminalPayment({
-        amount: totalAmount,
+        amount: amountDue,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
@@ -501,6 +514,9 @@ function BillCart({
     }
   }
   const catalogItems = useEvoluQuery(catalogItemsQuery).data
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(
+    useEvoluQuery(selfPayAllocationsByBillIdQuery(billId)).data
+  )
   const catalogItemsById = useMemo(
     () => new Map(catalogItems.map((item) => [item.id, item])),
     [catalogItems]
@@ -893,14 +909,14 @@ function BillCart({
                     </Text>
                   </XStack>
                   <XStack items="center" gap={8}>
-                    <Animated.View style={totalAmountPulse}>
+                    <Animated.View style={amountDuePulse}>
                       <Text
                         fontSize={fontSize.base}
                         lineHeight={fontSize.base}
                         fontWeight={fontWeight.semibold}
                         fontVariant={["tabular-nums"]}
                       >
-                        {formatMoney({ value: totalAmount, currency }, locale)}
+                        {formatMoney({ value: amountDue, currency }, locale)}
                       </Text>
                     </Animated.View>
                     <CollapsibleChevron direction="up" />
@@ -913,6 +929,10 @@ function BillCart({
                     <SummaryRow
                       key={summary.id}
                       summary={summary}
+                      selfPayLine={projectSelfPayViewLine(
+                        summary,
+                        selfPayAllocated
+                      )}
                       locale={locale}
                       disabled={cart.pending}
                       catalogItem={
@@ -936,6 +956,12 @@ function BillCart({
                     />
                   ))}
                 </ScrollView>
+                <BillAlreadyPaid
+                  claimedSum={claimedSum}
+                  amountDue={amountDue}
+                  currency={currency}
+                  locale={locale}
+                />
                 <XStack items="center" justify="space-between" pt={16} py={8}>
                   <XStack gap={4}>
                     <Button
@@ -1038,6 +1064,7 @@ function BillCart({
 
 function SummaryRow({
   summary,
+  selfPayLine,
   locale,
   disabled,
   catalogItem,
@@ -1046,6 +1073,7 @@ function SummaryRow({
   onRemove,
 }: {
   readonly summary: BillLineSummary
+  readonly selfPayLine: SelfPayViewLine
   readonly locale: string
   readonly disabled: boolean
   /** The line's catalog item, when it still exists to add another of. */
@@ -1082,6 +1110,11 @@ function SummaryRow({
             {summary.quantity} × {money(getBillLineSummaryUnitAmount(summary))}
           </Text>
         )}
+        <SelfPayLineStatus
+          line={selfPayLine}
+          currency={summary.currency}
+          locale={locale}
+        />
       </YStack>
       {/* No `disabled` on "−"/"+": the cart queues taps, and a button disabled mid-tap drops one. */}
       <XStack
@@ -1151,6 +1184,99 @@ function SummaryRow({
         onPress={onRemove}
       />
     </XStack>
+  )
+}
+
+/** As web's `BillAlreadyPaid`: what the bill holds and what is left. */
+function BillAlreadyPaid({
+  claimedSum,
+  amountDue,
+  currency,
+  locale,
+}: {
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (claimedSum === 0) return null
+
+  return (
+    <YStack gap={4} pt={8}>
+      <XStack items="baseline" justify="space-between">
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {t("bill.summary.alreadyPaid")}
+        </Text>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+          fontVariant={["tabular-nums"]}
+        >
+          {formatMoney({ value: claimedSum, currency }, locale)}
+        </Text>
+      </XStack>
+      <XStack items="baseline" justify="space-between">
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+        >
+          {t("bill.summary.leftToPay")}
+        </Text>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+          fontVariant={["tabular-nums"]}
+        >
+          {formatMoney({ value: amountDue, currency }, locale)}
+        </Text>
+      </XStack>
+    </YStack>
+  )
+}
+
+/** As web's `SelfPayLineStatus`: what guests paid of a line. */
+function SelfPayLineStatus({
+  line,
+  currency,
+  locale,
+}: {
+  readonly line: SelfPayViewLine
+  readonly currency: FiatCurrency
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (line.allocatedAmount === 0) return null
+  const remaining = remainingOnLine(line)
+
+  return (
+    <Text
+      testID="bill-summary-self-pay"
+      fontSize={fontSize.xs}
+      lineHeight={fontSize.xs}
+      color="primary"
+      fontVariant={["tabular-nums"]}
+    >
+      {remaining === 0
+        ? t("bill.summary.selfPay.paid")
+        : t("bill.summary.selfPay.partlyPaid", {
+            paid: formatMoney(
+              { value: NonNegativeInteger(line.allocatedAmount), currency },
+              locale
+            ),
+            remaining: formatMoney(
+              { value: NonNegativeInteger(remaining), currency },
+              locale
+            ),
+          })}
+    </Text>
   )
 }
 

@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   FiatCurrencySchema,
   type InferTable,
+  NonEmptyString255Schema,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import {
@@ -33,6 +34,7 @@ export const appSettings = {
    * Carries a timestamp only, never the phrase or any word of it.
    */
   recoveryPhraseVerifiedAt: TimestampMsSchema.nullable(),
+  selfPayGuestName: NonEmptyString255Schema.nullable(),
 } as const
 
 export type AppSettingsRow = InferTable<typeof appSettings>

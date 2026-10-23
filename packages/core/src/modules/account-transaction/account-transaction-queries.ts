@@ -1,10 +1,14 @@
-import type { KyselyNotNull } from "@evolu/common"
+import type { DateIso, KyselyNotNull } from "@evolu/common"
 import { sqliteTrue } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
 import type { AccountId } from "../account/account-types.ts"
 import type { CashuOperationId } from "../cashu/cashu-types.ts"
-import type { NonEmptyString, NonEmptyString255 } from "../shared/schema.ts"
+import {
+  Integer,
+  type NonEmptyString,
+  type NonEmptyString255,
+} from "../shared/schema.ts"
 import type { AccountTransactionId } from "./account-transaction-types.ts"
 
 export const accountTransactionSparkByTransferIdQuery = (
@@ -153,4 +157,95 @@ export const ibanTransactionsByBankReferenceQuery = ({
       .$narrowType<{
         bankReference: KyselyNotNull
       }>()
+  )
+
+export const selfPayTransactionByIdQuery = (id: AccountTransactionId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("accountTransaction")
+      .leftJoin("accountTransactionIban", (join) =>
+        join
+          .onRef("accountTransactionIban.id", "=", "accountTransaction.id")
+          .on("accountTransactionIban.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("accountTransactionLightning", (join) =>
+        join
+          .onRef("accountTransactionLightning.id", "=", "accountTransaction.id")
+          .on("accountTransactionLightning.isDeleted", "is not", sqliteTrue)
+      )
+      .select([
+        "accountTransaction.id",
+        "accountTransaction.kind",
+        "accountTransaction.accountId",
+        "accountTransaction.amount",
+        "accountTransaction.currency",
+        "accountTransaction.occurredAt",
+        "accountTransaction.createdAt",
+        "accountTransactionIban.variableSymbol",
+        "accountTransactionIban.recipientMessage",
+        "accountTransactionLightning.lnInvoice",
+        "accountTransactionLightning.paymentHash",
+      ])
+      .where("accountTransaction.id", "=", id)
+      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+      .where("accountTransaction.kind", "is not", null)
+      .where("accountTransaction.accountId", "is not", null)
+      .where("accountTransaction.amount", "is not", null)
+      .where("accountTransaction.currency", "is not", null)
+      .where("accountTransaction.occurredAt", "is not", null)
+      .$narrowType<{
+        kind: KyselyNotNull
+        accountId: KyselyNotNull
+        amount: KyselyNotNull
+        currency: KyselyNotNull
+        occurredAt: KyselyNotNull
+      }>()
+  )
+
+export const unclaimedIncomingTransactionsSinceQuery = (
+  createdSince: DateIso
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("accountTransaction")
+      .leftJoin("accountTransactionIban", (join) =>
+        join
+          .onRef("accountTransactionIban.id", "=", "accountTransaction.id")
+          .on("accountTransactionIban.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("accountTransactionLightning", (join) =>
+        join
+          .onRef("accountTransactionLightning.id", "=", "accountTransaction.id")
+          .on("accountTransactionLightning.isDeleted", "is not", sqliteTrue)
+      )
+      .select([
+        "accountTransaction.id",
+        "accountTransaction.createdAt",
+        "accountTransactionIban.recipientMessage",
+        "accountTransactionLightning.lnInvoice",
+      ])
+      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+      .where("accountTransaction.amount", ">", Integer(0))
+      .where("accountTransaction.createdAt", ">=", createdSince)
+      .where((eb) =>
+        eb.or([
+          eb("accountTransactionIban.recipientMessage", "is not", null),
+          eb("accountTransactionLightning.lnInvoice", "is not", null),
+        ])
+      )
+      .where((eb) =>
+        eb.not(
+          eb.exists(
+            eb
+              .selectFrom("reconciliationClaim")
+              .select("reconciliationClaim.id")
+              .whereRef(
+                "reconciliationClaim.accountTransactionId",
+                "=",
+                "accountTransaction.id"
+              )
+              .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+          )
+        )
+      )
   )

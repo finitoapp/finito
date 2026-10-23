@@ -5,6 +5,7 @@ import {
   type Currency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
+import { projectSelfPayViewLine } from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import type { ReactNode } from "react"
 import { Text, XStack, YStack } from "tamagui"
@@ -95,9 +96,11 @@ function TechnicalTriggerLabel({ label }: { readonly label: string }) {
 export function BillLines({
   summaries,
   emptyMessage,
+  selfPayAllocated,
 }: {
   readonly summaries: ReadonlyArray<BillLineSummary>
   readonly emptyMessage: string
+  readonly selfPayAllocated?: ReadonlyMap<string, number>
 }) {
   const locale = useLocale()
 
@@ -144,6 +147,16 @@ export function BillLines({
                 locale
               )}`}
             </Text>
+            {selfPayAllocated === undefined ? null : (
+              <SelfPayLinePaid
+                paid={
+                  projectSelfPayViewLine(summary, selfPayAllocated)
+                    .allocatedAmount
+                }
+                total={summary.totalAmount}
+                currency={summary.currency}
+              />
+            )}
           </YStack>
           <Text
             fontSize={fontSize.sm}
@@ -158,6 +171,33 @@ export function BillLines({
         </XStack>
       ))}
     </YStack>
+  )
+}
+
+/** As web's `SelfPayLinePaid`: what guests paid of a line. */
+function SelfPayLinePaid({
+  paid,
+  total,
+  currency,
+}: {
+  readonly paid: number
+  readonly total: NonNegativeInteger
+  readonly currency: Currency
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  if (paid === 0) return null
+
+  return (
+    <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} color="primary">
+      {t("billDetail.selfPay.linePaid", {
+        paid: formatMoney(
+          { value: NonNegativeInteger(paid), currency },
+          locale
+        ),
+        total: formatMoney({ value: total, currency }, locale),
+      })}
+    </Text>
   )
 }
 
