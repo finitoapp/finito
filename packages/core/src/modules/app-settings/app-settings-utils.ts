@@ -54,7 +54,10 @@ export const getFiatCurrency = (
 
 export const createDefaultSettings = (): Omit<
   AppSettingsRow,
-  "enabledHomeModesJson" | "recoveryPhraseVerifiedAt" | "keypadTaxRateId"
+  | "enabledHomeModesJson"
+  | "recoveryPhraseVerifiedAt"
+  | "keypadTaxRateId"
+  | "selfPayGuestName"
 > => ({
   id: settingsId,
   onboardingCompleted: null,

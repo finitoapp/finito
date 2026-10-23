@@ -1,0 +1,14 @@
+# web's openTableBill up to its items: starts a bill from TABLE's free tile on
+# the tables home and waits for the empty bill.
+appId: ${APP_ID}
+---
+- runFlow:
+    file: goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["home.pay"]}
+- runFlow: open-sales.yaml
+- tapOn: ${TABLE}
+- extendedWaitUntil:
+    visible: ${output.t["bill.title"]}
+    timeout: 15000

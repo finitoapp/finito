@@ -80,7 +80,7 @@ vi.mock("@/atoms/account.ts", async () => {
     accountAtom: atom({
       id: "device-account",
       demo: null,
-      masterKey: "master-key",
+      masterKey: "000102030405060708090a0b0c0d0e0f",
       device: { id: "device" },
     }),
   }

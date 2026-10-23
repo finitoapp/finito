@@ -8,15 +8,20 @@ import type {
   DeviceIdDep,
   EvoluOwnerDep,
   FetchDep,
+  SelfPayDefaultRelaysDep,
+  TableSelfPayRootDep,
 } from "../deps.ts"
 import type { EetApiDep } from "../integrations/eet/eet-client.ts"
+import type { NostrRelayDep } from "../integrations/nostr/nostr-relay-client.ts"
 import type { QerkoApiDep } from "../integrations/qerko/qerko-client.ts"
 import type { QerkoConnectionStatusDep } from "../integrations/qerko/qerko-connection-status.ts"
 import type { QerkoSocketDep } from "../integrations/qerko/qerko-socket.ts"
+import type { YadioApiDep } from "../integrations/yadio/yadio-client.ts"
 import type {
   DeviceAccountDep,
   EvoluDep,
 } from "../modules/shared/evolu-deps.ts"
+import type { SparkWalletDep } from "../spark/spark-wallet.ts"
 import type { NotificationsDep } from "./notifications.ts"
 
 export interface BackgroundJobOnErrorDep {
@@ -39,9 +44,14 @@ export type AppBackgroundJobContext = BackgroundJobContext &
   DeviceAccountDep &
   ConnectivityDep &
   EetApiDep &
+  NostrRelayDep &
   QerkoApiDep &
   QerkoSocketDep &
-  QerkoConnectionStatusDep
+  QerkoConnectionStatusDep &
+  SelfPayDefaultRelaysDep &
+  SparkWalletDep &
+  TableSelfPayRootDep &
+  YadioApiDep
 
 /** What the app's own runs add for the shared Cashu wallet. */
 export type CashuBackgroundJobContext = AppBackgroundJobContext &

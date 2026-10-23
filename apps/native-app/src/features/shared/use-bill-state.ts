@@ -92,12 +92,11 @@ export function useBillStatus(billId: BillId) {
   return useMemo(() => {
     if (bill === undefined) return undefined
 
-    const { status, hasCancellationCollision } = deriveBillHistoryItemSummary({
+    return deriveBillHistoryItemSummary({
       canceledAt: bill.canceledAt,
       confirmedClosedAt: bill.confirmedClosedAt,
       billTotal: deriveBillSummaryTotal(summaries),
       claimedTransactions,
     })
-    return { status, hasCancellationCollision }
   }, [bill, summaries, claimedTransactions])
 }

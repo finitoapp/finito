@@ -1820,6 +1820,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/settings/backends/self-pay-relay-card.tsx",
+    web: [
+      "apps/web-app/src/features/settings/backends/self-pay-relay-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
     native: "src/features/shared/amount-keypad.tsx",
     web: ["apps/web-app/src/features/shared/amount-keypad.tsx"],
     status: "matched",
@@ -1921,8 +1928,46 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/catalog/tables/self-pay-guest-name-card.tsx",
+    web: [
+      "apps/web-app/src/features/catalog/tables/self-pay-guest-name-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
+    native: "src/features/catalog/tables/table-self-pay-card.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-self-pay-card.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Field:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldContent:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldDescription:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      FieldLabel:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+      Switch:
+        "Native renders the self-pay switch with ui/field and ui/switch directly; web saves the same switch through InlineEditSwitch, which wraps them.",
+    },
+  },
+  {
+    native: "src/features/catalog/tables/table-sticker-check.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-sticker-check.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      ScanCodeScannerDialog:
+        "Native has no scanner dialog; the camera opens inline under the button, as the item form and withdraw scanners do.",
+      ScanCodeScanner:
+        "Native opens the camera inline instead of web's ScanCodeScannerDialog, as the item form and withdraw scanners do.",
+    },
+  },
+  {
     native: "src/features/catalog/tables/tables-page.tsx",
-    web: ["apps/web-app/src/features/catalog/tables/tables-page.tsx"],
+    web: [
+      "apps/web-app/src/features/catalog/tables/tables-page.tsx",
+      "apps/web-app/src/features/catalog/tables/tables-list.tsx",
+    ],
     status: "matched",
   },
   {

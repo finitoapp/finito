@@ -1,3 +1,4 @@
+import { SelfPayRelaysSchema } from "@payky/core/integrations/nostr/nostr-default-relays"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { appBrand } from "./app-brand.ts"
@@ -42,6 +43,8 @@ export const nativeEnv = createEnv({
       .transform((value) => value.split(",").map((url) => url.trim()))
       .pipe(z.array(z.url({ protocol: /^wss$/u })).min(1))
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
+    EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN: z.url().default(appBrand.selfPayOrigin),
+    EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
     EXPO_PUBLIC_SENTRY_DSN: z.string().optional(),
     // The product library's host (github.com/finitoapp/product-library, its
     // own Vercel project), which serves `v1/library.json` and the pictures:
@@ -71,6 +74,10 @@ export const nativeEnv = createEnv({
     EXPO_PUBLIC_PAYKY_NOSTR_RELAYS: process.env.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS,
     EXPO_PUBLIC_LINKY_RELAYS_URL: process.env.EXPO_PUBLIC_LINKY_RELAYS_URL,
     EXPO_PUBLIC_LINKY_EVOLU_RELAYS: process.env.EXPO_PUBLIC_LINKY_EVOLU_RELAYS,
+    EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN:
+      process.env.EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN,
+    EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS:
+      process.env.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
     EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL:
       process.env.EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL,

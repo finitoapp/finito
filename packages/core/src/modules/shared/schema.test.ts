@@ -20,4 +20,9 @@ describe("WssUrlSchema", () => {
       false
     )
   })
+
+  test("rejects a value that is no URL instead of throwing", () => {
+    expect(WssUrlSchema.safeParse("not a url").success).toBe(false)
+    expect(WssUrlSchema.safeParse("").success).toBe(false)
+  })
 })

@@ -19,19 +19,12 @@ import {
   splitBill,
   splitBillIntoNewBill,
 } from "@payky/core/modules/bill/bill-actions"
-import {
-  claimedPaymentsByBillIdQuery,
-  claimedTransactionsByBillIdQuery,
-} from "@payky/core/modules/bill/bill-coverage-queries"
+import { claimedPaymentsByBillIdQuery } from "@payky/core/modules/bill/bill-coverage-queries"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import {
   type BillId,
   createRandomBillId,
 } from "@payky/core/modules/bill/bill-types"
-import {
-  calculateClaimedSum,
-  deriveBillAmountDue,
-} from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import {
   deriveBillSummaryStats,
@@ -57,6 +50,13 @@ import {
 } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
+import {
+  projectSelfPayViewLine,
+  sumSelfPayAllocationsByLineKey,
+} from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
+import { selfPayAllocationsByBillIdQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
+import { remainingOnLine } from "@payky/core/modules/table-self-pay/table-self-pay-share-utils"
+import type { SelfPayViewLine } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { isSameDay } from "date-fns"
@@ -280,6 +280,11 @@ export function BillPage({
         billExists={bill !== undefined}
         currency={bill?.currency ?? fallbackCurrency}
         summaries={summaries}
+        claimedSum={billStatus?.claimedSum ?? NonNegativeInteger(0)}
+        amountDue={
+          billStatus?.amountDue ??
+          NonNegativeInteger(Math.max(0, deriveBillSummaryTotal(summaries)))
+        }
         // `pendingTableId` only seeds the bill row that's about to be
         // created; once it exists its own `tableId` is the source of truth,
         // so a table cleared on the bill isn't overwritten by the stale seed.
@@ -526,6 +531,8 @@ function BillCartView({
   billExists,
   currency,
   summaries,
+  claimedSum,
+  amountDue,
   tableId,
   cart,
   search,
@@ -549,6 +556,8 @@ function BillCartView({
   readonly billExists: boolean
   readonly currency: FiatCurrencyType
   readonly summaries: ReadonlyArray<BillLineSummary>
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
   readonly tableId: TableId | null
   readonly initialScanCode: string | undefined
   /** `BillPage`'s `useFinishBill`, for Finish in Charge's place. */
@@ -575,6 +584,10 @@ function BillCartView({
     enabledPaymentMethodAccountsQuery
   )
   const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
+  const { data: selfPayAllocations } = useEvoluQuery(
+    selfPayAllocationsByBillIdQuery(billId)
+  )
+  const selfPayAllocated = sumSelfPayAllocationsByLineKey(selfPayAllocations)
   // The `*Pending` state drives `disabled`, which only takes effect on the
   // next render, so two fast taps on a low-end terminal both enter the
   // handler. `createPayment` deliberately accepts a bill that already has a
@@ -747,12 +760,6 @@ function BillCartView({
     [summaries]
   )
   const totalAmountPulseControls = useChangePulse(totalAmount)
-  // A partly paid bill charges only the rest (payment/0028).
-  const { data: claimedTransactions } = useEvoluQuery(
-    claimedTransactionsByBillIdQuery(billId)
-  )
-  const claimedSum = calculateClaimedSum(claimedTransactions)
-  const amountDue = deriveBillAmountDue(totalAmount, claimedSum)
   // Charge, or Finish in its place for a bill whose goods come to zero.
   const checkout = deriveBillCheckout({
     summaries,
@@ -763,12 +770,10 @@ function BillCartView({
   })
   const checkoutHintKey = billCheckoutHintKeys[checkout]
   const finishing = checkout === "finish"
+  const amountDuePulseControls = useChangePulse(amountDue)
 
   const handleCharge = async () => {
     if (checkout !== "charge" || chargePendingRef.current) return
-    // Charge is offered only for goods above zero (`deriveBillCheckout`);
-    // what is due is the total less what was paid (payment/0028).
-    const amount = amountDue
 
     chargePendingRef.current = true
     setChargePending(true)
@@ -776,13 +781,13 @@ function BillCartView({
       if (settings?.tipsEnabled === sqliteTrue) {
         await navigate({
           to: "/payment/tip",
-          search: { amount, currency, billId },
+          search: { amount: amountDue, currency, billId },
         })
         return
       }
 
       await createTerminalPayment({
-        amount,
+        amount: amountDue,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
@@ -1129,8 +1134,8 @@ function BillCartView({
                     {t("bill.itemsCount", { value: itemCount })}
                   </div>
                   <div className="flex items-center gap-2 text-base font-semibold">
-                    <motion.span animate={totalAmountPulseControls}>
-                      {formatMoney({ value: totalAmount, currency }, locale)}
+                    <motion.span animate={amountDuePulseControls}>
+                      {formatMoney({ value: amountDue, currency }, locale)}
                     </motion.span>
                     <ChevronDown
                       className={cn(
@@ -1163,6 +1168,10 @@ function BillCartView({
                         <SummaryRow
                           key={summary.id}
                           summary={summary}
+                          selfPayLine={projectSelfPayViewLine(
+                            summary,
+                            selfPayAllocated
+                          )}
                           locale={locale}
                           disabled={cart.pending}
                           catalogItem={
@@ -1192,6 +1201,13 @@ function BillCartView({
                       ))}
                     </div>
                   </div>
+                  <BillAlreadyPaid
+                    className="lg:hidden"
+                    claimedSum={claimedSum}
+                    amountDue={amountDue}
+                    currency={currency}
+                    locale={locale}
+                  />
                   <div className="flex items-center justify-between py-2 lg:hidden">
                     <div className={"gap-1 flex"}>
                       <Button
@@ -1245,17 +1261,13 @@ function BillCartView({
                 {formatMoney({ value: totalAmount, currency }, locale)}
               </motion.span>
             </div>
-            {claimedSum > 0 ? (
-              <p
-                className="pt-2 text-right text-sm text-muted-foreground"
-                data-testid="bill-amount-due"
-              >
-                {t("bill.summary.paidAndDue", {
-                  paid: formatMoney({ value: claimedSum, currency }, locale),
-                  due: formatMoney({ value: amountDue, currency }, locale),
-                })}
-              </p>
-            ) : null}
+            <BillAlreadyPaid
+              className="hidden pt-2 lg:flex"
+              claimedSum={claimedSum}
+              amountDue={amountDue}
+              currency={currency}
+              locale={locale}
+            />
             <div className="flex items-center gap-2 pt-4 lg:flex-wrap">
               <Button
                 variant="outline"
@@ -1362,6 +1374,7 @@ function BillEmptyCatalog() {
 
 function SummaryRow({
   summary,
+  selfPayLine,
   locale,
   disabled,
   catalogItem,
@@ -1370,6 +1383,7 @@ function SummaryRow({
   onRemove,
 }: {
   readonly summary: BillLineSummary
+  readonly selfPayLine: SelfPayViewLine
   readonly locale: string
   readonly disabled: boolean
   /** The line's catalog item, when it still exists to add another of. */
@@ -1398,6 +1412,11 @@ function SummaryRow({
             )}
           </p>
         )}
+        <SelfPayLineStatus
+          line={selfPayLine}
+          currency={summary.currency}
+          locale={locale}
+        />
       </div>
       {/*
        * The item grid's "−"/"+" cluster in small. No `disabled`, like
@@ -1461,6 +1480,70 @@ function SummaryRow({
         <X />
       </Button>
     </div>
+  )
+}
+
+function BillAlreadyPaid({
+  className,
+  claimedSum,
+  amountDue,
+  currency,
+  locale,
+}: {
+  readonly className: string
+  readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
+  readonly currency: FiatCurrencyType
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (claimedSum === 0) return null
+
+  return (
+    <dl className={cn("flex flex-col gap-1 tabular-nums", className)}>
+      <div className="flex items-baseline justify-between text-muted-foreground">
+        <dt>{t("bill.summary.alreadyPaid")}</dt>
+        <dd>{formatMoney({ value: claimedSum, currency }, locale)}</dd>
+      </div>
+      <div className="flex items-baseline justify-between font-semibold">
+        <dt>{t("bill.summary.leftToPay")}</dt>
+        <dd>{formatMoney({ value: amountDue, currency }, locale)}</dd>
+      </div>
+    </dl>
+  )
+}
+
+function SelfPayLineStatus({
+  line,
+  currency,
+  locale,
+}: {
+  readonly line: SelfPayViewLine
+  readonly currency: FiatCurrencyType
+  readonly locale: string
+}) {
+  const { t } = useTranslation()
+  if (line.allocatedAmount === 0) return null
+  const remaining = remainingOnLine(line)
+
+  return (
+    <p
+      data-testid="bill-summary-self-pay"
+      className="text-xs text-primary tabular-nums"
+    >
+      {remaining === 0
+        ? t("bill.summary.selfPay.paid")
+        : t("bill.summary.selfPay.partlyPaid", {
+            paid: formatMoney(
+              { value: NonNegativeInteger(line.allocatedAmount), currency },
+              locale
+            ),
+            remaining: formatMoney(
+              { value: NonNegativeInteger(remaining), currency },
+              locale
+            ),
+          })}
+    </p>
   )
 }
 

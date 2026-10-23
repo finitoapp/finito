@@ -5,13 +5,14 @@ import {
   testCreateRun,
 } from "@evolu/common"
 import { describe, expect, test } from "vitest"
-
 import { createQuery } from "../../evolu/schema.ts"
+import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { saveFiatBankAccount } from "../account/account-actions.ts"
 import type { AccountId } from "../account/account-types.ts"
+import { loadBillStatus } from "../bill/bill-guards.ts"
 import {
   acknowledgePaymentExcessSettlement,
   createPayment,
@@ -28,6 +29,13 @@ import {
   TimestampMs,
   VariableSymbol,
 } from "../shared/schema.ts"
+import { formatSelfPayBankMessage } from "../table-self-pay/table-self-pay-reference-utils.ts"
+import {
+  createSelfPayTestContext,
+  openSelfPayBill,
+  selectSelfPayTestShare,
+  selfPayPointersByBillIdQuery,
+} from "../table-self-pay/table-self-pay-test-fixtures.ts"
 import {
   connectMonetaPlugin,
   disconnectMonetaPlugin,
@@ -78,14 +86,17 @@ const transaction = (overrides: Record<string, unknown> = {}) => ({
 })
 
 /** A bank that answers the account list and then the given transactions. */
-const fakeBank = (transactions: () => ReadonlyArray<unknown>) => {
+const fakeBank = (
+  transactions: () => ReadonlyArray<unknown>,
+  accountIban: string = iban
+) => {
   const requests: URL[] = []
   const fetch: typeof globalThis.fetch = async (input) => {
     const url = new URL(input instanceof Request ? input.url : input)
     requests.push(url)
     return url.pathname.endsWith("/transactions")
       ? jsonResponse({ pageCount: 1, transactions: transactions() })
-      : accountsResponse()
+      : accountsResponse(accountIban)
   }
 
   return { fetch, requests }
@@ -126,6 +137,7 @@ const setUp = async (fetch: typeof globalThis.fetch) => {
     ...evoluTestDeps(evolu),
     ...createTestDateDep(new Date("2026-05-26T10:00:00.000Z")),
     console: testCreateConsole(),
+    lockManager: createInProcessLockManager(),
     fetch,
   }
   const run = testCreateRun(deps)
@@ -482,6 +494,7 @@ describe("syncMonetaTransactions", () => {
             currency: "CZK",
             occurredAt: TimestampMs(Date.parse("2026-05-26T00:00:00.000Z")),
             note: null,
+            recipientMessage: null,
             variableSymbol: VariableSymbol("123456"),
             constantSymbol: null,
             specificSymbol: null,
@@ -760,5 +773,58 @@ describe("syncMonetaTransactions", () => {
     await expect(context.run(syncMonetaTransactions(range))).resolves.toEqual(
       notFound
     )
+  })
+})
+
+describe("syncMonetaTransactions, self-pay", () => {
+  test("credits a self-pay bill from the reference and pointer a MONETA transfer carries", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    const bank = fakeBank(
+      () => [
+        transaction({
+          amount: { value: "450,00", currency: "CZK" },
+          bookingDate: { date: "2026-06-05" },
+          entryDetails: {
+            transactionDetails: {
+              relatedParties: { debtor: { name: "Guest" } },
+              remittanceInformation: {
+                unstructured: formatSelfPayBankMessage({ pointer }),
+                structured: {
+                  creditorReferenceInformation: {
+                    reference: `VS:${reference}`,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ],
+      otherIban
+    )
+    await using run = testCreateRun({ ...context.deps, fetch: bank.fetch })
+    await run.orThrow(
+      connectMonetaPlugin({
+        accountId: context.ibanAccountId,
+        iban: otherIban,
+        token,
+      })
+    )
+
+    const synced = await run.orThrow(
+      syncMonetaTransactions({
+        fromDate: DateStringSchema.decode("2026-06-05"),
+        toDate: DateStringSchema.decode("2026-06-05"),
+      })
+    )
+
+    expect(synced.claimedPaymentIds).toHaveLength(1)
+    expect(await run.orThrow(loadBillStatus(billId))).toBe("closed")
+    expect(
+      await context.deps.evolu.loadQuery(selfPayPointersByBillIdQuery(billId))
+    ).toEqual([{ pointer }])
   })
 })

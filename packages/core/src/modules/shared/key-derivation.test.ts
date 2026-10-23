@@ -1,3 +1,5 @@
+import { schnorr } from "@noble/curves/secp256k1.js"
+import { bytesToHex } from "@noble/hashes/utils.js"
 import { Slip39 } from "slip39-ts"
 import { describe, expect, test } from "vitest"
 import {
@@ -5,6 +7,9 @@ import {
   defaultSparkWalletDerivationPath,
   deriveDefaultSparkWalletSecret,
   deriveEvoluOwnerSecret,
+  deriveSelfPayRateKey,
+  deriveTableSelfPayKeys,
+  deriveTableSelfPayRoot,
   evoluOwnerDerivationPath,
   MasterKey,
   MasterKeySchema,
@@ -100,5 +105,60 @@ describe("key derivation", () => {
     expect(
       RecoveryMnemonicSchema.safeParse("not a valid mnemonic").success
     ).toBe(false)
+  })
+})
+
+describe("table self-pay key derivation", () => {
+  const root = deriveTableSelfPayRoot(masterKey)
+
+  test("derives the pinned table keys", () => {
+    const keys = deriveTableSelfPayKeys(root, "table-3", 0)
+
+    expect(bytesToHex(root)).toBe(
+      "ca622683370f84b3dc48c86280194adfab1d5112b3a50417e9d77c3737de92fe"
+    )
+    expect(bytesToHex(keys.publicKey)).toBe(
+      "d9dfce95e6d1d10a520ff2b5aba26d1ed9e2951c4ac4fadd28fda3f8652e29aa"
+    )
+    expect(bytesToHex(keys.viewKey)).toBe(
+      "31a2f341aa02d3dfcc04125be27112d7c8350b84daa5ee900bfd8cfef46e6c63"
+    )
+    expect(bytesToHex(deriveSelfPayRateKey(root))).toBe(
+      "225c9e8f2b8887d280b90394b19b0008e1fda3955649dfe7bdeba0cd38241676"
+    )
+  })
+
+  test("gives every table and every epoch its own keys", () => {
+    const derived = [
+      deriveTableSelfPayKeys(root, "table-3", 0),
+      deriveTableSelfPayKeys(root, "table-4", 0),
+      deriveTableSelfPayKeys(root, "table-3", 1),
+    ]
+
+    expect(
+      new Set(derived.map(({ publicKey }) => bytesToHex(publicKey))).size
+    ).toBe(3)
+    expect(
+      new Set(derived.map(({ viewKey }) => bytesToHex(viewKey))).size
+    ).toBe(3)
+  })
+
+  test("keeps the signing key out of reach of the view key", () => {
+    const keys = deriveTableSelfPayKeys(root, "table-3", 0)
+
+    expect(bytesToHex(keys.signingKey)).not.toBe(bytesToHex(keys.viewKey))
+    expect(bytesToHex(schnorr.getPublicKey(keys.viewKey))).not.toBe(
+      bytesToHex(keys.publicKey)
+    )
+  })
+
+  test("derives nothing a device of another merchant shares", () => {
+    const otherRoot = deriveTableSelfPayRoot(
+      MasterKey("ffffffffffffffffffffffffffffffff")
+    )
+
+    expect(
+      bytesToHex(deriveTableSelfPayKeys(otherRoot, "table-3", 0).publicKey)
+    ).not.toBe(bytesToHex(deriveTableSelfPayKeys(root, "table-3", 0).publicKey))
   })
 })

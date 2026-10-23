@@ -74,6 +74,7 @@ describe("parseWithdrawDestination", () => {
         amountSats: null,
         description: "Coffee",
         paymentHash: "11".repeat(32),
+        createdAt: 1_780_000_000 * 1000,
         expiresAt: (1_780_000_000 + 3600) * 1000,
         sparkFallbackIdentity: null,
       },

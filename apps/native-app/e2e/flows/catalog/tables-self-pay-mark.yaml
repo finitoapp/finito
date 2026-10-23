@@ -1,0 +1,49 @@
+# web settings-tables.spec.ts: "the tables list marks self-pay tables, and a
+# sticker's verdict stays until dismissed", up to the marks: the sticker check
+# reads the camera, which no flow can feed (inject-scan reaches the bill
+# only).
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 7
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 8
+      SEATS: "2"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Table 7
+# The list marks only the self-pay table. Maestro's web driver cannot select
+# the mark by its testID (a Tamagui `name` attribute shadows it), so on web
+# the mark's copy shows twice in all: Table 7's mark and the guest name
+# card's title.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- assertVisible:
+    text: ${output.re(output.t["catalog.tables.selfPay.title"])}
+    rightOf: Table 7
+    above: Table 8
+- runFlow:
+    when:
+      platform: Web
+    commands:
+      - assertNotVisible:
+          text: ${output.re(output.t["catalog.tables.selfPay.title"])}
+          index: 2
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - assertNotVisible:
+          id: table-self-pay-badge
+          below: Table 7

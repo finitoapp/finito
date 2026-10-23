@@ -267,9 +267,17 @@ test("Charge on a partly paid bill asks only for what is still due", async ({
       waitUntil: "domcontentloaded",
     })
     await page.getByRole("heading", { name: /^Bill #/ }).waitFor()
-    const due = page.getByTestId("bill-amount-due")
-    await expect(due).toContainText("5.00")
-    await expect(due).toContainText("3.00")
+    await page.getByTestId("bill-summary-trigger").click()
+    const amount = (
+      label: "bill.summary.alreadyPaid" | "bill.summary.leftToPay"
+    ) =>
+      page
+        .getByTestId("bill-summary-panel")
+        .getByText(translate("en", label), { exact: true })
+        .locator("..")
+        .getByRole("definition")
+    await expect(amount("bill.summary.alreadyPaid")).toContainText("5.00")
+    await expect(amount("bill.summary.leftToPay")).toContainText("3.00")
   })
 
   await test.step("Charge goes to the tip step with the rest only", async () => {

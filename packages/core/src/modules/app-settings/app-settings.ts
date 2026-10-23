@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   FiatCurrencySchema,
   type InferTable,
+  NonEmptyString255Schema,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
@@ -41,6 +42,7 @@ export const appSettings = {
    * out of `settingsQuery`'s filter like `enabledHomeModesJson`.
    */
   keypadTaxRateId: TaxRateId.nullable(),
+  selfPayGuestName: NonEmptyString255Schema.nullable(),
 } as const
 
 export type AppSettingsRow = InferTable<typeof appSettings>

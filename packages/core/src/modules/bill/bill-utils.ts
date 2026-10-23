@@ -308,6 +308,7 @@ export interface BillHistoryItemSummary {
   readonly closedWithoutPayment: boolean
   readonly billTotal: Integer
   readonly claimedSum: NonNegativeInteger
+  readonly amountDue: NonNegativeInteger
   readonly coverage: BillCoverage
 }
 
@@ -349,6 +350,7 @@ export const deriveBillHistoryItemSummary = ({
     closedWithoutPayment: confirmedClosedAt !== null && canceledAt === null,
     billTotal,
     claimedSum,
+    amountDue: deriveBillAmountDue(billTotal, claimedSum),
     coverage,
   }
 }

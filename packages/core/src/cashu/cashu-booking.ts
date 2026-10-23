@@ -20,9 +20,8 @@ import {
   NonNegativeIntSchema,
 } from "../modules/cashu/cashu-types.ts"
 import {
-  loadAutomaticReconciliationClaimForNewAccountTransaction,
-  loadBillClosedAtForPayment,
-  upsertReconciliationClaimRows,
+  loadAutomaticReconciliation,
+  upsertAutomaticReconciliationRows,
 } from "../modules/reconciliation-claim/reconciliation-claim-actions.ts"
 import type { DeviceEvoluDep, EvoluDep } from "../modules/shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../modules/shared/evolu-utils.ts"
@@ -102,35 +101,23 @@ const bookOperation = async (
     },
   }
   const computed = computeAccountTransactionRows(input, run.deps.date.now())
-  const claim = await run.ok(
-    loadAutomaticReconciliationClaimForNewAccountTransaction(input, computed.id)
+  const reconciliation = await run.ok(
+    loadAutomaticReconciliation(input, computed)
   )
   // A payment is credited what arrived, so its token waits for the fee. An
   // unassigned one from a mint that cannot be asked — often a dead mint
   // that issued it — is booked at face value rather than holding up every
   // later booking.
-  if (known === null && claim !== null) return "deferred"
+  if (known === null && reconciliation !== null) return "deferred"
   const amount = input.amount
   if (amount <= 0) return "nothing"
-  const billClosing =
-    claim === null
-      ? null
-      : await run.ok(
-          loadBillClosedAtForPayment(claim.paymentId, {
-            id: computed.id,
-            kind: computed.kind,
-            amount,
-            currency: "BTC",
-          })
-        )
   await runMutationWithCompletion((options) => {
     const mutationOptions = { ...options, owner: run.deps.evoluOwner }
     upsertAccountTransactionRows(run.deps.evolu, computed, mutationOptions)
-    if (claim !== null)
-      upsertReconciliationClaimRows(
+    if (reconciliation !== null)
+      upsertAutomaticReconciliationRows(
         run.deps.evolu,
-        claim,
-        billClosing,
+        reconciliation,
         mutationOptions
       )
   })

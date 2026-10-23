@@ -126,7 +126,7 @@ vi.mock("../../atoms/account.ts", async () => {
       id: "device-account-1",
       device: { id: "device-1" },
       demo: null,
-      masterKey: "master-key",
+      masterKey: "000102030405060708090a0b0c0d0e0f",
     }),
   }
 })

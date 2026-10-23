@@ -551,6 +551,7 @@ describe("deriveBillHistoryItemSummary", () => {
       closedWithoutPayment: false,
       billTotal: 1_000,
       claimedSum: 0,
+      amountDue: 1_000,
       coverage: "underpaid",
     })
   })
@@ -575,8 +576,45 @@ describe("deriveBillHistoryItemSummary", () => {
       closedWithoutPayment: false,
       billTotal: 1_000,
       claimedSum: 1_000,
+      amountDue: 0,
       coverage: "paid",
     })
+  })
+
+  test("leaves what the claims have not paid due", () => {
+    const summary = deriveBillHistoryItemSummary({
+      canceledAt: null,
+      confirmedClosedAt: null,
+      billTotal: NonNegativeInteger(1_000),
+      claimedTransactions: [
+        claimed({
+          paymentId: "payment-1",
+          accountTransactionId: "tx-1",
+          amount: 300,
+        }),
+      ],
+    })
+
+    expect(summary.claimedSum).toBe(300)
+    expect(summary.amountDue).toBe(700)
+  })
+
+  test("leaves nothing due on an overpaid bill", () => {
+    const summary = deriveBillHistoryItemSummary({
+      canceledAt: null,
+      confirmedClosedAt: null,
+      billTotal: NonNegativeInteger(1_000),
+      claimedTransactions: [
+        claimed({
+          paymentId: "payment-1",
+          accountTransactionId: "tx-1",
+          amount: 1_200,
+        }),
+      ],
+    })
+
+    expect(summary.coverage).toBe("overpaid")
+    expect(summary.amountDue).toBe(0)
   })
 
   test("flags the canceled+funded collision: canceled but already covered by a claim", () => {
@@ -630,6 +668,7 @@ describe("deriveBillHistoryItemSummary", () => {
       closedWithoutPayment: true,
       billTotal: 5_900,
       claimedSum: 0,
+      amountDue: 5_900,
       coverage: "underpaid",
     })
   })
