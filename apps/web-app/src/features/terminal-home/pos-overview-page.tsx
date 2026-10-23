@@ -1,4 +1,5 @@
 import { useTimestamp } from "@dedalik/use-react"
+import { sqliteTrue } from "@evolu/common"
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
@@ -14,11 +15,13 @@ import {
   TableFilterSchema,
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
   type OpenBillRow,
   openBillsQuery,
 } from "@payky/core/modules/bill/bill-queries"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
@@ -26,6 +29,7 @@ import { useLocalStorageState } from "@payky/web-shared/use-local-storage-state"
 import { Link } from "@tanstack/react-router"
 import {
   ChartPieIcon,
+  ChevronRightIcon,
   HourglassIcon,
   type LucideIcon,
   PlusIcon,
@@ -135,6 +139,7 @@ export function PosOverviewPage() {
           </ToggleGroup>
         )}
       </div>
+      <ToServeStrip />
       <NoTableStrip rows={rowsByTableId.get(null) ?? []} now={now} />
       {visibleTiles.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]">
@@ -196,6 +201,29 @@ const billPaymentStateIcons = {
 /** Covers the whole tile, so its most likely next step needs no aiming. */
 const stretchedLinkClassName =
   "absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+function ToServeStrip() {
+  const { t } = useTranslation()
+  const {
+    data: [settings],
+  } = useEvoluQuery(selfPaySettingsQuery)
+  const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
+
+  if (settings?.menuOrdering !== sqliteTrue && orders.length === 0) return null
+
+  return (
+    <Link
+      to="/orders"
+      className="flex items-center gap-3 rounded-xl bg-card p-3 pl-4 ring-1 ring-foreground/10 ring-inset"
+    >
+      <span className="flex-1 text-sm font-semibold">{t("nav.orders")}</span>
+      <span className="text-lg font-semibold tabular-nums">
+        {orders.length}
+      </span>
+      <ChevronRightIcon className="size-4 text-muted-foreground" />
+    </Link>
+  )
+}
 
 /**
  * The open bills on no table and the quick bill that starts another. Always

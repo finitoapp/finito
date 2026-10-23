@@ -33,9 +33,8 @@ function interpolate(
   text: string,
   params: Readonly<Record<string, string | number>>
 ): string {
-  return Object.entries(params).reduce(
-    (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
-    text
+  return text.replace(/\{([^{}]+)\}/gu, (placeholder, name: string) =>
+    Object.hasOwn(params, name) ? String(params[name]) : placeholder
   )
 }
 

@@ -1,9 +1,17 @@
-import { bytesToHex } from "@noble/hashes/utils.js"
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
 import type { NostrEvent } from "@payky/core/integrations/nostr/nostr-event"
 import {
   createNostrRelayClient,
   type NostrRelayClient,
 } from "@payky/core/integrations/nostr/nostr-relay-client"
+import {
+  createSelfPayMenuFilter,
+  createSelfPayOrderConfirmationFilter,
+  openSelfPayOrderConfirmation,
+  type SelfPayMenu,
+  SelfPayMenuSchema,
+  type SelfPayOrderConfirmation,
+} from "@payky/core/modules/menu-order/menu-order-utils"
 import type { TableSelfPayAddress } from "@payky/core/modules/table-self-pay/table-self-pay-address-utils"
 import {
   createSelfPayViewFilter,
@@ -27,6 +35,7 @@ import {
 import {
   type QueryClient,
   queryOptions,
+  useQueries,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
@@ -138,4 +147,109 @@ export const useSelfPayView = (
       awaitedPayment,
     })
   )
+}
+
+interface ShownSelfPayMenu {
+  readonly menu: SelfPayContent<SelfPayMenu> | null
+  readonly liveness: SelfPayContent<SelfPayLiveness> | null
+}
+
+export const useSelfPayMenu = (
+  address: TableSelfPayAddress,
+  keys: NonNullable<SelfPayView["menu"]>
+) => {
+  const queryClient = useQueryClient()
+  const queryKey = ["selfPayMenu", keys.publicKey]
+  return useQuery({
+    queryKey,
+    queryFn: async (): Promise<ShownSelfPayMenu> => {
+      const publicKey = hexToBytes(keys.publicKey)
+      const readKey = hexToBytes(keys.readKey)
+      const events = await guestRelays.query(
+        guestRelaysOf(address),
+        createSelfPayMenuFilter({ publicKey: keys.publicKey, readKey })
+      )
+      const shown = queryClient.getQueryData<ShownSelfPayMenu>(queryKey)
+      return {
+        menu: keepNewerSelfPayContent(
+          shown?.menu ?? null,
+          pickNewestSelfPayContent({
+            events,
+            publicKey,
+            viewKey: readKey,
+            tag: deriveSelfPayViewTag(readKey),
+            schema: SelfPayMenuSchema,
+          })
+        ),
+        liveness: keepNewerSelfPayContent(
+          shown?.liveness ?? null,
+          pickNewestSelfPayContent({
+            events,
+            publicKey,
+            viewKey: readKey,
+            tag: deriveSelfPayLivenessTag(readKey),
+            schema: SelfPayLivenessSchema,
+          })
+        ),
+      }
+    },
+    refetchInterval: REFRESH_INTERVAL_MS,
+  })
+}
+
+export const useGuestOrderConfirmations = ({
+  address,
+  menuPublicKey,
+  selectionKey,
+  orders,
+}: {
+  readonly address: TableSelfPayAddress
+  readonly menuPublicKey: string
+  readonly selectionKey: string
+  readonly orders: ReadonlyArray<AwaitedSelfPayPayment>
+}) => {
+  const queryClient = useQueryClient()
+  return useQueries({
+    queries: orders.map(({ pointer, startedAt }) => {
+      const queryKey = ["selfPayOrderConfirmation", pointer]
+      return queryOptions({
+        queryKey,
+        queryFn:
+          async (): Promise<SelfPayContent<SelfPayOrderConfirmation> | null> => {
+            const lookup = {
+              menuPublicKey,
+              pointer,
+              selectionKey: hexToBytes(selectionKey),
+            }
+            const events = await guestRelays.query(
+              guestRelaysOf(address),
+              createSelfPayOrderConfirmationFilter(lookup)
+            )
+            const confirmation = openSelfPayOrderConfirmation({
+              events,
+              ...lookup,
+            })
+            return keepNewerSelfPayContent(
+              queryClient.getQueryData<SelfPayContent<SelfPayOrderConfirmation> | null>(
+                queryKey
+              ) ?? null,
+              confirmation === null
+                ? null
+                : { value: confirmation, createdAt: confirmation.at }
+            )
+          },
+        refetchInterval: (query) => {
+          const confirmation = query.state.data?.value
+          if (
+            confirmation !== undefined &&
+            confirmation.covered >= confirmation.total
+          )
+            return false
+          return Date.now() < paymentWaitEndsAt(startedAt)
+            ? PAYMENT_REFRESH_INTERVAL_MS
+            : REFRESH_INTERVAL_MS
+        },
+      })
+    }),
+  })
 }

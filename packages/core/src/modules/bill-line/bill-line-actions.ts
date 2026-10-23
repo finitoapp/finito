@@ -28,6 +28,16 @@ export const insertBillLineRows = (
   }
 }
 
+export const upsertBillLineRows = (
+  evolu: EvoluDep["evolu"],
+  lines: ReadonlyArray<BillLineRow>,
+  options: MutationOptions
+): void => {
+  for (const line of lines) {
+    evolu.upsert("billLine", removeUndefinedValues(line), options)
+  }
+}
+
 export const loadCalculatedBillLineSummaries =
   (billId: BillId): Task<ReadonlyArray<BillLineSummary>, never, EvoluDep> =>
   async (run) => {

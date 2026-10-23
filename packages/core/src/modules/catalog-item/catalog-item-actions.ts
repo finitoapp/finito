@@ -113,3 +113,21 @@ export const deleteCatalogItem =
     )
     return ok(id)
   }
+
+export const setCatalogItemInMenu = ({
+  id,
+  inMenu,
+}: {
+  readonly id: CatalogItemId
+  readonly inMenu: boolean
+}): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  updateCatalogItem({ id, inMenu: inMenu ? sqliteTrue : null })
+
+export const setCatalogItemSoldOut = ({
+  id,
+  soldOut,
+}: {
+  readonly id: CatalogItemId
+  readonly soldOut: boolean
+}): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  updateCatalogItem({ id, soldOut: soldOut ? sqliteTrue : null })

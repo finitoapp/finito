@@ -44,7 +44,8 @@ repair rows created before this batching existed.
 | `components/app/app-background-jobs.tsx` | Starts/stops jobs once per app mount. |
 | `table-self-pay/table-self-pay-actions.ts` | `loadSelfPayArrival`, the self-pay candidate, which looks up the selection a payment points to. |
 | `table-self-pay/table-self-pay-pointer-utils.ts` | The pointer a payment carries: the selection's hash, its keys and its event. |
-| `background-jobs/jobs/self-pay-pointer-job.ts` | Asks again for selections that were not found yet. |
+| `background-jobs/jobs/self-pay-pointer-job.ts` | Asks again for selections and orders that were not found yet. |
+| `menu-order/menu-order-actions.ts` | Turns a paid order into its bill and order rows. |
 | `background-jobs/jobs/table-self-pay-publishing-job.ts` | Publishes each self-pay table's view to Nostr relays. |
 
 ## Parameters
@@ -245,6 +246,23 @@ When no relay returns the selection, the transaction stays unclaimed and
 `self-pay-pointer-job.ts` asks again at 1, 3, 6 and 11 minutes after the device
 first saw it. After 10 minutes the money counts toward the bill without
 allocation. A pointer cut short does not parse and counts at once.
+
+### Orders from the menu
+
+A variable symbol or memo reference that starts with 9 names an order
+(menu-ordering/0001). Only the device named in `appSettings.orderDeviceId`
+records orders (menu-ordering/0002). It looks the order up like a selection,
+prices it from the stored `menuVersion` it names, and writes in the same
+batch as the payment:
+- the order's `bill` on its table, with ids derived from the pointer;
+- `item` snapshots and `billLine` rows at the menu's prices;
+- the order reference in `billSelfPayReference`;
+- the `menuOrder` row with the day's next number and the guest's note.
+
+Money that covers the order marks every line paid, and the rest is the tip.
+Less leaves the bill open. Further money with the same pointer goes to the
+existing bill. An order that is not found stays unclaimed, and the pointer
+job asks for it every hour for 7 days.
 
 ### Publishing the view
 

@@ -49,6 +49,7 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/support")).toBe("settings")
     expect(requiredPermission("/settings/debug-console")).toBe("admin")
     expect(requiredPermission("/activity/stats")).toBe("stats")
+    expect(requiredPermission("/orders")).toBeNull()
     expect(requiredPermission("/settings/demo-data")).toBe("admin")
     expect(requiredPermission("/settings/donations")).toBeNull()
     expect(requiredPermission("/settings/donations-invoice")).toBeNull()

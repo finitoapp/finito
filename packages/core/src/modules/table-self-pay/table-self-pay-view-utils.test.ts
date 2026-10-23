@@ -38,6 +38,7 @@ const tableOfLongBills = (billCount: number): SelfPayView => ({
   },
   lightning: { identityPublicKey: "02".padEnd(66, "a") },
   selectionKey: "cd".repeat(32),
+  menu: null,
   bills: Array.from({ length: billCount }, (_, bill) => ({
     reference: SelfPayReferenceSchema.decode(String(1_000_000_000 + bill)),
     currency: "CZK" as const,

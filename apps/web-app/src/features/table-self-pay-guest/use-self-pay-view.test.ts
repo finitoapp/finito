@@ -43,6 +43,7 @@ const viewConfirming = (
       bank: null,
       lightning: null,
       selectionKey: null,
+      menu: null,
       bills: [],
       confirmations: [
         {

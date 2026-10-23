@@ -11,14 +11,23 @@ import {
   accountTransactionAmountByIdQuery,
   selfPayTransactionByIdQuery,
 } from "../account-transaction/account-transaction-queries.ts"
+
 import type {
   AccountTransactionId,
   AccountTransactionKind,
 } from "../account-transaction/account-transaction-types.ts"
-import { upsertBillClosedAt } from "../bill/bill-actions.ts"
+import {
+  upsertBillClosedAt,
+  upsertMenuOrderBillRows,
+} from "../bill/bill-actions.ts"
+
 import { loadBillClosedAtIfCovered } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
+import {
+  type MenuOrderArrivalRows,
+  upsertMenuOrderRows,
+} from "../menu-order/menu-order-actions.ts"
 import { paymentBillCoverageByIdQuery } from "../payment/payment-queries.ts"
 import {
   type SelfPayPaymentRows,
@@ -41,6 +50,7 @@ import {
   type SelfPayAllocationWrite,
   type SelfPayArrivalDeps,
   type SelfPayTransaction,
+  upsertBillSelfPayReferences,
   upsertSelfPayAllocations,
 } from "../table-self-pay/table-self-pay-actions.ts"
 import {
@@ -174,6 +184,7 @@ export interface AutomaticReconciliation {
   } | null
   readonly selfPayPayment: SelfPayPaymentRows | null
   readonly selfPayAllocations: ReadonlyArray<SelfPayAllocationWrite>
+  readonly menuOrder: MenuOrderArrivalRows | null
 }
 
 const loadSelfPayReconciliation =
@@ -184,23 +195,29 @@ const loadSelfPayReconciliation =
     const arrival = await run.ok(loadSelfPayArrival(transaction))
     if (arrival === null) return ok(null)
 
-    const { rows: selfPayPayment, allocations } = arrival
+    const { rows: selfPayPayment, allocations, order } = arrival
     const { payment } = selfPayPayment
-    const billClosing = await run.ok(
-      loadBillClosedAtIfCovered(
-        {
-          id: payment.id,
-          billId: payment.billId ?? null,
-          amount: payment.amount,
-          currency: payment.currency,
-          tipAmount: payment.tipAmount,
-          btcAmountSats: selfPayPayment.spark?.amountSats ?? null,
-          cashuAmountSats: null,
-          lightningAddressAmountSats: null,
-        },
-        transaction
-      )
-    )
+    const billClosing =
+      order !== null && payment.amount >= order.total
+        ? {
+            billId: order.bill.bill.id,
+            closedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          }
+        : await run.ok(
+            loadBillClosedAtIfCovered(
+              {
+                id: payment.id,
+                billId: payment.billId ?? null,
+                amount: payment.amount,
+                currency: payment.currency,
+                tipAmount: payment.tipAmount,
+                btcAmountSats: selfPayPayment.spark?.amountSats ?? null,
+                cashuAmountSats: null,
+                lightningAddressAmountSats: null,
+              },
+              transaction
+            )
+          )
 
     return ok({
       claim: createAutomaticReconciliationClaim(
@@ -213,6 +230,7 @@ const loadSelfPayReconciliation =
       billClosing,
       selfPayPayment,
       selfPayAllocations: allocations,
+      menuOrder: order,
     })
   }
 
@@ -273,6 +291,7 @@ export const loadAutomaticReconciliation =
       ),
       selfPayPayment: null,
       selfPayAllocations: [],
+      menuOrder: null,
     })
   }
 
@@ -306,9 +325,19 @@ export const upsertAutomaticReconciliationRows = (
     billClosing,
     selfPayPayment,
     selfPayAllocations,
+    menuOrder,
   }: AutomaticReconciliation,
   options: MutationOptions
 ): void => {
+  if (menuOrder !== null) {
+    upsertMenuOrderBillRows(evolu, menuOrder.bill, options)
+    upsertBillSelfPayReferences(
+      evolu,
+      [{ billId: menuOrder.bill.bill.id, reference: menuOrder.reference }],
+      options
+    )
+    upsertMenuOrderRows(evolu, menuOrder.menuOrder, options)
+  }
   if (selfPayPayment !== null) {
     upsertSelfPayPaymentRows(evolu, selfPayPayment, options)
   }

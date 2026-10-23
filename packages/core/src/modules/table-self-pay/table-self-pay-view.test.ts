@@ -115,6 +115,7 @@ describe("table self-pay view", () => {
         "lightning",
         "payee",
         "selectionKey",
+        "menu",
         "table",
         "v",
       ].sort()

@@ -7,6 +7,7 @@ import {
   type InferTable,
   NonEmptyString255Schema,
   NonNegativeIntegerSchema,
+  SqliteTrueSchema,
 } from "../shared/schema.ts"
 import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { CatalogItemId } from "./catalog-item-types.ts"
@@ -26,6 +27,8 @@ export const catalogItem = {
   scanCode: NonEmptyString255Schema.nullable(),
   /** `null` supports non-VAT-payer tenants and items with no tax assigned yet. */
   taxRateId: TaxRateId.nullable(),
+  inMenu: SqliteTrueSchema.nullable(),
+  soldOut: SqliteTrueSchema.nullable(),
 } as const
 
 /**

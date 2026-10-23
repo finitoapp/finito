@@ -27,9 +27,10 @@ It loses Wi-Fi, it is off for the night, and a transfer a guest sends from
 home tomorrow must still land. There is no Payky server, and none should be
 needed.
 
-The same path from guest to merchant device is the one ordering and menu
-browsing will need later. Finito carried it as nostr RPC (kind 23195, NIP-04),
-and public relays banned that traffic over time.
+The same path carries orders from the menu
+([menu-ordering/0001](decisions/menu-ordering/0001-guests-order-from-a-published-menu-and-a-paid-order-is-a-bill.md)).
+Finito carried guest messages as nostr RPC (kind 23195, NIP-04), and public
+relays banned that traffic over time.
 
 ## The trilemma
 
@@ -230,3 +231,15 @@ Recorded in [table-self-pay/0007](decisions/table-self-pay/0007-nothing-is-reser
   version. A version only another merchant device published, and not yet
   synced, falls back to the bill as it stands while it is open on its table,
   and otherwise to no allocation.
+
+## Ordering from the menu
+
+An order is a selection too: menu items and quantities, the table and a note.
+Its payment carries a reference that starts with 9, which no bill reference
+does, and the device that takes orders records it as a bill of its own, priced
+from the menu version the guest ordered from
+([menu-ordering/0001](decisions/menu-ordering/0001-guests-order-from-a-published-menu-and-a-paid-order-is-a-bill.md),
+[menu-ordering/0002](decisions/menu-ordering/0002-one-device-takes-orders.md)).
+With bill paying switched off, a table's view lists no bill and names only the
+menu, so a sticker reveals nothing about what the table ordered
+([menu-ordering/0003](decisions/menu-ordering/0003-a-table-publishes-nothing-about-what-it-ordered.md)).

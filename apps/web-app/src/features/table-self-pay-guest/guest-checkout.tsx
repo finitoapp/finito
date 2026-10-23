@@ -46,7 +46,7 @@ type SplitMode = SelfPaySplit["kind"]
 const NOT_PICKED: GuestLinePick = { units: 0, people: null }
 const NOTHING_CHOSEN: SelfPaySplit = { kind: "amount", amount: 0 }
 
-function Stepper({
+export function Stepper({
   value,
   min,
   max,
@@ -267,7 +267,7 @@ export interface GuestPaymentChoice {
   readonly tip: number
 }
 
-const usePayBarScrollPadding = () => {
+export const usePayBarScrollPadding = () => {
   const payBar = useRef<HTMLElement>(null)
   const { height } = useElementSize(payBar)
   useEffect(() => {
@@ -328,7 +328,7 @@ export function GuestCheckout({
     share.amount - calculateChosenSelfPayShare(bill, split).amount
   const tipAmount = guestTipAmount(
     share.amount,
-    resolveGuestTip(tipChoice, bill)
+    resolveGuestTip(tipChoice, bill.currency)
   )
   const total = share.amount + tipAmount
   const minimum = selfPayMinimum(bill.currency)
@@ -509,7 +509,7 @@ export function GuestCheckout({
       </section>
 
       <GuestTipPicker
-        bill={bill}
+        currency={bill.currency}
         share={share.amount}
         choice={tipChoice}
         onChange={setTipChoice}
@@ -542,7 +542,7 @@ export function GuestCheckout({
             disabled={
               isPreparing ||
               isBelowMinimum ||
-              isCustomTipUnreadable(tipChoice, bill)
+              isCustomTipUnreadable(tipChoice, bill.currency)
             }
             onClick={() => {
               onContinue({ amount: total, split, share, tip: tipAmount })

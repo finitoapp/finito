@@ -1,5 +1,5 @@
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
-import type { SelfPayViewBill } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
+import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { useState } from "react"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
@@ -31,53 +31,50 @@ export const NO_TIP: GuestTipChoice = {
 
 const readCustomTip = (
   { customUnit, customText }: GuestTipChoice,
-  bill: SelfPayViewBill
+  currency: FiatCurrency
 ): GuestTip | null => {
   if (customUnit === "percent") {
     const percent = parsePercent(customText)
     return percent === null ? null : { kind: "percent", percent }
   }
-  const amount = decimalAmountToMinorUnits({
-    currency: bill.currency,
-    value: customText,
-  })
+  const amount = decimalAmountToMinorUnits({ currency, value: customText })
   return amount === null ? null : { kind: "amount", amount }
 }
 
 export const resolveGuestTip = (
   choice: GuestTipChoice,
-  bill: SelfPayViewBill
+  currency: FiatCurrency
 ): GuestTip =>
   choice.option === CUSTOM
-    ? (readCustomTip(choice, bill) ?? NO_TIP_PERCENT)
+    ? (readCustomTip(choice, currency) ?? NO_TIP_PERCENT)
     : { kind: "percent", percent: choice.option }
 
 export const isCustomTipUnreadable = (
   choice: GuestTipChoice,
-  bill: SelfPayViewBill
+  currency: FiatCurrency
 ): boolean =>
   choice.option === CUSTOM &&
   choice.customText.trim() !== "" &&
-  readCustomTip(choice, bill) === null
+  readCustomTip(choice, currency) === null
 
 export function GuestTipPicker({
-  bill,
+  currency,
   share,
   choice,
   onChange,
 }: {
-  readonly bill: SelfPayViewBill
+  readonly currency: FiatCurrency
   readonly share: number
   readonly choice: GuestTipChoice
   readonly onChange: (choice: GuestTipChoice) => void
 }) {
   const { t, locale } = useGuestTranslation()
   const [hasLeftCustomTip, setHasLeftCustomTip] = useState(false)
-  const customTip = guestTipAmount(share, resolveGuestTip(choice, bill))
+  const customTip = guestTipAmount(share, resolveGuestTip(choice, currency))
   const isCustom = choice.option === CUSTOM
-  const currencySymbol = guestCurrencySymbol(bill.currency, locale)
+  const currencySymbol = guestCurrencySymbol(currency, locale)
   const showsUnreadable =
-    hasLeftCustomTip && isCustomTipUnreadable(choice, bill)
+    hasLeftCustomTip && isCustomTipUnreadable(choice, currency)
 
   return (
     <section aria-labelledby="guest-tip-title" className="flex flex-col gap-3">
@@ -111,7 +108,7 @@ export function GuestTipPicker({
             <span className="text-sm text-muted-foreground tabular-nums">
               {formatGuestAmount(
                 guestTipAmount(share, { kind: "percent", percent }),
-                bill,
+                { currency },
                 locale
               )}
             </span>
@@ -125,7 +122,7 @@ export function GuestTipPicker({
           <span className="font-semibold">{t("selfPay.tip.custom")}</span>
           <span className="text-sm text-muted-foreground tabular-nums">
             {isCustom && customTip > 0
-              ? formatGuestAmount(customTip, bill, locale)
+              ? formatGuestAmount(customTip, { currency }, locale)
               : t("selfPay.tip.custom.unit")}
           </span>
         </ToggleGroupItem>

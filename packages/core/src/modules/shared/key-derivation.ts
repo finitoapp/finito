@@ -303,5 +303,21 @@ export const deriveTableSelfPayKeys = (
 export const deriveSelfPayRateKey = (root: Uint8Array): Uint8Array =>
   deriveLabeledKey(root, "rate")
 
+export const deriveSelfPayMenuKeys = (
+  root: Uint8Array
+): {
+  readonly signingKey: Uint8Array
+  readonly publicKey: Uint8Array
+  readonly readKey: Uint8Array
+} => {
+  const menuSecret = deriveLabeledKey(root, "menu:0")
+  const signingKey = deriveLabeledKey(menuSecret, "sign")
+  return {
+    signingKey,
+    publicKey: schnorr.getPublicKey(signingKey),
+    readKey: deriveLabeledKey(menuSecret, "read"),
+  }
+}
+
 export const deriveSelfPaySelectionKey = (root: Uint8Array): Uint8Array =>
   deriveLabeledKey(root, "selection")

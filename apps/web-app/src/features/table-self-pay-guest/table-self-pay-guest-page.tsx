@@ -1,7 +1,14 @@
 import { useEventListener } from "@dedalik/use-react"
-import { hexToBytes } from "@noble/hashes/utils.js"
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
 import { useNow } from "@payky/app-shared/use-now"
-import { TimestampMs } from "@payky/core/modules/shared/schema"
+import {
+  countSelfPayMenuItems,
+  createSelfPayOrderSelectionText,
+} from "@payky/core/modules/menu-order/menu-order-utils"
+import {
+  type FiatCurrency,
+  TimestampMs,
+} from "@payky/core/modules/shared/schema"
 import {
   parseTableSelfPayAddress,
   type TableSelfPayAddress,
@@ -19,7 +26,10 @@ import {
   createSelfPaySelectionEvent,
   createSelfPayShareSelectionText,
 } from "@payky/core/modules/table-self-pay/table-self-pay-pointer-utils"
-import type { SelfPayPointer } from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
+import {
+  deriveOrderSelfPayReference,
+  type SelfPayPointer,
+} from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
 import type {
   SelfPayLiveness,
   SelfPayView,
@@ -52,6 +62,19 @@ import { GuestCheckout, type GuestPaymentChoice } from "./guest-checkout.tsx"
 import { formatGuestAmount, formatGuestTime } from "./guest-format.ts"
 import { useGuestLanguage } from "./guest-language.tsx"
 import { GuestLightningPayment } from "./guest-lightning-payment.tsx"
+import { GuestMenu, type GuestOrderChoice } from "./guest-menu.tsx"
+import {
+  GuestOrderList,
+  guestOrderLeft,
+  guestOrderStatus,
+  type ShownGuestOrder,
+} from "./guest-order-list.tsx"
+import {
+  forgetGuestOrder,
+  ordersAtTable,
+  readGuestOrders,
+  rememberGuestOrder,
+} from "./guest-orders.ts"
 import { GuestPaidFor } from "./guest-paid-for.tsx"
 import {
   readPayerPointers,
@@ -66,13 +89,17 @@ import { useGuestTranslation } from "./use-guest-translation.ts"
 import {
   paymentWaitEndsAt,
   publishGuestSelection,
+  useGuestOrderConfirmations,
+  useSelfPayMenu,
   useSelfPayView,
 } from "./use-self-pay-view.ts"
 
 type PaymentMethod = "bank" | "lightning"
 
+type GuestSection = "bill" | "menu"
+
 interface PaymentSession {
-  readonly bill: SelfPayViewBill
+  readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly amount: number
   readonly pointer: SelfPayPointer
   readonly isSeenByRestaurant: boolean
@@ -254,6 +281,237 @@ function GuestPayment({
   )
 }
 
+interface OrderPaymentSession extends PaymentSession {
+  readonly coveredBefore: number
+}
+
+const orderBill = (pointer: SelfPayPointer, currency: FiatCurrency) => ({
+  reference: deriveOrderSelfPayReference(pointer),
+  currency,
+})
+
+function GuestOrdering({
+  address,
+  view,
+  menuKeys,
+  selectionKey,
+  onOrderPlaced,
+}: {
+  readonly address: TableSelfPayAddress
+  readonly view: SelfPayView
+  readonly menuKeys: NonNullable<SelfPayView["menu"]>
+  readonly selectionKey: string
+  readonly onOrderPlaced: () => void
+}) {
+  const { t, locale } = useGuestTranslation()
+  const announce = useGuestStatus()
+  const table = bytesToHex(address.publicKey)
+  const { data, isPending } = useSelfPayMenu(address, menuKeys)
+  const [orders, setOrders] = useState(readGuestOrders)
+  const [session, setSession] = useState<OrderPaymentSession | null>(null)
+  const [isPreparing, setIsPreparing] = useState(false)
+  const [isRefused, setIsRefused] = useState(false)
+  const ordersBlock = useRef<HTMLElement>(null)
+  const tableOrders = ordersAtTable(orders, table)
+  const confirmations = useGuestOrderConfirmations({
+    address,
+    menuPublicKey: menuKeys.publicKey,
+    selectionKey,
+    orders: tableOrders,
+  })
+  const shownOrders: ReadonlyArray<ShownGuestOrder> = tableOrders.map(
+    (order, index) => ({
+      order,
+      confirmation: confirmations[index]?.data?.value ?? null,
+    })
+  )
+  useEventListener("popstate", () => {
+    setSession(null)
+  })
+
+  const sessionOrder = shownOrders.find(
+    ({ order }) => order.pointer === session?.pointer
+  )
+  const sessionCovered = sessionOrder?.confirmation?.covered ?? null
+  const settledStatus =
+    session !== null &&
+    sessionOrder !== undefined &&
+    sessionCovered !== null &&
+    sessionCovered > session.coveredBefore
+      ? guestOrderStatus(sessionOrder, t, locale)
+      : null
+
+  useEffect(() => {
+    if (settledStatus === null) return
+    setSession(null)
+    leavePaymentHistoryEntry()
+    ordersBlock.current?.focus()
+    announce(settledStatus)
+  }, [announce, settledStatus])
+
+  const isEveryConfirmationRead = confirmations.every(
+    (confirmation) => !confirmation.isPending
+  )
+  const unsettledEvents = isEveryConfirmationRead
+    ? shownOrders.flatMap((shown) =>
+        shown.confirmation === null || guestOrderLeft(shown) > 0
+          ? [shown.order.event]
+          : []
+      )
+    : []
+  const republished = useRef(false)
+  useEffect(() => {
+    if (republished.current || !isEveryConfirmationRead) return
+    republished.current = true
+    for (const event of unsettledEvents) {
+      void publishGuestSelection(address, event)
+    }
+  }, [address, isEveryConfirmationRead, unsettledEvents])
+
+  if (isPending) {
+    return (
+      <GuestMessage
+        icon={<LoaderCircleIcon className="animate-spin" />}
+        title={t("selfPay.menu.loading")}
+      />
+    )
+  }
+
+  const menu = data?.menu?.value ?? null
+  const liveness = data?.liveness?.value ?? null
+  const orderableMenu =
+    menu !== null &&
+    countSelfPayMenuItems(menu) > 0 &&
+    (findSelfPayBank(view, menu) !== null || view.lightning !== null)
+      ? menu
+      : null
+
+  const startPayment = (payment: OrderPaymentSession) => {
+    history.pushState(PAYMENT_HISTORY_STATE, "")
+    setSession(payment)
+  }
+
+  const placeOrder = async (choice: GuestOrderChoice) => {
+    if (orderableMenu === null) return
+    setIsPreparing(true)
+    setIsRefused(false)
+    const { pointer, event } = createSelfPaySelectionEvent({
+      selectionText: createSelfPayOrderSelectionText({
+        tablePublicKey: table,
+        menu: orderableMenu,
+        items: choice.items,
+        note: choice.note,
+      }),
+      selectionKey: hexToBytes(selectionKey),
+      createdAt: Math.floor(Date.now() / 1000),
+    })
+    const isAccepted = await publishGuestSelection(address, event)
+    setIsPreparing(false)
+    if (!isAccepted) {
+      setIsRefused(true)
+      return
+    }
+    const startedAt = Date.now()
+    onOrderPlaced()
+    setOrders((current) =>
+      rememberGuestOrder(current, {
+        pointer,
+        table,
+        event,
+        currency: orderableMenu.currency,
+        total: choice.total,
+        summary: choice.summary,
+        startedAt,
+      })
+    )
+    startPayment({
+      bill: orderBill(pointer, orderableMenu.currency),
+      amount: choice.amount,
+      pointer,
+      isSeenByRestaurant: true,
+      startedAt,
+      coveredBefore: 0,
+    })
+  }
+
+  const payRest = (shown: ShownGuestOrder) => {
+    const { order, confirmation } = shown
+    const startedAt = Date.now()
+    setOrders((current) => rememberGuestOrder(current, { ...order, startedAt }))
+    startPayment({
+      bill: orderBill(order.pointer, order.currency),
+      amount: guestOrderLeft(shown),
+      pointer: order.pointer,
+      isSeenByRestaurant: true,
+      startedAt,
+      coveredBefore: confirmation?.covered ?? 0,
+    })
+  }
+
+  const leavePayment = () => {
+    setSession(null)
+    leavePaymentHistoryEntry()
+  }
+
+  const removeOrder = ({ order }: ShownGuestOrder) => {
+    if (session?.pointer === order.pointer) leavePayment()
+    setOrders((current) => forgetGuestOrder(current, order.pointer))
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {shownOrders.length === 0 ? null : (
+        <GuestOrderList
+          ref={ordersBlock}
+          orders={shownOrders}
+          onPayRest={payRest}
+          onRemove={removeOrder}
+        />
+      )}
+      {session !== null ? (
+        <>
+          <GuestPayment view={view} liveness={liveness} session={session} />
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11"
+            onClick={leavePayment}
+          >
+            {t("selfPay.order.back")}
+          </Button>
+        </>
+      ) : orderableMenu === null ? (
+        <GuestMessage
+          title={t("selfPay.order.unavailable.title")}
+          description={t("selfPay.order.unavailable.description")}
+        />
+      ) : (
+        <>
+          {isRefused ? (
+            <p
+              className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"
+              role="alert"
+            >
+              <TriangleAlertIcon
+                aria-hidden="true"
+                className="size-5 shrink-0 text-amber-600"
+              />
+              {t("selfPay.order.refused")}
+            </p>
+          ) : null}
+          <GuestMenu
+            menu={orderableMenu}
+            isPreparing={isPreparing}
+            onOrder={(choice) => {
+              void placeOrder(choice)
+            }}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
 function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   const { t, locale } = useGuestTranslation()
   const announce = useGuestStatus()
@@ -273,6 +531,11 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
     null
   )
   const [payingMoreAfter, setPayingMoreAfter] = useState<string | null>(null)
+  const [section, setSection] = useState<GuestSection>(() =>
+    ordersAtTable(readGuestOrders(), bytesToHex(address.publicKey)).length > 0
+      ? "menu"
+      : "bill"
+  )
   const myConfirmationsBlock = useRef<HTMLDivElement>(null)
   const confirmedAt = selfPayViewConfirmedAt(
     data?.view ?? null,
@@ -379,6 +642,15 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   )
   const bank = bill === undefined ? view.bank : findSelfPayBank(view, bill)
   const offersMethod = bank !== null || view.lightning !== null
+  const menuOffer =
+    view.enabled && view.menu !== null && view.selectionKey !== null
+      ? { menuKeys: view.menu, selectionKey: view.selectionKey }
+      : null
+  const offersBillAndMenu = menuOffer !== null && view.bills.length > 0
+  const shownMenu =
+    menuOffer !== null && (!offersBillAndMenu || section === "menu")
+      ? menuOffer
+      : null
 
   const startPayment = async (choice: GuestPaymentChoice) => {
     if (bill === undefined || view.selectionKey === null) return
@@ -461,10 +733,40 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
         </div>
       )}
 
+      {offersBillAndMenu ? (
+        <Tabs
+          value={section}
+          onValueChange={(value) => {
+            if (value === "bill" || value === "menu") {
+              setSection(value)
+              leavePayment()
+            }
+          }}
+        >
+          <TabsList className={guestTabListClassName}>
+            <TabsTrigger value="bill" className={guestTabClassName}>
+              {t("selfPay.menu.tab.bill")}
+            </TabsTrigger>
+            <TabsTrigger value="menu" className={guestTabClassName}>
+              {t("selfPay.menu.tab.menu")}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      ) : null}
+
       {!view.enabled ? (
         <GuestMessage
           title={t("selfPay.disabled.title")}
           description={t("selfPay.disabled.description")}
+        />
+      ) : shownMenu !== null ? (
+        <GuestOrdering
+          address={address}
+          view={view}
+          {...shownMenu}
+          onOrderPlaced={() => {
+            setSection("menu")
+          }}
         />
       ) : !offersMethod ? (
         <GuestMessage
@@ -572,7 +874,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
         </>
       )}
 
-      {otherConfirmations.length > 0 ? (
+      {shownMenu === null && otherConfirmations.length > 0 ? (
         <section className="flex flex-col gap-1 text-sm">
           <h2 className="text-muted-foreground">
             {t("selfPay.confirmations.title")}
@@ -594,7 +896,8 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
         </section>
       ) : null}
 
-      {view.enabled &&
+      {shownMenu === null &&
+      view.enabled &&
       offersMethod &&
       bill !== undefined &&
       doneWith === null &&

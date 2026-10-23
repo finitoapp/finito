@@ -916,7 +916,6 @@ describe("spark account transaction sync job", () => {
       createSelfPayTransfer(invoice, context.clock.date.now()),
     ])
     await using jobRun = testCreateRun({
-      deviceId: createRowId<"Device">(),
       ...context.deps,
       fetch: unimplementedFetch,
       onError: (error: unknown) => {
@@ -963,7 +962,6 @@ describe("spark account transaction sync job", () => {
     await using run = testCreateRun(context.deps)
     {
       await using jobRun = testCreateRun({
-        deviceId: createRowId<"Device">(),
         ...context.deps,
         fetch: unimplementedFetch,
         onError: (error: unknown) => {

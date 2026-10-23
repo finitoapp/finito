@@ -78,6 +78,9 @@ export const SelfPayViewSchema = z.object({
     .nullable(),
   lightning: z.object({ identityPublicKey: HexSchema(33) }).nullable(),
   selectionKey: HexSchema(32).nullable(),
+  menu: z
+    .object({ publicKey: HexSchema(32), readKey: HexSchema(32) })
+    .nullable(),
   bills: z.array(SelfPayViewBillSchema),
   confirmations: z.array(
     z.object({
@@ -263,6 +266,7 @@ export const createDisabledSelfPayView = (table: string): SelfPayView => ({
   bank: null,
   lightning: null,
   selectionKey: null,
+  menu: null,
   bills: [],
   confirmations: [],
 })

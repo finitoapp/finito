@@ -16,6 +16,7 @@ import { Suspense, useCallback, useMemo, useState } from "react"
 import { YStack } from "tamagui"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
+import { Badge } from "../../../components/ui/badge.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
@@ -149,6 +150,12 @@ function ItemsList({
       renderRow={(item) => ({
         id: item.id,
         title: getStaffDisplayName(item),
+        badge:
+          item.inMenu === null ? undefined : item.soldOut === null ? (
+            <Badge variant="secondary" label={t("catalog.items.inMenu")} />
+          ) : (
+            <Badge variant="destructive" label={t("catalog.items.soldOut")} />
+          ),
         href: `/settings/items/${item.id}`,
         subtitle:
           item.categoryId === null

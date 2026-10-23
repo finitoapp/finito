@@ -1,0 +1,109 @@
+import { type DateIso, type KyselyNotNull, sqliteTrue } from "@evolu/common"
+import { sql } from "kysely"
+
+import { createQuery } from "../../evolu/schema.ts"
+import type { BillId } from "../bill/bill-types.ts"
+import type { DateString } from "../shared/schema.ts"
+import type { MenuVersionId } from "./menu-order-types.ts"
+
+export const menuVersionByIdQuery = (id: MenuVersionId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuVersion")
+      .select(["id", "content"])
+      .where("id", "=", id)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("content", "is not", null)
+      .$narrowType<{ content: KyselyNotNull }>()
+  )
+
+export const menuVersionsNewestFirstQuery = createQuery((db) =>
+  db
+    .selectFrom("menuVersion")
+    .select([
+      "id",
+      sql<string>`coalesce("updatedAt", "createdAt")`.as("onOfferAt"),
+    ])
+    .where("isDeleted", "is not", sqliteTrue)
+    .orderBy("onOfferAt", "desc")
+)
+
+export const lastMenuOrderNumberQuery = (day: DateString) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuOrder")
+      .select("number")
+      .where("day", "=", day)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("number", "is not", null)
+      .$narrowType<{ number: KyselyNotNull }>()
+      .orderBy("number", "desc")
+      .limit(1)
+  )
+
+export const menuOrderByBillIdQuery = (billId: BillId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuOrder")
+      .select("id")
+      .where("billId", "=", billId)
+      .where("isDeleted", "is not", sqliteTrue)
+  )
+
+export const menuOrdersToServeQuery = createQuery((db) =>
+  db
+    .selectFrom("menuOrder")
+    .innerJoin("bill", "bill.id", "menuOrder.billId")
+    .select([
+      "menuOrder.id",
+      "menuOrder.billId",
+      "menuOrder.number",
+      "menuOrder.note",
+      "menuOrder.createdAt",
+      "bill.tableId",
+      "bill.currency",
+    ])
+    .where("menuOrder.isDeleted", "is not", sqliteTrue)
+    .where("menuOrder.servedAt", "is", null)
+    .where("menuOrder.billId", "is not", null)
+    .where("menuOrder.number", "is not", null)
+    .where("bill.currency", "is not", null)
+    .$narrowType<{
+      billId: KyselyNotNull
+      number: KyselyNotNull
+      currency: KyselyNotNull
+    }>()
+    .orderBy("menuOrder.createdAt", "asc")
+)
+
+export const recentMenuOrdersQuery = (createdSince: DateIso) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuOrder")
+      .select(["id", "billId", "pointer", "number", "createdAt"])
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("createdAt", ">=", createdSince)
+      .where("billId", "is not", null)
+      .where("pointer", "is not", null)
+      .where("number", "is not", null)
+      .$narrowType<{
+        billId: KyselyNotNull
+        pointer: KyselyNotNull
+        number: KyselyNotNull
+      }>()
+  )
+
+export const recentMenuOrderClaimsQuery = (createdSince: DateIso) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuOrder")
+      .innerJoin("payment", "payment.billId", "menuOrder.billId")
+      .innerJoin(
+        "reconciliationClaim",
+        "reconciliationClaim.paymentId",
+        "payment.id"
+      )
+      .select(["reconciliationClaim.id", "reconciliationClaim.isDeleted"])
+      .where("menuOrder.isDeleted", "is not", sqliteTrue)
+      .where("menuOrder.createdAt", ">=", createdSince)
+  )

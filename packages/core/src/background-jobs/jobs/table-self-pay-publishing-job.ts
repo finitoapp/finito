@@ -1,14 +1,37 @@
-import { ok, type Run } from "@evolu/common"
+import { DateIso, ok, type Run, sqliteTrue } from "@evolu/common"
+import type { NostrEvent } from "../../integrations/nostr/nostr-event.ts"
 import { fetchYadioBtcExchangeRate } from "../../integrations/yadio/yadio-client.ts"
 import {
   fiatBankAccountQuery,
   sparkAccountQuery,
 } from "../../modules/account/account-queries.ts"
-import { selfPaySettingsQuery } from "../../modules/app-settings/app-settings-queries.ts"
+import {
+  selfPaySettingsQuery,
+  settingsQuery,
+} from "../../modules/app-settings/app-settings-queries.ts"
+import { loadBillCoverage } from "../../modules/bill/bill-guards.ts"
+import { catalogCategoriesQuery } from "../../modules/catalog-category/catalog-category-queries.ts"
+import { catalogItemsQuery } from "../../modules/catalog-item/catalog-item-queries.ts"
 import { activeFioPluginsQuery } from "../../modules/fio-plugin/fio-plugin-queries.ts"
+import {
+  dropReplacedMenuVersions,
+  loadSelfPayMenu,
+  saveSelfPayMenuVersion,
+} from "../../modules/menu-order/menu-order-actions.ts"
+import {
+  recentMenuOrderClaimsQuery,
+  recentMenuOrdersQuery,
+} from "../../modules/menu-order/menu-order-queries.ts"
+import {
+  createSelfPayMenuEvent,
+  createSelfPayOrderConfirmationEvent,
+  type SelfPayOrderConfirmation,
+} from "../../modules/menu-order/menu-order-utils.ts"
 import { activeMonetaPluginsQuery } from "../../modules/moneta-plugin/moneta-plugin-queries.ts"
 import {
+  deriveSelfPayMenuKeys,
   deriveSelfPayRateKey,
+  deriveSelfPaySelectionKey,
   deriveTableSelfPayKeys,
   type TableSelfPayKeys,
 } from "../../modules/shared/key-derivation.ts"
@@ -17,6 +40,7 @@ import type { TableId } from "../../modules/table/table-types.ts"
 import {
   dropExpiredSelfPayViewVersions,
   loadActiveSelfPayRelays,
+  loadSelfPayInstructions,
   loadSelfPayViewPublishedAt,
   loadTableSelfPayView,
   saveSelfPayViewPublishResult,
@@ -48,6 +72,7 @@ import { createKeyedTaskQueue } from "../keyed-task-queue.ts"
 
 const PUBLISH_DEBOUNCE_MS = 2000
 const LIVENESS_INTERVAL_MS = 5 * 60 * 1000
+const CONFIRMED_ORDERS_WINDOW_MS = 24 * 60 * 60 * 1000
 
 interface PublishedView {
   readonly content: string
@@ -105,6 +130,12 @@ class TableSelfPayPublishing {
   >()
   private readonly published = new Map<string, PublishedView>()
   private readonly liveTables = new Map<TableId, LiveTable>()
+  private readonly confirmedOrders = new Map<
+    string,
+    { readonly shown: string; readonly createdAt: number }
+  >()
+  private liveMenu: LiveTable | null = null
+  private liveMenuVersion: string | null = null
   private readonly unsubscribes: ReadonlyArray<() => void>
   private readonly refreshTimer: ReturnType<typeof setInterval>
 
@@ -135,6 +166,26 @@ class TableSelfPayPublishing {
       ].map((query) =>
         evolu.subscribeQuery(query)(() => {
           this.queueTableSync()
+          this.queueMenu()
+        })
+      ),
+      ...[catalogItemsQuery, catalogCategoriesQuery, settingsQuery].map(
+        (query) =>
+          evolu.subscribeQuery(query)(() => {
+            this.queueMenu()
+          })
+      ),
+      ...[recentMenuOrdersQuery, recentMenuOrderClaimsQuery].map((query) =>
+        evolu.subscribeQuery(
+          query(
+            DateIso.orThrow(
+              new Date(
+                run.deps.date.now().getTime() - CONFIRMED_ORDERS_WINDOW_MS
+              ).toISOString()
+            )
+          )
+        )(() => {
+          this.queueConfirmations()
         })
       ),
     ]
@@ -146,6 +197,7 @@ class TableSelfPayPublishing {
 
   start(): void {
     this.queueTableSync()
+    this.queueMenu()
   }
 
   async dispose(): Promise<void> {
@@ -164,6 +216,106 @@ class TableSelfPayPublishing {
 
   private queueRefresh(): void {
     this.queue.enqueue("refresh", () => this.refresh())
+  }
+
+  private queueMenu(): void {
+    this.queue.enqueue("menu", () => this.publishMenu())
+  }
+
+  private queueConfirmations(): void {
+    this.queue.enqueue("confirmations", () => this.publishConfirmations())
+  }
+
+  private async takesOrders(): Promise<boolean> {
+    const [settings] = await this.run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    return (
+      settings?.menuOrdering === sqliteTrue &&
+      settings.orderDeviceId === this.run.deps.deviceId
+    )
+  }
+
+  private async publishMenu(): Promise<void> {
+    if (!(await this.takesOrders())) {
+      this.liveMenu = null
+      this.liveMenuVersion = null
+      return
+    }
+    const { menu } = await this.run.ok(loadSelfPayMenu())
+    await this.run.ok(saveSelfPayMenuVersion(menu))
+    this.liveMenuVersion = menu.version
+    const relays = await this.run.ok(loadActiveSelfPayRelays())
+    const { signingKey, publicKey, readKey } = deriveSelfPayMenuKeys(this.root)
+    const createdAt = await this.publishContent({
+      relays,
+      tag: deriveSelfPayViewTag(readKey),
+      content: JSON.stringify(menu),
+      version: Math.floor(this.run.deps.date.now().getTime() / 1000),
+      createEvent: (version) =>
+        createSelfPayMenuEvent({
+          signingKey,
+          readKey,
+          menu,
+          createdAt: version,
+        }),
+    })
+    const instructions = await this.run.ok(loadSelfPayInstructions())
+    const wasLive = this.liveMenu !== null
+    this.liveMenu = {
+      keys: { signingKey, publicKey, viewKey: readKey },
+      viewVersion: createdAt,
+      currencies: new Set([menu.currency]),
+      lightning: instructions.lightning !== null,
+    }
+    if (!wasLive) {
+      const rates = await this.loadRates([this.liveMenu])
+      await this.publishLiveness(relays, rates, this.liveMenu)
+    }
+  }
+
+  private async publishConfirmations(): Promise<void> {
+    if (!(await this.takesOrders())) return
+    const now = this.run.deps.date.now().getTime()
+    const orders = await this.run.deps.evolu.loadQuery(
+      recentMenuOrdersQuery(
+        DateIso.orThrow(
+          new Date(now - CONFIRMED_ORDERS_WINDOW_MS).toISOString()
+        )
+      )
+    )
+    const relays = await this.run.ok(loadActiveSelfPayRelays())
+    const menuSigningKey = deriveSelfPayMenuKeys(this.root).signingKey
+    const selectionKey = deriveSelfPaySelectionKey(this.root)
+    for (const order of orders) {
+      const { billTotal, claimedSum } = await this.run.ok(
+        loadBillCoverage(order.billId)
+      )
+      const last = this.confirmedOrders.get(order.pointer)
+      const confirmation: SelfPayOrderConfirmation = {
+        v: 1,
+        number: order.number,
+        total: billTotal,
+        covered: Math.min(claimedSum, billTotal),
+        at: Math.max(Math.floor(now / 1000), (last?.createdAt ?? 0) + 1),
+      }
+      const shown = JSON.stringify([confirmation.number, confirmation.covered])
+      if (last?.shown === shown) continue
+      const results = await this.run.deps.nostrRelayClient.publish(
+        relays,
+        createSelfPayOrderConfirmationEvent({
+          menuSigningKey,
+          pointer: order.pointer,
+          selectionKey,
+          confirmation,
+          createdAt: confirmation.at,
+        })
+      )
+      if (results.some(({ accepted }) => accepted)) {
+        this.confirmedOrders.set(order.pointer, {
+          shown,
+          createdAt: confirmation.at,
+        })
+      }
+    }
   }
 
   private async syncTables(): Promise<void> {
@@ -248,14 +400,35 @@ class TableSelfPayPublishing {
     }
   }
 
-  private async publishView(
+  private publishView(
     relays: ReadonlyArray<WssUrl>,
     keys: TableSelfPayKeys,
     view: SelfPayView,
     version: number
   ): Promise<number> {
-    const tag = deriveSelfPayViewTag(keys.viewKey)
-    const content = JSON.stringify(view)
+    return this.publishContent({
+      relays,
+      tag: deriveSelfPayViewTag(keys.viewKey),
+      content: JSON.stringify(view),
+      version,
+      createEvent: (createdAt) =>
+        createSelfPayViewEvent({ ...keys, view, version: createdAt }),
+    })
+  }
+
+  private async publishContent({
+    relays,
+    tag,
+    content,
+    version,
+    createEvent,
+  }: {
+    readonly relays: ReadonlyArray<WssUrl>
+    readonly tag: string
+    readonly content: string
+    readonly version: number
+    readonly createEvent: (createdAt: number) => NostrEvent
+  }): Promise<number> {
     const last = this.published.get(tag)
     if (last?.content === content && hasSameRelays(last.relays, relays)) {
       return last.createdAt
@@ -269,7 +442,7 @@ class TableSelfPayPublishing {
         : version
     const results = await this.run.deps.nostrRelayClient.publish(
       relays,
-      createSelfPayViewEvent({ ...keys, view, version: createdAt })
+      createEvent(createdAt)
     )
     const accepted = results.filter((result) => result.accepted).length
     if (accepted > 0) {
@@ -289,9 +462,8 @@ class TableSelfPayPublishing {
         })),
       })
     )
-    this.run.deps.console.debug("Published table self-pay view.", {
+    this.run.deps.console.debug("Published table self-pay content.", {
       accepted,
-      bills: view.bills.length,
       createdAt,
     })
     return createdAt
@@ -302,12 +474,21 @@ class TableSelfPayPublishing {
       this.schedulePublish(tableId)
     }
     const relays = await this.run.ok(loadActiveSelfPayRelays())
-    const rates = await this.loadRates([...this.liveTables.values()])
+    const liveMenu = this.liveMenu
+    const rates = await this.loadRates([
+      ...this.liveTables.values(),
+      ...(liveMenu === null ? [] : [liveMenu]),
+    ])
     for (const tableId of this.liveTables.keys()) {
       if (this.queue.isDisposed) return
       await this.publishTableLiveness(relays, rates, tableId)
     }
+    if (liveMenu !== null) await this.publishLiveness(relays, rates, liveMenu)
+    this.queueConfirmations()
     await this.run.ok(dropExpiredSelfPayViewVersions())
+    if (this.liveMenuVersion !== null) {
+      await this.run.ok(dropReplacedMenuVersions(this.liveMenuVersion))
+    }
   }
 
   private async publishTableLiveness(
@@ -317,7 +498,14 @@ class TableSelfPayPublishing {
   ): Promise<void> {
     const live = this.liveTables.get(tableId)
     if (live === undefined) return
+    await this.publishLiveness(relays, rates, live)
+  }
 
+  private async publishLiveness(
+    relays: ReadonlyArray<WssUrl>,
+    rates: SelfPayLiveness["rates"],
+    live: LiveTable
+  ): Promise<void> {
     const liveness: SelfPayLiveness = {
       v: 1,
       viewVersion: live.viewVersion,

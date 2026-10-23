@@ -1,0 +1,84 @@
+# web menu-orders.spec.ts: "a paid order is announced, listed to serve and
+# served".
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Table 3
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Table 3
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedMenu
+      QUERY: items=Sv%C3%AD%C4%8Dkov%C3%A1%20na%20smetan%C4%9B:21900:SV%C3%8D%C4%8CK,Coffee:6500
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["home.pay"]}
+- runFlow: ../../subflows/open-sales.yaml
+- tapOn: ${output.re(output.t["nav.orders"])}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveMenuOrder
+      QUERY: table=Table%203&items=Sv%C3%AD%C4%8Dkov%C3%A1%20na%20smetan%C4%9B:1,Coffee:2&note=bez%20cukru&amount=35000
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("orders.announced", { number: 1, table: "Table 3" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '.*${output.re(output.tv("orders.number", { number: 1 }))}.*'
+- assertVisible: .*Table 3.*
+- assertVisible: '${output.re(output.tv("orders.line", { name: "SVÍČK", quantity: 1 }))}'
+- assertVisible: '${output.re(output.tv("orders.line", { name: "Coffee", quantity: 2 }))}'
+- assertNotVisible: .*Svíčková na smetaně.*
+- assertVisible: '${output.re(output.tv("orders.note", { note: "bez cukru" }))}'
+- assertVisible: ${output.re(output.t["orders.paid"])}
+- assertNotVisible: ${output.re(output.t["orders.notFullyPaid"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.served"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000
+- assertNotVisible:
+    id: order-to-serve
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveMenuOrder
+      QUERY: table=Table%203&items=Coffee:1&amount=3000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '.*${output.re(output.tv("orders.number", { number: 2 }))}.*'
+- assertVisible: ${output.re(output.t["orders.notFullyPaid"])}

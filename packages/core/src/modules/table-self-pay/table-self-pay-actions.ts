@@ -47,12 +47,24 @@ import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import { deriveBillSummaryTotal } from "../bill-line/bill-line-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { activeFioPluginsQuery } from "../fio-plugin/fio-plugin-queries.ts"
+import {
+  deriveMenuOrderBillId,
+  loadMenuOrderArrivalRows,
+  loadSelfPayMenuVersion,
+  type MenuOrderArrivalRows,
+} from "../menu-order/menu-order-actions.ts"
+import { menuOrderByBillIdQuery } from "../menu-order/menu-order-queries.ts"
+import {
+  type SelfPayOrderSelection,
+  SelfPayOrderSelectionSchema,
+} from "../menu-order/menu-order-utils.ts"
 import { activeMonetaPluginsQuery } from "../moneta-plugin/moneta-plugin-queries.ts"
 import type { SelfPayPaymentRows } from "../payment/payment-row-actions.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
+  deriveSelfPayMenuKeys,
   deriveSelfPayRateKey,
   deriveSelfPaySelectionKey,
 } from "../shared/key-derivation.ts"
@@ -111,6 +123,8 @@ import {
   SelfPayPublishResultJson,
 } from "./table-self-pay-reach-utils.ts"
 import {
+  deriveOrderSelfPayReference,
+  isOrderSelfPayReference,
   parseSelfPayBankMessage,
   parseSelfPayLightningMemo,
   type SelfPayPointer,
@@ -161,15 +175,18 @@ type SelfPayBill = BillRow & {
 const loadSelfPayBill =
   (
     reference: SelfPayReference,
-    arrivedAt: TimestampMs
+    arrivedAt: TimestampMs,
+    orderBillId: BillId | null = null
   ): Task<SelfPayBill | null, never, EvoluDep> =>
   async (run) => {
-    const matches = await run.deps.evolu.loadQuery(
-      billIdsBySelfPayReferenceQuery(
-        reference,
-        TimestampMs(subDays(arrivedAt, ENDED_BILL_RETENTION_DAYS).getTime())
+    const matches = (
+      await run.deps.evolu.loadQuery(
+        billIdsBySelfPayReferenceQuery(
+          reference,
+          TimestampMs(subDays(arrivedAt, ENDED_BILL_RETENTION_DAYS).getTime())
+        )
       )
-    )
+    ).filter(({ id }) => orderBillId === null || id === orderBillId)
     const [match] = matches
     if (match === undefined || matches.length > 1) return ok(null)
 
@@ -189,6 +206,7 @@ export interface SelfPayAllocationWrite {
 interface SelfPayArrival {
   readonly rows: SelfPayPaymentRows
   readonly allocations: ReadonlyArray<SelfPayAllocationWrite>
+  readonly order: MenuOrderArrivalRows | null
 }
 
 interface SelfPaySelectionAllocation {
@@ -216,7 +234,9 @@ const loadSelfPayShareCandidates =
   }
 
 type SelfPayLookupDeps = EvoluDep &
-  Partial<NostrRelayDep & SelfPayDefaultRelaysDep & TableSelfPayRootDep>
+  Partial<
+    NostrRelayDep & SelfPayDefaultRelaysDep & TableSelfPayRootDep & DeviceIdDep
+  >
 
 export type SelfPayArrivalDeps = SelfPayLookupDeps & DateDep
 
@@ -384,16 +404,213 @@ const creditSelfPayArrival =
         pointer,
         ...method,
       },
-      allocations: allocation.lines.map(({ key, amount: lineAmount }) => ({
-        id: createIdFromString<"SelfPayAllocation">(
-          `selfPayAllocation:${paymentId}:${key}`
-        ),
-        paymentId,
-        billId: bill.id,
-        lineKey: NonEmptyString255(key),
-        amount: PositiveInteger(lineAmount),
-      })),
+      allocations: allocationWrites(paymentId, bill.id, allocation.lines),
+      order: null,
     })
+  }
+
+const allocationWrites = (
+  paymentId: PaymentId,
+  billId: BillId,
+  lines: SelfPayShare["lines"]
+): ReadonlyArray<SelfPayAllocationWrite> =>
+  lines.map(({ key, amount }) => ({
+    id: createIdFromString<"SelfPayAllocation">(
+      `selfPayAllocation:${paymentId}:${key}`
+    ),
+    paymentId,
+    billId,
+    lineKey: NonEmptyString255(key),
+    amount: PositiveInteger(amount),
+  }))
+
+interface MenuOrderIntent {
+  readonly selection: SelfPayOrderSelection
+  readonly currency: FiatCurrency
+}
+
+type SelfPayTarget =
+  | {
+      readonly type: "bill"
+      readonly bill: SelfPayBill
+      readonly selection: SelfPayShareSelection | null
+    }
+  | { readonly type: "newOrder"; readonly intent: MenuOrderIntent }
+  | { readonly type: "waiting" }
+
+type ResolvedSelfPayTarget = Exclude<
+  SelfPayTarget,
+  { readonly type: "waiting" }
+>
+
+const loadMenuOrderIntent =
+  (
+    pointer: SelfPayPointer
+  ): Task<MenuOrderIntent | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    const selection = await run.ok(
+      lookUpSelfPaySelection(pointer, SelfPayOrderSelectionSchema)
+    )
+    if (selection === null) return ok(null)
+    const menu = await run.ok(loadSelfPayMenuVersion(selection.menu))
+    return ok(menu === null ? null : { selection, currency: menu.currency })
+  }
+
+const isOrderDevice =
+  (): Task<boolean, never, SelfPayArrivalDeps> => async (run) => {
+    const [settings] = await run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    return ok(
+      run.deps.deviceId !== undefined &&
+        settings?.orderDeviceId === run.deps.deviceId
+    )
+  }
+
+const resolveSelfPayTarget =
+  ({
+    transaction,
+    reference,
+    pointer,
+  }: {
+    readonly transaction: SelfPayTransaction
+    readonly reference: SelfPayReference
+    readonly pointer: SelfPayPointer | null
+  }): Task<SelfPayTarget | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    if (isOrderSelfPayReference(reference)) {
+      if (
+        pointer === null ||
+        reference !== deriveOrderSelfPayReference(pointer) ||
+        !(await run.ok(isOrderDevice()))
+      ) {
+        return ok(null)
+      }
+      const orderBillId = deriveMenuOrderBillId(pointer)
+      const bill = await run.ok(
+        loadSelfPayBill(reference, transaction.occurredAt, orderBillId)
+      )
+      if (bill !== null) return ok({ type: "bill", bill, selection: null })
+      const [recorded] = await run.deps.evolu.loadQuery(
+        menuOrderByBillIdQuery(orderBillId)
+      )
+      if (recorded !== undefined) return ok(null)
+      const intent = await run.ok(loadMenuOrderIntent(pointer))
+      return ok(
+        intent === null ? { type: "waiting" } : { type: "newOrder", intent }
+      )
+    }
+
+    const bill = await run.ok(
+      loadSelfPayBill(reference, transaction.occurredAt)
+    )
+    if (bill === null) return ok(null)
+    const lookup = await run.ok(
+      resolveSelfPaySelection(pointer, transaction.firstSeenAt)
+    )
+    return ok(
+      lookup.type === "waiting"
+        ? lookup
+        : { type: "bill", bill, selection: lookup.selection }
+    )
+  }
+
+const selfPayTargetCurrency = (target: ResolvedSelfPayTarget): FiatCurrency =>
+  target.type === "bill" ? target.bill.currency : target.intent.currency
+
+const creditMenuOrderArrival =
+  ({
+    transaction,
+    reference,
+    amount,
+    pointer,
+    intent,
+    ...method
+  }: Pick<SelfPayPaymentRows, "iban" | "spark"> & {
+    readonly transaction: SelfPayTransaction
+    readonly reference: SelfPayReference
+    readonly amount: number
+    readonly pointer: SelfPayPointer
+    readonly intent: MenuOrderIntent
+  }): Task<SelfPayArrival | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    const { deviceId, tableSelfPayRoot } = run.deps
+    if (deviceId === undefined || tableSelfPayRoot === undefined) {
+      return ok(null)
+    }
+    const order = await run.ok(
+      loadMenuOrderArrivalRows({
+        pointer,
+        reference,
+        selection: intent.selection,
+        deviceId,
+        root: tableSelfPayRoot,
+      })
+    )
+    if (
+      order === null ||
+      !meetsSelfPayMinimum({
+        amount,
+        remainder: order.total,
+        currency: intent.currency,
+      })
+    ) {
+      return ok(null)
+    }
+
+    const billId = order.bill.bill.id
+    const covers = amount >= order.total
+    const paymentId = selfPayPaymentId(transaction)
+    return ok({
+      rows: {
+        payment: {
+          id: paymentId,
+          deviceId,
+          billId,
+          tableId: order.bill.bill.tableId,
+          amount: NonNegativeInteger(amount),
+          currency: intent.currency,
+          tipAmount: NonNegativeInteger(covers ? amount - order.total : 0),
+          canceledAt: null,
+          expiresAt: null,
+        },
+        pointer,
+        ...method,
+      },
+      allocations: covers
+        ? allocationWrites(paymentId, billId, order.lines)
+        : [],
+      order,
+    })
+  }
+
+const creditSelfPayTarget =
+  ({
+    target,
+    ...arrival
+  }: Pick<SelfPayPaymentRows, "iban" | "spark"> & {
+    readonly target: ResolvedSelfPayTarget
+    readonly transaction: SelfPayTransaction
+    readonly reference: SelfPayReference
+    readonly amount: number
+    readonly pointer: SelfPayPointer | null
+  }): Task<SelfPayArrival | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    if (target.type === "bill") {
+      return run(
+        creditSelfPayArrival({
+          ...arrival,
+          bill: target.bill,
+          selection: target.selection,
+        })
+      )
+    }
+    if (arrival.pointer === null) return ok(null)
+    return run(
+      creditMenuOrderArrival({
+        ...arrival,
+        pointer: arrival.pointer,
+        intent: target.intent,
+      })
+    )
   }
 
 const loadBankArrival =
@@ -406,26 +623,26 @@ const loadBankArrival =
     )
     if (!reference.success) return ok(null)
 
-    const bill = await run.ok(
-      loadSelfPayBill(reference.data, transaction.occurredAt)
-    )
-    if (bill === null || bill.currency !== transaction.currency) return ok(null)
-
     const pointer =
       parseSelfPayBankMessage(transaction.recipientMessage)?.pointer ?? null
-    const lookup = await run.ok(
-      resolveSelfPaySelection(pointer, transaction.firstSeenAt)
+    const target = await run.ok(
+      resolveSelfPayTarget({ transaction, reference: reference.data, pointer })
     )
-    if (lookup.type === "waiting") return ok(null)
+    if (
+      target === null ||
+      target.type === "waiting" ||
+      selfPayTargetCurrency(target) !== transaction.currency
+    ) {
+      return ok(null)
+    }
 
     return run(
-      creditSelfPayArrival({
+      creditSelfPayTarget({
+        target,
         transaction,
-        bill,
         reference: reference.data,
         amount: transaction.amount,
         pointer,
-        selection: lookup.selection,
         iban: {
           accountId: transaction.accountId,
           variableSymbol: VariableSymbol(reference.data),
@@ -448,15 +665,20 @@ const loadLightningArrival =
     )
     if (!invoice.ok || memo === null) return ok(null)
 
-    const bill = await run.ok(
-      loadSelfPayBill(memo.reference, transaction.occurredAt)
+    const target = await run.ok(
+      resolveSelfPayTarget({
+        transaction,
+        reference: memo.reference,
+        pointer: memo.pointer,
+      })
     )
-    if (bill === null) return ok(null)
+    if (target === null || target.type === "waiting") return ok(null)
+    const currency = selfPayTargetCurrency(target)
 
     const rateKey = deriveSelfPayRateKey(root)
     const { rate } = memo
     if (
-      !verifySelfPayRate(rateKey, bill.currency, rate) ||
+      !verifySelfPayRate(rateKey, currency, rate) ||
       invoice.value.createdAt < rate.validFrom * 1000 ||
       invoice.value.createdAt > selfPayRateValidUntil(rate.validFrom) * 1000 ||
       transaction.occurredAt > selfPayRatePayableUntil(rate.validFrom) * 1000
@@ -468,23 +690,18 @@ const loadLightningArrival =
       memo.amount,
       selfPayCreditForSats({
         sats: transaction.amount,
-        fractionDigits: currencyFractionDigits[bill.currency],
+        fractionDigits: currencyFractionDigits[currency],
         msatPerMajor: rate.msatPerMajor,
       })
     )
-    const lookup = await run.ok(
-      resolveSelfPaySelection(memo.pointer, transaction.firstSeenAt)
-    )
-    if (lookup.type === "waiting") return ok(null)
 
     return run(
-      creditSelfPayArrival({
+      creditSelfPayTarget({
+        target,
         transaction,
-        bill,
         reference: memo.reference,
         amount,
         pointer: memo.pointer,
-        selection: lookup.selection,
         iban: null,
         spark: {
           accountId: transaction.accountId,
@@ -557,7 +774,7 @@ const makeSparkWalletPrivate = async (
     : err(createSparkWalletPublicError())
 }
 
-const prepareSelfPayInstructions =
+export const loadSelfPayInstructions =
   (): Task<
     SelfPayInstructions,
     never,
@@ -580,6 +797,11 @@ const prepareSelfPayInstructions =
       ])
     )
     const payee = settings?.selfPayGuestName ?? null
+    const menuKeys = deriveSelfPayMenuKeys(run.deps.tableSelfPayRoot)
+    const menuPointer = {
+      publicKey: bytesToHex(menuKeys.publicKey),
+      readKey: bytesToHex(menuKeys.readKey),
+    }
     const accounts = pickSelfPayAccounts({
       bankAccount,
       sparkAccount,
@@ -624,6 +846,7 @@ const prepareSelfPayInstructions =
       selectionKey: bytesToHex(
         deriveSelfPaySelectionKey(run.deps.tableSelfPayRoot)
       ),
+      menu: settings?.menuOrdering === sqliteTrue ? menuPointer : null,
     })
   }
 
@@ -743,19 +966,27 @@ export const loadTableSelfPayView =
       })
     }
 
-    const [instructions, confirmations] = await Promise.all([
-      run.ok(prepareSelfPayInstructions()),
+    const [instructions, confirmations, [settings]] = await Promise.all([
+      run.ok(loadSelfPayInstructions()),
       run.deps.evolu.loadQuery(
         tableSelfPayConfirmationsQuery(
           table.id,
           selfPayConfirmationsEndedAfter(version)
         )
       ),
+      run.deps.evolu.loadQuery(selfPaySettingsQuery),
     ])
+    const shownBills =
+      settings?.selfPayBillsHidden === sqliteTrue
+        ? []
+        : bills.filter(
+            ({ reference }) =>
+              reference === null || !isOrderSelfPayReference(reference)
+          )
     const offered = findOfferedSelfPayReferences(openBills)
     const view = projectTableSelfPayView({
       tableName: table.name,
-      bills,
+      bills: shownBills,
       confirmations,
       offered,
       instructions,
@@ -767,8 +998,8 @@ export const loadTableSelfPayView =
     return ok({
       view,
       version,
-      currencies: new Set(bills.map(({ currency }) => currency)),
-      references: bills.flatMap(({ id, deviceId, reference }) => {
+      currencies: new Set(shownBills.map(({ currency }) => currency)),
+      references: shownBills.flatMap(({ id, deviceId, reference }) => {
         const offeredReference = offered.get(id)
         return deviceId !== null &&
           reference === null &&

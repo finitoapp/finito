@@ -44,7 +44,7 @@ export function GuestLightningPayment({
   pointer,
 }: {
   readonly lightning: NonNullable<SelfPayView["lightning"]>
-  readonly bill: SelfPayViewBill
+  readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly rate: SelfPaySignedRate | null
   readonly amount: number
   readonly pointer: SelfPayPointer

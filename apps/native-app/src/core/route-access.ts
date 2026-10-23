@@ -20,6 +20,7 @@ export type NativeRoutePath =
   | "/activity/:paymentId"
   | "/activity/:paymentId/refund"
   | "/activity/:paymentId/refunds/:refundId"
+  | "/orders"
   | "/withdraw"
   | "/withdraw/new"
   | "/withdraw/:withdrawalId"
@@ -111,6 +112,7 @@ export const routeAccess = {
   "/activity/:paymentId/refunds/:refundId": "activity",
   // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
   "/activity/stats": "stats",
+  "/orders": "free",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).
   "/withdraw": "admin",
   "/withdraw/new": "admin",

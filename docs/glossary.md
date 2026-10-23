@@ -64,6 +64,14 @@ where it is specified; the specification wins over this page.
   edited in place.
 - **Table** (`table`) — a table in the venue, with a seat count; a bill can be
   assigned to one, and the pos grid shows them.
+- **Menu** — the catalog items guests can order at the table: those put in
+  the menu (`catalogItem.inMenu`) and not sold out (`catalogItem.soldOut`),
+  by their public name. The device that takes orders publishes it
+  (`docs/decisions/menu-ordering/0001`). Not the catalog, which staff sell
+  from.
+- **Order** (`menu-order`) — what a guest ordered from the menu and paid. Once
+  paid it is a bill of its own with a number of the day; staff mark it served.
+  Not a bill line and not a payment.
 
 ## Collecting money
 
@@ -79,9 +87,9 @@ where it is specified; the specification wins over this page.
   on an account: a bank transfer from FIO, a Spark transfer, cash taken, a
   withdrawal. A payment says money is expected; a transaction says it came.
 - **Pointer** — the 32 characters after `PK1` in a self-pay payment's
-  message or memo, naming the selection the guest published
+  message or memo, naming the selection or order the guest published
   (`docs/decisions/table-self-pay/0020`). Not the variable symbol, which is
-  the bill's **reference**.
+  the bill's or order's **reference**.
 - **Reconciliation claim** (`reconciliation-claim`) — the link that says this
   transaction pays that payment, written by the sync jobs (`source: "auto"`)
   or by hand (`"manual"`). A payment is paid because a claim exists

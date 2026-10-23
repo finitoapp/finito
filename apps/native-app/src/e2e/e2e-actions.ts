@@ -1,4 +1,4 @@
-import { sqliteFalse, sqliteTrue } from "@evolu/common"
+import { bytesToHex, sqliteFalse, sqliteTrue } from "@evolu/common"
 import { accessLastActivityAtom } from "@payky/app-shared/access-state"
 import {
   accountListQuery,
@@ -20,8 +20,14 @@ import { createAccountTransaction } from "@payky/core/modules/account-transactio
 import {
   completeOnboarding,
   markRecoveryPhraseVerified,
+  setMenuOrdering,
+  setSelfPayBillsHidden,
 } from "@payky/core/modules/app-settings/app-settings-actions"
-import { PaymentMethodOrderJson } from "@payky/core/modules/app-settings/app-settings-utils"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import {
+  getFiatCurrency,
+  PaymentMethodOrderJson,
+} from "@payky/core/modules/app-settings/app-settings-utils"
 import { cancelBill } from "@payky/core/modules/bill/bill-actions"
 import {
   billByIdQuery,
@@ -34,6 +40,10 @@ import {
 } from "@payky/core/modules/bill-line/bill-line-actions"
 import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
 import {
+  createCatalogItemAtEnd,
+  setCatalogItemInMenu,
+} from "@payky/core/modules/catalog-item/catalog-item-actions"
+import {
   registerDevice,
   setDevicePinBlocked,
   unblockDevice,
@@ -45,6 +55,11 @@ import { toEetCashRegisterId } from "@payky/core/modules/eet/eet-utils"
 import { saveFioPlugin } from "@payky/core/modules/fio-plugin/fio-plugin-actions"
 import { upsertItemSnapshot } from "@payky/core/modules/item/item-actions"
 import { createStandaloneItemSnapshot } from "@payky/core/modules/item/item-utils"
+import {
+  loadSelfPayMenu,
+  saveSelfPayMenuVersion,
+} from "@payky/core/modules/menu-order/menu-order-actions"
+import { createSelfPayOrderSelectionText } from "@payky/core/modules/menu-order/menu-order-utils"
 import {
   createPayment,
   markPaymentPaidCash,
@@ -66,6 +81,8 @@ import {
 } from "@payky/core/modules/shared/evolu-utils"
 import {
   createMasterKey,
+  deriveSelfPaySelectionKey,
+  deriveTableSelfPayKeys,
   deriveTableSelfPayRoot,
   masterKeyToMnemonic,
 } from "@payky/core/modules/shared/key-derivation"
@@ -83,7 +100,12 @@ import {
   TimestampMsSchema,
   VariableSymbol,
 } from "@payky/core/modules/shared/schema"
-import { formatSelfPayBankMessage } from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
+import { createSelfPaySelectionEvent } from "@payky/core/modules/table-self-pay/table-self-pay-pointer-utils"
+import { selfPayTablesQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
+import {
+  deriveOrderSelfPayReference,
+  formatSelfPayBankMessage,
+} from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
 import { router } from "expo-router"
 import type { createStore } from "jotai"
 import type { SetStateAction } from "react"
@@ -155,6 +177,41 @@ const GuestBankTransferParams = z.object({
   people: z.coerce.number().int().min(2).optional(),
   amount: z.coerce.number().int().positive().optional(),
   message: z.string().min(1).optional(),
+})
+
+const NonNegativeIntegerParam = z.string().regex(/^\d+$/u).transform(Number)
+
+const MenuItemParam = z
+  .string()
+  .transform((item) => item.split(":"))
+  .pipe(
+    z.union([
+      z.tuple([z.string().min(1), NonNegativeIntegerParam]),
+      z.tuple([z.string().min(1), NonNegativeIntegerParam, z.string().min(1)]),
+    ])
+  )
+
+const SeedMenuParams = z.object({
+  items: z
+    .string()
+    .transform((items) => items.split(","))
+    .pipe(z.array(MenuItemParam)),
+  billsHidden: z.stringbool().default(false),
+})
+
+const OrderedItemParam = z
+  .string()
+  .transform((item) => item.split(":"))
+  .pipe(z.tuple([z.string().min(1), PositiveIntegerParam]))
+
+const ReceiveMenuOrderParams = z.object({
+  table: z.string().min(1),
+  items: z
+    .string()
+    .transform((items) => items.split(","))
+    .pipe(z.array(OrderedItemParam)),
+  note: z.string().optional(),
+  amount: z.coerce.number().int().positive(),
 })
 
 export const e2eActions: Readonly<Record<string, E2eAction>> = {
@@ -419,11 +476,11 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
     return undefined
   },
 
-  receiveGuestBankTransfer: async (run, params) => {
+  receiveGuestBankTransfer: async (run, params, { deviceId }) => {
     const { billId, amount, message, ...pick } =
       GuestBankTransferParams.parse(params)
     const selection = await selectSelfPayShare(run, billId, pick)
-    await receiveBankTransfer(run, {
+    await receiveBankTransfer(run, deviceId, {
       amount: amount ?? selection.amount,
       currency: selection.bill.currency,
       variableSymbol: selection.bill.reference,
@@ -694,6 +751,84 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
       throw new Error("EET is not set up, so no sale was created.")
     return `pokl=${toEetCashRegisterId(otherDeviceId)}`
   },
+
+  /**
+   * `__e2eSeedMenu`: ordering on with this device taking the orders, and
+   * `items` (`name:amount[:internalName]`, comma-separated) in the menu.
+   */
+  seedMenu: async (run, params, { deviceId }) => {
+    const { items, billsHidden } = SeedMenuParams.parse(params)
+    const [settings] = await run.deps.evolu.loadQuery(settingsQuery)
+    await run.ok(setMenuOrdering({ on: true, deviceId }))
+    await run.ok(setSelfPayBillsHidden(billsHidden))
+    for (const [name, amount, internalName] of items) {
+      const id = await run.ok(
+        createCatalogItemAtEnd({
+          deviceId: null,
+          categoryId: null,
+          name: NonEmptyString255(name),
+          description: null,
+          internalName:
+            internalName === undefined ? null : NonEmptyString255(internalName),
+          internalDescription: null,
+          sku: null,
+          currency: getFiatCurrency(settings),
+          unitAmount: NonNegativeInteger(amount),
+          scanCode: null,
+          taxRateId: null,
+        })
+      )
+      await run.ok(setCatalogItemInMenu({ id, inMenu: true }))
+    }
+    return undefined
+  },
+
+  /**
+   * `__e2eReceiveMenuOrder`: a guest orders `items` (`name:quantity`,
+   * comma-separated) at `table`, publishes the order to the self-pay relays
+   * and pays `amount` by bank transfer, recorded as the order device's FIO
+   * sync would.
+   */
+  receiveMenuOrder: async (run, params, { deviceId }) => {
+    const { table, items, note, amount } = ReceiveMenuOrderParams.parse(params)
+    const root = deriveTableSelfPayRoot(run.deps.masterKey)
+    const [{ menu }, tables] = await Promise.all([
+      run.ok(loadSelfPayMenu()),
+      run.deps.evolu.loadQuery(selfPayTablesQuery),
+    ])
+    await run.ok(saveSelfPayMenuVersion(menu))
+    const tableRow = tables.find(({ name }) => name === table)
+    if (tableRow === undefined) throw new Error(`Table ${table} not found.`)
+    const menuItems = menu.categories.flatMap((category) => category.items)
+    const { pointer, event } = createSelfPaySelectionEvent({
+      selectionText: createSelfPayOrderSelectionText({
+        tablePublicKey: bytesToHex(
+          deriveTableSelfPayKeys(root, tableRow.id, tableRow.selfPayEpoch ?? 0)
+            .publicKey
+        ),
+        menu,
+        items: items.map(([name, quantity]) => {
+          const item = menuItems.find((candidate) => candidate.name === name)
+          if (item === undefined) throw new Error(`${name} is not in the menu.`)
+          return { key: item.key, quantity }
+        }),
+        note: note ?? null,
+      }),
+      selectionKey: deriveSelfPaySelectionKey(root),
+      createdAt: Math.floor(run.deps.date.now().getTime() / 1000),
+    })
+    await createNostrRelayClient().publish(
+      nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+      event
+    )
+    await receiveBankTransfer(run, deviceId, {
+      amount,
+      currency: menu.currency,
+      variableSymbol: deriveOrderSelfPayReference(pointer),
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    return undefined
+  },
 }
 
 /** An IBAN account transaction matching `paymentId`'s prepared details. */
@@ -729,6 +864,7 @@ async function createIbanTransaction(
 
 async function receiveBankTransfer(
   run: NativeAppRun,
+  deviceId: DeviceId,
   transfer: {
     readonly amount: number
     readonly currency: FiatCurrency
@@ -762,6 +898,7 @@ async function receiveBankTransfer(
   )
   await using selfPayRun = run.create({
     ...run.deps,
+    deviceId,
     tableSelfPayRoot: deriveTableSelfPayRoot(run.deps.masterKey),
     nostrRelayClient: createNostrRelayClient(),
     selfPayDefaultRelays: nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,

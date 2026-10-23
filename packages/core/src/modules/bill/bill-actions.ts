@@ -15,6 +15,7 @@ import type { BillLineRow, billLine } from "../bill-line/bill-line.ts"
 import {
   insertBillLineRows,
   loadCalculatedBillLineSummaries,
+  upsertBillLineRows,
 } from "../bill-line/bill-line-actions.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import {
@@ -127,7 +128,7 @@ export const createBill =
  * `splitBillIntoNewBill`) can reuse this instead of duplicating it — mirrors
  * `payment-number-actions.ts`'s `loadNextPaymentNumber`.
  */
-const loadNextBillDisplayNumber =
+export const loadNextBillDisplayNumber =
   (): Task<PositiveInteger, never, EvoluDep> => async (run) => {
     const [last] = await run.deps.evolu.loadQuery(lastBillDisplayNumberQuery)
     const lastDisplayNumber = last?.displayNumber ?? 0
@@ -162,6 +163,22 @@ export const createBillAtEnd =
 
     return ok(input.id)
   }
+export interface MenuOrderBillRows {
+  readonly bill: UpsertValues<typeof bill>
+  readonly items: ReadonlyArray<ItemRow>
+  readonly lines: ReadonlyArray<BillLineRow>
+}
+
+export const upsertMenuOrderBillRows = (
+  evolu: EvoluDep["evolu"],
+  { bill: billRow, items, lines }: MenuOrderBillRows,
+  options: MutationOptions
+): void => {
+  evolu.upsert("bill", removeUndefinedValues(billRow), options)
+  for (const snapshot of items) upsertItemSnapshot(evolu, snapshot, options)
+  upsertBillLineRows(evolu, lines, options)
+}
+
 export const assignBillToTable =
   (
     input: Pick<UpdateValues<typeof bill>, "id" | "tableId">

@@ -19,8 +19,9 @@ import {
   useNavigate,
 } from "@tanstack/react-router"
 import { LoaderCircleIcon } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { AccessGate } from "@/components/app/access-gate.tsx"
+import { MenuOrderAnnouncer } from "@/components/app/menu-order-announcer.tsx"
 import { MenuNav } from "@/components/menu-nav.tsx"
 import { PhoneViewport } from "@/components/phone-viewport.tsx"
 import { EetSandboxBanner } from "@/features/shared/eet-sandbox-banner.tsx"
@@ -72,6 +73,9 @@ function TerminalLayout() {
     >
       {isSandboxActive ? <EetSandboxBanner /> : null}
       {menu ? <MenuNav active={menu.tab} root={menu.root === true} /> : null}
+      <Suspense fallback={null}>
+        <MenuOrderAnnouncer />
+      </Suspense>
       <PhoneViewport
         className={
           terminalLayout?.viewportClassName ?? defaultViewportClassName
