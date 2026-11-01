@@ -43,7 +43,7 @@
 
 - `apps/web-app`, `apps/landing`, `apps/cli` and `apps/native-shell` are private Bun workspaces; `packages/core` owns the shared domain. Keep root scripts as the public entry points.
 - Core imports no application source, UI frameworks, browser bootstrap or Capacitor implementations. Its internal imports are relative; consumers use explicit `@payky/core/...` subpaths. Node runtime and testing helpers have separate entry points.
-- Root `bun run build` emits core JavaScript before the web build; `bun run check:api` verifies production Node resolution. `apps/web-app/vercel.json` is the deployment configuration; Vercel's project root must be `apps/web-app` with outside workspace inputs enabled.
+- Root `bun run build` emits core JavaScript before the web build; `bun run check:api` verifies production Node resolution. `apps/web-app/vercel.json` is the deployment configuration; Vercel's project root must be `apps/web-app` with outside workspace inputs enabled. `apps/native-app/vercel.json` deploys Finito's PWA with the same API, each handler re-exported from `apps/native-app/api` (`docs/finito-deployment.md`).
 - Keep the root CalVer, lockfile, patches, docs, decision identifiers and release automation at the root. Native output is `apps/web-app/dist-native`, distinct from the web deployment's `dist`.
 
 ## Project Structure
