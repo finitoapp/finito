@@ -8,6 +8,7 @@ import {
 import { useAtomValue } from "jotai"
 import { useCallback, useMemo } from "react"
 import { deviceEvoluAtom, deviceSettingsQuery } from "../atoms/device-evolu.ts"
+import { appBrand } from "../core/app-brand.ts"
 import { useDeviceEvoluQuery } from "./use-evolu-query.ts"
 
 /** Number and money formatting locale; falls back to the language's, as web's `useLocale`. */
@@ -21,7 +22,10 @@ export function useTranslation() {
   const language =
     useDeviceEvoluQuery(deviceSettingsQuery).data[0]?.language ?? "en"
 
-  return useMemo(() => ({ language, t: createTranslate(language) }), [language])
+  return useMemo(
+    () => ({ language, t: createTranslate(language, appBrand) }),
+    [language]
+  )
 }
 
 /** Writes the device language (unsynced), as web's `useSetLanguage` does. */

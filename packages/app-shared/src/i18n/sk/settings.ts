@@ -1,23 +1,23 @@
 import type { enSettings } from "../en/settings.ts"
 
 export const skSettings = {
-  "settings.about.app.title": "Payky",
+  "settings.about.app.title": "{appName}",
   "settings.about.description": "Verzia, podmienky a kontakt",
   "settings.about.github.description": "Zapojte sa do vývoja aplikácie",
   "settings.about.github.title": "Zdrojový kód na GitHube",
   "settings.about.privacy.body":
-    "PAYKY - ZÁSADY OCHRANY SÚKROMIA\n\n1. ZBER DÁT\nPayky nepredáva osobné údaje a je navrhnuté tak, aby aplikačné dáta zostávali lokálne vo vašom zariadení. Aplikácia ukladá nastavenia terminálu, katalógové dáta, záznamy platieb a súvisiace prevádzkové dáta lokálne a synchronizuje aplikačné dáta cez Evolu.\n\n2. PLATOBNÉ DÁTA\nPlatobné a terminálové dáta môžu obsahovať sumy, časové údaje, názvy položiek, stav platby, informácie o Spark peňaženke, identifikátory zariadení a ďalšie záznamy potrebné na prevádzku bitcoinového platobného terminálu. Chráňte svoje zariadenie, prihlasovacie údaje, zálohy a prístupové dáta k peňaženke, najmä obnovovaciu frázu.\n\n3. SIEŤOVÁ KOMUNIKÁCIA\nAplikácia môže komunikovať s:\n- infraštruktúrou Evolu na synchronizáciu lokálnych aplikačných dát\n- Spark operátormi a poskytovateľmi služieb Spark na prevádzku Spark peňaženky a odosielanie či prijímanie bitcoinových platieb\n- Lightning alebo peňaženkovými službami používanými na vytvorenie alebo vyrovnanie platieb\n- cenovými alebo kurzovými API, ak je zapnutý fiat prepočet\n- Open Food Facts a Open Beauty Facts na dohľadanie naskenovaných čiarových kódov, ak je zapnuté dohľadanie produktov\n- Server Payky a jeho poskytovateľa AI na odpovede AI asistenta, ak je zapnutý: vaše otázky, odpovede asistenta a, ak to povolíte, účty a platby, ktoré asistent číta\n\nTieto služby môžu mať vlastné zásady ochrany súkromia, logy a pravidlá uchovávania dát.\n\n4. ANALYTIKA A HLÁSENIE CHÝB\nPayky nepoužíva analytické ani sledovacie služby. K dispozícii je voliteľné hlásenie chýb cez Sentry, ktoré pomáha diagnostikovať pády a chyby aplikácie. Je vo východiskovom stave vypnuté a aktivuje sa len vtedy, keď ho zapnete v Nastavenia > O aplikácii > Dáta a súkromie. Po zapnutí môžu hlásenia chýb obsahovať informácie o zariadení a aplikácii a chybové správy a stack trace; obnovovacie frázy a čísla bankových účtov sú pred odoslaním automaticky redigované.\n\n5. SIEŤ SPARK\nPlatby cez Spark peňaženku spracúvajú Spark operátori a poskytovatelia služieb Spark, ktorí môžu vidieť sumy transakcií, časovanie, identifikátory peňaženky a súvisiace metadáta.\n\n6. ZÁLOHY A SYNCHRONIZÁCIA\nAk sú zapnuté synchronizačné alebo zálohovacie funkcie, aplikačné dáta môžu byť prenášané do synchronizačnej infraštruktúry. So synchronizovanými dátami zaobchádzajte ako s prevádzkovými obchodnými dátami a chráňte každé zariadenie, ktoré k nim má prístup.\n\n7. KONTAKT\nKontaktné údaje pre otázky súkromia budú zverejnené v dokumentácii projektu.\n\nPosledná aktualizácia: október 2026",
+    "{appName} - ZÁSADY OCHRANY SÚKROMIA\n\n1. ZBER DÁT\n{appName} nepredáva osobné údaje a je navrhnuté tak, aby aplikačné dáta zostávali lokálne vo vašom zariadení. Aplikácia ukladá nastavenia terminálu, katalógové dáta, záznamy platieb a súvisiace prevádzkové dáta lokálne a synchronizuje aplikačné dáta cez Evolu.\n\n2. PLATOBNÉ DÁTA\nPlatobné a terminálové dáta môžu obsahovať sumy, časové údaje, názvy položiek, stav platby, informácie o Spark peňaženke, identifikátory zariadení a ďalšie záznamy potrebné na prevádzku bitcoinového platobného terminálu. Chráňte svoje zariadenie, prihlasovacie údaje, zálohy a prístupové dáta k peňaženke, najmä obnovovaciu frázu.\n\n3. SIEŤOVÁ KOMUNIKÁCIA\nAplikácia môže komunikovať s:\n- infraštruktúrou Evolu na synchronizáciu lokálnych aplikačných dát\n- Spark operátormi a poskytovateľmi služieb Spark na prevádzku Spark peňaženky a odosielanie či prijímanie bitcoinových platieb\n- Lightning alebo peňaženkovými službami používanými na vytvorenie alebo vyrovnanie platieb\n- cenovými alebo kurzovými API, ak je zapnutý fiat prepočet\n- Open Food Facts a Open Beauty Facts na dohľadanie naskenovaných čiarových kódov, ak je zapnuté dohľadanie produktov\n- Server {appNameGen} a jeho poskytovateľa AI na odpovede AI asistenta, ak je zapnutý: vaše otázky, odpovede asistenta a, ak to povolíte, účty a platby, ktoré asistent číta\n\nTieto služby môžu mať vlastné zásady ochrany súkromia, logy a pravidlá uchovávania dát.\n\n4. ANALYTIKA A HLÁSENIE CHÝB\n{appName} nepoužíva analytické ani sledovacie služby. K dispozícii je voliteľné hlásenie chýb cez Sentry, ktoré pomáha diagnostikovať pády a chyby aplikácie. Je vo východiskovom stave vypnuté a aktivuje sa len vtedy, keď ho zapnete v Nastavenia > O aplikácii > Dáta a súkromie. Po zapnutí môžu hlásenia chýb obsahovať informácie o zariadení a aplikácii a chybové správy a stack trace; obnovovacie frázy a čísla bankových účtov sú pred odoslaním automaticky redigované.\n\n5. SIEŤ SPARK\nPlatby cez Spark peňaženku spracúvajú Spark operátori a poskytovatelia služieb Spark, ktorí môžu vidieť sumy transakcií, časovanie, identifikátory peňaženky a súvisiace metadáta.\n\n6. ZÁLOHY A SYNCHRONIZÁCIA\nAk sú zapnuté synchronizačné alebo zálohovacie funkcie, aplikačné dáta môžu byť prenášané do synchronizačnej infraštruktúry. So synchronizovanými dátami zaobchádzajte ako s prevádzkovými obchodnými dátami a chráňte každé zariadenie, ktoré k nim má prístup.\n\n7. KONTAKT\nKontaktné údaje pre otázky súkromia budú zverejnené v dokumentácii projektu.\n\nPosledná aktualizácia: október 2026",
   "settings.about.privacy.description":
     "Dáta aplikácie sa ukladajú lokálne a synchronizujú cez Evolu.",
-  "settings.about.privacy.heading": "Zásady ochrany súkromia Payky",
+  "settings.about.privacy.heading": "Zásady ochrany súkromia {appNameGen}",
   "settings.about.privacy.summary":
     "Prispôsobené pre lokálny bitcoinový platobný terminál.",
   "settings.about.privacy.title": "Dáta a súkromie",
   "settings.about.terms.body":
-    'PAYKY - PODMIENKY POUŽÍVANIA\n\n1. PRIJATIE\nPoužívaním tejto aplikácie platobného terminálu súhlasíte s týmito podmienkami.\n\n2. POVAHA SLUŽBY\nPayky je lokálny bitcoinový platobný terminál využívajúci protokol Spark pre bitcoinové a Lightning platby a súvisiacu platobnú infraštruktúru. Zodpovedáte za konfiguráciu aplikácie, výber služieb aj za nakladanie s prijatými prostriedkami.\n\n3. PRÍSTUP A OBNOVA\nChráňte svoje zariadenie, prihlasovacie údaje, zálohy a všetky prístupové dáta k peňaženke, najmä obnovovaciu frázu. Payky nemôže obnoviť stratené prihlasovacie údaje, stratenú obnovovaciu frázu ani prostriedky odoslané na nesprávne ciele.\n\n4. BEZ ZÁRUKY\nSoftvér sa poskytuje "tak, ako je", bez akejkoľvek záruky. Používate ho na vlastné riziko.\n\n5. OBMEDZENIE ZODPOVEDNOSTI\nNezodpovedáme za stratu prostriedkov, prerušenie podnikania, zlyhanie platby, chyby v softvéri, chybu používateľa ani zlyhanie siete alebo služby tretej strany.\n\n6. SPARK PEŇAŽENKA\nSpark peňaženka je nekustodiálna: jej kľúče sa odvodzujú vo vašom zariadení z vašej obnovovacej frázy. Prevody závisia od Spark operátorov a poskytovateľov služieb Spark, ktorí môžu zlyhať, byť nedostupní alebo zmeniť svoje podmienky. Držte len zostatky, o ktoré ste pripravení prísť.\n\n7. SÚKROMIE\nPayky je navrhnuté tak, aby ukladalo aplikačné dáta lokálne a synchronizovalo ich cez Evolu. Platby však môžu byť spracovávané cez sieť Spark, Lightning služby alebo inú infraštruktúru tretích strán, ktoré môžu mať vlastné zásady ochrany súkromia a logy.\n\n8. AKTUALIZÁCIE\nTieto podmienky môžu byť aktualizované. Ďalšie používanie Payky znamená prijatie aktualizovaných podmienok.\n\nPosledná aktualizácia: október 2026',
+    '{appName} - PODMIENKY POUŽÍVANIA\n\n1. PRIJATIE\nPoužívaním tejto aplikácie platobného terminálu súhlasíte s týmito podmienkami.\n\n2. POVAHA SLUŽBY\n{appName} je lokálny bitcoinový platobný terminál využívajúci protokol Spark pre bitcoinové a Lightning platby a súvisiacu platobnú infraštruktúru. Zodpovedáte za konfiguráciu aplikácie, výber služieb aj za nakladanie s prijatými prostriedkami.\n\n3. PRÍSTUP A OBNOVA\nChráňte svoje zariadenie, prihlasovacie údaje, zálohy a všetky prístupové dáta k peňaženke, najmä obnovovaciu frázu. {appName} nemôže obnoviť stratené prihlasovacie údaje, stratenú obnovovaciu frázu ani prostriedky odoslané na nesprávne ciele.\n\n4. BEZ ZÁRUKY\nSoftvér sa poskytuje "tak, ako je", bez akejkoľvek záruky. Používate ho na vlastné riziko.\n\n5. OBMEDZENIE ZODPOVEDNOSTI\nNezodpovedáme za stratu prostriedkov, prerušenie podnikania, zlyhanie platby, chyby v softvéri, chybu používateľa ani zlyhanie siete alebo služby tretej strany.\n\n6. SPARK PEŇAŽENKA\nSpark peňaženka je nekustodiálna: jej kľúče sa odvodzujú vo vašom zariadení z vašej obnovovacej frázy. Prevody závisia od Spark operátorov a poskytovateľov služieb Spark, ktorí môžu zlyhať, byť nedostupní alebo zmeniť svoje podmienky. Držte len zostatky, o ktoré ste pripravení prísť.\n\n7. SÚKROMIE\n{appName} je navrhnuté tak, aby ukladalo aplikačné dáta lokálne a synchronizovalo ich cez Evolu. Platby však môžu byť spracovávané cez sieť Spark, Lightning služby alebo inú infraštruktúru tretích strán, ktoré môžu mať vlastné zásady ochrany súkromia a logy.\n\n8. AKTUALIZÁCIE\nTieto podmienky môžu byť aktualizované. Ďalšie používanie {appNameGen} znamená prijatie aktualizovaných podmienok.\n\nPosledná aktualizácia: október 2026',
   "settings.about.terms.description":
-    "Prečítajte si podmienky platné pri používaní Payky.",
-  "settings.about.terms.heading": "Podmienky používania Payky",
+    "Prečítajte si podmienky platné pri používaní {appNameGen}.",
+  "settings.about.terms.heading": "Podmienky používania {appNameGen}",
   "settings.about.terms.summary":
     "Prispôsobené pre lokálny bitcoinový platobný terminál.",
   "settings.about.terms.title": "Podmienky používania",
@@ -49,9 +49,9 @@ export const skSettings = {
   "settings.accounts.restore.mnemonic.checksum":
     "Slová sú platné, ale fráza nesedí. Skontrolujte poradie a preklepy.",
   "settings.accounts.restore.mnemonic.foreign":
-    "Toto vyzerá ako seed z inej peňaženky. Payky obnovuje len svoje 20-slovné frázy.",
+    "Toto vyzerá ako seed z inej peňaženky. {appName} obnovuje len svoje 20-slovné frázy.",
   "settings.accounts.restore.mnemonic.invalid":
-    "Zadajte 20 slov z recovery phrase v Payky.",
+    "Zadajte 20 slov z recovery phrase {appNameGen}.",
   "settings.accounts.restore.mnemonic.label": "Recovery phrase",
   "settings.accounts.restore.mnemonic.required": "Recovery phrase je povinná.",
   "settings.accounts.restore.mnemonic.wordCount": "Recovery phrase má 20 slov.",
@@ -239,7 +239,7 @@ export const skSettings = {
   "settings.donations.amount.required": "Zadajte sumu daru.",
   "settings.donations.create": "Vytvoriť faktúru",
   "settings.donations.create.pending": "Vytváram faktúru...",
-  "settings.donations.description": "Podporte vývoj Payky",
+  "settings.donations.description": "Podporte vývoj {appNameGen}",
   "settings.donations.fiat.description": "Používa aktuálne vybranú fiat menu.",
   "settings.donations.fiat.label": "Suma",
   "settings.donations.form.description":
@@ -276,7 +276,7 @@ export const skSettings = {
   "settings.donations.sats.range": "Povolený rozsah: {min}-{max} sats.",
   "settings.donations.title": "Dary",
   "settings.eet.certificate.description":
-    "Certifikát, ktorý vydala CA EET na podpisovanie tržieb. Určuje evidujúce EIČ a Payky si jeho heslo neukladá.",
+    "Certifikát, ktorý vydala CA EET na podpisovanie tržieb. Určuje evidujúce EIČ a {appName} si jeho heslo neukladá.",
   "settings.eet.certificate.eic": "Evidujúce EIČ",
   "settings.eet.certificate.error.expired": "Platnosť certifikátu skončila.",
   "settings.eet.certificate.error.fileRequired":
@@ -313,7 +313,7 @@ export const skSettings = {
     "EET nie je možné zapnúť, kým nie je nastavený certifikát a číslo evidenčnej jednotky.",
   "settings.eet.enabled.label": "Evidovať tržby v EET",
   "settings.eet.enabled.missing": "Na zapnutie EET doplňte {missing}.",
-  "settings.eet.environment.description": "Kam Payky tržby odosiela.",
+  "settings.eet.environment.description": "Kam {appName} tržby odosiela.",
   "settings.eet.environment.playground.description":
     "Na vyskúšanie EET. Tržby idú do testovacieho prostredia EET a neevidujú sa.",
   "settings.eet.environment.playground.title": "Sandbox",
@@ -321,7 +321,7 @@ export const skSettings = {
     "Tržby sa evidujú u finančnej správy.",
   "settings.eet.environment.production.title": "Produkcia",
   "settings.eet.environment.productionUnavailable":
-    "Produkcia v tejto verzii Payky zatiaľ nie je dostupná.",
+    "Produkcia v tejto verzii {appNameGen} zatiaľ nie je dostupná.",
   "settings.eet.environment.sandboxConfirm.cancel": "Zrušiť",
   "settings.eet.environment.sandboxConfirm.confirm": "Použiť sandbox",
   "settings.eet.environment.sandboxConfirm.description":
@@ -371,12 +371,12 @@ export const skSettings = {
   "settings.eet.test.unavailable":
     "Najprv nastavte certifikát a číslo evidenčnej jednotky.",
   "settings.eet.tip.business.description":
-    "Payky eviduje celú platbu vrátane prepitného.",
+    "{appName} eviduje celú platbu vrátane prepitného.",
   "settings.eet.tip.business.title": "Prepitné patrí podniku",
   "settings.eet.tip.description":
     "Či je prepitné súčasťou evidovanej tržby, závisí od toho, komu patrí. Prepitné, ktoré je príjmom podniku, sa zo zákona eviduje. Prepitné, ktoré patrí zamestnancom, sa evidovať nemusí. Zmena platí pre platby prijaté od tej chvíle.",
   "settings.eet.tip.employees.description":
-    "Payky eviduje platbu bez prepitného. Prepitné zostáva pri platbe zapísané zvlášť.",
+    "{appName} eviduje platbu bez prepitného. Prepitné zostáva pri platbe zapísané zvlášť.",
   "settings.eet.tip.employees.title": "Prepitné patrí zamestnancom",
   "settings.eet.tip.label": "Komu patrí prepitné",
   "settings.eet.tip.note":
@@ -683,13 +683,13 @@ export const skSettings = {
   "settings.privacy.productLookup.title": "Dohľadanie produktov",
   "settings.privacy.aiAssistant.title": "AI asistent",
   "settings.privacy.aiAssistant.description":
-    "Asistent odpovedá cez server Payky a poskytovateľa AI, takže vaše otázky a to, čo asistent číta, opúšťa toto zariadenie. Vo východiskovom stave vypnuté.",
+    "Asistent odpovedá cez server {appNameGen} a poskytovateľa AI, takže vaše otázky a to, čo asistent číta, opúšťa toto zariadenie. Vo východiskovom stave vypnuté.",
   "settings.privacy.aiAssistant.off.title": "Vypnuté",
   "settings.privacy.aiAssistant.off.description":
     "Asistent je skrytý a nič sa neodosiela.",
   "settings.privacy.aiAssistant.public.title": "Len dokumentácia a kód",
   "settings.privacy.aiAssistant.public.description":
-    "Číta verejnú dokumentáciu a zdrojový kód Payky. Vaše účty a platby zostávajú v tomto zariadení.",
+    "Číta verejnú dokumentáciu a zdrojový kód {appNameGen}. Vaše účty a platby zostávajú v tomto zariadení.",
   "settings.privacy.aiAssistant.all.title": "Vrátane mojich dát",
   "settings.privacy.aiAssistant.all.description":
     "Číta aj vaše účty a platby v tomto zariadení a to, čo prečíta, odosiela poskytovateľovi AI.",
@@ -773,7 +773,7 @@ export const skSettings = {
   "settings.security.mnemonic.warning":
     "Ak túto frázu stratíte, tento účet a jeho dáta už nikdy nepôjde obnoviť – nepodarí sa to ani nám.",
   "settings.security.mnemonic.intro":
-    "Týchto 20 slov je jediná cesta, ako tento účet dostať na iné zariadenie alebo po strate telefónu. Uložte ich do správcu hesiel alebo na papier — nie do screenshotu ani do chatu. Nikto, ani Payky, vám ich neobnoví.",
+    "Týchto 20 slov je jediná cesta, ako tento účet dostať na iné zariadenie alebo po strate telefónu. Uložte ich do správcu hesiel alebo na papier — nie do screenshotu ani do chatu. Nikto, ani {appName}, vám ich neobnoví.",
   "settings.security.mnemonic.nativeHint":
     "Opíšte slová na papier v uvedenom poradí, obrazovku nefoťte. Potom zálohu overte.",
   "settings.security.mnemonic.savePasswords": "Uložiť do hesiel",
@@ -847,9 +847,9 @@ export const skSettings = {
   "settings.sparkAccount.enabled.label": "Povoliť Spark účet",
   "settings.sparkAccount.advanced": "Pokročilé možnosti",
   "settings.sparkAccount.form.customDescription":
-    "Payky prijíma Spark platby do vašej vlastnej peňaženky.",
+    "{appName} prijíma Spark platby do vašej vlastnej peňaženky.",
   "settings.sparkAccount.form.description":
-    "Payky túto Spark peňaženku odvodí z kľúča na obnovu účtu.",
+    "{appName} túto Spark peňaženku odvodí z kľúča na obnovu účtu.",
   "settings.sparkAccount.form.title": "Spark účet",
   "settings.sparkAccount.mnemonic.description":
     "Mnemonic uchovávajte v tajnosti. Ktokoľvek s ním má prístup k Spark peňaženke.",
@@ -881,7 +881,7 @@ export const skSettings = {
   "settings.sparkAccount.wallet.label": "Peňaženka",
   "settings.sparkAccount.wallet.payky.description":
     "Odvodená z kľúča na obnovu účtu.",
-  "settings.sparkAccount.wallet.payky.title": "Peňaženka Payky",
+  "settings.sparkAccount.wallet.payky.title": "Peňaženka {appNameGen}",
   "settings.sparkAccount.wallet.switch": "Prepnúť",
   "settings.sparkAccount.wallet.warning.funds":
     "Peniaze zostanú v súčasnej peňaženke a tu už nebudú vidieť. Najprv ich vyberte, alebo si uschovajte jej mnemonic.",
@@ -901,9 +901,9 @@ export const skSettings = {
   "settings.supportChat.inbox.confirm.confirm": "Zverejniť",
   "settings.supportChat.inbox.confirm.cancel": "Zrušiť",
   "settings.supportChat.title": "Kontaktovať podporu",
-  "settings.supportChat.description": "Napíšte tímu Payky",
+  "settings.supportChat.description": "Napíšte tímu {appNameGen}",
   "settings.supportChat.empty":
-    "Zatiaľ tu nie sú žiadne správy. Popíšte, s čím potrebujete pomôcť, a tím Payky vám odpovie tu.",
+    "Zatiaľ tu nie sú žiadne správy. Popíšte, s čím potrebujete pomôcť, a tím {appNameGen} vám odpovie tu.",
   "settings.supportChat.loadFailed":
     "Konverzáciu sa nepodarilo načítať. Skontrolujte pripojenie a skúste to znova.",
   "settings.supportChat.retry": "Skúsiť znova",
@@ -915,11 +915,11 @@ export const skSettings = {
   "settings.supportChat.notDelivered": "Nedoručené. Skúsiť znova",
   "settings.assistant.title": "AI asistent",
   "settings.assistant.description":
-    "Opýtajte sa na účty, platby a ako Payky funguje",
+    "Opýtajte sa na účty, platby a ako {appName} funguje",
   "settings.assistant.empty":
-    "Opýtajte sa na svoje účty a platby alebo na to, ako Payky funguje. Asistent číta vaše dáta v tomto zariadení a dokumentáciu Payky a odpovedá pomocou poskytovateľa AI.",
+    "Opýtajte sa na svoje účty a platby alebo na to, ako {appName} funguje. Asistent číta vaše dáta v tomto zariadení a dokumentáciu {appNameGen} a odpovedá pomocou poskytovateľa AI.",
   "settings.assistant.emptyPublic":
-    "Opýtajte sa, ako Payky funguje. Asistent číta dokumentáciu a kód Payky, nie vaše dáta, a odpovedá pomocou poskytovateľa AI.",
+    "Opýtajte sa, ako {appName} funguje. Asistent číta dokumentáciu a kód {appNameGen}, nie vaše dáta, a odpovedá pomocou poskytovateľa AI.",
   "settings.assistant.suggestion.openBills": "Ktoré účty sú ešte otvorené?",
   "settings.assistant.suggestion.latestPayments":
     "Aké boli moje posledné platby?",
@@ -1192,22 +1192,22 @@ export const skSettings = {
     "Prijímať platby na Lightning adresu",
   "settings.lightningAddress.form.title": "Vlastná peňaženka",
   "settings.lightningAddress.form.description":
-    "Platby idú rovno do peňaženky za adresou. Payky si od nej len vyžiada invoice a sleduje, či je zaplatený; nedrží žiadne kľúče ani peniaze.",
+    "Platby idú rovno do peňaženky za adresou. {appName} si od nej len vyžiada invoice a sleduje, či je zaplatený; nedrží žiadne kľúče ani peniaze.",
   "settings.lightningAddress.address.label": "Lightning adresa",
   "settings.lightningAddress.address.placeholder": "meno@penazenka.sk",
   "settings.lightningAddress.address.description":
-    "Peňaženka musí podporovať LUD-21 verify a prezradiť dôkaz platby (preimage). Inak Payky nespozná, že je platba zaplatená.",
+    "Peňaženka musí podporovať LUD-21 verify a prezradiť dôkaz platby (preimage). Inak {appName} nespozná, že je platba zaplatená.",
   "settings.lightningAddress.address.required": "Zadajte Lightning adresu.",
   "settings.lightningAddress.address.invalid":
     "Toto nie je Lightning adresa. Vyzerá ako meno@penazenka.sk.",
   "settings.lightningAddress.submit": "Overiť a uložiť",
   "settings.lightningAddress.saved": "Uložené.",
   "settings.lightningAddress.error.verifyUnsupported":
-    "Táto peňaženka Payky neumožní overiť, či je invoice zaplatený (LUD-21 verify). Použite inú peňaženku.",
+    "Táto peňaženka neumožní {appNameDat} overiť, či je invoice zaplatený (LUD-21 verify). Použite inú peňaženku.",
   "settings.lightningAddress.error.rejected":
     "Peňaženka požiadavku odmietla. Skontrolujte adresu.",
   "settings.lightningAddress.error.unreachable":
     "Peňaženka nie je dostupná. Skontrolujte adresu a pripojenie.",
   "settings.lightningAddress.error.invalid":
-    "Peňaženka odpovedala niečím, s čím Payky nevie pracovať.",
+    "Peňaženka odpovedala niečím, s čím {appName} nevie pracovať.",
 } satisfies Record<keyof typeof enSettings, string>

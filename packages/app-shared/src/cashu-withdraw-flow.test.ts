@@ -2,6 +2,7 @@ import type { MintUrl } from "@payky/core/modules/cashu/cashu-types"
 import type { CashuWithdrawalQuote } from "@payky/core/modules/withdraw/withdraw-cashu-actions"
 import type { WithdrawalId } from "@payky/core/modules/withdraw/withdraw-types"
 import { describe, expect, test } from "vitest"
+import { paykyBrand } from "./brand.ts"
 import {
   cashuConfirmOutcome,
   cashuWithdrawPinDetail,
@@ -11,7 +12,7 @@ import {
 } from "./cashu-withdraw-flow.ts"
 import { createTranslate } from "./i18n/translate.ts"
 
-const t = createTranslate("en")
+const t = createTranslate("en", paykyBrand)
 const withdrawalId = "wd1" as unknown as WithdrawalId
 const mintA = "https://a.example/mint" as MintUrl
 const mintB = "https://b.example" as MintUrl

@@ -58,7 +58,7 @@ export const csOnboarding = {
     "Nové zařízení začne bez oprávnění. Nastavte mu je v Nastavení → Přístup, jakmile se tam objeví.",
   "accountTransfer.source.qr.expired": "Platnost kódu vypršela.",
   "accountTransfer.source.qr.instructions":
-    "Na novém zařízení otevřete Payky, zvolte „Přenést z jiného zařízení“ a naskenujte tento kód.",
+    "Na novém zařízení otevřete {appName}, zvolte „Přenést z jiného zařízení“ a naskenujte tento kód.",
   "accountTransfer.source.qr.label": "QR kód pro nové zařízení",
   "accountTransfer.source.qr.reassurance":
     "Kód platí dvě minuty a jen pro jedno zařízení.",
@@ -73,7 +73,7 @@ export const csOnboarding = {
   "accountTransfer.source.step.transfer": "Účet se šifrovaně přenese.",
   "accountTransfer.source.title": "Přidat zařízení",
   "accountTransfer.source.warning.description":
-    "Nové zařízení získá plný přístup k účtu včetně peněz v bitcoinové peněžence. Pokračujte jen se zařízením, které máte u sebe. Podpora Payky vás o to nikdy nežádá.",
+    "Nové zařízení získá plný přístup k účtu včetně peněz v bitcoinové peněžence. Pokračujte jen se zařízením, které máte u sebe. Podpora {appNameGen} vás o to nikdy nežádá.",
   "accountTransfer.source.warning.title": "Plný přístup k účtu",
   "accountTransfer.target.added":
     "Účet „{name}“ byl přidán do tohoto zařízení a je nyní aktivní. Načítám data…",
@@ -91,16 +91,16 @@ export const csOnboarding = {
   "accountTransfer.target.confirm.title": "Přidat účet „{name}“?",
   "accountTransfer.target.connecting": "Připojuji se k původnímu zařízení…",
   "accountTransfer.target.description":
-    "Naskenujte QR kód na zařízení, kde už Payky používáte.",
+    "Naskenujte QR kód na zařízení, kde už {appName} používáte.",
   "accountTransfer.target.error.InvalidPaykyUri":
     "Kód je poškozený. Vytvořte nový.",
-  "accountTransfer.target.error.NotPaykyUri": "Tohle není kód Payky.",
+  "accountTransfer.target.error.NotPaykyUri": "Tohle není kód {appNameGen}.",
   "accountTransfer.target.error.UnknownPaykyUriType":
-    "Tento kód Payky slouží k něčemu jinému, nebo je z novější verze. Aktualizujte aplikaci.",
+    "Tento kód {appNameGen} slouží k něčemu jinému, nebo je z novější verze. Aktualizujte aplikaci.",
   "accountTransfer.target.error.UnsupportedPaykyUriVersion":
-    "Kód vytvořila novější verze Payky. Aktualizujte aplikaci.",
+    "Kód vytvořila novější verze {appNameGen}. Aktualizujte aplikaci.",
   "accountTransfer.target.error.WrongPaykyUriType":
-    "Tento kód Payky slouží k něčemu jinému.",
+    "Tento kód {appNameGen} slouží k něčemu jinému.",
   "accountTransfer.target.failed.cancelled":
     "Přenos byl zrušen na původním zařízení.",
   "accountTransfer.target.failed.codeMismatch":
@@ -129,10 +129,10 @@ export const csOnboarding = {
     "Vygenerujte novou recovery phrase a začněte s prázdným účtem.",
   "accountChoice.new.title": "Založit nový účet",
   "accountChoice.restore.description":
-    "Pomocí 20 slov z Payky otevřete data svého existujícího účtu.",
+    "Pomocí 20 slov z {appNameGen} otevřete data svého existujícího účtu.",
   "accountChoice.restore.title": "Obnovit existující účet",
   "accountChoice.transfer.description":
-    "Naskenujte QR kód na zařízení, kde už Payky používáte.",
+    "Naskenujte QR kód na zařízení, kde už {appName} používáte.",
   "accountChoice.transfer.title": "Přenést z jiného zařízení",
   "onboarding.back": "Zpět",
   "onboarding.alreadyOnboarded": "Tento účet už je nastavený.",
@@ -154,7 +154,7 @@ export const csOnboarding = {
   "onboarding.businessName.retry": "Zkusit znovu",
   "onboarding.businessName.continueWithoutPublishing":
     "Pokračovat bez zveřejnění názvu",
-  "onboarding.finish": "Začít používat Payky",
+  "onboarding.finish": "Začít používat {appName}",
   "onboarding.language.title": "Výběr jazyka",
   "onboarding.payments.description": "Vše můžete kdykoliv změnit v nastavení.",
   "onboarding.payments.iban.description":
@@ -163,7 +163,7 @@ export const csOnboarding = {
   "onboarding.payments.title": "Nastavení podniku",
   "onboarding.restore.action": "Obnovit účet",
   "onboarding.restore.counter": "{count}/{total} slov",
-  "onboarding.restore.description": "Zadejte 20 slov z Payky",
+  "onboarding.restore.description": "Zadejte 20 slov z {appNameGen}",
   "onboarding.restore.paste": "Vložit ze schránky",
   "onboarding.restore.pasteFailed":
     "Schránku se nepodařilo přečíst. Vložte frázi přímo do prvního políčka.",
@@ -173,8 +173,8 @@ export const csOnboarding = {
   "onboarding.restore.suggestions": "Návrhy slov",
   "onboarding.restore.title": "Obnovení existujícího účtu",
   "onboarding.restore.transferLink":
-    "Máte Payky na jiném zařízení? Přenést naskenováním QR",
+    "Máte {appName} na jiném zařízení? Přenést naskenováním QR",
   "onboarding.restore.unknownWords": "Neznámé slovo: {words}",
   "onboarding.restore.wordLabel": "Slovo {index}",
-  "onboarding.title": "Vítejte v Payky",
+  "onboarding.title": "{appName} vás vítá",
 } satisfies Record<keyof typeof enOnboarding, string>

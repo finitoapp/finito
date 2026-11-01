@@ -56,7 +56,7 @@ export const enOnboarding = {
     "The new device starts with no permissions. Set them in Settings → Access once it appears there.",
   "accountTransfer.source.qr.expired": "This code has expired.",
   "accountTransfer.source.qr.instructions":
-    "On the new device open Payky, choose “Transfer from another device” and scan this code.",
+    "On the new device open {appName}, choose “Transfer from another device” and scan this code.",
   "accountTransfer.source.qr.label": "QR code for the new device",
   "accountTransfer.source.qr.reassurance":
     "The code expires in two minutes and works for one device only.",
@@ -71,7 +71,7 @@ export const enOnboarding = {
   "accountTransfer.source.step.transfer": "The account moves over, encrypted.",
   "accountTransfer.source.title": "Add a device",
   "accountTransfer.source.warning.description":
-    "The new device gets full access to this account, including the money in the Bitcoin wallet. Only continue with a device you are holding. Payky support will never ask you to do this.",
+    "The new device gets full access to this account, including the money in the Bitcoin wallet. Only continue with a device you are holding. {appName} support will never ask you to do this.",
   "accountTransfer.source.warning.title": "Full access to the account",
   "accountTransfer.target.added":
     "Account “{name}” was added to this device and is now active. Loading your data…",
@@ -89,16 +89,16 @@ export const enOnboarding = {
   "accountTransfer.target.confirm.title": "Add account “{name}”?",
   "accountTransfer.target.connecting": "Connecting to your other device…",
   "accountTransfer.target.description":
-    "Scan a QR code on a device where you already use Payky.",
+    "Scan a QR code on a device where you already use {appName}.",
   "accountTransfer.target.error.InvalidPaykyUri":
     "The code is damaged. Generate a new one.",
-  "accountTransfer.target.error.NotPaykyUri": "This is not a Payky code.",
+  "accountTransfer.target.error.NotPaykyUri": "This is not a {appName} code.",
   "accountTransfer.target.error.UnknownPaykyUriType":
-    "This Payky code is for something else, or for a newer Payky. Update the app.",
+    "This {appName} code is for something else, or for a newer {appName}. Update the app.",
   "accountTransfer.target.error.UnsupportedPaykyUriVersion":
-    "This code was made by a newer Payky. Update the app.",
+    "This code was made by a newer {appName}. Update the app.",
   "accountTransfer.target.error.WrongPaykyUriType":
-    "This Payky code is for something else.",
+    "This {appName} code is for something else.",
   "accountTransfer.target.failed.cancelled":
     "The transfer was cancelled on the other device.",
   "accountTransfer.target.failed.codeMismatch":
@@ -127,10 +127,10 @@ export const enOnboarding = {
     "Generate a new recovery phrase and start with an empty account.",
   "accountChoice.new.title": "Create a new account",
   "accountChoice.restore.description":
-    "Use the 20 words from Payky to open your existing account data.",
+    "Use the 20 words from {appName} to open your existing account data.",
   "accountChoice.restore.title": "Restore an existing account",
   "accountChoice.transfer.description":
-    "Scan a QR code on a device where you already use Payky.",
+    "Scan a QR code on a device where you already use {appName}.",
   "accountChoice.transfer.title": "Transfer from another device",
   "onboarding.back": "Back",
   "onboarding.alreadyOnboarded": "This account is already set up.",
@@ -152,7 +152,7 @@ export const enOnboarding = {
   "onboarding.businessName.retry": "Try again",
   "onboarding.businessName.continueWithoutPublishing":
     "Continue without publishing the name",
-  "onboarding.finish": "Start using Payky",
+  "onboarding.finish": "Start using {appName}",
   "onboarding.language.title": "Choose language",
   "onboarding.payments.description":
     "You can change everything in settings at any time.",
@@ -162,7 +162,7 @@ export const enOnboarding = {
   "onboarding.payments.title": "Business setup",
   "onboarding.restore.action": "Restore account",
   "onboarding.restore.counter": "{count}/{total} words",
-  "onboarding.restore.description": "Enter the 20 words from Payky",
+  "onboarding.restore.description": "Enter the 20 words from {appName}",
   "onboarding.restore.paste": "Paste from clipboard",
   "onboarding.restore.pasteFailed":
     "Could not read the clipboard. Paste into the first field instead.",
@@ -172,8 +172,8 @@ export const enOnboarding = {
   "onboarding.restore.suggestions": "Word suggestions",
   "onboarding.restore.title": "Restore existing account",
   "onboarding.restore.transferLink":
-    "Have Payky on another device? Transfer by scanning a QR code",
+    "Have {appName} on another device? Transfer by scanning a QR code",
   "onboarding.restore.unknownWords": "Unknown word: {words}",
   "onboarding.restore.wordLabel": "Word {index}",
-  "onboarding.title": "Welcome to Payky",
+  "onboarding.title": "Welcome to {appName}",
 } as const

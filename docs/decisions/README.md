@@ -1,7 +1,7 @@
 # Decisions
 
 One file per business decision, grouped by domain, so what Payky does and
-why sit together: `access/`, `account/`, `ai/`, `cashu/`, `demo-data/`, `eet/`, `landing/`, `lightning-address/`, `onboarding/`, `payment/`, `qerko/`, `refund/`, `scanner/`, `settings/`, `support/`, `withdraw/`. Each file states the
+why sit together: `access/`, `account/`, `ai/`, `brand/`, `cashu/`, `demo-data/`, `eet/`, `landing/`, `lightning-address/`, `onboarding/`, `payment/`, `qerko/`, `refund/`, `scanner/`, `settings/`, `support/`, `withdraw/`. Each file states the
 decision, the context that forced it, what was rejected and what follows
 from it. The code shows what happens. These files keep the reason, so
 nobody has to dig it out of old commits and nobody undoes it by accident.

@@ -11,9 +11,10 @@ import {
   summarizeBillHistoryRow,
   sumSettledTips,
 } from "./activity-history.ts"
+import { paykyBrand } from "./brand.ts"
 import { createTranslate } from "./i18n/translate.ts"
 
-const t = createTranslate("en")
+const t = createTranslate("en", paykyBrand)
 const now = new Date(2026, 9, 17, 12)
 
 /** A pending, bill-less payment; tests override only what they exercise. */

@@ -442,7 +442,7 @@ function FailedAttempts({
               >
                 <span className="truncate">
                   {Object.hasOwn(resources[language], attempt.target)
-                    ? resources[language][attempt.target as TranslationKey]
+                    ? t(attempt.target as TranslationKey)
                     : attempt.target}
                 </span>
                 <span className="shrink-0 text-muted-foreground">

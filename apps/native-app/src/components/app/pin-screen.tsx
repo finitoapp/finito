@@ -489,7 +489,7 @@ function FailedAttempts({
                   lineHeight={fontSize.sm}
                 >
                   {Object.hasOwn(resources[language], attempt.target)
-                    ? resources[language][attempt.target as TranslationKey]
+                    ? t(attempt.target as TranslationKey)
                     : attempt.target}
                 </Text>
                 <Text

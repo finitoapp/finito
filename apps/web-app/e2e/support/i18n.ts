@@ -1,18 +1,19 @@
-import {
-  type TranslationKey as AppTranslationKey,
-  resources as appResources,
-  type Language,
+import type {
+  TranslationKey as AppTranslationKey,
+  Language,
 } from "@payky/app-shared/i18n/resources"
+import { createBrandedResources } from "@payky/app-shared/i18n/translate"
 import {
   type TranslationKey as LandingTranslationKey,
   resources as landingResources,
 } from "../../../landing/src/i18n/resources.ts"
+import { appBrand } from "../../src/core/app-brand.ts"
 
 type TranslationKey = AppTranslationKey | LandingTranslationKey
 const resources = {
-  en: { ...appResources.en, ...landingResources.en },
-  cs: { ...appResources.cs, ...landingResources.cs },
-  sk: { ...appResources.sk, ...landingResources.sk },
+  en: { ...createBrandedResources("en", appBrand), ...landingResources.en },
+  cs: { ...createBrandedResources("cs", appBrand), ...landingResources.cs },
+  sk: { ...createBrandedResources("sk", appBrand), ...landingResources.sk },
 }
 
 /**
