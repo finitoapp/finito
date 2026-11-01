@@ -1,3 +1,5 @@
+import { TimestampMs } from "@payky/core/modules/shared/schema"
+import { addDays } from "date-fns"
 import { RESTORE_WORD_COUNT, splitPhraseInput } from "./restore-words.ts"
 
 /** How many words the optional backup check asks for. */
@@ -42,15 +44,30 @@ export function checkVerifyAnswers(
   )
 }
 
+/** How long "Later" or "Back up now" keeps the reminder away (account/0007). */
+export const BACKUP_REMINDER_SNOOZE_DAYS = 7
+
 /**
- * Whether the "back up your recovery phrase" line is shown: after the account
- * received its first payment, until the phrase is verified, never on a demo
- * account. Each part is a real condition; with no payment nothing shows.
+ * Whether the recovery-phrase backup reminder is due (account/0007): after
+ * the account's first paid payment, until the phrase is verified, never on a
+ * demo account, and not while this device's snooze still holds.
  */
 export function isBackupReminderDue(input: {
   readonly hasPaidPayment: boolean
   readonly verifiedAt: number | null
   readonly isDemo: boolean
+  readonly snoozedUntil: number | null
+  readonly now: number
 }): boolean {
-  return input.hasPaidPayment && input.verifiedAt === null && !input.isDemo
+  return (
+    input.hasPaidPayment &&
+    input.verifiedAt === null &&
+    !input.isDemo &&
+    (input.snoozedUntil === null || input.snoozedUntil <= input.now)
+  )
+}
+
+/** Until when a dismissed reminder stays away. */
+export function backupReminderSnoozedUntil(now: number): TimestampMs {
+  return TimestampMs(addDays(now, BACKUP_REMINDER_SNOOZE_DAYS).getTime())
 }

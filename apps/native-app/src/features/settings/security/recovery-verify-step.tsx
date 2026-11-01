@@ -12,7 +12,7 @@ import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 
 /**
- * Web's `RecoveryVerifyStep`: the optional backup check (account/0006), three
+ * Web's `RecoveryVerifyStep`: the optional backup check (account/0007), three
  * random words of the phrase. Native has no way out of the screen, so this
  * is the only way to catch a wrong transcription. `onDone` runs after a
  * successful check and after a skip alike.

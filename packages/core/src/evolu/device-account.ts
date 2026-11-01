@@ -13,7 +13,11 @@ import {
   deriveEvoluOwnerId,
   type MasterKey,
 } from "../modules/shared/key-derivation.ts"
-import { NonEmptyString255, WssUrl } from "../modules/shared/schema.ts"
+import {
+  NonEmptyString255,
+  type TimestampMs,
+  WssUrl,
+} from "../modules/shared/schema.ts"
 import { createRandomDisplayName } from "../utils/random-name.ts"
 import {
   type AccountEvoluTransportId,
@@ -371,6 +375,32 @@ export function markDemoAccountSeeded(
   options?: MutationOptions
 ) {
   deviceEvolu.update("account", { id: accountId, demo: "seeded" }, options)
+}
+
+/** Until when this device keeps the account's backup reminder away. */
+export const backupReminderSnoozeQuery = (accountId: DeviceAccountId) =>
+  createDeviceQuery((db) =>
+    db
+      .selectFrom("account")
+      .select("account.backupReminderSnoozedUntil")
+      .where("account.id", "=", accountId)
+  )
+
+/**
+ * Keeps the account's recovery-phrase backup reminder away on this device
+ * until `until` (account/0007).
+ */
+export function snoozeBackupReminder(
+  deviceEvolu: DeviceEvolu,
+  accountId: DeviceAccountId,
+  until: TimestampMs,
+  options?: MutationOptions
+) {
+  deviceEvolu.update(
+    "account",
+    { id: accountId, backupReminderSnoozedUntil: until },
+    options
+  )
 }
 
 export async function loadActiveAccountRow(deviceEvolu: DeviceEvolu) {

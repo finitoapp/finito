@@ -1,6 +1,6 @@
 # 0006 The recovery-phrase backup is offered after a payment and verified by three words
 
-Status: accepted
+Status: superseded by account/0007
 Date: 2026-10-25
 
 ## Context

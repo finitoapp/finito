@@ -83,7 +83,7 @@ export async function readRecoveryPhrase(
   return (await readShownRecoveryWords(page, language)).join(" ")
 }
 
-/** Opens the backup screen and steps to the words (account/0006). */
+/** Opens the backup screen and steps to the words (account/0007). */
 export async function openRecoveryWords(
   page: Page,
   language: Language
