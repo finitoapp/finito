@@ -5,7 +5,7 @@
 | `edge.payky.me` (PWA) | every push to `main` | `<last release>-edge.<sha>` |
 | `payky.me` (PWA), Android on Google Play (internal track) and GitHub Releases | a `v<version>` tag | `<version>` |
 
-Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 1 each month and stays below 100, because the Android `versionCode` is `YY*10000 + M*100 + MICRO` (`apps/native-shell/android/app/build.gradle`).
+Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 0 each month and stays below 100, because the Android `versionCode` is `YY*10000 + M*100 + MICRO` (`apps/native-shell/android/app/build.gradle`).
 
 ## How the version gets into a build
 
