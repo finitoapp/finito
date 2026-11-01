@@ -338,7 +338,7 @@ export function UiKitCard() {
             label: "Static row with action",
             action: <Badge label="Badge" />,
           },
-          { kind: "href", label: "External link", href: "https://payky.me" },
+          { kind: "href", label: "External link", href: "https://finito.fit" },
         ]}
       />
       <VerticalNav items={[]} empty="Empty list" />

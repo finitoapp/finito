@@ -7,7 +7,7 @@ import ScrollText from "lucide-react-native/icons/scroll-text"
 import ShieldCheck from "lucide-react-native/icons/shield-check"
 import { Image, Platform } from "react-native"
 import { Text, YStack } from "tamagui"
-import paykyIcon from "../../../../assets/payky-icon.png"
+import appIcon from "../../../../assets/app-icon.png"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
@@ -38,7 +38,7 @@ export function AboutPage() {
           is the static app icon. No shadow: native cards have none. */}
       <YStack items="center" gap={32} pt={32} pb={16}>
         <Image
-          source={paykyIcon}
+          source={appIcon}
           style={{ width: 160, height: 160, borderRadius: 24 }}
           aria-label={t("settings.about.app.title")}
           accessibilityIgnoresInvertColors

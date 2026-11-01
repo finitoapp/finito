@@ -96,8 +96,9 @@ bun run dev:native     # start Metro for an already installed development client
 ```
 
 `native:android` and `native:ios` generate their native projects locally; they
-are ignored by Git. The preview uses `me.payky.nativepreview` and the
-`payky-native-preview` scheme so it can coexist with the Capacitor app.
+are ignored by Git. The native app ships as Finito (`fit.finito.app`, the
+`finito` scheme), so it coexists with the Capacitor app (`me.payky`); a
+development build replaces an installed Finito.
 Use a development client rather than relying on Expo Go availability for SDK
 58. The Expo app has no environment variables or connected services yet.
 

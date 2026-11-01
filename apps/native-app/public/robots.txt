@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://payky.me/sitemap.xml
+Sitemap: https://finito.fit/sitemap.xml

@@ -25,8 +25,8 @@ assertions.
   (CI); run them before calling a batch green.
 - Android runs on an emulator only (the first `emulator-*` in `adb devices`)
   unless `ANDROID_SERIAL` names a device. The e2e APK replaces any installed
-  `me.payky.nativepreview` and its data — never point it at someone's phone
-  without asking.
+  `fit.finito.app`, a production Finito included, and its data — never
+  point it at someone's phone without asking.
 - JUnit and screenshots land in `.generated/report/` (gitignored).
 
 ## How a flow is built

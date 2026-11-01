@@ -15,7 +15,7 @@ import Clock from "lucide-react-native/icons/clock"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
 import { Image } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
-import paykyIcon from "../../../../assets/payky-icon.png"
+import appIcon from "../../../../assets/app-icon.png"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import {
@@ -311,7 +311,7 @@ function MessageBubble({
   )
 }
 
-/** Web's `ProfileAvatar` at size-7: the Payky icon until a picture is published. */
+/** Web's `ProfileAvatar` at size-7: the app icon until a picture is published. */
 function SupportAvatar({
   pubkey,
   indexerRelays,
@@ -331,9 +331,7 @@ function SupportAvatar({
     >
       <Image
         source={
-          picture === undefined || picture === null
-            ? paykyIcon
-            : { uri: picture }
+          picture === undefined || picture === null ? appIcon : { uri: picture }
         }
         style={{ width: 28, height: 28 }}
         accessibilityIgnoresInvertColors

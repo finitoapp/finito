@@ -42,9 +42,6 @@ export const defaultQerkoCountry: QerkoCountry = "CZ"
 /** Production unless the merchant opens "Additional options" and picks the sandbox. */
 export const defaultQerkoEnvironment: QerkoEnvironment = "production"
 
-/** The name the pairing's API key gets in Qerko's list of keys. */
-export const QERKO_API_KEY_NAME = "Payky"
-
 export const QERKO_CODE_LENGTH = 4
 
 export const isQerkoCodeComplete = (code: string): boolean =>

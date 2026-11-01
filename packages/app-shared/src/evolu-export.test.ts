@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-
+import { finitoBrand, paykyBrand } from "./brand.ts"
 import {
   createEvoluExportFilename,
   formatBytes,
@@ -29,12 +29,23 @@ describe("formatBytes", () => {
 })
 
 describe("createEvoluExportFilename", () => {
-  test("includes the database name and a zero-padded timestamp", () => {
+  test("includes the brand, the database name and a zero-padded timestamp", () => {
     const createdAt = new Date(2026, 0, 5, 9, 3, 7)
 
-    expect(createEvoluExportFilename({ createdAt, database: "app" })).toBe(
-      "payky-evolu-app-export-2026-01-05-090307.sqlite"
-    )
+    expect(
+      createEvoluExportFilename({
+        brand: paykyBrand,
+        createdAt,
+        database: "app",
+      })
+    ).toBe("payky-evolu-app-export-2026-01-05-090307.sqlite")
+    expect(
+      createEvoluExportFilename({
+        brand: finitoBrand,
+        createdAt,
+        database: "app",
+      })
+    ).toBe("finito-evolu-app-export-2026-01-05-090307.sqlite")
   })
 })
 

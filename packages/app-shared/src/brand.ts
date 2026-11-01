@@ -48,3 +48,9 @@ export const finitoBrand = {
     },
   },
 } as const satisfies Brand
+
+/**
+ * The name where no copy declines it: the launcher, a report header, the name
+ * of a key another service lists.
+ */
+export const brandName = (brand: Brand): string => brand.names.en.nominative

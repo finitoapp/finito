@@ -36,7 +36,7 @@ const answer = (path: string, body: Record<string, unknown>): unknown => {
       return { pairingRequestId: "e2e-pairing", resendAvailableInSeconds: 1 }
     case "confirm-pairing":
       return body.code === qerkoPairingCode
-        ? { type: "ok", apiKey: { token: "e2e-token", name: "Payky" } }
+        ? { type: "ok", apiKey: { token: "e2e-token", name: "Finito" } }
         : { type: "invalidCode", remainingAttempts: 2 }
     case "get-terminals":
       return {

@@ -29,6 +29,7 @@ import {
   FieldSet,
 } from "../../../components/ui/field.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
+import { appBrand } from "../../../core/app-brand.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -68,7 +69,11 @@ export function EvoluExportPage() {
       const outcome = await shareEvoluExport({
         io: evoluExportShareIo,
         bytes,
-        filename: createEvoluExportFilename({ createdAt, database: "app" }),
+        filename: createEvoluExportFilename({
+          brand: appBrand,
+          createdAt,
+          database: "app",
+        }),
         folder: createExportFolder(),
       })
       if (outcome === "unavailable") {

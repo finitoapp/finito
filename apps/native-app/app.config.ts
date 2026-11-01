@@ -8,20 +8,20 @@ const [year, month, micro] = version.split(".").map(Number) as [
 ]
 
 export default {
-  name: "Payky Native Preview",
-  slug: "payky-native-app",
-  scheme: "payky-native-preview",
+  name: "Finito",
+  slug: "finito",
+  scheme: "finito",
   version,
   platforms: ["android", "ios", "web"],
   userInterfaceStyle: "automatic",
   // The PWA icon; launchers without adaptive icons use it as is.
-  icon: "./assets/payky-icon.png",
+  icon: "./assets/app-icon.png",
   ios: {
-    bundleIdentifier: "me.payky.nativepreview",
+    bundleIdentifier: "fit.finito.app",
     supportsTablet: true,
   },
   android: {
-    package: "me.payky.nativepreview",
+    package: "fit.finito.app",
     // The PWA coin on a transparent background, sized to fill the launcher
     // mask (the visible 72 of 108 dp), so no backdrop shows around it.
     adaptiveIcon: {
@@ -60,7 +60,7 @@ export default {
       "expo-camera",
       {
         cameraPermission:
-          "Payky uses the camera to scan payment, pairing and product codes.",
+          "Finito uses the camera to scan payment, pairing and product codes.",
         microphonePermission: false,
         recordAudioAndroid: false,
       },
@@ -71,13 +71,13 @@ export default {
     [
       "expo-splash-screen",
       {
-        // The Payky icon on the palette's `background` (src/theme/palette.ts),
+        // The app icon on the palette's `background` (src/theme/palette.ts),
         // as AppLoader draws it. The app holds this splash until its first
         // screen is ready (app/_layout.tsx).
-        image: "./assets/payky-icon.png",
+        image: "./assets/app-icon.png",
         imageWidth: 140,
         backgroundColor: "#fbfaf7",
-        dark: { image: "./assets/payky-icon.png", backgroundColor: "#101214" },
+        dark: { image: "./assets/app-icon.png", backgroundColor: "#101214" },
       },
     ],
     "./plugins/with-no-data-extraction.cjs",

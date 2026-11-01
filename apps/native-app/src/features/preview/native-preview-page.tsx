@@ -1,9 +1,11 @@
+import { brandName } from "@payky/app-shared/brand"
 import { router } from "expo-router"
 import { useEffect, useState } from "react"
 import { ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Text, useTheme, View } from "tamagui"
 import { Button } from "../../components/ui/button.tsx"
+import { appBrand } from "../../core/app-brand.ts"
 import { checkSharedLogic } from "../../core/check-shared-logic.ts"
 import { checkLockAuthority } from "../../core/native-runtime.ts"
 import { BootstrapDiagnostics } from "./bootstrap-diagnostics.tsx"
@@ -32,7 +34,7 @@ export function NativePreviewPage() {
             lineHeight="3xl"
             fontWeight="700"
           >
-            Payky Native
+            {brandName(appBrand)} Native
           </Text>
           <Text color="muted-foreground">
             Expo, React Native and Tamagui are ready.

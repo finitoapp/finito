@@ -28,6 +28,7 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field.tsx"
+import { appBrand } from "@/core/app-brand.ts"
 import {
   type SavedEvoluExportFile,
   saveEvoluExportFile,
@@ -77,7 +78,11 @@ function EvoluExportPanel() {
       const file = await saveEvoluExportFile({
         database: "app",
         bytes: await appEvolu.exportDatabase(),
-        filename: createEvoluExportFilename({ createdAt, database: "app" }),
+        filename: createEvoluExportFilename({
+          brand: appBrand,
+          createdAt,
+          database: "app",
+        }),
       })
 
       if (file === null) {
