@@ -54,12 +54,16 @@ import {
   paymentStatusBadgeClassName,
 } from "@/features/activity/payment-status-display.tsx"
 import { useBillCoverage } from "@/features/activity/use-bill-coverage.ts"
+import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import { EetSaleStatusBadge } from "@/features/shared/eet-sale-status.tsx"
 import { RefundBadge } from "@/features/shared/refund-badge.tsx"
 import { TaxRecap } from "@/features/shared/tax-recap.tsx"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
 import { useBillStatus } from "@/features/shared/use-bill-status.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatDateTime, formatMoney } from "@/lib/format-utils.ts"
@@ -81,6 +85,14 @@ export function BillDetail({ billId }: { readonly billId: string }) {
 }
 
 function BillDetailContent({ billId }: { readonly billId: BillId }) {
+  usePreloadEvoluQueries([
+    ...billStateQueries(billId),
+    tablesQuery,
+    taxRatesQuery,
+    paymentsWithClaimsByBillIdQuery(billId),
+    eetSalesByBillIdQuery(billId),
+    refundSummariesByBillIdQuery(billId),
+  ])
   const { t } = useTranslation()
   const locale = useLocale()
   const query = billByIdQuery(billId)

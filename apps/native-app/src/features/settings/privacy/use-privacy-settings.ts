@@ -12,7 +12,7 @@ import { deviceEvoluAtom } from "../../../atoms/device-evolu.ts"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 
-const privacyQuery = createDeviceQuery((db) =>
+export const privacyQuery = createDeviceQuery((db) =>
   db
     .selectFrom("deviceSettings")
     .select([

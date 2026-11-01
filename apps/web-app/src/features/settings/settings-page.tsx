@@ -9,6 +9,7 @@ import {
 } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { languageOptions } from "@payky/web-shared/language-options"
 import {
@@ -40,7 +41,10 @@ import { type NavLinkTo, VerticalNav } from "@/components/vertical-nav.tsx"
 import { ProfileCard } from "@/features/settings/profile/profile-card.tsx"
 import { useEetSettings } from "@/features/shared/use-eet-settings.ts"
 import { useAiAssistantAccess } from "@/hooks/use-ai-assistant-access.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useTerminalHomeMode } from "@/hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { homeModeLabelKeys } from "@/i18n/settings-labels.ts"
@@ -98,7 +102,19 @@ function createSettingsNavItems(
   })
 }
 
+/** Everything the list reads, `useEetSettings` included, in one round trip. */
+const settingsPageQueries = [
+  settingsQuery,
+  legalEntityQuery,
+  cashRegisterAccountQuery,
+  fiatBankAccountQuery,
+  sparkAccountQuery,
+  cardSwitchioAccountQuery,
+  eetSettingsQuery,
+]
+
 export function SettingsPage() {
+  usePreloadEvoluQueries(settingsPageQueries)
   const { language, t } = useTranslation()
   const { theme } = useTheme()
   const [settings] = useEvoluQuery(settingsQuery).data

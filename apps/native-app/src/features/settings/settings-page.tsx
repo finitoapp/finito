@@ -12,6 +12,7 @@ import {
   getFiatCurrency,
   parseEnabledHomeModes,
 } from "@payky/core/modules/app-settings/app-settings-utils"
+import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
@@ -40,12 +41,19 @@ import { languageOptions } from "../../components/language-options.ts"
 import { Screen } from "../../components/screen.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadDeviceEvoluQueries,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import { homeModeLabelKeys } from "./home-screen/home-screen-settings-page.tsx"
-import { usePrivacySettings } from "./privacy/use-privacy-settings.ts"
+import {
+  privacyQuery,
+  usePrivacySettings,
+} from "./privacy/use-privacy-settings.ts"
 import { ProfileCard } from "./profile/profile-card.tsx"
 import { themeLabelKeys } from "./theme/theme-settings-page.tsx"
 
@@ -113,7 +121,24 @@ function createSettingsNavItems(
 }
 
 /** The settings groups follow web's order; unavailable native routes stay omitted. */
+/**
+ * Everything the list reads, `useEetSettings` included, in one round trip;
+ * `usePrivacySettings` reads the device database, preloaded beside it.
+ */
+const settingsPageQueries = [
+  settingsQuery,
+  legalEntityQuery,
+  cashRegisterAccountQuery,
+  fiatBankAccountQuery,
+  sparkAccountQuery,
+  cardSwitchioAccountQuery,
+  eetSettingsQuery,
+]
+const settingsPageDeviceQueries = [privacyQuery]
+
 export function SettingsPage() {
+  usePreloadEvoluQueries(settingsPageQueries)
+  usePreloadDeviceEvoluQueries(settingsPageDeviceQueries)
   const { language, t } = useTranslation()
   const theme = useThemePreference()
   const [settings] = useEvoluQuery(settingsQuery).data

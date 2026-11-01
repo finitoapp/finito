@@ -39,3 +39,26 @@ export const useEvoluQueryFor = <S extends AnyEvoluSchema, R extends Row>(
 
   return { data }
 }
+
+/**
+ * The shared body of `usePreloadEvoluQueries` and
+ * `usePreloadDeviceEvoluQueries`: start loading every query a screen reads,
+ * before its first `useEvoluQuery` suspends.
+ *
+ * Each `useEvoluQuery` suspends on its own query, and a render stops at the
+ * first one that is still loading, so a screen reading six queries otherwise
+ * waits for six worker round trips one after another, rendering again after
+ * each. Evolu sends the loads started in one microtask as one message, and
+ * `loadQuery` returns the same promise for the same query, so the hooks below
+ * this call all wait on that one round trip. A query the list misses costs
+ * one round trip more, nothing else; `null` entries (a query that does not
+ * exist yet) are skipped.
+ */
+export const usePreloadEvoluQueriesFor = <S extends AnyEvoluSchema>(
+  evolu: Evolu<S>,
+  queries: ReadonlyArray<Query<S, Row> | null>
+): void => {
+  for (const query of queries) {
+    if (query !== null) void evolu.loadQuery(query)
+  }
+}

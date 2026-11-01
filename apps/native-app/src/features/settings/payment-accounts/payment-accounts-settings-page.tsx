@@ -47,7 +47,10 @@ import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { Switch } from "../../../components/ui/switch.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
-import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useCashuRunToast, useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -76,12 +79,25 @@ interface PaymentMethodRowState {
   readonly experimental?: true
 }
 
+const paymentAccountsPageQueries = [
+  settingsQuery,
+  fiatBankAccountQuery,
+  sparkAccountQuery,
+  cashRegisterAccountQuery,
+  cardSwitchioAccountQuery,
+  qerkoTerminalAccountQuery,
+  qerkoPluginQuery,
+  cashuAccountQuery,
+  lightningAddressAccountQuery,
+]
+
 /**
  * The payment methods in the order customers see them, as web's
  * `PaymentAccountsSettingsPage`. There is no separate default: the first
  * available one is the tab the payment screen opens on.
  */
 export function PaymentAccountsSettingsPage() {
+  usePreloadEvoluQueries(paymentAccountsPageQueries)
   const runToast = useRunToast()
   const cashuRunToast = useCashuRunToast()
   const { t } = useTranslation()

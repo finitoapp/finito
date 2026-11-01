@@ -116,6 +116,20 @@ import {
 import { RefundBadge } from "../shared/refund-badge.tsx"
 
 /**
+ * Every query `PaymentRefunds` reads, for the payment screen's
+ * `usePreloadEvoluQueries`, which knows the payment before this mounts.
+ */
+export const paymentRefundsQueries = (paymentId: PaymentId) => [
+  refundsByPaymentIdQuery(paymentId),
+  refundLinesByPaymentIdQuery(paymentId),
+  refundablePaymentLinesQuery(paymentId),
+  otherClaimedPaymentOfBillQuery(paymentId),
+  eetReversalsByPaymentIdQuery(paymentId),
+  paymentQerkoTerminalByIdQuery(paymentId),
+  qerkoTerminalRefundAttemptsByPaymentIdQuery(paymentId),
+]
+
+/**
  * Native counterpart of web's `PaymentDetailRefunds`: the refunds already
  * recorded (refund/0001), and the buttons that start a refund of goods
  * (amount or chosen items) or of the tip. Which of them are offered, and the

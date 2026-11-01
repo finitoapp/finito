@@ -12,6 +12,15 @@ import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 
 /**
+ * What `useBillLineSummaryDiff` reads beyond `billStateQueries`, for a
+ * screen's `usePreloadEvoluQueries`.
+ */
+export const billLineSummaryDiffQueries = (paymentId: PaymentId) => [
+  paymentLinesByPaymentIdQuery(paymentId),
+  itemsByPaymentIdQuery(paymentId),
+]
+
+/**
  * Compares the bill-line snapshot frozen when `paymentId` was created (see
  * `snapshotBillLinesForPayment`) against the bill's current line-item
  * summaries. `null` when there is no snapshot to compare against — the
