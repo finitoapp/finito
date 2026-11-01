@@ -15,6 +15,7 @@
     "@evolu/common": "8.23.0",
     "@evolu/nodejs": "4.3.4",
     "@finitoapp/eet-client": "0.4.0",
+    "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@peculiar/asn1-schema": "2.11.0",
     "@peculiar/asn1-x509": "2.11.0",

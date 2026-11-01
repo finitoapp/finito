@@ -10,7 +10,6 @@ import {
 import { hmac } from "@noble/hashes/hmac.js"
 import { sha512 } from "@noble/hashes/sha2.js"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
-import { HDKey } from "@scure/bip32"
 import {
   entropyToMnemonic,
   mnemonicToEntropy,
@@ -20,10 +19,7 @@ import { wordlist } from "@scure/bip39/wordlists/english.js"
 import { Slip39 } from "slip39-ts"
 import { z } from "zod"
 
-import {
-  deriveHardenedPrivateKey,
-  parseHardenedPath,
-} from "./bip32-hardened.ts"
+import { derivePrivateKey, parseDerivationPath } from "./bip32.ts"
 import { mnemonicToBip39Seed } from "./bip39-seed.ts"
 import { hmacSha512 } from "./hmac-sha512.ts"
 
@@ -114,36 +110,28 @@ export const nostrKeyDerivationPath = DerivationPath("m/44'/1237'/0'/0/0")
 
 const bipEntropyHmacKey = new TextEncoder().encode("bip-entropy-from-k")
 
+const derivePathPrivateKey = (
+  masterKey: MasterKey,
+  path: DerivationPath
+): Uint8Array<ArrayBuffer> => {
+  const indexes = parseDerivationPath(path)
+  if (indexes === null) {
+    throw new Error("A private BIP32 derivation path is required.")
+  }
+  return derivePrivateKey(hexToBytes(masterKey), indexes)
+}
+
 const deriveEntropy = (
   masterKey: MasterKey,
   path: DerivationPath
-): Uint8Array => {
-  const seed = hexToBytes(masterKey)
-  // Payky's BIP-85 paths are fully hardened: derived without secp256k1.
-  const hardened = parseHardenedPath(path)
-  const privateKey =
-    hardened === null
-      ? HDKey.fromMasterSeed(seed).derive(path).privateKey
-      : deriveHardenedPrivateKey(seed, hardened)
+): Uint8Array =>
+  hmacSha512(bipEntropyHmacKey, derivePathPrivateKey(masterKey, path)).slice(
+    0,
+    32
+  )
 
-  if (privateKey === null) {
-    throw new Error("A private BIP32 derivation path is required.")
-  }
-
-  return hmacSha512(bipEntropyHmacKey, privateKey).slice(0, 32)
-}
-
-export const deriveNostrSecretKey = (masterKey: MasterKey): NostrSecretKey => {
-  const privateKey = HDKey.fromMasterSeed(hexToBytes(masterKey)).derive(
-    nostrKeyDerivationPath
-  ).privateKey
-
-  if (privateKey === null) {
-    throw new Error("The Nostr derivation path yielded no private key.")
-  }
-
-  return NostrSecretKey(new Uint8Array(privateKey))
-}
+export const deriveNostrSecretKey = (masterKey: MasterKey): NostrSecretKey =>
+  NostrSecretKey(derivePathPrivateKey(masterKey, nostrKeyDerivationPath))
 
 /** The 64-byte BIP-39 seed every NUT-13 derivation of the Cashu wallet hangs off. */
 export const CashuWalletSeedSchema = z

@@ -1,8 +1,9 @@
 import { err, ok, type Task } from "@evolu/common"
+import { bytesToHex } from "@noble/hashes/utils.js"
 import type { AbstractSimplePool } from "nostr-tools/abstract-pool"
 import { npubEncode } from "nostr-tools/nip19"
 import { SimplePool } from "nostr-tools/pool"
-import { finalizeEvent, getPublicKey } from "nostr-tools/pure"
+import { finalizeEvent } from "nostr-tools/pure"
 import { normalizeURL } from "nostr-tools/utils"
 import { z } from "zod"
 
@@ -13,6 +14,7 @@ import {
   type MasterKey,
 } from "../../modules/shared/key-derivation.ts"
 import type { NonEmptyString255 } from "../../modules/shared/schema.ts"
+import { secp256k1PublicKey } from "../../modules/shared/secp256k1-public-key.ts"
 import { shortenMiddle } from "../../utils/shorten-middle.ts"
 import { jsonCodec } from "../../zod-utils.ts"
 
@@ -56,8 +58,15 @@ export interface NostrIdentity {
   readonly npub: string
 }
 
+/**
+ * Nostr's x-only public key is the compressed key without its parity byte,
+ * which `secp256k1PublicKey` computes on the platform's native crypto where
+ * it has one (nostr-tools' `getPublicKey` always runs noble's).
+ */
 export const getNostrIdentity = (masterKey: MasterKey): NostrIdentity => {
-  const pubkey = getPublicKey(deriveNostrSecretKey(masterKey))
+  const pubkey = bytesToHex(
+    secp256k1PublicKey(deriveNostrSecretKey(masterKey)).subarray(1)
+  )
   return { pubkey, npub: npubEncode(pubkey) }
 }
 
