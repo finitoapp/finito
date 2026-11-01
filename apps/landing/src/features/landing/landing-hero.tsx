@@ -1,4 +1,3 @@
-import { landingAppEntryPath } from "@payky/web-shared/landing-redirect"
 import type { LucideIcon } from "lucide-react"
 import {
   BanknoteIcon,
@@ -9,6 +8,7 @@ import {
 } from "lucide-react"
 import { type PointerEvent, useId } from "react"
 import { buttonVariants } from "@/components/ui/button.tsx"
+import { landingAppEntryUrl } from "@/core/landing-site.ts"
 import {
   mockupHeight,
   mockupsByLanguage,
@@ -283,7 +283,7 @@ export function LandingHero() {
           <div className="landing-rise landing-delay-2 flex flex-wrap gap-3">
             <a
               // A plain link: the app is another document (landing/0003).
-              href={landingAppEntryPath(language)}
+              href={landingAppEntryUrl(language)}
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "landing-nudge h-12 rounded-full px-7 text-base font-semibold has-data-[icon=inline-start]:pl-6"

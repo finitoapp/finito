@@ -11,7 +11,7 @@ import {
 } from "@payky/core/modules/contact/contact-message"
 import { jsonCodec } from "@payky/core/zod-utils"
 import { z } from "zod"
-import { apiUrl } from "@/core/app-env.ts"
+import { apiUrl } from "@/core/landing-site.ts"
 
 const ContactMessageJson = jsonCodec(ContactMessageSchema)
 
@@ -35,7 +35,7 @@ export type ContactResponseError = ReturnType<typeof createContactResponseError>
 export type ContactError = ContactHttpError | ContactResponseError | FetchError
 
 /**
- * Hands the landing page's contact form to Payky's API, which passes it on
+ * Hands the landing page's contact form to the app's API, which passes it on
  * to the support team (support/0003). Ok once a relay accepted it for them.
  */
 export const sendContactMessage =

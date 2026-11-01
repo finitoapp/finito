@@ -11,6 +11,7 @@
     "@base-ui/react": "1.9.0",
     "@evolu/common": "8.23.0",
     "@evolu/web": "3.6.2",
+    "@payky/app-shared": "workspace:*",
     "@payky/core": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
     "@tailwindcss/vite": "4.3.3",

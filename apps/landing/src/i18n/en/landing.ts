@@ -1,13 +1,13 @@
 export const enLanding = {
   "landing.closing.contact.body":
-    "Leave an email or a phone number and we'll get in touch. We'll answer your questions, set Payky up with you and fine-tune it for your business, so payments run smoothly and securely.",
+    "Leave an email or a phone number and we'll get in touch. We'll answer your questions, set {appName} up with you and fine-tune it for your business, so payments run smoothly and securely.",
   "landing.closing.contact.title": "We'll help you",
   "landing.closing.get.apk.hint": "No automatic updates",
   "landing.closing.get.apk.label": "APK from GitHub",
   "landing.closing.get.body":
-    "Payky is free and installs in a minute. Pick how you want to run it.",
+    "{appName} is free and installs in a minute. Pick how you want to run it.",
   "landing.closing.get.install.done":
-    "Payky is installed. Open it from your home screen or your list of apps.",
+    "{appName} is installed. Open it from your home screen or your list of apps.",
   "landing.closing.get.install.hint":
     "Its own window and icon, automatic updates",
   "landing.closing.get.install.label": "Install as a PWA",
@@ -17,7 +17,7 @@ export const enLanding = {
   "landing.closing.get.native.body": "For Android, with every feature.",
   "landing.closing.get.native.title": "Native app",
   "landing.closing.get.recommended": "Recommended",
-  "landing.closing.get.title": "Install Payky",
+  "landing.closing.get.title": "Install {appName}",
   "landing.closing.get.web.hint": "Automatic updates, nothing to install",
   "landing.closing.get.web.label": "Open in the browser",
   "landing.closing.get.webBased.action": "Start the web app",
@@ -47,7 +47,7 @@ export const enLanding = {
   "landing.contact.sent.title": "Thanks, got it.",
   "landing.contact.submit": "Get in touch",
   "landing.cta.download": "Download",
-  "landing.cta.start": "Start Payky",
+  "landing.cta.start": "Start {appName}",
   "landing.cta.startShort": "Start",
   "landing.eet.changes.cards.body":
     "Card and other cashless payments taken in person are now recorded too. So EET also applies to businesses that take no cash at all.",
@@ -67,45 +67,45 @@ export const enLanding = {
   "landing.eet.changes.receipt.title": "No mandatory receipt",
   "landing.eet.changes.title": "What EET 2.0 brings",
   "landing.eet.faq.bitcoin.answer":
-    "Yes. The law includes crypto-assets when the customer pays in person. Payky records a Lightning payment like any other, in the crowns you sold for.",
+    "Yes. The law includes crypto-assets when the customer pays in person. {appName} records a Lightning payment like any other, in the crowns you sold for.",
   "landing.eet.faq.bitcoin.question": "Are bitcoin payments recorded too?",
   "landing.eet.faq.card.answer":
     "Yes, when the customer pays in person at your place. Remote payments, in an online shop through a payment gateway or by bank transfer against an invoice, are not recorded.",
   "landing.eet.faq.card.question": "Are card and QR payments recorded?",
   "landing.eet.faq.certificate.answer":
-    "You generate cash register certificates in DIS+ for free, there's no limit on how many, and each is valid for one year. Payky needs one per account, shared by all its devices. Payky's settings warn you three weeks before it expires.",
+    "You generate cash register certificates in DIS+ for free, there's no limit on how many, and each is valid for one year. {appName} needs one per account, shared by all its devices. {appName}'s settings warn you three weeks before it expires.",
   "landing.eet.faq.certificate.question":
     "How many certificates do I need, and how long are they valid?",
   "landing.eet.faq.device.answer":
-    "No. The law doesn't prescribe a type of device: a phone, tablet or computer connected to the internet is enough. Payky runs on Android and in the browser.",
+    "No. The law doesn't prescribe a type of device: a phone, tablet or computer connected to the internet is enough. {appName} runs on Android and in the browser.",
   "landing.eet.faq.device.question":
     "Do I need to buy a cash register for EET 2.0?",
   "landing.eet.faq.off.answer":
-    "Flat-rate taxpayers in the first band with income up to CZK 1 million can opt out of recording for an extra CZK 1,400 a month on top of the flat tax. They have to sign up by the 10th day of the tax period, and the choice holds for the whole year. Worth doing the maths: Payky costs nothing.",
+    "Flat-rate taxpayers in the first band with income up to CZK 1 million can opt out of recording for an extra CZK 1,400 a month on top of the flat tax. They have to sign up by the 10th day of the tax period, and the choice holds for the whole year. Worth doing the maths: {appName} costs nothing.",
   "landing.eet.faq.off.question": "What is EET OFF?",
   "landing.eet.faq.offline.answer":
-    "You take the payment as usual. The sale has to be sent as soon as the connection is back, within 48 hours at the latest. Payky keeps resending it on its own until EET confirms it, and flags on the payment anything not through within 48 hours.",
+    "You take the payment as usual. The sale has to be sent as soon as the connection is back, within 48 hours at the latest. {appName} keeps resending it on its own until EET confirms it, and flags on the payment anything not through within 48 hours.",
   "landing.eet.faq.offline.question": "What if the internet goes down?",
   "landing.eet.faq.price.answer":
-    "Nothing. Sales recording is part of Payky for free, and the cash register certificate from the Financial Administration is free as well.",
-  "landing.eet.faq.price.question": "How much does EET cost in Payky?",
+    "Nothing. Sales recording is part of {appName} for free, and the cash register certificate from the Financial Administration is free as well.",
+  "landing.eet.faq.price.question": "How much does EET cost in {appName}?",
   "landing.eet.faq.receipt.answer":
     "The Sales Recording Act doesn't require it. Other rules may, such as consumer protection law when the customer asks for a receipt.",
   "landing.eet.faq.receipt.question": "Do I have to issue a receipt?",
   "landing.eet.faq.refund.answer":
-    "Record the refund on the payment in Payky. EET 2.0 has no cancellation message: money returned is recorded as a new sale with a negative amount, and Payky sends it on its own.",
+    "Record the refund on the payment in {appName}. EET 2.0 has no cancellation message: money returned is recorded as a new sale with a negative amount, and {appName} sends it on its own.",
   "landing.eet.faq.refund.question": "How do I refund a customer?",
   "landing.eet.faq.tip.answer":
-    "A tip that is the business's income is part of the sale. When tips belong to the employees, you set Payky to leave them out of the sale. A mandatory cover charge or service charge is not a tip and always counts.",
+    "A tip that is the business's income is part of the sale. When tips belong to the employees, you set {appName} to leave them out of the sale. A mandatory cover charge or service charge is not a tip and always counts.",
   "landing.eet.faq.tip.question": "Are tips recorded?",
   "landing.eet.faq.units.answer":
-    "One Payky account records to one recording unit. Create another account for each further premises; you can use the same certificate.",
+    "One {appName} account records to one recording unit. Create another account for each further premises; you can use the same certificate.",
   "landing.eet.faq.units.question": "I have several premises. What do I do?",
   "landing.eet.handles.background.body":
     "The payment is done at once. The sale is sent in the background and the customer never waits for EET.",
   "landing.eet.handles.background.title": "Checkout never waits",
   "landing.eet.handles.certificate.body":
-    "Three weeks before your certificate expires, Payky's settings warn you so you can renew it in time.",
+    "Three weeks before your certificate expires, {appName}'s settings warn you so you can renew it in time.",
   "landing.eet.handles.certificate.title": "Watches the certificate",
   "landing.eet.handles.code.body":
     "Each payment shows whether EET confirmed it, with the confirmation code. Unconfirmed sales are listed together in the settings.",
@@ -113,26 +113,26 @@ export const enLanding = {
   "landing.eet.handles.devices.body":
     "Each device is its own cash register. If one goes offline, another device of the account sends its sales after ten minutes.",
   "landing.eet.handles.devices.title": "Several phones, one record",
-  "landing.eet.handles.eyebrow": "What Payky takes care of",
+  "landing.eet.handles.eyebrow": "What {appName} takes care of",
   "landing.eet.handles.offline.body":
-    "When the network drops, Payky keeps resending the sale until EET confirms it. Anything not through within 48 hours is flagged on the payment.",
+    "When the network drops, {appName} keeps resending the sale until EET confirms it. Anything not through within 48 hours is flagged on the payment.",
   "landing.eet.handles.offline.title": "Retries without signal",
   "landing.eet.handles.refund.body":
-    "Money returned is recorded as a new sale with a negative amount. Payky sends it as soon as you record the refund.",
+    "Money returned is recorded as a new sale with a negative amount. {appName} sends it as soon as you record the refund.",
   "landing.eet.handles.refund.title": "Refunds as negative sales",
-  "landing.eet.handles.title": "Payky sends the records for you",
+  "landing.eet.handles.title": "{appName} sends the records for you",
   "landing.eet.hero.body":
-    "From 1 January 2027, Payky sends every payment it receives to EET on its own. It costs nothing, and neither does the cash register certificate from the Financial Administration.",
+    "From 1 January 2027, {appName} sends every payment it receives to EET on its own. It costs nothing, and neither does the cash register certificate from the Financial Administration.",
   "landing.eet.hero.connect": "How to connect to EET",
-  "landing.eet.hero.eyebrow": "Payky is ready for Czech EET 2.0",
+  "landing.eet.hero.eyebrow": "{appName} is ready for Czech EET 2.0",
   "landing.eet.hero.note":
     "Connecting needs a cash register certificate from DIS+, available from 1 November 2026. Until then, you can try everything with the Financial Administration's official test certificate.",
   "landing.eet.hero.start": "Start recording for free",
-  "landing.eet.hero.title": "Start Payky, connect it to EET. Done.",
+  "landing.eet.hero.title": "Start {appName}, connect it to EET. Done.",
   "landing.eet.meta.description":
-    "Who the Czech EET 2.0 applies to, the deadlines, the certificate and recording unit step by step. Turn on sales recording in Payky for free and try it in the sandbox today.",
+    "Who the Czech EET 2.0 applies to, the deadlines, the certificate and recording unit step by step. Turn on sales recording in {appName} for free and try it in the sandbox today.",
   "landing.eet.meta.title":
-    "Czech EET 2.0 from 1 Jan 2027: what to do and how in Payky, free",
+    "Czech EET 2.0 from 1 Jan 2027: what to do and how in {appName}, free",
   "landing.eet.prepare.body":
     "Everything is done online in the Tax Information Box (DIS+) on the MOJE daně portal, from 1 November 2026.",
   "landing.eet.prepare.certificate.body":
@@ -145,7 +145,7 @@ export const enLanding = {
   "landing.eet.prepare.eyebrow": "Getting ready with the tax office",
   "landing.eet.prepare.title": "Three steps in DIS+",
   "landing.eet.prepare.unit.body":
-    "A recording unit is your premises, fixed or mobile such as a stall, a website or app, or you yourself when you work at customers' places. The system gives it a number that can't be changed. That's what you enter in Payky.",
+    "A recording unit is your premises, fixed or mobile such as a stall, a website or app, or you yourself when you work at customers' places. The system gives it a number that can't be changed. That's what you enter in {appName}.",
   "landing.eet.prepare.unit.title": "Create a recording unit",
   "landing.eet.scope.body":
     "Every business, individual or company, that receives recorded sales has to record them. What matters is how the customer pays.",
@@ -174,15 +174,15 @@ export const enLanding = {
   "landing.eet.setup.body":
     "You'll find everything in the app under Settings → EET.",
   "landing.eet.setup.certificate.body":
-    "Pick the .p12 file and enter its password. Payky checks the password, key, tax ID and validity right away.",
+    "Pick the .p12 file and enter its password. {appName} checks the password, key, tax ID and validity right away.",
   "landing.eet.setup.certificate.title": "Upload the certificate",
   "landing.eet.setup.dis.body":
     "In DIS+ on the MOJE daně portal, you set up a recording unit and generate a cash register certificate.",
   "landing.eet.setup.dis.link": "How to do it in DIS+",
   "landing.eet.setup.dis.title": "Get the certificate and unit number",
-  "landing.eet.setup.eyebrow": "Setting up Payky",
+  "landing.eet.setup.eyebrow": "Setting up {appName}",
   "landing.eet.setup.on.body":
-    "From then on, Payky sends every payment it receives as a sale: cash, QR payments and bitcoin.",
+    "From then on, {appName} sends every payment it receives as a sale: cash, QR payments and bitcoin.",
   "landing.eet.setup.on.title": "Turn recording on",
   "landing.eet.setup.sandbox.body":
     "You can get your own certificate only from 1 November 2026. In the sandbox, use one of the Financial Administration's official test certificates instead and go through recording as a dry run.",
@@ -191,9 +191,9 @@ export const enLanding = {
     "A verification message checks the setup, and in the sandbox you can send a test sale too. None of it is recorded.",
   "landing.eet.setup.test.title": "Test the connection",
   "landing.eet.setup.tip.body":
-    "Tips that belong to the business are part of the sale. When they belong to the employees, Payky leaves them out.",
+    "Tips that belong to the business are part of the sale. When they belong to the employees, {appName} leaves them out.",
   "landing.eet.setup.tip.title": "Choose who the tips belong to",
-  "landing.eet.setup.title": "Turning it on in Payky takes minutes",
+  "landing.eet.setup.title": "Turning it on in {appName} takes minutes",
   "landing.eet.setup.unit.body": "The number DIS+ gave you.",
   "landing.eet.setup.unit.title": "Enter the recording unit number",
   "landing.eet.source":
@@ -212,11 +212,12 @@ export const enLanding = {
   "landing.eet.timeline.start.title": "Recording starts",
   "landing.eet.timeline.title": "Only a few weeks to get ready",
   "landing.faq.catch.answer":
-    "We're just starting out and learning. In time we'll need to charge for premium features, and we'd like to reward those who start using Payky with us now and help us shape it for merchants.\n\nLater on we plan to add optional card payments. From those transactions we'd like to keep a small part of the fee.",
+    "We're just starting out and learning. In time we'll need to charge for premium features, and we'd like to reward those who start using {appName} with us now and help us shape it for merchants.\n\nLater on we plan to add optional card payments. From those transactions we'd like to keep a small part of the fee.",
   "landing.faq.catch.question": "Is it really free? How do you keep going?",
   "landing.faq.eet.answer":
     "Yes. Turn EET on in the settings, add your certificate, and every received payment is reported as a sale — including cash and tips. When the network is down, the app keeps retrying on its own.",
-  "landing.faq.eet.question": "Does Payky support the Czech EET 2.0 system?",
+  "landing.faq.eet.question":
+    "Does {appName} support the Czech EET 2.0 system?",
   "landing.faq.money.answer":
     "QR transfers go straight to your bank account; Lightning payments arrive instantly in your own bitcoin wallet. No middleman, no payout delays.",
   "landing.faq.money.question": "How fast do I get my money?",
@@ -250,7 +251,7 @@ export const enLanding = {
   "landing.flows.bill.tab": "Ring up items",
   "landing.flows.label": "How you sell",
   "landing.flows.subtitle":
-    "A stall, a shop, or a restaurant with tables? Each sells differently, and Payky handles all three ways of getting paid. Pick yours.",
+    "A stall, a shop, or a restaurant with tables? Each sells differently, and {appName} handles all three ways of getting paid. Pick yours.",
   "landing.flows.tables.audience": "Restaurants, bistros, cafés and bars",
   "landing.flows.tables.short": "Tables",
   "landing.flows.tables.step1.body":
@@ -266,26 +267,27 @@ export const enLanding = {
     "Each guest pays their bill by QR code or in cash, and the table frees up once everything is paid.",
   "landing.flows.tables.step4.title": "Everyone pays their share",
   "landing.flows.tables.tab": "Serve tables",
-  "landing.flows.title": "Payky adapts to the way you do business",
+  "landing.flows.title": "{appName} adapts to the way you do business",
   "landing.footer.description": "The payment terminal for Czechia & Slovakia",
   "landing.footer.github": "GitHub",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "What makes us different",
-  "landing.footer.website": "payky.me",
+  "landing.footer.website": "{siteHost}",
   "landing.hero.subtitle":
-    "Not you, not your customers. Payky turns your phone into a payment terminal: the customer scans a code and pays by bank transfer straight to your account. No fees, no contract, no hardware.",
+    "Not you, not your customers. {appName} turns your phone into a payment terminal: the customer scans a code and pays by bank transfer straight to your account. No fees, no contract, no hardware.",
   "landing.hero.title": "Paying by QR code costs nothing.",
   "landing.hero.titleAccent": "costs nothing",
   "landing.language.label": "Language",
   "landing.meta.description":
     "Accept QR code payments with no fees and no contract. Money goes by bank transfer straight to your account. A free till with table bills, cash and EET.",
   "landing.meta.title":
-    "Payky – free payment terminal on your phone, QR payments",
+    "{appName} – free payment terminal on your phone, QR payments",
   "landing.mockup.bill.alt": "A bill in progress with items rung up",
-  "landing.mockup.home.alt": "Payky keypad with an amount typed in",
-  "landing.mockup.items.alt": "Payky item catalog with prices",
-  "landing.mockup.paid.alt": "Payky confirming a received payment",
-  "landing.mockup.payment.alt": "Payky showing a QR code for a bank transfer",
+  "landing.mockup.home.alt": "{appName} keypad with an amount typed in",
+  "landing.mockup.items.alt": "{appName} item catalog with prices",
+  "landing.mockup.paid.alt": "{appName} confirming a received payment",
+  "landing.mockup.payment.alt":
+    "{appName} showing a QR code for a bank transfer",
   "landing.mockup.split.alt": "Splitting a bill by item",
   "landing.mockup.stats.alt": "Revenue overview in Statistics",
   "landing.mockup.statsCharts.alt":
@@ -340,7 +342,7 @@ export const enLanding = {
   "landing.tech.account.cost.title": "Freedom comes with responsibility",
   "landing.tech.account.eyebrow": "No sign-up",
   "landing.tech.account.kyc.body":
-    "Payky never holds or forwards your money. A bank transfer goes from the customer's bank straight to your account, which your bank has already verified. Bitcoin lands in a wallet only you hold the keys to. So the app has no money of yours that would require verifying you.",
+    "{appName} never holds or forwards your money. A bank transfer goes from the customer's bank straight to your account, which your bank has already verified. Bitcoin lands in a wallet only you hold the keys to. So the app has no money of yours that would require verifying you.",
   "landing.tech.account.kyc.title":
     "Why we don't ask for your ID (KYC and AML)",
   "landing.tech.account.phrase.body":
@@ -366,7 +368,7 @@ export const enLanding = {
     "As long as I have the phone, I can copy the phrase again in the settings.",
   "landing.tech.account.whatIf.topic": "What happens",
   "landing.tech.account.why.body":
-    "Sign-up is mostly for the provider's benefit. They need to know whose data sits on their server and let only you in. Payky keeps none of your data on a server, so there's no account to create. What lets you in isn't our server, it's your key.",
+    "Sign-up is mostly for the provider's benefit. They need to know whose data sits on their server and let only you in. {appName} keeps none of your data on a server, so there's no account to create. What lets you in isn't our server, it's your key.",
   "landing.tech.account.why.title": "Why that works",
   "landing.tech.backup.body":
     "Data is encrypted right on your device, and only unreadable noise ever leaves it. Only someone with the key can read it.",
@@ -374,7 +376,7 @@ export const enLanding = {
     "Data is encrypted with your key before it ever leaves the device. All the relay stores is unreadable blocks.",
   "landing.tech.backup.content.title": "It can't see the content",
   "landing.tech.backup.diagram.caption":
-    "With a cloud app, the provider holds the key to your data. So they can read it, and so can anyone who gets to the server: support, engineers, sales, or an attacker in a breach. With Payky, the relay sees only encrypted noise, and only you have the key. Not even our support can see your data — they only know what you tell them.",
+    "With a cloud app, the provider holds the key to your data. So they can read it, and so can anyone who gets to the server: support, engineers, sales, or an attacker in a breach. With {appName}, the relay sees only encrypted noise, and only you have the key. Not even our support can see your data — they only know what you tell them.",
   "landing.tech.backup.diagram.cloudSees": "What the provider's server sees",
   "landing.tech.backup.diagram.receipt":
     "Espresso 2× · CZK 130 · 14:32 · table 3 · QR payment",
@@ -395,7 +397,7 @@ export const enLanding = {
   "landing.tech.backup.restore.title": "Restoring",
   "landing.tech.backup.title": "A backup nobody but you can read",
   "landing.tech.backup.where.body":
-    "The backup goes to Payky's relay (live-relay.payky.me) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles. If one goes down, the other keeps going. In the settings you can turn them off or add your own, for example on your own server.",
+    "The backup goes to {appName}'s relay ({liveRelayHost}) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles. If one goes down, the other keeps going. In the settings you can turn them off or add your own, for example on your own server.",
   "landing.tech.backup.where.title": "Two relays at once",
   "landing.tech.compare.cloud": "A typical cloud app",
   "landing.tech.compare.cloudFlow.caption":
@@ -417,10 +419,10 @@ export const enLanding = {
   "landing.tech.compare.outage.cloud": "You can't sell",
   "landing.tech.compare.outage.label": "When the server goes down",
   "landing.tech.compare.outage.payky": "You keep selling",
-  "landing.tech.compare.payky": "Payky",
+  "landing.tech.compare.payky": "{appName}",
   "landing.tech.compare.paykyFlow.caption":
     "The money goes straight to your account, and your phone asks your bank about the payment directly.",
-  "landing.tech.compare.paykyFlow.title": "Payky",
+  "landing.tech.compare.paykyFlow.title": "{appName}",
   "landing.tech.compare.reads.cloud":
     "The provider, and anyone who gets into their database",
   "landing.tech.compare.reads.label": "Who can read your sales",
@@ -432,7 +434,7 @@ export const enLanding = {
   "landing.tech.compare.signup.cloud": "Email, password, often ID documents",
   "landing.tech.compare.signup.label": "Sign-up",
   "landing.tech.compare.signup.payky": "None",
-  "landing.tech.compare.title": "A typical cloud app, or Payky",
+  "landing.tech.compare.title": "A typical cloud app, or {appName}",
   "landing.tech.compare.topic": "What we compare",
   "landing.tech.cta.body": "No sign-up, done in a minute. Just open the app.",
   "landing.tech.cta.experiment.body":
@@ -440,14 +442,14 @@ export const enLanding = {
   "landing.tech.cta.experiment.title": "Try this:",
   "landing.tech.cta.title": "Try it yourself",
   "landing.tech.exit.body":
-    "Neither selling nor payments depend on our servers. Here's what happens when they go down — and what would happen if Payky shut down.",
+    "Neither selling nor payments depend on our servers. Here's what happens when they go down — and what would happen if {appName} shut down.",
   "landing.tech.exit.code.body":
     "Anyone can take it, change it and keep it running.",
   "landing.tech.exit.code.link": "Source code on GitHub",
   "landing.tech.exit.code.title": "The code is open",
   "landing.tech.exit.data.body": "The app on your phone keeps working.",
   "landing.tech.exit.data.title": "Your data is with you",
-  "landing.tech.exit.end": "If Payky ended",
+  "landing.tech.exit.end": "If {appName} ended",
   "landing.tech.exit.eyebrow": "Looking ahead",
   "landing.tech.exit.money.body":
     "The bank account is yours, and you can open the bitcoin wallet with the recovery phrase in another app that supports Spark too.",
@@ -476,7 +478,7 @@ export const enLanding = {
   "landing.tech.exit.sync.title": "Syncing keeps working",
   "landing.tech.exit.title": "You don't depend on us",
   "landing.tech.faq.kyc.answer":
-    "Payky never holds or forwards your money. Payments go straight to your bank account, which your bank has verified, or to your own bitcoin wallet.",
+    "{appName} never holds or forwards your money. Payments go straight to your bank account, which your bank has verified, or to your own bitcoin wallet.",
   "landing.tech.faq.kyc.question": "Why don't you ask for my ID (KYC)?",
   "landing.tech.faq.lostAll.answer":
     "Then you lose the data and the bitcoin in the wallet, and we can't restore them, because we don't have them. The money in your bank account isn't affected.",
@@ -487,7 +489,7 @@ export const enLanding = {
   "landing.tech.faq.lostPhone.question": "What if I lose my phone?",
   "landing.tech.faq.offline.answer":
     "Selling, bills and cash, yes. Bank confirmations, bitcoin payments and sending sales to EET finish as soon as you're back online.",
-  "landing.tech.faq.offline.question": "Does Payky work without internet?",
+  "landing.tech.faq.offline.question": "Does {appName} work without internet?",
   "landing.tech.faq.openCode.answer":
     "No. An attacker can see how the lock works, but doesn't have the key — that lives only on your device and in your recovery phrase. Open code, on the other hand, can be read by people who look for bugs so they get fixed.",
   "landing.tech.faq.openCode.question":
@@ -496,20 +498,20 @@ export const enLanding = {
     "Yes. Add your own relay in the account settings, and you can turn the default ones off.",
   "landing.tech.faq.ownRelay.question": "Can I run my own backup server?",
   "landing.tech.faq.read.answer":
-    "No. Payky's relay holds only encrypted data, and only you have the key. The only exception is what you yourself write to the AI assistant or to support.",
+    "No. {appName}'s relay holds only encrypted data, and only you have the key. The only exception is what you yourself write to the AI assistant or to support.",
   "landing.tech.faq.read.question": "Can you read my receipts and sales?",
   "landing.tech.faq.server.answer":
-    "No. The QR code is made on your phone, the money goes from the customer's bank to your account, and the app asks your bank about the payment directly. A bitcoin payment is processed by the Spark network, not by Payky.",
+    "No. The QR code is made on your phone, the money goes from the customer's bank to your account, and the app asks your bank about the payment directly. A bitcoin payment is processed by the Spark network, not by {appName}.",
   "landing.tech.faq.server.question":
-    "Is there a Payky server between me and the customer?",
+    "Is there a {appName} server between me and the customer?",
   "landing.tech.faq.signup.answer":
-    "Because Payky has no server with your data that it would need to let you into. Your account is a cryptographic key created right on your device.",
+    "Because {appName} has no server with your data that it would need to let you into. Your account is a cryptographic key created right on your device.",
   "landing.tech.faq.signup.question": "Why don't I have to sign up?",
   "landing.tech.faq.where.answer":
     "On your device. Only encrypted data goes out to the relays, for backup and sync.",
   "landing.tech.faq.where.question": "Where is my data stored?",
   "landing.tech.hero.body":
-    "Typical payment apps run on the provider's server. Your data lives there, you sign in through it, and payment information flows through it. Payky has no such server. We do run a few — for the encrypted backup and some optional extras — but you can sell and take payments without them.",
+    "Typical payment apps run on the provider's server. Your data lives there, you sign in through it, and payment information flows through it. {appName} has no such server. We do run a few — for the encrypted backup and some optional extras — but you can sell and take payments without them.",
   "landing.tech.hero.eyebrow": "What makes us different",
   "landing.tech.hero.title": "A payment terminal that doesn't need our server",
   "landing.tech.journey.encrypt.body":
@@ -552,22 +554,22 @@ export const enLanding = {
   "landing.tech.meta.description":
     "A payment terminal that doesn't need our server. Only you have your data, money goes straight to you, and you can sell without the internet. A comparison with a typical cloud app and the full list of connections.",
   "landing.tech.meta.title":
-    "What makes Payky different: no cloud, no sign-up, no middleman",
+    "What makes {appName} different: no cloud, no sign-up, no middleman",
   "landing.tech.money.body":
-    "Money goes straight to your account or your wallet. No Payky server stands in its way.",
+    "Money goes straight to your account or your wallet. No {appName} server stands in its way.",
   "landing.tech.money.card.body":
-    "On a device with a Switchio terminal, Payky only hands the amount to the Switchio app. Switchio and the merchant's bank then process the card, just as with any other terminal. Card details never reach Payky.",
+    "On a device with a Switchio terminal, {appName} only hands the amount to the Switchio app. Switchio and the merchant's bank then process the card, just as with any other terminal. Card details never reach {appName}.",
   "landing.tech.money.card.title": "Card",
   "landing.tech.money.cash.body": "just you and the customer.",
   "landing.tech.money.cash.title": "Cash:",
   "landing.tech.money.eyebrow": "Payments",
   "landing.tech.money.lightning.body":
-    "Lightning is a network for instant bitcoin payments. Payky issues an invoice from your Spark wallet, which runs right inside the app. The payment lands in your wallet, and only your device holds its keys. Transactions are processed by Spark network operators and a Lightning gateway provider — they see the amount and the time. The app gets the exchange rate for your currency from the public Yadio service.",
+    "Lightning is a network for instant bitcoin payments. {appName} issues an invoice from your Spark wallet, which runs right inside the app. The payment lands in your wallet, and only your device holds its keys. Transactions are processed by Spark network operators and a Lightning gateway provider — they see the amount and the time. The app gets the exchange rate for your currency from the public Yadio service.",
   "landing.tech.money.lightning.title": "Bitcoin (Lightning)",
   "landing.tech.money.qr.arrive":
     "The money goes from the customer's bank straight to your account, within seconds for an instant payment.",
   "landing.tech.money.qr.check":
-    "Payky then asks your bank by itself whether the payment has arrived. It uses a token for this — an access key to your bank account that only you have stored.",
+    "{appName} then asks your bank by itself whether the payment has arrived. It uses a token for this — an access key to your bank account that only you have stored.",
   "landing.tech.money.qr.create":
     "The phone creates a QR code with your account number, the amount and a variable symbol. No server takes part.",
   "landing.tech.money.qr.note":
@@ -585,7 +587,7 @@ export const enLanding = {
   "landing.tech.node.operator": "The app provider's server",
   "landing.tech.node.otherDevice": "Your other device",
   "landing.tech.node.outside": "off the money's path",
-  "landing.tech.node.payky": "Payky",
+  "landing.tech.node.payky": "{appName}",
   "landing.tech.node.phone": "Your phone",
   "landing.tech.node.serverOrRelay": "Server / relay",
   "landing.tech.node.spark": "Spark network",
@@ -599,7 +601,7 @@ export const enLanding = {
     "Each device on its own, and locked: nothing to attack all at once.",
   "landing.tech.security.eyebrow": "Security",
   "landing.tech.security.ownership.body":
-    "Whoever holds your data can analyse it, sell it, hand it over on request or lose it. With Payky, only you can read it, and nobody can make us hand it over, because we don't have it.",
+    "Whoever holds your data can analyse it, sell it, hand it over on request or lose it. With {appName}, only you can read it, and nobody can make us hand it over, because we don't have it.",
   "landing.tech.security.ownership.title": "Your data belongs to you",
   "landing.tech.security.pin.body":
     "A PIN can lock the settings, refunds and other sensitive actions, so staff can only sell. To be clear: the PIN keeps out the curious at the counter, not an attacker with full access to the device. Real protection comes from the recovery phrase and the phone's own lock.",
@@ -608,11 +610,11 @@ export const enLanding = {
     "The recovery phrase, the bank token and the EET certificate are stored in the account data, which only ever syncs encrypted. Your device signs EET sales and sends them itself, with no one in between.",
   "landing.tech.security.secrets.title": "Sensitive details stay with you",
   "landing.tech.security.target.body":
-    "A server holding the data of thousands of merchants is an ideal target: one breach and the attacker has everything. And most breaches don't come from cracked encryption, but from a misconfigured database, a stolen admin password or an employee with access to everything. Payky has no such server. An attacker would have to break into each device separately, and on the relays they'd find only encrypted data.",
+    "A server holding the data of thousands of merchants is an ideal target: one breach and the attacker has everything. And most breaches don't come from cracked encryption, but from a misconfigured database, a stolen admin password or an employee with access to everything. {appName} has no such server. An attacker would have to break into each device separately, and on the relays they'd find only encrypted data.",
   "landing.tech.security.target.title": "No tempting target",
   "landing.tech.security.title": "We don't have your data, so we can't lose it",
   "landing.tech.security.tracking.body":
-    "Payky uses no analytics and no tracking services. Error reporting stays off until you turn it on yourself. And when you do, recovery phrases and account numbers are stripped from the report before it's sent.",
+    "{appName} uses no analytics and no tracking services. Error reporting stays off until you turn it on yourself. And when you do, recovery phrases and account numbers are stripped from the report before it's sent.",
   "landing.tech.security.tracking.title": "No tracking",
   "landing.tech.services.ai.name": "AI assistant",
   "landing.tech.services.ai.sent":
@@ -625,7 +627,7 @@ export const enLanding = {
     "Your token and a request for the account's transactions.",
   "landing.tech.services.bank.when": "When payment matching is on.",
   "landing.tech.services.body":
-    "Every service Payky talks to: what it sends, when, and for our own servers, why. Sorted by when the connection happens.",
+    "Every service {appName} talks to: what it sends, when, and for our own servers, why. Sorted by when the connection happens.",
   "landing.tech.services.boltCard.name":
     "The issuer of the customer's Bolt Card",
   "landing.tech.services.boltCard.sent": "A request to pay from the card.",
@@ -667,7 +669,7 @@ export const enLanding = {
   "landing.tech.services.group.always": "Whenever you use the app",
   "landing.tech.services.group.enabled": "Only when you turn it on",
   "landing.tech.services.highlight":
-    "Until you turn something on or use it, the app talks at most to the payky.me website and two relays — and it sends the relays only encrypted data.",
+    "Until you turn something on or use it, the app talks at most to the {appHost} website and two relays — and it sends the relays only encrypted data.",
   "landing.tech.services.lightningAddress.name":
     "The recipient's Lightning address",
   "landing.tech.services.lightningAddress.sent": "A request for an invoice.",
@@ -686,9 +688,9 @@ export const enLanding = {
     "Open Food Facts and Open Beauty Facts",
   "landing.tech.services.openFacts.sent": "The scanned barcode.",
   "landing.tech.services.openFacts.when": "When product lookup is on.",
-  "landing.tech.services.owner.payky": "Payky server",
+  "landing.tech.services.owner.payky": "{appName} server",
   "landing.tech.services.owner.third": "Third party",
-  "landing.tech.services.relay.name": "The live-relay.payky.me relay",
+  "landing.tech.services.relay.name": "The {liveRelayHost} relay",
   "landing.tech.services.relay.sent":
     "The account's encrypted data and an anonymous identifier.",
   "landing.tech.services.relay.when": "Always, but you can turn it off.",
@@ -712,7 +714,7 @@ export const enLanding = {
   "landing.tech.services.switchio.sent": "The payment amount.",
   "landing.tech.services.switchio.when": "With card payments (Android).",
   "landing.tech.services.title": "Nothing hidden: every connection, listed",
-  "landing.tech.services.web.name": "The payky.me website",
+  "landing.tech.services.web.name": "The {appHost} website",
   "landing.tech.services.web.sent": "Nothing; the app is just downloaded.",
   "landing.tech.services.web.when": "When you open the web version.",
   "landing.tech.services.web.why":
@@ -724,9 +726,9 @@ export const enLanding = {
   "landing.tech.services.yadio.when":
     "When converting bitcoin to your currency.",
   "landing.tech.transparency.body":
-    "Only the key has to stay secret. Cryptographers call this Kerckhoffs's principle, and Payky is built on it: anyone can read the code, but the key — your recovery phrase — is yours alone.",
+    "Only the key has to stay secret. Cryptographers call this Kerckhoffs's principle, and {appName} is built on it: anyone can read the code, but the key — your recovery phrase — is yours alone.",
   "landing.tech.transparency.build.body":
-    "We can't yet prove that the app on payky.me or on your phone was built from exactly the code on GitHub — that would take so-called reproducible builds, which we don't have. But you don't have to take our word for it: you can build the app yourself from the code on GitHub and run your own copy.",
+    "We can't yet prove that the app on {appHost} or on your phone was built from exactly the code on GitHub — that would take so-called reproducible builds, which we don't have. But you don't have to take our word for it: you can build the app yourself from the code on GitHub and run your own copy.",
   "landing.tech.transparency.build.title":
     "Don't want to trust even our build?",
   "landing.tech.transparency.code.body":

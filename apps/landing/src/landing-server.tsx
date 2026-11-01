@@ -1,11 +1,10 @@
-import {
-  landingEetPaths,
-  landingPaths,
-  landingTechPaths,
-} from "@payky/web-shared/landing-redirect"
 import type { ReactNode } from "react"
 import { renderToStaticMarkup, renderToString } from "react-dom/server"
-import { apkUrl, zapstoreUrl } from "@/features/landing/landing-closing.tsx"
+import {
+  installsFromLanding,
+  landingResources,
+  landingSite,
+} from "@/core/landing-site.ts"
 import {
   eetFaqItems,
   LandingEetPage,
@@ -20,21 +19,23 @@ import {
   LandingTechPage,
   techFaqItems,
 } from "@/features/landing/landing-tech-page.tsx"
-import {
-  type Language,
-  resources,
-  type TranslationKey,
-} from "@/i18n/resources.ts"
+import type { Language, TranslationKey } from "@/i18n/resources.ts"
 
-const siteUrl = "https://payky.me"
+const { siteUrl } = landingSite
 
-export const landingLanguages = Object.keys(landingPaths) as ReadonlyArray<
-  keyof typeof landingPaths
->
+/**
+ * The app's own origin, which serves its icons and manifest: payky.me for
+ * Payky's landing, which lives there, app.finito.fit for Finito's.
+ */
+const appUrl = landingSite.appOrigin ?? siteUrl
+
+export const landingLanguages = Object.keys(
+  landingSite.paths.home
+) as ReadonlyArray<Language>
 
 /**
  * The prerendered landing documents: the home page, the EET 2.0 page and the
- * page on how Payky works.
+ * page on how the app works.
  */
 export type LandingDocument = "home" | "eet" | "tech"
 
@@ -53,11 +54,10 @@ export const landingFileName = (
     ? `landing-${language}.html`
     : `landing-${document}-${language}.html`
 
-const documentPaths = {
-  home: landingPaths,
-  eet: landingEetPaths,
-  tech: landingTechPaths,
-} satisfies Record<LandingDocument, Record<Language, string>>
+const documentPaths = landingSite.paths satisfies Record<
+  LandingDocument,
+  Readonly<Record<Language, string>>
+>
 
 const documentMeta = {
   home: {
@@ -102,21 +102,21 @@ const faqStructuredData = (
   inLanguage: language,
   mainEntity: items.map((item) => ({
     "@type": "Question",
-    name: resources[language][item.question],
+    name: landingResources[language][item.question],
     acceptedAnswer: {
       "@type": "Answer",
-      text: resources[language][item.answer],
+      text: landingResources[language][item.answer],
     },
   })),
 })
 
 /**
- * Structured data for search results: who makes Payky, the app with its
+ * Structured data for search results: who makes the app, the app with its
  * price and downloads, and the page's FAQ, whose answers the page shows too.
- * The EET page and the page on how Payky works describe only their own FAQ.
+ * The EET page and the page on how the app works describe only their own FAQ.
  */
 function structuredData(document: LandingDocument, language: Language): string {
-  const t = resources[language]
+  const t = landingResources[language]
   const data =
     document === "eet"
       ? [faqStructuredData(language, eetFaqItems)]
@@ -128,7 +128,7 @@ function structuredData(document: LandingDocument, language: Language): string {
               "@type": "Organization",
               name: t["app.name"],
               url: pageUrl("home", language),
-              logo: `${siteUrl}/pwa-icon-512.png`,
+              logo: `${appUrl}/pwa-icon-512.png`,
               sameAs: [githubUrl],
             },
             {
@@ -140,8 +140,8 @@ function structuredData(document: LandingDocument, language: Language): string {
               image: `${siteUrl}${ogImages[language]}`,
               applicationCategory: "FinanceApplication",
               operatingSystem: "Android, Web",
-              downloadUrl: apkUrl,
-              installUrl: zapstoreUrl,
+              downloadUrl: landingSite.apkUrl,
+              installUrl: landingSite.zapstoreUrl ?? undefined,
               inLanguage: language,
               offers: { "@type": "Offer", price: "0", priceCurrency: "CZK" },
             },
@@ -159,7 +159,7 @@ function LandingHead({
   readonly document: LandingDocument
   readonly language: Language
 }) {
-  const t = resources[language]
+  const t = landingResources[language]
   const title = t[documentMeta[document].title]
   const description = t[documentMeta[document].description]
 
@@ -201,6 +201,15 @@ function LandingHead({
       <meta property="og:image:height" content="630" />
       <meta property="og:image:alt" content={title} />
       <meta name="twitter:card" content="summary_large_image" />
+      <link
+        rel="apple-touch-icon"
+        href={`${landingSite.appOrigin ?? ""}/apple-touch-icon.png`}
+      />
+      {/* The app's own manifest, so the browser can install it from here
+          (landing/0005), where the landing shares its origin (landing/0013). */}
+      {installsFromLanding ? (
+        <link rel="manifest" href="/manifest.webmanifest" />
+      ) : null}
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON built here, `<` escaped.
@@ -240,3 +249,43 @@ export function renderLandingDocument(
     )
     .replace("<!--landing-app-->", renderToString(<Page language={language} />))
 }
+
+/**
+ * Every landing document in every language with its alternates, under the
+ * brand's own site (landing/0013), which the prerender writes to
+ * `sitemap.xml`.
+ */
+export function renderSitemap(): string {
+  const alternates = (document: LandingDocument) =>
+    [
+      ...landingLanguages.map(
+        (language) =>
+          `    <xhtml:link rel="alternate" hreflang="${language}" href="${pageUrl(document, language)}"/>`
+      ),
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl(document, "cs")}"/>`,
+    ].join("\n")
+  const urls = landingDocuments.flatMap((document) =>
+    landingLanguages.map((language) =>
+      [
+        "  <url>",
+        `    <loc>${pageUrl(document, language)}</loc>`,
+        alternates(document),
+        "  </url>",
+      ].join("\n")
+    )
+  )
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+    ...urls,
+    "</urlset>",
+    "",
+  ].join("\n")
+}
+
+/**
+ * The landing's own `robots.txt`, which only a landing at its domain's root
+ * serves; payky.me's comes from the web app.
+ */
+export const renderRobots = (): string =>
+  `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`

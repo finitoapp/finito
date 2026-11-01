@@ -1,8 +1,5 @@
 import { useEventListener } from "@dedalik/use-react"
-import {
-  landingAppEntryPath,
-  rememberInstallLanguage,
-} from "@payky/web-shared/landing-redirect"
+import { rememberInstallLanguage } from "@payky/web-shared/landing-redirect"
 import {
   ChevronDownIcon,
   DownloadIcon,
@@ -23,6 +20,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx"
+import {
+  installsFromLanding,
+  landingAppEntryUrl,
+  landingSite,
+} from "@/core/landing-site.ts"
 import { LandingContactForm } from "@/features/landing/landing-contact-form.tsx"
 import {
   promptInstall,
@@ -32,11 +34,6 @@ import { Reveal } from "@/features/landing/landing-parts.tsx"
 import { useLandingTranslation } from "@/features/landing/landing-translation.ts"
 import type { TranslationKey } from "@/i18n/resources.ts"
 import { cn } from "@/lib/utils.ts"
-
-export const zapstoreUrl = "https://zapstore.dev/apps/me.payky"
-// The newest release's APK; the release workflow names it (docs/releases.md).
-export const apkUrl =
-  "https://github.com/finitoapp/payky/releases/latest/download/app-release-signed.apk"
 
 interface GetOption {
   readonly id: "zapstore" | "apk" | "install" | "web"
@@ -106,6 +103,18 @@ const getGroups: ReadonlyArray<GetGroup> = [
   },
 ]
 
+/**
+ * Whether this landing offers `option`: Zapstore only for an app listed there,
+ * installing from the page only where it shares the app's origin
+ * (landing/0013); elsewhere the web app itself offers the install.
+ */
+const isOffered = (option: GetOption): boolean =>
+  option.id === "zapstore"
+    ? landingSite.zapstoreUrl !== null
+    : option.id === "install"
+      ? installsFromLanding
+      : true
+
 // Outlined: the contact form below holds the one primary action of the section.
 const actionClassName = cn(
   buttonVariants({ variant: "outline", size: "lg" }),
@@ -134,8 +143,8 @@ function HelpYou() {
   )
 }
 
-/** Installing Payky: the ways in, native and web-based. */
-function GetPayky() {
+/** Installing the app: the ways in, native and web-based. */
+function GetTheApp() {
   const { language, t } = useLandingTranslation()
   const installPrompt = useInstallPrompt()
   const [installNote, setInstallNote] = useState<TranslationKey | null>(null)
@@ -158,14 +167,14 @@ function GetPayky() {
 
   const links = {
     zapstore: {
-      href: zapstoreUrl,
+      href: landingSite.zapstoreUrl ?? undefined,
       target: "_blank",
       rel: "noopener noreferrer",
     },
-    apk: { href: apkUrl },
+    apk: { href: landingSite.apkUrl },
     // The app is another document than this prerendered page, and starts in
     // this page's language (landing/0003).
-    web: { href: landingAppEntryPath(language) },
+    web: { href: landingAppEntryUrl(language) },
   } satisfies Record<Exclude<GetOption["id"], "install">, object>
 
   return (
@@ -214,7 +223,7 @@ function GetPayky() {
                   <ChevronDownIcon aria-hidden="true" data-icon="inline-end" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-auto max-w-80">
-                  {group.options.map((option) => {
+                  {group.options.filter(isOffered).map((option) => {
                     const OptionIcon = option.icon
                     const content = (
                       <>
@@ -273,7 +282,7 @@ export function LandingClosing() {
       className="mx-auto flex max-w-6xl scroll-mt-16 flex-col gap-6 px-4 py-16 sm:px-6 lg:px-8 lg:py-24"
     >
       <Reveal>
-        <GetPayky />
+        <GetTheApp />
       </Reveal>
       <Reveal>
         <HelpYou />

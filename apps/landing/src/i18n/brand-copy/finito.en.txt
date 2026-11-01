@@ -1,0 +1,226 @@
+app.name
+Finito
+
+landing.closing.contact.body
+Leave an email or a phone number and we'll get in touch. We'll answer your questions, set Finito up with you and fine-tune it for your business, so payments run smoothly and securely.
+
+landing.closing.get.body
+Finito is free and installs in a minute. Pick how you want to run it.
+
+landing.closing.get.install.done
+Finito is installed. Open it from your home screen or your list of apps.
+
+landing.closing.get.title
+Install Finito
+
+landing.cta.start
+Start Finito
+
+landing.eet.faq.bitcoin.answer
+Yes. The law includes crypto-assets when the customer pays in person. Finito records a Lightning payment like any other, in the crowns you sold for.
+
+landing.eet.faq.certificate.answer
+You generate cash register certificates in DIS+ for free, there's no limit on how many, and each is valid for one year. Finito needs one per account, shared by all its devices. Finito's settings warn you three weeks before it expires.
+
+landing.eet.faq.device.answer
+No. The law doesn't prescribe a type of device: a phone, tablet or computer connected to the internet is enough. Finito runs on Android and in the browser.
+
+landing.eet.faq.off.answer
+Flat-rate taxpayers in the first band with income up to CZK 1 million can opt out of recording for an extra CZK 1,400 a month on top of the flat tax. They have to sign up by the 10th day of the tax period, and the choice holds for the whole year. Worth doing the maths: Finito costs nothing.
+
+landing.eet.faq.offline.answer
+You take the payment as usual. The sale has to be sent as soon as the connection is back, within 48 hours at the latest. Finito keeps resending it on its own until EET confirms it, and flags on the payment anything not through within 48 hours.
+
+landing.eet.faq.price.answer
+Nothing. Sales recording is part of Finito for free, and the cash register certificate from the Financial Administration is free as well.
+
+landing.eet.faq.price.question
+How much does EET cost in Finito?
+
+landing.eet.faq.refund.answer
+Record the refund on the payment in Finito. EET 2.0 has no cancellation message: money returned is recorded as a new sale with a negative amount, and Finito sends it on its own.
+
+landing.eet.faq.tip.answer
+A tip that is the business's income is part of the sale. When tips belong to the employees, you set Finito to leave them out of the sale. A mandatory cover charge or service charge is not a tip and always counts.
+
+landing.eet.faq.units.answer
+One Finito account records to one recording unit. Create another account for each further premises; you can use the same certificate.
+
+landing.eet.handles.certificate.body
+Three weeks before your certificate expires, Finito's settings warn you so you can renew it in time.
+
+landing.eet.handles.eyebrow
+What Finito takes care of
+
+landing.eet.handles.offline.body
+When the network drops, Finito keeps resending the sale until EET confirms it. Anything not through within 48 hours is flagged on the payment.
+
+landing.eet.handles.refund.body
+Money returned is recorded as a new sale with a negative amount. Finito sends it as soon as you record the refund.
+
+landing.eet.handles.title
+Finito sends the records for you
+
+landing.eet.hero.body
+From 1 January 2027, Finito sends every payment it receives to EET on its own. It costs nothing, and neither does the cash register certificate from the Financial Administration.
+
+landing.eet.hero.eyebrow
+Finito is ready for Czech EET 2.0
+
+landing.eet.hero.title
+Start Finito, connect it to EET. Done.
+
+landing.eet.meta.description
+Who the Czech EET 2.0 applies to, the deadlines, the certificate and recording unit step by step. Turn on sales recording in Finito for free and try it in the sandbox today.
+
+landing.eet.meta.title
+Czech EET 2.0 from 1 Jan 2027: what to do and how in Finito, free
+
+landing.eet.prepare.unit.body
+A recording unit is your premises, fixed or mobile such as a stall, a website or app, or you yourself when you work at customers' places. The system gives it a number that can't be changed. That's what you enter in Finito.
+
+landing.eet.setup.certificate.body
+Pick the .p12 file and enter its password. Finito checks the password, key, tax ID and validity right away.
+
+landing.eet.setup.eyebrow
+Setting up Finito
+
+landing.eet.setup.on.body
+From then on, Finito sends every payment it receives as a sale: cash, QR payments and bitcoin.
+
+landing.eet.setup.tip.body
+Tips that belong to the business are part of the sale. When they belong to the employees, Finito leaves them out.
+
+landing.eet.setup.title
+Turning it on in Finito takes minutes
+
+landing.faq.catch.answer
+We're just starting out and learning. In time we'll need to charge for premium features, and we'd like to reward those who start using Finito with us now and help us shape it for merchants.
+
+Later on we plan to add optional card payments. From those transactions we'd like to keep a small part of the fee.
+
+landing.faq.eet.question
+Does Finito support the Czech EET 2.0 system?
+
+landing.flows.subtitle
+A stall, a shop, or a restaurant with tables? Each sells differently, and Finito handles all three ways of getting paid. Pick yours.
+
+landing.flows.title
+Finito adapts to the way you do business
+
+landing.footer.website
+finito.fit
+
+landing.hero.subtitle
+Not you, not your customers. Finito turns your phone into a payment terminal: the customer scans a code and pays by bank transfer straight to your account. No fees, no contract, no hardware.
+
+landing.meta.title
+Finito – free payment terminal on your phone, QR payments
+
+landing.mockup.home.alt
+Finito keypad with an amount typed in
+
+landing.mockup.items.alt
+Finito item catalog with prices
+
+landing.mockup.paid.alt
+Finito confirming a received payment
+
+landing.mockup.payment.alt
+Finito showing a QR code for a bank transfer
+
+landing.tech.account.kyc.body
+Finito never holds or forwards your money. A bank transfer goes from the customer's bank straight to your account, which your bank has already verified. Bitcoin lands in a wallet only you hold the keys to. So the app has no money of yours that would require verifying you.
+
+landing.tech.account.why.body
+Sign-up is mostly for the provider's benefit. They need to know whose data sits on their server and let only you in. Finito keeps none of your data on a server, so there's no account to create. What lets you in isn't our server, it's your key.
+
+landing.tech.backup.diagram.caption
+With a cloud app, the provider holds the key to your data. So they can read it, and so can anyone who gets to the server: support, engineers, sales, or an attacker in a breach. With Finito, the relay sees only encrypted noise, and only you have the key. Not even our support can see your data — they only know what you tell them.
+
+landing.tech.backup.where.body
+The backup goes to Finito's relay (live-relay.finito.fit) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles. If one goes down, the other keeps going. In the settings you can turn them off or add your own, for example on your own server.
+
+landing.tech.compare.payky
+Finito
+
+landing.tech.compare.paykyFlow.title
+Finito
+
+landing.tech.compare.title
+A typical cloud app, or Finito
+
+landing.tech.exit.body
+Neither selling nor payments depend on our servers. Here's what happens when they go down — and what would happen if Finito shut down.
+
+landing.tech.exit.end
+If Finito ended
+
+landing.tech.faq.kyc.answer
+Finito never holds or forwards your money. Payments go straight to your bank account, which your bank has verified, or to your own bitcoin wallet.
+
+landing.tech.faq.offline.question
+Does Finito work without internet?
+
+landing.tech.faq.read.answer
+No. Finito's relay holds only encrypted data, and only you have the key. The only exception is what you yourself write to the AI assistant or to support.
+
+landing.tech.faq.server.answer
+No. The QR code is made on your phone, the money goes from the customer's bank to your account, and the app asks your bank about the payment directly. A bitcoin payment is processed by the Spark network, not by Finito.
+
+landing.tech.faq.server.question
+Is there a Finito server between me and the customer?
+
+landing.tech.faq.signup.answer
+Because Finito has no server with your data that it would need to let you into. Your account is a cryptographic key created right on your device.
+
+landing.tech.hero.body
+Typical payment apps run on the provider's server. Your data lives there, you sign in through it, and payment information flows through it. Finito has no such server. We do run a few — for the encrypted backup and some optional extras — but you can sell and take payments without them.
+
+landing.tech.meta.title
+What makes Finito different: no cloud, no sign-up, no middleman
+
+landing.tech.money.body
+Money goes straight to your account or your wallet. No Finito server stands in its way.
+
+landing.tech.money.card.body
+On a device with a Switchio terminal, Finito only hands the amount to the Switchio app. Switchio and the merchant's bank then process the card, just as with any other terminal. Card details never reach Finito.
+
+landing.tech.money.lightning.body
+Lightning is a network for instant bitcoin payments. Finito issues an invoice from your Spark wallet, which runs right inside the app. The payment lands in your wallet, and only your device holds its keys. Transactions are processed by Spark network operators and a Lightning gateway provider — they see the amount and the time. The app gets the exchange rate for your currency from the public Yadio service.
+
+landing.tech.money.qr.check
+Finito then asks your bank by itself whether the payment has arrived. It uses a token for this — an access key to your bank account that only you have stored.
+
+landing.tech.node.payky
+Finito
+
+landing.tech.security.ownership.body
+Whoever holds your data can analyse it, sell it, hand it over on request or lose it. With Finito, only you can read it, and nobody can make us hand it over, because we don't have it.
+
+landing.tech.security.target.body
+A server holding the data of thousands of merchants is an ideal target: one breach and the attacker has everything. And most breaches don't come from cracked encryption, but from a misconfigured database, a stolen admin password or an employee with access to everything. Finito has no such server. An attacker would have to break into each device separately, and on the relays they'd find only encrypted data.
+
+landing.tech.security.tracking.body
+Finito uses no analytics and no tracking services. Error reporting stays off until you turn it on yourself. And when you do, recovery phrases and account numbers are stripped from the report before it's sent.
+
+landing.tech.services.body
+Every service Finito talks to: what it sends, when, and for our own servers, why. Sorted by when the connection happens.
+
+landing.tech.services.highlight
+Until you turn something on or use it, the app talks at most to the app.finito.fit website and two relays — and it sends the relays only encrypted data.
+
+landing.tech.services.owner.payky
+Finito server
+
+landing.tech.services.relay.name
+The live-relay.finito.fit relay
+
+landing.tech.services.web.name
+The app.finito.fit website
+
+landing.tech.transparency.body
+Only the key has to stay secret. Cryptographers call this Kerckhoffs's principle, and Finito is built on it: anyone can read the code, but the key — your recovery phrase — is yours alone.
+
+landing.tech.transparency.build.body
+We can't yet prove that the app on app.finito.fit or on your phone was built from exactly the code on GitHub — that would take so-called reproducible builds, which we don't have. But you don't have to take our word for it: you can build the app yourself from the code on GitHub and run your own copy.

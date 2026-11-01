@@ -10,12 +10,12 @@ import { defineConfig } from "vitest/config"
  * and preview servers the addresses `vercel.json` gives production: the dev
  * server serves the unrendered template, which renders in the browser, and
  * the preview server serves the prerendered file for the address's
- * language, Czech at `/landing`.
+ * language, Czech at `/landing`, or at the root as Finito's (landing/0013).
  */
 function landingPagesPlugin(): PluginOption {
   const landingPath =
-    /^\/landing(?:\/([a-z]{2}))?(?:\/(eet-2-0|jak-to-funguje))?\/?(?:\?.*)?$/u
-  // The EET page (landing/0006) and the page on how Payky works (landing/0008)
+    /^(?:\/landing)?(?:\/([a-z]{2}))?(?:\/(eet-2-0|jak-to-funguje))?\/?(?:\?.*)?$/u
+  // The EET page (landing/0006) and the page on how the app works (landing/0008)
   // have a file of their own per language.
   const documentFiles: Record<string, string> = {
     "eet-2-0": "-eet",
@@ -44,7 +44,11 @@ function landingPagesPlugin(): PluginOption {
 }
 
 export default defineConfig({
+  // On finito.fit too, whose pages sit at the root (landing/0013): the assets
+  // stay under /landing, which vercel.json maps to the build's root.
   base: "/landing/",
+  // `PAYKY_LANDING_BRAND` picks the brand at build time (src/core/app-env.ts).
+  envPrefix: ["VITE_", "PAYKY_LANDING_"],
   plugins: [react(), tailwindcss(), landingPagesPlugin()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   server: { host: "127.0.0.1", port: 5175, strictPort: true },

@@ -49,7 +49,11 @@ in the landing project.
 
 The root robots file remains with web-app. Canonical URLs, hreflang and
 sitemap entries keep pointing at `https://payky.me/landing`, never at the
-upstream deployment address.
+upstream deployment address. The prerender writes `sitemap.xml` for the
+brand being built.
+
+The same workspace builds Finito's landing on `finito.fit` when
+`PAYKY_LANDING_BRAND=finito` (landing/0013, `docs/finito-deployment.md`).
 
 ## Development and verification
 

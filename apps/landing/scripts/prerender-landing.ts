@@ -1,5 +1,6 @@
 /**
- * Writes every landing document prerendered in every language (landing/0002,
+ * Writes every landing document prerendered in every language, and the
+ * sitemap and robots.txt of the brand's site (landing/0002, landing/0013,
  * landing/0006, landing/0008) from
  * the client build's `dist/landing.html` and the server bundle
  * `vite build --ssr src/landing-server.tsx` leaves in `dist-ssr`. The
@@ -17,6 +18,8 @@ const {
   landingFileName,
   landingLanguages,
   renderLandingDocument,
+  renderRobots,
+  renderSitemap,
 }: typeof import("../src/landing-server.tsx") = await import(serverBundlePath)
 
 const template = readFileSync(templatePath, "utf8")
@@ -29,6 +32,9 @@ for (const document of landingDocuments) {
     )
   }
 }
+
+writeFileSync(path.join(root, "dist/sitemap.xml"), renderSitemap())
+writeFileSync(path.join(root, "dist/robots.txt"), renderRobots())
 
 rmSync(templatePath)
 rmSync(path.join(root, "dist-ssr"), { recursive: true, force: true })

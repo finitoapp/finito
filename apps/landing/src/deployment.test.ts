@@ -1,12 +1,8 @@
 import { readFileSync } from "node:fs"
-import {
-  landingEetPaths,
-  landingPaths,
-  landingTechPaths,
-} from "@payky/web-shared/landing-redirect"
 import { describe, expect, test } from "vitest"
 import appConfig from "../../web-app/vercel.json"
 import landingConfig from "../vercel.json"
+import { landingSites } from "./core/landing-sites.ts"
 import {
   landingDocuments,
   landingFileName,
@@ -14,22 +10,62 @@ import {
   renderLandingDocument,
 } from "./landing-server.tsx"
 
-const paths = {
-  home: landingPaths,
-  eet: landingEetPaths,
-  tech: landingTechPaths,
+interface Rewrite {
+  readonly source: string
+  readonly destination: string
+  readonly has?: ReadonlyArray<{
+    readonly type: string
+    readonly value: string
+  }>
 }
+
+/** The first rewrite of `rewrites` that answers `source` on `host`. */
+const rewriteFor = (
+  rewrites: ReadonlyArray<Rewrite>,
+  source: string,
+  host: string
+) =>
+  rewrites.find(
+    (candidate) =>
+      candidate.source === source &&
+      (!candidate.has ||
+        candidate.has.every(
+          (condition) =>
+            condition.type === "host" &&
+            new RegExp(`^(?:${condition.value})$`, "u").test(host)
+        ))
+  )
 
 describe("landing deployment", () => {
   test("serves every prerendered language and document at its existing address", () => {
-    for (const document of landingDocuments) {
-      for (const language of landingLanguages) {
-        expect(landingConfig.rewrites).toContainEqual({
-          source: paths[document][language],
-          destination: `/${landingFileName(document, language)}`,
-        })
+    // Payky's under /landing, Finito's at the root (landing/0013).
+    for (const site of Object.values(landingSites)) {
+      for (const document of landingDocuments) {
+        for (const language of landingLanguages) {
+          expect(landingConfig.rewrites).toContainEqual({
+            source: site.paths[document][language],
+            destination: `/${landingFileName(document, language)}`,
+          })
+        }
       }
     }
+  })
+
+  test.each([
+    ["finito.fit", "https://app.finito.fit"],
+    ["www.finito.fit", "https://app.finito.fit"],
+    ["finito-landing.vercel.app", "https://app.finito.fit"],
+    ["edge.finito.fit", "https://edge.app.finito.fit"],
+    ["finito-landing-edge.vercel.app", "https://edge.app.finito.fit"],
+    [
+      "finito-landing-edge-epz6asvwq-josef-ks-projects.vercel.app",
+      "https://edge.app.finito.fit",
+    ],
+  ])("answers Finito's Lightning address on %s from %s", (host, app) => {
+    const source = "/.well-known/lnurlp/donate"
+    expect(rewriteFor(landingConfig.rewrites, source, host)?.destination).toBe(
+      `${app}${source}`
+    )
   })
 
   test("proxies landing pages, assets and sitemap before the app fallback", () => {
@@ -44,10 +80,19 @@ describe("landing deployment", () => {
       expect(index).toBeLessThan(fallback)
       expect(appConfig.rewrites[index]?.destination).toMatch(/^https:\/\//)
     }
-    expect(landingConfig.rewrites.at(-1)).toEqual({
-      source: "/landing/:path*",
-      destination: "/:path*",
-    })
+    // The landing's own pages first, then everything else under /landing,
+    // its assets on finito.fit too, from the build's root.
+    const assets = landingConfig.rewrites.findIndex(
+      (route) => route.source === "/landing/:path*"
+    )
+    expect(landingConfig.rewrites[assets]?.destination).toBe("/:path*")
+    for (const path of Object.values(landingSites.payky.paths).flatMap(
+      Object.values
+    )) {
+      expect(
+        landingConfig.rewrites.findIndex((route) => route.source === path)
+      ).toBeLessThan(assets)
+    }
   })
 
   test("installs the existing app from the public origin", () => {
@@ -55,8 +100,11 @@ describe("landing deployment", () => {
       new URL("../landing.html", import.meta.url),
       "utf8"
     )
-    expect(template).toContain('href="/manifest.webmanifest" data-vite-ignore')
-    expect(template).not.toContain('href="/landing/manifest.webmanifest"')
+    const html = renderLandingDocument(template, "en")
+    expect(html).toContain(
+      '<link rel="manifest" href="/manifest.webmanifest"/>'
+    )
+    expect(html).not.toContain('href="/landing/manifest.webmanifest"')
   })
 
   test("serves the logo and favicon from the landing namespace", () => {

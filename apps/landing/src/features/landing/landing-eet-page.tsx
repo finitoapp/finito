@@ -1,8 +1,4 @@
 import {
-  landingAppEntryPath,
-  landingEetPaths,
-} from "@payky/web-shared/landing-redirect"
-import {
   ArrowRightIcon,
   CalendarClockIcon,
   CheckIcon,
@@ -20,6 +16,7 @@ import {
   XIcon,
 } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button.tsx"
+import { landingAppEntryUrl, landingEetPaths } from "@/core/landing-site.ts"
 import {
   Faq,
   type FaqItem,
@@ -247,7 +244,7 @@ function Hero() {
         </p>
         <div className="landing-rise landing-delay-2 flex flex-wrap gap-3">
           <a
-            href={landingAppEntryPath(language)}
+            href={landingAppEntryUrl(language)}
             className={primaryActionClassName}
           >
             <PlayIcon aria-hidden="true" data-icon="inline-start" />
@@ -452,7 +449,7 @@ function Setup() {
           <p className={bodyClassName}>{t("landing.eet.setup.sandbox.body")}</p>
         </div>
         <a
-          href={landingAppEntryPath(language)}
+          href={landingAppEntryUrl(language)}
           className={cn(primaryActionClassName, "w-fit shrink-0")}
         >
           <PlayIcon aria-hidden="true" data-icon="inline-start" />

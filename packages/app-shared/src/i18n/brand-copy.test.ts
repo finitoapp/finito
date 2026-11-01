@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { finitoBrand, paykyBrand } from "../brand.ts"
+import { brandPlaceholderNames, finitoBrand, paykyBrand } from "../brand.ts"
 import { type Language, resources } from "./resources.ts"
-import {
-  brandPlaceholderNames,
-  createBrandedResources,
-  createTranslate,
-} from "./translate.ts"
+import { createBrandedResources, createTranslate } from "./translate.ts"
 
 const languages = Object.keys(resources) as ReadonlyArray<Language>
 

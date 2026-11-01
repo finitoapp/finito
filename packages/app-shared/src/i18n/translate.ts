@@ -1,32 +1,6 @@
-import type { Brand, BrandNameForms } from "../brand.ts"
+import { applyBrandName, type Brand, type BrandPlaceholder } from "../brand.ts"
 import type { en } from "./en.ts"
 import { type Language, resources, type TranslationKey } from "./resources.ts"
-
-/**
- * The placeholders copy names the app by, each with the case it needs
- * (brand/0002): "Aktualizujte {appName}" but "kód {appNameGen}". `t` fills
- * them from the app's brand, so call sites never pass them.
- */
-const brandPlaceholders = {
-  appName: "nominative",
-  appNameGen: "genitive",
-  appNameDat: "dative",
-  appNameLoc: "locative",
-} as const satisfies Record<string, keyof BrandNameForms>
-
-export type BrandPlaceholder = keyof typeof brandPlaceholders
-
-export const brandPlaceholderNames = Object.keys(
-  brandPlaceholders
-) as ReadonlyArray<BrandPlaceholder>
-
-/** `text` with every brand placeholder replaced by its form of the name. */
-export const applyBrandName = (text: string, forms: BrandNameForms): string =>
-  Object.entries(brandPlaceholders).reduce(
-    (result, [placeholder, form]) =>
-      result.replaceAll(`{${placeholder}}`, forms[form] ?? forms.nominative),
-    text
-  )
 
 /**
  * The `{name}`-style placeholder names a translation key's English source

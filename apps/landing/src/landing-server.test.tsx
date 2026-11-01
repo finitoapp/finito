@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { describe, expect, test } from "vitest"
+import { landingResources as resources } from "@/core/landing-site.ts"
 import { transparencyProof } from "@/features/landing/landing-tech-page.tsx"
-import { resources } from "@/i18n/resources.ts"
 import { renderLandingDocument } from "@/landing-server.tsx"
 
 const template = `<!doctype html><html lang="cs"><head><!--landing-head--></head><body><div id="root"><!--landing-app--></div></body></html>`
