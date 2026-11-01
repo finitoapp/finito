@@ -91,6 +91,7 @@
 
 ## Native UI kit
 
+- `apps/native-app` ships as Finito, the web app as Payky, over one account (`docs/decisions/brand/0001`); `src/core/app-brand.ts` in each app says which.
 - `apps/native-app` (Expo, React Native, Tamagui 3, Android only) draws the web app's design from its own kit in `apps/native-app/src/components/ui`. Unlike web's `components/ui`, the kit is our code, not vendored: edit it freely.
 - A kit file has the same file name, exported component names, and variant/size names as its web counterpart in `apps/web-app/src/components/ui` (or `components/reui`). Props follow React Native (`onPress`, `onCheckedChange`). Each file's doc comment names its web counterpart.
 - Colors are theme keys without `$` (`bg="card"`, `color="muted-foreground"`), and `apps/native-app/src/theme/palette.ts` derives them from web's `index.css`; `palette.test.ts` fails when they drift. Never use Tamagui's default scales (`red-600`), never a numeric `lineHeight` (Tamagui reads it as a size token), and write states as Tamagui 3 flat clauses (`bg="primary press:primary-pressed"`), not `pressStyle`. Import lucide icons per module (`lucide-react-native/icons/<name>`).
@@ -148,6 +149,7 @@
 - Use dot-separated, feature-scoped keys, for example `pay.request`, `settings.language`, or `activity.empty`.
 - Do not rename existing translation keys without updating every usage.
 - Prefer stable semantic keys over text-derived keys; key names should describe purpose, not exact copy.
+- Name the app only through brand placeholders, never "Payky" or "Finito" in copy (`docs/decisions/brand/`): `{appName}` for the nominative and accusative, `{appNameGen}`, `{appNameDat}`, `{appNameLoc}` for the other cases Czech and Slovak decline it into. `t` fills them from the app's brand (`core/app-brand.ts` in each app), so call sites never pass them. Don't put "v/ve" or "s/se" right before a placeholder; reword instead. `packages/app-shared/src/i18n/brand-copy/finito.<language>.txt` shows every branded string as Finito renders it — update it with `vitest -u` and read the diff.
 
 ## TypeScript Rules
 

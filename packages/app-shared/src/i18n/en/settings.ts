@@ -1,22 +1,22 @@
 export const enSettings = {
-  "settings.about.app.title": "Payky",
+  "settings.about.app.title": "{appName}",
   "settings.about.description": "Version, terms and contact",
   "settings.about.github.description":
     "Join the development and follow the project",
   "settings.about.github.title": "Source code on GitHub",
   "settings.about.privacy.body":
-    "PAYKY - PRIVACY POLICY\n\n1. DATA COLLECTION\nPayky does not sell personal data and is designed to keep application data local to your device. The app stores terminal settings, catalog data, payment records, and related operational data locally and synchronizes application data through Evolu.\n\n2. PAYMENT DATA\nPayment and terminal data may include amounts, timestamps, item names, payment status, Spark wallet information, device identifiers, and other records needed to operate a Bitcoin payment terminal. Keep your device, credentials, backups, and wallet access data, especially your recovery phrase, secure.\n\n3. NETWORK COMMUNICATIONS\nThe app may communicate with:\n- Evolu synchronization infrastructure to sync local-first application data\n- Spark operators and Spark service providers to run the Spark wallet and send or receive Bitcoin payments\n- Lightning or wallet services used to create or settle payments\n- Price or exchange-rate APIs when fiat conversion is enabled\n- Open Food Facts and Open Beauty Facts to look up scanned barcodes, if product lookup is enabled\n- Payky's server and its AI provider to answer the AI assistant, if it is enabled: your questions, the assistant's replies and, if you allowed it, the bills and payments it reads\n\nThese services may have their own privacy policies, logs, and retention rules.\n\n4. ANALYTICS AND ERROR REPORTING\nPayky does not use analytics or tracking services. Optional error reporting through Sentry is available to help diagnose crashes and bugs. It is off by default and only activates if you turn it on in Settings > About > Data and privacy. When enabled, error reports may include device and app information, and error messages and stack traces; recovery phrases and bank account numbers are automatically redacted before being sent.\n\n5. SPARK NETWORK\nPayments through the Spark wallet are processed by Spark operators and Spark service providers, which may see transaction amounts, timing, wallet identifiers, and related metadata.\n\n6. BACKUPS AND SYNC\nIf synchronization or backup features are enabled, application data may be transmitted to synchronization infrastructure. Treat synced data as operational business data and protect every device that can access it.\n\n7. CONTACT\nPrivacy contact details will be published with the project documentation.\n\nLast updated: October 2026",
+    "{appName} - PRIVACY POLICY\n\n1. DATA COLLECTION\n{appName} does not sell personal data and is designed to keep application data local to your device. The app stores terminal settings, catalog data, payment records, and related operational data locally and synchronizes application data through Evolu.\n\n2. PAYMENT DATA\nPayment and terminal data may include amounts, timestamps, item names, payment status, Spark wallet information, device identifiers, and other records needed to operate a Bitcoin payment terminal. Keep your device, credentials, backups, and wallet access data, especially your recovery phrase, secure.\n\n3. NETWORK COMMUNICATIONS\nThe app may communicate with:\n- Evolu synchronization infrastructure to sync local-first application data\n- Spark operators and Spark service providers to run the Spark wallet and send or receive Bitcoin payments\n- Lightning or wallet services used to create or settle payments\n- Price or exchange-rate APIs when fiat conversion is enabled\n- Open Food Facts and Open Beauty Facts to look up scanned barcodes, if product lookup is enabled\n- {appName}'s server and its AI provider to answer the AI assistant, if it is enabled: your questions, the assistant's replies and, if you allowed it, the bills and payments it reads\n\nThese services may have their own privacy policies, logs, and retention rules.\n\n4. ANALYTICS AND ERROR REPORTING\n{appName} does not use analytics or tracking services. Optional error reporting through Sentry is available to help diagnose crashes and bugs. It is off by default and only activates if you turn it on in Settings > About > Data and privacy. When enabled, error reports may include device and app information, and error messages and stack traces; recovery phrases and bank account numbers are automatically redacted before being sent.\n\n5. SPARK NETWORK\nPayments through the Spark wallet are processed by Spark operators and Spark service providers, which may see transaction amounts, timing, wallet identifiers, and related metadata.\n\n6. BACKUPS AND SYNC\nIf synchronization or backup features are enabled, application data may be transmitted to synchronization infrastructure. Treat synced data as operational business data and protect every device that can access it.\n\n7. CONTACT\nPrivacy contact details will be published with the project documentation.\n\nLast updated: October 2026",
   "settings.about.privacy.description":
     "Application data is stored locally and synchronized through Evolu.",
-  "settings.about.privacy.heading": "Payky Privacy Policy",
+  "settings.about.privacy.heading": "{appName} Privacy Policy",
   "settings.about.privacy.summary":
     "Adapted for a local-first Bitcoin payment terminal.",
   "settings.about.privacy.title": "Data and privacy",
   "settings.about.terms.body":
-    'PAYKY - TERMS OF SERVICE\n\n1. ACCEPTANCE\nBy using this payment terminal application, you agree to these terms.\n\n2. NATURE OF SERVICE\nPayky is a local-first Bitcoin payment terminal using the Spark protocol for Bitcoin and Lightning payments and related payment infrastructure. You are responsible for how you configure the app, which services you use, and how you handle received funds.\n\n3. ACCESS AND RECOVERY\nKeep your device, credentials, backups, and any wallet access data, especially your recovery phrase, secure. Payky cannot recover lost credentials, a lost recovery phrase, or funds sent to incorrect destinations.\n\n4. NO WARRANTY\nThis software is provided "as is" without warranty of any kind. Use it at your own risk.\n\n5. LIMITATION OF LIABILITY\nWe are not liable for any loss of funds, business interruption, payment failure, bugs, user error, or third-party network or service failure.\n\n6. SPARK WALLET\nThe Spark wallet is self-custodial: its keys are derived on your device from your recovery phrase. Transfers rely on Spark operators and Spark service providers, which may fail, become unavailable, or change their terms. Only keep balances you are prepared to lose.\n\n7. PRIVACY\nPayky is designed to store application data locally and synchronize it through Evolu. Payments may still be processed through the Spark network, Lightning services, or other third-party infrastructure, which may have their own privacy policies and logs.\n\n8. UPDATES\nThese terms may be updated. Continued use of Payky constitutes acceptance of the updated terms.\n\nLast updated: October 2026',
+    '{appName} - TERMS OF SERVICE\n\n1. ACCEPTANCE\nBy using this payment terminal application, you agree to these terms.\n\n2. NATURE OF SERVICE\n{appName} is a local-first Bitcoin payment terminal using the Spark protocol for Bitcoin and Lightning payments and related payment infrastructure. You are responsible for how you configure the app, which services you use, and how you handle received funds.\n\n3. ACCESS AND RECOVERY\nKeep your device, credentials, backups, and any wallet access data, especially your recovery phrase, secure. {appName} cannot recover lost credentials, a lost recovery phrase, or funds sent to incorrect destinations.\n\n4. NO WARRANTY\nThis software is provided "as is" without warranty of any kind. Use it at your own risk.\n\n5. LIMITATION OF LIABILITY\nWe are not liable for any loss of funds, business interruption, payment failure, bugs, user error, or third-party network or service failure.\n\n6. SPARK WALLET\nThe Spark wallet is self-custodial: its keys are derived on your device from your recovery phrase. Transfers rely on Spark operators and Spark service providers, which may fail, become unavailable, or change their terms. Only keep balances you are prepared to lose.\n\n7. PRIVACY\n{appName} is designed to store application data locally and synchronize it through Evolu. Payments may still be processed through the Spark network, Lightning services, or other third-party infrastructure, which may have their own privacy policies and logs.\n\n8. UPDATES\nThese terms may be updated. Continued use of {appName} constitutes acceptance of the updated terms.\n\nLast updated: October 2026',
   "settings.about.terms.description":
-    "Read the terms that apply when using Payky.",
-  "settings.about.terms.heading": "Payky Terms of Service",
+    "Read the terms that apply when using {appName}.",
+  "settings.about.terms.heading": "{appName} Terms of Service",
   "settings.about.terms.summary":
     "Adapted for a local-first Bitcoin payment terminal.",
   "settings.about.terms.title": "Terms of Service",
@@ -48,9 +48,9 @@ export const enSettings = {
   "settings.accounts.restore.mnemonic.checksum":
     "The words are valid, but the phrase is not. Check the order and any typos.",
   "settings.accounts.restore.mnemonic.foreign":
-    "This looks like a seed from another wallet. Payky only restores its own 20-word phrases.",
+    "This looks like a seed from another wallet. {appName} only restores its own 20-word phrases.",
   "settings.accounts.restore.mnemonic.invalid":
-    "Enter 20 words from the Payky recovery phrase.",
+    "Enter 20 words from the {appName} recovery phrase.",
   "settings.accounts.restore.mnemonic.label": "Recovery phrase",
   "settings.accounts.restore.mnemonic.required": "Recovery phrase is required.",
   "settings.accounts.restore.mnemonic.wordCount":
@@ -239,7 +239,7 @@ export const enSettings = {
   "settings.donations.amount.required": "Enter a donation amount.",
   "settings.donations.create": "Create invoice",
   "settings.donations.create.pending": "Creating invoice...",
-  "settings.donations.description": "Support Payky development",
+  "settings.donations.description": "Support {appName} development",
   "settings.donations.fiat.description":
     "Uses the currently selected fiat currency.",
   "settings.donations.fiat.label": "Amount",
@@ -277,7 +277,7 @@ export const enSettings = {
   "settings.donations.sats.range": "Allowed range: {min}-{max} sats.",
   "settings.donations.title": "Donations",
   "settings.eet.certificate.description":
-    "The certificate CA EET issued for signing sales. The reporting EIČ comes from it, and Payky does not keep its password.",
+    "The certificate CA EET issued for signing sales. The reporting EIČ comes from it, and {appName} does not keep its password.",
   "settings.eet.certificate.eic": "Reporting EIČ",
   "settings.eet.certificate.error.expired": "The certificate has expired.",
   "settings.eet.certificate.error.fileRequired": "Choose a certificate file.",
@@ -312,7 +312,7 @@ export const enSettings = {
     "EET cannot be turned on until the certificate and the establishment number are set.",
   "settings.eet.enabled.label": "Report sales to EET",
   "settings.eet.enabled.missing": "To turn on EET, add {missing}.",
-  "settings.eet.environment.description": "Where Payky sends sales.",
+  "settings.eet.environment.description": "Where {appName} sends sales.",
   "settings.eet.environment.playground.description":
     "For trying EET out. Sales go to the EET test environment and are not reported.",
   "settings.eet.environment.playground.title": "Sandbox",
@@ -320,7 +320,7 @@ export const enSettings = {
     "Sales are reported to the tax administrator.",
   "settings.eet.environment.production.title": "Production",
   "settings.eet.environment.productionUnavailable":
-    "Production is not available in this version of Payky yet.",
+    "Production is not available in this version of {appName} yet.",
   "settings.eet.environment.sandboxConfirm.cancel": "Cancel",
   "settings.eet.environment.sandboxConfirm.confirm": "Use the sandbox",
   "settings.eet.environment.sandboxConfirm.description":
@@ -371,12 +371,12 @@ export const enSettings = {
   "settings.eet.test.unavailable":
     "Set up the certificate and the establishment number first.",
   "settings.eet.tip.business.description":
-    "Payky reports the whole payment, tip included.",
+    "{appName} reports the whole payment, tip included.",
   "settings.eet.tip.business.title": "Tips belong to the business",
   "settings.eet.tip.description":
     "Whether a tip is part of the reported sale depends on who it belongs to. A tip that is the business's income must be reported by law. A tip that belongs to employees does not have to be. A change applies to payments received from then on.",
   "settings.eet.tip.employees.description":
-    "Payky reports the payment without the tip. The tip stays recorded on the payment.",
+    "{appName} reports the payment without the tip. The tip stays recorded on the payment.",
   "settings.eet.tip.employees.title": "Tips belong to employees",
   "settings.eet.tip.label": "Who tips belong to",
   "settings.eet.tip.note":
@@ -681,13 +681,13 @@ export const enSettings = {
   "settings.privacy.productLookup.title": "Product lookup",
   "settings.privacy.aiAssistant.title": "AI assistant",
   "settings.privacy.aiAssistant.description":
-    "The assistant answers through Payky's server and an AI provider, so what you ask and what it reads leaves this device. Off by default.",
+    "The assistant answers through {appName}'s server and an AI provider, so what you ask and what it reads leaves this device. Off by default.",
   "settings.privacy.aiAssistant.off.title": "Off",
   "settings.privacy.aiAssistant.off.description":
     "The assistant is hidden and nothing is sent.",
   "settings.privacy.aiAssistant.public.title": "Documentation and code only",
   "settings.privacy.aiAssistant.public.description":
-    "It reads Payky's public documentation and source code. Your bills and payments stay on this device.",
+    "It reads {appName}'s public documentation and source code. Your bills and payments stay on this device.",
   "settings.privacy.aiAssistant.all.title": "Including my data",
   "settings.privacy.aiAssistant.all.description":
     "It also reads your bills and payments on this device and sends what it reads to the AI provider.",
@@ -772,7 +772,7 @@ export const enSettings = {
   "settings.security.mnemonic.warning":
     "If you lose this phrase, this account and its data can never be recovered — not even by us.",
   "settings.security.mnemonic.intro":
-    "These 20 words are the only way to get this account back on another device or after losing this phone. Keep them in a password manager or on paper — not in a screenshot or a chat. Nobody, not even Payky, can restore them for you.",
+    "These 20 words are the only way to get this account back on another device or after losing this phone. Keep them in a password manager or on paper — not in a screenshot or a chat. Nobody, not even {appName}, can restore them for you.",
   "settings.security.mnemonic.nativeHint":
     "Write the words on paper in the order shown — do not photograph the screen. Then verify the backup.",
   "settings.security.mnemonic.savePasswords": "Save to passwords",
@@ -846,9 +846,9 @@ export const enSettings = {
   "settings.sparkAccount.enabled.label": "Enable Spark account",
   "settings.sparkAccount.advanced": "Advanced options",
   "settings.sparkAccount.form.customDescription":
-    "Payky receives Spark payments into your own wallet.",
+    "{appName} receives Spark payments into your own wallet.",
   "settings.sparkAccount.form.description":
-    "Payky derives this Spark wallet from your account recovery key.",
+    "{appName} derives this Spark wallet from your account recovery key.",
   "settings.sparkAccount.form.title": "Spark account",
   "settings.sparkAccount.mnemonic.description":
     "Keep this mnemonic private. Anyone with it can access the Spark wallet.",
@@ -880,7 +880,7 @@ export const enSettings = {
   "settings.sparkAccount.wallet.label": "Wallet",
   "settings.sparkAccount.wallet.payky.description":
     "Derived from your account recovery key.",
-  "settings.sparkAccount.wallet.payky.title": "Payky wallet",
+  "settings.sparkAccount.wallet.payky.title": "{appName} wallet",
   "settings.sparkAccount.wallet.switch": "Switch",
   "settings.sparkAccount.wallet.warning.funds":
     "Its funds stay in the current wallet and are no longer shown here. Withdraw them first, or keep its mnemonic.",
@@ -900,9 +900,9 @@ export const enSettings = {
   "settings.supportChat.inbox.confirm.confirm": "Publish",
   "settings.supportChat.inbox.confirm.cancel": "Cancel",
   "settings.supportChat.title": "Contact support",
-  "settings.supportChat.description": "Chat with the Payky team",
+  "settings.supportChat.description": "Chat with the {appName} team",
   "settings.supportChat.empty":
-    "No messages yet. Describe what you need help with and the Payky team will reply here.",
+    "No messages yet. Describe what you need help with and the {appName} team will reply here.",
   "settings.supportChat.loadFailed":
     "Could not load the conversation. Check your connection and try again.",
   "settings.supportChat.retry": "Try again",
@@ -914,11 +914,11 @@ export const enSettings = {
   "settings.supportChat.notDelivered": "Not delivered. Try again",
   "settings.assistant.title": "AI assistant",
   "settings.assistant.description":
-    "Ask about your bills, payments and how Payky works",
+    "Ask about your bills, payments and how {appName} works",
   "settings.assistant.empty":
-    "Ask about your bills and payments, or how Payky works. The assistant reads your data on this device and Payky's documentation, and answers through an AI provider.",
+    "Ask about your bills and payments, or how {appName} works. The assistant reads your data on this device and {appName}'s documentation, and answers through an AI provider.",
   "settings.assistant.emptyPublic":
-    "Ask how Payky works. The assistant reads Payky's documentation and code, not your data, and answers through an AI provider.",
+    "Ask how {appName} works. The assistant reads {appName}'s documentation and code, not your data, and answers through an AI provider.",
   "settings.assistant.suggestion.openBills": "Which bills are still open?",
   "settings.assistant.suggestion.latestPayments": "What were my last payments?",
   "settings.assistant.suggestion.today": "How much did I take today?",
@@ -1190,22 +1190,22 @@ export const enSettings = {
     "Accept payments to a Lightning address",
   "settings.lightningAddress.form.title": "Your own wallet",
   "settings.lightningAddress.form.description":
-    "Payments go straight to the wallet behind the address. Payky only asks it for an invoice and watches whether it is paid; it holds no keys and no money.",
+    "Payments go straight to the wallet behind the address. {appName} only asks it for an invoice and watches whether it is paid; it holds no keys and no money.",
   "settings.lightningAddress.address.label": "Lightning address",
   "settings.lightningAddress.address.placeholder": "name@wallet.com",
   "settings.lightningAddress.address.description":
-    "The wallet must support LUD-21 verify and reveal the proof of payment (preimage). Otherwise Payky cannot tell that a payment is paid.",
+    "The wallet must support LUD-21 verify and reveal the proof of payment (preimage). Otherwise {appName} cannot tell that a payment is paid.",
   "settings.lightningAddress.address.required": "Enter a Lightning address.",
   "settings.lightningAddress.address.invalid":
     "This is not a Lightning address. It looks like name@wallet.com.",
   "settings.lightningAddress.submit": "Check and save",
   "settings.lightningAddress.saved": "Saved.",
   "settings.lightningAddress.error.verifyUnsupported":
-    "This wallet does not let Payky check whether an invoice is paid (LUD-21 verify). Use another wallet.",
+    "This wallet does not let {appName} check whether an invoice is paid (LUD-21 verify). Use another wallet.",
   "settings.lightningAddress.error.rejected":
     "The wallet refused the request. Check the address.",
   "settings.lightningAddress.error.unreachable":
     "The wallet could not be reached. Check the address and your connection.",
   "settings.lightningAddress.error.invalid":
-    "The wallet answered with something Payky cannot use.",
+    "The wallet answered with something {appName} cannot use.",
 } as const

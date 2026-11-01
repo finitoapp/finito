@@ -8,6 +8,7 @@ import type {
 import type { WithdrawalId } from "@payky/core/modules/withdraw/withdraw-types"
 import { WITHDRAWAL_QUOTE_EXPIRY_MARGIN_MS } from "@payky/core/modules/withdraw/withdraw-utils"
 import { describe, expect, test } from "vitest"
+import { paykyBrand } from "./brand.ts"
 import { createTranslate } from "./i18n/translate.ts"
 import {
   amountFieldWarnings,
@@ -107,7 +108,7 @@ describe("withdrawReducer exit speed", () => {
 })
 
 const address = BitcoinAddress("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")
-const t = createTranslate("en")
+const t = createTranslate("en", paykyBrand)
 
 describe("buildWithdrawRequest", () => {
   const draft = { recipientComment: "thanks" }

@@ -56,7 +56,7 @@ export const csPayment = {
   "paymentDetail.number": "Platba č. {number}",
   "paymentDetail.refunds.action": "Vrátit peníze",
   "paymentDetail.refunds.method.cashRegister": "Z pokladny",
-  "paymentDetail.refunds.method.outside": "Mimo Payky",
+  "paymentDetail.refunds.method.outside": "Mimo {appName}",
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
   "paymentDetail.refunds.title": "Vratky",
   "paymentDetail.refunds.tipAction": "Vrátit spropitné ({amount})",
@@ -378,7 +378,8 @@ export const csPayment = {
   "refund.dialog.items.label": "Vracené položky",
   "refund.dialog.method.cashRegister": "Hotově z pokladny",
   "refund.dialog.method.label": "Jak peníze vracíte",
-  "refund.dialog.method.outside": "Mimo Payky, třeba na platebním terminálu",
+  "refund.dialog.method.outside":
+    "Mimo {appName}, třeba na platebním terminálu",
   "refund.dialog.mode.amount": "Částka",
   "refund.dialog.mode.items": "Položky",
   "refund.dialog.mode.label": "Co vracíte",

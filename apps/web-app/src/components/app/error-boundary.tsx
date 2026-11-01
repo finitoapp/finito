@@ -1,7 +1,5 @@
-import {
-  resources,
-  type TranslationKey,
-} from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { createTranslate } from "@payky/app-shared/i18n/translate"
 import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-utils"
 import type { ErrorComponentProps } from "@tanstack/react-router"
 import { useSetAtom } from "jotai"
@@ -23,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.tsx"
+import { appBrand } from "@/core/app-brand.ts"
 import { captureReportedError } from "@/core/sentry.ts"
 
 /**
@@ -35,9 +34,9 @@ import { captureReportedError } from "@/core/sentry.ts"
 function t(key: TranslationKey): string {
   try {
     const language = getPreferredDeviceLanguage(navigator.language)
-    return resources[language][key]
+    return createTranslate(language, appBrand)(key)
   } catch {
-    return resources.en[key]
+    return createTranslate("en", appBrand)(key)
   }
 }
 

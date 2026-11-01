@@ -1,7 +1,5 @@
-import {
-  resources,
-  type TranslationKey,
-} from "@payky/app-shared/i18n/resources"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { createTranslate } from "@payky/app-shared/i18n/translate"
 import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-utils"
 import * as Clipboard from "expo-clipboard"
 import Constants from "expo-constants"
@@ -13,6 +11,7 @@ import {
   Text,
   useColorScheme,
 } from "react-native"
+import { appBrand } from "../../core/app-brand.ts"
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { markFirstScreenReady } from "../../core/first-screen.ts"
 
@@ -25,9 +24,9 @@ import { markFirstScreenReady } from "../../core/first-screen.ts"
 function t(key: TranslationKey): string {
   try {
     const locale = Intl.DateTimeFormat().resolvedOptions().locale
-    return resources[getPreferredDeviceLanguage(locale)][key]
+    return createTranslate(getPreferredDeviceLanguage(locale), appBrand)(key)
   } catch {
-    return resources.en[key]
+    return createTranslate("en", appBrand)(key)
   }
 }
 

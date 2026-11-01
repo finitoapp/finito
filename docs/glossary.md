@@ -4,6 +4,17 @@ The words this codebase uses for its domain, and the pairs that are easy to
 mix up. Use these names in code, translation keys and docs. A term links to
 where it is specified; the specification wins over this page.
 
+## Brands
+
+- **Brand** (`Brand`, `packages/app-shared/src/brand.ts`) — the name an app
+  ships under, with the forms Czech and Slovak decline it into
+  (`docs/decisions/brand/`). Copy names it only through `{appName}` and its
+  case placeholders.
+- **Payky** / **Finito** — the two brands: Payky is the web app and its
+  Capacitor shell, Finito the native app and its web export. One account,
+  data and protocol behind both; `@payky/*`, `payky:` URIs and the Evolu
+  names are internal identifiers, not the brand.
+
 ## App shell
 
 - **Terminal** — the app shell: the `_terminal` layout route that wraps

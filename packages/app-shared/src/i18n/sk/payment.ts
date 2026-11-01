@@ -57,7 +57,7 @@ export const skPayment = {
   "paymentDetail.number": "Platba č. {number}",
   "paymentDetail.refunds.action": "Vrátiť peniaze",
   "paymentDetail.refunds.method.cashRegister": "Z pokladne",
-  "paymentDetail.refunds.method.outside": "Mimo Payky",
+  "paymentDetail.refunds.method.outside": "Mimo {appNameGen}",
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
   "paymentDetail.refunds.title": "Vrátenia",
   "paymentDetail.refunds.tipAction": "Vrátiť sprepitné ({amount})",
@@ -382,7 +382,7 @@ export const skPayment = {
   "refund.dialog.method.cashRegister": "V hotovosti z pokladne",
   "refund.dialog.method.label": "Ako peniaze vraciate",
   "refund.dialog.method.outside":
-    "Mimo Payky, napríklad na platobnom termináli",
+    "Mimo {appNameGen}, napríklad na platobnom termináli",
   "refund.dialog.mode.amount": "Suma",
   "refund.dialog.mode.items": "Položky",
   "refund.dialog.mode.label": "Čo vraciate",

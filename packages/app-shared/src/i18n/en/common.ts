@@ -2,7 +2,7 @@ export const enCommon = {
   "activity.tabs.bills": "Bills",
   "activity.tabs.payments": "Payments",
   "activity.title": "Activity",
-  "app.name": "Payky",
+  "app.name": "{appName}",
   "app.saveFailed": "Could not save the change. Please try again.",
   "appError.copied": "Copied",
   "appError.copy": "Copy detail",
@@ -21,7 +21,7 @@ export const enCommon = {
   "appError.version": "Version",
   "appUpdate.action": "Update",
   "appUpdate.available": "A new version is available",
-  "appUpdate.description": "Update Payky to use the latest version.",
+  "appUpdate.description": "Update {appName} to use the latest version.",
   "country.at": "Austria",
   "country.cz": "Czech Republic",
   "country.de": "Germany",
@@ -73,7 +73,7 @@ export const enCommon = {
     "Your data could not be updated. Restart the app to try again; your data has not been damaged.",
   "migration.failed.title": "Update failed",
   "migration.running.description":
-    "Payky is updating data saved by an earlier version. Keep the app open.",
+    "{appName} is updating data saved by an earlier version. Keep the app open.",
   "migration.running.title": "Updating data",
   "migration.success.description":
     "Data saved by an earlier version was updated successfully.",

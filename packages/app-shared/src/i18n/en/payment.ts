@@ -57,7 +57,7 @@ export const enPayment = {
   "paymentDetail.number": "Payment #{number}",
   "paymentDetail.refunds.action": "Refund money",
   "paymentDetail.refunds.method.cashRegister": "From the cash register",
-  "paymentDetail.refunds.method.outside": "Outside Payky",
+  "paymentDetail.refunds.method.outside": "Outside {appName}",
   "paymentDetail.refunds.method.qerkoTerminal": "To the card",
   "paymentDetail.refunds.title": "Refunds",
   "paymentDetail.refunds.tipAction": "Refund the tip ({amount})",
@@ -387,7 +387,7 @@ export const enPayment = {
   "refund.dialog.method.cashRegister": "Cash from the register",
   "refund.dialog.method.label": "How the money goes back",
   "refund.dialog.method.outside":
-    "Outside Payky, for example on the card terminal",
+    "Outside {appName}, for example on the card terminal",
   "refund.dialog.mode.amount": "Amount",
   "refund.dialog.mode.items": "Items",
   "refund.dialog.mode.label": "What to refund",

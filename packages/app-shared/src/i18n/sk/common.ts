@@ -4,7 +4,7 @@ export const skCommon = {
   "activity.tabs.bills": "Účty",
   "activity.tabs.payments": "Platby",
   "activity.title": "Aktivita",
-  "app.name": "Payky",
+  "app.name": "{appName}",
   "app.saveFailed": "Zmenu sa nepodarilo uložiť. Skúste to prosím znova.",
   "appError.copied": "Skopírované",
   "appError.copy": "Skopírovať detail",
@@ -23,7 +23,7 @@ export const skCommon = {
   "appError.version": "Verzia",
   "appUpdate.action": "Aktualizovať",
   "appUpdate.available": "Je dostupná nová verzia",
-  "appUpdate.description": "Aktualizujte Payky na najnovšiu verziu.",
+  "appUpdate.description": "Aktualizujte {appName} na najnovšiu verziu.",
   "country.at": "Rakúsko",
   "country.cz": "Česká republika",
   "country.de": "Nemecko",
@@ -75,7 +75,7 @@ export const skCommon = {
     "Dáta sa nepodarilo aktualizovať. Skúste to znova reštartom aplikácie, dáta nie sú poškodené.",
   "migration.failed.title": "Aktualizácia zlyhala",
   "migration.running.description":
-    "Payky aktualizuje dáta uložené staršou verziou. Nechajte aplikáciu otvorenú.",
+    "{appName} aktualizuje dáta uložené staršou verziou. Nechajte aplikáciu otvorenú.",
   "migration.running.title": "Aktualizácia dát",
   "migration.success.description":
     "Dáta uložené staršou verziou boli úspešne aktualizované.",
