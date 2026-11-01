@@ -46,7 +46,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
-import { Suspense, useState } from "react"
+import { Suspense, useMemo, useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
@@ -75,7 +75,10 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "../../components/ui/timeline.tsx"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
@@ -89,6 +92,7 @@ import {
 import { paymentMethodIcon } from "../shared/payment-method-display.ts"
 import { TaxRecap } from "../shared/tax-recap.tsx"
 import {
+  billStateQueries,
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
@@ -100,9 +104,10 @@ import {
   OptionalRow,
   Technical,
 } from "./detail-parts.tsx"
-import { PaymentRefunds } from "./payment-refunds.tsx"
+import { PaymentRefunds, paymentRefundsQueries } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
 import {
+  billLineSummaryDiffQueries,
   useBillCoverage,
   useBillLineSummaryDiff,
 } from "./use-bill-detail-data.ts"
@@ -143,6 +148,20 @@ export function PaymentDetailSkeleton() {
 }
 
 function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
+  // This card's queries and those of the cards below that need only the
+  // payment's id; `PaymentBillCard` preloads its own once the bill id is read.
+  usePreloadEvoluQueries(
+    useMemo(
+      () => [
+        paymentDetailQuery(paymentId),
+        paymentReconciliationsQuery(paymentId),
+        paymentNumberByPaymentIdQuery(paymentId),
+        eetSalesByPaymentIdQuery(paymentId),
+        ...paymentRefundsQueries(paymentId),
+      ],
+      [paymentId]
+    )
+  )
   const { t } = useTranslation()
   const locale = useLocale()
   const [payment] = useEvoluQuery(paymentDetailQuery(paymentId)).data
@@ -521,6 +540,18 @@ function PaymentBillCard({
   readonly paymentId: PaymentId
   readonly tipAmount: NonNegativeInteger
 }) {
+  usePreloadEvoluQueries(
+    useMemo(
+      () => [
+        ...billStateQueries(billId),
+        ...billLineSummaryDiffQueries(paymentId),
+        tablesQuery,
+        taxRatesQuery,
+        claimedPaymentsByBillIdQuery(billId),
+      ],
+      [billId, paymentId]
+    )
+  )
   const { t } = useTranslation()
   const locale = useLocale()
   const [bill] = useEvoluQuery(billByIdQuery(billId)).data

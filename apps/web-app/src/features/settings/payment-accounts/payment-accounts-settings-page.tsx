@@ -48,7 +48,10 @@ import { Button } from "@/components/ui/button.tsx"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
 import { InlineEditSwitch } from "@/features/settings/inline-edit-switch.tsx"
 import { useAppRun, useCashuAppRun } from "@/hooks/use-app-run.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { cn } from "@/lib/utils.ts"
@@ -73,7 +76,20 @@ interface PaymentMethodRowState {
  * The payment methods in the order customers see them. There is no separate
  * default: the first available one is the tab the payment screen opens on.
  */
+const paymentAccountsPageQueries = [
+  settingsQuery,
+  fiatBankAccountQuery,
+  sparkAccountQuery,
+  cashRegisterAccountQuery,
+  cardSwitchioAccountQuery,
+  qerkoTerminalAccountQuery,
+  qerkoPluginQuery,
+  cashuAccountQuery,
+  lightningAddressAccountQuery,
+]
+
 export function PaymentAccountsSettingsPage() {
+  usePreloadEvoluQueries(paymentAccountsPageQueries)
   const appRun = useAppRun()
   const cashuAppRun = useCashuAppRun()
   const runToast = useRunToast()

@@ -89,7 +89,10 @@ import { useChangePulse } from "../../hooks/use-change-pulse.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useDebouncedValue } from "../../hooks/use-debounced-value.ts"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
 import { useProductLookup } from "../../hooks/use-product-lookup.ts"
@@ -103,6 +106,7 @@ import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { CategoryFilterBar } from "../shared/category-filter-bar.tsx"
 import {
+  billStateQueries,
   useBillLineSummaries,
   useBillStatus,
   usePendingPayments,
@@ -169,6 +173,19 @@ function BillPage({
   /** A code scanned on the home screen, which opened this bill to add it. */
   readonly initialScanCode: string | undefined
 }) {
+  // The cart's catalog too: `BillCart` mounts below once these are in.
+  usePreloadEvoluQueries(
+    useMemo(
+      () => [
+        ...billStateQueries(billId),
+        tablesQuery,
+        settingsQuery,
+        catalogItemsQuery,
+        catalogCategoriesQuery,
+      ],
+      [billId]
+    )
+  )
   useScreenWakeLock(true)
   const { t } = useTranslation()
   const locale = useLocale()

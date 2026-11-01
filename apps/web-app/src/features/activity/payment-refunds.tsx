@@ -112,6 +112,20 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format-utils.ts"
 
+/**
+ * Every query `PaymentDetailRefunds` reads, for the payment screen's
+ * `usePreloadEvoluQueries`, which knows the payment before this mounts.
+ */
+export const paymentRefundsQueries = (paymentId: PaymentId) => [
+  refundsByPaymentIdQuery(paymentId),
+  refundLinesByPaymentIdQuery(paymentId),
+  refundablePaymentLinesQuery(paymentId),
+  otherClaimedPaymentOfBillQuery(paymentId),
+  eetReversalsByPaymentIdQuery(paymentId),
+  paymentQerkoTerminalByIdQuery(paymentId),
+  qerkoTerminalRefundAttemptsByPaymentIdQuery(paymentId),
+]
+
 export function PaymentDetailRefunds({
   payment,
   excess,

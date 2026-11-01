@@ -90,10 +90,17 @@ import { Skeleton } from "@/components/ui/skeleton.tsx"
 import { BillCancellationCollisionPanel } from "@/features/activity/bill-cancellation-collision-panel.tsx"
 import { BillCoverageWarning } from "@/features/activity/bill-coverage-warning.tsx"
 import { billStatusBadgeClassName } from "@/features/activity/bill-status-display.ts"
-import { PaymentDetailRefunds } from "@/features/activity/payment-refunds.tsx"
+import {
+  PaymentDetailRefunds,
+  paymentRefundsQueries,
+} from "@/features/activity/payment-refunds.tsx"
 import { paymentStatusBadgeClassName } from "@/features/activity/payment-status-display.tsx"
 import { useBillCoverage } from "@/features/activity/use-bill-coverage.ts"
-import { useBillLineSummaryDiff } from "@/features/activity/use-bill-line-summary-diff.ts"
+import {
+  billLineSummaryDiffQueries,
+  useBillLineSummaryDiff,
+} from "@/features/activity/use-bill-line-summary-diff.ts"
+import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import {
   EetSaleStatusBadge,
   useEetRecordingDeviceWait,
@@ -104,7 +111,10 @@ import { TaxRecap } from "@/features/shared/tax-recap.tsx"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
 import { useBillStatus } from "@/features/shared/use-bill-status.ts"
 import { useRequirePermission } from "@/hooks/use-access.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -144,6 +154,16 @@ function PaymentDetailContent({
 }: {
   readonly paymentId: PaymentId
 }) {
+  // This card's queries and those of the cards below that need only the
+  // payment's id; `PaymentDetailBillCard` preloads its own once the bill id
+  // is read.
+  usePreloadEvoluQueries([
+    paymentDetailQuery(paymentId),
+    paymentReconciliationsQuery(paymentId),
+    paymentNumberByPaymentIdQuery(paymentId),
+    eetSalesByPaymentIdQuery(paymentId),
+    ...paymentRefundsQueries(paymentId),
+  ])
   const { t } = useTranslation()
   const locale = useLocale()
   const runToast = useRunToast()
@@ -522,6 +542,13 @@ function PaymentDetailBillCard({
   readonly paymentId: PaymentId
   readonly tipAmount: NonNegativeInteger
 }) {
+  usePreloadEvoluQueries([
+    ...billStateQueries(billId),
+    ...billLineSummaryDiffQueries(paymentId),
+    tablesQuery,
+    taxRatesQuery,
+    claimedPaymentsByBillIdQuery(billId),
+  ])
   const { t } = useTranslation()
   const locale = useLocale()
   const query = billByIdQuery(billId)

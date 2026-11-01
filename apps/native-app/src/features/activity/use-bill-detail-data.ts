@@ -21,6 +21,15 @@ import { useBillLineSummaries } from "../shared/use-bill-state.ts"
 // Native counterparts of web's `useBillCoverage` and `useBillLineSummaryDiff`:
 // the derivations are core's, only the query hooks differ.
 
+/**
+ * What `useBillLineSummaryDiff` reads beyond `billStateQueries`, for a
+ * screen's `usePreloadEvoluQueries`.
+ */
+export const billLineSummaryDiffQueries = (paymentId: PaymentId) => [
+  paymentLinesByPaymentIdQuery(paymentId),
+  itemsByPaymentIdQuery(paymentId),
+]
+
 /** Live billTotal/claimedSum/coverage (docs/bill-payment-states.md). */
 export function useBillCoverage(billId: BillId): BillCoverageSummary {
   const summaries = useBillLineSummaries(billId)

@@ -25,6 +25,18 @@ import { useOptionalEvoluQuery } from "../../hooks/use-evolu-query.ts"
 // and `useBillStatus`: the derivations are core's, only the hooks differ. A bill
 // whose row is not written yet (a new cart) simply yields empty results.
 
+/**
+ * Every query the hooks below read for `billId`, for a screen's
+ * `usePreloadEvoluQueries` (`useBillCoverage` reads only these too).
+ */
+export const billStateQueries = (billId: BillId) => [
+  billByIdQuery(billId),
+  billLinesByBillIdQuery(billId),
+  itemsByBillIdQuery(billId),
+  paymentsByBillIdQuery(billId),
+  claimedTransactionsByBillIdQuery(billId),
+]
+
 export function useBillLineSummaries(
   billId: BillId
 ): ReadonlyArray<BillLineSummary> {

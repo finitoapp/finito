@@ -1,5 +1,8 @@
 import type { Query, QueryRows, Row } from "@evolu/common"
-import { useEvoluQueryFor } from "@payky/app-shared/use-evolu-query-for"
+import {
+  useEvoluQueryFor,
+  usePreloadEvoluQueriesFor,
+} from "@payky/app-shared/use-evolu-query-for"
 import type { EvoluSchema } from "@payky/core/evolu/schema"
 import { useEvolu } from "@/hooks/use-evolu.ts"
 
@@ -20,3 +23,11 @@ export const useOptionalEvoluQuery = <R extends Row>(
 export const useEvoluQuery = <R extends Row>(
   query: Query<EvoluSchema, R>
 ): { data: QueryRows<R> } => useOptionalEvoluQuery(query)
+
+/**
+ * Called first in a screen that reads several queries, so they load in one
+ * round trip instead of one after another (`usePreloadEvoluQueriesFor`).
+ */
+export const usePreloadEvoluQueries = (
+  queries: ReadonlyArray<Query<EvoluSchema, Row> | null>
+): void => usePreloadEvoluQueriesFor(useEvolu(), queries)

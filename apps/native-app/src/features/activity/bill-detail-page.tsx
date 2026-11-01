@@ -27,7 +27,7 @@ import {
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { router, useLocalSearchParams } from "expo-router"
-import { Suspense } from "react"
+import { Suspense, useMemo } from "react"
 import { Pressable } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
@@ -43,7 +43,10 @@ import {
   CardTitle,
 } from "../../components/ui/card.tsx"
 import { Separator } from "../../components/ui/separator.tsx"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
@@ -51,6 +54,7 @@ import { EetSaleStatusLabel } from "../shared/eet-sale-status.tsx"
 import { RefundBadge } from "../shared/refund-badge.tsx"
 import { TaxRecap } from "../shared/tax-recap.tsx"
 import {
+  billStateQueries,
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
@@ -96,6 +100,19 @@ export function BillDetailPage() {
 }
 
 function BillDetail({ billId }: { readonly billId: BillId }) {
+  usePreloadEvoluQueries(
+    useMemo(
+      () => [
+        ...billStateQueries(billId),
+        tablesQuery,
+        taxRatesQuery,
+        paymentsWithClaimsByBillIdQuery(billId),
+        refundSummariesByBillIdQuery(billId),
+        eetSalesByBillIdQuery(billId),
+      ],
+      [billId]
+    )
+  )
   const { t } = useTranslation()
   const locale = useLocale()
   const [bill] = useEvoluQuery(billByIdQuery(billId)).data

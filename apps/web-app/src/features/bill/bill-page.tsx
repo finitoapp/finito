@@ -100,6 +100,7 @@ import { useBillScanHandler } from "@/features/bill/use-bill-scan-handler.tsx"
 import { useCartBill } from "@/features/bill/use-cart-bill.ts"
 import { useChangePulse } from "@/features/bill/use-change-pulse.ts"
 import { usePendingPayments } from "@/features/bill/use-pending-payments.ts"
+import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import { CategoryFilterBar } from "@/features/shared/category-filter-bar.tsx"
 import { useBillCancellationCollisionActions } from "@/features/shared/use-bill-cancellation-collision-actions.ts"
 import { useBillLineSummaries } from "@/features/shared/use-bill-line-summaries.ts"
@@ -110,7 +111,10 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useCreateTerminalPayment } from "@/hooks/use-create-terminal-payment.ts"
 import { useDebouncedValue } from "@/hooks/use-debounced-value.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "@/hooks/use-hardware-scanner.ts"
 import { useInfiniteEvoluQuery } from "@/hooks/use-infinite-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
@@ -158,6 +162,14 @@ export function BillPage({
   /** A code scanned on the home screen, which opened this bill to add it. */
   readonly initialScanCode?: string
 }) {
+  // The cart's catalog too: `BillCartView` mounts below once these are in.
+  usePreloadEvoluQueries([
+    ...billStateQueries(billId),
+    settingsQuery,
+    tablesQuery,
+    catalogItemsQuery,
+    catalogCategoriesQuery,
+  ])
   useScreenWakeLock(true)
   const { t } = useTranslation()
   const navigate = useNavigate()
