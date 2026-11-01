@@ -11,6 +11,7 @@ import { createRumor, createSeal, createWrap } from "nostr-tools/nip59"
 import { SimplePool } from "nostr-tools/pool"
 import { type Event, generateSecretKey } from "nostr-tools/pure"
 import { z } from "zod"
+import { loadServerBrandName } from "../src/server/server-brand.js"
 import { jsonApi } from "./_http.js"
 import { currentTeam, NpubListSchema } from "./support-team.js"
 
@@ -119,6 +120,14 @@ export const handleContactRequest = async (
     )
   }
 
+  const appName = loadServerBrandName()
+  if (appName === null) {
+    return jsonResponse(
+      { status: "ERROR", reason: "The app brand is misconfigured." },
+      { status: 500 }
+    )
+  }
+
   // One key per message: there is nobody to reply to over Nostr, which is
   // why the form asks for an email or a phone.
   const secretKey = generateSecretKey()
@@ -129,7 +138,7 @@ export const handleContactRequest = async (
       content: formatContactMessage(body.data),
       tags: [
         ...pubkeys.map((pubkey) => ["p", pubkey]),
-        ["subject", contactMessageSubject(body.data)],
+        ["subject", contactMessageSubject(body.data, appName)],
       ],
     },
     secretKey

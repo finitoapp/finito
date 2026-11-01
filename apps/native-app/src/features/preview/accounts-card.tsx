@@ -13,6 +13,7 @@ import {
   reloadAppEvoluAtom,
 } from "../../atoms/evolu-counter.ts"
 import { Button } from "../../components/ui/button.tsx"
+import { appDefaultTransports } from "../../core/app-brand.ts"
 import { useRequirePermission } from "../../core/use-access.ts"
 import { useDeviceEvoluQuery } from "../../hooks/use-evolu-query.ts"
 
@@ -61,7 +62,9 @@ export function AccountsCard() {
           )
             return
           if (!isCurrentAccount()) return
-          insertAccount(deviceEvolu, createAccountMasterKey())
+          insertAccount(deviceEvolu, createAccountMasterKey(), {
+            defaultTransports: appDefaultTransports,
+          })
           reload()
         }}
       >

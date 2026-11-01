@@ -1,9 +1,6 @@
 import { sqliteTrue } from "@evolu/common"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import {
-  defaultEvoluTransportUrls,
-  upsertAccountEvoluWebsocketTransport,
-} from "@payky/core/evolu/device-account"
+import { upsertAccountEvoluWebsocketTransport } from "@payky/core/evolu/device-account"
 import type { DeviceAccountId } from "@payky/core/evolu/device-client"
 import { runMutationWithCompletion } from "@payky/core/modules/shared/evolu-utils"
 import { WssUrlSchema } from "@payky/core/modules/shared/schema"
@@ -22,6 +19,7 @@ import {
   FieldLabel,
 } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
+import { appDefaultTransports } from "../../../core/app-brand.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 
@@ -81,7 +79,7 @@ export function TransportAddForm({
               setSaved(false)
             }}
             disabled={pending}
-            placeholder={defaultEvoluTransportUrls[0]}
+            placeholder={appDefaultTransports[0]}
             keyboardType="url"
             autoCapitalize="none"
             autoCorrect={false}

@@ -27,6 +27,7 @@ import {
   verticalNavShellClassName,
   verticalNavTitleClassName,
 } from "@/components/vertical-nav.tsx"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 import { AccountTransferTarget } from "@/features/shared/account/account-transfer-target.tsx"
 import {
   type AccountChoice,
@@ -114,7 +115,9 @@ export function AccountsSettingsPage() {
 
     setBusy(true)
     try {
-      await createOrSelectAccount(deviceEvolu, createAccountMasterKey())
+      await createOrSelectAccount(deviceEvolu, createAccountMasterKey(), {
+        defaultTransports: appDefaultTransports,
+      })
       reloadAppEvolu()
     } finally {
       setBusy(false)

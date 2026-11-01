@@ -10,7 +10,7 @@ tags: [cashu]
     file: ../../subflows/fill-input.yaml
     env:
       LABEL: ${output.t["withdraw.destination.label"]}
-      VALUE: donate@payky.me
+      VALUE: donate@finito.fit
 - extendedWaitUntil:
     visible: ${output.t["withdraw.destination.kind.lightningAddress"]}
     timeout: 10000

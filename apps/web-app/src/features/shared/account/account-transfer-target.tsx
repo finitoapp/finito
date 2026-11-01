@@ -28,6 +28,7 @@ import {
 } from "@/components/reui/alert.tsx"
 import { ScanCodeScanner } from "@/components/scan-code-scanner.tsx"
 import { Button } from "@/components/ui/button.tsx"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
@@ -113,7 +114,11 @@ export function AccountTransferTarget({
     const { created } = await createOrSelectAccount(
       deviceEvolu,
       payload.masterKey,
-      { name: payload.accountName, transports: payload.transports }
+      {
+        defaultTransports: appDefaultTransports,
+        name: payload.accountName,
+        transports: payload.transports,
+      }
     )
     setRestoredAccount({ created, previous })
     reloadAppEvolu()

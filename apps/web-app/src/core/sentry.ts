@@ -1,5 +1,6 @@
 import { scrubBreadcrumb, scrubEvent } from "@payky/app-shared/error-scrubbing"
 import * as Sentry from "@sentry/react"
+import { appBrand } from "@/core/app-brand.ts"
 import { appEnv } from "@/core/app-env.ts"
 
 const dsn = appEnv.VITE_SENTRY_DSN
@@ -19,6 +20,8 @@ export function enableErrorReporting(): void {
     dsn,
     release: __APP_VERSION__,
     environment: import.meta.env.MODE,
+    // One Sentry project for both apps (brand/0001); the tag tells them apart.
+    initialScope: { tags: { brand: appBrand.id } },
     beforeBreadcrumb: scrubBreadcrumb,
     beforeSend: scrubEvent,
   })

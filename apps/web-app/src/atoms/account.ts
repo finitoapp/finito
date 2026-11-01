@@ -12,6 +12,7 @@ import { UAParser } from "ua-parser-js"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { deviceMigrationsAtom } from "@/atoms/device-migrations.ts"
 import { evoluCounterAtom } from "@/atoms/evolu-counter.ts"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 
 const toOptionalDeviceLabel = (value: string | undefined) =>
   value === undefined || value === ""
@@ -39,7 +40,10 @@ const activeAccountRowAtom = atom(async (get) => {
   const activeAccountRow = await loadActiveAccountRow(deviceEvolu)
 
   return (
-    activeAccountRow ?? insertAccount(deviceEvolu, createAccountMasterKey())
+    activeAccountRow ??
+    insertAccount(deviceEvolu, createAccountMasterKey(), {
+      defaultTransports: appDefaultTransports,
+    })
   )
 })
 

@@ -6,9 +6,11 @@ import { expect, test } from "vitest"
 /**
  * The native app ships as Finito (brand/0001), so nothing it shows may say
  * Payky: copy names the app through brand placeholders and code through
- * `brandName(appBrand)`. Internal identifiers keep their name (`PaykyNfc`,
- * `payky.terminalHomeMode`, `payky:` URIs), so only the word "Payky" in
- * string literals and JSX text counts, and comments are free to explain.
+ * `brandName(appBrand)`, and it reaches Finito's own hosts through the brand
+ * (`appBrand.apiBaseUrl`), never payky.me. Internal identifiers keep their
+ * name (`PaykyNfc`, `payky.terminalHomeMode`, `payky:` URIs), so only the
+ * word "Payky" and the host payky.me in string literals and JSX text count,
+ * and comments are free to explain.
  */
 
 const appDir = path.resolve(import.meta.dirname, "../..")
@@ -19,7 +21,7 @@ const files = (dir: string, pattern: RegExp): ReadonlyArray<string> =>
     .filter((file) => pattern.test(file) && !/\.test\.tsx?$/u.test(file))
     .map((file) => path.join(dir, file))
 
-const brandWord = /\bPayky\b/u
+const brandWord = /\bPayky\b|\bpayky\.me\b/u
 
 const textNodeKinds = new Set([
   ts.SyntaxKind.StringLiteral,

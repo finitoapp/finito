@@ -37,6 +37,7 @@ import {
   AlertTitle,
 } from "../../components/ui/alert.tsx"
 import { Button } from "../../components/ui/button.tsx"
+import { appDefaultTransports } from "../../core/app-brand.ts"
 import { nativeEnv } from "../../core/native-env.ts"
 import { useRequirePermission } from "../../core/use-access.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
@@ -138,7 +139,11 @@ export function AccountTransferTarget({
     const { created } = await createOrSelectAccount(
       deviceEvolu,
       payload.masterKey,
-      { name: payload.accountName, transports: payload.transports }
+      {
+        defaultTransports: appDefaultTransports,
+        name: payload.accountName,
+        transports: payload.transports,
+      }
     )
     setRestoredAccount({ created, previous })
     reloadAppEvolu()

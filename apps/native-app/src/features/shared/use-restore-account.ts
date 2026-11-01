@@ -9,6 +9,7 @@ import { useState } from "react"
 import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { reloadAppEvoluAtom } from "../../atoms/evolu-counter.ts"
+import { appDefaultTransports } from "../../core/app-brand.ts"
 
 /**
  * Validates a recovery phrase, selects (or adds) its device account, then
@@ -34,7 +35,9 @@ export function useRestoreAccount(source: "onboarding" | "settings") {
     setPending(true)
     try {
       const masterKey = await mnemonicToMasterKey(checked.mnemonic)
-      const { created } = await createOrSelectAccount(deviceEvolu, masterKey)
+      const { created } = await createOrSelectAccount(deviceEvolu, masterKey, {
+        defaultTransports: appDefaultTransports,
+      })
       reloadAppEvolu()
       setRestoredAccount({ created, previous: activeAccount.id })
     } catch {

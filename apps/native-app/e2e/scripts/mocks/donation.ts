@@ -35,13 +35,13 @@ export const donationMock: MockHandler = (_request, url) => {
   const { pathname } = url
   if (pathname === "/api/donations")
     return Response.json({ items: [], nextCursor: null })
-  if (pathname === "/__host/payky.me/.well-known/lnurlp/donate")
+  if (pathname === "/__host/finito.fit/.well-known/lnurlp/donate")
     return Response.json({
       tag: "payRequest",
       callback: `${LNURL}/callback`,
       minSendable: MIN_SENDABLE_SATS * 1_000,
       maxSendable: MAX_SENDABLE_SATS * 1_000,
-      metadata: JSON.stringify([["text/plain", "Donate to Payky"]]),
+      metadata: JSON.stringify([["text/plain", "Donate to Finito"]]),
     })
   if (pathname === "/__host/donate.e2e.test/callback") {
     invoice = invoiceForMsat(Number(url.searchParams.get("amount")))

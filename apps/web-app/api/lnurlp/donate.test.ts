@@ -19,6 +19,7 @@ const stubEnv = (
   vi.stubEnv("PAYKY_DONATE_SPARK_MNEMONIC", "test mnemonic")
   vi.stubEnv("PAYKY_DONATE_CALLBACK_URL", undefined)
   vi.stubEnv("PAYKY_DONATE_IDENTIFIER", undefined)
+  vi.stubEnv("PAYKY_BRAND", undefined)
 
   for (const [name, value] of Object.entries(overrides)) {
     vi.stubEnv(name, value)
@@ -102,6 +103,24 @@ describe("LNURL-pay origin handling", () => {
   })
 })
 
+const descriptionOf = (body: MetadataBody): string | undefined => {
+  const entries = JSON.parse(body.metadata) as ReadonlyArray<readonly string[]>
+
+  return entries.find(([kind]) => kind === "text/plain")?.[1]
+}
+
+describe("LNURL-pay description", () => {
+  test("asks for a donation to the app this deployment serves", async () => {
+    stubEnv()
+    const payky = (await (await GET(spoofedRequest())).json()) as MetadataBody
+    stubEnv({ PAYKY_BRAND: "finito" })
+    const finito = (await (await GET(spoofedRequest())).json()) as MetadataBody
+
+    expect(descriptionOf(payky)).toBe("Donate to Payky")
+    expect(descriptionOf(finito)).toBe("Donate to Finito")
+  })
+})
+
 describe("LNURL-pay configuration", () => {
   test.each([
     {
@@ -115,6 +134,10 @@ describe("LNURL-pay configuration", () => {
     {
       overrides: { PAYKY_DONATE_MIN_SATS: "500", PAYKY_DONATE_MAX_SATS: "100" },
       shape: "a minimum above the maximum",
+    },
+    {
+      overrides: { PAYKY_BRAND: "linky" },
+      shape: "an unknown brand",
     },
   ])("answers $shape as not configured", async ({ overrides }) => {
     stubEnv(overrides)

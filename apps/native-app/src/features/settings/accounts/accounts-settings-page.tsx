@@ -30,6 +30,7 @@ import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
+import { appDefaultTransports } from "../../../core/app-brand.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
@@ -102,7 +103,9 @@ export function AccountsSettingsPage() {
     if (!confirmed || stale()) return
     setBusy(true)
     try {
-      await createOrSelectAccount(deviceEvolu, createAccountMasterKey())
+      await createOrSelectAccount(deviceEvolu, createAccountMasterKey(), {
+        defaultTransports: appDefaultTransports,
+      })
       reload()
     } finally {
       setBusy(false)

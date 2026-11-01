@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
+import { appBrand } from "./app-brand.ts"
 
 export const appEnv = createEnv({
   clientPrefix: "VITE_",
@@ -14,7 +15,9 @@ export const appEnv = createEnv({
     // when pairing, not here.
     VITE_PAYKY_QERKO_POS_ID: z.string().default("payky"),
     // Where the donations page sends sats.
-    VITE_PAYKY_DONATE_LUD16_ADDRESS: z.string().default("donate@payky.me"),
+    VITE_PAYKY_DONATE_LUD16_ADDRESS: z
+      .string()
+      .default(appBrand.donateLightningAddress),
     // Where the account's Nostr profile is read from and published to.
     // Linky's defaults, so both apps see the same profile.
     VITE_PAYKY_NOSTR_RELAYS: z
@@ -49,7 +52,7 @@ export const appEnv = createEnv({
  * An absolute URL of `path` on this app's own API. The web calls the
  * deployment it was served from; the native app, whose origin is
  * https://localhost with no /api of its own, and code running without a page
- * (Vitest, the landing prerender) call payky.me. `VITE_PAYKY_API_BASE_URL`
+ * (Vitest, the landing prerender) call the brand's production API. `VITE_PAYKY_API_BASE_URL`
  * overrides both, which is how `bun run dev`, served without /api, reaches one.
  */
 export const apiUrl = (path: string): string =>
@@ -57,6 +60,6 @@ export const apiUrl = (path: string): string =>
     path,
     appEnv.VITE_PAYKY_API_BASE_URL ??
       (Capacitor.isNativePlatform() || typeof window === "undefined"
-        ? "https://payky.me"
+        ? appBrand.apiBaseUrl
         : window.location.origin)
   ).toString()
