@@ -20,10 +20,7 @@ import {
   reconcileAccountTransaction,
   upsertReconciliationClaimRows,
 } from "./reconciliation-claim-actions.ts"
-import {
-  type IbanCandidateOptions,
-  ibanTransactionsWithReconciliationCandidateQuery,
-} from "./reconciliation-claim-queries.ts"
+import { ibanTransactionsWithReconciliationCandidateQuery } from "./reconciliation-claim-queries.ts"
 import type {
   BankTransaction,
   ReconciliationClaimWrite,
@@ -126,18 +123,17 @@ const BANK_TRANSACTION_BATCH_SIZE = 100
  *
  * Unclaimed transactions share a batch. A claim closes its batch at once:
  * the next transaction's candidate lookup has to see it, or two transfers
- * quoting the same symbols would both claim one payment, or with
- * `includePaidPayments` the second would miss another unpaid payment it
- * matches. `isStopped` lets a sync that is being shut down stop between
- * transactions; what was computed by then is still written.
+ * quoting the same symbols would both take one payment while another unpaid
+ * one matches the second (payment/0007). `isStopped` lets a
+ * sync that is being shut down stop between transactions; what was
+ * computed by then is still written.
  */
 export const recordBankTransactions =
   ({
     accountId,
     transactions,
     isStopped = () => false,
-    ...options
-  }: IbanCandidateOptions & {
+  }: {
     readonly accountId: AccountId
     readonly transactions: ReadonlyArray<BankTransaction>
     readonly isStopped?: () => boolean
@@ -178,11 +174,7 @@ export const recordBankTransactions =
       const input = toAccountTransactionInput(accountId, transaction)
       const rows = computeAccountTransactionRows(input, run.deps.date.now())
       const claim = await run.ok(
-        loadAutomaticReconciliationClaimForNewAccountTransaction(
-          input,
-          rows.id,
-          options
-        )
+        loadAutomaticReconciliationClaimForNewAccountTransaction(input, rows.id)
       )
       const billClosing =
         claim === null
@@ -229,8 +221,7 @@ export const reconcileUnclaimedBankTransactions =
   ({
     accountTransactionIds,
     isStopped = () => false,
-    ...options
-  }: IbanCandidateOptions & {
+  }: {
     readonly accountTransactionIds: ReadonlyArray<AccountTransactionId>
     readonly isStopped?: () => boolean
   }): Task<
@@ -242,16 +233,13 @@ export const reconcileUnclaimedBankTransactions =
     if (accountTransactionIds.length === 0) return ok([])
 
     const matched = await run.deps.evolu.loadQuery(
-      ibanTransactionsWithReconciliationCandidateQuery(
-        accountTransactionIds,
-        options
-      )
+      ibanTransactionsWithReconciliationCandidateQuery(accountTransactionIds)
     )
     const claimedPaymentIds: PaymentId[] = []
     for (const { accountTransactionId } of matched) {
       if (isStopped()) break
       const paymentId = await run.ok(
-        reconcileAccountTransaction(accountTransactionId, options)
+        reconcileAccountTransaction(accountTransactionId)
       )
       if (paymentId !== null) claimedPaymentIds.push(paymentId)
     }

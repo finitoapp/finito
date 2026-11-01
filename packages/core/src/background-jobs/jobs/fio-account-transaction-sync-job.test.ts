@@ -242,6 +242,80 @@ describe("fio account transaction sync job", () => {
     expect(errors).toEqual([])
   })
 
+  test("a second FIO transfer quoting a paid payment's symbols claims it as overpaid", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    })
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Bank account"),
+        iban: {
+          iban: IbanSchema.decode("CZ6508000000192000145399"),
+          currency: "CZK",
+        },
+      })
+    )
+    const fioPluginId = await run.ok(
+      saveFioPlugin({
+        accountId,
+        numberOfSecondsBetweenChecks: PositiveInteger(60),
+        syncLookbackDays: PositiveInteger(1),
+        isActive: sqliteTrue,
+      })
+    )
+    const paymentId = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId: null,
+        tableId: null,
+        amount: NonNegativeInteger(19_950),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        iban: {
+          accountId,
+          variableSymbol: VariableSymbol("123456"),
+          specificSymbol: SpecificSymbol("789"),
+        },
+      })
+    )
+    await run.ok(
+      addFioPluginToken({
+        fioPluginId,
+        token: NonEmptyString255("fio-token-1"),
+      })
+    )
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      lockManager: createInProcessLockManager(),
+      onError: () => undefined,
+      fetch: async () =>
+        statementResponse({
+          transactions: [
+            fioTransaction,
+            {
+              ...fioTransaction,
+              column0: { value: 987654321, name: "ID pohybu" },
+            },
+          ],
+        }),
+      ...createTestDateDep(new Date("2026-05-31T10:00:00.000Z")),
+    })
+    await using _job = await jobRun.ok(createFioAccountTransactionSyncJob())
+
+    await expect
+      .poll(() =>
+        evolu.loadQuery(reconciliationClaimsByAccountIdQuery(accountId))
+      )
+      .toEqual([{ paymentId }, { paymentId }])
+  })
+
   test("retries reconciliation for a bank reference already recorded but never claimed", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

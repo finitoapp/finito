@@ -60,7 +60,7 @@ The FIO and Spark locks use `{ ifAvailable: true }` — skip on contention,
 never wait. MONETA takes none: the job and an open payment-wait screen may
 sync at once, and write the same rows. A second transfer for a paid payment
 claims it too, so it overpays the payment however the two syncs interleave
-(`moneta/0005`). All pointers are wall-clock values (sync start time), not derived from any
+(`payment/0007`). All pointers are wall-clock values (sync start time), not derived from any
 record's own timestamp, so a quiet sync still advances the window forward.
 
 FIO and MONETA record a statement through the same steps
@@ -113,8 +113,8 @@ most one winner) and claim the first match, ties broken by `payment.id`:
 | `lightningAddress` | not matched: the verify poll knows its payment and claims it directly | yes — the LNURL verify job, below |
 
 No match = transaction stays unclaimed; not an error. A paid payment is no
-candidate, except for a MONETA transfer that matches no unpaid one: that
-claims it anyway and overpays it (`moneta/0005`). A claim also refreshes
+candidate, except for an `iban` transfer that matches no unpaid one: that
+claims it anyway and overpays it (`payment/0007`). A claim also refreshes
 the bill's `closedAt` cache in the same batch (see `bill-payment-states.md`).
 
 ## Cashu
