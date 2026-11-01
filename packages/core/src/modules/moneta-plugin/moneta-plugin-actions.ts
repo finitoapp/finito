@@ -288,7 +288,7 @@ type MonetaSyncDeps = EvoluDep & EvoluOwnerDep & FetchDep & DateDep & ConsoleDep
  * (the job and an open payment-wait screen) write the same rows. A second
  * transfer quoting a paid payment's symbols claims it too, so the payment
  * shows as overpaid whether the two were synced together, one after the
- * other or at once (moneta/0005). The sync pointer is the job's alone: the
+ * other or at once (payment/0007). The sync pointer is the job's alone: the
  * screen looks into a narrower window.
  */
 export const syncMonetaTransactions =
@@ -367,14 +367,12 @@ export const syncMonetaTransactions =
         accountId: plugin.accountId,
         transactions: unrecorded,
         isStopped,
-        includePaidPayments: true,
       })
     )
     const reconciled = await run.ok(
       reconcileUnclaimedBankTransactions({
         accountTransactionIds: unclaimed,
         isStopped,
-        includePaidPayments: true,
       })
     )
     const claimedPaymentIds = [...recordedNow.claimedPaymentIds, ...reconciled]

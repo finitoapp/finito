@@ -1,6 +1,6 @@
 # 0005 A second MONETA transfer for a paid payment overpays it
 
-Status: accepted
+Status: superseded by payment/0007
 Date: 2026-11-01
 
 ## Context

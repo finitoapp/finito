@@ -172,10 +172,9 @@ than one method at once (cash, Lightning, IBAN all offered for the same
 amount, not mutually exclusive — see `payment.ts`'s satellite tables), and
 `claimManualReconciliation` (unlike the automatic matchers) has no
 already-claimed exclusion, so staff can manually attach more than one
-transaction to a payment. The IBAN matcher of MONETA transfers drops that
-exclusion too: a customer who sends one payment's transfer twice overpays
-it, where every other matcher leaves the second transfer unclaimed
-(moneta/0005).
+transaction to a payment. The IBAN matcher drops that exclusion too, after
+every unpaid payment: a customer who sends one payment's bank transfer
+twice overpays it (payment/0007).
 
 Either way, [Bill payment coverage](#bill-payment-coverage) sums the
 *distinct claimed transactions*' real amounts (deduplicated by transaction

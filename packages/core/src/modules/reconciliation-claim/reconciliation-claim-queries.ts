@@ -144,17 +144,6 @@ const hasNoActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
   eb.not(hasActiveClaim(eb))
 
 /**
- * How the IBAN matcher treats a payment that is already paid. By default it
- * skips it, so a second transfer quoting its symbols stays unclaimed.
- * `includePaidPayments` makes it a candidate after every unpaid one, so the
- * second transfer claims it and the payment shows as overpaid (moneta/0005):
- * where the default finds a payment, this finds the same one.
- */
-export interface IbanCandidateOptions {
-  readonly includePaidPayments?: boolean
-}
-
-/**
  * A canceled payment stays a candidate on purpose: money that arrives after
  * the cancellation is claimed and surfaces as the canceled+claimed collision
  * rather than sitting unmatched. It is only the last resort, though — when a
@@ -166,13 +155,13 @@ const liveBeforeCanceled = (eb: ExpressionBuilder<AppDb, "payment">) =>
 
 /**
  * IBAN transactions joined to every payment whose account, symbols, amount
- * and currency they match and, unless `includePaidPayments`, that has no
- * active claim yet — the body of both candidate queries below, which differ
- * only in how many transactions they ask about.
+ * and currency they match, paid or not — the body of both candidate queries
+ * below, which differ only in how many transactions they ask about. A paid
+ * payment is a candidate after every unpaid one, so a second transfer for it
+ * overpays it rather than staying unclaimed (payment/0007).
  */
 const selectIbanReconciliationCandidates = (
-  db: Pick<Kysely<AppDb>, "selectFrom">,
-  { includePaidPayments = false }: IbanCandidateOptions
+  db: Pick<Kysely<AppDb>, "selectFrom">
 ) =>
   db
     .selectFrom("accountTransaction")
@@ -212,14 +201,12 @@ const selectIbanReconciliationCandidates = (
     .where("payment.isDeleted", "is not", sqliteTrue)
     .whereRef("payment.amount", "=", "accountTransaction.amount")
     .whereRef("payment.currency", "=", "accountTransaction.currency")
-    .$if(!includePaidPayments, (query) => query.where(hasNoActiveClaim))
 
 export const ibanReconciliationCandidateByAccountTransactionIdQuery = (
-  accountTransactionId: AccountTransactionId,
-  options: IbanCandidateOptions = {}
+  accountTransactionId: AccountTransactionId
 ) =>
   createQuery((db) =>
-    selectIbanReconciliationCandidates(db, options)
+    selectIbanReconciliationCandidates(db)
       .select(["payment.id as paymentId"])
       .where("accountTransaction.id", "=", accountTransactionId)
       .orderBy(hasActiveClaim)
@@ -238,11 +225,10 @@ export const ibanReconciliationCandidateByAccountTransactionIdQuery = (
  * can actually be claimed, instead of about every one of them.
  */
 export const ibanTransactionsWithReconciliationCandidateQuery = (
-  accountTransactionIds: ReadonlyArray<AccountTransactionId>,
-  options: IbanCandidateOptions = {}
+  accountTransactionIds: ReadonlyArray<AccountTransactionId>
 ) =>
   createQuery((db) =>
-    selectIbanReconciliationCandidates(db, options)
+    selectIbanReconciliationCandidates(db)
       .select(["accountTransaction.id as accountTransactionId"])
       .where("accountTransaction.id", "in", accountTransactionIds)
       .distinct()
@@ -255,10 +241,8 @@ export const ibanReconciliationCandidateByValuesQuery = ({
   currency,
   variableSymbol,
   specificSymbol,
-  includePaidPayments = false,
 }: Pick<AccountTransactionRow, "accountId"> &
-  Pick<AccountTransactionIbanRow, "variableSymbol" | "specificSymbol"> &
-  IbanCandidateOptions & {
+  Pick<AccountTransactionIbanRow, "variableSymbol" | "specificSymbol"> & {
     readonly amount: NonNegativeInteger
     readonly currency: FiatCurrency
   }) =>
@@ -274,7 +258,6 @@ export const ibanReconciliationCandidateByValuesQuery = ({
       .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "=", amount)
       .where("payment.currency", "=", currency)
-      .$if(!includePaidPayments, (query) => query.where(hasNoActiveClaim))
       .orderBy(hasActiveClaim)
       .orderBy(liveBeforeCanceled)
       .orderBy("payment.id")

@@ -983,9 +983,8 @@ describe("payment actions", () => {
     // Simulate a second offline device independently settling the *same*
     // payment through the other prepared method — a real, distinct incoming
     // bank transaction, manually reconciled (the automatic IBAN matcher
-    // itself excludes an already-claimed payment; a genuine CRDT merge race
-    // bypasses that exclusion the same way, since each device only sees its
-    // own claim at write time). See docs/bill-payment-states.md.
+    // would claim it the same way, as it claims a paid payment when no
+    // unpaid one matches; payment/0007). See docs/bill-payment-states.md.
     const secondTransactionId = await run.ok(
       createAccountTransaction({
         accountId: ibanAccountId,
