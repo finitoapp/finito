@@ -1,5 +1,3 @@
-import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
 import path from "node:path"
 import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { createEnv } from "@t3-oss/env-core"
@@ -13,8 +11,7 @@ import type { ViteUserConfigFnObject } from "vitest/config"
 import { defaultExclude } from "vitest/config"
 import { z } from "zod"
 
-import { releaseCommitSubject } from "../../bin/release-version.ts"
-import packageJson from "../../package.json" with { type: "json" }
+import { getAppVersion, readRepoSnapshot } from "../../bin/app-build.ts"
 import { isAndroidWebView } from "./src/platform/runtime.ts"
 import { installOneTabLocks } from "./src/polyfills/one-tab-locks.ts"
 
@@ -46,36 +43,6 @@ const loadBuildEnv = (mode: string) =>
   })
 
 /**
- * The version the app shows and Sentry's `release`, which is what ties an
- * event to its source maps (`docs/releases.md`). The release commit
- * `bin/release.ts` makes builds as the `package.json` version itself; every
- * other commit — edge.payky.me, a local build — is that last release plus its
- * commit, so two edge builds never share a release. Without git (a source
- * tarball, a Docker build context) only the version is known.
- */
-function getAppVersion(): string {
-  const { version } = packageJson
-  try {
-    const [sha, subject] = execFileSync(
-      "git",
-      ["log", "-1", "--format=%h%n%s"],
-      {
-        cwd: repositoryRoot,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }
-    )
-      .trim()
-      .split("\n")
-    return subject === releaseCommitSubject(version)
-      ? version
-      : `${version}-edge.${sha}`
-  } catch {
-    return version
-  }
-}
-
-/**
  * Evolu's workers get the same lock fix as the main thread
  * (`src/polyfills/one-tab-locks.ts`), from the same source: both
  * functions are self-contained, so their source text runs as is. The workers
@@ -105,31 +72,6 @@ function evoluAndroidWebViewWorkerLocksPlugin(): PluginOption {
       }
     },
   }
-}
-
-const repoSnapshotPaths = ["apps", "packages", "docs", "AGENTS.md"]
-
-/**
- * The repository's text files the app assistant's tools read (ai/0003), as
- * `packages/core/src/integrations/repo-snapshot/repo-snapshot-client.ts` expects them.
- * Only files git tracks, so `.env` files and build output stay out.
- */
-function readRepoSnapshot(): string {
-  // `-I` leaves binary files out; every text file matches the empty pattern.
-  const paths = execFileSync(
-    "git",
-    ["grep", "-I", "-l", "-z", "-e", "", "--", ...repoSnapshotPaths],
-    { cwd: repositoryRoot, encoding: "utf8", maxBuffer: 16 * 1024 * 1024 }
-  )
-    .split("\0")
-    .filter((file) => file !== "")
-  const files = Object.fromEntries(
-    paths.map((file) => [
-      file,
-      readFileSync(path.join(repositoryRoot, file), "utf8"),
-    ])
-  )
-  return JSON.stringify({ version: getAppVersion(), files })
 }
 
 /** Serves the snapshot in development and emits it with the web build. */

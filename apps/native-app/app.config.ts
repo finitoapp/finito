@@ -1,5 +1,18 @@
+import { createEnv } from "@t3-oss/env-core"
 import type { ExpoConfig } from "expo/config"
+import { z } from "zod"
 import { version } from "../../package.json"
+
+const buildEnv = createEnv({
+  server: {
+    // The web export's version with its commit off a release
+    // (`getAppVersion`, set by scripts/build-web.ts); the APK keeps the
+    // release version, from which its versionCode is derived.
+    PAYKY_APP_VERSION: z.string().default(version),
+  },
+  runtimeEnv: process.env,
+  emptyStringAsUndefined: true,
+})
 
 const [year, month, micro] = version.split(".").map(Number) as [
   number,
@@ -11,7 +24,7 @@ export default {
   name: "Finito",
   slug: "finito",
   scheme: "finito",
-  version,
+  version: buildEnv.PAYKY_APP_VERSION,
   platforms: ["android", "ios", "web"],
   userInterfaceStyle: "automatic",
   // The PWA icon; launchers without adaptive icons use it as is.

@@ -53,6 +53,7 @@
     "native:ios": "bun run build:core && bun run --cwd apps/native-app ios",
     "native:web": "bun run build:core && bun run --cwd apps/native-app web",
     "build:native": "bun run build:core && bun run --cwd apps/native-app bundle",
+    "build:native:web": "bun run build:core && bun run --cwd apps/native-app build:web",
     "check:native": "bun run --cwd apps/native-app check:ts"
   },
   "dependencies": {

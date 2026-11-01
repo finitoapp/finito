@@ -41,7 +41,7 @@ Two Vercel projects build the payment app from this repository:
 - `payky`: Production Branch `production`, domain `payky.me`. Preview deployments are disabled and the Ignored Build Step is `[ "$VERCEL_GIT_COMMIT_REF" != "production" ]`, so it builds nothing else.
 - `payky-edge`: Production Branch `main`, domain `edge.payky.me`. Pull request previews come from this project.
 
-Each app project has its own environment variables (AI proxy key, donation wallet, Sentry); a new one goes into both.
+Each app project has its own environment variables (AI proxy key, donation wallet, Sentry); a new one goes into both, and into Finito's `finito` and `finito-edge`, which serve the same API on `app.finito.fit` (`docs/finito-deployment.md`).
 
 GitHub secrets used by `release.yml`: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
 
