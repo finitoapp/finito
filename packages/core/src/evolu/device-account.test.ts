@@ -6,8 +6,8 @@ import { createTestDeviceEvolu } from "../testing/device-evolu.ts"
 import {
   activeAccountQuery,
   appOwnerIdPlaceholder,
+  createDefaultEvoluTransportUrls,
   createOrSelectAccount,
-  defaultEvoluTransportUrls,
   deriveDeviceAccountId,
   insertDemoAccount,
   markDemoAccountSeeded,
@@ -52,17 +52,25 @@ describe("resolveTransportUrl", () => {
   })
 })
 
-describe("defaultEvoluTransportUrls", () => {
+const defaultTransports = createDefaultEvoluTransportUrls("live-relay.payky.me")
+
+describe("createDefaultEvoluTransportUrls", () => {
   test("stores the live relay's room as a placeholder, not as an id", () => {
-    const [plainRelay, liveRelay] = defaultEvoluTransportUrls
+    const [plainRelay, liveRelay] = defaultTransports
 
     expect(plainRelay).toBe("wss://evolu.linky.fit")
     expect(liveRelay).toBe(`wss://live-relay.payky.me/${appOwnerIdPlaceholder}`)
     expect(liveRelay).not.toContain(appOwnerId)
   })
 
+  test("puts the live relay under the host the app names", () => {
+    expect(createDefaultEvoluTransportUrls("live-relay.finito.fit")[1]).toBe(
+      `wss://live-relay.finito.fit/${appOwnerIdPlaceholder}`
+    )
+  })
+
   test("resolve to a room id a relay accepts", () => {
-    const [, liveRelay] = defaultEvoluTransportUrls
+    const [, liveRelay] = defaultTransports
     const resolved = resolveTransportUrl(liveRelay, appOwnerId)
 
     expect(resolved.slice("wss://live-relay.payky.me/".length)).toMatch(
@@ -125,6 +133,7 @@ describe("createOrSelectAccount", () => {
     ]
 
     const result = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
       name: NonEmptyString255("Shop"),
       transports,
     })
@@ -145,11 +154,13 @@ describe("createOrSelectAccount", () => {
     await using test = await createTestDeviceEvolu()
     const { deviceEvolu } = test
     const first = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
       name: NonEmptyString255("Old"),
     })
     await expect.poll(() => loadAccountRows(deviceEvolu)).toHaveLength(1)
 
     const second = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
       name: NonEmptyString255("Shop"),
       transports: [WssUrl("wss://custom.example")],
     })
@@ -168,8 +179,8 @@ describe("createOrSelectAccount", () => {
     const { deviceEvolu } = test
 
     await Promise.all([
-      createOrSelectAccount(deviceEvolu, masterKey),
-      createOrSelectAccount(deviceEvolu, masterKey),
+      createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports }),
+      createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports }),
     ])
 
     await expect.poll(() => loadAccountRows(deviceEvolu)).toHaveLength(1)
@@ -179,6 +190,7 @@ describe("createOrSelectAccount", () => {
     await using test = await createTestDeviceEvolu()
     const { deviceEvolu } = test
     const { accountId } = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
       name: NonEmptyString255("Shop"),
       transports: [WssUrl("wss://custom.example")],
     })
@@ -188,6 +200,7 @@ describe("createOrSelectAccount", () => {
       .toMatchObject([{ id: accountId, isDeleted: sqliteTrue }])
 
     const readded = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
       name: NonEmptyString255("Other"),
     })
 
@@ -219,9 +232,13 @@ describe("insertDemoAccount", () => {
   test("adds an active demo account whose relays are all switched off", async () => {
     await using test = await createTestDeviceEvolu()
     const { deviceEvolu } = test
-    await createOrSelectAccount(deviceEvolu, masterKey)
+    await createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports })
 
-    const accountId = insertDemoAccount(deviceEvolu, NonEmptyString255("Demo"))
+    const accountId = insertDemoAccount(
+      deviceEvolu,
+      NonEmptyString255("Demo"),
+      defaultTransports
+    )
 
     await expect
       .poll(() => deviceEvolu.loadQuery(activeAccountQuery))
@@ -242,7 +259,7 @@ describe("insertDemoAccount", () => {
       )
     )
     expect(transports).toEqual(
-      defaultEvoluTransportUrls.map(() => ({ isActive: sqliteFalse }))
+      defaultTransports.map(() => ({ isActive: sqliteFalse }))
     )
 
     markDemoAccountSeeded(deviceEvolu, accountId)

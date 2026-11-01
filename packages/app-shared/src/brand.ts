@@ -1,3 +1,4 @@
+import { createDefaultEvoluTransportUrls } from "@payky/core/evolu/device-account"
 import type { Language } from "./i18n/resources.ts"
 
 /**
@@ -16,18 +17,33 @@ export interface BrandNameForms {
  * The name an app ships under (brand/0001): the web app and the Capacitor
  * shell are Payky, the native app and its web export are Finito, over one
  * shared account, protocol and set of internal identifiers. Each app imports
- * its own brand statically; nothing switches it at runtime or at build time.
+ * its own brand statically; the API, deployed once per brand, reads which one
+ * it serves from `PAYKY_BRAND` (`apps/web-app/src/server/server-brand.ts`).
  */
 export interface Brand {
-  readonly id: "payky" | "finito"
+  readonly id: BrandId
   readonly names: Readonly<Record<Language, BrandNameForms>>
+  /** The production origin of the app's API, which the native app calls. */
+  readonly apiBaseUrl: string
+  /** The Lightning address the donations page pays (LUD-16). */
+  readonly donateLightningAddress: string
+  /**
+   * The live relay's host in the transports a new account starts with; both
+   * hosts reach the one relay, so the apps' devices share a room.
+   */
+  readonly liveRelayHost: string
 }
+
+export type BrandId = "payky" | "finito"
 
 const payky = { nominative: "Payky" } as const satisfies BrandNameForms
 
 export const paykyBrand = {
   id: "payky",
   names: { en: payky, cs: payky, sk: payky },
+  apiBaseUrl: "https://payky.me",
+  donateLightningAddress: "donate@payky.me",
+  liveRelayHost: "live-relay.payky.me",
 } as const satisfies Brand
 
 export const finitoBrand = {
@@ -47,7 +63,21 @@ export const finitoBrand = {
       locative: "Finite",
     },
   },
+  apiBaseUrl: "https://app.finito.fit",
+  // Served by the landing on finito.fit, which forwards the LNURL request to
+  // the API on app.finito.fit.
+  donateLightningAddress: "donate@finito.fit",
+  liveRelayHost: "live-relay.finito.fit",
 } as const satisfies Brand
+
+export const brands = {
+  payky: paykyBrand,
+  finito: finitoBrand,
+} as const satisfies Record<BrandId, Brand>
+
+/** The transports a new account of this brand's app starts with. */
+export const brandDefaultTransports = (brand: Brand) =>
+  createDefaultEvoluTransportUrls(brand.liveRelayHost)
 
 /**
  * The name where no copy declines it: the launcher, a report header, the name

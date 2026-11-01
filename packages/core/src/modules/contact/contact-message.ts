@@ -55,9 +55,15 @@ export const formatContactMessage = (contact: ContactMessage): string =>
     .filter((part) => part !== null)
     .join("\n")
 
-/** The chat's name in Amethyst: the business when given, else the contact. */
-export const contactMessageSubject = (contact: ContactMessage): string =>
-  `Payky web contact: ${
+/**
+ * The chat's name in Amethyst: the app whose landing it came from, then the
+ * business when given, else the contact.
+ */
+export const contactMessageSubject = (
+  contact: ContactMessage,
+  appName: string
+): string =>
+  `${appName} web contact: ${
     contact.businessName !== undefined && contact.businessName !== ""
       ? contact.businessName
       : (contact.email ?? contact.phone ?? "")

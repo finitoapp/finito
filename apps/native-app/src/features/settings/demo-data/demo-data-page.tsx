@@ -18,6 +18,7 @@ import {
   AlertTitle,
 } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
+import { appDefaultTransports } from "../../../core/app-brand.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -52,7 +53,12 @@ export function DemoDataPage() {
     setPending(true)
     await runToast(async () => {
       await runMutationWithCompletion((options) =>
-        insertDemoAccount(deviceEvolu, NonEmptyString255(accountName), options)
+        insertDemoAccount(
+          deviceEvolu,
+          NonEmptyString255(accountName),
+          appDefaultTransports,
+          options
+        )
       )
       reloadAppEvolu()
       router.replace("/")

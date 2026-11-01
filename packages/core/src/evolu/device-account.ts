@@ -169,10 +169,17 @@ const appOwnerIdPlaceholderPattern = /\$(?:\{appOwnerId\}|%7BappOwnerId%7D)/giu
 export const resolveTransportUrl = (url: string, appOwnerId: string): WssUrl =>
   WssUrl(url.replace(appOwnerIdPlaceholderPattern, appOwnerId))
 
-export const defaultEvoluTransportUrls = [
+/**
+ * The transports a new account starts with: Linky's plain relay and the live
+ * relay under the app's own host. Each app names its host (brand/0001); every
+ * host reaches the one live relay, so devices of both apps meet in a room.
+ */
+export const createDefaultEvoluTransportUrls = (
+  liveRelayHost: string
+): readonly [WssUrl, WssUrl] => [
   WssUrl("wss://evolu.linky.fit"),
-  WssUrl(`wss://live-relay.payky.me/${appOwnerIdPlaceholder}`),
-] as const
+  WssUrl(`wss://${liveRelayHost}/${appOwnerIdPlaceholder}`),
+]
 
 const createAccountEvoluTransportId = ({
   accountId,
@@ -274,9 +281,11 @@ export const setAccountEvoluTransportActive = (
 /**
  * What an account brought from another device keeps: its name, and its
  * transports in their stored form, so one on a custom sync server syncs here
- * too. Without them the account gets a random name and the defaults.
+ * too. Without them the account gets a random name and the app's
+ * `defaultTransports` (`createDefaultEvoluTransportUrls`).
  */
 export interface NewAccountOptions {
+  readonly defaultTransports: ReadonlyArray<WssUrl>
   readonly name?: NonEmptyString255 | undefined
   readonly transports?: ReadonlyArray<WssUrl> | undefined
 }
@@ -295,13 +304,13 @@ export const deriveDeviceAccountId = (masterKey: MasterKey): DeviceAccountId =>
 export const insertAccount = (
   deviceEvolu: DeviceEvolu,
   masterKey: MasterKey,
-  options: NewAccountOptions = {}
+  options: NewAccountOptions
 ): DeviceAccount => {
   const name = options.name ?? createRandomAccountName()
   const transportUrls =
     options.transports !== undefined && options.transports.length > 0
       ? options.transports
-      : defaultEvoluTransportUrls
+      : options.defaultTransports
   const accountId = deriveDeviceAccountId(masterKey)
   deviceEvolu.upsert("account", {
     id: accountId,
@@ -342,6 +351,7 @@ export const insertAccount = (
 export const insertDemoAccount = (
   deviceEvolu: DeviceEvolu,
   name: NonEmptyString255,
+  defaultTransports: ReadonlyArray<WssUrl>,
   options?: MutationOptions
 ): DeviceAccountId => {
   const masterKey = createAccountMasterKey()
@@ -358,7 +368,7 @@ export const insertDemoAccount = (
     },
     options
   )
-  for (const url of defaultEvoluTransportUrls) {
+  for (const url of defaultTransports) {
     upsertAccountEvoluWebsocketTransport(
       deviceEvolu,
       { accountId, isActive: sqliteFalse, url },
@@ -418,7 +428,7 @@ export async function loadActiveAccountRow(deviceEvolu: DeviceEvolu) {
 export async function createOrSelectAccount(
   deviceEvolu: DeviceEvolu,
   masterKey: MasterKey,
-  options?: NewAccountOptions
+  options: NewAccountOptions
 ): Promise<{ readonly accountId: DeviceAccountId; readonly created: boolean }> {
   const [existingAccount] = await deviceEvolu.loadQuery(
     accountByIdQuery(deriveDeviceAccountId(masterKey))

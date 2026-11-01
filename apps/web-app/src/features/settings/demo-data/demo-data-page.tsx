@@ -14,6 +14,7 @@ import {
   AlertTitle,
 } from "@/components/reui/alert.tsx"
 import { Button } from "@/components/ui/button.tsx"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
@@ -47,7 +48,12 @@ export function DemoDataPage() {
     setPending(true)
     await runToast(async () => {
       await runMutationWithCompletion((options) =>
-        insertDemoAccount(deviceEvolu, NonEmptyString255(accountName), options)
+        insertDemoAccount(
+          deviceEvolu,
+          NonEmptyString255(accountName),
+          appDefaultTransports,
+          options
+        )
       )
       reloadAppEvolu()
       await navigate({ to: "/" })

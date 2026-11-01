@@ -6,6 +6,7 @@ import {
   createDonateWallet,
   type DonateWallet,
 } from "../../src/server/donate-wallet.js"
+import { loadServerBrandName } from "../../src/server/server-brand.js"
 import {
   DonateSparkMnemonicSchema,
   loadServerEnv,
@@ -30,7 +31,8 @@ const donateEnvShape = {
     .int()
     .positive()
     .default(DEFAULT_MAX_SENDABLE_SATS),
-  PAYKY_DONATE_DESCRIPTION: z.string().trim().min(1).default("Donate to Payky"),
+  // Unset, "Donate to" the app this deployment serves (`PAYKY_BRAND`).
+  PAYKY_DONATE_DESCRIPTION: z.string().trim().min(1).optional(),
   PAYKY_DONATE_IDENTIFIER: z.string().trim().min(1).optional(),
   PAYKY_DONATE_CALLBACK_URL: z.string().trim().url().optional(),
   PAYKY_DONATE_INVOICE_EXPIRY_SECONDS: z.coerce
@@ -124,7 +126,13 @@ const loadConfig = (request: Request): Result<DonateConfig, LnurlError> => {
     })
   )
 
-  if (env === null || env.PAYKY_DONATE_MIN_SATS > env.PAYKY_DONATE_MAX_SATS) {
+  const appName = loadServerBrandName()
+
+  if (
+    env === null ||
+    appName === null ||
+    env.PAYKY_DONATE_MIN_SATS > env.PAYKY_DONATE_MAX_SATS
+  ) {
     return err(lnurlError("config", "Donation endpoint is not configured."))
   }
 
@@ -136,7 +144,7 @@ const loadConfig = (request: Request): Result<DonateConfig, LnurlError> => {
     mnemonic: env.PAYKY_DONATE_SPARK_MNEMONIC,
     minSendableMsats: env.PAYKY_DONATE_MIN_SATS * MSATS_PER_SAT,
     maxSendableMsats: env.PAYKY_DONATE_MAX_SATS * MSATS_PER_SAT,
-    description: env.PAYKY_DONATE_DESCRIPTION,
+    description: env.PAYKY_DONATE_DESCRIPTION ?? `Donate to ${appName}`,
     // Derived from the callback, not from the request: the two name the same
     // deployment, so a configured callback has to carry the identifier with it.
     identifier:

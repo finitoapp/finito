@@ -31,7 +31,7 @@ const check = async (name: string): Promise<string> => {
     case "validation": {
       const r = await run(
         fetchAndValidateJson({
-          url: "https://payky.me/",
+          url: apiUrl("/"),
           schema: z.object({ a: z.string() }),
           onHttpError: (e) => ({ type: "HttpError" as const, ...e }),
           onResponseError: (e) => ({ type: "ResponseError" as const, ...e }),

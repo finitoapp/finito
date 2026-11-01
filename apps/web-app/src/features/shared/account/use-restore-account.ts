@@ -11,6 +11,7 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useState } from "react"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 
@@ -60,7 +61,11 @@ export function useRestoreAccount(): RestoreAccount {
     try {
       await submit(async () => {
         const masterKey = await mnemonicToMasterKey(checked.mnemonic)
-        created = (await createOrSelectAccount(deviceEvolu, masterKey)).created
+        created = (
+          await createOrSelectAccount(deviceEvolu, masterKey, {
+            defaultTransports: appDefaultTransports,
+          })
+        ).created
         reloadAppEvolu()
       })
     } catch (error) {

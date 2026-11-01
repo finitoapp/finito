@@ -2,6 +2,7 @@ import { sqliteTrue, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import {
+  createDefaultEvoluTransportUrls,
   createOrSelectAccount,
   deriveDeviceAccountId,
   loadActiveAccountRow,
@@ -30,6 +31,7 @@ import {
 
 const shopKey = MasterKey("000102030405060708090a0b0c0d0e0f")
 const cafeKey = MasterKey("0f0e0d0c0b0a09080706050403020100")
+const defaultTransports = createDefaultEvoluTransportUrls("live-relay.example")
 
 /** An account row as code before derived ids wrote it: at a random id. */
 const insertLegacyAccount = async (
@@ -195,7 +197,9 @@ describe("device account derived id migration", () => {
     expect(await loadLiveAccountRows(deviceEvolu)).toEqual([])
     expect(await hasWork(deviceEvolu)).toBe(false)
 
-    const readded = await createOrSelectAccount(deviceEvolu, shopKey)
+    const readded = await createOrSelectAccount(deviceEvolu, shopKey, {
+      defaultTransports,
+    })
     expect(readded).toEqual({
       accountId: deriveDeviceAccountId(shopKey),
       created: true,
@@ -208,7 +212,7 @@ describe("device account derived id migration", () => {
   test("has no work for accounts already at their derived ids", async () => {
     await using testDevice = await createTestDeviceEvolu()
     const { deviceEvolu } = testDevice
-    await createOrSelectAccount(deviceEvolu, shopKey)
+    await createOrSelectAccount(deviceEvolu, shopKey, { defaultTransports })
     await expect.poll(() => loadLiveAccountRows(deviceEvolu)).toHaveLength(1)
 
     expect(await hasWork(deviceEvolu)).toBe(false)

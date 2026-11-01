@@ -46,7 +46,7 @@ it("requires current-account admin before diagnostic account mutations", () => {
     currentAccountReturn,
     permissionReturn("admin", "settings.accounts.create.confirm.confirm"),
     currentAccountReturn,
-    /insertAccount\(deviceEvolu, createAccountMasterKey\(\)\)/
+    /insertAccount\(deviceEvolu, createAccountMasterKey\(\),/
   )
 })
 

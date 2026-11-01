@@ -7,6 +7,7 @@ import {
 import { NonEmptyString255 } from "@payky/core/modules/shared/schema"
 import { createRandomDisplayName } from "@payky/core/utils/random-name"
 import { atom } from "jotai"
+import { appDefaultTransports } from "../core/app-brand.ts"
 import { getNativeDeviceLabels } from "../platform/device-labels.ts"
 import { deviceEvoluAtom } from "./device-evolu.ts"
 import { deviceMigrationsAtom } from "./device-migrations.ts"
@@ -21,7 +22,10 @@ const activeAccountRowAtom = atom(async (get) => {
   const activeAccountRow = await loadActiveAccountRow(deviceEvolu)
 
   return (
-    activeAccountRow ?? insertAccount(deviceEvolu, createAccountMasterKey())
+    activeAccountRow ??
+    insertAccount(deviceEvolu, createAccountMasterKey(), {
+      defaultTransports: appDefaultTransports,
+    })
   )
 })
 

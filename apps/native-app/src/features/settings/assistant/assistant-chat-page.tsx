@@ -195,7 +195,7 @@ function useAssistantConversation(access: Access) {
 
     await using run = appRun()
     const { tools, repoTools } = createAssistantTools(access, run, {
-      // Only the web build carries it (ai/0003): native reads payky.me's.
+      // Served beside the API (ai/0003), which native reaches by URL.
       snapshotUrl: apiUrl("/repo-snapshot.json"),
       appVersion: Constants.expoConfig?.version ?? "unknown",
     })

@@ -1,6 +1,7 @@
 import { scrubBreadcrumb, scrubEvent } from "@payky/app-shared/error-scrubbing"
 import * as Sentry from "@sentry/react-native"
 import Constants from "expo-constants"
+import { appBrand } from "./app-brand.ts"
 import { nativeEnv } from "./native-env.ts"
 
 /**
@@ -38,6 +39,8 @@ export function enableErrorReporting(): void {
     dsn,
     release: Constants.expoConfig?.version,
     environment: __DEV__ ? "development" : "production",
+    // One Sentry project for both apps (brand/0001); the tag tells them apart.
+    initialScope: { tags: { brand: appBrand.id } },
     beforeBreadcrumb: scrubBreadcrumb,
     beforeSend: scrubEvent,
   })

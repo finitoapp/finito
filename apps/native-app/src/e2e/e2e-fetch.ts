@@ -8,7 +8,7 @@ import { nativeEnv } from "../core/native-env.ts"
  * hosts built in. Web's specs get this from `page.route`.
  */
 const mockedHosts = [
-  "payky.me",
+  "finito.fit",
   "donate.e2e.test",
   "wallet.e2e.test",
   "world.openfoodfacts.org",

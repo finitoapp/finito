@@ -40,9 +40,17 @@ describe("formatContactMessage", () => {
 
 describe("contactMessageSubject", () => {
   test("names the business when one was given, else the contact", () => {
-    expect(contactMessageSubject(contact)).toBe("Payky web contact: Café Lumen")
-    expect(contactMessageSubject({ ...contact, businessName: undefined })).toBe(
-      "Payky web contact: lumen@example.com"
+    expect(contactMessageSubject(contact, "Payky")).toBe(
+      "Payky web contact: Café Lumen"
+    )
+    expect(
+      contactMessageSubject({ ...contact, businessName: undefined }, "Payky")
+    ).toBe("Payky web contact: lumen@example.com")
+  })
+
+  test("names the app whose landing it came from", () => {
+    expect(contactMessageSubject(contact, "Finito")).toBe(
+      "Finito web contact: Café Lumen"
     )
   })
 })

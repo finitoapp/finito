@@ -1,5 +1,6 @@
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
+import { appBrand } from "./app-brand.ts"
 
 // Mirrors the web app's VITE_* client variables (apps/web-app/src/core/app-env.ts)
 // that native needs. Expo inlines only static `process.env.EXPO_PUBLIC_X`
@@ -7,8 +8,9 @@ import { z } from "zod"
 export const nativeEnv = createEnv({
   clientPrefix: "EXPO_PUBLIC_",
   client: {
-    // Native has no /api of its own, so the default is the production origin.
-    EXPO_PUBLIC_PAYKY_API_BASE_URL: z.url().default("https://payky.me"),
+    // The brand's production API: the Android app has no origin of its own,
+    // and its web export is served beside it.
+    EXPO_PUBLIC_PAYKY_API_BASE_URL: z.url().default(appBrand.apiBaseUrl),
     EXPO_PUBLIC_PAYKY_EET_PRODUCTION_URL: z.url().optional(),
     // Set by the e2e builds to the mock server; default is Yadio itself.
     EXPO_PUBLIC_PAYKY_YADIO_URL: z.url().optional(),
@@ -22,7 +24,7 @@ export const nativeEnv = createEnv({
     EXPO_PUBLIC_PAYKY_EET_PLAYGROUND_URL: z.url().optional(),
     EXPO_PUBLIC_PAYKY_DONATE_LUD16_ADDRESS: z
       .string()
-      .default("donate@payky.me"),
+      .default(appBrand.donateLightningAddress),
     EXPO_PUBLIC_PAYKY_NOSTR_RELAYS: z
       .string()
       .transform((value) => value.split(",").map((url) => url.trim()))
@@ -66,6 +68,6 @@ export const nativeEnv = createEnv({
   emptyStringAsUndefined: true,
 })
 
-/** An absolute URL of `path` on the Payky API (native has no origin of its own). */
+/** An absolute URL of `path` on the app's API. */
 export const apiUrl = (path: string): string =>
   new URL(path, nativeEnv.EXPO_PUBLIC_PAYKY_API_BASE_URL).toString()

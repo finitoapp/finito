@@ -71,6 +71,28 @@ describe("handleContactRequest", () => {
     expect(recipientPubkeys).not.toContain(rumor.pubkey)
   })
 
+  test("names the app the deployment serves in the subject", async () => {
+    vi.stubEnv("PAYKY_BRAND", "finito")
+    const publish = accepting()
+
+    await handleContactRequest(contactRequest(contact), {
+      recipients,
+      relays,
+      publish,
+    })
+    vi.unstubAllEnvs()
+
+    const wrap = publish.sent[0]
+    const recipientKey = recipientKeys[0]
+    if (wrap === undefined || recipientKey === undefined) {
+      throw new Error("No message sent")
+    }
+    expect(unwrapEvent(wrap[1], recipientKey).tags).toContainEqual([
+      "subject",
+      "Finito web contact: Café Lumen",
+    ])
+  })
+
   test("uses a fresh key for every message", async () => {
     const publish = accepting()
 
