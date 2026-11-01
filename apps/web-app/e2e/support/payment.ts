@@ -141,6 +141,45 @@ export async function markSparkPaid(
 }
 
 /**
+ * Selects the Cashu tab on the payment-wait screen and waits for the mint's
+ * QR. Needs the fake mint (`window.__e2eCashuMint`) and Cashu enabled.
+ */
+export async function prepareCashuPayment(
+  page: Page,
+  language: Language
+): Promise<void> {
+  await page
+    .getByRole("tab", { name: translate(language, "paymentWait.method.cashu") })
+    .click()
+  await page
+    .getByRole("button", { name: translate(language, "paymentWait.copyQr") })
+    .locator("svg.size-full")
+    .waitFor()
+}
+
+/**
+ * The customer pays the fake mint's open quotes, and the payment settles once
+ * the Cashu job sees it. Returns how many quotes were paid. The fake mint
+ * lives in the page, so do not reload before this returns.
+ */
+export async function markCashuPaid(
+  page: Page,
+  language: Language
+): Promise<number> {
+  await page.waitForFunction(
+    () => typeof window.__e2eCashuPayQuotes === "function"
+  )
+  const paid = (await page.evaluate(() => window.__e2eCashuPayQuotes?.())) ?? 0
+  // The panel is always mounted and only shown through `aria-hidden`, so
+  // its text alone would match before the payment is paid.
+  await page
+    .locator('[data-testid="payment-paid-panel"][aria-hidden="false"]')
+    .getByText(translate(language, "paymentWait.paid"))
+    .waitFor({ timeout: 30_000 })
+  return paid
+}
+
+/**
  * Selects the IBAN tab on the payment-wait screen and waits for the bank QR
  * to finish preparing, so the payment has a `variableSymbol` for
  * `markIbanPaid` to match against.
