@@ -10,9 +10,9 @@ import {
   type FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
-import { router } from "expo-router"
+import { router, useFocusEffect } from "expo-router"
 import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { replay } from "../../components/motion.ts"
@@ -63,6 +63,11 @@ export function AmountKeypad({
   readonly tipsEnabled: boolean
 }) {
   const [amountInputAtom] = useState(() => atom(""))
+  // Leaving home drops what was typed, as web's unmount does: the stack
+  // keeps home mounted under the payment, so a charged amount would wait
+  // there for the next customer.
+  const setAmountInput = useSetAtom(amountInputAtom)
+  useFocusEffect(useCallback(() => () => setAmountInput(""), [setAmountInput]))
   const createTerminalPayment = useCreateTerminalPayment()
   const [pending, setPending] = useState(false)
   // The ref closes the window before `pending` re-renders: a double tap
