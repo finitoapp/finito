@@ -3,7 +3,7 @@ import { router } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import { Image } from "react-native"
 import { Text, YStack } from "tamagui"
-import paykyIcon from "../../../../assets/payky-icon.png"
+import appIcon from "../../../../assets/app-icon.png"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
 import {
@@ -20,7 +20,7 @@ import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
  *
  * Tailwind mirrored: the vertical-nav shell `flex-row items-center gap-4
  * px-4 py-3 hover:bg-accent/50`; avatar `size-14 rounded-full bg-muted`
- * (web's `ProfileAvatar`, the Payky icon until a picture is published); name
+ * (web's `ProfileAvatar`, the app icon until a picture is published); name
  * `truncate text-base font-semibold`, muted while unset; npub `truncate
  * text-xs text-muted-foreground`; `ChevronRight` `size-4` muted.
  *
@@ -56,7 +56,7 @@ export function ProfileCard() {
         bg="muted"
       >
         <Image
-          source={picture === null ? paykyIcon : { uri: picture }}
+          source={picture === null ? appIcon : { uri: picture }}
           style={{ width: 56, height: 56 }}
           accessibilityIgnoresInvertColors
         />

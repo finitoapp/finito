@@ -1,15 +1,18 @@
 import { format } from "date-fns"
+import type { Brand } from "./brand.ts"
 
 export type EvoluExportDatabase = "app"
 
 export function createEvoluExportFilename({
+  brand,
   createdAt,
   database,
 }: {
+  readonly brand: Brand
   readonly createdAt: Date
   readonly database: EvoluExportDatabase
 }): string {
-  return `payky-evolu-${database}-export-${formatFilenameTimestamp(createdAt)}.sqlite`
+  return `${brand.id}-evolu-${database}-export-${formatFilenameTimestamp(createdAt)}.sqlite`
 }
 
 export function formatBytes(bytes: number): string {

@@ -1,3 +1,4 @@
+import { brandName } from "@payky/app-shared/brand"
 import { formatCountdown } from "@payky/app-shared/format-text"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
@@ -6,7 +7,6 @@ import {
   describeQerkoPairingFailure,
   isQerkoCodeComplete,
   parseQerkoIdentificationNumber,
-  QERKO_API_KEY_NAME,
   QERKO_CODE_LENGTH,
   qerkoCountryLabelKeys,
   qerkoCountryOptions,
@@ -64,6 +64,7 @@ import {
   StepperNav,
   StepperSeparator,
 } from "../../../components/ui/stepper.tsx"
+import { appBrand } from "../../../core/app-brand.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { QerkoTerminalChooser } from "./qerko-terminal-chooser.tsx"
@@ -161,7 +162,8 @@ export function QerkoPairingWizard({
         environment,
         pairingRequestId: request.pairingRequestId,
         code,
-        name: QERKO_API_KEY_NAME,
+        // The name the API key gets in Qerko's list of keys.
+        name: brandName(appBrand),
       })
     )
     setPending(false)

@@ -20,7 +20,7 @@ const webPort = Number(process.env.PAYKY_E2E_WEB_PORT ?? 8790)
 const mockPort = Number(process.env.PAYKY_E2E_MOCK_PORT ?? 8791)
 // Not 8081: a developer's own Metro (without the e2e switch) may hold it.
 const metroPort = 8792
-const appId = "me.payky.nativepreview"
+const appId = "fit.finito.app"
 const maestro =
   Bun.which("maestro") ?? join(process.env.HOME ?? "", ".maestro/bin/maestro")
 // The version e2e/AGENTS.md pins: other releases differ in selectors and
@@ -262,7 +262,7 @@ async function runAndroid(): Promise<number> {
     const report = join(reportDir, `${name}.xml`)
     const started = Date.now()
     const result =
-      await $`${maestro} --device ${serial} test -e BASE_URL=payky-native-preview:// -e APP_ID=${appId} -e MOCK_URL=http://127.0.0.1:${mockPort} ${metro === undefined ? [] : ["-e", `DEV_URL=${metro.url}`]} --format junit --output ${report} --test-output-dir ${join(reportDir, name)} ${flow}`
+      await $`${maestro} --device ${serial} test -e BASE_URL=finito:// -e APP_ID=${appId} -e MOCK_URL=http://127.0.0.1:${mockPort} ${metro === undefined ? [] : ["-e", `DEV_URL=${metro.url}`]} --format junit --output ${report} --test-output-dir ${join(reportDir, name)} ${flow}`
         .quiet()
         .nothrow()
     if (!(await reportFlow(name, started, result, report))) failed.push(name)
@@ -306,7 +306,7 @@ async function startMetro(
     await $`adb -s ${serial} reverse tcp:${metroPort} tcp:${metroPort}`.quiet()
   const bundle = encodeURIComponent(`http://${host}:${metroPort}`)
   return {
-    url: `payky-native-preview://expo-development-client/?url=${bundle}&__expo_disable_onboarding=1&__expo_disable_auto_launch=1&__expo_disable_fab=1`,
+    url: `finito://expo-development-client/?url=${bundle}&__expo_disable_onboarding=1&__expo_disable_auto_launch=1&__expo_disable_fab=1`,
     stop: () => process_?.kill(),
   }
 }

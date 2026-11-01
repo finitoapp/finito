@@ -1,3 +1,4 @@
+import { brandName } from "@payky/app-shared/brand"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { createTranslate } from "@payky/app-shared/i18n/translate"
 import { getPreferredDeviceLanguage } from "@payky/core/modules/device/device-utils"
@@ -82,7 +83,7 @@ export function AppErrorScreen({
   const copyDetail = async () => {
     try {
       await Clipboard.setStringAsync(
-        `Payky ${version ?? ""}\n${name}: ${message}\n\n${formatErrorDetail(error)}`
+        `${brandName(appBrand)} ${version ?? ""}\n${name}: ${message}\n\n${formatErrorDetail(error)}`
       )
       setCopyState("copied")
     } catch {

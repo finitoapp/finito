@@ -1,5 +1,7 @@
+import { brandName } from "@payky/app-shared/brand"
 import { Image, useColorScheme, useWindowDimensions, View } from "react-native"
-import paykyIcon from "../../../assets/payky-icon.png"
+import appIcon from "../../../assets/app-icon.png"
+import { appBrand } from "../../core/app-brand.ts"
 import { palette } from "../../theme/palette.ts"
 
 /**
@@ -21,7 +23,7 @@ export function AppLoader() {
     <View
       accessible
       role="progressbar"
-      aria-label="Loading Payky"
+      aria-label={`Loading ${brandName(appBrand)}`}
       style={{
         flex: 1,
         alignItems: "center",
@@ -30,7 +32,7 @@ export function AppLoader() {
       }}
     >
       <Image
-        source={paykyIcon}
+        source={appIcon}
         style={{ width: size, height: size, borderRadius: size * 0.15 }}
         accessibilityIgnoresInvertColors
       />

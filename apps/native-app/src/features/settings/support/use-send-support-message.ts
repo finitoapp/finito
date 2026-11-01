@@ -1,3 +1,4 @@
+import { brandName } from "@payky/app-shared/brand"
 import type { ChatEntry } from "@payky/app-shared/support-chat-timeline"
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
 import {
@@ -12,6 +13,7 @@ import Constants from "expo-constants"
 import * as Crypto from "expo-crypto"
 import { useState } from "react"
 import { Platform } from "react-native"
+import { appBrand } from "../../../core/app-brand.ts"
 import {
   useNostrIdentity,
   useNostrMemberProfile,
@@ -64,7 +66,7 @@ export function useSendSupportMessage({
       const result = await run(
         sendSupportMessage({
           text,
-          subject: `Payky · ${profile.data?.name ?? shortenNpub(identity.npub)}`,
+          subject: `${brandName(appBrand)} · ${profile.data?.name ?? shortenNpub(identity.npub)}`,
           client: {
             version: Constants.expoConfig?.version ?? "unknown",
             platform: Platform.OS,

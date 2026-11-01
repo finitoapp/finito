@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 896 896" role="img" aria-labelledby="title desc">
-  <title id="title">Payky honey badger coin logo</title>
-  <desc id="desc">Payky app icon generated from the traced honey badger coin logo.</desc>
+  <title id="title">Honey badger coin logo</title>
+  <desc id="desc">App icon generated from the traced honey badger coin logo.</desc>
   <svg x="7" y="0" width="882" height="896" viewBox="0 0 882 896" aria-hidden="true" focusable="false">
 
   <defs>
-    <linearGradient id="paykyGold" x1="184" y1="165" x2="1066" y2="1061" gradientUnits="userSpaceOnUse">
+    <linearGradient id="coinGold" x1="184" y1="165" x2="1066" y2="1061" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#F2C94C"/>
       <stop offset="0.52" stop-color="#D99A22"/>
       <stop offset="1" stop-color="#B87918"/>
     </linearGradient>
-    <radialGradient id="paykyGoldSoft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(535.0 423.0) rotate(63) scale(683.6 560.0)">
+    <radialGradient id="coinGoldSoft" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(535.0 423.0) rotate(63) scale(683.6 560.0)">
       <stop offset="0" stop-color="#F8D96A"/>
       <stop offset="0.7" stop-color="#D49A24"/>
       <stop offset="1" stop-color="#B87918"/>
@@ -25,7 +25,7 @@
   <g transform="translate(-184 -165)">
     <path
       d="M 591.4 179.3 L 607 165.4 L 643 165.4 L 658.6 179.3 L 676.1 168 L 711.7 173.7 L 724.9 190 L 744 181.6 L 778.3 192.9 L 788.8 211.1 L 809 205.9 L 841.1 222.5 L 848.6 242.1 L 869.4 240.1 L 898.6 261.6 L 903 282.2 L 923.8 283.5 L 949.3 309.4 L 950.5 330.5 L 970.9 335.1 L 992.1 364.7 L 989.9 385.7 L 1009.4 393.5 L 1025.8 426.1 L 1020.4 446.5 L 1038.5 457.3 L 1049.6 492.1 L 1041.2 511.5 L 1057.4 524.9 L 1063 561 L 1051.7 578.9 L 1065.6 594.7 L 1065.6 631.3 L 1051.7 647.1 L 1063 665 L 1057.4 701.1 L 1041.2 714.5 L 1049.6 733.9 L 1038.5 768.7 L 1020.4 779.5 L 1025.8 799.9 L 1009.4 832.5 L 989.9 840.3 L 992.1 861.3 L 970.9 890.9 L 950.5 895.5 L 949.3 916.6 L 923.8 942.5 L 903 943.8 L 898.6 964.4 L 869.4 985.9 L 848.6 983.9 L 841.1 1003.5 L 809 1020.1 L 788.8 1014.9 L 778.3 1033.1 L 744 1044.4 L 724.9 1036 L 711.7 1052.3 L 676.1 1058 L 658.6 1046.7 L 643 1060.6 L 607 1060.6 L 591.4 1046.7 L 573.9 1058 L 538.3 1052.3 L 525.1 1036 L 506 1044.4 L 471.7 1033.1 L 461.2 1014.9 L 441 1020.1 L 408.9 1003.5 L 401.4 983.9 L 380.6 985.9 L 351.4 964.4 L 347 943.8 L 326.2 942.5 L 300.7 916.6 L 299.5 895.5 L 279.1 890.9 L 257.9 861.3 L 260.1 840.3 L 240.6 832.5 L 224.2 799.9 L 229.6 779.5 L 211.5 768.7 L 200.4 733.9 L 208.8 714.5 L 192.6 701.1 L 187 665 L 198.3 647.1 L 184.4 631.3 L 184.4 594.7 L 198.3 578.9 L 187 561 L 192.6 524.9 L 208.8 511.5 L 200.4 492.1 L 211.5 457.3 L 229.6 446.5 L 224.2 426.1 L 240.6 393.5 L 260.1 385.7 L 257.9 364.7 L 279.1 335.1 L 299.5 330.5 L 300.7 309.4 L 326.2 283.5 L 347 282.2 L 351.4 261.6 L 380.6 240.1 L 401.4 242.1 L 408.9 222.5 L 441 205.9 L 461.2 211.1 L 471.7 192.9 L 506 181.6 L 525.1 190 L 538.3 173.7 L 573.9 168 Z"
-      fill="url(#paykyGoldSoft)"
+      fill="url(#coinGoldSoft)"
     />
 
   <!-- Faithful raster trace of the dark honey-badger symbol -->

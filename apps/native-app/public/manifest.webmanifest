@@ -1,6 +1,6 @@
 {
-  "name": "Payky",
-  "short_name": "Payky",
+  "name": "Finito",
+  "short_name": "Finito",
   "description": "Local-first point-of-sale terminal for Bitcoin-native sales.",
   "start_url": "/",
   "scope": "/",

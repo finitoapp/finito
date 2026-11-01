@@ -48,3 +48,5 @@ change. A third brand is one more `Brand` value with the forms of its name.
 
 - `packages/app-shared/src/i18n/brand-copy.test.ts > brand copy > names the app only through brand placeholders`
 - `packages/app-shared/src/i18n/brand-copy.test.ts > brand copy > declines the name by the case the copy names`
+- `apps/native-app/src/core/app-brand.test.ts > the native app's code shows no Payky`
+- `apps/native-app/src/core/app-brand.test.ts > the native app's web export names no Payky`

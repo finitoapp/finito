@@ -1,3 +1,4 @@
+import { brandName } from "@payky/app-shared/brand"
 import { fetchAndValidateJson } from "@payky/core/deps"
 import { readEetCertificateFile } from "@payky/core/integrations/eet/eet-certificate"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
@@ -16,6 +17,7 @@ import { useState } from "react"
 import { Text, View } from "tamagui"
 import { z } from "zod"
 import { Button } from "../../components/ui/button.tsx"
+import { appBrand } from "../../core/app-brand.ts"
 import { apiUrl } from "../../core/native-env.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
 import { eetNativeCrypto } from "../../platform/eet-crypto"
@@ -37,7 +39,10 @@ const crypto_ = async (lines: string[]) => {
   const now = new Date()
   const cert = await time("generate RSA cert", () =>
     createTestCertificate({
-      subject: { commonName: "CZ00000019", description: "Payky test" },
+      subject: {
+        commonName: "CZ00000019",
+        description: `${brandName(appBrand)} test`,
+      },
       validFrom: new Date(now.getTime() - 86_400_000),
       validTo: new Date(now.getTime() + 86_400_000 * 30),
     })

@@ -46,7 +46,7 @@ const session = startTransferSource(
         announced = true
         console.log("pair uri:", state.uri)
         console.log(
-          `adb shell am start -a android.intent.action.VIEW -d "payky-native-preview://pair?hex=${Buffer.from(state.uri).toString("hex")}" me.payky.nativepreview`
+          `adb shell am start -a android.intent.action.VIEW -d "finito://pair?hex=${Buffer.from(state.uri).toString("hex")}" fit.finito.app`
         )
       }
       console.log("state:", JSON.stringify({ ...state, uri: undefined }))
