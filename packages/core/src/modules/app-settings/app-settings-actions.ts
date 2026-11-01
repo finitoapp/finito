@@ -174,7 +174,7 @@ export const setEnabledHomeModes =
 
 /**
  * Records that the merchant typed back words of the recovery phrase
- * correctly (account/0006). The row is account data, so every device of the
+ * correctly (account/0007). The row is account data, so every device of the
  * account sees it. Running it again only moves the stamp forward.
  */
 export const markRecoveryPhraseVerified =

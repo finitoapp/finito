@@ -16,7 +16,7 @@ moment they most want to start selling.
 Onboarding of a new account ends on the payment-methods step; it neither
 shows the phrase nor asks for a confirmation. The phrase stays available in
 Settings > Security. Prompting the merchant to back it up later is
-`account/0006`: a reminder after the first paid payment.
+`account/0007`: a reminder after the first paid payment.
 
 ## Alternatives considered
 

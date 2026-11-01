@@ -1434,7 +1434,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       Input:
-        "Web shows the words in read-only inputs; native draws them as unselectable Text, so the phrase cannot be selected or copied (account/0006).",
+        "Web shows the words in read-only inputs; native draws them as unselectable Text, so the phrase cannot be selected or copied (account/0007).",
     },
   },
   {

@@ -13,8 +13,9 @@ import { useBackupReminder } from "@/features/terminal-home/use-backup-reminder.
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /**
- * Asks, on home after a paid payment, to back up the recovery phrase
- * (account/0006). Closing it any way but the buttons is "remind me next time"; a click outside it does not close it.
+ * Asks on home to back up the recovery phrase (account/0007). Closing it any
+ * way puts it off for a week on this device; a click outside it does not
+ * close it.
  */
 export function BackupReminderDialog() {
   const { t } = useTranslation()

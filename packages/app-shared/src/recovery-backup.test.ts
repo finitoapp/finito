@@ -1,5 +1,7 @@
+import { addDays } from "date-fns"
 import { describe, expect, test } from "vitest"
 import {
+  backupReminderSnoozedUntil,
   checkVerifyAnswers,
   isBackupReminderDue,
   pickVerifyIndexes,
@@ -51,7 +53,14 @@ describe("checkVerifyAnswers", () => {
 })
 
 describe("isBackupReminderDue", () => {
-  const base = { hasPaidPayment: true, verifiedAt: null, isDemo: false }
+  const now = Date.UTC(2026, 10, 1, 12)
+  const base = {
+    hasPaidPayment: true,
+    verifiedAt: null,
+    isDemo: false,
+    snoozedUntil: null,
+    now,
+  }
 
   test("shows after the first paid payment until verified", () => {
     expect(isBackupReminderDue(base)).toBe(true)
@@ -64,5 +73,23 @@ describe("isBackupReminderDue", () => {
   })
   test("never shows on a demo account", () => {
     expect(isBackupReminderDue({ ...base, isDemo: true })).toBe(false)
+  })
+  test("stays away for a week after it is dismissed", () => {
+    const snoozedUntil = backupReminderSnoozedUntil(now)
+    expect(isBackupReminderDue({ ...base, snoozedUntil })).toBe(false)
+    expect(
+      isBackupReminderDue({
+        ...base,
+        snoozedUntil,
+        now: addDays(now, 7).getTime() - 1,
+      })
+    ).toBe(false)
+    expect(
+      isBackupReminderDue({
+        ...base,
+        snoozedUntil,
+        now: addDays(now, 7).getTime(),
+      })
+    ).toBe(true)
   })
 })

@@ -116,6 +116,11 @@ const deviceEvoluSchema = {
      * never syncs and runs no background jobs.
      */
     demo: DemoAccountStateSchema.nullable(),
+    /**
+     * Until when the recovery-phrase backup reminder stays away on this
+     * device (account/0007); `null` until it is first dismissed.
+     */
+    backupReminderSnoozedUntil: TimestampMsSchema.nullable(),
   },
   accountEvoluTransport: {
     id: AccountEvoluTransportId,

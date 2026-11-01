@@ -1,5 +1,5 @@
 # web recovery-backup.spec.ts: "the backup reminder waits for the first payment,
-# and verifying the backup ends it" (native shows no copy action; the check
+# Later puts it off, and verifying the backup ends it" (native shows no copy action; the check
 # refuses a wrong word and accepts the right ones).
 appId: ${APP_ID}
 tags: [settings]

@@ -1,32 +1,59 @@
-import { isBackupReminderDue } from "@payky/app-shared/recovery-backup"
-import { backupReminderDismissedAtom } from "@payky/app-shared/recovery-backup-state"
+import {
+  backupReminderSnoozedUntil,
+  isBackupReminderDue,
+} from "@payky/app-shared/recovery-backup"
+import {
+  type BackupReminder,
+  useBackupReminderPrompt,
+} from "@payky/app-shared/use-backup-reminder-prompt"
+import {
+  backupReminderSnoozeQuery,
+  snoozeBackupReminder,
+} from "@payky/core/evolu/device-account"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { firstPaidPaymentQuery } from "@payky/core/modules/payment/payment-queries"
-import { useAtom, useAtomValue } from "jotai"
+import { useIsFocused } from "expo-router"
+import { useAtomValue } from "jotai"
 import { accountAtom } from "../../atoms/account.ts"
+import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { useAccess } from "../../core/use-access.ts"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useDeviceEvoluQuery,
+  useEvoluQuery,
+} from "../../hooks/use-evolu-query.ts"
 
 /**
- * Web's `useBackupReminder` (account/0006): shown after the account's first
- * paid payment until the phrase is verified, never on a demo account, and
- * only where this device may open Security.
+ * Web's `useBackupReminder` (account/0007). The stack keeps home mounted
+ * under other screens and the access gate keeps it mounted while locked, so
+ * home counts as entered once it is the screen on top and the device has
+ * admin.
  */
-export function useBackupReminder() {
+export function useBackupReminder(): BackupReminder {
+  const focused = useIsFocused()
   const account = useAtomValue(accountAtom)
+  const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const { effective } = useAccess()
   const { data: paid } = useEvoluQuery(firstPaidPaymentQuery)
   const { data: settingsRows } = useEvoluQuery(settingsQuery)
-  const [dismissed, setDismissed] = useAtom(backupReminderDismissedAtom)
+  const {
+    data: [snooze],
+  } = useDeviceEvoluQuery(backupReminderSnoozeQuery(account.id))
 
-  const due = isBackupReminderDue({
-    hasPaidPayment: paid.length > 0,
-    verifiedAt: settingsRows[0]?.recoveryPhraseVerifiedAt ?? null,
-    isDemo: account.demo !== null,
+  return useBackupReminderPrompt({
+    entered: focused && effective.has("admin"),
+    due: isBackupReminderDue({
+      hasPaidPayment: paid.length > 0,
+      verifiedAt: settingsRows[0]?.recoveryPhraseVerifiedAt ?? null,
+      isDemo: account.demo !== null,
+      snoozedUntil: snooze?.backupReminderSnoozedUntil ?? null,
+      now: Date.now(),
+    }),
+    snooze: () => {
+      snoozeBackupReminder(
+        deviceEvolu,
+        account.id,
+        backupReminderSnoozedUntil(Date.now())
+      )
+    },
   })
-
-  return {
-    visible: due && !dismissed && effective.has("admin"),
-    dismiss: () => setDismissed(true),
-  }
 }

@@ -11,7 +11,7 @@ const homeReady = (page: import("@playwright/test").Page) =>
     page.getByRole("button", { name: translate("en", "home.pay") })
   ).toBeVisible()
 
-test("the backup reminder waits for the first payment, and verifying the backup ends it", async ({
+test("the backup reminder waits for the first payment, Later puts it off, and verifying the backup ends it", async ({
   seededPage: page,
 }) => {
   const reminder = page.getByTestId("backup-reminder")
@@ -28,12 +28,15 @@ test("the backup reminder waits for the first payment, and verifying the backup 
     await expect(reminder).toBeVisible()
   })
 
-  await test.step("Remind me next time hides it for this session", async () => {
+  await test.step("Remind me next time puts it off, past a restart", async () => {
     await reminder
       .getByRole("button", {
         name: translate("en", "settings.security.reminder.later"),
       })
       .click()
+    await expect(reminder).toBeHidden()
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await homeReady(page)
     await expect(reminder).toBeHidden()
   })
 
