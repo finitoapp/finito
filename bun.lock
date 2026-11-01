@@ -42,6 +42,7 @@
         "@dedalik/use-react": "1.1.2",
         "@evolu/common": "8.23.0",
         "@evolu/web": "3.6.2",
+        "@payky/app-shared": "workspace:*",
         "@payky/core": "workspace:*",
         "@payky/web-shared": "workspace:*",
         "@t3-oss/env-core": "0.13.11",

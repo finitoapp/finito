@@ -4,12 +4,15 @@ import type {
 } from "@payky/app-shared/i18n/resources"
 import { createBrandedResources } from "@payky/app-shared/i18n/translate"
 import {
-  type TranslationKey as LandingTranslationKey,
-  resources as landingResources,
-} from "../../../landing/src/i18n/resources.ts"
+  createLandingResources,
+  landingSites,
+} from "../../../landing/src/core/landing-sites.ts"
+import type { TranslationKey as LandingTranslationKey } from "../../../landing/src/i18n/resources.ts"
 import { appBrand } from "../../src/core/app-brand.ts"
 
 type TranslationKey = AppTranslationKey | LandingTranslationKey
+// The web app proxies Payky's landing (landing/0013).
+const landingResources = createLandingResources(landingSites.payky)
 const resources = {
   en: { ...createBrandedResources("en", appBrand), ...landingResources.en },
   cs: { ...createBrandedResources("cs", appBrand), ...landingResources.cs },

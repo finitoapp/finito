@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from "vitest"
 
 import {
+  createLandingSitePaths,
   isLandingEetPath,
   isLandingTechPath,
   landingLanguageFromPath,
@@ -10,6 +11,9 @@ import {
   rememberInstallLanguage,
   shouldRedirectToLanding,
 } from "./landing-redirect.ts"
+
+const paykySite = createLandingSitePaths("/landing")
+const finitoSite = createLandingSitePaths("")
 
 describe("shouldRedirectToLanding", () => {
   test("sends a browser tab that never opened the app to the landing page", () => {
@@ -51,7 +55,26 @@ describe("landingLanguageFromPath", () => {
     ["/landing/jak-to-funguje", "cs"],
     ["/landing/en/jak-to-funguje", "en"],
   ] as const)("reads %s as %s", (pathname, language) => {
-    expect(landingLanguageFromPath(pathname)).toBe(language)
+    expect(landingLanguageFromPath(pathname, paykySite)).toBe(language)
+  })
+})
+
+describe("a landing at the domain's root", () => {
+  test.each([
+    ["/", "cs"],
+    ["/en", "en"],
+    ["/sk/", "sk"],
+    ["/eet-2-0", "cs"],
+    ["/en/jak-to-funguje", "en"],
+  ] as const)("reads %s as %s", (pathname, language) => {
+    expect(landingLanguageFromPath(pathname, finitoSite)).toBe(language)
+  })
+
+  test("tells its documents apart", () => {
+    expect(isLandingEetPath("/sk/eet-2-0", finitoSite)).toBe(true)
+    expect(isLandingTechPath("/jak-to-funguje/", finitoSite)).toBe(true)
+    expect(isLandingEetPath("/", finitoSite)).toBe(false)
+    expect(isLandingTechPath("/landing/jak-to-funguje", finitoSite)).toBe(false)
   })
 })
 
@@ -62,7 +85,7 @@ describe("isLandingEetPath", () => {
     ["/landing", false],
     ["/landing/en", false],
   ] as const)("reads %s as the EET page: %s", (pathname, isEet) => {
-    expect(isLandingEetPath(pathname)).toBe(isEet)
+    expect(isLandingEetPath(pathname, paykySite)).toBe(isEet)
   })
 })
 
@@ -75,7 +98,7 @@ describe("isLandingTechPath", () => {
   ] as const)(
     "reads %s as the page on how Payky works: %s",
     (pathname, isTech) => {
-      expect(isLandingTechPath(pathname)).toBe(isTech)
+      expect(isLandingTechPath(pathname, paykySite)).toBe(isTech)
     }
   )
 })

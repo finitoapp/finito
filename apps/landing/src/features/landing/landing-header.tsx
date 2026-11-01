@@ -14,11 +14,6 @@ import { flushSync } from "react-dom"
 
 type Theme = "system" | "light" | "dark"
 
-import {
-  landingAppEntryPath,
-  landingEetPaths,
-  landingPaths,
-} from "@payky/web-shared/landing-redirect"
 import { languageOptions } from "@payky/web-shared/language-options"
 import { buttonVariants } from "@/components/ui/button.tsx"
 import {
@@ -29,6 +24,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx"
+import {
+  landingAppEntryUrl,
+  landingEetPaths,
+  landingPaths,
+} from "@/core/landing-site.ts"
 import { useLandingTranslation } from "@/features/landing/landing-translation.ts"
 import { useLandingTheme } from "@/features/landing/use-landing-theme.ts"
 import type { Language, TranslationKey } from "@/i18n/resources.ts"
@@ -173,7 +173,7 @@ export function LandingHeader() {
         <div className="flex items-center gap-1">
           <a
             // A plain link: the app is another document (landing/0003).
-            href={landingAppEntryPath(language)}
+            href={landingAppEntryUrl(language)}
             className={cn(
               buttonVariants({ size: "lg" }),
               "mr-2 rounded-full px-4 font-semibold has-data-[icon=inline-start]:pl-3.5"

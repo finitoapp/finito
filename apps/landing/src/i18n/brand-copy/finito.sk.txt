@@ -1,0 +1,221 @@
+app.name
+Finito
+
+landing.closing.contact.body
+Nechajte nám e-mail alebo telefón a ozveme sa. Zodpovieme vaše otázky, Finito s vami nastavíme a vyladíme ho pre vašu prevádzku, aby platenie bežalo hladko a bezpečne.
+
+landing.closing.get.body
+Finito je zadarmo a nainštalujete ho za minútu. Vyberte si, kde ho chcete používať.
+
+landing.closing.get.install.done
+Finito je nainštalované. Otvorte ho z plochy alebo zo zoznamu aplikácií.
+
+landing.closing.get.title
+Nainštalujte si Finito
+
+landing.cta.start
+Spustiť Finito
+
+landing.eet.faq.bitcoin.answer
+Áno. Zákon počíta aj s kryptoaktívami, keď zákazník platí osobne. Finito eviduje platbu cez Lightning rovnako ako ostatné, v korunách, za ktoré ste predávali.
+
+landing.eet.faq.certificate.answer
+Pokladničný certifikát vygenerujete v DIS+ zadarmo, ich počet nie je obmedzený a každý platí jeden rok. Finito stačí jeden na účet, všetky jeho zariadenia ho zdieľajú. Na koniec platnosti vás Finito v nastaveniach upozorní tri týždne vopred.
+
+landing.eet.faq.device.answer
+Nie. Zákon nepredpisuje druh zariadenia, stačí telefón, tablet alebo počítač pripojený na internet. Finito beží na Androide aj v prehliadači.
+
+landing.eet.faq.off.answer
+Paušalisti v prvom pásme s príjmami do 1 milióna Kč sa môžu z evidencie vyviazať za príplatok 1 400 Kč mesačne k paušálnej dani. Prihlásiť sa musia do 10. dňa zdaňovacieho obdobia a voľba platí celý rok. Oplatí sa to prepočítať – Finito stojí 0 Kč.
+
+landing.eet.faq.offline.answer
+Platbu prijmete normálne. Tržbu treba odoslať hneď po obnovení spojenia, najneskôr do 48 hodín. Finito ju odosiela znova samo, kým ju EET nepotvrdí, a čo nedorazí do 48 hodín, označí pri platbe.
+
+landing.eet.faq.price.answer
+Nič. Evidencia tržieb je súčasťou Finita zadarmo a pokladničný certifikát od finančnej správy je zadarmo tiež.
+
+landing.eet.faq.price.question
+Koľko EET v aplikácii Finito stojí?
+
+landing.eet.faq.refund.answer
+Vrátenie zadáte pri platbe v aplikácii Finito. EET 2.0 nemá storno: vrátené peniaze sa evidujú ako nová tržba so zápornou sumou a tú Finito odošle samo.
+
+landing.eet.faq.tip.answer
+Prepitné, ktoré je príjmom podniku, je súčasťou tržby. Keď prepitné patrí zamestnancom, nastavíte v aplikácii Finito, že sa do tržby nezapočíta. Povinný kuvert ani servisný poplatok nie sú prepitné, do tržby patria vždy.
+
+landing.eet.faq.units.answer
+Jeden účet Finita eviduje do jednej evidenčnej jednotky. Pre každú ďalšiu prevádzku si založte ďalší účet, certifikát môžete použiť rovnaký.
+
+landing.eet.handles.certificate.body
+Tri týždne pred koncom platnosti certifikátu vás Finito v nastaveniach upozorní, aby ste ho stihli obnoviť.
+
+landing.eet.handles.eyebrow
+Čo Finito stráži
+
+landing.eet.handles.offline.body
+Keď vypadne sieť, Finito tržbu odosiela znova, kým ju EET nepotvrdí. Čo nedorazí do 48 hodín, označí pri platbe.
+
+landing.eet.handles.refund.body
+Vrátené peniaze sa evidujú ako nová tržba so zápornou sumou. Finito ju odošle samo, len čo vrátenie zadáte.
+
+landing.eet.handles.title
+Evidenciu za vás odosiela Finito
+
+landing.eet.hero.body
+Od 1. januára 2027 Finito každú prijatú platbu odošle do EET samo. Nestojí to nič, rovnako ako pokladničný certifikát od finančnej správy.
+
+landing.eet.hero.eyebrow
+Finito je pripravené na české EET 2.0
+
+landing.eet.hero.title
+Spustite Finito, prepojte s EET. Hotovo.
+
+landing.eet.meta.description
+Koho sa české EET 2.0 týka, termíny, certifikát a evidenčná jednotka krok za krokom. V aplikácii Finito zapnete evidenciu tržieb zadarmo a vyskúšate si ju v sandboxe ešte dnes.
+
+landing.eet.meta.title
+České EET 2.0 od 1. 1. 2027: čo urobiť a ako na to v aplikácii Finito zadarmo
+
+landing.eet.prepare.unit.body
+Evidenčnou jednotkou je prevádzka – kamenná aj mobilná, napríklad stánok –, web alebo aplikácia, prípadne vy sami, keď pracujete u zákazníkov. Systém jej pridelí číslo, ktoré sa už nedá zmeniť. To zadáte do Finita.
+
+landing.eet.setup.certificate.body
+Vyberte súbor .p12 a zadajte heslo. Finito hneď overí heslo, kľúč, EIČ aj platnosť certifikátu.
+
+landing.eet.setup.eyebrow
+Nastavenie v aplikácii Finito
+
+landing.eet.setup.on.body
+Odvtedy Finito každú prijatú platbu odošle ako tržbu – hotovosť, QR platbu aj bitcoin.
+
+landing.eet.setup.tip.body
+Prepitné, ktoré patrí podniku, je súčasťou tržby. Keď patrí zamestnancom, Finito ho do tržby nezapočíta.
+
+landing.eet.setup.title
+Zapnutie v aplikácii Finito zaberie pár minút
+
+landing.faq.eet.question
+Podporuje Finito české EET 2.0?
+
+landing.flows.subtitle
+Stánok, obchod, alebo reštaurácia so stolmi? Každý predáva inak a Finito zvládne všetky tri spôsoby platenia. Vyberte si ten svoj.
+
+landing.flows.title
+Finito sa prispôsobí vášmu podnikaniu
+
+landing.footer.website
+finito.fit
+
+landing.hero.subtitle
+Vás ani vašich zákazníkov. Finito premení telefón na platobný terminál: zákazník naskenuje kód a zaplatí prevodom rovno na váš účet. Bez poplatkov, bez zmluvy a bez ďalšieho zariadenia.
+
+landing.meta.title
+Finito – platobný terminál v mobile zadarmo, QR platby
+
+landing.mockup.home.alt
+Klávesnica Finita so zadanou sumou
+
+landing.mockup.items.alt
+Katalóg položiek s cenami v aplikácii Finito
+
+landing.mockup.paid.alt
+Finito potvrdzuje prijatú platbu
+
+landing.mockup.payment.alt
+Finito ukazuje QR kód na bankový prevod
+
+landing.tech.account.kyc.body
+Finito vaše peniaze nikdy nedrží ani nepreposiela. Platba prevodom ide z banky zákazníka rovno na váš účet, ktorý už overila vaša banka. Bitcoiny prijíma peňaženka, ku ktorej máte kľúče len vy. Aplikácia teda u seba nemá žiadne peniaze, kvôli ktorým by vás musela overovať.
+
+landing.tech.account.why.body
+Registráciu potrebuje hlavne prevádzkovateľ. Musí vedieť, čie dáta má na serveri, a púšťať k nim len vás. Finito žiadne vaše dáta na serveri nemá, takže vám nemá čo zakladať. K dátam vás nepúšťa náš server, ale kľúč.
+
+landing.tech.backup.diagram.caption
+Pri cloudovej aplikácii má kľúč k dátam prevádzkovateľ. Prečíta ich teda on aj ktokoľvek, kto sa k serveru dostane: podpora, technici, obchodné oddelenie alebo útočník pri úniku. Pri Finite vidí relay len šifrovaný šum a kľúč máte len vy. Ani naša podpora vaše dáta nevidí — pozná len to, čo jej sami napíšete.
+
+landing.tech.backup.where.body
+Záloha ide na relay Finita (live-relay.finito.fit) a zároveň na relay spriateleného projektu Linky (evolu.linky.fit), ktorý stojí na rovnakých princípoch. Keď jeden vypadne, druhý ide ďalej. V nastaveniach ich môžete vypnúť alebo pridať vlastný, napríklad na svojom serveri.
+
+landing.tech.compare.payky
+Finito
+
+landing.tech.compare.paykyFlow.title
+Finito
+
+landing.tech.compare.title
+Bežná cloudová aplikácia, alebo Finito
+
+landing.tech.exit.body
+Predaj ani platby na našich serveroch nestoja. Pozrite sa, čo sa stane, keď vypadnú — a čo keby Finito skončilo.
+
+landing.tech.exit.end
+Keby Finito skončilo
+
+landing.tech.faq.kyc.answer
+Finito vaše peniaze nikdy nedrží ani nepreposiela. Platby chodia rovno na váš bankový účet, ktorý overila vaša banka, alebo do vašej vlastnej bitcoinovej peňaženky.
+
+landing.tech.faq.offline.question
+Funguje Finito bez internetu?
+
+landing.tech.faq.read.answer
+Nie. Na relayi Finita sú len zašifrované dáta a kľúč máte len vy. Výnimkou je len to, čo sami napíšete AI asistentovi alebo podpore.
+
+landing.tech.faq.server.answer
+Nie. QR kód vzniká vo vašom telefóne, peniaze idú z banky zákazníka na váš účet a aplikácia sa na platbu pýta priamo vašej banky. Bitcoinovú platbu spracúva sieť Spark, nie Finito.
+
+landing.tech.faq.server.question
+Stojí medzi mnou a zákazníkom nejaký server Finita?
+
+landing.tech.faq.signup.answer
+Pretože Finito nemá server s vašimi dátami, ku ktorému by vás musel púšťať. Vaším účtom je kryptografický kľúč, ktorý vznikne priamo vo vašom zariadení.
+
+landing.tech.hero.body
+Bežné platobné aplikácie stoja na serveri prevádzkovateľa. Ležia na ňom vaše dáta, prihlasujete sa cez neho a tečú cez neho informácie o platbách. Finito žiadny taký server nemá. Pár serverov síce prevádzkujeme — na zašifrovanú zálohu a doplnkové funkcie — ale predávať a prijímať platby môžete aj bez nich.
+
+landing.tech.meta.title
+Čím je Finito iné: bez cloudu, bez registrácie, bez sprostredkovateľa
+
+landing.tech.money.body
+Peniaze idú rovno na váš účet alebo do vašej peňaženky. Žiadny server Finita im nestojí v ceste.
+
+landing.tech.money.card.body
+Na zariadení s terminálom Switchio odovzdá Finito aplikácii Switchio len sumu. Kartu potom spracuje Switchio a banka obchodníka, rovnako ako pri každom inom termináli. Údaje z karty sa do Finita vôbec nedostanú.
+
+landing.tech.money.lightning.body
+Lightning je sieť na okamžité platby bitcoinom. Finito vystaví faktúru z vašej peňaženky Spark, ktorá beží priamo v aplikácii. Platba príde do vašej peňaženky a kľúče k nej má len vaše zariadenie. Transakcie spracúvajú operátori siete Spark a poskytovateľ Lightning brány — tí vidia ich sumu a čas. Kurz na prepočet na korunu berie aplikácia z verejnej služby Yadio.
+
+landing.tech.money.qr.check
+Finito sa potom samo opýta vašej banky, či platba dorazila. Použije na to token — prístupový kľúč k vášmu bankovému účtu, ktorý máte uložený len vy.
+
+landing.tech.node.payky
+Finito
+
+landing.tech.security.ownership.body
+Kto má vaše dáta, môže ich analyzovať, predať, na požiadanie vydať alebo stratiť. Pri Finite ich čítate len vy, a nikto nás nemôže prinútiť ich vydať, pretože ich nemáme.
+
+landing.tech.security.target.body
+Server s dátami tisícov obchodníkov je pre útočníka ideálny cieľ: stačí jeden prienik a má všetko. A väčšina únikov nevzniká prelomením šifry, ale kvôli zle nastavenej databáze, ukradnutému heslu správcu alebo zamestnancovi, ktorý má prístup ku všetkému. Finito taký server nemá. Útočník by musel napadnúť každé zariadenie zvlášť a na relayoch nájde len zašifrované dáta.
+
+landing.tech.security.tracking.body
+Finito nepoužíva analytiku ani žiadne sledovacie služby. Hlásenie chýb je vypnuté, kým si ho sami nezapnete. A keď ho zapnete, obnovovacia fráza a čísla účtov sa z hlásenia odstránia ešte pred odoslaním.
+
+landing.tech.services.body
+Každá služba, s ktorou Finito hovorí: čo jej posiela, kedy a pri našich serveroch aj prečo. Zoradené podľa toho, kedy k spojeniu dochádza.
+
+landing.tech.services.highlight
+Kým nič nezapnete ani nepoužijete, hovorí aplikácia nanajvýš s webom app.finito.fit a s dvoma relaymi. A tým posiela len zašifrované dáta.
+
+landing.tech.services.owner.payky
+Server Finita
+
+landing.tech.services.relay.name
+Relay live-relay.finito.fit
+
+landing.tech.services.web.name
+Web app.finito.fit
+
+landing.tech.transparency.body
+Tajný musí zostať len kľúč. Odborníci na šifrovanie tomu hovoria Kerckhoffsov princíp a Finito na ňom stojí: do kódu sa môže pozrieť ktokoľvek, ale kľúč — vašu obnovovaciu frázu — máte len vy.
+
+landing.tech.transparency.build.body
+Že aplikácia na app.finito.fit alebo vo vašom telefóne vznikla presne z kódu na GitHube, zatiaľ dokázať nevieme — na to by boli potrebné tzv. reprodukovateľné zostavenia a tie nemáme. Veriť nám v tom ale nemusíte: z kódu na GitHube si aplikáciu môžete zostaviť sami a prevádzkovať vlastnú verziu.

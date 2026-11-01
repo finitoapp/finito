@@ -1,8 +1,4 @@
 import {
-  landingAppEntryPath,
-  landingTechPaths,
-} from "@payky/web-shared/landing-redirect"
-import {
   BellOffIcon,
   CheckIcon,
   ClockIcon,
@@ -28,6 +24,7 @@ import {
   WalletIcon,
   XIcon,
 } from "lucide-react"
+import { landingAppEntryUrl, landingTechPaths } from "@/core/landing-site.ts"
 import {
   Faq,
   type FaqItem,
@@ -487,7 +484,7 @@ function Hero() {
             {t("landing.tech.hero.body")}
           </p>
           <a
-            href={landingAppEntryPath(language)}
+            href={landingAppEntryUrl(language)}
             className={cn(
               primaryActionClassName,
               "landing-rise landing-delay-2 w-fit"
@@ -1137,7 +1134,7 @@ function TryIt() {
           </p>
         </div>
         <a
-          href={landingAppEntryPath(language)}
+          href={landingAppEntryUrl(language)}
           className={cn(primaryActionClassName, "w-fit shrink-0")}
         >
           <PlayIcon aria-hidden="true" data-icon="inline-start" />

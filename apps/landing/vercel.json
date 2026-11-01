@@ -41,6 +41,62 @@
     {
       "source": "/landing/:path*",
       "destination": "/:path*"
+    },
+    {
+      "source": "/",
+      "destination": "/landing-cs.html"
+    },
+    {
+      "source": "/en",
+      "destination": "/landing-en.html"
+    },
+    {
+      "source": "/sk",
+      "destination": "/landing-sk.html"
+    },
+    {
+      "source": "/eet-2-0",
+      "destination": "/landing-eet-cs.html"
+    },
+    {
+      "source": "/en/eet-2-0",
+      "destination": "/landing-eet-en.html"
+    },
+    {
+      "source": "/sk/eet-2-0",
+      "destination": "/landing-eet-sk.html"
+    },
+    {
+      "source": "/jak-to-funguje",
+      "destination": "/landing-tech-cs.html"
+    },
+    {
+      "source": "/en/jak-to-funguje",
+      "destination": "/landing-tech-en.html"
+    },
+    {
+      "source": "/sk/jak-to-funguje",
+      "destination": "/landing-tech-sk.html"
+    },
+    {
+      "source": "/.well-known/lnurlp/donate",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?:edge\\.finito\\.fit|finito-landing-edge(?:-[a-z0-9-]+)?\\.vercel\\.app)"
+        }
+      ],
+      "destination": "https://edge.app.finito.fit/.well-known/lnurlp/donate"
+    },
+    {
+      "source": "/.well-known/lnurlp/donate",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?:(?:www\\.)?finito\\.fit|finito-landing(?:-[a-z0-9-]+)?\\.vercel\\.app)"
+        }
+      ],
+      "destination": "https://app.finito.fit/.well-known/lnurlp/donate"
     }
   ],
   "installCommand": "cd ../.. && bun install --frozen-lockfile",

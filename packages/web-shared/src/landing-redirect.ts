@@ -8,26 +8,39 @@ const appEnteredStorageKey = "payky.appEntered"
 const landingLanguageStorageKey = "payky.landingLanguage"
 const installLanguageStorageKey = "payky.installLanguage"
 
-/** One prerendered page per language (landing/0002). */
-export const landingPaths = {
-  cs: "/landing",
-  en: "/landing/en",
-  sk: "/landing/sk",
-} as const satisfies Record<Language, string>
+/**
+ * The addresses of the landing documents, one per language: the home page
+ * (landing/0002), the EET 2.0 page (landing/0006) and the page on how the
+ * app works (landing/0008), Czech at the bare path.
+ */
+export interface LandingSitePaths {
+  readonly home: Readonly<Record<Language, string>>
+  readonly eet: Readonly<Record<Language, string>>
+  readonly tech: Readonly<Record<Language, string>>
+}
 
-/** The EET 2.0 page, prerendered once per language too (landing/0006). */
-export const landingEetPaths = {
-  cs: "/landing/eet-2-0",
-  en: "/landing/en/eet-2-0",
-  sk: "/landing/sk/eet-2-0",
-} as const satisfies Record<Language, string>
+/**
+ * The documents under `base`: `/landing` on payky.me, which the web app
+ * proxies there, the domain's root on finito.fit (landing/0013).
+ */
+export const createLandingSitePaths = (
+  base: "/landing" | ""
+): LandingSitePaths => ({
+  home: { cs: base === "" ? "/" : base, en: `${base}/en`, sk: `${base}/sk` },
+  eet: {
+    cs: `${base}/eet-2-0`,
+    en: `${base}/en/eet-2-0`,
+    sk: `${base}/sk/eet-2-0`,
+  },
+  tech: {
+    cs: `${base}/jak-to-funguje`,
+    en: `${base}/en/jak-to-funguje`,
+    sk: `${base}/sk/jak-to-funguje`,
+  },
+})
 
-/** The page on how Payky works, prerendered once per language too (landing/0008). */
-export const landingTechPaths = {
-  cs: "/landing/jak-to-funguje",
-  en: "/landing/en/jak-to-funguje",
-  sk: "/landing/sk/jak-to-funguje",
-} as const satisfies Record<Language, string>
+/** Payky's landing, where the web app sends a visitor (landing/0001). */
+export const landingPaths = createLandingSitePaths("/landing").home
 
 export const LandingLanguageSchema: z.ZodType<Language> = z.enum([
   "cs",
@@ -145,27 +158,34 @@ export function readInstallLanguage(): Language | undefined {
 export const landingAppEntryPath = (language: Language): string =>
   `/onboarding?lang=${language}`
 
-const normalizeLandingPath = (pathname: string) => pathname.replace(/\/+$/u, "")
+// A trailing slash goes, except from the root itself.
+const normalizeLandingPath = (pathname: string) =>
+  pathname.replace(/(?<=.)\/+$/u, "")
 
-/** The language of the landing page at `pathname`, Czech for `/landing`. */
-export function landingLanguageFromPath(pathname: string): Language {
+/** The language of the landing page at `pathname`, Czech for the bare path. */
+export function landingLanguageFromPath(
+  pathname: string,
+  site: LandingSitePaths
+): Language {
   const normalized = normalizeLandingPath(pathname)
   const match = [
-    ...Object.entries(landingPaths),
-    ...Object.entries(landingEetPaths),
-    ...Object.entries(landingTechPaths),
+    ...Object.entries(site.home),
+    ...Object.entries(site.eet),
+    ...Object.entries(site.tech),
   ].find(([, path]) => path === normalized)
   return LandingLanguageSchema.catch("cs").parse(match?.[0])
 }
 
 /** Whether `pathname` is the EET 2.0 page in one of its languages. */
-export const isLandingEetPath = (pathname: string): boolean =>
-  Object.values<string>(landingEetPaths).includes(
-    normalizeLandingPath(pathname)
-  )
+export const isLandingEetPath = (
+  pathname: string,
+  site: LandingSitePaths
+): boolean =>
+  Object.values<string>(site.eet).includes(normalizeLandingPath(pathname))
 
-/** Whether `pathname` is the page on how Payky works in one of its languages. */
-export const isLandingTechPath = (pathname: string): boolean =>
-  Object.values<string>(landingTechPaths).includes(
-    normalizeLandingPath(pathname)
-  )
+/** Whether `pathname` is the page on how the app works in one of its languages. */
+export const isLandingTechPath = (
+  pathname: string,
+  site: LandingSitePaths
+): boolean =>
+  Object.values<string>(site.tech).includes(normalizeLandingPath(pathname))

@@ -1,4 +1,3 @@
-import { createDefaultEvoluTransportUrls } from "@payky/core/evolu/device-account"
 import type { Language } from "./i18n/resources.ts"
 
 /**
@@ -75,12 +74,35 @@ export const brands = {
   finito: finitoBrand,
 } as const satisfies Record<BrandId, Brand>
 
-/** The transports a new account of this brand's app starts with. */
-export const brandDefaultTransports = (brand: Brand) =>
-  createDefaultEvoluTransportUrls(brand.liveRelayHost)
-
 /**
  * The name where no copy declines it: the launcher, a report header, the name
  * of a key another service lists.
  */
 export const brandName = (brand: Brand): string => brand.names.en.nominative
+
+/**
+ * The placeholders copy names the app by, each with the case it needs
+ * (brand/0002): "Aktualizujte {appName}" but "kód {appNameGen}". The app's
+ * `t` and the landing's resources fill them from the brand, so call sites
+ * never pass them.
+ */
+const brandPlaceholders = {
+  appName: "nominative",
+  appNameGen: "genitive",
+  appNameDat: "dative",
+  appNameLoc: "locative",
+} as const satisfies Record<string, keyof BrandNameForms>
+
+export type BrandPlaceholder = keyof typeof brandPlaceholders
+
+export const brandPlaceholderNames = Object.keys(
+  brandPlaceholders
+) as ReadonlyArray<BrandPlaceholder>
+
+/** `text` with every brand placeholder replaced by its form of the name. */
+export const applyBrandName = (text: string, forms: BrandNameForms): string =>
+  Object.entries(brandPlaceholders).reduce(
+    (result, [placeholder, form]) =>
+      result.replaceAll(`{${placeholder}}`, forms[form] ?? forms.nominative),
+    text
+  )

@@ -1,9 +1,4 @@
-import {
-  landingEetPaths,
-  landingPaths,
-  landingTechPaths,
-  rememberLandingLanguage,
-} from "@payky/web-shared/landing-redirect"
+import { rememberLandingLanguage } from "@payky/web-shared/landing-redirect"
 import { languageOptions } from "@payky/web-shared/language-options"
 import {
   ArrowRightIcon,
@@ -25,6 +20,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.tsx"
+import {
+  landingEetPaths,
+  landingPaths,
+  landingResources,
+  landingTechPaths,
+} from "@/core/landing-site.ts"
 import { LandingClosing } from "@/features/landing/landing-closing.tsx"
 import { LandingFeatureStory } from "@/features/landing/landing-feature-story.tsx"
 import { LandingHeader } from "@/features/landing/landing-header.tsx"
@@ -35,11 +36,7 @@ import {
   LandingTranslationContext,
   useLandingTranslation,
 } from "@/features/landing/landing-translation.ts"
-import {
-  type Language,
-  resources,
-  type TranslationKey,
-} from "@/i18n/resources.ts"
+import type { Language, TranslationKey } from "@/i18n/resources.ts"
 import { cn } from "@/lib/utils.ts"
 import "@/features/landing/landing.css"
 
@@ -340,7 +337,7 @@ export function LandingShell({
         rememberLandingLanguage(next)
         window.location.assign(paths[next])
       },
-      t: (key) => resources[language][key],
+      t: (key) => landingResources[language][key],
     }),
     [language, paths]
   )

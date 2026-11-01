@@ -54,6 +54,17 @@ project); Vercel does not reveal sensitive values, so they are entered by hand.
 `donate@finito.fit` is answered through the landing on `finito.fit`, while the
 function sees its own host, `app.finito.fit`.
 
+## The landing projects
+
+`finito-landing` and `finito-landing-edge` build `apps/landing` with
+`PAYKY_LANDING_BRAND=finito` (landing/0013): the same pages as Payky's, at
+the root of `finito.fit`, naming Finito. `VITE_PAYKY_API_BASE_URL` names the
+app they send visitors to and whose `/api/contact` the form calls:
+`https://app.finito.fit`, resp. `https://edge.app.finito.fit`. The prerender
+writes the site's `sitemap.xml` and `robots.txt`; `apps/landing/vercel.json`
+forwards `/.well-known/lnurlp/donate` to the matching app, which answers
+`donate@finito.fit`.
+
 ## Outside Vercel
 
 - `live-relay.finito.fit`: DNS and TLS to the live relay's server, which
