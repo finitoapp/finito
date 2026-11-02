@@ -36,7 +36,7 @@ export interface LandingSite {
 }
 
 const releasesUrl =
-  "https://github.com/finitoapp/payky/releases/latest/download"
+  "https://github.com/finitoapp/finito/releases/latest/download"
 
 export const landingSites = {
   payky: {

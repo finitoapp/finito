@@ -47,7 +47,7 @@ describe("renderLandingDocument", () => {
     expect(data).toEqual([
       expect.objectContaining({
         "@type": "Organization",
-        sameAs: ["https://github.com/finitoapp/payky"],
+        sameAs: ["https://github.com/finitoapp/finito"],
       }),
       expect.objectContaining({
         "@type": "SoftwareApplication",
@@ -72,13 +72,6 @@ describe("renderLandingDocument", () => {
     const body = document.slice(document.indexOf("<body>"))
 
     expect(body).toContain(resources.cs["landing.faq.money.answer"])
-  })
-
-  test("links the other languages' pages from the page itself", () => {
-    const body = renderLandingDocument(template, "en").split("<body>")[1]
-
-    expect(body).toContain(`href="/landing" hrefLang="cs"`)
-    expect(body).toContain(`href="/landing/sk" hrefLang="sk"`)
   })
 
   test("titles each page for search results with its own copy", () => {
@@ -125,7 +118,6 @@ describe("renderLandingDocument", () => {
 
   test("links the EET page's languages to each other", () => {
     const document = renderLandingDocument(template, "cs", "eet")
-    const body = document.split("<body>")[1]
 
     expect(document).toContain(
       `<link rel="alternate" hrefLang="en" href="https://payky.me/landing/en/eet-2-0"/>`
@@ -133,7 +125,6 @@ describe("renderLandingDocument", () => {
     expect(document).toContain(
       `<link rel="alternate" hrefLang="x-default" href="https://payky.me/landing/eet-2-0"/>`
     )
-    expect(body).toContain(`href="/landing/sk/eet-2-0" hrefLang="sk"`)
   })
 
   test("describes the EET page's FAQ for search results and shows its answers", () => {
@@ -194,7 +185,6 @@ describe("renderLandingDocument", () => {
 
   test("links the languages of the page on how Payky works to each other", () => {
     const document = renderLandingDocument(template, "cs", "tech")
-    const body = document.split("<body>")[1]
 
     expect(document).toContain(
       `<link rel="alternate" hrefLang="en" href="https://payky.me/landing/en/jak-to-funguje"/>`
@@ -202,7 +192,6 @@ describe("renderLandingDocument", () => {
     expect(document).toContain(
       `<link rel="alternate" hrefLang="x-default" href="https://payky.me/landing/jak-to-funguje"/>`
     )
-    expect(body).toContain(`href="/landing/sk/jak-to-funguje" hrefLang="sk"`)
   })
 
   test("describes the FAQ of the page on how Payky works for search results and shows its answers", () => {
@@ -232,7 +221,7 @@ describe("renderLandingDocument", () => {
     ] as const) {
       expect(body).toContain(resources.en[key])
     }
-    expect(body).toContain(`href="https://github.com/finitoapp/payky"`)
+    expect(body).toContain(`href="https://github.com/finitoapp/finito"`)
   })
 
   test("follows a claim of the page on how Payky works to the decision and the test that hold it", () => {
@@ -248,10 +237,10 @@ describe("renderLandingDocument", () => {
       `${transparencyProof.test} > ${transparencyProof.testName}`
     )
     expect(body).toContain(
-      `href="https://github.com/finitoapp/payky/blob/main/${transparencyProof.decision}"`
+      `href="https://github.com/finitoapp/finito/blob/main/${transparencyProof.decision}"`
     )
     expect(body).toContain(
-      `href="https://github.com/finitoapp/payky/blob/main/${transparencyProof.test}"`
+      `href="https://github.com/finitoapp/finito/blob/main/${transparencyProof.test}"`
     )
   })
 

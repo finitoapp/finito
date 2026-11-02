@@ -1,5 +1,4 @@
 import { rememberLandingLanguage } from "@payky/web-shared/landing-redirect"
-import { languageOptions } from "@payky/web-shared/language-options"
 import {
   ArrowRightIcon,
   BanknoteIcon,
@@ -113,7 +112,7 @@ export const faqItems: ReadonlyArray<FaqItem> = [
   },
 ]
 
-export const githubUrl = "https://github.com/finitoapp/payky"
+export const githubUrl = "https://github.com/finitoapp/finito"
 
 const signalGroupUrl =
   "https://signal.group/#CjQKIG6htHfJxD15ue8bEu0uiIM9HZux-Na1TfwTFOv8iepLEhAM0yHv8qkvPC5FC9JhuTEs"
@@ -269,7 +268,7 @@ function FooterLink({
 }
 
 function Footer() {
-  const { language, paths, t } = useLandingTranslation()
+  const { language, t } = useLandingTranslation()
   return (
     <footer className="bg-muted/50">
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 sm:px-6 md:flex-row md:items-center lg:px-8">
@@ -292,24 +291,6 @@ function Footer() {
             {t("landing.footer.website")}
           </FooterLink>
         </div>
-        {/* Plain links to the other languages, which a crawler follows and
-            the header's menu, navigating from script, does not offer. */}
-        <nav className="flex gap-4" aria-label={t("landing.language.label")}>
-          {languageOptions
-            .filter((option) => option.value !== language)
-            .map((option) => (
-              <a
-                key={option.value}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                href={paths[option.value]}
-                hrefLang={option.value}
-                lang={option.value}
-                onClick={() => rememberLandingLanguage(option.value)}
-              >
-                {option.label}
-              </a>
-            ))}
-        </nav>
       </div>
     </footer>
   )

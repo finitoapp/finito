@@ -19,7 +19,7 @@ Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 0 each month and
 2. The pushed tag starts `.github/workflows/release.yml`, which checks the tag matches `package.json`, runs `bun run check`, then in parallel:
    - `web` force-pushes the `production` branch to the tag; the `payky` and `finito` Vercel projects deploy it to `payky.me` and `app.finito.fit`.
    - `android` builds Payky's signed APK and AAB from `apps/native-shell`, `finito-android` Finito's from `apps/native-app` (`expo prebuild`, then Gradle, signed by `apps/native-app/plugins/with-release-signing.cjs`). Each keeps its APK for the release and uploads its AAB to Google Play's internal track.
-   - `github-release` then creates one release, `Payky / Finito v<version>`, with both APKs, once both are built, even if a Google Play upload failed. The landings link them as `https://github.com/finitoapp/payky/releases/latest/download/app-release-signed.apk` and `.../finito-release-signed.apk`, so the files keep those names and every release carries both (`docs/decisions/landing/0005`).
+   - `github-release` then creates one release, `Payky / Finito v<version>`, with both APKs, once both are built, even if a Google Play upload failed. The landings link them as `https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk` and `.../finito-release-signed.apk`, so the files keep those names and every release carries both (`docs/decisions/landing/0005`).
 
 A failed job is re-run from the Actions page. A tag is never moved: a fix ships as the next version.
 

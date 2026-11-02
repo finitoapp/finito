@@ -21,7 +21,7 @@ options and a one-line hint for each:
 - The native app, for Android, with every feature:
   - Zapstore, the recommended option: updates arrive on their own.
   - The newest signed APK, the same app without automatic updates, linked
-    as `https://github.com/finitoapp/payky/releases/latest/download/app-release-signed.apk`.
+    as `https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk`.
     The release workflow uploads only the signed APK, under that name.
 - The web app, for any phone, tablet or computer, updated on its own but
   without what needs native code, such as card payments through a terminal:
