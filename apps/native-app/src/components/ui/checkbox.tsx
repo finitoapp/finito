@@ -22,6 +22,7 @@ const CheckboxFrame = styled(View, {
   items: "center",
   justify: "center",
   hitSlop: 16,
+  cursor: "web:pointer",
 
   variants: {
     checked: {

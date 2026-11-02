@@ -160,6 +160,7 @@ export function VerticalNavRow({
             : "transparent"
       }
       onPress={onPress}
+      cursor={onPress === undefined ? undefined : "web:pointer"}
       opacity={disabled ? 0.5 : undefined}
       accessible={interactive ? true : undefined}
       role={

@@ -58,6 +58,7 @@ const ItemFrame = styled(View, {
   borderWidth: 1,
   borderColor: "transparent",
   bg: "transparent press:muted",
+  cursor: "web:pointer",
 
   variants: {
     variant: {

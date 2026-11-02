@@ -100,6 +100,7 @@ export function SalesHeatmap({
                 bg="muted"
                 role="button"
                 aria-label={cellDescription(cell, dayIndex, hour)}
+                cursor="web:pointer"
                 onPress={() => setSelected({ day: dayIndex, hour })}
               >
                 <YStack

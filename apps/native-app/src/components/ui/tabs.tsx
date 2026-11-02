@@ -90,6 +90,7 @@ const TriggerFrame = styled(View, {
   borderWidth: 1,
   borderColor: "transparent",
   hitSlop: { top: 8, bottom: 8 },
+  cursor: "web:pointer",
 
   variants: {
     active: { true: { bg: "tabs-active", borderColor: "tabs-active-border" } },

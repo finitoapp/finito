@@ -305,6 +305,7 @@ function ExistingBillOption({
     <XStack
       role="button"
       aria-selected={selected}
+      cursor="web:pointer"
       onPress={onSelect}
       gap={8}
       p={8}
