@@ -398,5 +398,13 @@ export const skPayment = {
   "paymentWait.preparing.lightningAddress": "Žiadam peňaženku o invoice...",
   "paymentWait.lightningAddress.unverified":
     "Peňaženka hlási invoice zaplatený, ale neposlala dôkaz platby. Než vydáte tovar, skontrolujte peňaženku.",
+  "paymentWait.monetaWatch.watching": "Čakám na platbu z banky…",
+  "paymentWait.monetaWatch.unreachable":
+    "Banka neodpovedá. {appName} to skúša ďalej.",
+  "paymentWait.monetaWatch.unauthorized":
+    "Banka odmietla token MONETA, prevod sa automaticky nekontroluje.",
+  "paymentWait.monetaWatch.openSettings": "Nastavenia MONETA",
+  "paymentWait.monetaWatch.rateLimited":
+    "Dnešné dopyty do banky sú vyčerpané. Potvrďte prevod ručne.",
   "paymentDetail.transaction.preimage": "Dôkaz platby (preimage)",
 } satisfies Record<keyof typeof enPayment, string>

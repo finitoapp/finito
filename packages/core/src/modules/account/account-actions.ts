@@ -15,6 +15,8 @@ import { defineError } from "../../error.ts"
 import { updateFioPluginAccountRow } from "../fio-plugin/fio-plugin-actions.ts"
 import { fioPluginByIdQuery } from "../fio-plugin/fio-plugin-queries.ts"
 import { fioPluginId } from "../fio-plugin/fio-plugin-utils.ts"
+import { updateMonetaPluginAccountRow } from "../moneta-plugin/moneta-plugin-actions.ts"
+import { fiatBankAccountMonetaPluginQuery } from "../moneta-plugin/moneta-plugin-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
   removeUndefinedValues,
@@ -291,8 +293,8 @@ export const deleteAccount =
  *
  * Its id derives from the IBAN and currency, so a save that changes either
  * writes a different account. The one it replaces is retired in the same
- * batch, and the Fio plugin — which always follows the fiat bank account —
- * is re-pointed with it. Returns `null` when no IBAN was ever configured and
+ * batch, and the Fio and MONETA plugins — which always follow the fiat bank
+ * account — are re-pointed with it. Returns `null` when no IBAN was ever configured and
  * none is given, as there is no account to write yet.
  */
 export const saveFiatBankAccount =
@@ -316,6 +318,9 @@ export const saveFiatBankAccount =
 
     const id = createIbanAccountId({ iban: nextIban, currency })
     const [fioPlugin] = await evolu.loadQuery(fioPluginByIdQuery(fioPluginId))
+    const [monetaPlugin] = await evolu.loadQuery(
+      fiatBankAccountMonetaPluginQuery
+    )
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
@@ -342,6 +347,10 @@ export const saveFiatBankAccount =
 
       if (fioPlugin !== undefined && fioPlugin.accountId !== id) {
         updateFioPluginAccountRow(evolu, id, mutationOptions)
+      }
+
+      if (monetaPlugin !== undefined && monetaPlugin.accountId !== id) {
+        updateMonetaPluginAccountRow(evolu, id, mutationOptions)
       }
 
       return evolu.upsert(

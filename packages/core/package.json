@@ -12,6 +12,7 @@
     "@ai-sdk/openai-compatible": "3.0.70",
     "@buildonspark/spark-sdk": "0.14.0",
     "@cashu/cashu-ts": "4.11.0",
+    "@date-fns/tz": "1.5.0",
     "@evolu/common": "8.23.0",
     "@evolu/nodejs": "4.3.4",
     "@finitoapp/eet-client": "0.4.0",

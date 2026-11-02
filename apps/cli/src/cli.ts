@@ -33,6 +33,7 @@ import { registerCatalogItemsCommand } from "./cli-catalog-items.ts"
 import { cliEnv } from "./cli-env.ts"
 import { createCliEvolu } from "./cli-evolu.ts"
 import { registerFioPluginsCommand } from "./cli-fio-plugins.ts"
+import { registerMonetaPluginsCommand } from "./cli-moneta-plugins.ts"
 import { registerPaymentNumberSeriesCommand } from "./cli-payment-number-series.ts"
 import { registerPaymentsCommand } from "./cli-payments.ts"
 import { registerTablesCommand } from "./cli-tables.ts"
@@ -64,6 +65,7 @@ const commands: ((
   registerPaymentNumberSeriesCommand,
   registerTablesCommand,
   registerFioPluginsCommand,
+  registerMonetaPluginsCommand,
   registerBackgroundJobsCommand,
   registerAiCommand,
 ]

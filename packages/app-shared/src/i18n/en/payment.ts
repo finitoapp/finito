@@ -404,5 +404,13 @@ export const enPayment = {
     "Asking your wallet for an invoice...",
   "paymentWait.lightningAddress.unverified":
     "Your wallet reports the invoice paid but sent no proof of payment. Check the wallet before you hand over the goods.",
+  "paymentWait.monetaWatch.watching": "Checking the bank for the transfer…",
+  "paymentWait.monetaWatch.unreachable":
+    "The bank is not answering. {appName} keeps checking.",
+  "paymentWait.monetaWatch.unauthorized":
+    "The bank refused the MONETA token, so the transfer is not checked automatically.",
+  "paymentWait.monetaWatch.openSettings": "MONETA settings",
+  "paymentWait.monetaWatch.rateLimited":
+    "Today's requests to the bank are used up. Confirm the transfer by hand.",
   "paymentDetail.transaction.preimage": "Proof of payment (preimage)",
 } as const

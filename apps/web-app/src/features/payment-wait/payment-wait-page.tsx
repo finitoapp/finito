@@ -924,11 +924,11 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                 payment.qerkoUnresolvedTransactionId
               }
               qerkoFailureReason={payment.qerkoFailureReason}
-              cashuPaymentId={paymentId}
+              paymentId={paymentId}
+              paymentCreatedAt={payment.createdAt}
+              payable={paymentStatus === "pending"}
               newCashuQuotePending={newCashuQuotePending}
               onNewCashuQuote={() => void handleNewCashuQuote()}
-              lightningAddressPaymentId={paymentId}
-              lightningAddressPayable={paymentStatus === "pending"}
             />
           ) : null}
 

@@ -29,6 +29,7 @@ import {
   cashRegisterReconciliationCandidateByAccountTransactionIdQuery,
   cashuReconciliationCandidateByAccountTransactionIdQuery,
   cashuReconciliationCandidateByValuesQuery,
+  type IbanCandidateOptions,
   ibanReconciliationCandidateByAccountTransactionIdQuery,
   ibanReconciliationCandidateByValuesQuery,
   sparkReconciliationCandidateByAccountTransactionIdQuery,
@@ -88,12 +89,14 @@ export const loadBillClosedAtForPayment =
 /**
  * Finds the automatic claim a newly discovered FIO or Spark transaction
  * should receive before the transaction exists in Evolu, so the caller can
- * write both rows in one mutation batch.
+ * write both rows in one mutation batch. `options` reach the IBAN matcher
+ * only.
  */
 export const loadAutomaticReconciliationClaimForNewAccountTransaction =
   (
     accountTransaction: CreateAccountTransactionInput,
-    accountTransactionId: AccountTransactionId
+    accountTransactionId: AccountTransactionId,
+    options: IbanCandidateOptions = {}
   ): Task<ReconciliationClaimWrite | null, never, EvoluDep & DateDep> =>
   async (run) => {
     const { iban, spark, cashu } = accountTransaction
@@ -130,6 +133,7 @@ export const loadAutomaticReconciliationClaimForNewAccountTransaction =
           currency: accountTransaction.currency,
           variableSymbol: iban.variableSymbol,
           specificSymbol: iban.specificSymbol ?? null,
+          ...options,
         })
       )
       paymentId = candidates[0]?.paymentId
@@ -263,9 +267,11 @@ export const claimManualReconciliation =
     return ok(paymentId)
   }
 
+/** `options` reach the IBAN matcher only. */
 export const reconcileAccountTransaction =
   (
-    accountTransactionId: AccountTransactionId
+    accountTransactionId: AccountTransactionId,
+    options: IbanCandidateOptions = {}
   ): Task<PaymentId | null, never, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
     const existingClaims = await run.deps.evolu.loadQuery(
@@ -294,7 +300,8 @@ export const reconcileAccountTransaction =
     ] = await Promise.all(
       run.deps.evolu.loadQueries([
         ibanReconciliationCandidateByAccountTransactionIdQuery(
-          accountTransactionId
+          accountTransactionId,
+          options
         ),
         sparkReconciliationCandidateByAccountTransactionIdQuery(
           accountTransactionId

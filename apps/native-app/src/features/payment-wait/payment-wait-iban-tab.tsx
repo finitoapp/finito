@@ -1,21 +1,30 @@
+import { formatAddressGroups } from "@payky/app-shared/format-text"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import type { BankQrFormat } from "@payky/core/modules/account/account-types"
+import type {
+  AccountId,
+  BankQrFormat,
+} from "@payky/core/modules/account/account-types"
 import type { BankQrPayload } from "@payky/core/modules/payment/payment-iban-qr-payload-utils"
+import type { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { router } from "expo-router"
 import Check from "lucide-react-native/icons/check"
 import Eye from "lucide-react-native/icons/eye"
 import EyeOff from "lucide-react-native/icons/eye-off"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, View, XStack, YStack } from "tamagui"
 import { CopyLink } from "../../components/copy-link.tsx"
 import { CopyableQrCode } from "../../components/copyable-qr-code.tsx"
 import { Button } from "../../components/ui/button.tsx"
+import { Icon } from "../../components/ui/icon.tsx"
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from "../../components/ui/toggle-group.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { useMonetaPaymentWatch } from "./use-moneta-payment-watch.ts"
 
 const qrFormatShortKeys = {
   payBySquare1_0_0: "paymentWait.qrFormatShort.payBySquare1_0_0",
@@ -23,9 +32,52 @@ const qrFormatShortKeys = {
   spayd: "paymentWait.qrFormatShort.spayd",
 } satisfies Record<BankQrFormat, TranslationKey>
 
-/** Four-character groups for review; casing is kept. */
-const groupIban = (iban: string) =>
-  iban.replaceAll(/\s+/gu, "").replaceAll(/(.{4})(?=.)/gu, "$1 ")
+interface MonetaPaymentWatchProps {
+  readonly paymentId: PaymentId
+  /** The bank account the transfer goes to. */
+  readonly accountId: AccountId
+  readonly createdAt: string | null
+  /** The payment is still waiting for money. */
+  readonly payable: boolean
+}
+
+/** The bank's own check of the transfer, as web's: only with a MONETA token. */
+function MonetaPaymentWatchStatus(props: MonetaPaymentWatchProps) {
+  const { t } = useTranslation()
+  const { result, statusKey } = useMonetaPaymentWatch(props)
+  if (statusKey === null) return null
+
+  const isWatching = result === "answered" || result === undefined
+
+  return (
+    <YStack items="center" gap={4} maxW={288}>
+      <XStack items="flex-start" gap={6}>
+        {isWatching ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <Icon icon={TriangleAlert} size={16} color="warning" />
+        )}
+        <Text
+          flex={1}
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color={isWatching ? "muted-foreground" : "warning"}
+        >
+          {t(statusKey)}
+        </Text>
+      </XStack>
+      {result === "unauthorized" ? (
+        <Button
+          variant="link"
+          label={t("paymentWait.monetaWatch.openSettings")}
+          onPress={() => {
+            router.push("/settings/payment-accounts/iban/moneta-plugin")
+          }}
+        />
+      ) : null}
+    </YStack>
+  )
+}
 
 /**
  * The bank QR, its format switch, the details and the manual "paid" action,
@@ -34,6 +86,10 @@ const groupIban = (iban: string) =>
  * "paid" button beside it.
  */
 export function IbanPaymentTab({
+  paymentId,
+  accountId,
+  createdAt,
+  payable,
   qrPayload,
   qrPayloads,
   activeFormat,
@@ -57,7 +113,7 @@ export function IbanPaymentTab({
   readonly pending: boolean
   readonly errorKey: TranslationKey | null
   readonly onMarkPaid: () => void
-}) {
+} & MonetaPaymentWatchProps) {
   const { t } = useTranslation()
   const [detailsVisible, setDetailsVisible] = useState(false)
 
@@ -77,6 +133,12 @@ export function IbanPaymentTab({
           </Text>
         </XStack>
       ) : null}
+      <MonetaPaymentWatchStatus
+        paymentId={paymentId}
+        accountId={accountId}
+        createdAt={createdAt}
+        payable={payable}
+      />
       {qrPayloads.length > 1 ? (
         <View
           h={44}
@@ -124,7 +186,7 @@ export function IbanPaymentTab({
         <YStack w="100%" maxW={320} gap={8}>
           <DetailCopyRow
             label={t("paymentWait.ibanDetails.iban.label")}
-            display={groupIban(iban)}
+            display={formatAddressGroups(iban)}
             value={iban.replaceAll(/\s+/gu, "")}
             copyLabel={t("paymentWait.ibanDetails.iban.copy")}
             copied={t("paymentWait.ibanDetails.iban.copied")}

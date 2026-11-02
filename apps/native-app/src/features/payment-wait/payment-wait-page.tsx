@@ -853,6 +853,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           </YStack>
         ) : active.id === "iban" && ibanNumber !== null ? (
           <IbanPaymentTab
+            paymentId={paymentId}
+            accountId={active.accountId}
+            createdAt={payment.createdAt}
+            payable={status === "pending"}
             qrPayload={bankQrPayload}
             qrPayloads={bankQrPayloads}
             activeFormat={activeQrFormat}
