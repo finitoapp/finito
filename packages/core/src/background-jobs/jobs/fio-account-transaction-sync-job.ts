@@ -1,4 +1,4 @@
-import { ok, type Run } from "@evolu/common"
+import type { InferRow, Run } from "@evolu/common"
 import { format, subDays, subMonths } from "date-fns"
 import {
   createFioApiDep,
@@ -12,7 +12,6 @@ import {
   activeFioPluginsQuery,
   fioPluginSyncPointerByPluginIdQuery,
 } from "../../modules/fio-plugin/fio-plugin-queries.ts"
-import type { FioPluginId } from "../../modules/fio-plugin/fio-plugin-types.ts"
 import {
   loadUnrecordedBankTransactions,
   reconcileUnclaimedBankTransactions,
@@ -39,145 +38,53 @@ import type {
   BackgroundJob,
   BackgroundJobContext,
 } from "../background-job-types.ts"
-import { createKeyedTaskQueue } from "../keyed-task-queue.ts"
-import { reconcileAccountSyncSessions } from "../reconcile-account-sync-sessions.ts"
+import {
+  type BankPluginSync,
+  type BankPluginSyncSession,
+  createBankPluginSyncJob,
+  createBankPluginSyncSession,
+} from "../bank-plugin-sync.ts"
 
 type Context = BackgroundJobContext
 
 const FIO_FIRST_SYNC_LOOKBACK_MONTHS = 2
-const FIO_MAX_RETRY_BACKOFF_MS = 15 * 60 * 1000
 
-export const getFioRetryBackoffMs = (
-  checkIntervalSeconds: number,
-  failedSyncCount: number
-): number =>
-  Math.min(
-    checkIntervalSeconds * 1000 * 2 ** (failedSyncCount - 1),
-    FIO_MAX_RETRY_BACKOFF_MS
-  )
-
-const loadActiveFioPlugins = (deps: Context) =>
-  deps.evolu.loadQuery(activeFioPluginsQuery)
-
-type ActiveFioPlugin = Awaited<ReturnType<typeof loadActiveFioPlugins>>[number]
+type ActiveFioPlugin = Readonly<InferRow<typeof activeFioPluginsQuery>>
 type FioPluginToken = ActiveFioPlugin["tokens"][number]
 type ActiveFioPluginWithTokens = ActiveFioPlugin & {
   readonly tokens: readonly [FioPluginToken, ...FioPluginToken[]]
 }
 
-export const createFioAccountTransactionSyncJob =
-  (): BackgroundJob => (run) => {
-    // A fresh `run.create()` scope, not the Task's own `run`: that one is
-    // disposed the instant this Task function returns, but the sync classes
-    // below keep composing Tasks (via their stored `run`) for as long as the
-    // job itself runs. Explicitly disposed in the returned disposable below —
-    // see AGENTS.md and `createRun`'s doc comment on why a detached
-    // `createRun` call per transaction (the previous shape here) leaks a root
-    // Evolu never gets to dispose.
-    const jobRun = run.create({
-      ...run.deps,
-      console: run.deps.console.child("fio-account-transaction-sync-job"),
-    })
-    const sync = new FioAccountTransactionSync(jobRun)
-
-    sync.start()
-
-    const disposer = new AsyncDisposableStack()
-    disposer.use(jobRun)
-    disposer.defer(() => sync.dispose())
-
-    return ok(disposer)
-  }
+export const createFioAccountTransactionSyncJob = (): BackgroundJob =>
+  createBankPluginSyncJob({
+    name: "fio-account-transaction-sync-job",
+    bank: "FIO",
+    query: activeFioPluginsQuery,
+    selectPlugins: (plugins, run, runningCount) => {
+      const activePlugins = plugins.filter(hasFioTokens)
+      run.deps.console.debug("Refreshing FIO plugin syncs.", {
+        activePluginCount: activePlugins.length,
+        pluginCount: plugins.length,
+        runningPluginCount: runningCount,
+        skippedPluginWithoutTokenCount: plugins.length - activePlugins.length,
+      })
+      return activePlugins
+    },
+    createPluginSync: (run, plugin) => new FioPluginSync(run, plugin),
+    describePlugin: (plugin) => ({
+      accountId: plugin.accountId,
+      tokenCount: plugin.tokens.length,
+    }),
+  })
 
 export const startFioAccountTransactionSyncJob =
   createFioAccountTransactionSyncJob()
 
-class FioAccountTransactionSync {
-  private readonly pluginSyncs = new Map<FioPluginId, FioPluginSync>()
-  private readonly unsubscribePlugins: () => void
-  private readonly run: Run<Context>
-  private readonly refreshQueue = createKeyedTaskQueue<"refresh">({
-    onError: (error) => this.run.deps.onError(error),
-  })
-
-  constructor(run: Run<Context>) {
-    this.run = run
-    this.unsubscribePlugins = run.deps.evolu.subscribeQuery(
-      activeFioPluginsQuery
-    )(() => {
-      this.queueRefresh()
-    })
-  }
-
-  start(): void {
-    this.run.deps.console.info("Started FIO account transaction sync job.")
-    this.queueRefresh()
-  }
-
-  async dispose(): Promise<void> {
-    if (this.refreshQueue.isDisposed) return
-
-    this.unsubscribePlugins()
-    await this.refreshQueue[Symbol.asyncDispose]()
-
-    for (const sync of this.pluginSyncs.values()) {
-      await sync.dispose()
-    }
-    this.pluginSyncs.clear()
-    this.run.deps.console.info("Stopped FIO account transaction sync job.")
-  }
-
-  private queueRefresh(): void {
-    this.refreshQueue.enqueue("refresh", () => this.refreshPlugins())
-  }
-
-  private async refreshPlugins(): Promise<void> {
-    const plugins = await loadActiveFioPlugins(this.run.deps)
-    const activePlugins = plugins.filter(hasFioTokens)
-
-    this.run.deps.console.debug("Refreshing FIO plugin syncs.", {
-      activePluginCount: activePlugins.length,
-      pluginCount: plugins.length,
-      runningPluginCount: this.pluginSyncs.size,
-      skippedPluginWithoutTokenCount: plugins.length - activePlugins.length,
-    })
-
-    await reconcileAccountSyncSessions({
-      sessions: this.pluginSyncs,
-      activeAccounts: activePlugins,
-      getKey: (plugin) => plugin.id,
-      matches: (sync, plugin) => sync.matches(plugin),
-      createSession: (plugin) => {
-        const sync = new FioPluginSync(this.run, plugin)
-        sync.start()
-        return sync
-      },
-      disposeSession: (sync) => sync.dispose(),
-      onSessionStopped: (pluginId) => {
-        this.run.deps.console.info("Stopped FIO plugin sync.", { pluginId })
-      },
-      onSessionStarted: (pluginId, plugin, replacedExistingSync) => {
-        this.run.deps.console.info("Started FIO plugin sync.", {
-          accountId: plugin.accountId,
-          pluginId,
-          replacedExistingSync,
-          tokenCount: plugin.tokens.length,
-        })
-      },
-    })
-  }
-}
-
-class FioPluginSync {
-  private readonly timer: ReturnType<typeof setInterval>
+class FioPluginSync implements BankPluginSync<ActiveFioPluginWithTokens> {
   private readonly run: Run<Context>
   private readonly plugin: ActiveFioPluginWithTokens
   private readonly fioApiDep: FioApiDep
-  private failedSyncCount = 0
-  private nextRetryAt: number | null = null
-  private readonly syncQueue = createKeyedTaskQueue<"sync">({
-    onError: (error) => this.run.deps.onError(error),
-  })
+  private readonly session: BankPluginSyncSession
 
   constructor(run: Run<Context>, plugin: ActiveFioPluginWithTokens) {
     this.run = run
@@ -189,24 +96,33 @@ class FioPluginSync {
     this.fioApiDep = createFioApiDep({
       tokens: [firstToken.token, ...restTokens.map((token) => token.token)],
     })
-    this.timer = setInterval(() => {
-      this.queueSync()
-    }, plugin.numberOfSecondsBetweenChecks * 1000)
-    ;(this.timer as { readonly unref?: () => void }).unref?.()
+    this.session = createBankPluginSyncSession({
+      intervalMs: plugin.numberOfSecondsBetweenChecks * 1000,
+      sync: async () => {
+        await this.syncTransactionsOnce()
+        return "synced"
+      },
+      onError: (error) => run.deps.onError(error),
+      onDelayed: ({ failedSyncCount, retryInMs }) => {
+        run.deps.console.warn("Delayed FIO sync after a failed attempt.", {
+          accountId: plugin.accountId,
+          failedSyncCount,
+          pluginId: plugin.id,
+          retryInMs,
+        })
+      },
+    })
   }
 
   start(): void {
-    this.queueSync()
+    this.session.start()
   }
 
-  async dispose(): Promise<void> {
-    if (this.syncQueue.isDisposed) return
-
-    clearInterval(this.timer)
-    await this.syncQueue[Symbol.asyncDispose]()
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.session[Symbol.asyncDispose]()
   }
 
-  matches(plugin: ActiveFioPlugin): boolean {
+  matches(plugin: ActiveFioPluginWithTokens): boolean {
     return (
       this.plugin.accountId === plugin.accountId &&
       this.plugin.numberOfSecondsBetweenChecks ===
@@ -215,37 +131,6 @@ class FioPluginSync {
       this.plugin.iban === plugin.iban &&
       areTokensEqual(this.plugin.tokens, plugin.tokens)
     )
-  }
-
-  private queueSync(): void {
-    if (
-      this.nextRetryAt !== null &&
-      this.run.deps.date.now().getTime() < this.nextRetryAt
-    )
-      return
-    this.syncQueue.enqueue("sync", () => this.syncTransactions())
-  }
-
-  private async syncTransactions(): Promise<void> {
-    try {
-      await this.syncTransactionsOnce()
-      this.failedSyncCount = 0
-      this.nextRetryAt = null
-    } catch (error) {
-      this.failedSyncCount += 1
-      const retryInMs = getFioRetryBackoffMs(
-        this.plugin.numberOfSecondsBetweenChecks,
-        this.failedSyncCount
-      )
-      this.nextRetryAt = this.run.deps.date.now().getTime() + retryInMs
-      this.run.deps.console.warn("Delayed FIO sync after a failed attempt.", {
-        accountId: this.plugin.accountId,
-        failedSyncCount: this.failedSyncCount,
-        pluginId: this.plugin.id,
-        retryInMs,
-      })
-      throw error
-    }
   }
 
   private async syncTransactionsOnce(): Promise<void> {
@@ -302,10 +187,10 @@ class FioPluginSync {
     })
     let skippedLockedTransaction = false
     for (const transaction of toRecord) {
-      if (this.syncQueue.isDisposed) return
+      if (this.session.isDisposed) return
       skippedLockedTransaction ||= !(await this.recordTransaction(transaction))
     }
-    if (this.syncQueue.isDisposed) return
+    if (this.session.isDisposed) return
     await this.retryReconciliation(toReconcile)
     if (skippedLockedTransaction) {
       this.run.deps.console.debug(
@@ -339,7 +224,7 @@ class FioPluginSync {
     const paymentIds = await this.run.ok(
       reconcileUnclaimedBankTransactions({
         accountTransactionIds,
-        isStopped: () => this.syncQueue.isDisposed,
+        isStopped: () => this.session.isDisposed,
       })
     )
     this.run.deps.console.debug("Re-checked FIO transaction reconciliation.", {
