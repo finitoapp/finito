@@ -1,10 +1,14 @@
 import { defaultConfig } from "@tamagui/config/v6"
-import { createTamagui } from "tamagui"
+import { createTamagui, isWeb } from "tamagui"
 import { appThemes } from "./src/theme/themes"
 import { radius } from "./src/theme/tokens"
 
+// The APK carries one Inter face per weight (app.config.ts), which Tamagui
+// swaps in by `face`. On web Tamagui sets only the family and the weight,
+// so the PWA names the variable Inter it bundles (platform/web-styles.web.ts),
+// with sans-serif behind it rather than the browser's serif default.
 const inter = {
-  family: "Inter",
+  family: isWeb ? "'Inter Variable', sans-serif" : "Inter",
   face: {
     400: { normal: "Inter" },
     500: { normal: "InterMedium" },

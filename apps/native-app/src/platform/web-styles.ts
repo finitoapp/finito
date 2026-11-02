@@ -1,2 +1,3 @@
-// Web's `web-styles.ts` styles the browser's scrollbar; native has none to style.
+// The web half loads Inter, which the APK already carries, and styles the
+// browser's scrollbar, which native does not have.
 export {}
