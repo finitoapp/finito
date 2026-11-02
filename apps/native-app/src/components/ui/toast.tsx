@@ -57,7 +57,12 @@ export function Toast({
 }) {
   const icon = icons[variant]
   return (
-    <ToastFrame onPress={onPress} role="alert" aria-live="assertive">
+    <ToastFrame
+      onPress={onPress}
+      cursor={onPress === undefined ? undefined : "web:pointer"}
+      role="alert"
+      aria-live="assertive"
+    >
       {icon === null ? null : <Icon icon={icon} color="popover-foreground" />}
       <Text flex={1} fontSize={13} color="popover-foreground">
         {message}
@@ -71,6 +76,7 @@ export function Toast({
           bg="popover-foreground"
           role="button"
           hitSlop={12}
+          cursor="web:pointer"
           onPress={action.onPress}
         >
           <Text

@@ -217,6 +217,7 @@ function WithdrawHistory({
                   lineHeight="sm"
                   textDecorationLine="underline"
                   role="link"
+                  cursor="web:pointer"
                   onPress={() =>
                     router.push("/settings/payment-accounts/spark/transactions")
                   }

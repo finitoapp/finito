@@ -7,8 +7,12 @@ import {
   styled,
   Text,
   useTheme,
-  View,
 } from "tamagui"
+import {
+  ButtonFrame as ButtonBehaviorFrame,
+  type ButtonBehaviorProps,
+  useButton,
+} from "tamagui/unstyled"
 import type { ThemeColor } from "../../theme/themes.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
@@ -16,8 +20,11 @@ import { Icon } from "./icon.tsx"
 /**
  * Web `apps/web-app/src/components/ui/button.tsx`: the same `variant` and
  * `size` names and defaults, as a `styled()` frame and text sharing a styled
- * context. Built on Tamagui `View`/`Text` rather than Tamagui `Button`, whose
- * own icon and text theming would fight these variants.
+ * context. Built on Tamagui's unstyled button (`tamagui/unstyled`), which on
+ * web renders a real `<button>` that takes focus and the keyboard, rather
+ * than the styled `Button` from `tamagui`, whose own sizes, `level2` theme and
+ * icon theming would fight these variants. That skin's `web:pointer` cursor
+ * is the one part kept.
  *
  * Tailwind mirrored: `rounded-lg` (8.8), `border` (1, transparent),
  * `text-sm font-medium` (14/500), `h-8 px-2.5 gap-1.5` (32/10/6) for
@@ -48,16 +55,16 @@ const ButtonContext = createStyledContext<{
   size: ButtonSize
 }>({ variant: "default", size: "default" })
 
-const ButtonFrame = styled(View, {
+const ButtonFrame = styled(ButtonBehaviorFrame, {
   name: "Button",
   context: ButtonContext,
-  role: "button",
   flexDirection: "row",
   items: "center",
   justify: "center",
   borderWidth: 1,
   borderColor: "transparent",
   rounded: radius.lg,
+  cursor: "web:pointer",
 
   variants: {
     variant: {
@@ -199,37 +206,46 @@ export function Button({
   const color = labelColor ?? textColors[variant]
   const iconSize = iconSizes[size]
   const content = label ?? children
+  // On web: a `<button>`, `disabled` and out of the tab order while inactive,
+  // and an inert `<span>` (no role, no onPress) when nested in another button.
+  const { props: buttonProps } = useButton<
+    ButtonBehaviorProps & Pick<GetProps<typeof ButtonFrame>, "role" | "onPress">
+  >({
+    role: "button",
+    onPress: inactive ? undefined : onPress,
+    disabled: inactive,
+    children: (
+      <>
+        {pending ? (
+          <ActivityIndicator size={iconSize} color={theme[color]?.val} />
+        ) : iconStart === undefined ? null : (
+          <Icon icon={iconStart} size={iconSize} color={color} />
+        )}
+        {typeof content === "string" ? (
+          <ButtonText
+            numberOfLines={1}
+            {...(labelColor === undefined ? {} : { color: labelColor })}
+          >
+            {content}
+          </ButtonText>
+        ) : (
+          content
+        )}
+        {iconEnd === undefined ? null : (
+          <Icon icon={iconEnd} size={iconSize} color={color} />
+        )}
+      </>
+    ),
+  })
   return (
     <ButtonFrame
+      {...frameProps}
+      {...buttonProps}
       variant={variant}
       size={size}
-      disabled={inactive}
-      onPress={inactive ? undefined : onPress}
       hitSlop={hitSlops[size]}
-      role="button"
       aria-label={ariaLabel ?? label}
-      aria-disabled={inactive}
       aria-busy={pending}
-      {...frameProps}
-    >
-      {pending ? (
-        <ActivityIndicator size={iconSize} color={theme[color]?.val} />
-      ) : iconStart === undefined ? null : (
-        <Icon icon={iconStart} size={iconSize} color={color} />
-      )}
-      {typeof content === "string" ? (
-        <ButtonText
-          numberOfLines={1}
-          {...(labelColor === undefined ? {} : { color: labelColor })}
-        >
-          {content}
-        </ButtonText>
-      ) : (
-        content
-      )}
-      {iconEnd === undefined ? null : (
-        <Icon icon={iconEnd} size={iconSize} color={color} />
-      )}
-    </ButtonFrame>
+    />
   )
 }

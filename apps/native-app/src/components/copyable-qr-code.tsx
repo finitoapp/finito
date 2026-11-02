@@ -35,6 +35,7 @@ export const CopyableQrCode = memo(function CopyableQrCode({
       style={{ backgroundColor: "#fff" }}
       role="button"
       aria-label={t("paymentWait.copyQr")}
+      cursor="web:pointer"
       onPress={() =>
         void copy(value, {
           copied: t("paymentWait.qrCopied"),

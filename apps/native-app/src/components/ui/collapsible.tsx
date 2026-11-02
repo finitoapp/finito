@@ -80,6 +80,7 @@ export function CollapsibleTrigger({
       aria-expanded={open}
       aria-disabled={disabled}
       hitSlop={8}
+      cursor={disabled ? undefined : "web:pointer"}
       onPress={disabled ? undefined : () => setOpen(!open)}
       {...viewProps}
     >

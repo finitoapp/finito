@@ -42,6 +42,7 @@ export function ProfileCard() {
       px={16}
       py={12}
       bg="card press:accent"
+      cursor="web:pointer"
       onPress={() => router.push("/settings/profile")}
       role="link"
       aria-label={name ?? t("settings.profile.setName")}

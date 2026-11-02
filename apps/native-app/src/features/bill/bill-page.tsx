@@ -1245,6 +1245,7 @@ function ItemBrick({
         bg="transparent press:card-ring"
         role="button"
         aria-label={t("bill.brick.add.aria", { name })}
+        cursor="web:pointer"
         onPress={() => {
           hapticButtonPress()
           onAdd()

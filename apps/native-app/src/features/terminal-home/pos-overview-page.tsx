@@ -183,6 +183,7 @@ export function PosOverviewPage() {
               fontWeight={fontWeight.medium}
               textDecorationLine="underline"
               role="link"
+              cursor="web:pointer"
               onPress={() => router.push("/settings/tables")}
             >
               {t("home.pos.addTables")}

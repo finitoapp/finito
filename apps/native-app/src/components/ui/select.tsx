@@ -93,6 +93,7 @@ const TriggerFrame = styled(View, {
   borderWidth: 1,
   borderColor: "input",
   bg: "input-bg press:input-50",
+  cursor: "web:pointer",
 
   variants: {
     size: {
@@ -225,6 +226,7 @@ const ItemFrame = styled(View, {
   pr: 8,
   rounded: radius.md,
   bg: "transparent press:accent",
+  cursor: "web:pointer",
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },

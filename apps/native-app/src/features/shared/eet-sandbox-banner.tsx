@@ -32,6 +32,7 @@ function SandboxBanner() {
       <XStack
         testID="eet-sandbox-banner"
         role="link"
+        cursor="web:pointer"
         onPress={() => router.push("/settings/eet")}
         h={40}
         items="center"

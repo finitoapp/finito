@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
+import ts from "typescript"
 import { expect, test } from "vitest"
 
 /**
@@ -44,6 +45,8 @@ const allowedInUi = (file: string, specifier: string): boolean => {
   return (
     uiPackages.has(specifier) ||
     specifier === "tamagui" ||
+    // The behavior-only primitives the kit skins (`ui/button` on its button).
+    specifier === "tamagui/unstyled" ||
     specifier === "lucide-react-native" ||
     specifier.startsWith("lucide-react-native/icons/")
   )
@@ -211,6 +214,169 @@ test("kitBypasses allows the rest of both packages and type-only imports", () =>
       import { Switch } from "../../components/ui/switch.tsx"
     `)
   ).toEqual([])
+})
+
+const parseTsx = (file: string, source: string): ts.SourceFile =>
+  ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  )
+
+/**
+ * The `styled()` frames a file declares (only its exported ones with
+ * `exportedOnly`), by name, each with whether its own style sets `cursor`.
+ */
+const styledFrameCursors = (
+  sourceFile: ts.SourceFile,
+  exportedOnly = false
+): ReadonlyMap<string, boolean> =>
+  new Map(
+    sourceFile.statements
+      .filter(ts.isVariableStatement)
+      .filter(
+        (statement) =>
+          !exportedOnly ||
+          statement.modifiers?.some(
+            (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+          ) === true
+      )
+      .flatMap((statement) => statement.declarationList.declarations)
+      .flatMap((declaration) => {
+        const call = declaration.initializer
+        if (
+          !ts.isIdentifier(declaration.name) ||
+          call === undefined ||
+          !ts.isCallExpression(call) ||
+          call.expression.getText(sourceFile) !== "styled"
+        )
+          return []
+        const style = call.arguments[1]
+        const hasCursor =
+          style !== undefined &&
+          ts.isObjectLiteralExpression(style) &&
+          style.properties.some(
+            (property) => property.name?.getText(sourceFile) === "cursor"
+          )
+        return [[declaration.name.text, hasCursor] as const]
+      })
+  )
+
+/** The local names a file imports as values from `tamagui`. */
+const tamaguiImports = (sourceFile: ts.SourceFile): ReadonlySet<string> =>
+  new Set(
+    sourceFile.statements.flatMap((statement) => {
+      if (
+        !ts.isImportDeclaration(statement) ||
+        !ts.isStringLiteral(statement.moduleSpecifier) ||
+        statement.moduleSpecifier.text !== "tamagui"
+      )
+        return []
+      const bindings = statement.importClause?.namedBindings
+      if (bindings === undefined || !ts.isNamedImports(bindings)) return []
+      return bindings.elements
+        .filter((element) => !element.isTypeOnly)
+        .map((element) => element.name.text)
+    })
+  )
+
+/**
+ * Elements in `source` that take `onPress` but show no pointer cursor on web:
+ * a tamagui primitive (`View`, `XStack`, `Text`, ...) without a `cursor`
+ * prop, or a `styled()` frame (its own, or an exported one in
+ * `sharedFrames`) whose style sets none. Other tags draw their own cursor:
+ * the kit's components are checked in their own files, and react-native's
+ * `Pressable` sets one itself.
+ */
+const pressablesWithoutCursor = (
+  file: string,
+  source: string,
+  sharedFrames: ReadonlyMap<string, boolean> = new Map()
+): ReadonlyArray<string> => {
+  const sourceFile = parseTsx(file, source)
+  const frames = styledFrameCursors(sourceFile)
+  const primitives = tamaguiImports(sourceFile)
+  const violations: string[] = []
+  const visit = (node: ts.Node): void => {
+    const opening = ts.isJsxElement(node)
+      ? node.openingElement
+      : ts.isJsxSelfClosingElement(node)
+        ? node
+        : undefined
+    if (opening !== undefined) {
+      const tag = opening.tagName.getText(sourceFile)
+      const attributes = new Set(
+        opening.attributes.properties.flatMap((attribute) =>
+          ts.isJsxAttribute(attribute)
+            ? [attribute.name.getText(sourceFile)]
+            : []
+        )
+      )
+      const frameCursor = primitives.has(tag)
+        ? false
+        : (frames.get(tag) ?? sharedFrames.get(tag))
+      if (
+        attributes.has("onPress") &&
+        frameCursor === false &&
+        !attributes.has("cursor")
+      ) {
+        const { line } = sourceFile.getLineAndCharacterOfPosition(
+          opening.getStart()
+        )
+        violations.push(`${tag} at line ${line + 1}`)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return violations
+}
+
+test("every pressable shows the pointer cursor on web", () => {
+  // Tamagui's views have no cursor of their own, so a pressable one showed
+  // the arrow under the mouse in the web build.
+  const files = [
+    ...sourceFiles(srcDir),
+    ...sourceFiles(path.resolve(srcDir, "../app")),
+  ].filter((file) => file.endsWith(".tsx"))
+  const sources = new Map(
+    files.map((file) => [file, readFileSync(file, "utf8")] as const)
+  )
+  const sharedFrames = new Map(
+    [...sources].flatMap(([file, source]) => [
+      ...styledFrameCursors(parseTsx(file, source), true),
+    ])
+  )
+  const violations = [...sources].flatMap(([file, source]) =>
+    pressablesWithoutCursor(file, source, sharedFrames).map(
+      (element) => `${relativeToSrc(file)}: ${element}`
+    )
+  )
+  expect(violations).toEqual([])
+})
+
+test("pressablesWithoutCursor checks tamagui primitives and styled frames", () => {
+  expect(
+    pressablesWithoutCursor(
+      "example.tsx",
+      `import { Text, type View as V, XStack } from "tamagui"
+        const Bare = styled(View, { h: 8 })
+        const Pointer = styled(View, { h: 8, cursor: "web:pointer" })
+        const a = <XStack onPress={go} />
+        const b = <Text cursor="web:pointer" onPress={go} />
+        const c = <Bare onPress={go}>x</Bare>
+        const d = <Bare cursor="web:pointer" onPress={go} />
+        const e = <Pointer onPress={go} />
+        const f = <Button onPress={go} />
+        const g = <Bare />
+        const h = <Shell onPress={go} />
+        const i = <V onPress={go} />
+      `,
+      new Map([["Shell", false]])
+    )
+  ).toEqual(["XStack at line 4", "Bare at line 6", "Shell at line 11"])
 })
 
 test("text fields pad with pl/pr, so a caller's inner icon padding wins", () => {

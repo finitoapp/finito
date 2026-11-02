@@ -355,6 +355,7 @@ function OnchainTxid({
             gap="1"
             role="link"
             aria-label={t("withdraw.detail.viewOnExplorer")}
+            cursor="web:pointer"
             onPress={() =>
               void Linking.openURL(`https://mempool.space/tx/${shown}`)
             }
