@@ -21,14 +21,16 @@ const transportLabel = (url: string): string => {
 /**
  * The relay state of `url` for `ownerId` in the database `name`, or null
  * while the shared worker has not reported it — before it connects, or right
- * after a transport change reopens the app database.
+ * after a transport change reopens the app database — and for a URL Evolu
+ * cannot dial (`resolveTransportUrl`).
  */
 export const findRelaySyncState = (
   state: SyncState | null,
   name: Name,
   ownerId: OwnerId,
-  url: string
+  url: string | null
 ): RelaySyncState | null => {
+  if (url === null) return null
   const label = transportLabel(url)
   return (
     syncStateToRelaySyncStates(state, name, ownerId).find(

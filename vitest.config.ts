@@ -56,6 +56,10 @@ export default defineConfig({
             "apps/native-app/src/ui-parity/**/*.test.ts",
             "apps/native-app/src/e2e/**/*.test.ts",
           ],
+          // Its polyfills import its native modules from `react-native`, so
+          // it goes through Vitest, where a test's mock of `react-native`
+          // reaches it, instead of loading React Native's Flow source.
+          server: { deps: { inline: ["@evolu/react-native"] } },
         },
       },
       { test: { name: "tools", include: ["bin/**/*.test.ts"] } },

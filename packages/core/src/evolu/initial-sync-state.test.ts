@@ -2,6 +2,7 @@ import {
   createId,
   createIdFromString,
   Millis,
+  RelayUrl,
   testAppOwner,
   testCreateDeps,
   testName,
@@ -73,7 +74,7 @@ const relay = (
     transport: {
       type: "WebSocket",
       id: transportId,
-      label: `wss://${transportId}.example`,
+      label: RelayUrl.orThrow(`wss://${transportId.toLowerCase()}.example/`),
       connection,
     },
     route,

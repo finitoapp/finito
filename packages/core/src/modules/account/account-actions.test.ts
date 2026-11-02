@@ -479,7 +479,7 @@ describe("account actions", () => {
       )
       .toMatchObject([{ isDeleted: sqliteTrue }])
 
-    // Back to an account used before: re-saving it restamps `createdAt`, so
+    // Back to an account used before: re-saving it makes it the latest save, so
     // it is still the one picked once disabled, not the EUR one in between.
     await run.ok(saveCashRegisterAccount({ enabled: true, currency: "CZK" }))
     await expect(

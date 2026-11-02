@@ -4,9 +4,9 @@ import {
   createOwnerWebSocketTransport,
   deriveShardOwner,
   type Name,
-  type NonEmptyReadonlyArray,
   type OwnerId,
   type OwnerTransport,
+  RelayUrlFromString,
   type ShardOwner,
 } from "@evolu/common"
 
@@ -36,18 +36,20 @@ export const deriveCashuShardOwner = (
 /**
  * One transport per relay for one Linky owner. The app Evolu is created
  * without transports, and Payky's own relay rows address its own owner, so
- * every Linky owner gets explicit ones.
+ * every Linky owner gets explicit ones. A relay URL comes from Linky's synced
+ * settings too, so one Evolu cannot dial is left out; the rest are written in
+ * the canonical spelling Evolu requires (`wss://evolu.linky.fit/`).
  */
 export const linkyOwnerTransports = (
   ownerId: OwnerId,
-  relays: NonEmptyReadonlyArray<string>
-): NonEmptyReadonlyArray<OwnerTransport> => {
-  const [first, ...rest] = relays
-  return [
-    createOwnerWebSocketTransport({ url: first, ownerId }),
-    ...rest.map((url) => createOwnerWebSocketTransport({ url, ownerId })),
-  ]
-}
+  relays: ReadonlyArray<string>
+): Array<OwnerTransport> =>
+  relays.flatMap((relay) => {
+    const url = RelayUrlFromString.fromUnknown(relay)
+    return url.ok
+      ? [createOwnerWebSocketTransport({ url: url.value, ownerId })]
+      : []
+  })
 
 /**
  * An owner counts as synced once one of its relays completed a sync round

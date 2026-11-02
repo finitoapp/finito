@@ -47,9 +47,7 @@ describe("core workspace boundary", () => {
       const source = readFileSync(resolve(sourceRoot, file), "utf8")
       const forbidden = imports(source).filter(
         (specifier) =>
-          /^(?:node:|better-sqlite3$|@evolu\/nodejs(?:\/|$))/u.test(
-            specifier
-          ) ||
+          /^(?:node:|@evolu\/nodejs(?:\/|$))/u.test(specifier) ||
           specifier.includes("/runtime/") ||
           specifier.includes("/testing/")
       )

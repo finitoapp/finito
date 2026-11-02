@@ -6,7 +6,7 @@ import { kvStore } from "./kv-store"
 /**
  * Per-device view state that must not sync and is harmless to lose, as web's
  * `useLocalStorageState` (AGENTS.md's localStorage exception), kept in
- * expo-sqlite's key-value store under web's keys. It is read synchronously
+ * an MMKV store under web's keys (`kv-store.ts`). It is read synchronously
  * when the atom is created (at module load), so the stored value shows on
  * the first frame; a missing, corrupted or stale entry, or a failing store,
  * falls back to `initial`, and a failed write is dropped.

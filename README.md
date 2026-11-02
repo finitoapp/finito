@@ -337,13 +337,14 @@ The CLI reads `.env` files automatically. Environment variables are validated at
 startup with `@t3-oss/env-core` and Zod.
 
 ```bash
-PAYKY_SQLITE_PATH=./.data/payky.db bun run cli payments list
+PAYKY_DATA_DIR=./.data bun run cli payments list
 bun --env-file=.env.cli apps/cli/src/cli.ts accounts list
 ```
 
 Supported variables:
 
-- `PAYKY_SQLITE_PATH`: SQLite database file path. Defaults to `.data/payky.db` at the repository root.
+- `PAYKY_DATA_DIR`: the directory of the CLI's database, `payky.db`, on Evolu's own SQLite
+  (`@evolu/nodejs`, prebuilt for macOS and Linux). Defaults to `.data` at the repository root.
   An explicit relative path is resolved against the caller's working directory.
 - `PAYKY_AI_BASE_URL`: OpenAI-compatible endpoint. Defaults to Payky's AI
   proxy, `https://payky.me/api/ai/v1`, which holds the provider and its key

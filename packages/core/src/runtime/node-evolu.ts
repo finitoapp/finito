@@ -1,18 +1,16 @@
 import { rmSync } from "node:fs"
+import { resolve } from "node:path"
 import {
-  type CreateSqliteDriverDep,
   constVoid,
   createConsole,
   createConsoleStoreOutput,
   createMessagePort,
-  createPreparedStatementsCache,
   createRun,
   createSharedWorker,
   createSqlite,
   createWorker,
   Name,
   ok,
-  type SqliteRow,
   testCreateBroadcastChannel,
   testCreateLockManager,
   testCreateMessageChannel,
@@ -21,91 +19,37 @@ import {
 import {
   createEvoluDeps,
   type DbWorkerInit,
+  type DeleteDatabaseFiles,
   type DevicePersistence,
   initSharedWorker,
   type SharedWorkerInput,
   type SharedWorkerOutput,
   startDbWorker,
 } from "@evolu/common/local-first"
-import BetterSQLite, { type Statement } from "better-sqlite3"
+import { createNodeJsSqliteDriver } from "@evolu/nodejs"
 import { createTestAppEvolu } from "../evolu/client.ts"
 
-const createSqliteDep = (
-  filename: "memory" | string
-): CreateSqliteDriverDep => ({
-  createSqliteDriver: (_name, options) => () => {
-    const sqliteFilename =
-      filename === "memory" || options?.mode === "memory"
-        ? ":memory:"
-        : filename
-    const filenamesToDelete =
-      sqliteFilename === ":memory:"
-        ? []
-        : [
-            sqliteFilename,
-            `${sqliteFilename}-shm`,
-            `${sqliteFilename}-wal`,
-            `${sqliteFilename}-journal`,
-          ]
+/**
+ * Where a Node Evolu keeps its database: in memory, for tests, or in the file
+ * `payky.db` in the working directory, the only place Evolu's Node driver
+ * opens a file (the CLI moves there first).
+ */
+export type NodeEvoluMode = "memory" | "file"
 
-    using disposer = new DisposableStack()
-    const db = disposer.adopt(new BetterSQLite(sqliteFilename), (db) => {
-      db.close()
-    })
-    const cache = disposer.use(
-      createPreparedStatementsCache<Statement>(
-        (sql) => db.prepare(sql),
-        constVoid
-      )
-    )
-    const disposables = disposer.move()
+const databaseName = Name.orThrow("payky")
 
-    return ok({
-      exec: (query) => {
-        const prepared = cache.get(query, true)
+/**
+ * Deletes the files of a closed database, as the DbWorker asks: the file and
+ * its journal or log, those that exist.
+ */
+const deleteDatabaseFiles: DeleteDatabaseFiles = (name) => () => {
+  const file = resolve(`${name}.db`)
+  for (const path of [file, `${file}-journal`, `${file}-wal`, `${file}-shm`])
+    rmSync(path, { force: true })
+  return ok()
+}
 
-        if (prepared.reader) {
-          const rows = prepared.all(query.parameters) as Array<SqliteRow>
-          return { rows, changes: 0 }
-        }
-
-        const changes = prepared.run(query.parameters).changes
-        return { rows: [], changes }
-      },
-      iterate: (query, onRow) => {
-        // A statement of its own, as @evolu/nodejs does: onRow may run
-        // queries that would otherwise reuse the cached one while it is busy.
-        for (const row of db.prepare(query.sql).iterate(query.parameters)) {
-          if (!onRow(row as SqliteRow)) break
-        }
-      },
-      export: () => {
-        const file = db.serialize()
-        const { buffer } = file
-
-        if (buffer instanceof ArrayBuffer) {
-          return new Uint8Array(buffer, file.byteOffset, file.byteLength)
-        }
-
-        return new Uint8Array(file)
-      },
-      deleteDatabase: () => {
-        using deleteDisposer = new DisposableStack()
-        for (const filename of filenamesToDelete) {
-          deleteDisposer.defer(() => {
-            rmSync(filename, { force: true })
-          })
-        }
-        deleteDisposer.use(disposables)
-      },
-      [Symbol.dispose]: () => {
-        disposables.dispose()
-      },
-    })
-  },
-})
-
-export const setupRunWithEvoluDeps = async (mode: "memory" | string) => {
+export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
   await using disposer = new AsyncDisposableStack()
 
   const consoleStoreOutput = createConsoleStoreOutput()
@@ -133,8 +77,14 @@ export const setupRunWithEvoluDeps = async (mode: "memory" | string) => {
     })
   )
 
+  // One connection, which the DbWorker and `sqlite` below share: a second
+  // memory database would be another one, and Evolu's driver lets one
+  // connection of a process hold a file at a time.
   const driver = await run.ok(
-    createSqliteDep(mode).createSqliteDriver(Name.orThrow("test"))
+    createNodeJsSqliteDriver(
+      databaseName,
+      mode === "memory" ? { mode: "memory" } : undefined
+    )
   )
 
   const workerRun = disposer.use(
@@ -145,6 +95,7 @@ export const setupRunWithEvoluDeps = async (mode: "memory" | string) => {
       createMessagePort,
       lockManager,
       createSqliteDriver: () => () => ok(driver),
+      deleteDatabaseFiles,
     })
   )
 
@@ -165,9 +116,7 @@ export const setupRunWithEvoluDeps = async (mode: "memory" | string) => {
   })
   disposer.use(await sharedWorkerInit.promise)
 
-  const sqlite = disposer.use(
-    await workerRun.ok(createSqlite(Name.orThrow("test")))
-  )
+  const sqlite = disposer.use(await workerRun.ok(createSqlite(databaseName)))
   // createEvoluDeps owns the shared worker and speaks its tab protocol
   // (Waiting/Connected/DbWorkerInit, tab leader election).
   const evoluDeps = disposer.use(
@@ -188,8 +137,8 @@ export const setupRunWithEvoluDeps = async (mode: "memory" | string) => {
   } as const
 }
 
-/** App Evolu on an explicit Node SQLite file, or `"memory"` for tests. */
-export const createNodeEvolu = async (mode: "memory" | string) => {
+/** App Evolu on Node, in memory for tests or in `payky.db` for the CLI. */
+export const createNodeEvolu = async (mode: NodeEvoluMode) => {
   await using disposer = new AsyncDisposableStack()
 
   const { run } = disposer.use(await setupRunWithEvoluDeps(mode))

@@ -7,7 +7,7 @@ const { evoluError } = nativeRun.deps
 
 /**
  * Throws an Evolu error reported before the first screen into the root error
- * boundary. Evolu reports a database that fails to open (a native SQLCipher
+ * boundary. Evolu reports a database that fails to open (a native SQLite
  * that cannot load, say) to its error store rather than rejecting, and the
  * queries the start waits on then never settle: without this, the splash the
  * root layout holds stayed up for good instead of the error screen.

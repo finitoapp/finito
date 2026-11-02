@@ -44,10 +44,10 @@ export const evoluAtom = atom(async (get, options) => {
   // fictional history must not reach a relay (demo-data/0001).
   const transports =
     account.demo === null
-      ? account.transports.map((transport) => ({
-          ...transport,
-          url: resolveTransportUrl(transport.url, evolu.appOwner.id),
-        }))
+      ? account.transports.flatMap((transport) => {
+          const url = resolveTransportUrl(transport.url, evolu.appOwner.id)
+          return url === null ? [] : [{ ...transport, url }]
+        })
       : []
 
   const unuse = isNonEmptyArray(transports)

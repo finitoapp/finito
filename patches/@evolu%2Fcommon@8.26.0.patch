@@ -1,82 +1,8 @@
-diff --git a/dist/src/Worker.js b/dist/src/Worker.js
-index 09d00e0d089190e40d2ccbbe27c78b6fd58da24b..57c80c8198a5dc57c4dc2e29ebd48bdfce2c59e1 100644
---- a/dist/src/Worker.js
-+++ b/dist/src/Worker.js
-@@ -474,26 +474,61 @@ const createPort = ({ receive, peerReceive, native, }) => {
- const pendingWorkerTaskIds = new Set();
- const workerTaskIdleWaiters = new Set();
- let workerTaskIdleCheckTimeoutId;
-+/**
-+ * Payky patch: how in-memory worker messages are delivered, one task each.
-+ * React Native's `setTimeout(fn, 0)` waits for the next display frame
-+ * (Android fires JS timers from Choreographer frame callbacks), so each of a
-+ * query's ~4 hops cost 8-17 ms and a round trip 35-75 ms although SQLite took
-+ * ~1 ms. React Native's runtime scheduler (`nativeRuntimeScheduler`, the new
-+ * architecture's event loop, which React schedules its work on) runs a task
-+ * as soon as the JS thread is free, still as its own task that input can come
-+ * between. Its `setImmediate` is only a microtask shim there, so it is used
-+ * only where it is a real task (Node); elsewhere `setTimeout` stays.
-+ */
-+const nativeRuntimeScheduler = globalThis.nativeRuntimeScheduler;
-+const scheduleMacrotask = nativeRuntimeScheduler != null
-+    ? (callback) => nativeRuntimeScheduler.unstable_scheduleCallback(nativeRuntimeScheduler.unstable_NormalPriority, () => {
-+        callback();
-+        // A returned function would be taken as a continuation.
-+        return undefined;
-+    })
-+    : typeof globalThis.setImmediate === "function" &&
-+        typeof globalThis.process?.versions?.node === "string"
-+        ? (callback) => globalThis.setImmediate(callback)
-+        : (callback) => setTimeout(callback, 0);
-+const cancelMacrotask = nativeRuntimeScheduler != null
-+    ? (task) => nativeRuntimeScheduler.unstable_cancelCallback(task)
-+    : typeof globalThis.setImmediate === "function" &&
-+        typeof globalThis.process?.versions?.node === "string"
-+        ? (task) => globalThis.clearImmediate(task)
-+        : (task) => clearTimeout(task);
-+/** The scheduler task behind each id `scheduleWorkerTask` hands out. */
-+const taskById = new WeakMap();
- const scheduleWorkerTask = (callback) => {
-     if (workerTaskIdleCheckTimeoutId != null) {
-         clearTimeout(workerTaskIdleCheckTimeoutId);
-         workerTaskIdleCheckTimeoutId = undefined;
-     }
--    const timeoutId = setTimeout(() => {
--        pendingWorkerTaskIds.delete(timeoutId);
-+    const taskId = {};
-+    const task = scheduleMacrotask(() => {
-+        pendingWorkerTaskIds.delete(taskId);
-         try {
-             callback();
-         }
-         finally {
-             queueMicrotask(notifyWorkerTaskIdle);
-         }
--    }, 0);
--    pendingWorkerTaskIds.add(timeoutId);
--    return timeoutId;
-+    });
-+    taskById.set(taskId, task);
-+    pendingWorkerTaskIds.add(taskId);
-+    return taskId;
- };
--const cancelWorkerTask = (timeoutId) => {
--    clearTimeout(timeoutId);
--    pendingWorkerTaskIds.delete(timeoutId);
-+const cancelWorkerTask = (taskId) => {
-+    const task = taskById.get(taskId);
-+    if (task !== undefined)
-+        cancelMacrotask(task);
-+    taskById.delete(taskId);
-+    pendingWorkerTaskIds.delete(taskId);
-     queueMicrotask(notifyWorkerTaskIdle);
- };
- const notifyWorkerTaskIdle = () => {
 diff --git a/dist/src/local-first/Db.js b/dist/src/local-first/Db.js
-index d7127ea4e2e47ca504c27352ebff5ec0f4f2cc94..4d39f9330f31341fbfaad4b94496f40ca1588572 100644
+index 61a1177e10a4fa860411205ba7e25800ca8cd1eb..f6fce71826345fb904091530eca7312736937745 100644
 --- a/dist/src/local-first/Db.js
 +++ b/dist/src/local-first/Db.js
-@@ -845,6 +845,13 @@ const createClientStorage = (deps) => {
+@@ -1024,6 +1024,13 @@ const createClientStorage = (deps) => {
          },
      };
  };
@@ -90,7 +16,7 @@ index d7127ea4e2e47ca504c27352ebff5ec0f4f2cc94..4d39f9330f31341fbfaad4b94496f40c
  const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction(() => {
      const messagesByOwnerId = new Map();
      let clockTimestamp = deps.clock.get();
-@@ -853,6 +860,25 @@ const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction
+@@ -1032,6 +1039,25 @@ const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction
              applyLocalOnlyChange(deps)(change, now);
              continue;
          }
@@ -117,10 +43,10 @@ index d7127ea4e2e47ca504c27352ebff5ec0f4f2cc94..4d39f9330f31341fbfaad4b94496f40c
          // stores it in quarantine instead of its table.
          const nextTimestamp = sendTimestamp(deps)(clockTimestamp, now);
 diff --git a/dist/src/local-first/Evolu.d.ts b/dist/src/local-first/Evolu.d.ts
-index b73275bb3176a465567128afae43e92e2f87b3e9..0ce32eac6f3c396d690f5e1eee5162c2608f4d9c 100644
+index 93feb209b3210c60f4611af24550def4d457db4d..3ad45ec91c9c11015e1e9ac9ffc8bfa12af3db09 100644
 --- a/dist/src/local-first/Evolu.d.ts
 +++ b/dist/src/local-first/Evolu.d.ts
-@@ -434,6 +434,16 @@ export interface Evolu<S extends EvoluSchema = EvoluSchema> extends AsyncDisposa
+@@ -464,6 +464,16 @@ export interface Evolu<S extends EvoluSchema = EvoluSchema> extends AsyncDisposa
       * @see {@link Mutation}
       */
      readonly upsert: Mutation<S, "upsert">;
@@ -138,10 +64,10 @@ index b73275bb3176a465567128afae43e92e2f87b3e9..0ce32eac6f3c396d690f5e1eee5162c2
       * Returns the size of a mutation of `table` with `values`, measured as
       * {@link maxMutationSize} describes.
 diff --git a/dist/src/local-first/Evolu.js b/dist/src/local-first/Evolu.js
-index a3b5d88240a509e8253ee1e3ffec977329d40a23..652e8d4f1c51883b00efeb1ecbfbac8545fb0486 100644
+index 74e5b705f1317baee1478449abd6f48b24e6a2d4..087555a84dad35c8595916ddbd0acd33fa7d3d19 100644
 --- a/dist/src/local-first/Evolu.js
 +++ b/dist/src/local-first/Evolu.js
-@@ -476,6 +476,7 @@ export const createEvolu = (schema, config) => async (run) => {
+@@ -523,6 +523,7 @@ export const createEvolu = (schema, config) => async (run) => {
                  return;
              postMessage({ type: "UseOwner", actions });
          }));
@@ -149,9 +75,9 @@ index a3b5d88240a509e8253ee1e3ffec977329d40a23..652e8d4f1c51883b00efeb1ecbfbac85
          const createMutation = (kind) => (table, values, options) => {
              const { id = createId(run.deps), isDeleted, ...changeValues } = values;
              const dbChange = {
-@@ -541,7 +542,14 @@ export const createEvolu = (schema, config) => async (run) => {
-                 });
-             }
+@@ -593,7 +594,14 @@ export const createEvolu = (schema, config) => async (run) => {
+             // the mutation does not return rows cached before it.
+             releaseUnsubscribedLoadingPromises();
              mutateBatch.push({
 -                change: { ...dbChange, ownerId: options?.owner?.id ?? appOwner.id },
 +                change: {
@@ -165,7 +91,7 @@ index a3b5d88240a509e8253ee1e3ffec977329d40a23..652e8d4f1c51883b00efeb1ecbfbac85
                  onComplete: options?.onComplete,
              });
              return { id };
-@@ -608,6 +616,9 @@ export const createEvolu = (schema, config) => async (run) => {
+@@ -665,6 +673,9 @@ export const createEvolu = (schema, config) => async (run) => {
              insert: createMutation("insert"),
              update: createMutation("update"),
              upsert: createMutation("upsert"),

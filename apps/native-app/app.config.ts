@@ -80,7 +80,6 @@ export default {
     ],
     // No organization/project/auth token: builds upload no source maps.
     "@sentry/react-native/expo",
-    ["expo-sqlite", { useSQLCipher: true }],
     [
       "expo-splash-screen",
       {

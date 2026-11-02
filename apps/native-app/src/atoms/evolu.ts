@@ -40,10 +40,10 @@ export const evoluAtom = atom(async (get, options) => {
   // Stored URLs may carry `${appOwnerId}`; a demo account never syncs.
   const transports =
     account.demo === null
-      ? account.transports.map((transport) => ({
-          ...transport,
-          url: resolveTransportUrl(transport.url, evolu.appOwner.id),
-        }))
+      ? account.transports.flatMap((transport) => {
+          const url = resolveTransportUrl(transport.url, evolu.appOwner.id)
+          return url === null ? [] : [{ ...transport, url }]
+        })
       : []
   const unuse = isNonEmptyArray(transports)
     ? // biome-ignore lint/correctness/useHookAtTopLevel: This is not a react hook

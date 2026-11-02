@@ -4,12 +4,12 @@ import { z } from "zod"
 
 const stored = vi.hoisted(() => new Map<string, string>())
 
-vi.mock("expo-sqlite/kv-store", () => ({
-  default: {
-    getItemSync: (key: string) => stored.get(key) ?? null,
-    setItemSync: (key: string, value: string) => stored.set(key, value),
-    removeItemSync: (key: string) => stored.delete(key),
-  },
+vi.mock("react-native-mmkv", () => ({
+  createMMKV: () => ({
+    getString: (key: string) => stored.get(key),
+    set: (key: string, value: string) => stored.set(key, value),
+    remove: (key: string) => stored.delete(key),
+  }),
 }))
 
 import { viewStateAtom } from "./view-state-atom.ts"

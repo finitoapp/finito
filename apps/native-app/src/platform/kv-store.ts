@@ -1,4 +1,4 @@
-import Storage from "expo-sqlite/kv-store"
+import { createMMKV } from "react-native-mmkv"
 
 /** The synchronous key-value store `viewStateAtom` keeps view state in. */
 export interface KvStore {
@@ -7,4 +7,12 @@ export interface KvStore {
   readonly removeItemSync: (key: string) => void
 }
 
-export const kvStore: KvStore = Storage
+const storage = createMMKV({ id: "view-state" })
+
+export const kvStore: KvStore = {
+  getItemSync: (key) => storage.getString(key) ?? null,
+  setItemSync: (key, value) => storage.set(key, value),
+  removeItemSync: (key) => {
+    storage.remove(key)
+  },
+}

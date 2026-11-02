@@ -1,4 +1,5 @@
 import { type KyselyNotNull, sqliteTrue } from "@evolu/common"
+import { sql } from "kysely"
 
 import { createQuery } from "../../evolu/schema.ts"
 import type { AccountId } from "./account-types.ts"
@@ -118,6 +119,25 @@ export const ibanAccountByIdQuery = (idValue: AccountId) =>
   )
 
 /**
+ * When an account was last saved: the latest change of its `detail` row,
+ * Evolu's `updatedAt`, or `createdAt` for a row changed once. Only saving the
+ * account writes that row; retiring it changes `account` alone. Evolu's
+ * `createdAt` is the time of a row's earliest change, which saving it again
+ * leaves as it was.
+ */
+const lastSavedAt = (
+  detail:
+    | "accountIban"
+    | "accountSpark"
+    | "accountCashRegister"
+    | "accountCardSwitchio"
+    | "accountQerkoTerminal"
+    | "accountCashu"
+    | "accountLightningAddress"
+) =>
+  sql<string>`coalesce(${sql.ref(`${detail}.updatedAt`)}, ${sql.ref(`${detail}.createdAt`)})`
+
+/**
  * The account of this kind the app configures from settings — the enabled
  * one, else the most recently saved disabled one, so a disabled account still
  * shows the configuration it would come back with. Saving it retires any
@@ -125,10 +145,10 @@ export const ibanAccountByIdQuery = (idValue: AccountId) =>
  * two devices saved different values offline; the latest save wins, the same
  * on every device.
  *
- * "Latest save" is `createdAt`, which Evolu restamps on every upsert, and not
- * `updatedAt`: retiring the replaced account is an update in the very batch
- * that saves its successor, so the two share a timestamp, and only
- * `createdAt` keeps the retired one from tying with it.
+ * "Latest save" is `lastSavedAt`, not the account's own `updatedAt`:
+ * retiring the replaced account is an update in the very batch that saves its
+ * successor, so the two would share that time, and when the successor is saved
+ * disabled nothing would tell them apart.
  */
 export const fiatBankAccountQuery = createQuery((db) =>
   db
@@ -150,7 +170,7 @@ export const fiatBankAccountQuery = createQuery((db) =>
     .where("accountIban.iban", "is not", null)
     .where("accountIban.currency", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountIban"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
@@ -179,7 +199,7 @@ export const sparkAccountQuery = createQuery((db) =>
     .where("account.kind", "is not", null)
     .where("accountSpark.secret", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountSpark"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
@@ -207,7 +227,7 @@ export const cashRegisterAccountQuery = createQuery((db) =>
     .where("account.kind", "is not", null)
     .where("accountCashRegister.currency", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountCashRegister"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
@@ -234,7 +254,7 @@ export const cardSwitchioAccountQuery = createQuery((db) =>
     .where("account.kind", "is not", null)
     .where("accountCardSwitchio.currency", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountCardSwitchio"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
@@ -261,7 +281,7 @@ export const qerkoTerminalAccountQuery = createQuery((db) =>
     .where("account.kind", "is not", null)
     .where("accountQerkoTerminal.currency", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountQerkoTerminal"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
@@ -281,7 +301,7 @@ export const cashuAccountQuery = createQuery((db) =>
     .where("accountCashu.isDeleted", "is not", sqliteTrue)
     .where("account.name", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountCashu"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{ name: KyselyNotNull; kind: KyselyNotNull }>()
@@ -321,7 +341,7 @@ export const lightningAddressAccountQuery = createQuery((db) =>
     .where("account.kind", "is not", null)
     .where("accountLightningAddress.address", "is not", null)
     .orderBy("account.isDeleted")
-    .orderBy("account.createdAt", "desc")
+    .orderBy(lastSavedAt("accountLightningAddress"), "desc")
     .orderBy("account.id")
     .limit(1)
     .$narrowType<{
