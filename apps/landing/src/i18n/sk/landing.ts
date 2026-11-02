@@ -515,7 +515,7 @@ export const skLanding = {
     "Ešte v telefóne sa z nej stane nečitateľný šum a na relay odíde len ten.",
   "landing.tech.journey.encrypt.title": "Účtenka sa zašifruje",
   "landing.tech.journey.pay.body":
-    "Telefón vytvorí QR kód na 130 Kč s číslom vášho účtu. Peniaze idú z banky zákazníka rovno k vám. Ak máte Fio banku, telefón si sám overí, že dorazili.",
+    "Telefón vytvorí QR kód na 130 Kč s číslom vášho účtu. Peniaze idú z banky zákazníka rovno k vám. Ak máte účet vo Fio banke alebo v MONETE, telefón si sám overí, že dorazili.",
   "landing.tech.journey.pay.title": "Zákazník zaplatí QR kódom",
   "landing.tech.journey.sale.body":
     "Účet sa uloží priamo do telefónu. Nič nečaká na internet.",
@@ -569,7 +569,7 @@ export const skLanding = {
   "landing.tech.money.qr.create":
     "Telefón vytvorí QR kód s číslom vášho účtu, sumou a variabilným symbolom. Žiadny server sa na tom nepodieľa.",
   "landing.tech.money.qr.note":
-    "Automatické párovanie platieb zatiaľ funguje len s Fio bankou. Pri iných bankách zaplatenie potvrdíte ručne.",
+    "Automatické párovanie platieb funguje s Fio bankou a MONETA Money Bank, v mobilnej aplikácii. Pri iných bankách zaplatenie potvrdíte ručne.",
   "landing.tech.money.qr.scan":
     "Zákazník ho naskenuje v aplikácii svojej banky a platbu potvrdí.",
   "landing.tech.money.qr.title": "QR platba prevodom",
@@ -618,7 +618,7 @@ export const skLanding = {
   "landing.tech.services.ai.when": "Len keď asistenta zapnete.",
   "landing.tech.services.ai.why":
     "Náš server drží kľúč k AI modelu a otázky odovzdáva poskytovateľovi AI. Konverzácia sa nikam neukladá. Asistent si od nás navyše sťahuje dokumentáciu aplikácie, aby vedel, ako funguje.",
-  "landing.tech.services.bank.name": "Vaša banka (Fio API)",
+  "landing.tech.services.bank.name": "Vaša banka (Fio API alebo MONETA API)",
   "landing.tech.services.bank.sent": "Váš token a dopyt na pohyby na účte.",
   "landing.tech.services.bank.when": "Keď máte zapnuté párovanie platieb.",
   "landing.tech.services.body":

@@ -62,6 +62,7 @@ export type NativeRoutePath =
   | "/settings/payment-accounts"
   | "/settings/payment-accounts/iban"
   | "/settings/payment-accounts/iban/fio-plugin"
+  | "/settings/payment-accounts/iban/moneta-plugin"
   | "/settings/payment-accounts/cashu"
   | "/settings/payment-accounts/cashu/mints"
   | "/settings/payment-accounts/cashu/mints/new"
@@ -181,6 +182,8 @@ export const routeAccess = {
   "/settings/payment-accounts/iban": "admin",
   // Like web's `_terminal/settings/payment-accounts/iban/fio-plugin` (owner-only).
   "/settings/payment-accounts/iban/fio-plugin": "admin",
+  // Like web's `_terminal/settings/payment-accounts/iban/moneta-plugin` (owner-only).
+  "/settings/payment-accounts/iban/moneta-plugin": "admin",
   // Like web's `_terminal/settings/payment-accounts/cashu` (access/0009).
   "/settings/payment-accounts/cashu": "admin",
   // Like web's `_terminal/settings/payment-accounts/cashu/mints` (access/0009).

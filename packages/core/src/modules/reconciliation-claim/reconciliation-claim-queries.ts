@@ -119,28 +119,40 @@ type AppDb =
     : never
 
 /**
- * The candidate queries' "this payment is still waiting for money", in the
- * same sense as `paymentClaimsQuery`: a tombstoned claim, or one whose
- * transaction was deleted, no longer holds the payment back from the matcher.
- * A `NOT EXISTS` rather than a left join, so several claims on one payment
- * do not multiply its row either.
+ * The candidate queries' "this payment has been paid", in the same sense as
+ * `paymentClaimsQuery`: a tombstoned claim, or one whose transaction was
+ * deleted, no longer counts. An `EXISTS` rather than a left join, so several
+ * claims on one payment do not multiply its row either.
  */
-const hasNoActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
-  eb.not(
-    eb.exists(
-      eb
-        .selectFrom("reconciliationClaim")
-        .innerJoin(
-          "accountTransaction as claimedTransaction",
-          "claimedTransaction.id",
-          "reconciliationClaim.accountTransactionId"
-        )
-        .select("reconciliationClaim.id")
-        .whereRef("reconciliationClaim.paymentId", "=", "payment.id")
-        .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
-        .where("claimedTransaction.isDeleted", "is not", sqliteTrue)
-    )
+const hasActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
+  eb.exists(
+    eb
+      .selectFrom("reconciliationClaim")
+      .innerJoin(
+        "accountTransaction as claimedTransaction",
+        "claimedTransaction.id",
+        "reconciliationClaim.accountTransactionId"
+      )
+      .select("reconciliationClaim.id")
+      .whereRef("reconciliationClaim.paymentId", "=", "payment.id")
+      .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+      .where("claimedTransaction.isDeleted", "is not", sqliteTrue)
   )
+
+/** A payment still waiting for money: the matcher's default candidate. */
+const hasNoActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
+  eb.not(hasActiveClaim(eb))
+
+/**
+ * How the IBAN matcher treats a payment that is already paid. By default it
+ * skips it, so a second transfer quoting its symbols stays unclaimed.
+ * `includePaidPayments` makes it a candidate after every unpaid one, so the
+ * second transfer claims it and the payment shows as overpaid (moneta/0005):
+ * where the default finds a payment, this finds the same one.
+ */
+export interface IbanCandidateOptions {
+  readonly includePaidPayments?: boolean
+}
 
 /**
  * A canceled payment stays a candidate on purpose: money that arrives after
@@ -152,51 +164,65 @@ const hasNoActiveClaim = (eb: ExpressionBuilder<AppDb, "payment">) =>
 const liveBeforeCanceled = (eb: ExpressionBuilder<AppDb, "payment">) =>
   eb("payment.canceledAt", "is not", null)
 
+/**
+ * IBAN transactions joined to every payment whose account, symbols, amount
+ * and currency they match and, unless `includePaidPayments`, that has no
+ * active claim yet — the body of both candidate queries below, which differ
+ * only in how many transactions they ask about.
+ */
+const selectIbanReconciliationCandidates = (
+  db: Pick<Kysely<AppDb>, "selectFrom">,
+  { includePaidPayments = false }: IbanCandidateOptions
+) =>
+  db
+    .selectFrom("accountTransaction")
+    .innerJoin(
+      "accountTransactionIban",
+      "accountTransactionIban.id",
+      "accountTransaction.id"
+    )
+    .innerJoin("paymentIban", (join) =>
+      join
+        .onRef("paymentIban.accountId", "=", "accountTransaction.accountId")
+        .onRef(
+          "paymentIban.variableSymbol",
+          "=",
+          "accountTransactionIban.variableSymbol"
+        )
+        .on((eb) =>
+          eb.or([
+            eb(
+              "paymentIban.specificSymbol",
+              "=",
+              eb.ref("accountTransactionIban.specificSymbol")
+            ),
+            eb.and([
+              eb("paymentIban.specificSymbol", "is", null),
+              eb("accountTransactionIban.specificSymbol", "is", null),
+            ]),
+          ])
+        )
+    )
+    .innerJoin("payment", "payment.id", "paymentIban.id")
+    .where("accountTransaction.kind", "=", "iban")
+    .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+    .where("accountTransactionIban.isDeleted", "is not", sqliteTrue)
+    .where("accountTransactionIban.variableSymbol", "is not", null)
+    .where("paymentIban.isDeleted", "is not", sqliteTrue)
+    .where("payment.isDeleted", "is not", sqliteTrue)
+    .whereRef("payment.amount", "=", "accountTransaction.amount")
+    .whereRef("payment.currency", "=", "accountTransaction.currency")
+    .$if(!includePaidPayments, (query) => query.where(hasNoActiveClaim))
+
 export const ibanReconciliationCandidateByAccountTransactionIdQuery = (
-  accountTransactionId: AccountTransactionId
+  accountTransactionId: AccountTransactionId,
+  options: IbanCandidateOptions = {}
 ) =>
   createQuery((db) =>
-    db
-      .selectFrom("accountTransaction")
-      .innerJoin(
-        "accountTransactionIban",
-        "accountTransactionIban.id",
-        "accountTransaction.id"
-      )
-      .innerJoin("paymentIban", (join) =>
-        join
-          .onRef("paymentIban.accountId", "=", "accountTransaction.accountId")
-          .onRef(
-            "paymentIban.variableSymbol",
-            "=",
-            "accountTransactionIban.variableSymbol"
-          )
-          .on((eb) =>
-            eb.or([
-              eb(
-                "paymentIban.specificSymbol",
-                "=",
-                eb.ref("accountTransactionIban.specificSymbol")
-              ),
-              eb.and([
-                eb("paymentIban.specificSymbol", "is", null),
-                eb("accountTransactionIban.specificSymbol", "is", null),
-              ]),
-            ])
-          )
-      )
-      .innerJoin("payment", "payment.id", "paymentIban.id")
+    selectIbanReconciliationCandidates(db, options)
       .select(["payment.id as paymentId"])
       .where("accountTransaction.id", "=", accountTransactionId)
-      .where("accountTransaction.kind", "=", "iban")
-      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
-      .where("accountTransactionIban.isDeleted", "is not", sqliteTrue)
-      .where("accountTransactionIban.variableSymbol", "is not", null)
-      .where("paymentIban.isDeleted", "is not", sqliteTrue)
-      .where("payment.isDeleted", "is not", sqliteTrue)
-      .whereRef("payment.amount", "=", "accountTransaction.amount")
-      .whereRef("payment.currency", "=", "accountTransaction.currency")
-      .where(hasNoActiveClaim)
+      .orderBy(hasActiveClaim)
       .orderBy(liveBeforeCanceled)
       .orderBy("payment.id")
       .limit(1)
@@ -205,14 +231,34 @@ export const ibanReconciliationCandidateByAccountTransactionIdQuery = (
       }>()
   )
 
+/**
+ * Which of `accountTransactionIds` some unclaimed payment matches — one query
+ * for a whole sync window's unclaimed transfers, so a sync asks
+ * `reconcileAccountTransaction` (and its five reads) only about the few that
+ * can actually be claimed, instead of about every one of them.
+ */
+export const ibanTransactionsWithReconciliationCandidateQuery = (
+  accountTransactionIds: ReadonlyArray<AccountTransactionId>,
+  options: IbanCandidateOptions = {}
+) =>
+  createQuery((db) =>
+    selectIbanReconciliationCandidates(db, options)
+      .select(["accountTransaction.id as accountTransactionId"])
+      .where("accountTransaction.id", "in", accountTransactionIds)
+      .distinct()
+      .orderBy("accountTransaction.id")
+  )
+
 export const ibanReconciliationCandidateByValuesQuery = ({
   accountId,
   amount,
   currency,
   variableSymbol,
   specificSymbol,
+  includePaidPayments = false,
 }: Pick<AccountTransactionRow, "accountId"> &
-  Pick<AccountTransactionIbanRow, "variableSymbol" | "specificSymbol"> & {
+  Pick<AccountTransactionIbanRow, "variableSymbol" | "specificSymbol"> &
+  IbanCandidateOptions & {
     readonly amount: NonNegativeInteger
     readonly currency: FiatCurrency
   }) =>
@@ -228,7 +274,8 @@ export const ibanReconciliationCandidateByValuesQuery = ({
       .where("payment.isDeleted", "is not", sqliteTrue)
       .where("payment.amount", "=", amount)
       .where("payment.currency", "=", currency)
-      .where(hasNoActiveClaim)
+      .$if(!includePaidPayments, (query) => query.where(hasNoActiveClaim))
+      .orderBy(hasActiveClaim)
       .orderBy(liveBeforeCanceled)
       .orderBy("payment.id")
       .limit(1)

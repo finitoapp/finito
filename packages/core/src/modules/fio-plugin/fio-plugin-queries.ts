@@ -5,8 +5,6 @@ import {
 } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
-import type { AccountId } from "../account/account-types.ts"
-import type { NonEmptyString255 } from "../shared/schema.ts"
 import type { FioPluginId } from "./fio-plugin-types.ts"
 import { fioPluginId } from "./fio-plugin-utils.ts"
 
@@ -125,31 +123,3 @@ export const activeFioPluginsQuery = createQuery((db) =>
       iban: KyselyNotNull
     }>()
 )
-
-export const existingFioTransactionBankReferencesQuery = ({
-  accountId,
-  bankReferences,
-}: {
-  readonly accountId: AccountId
-  readonly bankReferences: ReadonlyArray<NonEmptyString255>
-}) =>
-  createQuery((db) =>
-    db
-      .selectFrom("accountTransactionIban")
-      .innerJoin(
-        "accountTransaction",
-        "accountTransaction.id",
-        "accountTransactionIban.id"
-      )
-      .select([
-        "accountTransactionIban.bankReference",
-        "accountTransactionIban.id as accountTransactionId",
-      ])
-      .where("accountTransaction.accountId", "=", accountId)
-      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
-      .where("accountTransactionIban.bankReference", "in", bankReferences)
-      .where("accountTransactionIban.bankReference", "is not", null)
-      .$narrowType<{
-        bankReference: KyselyNotNull
-      }>()
-  )

@@ -7,6 +7,7 @@ import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
 import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
 import { startFioAccountTransactionSyncJob } from "./jobs/fio-account-transaction-sync-job.ts"
 import { startLightningAddressVerifyJob } from "./jobs/lightning-address-verify-job.ts"
+import { startMonetaAccountTransactionSyncJob } from "./jobs/moneta-account-transaction-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
@@ -15,6 +16,7 @@ import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transa
  */
 export const cliBackgroundJobs = [
   startFioAccountTransactionSyncJob,
+  startMonetaAccountTransactionSyncJob,
   startSparkAccountTransactionSyncJob,
 ] satisfies ReadonlyArray<BackgroundJob>
 
@@ -26,9 +28,11 @@ const nativeBackgroundJobs = [
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**
- * A browser or PWA can't reach the FIO API directly, so its sync job is left
- * out there — the same limitation the Fio settings screen warns about in
- * `settings.fioPlugin.nativeRuntimeWarning`. Qerko allows cross-origin calls,
+ * A browser or PWA can't reach the FIO or MONETA APIs directly — neither
+ * answers a CORS preflight — so their sync jobs are left out there, the same
+ * limitation the settings screens warn about in
+ * `settings.fioPlugin.nativeRuntimeWarning` and
+ * `settings.monetaPlugin.nativeRuntimeWarning`. Qerko allows cross-origin calls,
  * so its job runs in both, and so do the wallets behind Lightning addresses.
  */
 const browserBackgroundJobs = [

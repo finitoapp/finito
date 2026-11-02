@@ -14,10 +14,12 @@
     "@scure/bip39": "2.4.0"
   },
   "peerDependencies": {
-    "react": "^19.3.0",
-    "jotai": "^3.0.1"
+    "@tanstack/react-query": "^5.104.3",
+    "jotai": "^3.0.1",
+    "react": "^19.3.0"
   },
   "devDependencies": {
+    "@tanstack/react-query": "5.104.3",
     "@types/react": "19.3.0",
     "jotai": "3.0.1"
   }

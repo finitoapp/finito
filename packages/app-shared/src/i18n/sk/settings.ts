@@ -502,6 +502,60 @@ export const skSettings = {
   "settings.fioPlugin.tokens.item": "Fio API token",
   "settings.fioPlugin.tokens.remove": "Odobrať",
   "settings.fioPlugin.tokens.title": "Tokeny",
+  "settings.monetaPlugin.title": "MONETA Plugin",
+  "settings.monetaPlugin.description":
+    "Automaticky potvrdzovať prevody na účet v MONETA Money Bank",
+  "settings.monetaPlugin.status.on": "Zapnuté",
+  "settings.monetaPlugin.status.off": "Vypnuté",
+  "settings.monetaPlugin.nativeRuntimeWarning.title":
+    "MONETA plugin funguje iba v mobilnej aplikácii.",
+  "settings.monetaPlugin.nativeRuntimeWarning.description":
+    "MONETA nepustí prehliadač k svojmu API. Pripojte token v mobilnej aplikácii {appName}, potvrdené platby potom uvidí aj tento terminál.",
+  "settings.monetaPlugin.notMonetaIbanWarning":
+    "Bankový účet nie je v MONETA Money Bank (kód banky 0600), takže nie je čo pripojiť.",
+  "settings.monetaPlugin.connect.title": "Pripojiť token",
+  "settings.monetaPlugin.connect.replaceTitle": "Pripojiť iný token",
+  "settings.monetaPlugin.connect.description":
+    "Token vytvoríte v Internet Banke MONETA v Nastavení › Správa API tokenů s právami „Pasivní – pouze náhled“. {appName} si v banke overí, že token vidí tento účet.",
+  "settings.monetaPlugin.connect.submit": "Pripojiť",
+  "settings.monetaPlugin.connect.saved": "Token MONETA pripojený.",
+  "settings.monetaPlugin.connect.error.unauthorized":
+    "Banka token odmietla. Skontrolujte, že je skopírovaný celý a nebol zrušený.",
+  "settings.monetaPlugin.connect.error.accountNotVisible":
+    "Token funguje, ale nevidí účet {iban}. Vytvorte ho pre tento účet.",
+  "settings.monetaPlugin.connect.error.rateLimited":
+    "Token dnes vyčerpal dopyty do banky. Skúste to zajtra.",
+  "settings.monetaPlugin.connect.error.unreachable":
+    "Banka neodpovedá. Skontrolujte pripojenie a skúste to znova.",
+  "settings.monetaPlugin.connect.error.unexpected":
+    "Banka odpovedala neočakávane. Skúste to neskôr.",
+  "settings.monetaPlugin.token.label": "API token MONETA",
+  "settings.monetaPlugin.token.required": "Vložte token z Internet Banky.",
+  "settings.monetaPlugin.connected.title": "Pripojený účet",
+  "settings.monetaPlugin.connected.iban": "Účet",
+  "settings.monetaPlugin.connected.token": "Token",
+  "settings.monetaPlugin.connected.ibanMismatch":
+    "Token bol pripojený pre účet {iban}, nie pre súčasný bankový účet. Pripojte token pre súčasný účet.",
+  "settings.monetaPlugin.active.label": "Automaticky potvrdzovať platby",
+  "settings.monetaPlugin.active.description":
+    "Kontroluje prichádzajúce prevody na pozadí a počas čakania na platbu.",
+  "settings.monetaPlugin.interval.label": "Sekundy medzi kontrolami na pozadí",
+  "settings.monetaPlugin.interval.description":
+    "Čakajúca platba sa kontroluje po niekoľkých sekundách bez ohľadu na toto nastavenie.",
+  "settings.monetaPlugin.interval.invalid": "Zadajte celé číslo, aspoň 60.",
+  "settings.monetaPlugin.interval.estimate":
+    "Zhruba {calls} dopytov denne na zariadenie z {limit}, ktoré banka povolí všetkým zariadeniam dokopy.",
+  "settings.monetaPlugin.lastSyncedDate.label":
+    "Dátum poslednej synchronizácie",
+  "settings.monetaPlugin.lastSyncedDate.description":
+    "Odkiaľ synchronizácia na pozadí pokračuje. Bez neho sa načítajú posledné dva mesiace.",
+  "settings.monetaPlugin.lastSyncedDate.invalid": "Zadajte platný dátum.",
+  "settings.monetaPlugin.disconnect.action": "Odpojiť",
+  "settings.monetaPlugin.disconnect.confirm.title": "Odpojiť MONETU?",
+  "settings.monetaPlugin.disconnect.confirm.description":
+    "{appName} prestane token používať na všetkých zariadeniach a prestane potvrdzovať prevody. Už potvrdené platby zostanú, ako sú. Token zostane v šifrovanej histórii synchronizácie, preto ho zrušte aj v MONETA Internet Banke.",
+  "settings.monetaPlugin.disconnect.confirm.confirm": "Odpojiť",
+  "settings.monetaPlugin.disconnect.confirm.cancel": "Zrušiť",
   "settings.homeScreen.atLeastOneMode":
     "Nechajte zapnutý aspoň jeden režim — hlavná obrazovka musí mať čo zobraziť.",
   "settings.homeScreen.modes.description":

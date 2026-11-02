@@ -4,7 +4,7 @@ import { sqliteTrue } from "@evolu/common"
 import { createQuery } from "../../evolu/schema.ts"
 import type { AccountId } from "../account/account-types.ts"
 import type { CashuOperationId } from "../cashu/cashu-types.ts"
-import type { NonEmptyString } from "../shared/schema.ts"
+import type { NonEmptyString, NonEmptyString255 } from "../shared/schema.ts"
 import type { AccountTransactionId } from "./account-transaction-types.ts"
 
 export const accountTransactionSparkByTransferIdQuery = (
@@ -103,4 +103,54 @@ export const bookedCashuOperationIdsQuery = (
         cashuOperationIds.length === 0 ? [null] : cashuOperationIds
       )
       .where("isDeleted", "is not", sqliteTrue)
+  )
+
+/**
+ * The account's IBAN transactions already recorded under one of
+ * `bankReferences` — what a bank sync checks a downloaded statement against,
+ * so a transfer is recorded once however often its window is read again.
+ * `isClaimed` says whether a payment already holds it, so the sync re-checks
+ * only the unclaimed ones for a payment that may have arrived since.
+ */
+export const ibanTransactionsByBankReferenceQuery = ({
+  accountId,
+  bankReferences,
+}: {
+  readonly accountId: AccountId
+  readonly bankReferences: ReadonlyArray<NonEmptyString255>
+}) =>
+  createQuery((db) =>
+    db
+      .selectFrom("accountTransactionIban")
+      .innerJoin(
+        "accountTransaction",
+        "accountTransaction.id",
+        "accountTransactionIban.id"
+      )
+      .select((eb) => [
+        "accountTransactionIban.bankReference",
+        "accountTransactionIban.id as accountTransactionId",
+        eb
+          .exists(
+            eb
+              .selectFrom("reconciliationClaim")
+              .select("reconciliationClaim.id")
+              .whereRef(
+                "reconciliationClaim.accountTransactionId",
+                "=",
+                "accountTransactionIban.id"
+              )
+              .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+          )
+          .$castTo<0 | 1>()
+          .as("isClaimed"),
+      ])
+      .where("accountTransaction.accountId", "=", accountId)
+      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+      .where("accountTransactionIban.isDeleted", "is not", sqliteTrue)
+      .where("accountTransactionIban.bankReference", "in", bankReferences)
+      .where("accountTransactionIban.bankReference", "is not", null)
+      .$narrowType<{
+        bankReference: KyselyNotNull
+      }>()
   )

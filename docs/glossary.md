@@ -135,6 +135,9 @@ The word "account" means two unrelated things here.
   (`lightning-address/0001`). Not the same as **Spark**, whose wallet Payky
   holds, nor as the Lightning address a withdrawal or a donation pays to.
 - **FIO** — the Czech bank whose API the IBAN sync job reads.
+- **MONETA** — MONETA Money Bank (bank code `0600`), whose VIP API the
+  MONETA sync reads with one merchant token (`monetaPlugin`,
+  `docs/decisions/moneta/`). Same role as **FIO** for its own accounts.
 - **EET** — Czech electronic registration of sales (`docs/eet.md`).
 - **Switchio** — the SwitchioPay card terminal app, driven through Android
   intents (`apps/web-app/src/platform/switchio.ts`).

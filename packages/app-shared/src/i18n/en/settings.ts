@@ -501,6 +501,61 @@ export const enSettings = {
   "settings.fioPlugin.tokens.item": "Fio API token",
   "settings.fioPlugin.tokens.remove": "Remove",
   "settings.fioPlugin.tokens.title": "Tokens",
+  "settings.monetaPlugin.title": "MONETA Plugin",
+  "settings.monetaPlugin.description":
+    "Confirm transfers to a MONETA Money Bank account automatically",
+  "settings.monetaPlugin.status.on": "On",
+  "settings.monetaPlugin.status.off": "Off",
+  "settings.monetaPlugin.nativeRuntimeWarning.title":
+    "The MONETA plugin works only in the mobile app.",
+  "settings.monetaPlugin.nativeRuntimeWarning.description":
+    "MONETA does not let a browser reach its API. Connect the token in the {appName} mobile app; this terminal then sees the confirmed payments as well.",
+  "settings.monetaPlugin.notMonetaIbanWarning":
+    "The fiat bank account is not a MONETA Money Bank account (bank code 0600), so there is nothing to connect.",
+  "settings.monetaPlugin.connect.title": "Connect a token",
+  "settings.monetaPlugin.connect.replaceTitle": "Connect another token",
+  "settings.monetaPlugin.connect.description":
+    'Create the token in MONETA Internet Banka under Nastavení › Správa API tokenů, with the rights "Pasivní – pouze náhled". {appName} checks with the bank that the token sees this account.',
+  "settings.monetaPlugin.connect.submit": "Connect",
+  "settings.monetaPlugin.connect.saved": "MONETA token connected.",
+  "settings.monetaPlugin.connect.error.unauthorized":
+    "The bank refused the token. Check that it is copied whole and has not been revoked.",
+  "settings.monetaPlugin.connect.error.accountNotVisible":
+    "The token works, but it does not see the account {iban}. Create it for that account.",
+  "settings.monetaPlugin.connect.error.rateLimited":
+    "The token has used up today's requests to the bank. Try again tomorrow.",
+  "settings.monetaPlugin.connect.error.unreachable":
+    "The bank is not answering. Check the connection and try again.",
+  "settings.monetaPlugin.connect.error.unexpected":
+    "The bank answered in an unexpected way. Try again later.",
+  "settings.monetaPlugin.token.label": "MONETA API token",
+  "settings.monetaPlugin.token.required":
+    "Paste the token from Internet Banka.",
+  "settings.monetaPlugin.connected.title": "Connected account",
+  "settings.monetaPlugin.connected.iban": "Account",
+  "settings.monetaPlugin.connected.token": "Token",
+  "settings.monetaPlugin.connected.ibanMismatch":
+    "The token was connected for the account {iban}, not the current fiat bank account. Connect a token for the current account.",
+  "settings.monetaPlugin.active.label": "Confirm payments automatically",
+  "settings.monetaPlugin.active.description":
+    "Checks the account for incoming transfers in the background and while a payment waits.",
+  "settings.monetaPlugin.interval.label": "Seconds between background checks",
+  "settings.monetaPlugin.interval.description":
+    "A waiting payment is checked every few seconds regardless of this.",
+  "settings.monetaPlugin.interval.invalid":
+    "Enter a whole number of at least 60.",
+  "settings.monetaPlugin.interval.estimate":
+    "About {calls} requests a day per device, of the {limit} the bank allows for all devices together.",
+  "settings.monetaPlugin.lastSyncedDate.label": "Last synced date",
+  "settings.monetaPlugin.lastSyncedDate.description":
+    "Where the background sync continues from. Without it, the last two months are read.",
+  "settings.monetaPlugin.lastSyncedDate.invalid": "Enter a valid date.",
+  "settings.monetaPlugin.disconnect.action": "Disconnect",
+  "settings.monetaPlugin.disconnect.confirm.title": "Disconnect MONETA?",
+  "settings.monetaPlugin.disconnect.confirm.description":
+    "{appName} stops using the token on every device and stops confirming transfers. Payments already confirmed stay as they are. The token stays in the encrypted sync history, so revoke it in MONETA Internet Banka as well.",
+  "settings.monetaPlugin.disconnect.confirm.confirm": "Disconnect",
+  "settings.monetaPlugin.disconnect.confirm.cancel": "Cancel",
   "settings.homeScreen.atLeastOneMode":
     "Keep at least one mode on — the home screen needs something to show.",
   "settings.homeScreen.modes.description":

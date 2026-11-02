@@ -5,12 +5,15 @@ import {
   fiatCurrencyCodec,
   optionalIbanCodecs,
 } from "@payky/app-shared/bank-account-codecs"
+import { bankSyncPluginLinks } from "@payky/app-shared/bank-sync-plugin-links"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
 import { saveFiatBankAccount } from "@payky/core/modules/account/account-actions"
 import { fiatBankAccountQuery } from "@payky/core/modules/account/account-queries"
 import type { BankQrFormat } from "@payky/core/modules/account/account-types"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { fiatBankAccountFioPluginQuery } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
+import { fiatBankAccountMonetaPluginQuery } from "@payky/core/modules/moneta-plugin/moneta-plugin-queries"
 import {
   czechIbanToBban,
   isFioBankIban,
@@ -35,7 +38,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.tsx"
 import { FieldDescription, FieldGroup } from "@/components/ui/field.tsx"
-import { VerticalNav } from "@/components/vertical-nav.tsx"
+import {
+  VerticalNav,
+  type VerticalNavItem,
+} from "@/components/vertical-nav.tsx"
 import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
 import { InlineEditSelect } from "@/features/settings/inline-edit-select.tsx"
 import {
@@ -53,8 +59,16 @@ export function FiatBankAccountSettingsPage() {
   const { data: settingsData } = useEvoluQuery(settingsQuery)
   const [account] = accountData
   const [settings] = settingsData
+  const [monetaPlugin] = useEvoluQuery(fiatBankAccountMonetaPluginQuery).data
 
   const iban = account?.iban ?? null
+  const [fioPlugin] = useEvoluQuery(fiatBankAccountFioPluginQuery).data
+  const { showsMonetaPlugin, showsFioPlugin, isMonetaPluginOn } =
+    bankSyncPluginLinks({
+      iban,
+      monetaPlugin,
+      hasFioPlugin: fioPlugin !== undefined,
+    })
   // Entering the first IBAN is what setting up bank transfers means, so it
   // enables the account; after that the switch on the overview owns it.
   const enabled = account ? account.isDeleted !== 1 : true
@@ -166,27 +180,57 @@ export function FiatBankAccountSettingsPage() {
       </Card>
       <VerticalNav
         items={[
-          {
-            kind: "link",
-            to: "/settings/payment-accounts/iban/fio-plugin",
-            icon: <Plug className="text-muted-foreground" />,
-            label: (
-              <span className="flex flex-col gap-1">
-                <span className="text-sm font-semibold">
-                  {t("settings.fioPlugin.title")}
-                </span>
-                <span className="text-xs leading-snug text-muted-foreground">
-                  {t("settings.fioPlugin.description")}
-                </span>
-                {iban !== null && !isFioBankIban(iban) ? (
-                  <span className="flex items-start gap-1.5 text-xs leading-snug text-warning">
-                    <TriangleAlert className="size-3.5 shrink-0" />
-                    {t("settings.fioPlugin.notFioIbanWarning")}
-                  </span>
-                ) : null}
-              </span>
-            ),
-          },
+          ...(showsMonetaPlugin
+            ? [
+                {
+                  kind: "link",
+                  to: "/settings/payment-accounts/iban/moneta-plugin",
+                  icon: <Plug className="text-muted-foreground" />,
+                  label: (
+                    <span className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">
+                        {t("settings.monetaPlugin.title")}
+                      </span>
+                      <span className="text-xs leading-snug text-muted-foreground">
+                        {t("settings.monetaPlugin.description")}
+                      </span>
+                      <span className="text-xs font-medium leading-snug">
+                        {t(
+                          isMonetaPluginOn
+                            ? "settings.monetaPlugin.status.on"
+                            : "settings.monetaPlugin.status.off"
+                        )}
+                      </span>
+                    </span>
+                  ),
+                } satisfies VerticalNavItem,
+              ]
+            : []),
+          ...(showsFioPlugin
+            ? [
+                {
+                  kind: "link",
+                  to: "/settings/payment-accounts/iban/fio-plugin",
+                  icon: <Plug className="text-muted-foreground" />,
+                  label: (
+                    <span className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">
+                        {t("settings.fioPlugin.title")}
+                      </span>
+                      <span className="text-xs leading-snug text-muted-foreground">
+                        {t("settings.fioPlugin.description")}
+                      </span>
+                      {iban !== null && !isFioBankIban(iban) ? (
+                        <span className="flex items-start gap-1.5 text-xs leading-snug text-warning">
+                          <TriangleAlert className="size-3.5 shrink-0" />
+                          {t("settings.fioPlugin.notFioIbanWarning")}
+                        </span>
+                      ) : null}
+                    </span>
+                  ),
+                } satisfies VerticalNavItem,
+              ]
+            : []),
         ]}
       />
     </>

@@ -22,9 +22,10 @@ the honest answer is "partly", the page says which part, as these do:
   friendly project built on the same principles (`defaultEvoluTransportUrls`).
   Relays see an account identifier, timing and size, not content.
 - QR payments: no Payky server takes part; automatic matching works with
-  Fio banka only. Lightning payments: Spark operators and a Lightning
-  gateway see amount and time, Payky does not. Card payments: Switchio and
-  the merchant's bank, as with any terminal.
+  Fio banka and MONETA Money Bank only (moneta/0001), in the mobile app.
+  Lightning payments: Spark operators and a Lightning gateway see amount
+  and time, Payky does not. Card payments: Switchio and the merchant's
+  bank, as with any terminal.
 - The PIN keeps staff at the counter out and does not stop an attacker
   (access/0001).
 - EET receipts go from the device to the Financial Administration

@@ -130,6 +130,18 @@ export const isFioBankIban = (value: string) => {
   return fioBankCodes[iban.slice(0, 2)] === iban.slice(4, 8)
 }
 
+/**
+ * MONETA Money Bank's code in a CZ IBAN. Its VIP API serves Czech accounts
+ * only, so an SK IBAN never counts.
+ */
+const monetaBankCode = "0600"
+
+export const isMonetaBankIban = (value: string) => {
+  const iban = normalizeIbanInput(value)
+
+  return iban.startsWith("CZ") && iban.slice(4, 8) === monetaBankCode
+}
+
 export const isValidIban = (value: string) => {
   const iban = normalizeIbanInput(value)
 

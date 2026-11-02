@@ -902,6 +902,7 @@ export const paymentRequestQuery = (paymentId: PaymentId) =>
         "payment.canceledAt",
         "payment.confirmedPaidAt",
         "payment.expiresAt",
+        "payment.createdAt",
         "paymentBtc.amountSats",
         "paymentBtcLightning.lnInvoice",
         "paymentBtcSpark.sparkInvoice",

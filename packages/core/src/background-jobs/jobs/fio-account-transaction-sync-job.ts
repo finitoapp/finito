@@ -6,24 +6,19 @@ import {
   type FioTransaction,
   fetchFioTransactionsByPeriod,
 } from "../../integrations/fio/fio-client.ts"
-import {
-  computeAccountTransactionRows,
-  upsertAccountTransactionRows,
-} from "../../modules/account-transaction/account-transaction-actions.ts"
 import type { AccountTransactionId } from "../../modules/account-transaction/account-transaction-types.ts"
 import { defaultFioPluginSyncLookbackDays } from "../../modules/fio-plugin/fio-plugin-actions.ts"
 import {
   activeFioPluginsQuery,
-  existingFioTransactionBankReferencesQuery,
   fioPluginSyncPointerByPluginIdQuery,
 } from "../../modules/fio-plugin/fio-plugin-queries.ts"
 import type { FioPluginId } from "../../modules/fio-plugin/fio-plugin-types.ts"
 import {
-  loadAutomaticReconciliationClaimForNewAccountTransaction,
-  loadBillClosedAtForPayment,
-  reconcileAccountTransaction,
-  upsertReconciliationClaimRows,
-} from "../../modules/reconciliation-claim/reconciliation-claim-actions.ts"
+  loadUnrecordedBankTransactions,
+  reconcileUnclaimedBankTransactions,
+  recordBankTransactions,
+} from "../../modules/reconciliation-claim/bank-sync-actions.ts"
+import type { BankTransaction } from "../../modules/reconciliation-claim/reconciliation-claim-types.ts"
 import {
   dateStringToDate,
   dateToDateString,
@@ -310,10 +305,8 @@ class FioPluginSync {
       if (this.syncQueue.isDisposed) return
       skippedLockedTransaction ||= !(await this.recordTransaction(transaction))
     }
-    for (const accountTransactionId of toReconcile) {
-      if (this.syncQueue.isDisposed) return
-      await this.retryReconciliation(accountTransactionId)
-    }
+    if (this.syncQueue.isDisposed) return
+    await this.retryReconciliation(toReconcile)
     if (skippedLockedTransaction) {
       this.run.deps.console.debug(
         "Did not advance FIO sync pointer because a transaction was locked.",
@@ -335,108 +328,59 @@ class FioPluginSync {
   }
 
   /**
-   * Re-attempts reconciliation for a bank reference already recorded as an
-   * account transaction, in case a prior sync recorded it but crashed or
-   * failed before claiming it — `reconcileAccountTransaction` itself is the
-   * guard against redoing work for one already claimed, at the cost of one
-   * cheap read per already-recorded transaction in the sync window.
+   * Re-attempts reconciliation for bank references already recorded but not
+   * claimed: a payment created on another device may have synced since the
+   * transfer was recorded. `reconcileUnclaimedBankTransactions` asks about
+   * them all in one query and reconciles only the ones a payment matches.
    */
   private async retryReconciliation(
-    accountTransactionId: AccountTransactionId
+    accountTransactionIds: ReadonlyArray<AccountTransactionId>
   ): Promise<void> {
-    const paymentId = await this.run.ok(
-      reconcileAccountTransaction(accountTransactionId)
+    const paymentIds = await this.run.ok(
+      reconcileUnclaimedBankTransactions({
+        accountTransactionIds,
+        isStopped: () => this.syncQueue.isDisposed,
+      })
     )
     this.run.deps.console.debug("Re-checked FIO transaction reconciliation.", {
       accountId: this.plugin.accountId,
-      accountTransactionId,
-      paymentId,
+      checkedCount: accountTransactionIds.length,
+      paymentIds,
       pluginId: this.plugin.id,
     })
   }
 
+  /**
+   * Records one transaction under its lock, so two tabs of the app do not
+   * both write it; `false` when another one holds the lock.
+   */
   private async recordTransaction(
-    transaction: FioTransaction
+    transaction: BankTransaction
   ): Promise<boolean> {
     return await this.run.deps.lockManager.request(
-      `fio-transaction-${this.plugin.accountId}-${transaction.id}`,
+      `fio-transaction-${this.plugin.accountId}-${transaction.bankReference}`,
       { ifAvailable: true },
       async (lock) => {
         if (lock === null) {
           this.run.deps.console.debug("Skipped locked FIO transaction.", {
             accountId: this.plugin.accountId,
-            bankReference: transaction.id,
+            bankReference: transaction.bankReference,
             pluginId: this.plugin.id,
           })
           return false
         }
 
-        const bankReference = NonEmptyString255Schema.decode(transaction.id)
-
-        const input = {
-          accountId: this.plugin.accountId,
-          amount: IntegerSchema.decode(transaction.amountMinor),
-          currency: transaction.currency,
-          occurredAt: TimestampMsSchema.decode(
-            dateStringToDate(transaction.bookedDate).getTime()
-          ),
-          note: createTransactionNote(transaction),
-          internalTransferGroupId: null,
-          source: {
-            deviceId: null,
-            source: "auto" as const,
-          },
-          iban: {
-            variableSymbol: transaction.variableSymbol,
-            constantSymbol: transaction.constantSymbol,
-            specificSymbol: transaction.specificSymbol,
-            bankReference,
-          },
-        }
-        const accountTransaction = computeAccountTransactionRows(
-          input,
-          this.run.deps.date.now()
+        const recorded = await this.run.ok(
+          recordBankTransactions({
+            accountId: this.plugin.accountId,
+            transactions: [transaction],
+          })
         )
-        const claim = await this.run.ok(
-          loadAutomaticReconciliationClaimForNewAccountTransaction(
-            input,
-            accountTransaction.id
-          )
-        )
-        const billClosing =
-          claim === null
-            ? null
-            : await this.run.ok(
-                loadBillClosedAtForPayment(claim.paymentId, {
-                  id: accountTransaction.id,
-                  kind: accountTransaction.kind,
-                  amount: accountTransaction.input.amount,
-                  currency: accountTransaction.input.currency,
-                })
-              )
-
-        await runMutationWithCompletion((options) => {
-          upsertAccountTransactionRows(
-            this.run.deps.evolu,
-            accountTransaction,
-            { ...options, owner: this.run.deps.evoluOwner }
-          )
-          if (claim !== null) {
-            upsertReconciliationClaimRows(
-              this.run.deps.evolu,
-              claim,
-              billClosing,
-              { ...options, owner: this.run.deps.evoluOwner }
-            )
-          }
-        })
-        const accountTransactionId = accountTransaction.id
         this.run.deps.console.info("Created FIO account transaction.", {
           accountId: this.plugin.accountId,
-          accountTransactionId,
-          amount: transaction.amountMinor,
-          bankReference,
-          paymentId: claim?.paymentId ?? null,
+          amount: transaction.amount,
+          bankReference: transaction.bankReference,
+          paymentId: recorded.claimedPaymentIds[0] ?? null,
           pluginId: this.plugin.id,
         })
         return true
@@ -475,12 +419,11 @@ class FioPluginSync {
   private async getTransactionsToRecord(
     transactions: ReadonlyArray<FioTransaction>
   ): Promise<{
-    readonly toRecord: ReadonlyArray<FioTransaction>
+    readonly toRecord: ReadonlyArray<BankTransaction>
     readonly toReconcile: ReadonlyArray<AccountTransactionId>
   }> {
-    const bankReferences = getUniqueBankReferences(transactions)
-    if (bankReferences.length === 0) {
-      this.run.deps.console.debug("No FIO transactions have bank references.", {
+    if (transactions.length === 0) {
+      this.run.deps.console.debug("Downloaded no FIO transactions.", {
         accountId: this.plugin.accountId,
         pluginId: this.plugin.id,
         transactionCount: transactions.length,
@@ -488,44 +431,22 @@ class FioPluginSync {
       return { toRecord: [], toReconcile: [] }
     }
 
-    const existing = await this.run.deps.evolu.loadQuery(
-      existingFioTransactionBankReferencesQuery({
+    const { unrecorded, unclaimed } = await this.run.ok(
+      loadUnrecordedBankTransactions({
         accountId: this.plugin.accountId,
-        bankReferences,
+        transactions: transactions.map(toBankTransaction),
       })
     )
-    const existingAccountTransactionIdByBankReference = new Map(
-      existing.map((transaction) => [
-        transaction.bankReference,
-        transaction.accountTransactionId,
-      ])
-    )
-    const selectedBankReferences = new Set<string>()
-    const selectedTransactions: FioTransaction[] = []
-
-    for (const transaction of transactions) {
-      const bankReference = NonEmptyString255Schema.decode(transaction.id)
-      if (existingAccountTransactionIdByBankReference.has(bankReference))
-        continue
-      if (selectedBankReferences.has(bankReference)) continue
-
-      selectedBankReferences.add(bankReference)
-      selectedTransactions.push(transaction)
-    }
 
     this.run.deps.console.debug("Filtered FIO transactions.", {
       accountId: this.plugin.accountId,
       downloadedCount: transactions.length,
-      existingCount: existingAccountTransactionIdByBankReference.size,
       pluginId: this.plugin.id,
-      selectedCount: selectedTransactions.length,
-      uniqueBankReferenceCount: bankReferences.length,
+      selectedCount: unrecorded.length,
+      unclaimedCount: unclaimed.length,
     })
 
-    return {
-      toRecord: selectedTransactions,
-      toReconcile: [...existingAccountTransactionIdByBankReference.values()],
-    }
+    return { toRecord: unrecorded, toReconcile: unclaimed }
   }
 
   private async saveSyncPointer(lastSyncedDate: DateString): Promise<void> {
@@ -552,16 +473,6 @@ const getFioFirstSyncDate = (now: Date): DateString => {
   )
 }
 
-const getUniqueBankReferences = (
-  transactions: ReadonlyArray<FioTransaction>
-): ReadonlyArray<ReturnType<typeof NonEmptyString255Schema.decode>> => [
-  ...new Set(
-    transactions.map((transaction) =>
-      NonEmptyString255Schema.decode(transaction.id)
-    )
-  ),
-]
-
 const hasFioTokens = (
   plugin: ActiveFioPlugin
 ): plugin is ActiveFioPluginWithTokens => plugin.tokens.length > 0
@@ -585,3 +496,16 @@ const createTransactionNote = (transaction: FioTransaction) => {
 
   return NonEmptyStringSchema.decode(parts.join(" | "))
 }
+
+const toBankTransaction = (transaction: FioTransaction): BankTransaction => ({
+  bankReference: NonEmptyString255Schema.decode(transaction.id),
+  amount: IntegerSchema.decode(transaction.amountMinor),
+  currency: transaction.currency,
+  occurredAt: TimestampMsSchema.decode(
+    dateStringToDate(transaction.bookedDate).getTime()
+  ),
+  note: createTransactionNote(transaction),
+  variableSymbol: transaction.variableSymbol,
+  constantSymbol: transaction.constantSymbol,
+  specificSymbol: transaction.specificSymbol,
+})

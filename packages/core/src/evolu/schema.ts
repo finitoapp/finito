@@ -60,6 +60,11 @@ import {
 import { item, itemIndexes } from "../modules/item/item.ts"
 import { legalEntity } from "../modules/legal-entity/legal-entity.ts"
 import {
+  monetaPlugin,
+  monetaPluginIndexes,
+  monetaPluginSyncPointer,
+} from "../modules/moneta-plugin/moneta-plugin.ts"
+import {
   payment,
   paymentBtc,
   paymentBtcLightning,
@@ -149,6 +154,8 @@ export const AppSchema = {
   fioPlugin,
   fioPluginSyncPointer,
   fioPluginToken,
+  monetaPlugin,
+  monetaPluginSyncPointer,
   qerkoPlugin,
   eetSettings,
   eetCertificate,
@@ -187,6 +194,7 @@ export const createAppIndexes: IndexesConfig = (create) => [
   ...reconciliationClaimIndexes(create),
   ...deviceIndexes(create),
   ...fioPluginIndexes(create),
+  ...monetaPluginIndexes(create),
   ...eetIndexes(create),
   ...refundIndexes(create),
   ...withdrawalIndexes(create),

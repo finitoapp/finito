@@ -47,19 +47,22 @@ export function PaymentMethodTabContent({
   qerkoPendingTransactionId,
   qerkoUnresolvedTransactionId,
   qerkoFailureReason,
-  cashuPaymentId,
+  paymentId,
+  paymentCreatedAt,
+  payable,
   newCashuQuotePending,
   onNewCashuQuote,
-  lightningAddressPaymentId,
-  lightningAddressPayable,
 }: {
   readonly method: PaymentMethodOption
-  readonly cashuPaymentId: PaymentId
+  readonly paymentId: PaymentId
+  readonly paymentCreatedAt: string | null
+  /**
+   * The payment is still waiting for money, so a tab may watch for it — the
+   * Lightning address tab polls its wallet, the IBAN tab may ask the bank.
+   */
+  readonly payable: boolean
   readonly newCashuQuotePending: boolean
   readonly onNewCashuQuote: () => void
-  readonly lightningAddressPaymentId: PaymentId
-  /** The payment is still waiting for money, so the tab polls its wallet. */
-  readonly lightningAddressPayable: boolean
   /** Set while a Bolt Card may pay this payment's Lightning invoice. */
   readonly boltCardPaymentId: PaymentId | null
   readonly preparingMessageKey: TranslationKey | null
@@ -85,6 +88,10 @@ export function PaymentMethodTabContent({
     case "iban":
       return (
         <IbanPaymentTab
+          paymentId={paymentId}
+          accountId={method.accountId}
+          createdAt={paymentCreatedAt}
+          payable={payable}
           defaultQrFormat={method.defaultQrFormat}
           qrPayload={method.qrPayload}
           qrPayloads={method.qrPayloads}
@@ -114,7 +121,7 @@ export function PaymentMethodTabContent({
     case "cashu":
       return (
         <CashuPaymentTab
-          paymentId={cashuPaymentId}
+          paymentId={paymentId}
           qrPayload={method.qrPayload}
           quoteExpired={method.quoteExpired}
           preparingMessageKey={preparingMessageKey}
@@ -125,9 +132,9 @@ export function PaymentMethodTabContent({
     case "lightningAddress":
       return (
         <LightningAddressPaymentTab
-          paymentId={lightningAddressPaymentId}
+          paymentId={paymentId}
           qrPayload={method.qrPayload}
-          payable={lightningAddressPayable}
+          payable={payable}
           boltCardPaymentId={boltCardPaymentId}
           preparingMessageKey={preparingMessageKey}
         />

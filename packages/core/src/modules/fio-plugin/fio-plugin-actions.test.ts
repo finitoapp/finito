@@ -560,8 +560,11 @@ describe("fio plugin actions", () => {
       })
     )
 
+    // Both tokens can share a `createdAt`, so pick by value, not position.
     const [plugin] = await evolu.loadQuery(fioPluginWithTokensByIdQuery(id))
-    const tokenToDelete = plugin?.tokens.at(0)
+    const tokenToDelete = plugin?.tokens.find(
+      (token) => token.token === "fio-token-1"
+    )
     expect(tokenToDelete).toBeDefined()
     if (!tokenToDelete) return
 
@@ -576,16 +579,16 @@ describe("fio plugin actions", () => {
         {
           id,
           isDeleted: sqliteFalse,
-          tokens: [
-            {
+          tokens: expect.arrayContaining([
+            expect.objectContaining({
               token: "fio-token-1",
               isDeleted: sqliteTrue,
-            },
-            {
+            }),
+            expect.objectContaining({
               token: "fio-token-2",
               isDeleted: sqliteFalse,
-            },
-          ],
+            }),
+          ]),
         },
       ])
   }, 15_000)

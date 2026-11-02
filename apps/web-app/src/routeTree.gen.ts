@@ -75,6 +75,7 @@ import { Route as TerminalSettingsPaymentAccountsCashuMintsRouteImport } from '.
 import { Route as TerminalSettingsPaymentAccountsCashuWithdrawalsRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.withdrawals'
 import { Route as TerminalSettingsPaymentAccountsIbanIndexRouteImport } from './routes/_terminal.settings.payment-accounts.iban.index'
 import { Route as TerminalSettingsPaymentAccountsIbanFioPluginRouteImport } from './routes/_terminal.settings.payment-accounts.iban.fio-plugin'
+import { Route as TerminalSettingsPaymentAccountsIbanMonetaPluginRouteImport } from './routes/_terminal.settings.payment-accounts.iban.moneta-plugin'
 import { Route as TerminalSettingsPaymentAccountsSparkIndexRouteImport } from './routes/_terminal.settings.payment-accounts.spark.index'
 import { Route as TerminalSettingsPaymentAccountsSparkTransactionsRouteImport } from './routes/_terminal.settings.payment-accounts.spark.transactions'
 import { Route as TerminalSettingsPaymentAccountsSparkWithdrawalsRouteImport } from './routes/_terminal.settings.payment-accounts.spark.withdrawals'
@@ -462,6 +463,12 @@ const TerminalSettingsPaymentAccountsIbanFioPluginRoute =
     path: '/fio-plugin',
     getParentRoute: () => TerminalSettingsPaymentAccountsIbanRoute,
   } as any)
+const TerminalSettingsPaymentAccountsIbanMonetaPluginRoute =
+  TerminalSettingsPaymentAccountsIbanMonetaPluginRouteImport.update({
+    id: '/moneta-plugin',
+    path: '/moneta-plugin',
+    getParentRoute: () => TerminalSettingsPaymentAccountsIbanRoute,
+  } as any)
 const TerminalSettingsPaymentAccountsSparkIndexRoute =
   TerminalSettingsPaymentAccountsSparkIndexRouteImport.update({
     id: '/',
@@ -605,6 +612,7 @@ export interface FileRoutesByFullPath {
   '/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
+  '/settings/payment-accounts/iban/moneta-plugin': typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   '/settings/payment-accounts/spark/transactions': typeof TerminalSettingsPaymentAccountsSparkTransactionsRoute
   '/settings/payment-accounts/spark/withdrawals': typeof TerminalSettingsPaymentAccountsSparkWithdrawalsRouteWithChildren
   '/settings/payment-accounts/cashu/': typeof TerminalSettingsPaymentAccountsCashuIndexRoute
@@ -672,6 +680,7 @@ export interface FileRoutesByTo {
   '/settings/payment-accounts': typeof TerminalSettingsPaymentAccountsIndexRoute
   '/settings/tables': typeof TerminalSettingsTablesIndexRoute
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
+  '/settings/payment-accounts/iban/moneta-plugin': typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   '/settings/payment-accounts/spark/transactions': typeof TerminalSettingsPaymentAccountsSparkTransactionsRoute
   '/settings/payment-accounts/cashu': typeof TerminalSettingsPaymentAccountsCashuIndexRoute
   '/settings/payment-accounts/iban': typeof TerminalSettingsPaymentAccountsIbanIndexRoute
@@ -752,6 +761,7 @@ export interface FileRoutesById {
   '/_terminal/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/_terminal/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/_terminal/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
+  '/_terminal/settings/payment-accounts/iban/moneta-plugin': typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   '/_terminal/settings/payment-accounts/spark/transactions': typeof TerminalSettingsPaymentAccountsSparkTransactionsRoute
   '/_terminal/settings/payment-accounts/spark/withdrawals': typeof TerminalSettingsPaymentAccountsSparkWithdrawalsRouteWithChildren
   '/_terminal/settings/payment-accounts/cashu/': typeof TerminalSettingsPaymentAccountsCashuIndexRoute
@@ -833,6 +843,7 @@ export interface FileRouteTypes {
     | '/settings/payment-accounts/cashu/mints'
     | '/settings/payment-accounts/cashu/withdrawals'
     | '/settings/payment-accounts/iban/fio-plugin'
+    | '/settings/payment-accounts/iban/moneta-plugin'
     | '/settings/payment-accounts/spark/transactions'
     | '/settings/payment-accounts/spark/withdrawals'
     | '/settings/payment-accounts/cashu/'
@@ -900,6 +911,7 @@ export interface FileRouteTypes {
     | '/settings/payment-accounts'
     | '/settings/tables'
     | '/settings/payment-accounts/iban/fio-plugin'
+    | '/settings/payment-accounts/iban/moneta-plugin'
     | '/settings/payment-accounts/spark/transactions'
     | '/settings/payment-accounts/cashu'
     | '/settings/payment-accounts/iban'
@@ -979,6 +991,7 @@ export interface FileRouteTypes {
     | '/_terminal/settings/payment-accounts/cashu/mints'
     | '/_terminal/settings/payment-accounts/cashu/withdrawals'
     | '/_terminal/settings/payment-accounts/iban/fio-plugin'
+    | '/_terminal/settings/payment-accounts/iban/moneta-plugin'
     | '/_terminal/settings/payment-accounts/spark/transactions'
     | '/_terminal/settings/payment-accounts/spark/withdrawals'
     | '/_terminal/settings/payment-accounts/cashu/'
@@ -1466,6 +1479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalSettingsPaymentAccountsIbanFioPluginRouteImport
       parentRoute: typeof TerminalSettingsPaymentAccountsIbanRoute
     }
+    '/_terminal/settings/payment-accounts/iban/moneta-plugin': {
+      id: '/_terminal/settings/payment-accounts/iban/moneta-plugin'
+      path: '/moneta-plugin'
+      fullPath: '/settings/payment-accounts/iban/moneta-plugin'
+      preLoaderRoute: typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRouteImport
+      parentRoute: typeof TerminalSettingsPaymentAccountsIbanRoute
+    }
     '/_terminal/settings/payment-accounts/spark/': {
       id: '/_terminal/settings/payment-accounts/spark/'
       path: '/'
@@ -1686,6 +1706,7 @@ const TerminalSettingsPaymentAccountsCashuRouteWithChildren =
 
 interface TerminalSettingsPaymentAccountsIbanRouteChildren {
   TerminalSettingsPaymentAccountsIbanFioPluginRoute: typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
+  TerminalSettingsPaymentAccountsIbanMonetaPluginRoute: typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   TerminalSettingsPaymentAccountsIbanIndexRoute: typeof TerminalSettingsPaymentAccountsIbanIndexRoute
 }
 
@@ -1693,6 +1714,8 @@ const TerminalSettingsPaymentAccountsIbanRouteChildren: TerminalSettingsPaymentA
   {
     TerminalSettingsPaymentAccountsIbanFioPluginRoute:
       TerminalSettingsPaymentAccountsIbanFioPluginRoute,
+    TerminalSettingsPaymentAccountsIbanMonetaPluginRoute:
+      TerminalSettingsPaymentAccountsIbanMonetaPluginRoute,
     TerminalSettingsPaymentAccountsIbanIndexRoute:
       TerminalSettingsPaymentAccountsIbanIndexRoute,
   }

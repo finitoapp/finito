@@ -499,6 +499,59 @@ export const csSettings = {
   "settings.fioPlugin.tokens.item": "Fio API token",
   "settings.fioPlugin.tokens.remove": "Odebrat",
   "settings.fioPlugin.tokens.title": "Tokeny",
+  "settings.monetaPlugin.title": "MONETA Plugin",
+  "settings.monetaPlugin.description":
+    "Automaticky potvrzovat převody na účet u MONETA Money Bank",
+  "settings.monetaPlugin.status.on": "Zapnuto",
+  "settings.monetaPlugin.status.off": "Vypnuto",
+  "settings.monetaPlugin.nativeRuntimeWarning.title":
+    "MONETA plugin funguje jen v mobilní aplikaci.",
+  "settings.monetaPlugin.nativeRuntimeWarning.description":
+    "MONETA nepustí prohlížeč ke svému API. Připojte token v mobilní aplikaci {appName}, potvrzené platby pak uvidí i tento terminál.",
+  "settings.monetaPlugin.notMonetaIbanWarning":
+    "Bankovní účet není u MONETA Money Bank (kód banky 0600), takže není co připojit.",
+  "settings.monetaPlugin.connect.title": "Připojit token",
+  "settings.monetaPlugin.connect.replaceTitle": "Připojit jiný token",
+  "settings.monetaPlugin.connect.description":
+    "Token vytvoříte v Internet Bance MONETA v Nastavení › Správa API tokenů s právy „Pasivní – pouze náhled“. {appName} si u banky ověří, že token vidí tento účet.",
+  "settings.monetaPlugin.connect.submit": "Připojit",
+  "settings.monetaPlugin.connect.saved": "Token MONETA připojen.",
+  "settings.monetaPlugin.connect.error.unauthorized":
+    "Banka token odmítla. Zkontrolujte, že je zkopírovaný celý a nebyl zrušen.",
+  "settings.monetaPlugin.connect.error.accountNotVisible":
+    "Token funguje, ale nevidí účet {iban}. Vytvořte ho pro tento účet.",
+  "settings.monetaPlugin.connect.error.rateLimited":
+    "Token dnes vyčerpal dotazy do banky. Zkuste to zítra.",
+  "settings.monetaPlugin.connect.error.unreachable":
+    "Banka neodpovídá. Zkontrolujte připojení a zkuste to znovu.",
+  "settings.monetaPlugin.connect.error.unexpected":
+    "Banka odpověděla neočekávaně. Zkuste to později.",
+  "settings.monetaPlugin.token.label": "API token MONETA",
+  "settings.monetaPlugin.token.required": "Vložte token z Internet Banky.",
+  "settings.monetaPlugin.connected.title": "Připojený účet",
+  "settings.monetaPlugin.connected.iban": "Účet",
+  "settings.monetaPlugin.connected.token": "Token",
+  "settings.monetaPlugin.connected.ibanMismatch":
+    "Token byl připojen pro účet {iban}, ne pro současný bankovní účet. Připojte token pro současný účet.",
+  "settings.monetaPlugin.active.label": "Automaticky potvrzovat platby",
+  "settings.monetaPlugin.active.description":
+    "Kontroluje příchozí převody na pozadí a během čekání na platbu.",
+  "settings.monetaPlugin.interval.label": "Sekundy mezi kontrolami na pozadí",
+  "settings.monetaPlugin.interval.description":
+    "Čekající platba se kontroluje po několika sekundách bez ohledu na toto nastavení.",
+  "settings.monetaPlugin.interval.invalid": "Zadejte celé číslo, alespoň 60.",
+  "settings.monetaPlugin.interval.estimate":
+    "Zhruba {calls} dotazů denně na zařízení z {limit}, které banka povolí všem zařízením dohromady.",
+  "settings.monetaPlugin.lastSyncedDate.label": "Datum poslední synchronizace",
+  "settings.monetaPlugin.lastSyncedDate.description":
+    "Odkud synchronizace na pozadí pokračuje. Bez něj se načtou poslední dva měsíce.",
+  "settings.monetaPlugin.lastSyncedDate.invalid": "Zadejte platné datum.",
+  "settings.monetaPlugin.disconnect.action": "Odpojit",
+  "settings.monetaPlugin.disconnect.confirm.title": "Odpojit MONETU?",
+  "settings.monetaPlugin.disconnect.confirm.description":
+    "{appName} přestane token používat na všech zařízeních a přestane potvrzovat převody. Už potvrzené platby zůstanou, jak jsou. Token zůstane v šifrované historii synchronizace, proto ho zrušte i v MONETA Internet Bance.",
+  "settings.monetaPlugin.disconnect.confirm.confirm": "Odpojit",
+  "settings.monetaPlugin.disconnect.confirm.cancel": "Zrušit",
   "settings.homeScreen.atLeastOneMode":
     "Nechte zapnutý aspoň jeden mód — hlavní obrazovka musí mít co zobrazit.",
   "settings.homeScreen.modes.description":

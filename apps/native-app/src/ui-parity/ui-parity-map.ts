@@ -1024,6 +1024,20 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native:
+      "src/features/settings/moneta-plugin/moneta-plugin-settings-page.tsx",
+    web: [
+      "apps/web-app/src/features/settings/moneta-plugin/moneta-plugin-settings-page.tsx",
+    ],
+    status: "matched",
+    allowedDifferences: {
+      CardDescription:
+        "web's connect card gets its description through SettingsFormCard, a web wrapper the kit has no counterpart of; native draws the same card from Card parts, as fio-token-form.tsx does",
+      Switch:
+        "known control-type gap, as on the Fio page: native keeps its switch for the active toggle where web saves the same flag through InlineEditCheckbox",
+    },
+  },
+  {
     native: "src/features/settings/fio-plugin/fio-token-form.tsx",
     web: [
       "apps/web-app/src/features/settings/fio-plugin/fio-plugin-settings-page.tsx",

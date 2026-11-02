@@ -518,7 +518,7 @@ export const enLanding = {
     "Still on the phone, it turns into unreadable noise, and only that noise goes to the relay.",
   "landing.tech.journey.encrypt.title": "The receipt gets encrypted",
   "landing.tech.journey.pay.body":
-    "The phone creates a QR code for CZK 130 with your account number. The money goes from the customer's bank straight to you. If you bank with Fio, the phone checks for itself that it has arrived.",
+    "The phone creates a QR code for CZK 130 with your account number. The money goes from the customer's bank straight to you. If you bank with Fio or MONETA, the phone checks for itself that it has arrived.",
   "landing.tech.journey.pay.title": "The customer pays by QR code",
   "landing.tech.journey.sale.body":
     "The bill is saved right on the phone. Nothing waits for the internet.",
@@ -573,7 +573,7 @@ export const enLanding = {
   "landing.tech.money.qr.create":
     "The phone creates a QR code with your account number, the amount and a variable symbol. No server takes part.",
   "landing.tech.money.qr.note":
-    "Automatic payment matching only works with Fio banka for now. With other banks, you confirm the payment by hand.",
+    "Automatic payment matching works with Fio banka and MONETA Money Bank, in the mobile app. With other banks, you confirm the payment by hand.",
   "landing.tech.money.qr.scan":
     "The customer scans it in their banking app and confirms the payment.",
   "landing.tech.money.qr.title": "QR bank transfer",
@@ -622,7 +622,7 @@ export const enLanding = {
   "landing.tech.services.ai.when": "Only when you turn the assistant on.",
   "landing.tech.services.ai.why":
     "Our server holds the key to the AI model and passes your questions on to the AI provider. Conversations aren't stored anywhere. The assistant also downloads the app's documentation from us, so it knows how the app works.",
-  "landing.tech.services.bank.name": "Your bank (Fio API)",
+  "landing.tech.services.bank.name": "Your bank (Fio API or MONETA API)",
   "landing.tech.services.bank.sent":
     "Your token and a request for the account's transactions.",
   "landing.tech.services.bank.when": "When payment matching is on.",

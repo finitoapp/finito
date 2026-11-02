@@ -517,7 +517,7 @@ export const csLanding = {
     "Ještě v telefonu se z ní stane nečitelný šum a na relay odejde jen ten.",
   "landing.tech.journey.encrypt.title": "Účtenka se zašifruje",
   "landing.tech.journey.pay.body":
-    "Telefon vytvoří QR kód na 130 Kč s číslem vašeho účtu. Peníze jdou z banky zákazníka rovnou k vám. Pokud máte Fio banku, telefon si sám ověří, že dorazily.",
+    "Telefon vytvoří QR kód na 130 Kč s číslem vašeho účtu. Peníze jdou z banky zákazníka rovnou k vám. Pokud máte účet u Fio banky nebo MONETY, telefon si sám ověří, že dorazily.",
   "landing.tech.journey.pay.title": "Zákazník zaplatí QR kódem",
   "landing.tech.journey.sale.body":
     "Účet se uloží přímo do telefonu. Nic nečeká na internet.",
@@ -571,7 +571,7 @@ export const csLanding = {
   "landing.tech.money.qr.create":
     "Telefon vytvoří QR kód s číslem vašeho účtu, částkou a variabilním symbolem. Žádný server se na tom nepodílí.",
   "landing.tech.money.qr.note":
-    "Automatické párování plateb zatím funguje jen s Fio bankou. U jiných bank zaplacení potvrdíte ručně.",
+    "Automatické párování plateb funguje s Fio bankou a MONETA Money Bank, v mobilní aplikaci. U jiných bank zaplacení potvrdíte ručně.",
   "landing.tech.money.qr.scan":
     "Zákazník ho naskenuje v aplikaci své banky a platbu potvrdí.",
   "landing.tech.money.qr.title": "QR platba převodem",
@@ -620,7 +620,7 @@ export const csLanding = {
   "landing.tech.services.ai.when": "Jen když asistenta zapnete.",
   "landing.tech.services.ai.why":
     "Náš server drží klíč k AI modelu a dotazy předává poskytovateli AI. Konverzace se nikam neukládá. Asistent si od nás navíc stahuje dokumentaci aplikace, aby věděl, jak funguje.",
-  "landing.tech.services.bank.name": "Vaše banka (Fio API)",
+  "landing.tech.services.bank.name": "Vaše banka (Fio API nebo MONETA API)",
   "landing.tech.services.bank.sent": "Váš token a dotaz na pohyby na účtu.",
   "landing.tech.services.bank.when": "Když máte zapnuté párování plateb.",
   "landing.tech.services.body":

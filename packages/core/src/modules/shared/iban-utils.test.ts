@@ -5,6 +5,7 @@ import {
   czechBbanToIban,
   czechIbanToBban,
   isFioBankIban,
+  isMonetaBankIban,
   normalizeBankAccountInputToIban,
   normalizeIbanInput,
 } from "./iban-utils.ts"
@@ -85,6 +86,14 @@ describe("IBAN utilities", () => {
     expect(isFioBankIban("CZ6508000000192000145399")).toBe(false)
     expect(isFioBankIban("SK3120100000002100001234")).toBe(false)
     expect(isFioBankIban("DE89370400440532013000")).toBe(false)
+  })
+
+  test("recognizes MONETA Money Bank IBANs by bank code", () => {
+    expect(isMonetaBankIban("CZ38 0600 0000 0021 2345 6789")).toBe(true)
+    expect(isMonetaBankIban("cz3806000000002123456789")).toBe(true)
+    expect(isMonetaBankIban("CZ6508000000192000145399")).toBe(false)
+    expect(isMonetaBankIban("CZ65 2010 0000 0024 0028 9187")).toBe(false)
+    expect(isMonetaBankIban("SK3106000000002100001234")).toBe(false)
   })
 })
 

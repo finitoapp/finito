@@ -1,24 +1,32 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import type { BankQrFormat } from "@payky/core/modules/account/account-types"
+import type {
+  AccountId,
+  BankQrFormat,
+} from "@payky/core/modules/account/account-types"
 import {
   type BankQrPayload,
   isBankQrFormat,
 } from "@payky/core/modules/payment/payment-iban-qr-payload-utils"
+import type { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { Link } from "@tanstack/react-router"
 import {
   CheckIcon,
   CopyIcon,
   EyeIcon,
   EyeOffIcon,
   LoaderCircleIcon,
+  TriangleAlertIcon,
 } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { QrPaymentRequest } from "@/features/payment-wait/payment-wait-qr-request.tsx"
 import type { IbanPaidTabProps } from "@/features/payment-wait/payment-wait-types.ts"
+import { useMonetaPaymentWatch } from "@/features/payment-wait/use-moneta-payment-watch.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { copyToClipboard } from "@/lib/clipboard.ts"
 import { formatAddressGroups } from "@/lib/format-utils.ts"
+import { cn } from "@/lib/utils.ts"
 
 const paymentWaitQrFormatShortLabelKeys = {
   payBySquare1_0_0: "paymentWait.qrFormatShort.payBySquare1_0_0",
@@ -27,6 +35,10 @@ const paymentWaitQrFormatShortLabelKeys = {
 } satisfies Record<BankQrFormat, TranslationKey>
 
 export function IbanPaymentTab({
+  paymentId,
+  accountId,
+  createdAt,
+  payable,
   defaultQrFormat,
   qrPayload,
   qrPayloads,
@@ -47,7 +59,8 @@ export function IbanPaymentTab({
   readonly preparingMessageKey: TranslationKey | null
   readonly selectedQrFormat: BankQrFormat | null
   readonly onSelectQrFormat: (format: BankQrFormat) => void
-} & IbanPaidTabProps) {
+} & IbanPaidTabProps &
+  MonetaPaymentWatchProps) {
   const { t } = useTranslation()
   const activeQrFormat = selectedQrFormat ?? defaultQrFormat
   const [detailsVisible, setDetailsVisible] = useState(false)
@@ -58,6 +71,12 @@ export function IbanPaymentTab({
       <QrPaymentRequest
         qrPayload={qrPayload}
         preparingMessageKey={preparingMessageKey}
+      />
+      <MonetaPaymentWatchStatus
+        paymentId={paymentId}
+        accountId={accountId}
+        createdAt={createdAt}
+        payable={payable}
       />
       {qrPayloads.length > 1 ? (
         <ToggleGroup<BankQrFormat>
@@ -150,6 +169,54 @@ export function IbanPaymentTab({
         </p>
       ) : null}
     </div>
+  )
+}
+
+interface MonetaPaymentWatchProps {
+  readonly paymentId: PaymentId
+  /** The bank account the transfer goes to. */
+  readonly accountId: AccountId
+  readonly createdAt: string | null
+  /** The payment is still waiting for money. */
+  readonly payable: boolean
+}
+
+/** The bank's own check of the transfer, when a MONETA token is connected. */
+function MonetaPaymentWatchStatus(props: MonetaPaymentWatchProps) {
+  const { t } = useTranslation()
+  const { result, statusKey } = useMonetaPaymentWatch(props)
+  if (statusKey === null) return null
+
+  return (
+    <p
+      className={cn(
+        "flex max-w-72 items-start gap-1.5 text-balance text-sm",
+        result === "answered" || result === undefined
+          ? "text-muted-foreground"
+          : "text-warning"
+      )}
+      role="status"
+    >
+      {result === "answered" || result === undefined ? (
+        <LoaderCircleIcon className="mt-0.5 size-4 shrink-0 animate-spin" />
+      ) : (
+        <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+      )}
+      <span>
+        {t(statusKey)}
+        {result === "unauthorized" ? (
+          <>
+            {" "}
+            <Link
+              to="/settings/payment-accounts/iban/moneta-plugin"
+              className="underline underline-offset-2"
+            >
+              {t("paymentWait.monetaWatch.openSettings")}
+            </Link>
+          </>
+        ) : null}
+      </span>
+    </p>
   )
 }
 
