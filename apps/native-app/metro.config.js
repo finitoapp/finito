@@ -3,10 +3,20 @@ const path = require("node:path")
 
 const config = getDefaultConfig(__dirname)
 
-// Workspace packages (@payky/app-shared) declare react and jotai as peers, so Bun gives
-// them their own copy; a second React or Jotai in the bundle breaks hooks and
-// the store. Resolve both from this app for every importer.
+// Workspace packages (@payky/app-shared) declare react, jotai and TanStack
+// Query as peers, so Bun gives them their own copy, bound to the web app's
+// React; a second copy in the bundle breaks hooks, the jotai store and the
+// QueryClient context ("No QueryClient set"). Resolve every such peer from
+// this app for every importer, taking the list from the package itself so a
+// new peer is covered without touching this file.
 const appOrigin = path.join(__dirname, "package.json")
+const sharedPeers = Object.keys(
+  require("../../packages/app-shared/package.json").peerDependencies
+)
+const isSharedPeer = (moduleName) =>
+  sharedPeers.some(
+    (peer) => moduleName === peer || moduleName.startsWith(`${peer}/`)
+  )
 config.resolver.assetExts.push("wasm")
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   // @evolu/sqlite-wasm finds its binary at `new URL("../wasm/sqlite3.wasm",
@@ -37,13 +47,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       ],
     }
   }
-  const fromApp =
-    moduleName === "react" ||
-    moduleName.startsWith("react/") ||
-    moduleName === "jotai" ||
-    moduleName.startsWith("jotai/")
-      ? { ...context, originModulePath: appOrigin }
-      : context
+  const fromApp = isSharedPeer(moduleName)
+    ? { ...context, originModulePath: appOrigin }
+    : context
   // @evolu/web names its workers `new URL("Db.worker.js", import.meta.url)`,
   // which a browser and Vite read as relative and Metro as a package name.
   const evoluWorker =
