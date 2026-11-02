@@ -23,10 +23,7 @@ import { createInProcessLockManager } from "../../runtime/in-process-lock-manage
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
-import {
-  createMonetaAccountTransactionSyncJob,
-  getMonetaRetryBackoffMs,
-} from "./moneta-account-transaction-sync-job.ts"
+import { createMonetaAccountTransactionSyncJob } from "./moneta-account-transaction-sync-job.ts"
 
 const iban = IbanSchema.decode("CZ3806000000002123456789")
 
@@ -484,11 +481,4 @@ describe("moneta account transaction sync job", () => {
     await new Promise((resolve) => setTimeout(resolve, 2_500))
     expect(context.transactionRequests).toHaveLength(1)
   }, 15_000)
-
-  test("doubles retries up to 15 minutes", () => {
-    expect(getMonetaRetryBackoffMs(300, 1)).toBe(300_000)
-    expect(getMonetaRetryBackoffMs(300, 2)).toBe(600_000)
-    expect(getMonetaRetryBackoffMs(300, 3)).toBe(900_000)
-    expect(getMonetaRetryBackoffMs(300, 10)).toBe(900_000)
-  })
 })

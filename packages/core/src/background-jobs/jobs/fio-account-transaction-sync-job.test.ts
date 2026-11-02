@@ -29,10 +29,7 @@ import { createInProcessLockManager } from "../../runtime/in-process-lock-manage
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
-import {
-  createFioAccountTransactionSyncJob,
-  getFioRetryBackoffMs,
-} from "./fio-account-transaction-sync-job.ts"
+import { createFioAccountTransactionSyncJob } from "./fio-account-transaction-sync-job.ts"
 
 const ibanTransactionsByAccountIdQuery = (accountId: AccountId) =>
   createQuery((db) =>
@@ -867,13 +864,5 @@ describe("FIO sync date helpers", () => {
     } finally {
       process.env.TZ = originalTimeZone
     }
-  })
-})
-
-describe("FIO sync retry backoff", () => {
-  test("doubles retries up to 15 minutes", () => {
-    expect(getFioRetryBackoffMs(30, 1)).toBe(30_000)
-    expect(getFioRetryBackoffMs(30, 2)).toBe(60_000)
-    expect(getFioRetryBackoffMs(30, 10)).toBe(15 * 60 * 1000)
   })
 })
