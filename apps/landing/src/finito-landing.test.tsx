@@ -46,7 +46,7 @@ describe("Finito's landing", () => {
 
     expect(html).toContain('href="https://app.finito.fit/onboarding?lang=sk"')
     expect(html).toContain(
-      "https://github.com/finitoapp/payky/releases/latest/download/finito-release-signed.apk"
+      "https://github.com/finitoapp/finito/releases/latest/download/finito-release-signed.apk"
     )
     expect(html).toContain(
       'rel="apple-touch-icon" href="https://app.finito.fit/apple-touch-icon.png"'

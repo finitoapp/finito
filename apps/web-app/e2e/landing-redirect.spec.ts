@@ -178,7 +178,7 @@ test("the native app comes from Zapstore or as the newest APK", async ({
     })
   ).toHaveAttribute(
     "href",
-    "https://github.com/finitoapp/payky/releases/latest/download/app-release-signed.apk"
+    "https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk"
   )
 })
 
