@@ -98,6 +98,7 @@ export default {
     "./plugins/with-switchio-result-capture.cjs",
     "./plugins/with-library-compile-sdk.cjs",
     "./plugins/with-release-proguard-rules.cjs",
+    "./plugins/with-release-signing.cjs",
     "./plugins/with-e2e-cleartext.cjs",
   ],
 } satisfies ExpoConfig

@@ -69,5 +69,16 @@ forwards `/.well-known/lnurlp/donate` to the matching app, which answers
 
 - `live-relay.finito.fit`: DNS and TLS to the live relay's server, which
   routes by path, not host. New Finito accounts start on it (brand/0003).
-- Android: the Play listing for `fit.finito.app`, its keystore and the GitHub
-  secrets the release job signs with.
+- Android: the Play listing for `fit.finito.app`, its upload keystore and the
+  `FINITO_ANDROID_*` GitHub secrets the release job signs with
+  (`docs/releases.md`). Google Play takes API uploads only once an app has a
+  first release, so the first AAB is uploaded by hand in the Play Console.
+
+## Android release
+
+`finito-android` in `.github/workflows/release.yml` builds the APK and AAB from
+the same tag as Payky's. `plugins/with-release-signing.cjs` signs the release
+build with the key Gradle is handed as `finitoReleaseStoreFile` and its
+passwords; without them it keeps the debug key, as a local or e2e release
+build does, and the job fails on an APK signed by it. The APK is published as
+`finito-release-signed.apk`, the name Finito's landing links.
