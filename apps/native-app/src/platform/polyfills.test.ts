@@ -14,8 +14,12 @@ vi.mock("expo-crypto", () => {
 
 const quickSubtle = vi.hoisted(() => ({ marker: "quick-crypto subtle" }))
 vi.mock("react-native-quick-crypto", () => ({ subtle: quickSubtle }))
-// The e2e setup entry imports (`src/e2e/e2e-setup.ts`) reaches for LogBox.
-vi.mock("react-native", () => ({ LogBox: { ignoreAllLogs: () => {} } }))
+// The e2e setup entry imports (`src/e2e/e2e-setup.ts`) reaches for LogBox;
+// Evolu's polyfills look up its native modules, which a test has none of.
+vi.mock("react-native", () => ({
+  LogBox: { ignoreAllLogs: () => {} },
+  TurboModuleRegistry: { get: () => null },
+}))
 
 vi.mock("expo-router/entry", async () => {
   // Exercise the real polyfills before the Router can evaluate domain imports.

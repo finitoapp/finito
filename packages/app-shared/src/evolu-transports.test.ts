@@ -3,6 +3,7 @@ import {
   createIdFromString,
   Millis,
   type OwnerId,
+  RelayUrl,
   testAppOwner,
   testCreateDeps,
   testName,
@@ -25,7 +26,7 @@ const deps = testCreateDeps()
 const transport: SyncTransport = {
   type: "WebSocket",
   id: createId<"SyncTransport">(deps),
-  label: "wss://relay.example/room",
+  label: RelayUrl.orThrow("wss://relay.example/room"),
   connection: { type: "Open", openedAt: Millis.orThrow(800), error: null },
 }
 

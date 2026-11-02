@@ -73,15 +73,13 @@
   "trustedDependencies": [
     "@sentry/cli",
     "@swc/core",
-    "better-sqlite3",
     "esbuild",
     "msgpackr-extract",
     "protobufjs"
   ],
   "patchedDependencies": {
-    "@evolu/common@8.23.0": "patches/@evolu%2Fcommon@8.23.0.patch",
-    "expo-sqlite@58.0.13": "patches/expo-sqlite@58.0.13.patch",
-    "@expo/metro-config@58.0.14": "patches/@expo%2Fmetro-config@58.0.14.patch"
+    "@expo/metro-config@58.0.14": "patches/@expo%2Fmetro-config@58.0.14.patch",
+    "@evolu/common@8.26.0": "patches/@evolu%2Fcommon@8.26.0.patch"
   },
   "workspaces": [
     "apps/*",

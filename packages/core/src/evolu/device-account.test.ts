@@ -45,9 +45,15 @@ describe("resolveTransportUrl", () => {
     ).toBe(`wss://live-relay.payky.me/${appOwnerId}`)
   })
 
-  test("leaves a URL without the placeholder alone", () => {
-    expect(resolveTransportUrl("wss://evolu.linky.fit", appOwnerId)).toBe(
-      "wss://evolu.linky.fit"
+  test("writes a URL in the canonical spelling Evolu dials", () => {
+    expect(resolveTransportUrl("wss://Evolu.Linky.fit", appOwnerId)).toBe(
+      "wss://evolu.linky.fit/"
+    )
+  })
+
+  test("resolves a URL Evolu cannot dial to null", () => {
+    expect(resolveTransportUrl("wss://relay.example/#room", appOwnerId)).toBe(
+      null
     )
   })
 })
@@ -73,7 +79,7 @@ describe("createDefaultEvoluTransportUrls", () => {
     const [, liveRelay] = defaultTransports
     const resolved = resolveTransportUrl(liveRelay, appOwnerId)
 
-    expect(resolved.slice("wss://live-relay.payky.me/".length)).toMatch(
+    expect(resolved?.slice("wss://live-relay.payky.me/".length)).toMatch(
       /^[A-Za-z0-9_-]+$/u
     )
   })

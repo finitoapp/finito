@@ -6,6 +6,8 @@ import {
   type MutationOptions,
   sqliteFalse,
   sqliteTrue,
+  type WebSocketUrl,
+  WebSocketUrlFromString,
 } from "@evolu/common"
 import type { DeviceId } from "../modules/device/device-types.ts"
 import {
@@ -166,8 +168,20 @@ export const appOwnerIdPlaceholder = "${appOwnerId}"
  */
 const appOwnerIdPlaceholderPattern = /\$(?:\{appOwnerId\}|%7BappOwnerId%7D)/giu
 
-export const resolveTransportUrl = (url: string, appOwnerId: string): WssUrl =>
-  WssUrl(url.replace(appOwnerIdPlaceholderPattern, appOwnerId))
+/**
+ * The URL Evolu dials for a stored one: the placeholder substituted, in the
+ * canonical spelling Evolu requires (`wss://evolu.linky.fit/`, as Evolu also
+ * labels the relay), or null for a stored URL Evolu cannot dial.
+ */
+export const resolveTransportUrl = (
+  url: string,
+  appOwnerId: string
+): WebSocketUrl | null => {
+  const resolved = WebSocketUrlFromString.fromUnknown(
+    url.replace(appOwnerIdPlaceholderPattern, appOwnerId)
+  )
+  return resolved.ok ? resolved.value : null
+}
 
 /**
  * The transports a new account starts with: Linky's plain relay and the live

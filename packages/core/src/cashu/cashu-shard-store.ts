@@ -1,5 +1,6 @@
 import {
   type AppOwner,
+  isNonEmptyArray,
   type MutationOptions,
   type NonEmptyReadonlyArray,
   type OwnerId,
@@ -318,8 +319,13 @@ export const createCashuShardStore = ({
     return derived
   }
 
-  const register = (owner: AppOwner | ShardOwner): (() => void) =>
-    registerOwner(owner, linkyOwnerTransports(owner.id, relays))
+  // Without a relay Evolu can dial, the owner stays local, as with no relay.
+  const register = (owner: AppOwner | ShardOwner): (() => void) => {
+    const transports = linkyOwnerTransports(owner.id, relays)
+    return isNonEmptyArray(transports)
+      ? registerOwner(owner, transports)
+      : () => {}
+  }
 
   const observedIndex = async (): Promise<number> => {
     const [pointer] = await evolu.loadQuery(
