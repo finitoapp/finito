@@ -44,8 +44,20 @@ const fontFaces = interFaces
  * `--input` for the active light or dark theme. React Native has no style
  * for a scrollbar, so the rules go into the page's head.
  */
+/**
+ * react-native-web renders a `Pressable` with `role="button"` as a
+ * `<button>`, whose user-agent styles centre its text and draw it in the
+ * system font and `buttontext` color. Text inside inherits them, so a
+ * pressable list row would centre its secondary line. Reset them as
+ * web-app's Tailwind preflight does, and the text alignment too, which web
+ * never meets because its rows are links.
+ */
+const buttonReset = `
+button { font: inherit; letter-spacing: inherit; color: inherit; text-align: inherit; }
+`
+
 const style = document.createElement("style")
-style.textContent = `${fontFaces}
+style.textContent = `${fontFaces}${buttonReset}
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--input); border-radius: 5px; }
