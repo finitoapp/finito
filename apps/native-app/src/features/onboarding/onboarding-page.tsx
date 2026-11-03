@@ -198,9 +198,12 @@ export function OnboardingPage() {
     return true
   }
 
-  // Android's back button walks the steps before it leaves the screen.
+  // Android's back button walks the steps before it leaves the screen. The
+  // web export has no such button, and react-native-web's BackHandler only
+  // warns that it is unsupported.
   // biome-ignore lint/correctness/useExhaustiveDependencies: goBack closes over the current step
   useEffect(() => {
+    if (Platform.OS === "web") return
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       goBack
