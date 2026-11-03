@@ -699,7 +699,9 @@ to `nativeBackgroundJobs` and `browserBackgroundJobs` explicitly.
   never match.
 - Outgoing operations are not converted: Linky's `send`, `melt`, `autoswap`
   and `envelope` write nothing in Payky. A withdrawal from Payky is booked as
-  withdrawals are today (§6). Converting sends would mean deciding when a
+  withdrawals are today (§6), and so is Finito's own `send` to a Linky
+  contact, by its withdrawal the moment a relay holds the token
+  (withdraw/0015). Converting Linky's sends would mean deciding when a
   handed-out token becomes an outflow and how a returned one reverses it.
 - Accepted consequences:
   - A new Payky device books only the last month of an existing wallet's
@@ -728,7 +730,9 @@ to `nativeBackgroundJobs` and `browserBackgroundJobs` explicitly.
 - Withdraw from one mint at a time. The default mint is preselected, and other
   mints with funds can be chosen.
 - Destinations: a Lightning invoice and a Lightning address. On-chain is out of
-  scope.
+  scope. Finito also takes a Linky contact, to which it hands a token over a
+  NIP-17 message instead of melting (withdraw/0015, `cashu-send.ts`,
+  `nostr-cashu-send.ts`, `linky-contact.ts`).
 - Linky's melt flow, step by step (`linkshu/docs/melt.md`):
   1. Get a quote and check it is `UNPAID` and not expired. Cost = amount +
      `feeReserve` + the input fee of the melt inputs and of the cutting swap.

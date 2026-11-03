@@ -69,8 +69,6 @@ interface PaymentMethodRowState {
   readonly status: string | null
   readonly to: LinkProps["to"] | null
   readonly saveEnabled: (enabled: boolean) => Promise<void>
-  /** Still being proven: marked so the merchant knows before turning it on. */
-  readonly experimental?: true
 }
 
 /**
@@ -213,9 +211,9 @@ export function PaymentAccountsSettingsPage() {
       enabled: cardEnabled,
       available:
         isNativeRuntime && cardEnabled && card.currency === appCurrency,
-      canEnable: true,
+      canEnable: isNativeRuntime,
       status: !isNativeRuntime
-        ? t("settings.cardSwitchioAccount.nativeRuntimeWarning")
+        ? t("settings.paymentAccounts.status.nativeOnly")
         : switchioInstalledQuery.data === false
           ? t("settings.cardSwitchioAccount.notInstalledWarning")
           : cardEnabled
@@ -237,11 +235,7 @@ export function PaymentAccountsSettingsPage() {
       available: qerkoPaired && qerkoEnabled && qerko.currency === appCurrency,
       // Without a pairing there is no key to start a payment with.
       canEnable: qerkoPaired,
-      status: !qerkoPaired
-        ? t("settings.qerkoTerminal.status.notPaired")
-        : qerkoEnabled
-          ? currencyMismatch(qerko.currency)
-          : null,
+      status: qerkoEnabled ? currencyMismatch(qerko.currency) : null,
       to: "/settings/payment-accounts/qerko-terminal",
       saveEnabled: async (enabled) => {
         await using run = appRun()
@@ -252,14 +246,13 @@ export function PaymentAccountsSettingsPage() {
     },
     cashu: {
       icon: CoinsIcon,
-      title: "settings.paymentAccounts.method.cashu",
+      title: "settings.bitcoin.wallet.linky",
       switchLabel: "settings.cashuAccount.enabled.label",
       enabled: cashuEnabled,
       available: cashuEnabled,
       canEnable: true,
       status: null,
       to: cashu === undefined ? null : "/settings/payment-accounts/cashu",
-      experimental: true,
       saveEnabled: async (enabled) => {
         await using run = await cashuAppRun()
         await run.ok(saveCashuAccount({ enabled }))
@@ -389,10 +382,10 @@ function PaymentMethodRow({
   const content = (
     <>
       <Icon className="size-5 shrink-0 text-muted-foreground" />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="flex min-w-0 flex-1 items-center gap-2">
         <span
           className={cn(
-            "flex items-center gap-2 font-medium",
+            "flex shrink-0 items-center gap-2 font-medium",
             !row.enabled && "text-muted-foreground"
           )}
         >
@@ -402,14 +395,11 @@ function PaymentMethodRow({
               {t("settings.paymentAccounts.default")}
             </Badge>
           )}
-          {row.experimental && (
-            <Badge className="bg-warning/10 text-warning">
-              {t("settings.paymentAccounts.experimental")}
-            </Badge>
-          )}
         </span>
-        {row.status !== null && (
-          <span className="text-xs text-muted-foreground">{row.status}</span>
+        {row.status === null ? null : (
+          <span className="min-w-0 truncate text-xs text-muted-foreground">
+            {row.status}
+          </span>
         )}
       </span>
     </>

@@ -20,7 +20,7 @@ const snapshotSubscription = readFileSync(
 
 it("keeps the Cashu overview owner-only and read-only", () => {
   expect(requiredPermission("/settings/payment-accounts/cashu")).toBe("admin")
-  expect(page).toContain('href: "/cashu-withdraw"')
+  expect(page).toContain('router.push("/cashu-withdraw/new")')
   expect(page).not.toMatch(/saveCashuAccount|writeCashu|Wallet\.|Mint\./u)
   expect(snapshotHook).toContain(
     'queryKey: ["cashuWalletSnapshot", store.linkyAppOwner.id]'
@@ -32,10 +32,10 @@ it("keeps the Cashu overview owner-only and read-only", () => {
 })
 
 it("does not report an unread wallet as empty and refreshes live snapshots", () => {
-  expect(page).toContain("isError ?")
-  expect(page).toContain("isPending || snapshot === null ?")
-  expect(page).toContain("!snapshot.hydrated")
-  expect(page).toContain("snapshot.balances.size === 0")
+  expect(page).toContain("if (isError)")
+  expect(page).toContain("if (isPending || snapshot === null)")
+  expect(page).toContain("snapshot.hydrated ? null :")
+  expect(page).toContain("total > 0")
   expect(snapshotSubscription).toContain("store.subscribe(")
   expect(snapshotSubscription).toContain("store.subscribeHydration(")
   expect(snapshotSubscription).toContain("stopChanges()")

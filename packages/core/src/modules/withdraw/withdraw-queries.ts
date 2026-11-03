@@ -32,6 +32,11 @@ const selectWithdrawals = (db: QueryDb) =>
         .onRef("withdrawalLightningCashu.id", "=", "withdrawal.id")
         .on("withdrawalLightningCashu.isDeleted", "is not", sqliteTrue)
     )
+    .leftJoin("withdrawalCashuSend", (join) =>
+      join
+        .onRef("withdrawalCashuSend.id", "=", "withdrawal.id")
+        .on("withdrawalCashuSend.isDeleted", "is not", sqliteTrue)
+    )
     .leftJoin("device", "device.id", "withdrawal.deviceId")
     .leftJoin(
       "accountTransaction",
@@ -77,6 +82,11 @@ const selectWithdrawals = (db: QueryDb) =>
       "withdrawalLightningCashu.quoteId as cashuQuoteId",
       "withdrawalLightningCashu.lnInvoice as cashuLnInvoice",
       "withdrawalLightningCashu.lightningAddress as cashuLightningAddress",
+      "withdrawalCashuSend.id as cashuSendId",
+      "withdrawalCashuSend.mintUrl as cashuSendMintUrl",
+      "withdrawalCashuSend.sendOperationId as cashuSendOperationId",
+      "withdrawalCashuSend.recipientPubkey as cashuSendRecipientPubkey",
+      "withdrawalCashuSend.recipientAddress as cashuSendRecipientAddress",
       "device.name as deviceName",
       "device.isDeleted as deviceDeleted",
       "accountTransaction.id as movementId",
@@ -140,6 +150,16 @@ export type WithdrawalTarget =
       readonly lightningAddress: string | null
       readonly lnInvoice: string
       readonly quoteId: string
+    }
+  | {
+      /** Ecash handed to a Linky user as a token (withdraw/0015). */
+      readonly kind: "cashuSend"
+      readonly mintUrl: MintUrl
+      readonly recipientPubkey: string
+      /** The NIP-05 address the merchant named them by, when they did. */
+      readonly recipientAddress: string | null
+      /** `null` until the swap made the token. */
+      readonly sendOperationId: CashuOperationId | null
     }
 
 export type WithdrawalState =
@@ -218,7 +238,17 @@ export const toWithdrawalView = (
               lnInvoice: row.cashuLnInvoice,
               quoteId: row.cashuQuoteId,
             }
-          : null
+          : row.cashuSendId !== null &&
+              row.cashuSendMintUrl !== null &&
+              row.cashuSendRecipientPubkey !== null
+            ? {
+                kind: "cashuSend",
+                mintUrl: row.cashuSendMintUrl,
+                recipientPubkey: row.cashuSendRecipientPubkey,
+                recipientAddress: row.cashuSendRecipientAddress,
+                sendOperationId: row.cashuSendOperationId,
+              }
+            : null
   if (target === null) return null
 
   const debitedSats =

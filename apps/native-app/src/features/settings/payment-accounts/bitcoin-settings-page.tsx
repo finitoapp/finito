@@ -15,8 +15,9 @@ import { LightningAddressSettingsBody } from "./lightning-address-settings-page.
 import { SparkAccountSettingsBody } from "./spark-account-settings-page.tsx"
 import { bitcoinWalletQueries, useBitcoinWallet } from "./use-bitcoin-wallet.ts"
 
+/** The Linky wallet is named as such, never by its technology (onboarding/0009). */
 const walletLabelKeys = {
-  cashu: "settings.paymentAccounts.method.cashu",
+  cashu: "settings.bitcoin.wallet.linky",
   lightningAddress: "settings.paymentAccounts.method.lightningAddress",
   spark: "settings.bitcoin.wallet.spark",
 } satisfies Record<BitcoinWallet, TranslationKey>

@@ -13,7 +13,8 @@ export const enWithdraw = {
   "withdraw.amount.range": "From {min} to {max} sats.",
   "withdraw.amount.unit": "Amount unit",
   "withdraw.amount.unitSats": "sats",
-  "withdraw.cashu.destinationPlaceholder": "Lightning invoice or address",
+  "withdraw.cashu.destinationPlaceholder":
+    "Linky name, npub, Lightning address or invoice",
   "withdraw.cashu.error.address":
     "The Lightning address did not answer as expected.",
   "withdraw.cashu.error.amountlessInvoice":
@@ -24,24 +25,24 @@ export const enWithdraw = {
   "withdraw.cashu.error.insufficient":
     "The mint's balance does not cover the amount and the fees.",
   "withdraw.cashu.error.onchain":
-    "Cashu withdraws only over Lightning: enter a Lightning invoice or address.",
+    "This wallet can only withdraw over Lightning: enter a Lightning invoice or address.",
   "withdraw.cashu.error.rejected":
     "The mint refused the payment. Nothing left the wallet.",
   "withdraw.cashu.error.toSelf": "This is one of your own payment invoices.",
   "withdraw.cashu.error.unreachable":
     "The mint did not answer. Nothing was sent.",
   "withdraw.cashu.form.description":
-    "Send ecash from one mint of the Cashu wallet you share with Linky to a Lightning invoice or a Lightning address.",
+    "Enter a Lightning address, invoice, or Linky name/profile.",
   "withdraw.cashu.mint": "From which mint",
   "withdraw.cashu.noAccount.description":
-    "Turn on Cashu in Payment accounts before withdrawing.",
-  "withdraw.cashu.noAccount.title": "Cashu is off",
-  "withdraw.cashu.noFunds": "No mint holds any ecash.",
+    "Turn on Bitcoin in Payment accounts before withdrawing.",
+  "withdraw.cashu.noAccount.title": "Bitcoin is off",
+  "withdraw.cashu.noFunds": "The wallet has no available funds.",
   "withdraw.cashu.review.feeReserve": "Mint's fee reserve",
   "withdraw.cashu.review.inputFee": "Mint's input fee",
   "withdraw.cashu.review.remainder":
     "Whatever the reserve doesn't use comes back to the mint's balance.",
-  "withdraw.cashu.title": "Withdraw from Cashu",
+  "withdraw.cashu.title": "Withdraw funds",
   "withdraw.clipboard.use": "Use from clipboard: {value}",
   "withdraw.comment.hint": "Only you see it, in the withdrawal history.",
   "withdraw.comment.label": "Note for you",
@@ -213,4 +214,20 @@ export const enWithdraw = {
   "withdraw.transactions.empty": "No transactions yet.",
   "withdraw.transactions.kind.spark": "Spark",
   "withdraw.transactions.title": "Account transactions",
+  "withdraw.destination.kind.linkyContact": "Linky contact",
+  "withdraw.contact.checking": "Looking up the Linky contact…",
+  "withdraw.contact.notFound": "Nobody in Linky is named {address}.",
+  "withdraw.contact.unreachable":
+    "Linky could not be reached. Check your connection.",
+  "withdraw.kind.cashuSend": "Payment to a Linky contact",
+  "withdraw.cashu.send.error.notDelivered":
+    "The token could not be handed over. Nothing left the wallet.",
+  "withdraw.cashu.send.error.consumedByFee":
+    "The amount would not cover the mint's fee.",
+  "withdraw.cashu.send.review.fee": "Mint's fee, at most",
+  "withdraw.cashu.send.review.note":
+    "The payment appears in the recipient's Linky automatically.",
+  "withdraw.detail.pending.cashuSend":
+    "The token is on its way to the recipient.",
+  "withdraw.detail.cashuOperationId": "Wallet operation",
 } as const

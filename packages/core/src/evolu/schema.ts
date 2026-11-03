@@ -101,6 +101,7 @@ import { table } from "../modules/table/table.ts"
 import { taxRate, taxRateIndexes } from "../modules/tax-rate/tax-rate.ts"
 import {
   withdrawal,
+  withdrawalCashuSend,
   withdrawalIndexes,
   withdrawalLightning,
   withdrawalLightningCashu,
@@ -170,6 +171,7 @@ export const AppSchema = {
   withdrawalOnchain,
   withdrawalLightning,
   withdrawalLightningCashu,
+  withdrawalCashuSend,
   // Linky's tables, under Linky's owners only (src/core/modules/cashu/cashu.ts).
   shardPointer,
   setting,

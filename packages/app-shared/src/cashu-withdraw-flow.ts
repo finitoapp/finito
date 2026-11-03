@@ -6,6 +6,11 @@ import type {
   ExecuteCashuWithdrawalError,
   QuoteCashuWithdrawalError,
 } from "@payky/core/modules/withdraw/withdraw-cashu-actions"
+import type {
+  CashuSendQuote,
+  ExecuteCashuSendError,
+  QuoteCashuSendError,
+} from "@payky/core/modules/withdraw/withdraw-cashu-send-actions"
 import type { WithdrawDestination } from "@payky/core/modules/withdraw/withdraw-destination-utils"
 import type { WithdrawalId } from "@payky/core/modules/withdraw/withdraw-types"
 import { formatSatsAmount } from "./format-money.ts"
@@ -164,3 +169,78 @@ export const withdrawMint = ({
     : funded.some(([candidate]) => candidate === defaultMint)
       ? defaultMint
       : (funded[0]?.[0] ?? null)
+
+/**
+ * Ecash to a Linky contact (withdraw/0015): what the merchant asked for,
+ * kept so the review can price it again.
+ */
+export interface CashuSendRequest {
+  readonly mint: MintUrl
+  readonly recipient: CashuSendQuote["recipient"]
+  /** `undefined` sends everything the mint holds less the most the fee can take. */
+  readonly amountSats: PositiveInteger | undefined
+}
+
+const cashuSendQuoteErrorKeys = {
+  AbortError: "withdraw.quoteError.generic",
+  MintUnreachable: "withdraw.cashu.error.unreachable",
+  MintRejected: "withdraw.cashu.error.rejected",
+  CounterLockTimeout: "withdraw.cashu.error.rejected",
+  AmountConsumedByFee: "withdraw.cashu.send.error.consumedByFee",
+  CashuInsufficientFunds: "withdraw.cashu.error.insufficient",
+} satisfies Record<(QuoteCashuSendError | AbortError)["type"], TranslationKey>
+
+export const cashuSendQuoteErrorMessage = (
+  error: QuoteCashuSendError | AbortError,
+  t: Translate
+): string => t(cashuSendQuoteErrorKeys[error.type])
+
+const cashuSendConfirmErrorKeys = {
+  ...cashuSendQuoteErrorKeys,
+  CashuSendNotPending: "withdraw.review.error.uncertain",
+  CashuTokenNotDelivered: "withdraw.cashu.send.error.notDelivered",
+} satisfies Record<(ExecuteCashuSendError | AbortError)["type"], TranslationKey>
+
+export type CashuSendConfirmOutcome =
+  | ConfirmOutcome
+  | { readonly kind: "uncertain"; readonly message: string }
+
+/**
+ * `recorded` once a relay holds the token: the withdrawal is done and its
+ * detail shows it. `uncertain` means a failed delivery could not be safely
+ * returned, so the review blocks another send. Other failures leave funds
+ * untouched and explain why.
+ */
+export const cashuSendConfirmOutcome = (
+  result: Result<
+    { readonly withdrawalId: WithdrawalId },
+    ExecuteCashuSendError | AbortError
+  >,
+  t: Translate
+): CashuSendConfirmOutcome => {
+  if (result.ok)
+    return {
+      kind: "recorded",
+      withdrawalId: result.value.withdrawalId,
+      result: "sent",
+    }
+  const message = t(cashuSendConfirmErrorKeys[result.error.type])
+  return result.error.type === "CashuSendNotPending"
+    ? { kind: "uncertain", message }
+    : { kind: "failed", message }
+}
+
+/** What the PIN prompt names (access/0007): the amount and who gets it. */
+export const cashuSendPinDetail = ({
+  quote,
+  t,
+  locale,
+}: {
+  readonly quote: CashuSendQuote
+  readonly t: Translate
+  readonly locale: string
+}): string =>
+  t("withdraw.review.pinDetail", {
+    amount: formatSatsAmount(quote.amountSats, locale),
+    destination: quote.recipient.address ?? quote.recipient.npub,
+  })

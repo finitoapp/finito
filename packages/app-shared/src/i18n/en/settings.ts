@@ -139,7 +139,7 @@ export const enSettings = {
   "catalog.categories.search": "Search categories...",
   "catalog.categories.search.clear.aria": "Clear search",
   "catalog.categories.title": "Categories",
-  "settings.cashuAccount.title": "Cashu",
+  "settings.cashuAccount.title": "Linky wallet",
   "settings.cashuAccount.wallet.title": "Wallet shared with Linky",
   "settings.cashuAccount.wallet.description":
     "Cashu payments go into the same ecash wallet your Linky app shows. Its balance includes money received in Linky.",
@@ -190,7 +190,7 @@ export const enSettings = {
   "settings.cashuAccount.mints": "Mints",
   "settings.cashuAccount.mintsDescription":
     "Default mint, balances, moving funds",
-  "settings.cashuAccount.withdraw": "Withdraw",
+  "settings.cashuAccount.withdraw": "Withdraw funds",
   "settings.cashuAccount.withdrawDescription": "Send ecash out over Lightning",
   "settings.cashuAccount.enabled.label": "Accept Cashu",
   "settings.debugConsole.cashu.title": "Linky Cashu wallet (development)",
@@ -1271,4 +1271,7 @@ export const enSettings = {
   "settings.bitcoin.wallet.spark": "Spark",
   "settings.salesGroup": "SALES",
   "catalog.items.form.category.new.placeholder": "New category",
+  "settings.paymentAccounts.status.nativeOnly": "Only in the native app",
+  "settings.bitcoin.wallet.linky": "Linky wallet",
+  "settings.cashuAccount.balance.switchUnit": "Switch the unit",
 } as const

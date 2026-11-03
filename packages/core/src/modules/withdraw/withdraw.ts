@@ -81,6 +81,20 @@ export const withdrawalLightningCashu = {
   lightningAddress: NonEmptyStringSchema.nullable(),
 } as const
 
+/**
+ * Ecash handed to a Linky user as a token over a NIP-17 message
+ * (withdraw/0015): the `send` in Linky's shards, known only once the swap
+ * made it, so it is filled in right after; the recipient's key, and the
+ * NIP-05 address the merchant named them by, when they did.
+ */
+export const withdrawalCashuSend = {
+  id: WithdrawalId,
+  mintUrl: MintUrlSchema,
+  sendOperationId: CashuOperationId.nullable(),
+  recipientPubkey: NonEmptyStringSchema,
+  recipientAddress: NonEmptyStringSchema.nullable(),
+} as const
+
 export const withdrawalIndexes = ((create) => [
   create("withdrawal_accountId_createdAt")
     .on("withdrawal")
@@ -99,3 +113,4 @@ export type WithdrawalLightningRow = InferTable<typeof withdrawalLightning>
 export type WithdrawalLightningCashuRow = InferTable<
   typeof withdrawalLightningCashu
 >
+export type WithdrawalCashuSendRow = InferTable<typeof withdrawalCashuSend>

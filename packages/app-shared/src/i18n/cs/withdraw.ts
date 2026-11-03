@@ -14,7 +14,8 @@ export const csWithdraw = {
   "withdraw.amount.range": "Od {min} do {max} satů.",
   "withdraw.amount.unit": "Jednotka částky",
   "withdraw.amount.unitSats": "saty",
-  "withdraw.cashu.destinationPlaceholder": "Lightning faktura nebo adresa",
+  "withdraw.cashu.destinationPlaceholder":
+    "Jméno v Linky, npub, Lightning adresa nebo faktura",
   "withdraw.cashu.error.address":
     "Lightning adresa neodpověděla podle očekávání.",
   "withdraw.cashu.error.amountlessInvoice":
@@ -25,24 +26,24 @@ export const csWithdraw = {
   "withdraw.cashu.error.insufficient":
     "Zůstatek mintu nepokryje částku a poplatky.",
   "withdraw.cashu.error.onchain":
-    "Z Cashu lze vybírat jen přes Lightning: zadejte Lightning fakturu nebo adresu.",
+    "Z této peněženky lze vybírat jen přes Lightning: zadejte Lightning fakturu nebo adresu.",
   "withdraw.cashu.error.rejected":
     "Mint platbu odmítl. Z peněženky nic neodešlo.",
   "withdraw.cashu.error.toSelf":
     "Tohle je jedna z vašich vlastních platebních faktur.",
   "withdraw.cashu.error.unreachable": "Mint neodpověděl. Nic nebylo odesláno.",
   "withdraw.cashu.form.description":
-    "Pošlete ecash z jednoho mintu Cashu peněženky sdílené s Linky na Lightning fakturu nebo Lightning adresu.",
+    "Zadejte Lightning adresu, fakturu nebo jméno či profil v Linky.",
   "withdraw.cashu.mint": "Z kterého mintu",
   "withdraw.cashu.noAccount.description":
-    "Před výběrem zapněte Cashu v platebních účtech.",
-  "withdraw.cashu.noAccount.title": "Cashu je vypnuté",
-  "withdraw.cashu.noFunds": "Žádný mint nedrží ecash.",
+    "Před výběrem zapněte Bitcoin v platebních účtech.",
+  "withdraw.cashu.noAccount.title": "Bitcoin je vypnutý",
+  "withdraw.cashu.noFunds": "V peněžence nejsou žádné dostupné prostředky.",
   "withdraw.cashu.review.feeReserve": "Rezerva na poplatek mintu",
   "withdraw.cashu.review.inputFee": "Vstupní poplatek mintu",
   "withdraw.cashu.review.remainder":
     "Co rezerva nevyužije, vrátí se do zůstatku mintu.",
-  "withdraw.cashu.title": "Výběr z Cashu",
+  "withdraw.cashu.title": "Výběr prostředků",
   "withdraw.clipboard.use": "Použít ze schránky: {value}",
   "withdraw.comment.hint": "Uvidíte ji jen vy, v historii výběrů.",
   "withdraw.comment.label": "Poznámka pro vás",
@@ -211,4 +212,19 @@ export const csWithdraw = {
   "withdraw.transactions.empty": "Zatím žádné pohyby.",
   "withdraw.transactions.kind.spark": "Spark",
   "withdraw.transactions.title": "Pohyby na účtu",
+  "withdraw.destination.kind.linkyContact": "Kontakt z Linky",
+  "withdraw.contact.checking": "Hledám kontakt v Linky…",
+  "withdraw.contact.notFound": "V Linky není nikdo se jménem {address}.",
+  "withdraw.contact.unreachable":
+    "Linky se nepodařilo kontaktovat. Zkontrolujte připojení.",
+  "withdraw.kind.cashuSend": "Platba kontaktu z Linky",
+  "withdraw.cashu.send.error.notDelivered":
+    "Token se nepodařilo předat. Z peněženky nic neodešlo.",
+  "withdraw.cashu.send.error.consumedByFee":
+    "Částka by nepokryla poplatek mintu.",
+  "withdraw.cashu.send.review.fee": "Poplatek mintu, nejvýše",
+  "withdraw.cashu.send.review.note":
+    "Příjemci se platba objeví v Linky automaticky.",
+  "withdraw.detail.pending.cashuSend": "Token je na cestě k příjemci.",
+  "withdraw.detail.cashuOperationId": "Operace v peněžence",
 } satisfies Record<keyof typeof enWithdraw, string>

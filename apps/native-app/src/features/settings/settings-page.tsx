@@ -318,8 +318,8 @@ export function SettingsPage() {
     <Screen>
       <FadeHeader title={t("settings.title")} startAddon={null} />
       <ProfileCard />
-      <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
       <VerticalNav title={t("settings.payments")} items={paymentItems} />
+      <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
       <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
       <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
       <VerticalNav title={t("settings.appearance")} items={appearanceItems} />

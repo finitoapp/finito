@@ -1,7 +1,8 @@
 # web cashu.spec.ts's `fundCashuWallet` + `walkToNewCashuWithdrawal`: from a
 # seeded app, enables Cashu on the fake mint (autopay), takes a Cashu payment
 # so the mint holds ecash, then walks, by taps only (the fake mint lives in the
-# page), to the new-withdrawal form of the Cashu wallet.
+# page), to the new-withdrawal form of the Cashu wallet, which Finito opens
+# straight from the Linky wallet's Withdraw funds button.
 appId: ${APP_ID}
 ---
 - runFlow: enable-cashu.yaml
@@ -28,8 +29,11 @@ appId: ${APP_ID}
       FROM_HOME: "true"
       TITLE: ${output.t["settings.paymentAccounts.title"]}
 - tapOn: ${output.re(output.t["settings.paymentAccounts.method.bitcoin"])}
+# "Withdraw funds" shows once the balance is in, and opens the form itself.
+- extendedWaitUntil:
+    visible: ${output.re(output.t["settings.cashuAccount.withdraw"])}
+    timeout: 15000
 - tapOn: ${output.re(output.t["settings.cashuAccount.withdraw"])}
 - extendedWaitUntil:
-    visible: ${output.t["withdraw.history.empty"]}
+    visible: ${output.t["withdraw.form.title"]}
     timeout: 15000
-- tapOn: ${output.t["withdraw.history.new"]}
