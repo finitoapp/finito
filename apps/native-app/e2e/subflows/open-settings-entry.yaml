@@ -1,5 +1,6 @@
 # web's openSettingsEntry: taps the Settings list entry TITLE in-app (no
-# reload). FROM_HOME: "true" first opens Settings with the home's gear.
+# reload). FROM_HOME: "true" first opens Settings from home through the menu
+# (web's openMenuTabFromHome): the hamburger, then the Settings tab.
 appId: ${APP_ID}
 ---
 - runFlow:
@@ -7,9 +8,9 @@ appId: ${APP_ID}
       true: ${typeof FROM_HOME !== "undefined" && FROM_HOME === "true"}
     commands:
       - runFlow:
-          file: tap-label.yaml
+          file: open-menu-tab.yaml
           env:
-            LABEL: ${output.t["nav.settings"]}
+            TAB: ${output.t["nav.settings"]}
       - extendedWaitUntil:
           visible: ${output.t["settings.title"]}
           timeout: 15000

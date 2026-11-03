@@ -8,5 +8,6 @@ export const Route = createFileRoute(
   component: QerkoTerminalSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

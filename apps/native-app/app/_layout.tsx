@@ -1,11 +1,17 @@
 import { QueryClientProvider } from "@tanstack/react-query"
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router"
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  usePathname,
+} from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { createStore, Provider } from "jotai"
 import { Suspense, useEffect, useState } from "react"
-import { useColorScheme } from "react-native"
-import { TamaguiProvider, Theme, useTheme, View } from "tamagui"
+import { useColorScheme, useWindowDimensions } from "react-native"
+import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
 import {
   AppEvoluConsumers,
@@ -23,12 +29,18 @@ import { PinPromptHost } from "../src/components/app/pin-prompt-host.tsx"
 import { SentryController } from "../src/components/app/sentry-controller.tsx"
 import { SwitchioRestoredResult } from "../src/components/app/switchio-restored-result.tsx"
 import { ToastHost } from "../src/components/app/toast-host.tsx"
+import {
+  MenuNav,
+  menuSidebarMinWidth,
+  menuSidebarWidth,
+} from "../src/components/menu-nav.tsx"
 import { WebColumn } from "../src/components/web-column.tsx"
 import {
   routeFallbackMounted,
   routeFallbackUnmounted,
   useIdleAfterFirstScreen,
 } from "../src/core/first-screen.ts"
+import { menuPositionOf } from "../src/core/menu-routes.ts"
 import { queryClient } from "../src/core/query-client.ts"
 import { resolveTheme } from "../src/core/theme-preference.ts"
 import { removeStaleExportFolders } from "../src/features/settings/evolu-export/evolu-export-io"
@@ -152,6 +164,12 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const theme = useTheme()
   const base = dark ? DarkTheme : DefaultTheme
   const background = theme.background.val
+  // The menu section (navigation/0001): the sidebar on every screen of it on
+  // a large window, the bottom bar on a tab's root screen otherwise.
+  const menu = menuPositionOf(usePathname())
+  const wide = useWindowDimensions().width >= menuSidebarMinWidth
+  const sidebar = menu !== undefined && wide
+  const bar = menu?.root === true && !wide
   return (
     <ThemeProvider
       value={{
@@ -159,17 +177,25 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
         colors: { ...base.colors, background, card: background },
       }}
     >
-      <WebColumn>
-        <View flex={1}>
-          {/* Its own boundary: the EET settings query suspends on an account switch. */}
-          <Suspense fallback={null}>
-            <EetSandboxBanner />
-          </Suspense>
+      <View flex={1} bg="background">
+        <XStack flex={1}>
+          {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
           <View flex={1}>
-            <Stack screenOptions={{ headerShown: false }} />
+            <WebColumn reservedWidth={sidebar ? menuSidebarWidth : 0}>
+              <View flex={1}>
+                {/* Its own boundary: the EET settings query suspends on an account switch. */}
+                <Suspense fallback={null}>
+                  <EetSandboxBanner />
+                </Suspense>
+                <View flex={1}>
+                  <Stack screenOptions={{ headerShown: false }} />
+                </View>
+              </View>
+            </WebColumn>
           </View>
-        </View>
-      </WebColumn>
+        </XStack>
+        {bar ? <MenuNav active={menu.tab} variant="bar" /> : null}
+      </View>
     </ThemeProvider>
   )
 }

@@ -369,5 +369,5 @@ PAYKY_AI_BASE_URL=http://localhost:11434/v1 PAYKY_AI_MODEL=qwen3 \
 All user-facing React text goes through `t(key)`. Add each key to the group file
 its namespace belongs to — `apps/web-app/src/i18n/en/<group>.ts`, then the same file under
 `cs/` and `sk/` — and use stable, feature-scoped names such as `bill.save`,
-`settings.items.title`, or `activity.empty`. `bun run check:ts` fails while a
+`catalog.items.title`, or `activity.empty`. `bun run check:ts` fails while a
 key is missing from any language.

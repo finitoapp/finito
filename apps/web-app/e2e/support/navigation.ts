@@ -40,6 +40,62 @@ export async function reloadPage(
 }
 
 /**
+ * Home's hamburger, the way into the menu section (navigation/0001). Its
+ * presence is also the sign that home has rendered.
+ */
+export const menuButton = (page: Page, language: Language) =>
+  page.getByRole("button", { name: translate(language, "nav.menu") })
+
+/** The menu section's tab key, by its bar label. */
+export type MenuTabLabelKey = "nav.activity" | "nav.catalog" | "nav.settings"
+
+/**
+ * The page's own navigation lists (the history rows, the settings groups),
+ * leaving out the menu section's bar and sidebar, which are `nav`s too.
+ */
+export const contentNav = (page: Page, language: Language) =>
+  page.locator(`nav:not([aria-label="${translate(language, "nav.menu")}"])`)
+
+/**
+ * The menu's Home entry, ahead of its tabs, which leaves the section the way
+ * it was entered (navigation/0001).
+ */
+export const menuHome = (page: Page, language: Language) =>
+  page
+    .getByRole("navigation", { name: translate(language, "nav.menu") })
+    .getByRole("button", { name: translate(language, "nav.home") })
+
+/**
+ * Switches to a tab of the menu section through its bar (a phone, on a
+ * tab's root screen) or its sidebar (a large monitor).
+ */
+export async function openMenuTab(
+  page: Page,
+  language: Language,
+  labelKey: MenuTabLabelKey
+): Promise<void> {
+  await page
+    .getByRole("navigation", { name: translate(language, "nav.menu") })
+    .getByRole("link", { name: translate(language, labelKey), exact: true })
+    .click()
+}
+
+/**
+ * From home: the hamburger, which opens Activity, then the tab. A
+ * client-side walk, so a PIN session survives it.
+ */
+export async function openMenuTabFromHome(
+  page: Page,
+  language: Language,
+  labelKey: MenuTabLabelKey
+): Promise<void> {
+  await menuButton(page, language).click()
+  if (labelKey !== "nav.activity") {
+    await openMenuTab(page, language, labelKey)
+  }
+}
+
+/**
  * Navigates to "/" and ensures the home screen is showing tables/POS mode,
  * switching it via the home icon if it isn't already (the choice persists
  * across navigations, so this is a no-op once a test has switched once).

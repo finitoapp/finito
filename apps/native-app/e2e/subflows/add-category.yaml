@@ -5,19 +5,19 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: settings/categories
-      TEXT: ${output.t["settings.categories.title"]}
+      ROUTE: catalog/categories
+      TEXT: ${output.t["catalog.categories.title"]}
 - runFlow:
     file: tap-label.yaml
     env:
-      LABEL: ${output.t["settings.categories.add"]}
+      LABEL: ${output.t["catalog.categories.add"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.categories.form.title.create"]}
+    visible: ${output.t["catalog.categories.form.title.create"]}
     timeout: 15000
 - runFlow:
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.categories.form.name.label"]}
+      LABEL: ${output.t["catalog.categories.form.name.label"]}
       VALUE: ${NAME}
 - runFlow:
     when:
@@ -26,9 +26,9 @@ appId: ${APP_ID}
       - hideKeyboard
 # The Save button shares its copy with the page title.
 - tapOn:
-    text: ${output.re(output.t["settings.categories.form.save.create"])}
+    text: ${output.re(output.t["catalog.categories.form.save.create"])}
     below:
-      id: ${output.re(output.t["settings.categories.form.name.label"])}
+      id: ${output.re(output.t["catalog.categories.form.name.label"])}
 - extendedWaitUntil:
-    visible: ${output.t["settings.categories.title"]}
+    visible: ${output.t["catalog.categories.title"]}
     timeout: 15000

@@ -18,7 +18,6 @@ import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
 import Building from "lucide-react-native/icons/building"
-import FolderIcon from "lucide-react-native/icons/folder"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
 import House from "lucide-react-native/icons/house"
 import Info from "lucide-react-native/icons/info"
@@ -29,11 +28,9 @@ import LockKeyhole from "lucide-react-native/icons/lock-keyhole"
 import Percent from "lucide-react-native/icons/percent"
 import ReceiptText from "lucide-react-native/icons/receipt-text"
 import ShieldCheck from "lucide-react-native/icons/shield-check"
-import ShoppingBag from "lucide-react-native/icons/shopping-bag"
 import Sparkles from "lucide-react-native/icons/sparkles"
 import Stamp from "lucide-react-native/icons/stamp"
 import SunMoon from "lucide-react-native/icons/sun-moon"
-import Table2Icon from "lucide-react-native/icons/table-2"
 import UserRound from "lucide-react-native/icons/user-round"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
@@ -167,29 +164,6 @@ export function SettingsPage() {
       ? fiatCurrency
       : `${t(countryLabelKey(legalEntity.country))} · ${fiatCurrency}`
 
-  const catalogItems = createSettingsNavItems(
-    [
-      {
-        icon: ShoppingBag,
-        title: "settings.items.title",
-        description: "settings.items.description",
-        href: "/settings/items",
-      },
-      {
-        icon: FolderIcon,
-        title: "settings.categories.title",
-        description: "settings.categories.description",
-        href: "/settings/categories",
-      },
-      {
-        icon: Table2Icon,
-        title: "settings.tables.title",
-        description: "settings.tables.description",
-        href: "/settings/tables",
-      },
-    ],
-    t
-  )
   const paymentItems = createSettingsNavItems(
     [
       {
@@ -331,9 +305,8 @@ export function SettingsPage() {
 
   return (
     <Screen>
-      <FadeHeader title={t("settings.title")} />
+      <FadeHeader title={t("settings.title")} startAddon={null} />
       <ProfileCard />
-      <VerticalNav title={t("settings.catalog")} items={catalogItems} />
       <VerticalNav title={t("settings.payments")} items={paymentItems} />
       <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
       <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />

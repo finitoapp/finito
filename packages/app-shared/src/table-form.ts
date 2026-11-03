@@ -29,7 +29,7 @@ export const parseTableForm = (input: {
     return {
       ok: false,
       field: "name",
-      errorKey: "settings.tables.form.name.invalid",
+      errorKey: "catalog.tables.form.name.invalid",
     }
   }
   const seatCount = z.safeDecode(positiveIntegerCodec, input.seatCount)
@@ -37,7 +37,7 @@ export const parseTableForm = (input: {
     return {
       ok: false,
       field: "seatCount",
-      errorKey: "settings.tables.form.seatCount.invalid",
+      errorKey: "catalog.tables.form.seatCount.invalid",
     }
   }
   return { ok: true, name: name.data, seatCount: seatCount.data }

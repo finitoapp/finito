@@ -4,9 +4,9 @@ tags: [settings-assistant]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow:
-    file: ../../subflows/tap-label.yaml
+    file: ../../subflows/open-menu-tab.yaml
     env:
-      LABEL: ${output.t["nav.settings"]}
+      TAB: ${output.t["nav.settings"]}
 - extendedWaitUntil:
     visible: ${output.t["settings.title"]}
     timeout: 15000

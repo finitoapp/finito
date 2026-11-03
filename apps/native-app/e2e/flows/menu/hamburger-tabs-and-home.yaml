@@ -1,0 +1,51 @@
+# web menu.spec.ts: "the hamburger opens Activity, every tab switches, and Home returns home".
+appId: ${APP_ID}
+tags: [menu]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+# The hamburger opens Activity, with the bar.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}
+- extendedWaitUntil:
+    visible: ${output.t["activity.title"]}
+    timeout: 15000
+# Every tab can be switched to.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.catalog"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.add"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.settings"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.title"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.activity"]}
+- extendedWaitUntil:
+    visible: ${output.t["activity.tabs.payments"]}
+    timeout: 15000
+# A root screen has no Back, and Home returns home, the tab switches not
+# rewound.
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.home"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}

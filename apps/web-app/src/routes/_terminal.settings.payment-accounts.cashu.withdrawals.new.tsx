@@ -15,6 +15,7 @@ export const Route = createFileRoute(
   validateSearch: (search) => CashuWithdrawNewSearchSchema.parse(search),
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })
 

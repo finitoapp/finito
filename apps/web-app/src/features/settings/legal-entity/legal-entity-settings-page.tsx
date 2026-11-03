@@ -21,8 +21,8 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { FieldDescription, FieldGroup } from "@/components/ui/field.tsx"
-import { InlineEditCheckbox } from "@/features/settings/inline-edit-checkbox.tsx"
-import { InlineEditSelect } from "@/features/settings/inline-edit-select.tsx"
+import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
+import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"

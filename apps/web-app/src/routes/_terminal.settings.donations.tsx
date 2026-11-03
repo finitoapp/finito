@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/donations")({
   component: DonationsSettingsPage,
   staticData: {
     access: "free",
+    menu: { tab: "settings" },
   },
 })

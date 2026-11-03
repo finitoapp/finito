@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/security")({
   component: SecuritySettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

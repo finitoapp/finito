@@ -1,6 +1,6 @@
 # 0008 The permission map, with stats
 
-Status: accepted
+Status: superseded by access/0010
 Date: 2026-10-10
 
 ## Context

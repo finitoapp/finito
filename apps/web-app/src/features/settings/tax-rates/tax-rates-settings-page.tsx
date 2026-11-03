@@ -30,7 +30,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"

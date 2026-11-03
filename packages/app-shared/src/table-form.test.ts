@@ -18,7 +18,7 @@ describe("parseTableForm", () => {
     expect(parseTableForm({ name: "A", seatCount: value })).toMatchObject({
       ok: false,
       field: "seatCount",
-      errorKey: "settings.tables.form.seatCount.invalid",
+      errorKey: "catalog.tables.form.seatCount.invalid",
     })
   })
 })

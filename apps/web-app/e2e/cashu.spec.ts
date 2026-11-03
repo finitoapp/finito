@@ -5,7 +5,7 @@ import { mockDonationApis } from "./support/donation-mocks.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
 import { toggleInlineSwitch } from "./support/inline-edit.ts"
-import { gotoPage } from "./support/navigation.ts"
+import { gotoPage, openMenuTabFromHome } from "./support/navigation.ts"
 import {
   createPayment,
   markCashuPaid,
@@ -135,9 +135,7 @@ const walkToNewCashuWithdrawal = (page: Page) =>
     await page
       .getByRole("button", { name: translate("en", "paymentWait.back") })
       .click()
-    await page
-      .getByRole("button", { name: translate("en", "nav.settings") })
-      .click()
+    await openMenuTabFromHome(page, "en", "nav.settings")
     await openSettingsEntry(page, "en", "settings.paymentAccounts.title")
     await page
       .getByRole("link", {

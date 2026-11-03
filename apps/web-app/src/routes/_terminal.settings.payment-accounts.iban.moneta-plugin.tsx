@@ -8,5 +8,6 @@ export const Route = createFileRoute(
   component: MonetaPluginSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

@@ -16,10 +16,16 @@ import { Route as RestoreAccountRouteImport } from './routes/restore-account'
 import { Route as TerminalIndexRouteImport } from './routes/_terminal.index'
 import { Route as TerminalActivityRouteImport } from './routes/_terminal.activity'
 import { Route as TerminalBillRouteImport } from './routes/_terminal.bill'
+import { Route as TerminalCatalogRouteImport } from './routes/_terminal.catalog'
+import { Route as TerminalNotificationsRouteImport } from './routes/_terminal.notifications'
 import { Route as TerminalSettingsRouteImport } from './routes/_terminal.settings'
-import { Route as TerminalStatsRouteImport } from './routes/_terminal.stats'
 import { Route as TerminalActivityPaymentIdRouteImport } from './routes/_terminal.activity_.$paymentId'
 import { Route as TerminalActivityBillsRouteImport } from './routes/_terminal.activity_.bills'
+import { Route as TerminalActivityStatsRouteImport } from './routes/_terminal.activity_.stats'
+import { Route as TerminalCatalogIndexRouteImport } from './routes/_terminal.catalog.index'
+import { Route as TerminalCatalogCategoriesRouteImport } from './routes/_terminal.catalog.categories'
+import { Route as TerminalCatalogItemsRouteImport } from './routes/_terminal.catalog.items'
+import { Route as TerminalCatalogTablesRouteImport } from './routes/_terminal.catalog.tables'
 import { Route as TerminalPaymentTipRouteImport } from './routes/_terminal.payment.tip'
 import { Route as TerminalPaymentPaymentIdRouteImport } from './routes/_terminal.payment_.$paymentId'
 import { Route as TerminalSettingsIndexRouteImport } from './routes/_terminal.settings.index'
@@ -27,7 +33,6 @@ import { Route as TerminalSettingsAboutRouteImport } from './routes/_terminal.se
 import { Route as TerminalSettingsAccessRouteImport } from './routes/_terminal.settings.access'
 import { Route as TerminalSettingsAccountsRouteImport } from './routes/_terminal.settings.accounts'
 import { Route as TerminalSettingsAssistantRouteImport } from './routes/_terminal.settings.assistant'
-import { Route as TerminalSettingsCategoriesRouteImport } from './routes/_terminal.settings.categories'
 import { Route as TerminalSettingsDebugConsoleRouteImport } from './routes/_terminal.settings.debug-console'
 import { Route as TerminalSettingsDemoDataRouteImport } from './routes/_terminal.settings.demo-data'
 import { Route as TerminalSettingsDonationsRouteImport } from './routes/_terminal.settings.donations'
@@ -35,7 +40,6 @@ import { Route as TerminalSettingsDonationsInvoiceRouteImport } from './routes/_
 import { Route as TerminalSettingsEetRouteImport } from './routes/_terminal.settings.eet'
 import { Route as TerminalSettingsEvoluExportRouteImport } from './routes/_terminal.settings.evolu-export'
 import { Route as TerminalSettingsHomeScreenRouteImport } from './routes/_terminal.settings.home-screen'
-import { Route as TerminalSettingsItemsRouteImport } from './routes/_terminal.settings.items'
 import { Route as TerminalSettingsLanguageRouteImport } from './routes/_terminal.settings.language'
 import { Route as TerminalSettingsLegalEntityRouteImport } from './routes/_terminal.settings.legal-entity'
 import { Route as TerminalSettingsPaymentAccountsRouteImport } from './routes/_terminal.settings.payment-accounts'
@@ -43,22 +47,24 @@ import { Route as TerminalSettingsPaymentNumberSeriesRouteImport } from './route
 import { Route as TerminalSettingsProfileRouteImport } from './routes/_terminal.settings.profile'
 import { Route as TerminalSettingsSecurityRouteImport } from './routes/_terminal.settings.security'
 import { Route as TerminalSettingsSupportRouteImport } from './routes/_terminal.settings.support'
-import { Route as TerminalSettingsTablesRouteImport } from './routes/_terminal.settings.tables'
 import { Route as TerminalSettingsTaxRatesRouteImport } from './routes/_terminal.settings.tax-rates'
 import { Route as TerminalSettingsThemeRouteImport } from './routes/_terminal.settings.theme'
 import { Route as TerminalSettingsTipsRouteImport } from './routes/_terminal.settings.tips'
 import { Route as TerminalActivityBillsBillIdRouteImport } from './routes/_terminal.activity_.bills_.$billId'
+import { Route as TerminalCatalogCategoriesIndexRouteImport } from './routes/_terminal.catalog.categories.index'
+import { Route as TerminalCatalogCategoriesCatalogCategoryIdRouteImport } from './routes/_terminal.catalog.categories.$catalogCategoryId'
+import { Route as TerminalCatalogCategoriesNewRouteImport } from './routes/_terminal.catalog.categories.new'
+import { Route as TerminalCatalogItemsIndexRouteImport } from './routes/_terminal.catalog.items.index'
+import { Route as TerminalCatalogItemsCatalogItemIdRouteImport } from './routes/_terminal.catalog.items.$catalogItemId'
+import { Route as TerminalCatalogItemsNewRouteImport } from './routes/_terminal.catalog.items.new'
+import { Route as TerminalCatalogTablesIndexRouteImport } from './routes/_terminal.catalog.tables.index'
+import { Route as TerminalCatalogTablesTableIdRouteImport } from './routes/_terminal.catalog.tables.$tableId'
+import { Route as TerminalCatalogTablesNewRouteImport } from './routes/_terminal.catalog.tables.new'
 import { Route as TerminalSettingsAboutIndexRouteImport } from './routes/_terminal.settings.about.index'
 import { Route as TerminalSettingsAboutPrivacyRouteImport } from './routes/_terminal.settings.about.privacy'
 import { Route as TerminalSettingsAboutTermsRouteImport } from './routes/_terminal.settings.about.terms'
 import { Route as TerminalSettingsAccessAddDeviceRouteImport } from './routes/_terminal.settings.access_.add-device'
 import { Route as TerminalSettingsAccountsIndexRouteImport } from './routes/_terminal.settings.accounts.index'
-import { Route as TerminalSettingsCategoriesIndexRouteImport } from './routes/_terminal.settings.categories.index'
-import { Route as TerminalSettingsCategoriesCatalogCategoryIdRouteImport } from './routes/_terminal.settings.categories.$catalogCategoryId'
-import { Route as TerminalSettingsCategoriesNewRouteImport } from './routes/_terminal.settings.categories.new'
-import { Route as TerminalSettingsItemsIndexRouteImport } from './routes/_terminal.settings.items.index'
-import { Route as TerminalSettingsItemsCatalogItemIdRouteImport } from './routes/_terminal.settings.items.$catalogItemId'
-import { Route as TerminalSettingsItemsNewRouteImport } from './routes/_terminal.settings.items.new'
 import { Route as TerminalSettingsPaymentAccountsIndexRouteImport } from './routes/_terminal.settings.payment-accounts.index'
 import { Route as TerminalSettingsPaymentAccountsCardSwitchioRouteImport } from './routes/_terminal.settings.payment-accounts.card-switchio'
 import { Route as TerminalSettingsPaymentAccountsCashuRouteImport } from './routes/_terminal.settings.payment-accounts.cashu'
@@ -67,9 +73,6 @@ import { Route as TerminalSettingsPaymentAccountsLightningAddressRouteImport } f
 import { Route as TerminalSettingsPaymentAccountsQerkoTerminalRouteImport } from './routes/_terminal.settings.payment-accounts.qerko-terminal'
 import { Route as TerminalSettingsPaymentAccountsSparkRouteImport } from './routes/_terminal.settings.payment-accounts.spark'
 import { Route as TerminalSettingsSecurityBackupRouteImport } from './routes/_terminal.settings.security_.backup'
-import { Route as TerminalSettingsTablesIndexRouteImport } from './routes/_terminal.settings.tables.index'
-import { Route as TerminalSettingsTablesTableIdRouteImport } from './routes/_terminal.settings.tables.$tableId'
-import { Route as TerminalSettingsTablesNewRouteImport } from './routes/_terminal.settings.tables.new'
 import { Route as TerminalSettingsPaymentAccountsCashuIndexRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.index'
 import { Route as TerminalSettingsPaymentAccountsCashuMintsRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.mints'
 import { Route as TerminalSettingsPaymentAccountsCashuWithdrawalsRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.withdrawals'
@@ -123,14 +126,19 @@ const TerminalBillRoute = TerminalBillRouteImport.update({
   path: '/bill',
   getParentRoute: () => TerminalRoute,
 } as any)
+const TerminalCatalogRoute = TerminalCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => TerminalRoute,
+} as any)
+const TerminalNotificationsRoute = TerminalNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => TerminalRoute,
+} as any)
 const TerminalSettingsRoute = TerminalSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => TerminalRoute,
-} as any)
-const TerminalStatsRoute = TerminalStatsRouteImport.update({
-  id: '/stats',
-  path: '/stats',
   getParentRoute: () => TerminalRoute,
 } as any)
 const TerminalActivityPaymentIdRoute =
@@ -143,6 +151,32 @@ const TerminalActivityBillsRoute = TerminalActivityBillsRouteImport.update({
   id: '/activity_/bills',
   path: '/activity/bills',
   getParentRoute: () => TerminalRoute,
+} as any)
+const TerminalActivityStatsRoute = TerminalActivityStatsRouteImport.update({
+  id: '/activity_/stats',
+  path: '/activity/stats',
+  getParentRoute: () => TerminalRoute,
+} as any)
+const TerminalCatalogIndexRoute = TerminalCatalogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TerminalCatalogRoute,
+} as any)
+const TerminalCatalogCategoriesRoute =
+  TerminalCatalogCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => TerminalCatalogRoute,
+  } as any)
+const TerminalCatalogItemsRoute = TerminalCatalogItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => TerminalCatalogRoute,
+} as any)
+const TerminalCatalogTablesRoute = TerminalCatalogTablesRouteImport.update({
+  id: '/tables',
+  path: '/tables',
+  getParentRoute: () => TerminalCatalogRoute,
 } as any)
 const TerminalPaymentTipRoute = TerminalPaymentTipRouteImport.update({
   id: '/payment/tip',
@@ -180,12 +214,6 @@ const TerminalSettingsAssistantRoute =
   TerminalSettingsAssistantRouteImport.update({
     id: '/assistant',
     path: '/assistant',
-    getParentRoute: () => TerminalSettingsRoute,
-  } as any)
-const TerminalSettingsCategoriesRoute =
-  TerminalSettingsCategoriesRouteImport.update({
-    id: '/categories',
-    path: '/categories',
     getParentRoute: () => TerminalSettingsRoute,
   } as any)
 const TerminalSettingsDebugConsoleRoute =
@@ -229,11 +257,6 @@ const TerminalSettingsHomeScreenRoute =
     path: '/home-screen',
     getParentRoute: () => TerminalSettingsRoute,
   } as any)
-const TerminalSettingsItemsRoute = TerminalSettingsItemsRouteImport.update({
-  id: '/items',
-  path: '/items',
-  getParentRoute: () => TerminalSettingsRoute,
-} as any)
 const TerminalSettingsLanguageRoute =
   TerminalSettingsLanguageRouteImport.update({
     id: '/language',
@@ -274,11 +297,6 @@ const TerminalSettingsSupportRoute = TerminalSettingsSupportRouteImport.update({
   path: '/support',
   getParentRoute: () => TerminalSettingsRoute,
 } as any)
-const TerminalSettingsTablesRoute = TerminalSettingsTablesRouteImport.update({
-  id: '/tables',
-  path: '/tables',
-  getParentRoute: () => TerminalSettingsRoute,
-} as any)
 const TerminalSettingsTaxRatesRoute =
   TerminalSettingsTaxRatesRouteImport.update({
     id: '/tax-rates',
@@ -300,6 +318,59 @@ const TerminalActivityBillsBillIdRoute =
     id: '/activity_/bills_/$billId',
     path: '/activity/bills/$billId',
     getParentRoute: () => TerminalRoute,
+  } as any)
+const TerminalCatalogCategoriesIndexRoute =
+  TerminalCatalogCategoriesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TerminalCatalogCategoriesRoute,
+  } as any)
+const TerminalCatalogCategoriesCatalogCategoryIdRoute =
+  TerminalCatalogCategoriesCatalogCategoryIdRouteImport.update({
+    id: '/$catalogCategoryId',
+    path: '/$catalogCategoryId',
+    getParentRoute: () => TerminalCatalogCategoriesRoute,
+  } as any)
+const TerminalCatalogCategoriesNewRoute =
+  TerminalCatalogCategoriesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => TerminalCatalogCategoriesRoute,
+  } as any)
+const TerminalCatalogItemsIndexRoute =
+  TerminalCatalogItemsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TerminalCatalogItemsRoute,
+  } as any)
+const TerminalCatalogItemsCatalogItemIdRoute =
+  TerminalCatalogItemsCatalogItemIdRouteImport.update({
+    id: '/$catalogItemId',
+    path: '/$catalogItemId',
+    getParentRoute: () => TerminalCatalogItemsRoute,
+  } as any)
+const TerminalCatalogItemsNewRoute = TerminalCatalogItemsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TerminalCatalogItemsRoute,
+} as any)
+const TerminalCatalogTablesIndexRoute =
+  TerminalCatalogTablesIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => TerminalCatalogTablesRoute,
+  } as any)
+const TerminalCatalogTablesTableIdRoute =
+  TerminalCatalogTablesTableIdRouteImport.update({
+    id: '/$tableId',
+    path: '/$tableId',
+    getParentRoute: () => TerminalCatalogTablesRoute,
+  } as any)
+const TerminalCatalogTablesNewRoute =
+  TerminalCatalogTablesNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => TerminalCatalogTablesRoute,
   } as any)
 const TerminalSettingsAboutIndexRoute =
   TerminalSettingsAboutIndexRouteImport.update({
@@ -330,42 +401,6 @@ const TerminalSettingsAccountsIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => TerminalSettingsAccountsRoute,
-  } as any)
-const TerminalSettingsCategoriesIndexRoute =
-  TerminalSettingsCategoriesIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => TerminalSettingsCategoriesRoute,
-  } as any)
-const TerminalSettingsCategoriesCatalogCategoryIdRoute =
-  TerminalSettingsCategoriesCatalogCategoryIdRouteImport.update({
-    id: '/$catalogCategoryId',
-    path: '/$catalogCategoryId',
-    getParentRoute: () => TerminalSettingsCategoriesRoute,
-  } as any)
-const TerminalSettingsCategoriesNewRoute =
-  TerminalSettingsCategoriesNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => TerminalSettingsCategoriesRoute,
-  } as any)
-const TerminalSettingsItemsIndexRoute =
-  TerminalSettingsItemsIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => TerminalSettingsItemsRoute,
-  } as any)
-const TerminalSettingsItemsCatalogItemIdRoute =
-  TerminalSettingsItemsCatalogItemIdRouteImport.update({
-    id: '/$catalogItemId',
-    path: '/$catalogItemId',
-    getParentRoute: () => TerminalSettingsItemsRoute,
-  } as any)
-const TerminalSettingsItemsNewRoute =
-  TerminalSettingsItemsNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => TerminalSettingsItemsRoute,
   } as any)
 const TerminalSettingsPaymentAccountsIndexRoute =
   TerminalSettingsPaymentAccountsIndexRouteImport.update({
@@ -414,24 +449,6 @@ const TerminalSettingsSecurityBackupRoute =
     id: '/security_/backup',
     path: '/security/backup',
     getParentRoute: () => TerminalSettingsRoute,
-  } as any)
-const TerminalSettingsTablesIndexRoute =
-  TerminalSettingsTablesIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => TerminalSettingsTablesRoute,
-  } as any)
-const TerminalSettingsTablesTableIdRoute =
-  TerminalSettingsTablesTableIdRouteImport.update({
-    id: '/$tableId',
-    path: '/$tableId',
-    getParentRoute: () => TerminalSettingsTablesRoute,
-  } as any)
-const TerminalSettingsTablesNewRoute =
-  TerminalSettingsTablesNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => TerminalSettingsTablesRoute,
   } as any)
 const TerminalSettingsPaymentAccountsCashuIndexRoute =
   TerminalSettingsPaymentAccountsCashuIndexRouteImport.update({
@@ -555,17 +572,21 @@ export interface FileRoutesByFullPath {
   '/restore-account': typeof RestoreAccountRoute
   '/activity': typeof TerminalActivityRoute
   '/bill': typeof TerminalBillRoute
+  '/catalog': typeof TerminalCatalogRouteWithChildren
+  '/notifications': typeof TerminalNotificationsRoute
   '/settings': typeof TerminalSettingsRouteWithChildren
-  '/stats': typeof TerminalStatsRoute
   '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/activity/bills': typeof TerminalActivityBillsRoute
+  '/activity/stats': typeof TerminalActivityStatsRoute
+  '/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
+  '/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
+  '/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
   '/payment/tip': typeof TerminalPaymentTipRoute
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/about': typeof TerminalSettingsAboutRouteWithChildren
   '/settings/access': typeof TerminalSettingsAccessRoute
   '/settings/accounts': typeof TerminalSettingsAccountsRouteWithChildren
   '/settings/assistant': typeof TerminalSettingsAssistantRoute
-  '/settings/categories': typeof TerminalSettingsCategoriesRouteWithChildren
   '/settings/debug-console': typeof TerminalSettingsDebugConsoleRoute
   '/settings/demo-data': typeof TerminalSettingsDemoDataRoute
   '/settings/donations': typeof TerminalSettingsDonationsRoute
@@ -573,7 +594,6 @@ export interface FileRoutesByFullPath {
   '/settings/eet': typeof TerminalSettingsEetRoute
   '/settings/evolu-export': typeof TerminalSettingsEvoluExportRoute
   '/settings/home-screen': typeof TerminalSettingsHomeScreenRoute
-  '/settings/items': typeof TerminalSettingsItemsRouteWithChildren
   '/settings/language': typeof TerminalSettingsLanguageRoute
   '/settings/legal-entity': typeof TerminalSettingsLegalEntityRoute
   '/settings/payment-accounts': typeof TerminalSettingsPaymentAccountsRouteWithChildren
@@ -581,19 +601,21 @@ export interface FileRoutesByFullPath {
   '/settings/profile': typeof TerminalSettingsProfileRoute
   '/settings/security': typeof TerminalSettingsSecurityRoute
   '/settings/support': typeof TerminalSettingsSupportRoute
-  '/settings/tables': typeof TerminalSettingsTablesRouteWithChildren
   '/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/settings/theme': typeof TerminalSettingsThemeRoute
   '/settings/tips': typeof TerminalSettingsTipsRoute
+  '/catalog/': typeof TerminalCatalogIndexRoute
   '/settings/': typeof TerminalSettingsIndexRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
+  '/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
+  '/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
+  '/catalog/items/$catalogItemId': typeof TerminalCatalogItemsCatalogItemIdRoute
+  '/catalog/items/new': typeof TerminalCatalogItemsNewRoute
+  '/catalog/tables/$tableId': typeof TerminalCatalogTablesTableIdRoute
+  '/catalog/tables/new': typeof TerminalCatalogTablesNewRoute
   '/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/settings/access/add-device': typeof TerminalSettingsAccessAddDeviceRoute
-  '/settings/categories/$catalogCategoryId': typeof TerminalSettingsCategoriesCatalogCategoryIdRoute
-  '/settings/categories/new': typeof TerminalSettingsCategoriesNewRoute
-  '/settings/items/$catalogItemId': typeof TerminalSettingsItemsCatalogItemIdRoute
-  '/settings/items/new': typeof TerminalSettingsItemsNewRoute
   '/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/settings/payment-accounts/cashu': typeof TerminalSettingsPaymentAccountsCashuRouteWithChildren
   '/settings/payment-accounts/iban': typeof TerminalSettingsPaymentAccountsIbanRouteWithChildren
@@ -601,14 +623,12 @@ export interface FileRoutesByFullPath {
   '/settings/payment-accounts/qerko-terminal': typeof TerminalSettingsPaymentAccountsQerkoTerminalRoute
   '/settings/payment-accounts/spark': typeof TerminalSettingsPaymentAccountsSparkRouteWithChildren
   '/settings/security/backup': typeof TerminalSettingsSecurityBackupRoute
-  '/settings/tables/$tableId': typeof TerminalSettingsTablesTableIdRoute
-  '/settings/tables/new': typeof TerminalSettingsTablesNewRoute
+  '/catalog/categories/': typeof TerminalCatalogCategoriesIndexRoute
+  '/catalog/items/': typeof TerminalCatalogItemsIndexRoute
+  '/catalog/tables/': typeof TerminalCatalogTablesIndexRoute
   '/settings/about/': typeof TerminalSettingsAboutIndexRoute
   '/settings/accounts/': typeof TerminalSettingsAccountsIndexRoute
-  '/settings/categories/': typeof TerminalSettingsCategoriesIndexRoute
-  '/settings/items/': typeof TerminalSettingsItemsIndexRoute
   '/settings/payment-accounts/': typeof TerminalSettingsPaymentAccountsIndexRoute
-  '/settings/tables/': typeof TerminalSettingsTablesIndexRoute
   '/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
@@ -634,10 +654,11 @@ export interface FileRoutesByTo {
   '/restore-account': typeof RestoreAccountRoute
   '/activity': typeof TerminalActivityRoute
   '/bill': typeof TerminalBillRoute
-  '/stats': typeof TerminalStatsRoute
+  '/notifications': typeof TerminalNotificationsRoute
   '/': typeof TerminalIndexRoute
   '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/activity/bills': typeof TerminalActivityBillsRoute
+  '/activity/stats': typeof TerminalActivityStatsRoute
   '/payment/tip': typeof TerminalPaymentTipRoute
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/access': typeof TerminalSettingsAccessRoute
@@ -658,27 +679,28 @@ export interface FileRoutesByTo {
   '/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/settings/theme': typeof TerminalSettingsThemeRoute
   '/settings/tips': typeof TerminalSettingsTipsRoute
+  '/catalog': typeof TerminalCatalogIndexRoute
   '/settings': typeof TerminalSettingsIndexRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
+  '/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
+  '/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
+  '/catalog/items/$catalogItemId': typeof TerminalCatalogItemsCatalogItemIdRoute
+  '/catalog/items/new': typeof TerminalCatalogItemsNewRoute
+  '/catalog/tables/$tableId': typeof TerminalCatalogTablesTableIdRoute
+  '/catalog/tables/new': typeof TerminalCatalogTablesNewRoute
   '/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/settings/access/add-device': typeof TerminalSettingsAccessAddDeviceRoute
-  '/settings/categories/$catalogCategoryId': typeof TerminalSettingsCategoriesCatalogCategoryIdRoute
-  '/settings/categories/new': typeof TerminalSettingsCategoriesNewRoute
-  '/settings/items/$catalogItemId': typeof TerminalSettingsItemsCatalogItemIdRoute
-  '/settings/items/new': typeof TerminalSettingsItemsNewRoute
   '/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/settings/payment-accounts/lightning-address': typeof TerminalSettingsPaymentAccountsLightningAddressRoute
   '/settings/payment-accounts/qerko-terminal': typeof TerminalSettingsPaymentAccountsQerkoTerminalRoute
   '/settings/security/backup': typeof TerminalSettingsSecurityBackupRoute
-  '/settings/tables/$tableId': typeof TerminalSettingsTablesTableIdRoute
-  '/settings/tables/new': typeof TerminalSettingsTablesNewRoute
+  '/catalog/categories': typeof TerminalCatalogCategoriesIndexRoute
+  '/catalog/items': typeof TerminalCatalogItemsIndexRoute
+  '/catalog/tables': typeof TerminalCatalogTablesIndexRoute
   '/settings/about': typeof TerminalSettingsAboutIndexRoute
   '/settings/accounts': typeof TerminalSettingsAccountsIndexRoute
-  '/settings/categories': typeof TerminalSettingsCategoriesIndexRoute
-  '/settings/items': typeof TerminalSettingsItemsIndexRoute
   '/settings/payment-accounts': typeof TerminalSettingsPaymentAccountsIndexRoute
-  '/settings/tables': typeof TerminalSettingsTablesIndexRoute
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
   '/settings/payment-accounts/iban/moneta-plugin': typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   '/settings/payment-accounts/spark/transactions': typeof TerminalSettingsPaymentAccountsSparkTransactionsRoute
@@ -703,18 +725,22 @@ export interface FileRoutesById {
   '/restore-account': typeof RestoreAccountRoute
   '/_terminal/activity': typeof TerminalActivityRoute
   '/_terminal/bill': typeof TerminalBillRoute
+  '/_terminal/catalog': typeof TerminalCatalogRouteWithChildren
+  '/_terminal/notifications': typeof TerminalNotificationsRoute
   '/_terminal/settings': typeof TerminalSettingsRouteWithChildren
-  '/_terminal/stats': typeof TerminalStatsRoute
   '/_terminal/': typeof TerminalIndexRoute
   '/_terminal/activity_/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/_terminal/activity_/bills': typeof TerminalActivityBillsRoute
+  '/_terminal/activity_/stats': typeof TerminalActivityStatsRoute
+  '/_terminal/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
+  '/_terminal/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
+  '/_terminal/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
   '/_terminal/payment/tip': typeof TerminalPaymentTipRoute
   '/_terminal/payment_/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/_terminal/settings/about': typeof TerminalSettingsAboutRouteWithChildren
   '/_terminal/settings/access': typeof TerminalSettingsAccessRoute
   '/_terminal/settings/accounts': typeof TerminalSettingsAccountsRouteWithChildren
   '/_terminal/settings/assistant': typeof TerminalSettingsAssistantRoute
-  '/_terminal/settings/categories': typeof TerminalSettingsCategoriesRouteWithChildren
   '/_terminal/settings/debug-console': typeof TerminalSettingsDebugConsoleRoute
   '/_terminal/settings/demo-data': typeof TerminalSettingsDemoDataRoute
   '/_terminal/settings/donations': typeof TerminalSettingsDonationsRoute
@@ -722,7 +748,6 @@ export interface FileRoutesById {
   '/_terminal/settings/eet': typeof TerminalSettingsEetRoute
   '/_terminal/settings/evolu-export': typeof TerminalSettingsEvoluExportRoute
   '/_terminal/settings/home-screen': typeof TerminalSettingsHomeScreenRoute
-  '/_terminal/settings/items': typeof TerminalSettingsItemsRouteWithChildren
   '/_terminal/settings/language': typeof TerminalSettingsLanguageRoute
   '/_terminal/settings/legal-entity': typeof TerminalSettingsLegalEntityRoute
   '/_terminal/settings/payment-accounts': typeof TerminalSettingsPaymentAccountsRouteWithChildren
@@ -730,19 +755,21 @@ export interface FileRoutesById {
   '/_terminal/settings/profile': typeof TerminalSettingsProfileRoute
   '/_terminal/settings/security': typeof TerminalSettingsSecurityRoute
   '/_terminal/settings/support': typeof TerminalSettingsSupportRoute
-  '/_terminal/settings/tables': typeof TerminalSettingsTablesRouteWithChildren
   '/_terminal/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/_terminal/settings/theme': typeof TerminalSettingsThemeRoute
   '/_terminal/settings/tips': typeof TerminalSettingsTipsRoute
+  '/_terminal/catalog/': typeof TerminalCatalogIndexRoute
   '/_terminal/settings/': typeof TerminalSettingsIndexRoute
   '/_terminal/activity_/bills_/$billId': typeof TerminalActivityBillsBillIdRoute
+  '/_terminal/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
+  '/_terminal/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
+  '/_terminal/catalog/items/$catalogItemId': typeof TerminalCatalogItemsCatalogItemIdRoute
+  '/_terminal/catalog/items/new': typeof TerminalCatalogItemsNewRoute
+  '/_terminal/catalog/tables/$tableId': typeof TerminalCatalogTablesTableIdRoute
+  '/_terminal/catalog/tables/new': typeof TerminalCatalogTablesNewRoute
   '/_terminal/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/_terminal/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/_terminal/settings/access_/add-device': typeof TerminalSettingsAccessAddDeviceRoute
-  '/_terminal/settings/categories/$catalogCategoryId': typeof TerminalSettingsCategoriesCatalogCategoryIdRoute
-  '/_terminal/settings/categories/new': typeof TerminalSettingsCategoriesNewRoute
-  '/_terminal/settings/items/$catalogItemId': typeof TerminalSettingsItemsCatalogItemIdRoute
-  '/_terminal/settings/items/new': typeof TerminalSettingsItemsNewRoute
   '/_terminal/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/_terminal/settings/payment-accounts/cashu': typeof TerminalSettingsPaymentAccountsCashuRouteWithChildren
   '/_terminal/settings/payment-accounts/iban': typeof TerminalSettingsPaymentAccountsIbanRouteWithChildren
@@ -750,14 +777,12 @@ export interface FileRoutesById {
   '/_terminal/settings/payment-accounts/qerko-terminal': typeof TerminalSettingsPaymentAccountsQerkoTerminalRoute
   '/_terminal/settings/payment-accounts/spark': typeof TerminalSettingsPaymentAccountsSparkRouteWithChildren
   '/_terminal/settings/security_/backup': typeof TerminalSettingsSecurityBackupRoute
-  '/_terminal/settings/tables/$tableId': typeof TerminalSettingsTablesTableIdRoute
-  '/_terminal/settings/tables/new': typeof TerminalSettingsTablesNewRoute
+  '/_terminal/catalog/categories/': typeof TerminalCatalogCategoriesIndexRoute
+  '/_terminal/catalog/items/': typeof TerminalCatalogItemsIndexRoute
+  '/_terminal/catalog/tables/': typeof TerminalCatalogTablesIndexRoute
   '/_terminal/settings/about/': typeof TerminalSettingsAboutIndexRoute
   '/_terminal/settings/accounts/': typeof TerminalSettingsAccountsIndexRoute
-  '/_terminal/settings/categories/': typeof TerminalSettingsCategoriesIndexRoute
-  '/_terminal/settings/items/': typeof TerminalSettingsItemsIndexRoute
   '/_terminal/settings/payment-accounts/': typeof TerminalSettingsPaymentAccountsIndexRoute
-  '/_terminal/settings/tables/': typeof TerminalSettingsTablesIndexRoute
   '/_terminal/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/_terminal/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/_terminal/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
@@ -786,17 +811,21 @@ export interface FileRouteTypes {
     | '/restore-account'
     | '/activity'
     | '/bill'
+    | '/catalog'
+    | '/notifications'
     | '/settings'
-    | '/stats'
     | '/activity/$paymentId'
     | '/activity/bills'
+    | '/activity/stats'
+    | '/catalog/categories'
+    | '/catalog/items'
+    | '/catalog/tables'
     | '/payment/tip'
     | '/payment/$paymentId'
     | '/settings/about'
     | '/settings/access'
     | '/settings/accounts'
     | '/settings/assistant'
-    | '/settings/categories'
     | '/settings/debug-console'
     | '/settings/demo-data'
     | '/settings/donations'
@@ -804,7 +833,6 @@ export interface FileRouteTypes {
     | '/settings/eet'
     | '/settings/evolu-export'
     | '/settings/home-screen'
-    | '/settings/items'
     | '/settings/language'
     | '/settings/legal-entity'
     | '/settings/payment-accounts'
@@ -812,19 +840,21 @@ export interface FileRouteTypes {
     | '/settings/profile'
     | '/settings/security'
     | '/settings/support'
-    | '/settings/tables'
     | '/settings/tax-rates'
     | '/settings/theme'
     | '/settings/tips'
+    | '/catalog/'
     | '/settings/'
     | '/activity/bills/$billId'
+    | '/catalog/categories/$catalogCategoryId'
+    | '/catalog/categories/new'
+    | '/catalog/items/$catalogItemId'
+    | '/catalog/items/new'
+    | '/catalog/tables/$tableId'
+    | '/catalog/tables/new'
     | '/settings/about/privacy'
     | '/settings/about/terms'
     | '/settings/access/add-device'
-    | '/settings/categories/$catalogCategoryId'
-    | '/settings/categories/new'
-    | '/settings/items/$catalogItemId'
-    | '/settings/items/new'
     | '/settings/payment-accounts/card-switchio'
     | '/settings/payment-accounts/cashu'
     | '/settings/payment-accounts/iban'
@@ -832,14 +862,12 @@ export interface FileRouteTypes {
     | '/settings/payment-accounts/qerko-terminal'
     | '/settings/payment-accounts/spark'
     | '/settings/security/backup'
-    | '/settings/tables/$tableId'
-    | '/settings/tables/new'
+    | '/catalog/categories/'
+    | '/catalog/items/'
+    | '/catalog/tables/'
     | '/settings/about/'
     | '/settings/accounts/'
-    | '/settings/categories/'
-    | '/settings/items/'
     | '/settings/payment-accounts/'
-    | '/settings/tables/'
     | '/settings/payment-accounts/cashu/mints'
     | '/settings/payment-accounts/cashu/withdrawals'
     | '/settings/payment-accounts/iban/fio-plugin'
@@ -865,10 +893,11 @@ export interface FileRouteTypes {
     | '/restore-account'
     | '/activity'
     | '/bill'
-    | '/stats'
+    | '/notifications'
     | '/'
     | '/activity/$paymentId'
     | '/activity/bills'
+    | '/activity/stats'
     | '/payment/tip'
     | '/payment/$paymentId'
     | '/settings/access'
@@ -889,27 +918,28 @@ export interface FileRouteTypes {
     | '/settings/tax-rates'
     | '/settings/theme'
     | '/settings/tips'
+    | '/catalog'
     | '/settings'
     | '/activity/bills/$billId'
+    | '/catalog/categories/$catalogCategoryId'
+    | '/catalog/categories/new'
+    | '/catalog/items/$catalogItemId'
+    | '/catalog/items/new'
+    | '/catalog/tables/$tableId'
+    | '/catalog/tables/new'
     | '/settings/about/privacy'
     | '/settings/about/terms'
     | '/settings/access/add-device'
-    | '/settings/categories/$catalogCategoryId'
-    | '/settings/categories/new'
-    | '/settings/items/$catalogItemId'
-    | '/settings/items/new'
     | '/settings/payment-accounts/card-switchio'
     | '/settings/payment-accounts/lightning-address'
     | '/settings/payment-accounts/qerko-terminal'
     | '/settings/security/backup'
-    | '/settings/tables/$tableId'
-    | '/settings/tables/new'
+    | '/catalog/categories'
+    | '/catalog/items'
+    | '/catalog/tables'
     | '/settings/about'
     | '/settings/accounts'
-    | '/settings/categories'
-    | '/settings/items'
     | '/settings/payment-accounts'
-    | '/settings/tables'
     | '/settings/payment-accounts/iban/fio-plugin'
     | '/settings/payment-accounts/iban/moneta-plugin'
     | '/settings/payment-accounts/spark/transactions'
@@ -933,18 +963,22 @@ export interface FileRouteTypes {
     | '/restore-account'
     | '/_terminal/activity'
     | '/_terminal/bill'
+    | '/_terminal/catalog'
+    | '/_terminal/notifications'
     | '/_terminal/settings'
-    | '/_terminal/stats'
     | '/_terminal/'
     | '/_terminal/activity_/$paymentId'
     | '/_terminal/activity_/bills'
+    | '/_terminal/activity_/stats'
+    | '/_terminal/catalog/categories'
+    | '/_terminal/catalog/items'
+    | '/_terminal/catalog/tables'
     | '/_terminal/payment/tip'
     | '/_terminal/payment_/$paymentId'
     | '/_terminal/settings/about'
     | '/_terminal/settings/access'
     | '/_terminal/settings/accounts'
     | '/_terminal/settings/assistant'
-    | '/_terminal/settings/categories'
     | '/_terminal/settings/debug-console'
     | '/_terminal/settings/demo-data'
     | '/_terminal/settings/donations'
@@ -952,7 +986,6 @@ export interface FileRouteTypes {
     | '/_terminal/settings/eet'
     | '/_terminal/settings/evolu-export'
     | '/_terminal/settings/home-screen'
-    | '/_terminal/settings/items'
     | '/_terminal/settings/language'
     | '/_terminal/settings/legal-entity'
     | '/_terminal/settings/payment-accounts'
@@ -960,19 +993,21 @@ export interface FileRouteTypes {
     | '/_terminal/settings/profile'
     | '/_terminal/settings/security'
     | '/_terminal/settings/support'
-    | '/_terminal/settings/tables'
     | '/_terminal/settings/tax-rates'
     | '/_terminal/settings/theme'
     | '/_terminal/settings/tips'
+    | '/_terminal/catalog/'
     | '/_terminal/settings/'
     | '/_terminal/activity_/bills_/$billId'
+    | '/_terminal/catalog/categories/$catalogCategoryId'
+    | '/_terminal/catalog/categories/new'
+    | '/_terminal/catalog/items/$catalogItemId'
+    | '/_terminal/catalog/items/new'
+    | '/_terminal/catalog/tables/$tableId'
+    | '/_terminal/catalog/tables/new'
     | '/_terminal/settings/about/privacy'
     | '/_terminal/settings/about/terms'
     | '/_terminal/settings/access_/add-device'
-    | '/_terminal/settings/categories/$catalogCategoryId'
-    | '/_terminal/settings/categories/new'
-    | '/_terminal/settings/items/$catalogItemId'
-    | '/_terminal/settings/items/new'
     | '/_terminal/settings/payment-accounts/card-switchio'
     | '/_terminal/settings/payment-accounts/cashu'
     | '/_terminal/settings/payment-accounts/iban'
@@ -980,14 +1015,12 @@ export interface FileRouteTypes {
     | '/_terminal/settings/payment-accounts/qerko-terminal'
     | '/_terminal/settings/payment-accounts/spark'
     | '/_terminal/settings/security_/backup'
-    | '/_terminal/settings/tables/$tableId'
-    | '/_terminal/settings/tables/new'
+    | '/_terminal/catalog/categories/'
+    | '/_terminal/catalog/items/'
+    | '/_terminal/catalog/tables/'
     | '/_terminal/settings/about/'
     | '/_terminal/settings/accounts/'
-    | '/_terminal/settings/categories/'
-    | '/_terminal/settings/items/'
     | '/_terminal/settings/payment-accounts/'
-    | '/_terminal/settings/tables/'
     | '/_terminal/settings/payment-accounts/cashu/mints'
     | '/_terminal/settings/payment-accounts/cashu/withdrawals'
     | '/_terminal/settings/payment-accounts/iban/fio-plugin'
@@ -1066,18 +1099,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalBillRouteImport
       parentRoute: typeof TerminalRoute
     }
+    '/_terminal/catalog': {
+      id: '/_terminal/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof TerminalCatalogRouteImport
+      parentRoute: typeof TerminalRoute
+    }
+    '/_terminal/notifications': {
+      id: '/_terminal/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof TerminalNotificationsRouteImport
+      parentRoute: typeof TerminalRoute
+    }
     '/_terminal/settings': {
       id: '/_terminal/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof TerminalSettingsRouteImport
-      parentRoute: typeof TerminalRoute
-    }
-    '/_terminal/stats': {
-      id: '/_terminal/stats'
-      path: '/stats'
-      fullPath: '/stats'
-      preLoaderRoute: typeof TerminalStatsRouteImport
       parentRoute: typeof TerminalRoute
     }
     '/_terminal/activity_/$paymentId': {
@@ -1093,6 +1133,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/activity/bills'
       preLoaderRoute: typeof TerminalActivityBillsRouteImport
       parentRoute: typeof TerminalRoute
+    }
+    '/_terminal/activity_/stats': {
+      id: '/_terminal/activity_/stats'
+      path: '/activity/stats'
+      fullPath: '/activity/stats'
+      preLoaderRoute: typeof TerminalActivityStatsRouteImport
+      parentRoute: typeof TerminalRoute
+    }
+    '/_terminal/catalog/': {
+      id: '/_terminal/catalog/'
+      path: '/'
+      fullPath: '/catalog/'
+      preLoaderRoute: typeof TerminalCatalogIndexRouteImport
+      parentRoute: typeof TerminalCatalogRoute
+    }
+    '/_terminal/catalog/categories': {
+      id: '/_terminal/catalog/categories'
+      path: '/categories'
+      fullPath: '/catalog/categories'
+      preLoaderRoute: typeof TerminalCatalogCategoriesRouteImport
+      parentRoute: typeof TerminalCatalogRoute
+    }
+    '/_terminal/catalog/items': {
+      id: '/_terminal/catalog/items'
+      path: '/items'
+      fullPath: '/catalog/items'
+      preLoaderRoute: typeof TerminalCatalogItemsRouteImport
+      parentRoute: typeof TerminalCatalogRoute
+    }
+    '/_terminal/catalog/tables': {
+      id: '/_terminal/catalog/tables'
+      path: '/tables'
+      fullPath: '/catalog/tables'
+      preLoaderRoute: typeof TerminalCatalogTablesRouteImport
+      parentRoute: typeof TerminalCatalogRoute
     }
     '/_terminal/payment/tip': {
       id: '/_terminal/payment/tip'
@@ -1141,13 +1216,6 @@ declare module '@tanstack/react-router' {
       path: '/assistant'
       fullPath: '/settings/assistant'
       preLoaderRoute: typeof TerminalSettingsAssistantRouteImport
-      parentRoute: typeof TerminalSettingsRoute
-    }
-    '/_terminal/settings/categories': {
-      id: '/_terminal/settings/categories'
-      path: '/categories'
-      fullPath: '/settings/categories'
-      preLoaderRoute: typeof TerminalSettingsCategoriesRouteImport
       parentRoute: typeof TerminalSettingsRoute
     }
     '/_terminal/settings/debug-console': {
@@ -1199,13 +1267,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalSettingsHomeScreenRouteImport
       parentRoute: typeof TerminalSettingsRoute
     }
-    '/_terminal/settings/items': {
-      id: '/_terminal/settings/items'
-      path: '/items'
-      fullPath: '/settings/items'
-      preLoaderRoute: typeof TerminalSettingsItemsRouteImport
-      parentRoute: typeof TerminalSettingsRoute
-    }
     '/_terminal/settings/language': {
       id: '/_terminal/settings/language'
       path: '/language'
@@ -1255,13 +1316,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalSettingsSupportRouteImport
       parentRoute: typeof TerminalSettingsRoute
     }
-    '/_terminal/settings/tables': {
-      id: '/_terminal/settings/tables'
-      path: '/tables'
-      fullPath: '/settings/tables'
-      preLoaderRoute: typeof TerminalSettingsTablesRouteImport
-      parentRoute: typeof TerminalSettingsRoute
-    }
     '/_terminal/settings/tax-rates': {
       id: '/_terminal/settings/tax-rates'
       path: '/tax-rates'
@@ -1289,6 +1343,69 @@ declare module '@tanstack/react-router' {
       fullPath: '/activity/bills/$billId'
       preLoaderRoute: typeof TerminalActivityBillsBillIdRouteImport
       parentRoute: typeof TerminalRoute
+    }
+    '/_terminal/catalog/categories/': {
+      id: '/_terminal/catalog/categories/'
+      path: '/'
+      fullPath: '/catalog/categories/'
+      preLoaderRoute: typeof TerminalCatalogCategoriesIndexRouteImport
+      parentRoute: typeof TerminalCatalogCategoriesRoute
+    }
+    '/_terminal/catalog/categories/$catalogCategoryId': {
+      id: '/_terminal/catalog/categories/$catalogCategoryId'
+      path: '/$catalogCategoryId'
+      fullPath: '/catalog/categories/$catalogCategoryId'
+      preLoaderRoute: typeof TerminalCatalogCategoriesCatalogCategoryIdRouteImport
+      parentRoute: typeof TerminalCatalogCategoriesRoute
+    }
+    '/_terminal/catalog/categories/new': {
+      id: '/_terminal/catalog/categories/new'
+      path: '/new'
+      fullPath: '/catalog/categories/new'
+      preLoaderRoute: typeof TerminalCatalogCategoriesNewRouteImport
+      parentRoute: typeof TerminalCatalogCategoriesRoute
+    }
+    '/_terminal/catalog/items/': {
+      id: '/_terminal/catalog/items/'
+      path: '/'
+      fullPath: '/catalog/items/'
+      preLoaderRoute: typeof TerminalCatalogItemsIndexRouteImport
+      parentRoute: typeof TerminalCatalogItemsRoute
+    }
+    '/_terminal/catalog/items/$catalogItemId': {
+      id: '/_terminal/catalog/items/$catalogItemId'
+      path: '/$catalogItemId'
+      fullPath: '/catalog/items/$catalogItemId'
+      preLoaderRoute: typeof TerminalCatalogItemsCatalogItemIdRouteImport
+      parentRoute: typeof TerminalCatalogItemsRoute
+    }
+    '/_terminal/catalog/items/new': {
+      id: '/_terminal/catalog/items/new'
+      path: '/new'
+      fullPath: '/catalog/items/new'
+      preLoaderRoute: typeof TerminalCatalogItemsNewRouteImport
+      parentRoute: typeof TerminalCatalogItemsRoute
+    }
+    '/_terminal/catalog/tables/': {
+      id: '/_terminal/catalog/tables/'
+      path: '/'
+      fullPath: '/catalog/tables/'
+      preLoaderRoute: typeof TerminalCatalogTablesIndexRouteImport
+      parentRoute: typeof TerminalCatalogTablesRoute
+    }
+    '/_terminal/catalog/tables/$tableId': {
+      id: '/_terminal/catalog/tables/$tableId'
+      path: '/$tableId'
+      fullPath: '/catalog/tables/$tableId'
+      preLoaderRoute: typeof TerminalCatalogTablesTableIdRouteImport
+      parentRoute: typeof TerminalCatalogTablesRoute
+    }
+    '/_terminal/catalog/tables/new': {
+      id: '/_terminal/catalog/tables/new'
+      path: '/new'
+      fullPath: '/catalog/tables/new'
+      preLoaderRoute: typeof TerminalCatalogTablesNewRouteImport
+      parentRoute: typeof TerminalCatalogTablesRoute
     }
     '/_terminal/settings/about/': {
       id: '/_terminal/settings/about/'
@@ -1324,48 +1441,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/accounts/'
       preLoaderRoute: typeof TerminalSettingsAccountsIndexRouteImport
       parentRoute: typeof TerminalSettingsAccountsRoute
-    }
-    '/_terminal/settings/categories/': {
-      id: '/_terminal/settings/categories/'
-      path: '/'
-      fullPath: '/settings/categories/'
-      preLoaderRoute: typeof TerminalSettingsCategoriesIndexRouteImport
-      parentRoute: typeof TerminalSettingsCategoriesRoute
-    }
-    '/_terminal/settings/categories/$catalogCategoryId': {
-      id: '/_terminal/settings/categories/$catalogCategoryId'
-      path: '/$catalogCategoryId'
-      fullPath: '/settings/categories/$catalogCategoryId'
-      preLoaderRoute: typeof TerminalSettingsCategoriesCatalogCategoryIdRouteImport
-      parentRoute: typeof TerminalSettingsCategoriesRoute
-    }
-    '/_terminal/settings/categories/new': {
-      id: '/_terminal/settings/categories/new'
-      path: '/new'
-      fullPath: '/settings/categories/new'
-      preLoaderRoute: typeof TerminalSettingsCategoriesNewRouteImport
-      parentRoute: typeof TerminalSettingsCategoriesRoute
-    }
-    '/_terminal/settings/items/': {
-      id: '/_terminal/settings/items/'
-      path: '/'
-      fullPath: '/settings/items/'
-      preLoaderRoute: typeof TerminalSettingsItemsIndexRouteImport
-      parentRoute: typeof TerminalSettingsItemsRoute
-    }
-    '/_terminal/settings/items/$catalogItemId': {
-      id: '/_terminal/settings/items/$catalogItemId'
-      path: '/$catalogItemId'
-      fullPath: '/settings/items/$catalogItemId'
-      preLoaderRoute: typeof TerminalSettingsItemsCatalogItemIdRouteImport
-      parentRoute: typeof TerminalSettingsItemsRoute
-    }
-    '/_terminal/settings/items/new': {
-      id: '/_terminal/settings/items/new'
-      path: '/new'
-      fullPath: '/settings/items/new'
-      preLoaderRoute: typeof TerminalSettingsItemsNewRouteImport
-      parentRoute: typeof TerminalSettingsItemsRoute
     }
     '/_terminal/settings/payment-accounts/': {
       id: '/_terminal/settings/payment-accounts/'
@@ -1422,27 +1497,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/security/backup'
       preLoaderRoute: typeof TerminalSettingsSecurityBackupRouteImport
       parentRoute: typeof TerminalSettingsRoute
-    }
-    '/_terminal/settings/tables/': {
-      id: '/_terminal/settings/tables/'
-      path: '/'
-      fullPath: '/settings/tables/'
-      preLoaderRoute: typeof TerminalSettingsTablesIndexRouteImport
-      parentRoute: typeof TerminalSettingsTablesRoute
-    }
-    '/_terminal/settings/tables/$tableId': {
-      id: '/_terminal/settings/tables/$tableId'
-      path: '/$tableId'
-      fullPath: '/settings/tables/$tableId'
-      preLoaderRoute: typeof TerminalSettingsTablesTableIdRouteImport
-      parentRoute: typeof TerminalSettingsTablesRoute
-    }
-    '/_terminal/settings/tables/new': {
-      id: '/_terminal/settings/tables/new'
-      path: '/new'
-      fullPath: '/settings/tables/new'
-      preLoaderRoute: typeof TerminalSettingsTablesNewRouteImport
-      parentRoute: typeof TerminalSettingsTablesRoute
     }
     '/_terminal/settings/payment-accounts/cashu/': {
       id: '/_terminal/settings/payment-accounts/cashu/'
@@ -1573,6 +1627,76 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface TerminalCatalogCategoriesRouteChildren {
+  TerminalCatalogCategoriesCatalogCategoryIdRoute: typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
+  TerminalCatalogCategoriesNewRoute: typeof TerminalCatalogCategoriesNewRoute
+  TerminalCatalogCategoriesIndexRoute: typeof TerminalCatalogCategoriesIndexRoute
+}
+
+const TerminalCatalogCategoriesRouteChildren: TerminalCatalogCategoriesRouteChildren =
+  {
+    TerminalCatalogCategoriesCatalogCategoryIdRoute:
+      TerminalCatalogCategoriesCatalogCategoryIdRoute,
+    TerminalCatalogCategoriesNewRoute: TerminalCatalogCategoriesNewRoute,
+    TerminalCatalogCategoriesIndexRoute: TerminalCatalogCategoriesIndexRoute,
+  }
+
+const TerminalCatalogCategoriesRouteWithChildren =
+  TerminalCatalogCategoriesRoute._addFileChildren(
+    TerminalCatalogCategoriesRouteChildren,
+  )
+
+interface TerminalCatalogItemsRouteChildren {
+  TerminalCatalogItemsCatalogItemIdRoute: typeof TerminalCatalogItemsCatalogItemIdRoute
+  TerminalCatalogItemsNewRoute: typeof TerminalCatalogItemsNewRoute
+  TerminalCatalogItemsIndexRoute: typeof TerminalCatalogItemsIndexRoute
+}
+
+const TerminalCatalogItemsRouteChildren: TerminalCatalogItemsRouteChildren = {
+  TerminalCatalogItemsCatalogItemIdRoute:
+    TerminalCatalogItemsCatalogItemIdRoute,
+  TerminalCatalogItemsNewRoute: TerminalCatalogItemsNewRoute,
+  TerminalCatalogItemsIndexRoute: TerminalCatalogItemsIndexRoute,
+}
+
+const TerminalCatalogItemsRouteWithChildren =
+  TerminalCatalogItemsRoute._addFileChildren(TerminalCatalogItemsRouteChildren)
+
+interface TerminalCatalogTablesRouteChildren {
+  TerminalCatalogTablesTableIdRoute: typeof TerminalCatalogTablesTableIdRoute
+  TerminalCatalogTablesNewRoute: typeof TerminalCatalogTablesNewRoute
+  TerminalCatalogTablesIndexRoute: typeof TerminalCatalogTablesIndexRoute
+}
+
+const TerminalCatalogTablesRouteChildren: TerminalCatalogTablesRouteChildren = {
+  TerminalCatalogTablesTableIdRoute: TerminalCatalogTablesTableIdRoute,
+  TerminalCatalogTablesNewRoute: TerminalCatalogTablesNewRoute,
+  TerminalCatalogTablesIndexRoute: TerminalCatalogTablesIndexRoute,
+}
+
+const TerminalCatalogTablesRouteWithChildren =
+  TerminalCatalogTablesRoute._addFileChildren(
+    TerminalCatalogTablesRouteChildren,
+  )
+
+interface TerminalCatalogRouteChildren {
+  TerminalCatalogCategoriesRoute: typeof TerminalCatalogCategoriesRouteWithChildren
+  TerminalCatalogItemsRoute: typeof TerminalCatalogItemsRouteWithChildren
+  TerminalCatalogTablesRoute: typeof TerminalCatalogTablesRouteWithChildren
+  TerminalCatalogIndexRoute: typeof TerminalCatalogIndexRoute
+}
+
+const TerminalCatalogRouteChildren: TerminalCatalogRouteChildren = {
+  TerminalCatalogCategoriesRoute: TerminalCatalogCategoriesRouteWithChildren,
+  TerminalCatalogItemsRoute: TerminalCatalogItemsRouteWithChildren,
+  TerminalCatalogTablesRoute: TerminalCatalogTablesRouteWithChildren,
+  TerminalCatalogIndexRoute: TerminalCatalogIndexRoute,
+}
+
+const TerminalCatalogRouteWithChildren = TerminalCatalogRoute._addFileChildren(
+  TerminalCatalogRouteChildren,
+)
+
 interface TerminalSettingsAboutRouteChildren {
   TerminalSettingsAboutPrivacyRoute: typeof TerminalSettingsAboutPrivacyRoute
   TerminalSettingsAboutTermsRoute: typeof TerminalSettingsAboutTermsRoute
@@ -1602,43 +1726,6 @@ const TerminalSettingsAccountsRouteChildren: TerminalSettingsAccountsRouteChildr
 const TerminalSettingsAccountsRouteWithChildren =
   TerminalSettingsAccountsRoute._addFileChildren(
     TerminalSettingsAccountsRouteChildren,
-  )
-
-interface TerminalSettingsCategoriesRouteChildren {
-  TerminalSettingsCategoriesCatalogCategoryIdRoute: typeof TerminalSettingsCategoriesCatalogCategoryIdRoute
-  TerminalSettingsCategoriesNewRoute: typeof TerminalSettingsCategoriesNewRoute
-  TerminalSettingsCategoriesIndexRoute: typeof TerminalSettingsCategoriesIndexRoute
-}
-
-const TerminalSettingsCategoriesRouteChildren: TerminalSettingsCategoriesRouteChildren =
-  {
-    TerminalSettingsCategoriesCatalogCategoryIdRoute:
-      TerminalSettingsCategoriesCatalogCategoryIdRoute,
-    TerminalSettingsCategoriesNewRoute: TerminalSettingsCategoriesNewRoute,
-    TerminalSettingsCategoriesIndexRoute: TerminalSettingsCategoriesIndexRoute,
-  }
-
-const TerminalSettingsCategoriesRouteWithChildren =
-  TerminalSettingsCategoriesRoute._addFileChildren(
-    TerminalSettingsCategoriesRouteChildren,
-  )
-
-interface TerminalSettingsItemsRouteChildren {
-  TerminalSettingsItemsCatalogItemIdRoute: typeof TerminalSettingsItemsCatalogItemIdRoute
-  TerminalSettingsItemsNewRoute: typeof TerminalSettingsItemsNewRoute
-  TerminalSettingsItemsIndexRoute: typeof TerminalSettingsItemsIndexRoute
-}
-
-const TerminalSettingsItemsRouteChildren: TerminalSettingsItemsRouteChildren = {
-  TerminalSettingsItemsCatalogItemIdRoute:
-    TerminalSettingsItemsCatalogItemIdRoute,
-  TerminalSettingsItemsNewRoute: TerminalSettingsItemsNewRoute,
-  TerminalSettingsItemsIndexRoute: TerminalSettingsItemsIndexRoute,
-}
-
-const TerminalSettingsItemsRouteWithChildren =
-  TerminalSettingsItemsRoute._addFileChildren(
-    TerminalSettingsItemsRouteChildren,
   )
 
 interface TerminalSettingsPaymentAccountsCashuMintsRouteChildren {
@@ -1800,30 +1887,11 @@ const TerminalSettingsPaymentAccountsRouteWithChildren =
     TerminalSettingsPaymentAccountsRouteChildren,
   )
 
-interface TerminalSettingsTablesRouteChildren {
-  TerminalSettingsTablesTableIdRoute: typeof TerminalSettingsTablesTableIdRoute
-  TerminalSettingsTablesNewRoute: typeof TerminalSettingsTablesNewRoute
-  TerminalSettingsTablesIndexRoute: typeof TerminalSettingsTablesIndexRoute
-}
-
-const TerminalSettingsTablesRouteChildren: TerminalSettingsTablesRouteChildren =
-  {
-    TerminalSettingsTablesTableIdRoute: TerminalSettingsTablesTableIdRoute,
-    TerminalSettingsTablesNewRoute: TerminalSettingsTablesNewRoute,
-    TerminalSettingsTablesIndexRoute: TerminalSettingsTablesIndexRoute,
-  }
-
-const TerminalSettingsTablesRouteWithChildren =
-  TerminalSettingsTablesRoute._addFileChildren(
-    TerminalSettingsTablesRouteChildren,
-  )
-
 interface TerminalSettingsRouteChildren {
   TerminalSettingsAboutRoute: typeof TerminalSettingsAboutRouteWithChildren
   TerminalSettingsAccessRoute: typeof TerminalSettingsAccessRoute
   TerminalSettingsAccountsRoute: typeof TerminalSettingsAccountsRouteWithChildren
   TerminalSettingsAssistantRoute: typeof TerminalSettingsAssistantRoute
-  TerminalSettingsCategoriesRoute: typeof TerminalSettingsCategoriesRouteWithChildren
   TerminalSettingsDebugConsoleRoute: typeof TerminalSettingsDebugConsoleRoute
   TerminalSettingsDemoDataRoute: typeof TerminalSettingsDemoDataRoute
   TerminalSettingsDonationsRoute: typeof TerminalSettingsDonationsRoute
@@ -1831,7 +1899,6 @@ interface TerminalSettingsRouteChildren {
   TerminalSettingsEetRoute: typeof TerminalSettingsEetRoute
   TerminalSettingsEvoluExportRoute: typeof TerminalSettingsEvoluExportRoute
   TerminalSettingsHomeScreenRoute: typeof TerminalSettingsHomeScreenRoute
-  TerminalSettingsItemsRoute: typeof TerminalSettingsItemsRouteWithChildren
   TerminalSettingsLanguageRoute: typeof TerminalSettingsLanguageRoute
   TerminalSettingsLegalEntityRoute: typeof TerminalSettingsLegalEntityRoute
   TerminalSettingsPaymentAccountsRoute: typeof TerminalSettingsPaymentAccountsRouteWithChildren
@@ -1839,7 +1906,6 @@ interface TerminalSettingsRouteChildren {
   TerminalSettingsProfileRoute: typeof TerminalSettingsProfileRoute
   TerminalSettingsSecurityRoute: typeof TerminalSettingsSecurityRoute
   TerminalSettingsSupportRoute: typeof TerminalSettingsSupportRoute
-  TerminalSettingsTablesRoute: typeof TerminalSettingsTablesRouteWithChildren
   TerminalSettingsTaxRatesRoute: typeof TerminalSettingsTaxRatesRoute
   TerminalSettingsThemeRoute: typeof TerminalSettingsThemeRoute
   TerminalSettingsTipsRoute: typeof TerminalSettingsTipsRoute
@@ -1853,7 +1919,6 @@ const TerminalSettingsRouteChildren: TerminalSettingsRouteChildren = {
   TerminalSettingsAccessRoute: TerminalSettingsAccessRoute,
   TerminalSettingsAccountsRoute: TerminalSettingsAccountsRouteWithChildren,
   TerminalSettingsAssistantRoute: TerminalSettingsAssistantRoute,
-  TerminalSettingsCategoriesRoute: TerminalSettingsCategoriesRouteWithChildren,
   TerminalSettingsDebugConsoleRoute: TerminalSettingsDebugConsoleRoute,
   TerminalSettingsDemoDataRoute: TerminalSettingsDemoDataRoute,
   TerminalSettingsDonationsRoute: TerminalSettingsDonationsRoute,
@@ -1861,7 +1926,6 @@ const TerminalSettingsRouteChildren: TerminalSettingsRouteChildren = {
   TerminalSettingsEetRoute: TerminalSettingsEetRoute,
   TerminalSettingsEvoluExportRoute: TerminalSettingsEvoluExportRoute,
   TerminalSettingsHomeScreenRoute: TerminalSettingsHomeScreenRoute,
-  TerminalSettingsItemsRoute: TerminalSettingsItemsRouteWithChildren,
   TerminalSettingsLanguageRoute: TerminalSettingsLanguageRoute,
   TerminalSettingsLegalEntityRoute: TerminalSettingsLegalEntityRoute,
   TerminalSettingsPaymentAccountsRoute:
@@ -1871,7 +1935,6 @@ const TerminalSettingsRouteChildren: TerminalSettingsRouteChildren = {
   TerminalSettingsProfileRoute: TerminalSettingsProfileRoute,
   TerminalSettingsSecurityRoute: TerminalSettingsSecurityRoute,
   TerminalSettingsSupportRoute: TerminalSettingsSupportRoute,
-  TerminalSettingsTablesRoute: TerminalSettingsTablesRouteWithChildren,
   TerminalSettingsTaxRatesRoute: TerminalSettingsTaxRatesRoute,
   TerminalSettingsThemeRoute: TerminalSettingsThemeRoute,
   TerminalSettingsTipsRoute: TerminalSettingsTipsRoute,
@@ -1886,11 +1949,13 @@ const TerminalSettingsRouteWithChildren =
 interface TerminalRouteChildren {
   TerminalActivityRoute: typeof TerminalActivityRoute
   TerminalBillRoute: typeof TerminalBillRoute
+  TerminalCatalogRoute: typeof TerminalCatalogRouteWithChildren
+  TerminalNotificationsRoute: typeof TerminalNotificationsRoute
   TerminalSettingsRoute: typeof TerminalSettingsRouteWithChildren
-  TerminalStatsRoute: typeof TerminalStatsRoute
   TerminalIndexRoute: typeof TerminalIndexRoute
   TerminalActivityPaymentIdRoute: typeof TerminalActivityPaymentIdRoute
   TerminalActivityBillsRoute: typeof TerminalActivityBillsRoute
+  TerminalActivityStatsRoute: typeof TerminalActivityStatsRoute
   TerminalPaymentTipRoute: typeof TerminalPaymentTipRoute
   TerminalPaymentPaymentIdRoute: typeof TerminalPaymentPaymentIdRoute
   TerminalActivityBillsBillIdRoute: typeof TerminalActivityBillsBillIdRoute
@@ -1899,11 +1964,13 @@ interface TerminalRouteChildren {
 const TerminalRouteChildren: TerminalRouteChildren = {
   TerminalActivityRoute: TerminalActivityRoute,
   TerminalBillRoute: TerminalBillRoute,
+  TerminalCatalogRoute: TerminalCatalogRouteWithChildren,
+  TerminalNotificationsRoute: TerminalNotificationsRoute,
   TerminalSettingsRoute: TerminalSettingsRouteWithChildren,
-  TerminalStatsRoute: TerminalStatsRoute,
   TerminalIndexRoute: TerminalIndexRoute,
   TerminalActivityPaymentIdRoute: TerminalActivityPaymentIdRoute,
   TerminalActivityBillsRoute: TerminalActivityBillsRoute,
+  TerminalActivityStatsRoute: TerminalActivityStatsRoute,
   TerminalPaymentTipRoute: TerminalPaymentTipRoute,
   TerminalPaymentPaymentIdRoute: TerminalPaymentPaymentIdRoute,
   TerminalActivityBillsBillIdRoute: TerminalActivityBillsBillIdRoute,

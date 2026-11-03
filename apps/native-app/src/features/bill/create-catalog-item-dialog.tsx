@@ -161,7 +161,7 @@ function CreateForm({
     }
     const values = parsed.value
     // The same synced write as Settings → Items (access/0002).
-    if (!(await require("settings", "access.action.createItem"))) return
+    if (!(await require("catalog", "access.action.createItem"))) return
     setPending(true)
     await runToast(async (run) => {
       const id = await run.ok(
@@ -194,7 +194,7 @@ function CreateForm({
       </DialogHeader>
       <FieldGroup>
         <Field>
-          <FieldLabel>{t("settings.items.form.name.label")}</FieldLabel>
+          <FieldLabel>{t("catalog.items.form.name.label")}</FieldLabel>
           <Input
             value={name}
             disabled={pending}
@@ -202,7 +202,7 @@ function CreateForm({
             autoComplete="off"
             autoCorrect={false}
             autoFocus
-            placeholder={t("settings.items.form.name.placeholder")}
+            placeholder={t("catalog.items.form.name.placeholder")}
             onChangeText={(next) => {
               setName(next)
               clear("name")
@@ -211,14 +211,14 @@ function CreateForm({
           <FieldError>{error("name")}</FieldError>
         </Field>
         <Field>
-          <FieldLabel>{t("settings.items.form.description.label")}</FieldLabel>
+          <FieldLabel>{t("catalog.items.form.description.label")}</FieldLabel>
           <Input
             value={description}
             disabled={pending}
             invalid={errors.description !== undefined}
             autoComplete="off"
             autoCorrect={false}
-            placeholder={t("settings.items.form.description.placeholder")}
+            placeholder={t("catalog.items.form.description.placeholder")}
             onChangeText={(next) => {
               setDescription(next)
               clear("description")
@@ -234,7 +234,7 @@ function CreateForm({
           )}
         </Field>
         <Field>
-          <FieldLabel>{t("settings.items.form.price.label")}</FieldLabel>
+          <FieldLabel>{t("catalog.items.form.price.label")}</FieldLabel>
           <Input
             value={price}
             disabled={pending}
@@ -249,7 +249,7 @@ function CreateForm({
           <FieldError>{error("price")}</FieldError>
         </Field>
         <Field>
-          <FieldLabel>{t("settings.items.form.category.label")}</FieldLabel>
+          <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
           <Select
             value={categoryId}
             onValueChange={setCategoryId}
@@ -259,11 +259,11 @@ function CreateForm({
           >
             <SelectTrigger
               fullWidth
-              aria-label={t("settings.items.form.category.label")}
+              aria-label={t("catalog.items.form.category.label")}
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent title={t("settings.items.form.category.label")}>
+            <SelectContent title={t("catalog.items.form.category.label")}>
               <SelectGroup>
                 {categoryOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
@@ -275,7 +275,7 @@ function CreateForm({
           </Select>
         </Field>
         <Field>
-          <FieldLabel>{t("settings.items.form.taxRate.label")}</FieldLabel>
+          <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
           <Select
             value={taxRateId}
             onValueChange={setTaxRateId}
@@ -285,11 +285,11 @@ function CreateForm({
           >
             <SelectTrigger
               fullWidth
-              aria-label={t("settings.items.form.taxRate.label")}
+              aria-label={t("catalog.items.form.taxRate.label")}
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent title={t("settings.items.form.taxRate.label")}>
+            <SelectContent title={t("catalog.items.form.taxRate.label")}>
               <SelectGroup>
                 {taxRateOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>

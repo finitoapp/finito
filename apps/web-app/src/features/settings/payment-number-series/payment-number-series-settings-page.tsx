@@ -29,8 +29,8 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { FieldGroup } from "@/components/ui/field.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
-import { InlineEditToggleGroup } from "@/features/settings/inline-edit-toggle-group.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
+import { InlineEditToggleGroup } from "@/features/shared/forms/inline-edit-toggle-group.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"

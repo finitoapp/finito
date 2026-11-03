@@ -18,7 +18,7 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["nav.activity"]}
+      LABEL: ${output.t["nav.menu"]}
 # A malformed payment link.
 - runFlow:
     file: ../../subflows/goto.yaml
@@ -32,7 +32,7 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["nav.activity"]}
+      LABEL: ${output.t["nav.menu"]}
 # A malformed tableId only costs the table preselection.
 - runFlow:
     file: ../../subflows/goto.yaml

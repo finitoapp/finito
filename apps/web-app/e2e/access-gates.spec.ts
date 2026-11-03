@@ -10,7 +10,12 @@ import {
 import { addCatalogItem, startNewBill } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateValue } from "./support/i18n.ts"
-import { gotoPage } from "./support/navigation.ts"
+import {
+  gotoPage,
+  menuHome,
+  openMenuTab,
+  openMenuTabFromHome,
+} from "./support/navigation.ts"
 import { completeOnboardingDefaults } from "./support/onboarding.ts"
 import { createPayment, prepareIbanPayment } from "./support/payment.ts"
 
@@ -36,7 +41,7 @@ const goBackInApp = (page: Page) =>
   page.getByRole("button", { name: translate("en", "nav.back") }).click()
 
 const openSettingsFromHome = (page: Page) =>
-  page.getByRole("button", { name: translate("en", "settings.title") }).click()
+  openMenuTabFromHome(page, "en", "nav.settings")
 
 const deviceAccountIds = async (page: Page) => {
   await page.waitForFunction(
@@ -286,12 +291,12 @@ test("a PIN session ends on a screen the device covers itself, and in the backgr
   })
 
   const itemsHeading = page.getByRole("heading", {
-    name: translate("en", "settings.items.title"),
+    name: translate("en", "catalog.items.title"),
   })
 
   await test.step("a free screen keeps the session going", async () => {
     await goBackInApp(page)
-    await openSettingsEntry(page, "en", "settings.items.title")
+    await openMenuTab(page, "en", "nav.catalog")
     await expect(itemsHeading).toBeVisible()
   })
 
@@ -304,20 +309,18 @@ test("a PIN session ends on a screen the device covers itself, and in the backgr
       document.dispatchEvent(new Event("visibilitychange"))
       Reflect.deleteProperty(document, "visibilityState")
     })
-    await expect(routeLock(page, "access.permission.settings")).toBeVisible()
+    await expect(routeLock(page, "access.permission.catalog")).toBeVisible()
     await typePin(page, "en", ownerPin)
     await expect(itemsHeading).toBeVisible()
   })
 
   await test.step("going home, which the device covers, ends it", async () => {
-    await goBackInApp(page)
-    await goBackInApp(page)
+    await menuHome(page, "en").click()
     await expect(
       page.getByRole("button", { name: translate("en", "home.pay") })
     ).toBeVisible()
-    await openSettingsFromHome(page)
-    await openSettingsEntry(page, "en", "settings.items.title")
-    await expect(routeLock(page, "access.permission.settings")).toBeVisible()
+    await openMenuTabFromHome(page, "en", "nav.catalog")
+    await expect(routeLock(page, "access.permission.catalog")).toBeVisible()
   })
 })
 

@@ -97,10 +97,10 @@ tags: [bill]
     visible: ${output.t["bill.scan.create.title"]}
     timeout: 10000
 - assertVisible:
-    id: ${output.re(output.t["settings.items.form.name.label"])}
+    id: ${output.re(output.t["catalog.items.form.name.label"])}
     text: Coca-Cola Original
 - assertVisible:
-    id: ${output.re(output.t["settings.items.form.description.label"])}
+    id: ${output.re(output.t["catalog.items.form.description.label"])}
     text: Coca-Cola, 330 ml
 - assertVisible: '${output.tv("bill.scan.lookup.source", { source: "Open Food Facts" })}'
 - runFlow:
@@ -111,7 +111,7 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.price.label"]}
+      LABEL: ${output.t["catalog.items.form.price.label"]}
       VALUE: "1.5"
 - runFlow:
     when:
@@ -122,7 +122,7 @@ tags: [bill]
 - tapOn:
     text: ${output.t["bill.scan.create.save"]}
     below:
-      id: ${output.re(output.t["settings.items.form.taxRate.label"])}
+      id: ${output.re(output.t["catalog.items.form.taxRate.label"])}
 # The search field takes the focus back from the closed dialog, and its
 # keyboard covers the bill's footer.
 - extendedWaitUntil:

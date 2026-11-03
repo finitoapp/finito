@@ -8,5 +8,6 @@ export const Route = createFileRoute(
   component: FioPluginSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { FieldGroup } from "@/components/ui/field.tsx"
-import { InlineEditSwitch } from "@/features/settings/inline-edit-switch.tsx"
+import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useTerminalHomeMode } from "@/hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"

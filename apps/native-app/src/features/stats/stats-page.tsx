@@ -19,6 +19,7 @@ import { Icon } from "../../components/ui/icon.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { ActivityTabs } from "../shared/activity-tabs.tsx"
 import { DeviceBreakdown } from "./device-breakdown.tsx"
 import { formatStatsRange, KpiTiles } from "./kpi-tiles.tsx"
 import { ExpectedCashSummary, MethodBreakdown } from "./method-breakdown.tsx"
@@ -53,7 +54,8 @@ export function StatsPage() {
 
   return (
     <Screen>
-      <FadeHeader title={t("stats.title")} />
+      <FadeHeader title={t("activity.title")} startAddon={null} />
+      <ActivityTabs active="stats" />
       <PeriodSelector
         period={period}
         onChange={(next: StatsSearch) => {

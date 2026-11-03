@@ -1,0 +1,25 @@
+# web menu.spec.ts: "the bell on home opens Notifications, which has Back and no bar".
+appId: ${APP_ID}
+tags: [menu]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.notifications"]}
+- extendedWaitUntil:
+    visible: ${output.t["notifications.empty.title"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.home"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}

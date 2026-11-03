@@ -23,7 +23,7 @@ tags: [settings]
 # The assignment survives reopening the item.
 - tapOn: Coffee
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.edit"]}
+    visible: ${output.t["catalog.items.form.title.edit"]}
     timeout: 10000
 - scrollUntilVisible:
     element: Reduced rate.*

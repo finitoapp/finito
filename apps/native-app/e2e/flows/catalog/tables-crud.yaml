@@ -1,0 +1,88 @@
+# web catalog-tables.spec.ts: "create, edit and delete a table". Native's
+# inline field holds no focus (inline-edit-field.tsx), so web's focus checks
+# are left out; saving, rejecting and discarding are kept.
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: catalog/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- assertVisible: ${output.t["catalog.tables.empty.title"]}
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Patio 1
+      SEATS: "4"
+- assertVisible: Patio 1
+- assertVisible:
+    text: .*4.*
+    below: ${output.t["catalog.tables.title"]}
+# Edit it, and see its generated code.
+- tapOn: Patio 1
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.form.title.edit"]}
+    timeout: 10000
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.name.label"])}
+    text: Patio 1
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.code.label"])}
+    text: "[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}"
+- runFlow:
+    file: ../../subflows/fill-inline.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.form.name.label"]}
+      VALUE: Patio 2
+      PLACEHOLDER: ${output.t["catalog.tables.form.name.placeholder"]}
+- runFlow:
+    file: ../../subflows/fill-inline.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
+      VALUE: "6"
+      PLACEHOLDER: ${output.t["catalog.tables.form.seatCount.placeholder"]}
+# An invalid value is rejected and can be discarded.
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
+      VALUE: "0"
+      PLACEHOLDER: ${output.t["catalog.tables.form.seatCount.placeholder"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["inlineEdit.save"]}
+- assertVisible: ${output.t["catalog.tables.form.seatCount.invalid"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["inlineEdit.discard"]}
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.seatCount.label"])}
+    text: "6"
+# The edits survive a restart.
+- runFlow:
+    file: ../../subflows/reopen.yaml
+    env:
+      ROUTE: catalog/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- tapOn: Patio 2
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.form.title.edit"]}
+    timeout: 10000
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.name.label"])}
+    text: Patio 2
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.seatCount.label"])}
+    text: "6"
+# Delete it; the list is empty again.
+- scrollUntilVisible:
+    element: ${output.t["catalog.tables.delete"]}
+- tapOn: ${output.t["catalog.tables.delete"]}
+- tapOn: ${output.t["catalog.tables.delete.confirm.confirm"]}
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.empty.title"]}
+    timeout: 10000

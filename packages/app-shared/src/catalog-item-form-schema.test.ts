@@ -44,7 +44,7 @@ describe("parseCatalogItemForm", () => {
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toEqual({ name: "settings.items.form.name.invalid" })
+    expect(result.error).toEqual({ name: "catalog.items.form.name.invalid" })
   })
 
   test.each([
@@ -57,7 +57,7 @@ describe("parseCatalogItemForm", () => {
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toEqual({ price: "settings.items.form.price.invalid" })
+    expect(result.error).toEqual({ price: "catalog.items.form.price.invalid" })
   })
 
   test("rejects optional text over 255 characters", () => {
@@ -66,7 +66,7 @@ describe("parseCatalogItemForm", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toEqual({
-      internalDescription: "settings.items.form.internalDescription.invalid",
+      internalDescription: "catalog.items.form.internalDescription.invalid",
     })
   })
 
@@ -78,9 +78,9 @@ describe("parseCatalogItemForm", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toEqual({
-      name: "settings.items.form.name.invalid",
-      price: "settings.items.form.price.invalid",
-      sku: "settings.items.form.sku.invalid",
+      name: "catalog.items.form.name.invalid",
+      price: "catalog.items.form.price.invalid",
+      sku: "catalog.items.form.sku.invalid",
     })
   })
 })

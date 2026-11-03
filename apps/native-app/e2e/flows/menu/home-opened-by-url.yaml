@@ -1,0 +1,18 @@
+# web menu.spec.ts: "Home on a root screen opened by URL goes home".
+appId: ${APP_ID}
+tags: [menu]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings
+      TEXT: ${output.t["settings.title"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.home"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}

@@ -100,6 +100,16 @@ describe("device permissions", () => {
   })
 })
 
+describe("access presets (access/0010)", () => {
+  test("the catalog is granted from Manager up, and to no lower preset", () => {
+    expect(accessPresets.manager).toContain("catalog")
+    expect(accessPresets.owner).toContain("catalog")
+    for (const preset of ["none", "basic", "staff", "shiftLead"] as const) {
+      expect(accessPresets[preset]).not.toContain("catalog")
+    }
+  })
+})
+
 describe("effectivePermissions", () => {
   const defaults = new Set(accessPresets.basic)
 

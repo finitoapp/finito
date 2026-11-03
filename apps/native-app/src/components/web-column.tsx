@@ -14,15 +14,25 @@ const GutterContext = createContext(0)
  * On web, the screens in a centered column as web-app's `PhoneViewport`
  * (`max-w-xl`), except home and the bill on a wide window, as the
  * `lg:max-w-none` of their routes there; home's keypad and onboarding narrow
- * themselves as on web. Native screens take the device's width.
+ * themselves as on web. Native screens take the device's width. Beside the
+ * menu's sidebar the column centres in what the sidebar leaves.
  */
-export function WebColumn({ children }: { readonly children: ReactNode }) {
+export function WebColumn({
+  children,
+  reservedWidth = 0,
+}: {
+  readonly children: ReactNode
+  /** Window width beside the column taken by something else, the menu's sidebar. */
+  readonly reservedWidth?: number
+}) {
   const pathname = usePathname()
   const windowWidth = useWindowDimensions().width
   if (Platform.OS !== "web") return children
   const fullWidth =
     windowWidth >= WIDE_WINDOW_PX && (pathname === "/" || pathname === "/bill")
-  const gutter = fullWidth ? 0 : Math.max(0, (windowWidth - maxWidth.xl) / 2)
+  const gutter = fullWidth
+    ? 0
+    : Math.max(0, (windowWidth - reservedWidth - maxWidth.xl) / 2)
   return (
     <View flex={1} bg="background">
       <View

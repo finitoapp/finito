@@ -52,9 +52,9 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field.tsx"
-import { InlineEditCheckbox } from "@/features/settings/inline-edit-checkbox.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
-import { SettingsFormCard } from "@/features/settings/settings-form-card.tsx"
+import { FormCard } from "@/features/shared/forms/form-card.tsx"
+import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
@@ -247,7 +247,7 @@ function FioPluginTokenForm({ fioPluginId }: FioPluginTokenListProps) {
   const { pending, saved, resetSaved, submit } = useSettingsForm()
 
   return (
-    <SettingsFormCard
+    <FormCard
       title={t("settings.fioPlugin.tokens.add.title")}
       description={t("settings.fioPlugin.tokens.add.description")}
       savedMessage={saved ? t("settings.fioPlugin.tokens.add.saved") : null}
@@ -304,7 +304,7 @@ function FioPluginTokenForm({ fioPluginId }: FioPluginTokenListProps) {
           <FieldError>{tokenError ? t(tokenError) : null}</FieldError>
         </Field>
       </FieldGroup>
-    </SettingsFormCard>
+    </FormCard>
   )
 }
 

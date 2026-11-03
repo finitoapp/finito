@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/assistant")({
   component: AssistantChatPage,
   staticData: {
     access: "activity",
+    menu: { tab: "settings" },
   },
 })

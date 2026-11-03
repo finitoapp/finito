@@ -8,7 +8,7 @@ import {
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { Calculator, Clock3, LayoutGrid, Settings } from "lucide-react"
+import { BellIcon, Calculator, LayoutGrid, MenuIcon } from "lucide-react"
 import { LayoutGroup, motion } from "motion/react"
 import { Suspense } from "react"
 import {
@@ -90,20 +90,26 @@ const Header = () => {
           </ToggleGroup>
         </LayoutGroup>
       )}
-      <div className="ml-auto flex items-center gap-4">
+      {/*
+       * Notifications ahead of the menu, which opens on its first tab
+       * (navigation/0001).
+       */}
+      <div className="ml-auto flex items-center gap-2">
         <Button
           nativeButton={false}
           variant={"ghost"}
-          render={<Link aria-label={t("nav.activity")} to="/activity" />}
+          render={
+            <Link aria-label={t("nav.notifications")} to="/notifications" />
+          }
         >
-          <Clock3 className={"size-6"} strokeWidth={3} />
+          <BellIcon className={"size-6"} strokeWidth={3} />
         </Button>
         <Button
           nativeButton={false}
           variant={"ghost"}
-          render={<Link aria-label={t("nav.settings")} to="/settings" />}
+          render={<Link aria-label={t("nav.menu")} to="/activity" />}
         >
-          <Settings className={"size-6"} strokeWidth={3} />
+          <MenuIcon className={"size-6"} strokeWidth={3} />
         </Button>
       </div>
     </header>

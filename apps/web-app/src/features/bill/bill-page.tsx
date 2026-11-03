@@ -1256,16 +1256,16 @@ function BillEmptyCatalog() {
 
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <p className="text-lg font-semibold">{t("settings.items.empty.title")}</p>
+      <p className="text-lg font-semibold">{t("catalog.items.empty.title")}</p>
       <p className="max-w-72 text-balance text-sm text-muted-foreground">
-        {t("settings.items.empty.description")}
+        {t("catalog.items.empty.description")}
       </p>
       <Button
         variant="outline"
         nativeButton={false}
-        render={<Link to="/settings/items/new" />}
+        render={<Link to="/catalog/items/new" />}
       >
-        {t("settings.items.add")}
+        {t("catalog.items.add")}
       </Button>
     </div>
   )

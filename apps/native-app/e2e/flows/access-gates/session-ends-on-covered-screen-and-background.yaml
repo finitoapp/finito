@@ -16,13 +16,13 @@ tags: [access-gates]
     env:
       LABEL: ${output.t["nav.back"]}
 - runFlow:
-    file: ../../subflows/open-settings-entry.yaml
+    file: ../../subflows/tap-label.yaml
     env:
-      TITLE: ${output.t["settings.items.title"]}
+      LABEL: ${output.t["nav.catalog"]}
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["settings.items.add"]}
+      LABEL: ${output.t["catalog.items.add"]}
 # The app going to the background ends it.
 - runFlow:
     when:
@@ -33,7 +33,7 @@ tags: [access-gates]
       - launchApp:
           stopApp: false
       - extendedWaitUntil:
-          visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+          visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
           timeout: 15000
       - runFlow:
           file: ../../subflows/type-pin.yaml
@@ -42,17 +42,13 @@ tags: [access-gates]
       - runFlow:
           file: ../../subflows/assert-label.yaml
           env:
-            LABEL: ${output.t["settings.items.add"]}
+            LABEL: ${output.t["catalog.items.add"]}
 # Going home, which the device covers, ends it.
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["nav.back"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.back"]}
+      LABEL: ${output.t["nav.home"]}
 - extendedWaitUntil:
     visible: ${output.t["home.pay"]}
     timeout: 15000
-- runFlow: ../../subflows/open-locked-settings.yaml
+- runFlow: ../../subflows/open-locked-catalog.yaml

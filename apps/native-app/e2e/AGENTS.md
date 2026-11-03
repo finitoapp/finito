@@ -59,7 +59,7 @@ assertions.
   `fill-inline` is `fillInlineField` (type, Save, wait for "Saved"); `tap-id`
   taps a control by testID; `relaunch` (`TEXT`) is `reloadPage`;
   `reopen` (`ROUTE`, `TEXT`) is `relaunch` then `goto`, to check a change survived;
-  `turn-on-access` (`PIN`, `PRESET`, `KEEP`, `IN_APP`) is `turnOnAccessControl` (it restarts the app to end the PIN session unless `KEEP: "true"`), `type-pin` (`PIN`, 4 digits) is `typePin`, `wrong-pins` five wrong ones, `open-settings-entry` (`TITLE`, `FROM_HOME`) is `openSettingsEntry`, `assert-prompt` (`ACTION`) waits for the one-shot PIN prompt, `open-locked-settings` reaches the PIN screen for Settings in-app (Home → gear → Items), `read-phrase` keeps the recovery phrase as `output.phrase`; `enter-amount` (`AMOUNT`, `<` = backspace) is `enterAmount`;
+  `turn-on-access` (`PIN`, `PRESET`, `KEEP`, `IN_APP`) is `turnOnAccessControl` (it restarts the app to end the PIN session unless `KEEP: "true"`), `type-pin` (`PIN`, 4 digits) is `typePin`, `wrong-pins` five wrong ones, `open-settings-entry` (`TITLE`, `FROM_HOME`) is `openSettingsEntry`, `assert-prompt` (`ACTION`) waits for the one-shot PIN prompt, `open-menu-tab` (`TAB`) is `openMenuTabFromHome` (Home → hamburger → the menu tab), `open-locked-catalog` reaches the PIN screen for the catalog in-app (Home → hamburger → Catalog), `read-phrase` keeps the recovery phrase as `output.phrase`; `enter-amount` (`AMOUNT`, `<` = backspace) is `enterAmount`;
   `assert-checked` (`LABEL`, `CHECKED`) checks a switch, on Android only;
   `add-catalog-item`, `add-category`, `add-table` are web's `addCatalogItem`,
   `addCatalogCategory`, `addTable`; `start-new-bill` is `startNewBill`,

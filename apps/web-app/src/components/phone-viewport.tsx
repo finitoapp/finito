@@ -12,7 +12,7 @@ export function PhoneViewport({
   return (
     <div
       className={
-        "min-h-svh flex pt-[calc(env(safe-area-inset-top,0px)+var(--terminal-banner-height,0px))] pb-[env(safe-area-inset-bottom,0px)]"
+        "min-h-svh flex pt-[calc(env(safe-area-inset-top,0px)+var(--terminal-banner-height,0px))] pb-[calc(env(safe-area-inset-bottom,0px)+var(--menu-nav-height,0px))] lg:pl-(--menu-sidebar-width)"
       }
     >
       <div

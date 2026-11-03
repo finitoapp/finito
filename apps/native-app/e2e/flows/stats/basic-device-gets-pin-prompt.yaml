@@ -10,6 +10,6 @@ tags: [stats]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: stats
+      ROUTE: activity/stats
       TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.stats"] })}'
 - assertNotVisible: ${output.t["stats.live"]}

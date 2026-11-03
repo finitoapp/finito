@@ -8,6 +8,7 @@ export const Route = createFileRoute(
   component: SparkWithdrawHistoryRoute,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })
 

@@ -23,11 +23,11 @@ const routeLockHeading = (page: Page, permission: string) =>
     ),
   })
 
-const settingsLock = (page: Page) =>
-  routeLockHeading(page, translate("en", "access.permission.settings"))
+const catalogLock = (page: Page) =>
+  routeLockHeading(page, translate("en", "access.permission.catalog"))
 
 const itemsHeading = (page: Page) =>
-  page.getByRole("heading", { name: translate("en", "settings.items.title") })
+  page.getByRole("heading", { name: translate("en", "catalog.items.title") })
 
 const wrongPinMessage = (attemptsLeft: number) =>
   translate("en", "access.pin.wrong").replace("{count}", String(attemptsLeft))
@@ -77,8 +77,8 @@ test("turning access control on with the wizard locks what the device was not gi
   })
 
   await test.step("the catalog asks for the PIN, which opens it", async () => {
-    await page.goto("/settings/items", { waitUntil: "domcontentloaded" })
-    await expect(settingsLock(page)).toBeVisible()
+    await page.goto("/catalog/items", { waitUntil: "domcontentloaded" })
+    await expect(catalogLock(page)).toBeVisible()
     await typePin(page, "en", ownerPin)
     await expect(itemsHeading(page)).toBeVisible()
   })
@@ -170,14 +170,14 @@ test("a PIN session ends after five minutes without activity", async ({
 
   await test.step("turn access control on and open the catalog with the PIN", async () => {
     await turnOnAccessControl(page, "en")
-    await page.goto("/settings/items", { waitUntil: "domcontentloaded" })
+    await page.goto("/catalog/items", { waitUntil: "domcontentloaded" })
     await typePin(page, "en", ownerPin)
     await expect(itemsHeading(page)).toBeVisible()
   })
 
   await test.step("five idle minutes lock the catalog again", async () => {
     await page.clock.fastForward("05:10")
-    await expect(settingsLock(page)).toBeVisible()
+    await expect(catalogLock(page)).toBeVisible()
   })
 })
 
@@ -191,7 +191,7 @@ test("five wrong PINs block the device, and the recovery phrase unblocks it", as
     turnOnAccessControl(page, "en"))
 
   await test.step("five wrong PINs block PIN entry", async () => {
-    await page.goto("/settings/items", { waitUntil: "domcontentloaded" })
+    await page.goto("/catalog/items", { waitUntil: "domcontentloaded" })
     await typeWrongPins(page, 5)
     await expect(
       page.getByText(translate("en", "access.pin.blocked.title"))
@@ -256,7 +256,7 @@ test("another device unblocks a blocked one", async ({ seededPage: page }) => {
   })
 
   await test.step("this device, once blocked, takes an unblock synced from another device", async () => {
-    await page.goto("/settings/items", { waitUntil: "domcontentloaded" })
+    await page.goto("/catalog/items", { waitUntil: "domcontentloaded" })
     await typeWrongPins(page, 5)
     await expect(
       page.getByText(translate("en", "access.pin.blocked.title"))
@@ -286,7 +286,7 @@ test("wrong PINs followed by the correct one show the failed attempts", async ({
     turnOnAccessControl(page, "en"))
 
   await test.step("two wrong PINs on the catalog", async () => {
-    await page.goto("/settings/items", { waitUntil: "domcontentloaded" })
+    await page.goto("/catalog/items", { waitUntil: "domcontentloaded" })
     await typeWrongPins(page, 2)
   })
 
@@ -296,7 +296,7 @@ test("wrong PINs followed by the correct one show the failed attempts", async ({
       .getByTestId("failed-pin-attempts")
       .getByRole("listitem")
     await expect(attempts).toHaveCount(2)
-    await expect(attempts.first()).toContainText("/settings/items")
+    await expect(attempts.first()).toContainText("/catalog/items")
     await page
       .getByRole("button", {
         name: translate("en", "access.attempts.continue"),
@@ -306,13 +306,13 @@ test("wrong PINs followed by the correct one show the failed attempts", async ({
   })
 
   await test.step("the list was cleared: the next PIN goes straight in", async () => {
-    await page.goto("/settings/tables", { waitUntil: "domcontentloaded" })
-    await expect(settingsLock(page)).toBeVisible()
+    await page.goto("/catalog/tables", { waitUntil: "domcontentloaded" })
+    await expect(catalogLock(page)).toBeVisible()
     await typePin(page, "en", ownerPin)
     await expect(page.getByTestId("failed-pin-attempts")).toHaveCount(0)
     await expect(
       page.getByRole("heading", {
-        name: translate("en", "settings.tables.title"),
+        name: translate("en", "catalog.tables.title"),
       })
     ).toBeVisible()
   })

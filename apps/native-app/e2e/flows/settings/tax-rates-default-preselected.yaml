@@ -21,9 +21,9 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items/new
-      TEXT: ${output.t["settings.items.form.title.create"]}
+      ROUTE: catalog/items/new
+      TEXT: ${output.t["catalog.items.form.title.create"]}
 - scrollUntilVisible:
     element: Standard rate.*
     centerElement: true
-- assertNotVisible: ${output.t["settings.items.form.taxRate.none"]}
+- assertNotVisible: ${output.t["catalog.items.form.taxRate.none"]}

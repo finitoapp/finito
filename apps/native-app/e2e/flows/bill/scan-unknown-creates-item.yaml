@@ -19,12 +19,12 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.name.label"]}
+      LABEL: ${output.t["catalog.items.form.name.label"]}
       VALUE: Muffin
 - runFlow:
     file: ../../subflows/type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.price.label"]}
+      LABEL: ${output.t["catalog.items.form.price.label"]}
       VALUE: "2.5"
 - runFlow:
     when:
@@ -35,7 +35,7 @@ tags: [bill]
 - tapOn:
     text: ${output.t["bill.scan.create.save"]}
     below:
-      id: ${output.re(output.t["settings.items.form.taxRate.label"])}
+      id: ${output.re(output.t["catalog.items.form.taxRate.label"])}
 # The new item is on the cart.
 # The search field takes the focus back from the closed dialog, and its
 # keyboard covers the bill's footer.
@@ -55,15 +55,15 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: ${output.t["settings.items.title"]}
+      ROUTE: catalog/items
+      TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Muffin
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.edit"]}
+    visible: ${output.t["catalog.items.form.title.edit"]}
     timeout: 15000
 - scrollUntilVisible:
     element:
-      id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+      id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
 - assertVisible:
-    id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+    id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
     text: "3333"

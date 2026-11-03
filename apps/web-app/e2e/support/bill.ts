@@ -122,44 +122,44 @@ export async function addCatalogItem(
     readonly taxRateName?: string
   }
 ): Promise<void> {
-  await gotoPage(page, "/settings/items", language, "settings.items.title")
+  await gotoPage(page, "/catalog/items", language, "catalog.items.title")
   await page
-    .getByRole("button", { name: translate(language, "settings.items.add") })
+    .getByRole("button", { name: translate(language, "catalog.items.add") })
     .click()
   await page
     .getByRole("heading", {
-      name: translate(language, "settings.items.form.title.create"),
+      name: translate(language, "catalog.items.form.title.create"),
     })
     .waitFor()
   await page
     .getByRole("textbox", {
-      name: translate(language, "settings.items.form.name.label"),
+      name: translate(language, "catalog.items.form.name.label"),
       exact: true,
     })
     .fill(input.name)
   await page
     .getByRole("textbox", {
-      name: translate(language, "settings.items.form.price.label"),
+      name: translate(language, "catalog.items.form.price.label"),
     })
     .fill(input.price)
   if (input.internalName !== undefined) {
     await page
       .getByRole("textbox", {
-        name: translate(language, "settings.items.form.internalName.label"),
+        name: translate(language, "catalog.items.form.internalName.label"),
       })
       .fill(input.internalName)
   }
   if (input.sku !== undefined) {
     await page
       .getByRole("textbox", {
-        name: translate(language, "settings.items.form.sku.label"),
+        name: translate(language, "catalog.items.form.sku.label"),
       })
       .fill(input.sku)
   }
   if (input.categoryName !== undefined) {
     await page
       .getByRole("combobox", {
-        name: translate(language, "settings.items.form.category.label"),
+        name: translate(language, "catalog.items.form.category.label"),
       })
       .click()
     await page.getByRole("option", { name: input.categoryName }).click()
@@ -167,14 +167,14 @@ export async function addCatalogItem(
   if (input.scanCode !== undefined) {
     await page
       .getByRole("textbox", {
-        name: translate(language, "settings.items.form.scanCode.label"),
+        name: translate(language, "catalog.items.form.scanCode.label"),
       })
       .fill(input.scanCode)
   }
   if (input.taxRateName !== undefined) {
     await page
       .getByRole("combobox", {
-        name: translate(language, "settings.items.form.taxRate.label"),
+        name: translate(language, "catalog.items.form.taxRate.label"),
       })
       .click()
     await page
@@ -183,11 +183,11 @@ export async function addCatalogItem(
   }
   await page
     .getByRole("button", {
-      name: translate(language, "settings.items.form.save.create"),
+      name: translate(language, "catalog.items.form.save.create"),
     })
     .click()
   await page
-    .getByRole("heading", { name: translate(language, "settings.items.title") })
+    .getByRole("heading", { name: translate(language, "catalog.items.title") })
     .waitFor()
 }
 
@@ -225,33 +225,33 @@ export async function addCatalogCategory(
 ): Promise<void> {
   await gotoPage(
     page,
-    "/settings/categories",
+    "/catalog/categories",
     language,
-    "settings.categories.title"
+    "catalog.categories.title"
   )
   await page
     .getByRole("button", {
-      name: translate(language, "settings.categories.add"),
+      name: translate(language, "catalog.categories.add"),
     })
     .click()
   await page
     .getByRole("heading", {
-      name: translate(language, "settings.categories.form.title.create"),
+      name: translate(language, "catalog.categories.form.title.create"),
     })
     .waitFor()
   await page
     .getByRole("textbox", {
-      name: translate(language, "settings.categories.form.name.label"),
+      name: translate(language, "catalog.categories.form.name.label"),
     })
     .fill(name)
   await page
     .getByRole("button", {
-      name: translate(language, "settings.categories.form.save.create"),
+      name: translate(language, "catalog.categories.form.save.create"),
     })
     .click()
   await page
     .getByRole("heading", {
-      name: translate(language, "settings.categories.title"),
+      name: translate(language, "catalog.categories.title"),
     })
     .waitFor()
 }
@@ -297,33 +297,33 @@ export async function addTable(
   language: Language,
   input: { readonly name: string; readonly seatCount: string }
 ): Promise<void> {
-  await gotoPage(page, "/settings/tables", language, "settings.tables.title")
+  await gotoPage(page, "/catalog/tables", language, "catalog.tables.title")
   await page
-    .getByRole("button", { name: translate(language, "settings.tables.add") })
+    .getByRole("button", { name: translate(language, "catalog.tables.add") })
     .click()
   await page
     .getByRole("heading", {
-      name: translate(language, "settings.tables.form.title.create"),
+      name: translate(language, "catalog.tables.form.title.create"),
     })
     .waitFor()
   await page
     .getByRole("textbox", {
-      name: translate(language, "settings.tables.form.name.label"),
+      name: translate(language, "catalog.tables.form.name.label"),
     })
     .fill(input.name)
   await page
     .getByRole("textbox", {
-      name: translate(language, "settings.tables.form.seatCount.label"),
+      name: translate(language, "catalog.tables.form.seatCount.label"),
     })
     .fill(input.seatCount)
   await page
     .getByRole("button", {
-      name: translate(language, "settings.tables.form.save.create"),
+      name: translate(language, "catalog.tables.form.save.create"),
     })
     .click()
   await page
     .getByRole("heading", {
-      name: translate(language, "settings.tables.title"),
+      name: translate(language, "catalog.tables.title"),
     })
     .waitFor()
 }

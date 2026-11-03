@@ -63,7 +63,7 @@ export async function seedCurrentAccountOnboarding(
     }
   }
   await page
-    .getByRole("button", { name: translate(language, "settings.title") })
+    .getByRole("button", { name: translate(language, "nav.menu") })
     .waitFor()
 }
 
@@ -162,7 +162,7 @@ export async function completeOnboarding(
     .getByRole("button", { name: translate(language, "onboarding.finish") })
     .click()
   await page
-    .getByRole("button", { name: translate(language, "settings.title") })
+    .getByRole("button", { name: translate(language, "nav.menu") })
     .waitFor()
 }
 
@@ -197,6 +197,6 @@ export async function completeOnboardingDefaults(
     .getByRole("button", { name: translate(language, "onboarding.finish") })
     .click()
   await page
-    .getByRole("button", { name: translate(language, "settings.title") })
+    .getByRole("button", { name: translate(language, "nav.menu") })
     .waitFor()
 }

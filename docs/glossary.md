@@ -26,6 +26,14 @@ where it is specified; the specification wins over this page.
 - **Pos** / **numpad** — the two modes home toggles between: `nav.pos`
   ("Sales", the table grid, `PosOverviewPage`) and `nav.numpad` ("Keypad",
   `TerminalPaymentKeypad`). Neither is another name for the terminal.
+- **Menu** — the section behind home's hamburger (`nav.menu`,
+  `docs/decisions/navigation/0001`): Home, then the tabs Activity (its
+  statistics a sub-tab), Catalog and Settings, switched by a bottom bar on a phone and a
+  sidebar on a large monitor. A route joins it through `staticData.menu`.
+  Not the café's menu of dishes; that is the **catalog**.
+- **Catalog** (tab) — the menu tab holding the catalog items, categories
+  and tables under `/catalog`, behind the `catalog` permission
+  (`docs/decisions/access/0010`).
 
 ## Selling
 

@@ -150,7 +150,7 @@ export function PosOverviewPage() {
         <p className="px-1 text-sm text-muted-foreground">
           {t("home.pos.noTables")}{" "}
           <Link
-            to="/settings/tables"
+            to="/catalog/tables"
             className="font-medium text-foreground underline underline-offset-4"
           >
             {t("home.pos.addTables")}

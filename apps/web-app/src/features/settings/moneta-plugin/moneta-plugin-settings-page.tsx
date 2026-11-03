@@ -54,9 +54,9 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field.tsx"
-import { InlineEditCheckbox } from "@/features/settings/inline-edit-checkbox.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
-import { SettingsFormCard } from "@/features/settings/settings-form-card.tsx"
+import { FormCard } from "@/features/shared/forms/form-card.tsx"
+import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -306,7 +306,7 @@ function MonetaPluginConnectForm({
         : null
 
   return (
-    <SettingsFormCard
+    <FormCard
       title={t(
         isConnected
           ? "settings.monetaPlugin.connect.replaceTitle"
@@ -374,6 +374,6 @@ function MonetaPluginConnectForm({
           <FieldError>{errorMessage}</FieldError>
         </Field>
       </FieldGroup>
-    </SettingsFormCard>
+    </FormCard>
   )
 }

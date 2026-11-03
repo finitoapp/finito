@@ -60,8 +60,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field.tsx"
 import { VerticalNav } from "@/components/vertical-nav.tsx"
-import { InlineEditCheckbox } from "@/features/settings/inline-edit-checkbox.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
+import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"

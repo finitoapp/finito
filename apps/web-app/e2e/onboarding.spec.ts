@@ -164,7 +164,7 @@ test("the payment methods step derives bank transfers from the account input", a
     await ibanInput.fill("19-2000145399/0800")
     await finishButton.click()
     await page
-      .getByRole("button", { name: translate("en", "settings.title") })
+      .getByRole("button", { name: translate("en", "nav.menu") })
       .waitFor()
   })
   await test.step("the entered account enables bank transfers", async () => {
@@ -413,7 +413,7 @@ test("setting up a phrase whose sync failed warns, then goes straight to payment
       .getByRole("button", { name: translate("en", "onboarding.finish") })
       .click()
     await page
-      .getByRole("button", { name: translate("en", "settings.title") })
+      .getByRole("button", { name: translate("en", "nav.menu") })
       .waitFor()
   })
 

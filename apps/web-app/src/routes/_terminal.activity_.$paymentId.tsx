@@ -6,6 +6,7 @@ export const Route = createFileRoute("/_terminal/activity_/$paymentId")({
   component: PaymentDetailRoute,
   staticData: {
     access: "activity",
+    menu: { tab: "activity" },
   },
 })
 

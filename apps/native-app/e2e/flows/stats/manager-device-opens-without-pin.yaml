@@ -7,19 +7,15 @@ tags: [stats]
     file: ../../subflows/turn-on-access.yaml
     env:
       PRESET: ${output.t["access.preset.manager"]}
-# The statistics open from the activity header (the app restarted, so the
-# PIN session is gone).
+# The statistics open from Activity's tabs (the app restarted, so the PIN
+# session is gone).
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: activity
       TEXT: ${output.t["activity.title"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.stats"]}
-# "Live" marks the statistics page itself: its title is also the header
-# button's label, which stays mounted under it on Android.
+- tapOn: ${output.re(output.t["activity.tabs.stats"])}
+# "Live" marks the statistics page itself.
 - extendedWaitUntil:
     visible: ${output.t["stats.live"]}
     timeout: 15000

@@ -11,6 +11,7 @@ import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateValue } from "./support/i18n.ts"
 import { fillInlineField } from "./support/inline-edit.ts"
 import {
+  contentNav,
   gotoPage,
   gotoPosOverview,
   waitForLocalWriteToSettle,
@@ -390,12 +391,12 @@ test("decrements a saved item after its catalog snapshot changes", async ({
   })
 
   await test.step("edit the catalog price", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page.getByRole("link", { name: "Coffee" }).click()
     await fillInlineField(
       page,
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       }),
       "6"
     )
@@ -619,7 +620,7 @@ test("a link with an id that can't be parsed shows an invalid-id page with a way
     name: translate("en", "nav.back"),
   })
   const homeButton = page.getByRole("button", {
-    name: translate("en", "nav.activity"),
+    name: translate("en", "nav.menu"),
   })
 
   await test.step("a malformed bill link", async () => {
@@ -901,7 +902,7 @@ test("a bill canceled while its payment is pending, then confirmed anyway, is fl
 
   await test.step("the bills list flags the collision", async () => {
     await gotoPage(page, "/activity/bills", "en", "activity.title")
-    const row = page.locator("nav").locator(`a[href$="/${billId}"]`)
+    const row = contentNav(page, "en").locator(`a[href$="/${billId}"]`)
     await expect(row).toContainText(translate("en", "bill.status.canceled"))
     await expect(row).toContainText(translate("en", "bill.collision.title"))
     await page.screenshot({

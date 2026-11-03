@@ -1,0 +1,20 @@
+# web's openMenuTabFromHome: from the terminal home, the hamburger, which
+# opens Activity, then the menu tab labelled TAB (the bar on a phone, the
+# sidebar on a wide window). A tap within the app, so a PIN session survives.
+appId: ${APP_ID}
+---
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}
+- extendedWaitUntil:
+    visible: ${output.t["activity.title"]}
+    timeout: 15000
+- runFlow:
+    when:
+      true: ${TAB !== output.t["nav.activity"]}
+    commands:
+      - runFlow:
+          file: tap-label.yaml
+          env:
+            LABEL: ${TAB}
