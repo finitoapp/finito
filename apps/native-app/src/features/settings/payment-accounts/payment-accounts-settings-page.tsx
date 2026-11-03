@@ -380,7 +380,7 @@ function PaymentMethodRow({
                 lineHeight={fontSize.sm}
                 fontWeight={fontWeight.medium}
                 flexShrink={1}
-                color={row.enabled ? undefined : "muted-foreground"}
+                color={row.enabled ? "color" : "muted-foreground"}
               >
                 {name}
               </Text>
