@@ -25,7 +25,9 @@ where it is specified; the specification wins over this page.
   `home.*` keys).
 - **Pos** / **numpad** — the two modes home toggles between: `nav.pos`
   ("Sales", the table grid, `PosOverviewPage`) and `nav.numpad` ("Keypad",
-  `TerminalPaymentKeypad`). Neither is another name for the terminal.
+  `TerminalPaymentKeypad`). Neither is another name for the terminal. In
+  Finito home is the keypad alone and Sales is the catalog tab's only
+  screen (`docs/decisions/navigation/0003`).
 - **Menu** — the section behind home's hamburger (`nav.menu`,
   `docs/decisions/navigation/0001`): Home, then the tabs Activity (its
   statistics a sub-tab), Catalog and Settings, switched by a bottom bar on a phone and a
@@ -33,7 +35,9 @@ where it is specified; the specification wins over this page.
   Not the café's menu of dishes; that is the **catalog**.
 - **Catalog** (tab) — the menu tab holding the catalog items, categories
   and tables under `/catalog`, behind the `catalog` permission
-  (`docs/decisions/access/0010`).
+  (`docs/decisions/access/0010`). In Finito the tab is Sales alone and the
+  items and tables are set up under `/settings`
+  (`docs/decisions/navigation/0003`).
 
 ## Selling
 

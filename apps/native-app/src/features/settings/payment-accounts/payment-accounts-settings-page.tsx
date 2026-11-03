@@ -1,25 +1,23 @@
+import {
+  expandPaymentMethodOrder,
+  groupPaymentMethodOrder,
+  type PaymentMethodGroup,
+} from "@payky/app-shared/bitcoin-payment-method"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   saveCardSwitchioAccount,
   saveCashRegisterAccount,
-  saveCashuAccount,
   saveFiatBankAccount,
-  saveLightningAddressAccount,
   saveQerkoTerminalAccount,
-  saveSparkAccount,
 } from "@payky/core/modules/account/account-actions"
 import {
   cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
-  cashuAccountQuery,
   fiatBankAccountQuery,
-  lightningAddressAccountQuery,
   qerkoTerminalAccountQuery,
-  sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { setPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import {
   getFiatCurrency,
   getPaymentMethodOrder,
@@ -28,22 +26,27 @@ import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
-import AtSign from "lucide-react-native/icons/at-sign"
 import Banknote from "lucide-react-native/icons/banknote"
-import ChevronDown from "lucide-react-native/icons/chevron-down"
+import Bitcoin from "lucide-react-native/icons/bitcoin"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
-import ChevronUp from "lucide-react-native/icons/chevron-up"
-import Coins from "lucide-react-native/icons/coins"
 import CreditCard from "lucide-react-native/icons/credit-card"
+import GripVertical from "lucide-react-native/icons/grip-vertical"
 import Landmark from "lucide-react-native/icons/landmark"
 import Nfc from "lucide-react-native/icons/nfc"
-import Zap from "lucide-react-native/icons/zap"
-import { Pressable } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import {
+  type AccessibilityActionEvent,
+  Animated,
+  Easing,
+  type LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  type ViewStyle,
+} from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
-import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { Switch } from "../../../components/ui/switch.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
@@ -52,13 +55,16 @@ import {
   usePreloadEvoluQueries,
 } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
-import { useCashuRunToast, useRunToast } from "../../../hooks/use-run-toast.ts"
+import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { hapticButtonPress } from "../../../platform/haptics.ts"
+import { isReduceMotionEnabled } from "../../../platform/reduce-motion.ts"
 import {
   isSwitchioInstalled,
   isSwitchioSupported,
 } from "../../../platform/switchio.ts"
-import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { control, fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { bitcoinWalletQueries, useBitcoinWallet } from "./use-bitcoin-wallet.ts"
 
 interface PaymentMethodRowState {
   readonly icon: LucideIcon
@@ -82,44 +88,73 @@ interface PaymentMethodRowState {
 const paymentAccountsPageQueries = [
   settingsQuery,
   fiatBankAccountQuery,
-  sparkAccountQuery,
   cashRegisterAccountQuery,
   cardSwitchioAccountQuery,
   qerkoTerminalAccountQuery,
   qerkoPluginQuery,
-  cashuAccountQuery,
-  lightningAddressAccountQuery,
+  ...bitcoinWalletQueries,
 ]
+
+/** What the Bitcoin row says it pays into. */
+const bitcoinWalletLabelKeys = {
+  cashu: "settings.paymentAccounts.method.cashu",
+  lightningAddress: "settings.paymentAccounts.method.lightningAddress",
+  spark: "settings.bitcoin.wallet.spark",
+} satisfies Record<
+  NonNullable<ReturnType<typeof useBitcoinWallet>["enabled"]>,
+  TranslationKey
+>
+
+/** How long the other rows take to make room for the dragged one. */
+const shiftTiming = { duration: 150, easing: Easing.out(Easing.quad) }
+
+/**
+ * In the PWA a touch that starts on the grip must drag, not scroll the
+ * screen: a native scroll under the responder would end it (RNW's responder
+ * system). React Native Web draws any CSS property it is given; React
+ * Native's types know no `touchAction`.
+ */
+const gripTouch = { touchAction: "none" } as unknown as ViewStyle
+
+/**
+ * The rows' part of a drag: each row's measured height and its vertical
+ * offset, an `Animated.Value` on the native driver. The dragged row follows
+ * the finger; the rows it passes shift by its height to make room.
+ */
+interface RowDrag {
+  readonly offset: Animated.Value
+  readonly isDragging: boolean
+  readonly onLayout: (event: LayoutChangeEvent) => void
+  readonly onStart: () => void
+  readonly onMove: (dy: number) => void
+  readonly onEnd: () => void
+}
 
 /**
  * The payment methods in the order customers see them, as web's
- * `PaymentAccountsSettingsPage`. There is no separate default: the first
- * available one is the tab the payment screen opens on.
+ * `PaymentAccountsSettingsPage`, with the three bitcoin wallets as one
+ * "Bitcoin" row (settings/0002). There is no separate default: the first
+ * available one is the tab the payment screen opens on. The merchant
+ * reorders them by dragging a row's grip, as on web; TalkBack gets the move
+ * actions instead.
  */
 export function PaymentAccountsSettingsPage() {
   usePreloadEvoluQueries(paymentAccountsPageQueries)
   const runToast = useRunToast()
-  const cashuRunToast = useCashuRunToast()
   const { t } = useTranslation()
   const [settings] = useEvoluQuery(settingsQuery).data
   const [bank] = useEvoluQuery(fiatBankAccountQuery).data
-  const [spark] = useEvoluQuery(sparkAccountQuery).data
   const [cash] = useEvoluQuery(cashRegisterAccountQuery).data
   const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
   const [qerko] = useEvoluQuery(qerkoTerminalAccountQuery).data
   const qerkoPaired = useEvoluQuery(qerkoPluginQuery).data.length > 0
-  const [cashu] = useEvoluQuery(cashuAccountQuery).data
-  const [lightningAddress] = useEvoluQuery(lightningAddressAccountQuery).data
+  const bitcoin = useBitcoinWallet()
 
   const appCurrency = getFiatCurrency(settings)
   const bankEnabled = bank !== undefined && bank.isDeleted !== 1
-  const sparkEnabled = spark !== undefined && spark.isDeleted !== 1
   const cashEnabled = cash !== undefined && cash.isDeleted !== 1
   const cardEnabled = card !== undefined && card.isDeleted !== 1
   const qerkoEnabled = qerko !== undefined && qerko.isDeleted !== 1
-  const cashuEnabled = cashu !== undefined && cashu.isDeleted !== 1
-  const lightningAddressEnabled =
-    lightningAddress !== undefined && lightningAddress.isDeleted !== 1
 
   const currencyMismatch = (currency: FiatCurrency | undefined) =>
     currency === undefined || currency === appCurrency
@@ -159,20 +194,24 @@ export function PaymentAccountsSettingsPage() {
           )
         }),
     },
-    spark: {
-      icon: Zap,
-      title: "settings.paymentAccounts.method.spark",
-      switchLabel: "settings.sparkAccount.enabled.label",
-      enabled: sparkEnabled,
-      available: sparkEnabled,
+    bitcoin: {
+      icon: Bitcoin,
+      title: "settings.paymentAccounts.method.bitcoin",
+      switchLabel: "settings.bitcoin.enabled.label",
+      enabled: bitcoin.enabled !== undefined,
+      available: bitcoin.enabled !== undefined,
       canEnable: true,
-      status: null,
-      // Before the first enable there is no wallet yet to show or change.
-      href: spark === undefined ? null : "/settings/payment-accounts/spark",
+      status:
+        bitcoin.enabled === undefined
+          ? null
+          : bitcoin.enabled === "lightningAddress"
+            ? (bitcoin.lightningAddress ?? null)
+            : t(bitcoinWalletLabelKeys[bitcoin.enabled]),
+      href: "/settings/payment-accounts/bitcoin",
+      // Still being proven, as the Cashu wallet it opens on.
+      experimental: true,
       saveEnabled: (enabled) =>
-        runToast(async (run) => {
-          await run.ok(saveSparkAccount({ enabled }))
-        }),
+        enabled ? bitcoin.enable() : bitcoin.select(null),
     },
     cashRegister: {
       icon: Banknote,
@@ -235,55 +274,133 @@ export function PaymentAccountsSettingsPage() {
           )
         }),
     },
-    cashu: {
-      icon: Coins,
-      title: "settings.paymentAccounts.method.cashu",
-      switchLabel: "settings.cashuAccount.enabled.label",
-      enabled: cashuEnabled,
-      available: cashuEnabled,
-      canEnable: true,
-      status: null,
-      // Like web, the account page appears once its row has been created.
-      href: cashu === undefined ? null : "/settings/payment-accounts/cashu",
-      experimental: true,
-      saveEnabled: (enabled) =>
-        cashuRunToast(async (run) => {
-          await run.ok(saveCashuAccount({ enabled }))
-        }),
-    },
-    lightningAddress: {
-      icon: AtSign,
-      title: "settings.paymentAccounts.method.lightningAddress",
-      switchLabel: "settings.lightningAddress.enabled.label",
-      enabled: lightningAddressEnabled,
-      available: lightningAddressEnabled,
-      // The address is entered on its own page, as on web.
-      canEnable: lightningAddress !== undefined,
-      status:
-        lightningAddress === undefined
-          ? t("settings.paymentAccounts.status.missingLightningAddress")
-          : lightningAddress.address,
-      href: "/settings/payment-accounts/lightning-address",
-      saveEnabled: (enabled) =>
-        runToast(async (run) => {
-          await run.ok(saveLightningAddressAccount({ enabled }))
-        }),
-    },
-  } satisfies Record<DefaultPaymentMethod, PaymentMethodRowState>
+  } satisfies Record<PaymentMethodGroup, PaymentMethodRowState>
 
-  const order = getPaymentMethodOrder(settings)
-  const firstAvailable = order.find((method) => rows[method].available)
+  // The stored order lists every wallet; the rows show the three as one.
+  const storedOrder = getPaymentMethodOrder(settings)
+  const order = groupPaymentMethodOrder(storedOrder)
+  const orderKey = order.join(" ")
+  // The order a drag ended on, shown until the store catches up (its key
+  // then differs) or the save fails. Keyed to the stored order it departs
+  // from, and dropped as soon as that changes, so a stale draft never wins.
+  const [draft, setDraft] = useState<{
+    readonly key: string
+    readonly order: ReadonlyArray<PaymentMethodGroup>
+  } | null>(null)
+  if (draft !== null && draft.key !== orderKey) setDraft(null)
+  const shownOrder =
+    draft !== null && draft.key === orderKey ? draft.order : order
+  const firstAvailable = shownOrder.find((method) => rows[method].available)
 
-  const move = (index: number, offset: -1 | 1) => {
-    const method = order[index]
-    const neighbour = order[index + offset]
-    if (method === undefined || neighbour === undefined) return
-
-    const nextOrder = order.with(index, neighbour).with(index + offset, method)
-    void runToast(async (run) => {
-      await run.ok(setPaymentMethodOrder(nextOrder))
+  const store = (nextOrder: ReadonlyArray<PaymentMethodGroup>) =>
+    runToast(async (run) => {
+      await run.ok(
+        setPaymentMethodOrder(expandPaymentMethodOrder(nextOrder, storedOrder))
+      )
     })
+
+  const move = (method: PaymentMethodGroup, offset: -1 | 1) => {
+    const index = order.indexOf(method)
+    const neighbour = order[index + offset]
+    if (index === -1 || neighbour === undefined) return
+
+    void store(order.with(index, neighbour).with(index + offset, method))
   }
+
+  const [rowHeights] = useState(() => new Map<PaymentMethodGroup, number>())
+  const [rowOffsets] = useState(
+    () => new Map<PaymentMethodGroup, Animated.Value>()
+  )
+  const offsetOf = (method: PaymentMethodGroup) => {
+    const known = rowOffsets.get(method)
+    if (known !== undefined) return known
+    const offset = new Animated.Value(0)
+    rowOffsets.set(method, offset)
+    return offset
+  }
+  const [dragging, setDragging] = useState<PaymentMethodGroup | null>(null)
+  // The drag in flight: where its row started and where it would land now.
+  const drag = useRef<{
+    readonly method: PaymentMethodGroup
+    readonly from: number
+    to: number
+  } | null>(null)
+
+  const shiftTo = (offset: Animated.Value, value: number) => {
+    if (isReduceMotionEnabled()) {
+      offset.setValue(value)
+      return
+    }
+    Animated.timing(offset, {
+      toValue: value,
+      ...shiftTiming,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  /** The index the dragged row lands on after moving `dy`: a neighbour is passed once the finger crosses half of it. */
+  const landingIndex = (from: number, dy: number) => {
+    const step = dy < 0 ? -1 : 1
+    let index = from
+    let remaining = Math.abs(dy)
+    let neighbour = shownOrder[index + step]
+    while (neighbour !== undefined) {
+      const height = rowHeights.get(neighbour) ?? 0
+      if (remaining < height / 2) break
+      remaining -= height
+      index += step
+      neighbour = shownOrder[index + step]
+    }
+    return index
+  }
+
+  const rowDrag = (method: PaymentMethodGroup): RowDrag => ({
+    offset: offsetOf(method),
+    isDragging: dragging === method,
+    onLayout: (event) => {
+      rowHeights.set(method, event.nativeEvent.layout.height)
+    },
+    onStart: () => {
+      const from = shownOrder.indexOf(method)
+      drag.current = { method, from, to: from }
+      setDragging(method)
+      hapticButtonPress()
+    },
+    onMove: (dy) => {
+      const current = drag.current
+      if (current === null || current.method !== method) return
+      offsetOf(method).setValue(dy)
+      const to = landingIndex(current.from, dy)
+      if (to === current.to) return
+      current.to = to
+      const height = rowHeights.get(method) ?? 0
+      shownOrder.forEach((other, index) => {
+        if (other === method) return
+        const passed =
+          to < current.from
+            ? index >= to && index < current.from
+            : index > current.from && index <= to
+        shiftTo(
+          offsetOf(other),
+          passed ? (to < current.from ? height : -height) : 0
+        )
+      })
+    },
+    onEnd: () => {
+      const current = drag.current
+      if (current === null || current.method !== method) return
+      drag.current = null
+      setDragging(null)
+      for (const offset of rowOffsets.values()) offset.setValue(0)
+      if (current.to === current.from) return
+      const next = shownOrder.filter((other) => other !== method)
+      next.splice(current.to, 0, method)
+      setDraft({ key: orderKey, order: next })
+      void store(next).then((stored) => {
+        if (!stored) setDraft(null)
+      })
+    },
+  })
 
   return (
     <Screen>
@@ -298,15 +415,13 @@ export function PaymentAccountsSettingsPage() {
           {t("settings.paymentAccounts.order.description")}
         </Text>
         <VerticalNavShell>
-          {order.map((method, index) => (
+          {shownOrder.map((method) => (
             <PaymentMethodRow
               key={method}
               row={rows[method]}
               isDefault={method === firstAvailable}
-              isFirst={index === 0}
-              canMoveUp={index > 0}
-              canMoveDown={index < order.length - 1}
-              onMove={(offset) => move(index, offset)}
+              drag={rowDrag(method)}
+              onMove={(offset) => move(method, offset)}
             />
           ))}
         </VerticalNavShell>
@@ -318,16 +433,13 @@ export function PaymentAccountsSettingsPage() {
 function PaymentMethodRow({
   row,
   isDefault,
-  isFirst,
-  canMoveUp,
-  canMoveDown,
+  drag,
   onMove,
 }: {
   readonly row: PaymentMethodRowState
   readonly isDefault: boolean
-  readonly isFirst: boolean
-  readonly canMoveUp: boolean
-  readonly canMoveDown: boolean
+  readonly drag: RowDrag
+  /** TalkBack's move, one place up or down. */
   readonly onMove: (offset: -1 | 1) => void
 }) {
   const { t } = useTranslation()
@@ -339,112 +451,157 @@ function PaymentMethodRow({
   const { href } = row
 
   return (
-    <XStack
-      items="center"
-      gap={8}
-      py={4}
-      pl={4}
-      pr={12}
-      borderTopWidth={isFirst ? 0 : 1}
-      borderColor="border-color"
+    <Animated.View
+      onLayout={drag.onLayout}
+      style={{
+        transform: [{ translateY: drag.offset }],
+        zIndex: drag.isDragging ? 1 : 0,
+      }}
     >
-      <YStack>
-        <MoveButton
-          icon={ChevronUp}
-          label={t("settings.paymentAccounts.moveUp.aria", { name })}
-          disabled={!canMoveUp}
-          onPress={() => onMove(-1)}
-        />
-        <MoveButton
-          icon={ChevronDown}
-          label={t("settings.paymentAccounts.moveDown.aria", { name })}
-          disabled={!canMoveDown}
-          onPress={() => onMove(1)}
-        />
-      </YStack>
-      <Pressable
-        role={href === null ? undefined : "button"}
-        aria-label={name}
-        disabled={href === null}
-        style={{ flex: 1, minHeight: 48, justifyContent: "center" }}
-        onPress={() => {
-          if (href !== null) router.push(href)
-        }}
+      <XStack
+        items="center"
+        gap={8}
+        py={4}
+        pl={4}
+        pr={12}
+        bg={drag.isDragging ? "neutral-soft" : "card"}
       >
-        <XStack items="center" gap={12} py={8}>
-          <Icon icon={row.icon} color="muted-foreground" size={20} />
-          <YStack flex={1} minW={0} gap={2}>
-            <XStack items="center" gap={8}>
-              <Text
-                fontSize={fontSize.sm}
-                lineHeight={fontSize.sm}
-                fontWeight={fontWeight.medium}
-                flexShrink={1}
-                color={row.enabled ? "color" : "muted-foreground"}
-              >
-                {name}
-              </Text>
-              {isDefault ? (
-                <Badge
-                  variant="secondary"
-                  label={t("settings.paymentAccounts.default")}
-                />
-              ) : null}
-              {row.experimental ? (
-                <Badge
-                  bg="warning-10"
-                  labelColor="warning"
-                  label={t("settings.paymentAccounts.experimental")}
-                />
-              ) : null}
-            </XStack>
-            {row.status === null ? null : (
-              <Text
-                fontSize={fontSize.xs}
-                lineHeight={fontSize.xs}
-                color="muted-foreground"
-              >
-                {row.status}
-              </Text>
-            )}
-          </YStack>
-          {href === null ? null : <Icon icon={ChevronRight} />}
-        </XStack>
-      </Pressable>
-      {row.saveEnabled === null ? null : (
-        <Switch
-          aria-label={t(row.switchLabel)}
-          checked={choice.value}
-          disabled={!row.canEnable || choice.saving}
-          onCheckedChange={(next) => {
-            void choice.choose(next)
-          }}
+        <DragHandle
+          label={t("settings.paymentAccounts.reorder.aria", { name })}
+          moveUpLabel={t("settings.paymentAccounts.moveUp.aria", { name })}
+          moveDownLabel={t("settings.paymentAccounts.moveDown.aria", { name })}
+          drag={drag}
+          onMove={onMove}
         />
-      )}
-    </XStack>
+        <Pressable
+          role={href === null ? undefined : "button"}
+          aria-label={name}
+          disabled={href === null}
+          style={{ flex: 1, minHeight: 48, justifyContent: "center" }}
+          onPress={() => {
+            if (href !== null) router.push(href)
+          }}
+        >
+          <XStack items="center" gap={12} py={8}>
+            <Icon icon={row.icon} color="muted-foreground" size={20} />
+            <YStack flex={1} minW={0} gap={2}>
+              <XStack items="center" gap={8}>
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.medium}
+                  flexShrink={1}
+                  color={row.enabled ? "color" : "muted-foreground"}
+                >
+                  {name}
+                </Text>
+                {isDefault ? (
+                  <Badge
+                    variant="secondary"
+                    label={t("settings.paymentAccounts.default")}
+                  />
+                ) : null}
+                {row.experimental ? (
+                  <Badge
+                    bg="warning-10"
+                    labelColor="warning"
+                    label={t("settings.paymentAccounts.experimental")}
+                  />
+                ) : null}
+              </XStack>
+              {row.status === null ? null : (
+                <Text
+                  fontSize={fontSize.xs}
+                  lineHeight={fontSize.xs}
+                  color="muted-foreground"
+                >
+                  {row.status}
+                </Text>
+              )}
+            </YStack>
+            {href === null ? null : <Icon icon={ChevronRight} />}
+          </XStack>
+        </Pressable>
+        {row.saveEnabled === null ? null : (
+          <Switch
+            aria-label={t(row.switchLabel)}
+            checked={choice.value}
+            disabled={!row.canEnable || choice.saving}
+            onCheckedChange={(next) => {
+              void choice.choose(next)
+            }}
+          />
+        )}
+      </XStack>
+    </Animated.View>
   )
 }
 
-function MoveButton({
-  icon,
+/**
+ * The grip that drags its row, web's ghost icon Button with the grip icon:
+ * a pan responder that takes the touch at once (so the screen's ScrollView
+ * does not scroll instead) and keeps it. Its TalkBack actions move the row
+ * one place, since a drag cannot be done by screen reader.
+ */
+function DragHandle({
   label,
-  disabled,
-  onPress,
+  moveUpLabel,
+  moveDownLabel,
+  drag,
+  onMove,
 }: {
-  readonly icon: LucideIcon
   readonly label: string
-  readonly disabled: boolean
-  readonly onPress: () => void
+  readonly moveUpLabel: string
+  readonly moveDownLabel: string
+  readonly drag: RowDrag
+  readonly onMove: (offset: -1 | 1) => void
 }) {
+  // The responder is created once, so its gesture state survives the
+  // re-render a drag's start causes; it reads the latest callbacks here.
+  const latest = useRef(drag)
+  useEffect(() => {
+    latest.current = drag
+  })
+  const [responder] = useState(() =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => latest.current.onStart(),
+      onPanResponderMove: (_event, gesture) =>
+        latest.current.onMove(gesture.dy),
+      onPanResponderRelease: () => latest.current.onEnd(),
+      onPanResponderTerminate: () => latest.current.onEnd(),
+    })
+  )
+  const onAccessibilityAction = (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === "increment") onMove(-1)
+    if (event.nativeEvent.actionName === "decrement") onMove(1)
+  }
+
   return (
-    <Button
-      variant="ghost"
-      size="icon-lg"
+    <Animated.View
+      {...responder.panHandlers}
+      accessible
+      role="button"
       aria-label={label}
-      disabled={disabled}
-      onPress={onPress}
+      accessibilityActions={[
+        { name: "increment", label: moveUpLabel },
+        { name: "decrement", label: moveDownLabel },
+      ]}
+      onAccessibilityAction={onAccessibilityAction}
+      style={[
+        {
+          width: control.lg,
+          height: control.lg,
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+        },
+        gripTouch,
+      ]}
     >
-      <Icon icon={icon} size={24} color="color" />
-    </Button>
+      <Icon icon={GripVertical} color="muted-foreground" />
+    </Animated.View>
   )
 }

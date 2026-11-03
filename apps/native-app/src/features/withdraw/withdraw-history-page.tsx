@@ -1,5 +1,4 @@
 import { formatRelativeDate, formatTime } from "@payky/app-shared/format-date"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import { groupByDay } from "@payky/app-shared/group-by-day"
 import {
   shortWithdrawalDestination,
@@ -29,6 +28,7 @@ import { VerticalNav } from "../../components/vertical-nav.tsx"
 import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import { useCashuWalletSnapshot } from "../shared/cashu/use-cashu-wallet-snapshot.ts"
 import { useCashuAccountId } from "./use-cashu-withdraw-data.ts"
 import { useSparkAccountId, useSparkBalance } from "./use-withdraw-data.ts"

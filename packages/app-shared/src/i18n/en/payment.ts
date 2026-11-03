@@ -413,4 +413,5 @@ export const enPayment = {
   "paymentWait.monetaWatch.rateLimited":
     "Today's requests to the bank are used up. Confirm the transfer by hand.",
   "paymentDetail.transaction.preimage": "Proof of payment (preimage)",
+  "paymentWait.method.bitcoin": "Bitcoin",
 } as const

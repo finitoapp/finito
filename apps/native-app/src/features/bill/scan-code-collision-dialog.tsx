@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { getStaffDisplayName } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { Pressable } from "react-native"
@@ -12,6 +11,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog.tsx"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /**

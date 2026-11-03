@@ -12,15 +12,14 @@ import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
 
-/** Tables, as web's `TablesPage`. */
+/** Tables, as web's `TablesPage`, under Settings (navigation/0003). */
 export function TablesPage() {
   const { t } = useTranslation()
   return (
     <CatalogListShell
-      tab="tables"
       title={t("catalog.tables.title")}
       addLabel={t("catalog.tables.add")}
-      addHref="/catalog/tables/new"
+      addHref="/settings/tables/new"
     >
       <TablesSettingsBody />
     </CatalogListShell>
@@ -75,7 +74,7 @@ function TablesList({
       renderRow={(table) => ({
         id: table.id,
         title: table.name,
-        href: `/catalog/tables/${table.id}`,
+        href: `/settings/tables/${table.id}`,
         trailing: t("catalog.tables.seatCount", { value: table.seatCount }),
       })}
     />

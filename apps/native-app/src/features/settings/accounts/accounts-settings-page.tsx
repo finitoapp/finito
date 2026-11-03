@@ -130,7 +130,7 @@ export function AccountsSettingsPage() {
           <Text
             fontSize="sm"
             lineHeight="sm"
-            fontWeight="500"
+            fontWeight="600"
             numberOfLines={1}
           >
             {account.name}
@@ -245,7 +245,6 @@ export function AccountsSettingsPage() {
           <RestoreAccountStep
             error={restoring.error}
             pending={restoring.pending}
-            onTransfer={() => router.push("/pair")}
             onRestore={(phrase) => {
               if (stale()) return
               void restoring.restore(phrase)

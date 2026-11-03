@@ -1,13 +1,21 @@
 # From the terminal home with access control on and no PIN session: the
-# menu's Catalog tab, which lands on the PIN screen for the catalog
-# (access/0010). In-app, for flows mirroring web's openMenuTabFromHome; a
-# flow mirroring web's page.goto links to the locked route instead (goto).
+# menu's Settings tab, free to open, then its Items row, which lands on the
+# PIN screen for the catalog (access/0010, navigation/0003). In-app, for
+# flows mirroring web's openMenuTabFromHome; a flow mirroring web's
+# page.goto links to the locked route instead (goto).
 appId: ${APP_ID}
 ---
 - runFlow:
     file: open-menu-tab.yaml
     env:
-      TAB: ${output.t["nav.catalog"]}
+      TAB: ${output.t["nav.settings"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.title"]}
+    timeout: 15000
+- runFlow:
+    file: open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["catalog.items.title"]}
 - extendedWaitUntil:
     visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
     timeout: 15000

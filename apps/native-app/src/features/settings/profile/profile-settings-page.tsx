@@ -26,6 +26,7 @@ import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import { useCopyToClipboard } from "../../../hooks/use-copy-to-clipboard.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import {
+  setOwnNostrProfile,
   useNostrIdentity,
   useNostrProfile,
 } from "../../../hooks/use-nostr-profile.ts"
@@ -45,8 +46,7 @@ export function ProfileSettingsPage() {
   const identity = useNostrIdentity()
   const copy = useCopyToClipboard()
   const theme = useTheme()
-  const [attempt, setAttempt] = useState(0)
-  const profile = useNostrProfile(identity.pubkey, attempt)
+  const profile = useNostrProfile(identity.pubkey)
 
   return (
     <Screen>
@@ -59,7 +59,7 @@ export function ProfileSettingsPage() {
         <CardContent>
           <YStack gap="5">
             {profile.data !== null ? (
-              <ProfileEditor profile={profile.data} />
+              <ProfileEditor pubkey={identity.pubkey} profile={profile.data} />
             ) : profile.failed && !profile.loading ? (
               <YStack gap="2" role="alert">
                 <Text color="destructive">
@@ -68,7 +68,7 @@ export function ProfileSettingsPage() {
                 <Button
                   label={t("settings.profile.retry")}
                   variant="outline"
-                  onPress={() => setAttempt(attempt + 1)}
+                  onPress={profile.refetch}
                 />
               </YStack>
             ) : (
@@ -118,14 +118,19 @@ export function ProfileSettingsPage() {
   )
 }
 
-function ProfileEditor({ profile }: { readonly profile: NostrProfile }) {
+function ProfileEditor({
+  pubkey,
+  profile,
+}: {
+  readonly pubkey: string
+  readonly profile: NostrProfile
+}) {
   const { t } = useTranslation()
   const runToast = useRunToast()
   const [pictureInvalid, setPictureInvalid] = useState(false)
-  // What this screen last published; relays may still serve the previous
-  // event for a moment, so it is shown instead of a refetch.
-  const [published, setPublished] = useState<NostrProfile | null>(null)
-  const current = published ?? profile
+  // What this screen last published is what every reader shows
+  // (`setOwnNostrProfile`); `profile` is that value once it is set.
+  const current = profile
 
   // ponytail: each save merges into the profile as last published here, so a
   // name and a picture saved at the same instant can drop one of the two.
@@ -140,7 +145,7 @@ function ProfileEditor({ profile }: { readonly profile: NostrProfile }) {
       })
       const result = await run(publishNostrProfile({ metadata }))
       if (!result.ok) return "settings.profile.saveFailed"
-      setPublished(profileFromMetadata(metadata) ?? current)
+      setOwnNostrProfile(pubkey, profileFromMetadata(metadata) ?? current)
       return undefined
     })
 
@@ -168,8 +173,6 @@ function ProfileEditor({ profile }: { readonly profile: NostrProfile }) {
             borderRadius={40}
             overflow="hidden"
             backgroundColor="card"
-            borderWidth={1}
-            borderColor="border-color"
           >
             {picture.value !== null ? (
               <Image

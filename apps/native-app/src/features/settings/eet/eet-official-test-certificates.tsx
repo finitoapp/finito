@@ -62,14 +62,7 @@ export function EetOfficialTestCertificates() {
 
   if (!requested) {
     return (
-      <YStack
-        gap="2"
-        p="3"
-        rounded="lg"
-        borderWidth={1}
-        borderColor="border-color"
-        borderStyle="dashed"
-      >
+      <YStack gap="2" p="3" rounded="lg" bg="neutral-soft">
         <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
           {t("settings.eet.officialTest.description")}
         </Text>
@@ -116,8 +109,7 @@ export function EetOfficialTestCertificates() {
           gap="3"
           p="3"
           rounded="lg"
-          borderWidth={1}
-          borderColor="border-color"
+          bg="neutral-soft"
         >
           <YStack flex={1}>
             <Text

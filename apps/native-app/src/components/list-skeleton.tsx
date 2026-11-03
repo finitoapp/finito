@@ -33,10 +33,8 @@ export function ListSkeleton({
           items="center"
           gap={12}
           minH={56}
-          px={16}
-          py={10}
-          borderTopWidth={index === 0 ? 0 : 1}
-          borderColor="border-color"
+          px={12}
+          py={8}
           opacity={fadeOpacity(index, rows)}
         >
           <Skeleton w={20} h={20} rounded={radius.full} />

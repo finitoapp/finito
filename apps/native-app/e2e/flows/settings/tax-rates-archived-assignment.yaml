@@ -33,7 +33,7 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Coffee
 - extendedWaitUntil:
@@ -46,7 +46,7 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items/new
+      ROUTE: settings/items/new
       TEXT: ${output.t["catalog.items.form.title.create"]}
 - scrollUntilVisible:
     element: ${output.t["catalog.items.form.taxRate.none"]}

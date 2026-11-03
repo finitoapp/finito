@@ -17,12 +17,8 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: ""
-      TEXT: ${output.t["home.pay"]}
-- runFlow:
-    file: tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.pos"]}
+      ROUTE: catalog/sales
+      TEXT: ${output.t["bill.table.dialog.none"]}
 # A free table's tile starts a bill on it.
 - tapOn: Merge Table
 - extendedWaitUntil:

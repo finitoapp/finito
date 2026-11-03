@@ -66,12 +66,8 @@ export function getDecimalSeparator(locale: string): string {
   )
 }
 
-/** The typed input in the locale's currency layout, keeping a trailing separator. */
-export function formatAmountInput(
-  amountInput: string,
-  currency: Currency,
-  locale: string
-): string {
+/** The typed input as a number in the locale's layout, keeping a trailing separator. */
+function formatAmountNumber(amountInput: string, locale: string): string {
   const [integerPart = "0", fractionPart = ""] = amountInput.split(".")
   const hasDecimalSeparator = amountInput.includes(".")
   const formattedIntegerPart = new Intl.NumberFormat(locale, {
@@ -79,18 +75,29 @@ export function formatAmountInput(
     useGrouping: true,
   }).format(Number(integerPart === "" ? "0" : integerPart))
   const decimalSeparator = getDecimalSeparator(locale)
-  const amountText = hasDecimalSeparator
+  return hasDecimalSeparator
     ? `${formattedIntegerPart}${decimalSeparator}${fractionPart}`
     : formattedIntegerPart
-  let hasRenderedAmount = false
+}
 
-  return new Intl.NumberFormat(locale, {
+const currencyLayoutParts = (currency: Currency, locale: string) =>
+  new Intl.NumberFormat(locale, {
     currency,
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
     style: "currency",
-  })
-    .formatToParts(0)
+  }).formatToParts(0)
+
+/** The typed input in the locale's currency layout, keeping a trailing separator. */
+export function formatAmountInput(
+  amountInput: string,
+  currency: Currency,
+  locale: string
+): string {
+  const amountText = formatAmountNumber(amountInput, locale)
+  let hasRenderedAmount = false
+
+  return currencyLayoutParts(currency, locale)
     .map((part) => {
       if (!currencyNumberPartTypes.has(part.type)) return part.value
       if (hasRenderedAmount) return ""
@@ -99,4 +106,32 @@ export function formatAmountInput(
       return amountText
     })
     .join("")
+}
+
+/**
+ * `formatAmountInput` in two pieces, for a display that draws the unit
+ * smaller than the number: the number in the locale's layout, the currency
+ * as the locale writes it ("Kč", "$", "CZK"), and whether the currency
+ * comes first there ("$0", "CZK 0") or last ("0 Kč").
+ */
+export function formatAmountInputParts(
+  amountInput: string,
+  currency: Currency,
+  locale: string
+): {
+  readonly number: string
+  readonly unit: string
+  readonly unitFirst: boolean
+} {
+  const parts = currencyLayoutParts(currency, locale)
+  const unit = parts.find((part) => part.type === "currency")?.value ?? currency
+  const unitIndex = parts.findIndex((part) => part.type === "currency")
+  const numberIndex = parts.findIndex((part) =>
+    currencyNumberPartTypes.has(part.type)
+  )
+  return {
+    number: formatAmountNumber(amountInput, locale),
+    unit,
+    unitFirst: unitIndex !== -1 && unitIndex < numberIndex,
+  }
 }

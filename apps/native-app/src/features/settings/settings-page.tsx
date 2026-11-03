@@ -4,22 +4,21 @@ import { countryLabelKey } from "@payky/app-shared/legal-entity-options"
 import {
   cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
+  cashuAccountQuery,
   fiatBankAccountQuery,
+  lightningAddressAccountQuery,
   sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import {
-  getFiatCurrency,
-  parseEnabledHomeModes,
-} from "@payky/core/modules/app-settings/app-settings-utils"
+import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
+import Bell from "lucide-react-native/icons/bell"
 import Building from "lucide-react-native/icons/building"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
-import House from "lucide-react-native/icons/house"
 import Info from "lucide-react-native/icons/info"
 import Landmark from "lucide-react-native/icons/landmark"
 import Languages from "lucide-react-native/icons/languages"
@@ -31,8 +30,10 @@ import ShieldCheck from "lucide-react-native/icons/shield-check"
 import Sparkles from "lucide-react-native/icons/sparkles"
 import Stamp from "lucide-react-native/icons/stamp"
 import SunMoon from "lucide-react-native/icons/sun-moon"
+import Table2 from "lucide-react-native/icons/table-2"
+import Tag from "lucide-react-native/icons/tag"
 import UserRound from "lucide-react-native/icons/user-round"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
 import { Screen } from "../../components/screen.tsx"
@@ -46,7 +47,6 @@ import {
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
-import { homeModeLabelKeys } from "./home-screen/home-screen-settings-page.tsx"
 import {
   privacyQuery,
   usePrivacySettings,
@@ -54,10 +54,13 @@ import {
 import { ProfileCard } from "./profile/profile-card.tsx"
 import { themeLabelKeys } from "./theme/theme-settings-page.tsx"
 
+/**
+ * One line per row (Fazole's settings): the title and, at most, its current
+ * value. No second line explaining the screen behind it.
+ */
 interface SettingRow {
   readonly icon: LucideIcon
   readonly title: TranslationKey
-  readonly description?: TranslationKey
   readonly value?: string
   readonly href: Href
 }
@@ -88,16 +91,15 @@ function createSettingsNavItems(
           {/* Web's wrap: the title keeps its own width (no flex={1}, whose
               zero basis never wraps and squeezes it instead) and a value that
               does not fit beside it drops below, right-aligned. */}
-          <YStack flexShrink={1} minW={0} gap={4}>
-            <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-              {label}
-            </Text>
-            {item.description === undefined ? null : (
-              <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                {t(item.description)}
-              </Text>
-            )}
-          </YStack>
+          <Text
+            flexShrink={1}
+            minW={0}
+            fontSize="sm"
+            lineHeight="sm"
+            fontWeight="600"
+          >
+            {label}
+          </Text>
           {item.value === undefined ? null : (
             <Text
               color="muted-foreground"
@@ -128,6 +130,8 @@ const settingsPageQueries = [
   cashRegisterAccountQuery,
   fiatBankAccountQuery,
   sparkAccountQuery,
+  cashuAccountQuery,
+  lightningAddressAccountQuery,
   cardSwitchioAccountQuery,
   eetSettingsQuery,
 ]
@@ -145,25 +149,42 @@ export function SettingsPage() {
   const eet = useEetSettings()
   const { aiAssistantAccess } = usePrivacySettings()
   const [spark] = useEvoluQuery(sparkAccountQuery).data
+  const [cashu] = useEvoluQuery(cashuAccountQuery).data
+  const [lightningAddress] = useEvoluQuery(lightningAddressAccountQuery).data
   const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
+  const isEnabled = (
+    account: { readonly isDeleted: number | null } | undefined
+  ) => account !== undefined && account.isDeleted !== 1
+  // The three bitcoin wallets are one method here (settings/0002).
   const enabledMethods = [
-    [cash, "settings.paymentAccounts.method.cashRegister"],
-    [bank, "settings.paymentAccounts.method.iban"],
-    [spark, "settings.paymentAccounts.method.spark"],
-    [card, "settings.paymentAccounts.method.cardSwitchio"],
+    [isEnabled(cash), "settings.paymentAccounts.method.cashRegister"],
+    [isEnabled(bank), "settings.paymentAccounts.method.iban"],
+    [
+      isEnabled(cashu) || isEnabled(lightningAddress) || isEnabled(spark),
+      "settings.paymentAccounts.method.bitcoin",
+    ],
+    [isEnabled(card), "settings.paymentAccounts.method.cardSwitchio"],
   ] as const
   const paymentMethodsValue =
     enabledMethods
-      .filter(([account]) => account !== undefined && account.isDeleted !== 1)
+      .filter(([enabled]) => enabled)
       .map(([, key]) => t(key))
       .join(", ") || t("settings.paymentAccounts.nav.none")
-  const enabledHomeModes = parseEnabledHomeModes(settings?.enabledHomeModesJson)
   const fiatCurrency = getFiatCurrency(settings)
   const businessValue =
     legalEntity === undefined
       ? fiatCurrency
       : `${t(countryLabelKey(legalEntity.country))} · ${fiatCurrency}`
 
+  // Items and tables are set up here, not under the Sales tab, which is
+  // the grid alone (navigation/0003).
+  const salesItems = createSettingsNavItems(
+    [
+      { icon: Tag, title: "catalog.items.title", href: "/settings/items" },
+      { icon: Table2, title: "catalog.tables.title", href: "/settings/tables" },
+    ],
+    t
+  )
   const paymentItems = createSettingsNavItems(
     [
       {
@@ -196,13 +217,11 @@ export function SettingsPage() {
       {
         icon: Percent,
         title: "settings.taxRates.title",
-        description: "settings.taxRates.nav.description",
         href: "/settings/tax-rates",
       },
       {
         icon: ReceiptText,
         title: "settings.paymentNumberSeries.title",
-        description: "settings.paymentNumberSeries.description",
         href: "/settings/payment-number-series",
       },
       {
@@ -225,19 +244,16 @@ export function SettingsPage() {
       {
         icon: UserRound,
         title: "settings.accounts.nav.title",
-        description: "settings.accounts.nav.description",
         href: "/settings/accounts",
       },
       {
         icon: ShieldCheck,
         title: "settings.security.title",
-        description: "settings.security.description",
         href: "/settings/security",
       },
       {
         icon: LockKeyhole,
         title: "access.title",
-        description: "access.nav.description",
         href: "/settings/access",
       },
     ],
@@ -258,13 +274,12 @@ export function SettingsPage() {
         value: t(themeLabelKeys[theme]),
         href: "/settings/theme",
       },
+      // Web's home has a bell for these; native keeps them here
+      // (navigation/0002). Nothing raises one yet.
       {
-        icon: House,
-        title: "settings.homeScreen.title",
-        value: enabledHomeModes
-          .map((mode) => t(homeModeLabelKeys[mode]))
-          .join(", "),
-        href: "/settings/home-screen",
+        icon: Bell,
+        title: "notifications.title",
+        href: "/settings/notifications",
       },
     ],
     t
@@ -274,7 +289,6 @@ export function SettingsPage() {
       {
         icon: LifeBuoy,
         title: "settings.supportChat.title",
-        description: "settings.supportChat.description",
         href: "/settings/support",
       },
       ...(aiAssistantAccess === "off"
@@ -283,20 +297,17 @@ export function SettingsPage() {
             {
               icon: Sparkles,
               title: "settings.assistant.title",
-              description: "settings.assistant.description",
               href: "/settings/assistant",
             } as const,
           ]),
       {
         icon: HeartHandshake,
         title: "settings.donations.title",
-        description: "settings.donations.description",
         href: "/settings/donations",
       },
       {
         icon: Info,
         title: "settings.about.title",
-        description: "settings.about.description",
         href: "/settings/about",
       },
     ],
@@ -307,6 +318,7 @@ export function SettingsPage() {
     <Screen>
       <FadeHeader title={t("settings.title")} startAddon={null} />
       <ProfileCard />
+      <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
       <VerticalNav title={t("settings.payments")} items={paymentItems} />
       <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
       <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />

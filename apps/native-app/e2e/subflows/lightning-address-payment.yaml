@@ -19,7 +19,7 @@ appId: ${APP_ID}
 - runFlow:
     file: tap-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.method.lightningAddress"]}
+      LABEL: ${output.t["paymentWait.method.bitcoin"]}
 - runFlow:
     file: assert-label.yaml
     env:

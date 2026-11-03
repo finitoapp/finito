@@ -7,6 +7,8 @@ import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { findOrCreateCatalogCategory } from "@payky/core/modules/catalog-category/catalog-category-actions"
+import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemsQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
@@ -14,7 +16,10 @@ import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
-import type { FiatCurrency } from "@payky/core/modules/shared/schema"
+import {
+  type FiatCurrency,
+  NonEmptyString255Schema,
+} from "@payky/core/modules/shared/schema"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import { type ComponentProps, useMemo, useState } from "react"
@@ -53,6 +58,7 @@ import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
+import { CategoryField } from "./category-field.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 /**
@@ -64,16 +70,16 @@ export function NewCatalogItemPage() {
   const [settings] = useEvoluQuery(settingsQuery).data
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const runToast = useRunToast()
-  const { defaultTaxRate, categoryOptions, taxRateOptions } =
-    useCatalogItemOptions()
+  const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [internalName, setInternalName] = useState("")
   const [internalDescription, setInternalDescription] = useState("")
   const [sku, setSku] = useState("")
-  const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
-    NO_OPTION
-  )
+  const [categoryId, setCategoryId] = useState<CatalogCategoryId | null>(null)
+  // A category typed rather than picked, made on save (navigation/0003).
+  const [newCategory, setNewCategory] = useState("")
   const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
     defaultTaxRate?.id ?? NO_OPTION
   )
@@ -147,12 +153,18 @@ export function NewCatalogItemPage() {
       return
     }
     const values = parsed.value
+    const newCategoryName = NonEmptyString255Schema.safeParse(
+      newCategory.trim()
+    )
     setPending(true)
     const saved = await runToast(async (run) => {
+      const category = newCategoryName.success
+        ? await run.ok(findOrCreateCatalogCategory(newCategoryName.data))
+        : categoryId
       await run.ok(
         createCatalogItemAtEnd({
           deviceId: null,
-          categoryId: categoryId === NO_OPTION ? null : categoryId,
+          categoryId: category,
           name: values.name,
           description: values.description,
           internalName: values.internalName,
@@ -283,32 +295,14 @@ export function NewCatalogItemPage() {
               />
               <FieldError>{error("sku")}</FieldError>
             </Field>
-            <Field>
-              <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
-              <Select
-                value={categoryId}
-                onValueChange={setCategoryId}
-                items={Object.fromEntries(
-                  categoryOptions.map((option) => [option.value, option.title])
-                )}
-              >
-                <SelectTrigger
-                  fullWidth
-                  aria-label={t("catalog.items.form.category.label")}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent title={t("catalog.items.form.category.label")}>
-                  <SelectGroup>
-                    {categoryOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.title}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+            <CategoryField
+              categories={categories}
+              value={categoryId}
+              onValueChange={setCategoryId}
+              draft={newCategory}
+              onDraftChange={setNewCategory}
+              disabled={pending}
+            />
             <Field>
               <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
               <Select

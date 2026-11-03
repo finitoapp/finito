@@ -94,7 +94,7 @@ function PeriodSummary({
   return (
     <XStack items="flex-start" justify="space-between" gap="3" px="1">
       <YStack flex={1} minW={0}>
-        <Text fontSize="xs" lineHeight="xs" fontWeight="500">
+        <Text fontSize="xs" lineHeight="xs" fontWeight="600">
           {formatStatsRange(range, locale)}
         </Text>
         <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
@@ -146,7 +146,7 @@ function PeriodStats({
       <>
         <YStack items="center" gap="2" py="12">
           <Icon icon={ChartColumn} size={40} color="muted-foreground" />
-          <Text fontWeight="500">{t("stats.empty.title")}</Text>
+          <Text fontWeight="600">{t("stats.empty.title")}</Text>
           <Text color="muted-foreground" text="center">
             {t("stats.empty.description")}
           </Text>

@@ -1,5 +1,4 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { activeSparkAccountsQuery } from "@payky/core/modules/account/account-spark-queries"
 import type { AccountId } from "@payky/core/modules/account/account-types"
@@ -11,6 +10,7 @@ import { Screen } from "../../../components/screen.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../../lib/format-money.ts"
 
 const kindKeys: Partial<Record<AccountTransactionKind, TranslationKey>> = {
   spark: "withdraw.transactions.kind.spark",

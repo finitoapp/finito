@@ -658,6 +658,7 @@ export const enSettings = {
   "settings.paymentAccounts.method.spark": "Bitcoin",
   "settings.paymentAccounts.moveDown.aria": "Move {name} down",
   "settings.paymentAccounts.moveUp.aria": "Move {name} up",
+  "settings.paymentAccounts.reorder.aria": "Reorder {name}",
   "settings.paymentAccounts.order.description":
     "Customers see payment methods in this order. The first available one opens automatically.",
   "settings.paymentAccounts.status.currencyMismatch":
@@ -666,7 +667,7 @@ export const enSettings = {
     "Not available in this version of the app yet",
   "settings.paymentAccounts.status.missingIban":
     "Add a bank account to turn this on",
-  "settings.paymentAccounts.title": "Payment Accounts",
+  "settings.paymentAccounts.title": "Payment methods",
   "settings.paymentNumberSeries.day.default.description":
     "Include the two-digit day in generated payment numbers",
   "settings.paymentNumberSeries.day.default.title": "Show day",
@@ -1265,4 +1266,9 @@ export const enSettings = {
     "The wallet could not be reached. Check the address and your connection.",
   "settings.lightningAddress.error.invalid":
     "The wallet answered with something {appName} cannot use.",
+  "settings.paymentAccounts.method.bitcoin": "Bitcoin",
+  "settings.bitcoin.enabled.label": "Accept Bitcoin",
+  "settings.bitcoin.wallet.spark": "Spark",
+  "settings.salesGroup": "SALES",
+  "catalog.items.form.category.new.placeholder": "New category",
 } as const

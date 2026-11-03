@@ -116,8 +116,6 @@ export function DebugConsolePage() {
                   gap="1"
                   p="2"
                   rounded="md"
-                  borderWidth={1}
-                  borderColor="border-color"
                   bg="muted-20"
                 >
                   <XStack minW={0} gap="2" items="center">

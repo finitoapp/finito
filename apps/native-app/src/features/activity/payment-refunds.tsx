@@ -1,6 +1,5 @@
 import type { InferRow } from "@evolu/common"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   isQerkoKeyRejected,
@@ -107,6 +106,7 @@ import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import {
   EetSaleStatusLabel,
@@ -273,8 +273,6 @@ export function PaymentRefunds({
                   gap={4}
                   py={8}
                   pt={index === 0 ? 0 : 8}
-                  borderTopWidth={index === 0 ? 0 : 1}
-                  borderColor="border-color"
                 >
                   <Text
                     fontSize={fontSize.sm}
@@ -565,10 +563,9 @@ function RefundSheet({
             {t("refund.dialog.items.label")}
           </FieldLegend>
           <YStack>
-            {refundableLines.map((refundable, index) => (
+            {refundableLines.map((refundable) => (
               <RefundItemRow
                 key={refundable.line.id}
-                first={index === 0}
                 refundable={refundable}
                 quantity={quantities[refundable.line.id] ?? 0}
                 disabled={pending}
@@ -693,13 +690,11 @@ function TipRefundSheet({
 }
 
 function RefundItemRow({
-  first,
   refundable,
   quantity,
   disabled,
   onStep,
 }: {
-  readonly first: boolean
   readonly refundable: RefundableLine<RefundablePaymentLine>
   readonly quantity: number
   readonly disabled: boolean
@@ -709,14 +704,7 @@ function RefundItemRow({
   const { name } = refundable.line
 
   return (
-    <XStack
-      items="center"
-      justify="space-between"
-      gap={12}
-      py={8}
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
-    >
+    <XStack items="center" justify="space-between" gap={12} py={8}>
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.sm}
@@ -862,8 +850,7 @@ function QerkoRefundAttempt({
     <YStack
       testID="payment-detail-qerko-refund"
       gap={8}
-      borderWidth={1}
-      borderColor="border-color"
+      bg="neutral-soft"
       rounded={8}
       px={12}
       py={8}
@@ -1049,8 +1036,6 @@ function RefundEetReversal({
       gap={6}
       p={12}
       rounded={radius.lg}
-      borderWidth={1}
-      borderColor="border-color"
       bg="muted-20"
     >
       <XStack items="center" justify="space-between" gap={8}>

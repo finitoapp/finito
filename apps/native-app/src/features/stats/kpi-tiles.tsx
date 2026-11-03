@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { StatsRange } from "@payky/core/modules/sales-stats/sales-stats-types"
 import {
   type SalesKpis,
@@ -18,6 +17,7 @@ import {
 } from "../../components/ui/collapsible.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 
 /**
  * A range for the caption under the period: whole days as dates, a to-date
@@ -236,7 +236,7 @@ function CalculationTrigger({ label }: { readonly label: string }) {
       <Text
         fontSize="xs"
         lineHeight="xs"
-        fontWeight="500"
+        fontWeight="600"
         color="muted-foreground"
       >
         {label}
@@ -274,7 +274,7 @@ function DeltaLabel({ tile }: { readonly tile: Tile }) {
     <XStack items="center" flexWrap="wrap" gap="1">
       {ratio > 0 ? <Icon icon={ArrowUp} size={12} color={color} /> : null}
       {ratio < 0 ? <Icon icon={ArrowDown} size={12} color={color} /> : null}
-      <Text fontSize="xs" lineHeight="xs" fontWeight="500" color={color}>
+      <Text fontSize="xs" lineHeight="xs" fontWeight="600" color={color}>
         {percent}
       </Text>
       {difference === 0 ? null : (

@@ -4,7 +4,7 @@ import type { ThemeColor } from "../../theme/themes.ts"
 
 export interface IconProps {
   readonly icon: LucideIcon
-  /** `size-4` = 16 by default, as web's lucide icons inside ui components. */
+  /** 20 by default, Linky's `md` icon (`sm` 16, `lg` 24, `xl` 40). */
   readonly size?: number
   /** Web's `currentColor`: pass the theme key of the surrounding text. */
   readonly color?: ThemeColor
@@ -22,7 +22,7 @@ export interface IconProps {
  */
 export function Icon({
   icon: LucideComponent,
-  size = 16,
+  size = 20,
   color = "color",
   strokeWidth = 2,
 }: IconProps) {

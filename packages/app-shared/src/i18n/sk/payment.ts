@@ -407,4 +407,5 @@ export const skPayment = {
   "paymentWait.monetaWatch.rateLimited":
     "Dnešné dopyty do banky sú vyčerpané. Potvrďte prevod ručne.",
   "paymentDetail.transaction.preimage": "Dôkaz platby (preimage)",
+  "paymentWait.method.bitcoin": "Bitcoin",
 } satisfies Record<keyof typeof enPayment, string>

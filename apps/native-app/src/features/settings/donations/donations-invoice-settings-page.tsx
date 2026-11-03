@@ -124,8 +124,7 @@ function DonationsInvoiceSettingsPage({
                   items="center"
                   justify="center"
                   rounded="xl"
-                  borderWidth={1}
-                  borderColor="card-ring"
+                  bg="neutral-soft"
                   p="4"
                   style={{ backgroundColor: "#fff" }}
                   aria-label={invoice}

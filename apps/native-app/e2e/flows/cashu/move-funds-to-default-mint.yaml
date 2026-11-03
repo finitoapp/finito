@@ -17,7 +17,7 @@ tags: [cashu]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.method.cashu"]}
+      LABEL: ${output.t["paymentWait.method.bitcoin"]}
 - extendedWaitUntil:
     visible: ${output.t["paymentWait.paid"]}
     timeout: 45000
@@ -31,7 +31,7 @@ tags: [cashu]
     env:
       FROM_HOME: "true"
       TITLE: ${output.t["settings.paymentAccounts.title"]}
-- tapOn: ${output.re(output.t["settings.paymentAccounts.method.cashu"])}
+- tapOn: ${output.re(output.t["settings.paymentAccounts.method.bitcoin"])}
 - tapOn: ${output.re(output.t["settings.cashuAccount.mints"])}
 - extendedWaitUntil:
     visible: ${output.t["settings.cashuMints.title"]}

@@ -212,12 +212,23 @@ export function AccountTransferTarget({
           </Alert>
           {onRestoreWithPhrase === undefined ? null : (
             <Button
-              variant="link"
-              self="flex-start"
-              px={0}
-              label={t("accountTransfer.target.fallback")}
+              variant="ghost"
+              w="100%"
+              h="auto"
+              aria-label={t("accountTransfer.target.fallback")}
               onPress={onRestoreWithPhrase}
-            />
+            >
+              <Text
+                flexShrink={1}
+                text="center"
+                fontSize="sm"
+                lineHeight="sm"
+                fontWeight="700"
+                color="primary"
+              >
+                {t("accountTransfer.target.fallback")}
+              </Text>
+            </Button>
           )}
         </>
       ) : null}

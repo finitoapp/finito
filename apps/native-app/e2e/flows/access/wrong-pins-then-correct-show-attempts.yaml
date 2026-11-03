@@ -7,7 +7,7 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml
@@ -48,7 +48,7 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/tables
+      ROUTE: settings/tables
       TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml

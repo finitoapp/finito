@@ -5,7 +5,7 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: catalog/tables
+      ROUTE: settings/tables
       TEXT: ${output.t["catalog.tables.title"]}
 - runFlow:
     file: tap-label.yaml

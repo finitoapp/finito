@@ -162,14 +162,7 @@ export function TurnOnWizard({
       </CardHeader>
       <CardContent gap={12} testID="wizard-devices">
         {devices.map((device) => (
-          <YStack
-            key={device.id}
-            gap="2"
-            p="3"
-            rounded="lg"
-            borderWidth={1}
-            borderColor="border-color"
-          >
+          <YStack key={device.id} gap="2" p="3" rounded="lg" bg="neutral-soft">
             <XStack items="flex-start" justify="space-between" gap="2">
               <YStack flex={1} minW={0}>
                 <DeviceHeading

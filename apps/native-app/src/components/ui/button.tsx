@@ -14,28 +14,26 @@ import {
   useButton,
 } from "tamagui/unstyled"
 import type { ThemeColor } from "../../theme/themes.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/button.tsx`: the same `variant` and
  * `size` names and defaults, as a `styled()` frame and text sharing a styled
- * context. Built on Tamagui's unstyled button (`tamagui/unstyled`), which on
- * web renders a real `<button>` that takes focus and the keyboard, rather
- * than the styled `Button` from `tamagui`, whose own sizes, `level2` theme and
- * icon theming would fight these variants. That skin's `web:pointer` cursor
- * is the one part kept.
+ * context, drawn in fazole.fit's shapes (Linky's `packages/ui/src/controls.tsx`
+ * `Button`/`IconButton`): a 12-round, borderless control 44 high (`lg` 56,
+ * `sm` a 32 pill), `px-4 gap-2`, a bold 14 label and 20 icons; icon-only
+ * sizes are pills. Built on Tamagui's unstyled button (`tamagui/unstyled`),
+ * which on web renders a real `<button>` that takes focus and the keyboard,
+ * rather than the styled `Button` from `tamagui`, whose own sizes, `level2`
+ * theme and icon theming would fight these variants. That skin's
+ * `web:pointer` cursor is the one part kept.
  *
- * Tailwind mirrored: `rounded-lg` (8.8), `border` (1, transparent),
- * `text-sm font-medium` (14/500), `h-8 px-2.5 gap-1.5` (32/10/6) for
- * `default`, `h-6 px-2 gap-1 text-xs rounded-md` for `xs`, `h-7 px-2.5 gap-1
- * text-[0.8rem] rounded-md` for `sm`, `h-9` for `lg`, `size-8/6/7/9` for the
- * icon sizes, `[&_svg]:size-4` (`size-3` xs, `size-3.5` sm), and
- * `disabled:opacity-50`.
- *
- * Native differences: `hover:` becomes a `press:` clause; `lg` is at least 48 high
- * and every other size reaches 48 through `hitSlop`, for touch; `link`
- * dims on press instead of underlining on hover.
+ * Variants on fazole's: `default` the accent (`primary`), `secondary` the
+ * raised surface, `outline` and `ghost` the neutral fill (always for
+ * `outline`, pressed for `ghost`), `destructive` the danger tint, `link`
+ * bare text. `hover:` becomes a `press:` clause; every size reaches 48
+ * through `hitSlop`, for touch; `link` dims on press instead of underlining.
  */
 
 type ButtonVariant =
@@ -61,19 +59,16 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   flexDirection: "row",
   items: "center",
   justify: "center",
-  borderWidth: 1,
-  borderColor: "transparent",
-  rounded: radius.lg,
+  // Explicitly none: on web this is a real `<button>`, whose default is an outset border.
+  borderWidth: 0,
+  rounded: shape.control,
   cursor: "web:pointer",
 
   variants: {
     variant: {
       default: { bg: "primary press:primary-pressed" },
-      outline: {
-        bg: "button-outline press:button-outline-pressed",
-        borderColor: "button-outline-border",
-      },
-      secondary: { bg: "secondary press:secondary-hover" },
+      outline: { bg: "button-outline press:button-outline-pressed" },
+      secondary: { bg: "surface-raised press:button-outline-pressed" },
       ghost: { bg: "transparent press:button-ghost-pressed" },
       destructive: {
         bg: "button-destructive press:button-destructive-pressed",
@@ -81,14 +76,14 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
       link: { bg: "transparent", opacity: "1 press:0.7" },
     },
     size: {
-      default: { h: 32, px: 10, gap: 6 },
-      xs: { h: 24, px: 8, gap: 4, rounded: radius.md },
-      sm: { h: 28, px: 10, gap: 4, rounded: radius.md },
-      lg: { minH: 48, px: 10, gap: 6 },
-      icon: { w: 32, h: 32 },
-      "icon-xs": { w: 24, h: 24, rounded: radius.md },
-      "icon-sm": { w: 28, h: 28, rounded: radius.md },
-      "icon-lg": { w: 36, h: 36 },
+      default: { minH: control.md, px: 16, py: 10, gap: 8 },
+      xs: { minH: 28, px: 10, gap: 4, rounded: shape.pill },
+      sm: { minH: control.sm, px: 12, py: 4, gap: 6, rounded: shape.pill },
+      lg: { minH: control.lg, px: 16, py: 12, gap: 8 },
+      icon: { w: control.md, h: control.md, rounded: shape.pill },
+      "icon-xs": { w: 28, h: 28, rounded: shape.pill },
+      "icon-sm": { w: control.sm, h: control.sm, rounded: shape.pill },
+      "icon-lg": { w: control.lg, h: control.lg, rounded: shape.pill },
     },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
@@ -108,9 +103,10 @@ const textColors = {
 const ButtonText = styled(Text, {
   name: "ButtonText",
   context: ButtonContext,
-  fontWeight: fontWeight.medium,
+  fontWeight: fontWeight.bold,
   fontSize: fontSize.sm,
   lineHeight: fontSize.sm,
+  text: "center",
 
   variants: {
     variant: {
@@ -124,7 +120,7 @@ const ButtonText = styled(Text, {
     size: {
       default: {},
       xs: { fontSize: fontSize.xs, lineHeight: fontSize.xs },
-      sm: { fontSize: 12.8 },
+      sm: { fontSize: fontSize.xs, lineHeight: fontSize.xs },
       lg: {},
       icon: {},
       "icon-xs": {},
@@ -134,27 +130,28 @@ const ButtonText = styled(Text, {
   } as const,
 })
 
+/** fazole's icon sizes: 20 in a control, 16 in a small one, 24 in a large icon button. */
 const iconSizes = {
-  default: 16,
-  xs: 12,
-  sm: 14,
-  lg: 16,
-  icon: 16,
-  "icon-xs": 12,
+  default: 20,
+  xs: 14,
+  sm: 16,
+  lg: 20,
+  icon: 20,
+  "icon-xs": 14,
   "icon-sm": 16,
-  "icon-lg": 16,
+  "icon-lg": 24,
 } as const satisfies Record<ButtonSize, number>
 
 /** Extends each size's hit area to 48, the Android touch target. */
 const hitSlops = {
-  default: 8,
-  xs: 12,
-  sm: 10,
+  default: 2,
+  xs: 10,
+  sm: 8,
   lg: 0,
-  icon: 8,
-  "icon-xs": 12,
-  "icon-sm": 10,
-  "icon-lg": 6,
+  icon: 2,
+  "icon-xs": 10,
+  "icon-sm": 8,
+  "icon-lg": 0,
 } as const satisfies Record<ButtonSize, number>
 
 type FrameProps = Omit<

@@ -404,4 +404,5 @@ export const csPayment = {
   "paymentWait.monetaWatch.rateLimited":
     "Dnešní dotazy do banky jsou vyčerpané. Potvrďte převod ručně.",
   "paymentDetail.transaction.preimage": "Důkaz platby (preimage)",
+  "paymentWait.method.bitcoin": "Bitcoin",
 } satisfies Record<keyof typeof enPayment, string>

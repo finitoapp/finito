@@ -10,7 +10,6 @@ import {
   paymentStatusLabelKey,
 } from "@payky/app-shared/activity-labels"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { useNow } from "@payky/app-shared/use-now"
 import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client"
@@ -82,6 +81,7 @@ import {
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import {
@@ -411,15 +411,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                   <TimelineIndicator />
                   <TimelineSeparator />
                   <TimelineContent>
-                    <YStack
-                      mt={8}
-                      gap={8}
-                      rounded={8.8}
-                      borderWidth={1}
-                      borderColor="border-color"
-                      bg="muted-20"
-                      p={12}
-                    >
+                    <YStack mt={8} gap={8} rounded={8.8} bg="muted-20" p={12}>
                       <DetailRow
                         label={t("paymentDetail.transaction.amount")}
                         value={formatMoney(

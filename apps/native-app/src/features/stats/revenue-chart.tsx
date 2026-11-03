@@ -1,4 +1,3 @@
-import { formatAmount } from "@payky/app-shared/format-money"
 import {
   type RevenueChartPoint,
   revenueChartPoints,
@@ -14,6 +13,7 @@ import { useMemo, useState } from "react"
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatAmount } from "../../lib/format-money.ts"
 import { formatStatsRange } from "./kpi-tiles.tsx"
 import { StatsSection } from "./stats-section.tsx"
 

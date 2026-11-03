@@ -21,7 +21,7 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items/new
+      ROUTE: settings/items/new
       TEXT: ${output.t["catalog.items.form.title.create"]}
 - scrollUntilVisible:
     element: Standard rate.*

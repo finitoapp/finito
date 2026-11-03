@@ -658,6 +658,7 @@ export const skSettings = {
   "settings.paymentAccounts.method.spark": "Bitcoin",
   "settings.paymentAccounts.moveDown.aria": "Posunúť {name} nadol",
   "settings.paymentAccounts.moveUp.aria": "Posunúť {name} nahor",
+  "settings.paymentAccounts.reorder.aria": "Zmeniť poradie: {name}",
   "settings.paymentAccounts.order.description":
     "Zákazník uvidí platobné metódy v tomto poradí. Prvá dostupná sa otvorí automaticky.",
   "settings.paymentAccounts.status.currencyMismatch":
@@ -666,7 +667,7 @@ export const skSettings = {
     "V tejto verzii aplikácie zatiaľ nie je dostupné",
   "settings.paymentAccounts.status.missingIban":
     "Na zapnutie doplňte bankový účet",
-  "settings.paymentAccounts.title": "Platobné účty",
+  "settings.paymentAccounts.title": "Platobné metódy",
   "settings.paymentNumberSeries.day.default.description":
     "Pridať do generovaných čísel platieb dvojciferný deň",
   "settings.paymentNumberSeries.day.default.title": "Zobraziť deň",
@@ -1266,4 +1267,9 @@ export const skSettings = {
     "Peňaženka nie je dostupná. Skontrolujte adresu a pripojenie.",
   "settings.lightningAddress.error.invalid":
     "Peňaženka odpovedala niečím, s čím {appName} nevie pracovať.",
+  "settings.paymentAccounts.method.bitcoin": "Bitcoin",
+  "settings.bitcoin.enabled.label": "Prijímať Bitcoin",
+  "settings.bitcoin.wallet.spark": "Spark",
+  "settings.salesGroup": "PREDAJ",
+  "catalog.items.form.category.new.placeholder": "Nová kategória",
 } satisfies Record<keyof typeof enSettings, string>

@@ -3,11 +3,11 @@
 # on the terminal home.
 appId: ${APP_ID}
 ---
-- tapOn: ${output.t["accountChoice.new.title"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - runFlow:
     file: fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: CZ6508000000192000145399
 - tapOn: ${output.t["onboarding.finish"]}
 - extendedWaitUntil:

@@ -5,14 +5,14 @@ appId: ${APP_ID}
 tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
-- tapOn: ${output.t["accountChoice.new.title"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - assertVisible: ${output.t["onboarding.payments.title"]}
 # An empty or whitespace-only account offers to start without bank transfers.
 - assertVisible: ${output.t["onboarding.finishWithoutBankTransfer"]}
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "   "
 - assertVisible: ${output.t["onboarding.finishWithoutBankTransfer"]}
 - assertNotVisible: ${output.t["onboarding.finish"]}
@@ -20,7 +20,7 @@ tags: [onboarding]
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "CZ6508000000192000145399"
 - assertVisible: ${output.t["onboarding.finish"]}
 - assertNotVisible: ${output.t["settings.fiatBankAccount.iban.format.iban"]}
@@ -34,14 +34,14 @@ tags: [onboarding]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["onboarding.back"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - assertVisible: CZ6508000000192000145399
 - assertVisible: ${output.t["onboarding.finish"]}
 # An invalid IBAN swaps the message and still holds the step.
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "12345"
 - tapOn: ${output.t["onboarding.finish"]}
 - assertVisible: ${output.re(output.t["settings.fiatBankAccount.iban.invalid"])}
@@ -50,7 +50,7 @@ tags: [onboarding]
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "19-2000145399/0800"
 - tapOn: ${output.t["onboarding.finish"]}
 - extendedWaitUntil:

@@ -1,6 +1,5 @@
 import { formatMintLabel } from "@payky/app-shared/cashu-withdraw-flow"
 import { formatDateTime } from "@payky/app-shared/format-date"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import { useNow } from "@payky/app-shared/use-now"
 import {
   reusableWithdrawalDestination,
@@ -49,6 +48,7 @@ import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import { useSparkBalance } from "./use-withdraw-data.ts"
 import {
   Collapsible,

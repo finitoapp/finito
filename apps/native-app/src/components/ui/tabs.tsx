@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useContext, useState } from "react"
 import { type GetProps, styled, Text, View } from "tamagui"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/tabs.tsx`, horizontal and
@@ -71,10 +71,10 @@ export const TabsList = styled(View, {
   flexDirection: "row",
   items: "center",
   justify: "center",
-  h: 32,
+  h: 36,
   p: 3,
-  rounded: radius.lg,
-  bg: "muted",
+  rounded: shape.pill,
+  bg: "neutral-soft",
 })
 
 const TriggerFrame = styled(View, {
@@ -86,14 +86,13 @@ const TriggerFrame = styled(View, {
   justify: "center",
   gap: 6,
   px: 6,
-  rounded: radius.md,
-  borderWidth: 1,
-  borderColor: "transparent",
+  // fazole.fit's segmented control: pills, the active one filled.
+  rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
 
   variants: {
-    active: { true: { bg: "tabs-active", borderColor: "tabs-active-border" } },
+    active: { true: { bg: "tabs-active" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })

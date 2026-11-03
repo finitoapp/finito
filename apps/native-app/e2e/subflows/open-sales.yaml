@@ -1,0 +1,12 @@
+# From the terminal home, in-app (a PIN session survives): the hamburger,
+# then the Sales tab (navigation/0002), the tables-and-bills grid that used
+# to be home's tables mode, and waits for its "no table" strip.
+appId: ${APP_ID}
+---
+- runFlow:
+    file: open-menu-tab.yaml
+    env:
+      TAB: ${output.t["nav.pos"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.table.dialog.none"]}
+    timeout: 15000

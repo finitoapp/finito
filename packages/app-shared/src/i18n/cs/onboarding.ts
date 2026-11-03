@@ -176,5 +176,13 @@ export const csOnboarding = {
     "Máte {appName} na jiném zařízení? Přenést naskenováním QR",
   "onboarding.restore.unknownWords": "Neznámé slovo: {words}",
   "onboarding.restore.wordLabel": "Slovo {index}",
+  "onboarding.setup.account.label": "Číslo účtu",
+  "onboarding.setup.account.placeholder": "2000145399/0800",
+  "onboarding.setup.name.hint": "Zákazník ho uvidí jako jméno příjemce platby.",
+  "onboarding.setup.name.label": "Název podniku",
+  "onboarding.setup.title": "Založit podnik",
   "onboarding.title": "{appName} vás vítá",
+  "onboarding.welcome.new": "Nový podnik",
+  "onboarding.welcome.restore": "Obnovit existující",
+  "onboarding.welcome.tagline": "Platby QR kódem, kartou i bitcoinem.",
 } satisfies Record<keyof typeof enOnboarding, string>

@@ -226,7 +226,7 @@ export const eetFaqItems: ReadonlyArray<FaqItem> = [
 ]
 
 const secondaryActionClassName = cn(
-  buttonVariants({ variant: "outline", size: "lg" }),
+  buttonVariants({ variant: "secondary", size: "lg" }),
   "h-12 rounded-full px-6 text-base font-semibold has-data-[icon=inline-end]:pr-5"
 )
 

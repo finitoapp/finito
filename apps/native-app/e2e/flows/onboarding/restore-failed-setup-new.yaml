@@ -19,7 +19,7 @@ tags: [onboarding]
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.payments.iban.title"]}
+      LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: CZ6508000000192000145399
 - runFlow:
     when:

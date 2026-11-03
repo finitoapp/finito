@@ -39,12 +39,12 @@ tags: [tax-recap]
       TEXT: ${output.t["billDetail.title"]}
 - scrollUntilVisible:
     element: Standard rate \(21%\)
-- assertVisible: Base. \$100\.00 · VAT. \$21\.00
+- assertVisible: Base. \$100 · VAT. \$21
 # Move the item to the reduced rate.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Coffee
 - extendedWaitUntil:
@@ -66,7 +66,7 @@ tags: [tax-recap]
       TEXT: ${output.t["billDetail.title"]}
 - scrollUntilVisible:
     element: Standard rate \(21%\)
-- assertVisible: Base. \$100\.00 · VAT. \$21\.00
+- assertVisible: Base. \$100 · VAT. \$21
 - assertNotVisible: Reduced rate.*
 # Adding it again picks up the new rate as a separate line.
 - scrollUntilVisible:

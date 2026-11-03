@@ -120,8 +120,7 @@ function EetTestResult({ submission }: { readonly submission: EetSubmission }) {
       gap="2"
       p="3"
       rounded="lg"
-      borderWidth={1}
-      borderColor="border-color"
+      bg="neutral-soft"
       testID="eet-test-result"
     >
       <Text fontWeight="700" color={isSuccess ? "success" : "destructive"}>

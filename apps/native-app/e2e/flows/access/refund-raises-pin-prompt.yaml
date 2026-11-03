@@ -25,7 +25,7 @@ tags: [access]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
-- tapOn: '${output.re(output.tv("refund.dialog.confirm", { amount: "\u00245.00" }))}'
+- tapOn: '${output.re(output.tv("refund.dialog.confirm", { amount: "\u00245" }))}'
 # The one-shot prompt names the action and the permission.
 - extendedWaitUntil:
     visible: '${output.tv("access.pin.why.action", { action: output.t["access.action.refund"] })}'

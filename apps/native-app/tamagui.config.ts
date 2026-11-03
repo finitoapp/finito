@@ -3,17 +3,18 @@ import { createTamagui, isWeb } from "tamagui"
 import { appThemes } from "./src/theme/themes"
 import { radius } from "./src/theme/tokens"
 
-// The APK carries one Inter face per weight (app.config.ts), which Tamagui
+// Manrope, as Linky's `packages/ui/src/config.ts`: regular, semibold and
+// bold. The APK carries one face per weight (app.config.ts), which Tamagui
 // swaps in by `face`. On web Tamagui sets only the family and the weight,
-// so the PWA names the variable Inter it bundles (platform/web-styles.web.ts),
-// with sans-serif behind it rather than the browser's serif default.
-const inter = {
-  family: isWeb ? "'Inter Variable', sans-serif" : "Inter",
+// so the PWA names the Manrope it bundles (platform/web-styles.web.ts), with
+// sans-serif behind it rather than the browser's serif default.
+const manrope = {
+  family: isWeb ? "Manrope, sans-serif" : "Manrope",
   face: {
-    400: { normal: "Inter" },
-    500: { normal: "InterMedium" },
-    600: { normal: "InterSemiBold" },
-    700: { normal: "InterBold" },
+    400: { normal: "Manrope" },
+    500: { normal: "ManropeSemiBold" },
+    600: { normal: "ManropeSemiBold" },
+    700: { normal: "ManropeBold" },
   },
 }
 
@@ -25,8 +26,8 @@ const nativeThemes = {
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
   fonts: {
-    body: { ...defaultConfig.fonts.body, ...inter },
-    heading: { ...defaultConfig.fonts.heading, ...inter },
+    body: { ...defaultConfig.fonts.body, ...manrope },
+    heading: { ...defaultConfig.fonts.heading, ...manrope },
   },
   themes: nativeThemes,
   settings: {

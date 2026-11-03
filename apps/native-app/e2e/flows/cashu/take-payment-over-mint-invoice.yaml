@@ -17,7 +17,7 @@ tags: [cashu]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.method.cashu"]}
+      LABEL: ${output.t["paymentWait.method.bitcoin"]}
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:

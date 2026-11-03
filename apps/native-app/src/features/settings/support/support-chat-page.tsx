@@ -281,15 +281,7 @@ function MessageBubble({
         </YStack>
         {/* As in messengers, reactions overlap the bubble's lower edge. */}
         {entry.reactions.length > 0 ? (
-          <YStack
-            mt={-10}
-            mx={8}
-            px={6}
-            rounded={radius.full}
-            bg="card"
-            borderWidth={1}
-            borderColor="card-ring"
-          >
+          <YStack mt={-10} mx={8} px={6} rounded={radius.full} bg="card">
             <Text fontSize={fontSize.sm} lineHeight={fontSize.sm}>
               {entry.reactions.join(" ")}
             </Text>

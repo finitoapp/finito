@@ -269,7 +269,7 @@ export function FiatBankAccountSettingsPage() {
                       <Text fontSize={13} color="muted-foreground">
                         {t("settings.monetaPlugin.description")}
                       </Text>
-                      <Text fontSize={13} fontWeight="500">
+                      <Text fontSize={13} fontWeight="600">
                         {t(
                           isMonetaPluginOn
                             ? "settings.monetaPlugin.status.on"

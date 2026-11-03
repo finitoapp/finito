@@ -7,11 +7,11 @@ import { useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /**
- * Notifications, behind home's bell, as web's `NotificationsPage`
- * (navigation/0001): a screen of its own with Back, not a tab of the menu.
- * Nothing raises a notification yet, so the bell carries no count and the
- * screen is
- * its empty state, drawn like a catalog list's.
+ * Notifications, as web's `NotificationsPage`, which web puts behind
+ * home's bell (navigation/0001) and native under Settings
+ * (navigation/0002): a screen of its own with Back. Nothing raises a
+ * notification yet, so the screen is its empty state, drawn like a
+ * catalog list's.
  *
  * Tailwind mirrored: `py-10 gap-2 text-center`, the bell `size-10
  * text-muted-foreground` (stroke 1.5) with `mb-2`, the title `text-lg

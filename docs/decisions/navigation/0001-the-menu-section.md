@@ -68,7 +68,10 @@ numbers and the catalog went home and back each time.
 
 ## Consequences
 
-- Finito has the same section. Expo Router has no per-route data, so its
+- Finito has the same section (since navigation/0002 with the terminal as
+  a tab of the rail, Sales as the catalog's root, notifications under
+  Settings and details beside their root on a wide window). Expo Router
+  has no per-route data, so its
   tabs come from a table of paths (`apps/native-app/src/core/menu-routes.ts`)
   rather than `staticData.menu`; the root layout draws the bar or the
   sidebar beside its stack, and the withdrawal screens, which sit at the

@@ -1,4 +1,3 @@
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import ArrowUpFromLine from "lucide-react-native/icons/arrow-up-from-line"
 import Coins from "lucide-react-native/icons/coins"
 import Landmark from "lucide-react-native/icons/landmark"
@@ -25,9 +24,21 @@ import {
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../../lib/format-money.ts"
 import { useCashuWalletSnapshot } from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
 
 export function CashuAccountSettingsPage() {
+  const { t } = useTranslation()
+  return (
+    <Screen>
+      <FadeHeader title={t("settings.cashuAccount.title")} />
+      <CashuAccountSettingsBody />
+    </Screen>
+  )
+}
+
+/** The page's content, also the Bitcoin screen's Cashu half (settings/0002). */
+export function CashuAccountSettingsBody() {
   return (
     <Suspense fallback={<LoadingView />}>
       <CashuAccountSettingsContent />
@@ -41,8 +52,7 @@ function CashuAccountSettingsContent() {
   const { snapshot, isPending, isError, refetch } = useCashuWalletSnapshot()
 
   return (
-    <Screen>
-      <FadeHeader title={t("settings.cashuAccount.title")} />
+    <>
       {isError ? (
         <Alert variant="destructive" icon={TriangleAlert}>
           <AlertDescription>
@@ -79,7 +89,7 @@ function CashuAccountSettingsContent() {
                   <Text fontSize={13} color="muted-foreground">
                     {t("settings.cashuAccount.defaultMint")}
                   </Text>
-                  <Text fontWeight="500" flexWrap="wrap">
+                  <Text fontWeight="600" flexWrap="wrap">
                     {snapshot.defaultMint}
                   </Text>
                 </YStack>
@@ -146,6 +156,6 @@ function CashuAccountSettingsContent() {
           />
         </YStack>
       )}
-    </Screen>
+    </>
   )
 }

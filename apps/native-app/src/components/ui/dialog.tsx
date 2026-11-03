@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from "react-native"
 import { styled, Text, View } from "tamagui"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button } from "./button.tsx"
 
 /**
@@ -16,10 +16,11 @@ import { Button } from "./button.tsx"
  * `DialogDescription`.
  *
  * Tailwind mirrored: content `max-w-[calc(100%-2rem)] sm:max-w-sm gap-4
- * rounded-xl bg-popover p-4 ring-1 ring-foreground/10`, a ghost `icon-sm`
- * close button `top-2 right-2`; header `flex-col gap-2`; title `text-base
- * font-medium`; description `text-sm text-muted-foreground`; footer `-mx-4
- * -mb-4 flex-col-reverse gap-2 border-t bg-muted/50 p-4` (the phone layout).
+ * bg-popover p-4`, as fazole.fit's sheet: 24 round and without web's ring;
+ * a ghost `icon-sm` close button `top-2 right-2`; header `flex-col gap-2`;
+ * title `text-base font-medium`; description `text-sm
+ * text-muted-foreground`; footer `-mx-4 -mb-4 flex-col-reverse gap-2
+ * bg-muted/50 p-4` (the phone layout), without web's top rule.
  *
  * Base: RN `Modal` (transparent, fade, `statusBarTranslucent`), which the
  * confirm host and the table picker already use on the device; Tamagui
@@ -94,10 +95,8 @@ const ContentFrame = styled(View, {
   w: "100%",
   maxW: 384,
   maxH: "100%",
-  rounded: radius.xl,
+  rounded: shape.sheet,
   bg: "popover",
-  borderWidth: 1,
-  borderColor: "card-ring",
   overflow: "hidden",
 })
 

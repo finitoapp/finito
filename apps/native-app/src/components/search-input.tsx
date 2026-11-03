@@ -2,7 +2,7 @@ import Search from "lucide-react-native/icons/search"
 import X from "lucide-react-native/icons/x"
 import { useState } from "react"
 import { XStack } from "tamagui"
-import { fontSize, radius } from "../theme/tokens.ts"
+import { fontSize, shape } from "../theme/tokens.ts"
 import { Button } from "./ui/button.tsx"
 import { Icon } from "./ui/icon.tsx"
 import { Input } from "./ui/input.tsx"
@@ -42,10 +42,10 @@ export function SearchInput({
       gap={2}
       pl={16}
       pr={8}
-      rounded={radius.lg}
+      rounded={shape.control}
       borderWidth={1}
-      borderColor={focused ? "ring" : "input"}
-      bg="card"
+      borderColor={focused ? "ring" : "transparent"}
+      bg="input-bg"
     >
       <Icon icon={Search} size={20} color="muted-foreground" />
       <Input
@@ -69,7 +69,7 @@ export function SearchInput({
         <Button
           variant="ghost"
           size="icon-sm"
-          rounded={radius.full}
+          rounded={shape.pill}
           aria-label={clearAriaLabel}
           iconStart={X}
           onPress={() => onChange("")}

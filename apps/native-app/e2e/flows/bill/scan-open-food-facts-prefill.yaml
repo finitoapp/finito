@@ -53,13 +53,13 @@ tags: [bill]
       below: ${output.t["settings.privacy.productLookup.title"]}
       above: ${output.t["settings.privacy.aiAssistant.title"]}
     timeout: 10000
-# An internal code is never looked up. (Home remembers its tables mode now.)
+# An internal code is never looked up.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: ""
-      TEXT: ${output.t["nav.pos"]}
-- runFlow: ../../subflows/start-new-bill.yaml
+      ROUTE: catalog/sales
+      TEXT: ${output.t["bill.table.dialog.none"]}
+- runFlow: ../../subflows/new-bill.yaml
 - runFlow:
     file: ../../subflows/inject-scan.yaml
     env:

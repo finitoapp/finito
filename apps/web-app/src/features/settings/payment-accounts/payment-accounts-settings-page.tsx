@@ -32,16 +32,17 @@ import { Link, type LinkProps } from "@tanstack/react-router"
 import {
   AtSignIcon,
   BanknoteIcon,
-  ChevronDown,
   ChevronRight,
-  ChevronUp,
   CoinsIcon,
   CreditCardIcon,
+  GripVerticalIcon,
   LandmarkIcon,
   type LucideIcon,
   NfcIcon,
   ZapIcon,
 } from "lucide-react"
+import { Reorder, useDragControls, useReducedMotion } from "motion/react"
+import { useRef, useState } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
@@ -75,6 +76,8 @@ interface PaymentMethodRowState {
 /**
  * The payment methods in the order customers see them. There is no separate
  * default: the first available one is the tab the payment screen opens on.
+ * The merchant reorders them by dragging a row's grip (motion's `Reorder`),
+ * or with the arrow keys on the focused grip.
  */
 const paymentAccountsPageQueries = [
   settingsQuery,
@@ -284,16 +287,50 @@ export function PaymentAccountsSettingsPage() {
   } satisfies Record<DefaultPaymentMethod, PaymentMethodRowState>
 
   const order = getPaymentMethodOrder(settings)
-  const firstAvailable = order.find((method) => rows[method].available)
+  const orderKey = order.join(" ")
+  // The order a drag is drawing, shown until the store catches up (its key
+  // then differs) or the save fails. Keyed to the stored order it departs
+  // from, and dropped as soon as that changes, so a stale draft never wins.
+  const [draft, setDraft] = useState<{
+    readonly key: string
+    readonly order: ReadonlyArray<DefaultPaymentMethod>
+  } | null>(null)
+  if (draft !== null && draft.key !== orderKey) setDraft(null)
+  // What the drag has reordered so far, for the release, which may come
+  // before the draft's render.
+  const dragged = useRef<ReadonlyArray<DefaultPaymentMethod> | null>(null)
+  const shownOrder =
+    draft !== null && draft.key === orderKey ? draft.order : order
+  const firstAvailable = shownOrder.find((method) => rows[method].available)
 
-  const move = (index: number, offset: -1 | 1) => {
-    const method = order[index]
-    const neighbour = order[index + offset]
-    if (method === undefined || neighbour === undefined) return
-
-    const nextOrder = order.with(index, neighbour).with(index + offset, method)
-    void runToast(async (run) => {
+  const store = (nextOrder: ReadonlyArray<DefaultPaymentMethod>) =>
+    runToast(async (run) => {
       await run.ok(setPaymentMethodOrder(nextOrder))
+    })
+
+  const move = (method: DefaultPaymentMethod, offset: -1 | 1) => {
+    const index = order.indexOf(method)
+    const neighbour = order[index + offset]
+    if (index === -1 || neighbour === undefined) return
+
+    void store(order.with(index, neighbour).with(index + offset, method))
+  }
+
+  const reorder = (next: ReadonlyArray<DefaultPaymentMethod>) => {
+    dragged.current = next
+    setDraft({ key: orderKey, order: next })
+  }
+
+  const endDrag = () => {
+    const next = dragged.current
+    dragged.current = null
+    if (next === null) return
+    if (next.join(" ") === orderKey) {
+      setDraft(null)
+      return
+    }
+    void store(next).then((stored) => {
+      if (!stored) setDraft(null)
     })
   }
 
@@ -305,39 +342,49 @@ export function PaymentAccountsSettingsPage() {
         <p className="px-1 text-sm text-muted-foreground">
           {t("settings.paymentAccounts.order.description")}
         </p>
-        <ul className={cn(verticalNavShellClassName, "divide-y")}>
-          {order.map((method, index) => (
+        <Reorder.Group
+          as="ul"
+          axis="y"
+          values={[...shownOrder]}
+          onReorder={reorder}
+          className={cn(verticalNavShellClassName, "divide-y")}
+        >
+          {shownOrder.map((method) => (
             <PaymentMethodRow
               key={method}
+              method={method}
               row={rows[method]}
               isDefault={method === firstAvailable}
-              canMoveUp={index > 0}
-              canMoveDown={index < order.length - 1}
-              onMove={(offset) => move(index, offset)}
+              onMove={(offset) => move(method, offset)}
+              onDragEnd={endDrag}
             />
           ))}
-        </ul>
+        </Reorder.Group>
       </div>
     </>
   )
 }
 
 function PaymentMethodRow({
+  method,
   row,
   isDefault,
-  canMoveUp,
-  canMoveDown,
   onMove,
+  onDragEnd,
 }: {
+  readonly method: DefaultPaymentMethod
   readonly row: PaymentMethodRowState
   readonly isDefault: boolean
-  readonly canMoveUp: boolean
-  readonly canMoveDown: boolean
+  /** The keyboard's move, one place up or down. */
   readonly onMove: (offset: -1 | 1) => void
+  readonly onDragEnd: () => void
 }) {
   const { t } = useTranslation()
   const name = t(row.title)
   const Icon = row.icon
+  // Only the grip starts a drag, so the row's link and switch keep working.
+  const dragControls = useDragControls()
+  const reducedMotion = useReducedMotion() ?? false
 
   const content = (
     <>
@@ -369,29 +416,32 @@ function PaymentMethodRow({
   )
 
   return (
-    <li className="flex items-center gap-2 py-1 pr-3 pl-1 text-sm">
-      <span className="flex flex-col">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-lg"
-          disabled={!canMoveUp}
-          aria-label={t("settings.paymentAccounts.moveUp.aria", { name })}
-          onClick={() => onMove(-1)}
-        >
-          <ChevronUp className="size-6" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-lg"
-          disabled={!canMoveDown}
-          aria-label={t("settings.paymentAccounts.moveDown.aria", { name })}
-          onClick={() => onMove(1)}
-        >
-          <ChevronDown className="size-6" />
-        </Button>
-      </span>
+    <Reorder.Item
+      as="li"
+      value={method}
+      dragListener={false}
+      dragControls={dragControls}
+      layout="position"
+      transition={reducedMotion ? { duration: 0 } : undefined}
+      onDragEnd={onDragEnd}
+      className="flex items-center gap-2 bg-card py-1 pr-3 pl-1 text-sm"
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-lg"
+        className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+        aria-label={t("settings.paymentAccounts.reorder.aria", { name })}
+        aria-keyshortcuts="ArrowUp ArrowDown"
+        onPointerDown={(event) => dragControls.start(event)}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+          event.preventDefault()
+          onMove(event.key === "ArrowUp" ? -1 : 1)
+        }}
+      >
+        <GripVerticalIcon className="size-5" />
+      </Button>
       {row.to === null ? (
         <span className="flex min-w-0 flex-1 items-center gap-3 py-2">
           {content}
@@ -415,6 +465,6 @@ function PaymentMethodRow({
           onSave={row.saveEnabled}
         />
       </span>
-    </li>
+    </Reorder.Item>
   )
 }

@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import {
   hasTaxableLines,
   type TaxRecapRow,
@@ -8,6 +7,7 @@ import { taxRatePercentageToDecimalString } from "@payky/core/modules/tax-rate/t
 import { Text, XStack, YStack } from "tamagui"
 import { Separator } from "../../components/ui/separator.tsx"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 
 /** VAT breakdown by rate; nothing when no line carries a tax rate. */
 export function TaxRecap({
@@ -29,7 +29,7 @@ export function TaxRecap({
       <Text
         fontSize="sm"
         lineHeight="sm"
-        fontWeight="500"
+        fontWeight="600"
         color="muted-foreground"
       >
         {t("taxRecap.title")}
@@ -44,7 +44,7 @@ export function TaxRecap({
                   numberOfLines={1}
                   fontSize="sm"
                   lineHeight="sm"
-                  fontWeight="500"
+                  fontWeight="600"
                 >
                   {row.name === null || row.ratePercentage === null
                     ? t("taxRecap.noTax")

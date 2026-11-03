@@ -4,10 +4,6 @@ tags: [catalog]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow:
-    file: ../../subflows/add-category.yaml
-    env:
-      NAME: Drinks
-- runFlow:
     file: ../../subflows/add-catalog-item.yaml
     env:
       NAME: Coffee

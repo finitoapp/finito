@@ -1,46 +1,54 @@
-import { type Href, router } from "expo-router"
+import { type Href, usePathname } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import type { ReactNode } from "react"
 import { Linking } from "react-native"
 import { styled, Text, View } from "tamagui"
+import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
+import { useOpenDetail } from "../hooks/use-open-detail.ts"
 import type { ThemeColor } from "../theme/themes.ts"
-import { fontSize, fontWeight, radius } from "../theme/tokens.ts"
+import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
 import { Icon } from "./ui/icon.tsx"
 
 /**
  * Web `apps/web-app/src/components/vertical-nav.tsx`: a card of rows, each
- * an icon, a label and a trailing action or chevron, divided by hairlines.
+ * an icon, a label and a trailing action or chevron, drawn as fazole.fit's
+ * list (Linky's `packages/ui/src/lists.tsx` `ListRow` in a `Card`): a
+ * 16-round `bg-card` shell `py-2`, an eyebrow title, and 12-round rows
+ * `px-3 py-2` at least 56 high that light up with the neutral fill when
+ * pressed and the accent tint when active, with no rules between them.
  *
- * Tailwind mirrored: the shell `bg-card rounded-md overflow-hidden`, the
- * title `p-4 font-bold text-xs text-muted-foreground`, the rows `divide-y`,
- * `gap-3 px-3 py-2 text-sm font-medium` with `p-1`/`p-0.5` inside, the
- * chevron `size-4`, the action `shrink-0 pl-2`.
- *
- * The row's padding is the sum of web's: 18 px across (`px-3 p-1 p-0.5`),
- * 14 px down (`py-2 p-1 p-0.5`), so a one-line row is 48 high, Android's
- * minimum touch target, as on web.
+ * Tailwind mirrored otherwise: the title `p-4 font-bold text-xs
+ * text-muted-foreground`, the rows `gap-3 text-sm font-medium`, the chevron
+ * `size-4`, the action `shrink-0 pl-2`.
  *
  * Native differences: the shell has no `shadow` (Tamagui 3 `styled()` takes
- * no elevation); a pressed row takes
- * `bg-accent` (web hovers `bg-accent/50`); a `link` row pushes an
- * expo-router `href`, an `href` row opens the URL outside the app.
+ * no elevation); a `link` row pushes an expo-router `href` (`useOpenDetail`:
+ * in a wide window's master pane it replaces the detail beside it, and the
+ * row of the detail shown there is tinted as active, navigation/0002), an
+ * `href` row opens the URL outside the app.
  */
 
 /** The shell a `VerticalNav` draws, shared with `ListSkeleton` so the two cannot drift apart. */
 export const VerticalNavShell = styled(View, {
   name: "VerticalNavShell",
   bg: "card",
-  rounded: radius.md,
+  rounded: shape.card,
+  py: 8,
+  px: 8,
   overflow: "hidden",
 })
 
 /** The title row a `VerticalNav` draws, shared with `ListSkeleton` for the same reason. */
 export const VerticalNavTitle = styled(Text, {
   name: "VerticalNavTitle",
-  p: 16,
+  px: 12,
+  pt: 8,
+  pb: 4,
   fontSize: fontSize.xs,
   lineHeight: fontSize.xs,
   fontWeight: fontWeight.bold,
+  letterSpacing: 1,
+  textTransform: "uppercase",
   color: "muted-foreground",
 })
 
@@ -118,10 +126,13 @@ export function VerticalNav({
   )
 }
 
-const press = (item: VerticalNavItem): (() => void) | undefined => {
+const press = (
+  item: VerticalNavItem,
+  openDetail: (href: Href) => void
+): (() => void) | undefined => {
   switch (item.kind) {
     case "link":
-      return () => router.push(item.href)
+      return () => openDetail(item.href)
     case "href":
       return () => void Linking.openURL(item.href)
     case "button":
@@ -133,30 +144,39 @@ const press = (item: VerticalNavItem): (() => void) | undefined => {
 
 export function VerticalNavRow({
   item,
-  first,
 }: {
   readonly item: VerticalNavItem
-  readonly first: boolean
+  /** Kept for the callers that number their rows; rows have no rule to drop. */
+  readonly first?: boolean
 }) {
+  const openDetail = useOpenDetail()
+  const masterPane = useMasterPane()
+  const pathname = usePathname()
   const disabled = item.disabled === true
-  const onPress = disabled ? undefined : press(item)
+  const onPress = disabled ? undefined : press(item, openDetail)
   const interactive = item.kind !== "static"
+  // In a master pane the row whose detail is open beside it reads as selected.
+  const active =
+    item.active ??
+    (masterPane !== null &&
+      item.kind === "link" &&
+      isDetailOf(pathname, item.href))
   return (
     <View
       flexDirection="row"
       items="center"
       gap={12}
-      px={18}
-      py={14}
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
+      minH={control.lg}
+      px={12}
+      py={8}
+      rounded={shape.control}
       borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
       borderLeftColor={item.stripeColor ?? "transparent"}
       bg={
-        item.active
-          ? "primary-5"
+        active
+          ? "accent"
           : interactive && !disabled
-            ? "transparent press:accent"
+            ? "transparent press:neutral-soft"
             : "transparent"
       }
       onPress={onPress}

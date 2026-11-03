@@ -9,6 +9,7 @@ import {
   createCatalogCategory,
   createCatalogCategoryAtEnd,
   deleteCatalogCategory,
+  findOrCreateCatalogCategory,
   updateCatalogCategory,
 } from "./catalog-category-actions.ts"
 import {
@@ -118,5 +119,37 @@ describe("catalog category actions", () => {
     expect(await run.ok(deleteCatalogCategory(id))).toBe(id)
 
     await expect.poll(() => evolu.loadQuery(catalogCategoriesQuery)).toEqual([])
+  }, 15_000)
+})
+
+describe("a category is made on the item (navigation/0003)", () => {
+  test("creates the category the first time and reuses it by name afterwards", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+    } satisfies EvoluDep & EvoluOwnerDep
+    await using run = testCreateRun(deps)
+
+    const id = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Drinks"))
+    )
+    await expect
+      .poll(() => evolu.loadQuery(catalogCategoriesQuery))
+      .toMatchObject([{ id, name: "Drinks", sortOrder: 0 }])
+
+    expect(
+      await run.ok(findOrCreateCatalogCategory(NonEmptyString255(" drinks ")))
+    ).toBe(id)
+    const other = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Snacks"))
+    )
+    expect(other).not.toBe(id)
+    await expect
+      .poll(() => evolu.loadQuery(catalogCategoriesQuery))
+      .toMatchObject([
+        { id, name: "Drinks" },
+        { id: other, name: "Snacks", sortOrder: 1 },
+      ])
   }, 15_000)
 })

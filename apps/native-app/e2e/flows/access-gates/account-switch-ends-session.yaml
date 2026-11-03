@@ -18,11 +18,11 @@ tags: [access-gates]
     env:
       TITLE: ${output.t["settings.accounts.nav.title"]}
 - scrollUntilVisible:
-    element: ${output.t["accountChoice.new.title"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+    element: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["settings.accounts.create.confirm.confirm"]}
 - extendedWaitUntil:
-    visible: ${output.t["onboarding.title"]}
+    visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000
 - runFlow: ../../subflows/complete-onboarding.yaml
 # Switching back to the locked account asks for the PIN.

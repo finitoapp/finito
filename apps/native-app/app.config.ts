@@ -49,19 +49,21 @@ export default {
     [
       "expo-font",
       {
-        // Built into the APK under the family names tamagui.config.ts uses,
-        // so the first render needs no font loading (useFonts took ~45 ms).
+        // Manrope, Linky's typeface (its `packages/ui` config), built into
+        // the APK under the family names tamagui.config.ts uses, so the first
+        // render needs no font loading (useFonts took ~45 ms). The files are
+        // Google Fonts' static faces (OFL) from `@expo-google-fonts/manrope`,
+        // which Bun links into this app's node_modules as a direct dependency.
         android: {
           fonts: [
-            ["Inter", "Inter-Regular", 400],
-            ["InterMedium", "Inter-Medium", 500],
-            ["InterSemiBold", "Inter-SemiBold", 600],
-            ["InterBold", "Inter-Bold", 700],
-          ].map(([fontFamily, file, weight]) => ({
+            ["Manrope", "400Regular", 400],
+            ["ManropeSemiBold", "600SemiBold", 600],
+            ["ManropeBold", "700Bold", 700],
+          ].map(([fontFamily, face, weight]) => ({
             fontFamily: String(fontFamily),
             fontDefinitions: [
               {
-                path: `./node_modules/@tamagui/font-inter/otf/${file}.otf`,
+                path: `./node_modules/@expo-google-fonts/manrope/${face}/Manrope_${face}.ttf`,
                 weight: Number(weight),
               },
             ],

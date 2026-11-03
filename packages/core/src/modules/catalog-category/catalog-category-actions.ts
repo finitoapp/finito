@@ -13,8 +13,12 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
+import type { NonEmptyString255 } from "../shared/schema.ts"
 import type { CatalogCategory } from "./catalog-category.ts"
-import { lastCatalogCategorySortOrderQuery } from "./catalog-category-queries.ts"
+import {
+  catalogCategoriesQuery,
+  lastCatalogCategorySortOrderQuery,
+} from "./catalog-category-queries.ts"
 import type { CatalogCategoryId } from "./catalog-category-types.ts"
 
 export const createCatalogCategory =
@@ -96,4 +100,32 @@ export const deleteCatalogCategory =
       )
     )
     return ok(id)
+  }
+
+/** Two names spell the same category when they differ only in case or spacing. */
+const sameCategoryName = (a: string, b: string): boolean =>
+  a.trim().localeCompare(b.trim(), undefined, { sensitivity: "accent" }) === 0
+
+/**
+ * The category called `name`, created at the end when there is none yet,
+ * as Linky makes a contact group from the name typed on the contact
+ * (navigation/0003): a category is made where it is first used, on an
+ * item, not on a screen of its own. Returns the existing one when a name
+ * differing only in case or surrounding spaces is already taken, so typing
+ * "drinks" under "Drinks" adds no second category.
+ */
+export const findOrCreateCatalogCategory =
+  (
+    name: NonEmptyString255
+  ): Task<CatalogCategoryId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const categories = await run.deps.evolu.loadQuery(catalogCategoriesQuery)
+    const existing = categories.find((category) =>
+      sameCategoryName(category.name, name)
+    )
+    if (existing !== undefined) return ok(existing.id)
+
+    return ok(
+      await run.ok(createCatalogCategoryAtEnd({ deviceId: null, name }))
+    )
   }

@@ -54,8 +54,8 @@ tags: [tax-recap]
     element: ${output.t["taxRecap.title"]}
 - assertVisible: Standard rate \(21%\)
 - assertVisible: Reduced rate \(12%\)
-- assertVisible: Base. \$100\.00 · VAT. \$21\.00
-- assertVisible: Base. \$100\.00 · VAT. \$12\.00
+- assertVisible: Base. \$100 · VAT. \$21
+- assertVisible: Base. \$100 · VAT. \$12
 # Pay the bill.
 - scrollUntilVisible:
     element: ${output.t["billDetail.backToBill"]}
@@ -82,5 +82,5 @@ tags: [tax-recap]
     element: ${output.t["taxRecap.title"]}
 - assertVisible: Standard rate \(21%\)
 - assertVisible: Reduced rate \(12%\)
-- assertVisible: Base. \$100\.00 · VAT. \$21\.00
-- assertVisible: Base. \$100\.00 · VAT. \$12\.00
+- assertVisible: Base. \$100 · VAT. \$21
+- assertVisible: Base. \$100 · VAT. \$12

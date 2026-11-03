@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   clearPaymentMethodPreparation,
@@ -47,15 +46,13 @@ import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { Currency, Integer } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
-import AtSign from "lucide-react-native/icons/at-sign"
 import Banknote from "lucide-react-native/icons/banknote"
+import Bitcoin from "lucide-react-native/icons/bitcoin"
 import Check from "lucide-react-native/icons/check"
-import Coins from "lucide-react-native/icons/coins"
 import CreditCard from "lucide-react-native/icons/credit-card"
 import Landmark from "lucide-react-native/icons/landmark"
 import Nfc from "lucide-react-native/icons/nfc"
 import X from "lucide-react-native/icons/x"
-import Zap from "lucide-react-native/icons/zap"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
@@ -90,6 +87,7 @@ import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
@@ -114,24 +112,26 @@ type MethodId =
   | "qerko"
   | "lightningAddress"
 
+// The three bitcoin wallets are one "Bitcoin" to the customer, as they are
+// one method in Settings (settings/0002); at most one of them is offered.
 const methodLabelKeys = {
-  spark: "paymentWait.method.lightning",
+  spark: "paymentWait.method.bitcoin",
   cash: "paymentWait.method.cash",
   iban: "paymentWait.method.iban",
-  cashu: "paymentWait.method.cashu",
+  cashu: "paymentWait.method.bitcoin",
   card: "paymentWait.method.card",
   qerko: "paymentWait.method.qerko",
-  lightningAddress: "paymentWait.method.lightningAddress",
+  lightningAddress: "paymentWait.method.bitcoin",
 } satisfies Record<MethodId, TranslationKey>
 
 const methodIcons = {
-  spark: Zap,
+  spark: Bitcoin,
   cash: Banknote,
   iban: Landmark,
-  cashu: Coins,
+  cashu: Bitcoin,
   card: CreditCard,
   qerko: Nfc,
-  lightningAddress: AtSign,
+  lightningAddress: Bitcoin,
 } as const satisfies Record<MethodId, unknown>
 
 /**
@@ -755,7 +755,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           </Text>
         ) : (
           <Tabs value={active.id} onValueChange={setSelected}>
-            <SlidingPillTrack padding={8} borderColor="input" bg="background">
+            <SlidingPillTrack padding={8} bg="neutral-soft">
               <TabsList h={46} gap={2} p={0} bg="transparent">
                 {methods.map(({ id }) => {
                   const isActive = id === active.id

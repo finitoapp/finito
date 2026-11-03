@@ -24,7 +24,7 @@ import { Icon } from "./icon.tsx"
  * secrets. It keeps no value of its own: the caller owns `value`, so the
  * code is gone when the caller unmounts. The caret does not blink (no
  * animation driver); `invalid` stands in for `aria-invalid`; `size="lg"` is
- * the one web call site's `size-12 text-2xl`, in Inter rather than
+ * the one web call site's `size-12 text-2xl`, in Manrope rather than
  * `font-mono`, which the Tamagui config has no font for.
  */
 

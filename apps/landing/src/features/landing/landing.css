@@ -132,13 +132,13 @@
   }
 }
 
-/* A ring of light spreading from where a payment lands. */
+/* A pulse of light spreading from where a payment lands: a fading disc, no outline. */
 .landing-ping {
   position: absolute;
   width: 56px;
   height: 56px;
   margin: -28px 0 0 -28px;
-  border: 2px solid var(--primary);
+  background: var(--primary);
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
@@ -157,10 +157,10 @@
   }
 }
 
-/* The same ring off the check, twice, each time the paid screen comes up. */
+/* The same pulse off the check, twice, each time the paid screen comes up. */
 .landing-check-ping {
   translate: -50% -50%;
-  border: 3px solid oklch(0.72 0.19 150);
+  background: oklch(0.72 0.19 150);
   border-radius: 50%;
   opacity: 0;
   pointer-events: none;
@@ -239,31 +239,9 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* A beam of the accent running round the contact card's edge. */
-@property --landing-beam-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
+/* The contact card: a plain surface, as the site draws no outlines. */
 .landing-beam {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    conic-gradient(
-      from var(--landing-beam-angle),
-      var(--border) 0deg 280deg,
-      var(--primary) 320deg,
-      var(--border) 360deg
-    )
-    border-box;
-  animation: landing-beam 6s linear infinite;
-}
-
-@keyframes landing-beam {
-  to {
-    --landing-beam-angle: 360deg;
-  }
+  background: var(--card);
 }
 
 /* The CTA's arrow points down the page, now and then. */

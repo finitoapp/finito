@@ -77,6 +77,17 @@ const privacyModeQueryKey = (
 ) => ["spark-account-privacy-mode", activeAccountId, sparkAccountId] as const
 
 export function SparkAccountSettingsPage() {
+  const { t } = useTranslation()
+  return (
+    <Screen>
+      <FadeHeader title={t("settings.bitcoin.wallet.spark")} />
+      <SparkAccountSettingsBody />
+    </Screen>
+  )
+}
+
+/** The page's content, also the Bitcoin screen's Spark half (settings/0002). */
+export function SparkAccountSettingsBody() {
   const { accountId } = useAccess()
   return <SparkAccountSettings key={accountId} activeAccountId={accountId} />
 }
@@ -117,8 +128,7 @@ function SparkAccountSettingsContent({
     secret === null || secret === deriveDefaultSparkWalletSecret(masterKey)
 
   return (
-    <Screen>
-      <FadeHeader title={t("settings.paymentAccounts.method.spark")} />
+    <>
       <Card>
         <CardHeader>
           <CardTitle>{t("settings.sparkAccount.form.title")}</CardTitle>
@@ -208,7 +218,7 @@ function SparkAccountSettingsContent({
           ]}
         />
       )}
-    </Screen>
+    </>
   )
 }
 
@@ -236,14 +246,7 @@ function SparkWalletSummary({
   return (
     <UiField>
       <FieldLabel>{t("settings.sparkAccount.wallet.label")}</FieldLabel>
-      <XStack
-        items="center"
-        gap="3"
-        p="3"
-        rounded="lg"
-        borderWidth={1}
-        borderColor="border-color"
-      >
+      <XStack items="center" gap="3" p="3" rounded="lg" bg="neutral-soft">
         <Icon icon={WalletIcon} color="muted-foreground" />
         <YStack flex={1} gap="1">
           <Text fontWeight="600">{currentTitle}</Text>

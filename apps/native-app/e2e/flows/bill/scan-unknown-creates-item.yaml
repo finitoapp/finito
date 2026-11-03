@@ -55,7 +55,7 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Muffin
 - extendedWaitUntil:

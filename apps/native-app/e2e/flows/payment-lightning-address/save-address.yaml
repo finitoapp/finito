@@ -20,5 +20,5 @@ tags: [payment-lightning-address]
 - runFlow:
     file: ../../subflows/assert-checked.yaml
     env:
-      LABEL: ${output.t["settings.lightningAddress.enabled.label"]}
+      LABEL: ${output.t["settings.bitcoin.enabled.label"]}
       CHECKED: "true"

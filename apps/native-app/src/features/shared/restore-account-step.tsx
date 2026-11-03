@@ -29,20 +29,19 @@ import { useTranslation } from "../../hooks/use-translation.ts"
  * unmount), never in a query key, a persisted atom or a log. A pasted phrase
  * fans out over the fields; unknown words and completions of the field being
  * typed in show under the grid. Keyboard learning, suggestions and autofill
- * are off.
+ * are off. The transfer from another device is the caller's to offer beside
+ * it: onboarding's restore page draws it under the form, Settings as a row.
  */
 export function RestoreAccountStep({
   error,
   pending,
   onRestore,
-  onTransfer,
   submitFullWidth = false,
 }: {
   readonly error: TranslationKey | null
   readonly pending: boolean
   readonly onRestore: (mnemonic: string) => void
-  readonly onTransfer: () => void
-  /** Web's onboarding wrapper makes this submit full-width and 44px high. */
+  /** Onboarding makes this submit full-width, as fazole.fit's restore page; Settings ends its row with it. */
   readonly submitFullWidth?: boolean
 }) {
   const { t } = useTranslation()
@@ -115,7 +114,7 @@ export function RestoreAccountStep({
       <FieldGroup>
         <FieldDescription>{t("onboarding.restore.subtitle")}</FieldDescription>
         <Button
-          variant="outline"
+          variant="secondary"
           label={t("onboarding.restore.paste")}
           iconStart={ClipboardPaste}
           disabled={pending}
@@ -132,7 +131,7 @@ export function RestoreAccountStep({
                 onCheckedChange={setShown}
                 aria-label={t("onboarding.restore.showWords")}
               />
-              <Text fontSize="sm" fontWeight="500">
+              <Text fontSize="sm" fontWeight="600">
                 {t("onboarding.restore.showWords")}
               </Text>
             </XStack>
@@ -230,7 +229,6 @@ export function RestoreAccountStep({
       </FieldGroup>
       <Button
         w={submitFullWidth ? "100%" : undefined}
-        minH={submitFullWidth ? 44 : undefined}
         self={submitFullWidth ? undefined : "flex-end"}
         label={t("onboarding.restore.action")}
         iconStart={KeyRound}
@@ -240,12 +238,6 @@ export function RestoreAccountStep({
           setDirtyError(true)
           onRestore(phrase)
         }}
-      />
-      <Button
-        variant="link"
-        self="center"
-        label={t("onboarding.restore.transferLink")}
-        onPress={onTransfer}
       />
     </YStack>
   )

@@ -9,44 +9,26 @@ import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-u
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
 import { Redirect, router } from "expo-router"
 import { useAtomValue } from "jotai"
-import Bell from "lucide-react-native/icons/bell"
-import Calculator from "lucide-react-native/icons/calculator"
-import LayoutGrid from "lucide-react-native/icons/layout-grid"
 import Menu from "lucide-react-native/icons/menu"
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react"
-import { ActivityIndicator, Platform } from "react-native"
+import { useEffect, useState, useSyncExternalStore } from "react"
+import { ActivityIndicator, Platform, useWindowDimensions } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useTheme, View, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
-import { LoadingView } from "../../components/loading-view.tsx"
+import { menuSidebarMinWidth } from "../../components/menu-nav.tsx"
 import { screenPaddingX } from "../../components/screen.tsx"
-import {
-  SlidingPillSegmentContent,
-  SlidingPillTrack,
-} from "../../components/sliding-pill.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "../../components/ui/toggle-group.tsx"
 import { nativeRun } from "../../core/native-runtime.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
-import { maxWidth, radius } from "../../theme/tokens.ts"
+import { maxWidth } from "../../theme/tokens.ts"
 import { AmountKeypad } from "./amount-keypad.tsx"
 import { BackupReminderDialog } from "./backup-reminder-dialog.tsx"
-import { PosOverviewPage } from "./pos-overview-page.tsx"
-import { useTerminalHomeMode } from "./use-terminal-home-mode.ts"
-
-const homeModeItems = [
-  { mode: "numpad", icon: Calculator, label: "nav.numpad" },
-  { mode: "pos", icon: LayoutGrid, label: "nav.pos" },
-] as const
 
 /**
  * On a wide window web's keypad page is the `max-w-xl` column itself, with
@@ -59,19 +41,22 @@ const keypadColumn = {
 } as const
 
 /**
- * The root screen, like web's `_terminal/` index: an account without its
- * appSettings row is not onboarded and goes to onboarding (a restore runs
- * its own sync screen first, so no initial-sync wait is needed here).
+ * The root screen, like web's `_terminal/` index, the keypad alone
+ * (navigation/0002: the tables grid is the Sales tab, not a mode of home):
+ * an account without its appSettings row is not onboarded and goes to
+ * onboarding (a restore runs its own sync screen first, so no initial-sync
+ * wait is needed here).
  */
 export function TerminalHomePage() {
   const theme = useTheme()
   const { t } = useTranslation()
   const [settings] = useEvoluQuery(settingsQuery).data
-  const { mode, enabledModes, setMode } = useTerminalHomeMode()
+  // On a wide window the rail beside the screen holds the menu.
+  const wide = useWindowDimensions().width >= menuSidebarMinWidth
   useScreenWakeLock(true)
   const confirmOpen = useIsConfirmOpen()
-  // A scan in either mode starts a new bill without a table; the bill then
-  // adds the item as if it had been scanned there (scanner/0001).
+  // A scan starts a new bill without a table; the bill then adds the item
+  // as if it had been scanned there (scanner/0001).
   useHardwareScanner({
     enabled: settings !== undefined && !confirmOpen,
     onScan: (code) =>
@@ -92,59 +77,15 @@ export function TerminalHomePage() {
           paddingHorizontal: screenPaddingX,
           backgroundColor: theme.background.val,
         },
-        // Only the pos grid uses a wide window; the keypad keeps web's column.
-        Platform.OS === "web" && mode !== "pos" ? keypadColumn : null,
+        // The keypad keeps web's column.
+        Platform.OS === "web" ? keypadColumn : null,
       ]}
     >
-      {/* Web's header and keypad add `px-4` to the screen's sides; the pos grid does not. */}
-      <XStack items="center" justify="space-between" mb={12} px={16}>
-        {/*
-         * Both modes stay on screen so the control reads as a switch; only
-         * the active one spells out its label. With a single mode on there is
-         * nothing to switch to (settings/0001), so the control goes away.
-         */}
-        {enabledModes.length > 1 ? (
-          <SlidingPillTrack padding={4} borderColor="input">
-            <ToggleGroup
-              value={mode}
-              onValueChange={setMode}
-              size="lg"
-              spacing={0.5}
-            >
-              {homeModeItems.map(({ mode: itemMode, icon, label }) => {
-                const active = itemMode === mode
-                return (
-                  <ToggleGroupItem
-                    key={itemMode}
-                    value={itemMode}
-                    aria-label={t(label)}
-                    px={16}
-                    rounded={radius.full}
-                    bg="transparent"
-                  >
-                    <SlidingPillSegmentContent
-                      active={active}
-                      pillId="home-mode-pill"
-                      icon={(color) => (
-                        <Icon icon={icon} strokeWidth={2.5} color={color} />
-                      )}
-                      label={t(label)}
-                    />
-                  </ToggleGroupItem>
-                )
-              })}
-            </ToggleGroup>
-          </SlidingPillTrack>
-        ) : null}
-        {/* Notifications ahead of the menu, which opens on its first tab (navigation/0001). */}
-        <XStack ml="auto" items="center" gap={8}>
-          <Button
-            variant="ghost"
-            aria-label={t("nav.notifications")}
-            onPress={() => router.push("/notifications")}
-          >
-            <Icon icon={Bell} size={24} strokeWidth={3} />
-          </Button>
+      {/* Web's header and keypad add `px-4` to the screen's sides. The
+          hamburger opens the menu on its first tab (navigation/0001); a wide
+          window has the rail instead, so the header goes away. */}
+      {wide ? null : (
+        <XStack items="center" justify="flex-end" mb={12} px={16}>
           <Button
             variant="ghost"
             aria-label={t("nav.menu")}
@@ -153,20 +94,14 @@ export function TerminalHomePage() {
             <Icon icon={Menu} size={24} strokeWidth={3} />
           </Button>
         </XStack>
-      </XStack>
-      <BackupReminderDialog />
-      {mode === "pos" ? (
-        <Suspense fallback={<LoadingView />}>
-          <PosOverviewPage />
-        </Suspense>
-      ) : (
-        <YStack flex={1} px={16}>
-          <AmountKeypad
-            currency={getFiatCurrency(settings)}
-            tipsEnabled={settings.tipsEnabled === sqliteTrue}
-          />
-        </YStack>
       )}
+      <BackupReminderDialog />
+      <YStack flex={1} px={16}>
+        <AmountKeypad
+          currency={getFiatCurrency(settings)}
+          tipsEnabled={settings.tipsEnabled === sqliteTrue}
+        />
+      </YStack>
     </SafeAreaView>
   )
 }

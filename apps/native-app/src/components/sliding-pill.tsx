@@ -150,7 +150,8 @@ export function SlidingPillTrack({
   children,
 }: {
   readonly padding: number
-  readonly borderColor: ThemeColor
+  /** A hairline around the track; fazole.fit's segmented control has none, so it is off unless named. */
+  readonly borderColor?: ThemeColor
   readonly bg?: ThemeColor
   readonly children: ReactNode
 }) {
@@ -165,8 +166,9 @@ export function SlidingPillTrack({
           ...fill,
           transform,
           borderRadius: radius.full,
-          borderWidth: 1,
-          borderColor: theme[borderColor]?.val,
+          borderWidth: borderColor === undefined ? 0 : 1,
+          borderColor:
+            borderColor === undefined ? undefined : theme[borderColor]?.val,
           backgroundColor: bg === undefined ? undefined : theme[bg]?.val,
         }}
       />

@@ -44,22 +44,11 @@ export function TransportToggleList({
   }
 
   return (
-    <YStack
-      rounded="lg"
-      borderWidth={1}
-      borderColor="border-color"
-      overflow="hidden"
-    >
-      {transports.map((transport, index) => {
+    <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+      {transports.map((transport) => {
         const active = transport.isActive === sqliteTrue
         return (
-          <YStack
-            key={transport.id}
-            borderTopWidth={index === 0 ? 0 : 1}
-            borderColor="border-color"
-            gap="2"
-            p="3"
-          >
+          <YStack key={transport.id} gap="2" p="3">
             <TransportUrl url={transport.url} muted={!active} />
             <XStack items="center" justify="space-between" gap="3">
               <YStack flex={1}>
@@ -135,7 +124,7 @@ function TransportUrl({
     <Text
       fontSize="sm"
       lineHeight="sm"
-      fontWeight="500"
+      fontWeight="600"
       color={muted ? "muted-foreground" : "color"}
       style={{ fontFamily: "monospace" }}
     >

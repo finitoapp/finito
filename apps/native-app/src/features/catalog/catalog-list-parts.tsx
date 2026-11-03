@@ -1,6 +1,6 @@
 import type { Query, QueryRows, Row } from "@evolu/common"
 import type { EvoluSchema } from "@payky/core/evolu/schema"
-import { type Href, router } from "expo-router"
+import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import Plus from "lucide-react-native/icons/plus"
 import { type ReactNode, Suspense } from "react"
@@ -18,29 +18,31 @@ import {
   VerticalNavRow,
 } from "../../components/vertical-nav.tsx"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
-import { type CatalogTab, CatalogTabs } from "./catalog-tabs.tsx"
+import { useOpenDetail } from "../../hooks/use-open-detail.ts"
 
 /**
  * The frame every catalog list screen shares, as web's `CatalogListPage`: a
- * title with no Back, as on a menu tab's root screen, a "+" to the create
- * route, the tabs between the three lists, and a non-scrolling body so the
- * list inside can be a virtualized `FlatList`. `addLabel` is already
- * translated.
+ * title, a "+" to the create route, and a non-scrolling body so the list
+ * inside can be a virtualized `FlatList`. Sales, a menu tab's root, passes
+ * `startAddon={null}` for no Back; the items and tables lists under
+ * Settings keep it (navigation/0003). `addLabel` is already translated.
  */
 export function CatalogListShell({
-  tab,
   title,
   addLabel,
   addHref,
+  startAddon,
   children,
 }: {
-  readonly tab: CatalogTab
   readonly title: string
   readonly addLabel: string
   readonly addHref?: Href
+  readonly startAddon?: ReactNode | null
   readonly children: ReactNode
 }) {
   const theme = useTheme()
+  // Beside a form on a wide window the "+" replaces it (navigation/0002).
+  const openDetail = useOpenDetail()
   return (
     <SafeAreaView
       style={{
@@ -52,23 +54,20 @@ export function CatalogListShell({
     >
       <FadeHeader
         title={title}
-        startAddon={null}
+        startAddon={startAddon}
         endAddon={
           addHref === undefined ? null : (
             <Button
               variant="ghost"
               size="default"
               aria-label={addLabel}
-              onPress={() => router.push(addHref)}
+              onPress={() => openDetail(addHref)}
             >
               <Icon icon={Plus} size={20} color="primary" strokeWidth={3} />
             </Button>
           )
         }
       />
-      <YStack pb={8}>
-        <CatalogTabs active={tab} />
-      </YStack>
       <Suspense fallback={<LoadingView />}>{children}</Suspense>
     </SafeAreaView>
   )

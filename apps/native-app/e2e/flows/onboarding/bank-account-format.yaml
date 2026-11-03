@@ -6,7 +6,7 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 # Finish onboarding without a bank account.
-- tapOn: ${output.t["accountChoice.new.title"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["onboarding.finishWithoutBankTransfer"]}
 - extendedWaitUntil:
     visible: ${output.t["home.pay"]}

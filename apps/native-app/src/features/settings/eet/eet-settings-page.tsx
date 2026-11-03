@@ -399,13 +399,7 @@ function StoredCertificateDetails({
 
   return (
     <YStack gap="3">
-      <YStack
-        gap="1"
-        p="3"
-        rounded="lg"
-        borderWidth={1}
-        borderColor="border-color"
-      >
+      <YStack gap="1" p="3" rounded="lg" bg="neutral-soft">
         <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
           {t("settings.eet.certificate.eic")}
         </Text>

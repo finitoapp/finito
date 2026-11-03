@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import {
   catalogItemsPageQuery,
@@ -17,23 +16,24 @@ import { Suspense, useCallback, useMemo, useState } from "react"
 import { YStack } from "tamagui"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
+import { useMasterPane } from "../../../core/master-pane.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatMoney } from "../../../lib/format-money.ts"
 import { CategoryFilterBar } from "../../shared/category-filter-bar.tsx"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
 
-/** Catalog items, as web's `ItemsPage`. */
+/** Catalog items, as web's `ItemsPage`, under Settings (navigation/0003). */
 export function ItemsPage() {
   const { t } = useTranslation()
   return (
     <CatalogListShell
-      tab="items"
       title={t("catalog.items.title")}
       addLabel={t("catalog.items.add")}
-      addHref="/catalog/items/new"
+      addHref="/settings/items/new"
     >
       <ItemsSettingsBody />
     </CatalogListShell>
@@ -55,13 +55,15 @@ function ItemsSettingsBody() {
   )
   const hasAny = usedCategoryIds.size > 0
   const confirmOpen = useIsConfirmOpen()
+  // Beside an item's form on a wide window the form owns the scan.
+  const inMasterPane = useMasterPane() !== null
   const { data: allItems } = useEvoluQuery(catalogItemsQuery)
 
   // A scan opens the item it identifies, or a new one carrying the code.
   // Several matches (the code is not unique across devices) are left to the
   // list: searching for the code shows exactly them.
   useHardwareScanner({
-    enabled: !confirmOpen,
+    enabled: !confirmOpen && !inMasterPane,
     onScan: (code) => {
       const matches = findCatalogItemsByScanCode(allItems, code)
       const [match] = matches
@@ -71,10 +73,10 @@ function ItemsSettingsBody() {
       )
       if (matches.length > 1) setSearch(code)
       else if (match === undefined)
-        router.push({ pathname: "/catalog/items/new", params: { scan: code } })
+        router.push({ pathname: "/settings/items/new", params: { scan: code } })
       else
         router.push({
-          pathname: "/catalog/items/[catalogItemId]",
+          pathname: "/settings/items/[catalogItemId]",
           params: { catalogItemId: match.id },
         })
     },
@@ -147,7 +149,7 @@ function ItemsList({
       renderRow={(item) => ({
         id: item.id,
         title: getStaffDisplayName(item),
-        href: `/catalog/items/${item.id}`,
+        href: `/settings/items/${item.id}`,
         subtitle:
           item.categoryId === null
             ? undefined

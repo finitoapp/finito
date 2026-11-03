@@ -30,7 +30,7 @@ tags: [withdraw]
     file: ../../subflows/open-settings-entry.yaml
     env:
       TITLE: ${output.t["settings.paymentAccounts.title"]}
-- tapOn: ${output.re(output.t["settings.paymentAccounts.method.spark"])}
+- tapOn: ${output.re(output.t["settings.paymentAccounts.method.bitcoin"])}
 - scrollUntilVisible:
     element: ${output.t["settings.withdrawals.title"]}
 - tapOn: ${output.t["settings.withdrawals.title"]}

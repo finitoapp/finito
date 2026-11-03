@@ -7,5 +7,5 @@ appId: ${APP_ID}
 - clearState
 - runFlow: launch.yaml
 - extendedWaitUntil:
-    visible: ${output.t["onboarding.title"]}
+    visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000

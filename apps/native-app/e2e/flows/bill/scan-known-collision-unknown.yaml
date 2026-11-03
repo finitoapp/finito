@@ -57,7 +57,7 @@ tags: [bill]
 - extendedWaitUntil:
     visible: '${output.tv("bill.itemsCount", { value: 2 })}'
     timeout: 10000
-- assertVisible: \$8\.00
+- assertVisible: \$8
 # An unrecognized code offers to create it; cancelling adds nothing.
 - runFlow:
     file: ../../subflows/inject-scan.yaml

@@ -1,5 +1,4 @@
 import { formatMintLabel } from "@payky/app-shared/cashu-withdraw-flow"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   type CashuMoveError,
@@ -49,6 +48,7 @@ import { useAccess, useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useCashuRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../../lib/format-money.ts"
 import { fontSize } from "../../../theme/tokens.ts"
 import { useCashuWalletSnapshot } from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
 

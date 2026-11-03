@@ -1,9 +1,11 @@
 # web settings-payment-accounts.spec.ts: "reorder payment methods and let the
 # first available one be the default". Row order and the Default badge are
-# read by position (above/below a method's name); disabled and switch states
-# are checked on Android only.
+# read by position (above/below a method's name); the switch state is checked
+# on Android only. Android only as a whole: a row is moved by dragging its
+# grip, and Maestro's web driver cannot drag from an element (a `from` swipe
+# only scrolls the window there, and the conventions rule out coordinates).
 appId: ${APP_ID}
-tags: [settings]
+tags: [settings, android-only]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow:
@@ -18,11 +20,14 @@ tags: [settings]
 - assertVisible:
     text: ${output.t["settings.paymentAccounts.default"]}
     above: ${output.t["settings.paymentAccounts.method.iban"]}
-# Move the bank transfer to the top: it becomes the default.
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: '${output.tv("settings.paymentAccounts.moveUp.aria", { name: output.t["settings.paymentAccounts.method.iban"] })}'
+# Drag the bank transfer to the top: it becomes the default. The swipe starts
+# on the row's grip and ends near the top of the screen, past the first row,
+# so the row lands first wherever the list sits.
+- swipe:
+    from:
+      text: '${output.re(output.tv("settings.paymentAccounts.reorder.aria", { name: output.t["settings.paymentAccounts.method.iban"] }))}'
+    direction: UP
+    duration: 800
 - extendedWaitUntil:
     visible:
       text: ${output.t["settings.paymentAccounts.method.iban"]}
@@ -31,13 +36,6 @@ tags: [settings]
 - assertVisible:
     text: ${output.t["settings.paymentAccounts.default"]}
     above: ${output.t["settings.paymentAccounts.method.cashRegister"]}
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - assertVisible:
-          text: '${output.re(output.tv("settings.paymentAccounts.moveUp.aria", { name: output.t["settings.paymentAccounts.method.iban"] }))}'
-          enabled: false
 # Turning it off hands the default to the next available method.
 - runFlow:
     file: ../../subflows/tap-id.yaml

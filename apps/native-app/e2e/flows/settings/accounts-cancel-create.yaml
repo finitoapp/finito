@@ -10,8 +10,8 @@ tags: [settings]
       ROUTE: settings/accounts
       TEXT: ${output.t["settings.accounts.title"]}
 - scrollUntilVisible:
-    element: ${output.t["accountChoice.new.title"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+    element: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["settings.accounts.create.confirm.cancel"]}
 # Still one account, still here.
 - assertVisible: ${output.t["settings.accounts.title"]}

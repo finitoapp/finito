@@ -1,39 +1,37 @@
 import type { ComponentProps } from "react"
 import { type GetProps, styled, Input as TamaguiInput } from "tamagui"
-import { fontSize, radius } from "../../theme/tokens.ts"
+import { control, fontSize, shape } from "../../theme/tokens.ts"
 import { useFieldLabelId, useFieldLabelText } from "./field.tsx"
 
 /**
- * Web `apps/web-app/src/components/ui/input.tsx`, on Tamagui `Input`.
+ * Web `apps/web-app/src/components/ui/input.tsx`, on Tamagui `Input`, in
+ * fazole.fit's field (Linky's `packages/ui/src/styles.ts` `fieldStyle`): a
+ * 12-round filled control 44 high, `px-3 py-2.5`, body text, no border at
+ * rest; a focus or an `invalid` field shows one (`ring`, `destructive`) in
+ * the space a transparent border keeps, so the text never moves.
  *
- * Tailwind mirrored: `rounded-lg border border-input bg-transparent px-2.5
- * py-1 text-base placeholder:text-muted-foreground focus-visible:border-ring
- * disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive
- * dark:bg-input/30 dark:disabled:bg-input/80`.
- *
- * Native differences: web's `h-8` (32) becomes a minimum of 40, because a
- * text input takes no `hitSlop` and the field itself is the touch target;
- * the focus ring (`ring-3 ring-ring/50`) is only the border color; `invalid`
- * stands in for `aria-invalid`. Every TextInput prop passes through, so
- * `secureTextEntry`, `contextMenuHidden` and the autofill props keep working
- * where a screen relies on them.
+ * Native differences: `invalid` stands in for `aria-invalid`. Every
+ * TextInput prop passes through, so `secureTextEntry`, `contextMenuHidden`
+ * and the autofill props keep working where a screen relies on them.
  */
 
 const InputFrame = styled(TamaguiInput, {
   name: "Input",
-  minH: 40,
-  rounded: radius.lg,
+  minH: control.md,
+  rounded: shape.control,
   borderWidth: 1,
-  borderColor: "input focus:ring",
+  borderColor: "transparent focus:ring",
+  // The ring is the focus mark; no browser outline on top of it.
+  outlineWidth: 0,
   bg: "input-bg",
   // Not `px`: on native Tamagui expands it to paddingStart/End too, which
   // beat a caller's `pl`/`pr` (an icon inside the field).
-  pl: 10,
-  pr: 10,
-  py: 4,
+  pl: 12,
+  pr: 12,
+  py: 10,
   color: "color",
   fontSize: fontSize.base,
-  placeholderTextColor: "muted-foreground",
+  placeholderTextColor: "foreground-40",
   caretColor: "primary",
 
   variants: {

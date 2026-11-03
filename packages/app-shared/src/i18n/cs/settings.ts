@@ -654,6 +654,7 @@ export const csSettings = {
   "settings.paymentAccounts.method.spark": "Bitcoin",
   "settings.paymentAccounts.moveDown.aria": "Posunout {name} dolů",
   "settings.paymentAccounts.moveUp.aria": "Posunout {name} nahoru",
+  "settings.paymentAccounts.reorder.aria": "Změnit pořadí: {name}",
   "settings.paymentAccounts.order.description":
     "Zákazník uvidí platební metody v tomto pořadí. První dostupná se otevře automaticky.",
   "settings.paymentAccounts.status.currencyMismatch":
@@ -662,7 +663,7 @@ export const csSettings = {
     "V této verzi aplikace zatím není dostupné",
   "settings.paymentAccounts.status.missingIban":
     "Pro zapnutí doplňte bankovní účet",
-  "settings.paymentAccounts.title": "Platební účty",
+  "settings.paymentAccounts.title": "Platební metody",
   "settings.paymentNumberSeries.day.default.description":
     "Přidat do generovaných čísel plateb dvouciferný den",
   "settings.paymentNumberSeries.day.default.title": "Zobrazit den",
@@ -1261,4 +1262,9 @@ export const csSettings = {
     "Peněženka není dostupná. Zkontrolujte adresu a připojení.",
   "settings.lightningAddress.error.invalid":
     "Peněženka odpověděla něčím, s čím {appName} neumí pracovat.",
+  "settings.paymentAccounts.method.bitcoin": "Bitcoin",
+  "settings.bitcoin.enabled.label": "Přijímat Bitcoin",
+  "settings.bitcoin.wallet.spark": "Spark",
+  "settings.salesGroup": "PRODEJ",
+  "catalog.items.form.category.new.placeholder": "Nová kategorie",
 } satisfies Record<keyof typeof enSettings, string>

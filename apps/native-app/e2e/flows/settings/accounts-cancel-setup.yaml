@@ -12,14 +12,14 @@ tags: [settings]
       ROUTE: settings/accounts
       TEXT: ${output.t["settings.accounts.title"]}
 - scrollUntilVisible:
-    element: ${output.t["accountChoice.new.title"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+    element: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["settings.accounts.create.confirm.confirm"]}
 - extendedWaitUntil:
-    visible: ${output.t["onboarding.title"]}
+    visible: ${output.t["onboarding.welcome.new"]}
     timeout: 15000
 # Cancel setup instead of completing onboarding.
 - scrollUntilVisible:

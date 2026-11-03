@@ -1,5 +1,4 @@
 import { sqliteTrue } from "@evolu/common"
-import { formatMoney } from "@payky/app-shared/format-money"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
   parseTipFixedAmounts,
@@ -37,6 +36,7 @@ import {
 import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { parseTipSearch } from "./tip-search.ts"
 

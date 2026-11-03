@@ -9,7 +9,7 @@ import {
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { createStore, Provider } from "jotai"
-import { Suspense, useEffect, useState } from "react"
+import { type ComponentType, Suspense, useEffect, useState } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
@@ -34,16 +34,20 @@ import {
   menuSidebarMinWidth,
   menuSidebarWidth,
 } from "../src/components/menu-nav.tsx"
-import { WebColumn } from "../src/components/web-column.tsx"
+import { paneGap, WebColumn } from "../src/components/web-column.tsx"
 import {
   routeFallbackMounted,
   routeFallbackUnmounted,
   useIdleAfterFirstScreen,
 } from "../src/core/first-screen.ts"
-import { menuPositionOf } from "../src/core/menu-routes.ts"
+import { MasterPaneContext } from "../src/core/master-pane.ts"
+import { menuDetailRootOf, menuPositionOf } from "../src/core/menu-routes.ts"
 import { queryClient } from "../src/core/query-client.ts"
 import { resolveTheme } from "../src/core/theme-preference.ts"
+import { BillHistoryPage } from "../src/features/activity/bill-history-page.tsx"
+import { PaymentHistoryPage } from "../src/features/activity/payment-history-page.tsx"
 import { removeStaleExportFolders } from "../src/features/settings/evolu-export/evolu-export-io"
+import { SettingsPage } from "../src/features/settings/settings-page.tsx"
 import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { tamaguiConfig } from "../tamagui.config.ts"
@@ -155,6 +159,17 @@ function ThemedApp() {
 }
 
 /**
+ * The root screens a wide window draws beside their details
+ * (navigation/0002), by the path `menuDetailRootOf` names: the same page
+ * components the routes render, mounted a second time left of the stack.
+ */
+const masterPages: Readonly<Record<string, ComponentType>> = {
+  "/activity": PaymentHistoryPage,
+  "/activity/bills": BillHistoryPage,
+  "/settings": SettingsPage,
+}
+
+/**
  * The navigator on the app's theme. React Navigation draws screens and their
  * transitions on its own theme's background, light grey by default, so a
  * route that suspends on its first open (rendering nothing until its data is
@@ -164,12 +179,21 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const theme = useTheme()
   const base = dark ? DarkTheme : DefaultTheme
   const background = theme.background.val
-  // The menu section (navigation/0001): the sidebar on every screen of it on
-  // a large window, the bottom bar on a tab's root screen otherwise.
-  const menu = menuPositionOf(usePathname())
+  // The tabs (navigation/0001, navigation/0002): the rail on every screen of
+  // them on a large window, the terminal's included; the bottom bar on a
+  // menu tab's root screen otherwise (home keeps its hamburger).
+  const pathname = usePathname()
+  const menu = menuPositionOf(pathname)
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   const sidebar = menu !== undefined && wide
-  const bar = menu?.root === true && !wide
+  const bar = menu?.root === true && menu.tab !== "terminal" && !wide
+  // A detail screen on a wide window sits right of the root it was opened
+  // from, as Linky's desktop split view. The stack keeps its place in the
+  // tree either way, so navigation state survives the window resizing.
+  const masterPath = wide ? menuDetailRootOf(pathname) : undefined
+  const MasterPage =
+    masterPath === undefined ? undefined : masterPages[masterPath]
+  const panes = MasterPage !== undefined
   return (
     <ThemeProvider
       value={{
@@ -181,15 +205,30 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
         <XStack flex={1}>
           {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
           <View flex={1}>
-            <WebColumn reservedWidth={sidebar ? menuSidebarWidth : 0}>
+            <WebColumn
+              reservedWidth={sidebar ? menuSidebarWidth : 0}
+              panes={panes}
+            >
               <View flex={1}>
                 {/* Its own boundary: the EET settings query suspends on an account switch. */}
                 <Suspense fallback={null}>
                   <EetSandboxBanner />
                 </Suspense>
-                <View flex={1}>
-                  <Stack screenOptions={{ headerShown: false }} />
-                </View>
+                <XStack flex={1} gap={panes ? paneGap : 0}>
+                  {MasterPage === undefined ? null : (
+                    <View flex={0.88} minW={0}>
+                      <MasterPaneContext value={masterPath ?? null}>
+                        {/* Its own boundary: the root's queries must not blank the detail. */}
+                        <Suspense fallback={null}>
+                          <MasterPage />
+                        </Suspense>
+                      </MasterPaneContext>
+                    </View>
+                  )}
+                  <View flex={panes ? 1.12 : 1} minW={0}>
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </View>
+                </XStack>
               </View>
             </WebColumn>
           </View>

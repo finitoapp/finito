@@ -1,4 +1,3 @@
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import { withdrawalStatusKey } from "@payky/app-shared/withdraw-display"
 import type { WithdrawalView } from "@payky/core/modules/withdraw/withdraw-queries"
 import LoaderCircle from "lucide-react-native/icons/loader-circle"
@@ -15,6 +14,7 @@ import {
 } from "../../components/ui/collapsible.tsx"
 import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import type { ThemeColor } from "../../theme/themes.ts"
 
 /** The withdrawal screens' small shared display pieces. */

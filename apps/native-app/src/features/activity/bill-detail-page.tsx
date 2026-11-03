@@ -4,7 +4,6 @@ import {
   paymentStatusLabelKey,
 } from "@payky/app-shared/activity-labels"
 import { formatDateTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
@@ -48,6 +47,7 @@ import {
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { EetSaleStatusLabel } from "../shared/eet-sale-status.tsx"

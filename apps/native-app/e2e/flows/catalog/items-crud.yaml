@@ -6,7 +6,7 @@ tags: [catalog]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - assertVisible: ${output.t["catalog.items.empty.title"]}
 - runFlow:
@@ -85,7 +85,7 @@ tags: [catalog]
 - runFlow:
     file: ../../subflows/reopen.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Espresso
 - extendedWaitUntil:
