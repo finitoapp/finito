@@ -211,6 +211,10 @@ export function RestoreAccountStep({
                   variant="outline"
                   size="sm"
                   label={suggestion}
+                  // On web a press would first blur the word field, which
+                  // clears the active slot and these suggestions with it;
+                  // Android keeps the focus (`keyboardShouldPersistTaps`).
+                  onMouseDown={(event) => event.preventDefault()}
                   onPress={() => complete(suggestion)}
                 />
               ))}
