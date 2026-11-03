@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react"
+import { Platform } from "react-native"
 import { type GetProps, styled, Input as TamaguiInput } from "tamagui"
 import { fontSize, radius } from "../../theme/tokens.ts"
 import { useFieldLabelId, useFieldLabelText } from "./field.tsx"
@@ -52,7 +53,8 @@ export type InputHandle = ComponentProps<typeof InputFrame>["ref"]
  * one `id:` on both platforms (on Android the label's own text matches a text
  * selector too).
  */
-export function Input(props: InputProps & { readonly ref?: InputHandle }) {
+export function Input(rawProps: InputProps & { readonly ref?: InputHandle }) {
+  const props = Platform.OS === "web" ? toWebInputProps(rawProps) : rawProps
   const fieldLabel = useFieldLabelText()
   const name = props["aria-label"] ?? fieldLabel
   // The disabled look is applied here, not as a variant, so `disabled`
@@ -70,4 +72,30 @@ export function Input(props: InputProps & { readonly ref?: InputHandle }) {
       {...props}
     />
   )
+}
+
+/**
+ * Tamagui's web `Input` is a plain `<input>` that drops the React Native
+ * props it marks native-only, so a screen written for Android would lose
+ * them in the web export without a word: `secureTextEntry` becomes web's
+ * `type="password"`, and `onKeyPress` is fed from `onKeyDown` with the
+ * same `{ nativeEvent: { key } }` shape.
+ */
+function toWebInputProps(
+  props: InputProps & { readonly ref?: InputHandle }
+): InputProps & { readonly ref?: InputHandle } {
+  const { secureTextEntry, onKeyPress, onKeyDown, ...rest } = props
+  return {
+    ...rest,
+    ...(secureTextEntry === true ? { type: "password" } : {}),
+    onKeyDown:
+      onKeyPress === undefined
+        ? onKeyDown
+        : (event) => {
+            onKeyPress({ nativeEvent: { key: event.key } } as Parameters<
+              typeof onKeyPress
+            >[0])
+            onKeyDown?.(event)
+          },
+  }
 }

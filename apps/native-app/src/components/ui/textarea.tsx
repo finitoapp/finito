@@ -1,3 +1,4 @@
+import { Platform } from "react-native"
 import { type GetProps, styled, TextArea } from "tamagui"
 import { fontSize, radius } from "../../theme/tokens.ts"
 import { useFieldLabelId, useFieldLabelText } from "./field.tsx"
@@ -39,7 +40,8 @@ export type TextareaProps = GetProps<typeof TextareaFrame>
  * one `id:` on both platforms (on Android the label's own text matches a text
  * selector too).
  */
-export function Textarea(props: TextareaProps) {
+export function Textarea(rawProps: TextareaProps) {
+  const props = Platform.OS === "web" ? toWebTextareaProps(rawProps) : rawProps
   const fieldLabel = useFieldLabelText()
   const name = props["aria-label"] ?? fieldLabel
   return (
@@ -50,4 +52,21 @@ export function Textarea(props: TextareaProps) {
       {...props}
     />
   )
+}
+
+/**
+ * Tamagui's web `TextArea` is a plain `<textarea>`, which drops the native
+ * `secureTextEntry` and has no `type="password"`; the glyphs are masked
+ * with `-webkit-text-security` instead, which every current browser reads.
+ */
+function toWebTextareaProps(props: TextareaProps): TextareaProps {
+  const { secureTextEntry, ...rest } = props
+  if (secureTextEntry !== true) return rest
+  return {
+    ...rest,
+    style: [
+      rest.style,
+      { WebkitTextSecurity: "disc" },
+    ] as TextareaProps["style"],
+  }
 }
