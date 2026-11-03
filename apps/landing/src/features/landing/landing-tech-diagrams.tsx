@@ -95,12 +95,11 @@ const positionOf = (
 ): Point => (wide ? item.at : (item.narrow ?? { x: item.at.y, y: item.at.x }))
 
 const nodeToneClassNames = {
-  plain: "bg-card text-(--landing-ink) shadow-md ring-1 ring-border",
+  plain: "bg-card text-(--landing-ink) shadow-md",
   money:
     "bg-primary text-primary-foreground shadow-[0_0_28px_6px] shadow-primary/45",
-  risk: "border-2 border-dashed border-destructive/70 bg-card text-destructive shadow-[0_0_28px_6px] shadow-destructive/25",
-  ghost:
-    "border-2 border-dashed border-muted-foreground/40 bg-transparent text-muted-foreground",
+  risk: "bg-destructive/12 text-destructive shadow-[0_0_28px_6px] shadow-destructive/25",
+  ghost: "bg-muted-foreground/12 text-muted-foreground",
 } satisfies Record<NodeTone, string>
 
 const linkToneProps = {
@@ -145,7 +144,7 @@ function StageNodeView({
       </span>
       {/* A chip of its own, so a line running on below the node passes behind it. */}
       {node.label === undefined ? null : (
-        <span className="absolute top-full left-1/2 mt-2 w-max max-w-[6.5rem] -translate-x-1/2 rounded-lg bg-card/95 px-2 py-0.5 text-center text-xs leading-snug font-semibold text-pretty shadow-sm ring-1 ring-border/60 md:max-w-[9rem] md:text-sm">
+        <span className="absolute top-full left-1/2 mt-2 w-max max-w-[6.5rem] -translate-x-1/2 rounded-lg bg-card/95 px-2 py-0.5 text-center text-xs leading-snug font-semibold text-pretty shadow-sm md:max-w-[9rem] md:text-sm">
           {t(node.label)}
           {node.note === undefined ? null : (
             <span className="block font-normal text-muted-foreground">
@@ -418,7 +417,7 @@ function CompareLegend({ className }: { readonly className?: string }) {
       <li className="flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="w-6 shrink-0 border-t-2 border-dashed border-(--landing-ink)"
+          className="h-0.5 w-6 shrink-0 rounded-full bg-(--landing-ink)"
         />
         {t("landing.tech.compare.legend.talk")}
       </li>
@@ -900,7 +899,7 @@ const targetSides = {
   payky: {
     title: "landing.tech.compare.paykyFlow.title",
     titleClassName: "text-(--landing-ink)",
-    cardClassName: "relative isolate overflow-hidden ring-1 ring-primary/30",
+    cardClassName: "relative isolate overflow-hidden bg-accent",
   },
 } as const satisfies Record<
   string,
@@ -1488,7 +1487,7 @@ export function GlassSafeDiagram() {
             ???
           </span>
         </Loupe>
-        <p className="absolute right-0 bottom-[8%] z-20 -rotate-[9deg] rounded-sm border-[3px] border-double border-destructive bg-card/90 px-2.5 py-1 font-mono text-xs font-bold tracking-[0.1em] text-destructive uppercase shadow-sm">
+        <p className="absolute right-0 bottom-[8%] z-20 -rotate-[9deg] rounded-sm bg-destructive/12 px-2.5 py-1 font-mono text-xs font-bold tracking-[0.1em] text-destructive uppercase shadow-sm">
           {t("landing.tech.transparency.diagram.stamp")}
         </p>
       </TargetCard>
@@ -1501,7 +1500,7 @@ export function GlassSafeDiagram() {
             <Gear cx={50} cy={50} outer={42} teeth={14} seconds={14} />
           </svg>
         </Loupe>
-        <span className="absolute bottom-[4%] left-[2%] z-20 flex size-12 items-center justify-center rounded-full bg-card text-(--landing-ink) shadow-md ring-1 ring-border">
+        <span className="absolute bottom-[4%] left-[2%] z-20 flex size-12 items-center justify-center rounded-full bg-card text-(--landing-ink) shadow-md">
           <SmartphoneIcon aria-hidden="true" className="size-5" />
           <KeyRoundIcon
             aria-hidden="true"

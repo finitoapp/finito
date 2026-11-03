@@ -17,12 +17,8 @@ tags: [tables-overview]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: ""
-      TEXT: ${output.t["home.pay"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.pos"]}
+      ROUTE: catalog/sales
+      TEXT: ${output.t["bill.table.dialog.none"]}
 - runFlow: ../../subflows/park-cart.yaml
 # Table A stays free; the bill sits in the "no table" strip, above it.
 - assertVisible:

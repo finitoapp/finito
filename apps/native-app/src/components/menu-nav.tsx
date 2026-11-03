@@ -1,36 +1,43 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { router } from "expo-router"
+import { router, usePathname } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
+import Calculator from "lucide-react-native/icons/calculator"
 import Clock3 from "lucide-react-native/icons/clock-3"
-import House from "lucide-react-native/icons/house"
-import Package from "lucide-react-native/icons/package"
 import Settings from "lucide-react-native/icons/settings"
-import { useEffect, useRef, useState } from "react"
-import { Animated, Easing } from "react-native"
+import Store from "lucide-react-native/icons/store"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { Animated, Easing, Image, Platform } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { Text, useTheme, View, XStack, YStack } from "tamagui"
+import { useTheme, View, XStack, YStack } from "tamagui"
+import appIcon from "../../assets/app-icon.png"
 import {
   type MenuTab,
+  menuPositionOf,
   menuTabOrder,
   menuTabTargets,
 } from "../core/menu-routes.ts"
+import {
+  useNostrIdentity,
+  useNostrProfile,
+} from "../hooks/use-nostr-profile.ts"
 import { useTranslation } from "../hooks/use-translation.ts"
 import { isReduceMotionEnabled } from "../platform/reduce-motion.ts"
-import { fontSize, fontWeight, maxWidth, radius } from "../theme/tokens.ts"
+import { control, maxWidth, shape } from "../theme/tokens.ts"
 import { Icon } from "./ui/icon.tsx"
 
-/** The phone bar's height above the safe area, web's `h-12`, its icons centred; the active one rises over the marker. */
-export const menuBarHeight = 48
+/** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
+export const menuBarHeight = control.md + 8
 
-/** The large monitor's sidebar, web's `w-56`. */
-export const menuSidebarWidth = 224
+/** The wide window's rail, Linky's `NavigationRail` (`$hero`, 112). */
+export const menuSidebarWidth = 112
 
-/** Web's `lg`, from which the sidebar replaces the bottom bar. */
-export const menuSidebarMinWidth = 1024
+/** Linky's `wide` breakpoint, from which the rail replaces the bottom bar. */
+export const menuSidebarMinWidth = 961
 
 const menuTabFaces = {
+  terminal: { icon: Calculator, labelKey: "nav.home" },
   activity: { icon: Clock3, labelKey: "nav.activity" },
-  catalog: { icon: Package, labelKey: "nav.catalog" },
+  catalog: { icon: Store, labelKey: "nav.pos" },
   settings: { icon: Settings, labelKey: "nav.settings" },
 } as const satisfies Record<
   MenuTab,
@@ -39,76 +46,65 @@ const menuTabFaces = {
 
 /**
  * Web `apps/web-app/src/components/menu-nav.tsx`: the menu section's
- * navigation (navigation/0001), a bottom bar on a phone, drawn only on a
- * tab's root screen, and a left sidebar on a large window, drawn on every
- * screen of the section. The root layout mounts it beside its stack, which
- * leaves it the room it takes. Switching tabs replaces the screen, so Back
- * and Home leave the section instead of rewinding through tabs.
+ * navigation (navigation/0001, native's navigation/0002), drawn as Linky's
+ * (`packages/ui/src/navigation.tsx`): on a phone the `TabBar`, a row of
+ * icon-only tabs on the raised surface, the active one on a solid accent
+ * pill that slides from the tab that had it; on a wide window the
+ * `NavigationRail`, a 112-wide column of icon-only entries under the
+ * business's picture, the active one on the soft accent, with Settings
+ * pinned to the bottom. Both open with the terminal, a calculator: on the
+ * phone it is Home, the way out of the section; on the rail, which stays
+ * on every screen, it is the terminal's own tab. The root layout mounts
+ * it beside its stack, which leaves it the room it takes, and keeps it
+ * mounted across the tab routes, which is what lets the pill travel.
+ * Switching tabs replaces the screen, so Back and Home leave the section
+ * instead of rewinding through tabs.
  *
- * Tailwind mirrored: the bar `border-t bg-background h-12 max-w-xl` with
- * `pb-[env(safe-area-inset-bottom)]`, its tabs a `size-6` icon alone, named
- * by its label for TalkBack; the sidebar `w-56 border-r p-3 gap-1`, its rows
- * `gap-3 px-3 py-2.5 text-sm font-medium rounded-lg`, the active one
- * `bg-muted`. The active tab is `text-primary`, the rest
- * `text-muted-foreground`.
- *
- * Motion, as web's (`sliding-pill.tsx`'s spring, here its 0.35 s ease-out
- * as `sliding-pill.tsx` ports it): the active tab's marker, a half-circle bubble
- * under the bar's icon (flat side down) or the row's background in the sidebar, slides from
- * the tab that had it; the bar's centred active icon grows to 1.1 and
- * rises 4 px over the marker while its color fades to primary (two icons cross-fading, so it runs on the native driver);
- * a press dips the icon to 0.9. The layout keeps this nav mounted across
- * the tab routes, which is what lets the marker travel. Both open with
- * Home, the way out of the section, ahead of the tabs. Reduced motion
- * switches at once and drops the dip.
- *
- * Native differences: the sidebar's label switches color at once, where
- * web's fades with the icon.
+ * Linky's labels are the entries' names (TalkBack, a browser tooltip),
+ * never drawn. Motion is Linky's `base` transition (220 ms ease-out);
+ * reduced motion switches at once.
  */
-const slide = { duration: 350, easing: Easing.out(Easing.cubic) }
+const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
 
 /** Drives `value` to `toValue` on the slide curve, or at once under reduced motion. */
-const animateTo = (
-  value: Animated.Value,
-  toValue: number,
-  duration = slide.duration
-) => {
+const animateTo = (value: Animated.Value, toValue: number) => {
   if (isReduceMotionEnabled()) {
     value.setValue(toValue)
     return
   }
   Animated.timing(value, {
     toValue,
-    duration,
+    duration: slide.duration,
     easing: slide.easing,
     useNativeDriver: true,
   }).start()
 }
 
 /**
- * The marker's offset along the nav: `step` is one tab's extent (0 until
+ * The pill's offset along the bar: `step` is one tab's extent (0 until
  * measured), `index` the active tab. The first measure places it at once.
  */
-function useMarkerOffset(index: number, step: number, inset: number) {
+function usePillOffset(index: number, step: number) {
   const [offset] = useState(() => new Animated.Value(0))
   const placed = useRef(false)
   useEffect(() => {
     if (step === 0) return
-    const target = index * step + inset
+    const target = index * step
     if (placed.current) {
       animateTo(offset, target)
     } else {
       offset.setValue(target)
       placed.current = true
     }
-  }, [index, step, inset, offset])
+  }, [index, step, offset])
   return offset
 }
 
-/** The bar's marker, web's `h-1.5 w-3 rounded-t-full bottom-0.5`. */
-const markerWidth = 12
-const markerHeight = 6
-const sidebarGap = 4
+/** Linky's rail entries: `$row` (64) high, `gap-2` apart, `px-1 py-2`. */
+const railEntryHeight = 64
+const railGap = 4
+/** Linky's rail header: Fazole's 44 logo tile, `mb-5` above the entries. */
+const railLogoSize = 44
 
 export function MenuNav({
   active,
@@ -120,59 +116,44 @@ export function MenuNav({
   const { t } = useTranslation()
   const theme = useTheme()
   const insets = useSafeAreaInsets()
-  // Home comes first, so the active tab sits one slot further along.
-  const index = menuTabOrder.indexOf(active) + 1
+  const index = menuTabOrder.indexOf(active)
   const [tabWidth, setTabWidth] = useState(0)
-  const [rowHeight, setRowHeight] = useState(0)
-  const barOffset = useMarkerOffset(
-    index,
-    tabWidth,
-    (tabWidth - markerWidth) / 2
-  )
-  const sidebarOffset = useMarkerOffset(
-    index,
-    rowHeight === 0 ? 0 : rowHeight + sidebarGap,
-    0
-  )
+  const barOffset = usePillOffset(index, tabWidth)
 
   if (variant === "sidebar") {
+    const tabs = menuTabOrder.filter((tab) => tab !== "settings")
     return (
       <YStack
         role="navigation"
         aria-label={t("nav.menu")}
         w={menuSidebarWidth}
         shrink={0}
-        borderRightWidth={1}
-        borderColor="border-color"
         bg="background"
-        p={12}
-        pt={12 + insets.top}
-        gap={sidebarGap}
+        pt={16 + insets.top}
+        px={8}
+        pb={12}
+        gap={railGap}
       >
-        {rowHeight === 0 ? null : (
-          <Animated.View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: 12 + insets.top,
-              left: 12,
-              right: 12,
-              height: rowHeight,
-              borderRadius: radius.lg,
-              backgroundColor: theme.muted?.val,
-              transform: [{ translateY: sidebarOffset }],
-            }}
-          />
-        )}
-        <MenuHomeEntry compact={false} onLayoutHeight={setRowHeight} />
-        {menuTabOrder.map((tab) => (
-          <MenuNavLink
-            key={tab}
-            tab={tab}
-            active={tab === active}
-            compact={false}
-          />
-        ))}
+        <View items="center" mb={20}>
+          <Suspense fallback={<RailTile picture={null} />}>
+            <RailProfileTile />
+          </Suspense>
+        </View>
+        <YStack flex={1} gap={railGap}>
+          {tabs.map((tab) => (
+            <MenuNavLink
+              key={tab}
+              tab={tab}
+              active={tab === active}
+              variant="rail"
+            />
+          ))}
+        </YStack>
+        <MenuNavLink
+          tab="settings"
+          active={active === "settings"}
+          variant="rail"
+        />
       </YStack>
     )
   }
@@ -181,41 +162,44 @@ export function MenuNav({
     <View
       role="navigation"
       aria-label={t("nav.menu")}
-      borderTopWidth={1}
-      borderColor="border-color"
-      bg="background"
-      pb={insets.bottom}
+      bg="surface-raised"
+      px={8}
+      py={4}
+      pb={4 + insets.bottom}
     >
       <XStack
-        h={menuBarHeight}
+        role="tablist"
+        h={control.md}
         w="100%"
         maxW={maxWidth.xl}
         self="center"
         onLayout={(event) =>
-          setTabWidth(
-            event.nativeEvent.layout.width / (menuTabOrder.length + 1)
-          )
+          setTabWidth(event.nativeEvent.layout.width / menuTabOrder.length)
         }
       >
         {tabWidth === 0 ? null : (
           <Animated.View
             pointerEvents="none"
+            aria-hidden
             style={{
               position: "absolute",
-              bottom: 2,
+              top: 0,
+              bottom: 0,
               left: 0,
-              width: markerWidth,
-              height: markerHeight,
-              borderTopLeftRadius: markerHeight,
-              borderTopRightRadius: markerHeight,
+              width: tabWidth,
+              borderRadius: shape.control,
               backgroundColor: theme.primary?.val,
               transform: [{ translateX: barOffset }],
             }}
           />
         )}
-        <MenuHomeEntry compact />
         {menuTabOrder.map((tab) => (
-          <MenuNavLink key={tab} tab={tab} active={tab === active} compact />
+          <MenuNavLink
+            key={tab}
+            tab={tab}
+            active={tab === active}
+            variant="bar"
+          />
         ))}
       </XStack>
     </View>
@@ -223,28 +207,51 @@ export function MenuNav({
 }
 
 /**
- * Home, ahead of the tabs: it leaves the section the way it was entered, as
- * web's `MenuHomeEntry` (navigation/0001). The section opens from home and
- * its tab switches replace the screen, so going back returns there; a
- * screen opened cold goes home instead. Never the active entry.
+ * The business at the top of the rail: its published picture, the app's
+ * icon until it has one, opening the profile editor (name and picture),
+ * which on a wide window lands beside Settings (navigation/0002). The
+ * stack is first dismissed to Settings, so Back from the editor returns
+ * there wherever the tile was pressed.
  */
-function MenuHomeEntry({
-  compact,
-  onLayoutHeight,
-}: {
-  readonly compact: boolean
-  readonly onLayoutHeight?: (height: number) => void
-}) {
+function RailProfileTile() {
   const { t } = useTranslation()
+  const identity = useNostrIdentity()
+  const profile = useNostrProfile(identity.pubkey)
+  const pathname = usePathname()
+  const name = profile.data?.name ?? null
   return (
-    <MenuNavEntry
-      icon={House}
-      label={t("nav.home")}
-      role="button"
-      active={false}
-      compact={compact}
-      onLayoutHeight={onLayoutHeight}
-      onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+    <View
+      rounded={shape.control}
+      overflow="hidden"
+      cursor="web:pointer"
+      accessible
+      role="link"
+      aria-label={name ?? t("settings.profile.title")}
+      {...(Platform.OS === "web"
+        ? { title: name ?? t("settings.profile.title") }
+        : {})}
+      onPress={() => {
+        if (pathname === "/settings/profile") return
+        router.dismissTo("/settings")
+        router.push("/settings/profile")
+      }}
+    >
+      <RailTile picture={profile.data?.picture ?? null} />
+    </View>
+  )
+}
+
+function RailTile({ picture }: { readonly picture: string | null }) {
+  return (
+    <Image
+      source={picture === null ? appIcon : { uri: picture }}
+      style={{
+        width: railLogoSize,
+        height: railLogoSize,
+        borderRadius: shape.control,
+      }}
+      accessibilityIgnoresInvertColors
+      aria-hidden
     />
   )
 }
@@ -252,140 +259,124 @@ function MenuHomeEntry({
 function MenuNavLink({
   tab,
   active,
-  compact,
+  variant,
 }: {
   readonly tab: MenuTab
   readonly active: boolean
-  readonly compact: boolean
+  readonly variant: "bar" | "rail"
 }) {
   const { t } = useTranslation()
+  const pathname = usePathname()
   const { icon, labelKey } = menuTabFaces[tab]
+  // The terminal's entry on the bar is Home: it leaves the section the way
+  // it was entered, as web's `MenuHomeEntry` (navigation/0001). The section
+  // opens from home and its tab switches replace the screen, so going back
+  // returns there; a screen opened cold goes home instead. On the rail,
+  // which the terminal's own screens share, it dismisses to home.
+  const home = tab === "terminal"
   return (
     <MenuNavEntry
       icon={icon}
       label={t(labelKey)}
-      role="link"
+      role={home && variant === "bar" ? "button" : "tab"}
       active={active}
-      compact={compact}
+      variant={variant}
       onPress={() => {
-        if (!active) router.replace(menuTabTargets[tab].href)
+        if (active) return
+        if (home && variant === "bar") {
+          if (router.canGoBack()) router.back()
+          else router.replace("/")
+        } else if (home) {
+          router.dismissTo("/")
+        } else if (menuPositionOf(pathname)?.tab === tab) {
+          // From a detail of this tab (the rail shows on every screen): back
+          // to the tab's root rather than a second copy of it.
+          router.dismissTo(menuTabTargets[tab].href)
+        } else {
+          router.replace(menuTabTargets[tab].href)
+        }
       }}
     />
   )
 }
 
-/** One entry of the bar or the sidebar: a tab's link or Home's button. */
+/**
+ * One entry of the bar or the rail: a tab's link or Home's button, an icon
+ * named by its label. In the bar the icon cross-fades from muted to
+ * `onAccent` as the pill arrives under it; in the rail the entry itself
+ * takes the soft accent and the accent text color.
+ */
 function MenuNavEntry({
   icon,
   label,
   role,
   active,
-  compact,
+  variant,
   onPress,
-  onLayoutHeight,
 }: {
   readonly icon: LucideIcon
   /** Already translated. */
   readonly label: string
-  readonly role: "link" | "button"
+  readonly role: "tab" | "button"
   readonly active: boolean
-  readonly compact: boolean
+  readonly variant: "bar" | "rail"
   readonly onPress: () => void
-  /** Reports the row's height, for the sidebar's sliding background. */
-  readonly onLayoutHeight?: (height: number) => void
 }) {
   const [progress] = useState(() => new Animated.Value(active ? 1 : 0))
-  const [press] = useState(() => new Animated.Value(1))
   useEffect(() => {
     animateTo(progress, active ? 1 : 0)
   }, [active, progress])
-  const dip = (toValue: number) => {
-    if (!isReduceMotionEnabled()) animateTo(press, toValue, 150)
-  }
-  const iconSize = compact ? 24 : 20
+  const rail = variant === "rail"
+  const iconSize = rail ? 24 : 20
 
   return (
     <View
-      flex={compact ? 1 : undefined}
-      flexDirection="row"
+      flex={rail ? undefined : 1}
+      minH={rail ? railEntryHeight : control.md}
       items="center"
-      justify={compact ? "center" : "flex-start"}
-      gap={12}
-      px={12}
-      py={compact ? 0 : 10}
-      rounded={radius.lg}
-      bg="transparent press:accent"
-      cursor="web:pointer"
-      onLayout={
-        onLayoutHeight === undefined
-          ? undefined
-          : (event) => onLayoutHeight(event.nativeEvent.layout.height)
+      justify="center"
+      py={rail ? 8 : 0}
+      px={rail ? 4 : 0}
+      rounded={shape.control}
+      bg={
+        rail
+          ? active
+            ? "accent"
+            : "transparent press:neutral-soft"
+          : "transparent"
       }
-      onPressIn={() => dip(0.9)}
-      onPressOut={() => dip(1)}
+      cursor="web:pointer"
       onPress={onPress}
       accessible
       role={role}
       aria-label={label}
+      aria-selected={role === "tab" ? active : undefined}
       aria-current={active ? "page" : undefined}
+      {...(Platform.OS === "web" ? { title: label } : {})}
     >
-      <Animated.View
-        style={{
-          width: iconSize,
-          height: iconSize,
-          transform: [
-            {
-              translateY: compact
-                ? progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -4],
-                  })
-                : 0,
-            },
-            {
-              scale: compact
-                ? Animated.multiply(
-                    press,
-                    progress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [1, 1.1],
-                    })
-                  )
-                : press,
-            },
-          ],
-        }}
-      >
-        <Animated.View
-          style={{
-            position: "absolute",
-            opacity: progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [1, 0],
-            }),
-          }}
-        >
-          <Icon icon={icon} size={iconSize} color="muted-foreground" />
-        </Animated.View>
-        <Animated.View style={{ position: "absolute", opacity: progress }}>
-          <Icon
-            icon={icon}
-            size={iconSize}
-            color="primary"
-            strokeWidth={2.75}
-          />
-        </Animated.View>
-      </Animated.View>
-      {compact ? null : (
-        <Text
-          fontSize={fontSize.sm}
-          lineHeight={fontSize.sm}
-          fontWeight={fontWeight.medium}
-          color={active ? "primary" : "muted-foreground"}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
+      {rail ? (
+        <Icon
+          icon={icon}
+          size={iconSize}
+          color={active ? "accent-text" : "muted-foreground"}
+        />
+      ) : (
+        <View w={iconSize} h={iconSize}>
+          <Animated.View
+            style={{
+              position: "absolute",
+              opacity: progress.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }),
+            }}
+          >
+            <Icon icon={icon} size={iconSize} color="muted-foreground" />
+          </Animated.View>
+          <Animated.View style={{ position: "absolute", opacity: progress }}>
+            <Icon icon={icon} size={iconSize} color="primary-foreground" />
+          </Animated.View>
+        </View>
       )}
     </View>
   )

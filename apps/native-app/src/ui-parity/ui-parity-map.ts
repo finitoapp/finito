@@ -414,25 +414,47 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/onboarding/account-choice-step.tsx",
+    native: "src/features/onboarding/welcome-step.tsx",
     web: ["apps/web-app/src/features/shared/account/account-type-choice.tsx"],
     status: "matched",
+    note: "fazole.fit's welcome: the logo, the name and the tagline over two buttons, new and restore (the transfer from another device is offered on the restore page), where web lists the three choices as rows.",
+    allowedDifferences: {
+      VerticalNav:
+        "web lists the account choices as rows; native draws fazole.fit's welcome, two buttons under the logo and the tagline",
+      Button:
+        "fazole.fit's welcome: a primary button for a new business and a secondary one for an existing one",
+    },
   },
   {
     native: "src/features/onboarding/language-select.tsx",
     web: ["apps/web-app/src/features/onboarding/language-select.tsx"],
     status: "matched",
+    note: "fazole.fit's language picker: a round icon button in the welcome screen's top bar that opens a sheet of the languages, the current one marked, where web shows a select.",
     allowedDifferences: {
-      SelectContent:
-        "the native options open in the kit Dialog sheet rather than an anchored popup",
-      SelectTrigger:
-        "the native kit keeps its outlined trigger; web styles this toolbar trigger borderless",
+      Select: "web's select; native opens a dialog from an icon button",
+      SelectContent: "web's select; native opens a dialog from an icon button",
+      SelectGroup: "web's select; native opens a dialog from an icon button",
+      SelectItem: "web's select; native lists the languages as nav rows",
+      SelectTrigger: "web's select; native opens it from a kit icon button",
+      SelectValue:
+        "web's select; the native button shows an icon, not the value",
+      Button: "fazole.fit's icon button in the top bar",
+      Dialog: "the native sheet the languages open in",
+      DialogContent: "the native sheet the languages open in",
+      DialogHeader: "the native sheet's title",
+      DialogTitle: "the native sheet's title",
+      VerticalNav: "the languages as rows, the current one marked",
     },
   },
   {
     native: "src/features/onboarding/onboarding-page.tsx",
     web: ["apps/web-app/src/features/onboarding/onboarding-page.tsx"],
     status: "matched",
+    note: "fazole.fit's onboarding: a welcome screen, then a headed setup or restore page under a top bar; the restore page also offers the transfer from another device.",
+    allowedDifferences: {
+      FadeHeader:
+        "fazole.fit's top bar: the back button, or the language picker on the welcome screen, where web draws a ghost back button in the column",
+    },
   },
   {
     native: "src/features/onboarding/payments-step.tsx",
@@ -825,39 +847,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     note: "Web ChatScrollArea's follow-while-reading and jump-to-latest behavior is Screen's followKey mode on native.",
   },
   {
-    native: "src/features/catalog/categories/categories-page.tsx",
-    web: ["apps/web-app/src/features/catalog/categories/categories-page.tsx"],
-    status: "matched",
-  },
-  {
-    native: "src/features/catalog/categories/edit-category-page.tsx",
-    web: [
-      "apps/web-app/src/features/catalog/categories/category-form-page.tsx",
-    ],
-    status: "matched",
-    allowedDifferences: {
-      Field:
-        "the native InlineEditField composes the same field anatomy for auto-saving edits",
-      FieldError:
-        "the native InlineEditField composes the same validation message for auto-saving edits",
-      FieldLabel:
-        "the native InlineEditField composes the same label for auto-saving edits",
-      Input:
-        "the native InlineEditField composes the same input for auto-saving edits",
-    },
-  },
-  {
-    native: "src/features/catalog/categories/new-category-page.tsx",
-    web: [
-      "apps/web-app/src/features/catalog/categories/category-form-page.tsx",
-    ],
-    status: "matched",
-    allowedDifferences: {
-      CardFooter:
-        "the web SettingsFormCard feature helper composes CardFooter; native composes the same footer directly",
-    },
-  },
-  {
     native: "src/features/settings/debug-console/cashu-shard-debug-card.tsx",
     web: [
       "apps/web-app/src/features/settings/debug-console/cashu-shard-debug-card.tsx",
@@ -1065,18 +1054,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       FieldGroup: "rendered by the sibling fio-token-form.tsx",
       FieldLabel: "rendered by the sibling fio-token-form.tsx",
       PasswordTextarea: "rendered by the sibling fio-token-form.tsx",
-    },
-  },
-  {
-    native: "src/features/settings/home-screen/home-screen-settings-page.tsx",
-    web: [
-      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
-      "apps/web-app/src/features/settings/home-screen/home-screen-settings-page.tsx",
-    ],
-    status: "matched",
-    allowedDifferences: {
-      SavedTick:
-        "native keeps its existing controlled query state and result toast; web InlineEditSwitch shows a brief saved tick",
     },
   },
   {
@@ -1324,6 +1301,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
+      Button:
+        "web's grip is a ghost icon Button; native's DragHandle is an Animated.View with a pan responder and TalkBack move actions",
       Switch:
         "native renders each method's enable toggle with ui/switch directly; web routes the same immediate save through InlineEditSwitch, which wraps ui/switch",
       VerticalNavShell:
@@ -1759,7 +1738,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/terminal-home/pos-overview-page.tsx",
+    native: "src/features/catalog/sales/pos-overview-page.tsx",
     web: ["apps/web-app/src/features/terminal-home/pos-overview-page.tsx"],
     status: "matched",
     allowedDifferences: {
@@ -1774,6 +1753,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       SlidingPillTrack:
         "web gives the control's own border motion's layout animation; RN cannot scale a parent without its children, so the border is drawn behind the control by sliding-pill.tsx",
+      ToggleGroup:
+        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+      ToggleGroupItem:
+        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+      SlidingPillSegmentContent:
+        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
     },
   },
   {
@@ -1853,14 +1838,42 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/catalog/sales/sales-page.tsx",
+    web: [],
+    status: "matched",
+    note: "native's Sales tab, the catalog shell around web's pos mode of home (navigation/0003); web keeps the grid as a mode of home",
+  },
+  {
     native: "src/features/withdraw/withdraw-review-step.tsx",
     web: ["apps/web-app/src/features/withdraw/withdraw-review-step.tsx"],
     status: "matched",
   },
   {
-    native: "src/features/catalog/catalog-tabs.tsx",
-    web: ["apps/web-app/src/features/catalog/catalog-tabs.tsx"],
+    native: "src/features/catalog/items/category-field.tsx",
+    web: [],
     status: "matched",
+    note: "Finito makes a category on the item (navigation/0003): chips of the existing ones and a field for a new name, where web's item form picks from a Select and categories have screens of their own.",
+    allowedDifferences: {
+      Field:
+        "the category field's anatomy, as web's item form draws it around its Select",
+      FieldLabel: "the category field's label",
+      ToggleGroup: "the existing categories as chips, one selected",
+      ToggleGroupItem: "one category chip",
+      Input: "the new category's name",
+      Button:
+        "Save and Discard inside the field while a name is typed, as InlineEditField",
+    },
+  },
+  {
+    native: "src/features/settings/payment-accounts/bitcoin-settings-page.tsx",
+    web: [],
+    status: "matched",
+    note: "Finito's one Bitcoin method (settings/0002): a wallet choice over the Cashu, Lightning address and Spark bodies, which web lists as three methods.",
+    allowedDifferences: {
+      FadeHeader: "the screen's title, Bitcoin",
+      OptionToggleGroup:
+        "the wallet choice: Cashu, the Lightning address or Spark",
+    },
   },
   {
     native: "src/features/notifications/notifications-page.tsx",

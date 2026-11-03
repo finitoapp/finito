@@ -175,5 +175,15 @@ export const enOnboarding = {
     "Have {appName} on another device? Transfer by scanning a QR code",
   "onboarding.restore.unknownWords": "Unknown word: {words}",
   "onboarding.restore.wordLabel": "Word {index}",
+  "onboarding.setup.account.label": "Account number",
+  "onboarding.setup.account.placeholder": "2000145399/0800",
+  "onboarding.setup.name.hint":
+    "Customers see it as the payment recipient's name.",
+  "onboarding.setup.name.label": "Business name",
+  "onboarding.setup.title": "Set up a business",
   "onboarding.title": "Welcome to {appName}",
+  "onboarding.welcome.new": "New business",
+  "onboarding.welcome.restore": "Restore existing",
+  "onboarding.welcome.tagline":
+    "A payment terminal for QR payments by bank, card or bitcoin.",
 } as const

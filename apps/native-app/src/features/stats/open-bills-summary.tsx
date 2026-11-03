@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import { openBillsQuery } from "@payky/core/modules/bill/bill-queries"
 import {
   calculateBillLineSummaries,
@@ -10,6 +9,7 @@ import { useMemo } from "react"
 import { Text, XStack } from "tamagui"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 
 /**
  * How many bills are open right now and what is on them, whatever the
@@ -49,8 +49,7 @@ export function OpenBillsSummary({
       gap="3"
       p="3"
       rounded="lg"
-      borderWidth={1}
-      borderColor="border-color"
+      bg="neutral-soft"
     >
       <Text flex={1} fontWeight="600">
         {t("stats.openBills.title")}

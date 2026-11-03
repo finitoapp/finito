@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import {
   type OpenBillRow,
   openBillsQuery,
@@ -26,6 +25,7 @@ import {
 import { Icon } from "../../components/ui/icon.tsx"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /**

@@ -75,7 +75,7 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.50.00" })}'
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.50" })}'
 - extendedWaitUntil:
     visible: ${output.t["refund.created"]}
     timeout: 15000
@@ -94,7 +94,7 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.200.00" })}'
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.200" })}'
 - extendedWaitUntil:
     visible: ${output.t["refund.created"]}
     timeout: 15000
@@ -109,12 +109,12 @@ tags: [eet]
 - extendedWaitUntil:
     visible:
       text: ${output.t["eet.status.confirmed"]}
-      rightOf: '${output.tv("paymentDetail.eet.reversal.title", { amount: ".CZK.50.00" })}'
+      rightOf: '${output.tv("paymentDetail.eet.reversal.title", { amount: ".CZK.50" })}'
     timeout: 20000
 - extendedWaitUntil:
     visible:
       text: ${output.t["eet.status.confirmed"]}
-      rightOf: '${output.tv("paymentDetail.eet.reversal.title", { amount: ".CZK.200.00" })}'
+      rightOf: '${output.tv("paymentDetail.eet.reversal.title", { amount: ".CZK.200" })}'
     timeout: 20000
 # The payment shows refunded while its bill stays closed.
 - runFlow:
@@ -123,4 +123,4 @@ tags: [eet]
       ROUTE: activity/bills/${output.billId}
       TEXT: ${output.t["billDetail.title"]}
 - assertVisible: ${output.t["bill.status.closed"]}
-- assertVisible: '${output.tv("refund.state.full", { amount: "CZK.250.00" })}'
+- assertVisible: '${output.tv("refund.state.full", { amount: "CZK.250" })}'

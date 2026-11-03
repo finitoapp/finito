@@ -1,6 +1,5 @@
 import { sqliteTrue } from "@evolu/common"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import { useRedirectIfClosedOnOpen } from "@payky/app-shared/use-redirect-if-closed-on-open"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -101,6 +100,7 @@ import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
@@ -909,10 +909,9 @@ function BillCart({
               </CollapsibleTrigger>
               <CollapsibleContent pt={16} testID="bill-summary-panel">
                 <ScrollView style={{ maxHeight: 192 }}>
-                  {summaries.map((summary, index) => (
+                  {summaries.map((summary) => (
                     <SummaryRow
                       key={summary.id}
-                      first={index === 0}
                       summary={summary}
                       locale={locale}
                       disabled={cart.pending}
@@ -1038,7 +1037,6 @@ function BillCart({
 }
 
 function SummaryRow({
-  first,
   summary,
   locale,
   disabled,
@@ -1047,7 +1045,6 @@ function SummaryRow({
   onRemoveOne,
   onRemove,
 }: {
-  readonly first: boolean
   readonly summary: BillLineSummary
   readonly locale: string
   readonly disabled: boolean
@@ -1064,14 +1061,7 @@ function SummaryRow({
   const pulse = useChangePulse(summary.quantity)
 
   return (
-    <XStack
-      py={4}
-      gap={8}
-      items="center"
-      justify="space-between"
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
-    >
+    <XStack py={4} gap={8} items="center" justify="space-between">
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.sm}
@@ -1189,7 +1179,7 @@ function CatalogEmpty() {
       <Button
         variant="outline"
         label={t("catalog.items.add")}
-        onPress={() => router.push("/catalog/items/new")}
+        onPress={() => router.push("/settings/items/new")}
       />
     </YStack>
   )

@@ -10,36 +10,46 @@ const WIDE_WINDOW_PX = 1024
 /** The empty width on each side of the column; 0 on native and at full width. */
 const GutterContext = createContext(0)
 
+/** The space between a wide window's master pane and the detail beside it. */
+export const paneGap = 24
+
 /**
  * On web, the screens in a centered column as web-app's `PhoneViewport`
  * (`max-w-xl`), except home and the bill on a wide window, as the
  * `lg:max-w-none` of their routes there; home's keypad and onboarding narrow
  * themselves as on web. Native screens take the device's width. Beside the
- * menu's sidebar the column centres in what the sidebar leaves.
+ * menu's sidebar the column centres in what the sidebar leaves. With
+ * `panes` (a root screen beside its detail, navigation/0002) the column is
+ * two of them, and each pane scrolls within itself, so no gutter.
  */
 export function WebColumn({
   children,
   reservedWidth = 0,
+  panes = false,
 }: {
   readonly children: ReactNode
   /** Window width beside the column taken by something else, the menu's sidebar. */
   readonly reservedWidth?: number
+  /** Two screens side by side: twice the column, no gutters. */
+  readonly panes?: boolean
 }) {
   const pathname = usePathname()
   const windowWidth = useWindowDimensions().width
   if (Platform.OS !== "web") return children
   const fullWidth =
     windowWidth >= WIDE_WINDOW_PX && (pathname === "/" || pathname === "/bill")
-  const gutter = fullWidth
-    ? 0
-    : Math.max(0, (windowWidth - reservedWidth - maxWidth.xl) / 2)
+  const columnWidth = panes ? 2 * maxWidth.xl + paneGap : maxWidth.xl
+  const gutter =
+    fullWidth || panes
+      ? 0
+      : Math.max(0, (windowWidth - reservedWidth - columnWidth) / 2)
   return (
     <View flex={1} bg="background">
       <View
         flex={1}
         w="100%"
         self="center"
-        maxW={fullWidth ? undefined : maxWidth.xl}
+        maxW={fullWidth ? undefined : columnWidth}
       >
         <GutterContext value={gutter}>{children}</GutterContext>
       </View>

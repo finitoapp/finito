@@ -561,7 +561,7 @@ function Compare() {
         title="landing.tech.compare.title"
       />
       <Reveal className="mt-12">
-        <table className="w-full border-separate border-spacing-0 text-left max-md:block">
+        <table className="w-full border-separate border-spacing-y-1 text-left max-md:block">
           <thead className="max-md:sr-only">
             <tr>
               <th scope="col" className="sr-only">
@@ -589,19 +589,19 @@ function Compare() {
               >
                 <th
                   scope="row"
-                  className="border-t border-border px-5 py-4 align-top font-semibold max-md:col-span-2 max-md:border-t-0 max-md:pb-2"
+                  className="px-5 py-4 align-top font-semibold max-md:col-span-2 max-md:pb-2"
                 >
                   {t(`landing.tech.compare.${row}.label`)}
                 </th>
                 <td
                   data-label={cloud}
-                  className="border-t border-border px-5 py-4 align-top text-muted-foreground before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:uppercase before:content-[attr(data-label)] max-md:border-t-0 md:before:hidden"
+                  className="px-5 py-4 align-top text-muted-foreground before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:uppercase before:content-[attr(data-label)] md:before:hidden"
                 >
                   {t(`landing.tech.compare.${row}.cloud`)}
                 </td>
                 <td
                   data-label={payky}
-                  className="border-t border-primary/30 bg-accent px-5 py-4 align-top font-semibold before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:text-(--landing-ink) before:uppercase before:content-[attr(data-label)] max-md:border-t-0 md:before:hidden"
+                  className="bg-accent px-5 py-4 align-top font-semibold before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:text-(--landing-ink) before:uppercase before:content-[attr(data-label)] md:before:hidden"
                 >
                   {t(`landing.tech.compare.${row}.payky`)}
                 </td>
@@ -633,7 +633,7 @@ function StatusTable({
   const { t } = useLandingTranslation()
   return (
     <Reveal className="mt-12">
-      <table className="w-full border-separate border-spacing-0 text-left max-md:block">
+      <table className="w-full border-separate border-spacing-y-1 text-left max-md:block">
         <caption
           className={cn(subheadingClassName, "mb-6 text-left max-md:block")}
         >
@@ -664,10 +664,7 @@ function StatusTable({
               key={row.label}
               className="max-md:flex max-md:flex-col max-md:overflow-hidden max-md:rounded-2xl max-md:bg-card max-md:shadow-sm"
             >
-              <th
-                scope="row"
-                className="border-t border-border px-5 py-4 align-top max-md:border-t-0 max-md:pb-2"
-              >
+              <th scope="row" className="px-5 py-4 align-top max-md:pb-2">
                 <span className="block font-semibold">{t(row.label)}</span>
                 {row.note === undefined ? null : (
                   <span className="block text-sm font-normal text-pretty text-muted-foreground">
@@ -682,7 +679,7 @@ function StatusTable({
                   <td
                     key={column ?? index}
                     data-label={column === undefined ? undefined : t(column)}
-                    className="border-t border-border px-5 py-4 align-top before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:text-muted-foreground before:uppercase before:content-[attr(data-label)] max-md:border-t-0 max-md:py-2 md:before:hidden"
+                    className="px-5 py-4 align-top before:block before:font-mono before:text-xs before:font-semibold before:tracking-[0.08em] before:text-muted-foreground before:uppercase before:content-[attr(data-label)] max-md:py-2 md:before:hidden"
                   >
                     <span
                       className={cn(
@@ -977,7 +974,7 @@ function Transparency() {
                     href={step.href}
                     className={cn(
                       className,
-                      "ring-1 ring-primary/30 transition-shadow hover:shadow-md"
+                      "bg-accent transition-shadow hover:shadow-md"
                     )}
                   >
                     {content}

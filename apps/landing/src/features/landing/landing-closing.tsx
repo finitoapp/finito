@@ -117,7 +117,7 @@ const isOffered = (option: GetOption): boolean =>
 
 // Outlined: the contact form below holds the one primary action of the section.
 const actionClassName = cn(
-  buttonVariants({ variant: "outline", size: "lg" }),
+  buttonVariants({ variant: "secondary", size: "lg" }),
   "mt-auto h-11 w-fit rounded-full px-6 text-base font-semibold has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5"
 )
 

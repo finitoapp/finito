@@ -3,7 +3,6 @@ import {
   cashuQuoteErrorMessage,
   formatMintLabel,
 } from "@payky/app-shared/cashu-withdraw-flow"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import type { WithdrawDraft } from "@payky/app-shared/withdraw-flow"
 import type { MintUrl } from "@payky/core/modules/cashu/cashu-types"
 import {
@@ -19,6 +18,7 @@ import {
 } from "../../components/ui/field.tsx"
 import { useCashuAppRun } from "../../hooks/use-app-run.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import { WithdrawFormFields } from "./withdraw-form-step.tsx"
 
 /**

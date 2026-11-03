@@ -2,7 +2,7 @@ import Check from "lucide-react-native/icons/check"
 import ChevronDown from "lucide-react-native/icons/chevron-down"
 import { createContext, type ReactNode, useContext, useState } from "react"
 import { styled, Text, View } from "tamagui"
-import { fontSize, radius } from "../../theme/tokens.ts"
+import { control, fontSize, shape } from "../../theme/tokens.ts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog.tsx"
 import { Icon } from "./icon.tsx"
 
@@ -12,18 +12,17 @@ import { Icon } from "./icon.tsx"
  * `SelectLabel`, `SelectItem`, with web's `value`/`onValueChange` and
  * `items` (value → label, which `SelectValue` shows).
  *
- * Tailwind mirrored: trigger `h-8 gap-1.5 rounded-lg border border-input
- * bg-transparent py-2 pr-2 pl-2.5 text-sm dark:bg-input/30` (`sm` `h-7
- * rounded-md`) with a muted `ChevronDown`; label `px-1.5 py-1 text-xs
+ * Tailwind mirrored: trigger `gap-1.5 py-2 pr-2.5 pl-3 text-sm` with a
+ * muted `ChevronDown`, drawn as fazole.fit's filled field (`ui/input`): 12
+ * round, 44 high, no border (`sm` a 32 pill); label `px-1.5 py-1 text-xs
  * text-muted-foreground`; item `gap-1.5 rounded-md py-1 pl-1.5 text-sm
  * focus:bg-accent` with a `Check` on the selected one.
  *
  * Native differences: the list opens in `ui/dialog` (a centered sheet on the
  * proven RN `Modal`) rather than a popup anchored to the trigger, as plan
  * fallback to Tamagui `Select`'s untried `Adapt`/`Sheet`; items are at
- * least 44 high for touch; the default trigger is 40 high, not 32, so it
- * lines up with `ui/input` (which is 40 for the same touch reason). `SelectContent` takes the translated `title` the
- * sheet shows, usually the field's label.
+ * least 44 high for touch, highlighted by the neutral fill. `SelectContent`
+ * takes the translated `title` the sheet shows, usually the field's label.
  */
 
 interface SelectContextValue {
@@ -87,21 +86,19 @@ const TriggerFrame = styled(View, {
   self: "flex-start",
   gap: 6,
   py: 8,
-  pr: 8,
-  pl: 10,
-  rounded: radius.lg,
-  borderWidth: 1,
-  borderColor: "input",
+  pr: 10,
+  pl: 12,
+  rounded: shape.control,
   bg: "input-bg press:input-50",
   cursor: "web:pointer",
 
   variants: {
     size: {
-      // Web h-8; 40 to match the kit Input next to it in a form.
-      default: { h: 40 },
+      // fazole's filled field, 44 to match the kit Input next to it in a form.
+      default: { h: control.md },
       // No vertical padding: 8 of it left 10 of the 28 for 14-high text,
       // which React Native clips where CSS lets it overflow.
-      sm: { h: 28, py: 0, rounded: radius.md },
+      sm: { h: control.sm, py: 0, rounded: shape.pill },
     },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
@@ -224,8 +221,8 @@ const ItemFrame = styled(View, {
   py: 4,
   pl: 6,
   pr: 8,
-  rounded: radius.md,
-  bg: "transparent press:accent",
+  rounded: shape.control,
+  bg: "transparent press:neutral-soft",
   cursor: "web:pointer",
 
   variants: {

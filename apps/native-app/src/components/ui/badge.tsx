@@ -1,18 +1,19 @@
 import type { LucideIcon } from "lucide-react-native"
 import { createStyledContext, type GetProps, styled, Text, View } from "tamagui"
 import type { ThemeColor } from "../../theme/themes.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/badge.tsx`: the same variants.
  *
- * Tailwind mirrored: `h-5 gap-1 rounded-4xl border border-transparent px-2
- * text-xs font-medium [&>svg]:size-3` (20/4/32/8/12/500/12); `default`
- * `bg-primary`, `secondary` `bg-secondary`, `destructive`
- * `bg-destructive/10 dark:bg-destructive/20 text-destructive`, `outline`
- * `border-border`, `ghost` and `link` transparent. Web's `[a]:hover` tints
- * apply only to a badge that is a link; native badges are never pressable.
+ * Tailwind mirrored: `h-5 gap-1 rounded-4xl px-2 text-xs font-medium
+ * [&>svg]:size-3` (20/4/pill/8/12/500/12); `default` `bg-primary`,
+ * `secondary` `bg-secondary`, `destructive` `bg-destructive/10
+ * dark:bg-destructive/20 text-destructive`, `ghost` and `link` transparent.
+ * As fazole.fit's pills, `outline` is the neutral fill rather than a
+ * border. Web's `[a]:hover` tints apply only to a badge that is a link;
+ * native badges are never pressable.
  */
 
 type BadgeVariant =
@@ -38,9 +39,7 @@ const BadgeFrame = styled(View, {
   h: 20,
   gap: 4,
   px: 8,
-  rounded: radius["4xl"],
-  borderWidth: 1,
-  borderColor: "transparent",
+  rounded: shape.pill,
   overflow: "hidden",
 
   variants: {
@@ -48,7 +47,7 @@ const BadgeFrame = styled(View, {
       default: { bg: "primary" },
       secondary: { bg: "secondary" },
       destructive: { bg: "destructive-tint" },
-      outline: { borderColor: "border-color" },
+      outline: { bg: "neutral-soft" },
       ghost: {},
       link: {},
     },

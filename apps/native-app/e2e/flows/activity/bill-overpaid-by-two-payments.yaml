@@ -14,6 +14,6 @@ tags: [activity]
 - runFlow: ../../subflows/mark-cash-paid.yaml
 - runFlow: ../../subflows/open-paid-detail.yaml
 - assertVisible: ${output.t["paymentDetail.bill.coverage.overpaid.title"]}
-- assertVisible: \$5\.00
+- assertVisible: \$5
 - scrollUntilVisible:
-    element: \$10\.00
+    element: \$10

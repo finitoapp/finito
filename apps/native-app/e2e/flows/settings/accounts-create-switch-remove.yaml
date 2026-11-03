@@ -11,11 +11,11 @@ tags: [settings]
       TEXT: ${output.t["settings.accounts.title"]}
 # Create a second account and onboard it.
 - scrollUntilVisible:
-    element: ${output.t["accountChoice.new.title"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+    element: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["settings.accounts.create.confirm.confirm"]}
 - extendedWaitUntil:
-    visible: ${output.t["onboarding.title"]}
+    visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000
 - runFlow: ../../subflows/complete-onboarding.yaml
 # Both are listed, the new one active.

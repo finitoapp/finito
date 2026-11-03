@@ -1,5 +1,6 @@
 # web's addCatalogItem: adds a catalog item through the settings form. NAME,
-# PRICE; optional INTERNAL_NAME, SKU, SCAN_CODE, CATEGORY (option text),
+# PRICE; optional INTERNAL_NAME, SKU, SCAN_CODE, CATEGORY (a name, typed:
+# the category is made on the item, or reused by name, navigation/0003),
 # TAX_RATE (option text, a regex). Ends on the items list. The form starts
 # empty, so it types without clearing (clear-input would read a placeholder
 # as text).
@@ -8,7 +9,7 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: ${output.t["catalog.items.title"]}
 - runFlow:
     file: tap-label.yaml
@@ -60,13 +61,20 @@ appId: ${APP_ID}
     when:
       true: ${typeof CATEGORY !== "undefined"}
     commands:
-      # Its current value: on Android the field label matches the select's
-      # name too.
       - scrollUntilVisible:
-          element: ${output.re(output.t["catalog.items.form.category.none"])}
+          element:
+            id: ${output.re(output.t["catalog.items.form.category.new.placeholder"])}
           centerElement: true
-      - tapOn: ${output.re(output.t["catalog.items.form.category.none"])}
-      - tapOn: '${typeof CATEGORY === "undefined" ? "" : output.re(CATEGORY)}'
+      - runFlow:
+          file: type-input.yaml
+          env:
+            LABEL: ${output.t["catalog.items.form.category.new.placeholder"]}
+            VALUE: '${typeof CATEGORY === "undefined" ? "" : CATEGORY}'
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - hideKeyboard
 - runFlow:
     when:
       true: ${typeof SCAN_CODE !== "undefined"}

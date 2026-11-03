@@ -1,6 +1,6 @@
 # web eet.spec.ts: "a cash sale is reported as the cash received". That Mark
 # as paid stays disabled below the charge is checked on Android only. Money
-# matches "CZK.80.00": Intl puts a no-break space after the code.
+# matches "CZK.80": Intl puts a no-break space after the code.
 appId: ${APP_ID}
 tags: [eet]
 ---
@@ -76,9 +76,9 @@ tags: [eet]
     env:
       ROUTE: activity/${output.paymentId}
       TEXT: ${output.t["paymentDetail.title"]}
-- assertVisible: '${output.tv("paymentDetail.cashReceived", { amount: "CZK.80.00" })}'
+- assertVisible: '${output.tv("paymentDetail.cashReceived", { amount: "CZK.80" })}'
 - scrollUntilVisible:
     element: ${output.t["paymentDetail.eet.amount"]}
 - assertVisible:
-    text: CZK.80.00
+    text: CZK.80
     rightOf: ${output.t["paymentDetail.eet.amount"]}

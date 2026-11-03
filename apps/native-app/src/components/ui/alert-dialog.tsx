@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { styled, Text, View } from "tamagui"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button, type ButtonProps } from "./button.tsx"
 import { Dialog, useDialog } from "./dialog.tsx"
 
@@ -52,10 +52,9 @@ export const AlertDialogContent = styled(View, {
   maxW: 512,
   gap: 16,
   p: 24,
-  rounded: radius.lg,
-  borderWidth: 1,
-  borderColor: "border-color",
-  bg: "background",
+  // fazole.fit's sheet: 24 round, no border.
+  rounded: shape.sheet,
+  bg: "popover",
 })
 
 export const AlertDialogHeader = styled(View, {

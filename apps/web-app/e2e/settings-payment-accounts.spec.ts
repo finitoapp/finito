@@ -25,6 +25,23 @@ const defaultBadge = (page: Page, titleKey: TranslationKey) =>
     exact: true,
   })
 
+const reorderGrip = (page: Page, titleKey: TranslationKey) =>
+  page.getByRole("button", {
+    name: nameParam("settings.paymentAccounts.reorder.aria", en(titleKey)),
+  })
+
+/** Drags a method's grip to the top edge of the list, as a finger or mouse would, in steps so motion sees the movement. */
+async function dragMethodToTop(page: Page, titleKey: TranslationKey) {
+  const grip = await reorderGrip(page, titleKey).boundingBox()
+  const list = await methodRows(page).first().boundingBox()
+  if (grip === null || list === null) throw new Error("rows not laid out")
+  const x = grip.x + grip.width / 2
+  await page.mouse.move(x, grip.y + grip.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(x, list.y + 2, { steps: 12 })
+  await page.mouse.up()
+}
+
 const openOverview = (page: Page) =>
   gotoPage(
     page,
@@ -48,21 +65,28 @@ test("reorder payment methods and let the first available one be the default", a
     ).toBeVisible()
   })
 
-  await test.step("move the bank transfer to the top", async () => {
-    const moveUp = page.getByRole("button", {
-      name: nameParam(
-        "settings.paymentAccounts.moveUp.aria",
-        en("settings.paymentAccounts.method.iban")
-      ),
-    })
-    await moveUp.click()
+  await test.step("drag the bank transfer to the top", async () => {
+    await dragMethodToTop(page, "settings.paymentAccounts.method.iban")
     await expect(methodRows(page).first()).toContainText(
       en("settings.paymentAccounts.method.iban")
     )
-    await expect(moveUp).toBeDisabled()
     await expect(
       defaultBadge(page, "settings.paymentAccounts.method.iban")
     ).toBeVisible()
+  })
+
+  await test.step("the arrow keys move a focused grip too", async () => {
+    const grip = reorderGrip(page, "settings.paymentAccounts.method.iban")
+    await grip.focus()
+    await page.keyboard.press("ArrowDown")
+    await expect(methodRows(page).first()).toContainText(
+      en("settings.paymentAccounts.method.cashRegister")
+    )
+    await grip.focus()
+    await page.keyboard.press("ArrowUp")
+    await expect(methodRows(page).first()).toContainText(
+      en("settings.paymentAccounts.method.iban")
+    )
   })
 
   await test.step("turning the first method off hands the default to the next available one", async () => {

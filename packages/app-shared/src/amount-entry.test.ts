@@ -4,6 +4,7 @@ import {
   type AmountKeypadKey,
   applyAmountKey,
   formatAmountInput,
+  formatAmountInputParts,
 } from "./amount-entry.ts"
 
 const type = (keys: string, currency: "CZK" | "BTC" = "CZK") =>
@@ -44,5 +45,25 @@ describe("formatAmountInput", () => {
   it("keeps a trailing decimal separator in the locale", () => {
     expect(formatAmountInput("1234.", "CZK", "en-US")).toMatch(/^CZK\s1,234\.$/)
     expect(formatAmountInput("", "USD", "en-US")).toBe("$0")
+  })
+})
+
+describe("formatAmountInputParts", () => {
+  it("splits the number from the currency and says which comes first", () => {
+    expect(formatAmountInputParts("1234.", "CZK", "en-US")).toEqual({
+      number: "1,234.",
+      unit: "CZK",
+      unitFirst: true,
+    })
+    expect(formatAmountInputParts("", "USD", "en-US")).toEqual({
+      number: "0",
+      unit: "$",
+      unitFirst: true,
+    })
+    expect(formatAmountInputParts("12.5", "CZK", "cs-CZ")).toEqual({
+      number: "12,5",
+      unit: "Kč",
+      unitFirst: false,
+    })
   })
 })

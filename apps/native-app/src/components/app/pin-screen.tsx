@@ -476,8 +476,7 @@ function FailedAttempts({
                 key={attempt.id}
                 justify="space-between"
                 gap={12}
-                borderWidth={1}
-                borderColor="border-color"
+                bg="neutral-soft"
                 rounded={radius.md}
                 px={12}
                 py={8}

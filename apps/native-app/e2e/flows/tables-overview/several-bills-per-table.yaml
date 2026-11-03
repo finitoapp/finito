@@ -24,12 +24,8 @@ tags: [tables-overview]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: ""
-      TEXT: ${output.t["home.pay"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.pos"]}
+      ROUTE: catalog/sales
+      TEXT: ${output.t["bill.table.dialog.none"]}
 - runFlow:
     file: ../../subflows/park-cart.yaml
     env:

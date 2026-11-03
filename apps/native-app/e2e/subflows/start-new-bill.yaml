@@ -1,9 +1,6 @@
-# web's startNewBill: from the numpad home, switches to tables mode and
-# starts a bill from the "no table" strip, landing on the empty bill.
+# web's startNewBill: from the terminal home, opens Sales (the tables grid)
+# and starts a bill from the "no table" strip, landing on the empty bill.
 appId: ${APP_ID}
 ---
-- runFlow:
-    file: tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.pos"]}
+- runFlow: open-sales.yaml
 - runFlow: new-bill.yaml

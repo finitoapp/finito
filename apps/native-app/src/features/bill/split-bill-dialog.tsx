@@ -1,4 +1,3 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import {
   canConfirmSplit,
   deriveSplitItems,
@@ -41,6 +40,7 @@ import {
 import { useChangePulse } from "../../hooks/use-change-pulse.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 
@@ -167,13 +167,7 @@ function SplitBillBody({
         </ToggleGroup>
 
         {destination === "existing" ? (
-          <YStack
-            gap={4}
-            p={4}
-            rounded={radius.md}
-            borderWidth={1}
-            borderColor="border-color"
-          >
+          <YStack gap={4} p={4} rounded={radius.md} bg="neutral-soft">
             {otherOpenBills.length === 0 ? (
               <Text
                 p={8}
@@ -217,10 +211,9 @@ function SplitBillBody({
       </YStack>
 
       <YStack>
-        {summaries.map((summary, index) => (
+        {summaries.map((summary) => (
           <SplitBillRow
             key={summary.id}
-            first={index === 0}
             summary={summary}
             quantity={selected[summary.id] ?? 0}
             onChange={(quantity) =>
@@ -357,12 +350,10 @@ function ExistingBillOption({
 }
 
 function SplitBillRow({
-  first,
   summary,
   quantity,
   onChange,
 }: {
-  readonly first: boolean
   readonly summary: BillLineSummary
   readonly quantity: number
   readonly onChange: (quantity: number) => void
@@ -370,14 +361,7 @@ function SplitBillRow({
   const { t } = useTranslation()
   const quantityPulse = useChangePulse(quantity)
   return (
-    <XStack
-      py={8}
-      gap={8}
-      items="center"
-      justify="space-between"
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
-    >
+    <XStack py={8} gap={8} items="center" justify="space-between">
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.sm}

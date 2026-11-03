@@ -1,5 +1,4 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import { fetchDonationHistory } from "@payky/core/integrations/donations/donations-client"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import CircleAlert from "lucide-react-native/icons/circle-alert"
@@ -14,6 +13,7 @@ import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { apiUrl } from "../../../core/native-env.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../../lib/format-money.ts"
 
 /** The donations received so far, newest first, a page at a time. */
 export function DonationHistory() {

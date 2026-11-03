@@ -18,7 +18,14 @@ tags: [access-gates]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["nav.catalog"]}
+      LABEL: ${output.t["nav.settings"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.title"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["catalog.items.title"]}
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:

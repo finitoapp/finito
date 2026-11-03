@@ -1,4 +1,3 @@
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import {
   formatAddressGroups,
   formatCountdown,
@@ -39,6 +38,7 @@ import {
 } from "../../components/ui/toggle-group.tsx"
 import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import {
   Collapsible,
   LightningAddress,

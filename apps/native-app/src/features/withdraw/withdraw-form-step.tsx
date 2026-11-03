@@ -1,4 +1,3 @@
-import { formatSatsAmount } from "@payky/app-shared/format-money"
 import { describeDestination } from "@payky/app-shared/withdraw-destination"
 import {
   amountFieldWarnings,
@@ -56,6 +55,7 @@ import { useBtcFiat, useLnurlPayMetadata } from "../../hooks/use-btc-fiat.ts"
 import { useDebouncedValue } from "../../hooks/use-debounced-value.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
 import { Collapsible, LightningAddress } from "./withdraw-parts.tsx"
 
 /**

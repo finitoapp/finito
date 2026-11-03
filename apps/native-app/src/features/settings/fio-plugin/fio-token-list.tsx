@@ -60,8 +60,7 @@ export function FioTokenList() {
                 gap="2"
                 p="3"
                 rounded="lg"
-                borderWidth={1}
-                borderColor="border-color"
+                bg="neutral-soft"
               >
                 <YStack flex={1} gap="1">
                   <Text fontWeight="600">

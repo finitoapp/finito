@@ -19,7 +19,6 @@ export type NativeRoutePath =
   | "/activity/stats"
   | "/activity/bills/:billId"
   | "/activity/:paymentId"
-  | "/notifications"
   | "/withdraw"
   | "/withdraw/new"
   | "/withdraw/:withdrawalId"
@@ -38,22 +37,20 @@ export type NativeRoutePath =
   | "/settings/about/privacy"
   | "/settings/language"
   | "/settings/theme"
-  | "/settings/home-screen"
+  | "/settings/notifications"
   | "/settings/profile"
   | "/settings/legal-entity"
   | "/settings/tax-rates"
   | "/settings/tips"
   | "/settings/payment-number-series"
   | "/catalog"
-  | "/catalog/items"
-  | "/catalog/items/new"
-  | "/catalog/items/:catalogItemId"
-  | "/catalog/categories"
-  | "/catalog/categories/new"
-  | "/catalog/categories/:catalogCategoryId"
-  | "/catalog/tables"
-  | "/catalog/tables/new"
-  | "/catalog/tables/:tableId"
+  | "/catalog/sales"
+  | "/settings/items"
+  | "/settings/items/new"
+  | "/settings/items/:catalogItemId"
+  | "/settings/tables"
+  | "/settings/tables/new"
+  | "/settings/tables/:tableId"
   | "/settings/accounts"
   | "/settings/eet"
   | "/settings/access"
@@ -74,6 +71,7 @@ export type NativeRoutePath =
   | "/settings/payment-accounts/card-switchio"
   | "/settings/payment-accounts/qerko-terminal"
   | "/settings/payment-accounts/lightning-address"
+  | "/settings/payment-accounts/bitcoin"
 
 /**
  * What each Expo Router path needs (access/0003); `route-access.test.ts`
@@ -103,8 +101,6 @@ export const routeAccess = {
   "/activity/:paymentId": "activity",
   // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
   "/activity/stats": "stats",
-  // Like web's `_terminal/notifications`: nothing to protect yet (access/0010).
-  "/notifications": "free",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).
   "/withdraw": "admin",
   "/withdraw/new": "admin",
@@ -136,8 +132,8 @@ export const routeAccess = {
   "/settings/language": "free",
   // Like web's `_terminal/settings/theme`.
   "/settings/theme": "free",
-  // Like web's `_terminal/settings/home-screen`: the modes are a business choice.
-  "/settings/home-screen": "settings",
+  // Web's `_terminal/notifications`, under Settings on native (navigation/0002): nothing to protect yet (access/0010).
+  "/settings/notifications": "free",
   // Like web's `_terminal/settings/profile`: the public profile is owner-only (access/0002).
   "/settings/profile": "admin",
   // Like web's `_terminal/settings/legal-entity` (access/0002: `settings`).
@@ -148,26 +144,18 @@ export const routeAccess = {
   "/settings/tips": "settings",
   // Like web's `_terminal/settings/payment-number-series` (access/0002: `settings`).
   "/settings/payment-number-series": "settings",
-  // Like web's `_terminal/catalog/` (access/0010: `catalog`), which opens the items.
-  "/catalog": "catalog",
-  // Like web's `_terminal/catalog/items` (access/0010: `catalog`).
-  "/catalog/items": "catalog",
-  // Like web's `_terminal/catalog/items/new` (access/0010: `catalog`).
-  "/catalog/items/new": "catalog",
-  // Like web's `_terminal/catalog/items/$catalogItemId` (access/0010: `catalog`).
-  "/catalog/items/:catalogItemId": "catalog",
-  // Like web's `_terminal/catalog/categories` (access/0010: `catalog`).
-  "/catalog/categories": "catalog",
-  // Like web's `_terminal/catalog/categories/new` (access/0010: `catalog`).
-  "/catalog/categories/new": "catalog",
-  // Like web's `_terminal/catalog/categories/$catalogCategoryId` (access/0010: `catalog`).
-  "/catalog/categories/:catalogCategoryId": "catalog",
-  // Like web's `_terminal/catalog/tables` (access/0010: `catalog`).
-  "/catalog/tables": "catalog",
-  // Like web's `_terminal/catalog/tables/new` (access/0010: `catalog`).
-  "/catalog/tables/new": "catalog",
-  // Like web's `_terminal/catalog/tables/$tableId` (access/0010: `catalog`).
-  "/catalog/tables/:tableId": "catalog",
+  // Web's `_terminal/catalog/`, which on native opens Sales (navigation/0002).
+  "/catalog": "sell",
+  // Web's home in pos mode, the tables-and-bills grid (access/0010: `sell`).
+  "/catalog/sales": "sell",
+  // Web's `_terminal/catalog/items`, under Settings on native (navigation/0003; access/0010: `catalog`).
+  "/settings/items": "catalog",
+  "/settings/items/new": "catalog",
+  "/settings/items/:catalogItemId": "catalog",
+  // Web's `_terminal/catalog/tables`, under Settings on native (navigation/0003; access/0010: `catalog`).
+  "/settings/tables": "catalog",
+  "/settings/tables/new": "catalog",
+  "/settings/tables/:tableId": "catalog",
   // Like web's `_terminal/settings/access`: the Access section is owner-only (access/0002).
   // Like web's `_terminal/settings/accounts`: switching and removing accounts is owner-only.
   "/settings/accounts": "admin",
@@ -208,6 +196,8 @@ export const routeAccess = {
   "/settings/payment-accounts/qerko-terminal": "admin",
   // Like web's `_terminal/settings/payment-accounts/lightning-address` (owner-only).
   "/settings/payment-accounts/lightning-address": "admin",
+  // Finito's one Bitcoin method over the three wallets above (settings/0002): the same owner-only gate.
+  "/settings/payment-accounts/bitcoin": "admin",
   // Like web's /error: a deliberate crash with no gate in front of it.
   "/error": "free",
   // The e2e bridge (src/e2e); it only redirects home outside an e2e build.

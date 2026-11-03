@@ -47,7 +47,7 @@ export function RecoveryVerifyStep({
 
   return (
     <YStack gap="4">
-      <Text fontSize="base" fontWeight="500">
+      <Text fontSize="base" fontWeight="600">
         {t("settings.security.verify.title")}
       </Text>
       <Text fontSize="sm" color="muted-foreground">

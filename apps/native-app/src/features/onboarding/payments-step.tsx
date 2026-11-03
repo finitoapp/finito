@@ -1,18 +1,20 @@
 import { czechBankForDraft } from "@payky/app-shared/bank-account-codecs"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import Landmark from "lucide-react-native/icons/landmark"
-import { XStack, YStack } from "tamagui"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
 } from "../../components/ui/field.tsx"
-import { Icon } from "../../components/ui/icon.tsx"
 import { Input } from "../../components/ui/input.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
 
-/** The optional bank account; a nonblank one turns bank transfers on. */
+/**
+ * The optional bank account, as fazole.fit's shop account field (Linky's
+ * `apps/fazole-app/src/screens/ShopFields.tsx`): the label, the field with
+ * the format as its placeholder, and the recognized bank as the hint. A
+ * nonblank account turns bank transfers on (onboarding/0003).
+ */
 export function PaymentsStep({
   iban,
   ibanError,
@@ -33,30 +35,24 @@ export function PaymentsStep({
 
   return (
     <Field>
-      <XStack gap="3" items="center">
-        <Icon icon={Landmark} size={20} color="muted-foreground" />
-        <FieldLabel>{t("onboarding.payments.iban.title")}</FieldLabel>
-      </XStack>
-      <YStack gap="2" ml={32}>
-        <Input
-          value={iban}
-          disabled={pending}
-          invalid={ibanError !== null}
-          autoComplete="off"
-          autoCapitalize="characters"
-          autoCorrect={false}
-          onChangeText={onIbanChange}
-        />
-        {bank === undefined ? null : (
-          <FieldDescription color="color" fontWeight="500">
-            {bank}
-          </FieldDescription>
-        )}
-        <FieldDescription>
-          {t("onboarding.payments.iban.description")}
-        </FieldDescription>
-        <FieldError>{ibanError === null ? undefined : t(ibanError)}</FieldError>
-      </YStack>
+      <FieldLabel>{t("onboarding.setup.account.label")}</FieldLabel>
+      <Input
+        value={iban}
+        disabled={pending}
+        invalid={ibanError !== null}
+        placeholder={t("onboarding.setup.account.placeholder")}
+        // The account needs "/" and "-", which numeric phone keyboards lack.
+        inputMode="text"
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect={false}
+        spellCheck={false}
+        onChangeText={onIbanChange}
+      />
+      {ibanError === null && bank !== undefined ? (
+        <FieldDescription>{bank}</FieldDescription>
+      ) : null}
+      <FieldError>{ibanError === null ? undefined : t(ibanError)}</FieldError>
     </Field>
   )
 }

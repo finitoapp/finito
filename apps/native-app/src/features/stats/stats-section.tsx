@@ -1,8 +1,8 @@
-import { formatMoney } from "@payky/app-shared/format-money"
 import { type Currency, Integer } from "@payky/core/modules/shared/schema"
 import type { ReactNode } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 
 /** One block of the statistics screen: a titled card, an optional note under it. */
 export function StatsSection({

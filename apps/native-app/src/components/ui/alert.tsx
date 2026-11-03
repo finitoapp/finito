@@ -2,21 +2,22 @@ import type { LucideIcon } from "lucide-react-native"
 import { Children, type ReactNode } from "react"
 import { createStyledContext, styled, Text, View } from "tamagui"
 import type { ThemeColor } from "../../theme/themes.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
 
 /**
  * Web `apps/web-app/src/components/reui/alert.tsx`: `Alert` with the same
- * variants, `AlertTitle`, `AlertDescription` and `AlertAction`.
+ * variants, `AlertTitle`, `AlertDescription` and `AlertAction`, drawn as
+ * fazole.fit's `Notice` (Linky's `packages/ui/src/feedback.tsx`): a
+ * 12-round, borderless tinted fill, `px-3 py-3`, a 20 icon in the tone's
+ * color beside a semibold 14 title and a 12 description.
  *
- * Tailwind mirrored: `rounded-lg border px-3 py-2.5 text-sm gap-y-0.5`,
- * `gap-x-2.5` beside the `size-4` icon; `default` `bg-card
- * text-card-foreground`; `destructive`/`info`/`success`/`warning`
- * `border-<v>/30 bg-<v>/4` with the icon in `<v>`; `invert` `bg-invert
- * text-invert-foreground`, description `text-invert-foreground/70`. The title
- * is `font-medium line-clamp-1`, the description `text-muted-foreground
- * gap-1`, and the action on a phone (`max-sm:`) sits under the text, `mt-2
- * gap-1.5`.
+ * Tailwind mirrored otherwise: `gap-x-2.5` beside the icon, `gap-y-0.5`;
+ * `default` `bg-card text-card-foreground`; `destructive`/`info`/`success`/
+ * `warning` `bg-<v>/10` with the icon in `<v>`; `invert` `bg-invert
+ * text-invert-foreground`, description `text-invert-foreground/70`. The
+ * title is `line-clamp-1`, and the action on a phone (`max-sm:`) sits under
+ * the text, `mt-2 gap-1.5`.
  *
  * Native differences: web's first `<svg>` child becomes the `icon` prop,
  * since there is no `has-[>svg]` selector; the icon is always top-aligned
@@ -43,19 +44,18 @@ const AlertFrame = styled(View, {
   items: "flex-start",
   gap: 10,
   w: "100%",
-  rounded: radius.lg,
-  borderWidth: 1,
+  rounded: shape.control,
   px: 12,
-  py: 10,
+  py: 12,
 
   variants: {
     variant: {
-      default: { bg: "card", borderColor: "border-color" },
-      destructive: { bg: "destructive-4", borderColor: "destructive-30" },
-      info: { bg: "info-4", borderColor: "info-30" },
-      success: { bg: "success-4", borderColor: "success-30" },
-      warning: { bg: "warning-4", borderColor: "warning-30" },
-      invert: { bg: "invert", borderColor: "invert" },
+      default: { bg: "card" },
+      destructive: { bg: "destructive-10" },
+      info: { bg: "info-10" },
+      success: { bg: "success-10" },
+      warning: { bg: "warning-10" },
+      invert: { bg: "invert" },
     },
   } as const,
 
@@ -83,9 +83,7 @@ export function Alert({
   return (
     <AlertFrame variant={variant} role="alert">
       {icon === undefined ? null : (
-        <View pt={2}>
-          <Icon icon={icon} color={iconColors[variant]} />
-        </View>
+        <Icon icon={icon} size={20} color={iconColors[variant]} />
       )}
       <View flex={1} gap={2}>
         {children}
@@ -100,7 +98,7 @@ export const AlertTitle = styled(Text, {
   numberOfLines: 1,
   fontSize: fontSize.sm,
   lineHeight: fontSize.sm,
-  fontWeight: fontWeight.medium,
+  fontWeight: fontWeight.semibold,
 
   variants: {
     variant: {
@@ -117,8 +115,8 @@ export const AlertTitle = styled(Text, {
 const AlertDescriptionText = styled(Text, {
   name: "AlertDescription",
   context: AlertContext,
-  fontSize: fontSize.sm,
-  lineHeight: fontSize.sm,
+  fontSize: fontSize.xs,
+  lineHeight: fontSize.xs,
 
   variants: {
     variant: {

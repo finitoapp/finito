@@ -1,5 +1,4 @@
 import type { BillCoverageMismatchReason } from "@payky/app-shared/activity-detail"
-import { formatMoney } from "@payky/app-shared/format-money"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill-line-utils"
 import {
@@ -24,6 +23,7 @@ import {
   CollapsibleTrigger,
 } from "../../components/ui/collapsible.tsx"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /** The building blocks of the payment and bill detail screens. */
@@ -114,15 +114,13 @@ export function BillLines({
 
   return (
     <YStack>
-      {summaries.map((summary, index) => (
+      {summaries.map((summary) => (
         <XStack
           key={summary.id}
           items="center"
           justify="space-between"
           gap={8}
           py={8}
-          borderTopWidth={index === 0 ? 0 : 1}
-          borderColor="border-color"
         >
           <YStack flex={1} minW={0}>
             <Text

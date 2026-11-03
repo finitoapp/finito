@@ -295,7 +295,7 @@ export function LandingHero() {
             <a
               href="#download"
               className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
+                buttonVariants({ variant: "secondary", size: "lg" }),
                 "h-12 rounded-full px-7 text-base font-semibold has-data-[icon=inline-start]:pl-6"
               )}
             >

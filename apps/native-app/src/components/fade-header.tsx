@@ -4,7 +4,7 @@ import { type ReactNode, useContext, useEffect, useState } from "react"
 import { Animated } from "react-native"
 import { Text, View, XStack } from "tamagui"
 import { useTranslation } from "../hooks/use-translation.ts"
-import { fontSize, fontWeight } from "../theme/tokens.ts"
+import { control, fontSize, fontWeight } from "../theme/tokens.ts"
 import { ScreenGapContext, screenPadding, useScreenScroll } from "./screen.tsx"
 import { Button } from "./ui/button.tsx"
 import { Icon } from "./ui/icon.tsx"
@@ -14,11 +14,10 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"))
 
 /**
  * Web `apps/web-app/src/components/fade-header.tsx`: a centered title between
- * two 40-wide slots, the start one holding a ghost back button with a bold
- * primary `ArrowLeft` (`size-5`, stroke 3).
- *
- * Tailwind mirrored: `py-3 gap-4`, slots `w-10`, title `flex-1 text-xl
- * font-bold text-center`.
+ * two slots, the start one holding a ghost back button, drawn as fazole.fit's
+ * `TopBar` (Linky's `packages/ui/src/navigation.tsx`): a 44-high bar `py-2
+ * gap-2`, 44-wide slots, a round ghost icon button with `ArrowLeft`, and a
+ * bold 14 title in the muted text color, with a 12 muted subtitle under it.
  *
  * Inside a `Screen` it fades out over the first 75 px of scroll and drifts
  * up at 1/2.5 of the scroll speed, as web's fixed bar does: it stays the
@@ -73,8 +72,8 @@ export function FadeHeader({
   }, [scrollY])
 
   const bar = (
-    <XStack items="center" gap={16} py={12}>
-      <View w={40} items="flex-start">
+    <XStack items="center" gap={8} py={8} minH={control.md}>
+      <View minW={control.md} items="flex-start">
         {startAddon === undefined ? (
           <Button
             variant="ghost"
@@ -82,7 +81,7 @@ export function FadeHeader({
             aria-label={t("nav.back")}
             onPress={customStartAddonOnClick ?? goBack}
           >
-            <Icon icon={ArrowLeft} size={20} color="primary" strokeWidth={3} />
+            <Icon icon={ArrowLeft} size={20} color="color" />
           </Button>
         ) : (
           startAddon
@@ -91,9 +90,10 @@ export function FadeHeader({
       <View flex={1} items="center">
         <Text
           text="center"
-          fontSize={fontSize.xl}
-          lineHeight={fontSize.xl}
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
           fontWeight={fontWeight.bold}
+          color="muted-foreground"
           numberOfLines={1}
           role="heading"
           aria-level={2}
@@ -102,8 +102,8 @@ export function FadeHeader({
         </Text>
         {subtitle === undefined ? null : (
           <Text
-            fontSize={fontSize.sm}
-            lineHeight={fontSize.sm}
+            fontSize={fontSize.xs}
+            lineHeight={fontSize.xs}
             color="muted-foreground"
             numberOfLines={1}
           >
@@ -111,7 +111,7 @@ export function FadeHeader({
           </Text>
         )}
       </View>
-      <View w={40} items="flex-end">
+      <View minW={control.md} items="flex-end">
         {endAddon}
       </View>
     </XStack>

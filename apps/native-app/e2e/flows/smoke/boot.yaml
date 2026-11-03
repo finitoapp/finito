@@ -3,4 +3,4 @@ appId: ${APP_ID}
 tags: [smoke]
 ---
 - runFlow: ../../subflows/start.yaml
-- assertVisible: ${output.t["accountChoice.new.title"]}.*
+- assertVisible: ${output.t["onboarding.welcome.new"]}.*

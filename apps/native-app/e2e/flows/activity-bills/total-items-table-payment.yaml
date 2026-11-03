@@ -53,7 +53,7 @@ tags: [activity-bills]
       ROUTE: activity/bills/${output.billId}
       TEXT: ${output.t["billDetail.title"]}
 - assertVisible: ${output.t["bill.status.closed"]}
-- assertVisible: \$5\.00
+- assertVisible: \$5
 - assertVisible: Coffee
 - assertVisible: Patio 1
 - assertVisible: ${output.t["payment.status.paid"]}

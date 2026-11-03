@@ -27,7 +27,7 @@ tags: [bill]
     env:
       ROUTE: bill?billId=${output.billId}
       TEXT: ${output.t["bill.collision.title"]}
-- assertVisible: \$5\.00
+- assertVisible: \$5
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:

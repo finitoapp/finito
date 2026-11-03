@@ -1,12 +1,20 @@
-# web menu.spec.ts: "the bell on home opens Notifications, which has Back and no bar".
+# web menu.spec.ts: "the bell on home opens Notifications, which has Back and
+# no bar" — on native Notifications sit under Settings (navigation/0002), a
+# sub-screen with Back and no bar, and home has no bell.
 appId: ${APP_ID}
 tags: [menu]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow:
-    file: ../../subflows/tap-label.yaml
+    file: ../../subflows/assert-label.yaml
     env:
       LABEL: ${output.t["nav.notifications"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["notifications.title"]}
+      FROM_HOME: "true"
 - extendedWaitUntil:
     visible: ${output.t["notifications.empty.title"]}
     timeout: 15000
@@ -22,4 +30,4 @@ tags: [menu]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["nav.menu"]}
+      LABEL: ${output.t["nav.home"]}

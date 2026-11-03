@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Manrope, the typeface the app and Linky share (Google Fonts' static faces,
+   OFL), from Fontsource like the PWA's. Each face's `unicode-range` has the
+   browser fetch only the subsets a page uses. */
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+
 @import "tw-animate-css";
 
 /** Dark Mode Variant **/
@@ -48,7 +55,7 @@
   --switch-true: oklch(0.73 0.16 160);
   --switch-false: oklch(0.58 0.16 30);
 
-  --font-sans: Inter, sans-serif;
+  --font-sans: Manrope, sans-serif;
   --font-serif: Source Serif 4, serif;
   --font-mono: JetBrains Mono, monospace;
   --success: var(--color-emerald-500);

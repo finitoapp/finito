@@ -10,11 +10,11 @@ tags: [access-gates]
       ROUTE: settings/accounts
       TEXT: ${output.t["settings.accounts.title"]}
 - scrollUntilVisible:
-    element: ${output.t["accountChoice.new.title"]}
-- tapOn: ${output.t["accountChoice.new.title"]}
+    element: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["settings.accounts.create.confirm.confirm"]}
 - extendedWaitUntil:
-    visible: ${output.t["onboarding.title"]}
+    visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000
 - runFlow: ../../subflows/complete-onboarding.yaml
 # A restore URL naming the other account removes nothing.
@@ -42,4 +42,4 @@ tags: [access-gates]
     env:
       ROUTE: onboarding
       TEXT: ${output.t["home.pay"]}
-- assertNotVisible: ${output.t["onboarding.title"]}
+- assertNotVisible: ${output.t["onboarding.welcome.new"]}

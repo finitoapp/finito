@@ -10,15 +10,17 @@ import { type GetProps, styled, Text, View } from "tamagui"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /**
- * Web `apps/web-app/src/components/ui/field.tsx`: the same parts.
+ * Web `apps/web-app/src/components/ui/field.tsx`: the same parts, in
+ * fazole.fit's field frame (Linky's `packages/ui/src/fields.tsx`
+ * `FieldFrame`): a semibold 14 label in the subtle text color, the control,
+ * and a 12 caption under it, muted for a description and in the danger
+ * color for an error, `gap-1` between them; `FieldGroup` `gap-4`.
  *
- * Tailwind mirrored: `FieldSet` `flex-col gap-4`; `FieldLegend` `mb-1.5
- * font-medium text-base` (`variant="label"` `text-sm`); `FieldGroup`
- * `flex-col gap-5`; `Field` `gap-2`, `flex-col` or (`horizontal`)
- * `flex-row items-center`; `FieldContent` `flex-1 flex-col gap-0.5`;
- * `FieldLabel`/`FieldTitle` `text-sm font-medium`; `FieldDescription`
- * `text-sm text-muted-foreground`; `FieldError` `text-sm text-destructive`
- * with `role="alert"`; `FieldSeparator` `h-5` with a centered rule.
+ * Tailwind mirrored otherwise: `FieldSet` `flex-col gap-4`; `FieldLegend`
+ * `mb-1.5 font-medium text-base` (`variant="label"` `text-sm`); `Field`
+ * `flex-col` or (`horizontal`) `flex-row items-center`; `FieldContent`
+ * `flex-1 flex-col gap-0.5`; `FieldError` has `role="alert"`;
+ * `FieldSeparator` `h-5` with a centered rule.
  *
  * Native differences: web ties a label to its input with `htmlFor`; here
  * `Field` gives `FieldLabel` an `id` and `ui/input` names itself after it
@@ -64,11 +66,11 @@ export const FieldLegend = styled(Text, {
   defaultVariants: { variant: "legend" },
 })
 
-export const FieldGroup = styled(View, { name: "FieldGroup", gap: 20 })
+export const FieldGroup = styled(View, { name: "FieldGroup", gap: 16 })
 
 const FieldFrame = styled(View, {
   name: "Field",
-  gap: 8,
+  gap: 4,
 
   variants: {
     orientation: {
@@ -103,7 +105,8 @@ const FieldLabelText = styled(Text, {
   name: "FieldLabel",
   fontSize: fontSize.sm,
   lineHeight: fontSize.sm,
-  fontWeight: fontWeight.medium,
+  fontWeight: fontWeight.semibold,
+  color: "foreground-70",
 })
 
 export function FieldLabel(props: GetProps<typeof FieldLabelText>) {
@@ -125,15 +128,15 @@ export const FieldTitle = styled(Text, {
 
 export const FieldDescription = styled(Text, {
   name: "FieldDescription",
-  fontSize: fontSize.sm,
-  lineHeight: fontSize.sm,
+  fontSize: fontSize.xs,
+  lineHeight: fontSize.xs,
   color: "muted-foreground",
 })
 
 const FieldErrorText = styled(Text, {
   name: "FieldError",
-  fontSize: fontSize.sm,
-  lineHeight: fontSize.sm,
+  fontSize: fontSize.xs,
+  lineHeight: fontSize.xs,
   color: "destructive",
 })
 

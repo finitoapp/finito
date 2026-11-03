@@ -6,7 +6,7 @@ import {
   useMemo,
 } from "react"
 import { type GetProps, styled, Text, View } from "tamagui"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/toggle-group.tsx` with the item look of
@@ -54,20 +54,18 @@ const ItemFrame = styled(View, {
   justify: "center",
   shrink: 0,
   gap: 4,
-  rounded: radius.lg,
-  borderWidth: 1,
-  borderColor: "transparent",
-  bg: "transparent press:muted",
+  rounded: shape.control,
+  bg: "transparent press:neutral-soft",
   cursor: "web:pointer",
 
   variants: {
     variant: {
       default: {},
-      outline: { borderColor: "input" },
+      outline: { bg: "neutral-soft press:button-outline-pressed" },
     },
     size: {
       default: { h: 32, minW: 32, px: 10 },
-      sm: { h: 28, minW: 28, px: 10, rounded: radius.md },
+      sm: { h: 28, minW: 28, px: 10, rounded: shape.pill },
       lg: { h: 36, minW: 36, px: 10 },
     },
     selected: { true: { bg: "muted" } },
@@ -96,8 +94,8 @@ const joinedStyle = (
   vertical: boolean,
   { first, last }: { readonly first: boolean; readonly last: boolean }
 ) => {
-  const startRadius = first ? radius.lg : 0
-  const endRadius = last ? radius.lg : 0
+  const startRadius = first ? shape.control : 0
+  const endRadius = last ? shape.control : 0
   return vertical
     ? {
         px: 8,

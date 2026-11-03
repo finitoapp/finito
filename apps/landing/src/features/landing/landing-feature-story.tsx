@@ -395,7 +395,7 @@ function FlowCard({ flow }: { readonly flow: Flow }) {
     <TabsTrigger
       id={flowAnchor(flow.id)}
       value={flow.id}
-      className="group/card relative aspect-4/3 h-auto w-[78vw] flex-none max-w-sm shrink-0 snap-center flex-col items-stretch justify-end overflow-hidden rounded-3xl border-0 p-0 text-left whitespace-normal text-white opacity-70 grayscale-[0.6] transition-[opacity,filter,box-shadow] duration-300 after:hidden hover:text-white hover:opacity-100 hover:grayscale-0 data-active:text-white data-active:opacity-100 data-active:shadow-xl data-active:ring-2 data-active:ring-primary data-active:ring-offset-4 data-active:ring-offset-background data-active:grayscale-0 sm:w-auto sm:max-w-none dark:text-white dark:hover:text-white dark:data-active:text-white scroll-mt-28"
+      className="group/card relative aspect-4/3 h-auto w-[78vw] flex-none max-w-sm shrink-0 snap-center flex-col items-stretch justify-end overflow-hidden rounded-3xl border-0 p-0 text-left whitespace-normal text-white opacity-70 grayscale-[0.6] transition-[opacity,filter,box-shadow] duration-300 after:hidden hover:text-white hover:opacity-100 hover:grayscale-0 data-active:text-white data-active:opacity-100 data-active:shadow-xl data-active:grayscale-0 sm:w-auto sm:max-w-none dark:text-white dark:hover:text-white dark:data-active:text-white scroll-mt-28"
     >
       <img
         src={flow.image}
@@ -450,7 +450,7 @@ function CompactSwitcher({
       >
         <fieldset
           aria-label={t("landing.flows.label")}
-          className="pointer-events-auto relative grid grid-cols-3 rounded-full border bg-background/85 p-1 shadow-lg backdrop-blur-md"
+          className="pointer-events-auto relative grid grid-cols-3 rounded-full bg-background/85 p-1 shadow-lg backdrop-blur-md"
         >
           <span
             aria-hidden="true"

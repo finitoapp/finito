@@ -5,12 +5,12 @@ appId: ${APP_ID}
 tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
-- tapOn: ${output.t["accountChoice.new.title"]}
+- tapOn: ${output.t["onboarding.welcome.new"]}
 - assertVisible: ${output.t["onboarding.payments.title"]}
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
-      LABEL: ${output.t["onboarding.businessName.label"]}
+      LABEL: ${output.t["onboarding.setup.name.label"]}
       VALUE: "   "
 - runFlow:
     when:

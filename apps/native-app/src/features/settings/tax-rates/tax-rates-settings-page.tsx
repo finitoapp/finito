@@ -67,18 +67,9 @@ export function TaxRatesSettingsPage() {
                 {t("settings.taxRates.empty")}
               </Text>
             ) : (
-              <YStack
-                rounded="lg"
-                borderWidth={1}
-                borderColor="border-color"
-                overflow="hidden"
-              >
-                {activeTaxRates.map((taxRate, index) => (
-                  <TaxRateRowItem
-                    key={taxRate.id}
-                    taxRate={taxRate}
-                    last={index === activeTaxRates.length - 1}
-                  />
+              <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+                {activeTaxRates.map((taxRate) => (
+                  <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
                 ))}
               </YStack>
             )}
@@ -90,23 +81,14 @@ export function TaxRatesSettingsPage() {
         {archivedTaxRates.length > 0 && (
           <Card>
             <CardHeader>
-              <Text fontSize="sm" lineHeight="sm" fontWeight="500">
+              <Text fontSize="sm" lineHeight="sm" fontWeight="600">
                 {t("settings.taxRates.archived.title")}
               </Text>
             </CardHeader>
             <CardContent>
-              <YStack
-                rounded="lg"
-                borderWidth={1}
-                borderColor="border-color"
-                overflow="hidden"
-              >
-                {archivedTaxRates.map((taxRate, index) => (
-                  <TaxRateRowItem
-                    key={taxRate.id}
-                    taxRate={taxRate}
-                    last={index === archivedTaxRates.length - 1}
-                  />
+              <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+                {archivedTaxRates.map((taxRate) => (
+                  <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
                 ))}
               </YStack>
             </CardContent>
@@ -143,13 +125,7 @@ function RowAction({
   )
 }
 
-function TaxRateRowItem({
-  taxRate,
-  last,
-}: {
-  readonly taxRate: TaxRateRow
-  readonly last: boolean
-}) {
+function TaxRateRowItem({ taxRate }: { readonly taxRate: TaxRateRow }) {
   const confirm = useConfirm()
   const runToast = useRunToast()
   const { t } = useTranslation()
@@ -183,13 +159,7 @@ function TaxRateRowItem({
 
   if (editing) {
     return (
-      <YStack
-        px={12}
-        py={8}
-        {...(!last
-          ? { borderBottomWidth: 1, borderColor: "border-color" }
-          : {})}
-      >
+      <YStack px={12} py={8}>
         <InlineEditField
           startEditing
           label={t("settings.taxRates.rename.input", name)}
@@ -208,16 +178,9 @@ function TaxRateRowItem({
   }
 
   return (
-    <XStack
-      items="center"
-      justify="space-between"
-      gap="1"
-      px={12}
-      py={8}
-      {...(!last ? { borderBottomWidth: 1, borderColor: "border-color" } : {})}
-    >
+    <XStack items="center" justify="space-between" gap="1" px={12} py={8}>
       <YStack flex={1}>
-        <Text fontSize="sm" lineHeight="sm" fontWeight="500" numberOfLines={1}>
+        <Text fontSize="sm" lineHeight="sm" fontWeight="600" numberOfLines={1}>
           {taxRate.name}
         </Text>
         <Text fontSize="xs" lineHeight="xs" color="muted-foreground">

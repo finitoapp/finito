@@ -39,7 +39,7 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow: ../../subflows/wrong-pins.yaml
 - extendedWaitUntil:
@@ -56,7 +56,7 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/items
+      ROUTE: settings/items
       TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml

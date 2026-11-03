@@ -88,13 +88,7 @@ export function DeviceItem({
   }
 
   return (
-    <YStack
-      gap="3"
-      p="3"
-      rounded="lg"
-      borderWidth={1}
-      borderColor="border-color"
-    >
+    <YStack gap="3" p="3" rounded="lg" bg="neutral-soft">
       <DeviceHeading device={device} thisDevice={thisDevice} />
       <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
         {preset === null

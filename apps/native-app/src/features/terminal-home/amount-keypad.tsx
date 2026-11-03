@@ -3,6 +3,7 @@ import {
   amountKeypadKeys,
   applyAmountKey,
   formatAmountInput,
+  formatAmountInputParts,
   getDecimalSeparator,
 } from "@payky/app-shared/amount-entry"
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
@@ -131,25 +132,48 @@ function AmountDisplay({
   const amountInput = useAtomValue(amountInputAtom)
   const locale = useLocale()
   const formattedAmount = formatAmountInput(amountInput, currency, locale)
+  const parts = formatAmountInputParts(amountInput, currency, locale)
 
   const pulse = useChangePulse(formattedAmount)
 
-  // The transform sits on a wrapper so `adjustsFontSizeToFit` measures the
-  // untransformed text.
+  // Fazole's `Amount`: the unit as a small bold muted caption on the
+  // number's baseline, where the locale puts it. The whole reads as one
+  // heading. The transform sits on a wrapper so `adjustsFontSizeToFit`
+  // measures the untransformed text.
+  const unit = (
+    <Text
+      fontSize={fontSize.base}
+      lineHeight={fontSize.base}
+      fontWeight={fontWeight.bold}
+      color="muted-foreground"
+    >
+      {parts.unit}
+    </Text>
+  )
   return (
     <YStack items="center">
       <Animated.View style={[{ maxWidth: "100%" }, pulse]}>
-        <Text
+        <XStack
+          items="baseline"
+          justify="center"
+          gap={8}
           role="heading"
-          fontSize="6xl"
-          lineHeight="6xl"
-          fontWeight={fontWeight.semibold}
-          fontVariant={["tabular-nums"]}
-          adjustsFontSizeToFit
-          numberOfLines={1}
+          aria-label={formattedAmount}
         >
-          {formattedAmount}
-        </Text>
+          {parts.unitFirst ? unit : null}
+          <Text
+            fontSize="6xl"
+            lineHeight="6xl"
+            fontWeight={fontWeight.semibold}
+            fontVariant={["tabular-nums"]}
+            adjustsFontSizeToFit
+            numberOfLines={1}
+            shrink={1}
+          >
+            {parts.number}
+          </Text>
+          {parts.unitFirst ? null : unit}
+        </XStack>
       </Animated.View>
     </YStack>
   )

@@ -1,5 +1,4 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import {
   unconfirmedEetReversalsQuery,
   unconfirmedEetSalesQuery,
@@ -17,6 +16,7 @@ import {
 } from "../../../components/ui/card.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatMoney } from "../../../lib/format-money.ts"
 import { EetSaleStatusLabel } from "../../shared/eet-sale-status.tsx"
 
 /** Sales and reversals EET has not confirmed; each opens its payment. */
@@ -73,14 +73,13 @@ export function EetUnconfirmedSales() {
                 gap="3"
                 p="3"
                 rounded="lg"
-                borderWidth={1}
-                borderColor="border-color"
+                bg="neutral-soft"
                 role="button"
                 cursor="web:pointer"
                 onPress={() => router.push(`/activity/${sale.paymentId}`)}
               >
                 <YStack flex={1}>
-                  <Text fontSize="sm" lineHeight="sm" fontWeight="500">
+                  <Text fontSize="sm" lineHeight="sm" fontWeight="600">
                     {title}
                   </Text>
                   <Text fontSize="xs" lineHeight="xs" color="muted-foreground">

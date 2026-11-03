@@ -1,6 +1,5 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
-  getOnboardingSteps,
   initialOnboardingFormState,
   type OnboardingStep,
   onboardingFormAtom,
@@ -23,13 +22,14 @@ import {
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { router } from "expo-router"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import ChevronLeft from "lucide-react-native/icons/chevron-left"
+import QrCode from "lucide-react-native/icons/qr-code"
 import { useEffect, useRef, useState } from "react"
 import { BackHandler, Platform } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { reloadAppEvoluAtom } from "../../atoms/evolu-counter.ts"
+import { FadeHeader } from "../../components/fade-header.tsx"
 import { Screen, screenPaddingX } from "../../components/screen.tsx"
 import {
   Alert,
@@ -52,30 +52,39 @@ import {
 } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useSetLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { maxWidth } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, maxWidth } from "../../theme/tokens.ts"
 import { AccountTransferTarget } from "../shared/account-transfer-target.tsx"
 import { RestoreAccountStep } from "../shared/restore-account-step.tsx"
 import { useRestoreAccount } from "../shared/use-restore-account.ts"
-import { AccountChoiceStep } from "./account-choice-step.tsx"
 import { LanguageSelect } from "./language-select.tsx"
 import { PaymentsStep } from "./payments-step.tsx"
+import { WelcomeStep } from "./welcome-step.tsx"
+
+/** The steps after the welcome screen head their page, as fazole.fit's do. */
+type HeadedStep = Exclude<OnboardingStep, "accountChoice">
 
 const headingKeys = {
-  accountChoice: "onboarding.title",
-  payments: "onboarding.payments.title",
+  payments: "onboarding.setup.title",
   restore: "onboarding.restore.title",
   transfer: "accountTransfer.target.title",
-} satisfies Record<OnboardingStep, TranslationKey>
+} satisfies Record<HeadedStep, TranslationKey>
 const descriptionKeys = {
-  accountChoice: "onboarding.accountChoice.description",
   payments: "onboarding.payments.description",
   restore: "onboarding.restore.description",
   transfer: "accountTransfer.target.description",
-} satisfies Record<OnboardingStep, TranslationKey>
+} satisfies Record<HeadedStep, TranslationKey>
 
-/** Web's onboarding `px-6`, wider than other screens' sides. */
-const ONBOARDING_PADDING_X = 24
+/** fazole.fit's page gutter (`$xl`, 20), wider than other screens' sides. */
+const ONBOARDING_PADDING_X = 20
 
+/**
+ * Onboarding as fazole.fit's (Linky's `apps/fazole-app/src/screens/
+ * WelcomeScreen.tsx`, `SetupScreen.tsx` and `RestoreScreen.tsx`): a welcome
+ * screen with the two ways in, a business setup page, and a restore page
+ * that also offers the transfer from another device. The steps and the
+ * form live in `onboardingFormAtom`, shared with web, so the restore sync
+ * page can send a phrase back here.
+ */
 export function OnboardingPage() {
   const { language, t } = useTranslation()
   const runToast = useRunToast()
@@ -114,9 +123,11 @@ export function OnboardingPage() {
     submitAttempted && validation.ibanInvalid
       ? "settings.fiatBankAccount.iban.invalid"
       : null
-  const steps = getOnboardingSteps(accountType)
-  const stepIndex = steps.indexOf(step)
   const pending = finishing || restoring || cancelingSetup
+  // A phrase whose relays held nothing (`existingMnemonic`) starts on the
+  // setup page with no welcome screen to go back to.
+  const canGoBack =
+    step !== "accountChoice" && accountType !== "existingMnemonic"
 
   // The appSettings row marks the account as onboarded (same as web): leave
   // so a finished or synced account never finishes again.
@@ -188,13 +199,20 @@ export function OnboardingPage() {
     }
   }
 
+  /**
+   * The transfer is reached from the restore page, so it goes back there;
+   * the setup and restore pages go back to the welcome screen.
+   */
   const goBack = () => {
-    const previous = steps[stepIndex - 1]
-    if (previous === undefined) return false
+    if (!canGoBack) return false
     if (finishingRef.current) return true
     setSubmitAttempted(false)
     setRestoreError(null)
-    setForm((current) => ({ ...current, step: previous }))
+    setForm((current) =>
+      current.step === "transfer"
+        ? { ...current, accountType: "restore", step: "restore" }
+        : { ...current, step: "accountChoice" }
+    )
     return true
   }
 
@@ -214,11 +232,12 @@ export function OnboardingPage() {
   return (
     <Screen>
       {/*
-       * Web's onboarding column, `max-w-md px-6`: 448 px with its 24 px
-       * sides, of which `Screen` pads the first `screenPaddingX`.
+       * fazole.fit's page: a `sheetWidth` column with a 20 gutter, of which
+       * `Screen` pads the first `screenPaddingX`.
        */}
       <YStack
-        gap="6"
+        flex={1}
+        gap={20}
         w="100%"
         self="center"
         px={ONBOARDING_PADDING_X - screenPaddingX}
@@ -226,157 +245,22 @@ export function OnboardingPage() {
           Platform.OS === "web" ? maxWidth.md - 2 * screenPaddingX : undefined
         }
       >
-        <XStack items="center" minH={32}>
-          {stepIndex > 0 ? (
-            <Button
-              label={t("onboarding.back")}
-              iconStart={ChevronLeft}
-              variant="ghost"
-              disabled={pending}
-              onPress={() => {
-                goBack()
-              }}
+        {step === "accountChoice" ? (
+          <>
+            <FadeHeader
+              startAddon={null}
+              endAddon={<LanguageSelect disabled={pending} />}
             />
-          ) : null}
-          <LanguageSelect disabled={pending} />
-        </XStack>
-
-        <YStack gap="8" py="6">
-          <YStack gap="2">
-            <Text
-              fontSize="2xl"
-              lineHeight="2xl"
-              fontWeight="600"
-              role="heading"
-              aria-level={1}
-            >
-              {t(headingKeys[step])}
-            </Text>
-            <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
-              {t(descriptionKeys[step])}
-            </Text>
-          </YStack>
-
-          {step === "accountChoice" ? (
-            <AccountChoiceStep
+            <WelcomeStep
               pending={pending}
-              onSelect={(nextAccountType) => {
-                const nextSteps = getOnboardingSteps(nextAccountType)
+              onNew={() =>
                 setForm((current) => ({
                   ...current,
-                  accountType: nextAccountType,
-                  step: nextSteps[1] ?? current.step,
+                  accountType: "new",
+                  step: "payments",
                 }))
-              }}
-            />
-          ) : null}
-
-          {step === "payments" ? (
-            <YStack gap="8">
-              <FieldGroup>
-                <Field>
-                  <FieldLabel>{t("onboarding.businessName.label")}</FieldLabel>
-                  <Input
-                    value={businessName}
-                    disabled={pending}
-                    invalid={submitAttempted && validation.businessNameInvalid}
-                    autoComplete="organization"
-                    placeholder={t("onboarding.businessName.placeholder")}
-                    onChangeText={(nextName) => {
-                      setProfilePublishFailed(false)
-                      setForm((current) => ({
-                        ...current,
-                        businessName: nextName,
-                      }))
-                    }}
-                  />
-                  <FieldDescription>
-                    {t("onboarding.businessName.description")}
-                  </FieldDescription>
-                  <FieldError>
-                    {submitAttempted && validation.businessNameInvalid
-                      ? t("settings.profile.name.invalid")
-                      : undefined}
-                  </FieldError>
-                </Field>
-              </FieldGroup>
-              <PaymentsStep
-                iban={iban}
-                ibanError={ibanError}
-                pending={pending}
-                onIbanChange={(nextIban) => {
-                  setForm((current) => ({ ...current, iban: nextIban }))
-                }}
-              />
-              {profilePublishFailed ? (
-                <Alert variant="destructive">
-                  <AlertTitle>
-                    {t("onboarding.businessName.publishFailed.title")}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {t("onboarding.businessName.publishFailed.description")}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              <Button
-                size="lg"
-                w="100%"
-                label={t(
-                  profilePublishFailed
-                    ? "onboarding.businessName.retry"
-                    : iban.trim() === ""
-                      ? "onboarding.finishWithoutBankTransfer"
-                      : "onboarding.finish"
-                )}
-                pending={finishing}
-                onPress={() => {
-                  void finish()
-                }}
-              />
-              {profilePublishFailed ? (
-                <Button
-                  variant="outline"
-                  w="100%"
-                  h="auto"
-                  minH={44}
-                  py={10}
-                  disabled={pending}
-                  aria-label={t(
-                    "onboarding.businessName.continueWithoutPublishing"
-                  )}
-                  onPress={() => {
-                    void finish(true)
-                  }}
-                >
-                  <Text flexShrink={1} textAlign="center">
-                    {t("onboarding.businessName.continueWithoutPublishing")}
-                  </Text>
-                </Button>
-              ) : null}
-            </YStack>
-          ) : null}
-
-          {step === "restore" ? (
-            <RestoreAccountStep
-              error={restoreError}
-              pending={restoring}
-              submitFullWidth
-              onTransfer={() =>
-                setForm((current) => ({ ...current, step: "transfer" }))
               }
-              onRestore={(phrase) => {
-                void restore(phrase).then((started) => {
-                  if (started) setForm(initialOnboardingFormState)
-                })
-              }}
-            />
-          ) : null}
-
-          {step === "transfer" ? (
-            <AccountTransferTarget
-              source="onboarding"
-              confirmBeforeAdding={fallbackAccount !== undefined}
-              onRestoreWithPhrase={() =>
+              onRestore={() =>
                 setForm((current) => ({
                   ...current,
                   accountType: "restore",
@@ -384,14 +268,167 @@ export function OnboardingPage() {
                 }))
               }
             />
-          ) : null}
-        </YStack>
+          </>
+        ) : (
+          <>
+            {canGoBack ? (
+              <FadeHeader customStartAddonOnClick={goBack} />
+            ) : (
+              <FadeHeader startAddon={null} />
+            )}
+            <YStack gap={8}>
+              <Text
+                fontSize={fontSize["2xl"]}
+                lineHeight={fontSize["2xl"]}
+                fontWeight={fontWeight.bold}
+                role="heading"
+                aria-level={1}
+              >
+                {t(headingKeys[step])}
+              </Text>
+              <Text color="muted-foreground">{t(descriptionKeys[step])}</Text>
+            </YStack>
+
+            {step === "payments" ? (
+              <YStack gap={20}>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel>{t("onboarding.setup.name.label")}</FieldLabel>
+                    <Input
+                      value={businessName}
+                      disabled={pending}
+                      invalid={
+                        submitAttempted && validation.businessNameInvalid
+                      }
+                      autoComplete="organization"
+                      placeholder={t("onboarding.businessName.placeholder")}
+                      onChangeText={(nextName) => {
+                        setProfilePublishFailed(false)
+                        setForm((current) => ({
+                          ...current,
+                          businessName: nextName,
+                        }))
+                      }}
+                    />
+                    {submitAttempted && validation.businessNameInvalid ? (
+                      <FieldError>
+                        {t("settings.profile.name.invalid")}
+                      </FieldError>
+                    ) : (
+                      <FieldDescription>
+                        {t("onboarding.setup.name.hint")}
+                      </FieldDescription>
+                    )}
+                  </Field>
+                  <PaymentsStep
+                    iban={iban}
+                    ibanError={ibanError}
+                    pending={pending}
+                    onIbanChange={(nextIban) => {
+                      setForm((current) => ({ ...current, iban: nextIban }))
+                    }}
+                  />
+                </FieldGroup>
+                {profilePublishFailed ? (
+                  <Alert variant="destructive">
+                    <AlertTitle>
+                      {t("onboarding.businessName.publishFailed.title")}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {t("onboarding.businessName.publishFailed.description")}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <Button
+                  w="100%"
+                  label={t(
+                    profilePublishFailed
+                      ? "onboarding.businessName.retry"
+                      : iban.trim() === ""
+                        ? "onboarding.finishWithoutBankTransfer"
+                        : "onboarding.finish"
+                  )}
+                  pending={finishing}
+                  onPress={() => {
+                    void finish()
+                  }}
+                />
+                {profilePublishFailed ? (
+                  <Button
+                    variant="ghost"
+                    w="100%"
+                    h="auto"
+                    disabled={pending}
+                    aria-label={t(
+                      "onboarding.businessName.continueWithoutPublishing"
+                    )}
+                    onPress={() => {
+                      void finish(true)
+                    }}
+                  >
+                    <Text
+                      flexShrink={1}
+                      text="center"
+                      fontSize={fontSize.sm}
+                      lineHeight={fontSize.sm}
+                      fontWeight={fontWeight.bold}
+                    >
+                      {t("onboarding.businessName.continueWithoutPublishing")}
+                    </Text>
+                  </Button>
+                ) : null}
+              </YStack>
+            ) : null}
+
+            {step === "restore" ? (
+              <YStack gap={20}>
+                <RestoreAccountStep
+                  error={restoreError}
+                  pending={restoring}
+                  submitFullWidth
+                  onRestore={(phrase) => {
+                    void restore(phrase).then((started) => {
+                      if (started) setForm(initialOnboardingFormState)
+                    })
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  w="100%"
+                  iconStart={QrCode}
+                  label={t("accountChoice.transfer.title")}
+                  disabled={pending}
+                  onPress={() =>
+                    setForm((current) => ({
+                      ...current,
+                      accountType: "transfer",
+                      step: "transfer",
+                    }))
+                  }
+                />
+              </YStack>
+            ) : null}
+
+            {step === "transfer" ? (
+              <AccountTransferTarget
+                source="onboarding"
+                confirmBeforeAdding={fallbackAccount !== undefined}
+                onRestoreWithPhrase={() =>
+                  setForm((current) => ({
+                    ...current,
+                    accountType: "restore",
+                    step: "restore",
+                  }))
+                }
+              />
+            ) : null}
+          </>
+        )}
 
         {fallbackAccount === undefined ? null : (
-          <XStack>
+          <XStack justify="center">
             <Button
               variant="ghost"
-              size="sm"
               label={t("onboarding.cancelSetup")}
               disabled={pending}
               onPress={() => void cancelSetup()}

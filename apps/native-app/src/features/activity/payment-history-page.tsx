@@ -8,7 +8,6 @@ import {
 } from "@payky/app-shared/activity-history"
 import { paymentStatusLabelKey } from "@payky/app-shared/activity-labels"
 import { formatTime } from "@payky/app-shared/format-date"
-import { formatMoney } from "@payky/app-shared/format-money"
 import { groupByDay } from "@payky/app-shared/group-by-day"
 import { useNow } from "@payky/app-shared/use-now"
 import { latestPaymentsQuery } from "@payky/core/modules/payment/payment-queries"
@@ -17,6 +16,7 @@ import { summarizeRefundsByPayment } from "@payky/core/modules/refund/refund-uti
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 import { RefundBadge } from "../shared/refund-badge.tsx"
 import {
   type ActivityGroup,

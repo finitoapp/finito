@@ -4,7 +4,7 @@ import Info from "lucide-react-native/icons/info"
 import OctagonX from "lucide-react-native/icons/octagon-x"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { styled, Text, View } from "tamagui"
-import { fontWeight, radius } from "../../theme/tokens.ts"
+import { fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
 
 /**
@@ -37,9 +37,8 @@ const ToastFrame = styled(View, {
   gap: 6,
   minH: 48,
   p: 16,
-  rounded: radius.lg,
-  borderWidth: 1,
-  borderColor: "border-color",
+  // fazole.fit's toast: a 12-round raised surface, no border.
+  rounded: shape.control,
   bg: "popover",
 })
 

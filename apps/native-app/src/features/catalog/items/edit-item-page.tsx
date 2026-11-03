@@ -5,7 +5,8 @@ import {
   optionalTextCodec,
   requiredTextCodec,
 } from "@payky/app-shared/inline-edit-codecs"
-import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
+import { findOrCreateCatalogCategory } from "@payky/core/modules/catalog-category/catalog-category-actions"
+import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   deleteCatalogItem,
@@ -20,6 +21,7 @@ import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import { NonEmptyString255Schema } from "@payky/core/modules/shared/schema"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import Trash from "lucide-react-native/icons/trash"
@@ -61,9 +63,9 @@ import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
 import { CatalogFormEmptyState } from "../catalog-form-empty-state.tsx"
+import { CategoryField } from "./category-field.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
-const categoryCodec = optionalIdCodec<CatalogCategoryId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
 
 /** Edits one catalog item, as web's `EditCatalogItemPage`: every field saves itself. */
@@ -101,9 +103,10 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const confirmedRun = useConfirmedRun()
   const [scannerOpen, setScannerOpen] = useState(false)
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
-  const { categoryOptions, taxRateOptions } = useCatalogItemOptions(
-    item.taxRateId
-  )
+  const { taxRateOptions } = useCatalogItemOptions(item.taxRateId)
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
+  // A category typed rather than picked, made on Save (navigation/0003).
+  const [newCategory, setNewCategory] = useState("")
 
   // How many minor units the price means depends on the currency next to it.
   const priceCodec = useMemo(
@@ -126,6 +129,18 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const category = useInlineChoice(item.categoryId, (next) =>
     saveItem({ categoryId: next })
   )
+  const [savingCategory, setSavingCategory] = useState(false)
+  const commitNewCategory = async () => {
+    const name = NonEmptyString255Schema.safeParse(newCategory.trim())
+    if (!name.success || savingCategory) return
+    setSavingCategory(true)
+    const saved = await runToast(async (run) => {
+      const categoryId = await run.ok(findOrCreateCatalogCategory(name.data))
+      await run.ok(updateCatalogItem({ id: item.id, categoryId }))
+    })
+    setSavingCategory(false)
+    if (saved) setNewCategory("")
+  }
   const taxRate = useInlineChoice(item.taxRateId, (next) =>
     saveItem({ taxRateId: next })
   )
@@ -246,41 +261,17 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
                 errorKey="catalog.items.form.sku.invalid"
                 onSave={(sku) => saveItem({ sku })}
               />
-              <Field>
-                <FieldLabel>
-                  {t("catalog.items.form.category.label")}
-                </FieldLabel>
-                <Select
-                  value={z.encode(categoryCodec, category.value)}
-                  onValueChange={(value) =>
-                    void category.choose(
-                      z.safeDecode(categoryCodec, value).data ?? null
-                    )
-                  }
-                  items={Object.fromEntries(
-                    categoryOptions.map((option) => [
-                      option.value,
-                      option.title,
-                    ])
-                  )}
-                >
-                  <SelectTrigger
-                    fullWidth
-                    aria-label={t("catalog.items.form.category.label")}
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent title={t("catalog.items.form.category.label")}>
-                    <SelectGroup>
-                      {categoryOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.title}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </Field>
+              <CategoryField
+                categories={categories}
+                value={category.value}
+                onValueChange={(next) => void category.choose(next)}
+                draft={newCategory}
+                onDraftChange={setNewCategory}
+                onCommitDraft={() => {
+                  void commitNewCategory()
+                }}
+                saving={savingCategory || category.saving}
+              />
               <Field>
                 <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
                 <Select

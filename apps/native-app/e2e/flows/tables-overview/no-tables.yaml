@@ -4,10 +4,7 @@ appId: ${APP_ID}
 tags: [tables-overview]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["nav.pos"]}
+- runFlow: ../../subflows/open-sales.yaml
 - assertVisible: ${output.t["home.pos.noTable.empty"]}
 - assertNotVisible:
     id: table-tile

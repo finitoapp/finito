@@ -1,5 +1,4 @@
 import { sqliteTrue } from "@evolu/common"
-import { formatMoney } from "@payky/app-shared/format-money"
 import {
   addTipFixedAmount,
   addTipPercentage,
@@ -45,6 +44,7 @@ import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { formatMoney } from "../../../lib/format-money.ts"
 
 /**
  * Tip suggestions, as web's `TipsSettingsPage`: edited as a draft and written
@@ -274,25 +274,11 @@ function TipPresetField({
     <Field>
       <FieldLabel>{label}</FieldLabel>
       <FieldDescription>{description}</FieldDescription>
-      <YStack
-        rounded="lg"
-        borderWidth={1}
-        borderColor="border-color"
-        overflow="hidden"
-      >
-        {presets.map((value, index) => {
+      <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+        {presets.map((value) => {
           const text = renderPreset(value)
           return (
-            <XStack
-              key={value}
-              items="center"
-              gap="3"
-              px="3"
-              py="2"
-              {...(index > 0
-                ? { borderTopWidth: 1, borderColor: "border-color" }
-                : {})}
-            >
+            <XStack key={value} items="center" gap="3" px="3" py="2">
               <Text flex={1} fontWeight="600">
                 {text}
               </Text>

@@ -11,6 +11,7 @@
     "@base-ui/react": "1.9.0",
     "@evolu/common": "8.26.0",
     "@evolu/web": "3.7.0",
+    "@fontsource/manrope": "5.3.0",
     "@payky/app-shared": "workspace:*",
     "@payky/core": "workspace:*",
     "@t3-oss/env-core": "0.13.11",

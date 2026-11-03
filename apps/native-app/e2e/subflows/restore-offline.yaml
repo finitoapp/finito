@@ -17,8 +17,8 @@ appId: ${APP_ID}
     file: goto.yaml
     env:
       ROUTE: e2e/offline?next=/onboarding
-      TEXT: ${output.t["onboarding.title"]}
-- tapOn: ${output.t["accountChoice.restore.title"]}
+      TEXT: ${output.t["onboarding.welcome.new"]}
+- tapOn: ${output.t["onboarding.welcome.restore"]}
 # One word per field: Maestro types into the element it tapped, so a space
 # would not move on to the next field as it does for a person.
 - evalScript: '${output.words = output.phrase.split(" "); output.slot = 0}'

@@ -26,7 +26,7 @@ tags: [bill]
 - extendedWaitUntil:
     visible: ${output.t["paymentTip.title"]}
     timeout: 15000
-- assertVisible: \$5\.00
+- assertVisible: \$5
 - tapOn: ${output.re(output.t["paymentTip.none"])}
 - runFlow:
     file: ../../subflows/tap-label.yaml

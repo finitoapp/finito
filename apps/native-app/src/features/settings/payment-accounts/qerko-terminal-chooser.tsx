@@ -153,7 +153,7 @@ export function QerkoTerminalChooser({
     return (
       <YStack gap={12} items="flex-start">
         <YStack gap={4}>
-          <Text fontSize="sm" lineHeight="sm" fontWeight="500">
+          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
             {t("settings.qerkoTerminal.terminals.empty")}
           </Text>
           <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
@@ -179,7 +179,7 @@ export function QerkoTerminalChooser({
     <YStack gap={16}>
       {terminals.data.locations.map((location) => (
         <YStack key={location.locationId} gap={8}>
-          <Text fontSize="sm" lineHeight="sm" fontWeight="500">
+          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
             {location.locationName}
           </Text>
           {location.terminals.map((terminal) => (
@@ -188,8 +188,7 @@ export function QerkoTerminalChooser({
               items="center"
               justify="space-between"
               gap={12}
-              borderWidth={1}
-              borderColor="border-color"
+              bg="neutral-soft"
               rounded={8}
               px={12}
               py={8}

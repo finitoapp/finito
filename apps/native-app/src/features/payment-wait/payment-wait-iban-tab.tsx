@@ -140,15 +140,7 @@ export function IbanPaymentTab({
         payable={payable}
       />
       {qrPayloads.length > 1 ? (
-        <View
-          h={44}
-          p={4}
-          px={6}
-          rounded={radius.full}
-          borderWidth={1}
-          borderColor="input"
-          bg="background"
-        >
+        <View h={44} p={4} px={6} rounded={radius.full} bg="background">
           <ToggleGroup
             value={activeFormat}
             onValueChange={onSelectFormat}
@@ -268,8 +260,7 @@ function DetailCopyRow({
       justify="space-between"
       gap={12}
       rounded={radius.lg}
-      borderWidth={1}
-      borderColor="input"
+      bg="neutral-soft"
       px={12}
       py={8}
     >

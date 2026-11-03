@@ -22,7 +22,7 @@ tags: [menu]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["nav.catalog"]}
+      LABEL: ${output.t["nav.pos"]}
       HIDDEN: "true"
 - runFlow:
     file: ../../subflows/assert-label.yaml
@@ -42,4 +42,4 @@ tags: [menu]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["nav.catalog"]}
+      LABEL: ${output.t["nav.pos"]}

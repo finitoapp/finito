@@ -297,7 +297,7 @@ export function UiKitCard() {
       </Select>
       <Collapsible>
         <CollapsibleTrigger flexDirection="row" justify="space-between">
-          <Text fontSize="sm" lineHeight="sm" fontWeight="500">
+          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
             Advanced
           </Text>
           <Icon icon={ChevronRight} />
@@ -375,7 +375,7 @@ export function UiKitCard() {
       </CollisionAlert>
       <SuccessPanel title="Paid" description="Success panel description" />
       <View self="center">
-        <SlidingPillTrack padding={4} borderColor="input">
+        <SlidingPillTrack padding={4} bg="neutral-soft">
           <View flexDirection="row">
             {(["Pos", "Numpad"] as const).map((label, index) => (
               <View key={label} px={16} h={36} justify="center">

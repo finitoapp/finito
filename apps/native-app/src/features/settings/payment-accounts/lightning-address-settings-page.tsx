@@ -30,6 +30,7 @@ import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { useBitcoinWallet } from "./use-bitcoin-wallet.ts"
 
 /**
  * The merchant's own Lightning wallet, as web's
@@ -37,6 +38,31 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
  * without LUD-21 verify (lightning-address/0003).
  */
 export function LightningAddressSettingsPage() {
+  const { t } = useTranslation()
+  const wallet = useBitcoinWallet()
+  return (
+    <Screen>
+      <FadeHeader
+        title={t("settings.paymentAccounts.method.lightningAddress")}
+      />
+      <LightningAddressSettingsBody
+        onSaved={() => wallet.select("lightningAddress")}
+      />
+    </Screen>
+  )
+}
+
+/**
+ * The page's content, also the Bitcoin screen's Lightning address half
+ * (settings/0002), where saving an address is choosing the wallet: the
+ * save switches the account on, and `onSaved` then switches the other
+ * bitcoin wallets off.
+ */
+export function LightningAddressSettingsBody({
+  onSaved,
+}: {
+  readonly onSaved: () => Promise<unknown>
+}) {
   const runToast = useRunToast()
   const toast = useToast()
   const { t } = useTranslation()
@@ -45,8 +71,6 @@ export function LightningAddressSettingsPage() {
   const [error, setError] = useState<TranslationKey | null>(null)
   const [pending, setPending] = useState(false)
   const value = draft ?? account?.address ?? ""
-  // Entering the first address enables the method, as on web.
-  const enabled = account === undefined || account.isDeleted !== 1
 
   const submit = async () => {
     setError(null)
@@ -67,9 +91,10 @@ export function LightningAddressSettingsPage() {
         return
       }
       await run.ok(
-        saveLightningAddressAccount({ enabled, address: parsed.address })
+        saveLightningAddressAccount({ enabled: true, address: parsed.address })
       )
     })
+    if (saved && !outcome.refused) await onSaved()
     setPending(false)
     if (!saved || outcome.refused) return
     setDraft(null)
@@ -77,53 +102,48 @@ export function LightningAddressSettingsPage() {
   }
 
   return (
-    <Screen>
-      <FadeHeader
-        title={t("settings.paymentAccounts.method.lightningAddress")}
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("settings.lightningAddress.form.title")}</CardTitle>
-          <CardDescription>
-            {t("settings.lightningAddress.form.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            <Field>
-              <FieldLabel>
-                {t("settings.lightningAddress.address.label")}
-              </FieldLabel>
-              <Input
-                value={value}
-                disabled={pending}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholder={t("settings.lightningAddress.address.placeholder")}
-                invalid={error !== null}
-                onChangeText={(text) => {
-                  setDraft(text)
-                  setError(null)
-                }}
-              />
-              <FieldDescription>
-                {t("settings.lightningAddress.address.description")}
-              </FieldDescription>
-              <FieldError>{error === null ? undefined : t(error)}</FieldError>
-            </Field>
-          </FieldGroup>
-        </CardContent>
-        <CardFooter justify="flex-end">
-          <Button
-            label={t("settings.lightningAddress.submit")}
-            pending={pending}
-            onPress={() => {
-              void submit()
-            }}
-          />
-        </CardFooter>
-      </Card>
-    </Screen>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.lightningAddress.form.title")}</CardTitle>
+        <CardDescription>
+          {t("settings.lightningAddress.form.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field>
+            <FieldLabel>
+              {t("settings.lightningAddress.address.label")}
+            </FieldLabel>
+            <Input
+              value={value}
+              disabled={pending}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              placeholder={t("settings.lightningAddress.address.placeholder")}
+              invalid={error !== null}
+              onChangeText={(text) => {
+                setDraft(text)
+                setError(null)
+              }}
+            />
+            <FieldDescription>
+              {t("settings.lightningAddress.address.description")}
+            </FieldDescription>
+            <FieldError>{error === null ? undefined : t(error)}</FieldError>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter justify="flex-end">
+        <Button
+          label={t("settings.lightningAddress.submit")}
+          pending={pending}
+          onPress={() => {
+            void submit()
+          }}
+        />
+      </CardFooter>
+    </Card>
   )
 }

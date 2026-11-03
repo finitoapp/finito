@@ -1,15 +1,17 @@
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
-import { router } from "expo-router"
+import { usePathname } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import { Image } from "react-native"
 import { Text, YStack } from "tamagui"
 import appIcon from "../../../../assets/app-icon.png"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
+import { useMasterPane } from "../../../core/master-pane.ts"
 import {
   useNostrIdentity,
   useNostrProfile,
 } from "../../../hooks/use-nostr-profile.ts"
+import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
 
@@ -24,12 +26,18 @@ import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
  * `truncate text-base font-semibold`, muted while unset; npub `truncate
  * text-xs text-muted-foreground`; `ChevronRight` `size-4` muted.
  *
- * Native difference: the npub uses Inter, as native has no mono font token.
+ * Native differences: the npub uses Manrope, as native has no mono font
+ * token; in a wide window's master pane the card is tinted while the
+ * editor is open beside it (navigation/0002).
  */
 export function ProfileCard() {
   const { t } = useTranslation()
   const identity = useNostrIdentity()
   const profile = useNostrProfile(identity.pubkey)
+  const openDetail = useOpenDetail()
+  const masterPane = useMasterPane()
+  const pathname = usePathname()
+  const editorOpen = masterPane !== null && pathname === "/settings/profile"
   const name = profile.data?.name ?? null
   const pending = profile.data === null && profile.loading
   const picture = profile.data?.picture ?? null
@@ -41,9 +49,9 @@ export function ProfileCard() {
       gap={16}
       px={16}
       py={12}
-      bg="card press:accent"
+      bg={editorOpen ? "accent" : "card press:accent"}
       cursor="web:pointer"
-      onPress={() => router.push("/settings/profile")}
+      onPress={() => openDetail("/settings/profile")}
       role="link"
       aria-label={name ?? t("settings.profile.setName")}
       testID="profile-card"
