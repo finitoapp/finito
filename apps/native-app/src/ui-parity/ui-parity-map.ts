@@ -1239,7 +1239,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       AlertDescription:
         "Native adds an inline retry alert on wallet-query errors; the web keeps its existing snapshot/default rendering.",
       Button:
-        "Native adds an inline retry alert on wallet-query errors; the web keeps its existing snapshot/default rendering.",
+        "Native's retry button on wallet-query errors and Finito's Withdraw funds button under the balance (Fazole's wallet screen); web offers withdrawing as a list row.",
+      Card: "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      CardContent:
+        "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      CardDescription:
+        "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      CardHeader:
+        "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      CardTitle:
+        "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
     },
   },
   {
@@ -1792,6 +1801,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/withdraw/cashu-withdraw-review-step.tsx",
     web: ["apps/web-app/src/features/withdraw/cashu-withdraw-review-step.tsx"],
     status: "matched",
+  },
+  {
+    native: "src/features/withdraw/cashu-send-review-step.tsx",
+    web: [],
+    status: "matched",
+    note: "Finito's review of ecash to a Linky contact (withdraw/0015), which web cannot make; the same review card as the melt's.",
+    allowedDifferences: {
+      DetailRow: "the recipient, mint, amount, fee and total rows",
+      Mono: "an npub recipient, as the melt review shows an invoice",
+      SatsWithFiat: "the amounts with their fiat estimate",
+      WithdrawReviewCard: "the shared review card with its confirm controls",
+    },
   },
   {
     native: "src/features/withdraw/withdraw-detail-page.tsx",

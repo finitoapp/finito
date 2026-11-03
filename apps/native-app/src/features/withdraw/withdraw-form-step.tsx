@@ -12,6 +12,10 @@ import {
 } from "@payky/app-shared/withdraw-flow"
 import type { AccountId } from "@payky/core/modules/account/account-types"
 import {
+  type PositiveInteger,
+  PositiveIntegerSchema,
+} from "@payky/core/modules/shared/schema"
+import {
   quoteWithdrawal,
   type WithdrawalQuote,
 } from "@payky/core/modules/withdraw/withdraw-actions"
@@ -56,6 +60,7 @@ import { useDebouncedValue } from "../../hooks/use-debounced-value.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
+import type { LinkyContactState } from "./use-linky-contact.ts"
 import { Collapsible, LightningAddress } from "./withdraw-parts.tsx"
 
 /**
@@ -139,6 +144,8 @@ export function WithdrawFormFields({
   draft,
   onDraftChange,
   onQuote,
+  contact: contactProp,
+  onQuoteContact,
   beforeDestination,
   canSubmit = true,
 }: {
@@ -147,6 +154,16 @@ export function WithdrawFormFields({
   readonly draft: WithdrawDraft
   readonly onDraftChange: (draft: WithdrawDraft) => void
   readonly onQuote: (request: WithdrawRequest) => Promise<string | null>
+  /**
+   * Finito's Cashu form also takes a Linky contact (withdraw/0015): where
+   * the lookup of the typed text stands, and the quote for a resolved one.
+   * `idle` leaves the Lightning parsing in charge.
+   */
+  readonly contact?: LinkyContactState
+  readonly onQuoteContact?: (
+    contact: Extract<LinkyContactState, { kind: "resolved" }>["contact"],
+    amountSats: PositiveInteger | undefined
+  ) => Promise<string | null>
   /** The wallet's own field above the destination, such as Cashu's mint. */
   readonly beforeDestination?: ReactNode
   readonly canSubmit?: boolean
@@ -155,6 +172,7 @@ export function WithdrawFormFields({
   const locale = useLocale()
   const fiat = useBtcFiat()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const contact = contactProp
   const [pending, setPending] = useState(false)
   const [scanning, setScanning] = useState(false)
   const toast = useToast()
@@ -178,6 +196,8 @@ export function WithdrawFormFields({
 
   const state = useWithdrawDestination(draft.destination, method)
   const { destination, invoiceAmountSats } = state
+  const contactState: LinkyContactState = contact ?? { kind: "idle" }
+  const isContact = contactState.kind !== "idle"
   const withdrawAllUnavailable = withdrawAllUnavailableKey(destination)
   const effectiveWithdrawAll =
     draft.withdrawAll && withdrawAllUnavailable === null
@@ -201,6 +221,38 @@ export function WithdrawFormFields({
   const submit = async () => {
     if (pendingRef.current) return
     setSubmitError(null)
+    if (isContact) {
+      if (contactState.kind === "resolving") return
+      if (contactState.kind === "failed") {
+        setSubmitError(t(contactState.key, { address: contactState.address }))
+        return
+      }
+      if (onQuoteContact === undefined) {
+        setSubmitError(t("withdraw.destination.invalid"))
+        return
+      }
+      const amount = PositiveIntegerSchema.safeParse(typedSats)
+      if (!effectiveWithdrawAll && !amount.success) {
+        setSubmitError(t("withdraw.amount.invalid"))
+        return
+      }
+      pendingRef.current = true
+      setPending(true)
+      try {
+        setSubmitError(
+          await onQuoteContact(
+            contactState.contact,
+            effectiveWithdrawAll || !amount.success ? undefined : amount.data
+          )
+        )
+      } catch {
+        setSubmitError(t("withdraw.quoteError.generic"))
+      } finally {
+        pendingRef.current = false
+        setPending(false)
+      }
+      return
+    }
     const built = buildWithdrawRequest({
       destination,
       destinationError: state.error,
@@ -251,7 +303,9 @@ export function WithdrawFormFields({
               )}
               autoCapitalize="none"
               autoCorrect={false}
-              error={state.error === null ? undefined : t(state.error)}
+              error={
+                state.error === null || isContact ? undefined : t(state.error)
+              }
               onChangeText={(value) => {
                 setSubmitError(null)
                 onDraftChange(draftWithDestination(draft, value))
@@ -288,7 +342,20 @@ export function WithdrawFormFields({
             {destination?.kind === "lightning-address" ? (
               <LightningAddress address={destination.address} />
             ) : null}
-            {state.hint === null ? null : (
+            {contactState.kind === "resolved" ? (
+              <Text fontSize={13} color="muted-foreground">
+                {`${t("withdraw.destination.kind.linkyContact")} · ${contactState.contact.address ?? contactState.contact.npub}`}
+              </Text>
+            ) : contactState.kind === "resolving" ? (
+              <Text fontSize={13} color="muted-foreground">
+                {t("withdraw.contact.checking")}
+              </Text>
+            ) : contactState.kind === "failed" ? (
+              <Text fontSize={13} color="destructive" role="alert">
+                {t(contactState.key, { address: contactState.address })}
+              </Text>
+            ) : null}
+            {state.hint === null || isContact ? null : (
               <Text fontSize={13} color="muted-foreground">
                 {t(state.hint)}
               </Text>

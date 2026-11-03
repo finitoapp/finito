@@ -81,8 +81,6 @@ interface PaymentMethodRowState {
    * yet, which gets no switch rather than one that does nothing.
    */
   readonly saveEnabled: ((enabled: boolean) => Promise<boolean>) | null
-  /** Still being proven: marked so the merchant knows before turning it on. */
-  readonly experimental?: true
 }
 
 const paymentAccountsPageQueries = [
@@ -95,14 +93,17 @@ const paymentAccountsPageQueries = [
   ...bitcoinWalletQueries,
 ]
 
-/** What the Bitcoin row says it pays into. */
+/**
+ * What the Bitcoin row says it pays into: the Lightning address itself, or
+ * Spark; the Linky wallet, the default, is named by nothing (onboarding/0009).
+ */
 const bitcoinWalletLabelKeys = {
-  cashu: "settings.paymentAccounts.method.cashu",
-  lightningAddress: "settings.paymentAccounts.method.lightningAddress",
+  cashu: null,
+  lightningAddress: null,
   spark: "settings.bitcoin.wallet.spark",
 } satisfies Record<
   NonNullable<ReturnType<typeof useBitcoinWallet>["enabled"]>,
-  TranslationKey
+  TranslationKey | null
 >
 
 /** How long the other rows take to make room for the dragged one. */
@@ -201,15 +202,14 @@ export function PaymentAccountsSettingsPage() {
       enabled: bitcoin.enabled !== undefined,
       available: bitcoin.enabled !== undefined,
       canEnable: true,
-      status:
-        bitcoin.enabled === undefined
-          ? null
-          : bitcoin.enabled === "lightningAddress"
-            ? (bitcoin.lightningAddress ?? null)
-            : t(bitcoinWalletLabelKeys[bitcoin.enabled]),
+      status: (() => {
+        if (bitcoin.enabled === undefined) return null
+        if (bitcoin.enabled === "lightningAddress")
+          return bitcoin.lightningAddress ?? null
+        const key = bitcoinWalletLabelKeys[bitcoin.enabled]
+        return key === null ? null : t(key)
+      })(),
       href: "/settings/payment-accounts/bitcoin",
-      // Still being proven, as the Cashu wallet it opens on.
-      experimental: true,
       saveEnabled: (enabled) =>
         enabled ? bitcoin.enable() : bitcoin.select(null),
     },
@@ -234,12 +234,13 @@ export function PaymentAccountsSettingsPage() {
       title: "settings.paymentAccounts.method.cardSwitchio",
       switchLabel: "settings.cardSwitchioAccount.enabled.label",
       enabled: cardEnabled,
-      // The terminal is driven through Android intents, which needs the module.
+      // The terminal is driven through Android intents, which needs the
+      // module: in the PWA the row stays, disabled, saying so.
       available:
         isSwitchioSupported() && cardEnabled && card.currency === appCurrency,
-      canEnable: true,
+      canEnable: isSwitchioSupported(),
       status: !isSwitchioSupported()
-        ? t("settings.cardSwitchioAccount.nativeRuntimeWarning")
+        ? t("settings.paymentAccounts.status.nativeOnly")
         : !isSwitchioInstalled()
           ? t("settings.cardSwitchioAccount.notInstalledWarning")
           : cardEnabled
@@ -259,13 +260,10 @@ export function PaymentAccountsSettingsPage() {
       switchLabel: "settings.qerkoTerminal.enabled.label",
       enabled: qerkoEnabled,
       available: qerkoPaired && qerkoEnabled && qerko.currency === appCurrency,
-      // Without a pairing there is no key to start a payment with.
+      // Without a pairing there is no key to start a payment with: the
+      // switch waits, and the row's screen is where the pairing happens.
       canEnable: qerkoPaired,
-      status: !qerkoPaired
-        ? t("settings.qerkoTerminal.status.notPaired")
-        : qerkoEnabled
-          ? currencyMismatch(qerko.currency)
-          : null,
+      status: qerkoEnabled ? currencyMismatch(qerko.currency) : null,
       href: "/settings/payment-accounts/qerko-terminal",
       saveEnabled: (enabled) =>
         runToast(async (run) => {
@@ -464,7 +462,7 @@ function PaymentMethodRow({
         py={4}
         pl={4}
         pr={12}
-        bg={drag.isDragging ? "neutral-soft" : "card"}
+        bg={drag.isDragging ? "neutral-soft" : "transparent"}
       >
         <DragHandle
           label={t("settings.paymentAccounts.reorder.aria", { name })}
@@ -477,48 +475,49 @@ function PaymentMethodRow({
           role={href === null ? undefined : "button"}
           aria-label={name}
           disabled={href === null}
-          style={{ flex: 1, minHeight: 48, justifyContent: "center" }}
+          style={{
+            flex: 1,
+            minHeight: 48,
+            justifyContent: "center",
+            opacity: row.canEnable ? 1 : 0.5,
+          }}
           onPress={() => {
             if (href !== null) router.push(href)
           }}
         >
+          {/* One line per row (fazole-ui-minimal-copy): the status sits
+              beside the title in small type, never under it. */}
           <XStack items="center" gap={12} py={8}>
             <Icon icon={row.icon} color="muted-foreground" size={20} />
-            <YStack flex={1} minW={0} gap={2}>
-              <XStack items="center" gap={8}>
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  fontWeight={fontWeight.medium}
-                  flexShrink={1}
-                  color={row.enabled ? "color" : "muted-foreground"}
-                >
-                  {name}
-                </Text>
-                {isDefault ? (
-                  <Badge
-                    variant="secondary"
-                    label={t("settings.paymentAccounts.default")}
-                  />
-                ) : null}
-                {row.experimental ? (
-                  <Badge
-                    bg="warning-10"
-                    labelColor="warning"
-                    label={t("settings.paymentAccounts.experimental")}
-                  />
-                ) : null}
-              </XStack>
+            <XStack flex={1} minW={0} items="center" gap={8}>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.medium}
+                flexShrink={0}
+                color={row.enabled ? "color" : "muted-foreground"}
+              >
+                {name}
+              </Text>
+              {isDefault ? (
+                <Badge
+                  variant="secondary"
+                  label={t("settings.paymentAccounts.default")}
+                />
+              ) : null}
               {row.status === null ? null : (
                 <Text
                   fontSize={fontSize.xs}
                   lineHeight={fontSize.xs}
                   color="muted-foreground"
+                  numberOfLines={1}
+                  flexShrink={1}
+                  minW={0}
                 >
                   {row.status}
                 </Text>
               )}
-            </YStack>
+            </XStack>
             {href === null ? null : <Icon icon={ChevronRight} />}
           </XStack>
         </Pressable>

@@ -138,7 +138,7 @@ export const csSettings = {
   "catalog.categories.search": "Hledat kategorie...",
   "catalog.categories.search.clear.aria": "Vymazat hledání",
   "catalog.categories.title": "Kategorie",
-  "settings.cashuAccount.title": "Cashu",
+  "settings.cashuAccount.title": "Peněženka Linky",
   "settings.cashuAccount.wallet.title": "Peněženka sdílená s Linky",
   "settings.cashuAccount.wallet.description":
     "Platby Cashu jdou do stejné ecash peněženky, kterou ukazuje vaše aplikace Linky. Její zůstatek zahrnuje i peníze přijaté v Linky.",
@@ -189,7 +189,7 @@ export const csSettings = {
   "settings.cashuAccount.mints": "Minty",
   "settings.cashuAccount.mintsDescription":
     "Výchozí mint, zůstatky, přesun prostředků",
-  "settings.cashuAccount.withdraw": "Výběr",
+  "settings.cashuAccount.withdraw": "Vybrat prostředky",
   "settings.cashuAccount.withdrawDescription": "Odeslat ecash přes Lightning",
   "settings.cashuAccount.enabled.label": "Přijímat Cashu",
   "settings.debugConsole.cashu.title": "Cashu peněženka Linky (vývoj)",
@@ -1267,4 +1267,7 @@ export const csSettings = {
   "settings.bitcoin.wallet.spark": "Spark",
   "settings.salesGroup": "PRODEJ",
   "catalog.items.form.category.new.placeholder": "Nová kategorie",
+  "settings.paymentAccounts.status.nativeOnly": "Pouze v nativní aplikaci",
+  "settings.bitcoin.wallet.linky": "Peněženka Linky",
+  "settings.cashuAccount.balance.switchUnit": "Přepnout jednotku",
 } satisfies Record<keyof typeof enSettings, string>

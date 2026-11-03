@@ -63,11 +63,7 @@ function WithdrawHistoryScreen({
         backgroundColor: theme.background.val,
       }}
     >
-      <FadeHeader
-        title={t(
-          method === "spark" ? "withdraw.history.title" : "withdraw.cashu.title"
-        )}
-      />
+      <FadeHeader title={t("withdraw.history.title")} />
       <Suspense fallback={<LoadingView />}>
         <WithdrawHistoryBody method={method} />
       </Suspense>

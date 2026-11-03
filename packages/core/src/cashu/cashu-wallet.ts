@@ -1,4 +1,10 @@
-import type { JSONIntApi, ProofState, RequestFn, Wallet } from "@cashu/cashu-ts"
+import type {
+  JSONIntApi,
+  Proof,
+  ProofState,
+  RequestFn,
+  Wallet,
+} from "@cashu/cashu-ts"
 import { err, ok, type Result, sqliteTrue, type Task } from "@evolu/common"
 import type { FetchDep } from "../deps.ts"
 import { defineError } from "../error.ts"
@@ -104,9 +110,36 @@ interface CashuTs {
   readonly MintOperationError: typeof import("@cashu/cashu-ts").MintOperationError
   readonly HttpResponseError: typeof import("@cashu/cashu-ts").HttpResponseError
   readonly NetworkError: typeof import("@cashu/cashu-ts").NetworkError
+  readonly getEncodedToken: typeof import("@cashu/cashu-ts").getEncodedToken
 }
 
 const loadCashuTs = async (): Promise<CashuTs> => import("@cashu/cashu-ts")
+
+/**
+ * Proofs as canonical v4 token text, encoded as Linky encodes a send
+ * (`linkshu/src/token/codec.ts` `encodeToken`): `id`, `amount`, `secret` and
+ * `C` only, no DLEQ and no memo, so the text matches what Linky would write
+ * for the same proofs.
+ */
+export const encodeCashuToken = async ({
+  mint,
+  proofs,
+}: {
+  readonly mint: MintUrl
+  readonly proofs: ReadonlyArray<Proof>
+}): Promise<string> => {
+  const cashu = await loadCashuTs()
+  return cashu.getEncodedToken({
+    mint,
+    unit: "sat",
+    proofs: proofs.map((proof) => ({
+      id: proof.id,
+      amount: proof.amount,
+      secret: proof.secret,
+      C: proof.C,
+    })),
+  })
+}
 
 /**
  * cashu-ts's own request over an injected `fetch`, raising the error classes

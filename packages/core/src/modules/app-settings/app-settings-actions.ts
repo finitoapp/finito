@@ -7,10 +7,12 @@ import {
   type UpdateValues,
 } from "@evolu/common"
 import { z } from "zod"
+import type { CashuShardStoreDep } from "../../cashu/cashu-shard-store.ts"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import {
   saveCashRegisterAccount,
+  saveCashuAccount,
   saveFiatBankAccount,
   saveSparkAccount,
 } from "../account/account-actions.ts"
@@ -199,6 +201,11 @@ export const finishOnboarding =
     readonly iban: Iban | null
     readonly defaultPaymentMethod: DefaultPaymentMethod
     readonly paymentMethodOrderJson: string
+    /**
+     * Spark starts enabled (onboarding/0007) unless the caller enables a
+     * wallet of its own instead, as `finishOnboardingOnLinkyWallet` does.
+     */
+    readonly bitcoinWallet?: "spark" | "none"
   }): Task<
     void,
     AlreadyOnboardedError,
@@ -230,7 +237,9 @@ export const finishOnboarding =
     await run.ok(
       saveCashRegisterAccount({ enabled: true, currency: input.currency })
     )
-    await run.ok(saveSparkAccount({ enabled: true }))
+    if (input.bitcoinWallet !== "none") {
+      await run.ok(saveSparkAccount({ enabled: true }))
+    }
     await run.ok(
       saveFiatBankAccount({
         enabled: input.iban !== null,
@@ -246,5 +255,30 @@ export const finishOnboarding =
       })
     )
     if (!completed.ok) return completed
+    return ok()
+  }
+
+/**
+ * Finito's onboarding (onboarding/0009): the Cashu wallet shared with Linky
+ * starts enabled as the Bitcoin method instead of Spark, so a fresh account
+ * takes bitcoin into the wallet its owner already has. The account is
+ * onboarded first: a wallet that cannot be enabled leaves an onboarded
+ * account without a bitcoin method, which settings can fix, rather than one
+ * stuck in onboarding.
+ */
+export const finishOnboardingOnLinkyWallet =
+  (
+    input: Omit<Parameters<typeof finishOnboarding>[0], "bitcoinWallet">
+  ): Task<
+    void,
+    AlreadyOnboardedError,
+    EvoluDep & EvoluOwnerDep & MasterKeyDep & CashuShardStoreDep
+  > =>
+  async (run) => {
+    const finished = await run(
+      finishOnboarding({ ...input, bitcoinWallet: "none" })
+    )
+    if (!finished.ok) return finished
+    await run.ok(saveCashuAccount({ enabled: true }))
     return ok()
   }

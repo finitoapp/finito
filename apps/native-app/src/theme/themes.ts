@@ -6,6 +6,7 @@ type Palette = (typeof palette)["light" | "dark"]
 type Tones = Record<
   | "surface-raised"
   | "neutral-soft"
+  | "card"
   | "accent-text"
   | "button-outline"
   | "button-outline-border"
@@ -34,8 +35,12 @@ const lightTones = (colors: Palette): Tones => ({
   // fazole.fit's `surfaceRaised` (a secondary button, a list's raised tile)
   // and `neutralSoft` (a field, an outline button, a pressed ghost): fills
   // where web draws a border.
-  "surface-raised": colors.input,
+  // Quieter than Linky's solids, as fazole.fit draws them: a tint of the
+  // ink over the page, so a section, a tab bar or a secondary button lifts
+  // off the background without reading as a box.
+  "surface-raised": oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.08 }),
   "neutral-soft": colors["input-50"],
+  card: oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.045 }),
   // The gold as text or an icon on a light page: the landing's `--landing-ink`.
   "accent-text": oklchToHex({ l: 0.6, c: 0.13, h: 72, alpha: 1 }),
   // ui/button outline: fazole has no outline; it is the neutral fill.
@@ -63,8 +68,9 @@ const lightTones = (colors: Palette): Tones => ({
 })
 
 const darkTones = (colors: Palette): Tones => ({
-  "surface-raised": colors.muted,
+  "surface-raised": oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.09 }),
   "neutral-soft": colors["input-30"],
+  card: oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.055 }),
   "accent-text": oklchToHex({ l: 0.86, c: 0.15, h: 88, alpha: 1 }),
   "button-outline": colors["input-30"],
   "button-outline-border": "transparent",

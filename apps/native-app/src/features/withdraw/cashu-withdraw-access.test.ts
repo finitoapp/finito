@@ -17,7 +17,7 @@ const expectInOrder = (source: string, ...patterns: ReadonlyArray<RegExp>) => {
 
 const page = read("cashu-withdraw-page.tsx")
 
-it("asks for the PIN, then re-checks the account, before the melt Task", () => {
+it("asks for the PIN, then re-checks the account, before a Cashu transfer Task", () => {
   const confirm = page.slice(
     page.indexOf("const confirmReviewed"),
     page.indexOf("const requote")
@@ -27,7 +27,7 @@ it("asks for the PIN, then re-checks the account, before the melt Task", () => {
     confirm,
     /jotaiStore\.get\(evoluCounterAtom\) === accountVersion/,
     /if \(!isCurrentAccount\(\)\) \{\s*setReview\(null\)/,
-    /const pinDetail = cashuWithdrawPinDetail\(\{ quote, t, locale \}\)/,
+    /const pinDetail =\s*reviewed\.kind === "melt"\s*\?\s*cashuWithdrawPinDetail\(\{\s*quote: reviewed\.quote,\s*t,\s*locale\s*\}\)\s*:\s*cashuSendPinDetail\(\{\s*quote: reviewed\.quote,\s*t,\s*locale\s*\}\)/,
     // Moving money always asks for the PIN (access/0007), awaited.
     /await requirePin\(\s*"access\.action\.withdraw",\s*pinDetail\s*\)/,
     /await require\(\s*"admin",\s*"access\.action\.withdraw"\s*\)/,
@@ -37,8 +37,11 @@ it("asks for the PIN, then re-checks the account, before the melt Task", () => {
     /if \(!isCurrentAccount\(\)\)/,
     /await run\(\s*executeCashuWithdrawal\(\s*\{[^}]*quote,/u
   )
-  // The PIN names the quote the melt then uses: the one captured at the press.
-  expect(confirm).toMatch(/quote,\s*accountVersion,?\s*\}: CashuReview/)
+  // The PIN names the quote the Cashu transfer then uses: the one captured at the press.
+  expect(confirm).toMatch(
+    /const confirmReviewed = async \(reviewed: CashuReview\)/
+  )
+  expect(confirm).toMatch(/const \{ accountVersion \} = reviewed/)
   expect(confirm.match(/\bquote\b/gu)?.length).toBeGreaterThan(2)
   // Access control being on is read when confirming, not when rendering.
   expect(page).toMatch(/accessEnabledRef\.current = access\.enabled/)

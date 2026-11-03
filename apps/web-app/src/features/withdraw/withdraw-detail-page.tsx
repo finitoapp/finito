@@ -1,6 +1,7 @@
 import { formatMintLabel } from "@payky/app-shared/cashu-withdraw-flow"
 import { useNow } from "@payky/app-shared/use-now"
 import {
+  cashuSendRecipientText,
   reusableWithdrawalDestination,
   withdrawalFailureKeys,
   withdrawalKindKeys,
@@ -271,6 +272,9 @@ function WithdrawalStatusCard({ view }: { readonly view: WithdrawalView }) {
       ) : target.kind === "cashu" ? (
         // The Cashu job resumes the melt and settles it (withdraw/0013).
         <p className="text-sm">{t("withdraw.detail.pending.cashu")}</p>
+      ) : target.kind === "cashuSend" ? (
+        // Finito's token to a Linky contact (withdraw/0015).
+        <p className="text-sm">{t("withdraw.detail.pending.cashuSend")}</p>
       ) : (
         <>
           <p className="text-sm">{t("withdraw.detail.onchainUncertain")}</p>
@@ -426,13 +430,17 @@ function WithdrawalDetailsCard({ view }: { readonly view: WithdrawalView }) {
           <DetailRow label={t("withdraw.detail.destination")} stacked>
             <CopyableValue value={target.onchainAddress} />
           </DetailRow>
+        ) : target.kind === "cashuSend" ? (
+          <DetailRow label={t("withdraw.detail.destination")} stacked>
+            <CopyableValue value={cashuSendRecipientText(target)} />
+          </DetailRow>
         ) : (
           <DetailRow label={t("withdraw.detail.destination")}>
             {target.lightningAddress ??
               t("withdraw.destination.kind.lightningInvoice")}
           </DetailRow>
         )}
-        {target.kind === "cashu" ? (
+        {target.kind === "cashu" || target.kind === "cashuSend" ? (
           <DetailRow
             label={t("withdraw.detail.mint")}
             value={formatMintLabel(target.mintUrl)}

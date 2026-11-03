@@ -2,6 +2,7 @@ import { formatMintLabel } from "@payky/app-shared/cashu-withdraw-flow"
 import { formatDateTime } from "@payky/app-shared/format-date"
 import { useNow } from "@payky/app-shared/use-now"
 import {
+  cashuSendRecipientText,
   reusableWithdrawalDestination,
   withdrawalFailureKeys,
   withdrawalKindKeys,
@@ -265,6 +266,8 @@ function WithdrawalStatusCard({ view }: { readonly view: WithdrawalView }) {
               <PendingLightningText view={view} />
             ) : target.kind === "cashu" ? (
               <Text>{t("withdraw.detail.pending.cashu")}</Text>
+            ) : target.kind === "cashuSend" ? (
+              <Text>{t("withdraw.detail.pending.cashuSend")}</Text>
             ) : (
               <>
                 <Text>{t("withdraw.detail.onchainUncertain")}</Text>
@@ -403,13 +406,21 @@ function WithdrawalDetailsCard({ view }: { readonly view: WithdrawalView }) {
             <DetailRow label={t("withdraw.detail.destination")} stacked>
               <Mono value={target.onchainAddress} />
             </DetailRow>
+          ) : target.kind === "cashuSend" ? (
+            <DetailRow label={t("withdraw.detail.destination")} stacked>
+              {target.recipientAddress === null ? (
+                <Mono value={cashuSendRecipientText(target)} />
+              ) : (
+                <Text>{target.recipientAddress}</Text>
+              )}
+            </DetailRow>
           ) : (
             <DetailRow label={t("withdraw.detail.destination")}>
               {target.lightningAddress ??
                 t("withdraw.destination.kind.lightningInvoice")}
             </DetailRow>
           )}
-          {target.kind === "cashu" ? (
+          {target.kind === "cashu" || target.kind === "cashuSend" ? (
             <DetailRow label={t("withdraw.detail.mint")}>
               {formatMintLabel(target.mintUrl)}
             </DetailRow>
@@ -464,6 +475,13 @@ function WithdrawalDetailsCard({ view }: { readonly view: WithdrawalView }) {
               </DetailRow>
               <DetailRow label={t("withdraw.detail.cashuQuoteId")} stacked>
                 <Mono value={target.quoteId} />
+              </DetailRow>
+            </Collapsible>
+          ) : null}
+          {target.kind === "cashuSend" && target.sendOperationId !== null ? (
+            <Collapsible label={t("withdraw.detail.technical")}>
+              <DetailRow label={t("withdraw.detail.cashuOperationId")} stacked>
+                <Mono value={target.sendOperationId} />
               </DetailRow>
             </Collapsible>
           ) : null}

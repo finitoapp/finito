@@ -1,7 +1,11 @@
 import {
+  type CashuSendRequest,
   type CashuWithdrawRequest,
   cashuConfirmOutcome,
   cashuQuoteErrorMessage,
+  cashuSendConfirmOutcome,
+  cashuSendPinDetail,
+  cashuSendQuoteErrorMessage,
   cashuWithdrawPinDetail,
   fundedMints,
   withdrawMint,
@@ -18,6 +22,11 @@ import {
   executeCashuWithdrawal,
   quoteCashuWithdrawal,
 } from "@payky/core/modules/withdraw/withdraw-cashu-actions"
+import {
+  type CashuSendQuote,
+  executeCashuSendWithdrawal,
+  quoteCashuSend,
+} from "@payky/core/modules/withdraw/withdraw-cashu-send-actions"
 import { router, useLocalSearchParams } from "expo-router"
 import { useStore } from "jotai"
 import { Suspense, useEffect, useRef, useState } from "react"
@@ -34,18 +43,28 @@ import { useAccess, useRequirePermission } from "../../core/use-access.ts"
 import { useCashuAppRun } from "../../hooks/use-app-run.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { useCashuWalletSnapshot } from "../shared/cashu/use-cashu-wallet-snapshot.ts"
+import { CashuSendReviewStep } from "./cashu-send-review-step.tsx"
 import { CashuWithdrawFormStep } from "./cashu-withdraw-form-step.tsx"
 import { CashuWithdrawReviewStep } from "./cashu-withdraw-review-step.tsx"
 import { useCashuAccountId } from "./use-cashu-withdraw-data.ts"
 import { WithdrawNoAccountCard } from "./withdraw-no-account-card.tsx"
 import { withdrawRoutes } from "./withdraw-routes.ts"
 
-interface CashuReview {
-  readonly request: CashuWithdrawRequest
-  readonly quote: CashuWithdrawalQuote
-  /** The account the quote was made on: a review never outlives a switch. */
-  readonly accountVersion: number
-}
+/** The account the quote was made on: a review never outlives a switch. */
+type CashuReview =
+  | {
+      readonly kind: "melt"
+      readonly request: CashuWithdrawRequest
+      readonly quote: CashuWithdrawalQuote
+      readonly accountVersion: number
+    }
+  | {
+      /** A token to a Linky contact (withdraw/0015). */
+      readonly kind: "send"
+      readonly request: CashuSendRequest
+      readonly quote: CashuSendQuote
+      readonly accountVersion: number
+    }
 
 /**
  * `/cashu-withdraw/new`: a Lightning withdrawal from one mint of the wallet
@@ -149,10 +168,8 @@ function CashuWithdrawFlow({
   }
 
   /** `true` when nothing was sent and the review may be confirmed again. */
-  const confirmReviewed = async ({
-    quote,
-    accountVersion,
-  }: CashuReview): Promise<boolean> => {
+  const confirmReviewed = async (reviewed: CashuReview): Promise<boolean> => {
+    const { accountVersion } = reviewed
     const isCurrentAccount = () =>
       jotaiStore.get(evoluCounterAtom) === accountVersion
     // Quoted on another account: drop the review, send nothing.
@@ -173,7 +190,10 @@ function CashuWithdrawFlow({
 
     // Moving money always asks for the PIN, session or not (access/0007).
     // With access control off there is no PIN, and `require` lets it through.
-    const pinDetail = cashuWithdrawPinDetail({ quote, t, locale })
+    const pinDetail =
+      reviewed.kind === "melt"
+        ? cashuWithdrawPinDetail({ quote: reviewed.quote, t, locale })
+        : cashuSendPinDetail({ quote: reviewed.quote, t, locale })
     const allowed = accessEnabledRef.current
       ? await requirePin("access.action.withdraw", pinDetail)
       : await require("admin", "access.action.withdraw")
@@ -197,15 +217,30 @@ function CashuWithdrawFlow({
 
     try {
       const comment = draftComment(draft)
-      const result = await run(
-        executeCashuWithdrawal({
-          accountId,
-          deviceId,
-          quote,
-          ...(comment === null ? {} : { comment }),
-        })
-      )
-      const outcome = cashuConfirmOutcome(result, t)
+      const outcome =
+        reviewed.kind === "melt"
+          ? cashuConfirmOutcome(
+              await run(
+                executeCashuWithdrawal({
+                  accountId,
+                  deviceId,
+                  quote: reviewed.quote,
+                  ...(comment === null ? {} : { comment }),
+                })
+              ),
+              t
+            )
+          : cashuSendConfirmOutcome(
+              await run(
+                executeCashuSendWithdrawal({
+                  accountId,
+                  deviceId,
+                  quote: reviewed.quote,
+                  ...(comment === null ? {} : { comment }),
+                })
+              ),
+              t
+            )
       if (outcome.kind === "recorded") {
         // Sent: its detail follows what the mint does next, from the stored row.
         if (mountedRef.current && isCurrentAccount()) {
@@ -216,10 +251,19 @@ function CashuWithdrawFlow({
         }
         return false
       }
+      if (outcome.kind === "uncertain") {
+        if (mountedRef.current && isCurrentAccount()) {
+          setUncertain(true)
+          setConfirming(false)
+          setConfirmError(outcome.message)
+        }
+        return false
+      }
       return finishUnsent(outcome.message)
     } catch {
       // Thrown after the melt may have been sent is indistinguishable from
-      // thrown before it: never offer a retry.
+      // thrown before it: never offer a retry. (A send's proofs stay in the
+      // store either way; its withdrawal shows what became of them.)
       if (mountedRef.current) {
         setUncertain(true)
         setConfirming(false)
@@ -236,11 +280,19 @@ function CashuWithdrawFlow({
     setConfirmError(null)
     try {
       await using run = await cashuAppRun()
-      const result = await run(quoteCashuWithdrawal(review.request))
-      if (result.ok && !confirmingRef.current)
-        setReview({ ...review, quote: result.value })
-      else if (result.ok) return
-      else setConfirmError(cashuQuoteErrorMessage(result.error, t))
+      if (review.kind === "melt") {
+        const result = await run(quoteCashuWithdrawal(review.request))
+        if (result.ok && !confirmingRef.current)
+          setReview({ ...review, quote: result.value })
+        else if (result.ok) return
+        else setConfirmError(cashuQuoteErrorMessage(result.error, t))
+      } else {
+        const result = await run(quoteCashuSend(review.request))
+        if (result.ok && !confirmingRef.current)
+          setReview({ ...review, quote: result.value })
+        else if (result.ok) return
+        else setConfirmError(cashuSendQuoteErrorMessage(result.error, t))
+      }
     } catch {
       setConfirmError(t("withdraw.quoteError.generic"))
     } finally {
@@ -269,11 +321,40 @@ function CashuWithdrawFlow({
           onReview={(request, quote) => {
             setConfirmError(null)
             setReview({
+              kind: "melt",
               request,
               quote,
               accountVersion: jotaiStore.get(evoluCounterAtom),
             })
           }}
+          onReviewSend={(request, quote) => {
+            setConfirmError(null)
+            setReview({
+              kind: "send",
+              request,
+              quote,
+              accountVersion: jotaiStore.get(evoluCounterAtom),
+            })
+          }}
+        />
+      ) : review.kind === "send" ? (
+        <CashuSendReviewStep
+          quote={review.quote}
+          comment={draftComment(draft)}
+          confirming={confirming}
+          requoting={requoting}
+          confirmError={confirmError}
+          uncertain={uncertain}
+          onBack={() => {
+            if (confirmingRef.current && !uncertain) return
+            confirmingRef.current = false
+            setUncertain(false)
+            setConfirmError(null)
+            setReview(null)
+          }}
+          onConfirm={() => void confirm()}
+          onNewQuote={() => void requote()}
+          onOpenHistory={() => router.replace(withdrawRoutes.cashu.history)}
         />
       ) : (
         <CashuWithdrawReviewStep
