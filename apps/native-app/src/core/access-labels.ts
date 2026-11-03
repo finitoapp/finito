@@ -11,6 +11,7 @@ export const permissionLabelKeys = {
   refund: "access.permission.refund",
   confirm: "access.permission.confirm",
   stats: "access.permission.stats",
+  catalog: "access.permission.catalog",
   settings: "access.permission.settings",
   admin: "access.permission.admin",
 } satisfies Record<Permission, TranslationKey>
@@ -22,6 +23,7 @@ export const permissionDescriptionKeys = {
   refund: "access.permission.refund.description",
   confirm: "access.permission.confirm.description",
   stats: "access.permission.stats.description",
+  catalog: "access.permission.catalog.description",
   settings: "access.permission.settings.description",
   admin: "access.permission.admin.description",
 } satisfies Record<Permission, TranslationKey>

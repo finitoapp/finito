@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/debug-console")({
   component: DebugConsoleSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

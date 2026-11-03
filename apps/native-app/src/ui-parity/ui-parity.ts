@@ -21,6 +21,7 @@ const rootKitModules = new Set([
   "detail-row",
   "fade-header",
   "list-skeleton",
+  "menu-nav",
   "not-found-card",
   "option-toggle-group",
   "password-textarea",

@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/legal-entity")({
   component: LegalEntitySettingsPage,
   staticData: {
     access: "settings",
+    menu: { tab: "settings" },
   },
 })

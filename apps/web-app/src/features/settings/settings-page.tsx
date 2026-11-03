@@ -15,7 +15,6 @@ import { languageOptions } from "@payky/web-shared/language-options"
 import {
   BadgeDollarSign,
   Building2,
-  FolderIcon,
   type Grid2X2,
   HeartHandshake,
   House,
@@ -27,11 +26,9 @@ import {
   Percent,
   ReceiptText,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Stamp,
   SunMoon,
-  Table2Icon,
   UserRound,
 } from "lucide-react"
 import type { ComponentProps } from "react"
@@ -145,29 +142,6 @@ export function SettingsPage() {
       ? fiatCurrency
       : `${t(countryLabelKey(legalEntity.country))} · ${fiatCurrency}`
 
-  const catalogItems = createSettingsNavItems(
-    [
-      {
-        icon: ShoppingBag,
-        title: "settings.items.title",
-        description: "settings.items.description",
-        to: "/settings/items",
-      },
-      {
-        icon: FolderIcon,
-        title: "settings.categories.title",
-        description: "settings.categories.description",
-        to: "/settings/categories",
-      },
-      {
-        icon: Table2Icon,
-        title: "settings.tables.title",
-        description: "settings.tables.description",
-        to: "/settings/tables",
-      },
-    ],
-    t
-  )
   const paymentItems = createSettingsNavItems(
     [
       {
@@ -311,11 +285,10 @@ export function SettingsPage() {
   return (
     <>
       <div className="h-6" />
-      <FadeHeader title={t("settings.title")} />
+      <FadeHeader title={t("settings.title")} startAddon={null} />
 
       <ProfileCard />
 
-      <VerticalNav title={t("settings.catalog")} items={catalogItems} />
       <VerticalNav title={t("settings.payments")} items={paymentItems} />
       <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
       <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />

@@ -8,6 +8,7 @@ export const Route = createFileRoute(
   component: CashuWithdrawDetailRoute,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })
 

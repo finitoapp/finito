@@ -12,6 +12,7 @@ import { FadeHeader } from "@/components/fade-header.tsx"
 import { ListSkeleton } from "@/components/list-skeleton.tsx"
 import { Skeleton } from "@/components/ui/skeleton.tsx"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
+import { ActivityTabs } from "@/features/shared/activity-tabs.tsx"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -33,7 +34,8 @@ import {
 import { VatRecap } from "./vat-recap.tsx"
 
 /**
- * The sales statistics screen (access/0008), header included: the period
+ * The sales statistics screen (access/0010), Activity's third tab
+ * (navigation/0001), header and tabs included: the period
  * selector, then one section per block, top to bottom. A new section is one
  * more component in `PeriodStats`, fed by `useSalesStats` or its own
  * `useStatsRows`; one not tied to the period is passed in, as `openBills` is.
@@ -52,9 +54,10 @@ export function StatsPage({
   return (
     <>
       <div className="h-6" />
-      <FadeHeader title={t("stats.title")} />
+      <FadeHeader title={t("activity.title")} startAddon={null} />
 
       <div className="flex flex-col gap-6 pb-8">
+        <ActivityTabs active="stats" />
         {/*
          * Stays on screen while the sections scroll under it, so the period
          * every figure belongs to is always in view. The route's viewport

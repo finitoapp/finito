@@ -46,7 +46,7 @@ import { FadeHeader } from "@/components/fade-header.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
-import { InlineEditSwitch } from "@/features/settings/inline-edit-switch.tsx"
+import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun, useCashuAppRun } from "@/hooks/use-app-run.ts"
 import {
   useEvoluQuery,

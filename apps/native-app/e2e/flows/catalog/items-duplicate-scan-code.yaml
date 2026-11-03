@@ -1,0 +1,58 @@
+# web catalog-items.spec.ts: "shows a non-blocking warning for a duplicate
+# scan code but still saves".
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Coffee
+      PRICE: "5"
+      SCAN_CODE: "8594001234567"
+# A second item with the same scan code.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.add"]}
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.form.title.create"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/type-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.name.label"]}
+      VALUE: Cocoa
+- runFlow:
+    file: ../../subflows/type-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.price.label"]}
+      VALUE: "4"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
+    centerElement: true
+- tapOn:
+    id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
+- inputText: "8594001234567"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+# The warning names the other item, and saving still succeeds.
+- assertVisible: '${output.tv("catalog.items.form.scanCode.duplicate", { name: "Coffee" })}'
+- tapOn:
+    text: ${output.re(output.t["catalog.items.form.save.create"])}
+    below:
+      id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.title"]}
+    timeout: 15000
+- assertVisible: Coffee
+- assertVisible: Cocoa

@@ -3,6 +3,7 @@ import path from "node:path"
 import type { AnyRoute } from "@tanstack/react-router"
 import { describe, expect, test } from "vitest"
 
+import { type MenuTab, menuTabs } from "@/components/menu-nav.tsx"
 import { router } from "@/router.tsx"
 
 interface RouteNode {
@@ -66,6 +67,71 @@ describe("_terminal route access (access/0003)", () => {
     expect(
       routes.filter(({ hasLoader }) => hasLoader).map(({ id }) => id)
     ).toEqual([])
+  })
+})
+
+/**
+ * The menu section (navigation/0001): every screen of a tab declares the
+ * tab it belongs to, so the layout knows when to draw the bar and the
+ * sidebar, and the tab table opens each tab on one of its root screens.
+ */
+describe("menu section (navigation/0001)", () => {
+  const sectionPrefixes = {
+    activity: "/activity",
+    catalog: "/catalog",
+    settings: "/settings",
+  } satisfies Record<MenuTab, string>
+
+  const routes = Object.values(
+    router.routesById as unknown as Record<string, AnyRoute>
+  ).map((route) => ({
+    path: route.fullPath.replace(/(.)\/$/u, "$1"),
+    menu: route.options.staticData?.menu,
+    access: route.options.staticData?.access,
+  }))
+
+  const tabOfPath = (path: string) =>
+    (Object.entries(sectionPrefixes) as ReadonlyArray<[MenuTab, string]>).find(
+      ([, prefix]) => path === prefix || path.startsWith(`${prefix}/`)
+    )?.[0]
+
+  test("every route of the section declares its own tab", () => {
+    const wrong = routes.flatMap(({ path, menu }) => {
+      const tab = tabOfPath(path)
+      return tab !== undefined && menu?.tab !== tab
+        ? [`${path}: ${menu?.tab ?? "no menu"}`]
+        : []
+    })
+
+    expect(wrong).toEqual([])
+  })
+
+  test("no route outside the section declares a tab", () => {
+    expect(
+      routes
+        .filter(({ path, menu }) => menu !== undefined && !tabOfPath(path))
+        .map(({ path }) => path)
+    ).toEqual([])
+  })
+
+  test("each tab opens on one of its root screens, which needs the permission the table names", () => {
+    const mismatches = (
+      Object.entries(menuTabs) as ReadonlyArray<
+        [MenuTab, (typeof menuTabs)[MenuTab]]
+      >
+    ).flatMap(([tab, { to, permission }]) => {
+      // An index route shares its path with the layout above it.
+      const opensOnRoot = routes.some(
+        (route) =>
+          route.path === to &&
+          route.menu?.tab === tab &&
+          route.menu.root === true &&
+          route.access === permission
+      )
+      return opensOnRoot ? [] : [tab]
+    })
+
+    expect(mismatches).toEqual([])
   })
 })
 

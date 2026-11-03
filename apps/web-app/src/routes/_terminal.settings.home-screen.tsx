@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/home-screen")({
   component: HomeScreenSettingsPage,
   staticData: {
     access: "settings",
+    menu: { tab: "settings" },
   },
 })

@@ -8,5 +8,6 @@ export const Route = createFileRoute(
   component: PaymentNumberSeriesSettingsPage,
   staticData: {
     access: "settings",
+    menu: { tab: "settings" },
   },
 })

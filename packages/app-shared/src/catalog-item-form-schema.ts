@@ -96,13 +96,13 @@ type CatalogItemFormField = keyof CatalogItemFormValues
 
 /** Which message each field shows when it fails. */
 const catalogItemFieldErrorKeys = {
-  name: "settings.items.form.name.invalid",
-  price: "settings.items.form.price.invalid",
-  description: "settings.items.form.description.invalid",
-  internalName: "settings.items.form.internalName.invalid",
-  internalDescription: "settings.items.form.internalDescription.invalid",
-  sku: "settings.items.form.sku.invalid",
-  scanCode: "settings.items.form.scanCode.invalid",
+  name: "catalog.items.form.name.invalid",
+  price: "catalog.items.form.price.invalid",
+  description: "catalog.items.form.description.invalid",
+  internalName: "catalog.items.form.internalName.invalid",
+  internalDescription: "catalog.items.form.internalDescription.invalid",
+  sku: "catalog.items.form.sku.invalid",
+  scanCode: "catalog.items.form.scanCode.invalid",
 } satisfies Record<CatalogItemFormField, TranslationKey>
 
 export type CatalogItemFormErrors = Partial<

@@ -7,7 +7,11 @@ import {
 } from "./support/collisions.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { translate, translateValue } from "./support/i18n.ts"
-import { gotoPage, waitForLocalWriteToSettle } from "./support/navigation.ts"
+import {
+  contentNav,
+  gotoPage,
+  waitForLocalWriteToSettle,
+} from "./support/navigation.ts"
 import {
   createPayment,
   markCashPaid,
@@ -43,8 +47,7 @@ test("a paid payment shows up in activity list and detail", async ({
     gotoPage(page, "/activity", "en", "activity.title"))
 
   await test.step("open the payment from the activity list", async () => {
-    await page
-      .locator("nav")
+    await contentNav(page, "en")
       .getByRole("link", {
         name: translate("en", "payment.status.paid"),
       })
@@ -123,8 +126,7 @@ test("a canceled+claimed payment collision is flagged in the activity list and d
   })
 
   await test.step("opening the payment shows the collision warning on the detail page", async () => {
-    await page
-      .locator("nav")
+    await contentNav(page, "en")
       .getByRole("link", {
         name: translate("en", "paymentDetail.collision.title"),
       })
@@ -167,8 +169,7 @@ test("a canceled+claimed payment collision is flagged in the activity list and d
       page.getByText(translate("en", "paymentDetail.collision.title"))
     ).toBeHidden()
     await expect(
-      page
-        .locator("nav")
+      contentNav(page, "en")
         .getByRole("link", {
           name: translate("en", "payment.status.paid"),
         })
@@ -328,7 +329,7 @@ test("a payment with both a cancellation collision and an overpaid bill shows bo
 
   await test.step("the activity list shows both issues on the same row", async () => {
     await gotoPage(page, "/activity", "en", "activity.title")
-    const row = page.locator("nav").getByRole("link")
+    const row = contentNav(page, "en").getByRole("link")
     await expect(row).toHaveCount(1)
     await expect(
       row.getByText(translate("en", "paymentDetail.collision.title"))
@@ -400,7 +401,7 @@ test("the activity list flags a payment's own duplicate settlement without also 
   await waitForLocalWriteToSettle(page)
 
   await gotoPage(page, "/activity", "en", "activity.title")
-  const row = page.locator("nav").getByRole("link")
+  const row = contentNav(page, "en").getByRole("link")
   await expect(row).toHaveCount(1)
   await expect(row).toContainText(
     translate("en", "paymentDetail.excessCollision.title")
@@ -427,7 +428,7 @@ test("the activity list flags a bill overpaid by two separate payments without f
   await waitForLocalWriteToSettle(page)
 
   await gotoPage(page, "/activity", "en", "activity.title")
-  const rows = page.locator("nav").getByRole("link")
+  const rows = contentNav(page, "en").getByRole("link")
   await expect(rows).toHaveCount(2)
   await expect(rows.nth(0)).toContainText(
     translate("en", "paymentHistory.billOverpaid")

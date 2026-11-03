@@ -11,7 +11,7 @@ import {
 } from "./support/collisions.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate } from "./support/i18n.ts"
-import { gotoPage } from "./support/navigation.ts"
+import { contentNav, gotoPage } from "./support/navigation.ts"
 import {
   markCashPaid,
   markCashPaidAndSettle,
@@ -20,7 +20,7 @@ import {
 
 /** Locates a bill's row in the `/activity/bills` list by its id. */
 const billRow = (page: Parameters<typeof markCashPaid>[0], billId: string) =>
-  page.locator("nav").locator(`a[href$="/${billId}"]`)
+  contentNav(page, "en").locator(`a[href$="/${billId}"]`)
 
 test("the bills list shows an ordinary open bill with nothing paid yet", async ({
   seededPage: page,

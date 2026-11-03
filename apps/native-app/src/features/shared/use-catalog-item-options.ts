@@ -24,7 +24,7 @@ export const useCatalogItemOptions = (currentTaxRateId?: TaxRateId | null) => {
   const categoryOptions: ReadonlyArray<
     OptionToggleGroupOption<CatalogCategoryId | typeof NO_OPTION>
   > = [
-    { value: NO_OPTION, title: t("settings.items.form.category.none") },
+    { value: NO_OPTION, title: t("catalog.items.form.category.none") },
     ...categories.map((category) => ({
       value: category.id,
       title: category.name,
@@ -33,7 +33,7 @@ export const useCatalogItemOptions = (currentTaxRateId?: TaxRateId | null) => {
   const taxRateOptions: ReadonlyArray<
     OptionToggleGroupOption<TaxRateId | typeof NO_OPTION>
   > = [
-    { value: NO_OPTION, title: t("settings.items.form.taxRate.none") },
+    { value: NO_OPTION, title: t("catalog.items.form.taxRate.none") },
     ...filterSelectableTaxRates(taxRates, currentTaxRateId).map((taxRate) => ({
       value: taxRate.id,
       title: `${formatTaxRateLabel(taxRate)}${

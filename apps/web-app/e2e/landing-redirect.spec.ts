@@ -109,7 +109,7 @@ test("a device with an account keeps its language when opened from the landing p
 
   await expect(page).toHaveURL("/")
   await expect(
-    page.getByRole("button", { name: translate("en", "settings.title") })
+    page.getByRole("button", { name: translate("en", "nav.menu") })
   ).toBeVisible()
 })
 

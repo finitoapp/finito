@@ -11,8 +11,8 @@ import { expect, test } from "./support/fixtures.ts"
  * control that exists, and that no id is claimed twice.
  */
 const formPaths = [
-  "/settings/items/new",
-  "/settings/tables/new",
+  "/catalog/items/new",
+  "/catalog/tables/new",
   "/settings/tax-rates",
   "/settings/payment-accounts/iban",
   "/settings/payment-accounts/iban/fio-plugin",

@@ -8,31 +8,31 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: ${output.t["settings.items.title"]}
+      ROUTE: catalog/items
+      TEXT: ${output.t["catalog.items.title"]}
 - runFlow:
     file: tap-label.yaml
     env:
-      LABEL: ${output.t["settings.items.add"]}
+      LABEL: ${output.t["catalog.items.add"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.create"]}
+    visible: ${output.t["catalog.items.form.title.create"]}
     timeout: 15000
 - runFlow:
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.name.label"]}
+      LABEL: ${output.t["catalog.items.form.name.label"]}
       VALUE: ${NAME}
 - runFlow:
     when:
       true: ${typeof INTERNAL_NAME !== "undefined"}
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.internalName.label"]}
+      LABEL: ${output.t["catalog.items.form.internalName.label"]}
       VALUE: '${typeof INTERNAL_NAME === "undefined" ? "" : INTERNAL_NAME}'
 - runFlow:
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.items.form.price.label"]}
+      LABEL: ${output.t["catalog.items.form.price.label"]}
       VALUE: ${PRICE}
 - runFlow:
     when:
@@ -45,11 +45,11 @@ appId: ${APP_ID}
     commands:
       - scrollUntilVisible:
           element:
-            id: ${output.re(output.t["settings.items.form.sku.label"])}
+            id: ${output.re(output.t["catalog.items.form.sku.label"])}
       - runFlow:
           file: type-input.yaml
           env:
-            LABEL: ${output.t["settings.items.form.sku.label"]}
+            LABEL: ${output.t["catalog.items.form.sku.label"]}
             VALUE: '${typeof SKU === "undefined" ? "" : SKU}'
       - runFlow:
           when:
@@ -63,9 +63,9 @@ appId: ${APP_ID}
       # Its current value: on Android the field label matches the select's
       # name too.
       - scrollUntilVisible:
-          element: ${output.re(output.t["settings.items.form.category.none"])}
+          element: ${output.re(output.t["catalog.items.form.category.none"])}
           centerElement: true
-      - tapOn: ${output.re(output.t["settings.items.form.category.none"])}
+      - tapOn: ${output.re(output.t["catalog.items.form.category.none"])}
       - tapOn: '${typeof CATEGORY === "undefined" ? "" : output.re(CATEGORY)}'
 - runFlow:
     when:
@@ -73,10 +73,10 @@ appId: ${APP_ID}
     commands:
       - scrollUntilVisible:
           element:
-            id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+            id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
       # Not tap-input: the scan button sits over the input's right end.
       - tapOn:
-          id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+          id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
       - inputText: '${typeof SCAN_CODE === "undefined" ? "" : SCAN_CODE}'
       - runFlow:
           when:
@@ -90,20 +90,20 @@ appId: ${APP_ID}
       # Its current value: on Android the field label matches the select's
       # name too.
       - scrollUntilVisible:
-          element: ${output.re(output.t["settings.items.form.taxRate.none"])}
+          element: ${output.re(output.t["catalog.items.form.taxRate.none"])}
           centerElement: true
-      - tapOn: ${output.re(output.t["settings.items.form.taxRate.none"])}
+      - tapOn: ${output.re(output.t["catalog.items.form.taxRate.none"])}
       - tapOn: '${typeof TAX_RATE === "undefined" ? "" : TAX_RATE}'
 # The Save button shares its copy with the page title, hence below the last
 # input.
 - scrollUntilVisible:
     element:
-      id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+      id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
     centerElement: true
 - tapOn:
-    text: ${output.re(output.t["settings.items.form.save.create"])}
+    text: ${output.re(output.t["catalog.items.form.save.create"])}
     below:
-      id: ${output.re(output.t["settings.items.form.scanCode.label"])}
+      id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.title"]}
+    visible: ${output.t["catalog.items.title"]}
     timeout: 15000

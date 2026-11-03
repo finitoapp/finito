@@ -52,7 +52,7 @@ export const FadeHeader: FC<{
   return (
     <div
       ref={divRef}
-      className="text-center fixed left-0 right-0"
+      className="text-center fixed left-0 right-0 lg:pl-(--menu-sidebar-width)"
       style={{
         opacity: 1,
         top: "calc(env(safe-area-inset-top) + var(--terminal-banner-height, 0px))",

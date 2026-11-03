@@ -8,6 +8,7 @@ export const Route = createFileRoute(
   component: WithdrawDetailRoute,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })
 

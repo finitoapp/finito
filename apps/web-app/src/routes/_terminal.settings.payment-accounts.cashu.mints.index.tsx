@@ -6,5 +6,5 @@ export const Route = createFileRoute(
   "/_terminal/settings/payment-accounts/cashu/mints/"
 )({
   component: CashuMintsPage,
-  staticData: { access: "admin" },
+  staticData: { access: "admin", menu: { tab: "settings" } },
 })

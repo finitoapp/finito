@@ -1,0 +1,48 @@
+# web catalog-tables.spec.ts: "search filters the tables list".
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Patio 1
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Patio 2
+      SEATS: "2"
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.search"]}
+      VALUE: Patio 1
+- extendedWaitUntil:
+    notVisible: Patio 2
+    timeout: 10000
+- assertVisible:
+    text: Patio 1
+    below:
+      id: ${output.re(output.t["catalog.tables.search"])}
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.search"]}
+      VALUE: nonexistent
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.emptySearch"]}
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.search.clear.aria"]}
+- extendedWaitUntil:
+    visible: Patio 2
+    timeout: 10000
+- assertVisible: Patio 1

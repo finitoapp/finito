@@ -27,13 +27,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field.tsx"
 import { Skeleton } from "@/components/ui/skeleton.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
+import { ProfileAvatar } from "@/features/settings/profile/profile-avatar.tsx"
+import { readProfilePicture } from "@/features/settings/profile/profile-picture.ts"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import {
   InlineEditSavedTick,
   useInlineChoice,
-} from "@/features/settings/inline-edit-save.tsx"
-import { ProfileAvatar } from "@/features/settings/profile/profile-avatar.tsx"
-import { readProfilePicture } from "@/features/settings/profile/profile-picture.ts"
+} from "@/features/shared/forms/inline-edit-save.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import {
   nostrProfileQueryKey,

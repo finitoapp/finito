@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/access_/add-device")({
   component: AccountTransferSourcePage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

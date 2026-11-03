@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/evolu-export")({
   component: EvoluExportPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

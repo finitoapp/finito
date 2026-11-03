@@ -6,6 +6,7 @@ export const Route = createFileRoute("/_terminal/activity_/bills_/$billId")({
   component: BillDetailRoute,
   staticData: {
     access: "activity",
+    menu: { tab: "activity" },
   },
 })
 

@@ -73,7 +73,7 @@ const setUp = async () => {
   }
 }
 
-const tryPin = (pin: string, target = "/settings/items") =>
+const tryPin = (pin: string, target = "/catalog/items") =>
   enterPin({ pin, accountId, deviceId, target })
 
 describe("enableAccessControl", () => {

@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/eet")({
   component: EetSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

@@ -169,7 +169,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/components/inline-edit-field.tsx",
-    web: ["apps/web-app/src/features/settings/inline-edit-field.tsx"],
+    web: ["apps/web-app/src/features/shared/forms/inline-edit-field.tsx"],
     status: "matched",
   },
   {
@@ -277,10 +277,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   },
   {
     native: "src/features/activity/activity-shell.tsx",
-    web: [
-      "apps/web-app/src/features/activity/activity-tabs.tsx",
-      "apps/web-app/src/features/activity/activity-pages.tsx",
-    ],
+    web: ["apps/web-app/src/features/activity/activity-pages.tsx"],
     status: "matched",
     allowedDifferences: {
       ListSkeleton:
@@ -828,16 +825,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     note: "Web ChatScrollArea's follow-while-reading and jump-to-latest behavior is Screen's followKey mode on native.",
   },
   {
-    native: "src/features/settings/categories/categories-settings-page.tsx",
-    web: [
-      "apps/web-app/src/features/settings/categories/categories-settings-page.tsx",
-    ],
+    native: "src/features/catalog/categories/categories-page.tsx",
+    web: ["apps/web-app/src/features/catalog/categories/categories-page.tsx"],
     status: "matched",
   },
   {
-    native: "src/features/settings/categories/edit-category-page.tsx",
+    native: "src/features/catalog/categories/edit-category-page.tsx",
     web: [
-      "apps/web-app/src/features/settings/categories/category-form-page.tsx",
+      "apps/web-app/src/features/catalog/categories/category-form-page.tsx",
     ],
     status: "matched",
     allowedDifferences: {
@@ -852,9 +847,9 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/categories/new-category-page.tsx",
+    native: "src/features/catalog/categories/new-category-page.tsx",
     web: [
-      "apps/web-app/src/features/settings/categories/category-form-page.tsx",
+      "apps/web-app/src/features/catalog/categories/category-form-page.tsx",
     ],
     status: "matched",
     allowedDifferences: {
@@ -969,8 +964,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     web: [
       "apps/web-app/src/features/settings/eet/eet-settings-page.tsx",
       "apps/web-app/src/features/settings/eet/eet-certificate-card.tsx",
-      "apps/web-app/src/features/settings/inline-edit-switch.tsx",
-      "apps/web-app/src/features/settings/inline-edit-toggle-group.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-toggle-group.tsx",
     ],
     status: "matched",
     allowedDifferences: {
@@ -1075,7 +1070,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/settings/home-screen/home-screen-settings-page.tsx",
     web: [
-      "apps/web-app/src/features/settings/inline-edit-switch.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-switch.tsx",
       "apps/web-app/src/features/settings/home-screen/home-screen-settings-page.tsx",
     ],
     status: "matched",
@@ -1085,8 +1080,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/items/edit-item-page.tsx",
-    web: ["apps/web-app/src/features/settings/items/item-form-page.tsx"],
+    native: "src/features/catalog/items/edit-item-page.tsx",
+    web: ["apps/web-app/src/features/catalog/items/item-form-page.tsx"],
     status: "matched",
     allowedDifferences: {
       FieldError:
@@ -1100,13 +1095,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/items/items-settings-page.tsx",
-    web: ["apps/web-app/src/features/settings/items/items-settings-page.tsx"],
+    native: "src/features/catalog/items/items-page.tsx",
+    web: ["apps/web-app/src/features/catalog/items/items-page.tsx"],
     status: "matched",
   },
   {
-    native: "src/features/settings/items/new-item-page.tsx",
-    web: ["apps/web-app/src/features/settings/items/item-form-page.tsx"],
+    native: "src/features/catalog/items/new-item-page.tsx",
+    web: ["apps/web-app/src/features/catalog/items/item-form-page.tsx"],
     status: "matched",
     allowedDifferences: {
       CardFooter:
@@ -1118,8 +1113,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/items/scan-code-button.tsx",
-    web: ["apps/web-app/src/features/settings/items/item-form-page.tsx"],
+    native: "src/features/catalog/items/scan-code-button.tsx",
+    web: ["apps/web-app/src/features/catalog/items/item-form-page.tsx"],
     status: "matched",
     allowedDifferences: {
       Card: "The mapped web source is the full item form; this native row covers only its scan button.",
@@ -1486,15 +1481,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/settings/settings-form-empty-state.tsx",
-    web: ["apps/web-app/src/features/settings/settings-form-empty-state.tsx"],
+    native: "src/features/catalog/catalog-form-empty-state.tsx",
+    web: ["apps/web-app/src/features/catalog/catalog-form-empty-state.tsx"],
     status: "matched",
   },
   {
-    native: "src/features/settings/settings-list-parts.tsx",
+    native: "src/features/catalog/catalog-list-parts.tsx",
     web: [
-      "apps/web-app/src/features/settings/settings-list-page.tsx",
-      "apps/web-app/src/features/settings/settings-entity-list.tsx",
+      "apps/web-app/src/features/catalog/catalog-list-page.tsx",
+      "apps/web-app/src/features/catalog/catalog-entity-list.tsx",
     ],
     status: "matched",
     allowedDifferences: {
@@ -1535,8 +1530,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     note: "Web ChatScrollArea's follow-while-reading and jump-to-latest behavior is Screen's followKey mode on native.",
   },
   {
-    native: "src/features/settings/tables/edit-table-page.tsx",
-    web: ["apps/web-app/src/features/settings/tables/table-form-page.tsx"],
+    native: "src/features/catalog/tables/edit-table-page.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-form-page.tsx"],
     status: "matched",
     allowedDifferences: {
       FieldError:
@@ -1544,8 +1539,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/tables/new-table-page.tsx",
-    web: ["apps/web-app/src/features/settings/tables/table-form-page.tsx"],
+    native: "src/features/catalog/tables/new-table-page.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/table-form-page.tsx"],
     status: "matched",
     allowedDifferences: {
       CardFooter:
@@ -1555,8 +1550,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/settings/tables/tables-settings-page.tsx",
-    web: ["apps/web-app/src/features/settings/tables/tables-settings-page.tsx"],
+    native: "src/features/catalog/tables/tables-page.tsx",
+    web: ["apps/web-app/src/features/catalog/tables/tables-page.tsx"],
     status: "matched",
   },
   {
@@ -1581,7 +1576,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/settings/tips/tips-settings-page.tsx",
     web: [
-      "apps/web-app/src/features/settings/settings-form-card.tsx",
+      "apps/web-app/src/features/shared/forms/form-card.tsx",
       "apps/web-app/src/features/settings/tips/tips-settings-page.tsx",
     ],
     status: "matched",
@@ -1860,6 +1855,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/withdraw/withdraw-review-step.tsx",
     web: ["apps/web-app/src/features/withdraw/withdraw-review-step.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/catalog/catalog-tabs.tsx",
+    web: ["apps/web-app/src/features/catalog/catalog-tabs.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/notifications/notifications-page.tsx",
+    web: ["apps/web-app/src/features/notifications/notifications-page.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/shared/activity-tabs.tsx",
+    web: ["apps/web-app/src/features/shared/activity-tabs.tsx"],
     status: "matched",
   },
 ]

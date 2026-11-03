@@ -169,7 +169,7 @@ export function CreateCatalogItemDialog({
 
             void (async () => {
               // The same synced write as Settings → Items (access/0002).
-              if (!(await require("settings", "access.action.createItem"))) {
+              if (!(await require("catalog", "access.action.createItem"))) {
                 return
               }
               setPending(true)
@@ -202,7 +202,7 @@ export function CreateCatalogItemDialog({
           <FieldGroup>
             <Field data-invalid={nameError !== null}>
               <FieldLabel htmlFor={`${formId}-name`}>
-                {t("settings.items.form.name.label")}
+                {t("catalog.items.form.name.label")}
               </FieldLabel>
               <Input
                 id={`${formId}-name`}
@@ -211,7 +211,7 @@ export function CreateCatalogItemDialog({
                 aria-invalid={nameError !== null}
                 autoComplete="off"
                 autoFocus
-                placeholder={t("settings.items.form.name.placeholder")}
+                placeholder={t("catalog.items.form.name.placeholder")}
                 onChange={(event) => {
                   setName(event.currentTarget.value)
                   setNameError(null)
@@ -222,7 +222,7 @@ export function CreateCatalogItemDialog({
 
             <Field data-invalid={descriptionError !== null}>
               <FieldLabel htmlFor={`${formId}-description`}>
-                {t("settings.items.form.description.label")}
+                {t("catalog.items.form.description.label")}
               </FieldLabel>
               <Input
                 id={`${formId}-description`}
@@ -230,7 +230,7 @@ export function CreateCatalogItemDialog({
                 disabled={pending}
                 aria-invalid={descriptionError !== null}
                 autoComplete="off"
-                placeholder={t("settings.items.form.description.placeholder")}
+                placeholder={t("catalog.items.form.description.placeholder")}
                 onChange={(event) => {
                   setDescription(event.currentTarget.value)
                   setDescriptionError(null)
@@ -252,7 +252,7 @@ export function CreateCatalogItemDialog({
 
             <Field data-invalid={priceError !== null}>
               <FieldLabel htmlFor={`${formId}-price`}>
-                {t("settings.items.form.price.label")}
+                {t("catalog.items.form.price.label")}
               </FieldLabel>
               <Input
                 id={`${formId}-price`}
@@ -271,11 +271,11 @@ export function CreateCatalogItemDialog({
 
             <Field>
               <FieldLabel htmlFor={`${formId}-category`}>
-                {t("settings.items.form.category.label")}
+                {t("catalog.items.form.category.label")}
               </FieldLabel>
               <Select<CatalogCategoryId | "none">
                 items={{
-                  none: t("settings.items.form.category.none"),
+                  none: t("catalog.items.form.category.none"),
                   ...Object.fromEntries(
                     categories.map((category) => [category.id, category.name])
                   ),
@@ -292,7 +292,7 @@ export function CreateCatalogItemDialog({
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="none">
-                      {t("settings.items.form.category.none")}
+                      {t("catalog.items.form.category.none")}
                     </SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
@@ -306,11 +306,11 @@ export function CreateCatalogItemDialog({
 
             <Field>
               <FieldLabel htmlFor={`${formId}-taxRate`}>
-                {t("settings.items.form.taxRate.label")}
+                {t("catalog.items.form.taxRate.label")}
               </FieldLabel>
               <Select<TaxRateId | "none">
                 items={{
-                  none: t("settings.items.form.taxRate.none"),
+                  none: t("catalog.items.form.taxRate.none"),
                   ...Object.fromEntries(
                     selectableTaxRates.map((taxRate) => [
                       taxRate.id,
@@ -330,7 +330,7 @@ export function CreateCatalogItemDialog({
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="none">
-                      {t("settings.items.form.taxRate.none")}
+                      {t("catalog.items.form.taxRate.none")}
                     </SelectItem>
                     {selectableTaxRates.map((taxRate) => (
                       <SelectItem key={taxRate.id} value={taxRate.id}>

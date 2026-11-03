@@ -172,11 +172,11 @@ test("changing a catalog item's tax rate does not retroactively change an alread
   })
 
   await test.step("change the item's tax rate in settings", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page.getByRole("link", { name: /Coffee/ }).click()
     await pickInlineOption(
       page,
-      "settings.items.form.taxRate.label",
+      "catalog.items.form.taxRate.label",
       /Reduced rate/
     )
   })

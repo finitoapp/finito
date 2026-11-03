@@ -12,11 +12,9 @@ const statsLock = (page: Page) =>
     ),
   })
 
-const statsHeading = (page: Page) =>
-  page.getByRole("heading", {
-    name: translate("en", "stats.title"),
-    exact: true,
-  })
+/** "Live" beside today's period, which only the statistics draw. */
+const statsShown = (page: Page) =>
+  page.getByText(translate("en", "stats.live"), { exact: true })
 
 test("a Basic device opening the statistics gets the PIN prompt", async ({
   seededPage: page,
@@ -25,9 +23,9 @@ test("a Basic device opening the statistics gets the PIN prompt", async ({
     turnOnAccessControl(page, "en"))
 
   await test.step("the statistics ask for the PIN", async () => {
-    await page.goto("/stats", { waitUntil: "domcontentloaded" })
+    await page.goto("/activity/stats", { waitUntil: "domcontentloaded" })
     await expect(statsLock(page)).toBeVisible()
-    await expect(statsHeading(page)).toHaveCount(0)
+    await expect(statsShown(page)).toHaveCount(0)
   })
 })
 
@@ -37,13 +35,13 @@ test("a Manager device opens the statistics without the PIN", async ({
   await test.step("turn access control on, this device set to Manager", () =>
     turnOnAccessControl(page, "en", { preset: "manager" }))
 
-  await test.step("the statistics open from the activity header", async () => {
+  await test.step("the statistics open from Activity's tabs", async () => {
     // A reload drops the PIN session the wizard started.
     await page.goto("/activity", { waitUntil: "domcontentloaded" })
     await page
-      .getByRole("button", { name: translate("en", "nav.stats") })
+      .getByRole("tab", { name: translate("en", "activity.tabs.stats") })
       .click()
-    await expect(statsHeading(page)).toBeVisible()
+    await expect(statsShown(page)).toBeVisible()
     await expect(statsLock(page)).toHaveCount(0)
   })
 })

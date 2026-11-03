@@ -32,16 +32,16 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: ${output.t["settings.items.title"]}
+      ROUTE: catalog/items
+      TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Coffee
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.edit"]}
+    visible: ${output.t["catalog.items.form.title.edit"]}
     timeout: 10000
 - runFlow:
     file: ../../subflows/fill-inline.yaml
     env:
-      LABEL: ${output.t["settings.items.form.price.label"]}
+      LABEL: ${output.t["catalog.items.form.price.label"]}
       VALUE: "6"
 # Resume the cart and remove its old snapshot.
 - runFlow:

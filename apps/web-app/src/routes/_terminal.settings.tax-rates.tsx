@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/tax-rates")({
   component: TaxRatesSettingsPage,
   staticData: {
     access: "settings",
+    menu: { tab: "settings" },
   },
 })

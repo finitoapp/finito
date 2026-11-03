@@ -1,0 +1,45 @@
+# web catalog-items.spec.ts: "search filters the items list".
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Coffee
+      PRICE: "5"
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Tea
+      PRICE: "3"
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.search"]}
+      VALUE: Cof
+- extendedWaitUntil:
+    notVisible: Tea
+    timeout: 10000
+- assertVisible: Coffee
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.search"]}
+      VALUE: nonexistent
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.emptySearch"]}
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["catalog.items.search.clear.aria"]}
+- extendedWaitUntil:
+    visible: Tea
+    timeout: 10000
+- assertVisible: Coffee

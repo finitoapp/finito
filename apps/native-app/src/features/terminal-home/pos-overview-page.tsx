@@ -184,7 +184,7 @@ export function PosOverviewPage() {
               textDecorationLine="underline"
               role="link"
               cursor="web:pointer"
-              onPress={() => router.push("/settings/tables")}
+              onPress={() => router.push("/catalog/tables")}
             >
               {t("home.pos.addTables")}
             </Text>

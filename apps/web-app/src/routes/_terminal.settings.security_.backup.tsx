@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/security_/backup")({
   component: RecoveryBackupPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

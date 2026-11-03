@@ -98,12 +98,12 @@ test("scanning an unknown code can create a new catalog item and add it to the c
   await test.step("fill and save the quick-create form", async () => {
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
       })
       .fill("Muffin")
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("2.5")
     await page
@@ -123,11 +123,11 @@ test("scanning an unknown code can create a new catalog item and add it to the c
   })
 
   await test.step("the new item was also saved to the catalog with its scan code", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page.getByRole("link", { name: "Muffin" }).click()
     await expect(
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.scanCode.label"),
+        name: translate("en", "catalog.items.form.scanCode.label"),
       })
     ).toHaveValue("3333")
   })
@@ -213,12 +213,12 @@ test("an opted-in device prefills a scanned retail barcode from Open Food Facts"
       .click()
     await expect(
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
       })
     ).toHaveValue("Coca-Cola Original")
     await expect(
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.description.label"),
+        name: translate("en", "catalog.items.form.description.label"),
       })
     ).toHaveValue("Coca-Cola, 330 ml")
     await expect(
@@ -237,7 +237,7 @@ test("an opted-in device prefills a scanned retail barcode from Open Food Facts"
   await test.step("saving adds the prefilled item to the cart", async () => {
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("1.5")
     await page

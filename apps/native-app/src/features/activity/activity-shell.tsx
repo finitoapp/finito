@@ -1,5 +1,3 @@
-import { router } from "expo-router"
-import ChartColumn from "lucide-react-native/icons/chart-column"
 import {
   createContext,
   type ReactElement,
@@ -18,12 +16,8 @@ import {
   screenPadding,
   screenPaddingX,
 } from "../../components/screen.tsx"
-import { Button } from "../../components/ui/button.tsx"
-import { Icon } from "../../components/ui/icon.tsx"
-import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
-
-type ActivityTab = "payments" | "bills"
+import { type ActivityTab, ActivityTabs } from "../shared/activity-tabs.tsx"
 
 const ActivityHeaderContext = createContext<ReactElement | null>(null)
 
@@ -31,10 +25,12 @@ const ActivityHeaderContext = createContext<ReactElement | null>(null)
 export const useActivityHeader = () => useContext(ActivityHeaderContext)
 
 /**
- * Header and the payments/bills tabs around a history list, as web's
- * `activity-pages.tsx` and `ActivityTabs`: the stats link is the header's
- * end icon, and each tab is its own route; switching replaces rather than
- * pushes, so back always leaves Activity instead of rewinding through tabs.
+ * Header and Activity's tabs around a history list, as web's
+ * `activity-pages.tsx` and `ActivityTabs`: the header's start stays empty,
+ * as on every root screen of the menu section, whose Home entry leads out
+ * (navigation/0001), and each tab is its own route;
+ * switching replaces rather than pushes, so back always leaves Activity
+ * instead of rewinding through tabs.
  *
  * As on web, the header and tabs scroll away with the list: `ActivityList`
  * draws them (`useActivityHeader`) at the top of its own scroll and reports
@@ -44,7 +40,7 @@ export function ActivityShell({
   active,
   children,
 }: {
-  readonly active: ActivityTab
+  readonly active: Exclude<ActivityTab, "stats">
   readonly children: ReactNode
 }) {
   const theme = useTheme()
@@ -54,41 +50,8 @@ export function ActivityShell({
 
   const header = (
     <YStack pb={16}>
-      <FadeHeader
-        title={t("activity.title")}
-        endAddon={
-          <Button
-            variant="ghost"
-            aria-label={t("nav.stats")}
-            onPress={() => router.push("/stats")}
-          >
-            <Icon
-              icon={ChartColumn}
-              size={20}
-              color="primary"
-              strokeWidth={3}
-            />
-          </Button>
-        }
-      />
-      <Tabs value={active}>
-        <TabsList>
-          <TabsTrigger
-            value="payments"
-            onPress={() => active !== "payments" && router.replace("/activity")}
-          >
-            {t("activity.tabs.payments")}
-          </TabsTrigger>
-          <TabsTrigger
-            value="bills"
-            onPress={() =>
-              active !== "bills" && router.replace("/activity/bills")
-            }
-          >
-            {t("activity.tabs.bills")}
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <FadeHeader title={t("activity.title")} startAddon={null} />
+      <ActivityTabs active={active} />
     </YStack>
   )
 

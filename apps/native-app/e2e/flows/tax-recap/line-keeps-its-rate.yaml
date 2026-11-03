@@ -44,11 +44,11 @@ tags: [tax-recap]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: ${output.t["settings.items.title"]}
+      ROUTE: catalog/items
+      TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Coffee
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.edit"]}
+    visible: ${output.t["catalog.items.form.title.edit"]}
     timeout: 10000
 - scrollUntilVisible:
     element: Standard rate.*

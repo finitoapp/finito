@@ -1,5 +1,6 @@
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
+import { menuHome, openMenuTab } from "./support/navigation.ts"
 
 /**
  * The direction is the part that silently breaks: get it wrong and back looks
@@ -37,29 +38,27 @@ test("pushes and pops inside a stack transition, the money path does not", async
   const heading = (key: Parameters<typeof translate>[1]) =>
     page.getByRole("heading", { name: translate("en", key) })
 
-  // Two levels down into settings, then back out of both.
-  await button("nav.settings").click()
+  // Into the menu, across to another tab, one level down, and back out.
+  await button("nav.menu").click()
+  await expect(heading("activity.title")).toBeVisible()
+
+  // A tab switch moves between stacks, an instant swap.
+  await openMenuTab(page, "en", "nav.settings")
   await expect(heading("settings.title")).toBeVisible()
 
   await page
     .getByRole("link", {
-      name: new RegExp(`^${translate("en", "settings.items.title")}\\b`),
+      name: new RegExp(`^${translate("en", "settings.language.title")}\\b`),
     })
     .click()
-  await expect(heading("settings.items.title")).toBeVisible()
+  await expect(heading("settings.language.title")).toBeVisible()
 
   await page.goBack()
   await expect(heading("settings.title")).toBeVisible()
 
-  await page.goBack()
-  await expect(button("nav.activity")).toBeVisible()
-
-  // The other stack, popped with the app's own back button.
-  await button("nav.activity").click()
-  await expect(heading("activity.title")).toBeVisible()
-
-  await button("nav.back").click()
-  await expect(button("nav.activity")).toBeVisible()
+  // Home pops the section back to home.
+  await menuHome(page, "en").click()
+  await expect(button("nav.menu")).toBeVisible()
 
   // The money path is deliberately left out: opening a bill stays an instant
   // swap, leaving the recorded types untouched.
@@ -77,8 +76,6 @@ test("pushes and pops inside a stack transition, the money path does not", async
     "forward",
     "forward",
     "backward",
-    "backward",
-    "forward",
     "backward",
   ])
 })

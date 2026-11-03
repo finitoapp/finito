@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/activity")({
   component: PaymentHistoryPage,
   staticData: {
     access: "activity",
+    menu: { tab: "activity", root: true },
   },
 })

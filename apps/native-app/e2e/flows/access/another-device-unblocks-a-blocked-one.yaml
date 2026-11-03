@@ -39,8 +39,8 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+      ROUTE: catalog/items
+      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow: ../../subflows/wrong-pins.yaml
 - extendedWaitUntil:
     visible: ${output.t["access.pin.blocked.title"]}
@@ -56,8 +56,8 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+      ROUTE: catalog/items
+      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml
     env:

@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_terminal/settings/donations-invoice")({
   validateSearch: (search) => DonateInvoiceSearchSchema.parse(search),
   staticData: {
     access: "free",
+    menu: { tab: "settings" },
   },
 })
 

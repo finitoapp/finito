@@ -100,19 +100,19 @@ test("a hardware scan fills the item form and finds items from the list", async 
   await test.step("a scan fills the new item's scan code without submitting", async () => {
     await gotoPage(
       page,
-      "/settings/items/new",
+      "/catalog/items/new",
       "en",
-      "settings.items.form.title.create"
+      "catalog.items.form.title.create"
     )
     const scanCode = page.getByRole("textbox", {
-      name: translate("en", "settings.items.form.scanCode.label"),
+      name: translate("en", "catalog.items.form.scanCode.label"),
     })
     await scanCode.click()
     await typeHardwareScan(page, "55556666")
     await expect(scanCode).toHaveValue("55556666")
     await expect(
       page.getByRole("heading", {
-        name: translate("en", "settings.items.form.title.create"),
+        name: translate("en", "catalog.items.form.title.create"),
       })
     ).toBeVisible()
   })
@@ -127,31 +127,31 @@ test("a hardware scan fills the item form and finds items from the list", async 
     await typeHardwareScan(page, "77778888")
     await page
       .getByRole("heading", {
-        name: translate("en", "settings.items.form.title.edit"),
+        name: translate("en", "catalog.items.form.title.edit"),
       })
       .waitFor()
     await expect(
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
         exact: true,
       })
     ).toHaveValue("Tea")
   })
 
   await test.step("an unknown code on the list opens a new item carrying it", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     // The heading renders before the list, whose body holds the scanner
     // listener; a scan typed in between reaches no one.
     await page.getByRole("link", { name: /^Tea/ }).waitFor()
     await typeHardwareScan(page, "11112222")
     await page
       .getByRole("heading", {
-        name: translate("en", "settings.items.form.title.create"),
+        name: translate("en", "catalog.items.form.title.create"),
       })
       .waitFor()
     await expect(
       page.getByRole("textbox", {
-        name: translate("en", "settings.items.form.scanCode.label"),
+        name: translate("en", "catalog.items.form.scanCode.label"),
       })
     ).toHaveValue("11112222")
   })

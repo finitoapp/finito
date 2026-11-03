@@ -16,9 +16,10 @@ export type NativeRoutePath =
   | "/payment/:paymentId"
   | "/activity"
   | "/activity/bills"
+  | "/activity/stats"
   | "/activity/bills/:billId"
   | "/activity/:paymentId"
-  | "/stats"
+  | "/notifications"
   | "/withdraw"
   | "/withdraw/new"
   | "/withdraw/:withdrawalId"
@@ -43,15 +44,16 @@ export type NativeRoutePath =
   | "/settings/tax-rates"
   | "/settings/tips"
   | "/settings/payment-number-series"
-  | "/settings/items"
-  | "/settings/items/new"
-  | "/settings/items/:catalogItemId"
-  | "/settings/categories"
-  | "/settings/categories/new"
-  | "/settings/categories/:catalogCategoryId"
-  | "/settings/tables"
-  | "/settings/tables/new"
-  | "/settings/tables/:tableId"
+  | "/catalog"
+  | "/catalog/items"
+  | "/catalog/items/new"
+  | "/catalog/items/:catalogItemId"
+  | "/catalog/categories"
+  | "/catalog/categories/new"
+  | "/catalog/categories/:catalogCategoryId"
+  | "/catalog/tables"
+  | "/catalog/tables/new"
+  | "/catalog/tables/:tableId"
   | "/settings/accounts"
   | "/settings/eet"
   | "/settings/access"
@@ -99,8 +101,10 @@ export const routeAccess = {
   "/activity/bills": "activity",
   "/activity/bills/:billId": "activity",
   "/activity/:paymentId": "activity",
-  // Like web's `_terminal/stats` (access/0008).
-  "/stats": "stats",
+  // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
+  "/activity/stats": "stats",
+  // Like web's `_terminal/notifications`: nothing to protect yet (access/0010).
+  "/notifications": "free",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).
   "/withdraw": "admin",
   "/withdraw/new": "admin",
@@ -144,24 +148,26 @@ export const routeAccess = {
   "/settings/tips": "settings",
   // Like web's `_terminal/settings/payment-number-series` (access/0002: `settings`).
   "/settings/payment-number-series": "settings",
-  // Like web's `_terminal/settings/items` (access/0002: `settings`).
-  "/settings/items": "settings",
-  // Like web's `_terminal/settings/items/new`.
-  "/settings/items/new": "settings",
-  // Like web's `_terminal/settings/items/$catalogItemId`.
-  "/settings/items/:catalogItemId": "settings",
-  // Like web's `_terminal/settings/categories` (access/0002: `settings`).
-  "/settings/categories": "settings",
-  // Like web's `_terminal/settings/categories/new`.
-  "/settings/categories/new": "settings",
-  // Like web's `_terminal/settings/categories/$catalogCategoryId`.
-  "/settings/categories/:catalogCategoryId": "settings",
-  // Like web's `_terminal/settings/tables` (access/0002: `settings`).
-  "/settings/tables": "settings",
-  // Like web's `_terminal/settings/tables/new`.
-  "/settings/tables/new": "settings",
-  // Like web's `_terminal/settings/tables/$tableId`.
-  "/settings/tables/:tableId": "settings",
+  // Like web's `_terminal/catalog/` (access/0010: `catalog`), which opens the items.
+  "/catalog": "catalog",
+  // Like web's `_terminal/catalog/items` (access/0010: `catalog`).
+  "/catalog/items": "catalog",
+  // Like web's `_terminal/catalog/items/new` (access/0010: `catalog`).
+  "/catalog/items/new": "catalog",
+  // Like web's `_terminal/catalog/items/$catalogItemId` (access/0010: `catalog`).
+  "/catalog/items/:catalogItemId": "catalog",
+  // Like web's `_terminal/catalog/categories` (access/0010: `catalog`).
+  "/catalog/categories": "catalog",
+  // Like web's `_terminal/catalog/categories/new` (access/0010: `catalog`).
+  "/catalog/categories/new": "catalog",
+  // Like web's `_terminal/catalog/categories/$catalogCategoryId` (access/0010: `catalog`).
+  "/catalog/categories/:catalogCategoryId": "catalog",
+  // Like web's `_terminal/catalog/tables` (access/0010: `catalog`).
+  "/catalog/tables": "catalog",
+  // Like web's `_terminal/catalog/tables/new` (access/0010: `catalog`).
+  "/catalog/tables/new": "catalog",
+  // Like web's `_terminal/catalog/tables/$tableId` (access/0010: `catalog`).
+  "/catalog/tables/:tableId": "catalog",
   // Like web's `_terminal/settings/access`: the Access section is owner-only (access/0002).
   // Like web's `_terminal/settings/accounts`: switching and removing accounts is owner-only.
   "/settings/accounts": "admin",

@@ -7,8 +7,8 @@ tags: [access, android-only]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+      ROUTE: catalog/items
+      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml
     env:
@@ -16,7 +16,7 @@ tags: [access, android-only]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["settings.items.add"]}
+      LABEL: ${output.t["catalog.items.add"]}
 - runFlow:
     file: ../../subflows/e2e-action.yaml
     env:
@@ -24,5 +24,5 @@ tags: [access, android-only]
 # Back to the screen the bridge covered; the session has ended by then.
 - back
 - extendedWaitUntil:
-    visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+    visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
     timeout: 30000

@@ -27,8 +27,8 @@ tags: [access]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.settings"] })}'
+      ROUTE: catalog/items
+      TEXT: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.catalog"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml
     env:
@@ -36,4 +36,4 @@ tags: [access]
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:
-      LABEL: ${output.t["settings.items.add"]}
+      LABEL: ${output.t["catalog.items.add"]}

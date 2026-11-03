@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/about/")({
   component: AboutPage,
   staticData: {
     access: "free",
+    menu: { tab: "settings" },
   },
 })

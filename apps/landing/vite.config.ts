@@ -43,14 +43,68 @@ function landingPagesPlugin(): PluginOption {
   }
 }
 
+/**
+ * The prerender writes `sitemap.xml` and `robots.txt` into the build
+ * (landing/0002, landing/0013); the dev server has no build, so it renders
+ * both on request with the same functions, at the addresses the preview
+ * server serves the built files from.
+ */
+function landingSiteFilesPlugin(): PluginOption {
+  const siteFiles: Record<string, "renderSitemap" | "renderRobots"> = {
+    "/sitemap.xml": "renderSitemap",
+    "/robots.txt": "renderRobots",
+  }
+  return {
+    name: "payky-landing-site-files",
+    configureServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const pathname = request.url?.split("?")[0]?.replace(/^\/landing/u, "")
+        const render = pathname === undefined ? undefined : siteFiles[pathname]
+        if (render === undefined) {
+          next()
+          return
+        }
+        server
+          .ssrLoadModule("/src/landing-server.tsx")
+          .then(
+            (module: Partial<typeof import("./src/landing-server.tsx")>) => {
+              const body = module[render]?.()
+              if (body === undefined) {
+                next()
+                return
+              }
+              response.setHeader(
+                "Content-Type",
+                render === "renderSitemap"
+                  ? "application/xml; charset=utf-8"
+                  : "text/plain; charset=utf-8"
+              )
+              response.end(body)
+            }
+          )
+          .catch(next)
+      })
+    },
+  }
+}
+
 export default defineConfig({
   // On finito.fit too, whose pages sit at the root (landing/0013): the assets
   // stay under /landing, which vercel.json maps to the build's root.
   base: "/landing/",
   // `PAYKY_LANDING_BRAND` picks the brand at build time (src/core/app-env.ts).
   envPrefix: ["VITE_", "PAYKY_LANDING_"],
-  plugins: [react(), tailwindcss(), landingPagesPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    landingSiteFilesPlugin(),
+    landingPagesPlugin(),
+  ],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
+  // Its ESM build imports its hooks without file extensions, which Node's
+  // loader rejects, so the dev server's SSR load of `landing-server.tsx`
+  // (for the sitemap) bundles it instead of handing it to Node.
+  ssr: { noExternal: ["@dedalik/use-react"] },
   server: { host: "127.0.0.1", port: 5175, strictPort: true },
   preview: { host: "127.0.0.1", port: 5175, strictPort: true },
   build: {

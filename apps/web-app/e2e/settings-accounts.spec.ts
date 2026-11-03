@@ -163,7 +163,7 @@ test("canceling setup from onboarding discards the new account and switches back
 
   await test.step("lands back on the terminal home screen for the original account", async () => {
     await page
-      .getByRole("button", { name: translate("en", "settings.title") })
+      .getByRole("button", { name: translate("en", "nav.menu") })
       .waitFor()
   })
 

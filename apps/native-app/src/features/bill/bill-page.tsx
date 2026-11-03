@@ -1175,7 +1175,7 @@ function CatalogEmpty() {
         fontWeight={fontWeight.semibold}
         text="center"
       >
-        {t("settings.items.empty.title")}
+        {t("catalog.items.empty.title")}
       </Text>
       <Text
         maxW={288}
@@ -1184,12 +1184,12 @@ function CatalogEmpty() {
         color="muted-foreground"
         text="center"
       >
-        {t("settings.items.empty.description")}
+        {t("catalog.items.empty.description")}
       </Text>
       <Button
         variant="outline"
-        label={t("settings.items.add")}
-        onPress={() => router.push("/settings/items/new")}
+        label={t("catalog.items.add")}
+        onPress={() => router.push("/catalog/items/new")}
       />
     </YStack>
   )

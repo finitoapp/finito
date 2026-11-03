@@ -42,12 +42,12 @@ import {
   VerticalNav,
   type VerticalNavItem,
 } from "@/components/vertical-nav.tsx"
-import { InlineEditField } from "@/features/settings/inline-edit-field.tsx"
-import { InlineEditSelect } from "@/features/settings/inline-edit-select.tsx"
 import {
   BankAccountDescription,
   BankAccountFormatToggle,
 } from "@/features/shared/bank-account-input.tsx"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
+import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"

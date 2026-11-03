@@ -6,5 +6,6 @@ export const Route = createFileRoute("/_terminal/settings/language")({
   component: LanguageSettingsPage,
   staticData: {
     access: "free",
+    menu: { tab: "settings" },
   },
 })

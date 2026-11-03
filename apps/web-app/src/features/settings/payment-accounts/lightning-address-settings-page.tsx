@@ -15,7 +15,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
-import { SettingsFormCard } from "@/features/settings/settings-form-card.tsx"
+import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
@@ -47,7 +47,7 @@ export function LightningAddressSettingsPage() {
       <FadeHeader
         title={t("settings.paymentAccounts.method.lightningAddress")}
       />
-      <SettingsFormCard
+      <FormCard
         title={t("settings.lightningAddress.form.title")}
         description={t("settings.lightningAddress.form.description")}
         savedMessage={saved ? t("settings.lightningAddress.saved") : null}
@@ -114,7 +114,7 @@ export function LightningAddressSettingsPage() {
             <FieldError>{error === null ? null : t(error)}</FieldError>
           </Field>
         </FieldGroup>
-      </SettingsFormCard>
+      </FormCard>
     </>
   )
 }

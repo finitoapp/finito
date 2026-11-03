@@ -28,6 +28,6 @@ test("seeding survives the document being replaced mid-call", async ({
   await seedCurrentAccountOnboarding(page, "en")
 
   await expect(
-    page.getByRole("button", { name: translate("en", "settings.title") })
+    page.getByRole("button", { name: translate("en", "nav.menu") })
   ).toBeVisible()
 })

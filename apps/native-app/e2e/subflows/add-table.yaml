@@ -5,24 +5,24 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: settings/tables
-      TEXT: ${output.t["settings.tables.title"]}
+      ROUTE: catalog/tables
+      TEXT: ${output.t["catalog.tables.title"]}
 - runFlow:
     file: tap-label.yaml
     env:
-      LABEL: ${output.t["settings.tables.add"]}
+      LABEL: ${output.t["catalog.tables.add"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.tables.form.title.create"]}
+    visible: ${output.t["catalog.tables.form.title.create"]}
     timeout: 15000
 - runFlow:
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.tables.form.name.label"]}
+      LABEL: ${output.t["catalog.tables.form.name.label"]}
       VALUE: ${NAME}
 - runFlow:
     file: type-input.yaml
     env:
-      LABEL: ${output.t["settings.tables.form.seatCount.label"]}
+      LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
       VALUE: ${SEATS}
 - runFlow:
     when:
@@ -31,9 +31,9 @@ appId: ${APP_ID}
       - hideKeyboard
 # The Save button shares its copy with the page title.
 - tapOn:
-    text: ${output.re(output.t["settings.tables.form.save.create"])}
+    text: ${output.re(output.t["catalog.tables.form.save.create"])}
     below:
-      id: ${output.re(output.t["settings.tables.form.seatCount.label"])}
+      id: ${output.re(output.t["catalog.tables.form.seatCount.label"])}
 - extendedWaitUntil:
-    visible: ${output.t["settings.tables.title"]}
+    visible: ${output.t["catalog.tables.title"]}
     timeout: 15000

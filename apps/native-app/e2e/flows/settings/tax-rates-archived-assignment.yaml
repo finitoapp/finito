@@ -33,11 +33,11 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items
-      TEXT: ${output.t["settings.items.title"]}
+      ROUTE: catalog/items
+      TEXT: ${output.t["catalog.items.title"]}
 - tapOn: Coffee
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.title.edit"]}
+    visible: ${output.t["catalog.items.form.title.edit"]}
     timeout: 10000
 - scrollUntilVisible:
     element: Standard rate.*${output.re(output.t["settings.taxRates.archived.title"])}.*
@@ -46,13 +46,13 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/items/new
-      TEXT: ${output.t["settings.items.form.title.create"]}
+      ROUTE: catalog/items/new
+      TEXT: ${output.t["catalog.items.form.title.create"]}
 - scrollUntilVisible:
-    element: ${output.t["settings.items.form.taxRate.none"]}
+    element: ${output.t["catalog.items.form.taxRate.none"]}
     centerElement: true
-- tapOn: ${output.t["settings.items.form.taxRate.none"]}
+- tapOn: ${output.t["catalog.items.form.taxRate.none"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.items.form.taxRate.label"]}
+    visible: ${output.t["catalog.items.form.taxRate.label"]}
     timeout: 10000
 - assertNotVisible: Standard rate.*

@@ -17,6 +17,7 @@ import { expect, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateValue } from "./support/i18n.ts"
 import { pickInlineToggle, toggleInlineSwitch } from "./support/inline-edit.ts"
 import {
+  contentNav,
   gotoPage,
   gotoPosOverview,
   waitForLocalWriteToSettle,
@@ -249,7 +250,7 @@ test("the connection test and the test sale show EET's answer and record nothing
       page.getByText(translate("en", "settings.eet.unconfirmed.empty"))
     ).toBeVisible()
     await gotoPage(page, "/activity", "en", "activity.title")
-    await expect(page.locator("nav").getByRole("link")).toHaveCount(0)
+    await expect(contentNav(page, "en").getByRole("link")).toHaveCount(0)
   })
 })
 

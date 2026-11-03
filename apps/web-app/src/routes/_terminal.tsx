@@ -14,12 +14,14 @@ import {
 import {
   createFileRoute,
   Outlet,
+  type StaticDataRouteOption,
   useMatches,
   useNavigate,
 } from "@tanstack/react-router"
 import { LoaderCircleIcon } from "lucide-react"
 import { useEffect, useState } from "react"
 import { AccessGate } from "@/components/app/access-gate.tsx"
+import { MenuNav } from "@/components/menu-nav.tsx"
 import { PhoneViewport } from "@/components/phone-viewport.tsx"
 import { EetSandboxBanner } from "@/features/shared/eet-sandbox-banner.tsx"
 import { useEetSettings } from "@/features/shared/use-eet-settings.ts"
@@ -44,18 +46,10 @@ function TerminalLayout() {
   const [settings] = data
   const { isSandboxActive } = useEetSettings()
   const terminalLayout = useMatches({
-    select: (matches) => {
-      for (let index = matches.length - 1; index >= 0; index -= 1) {
-        const match = matches[index]
-        const layout = match?.staticData.terminalLayout
-
-        if (layout) {
-          return layout
-        }
-      }
-
-      return undefined
-    },
+    select: (matches) => deepestStaticData(matches, "terminalLayout"),
+  })
+  const menu = useMatches({
+    select: (matches) => deepestStaticData(matches, "menu"),
   })
   // The appSettings row's existence marks the account as onboarded.
   const onboarded = settings !== undefined
@@ -69,10 +63,15 @@ function TerminalLayout() {
       className={cn(
         "min-h-svh bg-background text-foreground",
         isSandboxActive && "[--terminal-banner-height:2.5rem]",
+        // The room the menu takes (navigation/0001): the phone's bottom bar on
+        // a tab's root screen, the sidebar on every screen of a large monitor.
+        menu?.root && "[--menu-nav-height:3rem] lg:[--menu-nav-height:0px]",
+        menu && "lg:[--menu-sidebar-width:14rem]",
         terminalLayout?.mainClassName
       )}
     >
       {isSandboxActive ? <EetSandboxBanner /> : null}
+      {menu ? <MenuNav active={menu.tab} root={menu.root === true} /> : null}
       <PhoneViewport
         className={
           terminalLayout?.viewportClassName ?? defaultViewportClassName
@@ -84,6 +83,22 @@ function TerminalLayout() {
       </PhoneViewport>
     </main>
   )
+}
+
+/** The `staticData` field the deepest matched route declares. */
+const deepestStaticData = <Key extends "terminalLayout" | "menu">(
+  matches: ReadonlyArray<{ readonly staticData: StaticDataRouteOption }>,
+  key: Key
+): StaticDataRouteOption[Key] => {
+  for (let index = matches.length - 1; index >= 0; index -= 1) {
+    const value = matches[index]?.staticData[key]
+
+    if (value) {
+      return value
+    }
+  }
+
+  return undefined
 }
 
 /**

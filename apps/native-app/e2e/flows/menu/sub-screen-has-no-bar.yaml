@@ -1,0 +1,45 @@
+# web menu.spec.ts: "the bar is hidden on a sub-screen, which has Back instead".
+appId: ${APP_ID}
+tags: [menu]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/open-menu-tab.yaml
+    env:
+      TAB: ${output.t["nav.settings"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.title"]}
+    timeout: 15000
+# Settings › Language has no bar, so no Home either.
+- runFlow:
+    file: ../../subflows/open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["settings.language.title"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.catalog"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.home"]}
+      HIDDEN: "true"
+# Back returns to the root screen and its bar (the list keeps its scroll,
+# so its title may sit out of view).
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.home"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.catalog"]}

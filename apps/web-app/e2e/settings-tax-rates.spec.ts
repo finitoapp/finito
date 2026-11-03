@@ -204,13 +204,13 @@ test("the default tax rate is preselected when adding a new item", async ({
   })
 
   await test.step("the new item form preselects it", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await expect(
       page.getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
     ).toHaveText(/Standard rate/)
   })
@@ -225,34 +225,34 @@ test("assign a tax rate to an item from the item form", async ({
   })
 
   await test.step("create an item and assign the reduced rate", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
         exact: true,
       })
       .fill("Coffee")
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("59")
     await page
       .getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
       .click()
     await page.getByRole("option", { name: /Reduced rate/ }).click()
     await page
       .getByRole("button", {
-        name: translate("en", "settings.items.form.save.create"),
+        name: translate("en", "catalog.items.form.save.create"),
       })
       .click()
     await page
-      .getByRole("heading", { name: translate("en", "settings.items.title") })
+      .getByRole("heading", { name: translate("en", "catalog.items.title") })
       .waitFor()
   })
 
@@ -260,7 +260,7 @@ test("assign a tax rate to an item from the item form", async ({
     await page.getByRole("link", { name: /Coffee/ }).click()
     await expect(
       page.getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
     ).toHaveText(/Reduced rate/)
   })
@@ -320,34 +320,34 @@ test("switching the default tax rate between two existing rates", async ({
 test("clearing an item's tax rate assignment", async ({ seededPage: page }) => {
   await test.step("create a tax rate and an item using it", async () => {
     await addTaxRate(page, "en", { name: "Standard rate", rate: "21" })
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
         exact: true,
       })
       .fill("Coffee")
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("59")
     await page
       .getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
       .click()
     await page.getByRole("option", { name: /Standard rate/ }).click()
     await page
       .getByRole("button", {
-        name: translate("en", "settings.items.form.save.create"),
+        name: translate("en", "catalog.items.form.save.create"),
       })
       .click()
     await page
-      .getByRole("heading", { name: translate("en", "settings.items.title") })
+      .getByRole("heading", { name: translate("en", "catalog.items.title") })
       .waitFor()
   })
 
@@ -355,18 +355,18 @@ test("clearing an item's tax rate assignment", async ({ seededPage: page }) => {
     await page.getByRole("link", { name: /Coffee/ }).click()
     await pickInlineOption(
       page,
-      "settings.items.form.taxRate.label",
-      translate("en", "settings.items.form.taxRate.none")
+      "catalog.items.form.taxRate.label",
+      translate("en", "catalog.items.form.taxRate.none")
     )
   })
 
   await test.step("the cleared assignment survives reopening the item", async () => {
-    await reloadPage(page, "en", "settings.items.form.title.edit")
+    await reloadPage(page, "en", "catalog.items.form.title.edit")
     await expect(
       page.getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
-    ).toContainText(translate("en", "settings.items.form.taxRate.none"))
+    ).toContainText(translate("en", "catalog.items.form.taxRate.none"))
   })
 })
 
@@ -375,34 +375,34 @@ test("renaming a tax rate updates its already-assigned item", async ({
 }) => {
   await test.step("create a rate and an item using it", async () => {
     await addTaxRate(page, "en", { name: "Standard rate", rate: "21" })
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
         exact: true,
       })
       .fill("Coffee")
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("59")
     await page
       .getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
       .click()
     await page.getByRole("option", { name: /Standard rate/ }).click()
     await page
       .getByRole("button", {
-        name: translate("en", "settings.items.form.save.create"),
+        name: translate("en", "catalog.items.form.save.create"),
       })
       .click()
     await page
-      .getByRole("heading", { name: translate("en", "settings.items.title") })
+      .getByRole("heading", { name: translate("en", "catalog.items.title") })
       .waitFor()
   })
 
@@ -422,11 +422,11 @@ test("renaming a tax rate updates its already-assigned item", async ({
   })
 
   await test.step("the item now shows the renamed rate", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page.getByRole("link", { name: /Coffee/ }).click()
     await expect(
       page.getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
     ).toHaveText(/Basic rate/)
   })
@@ -437,34 +437,34 @@ test("an archived tax rate stays assigned to its item but is not offered for a n
 }) => {
   await test.step("create a rate and an item using it", async () => {
     await addTaxRate(page, "en", { name: "Standard rate", rate: "21" })
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.name.label"),
+        name: translate("en", "catalog.items.form.name.label"),
         exact: true,
       })
       .fill("Coffee")
     await page
       .getByRole("textbox", {
-        name: translate("en", "settings.items.form.price.label"),
+        name: translate("en", "catalog.items.form.price.label"),
       })
       .fill("59")
     await page
       .getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
       .click()
     await page.getByRole("option", { name: /Standard rate/ }).click()
     await page
       .getByRole("button", {
-        name: translate("en", "settings.items.form.save.create"),
+        name: translate("en", "catalog.items.form.save.create"),
       })
       .click()
     await page
-      .getByRole("heading", { name: translate("en", "settings.items.title") })
+      .getByRole("heading", { name: translate("en", "catalog.items.title") })
       .waitFor()
   })
 
@@ -487,11 +487,11 @@ test("an archived tax rate stays assigned to its item but is not offered for a n
   })
 
   await test.step("the existing item still shows it, marked as archived", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page.getByRole("link", { name: /Coffee/ }).click()
     await expect(
       page.getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
     ).toHaveText(
       new RegExp(
@@ -501,13 +501,13 @@ test("an archived tax rate stays assigned to its item but is not offered for a n
   })
 
   await test.step("a new item does not offer the archived rate", async () => {
-    await gotoPage(page, "/settings/items", "en", "settings.items.title")
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
     await page
-      .getByRole("button", { name: translate("en", "settings.items.add") })
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
       .click()
     await page
       .getByRole("combobox", {
-        name: translate("en", "settings.items.form.taxRate.label"),
+        name: translate("en", "catalog.items.form.taxRate.label"),
       })
       .click()
     await expect(

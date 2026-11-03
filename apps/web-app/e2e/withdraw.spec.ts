@@ -63,6 +63,11 @@ test("confirming a withdrawal asks for the PIN even during a PIN session", async
   await test.step("walk to a new withdrawal inside the session", async () => {
     await page.getByRole("button", { name: en("nav.back") }).click()
     await openSettingsEntry(page, "en", "settings.paymentAccounts.title")
+    // The settings row just left lists "Bitcoin" among its methods, so the
+    // link below would match it until the payment accounts screen is in.
+    await page
+      .getByRole("heading", { name: en("settings.paymentAccounts.title") })
+      .waitFor()
     await page
       .getByRole("link", {
         name: new RegExp(en("settings.paymentAccounts.method.spark")),

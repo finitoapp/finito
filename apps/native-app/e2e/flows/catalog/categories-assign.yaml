@@ -1,0 +1,21 @@
+# web catalog-categories.spec.ts: "assign a category to an item from the
+# item form".
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-category.yaml
+    env:
+      NAME: Drinks
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Coffee
+      PRICE: "59"
+      CATEGORY: Drinks
+# The category's name shows under the item.
+- assertVisible: Coffee
+- assertVisible:
+    text: Drinks
+    below: Coffee

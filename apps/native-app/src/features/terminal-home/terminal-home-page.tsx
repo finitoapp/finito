@@ -9,10 +9,10 @@ import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-u
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
 import { Redirect, router } from "expo-router"
 import { useAtomValue } from "jotai"
+import Bell from "lucide-react-native/icons/bell"
 import Calculator from "lucide-react-native/icons/calculator"
-import Clock3 from "lucide-react-native/icons/clock-3"
 import LayoutGrid from "lucide-react-native/icons/layout-grid"
-import Settings from "lucide-react-native/icons/settings"
+import Menu from "lucide-react-native/icons/menu"
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react"
 import { ActivityIndicator, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -136,21 +136,21 @@ export function TerminalHomePage() {
             </ToggleGroup>
           </SlidingPillTrack>
         ) : null}
-        {/* The ways into the history and the settings, as web's header links. */}
-        <XStack ml="auto" items="center" gap={16}>
+        {/* Notifications ahead of the menu, which opens on its first tab (navigation/0001). */}
+        <XStack ml="auto" items="center" gap={8}>
           <Button
             variant="ghost"
-            aria-label={t("nav.activity")}
-            onPress={() => router.push("/activity")}
+            aria-label={t("nav.notifications")}
+            onPress={() => router.push("/notifications")}
           >
-            <Icon icon={Clock3} size={24} strokeWidth={3} />
+            <Icon icon={Bell} size={24} strokeWidth={3} />
           </Button>
           <Button
             variant="ghost"
-            aria-label={t("nav.settings")}
-            onPress={() => router.push("/settings")}
+            aria-label={t("nav.menu")}
+            onPress={() => router.push("/activity")}
           >
-            <Icon icon={Settings} size={24} strokeWidth={3} />
+            <Icon icon={Menu} size={24} strokeWidth={3} />
           </Button>
         </XStack>
       </XStack>

@@ -8,5 +8,6 @@ export const Route = createFileRoute(
   component: LightningAddressSettingsPage,
   staticData: {
     access: "admin",
+    menu: { tab: "settings" },
   },
 })

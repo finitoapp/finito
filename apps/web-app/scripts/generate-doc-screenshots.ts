@@ -11,7 +11,11 @@ import { chromium, expect, type Page } from "@playwright/test"
 import sharp from "sharp"
 import { addCatalogItem, addTable, startNewBill } from "../e2e/support/bill.ts"
 import { translate } from "../e2e/support/i18n.ts"
-import { gotoPage, gotoPosOverview } from "../e2e/support/navigation.ts"
+import {
+  gotoPage,
+  gotoPosOverview,
+  openMenuTabFromHome,
+} from "../e2e/support/navigation.ts"
 import { completeOnboarding } from "../e2e/support/onboarding.ts"
 import {
   createPayment,
@@ -290,9 +294,7 @@ const scenarios: ReadonlyArray<ScreenshotScenario> = [
     name: "settings",
     async capture(page, language) {
       await completeOnboarding(page, language, { baseURL: appUrl })
-      await page
-        .getByRole("button", { name: translate(language, "settings.title") })
-        .click()
+      await openMenuTabFromHome(page, language, "nav.settings")
       await page
         .getByRole("heading", { name: translate(language, "settings.title") })
         .waitFor()
@@ -428,7 +430,7 @@ const scenarios: ReadonlyArray<ScreenshotScenario> = [
         await addCatalogItem(page, language, item)
       }
       // The form stays open over the list to add another item.
-      await gotoPage(page, "/settings/items", language, "settings.items.title")
+      await gotoPage(page, "/catalog/items", language, "catalog.items.title")
       await capturePage(page, "items", language)
     },
   },
@@ -508,7 +510,12 @@ const scenarios: ReadonlyArray<ScreenshotScenario> = [
         .getByRole("button", { name: translate(language, "demoData.close") })
         .click()
 
-      await gotoPage(page, "/stats?period=last7Days", language, "stats.title")
+      await gotoPage(
+        page,
+        "/activity/stats?period=last7Days",
+        language,
+        "activity.title"
+      )
       await page
         .getByText(translate(language, "stats.kpi.netRevenue"))
         .first()
