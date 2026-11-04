@@ -1218,11 +1218,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Card: "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
       CardContent:
         "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
-      Tabs: "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
-      TabsList:
-        "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
-      TabsTrigger:
-        "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
       CardDescription:
         "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
       CardHeader:
@@ -1242,6 +1237,17 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/settings/payment-accounts/cashu-mint-new-page.tsx",
     web: ["apps/web-app/src/features/settings/cashu/cashu-mint-new-page.tsx"],
     status: "matched",
+  },
+  {
+    native: "src/features/settings/payment-accounts/cashu-payment-qr-page.tsx",
+    web: [],
+    status: "matched",
+    note: "What the Cashu wallet's payment QR carries (settings/0003), a choice web does not offer: one option list, as the theme screen's.",
+    allowedDifferences: {
+      FadeHeader: "the screen's title, Payment QR",
+      OptionToggleGroup:
+        "the three choices as one option list, as the theme screen's",
+    },
   },
   {
     native: "src/features/settings/payment-accounts/cashu-mints-page.tsx",

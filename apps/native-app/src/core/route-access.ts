@@ -63,6 +63,7 @@ export type NativeRoutePath =
   | "/settings/payment-accounts/iban/moneta-plugin"
   | "/settings/payment-accounts/cashu"
   | "/settings/payment-accounts/cashu/mints"
+  | "/settings/payment-accounts/cashu/payment-qr"
   | "/settings/payment-accounts/cashu/mints/new"
   | "/settings/payment-accounts/cashu/mints/:mint"
   | "/settings/payment-accounts/spark"
@@ -179,6 +180,8 @@ export const routeAccess = {
   "/settings/payment-accounts/cashu": "admin",
   // Like web's `_terminal/settings/payment-accounts/cashu/mints` (access/0009).
   "/settings/payment-accounts/cashu/mints": "admin",
+  // The wallet's QR choice (settings/0003), owner-only as the wallet itself.
+  "/settings/payment-accounts/cashu/payment-qr": "admin",
   // Like web's `_terminal/settings/payment-accounts/cashu/mints/new` (access/0009).
   "/settings/payment-accounts/cashu/mints/new": "admin",
   // Like web's `_terminal/settings/payment-accounts/cashu/mints/$mint` (access/0009).
