@@ -4,6 +4,7 @@ import {
   paymentStatusLabelKey,
 } from "@payky/app-shared/activity-labels"
 import { formatDateTime } from "@payky/app-shared/format-date"
+import { formatMoneyParts } from "@payky/app-shared/format-money"
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
@@ -29,6 +30,7 @@ import { router, useLocalSearchParams } from "expo-router"
 import { Suspense, useMemo } from "react"
 import { Pressable } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { NotFoundCard } from "../../components/not-found-card.tsx"
@@ -132,6 +134,11 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
 
   const table = tables.find((candidate) => candidate.id === bill.tableId)
   const totalAmount = deriveBillSummaryTotal(summaries)
+  const headline = formatMoneyParts(
+    { value: totalAmount, currency: bill.currency },
+    locale,
+    { fraction: "whenNonZero" }
+  )
   const taxRecapRows = calculateTaxRecap(summaries, taxRates)
   const closedOrCanceled =
     billStatus.status === "closed" && bill.closedAt !== null
@@ -171,17 +178,13 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
         </CardHeader>
         <CardContent gap={12}>
           <YStack gap={4}>
-            <Text
-              fontSize="4xl"
-              lineHeight="4xl"
-              fontWeight={fontWeight.semibold}
-              fontVariant={["tabular-nums"]}
-            >
-              {formatMoney(
-                { value: totalAmount, currency: bill.currency },
-                locale
-              )}
-            </Text>
+            <AmountFigure
+              align="start"
+              number={headline.number}
+              unit={headline.unit}
+              unitFirst={headline.unitFirst}
+              label={headline.text}
+            />
             {closedOrCanceled === null ? null : (
               <Text
                 fontSize={fontSize.sm}

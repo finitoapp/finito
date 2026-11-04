@@ -1,3 +1,11 @@
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import {
+  type CashuPaymentRequestLegs,
+  CashuPaymentRequestLegsSchema,
+  defaultCashuPaymentRequestLegs,
+} from "@payky/core/cashu/cashu-payment-request"
+import { setCashuPaymentRequestLegs } from "@payky/core/modules/account/account-actions"
+import { cashuAccountQuery } from "@payky/core/modules/account/account-queries"
 import { router } from "expo-router"
 import ArrowUpRight from "lucide-react-native/icons/arrow-up-right"
 import Clock3 from "lucide-react-native/icons/clock-3"
@@ -16,8 +24,13 @@ import {
 } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
+import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
+import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
+import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 import { BitcoinBalance } from "../../shared/bitcoin-amount.tsx"
 import { useCashuWalletSnapshot } from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
 
@@ -100,6 +113,7 @@ function CashuAccountSettingsContent() {
           onPress={() => router.push("/cashu-withdraw/new")}
         />
       ) : null}
+      <PaymentRequestLegsChoice />
       <VerticalNav
         items={[
           {
@@ -116,6 +130,62 @@ function CashuAccountSettingsContent() {
           },
         ]}
       />
+    </YStack>
+  )
+}
+
+const legsLabelKeys = {
+  both: "settings.cashuAccount.qr.both",
+  cashu: "settings.cashuAccount.qr.cashu",
+  lightning: "settings.cashuAccount.qr.lightning",
+} satisfies Record<CashuPaymentRequestLegs, TranslationKey>
+
+/**
+ * What the payment QR carries (settings/0003): both legs, the default, or
+ * the Cashu request or the Lightning invoice alone, as Activity's tabs.
+ * Written as soon as it is chosen, on the wallet's account row.
+ */
+function PaymentRequestLegsChoice() {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const [account] = useEvoluQuery(cashuAccountQuery).data
+  const legs = useInlineChoice<CashuPaymentRequestLegs>(
+    account?.paymentRequestLegs ?? defaultCashuPaymentRequestLegs,
+    (next) =>
+      runToast(async (run) => {
+        await run.ok(setCashuPaymentRequestLegs(next))
+      })
+  )
+
+  return (
+    <YStack gap={8}>
+      <Text
+        px={4}
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        fontWeight={fontWeight.bold}
+        letterSpacing={1}
+        textTransform="uppercase"
+        color="muted-foreground"
+      >
+        {t("settings.cashuAccount.qr.title")}
+      </Text>
+      <Tabs<CashuPaymentRequestLegs>
+        value={legs.value}
+        onValueChange={(next) => void legs.choose(next)}
+      >
+        <TabsList>
+          {CashuPaymentRequestLegsSchema.options.map((value) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              disabled={account === undefined || legs.saving}
+            >
+              {t(legsLabelKeys[value])}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
     </YStack>
   )
 }

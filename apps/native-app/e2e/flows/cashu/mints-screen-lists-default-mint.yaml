@@ -8,21 +8,10 @@ tags: [cashu]
     file: ../../subflows/enable-cashu.yaml
     env:
       MODE: manual
-# The row opens only once the switch has taken.
-- runFlow:
-    file: ../../subflows/assert-checked.yaml
-    env:
-      LABEL: ${output.t["settings.bitcoin.enabled.label"]}
-      CHECKED: "true"
-# The row ignores a tap until the account behind the switch is written, and
-# "Cashu" is its status text too, so wait for what only the page has.
-- retry:
-    maxRetries: 3
-    commands:
-      - tapOn: ${output.re(output.t["settings.paymentAccounts.method.bitcoin"])}
-      - extendedWaitUntil:
-          visible: ${output.re(output.t["settings.cashuAccount.mints"])}
-          timeout: 5000
+# enable-cashu leaves the Bitcoin screen open on the Cashu tab.
+- extendedWaitUntil:
+    visible: ${output.re(output.t["settings.cashuAccount.mints"])}
+    timeout: 15000
 - tapOn: ${output.re(output.t["settings.cashuAccount.mints"])}
 - extendedWaitUntil:
     visible: ${output.t["settings.cashuMints.title"]}

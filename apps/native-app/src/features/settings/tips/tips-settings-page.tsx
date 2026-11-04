@@ -10,6 +10,7 @@ import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-que
 import {
   defaultTipFixedAmounts,
   defaultTipPercentages,
+  maxTipPresetCount,
   parseTipFixedAmounts,
   parseTipPercentages,
 } from "@payky/core/modules/app-settings/app-settings-tips"
@@ -22,33 +23,24 @@ import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Button } from "../../../components/ui/button.tsx"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card.tsx"
-import { Checkbox } from "../../../components/ui/checkbox.tsx"
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "../../../components/ui/field.tsx"
+import { Field, FieldError, FieldLabel } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
+import { Switch } from "../../../components/ui/switch.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
-import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+
+/** Smallest first, so the payment screen's options read in order. */
+const ascending = (presets: ReadonlyArray<number>) =>
+  presets.toSorted((a, b) => a - b)
 
 /**
- * Tip suggestions, as web's `TipsSettingsPage`: edited as a draft and written
- * by Save, since the presets are one setting.
+ * Tip suggestions, as web's `TipsSettingsPage` without its Save: every
+ * change is written the moment it is made, and the presets are kept in
+ * ascending order. No card, no descriptions (fazole-ui-minimal-copy).
  */
 export function TipsSettingsPage() {
   const { t } = useTranslation()
@@ -77,14 +69,13 @@ function TipsSettingsForm({
   >
 }) {
   const runToast = useRunToast()
-  const toast = useToast()
   const { t } = useTranslation()
   const locale = useLocale()
-  const [enabled, setEnabled] = useState(settings.tipsEnabled === sqliteTrue)
-  const [percentages, setPercentages] = useState<ReadonlyArray<number>>(() =>
+  const enabled = settings.tipsEnabled === sqliteTrue
+  const percentages = ascending(
     parseTipPercentages(settings.presetTipPercentagesJson)
   )
-  const [fixedAmounts, setFixedAmounts] = useState<ReadonlyArray<number>>(() =>
+  const fixedAmounts = ascending(
     parseTipFixedAmounts(settings.presetTipFixedAmountsJson)
   )
   const [percentageInput, setPercentageInput] = useState("")
@@ -96,18 +87,40 @@ function TipsSettingsForm({
     useState<TipPresetError | null>(null)
   const [pending, setPending] = useState(false)
 
-  const addPercentage = () => {
+  // Every write carries the whole setting, as the presets are one setting.
+  const save = async (next: {
+    readonly enabled?: boolean
+    readonly percentages?: ReadonlyArray<number>
+    readonly fixedAmounts?: ReadonlyArray<number>
+  }) => {
+    setPending(true)
+    const saved = await runToast(async (run) => {
+      await run.ok(
+        updateTipSettings({
+          enabled: next.enabled ?? enabled,
+          percentages: ascending(next.percentages ?? percentages),
+          fixedAmounts: ascending(next.fixedAmounts ?? fixedAmounts),
+        })
+      )
+    })
+    setPending(false)
+    return saved
+  }
+  const enabledChoice = useInlineChoice(enabled, (next) =>
+    save({ enabled: next })
+  )
+
+  const addPercentage = async () => {
     const result = addTipPercentage(percentages, percentageInput)
     if (!result.ok) {
       setPercentageError(result.errorKey)
       return
     }
-    setPercentages(result.presets)
-    setPercentageInput("")
     setPercentageError(null)
+    if (await save({ percentages: result.presets })) setPercentageInput("")
   }
 
-  const addFixedAmount = () => {
+  const addFixedAmount = async () => {
     const result = addTipFixedAmount(
       fixedAmounts,
       fixedAmountInput,
@@ -117,131 +130,112 @@ function TipsSettingsForm({
       setFixedAmountError(result.errorKey)
       return
     }
-    setFixedAmounts(result.presets)
-    setFixedAmountInput("")
     setFixedAmountError(null)
+    if (await save({ fixedAmounts: result.presets })) setFixedAmountInput("")
   }
 
   const resetToDefaults = () => {
-    setEnabled(true)
-    setPercentages([...defaultTipPercentages])
-    setFixedAmounts([...defaultTipFixedAmounts])
     setPercentageInput("")
     setFixedAmountInput("")
     setPercentageError(null)
     setFixedAmountError(null)
-  }
-
-  const save = async () => {
-    setPending(true)
-    const saved = await runToast(async (run) => {
-      await run.ok(updateTipSettings({ enabled, fixedAmounts, percentages }))
+    void save({
+      enabled: true,
+      percentages: [...defaultTipPercentages],
+      fixedAmounts: [...defaultTipFixedAmounts],
     })
-    setPending(false)
-    if (saved) toast.success(t("settings.tips.saved"))
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle size="sm">{t("settings.tips.form.title")}</CardTitle>
-        <CardDescription>{t("settings.tips.form.description")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup>
-          <Field orientation="horizontal">
-            <Checkbox
-              checked={enabled}
-              disabled={pending}
-              aria-label={t("settings.tips.enabled.label")}
-              onCheckedChange={setEnabled}
-            />
-            <FieldContent>
-              <FieldLabel>{t("settings.tips.enabled.label")}</FieldLabel>
-              <FieldDescription>
-                {t("settings.tips.enabled.description")}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <TipPresetField
-            addLabel={t("settings.tips.percentages.add")}
-            description={t("settings.tips.percentages.description")}
-            disabled={pending}
-            error={percentageError}
-            keyboardType="number-pad"
-            inputValue={percentageInput}
-            label={t("settings.tips.percentages.label")}
-            onAdd={addPercentage}
-            onInputChange={(value) => {
-              setPercentageInput(value)
-              setPercentageError(null)
-            }}
-            onRemove={(value) =>
-              setPercentages(
-                percentages.filter((percentage) => percentage !== value)
-              )
-            }
-            placeholder={t("settings.tips.percentages.placeholder")}
-            presets={percentages}
-            renderPreset={(value) =>
-              t("settings.tips.percentages.value", { value })
-            }
-          />
-
-          <TipPresetField
-            addLabel={t("settings.tips.fixedAmounts.add")}
-            description={t("settings.tips.fixedAmounts.description", {
-              currency: settings.fiatCurrency,
-            })}
-            disabled={pending}
-            error={fixedAmountError}
-            keyboardType="decimal-pad"
-            inputValue={fixedAmountInput}
-            label={t("settings.tips.fixedAmounts.label")}
-            onAdd={addFixedAmount}
-            onInputChange={(value) => {
-              setFixedAmountInput(value)
-              setFixedAmountError(null)
-            }}
-            onRemove={(value) =>
-              setFixedAmounts(fixedAmounts.filter((amount) => amount !== value))
-            }
-            placeholder={t("settings.tips.fixedAmounts.placeholder")}
-            presets={fixedAmounts}
-            renderPreset={(value) =>
-              formatMoney(
-                { value: Integer(value), currency: settings.fiatCurrency },
-                locale
-              )
-            }
-          />
-
-          <Button
-            label={t("settings.tips.reset")}
-            iconStart={RotateCcw}
-            variant="outline"
-            disabled={pending}
-            onPress={resetToDefaults}
-          />
-        </FieldGroup>
-      </CardContent>
-      <CardFooter justify="flex-end">
-        <Button
-          label={t("settings.tips.save")}
-          pending={pending}
-          onPress={() => {
-            void save()
+    <YStack gap={24}>
+      <XStack items="center" justify="space-between" gap={12} minH={44} px={4}>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+        >
+          {t("settings.tips.enabled.label")}
+        </Text>
+        <Switch
+          checked={enabledChoice.value}
+          disabled={enabledChoice.saving}
+          aria-label={t("settings.tips.enabled.label")}
+          onCheckedChange={(next) => {
+            void enabledChoice.choose(next)
           }}
         />
-      </CardFooter>
-    </Card>
+      </XStack>
+
+      <TipPresetField
+        addLabel={t("settings.tips.percentages.add")}
+        disabled={pending}
+        error={percentageError}
+        keyboardType="number-pad"
+        inputValue={percentageInput}
+        label={t("settings.tips.percentages.label")}
+        onAdd={() => void addPercentage()}
+        onInputChange={(value) => {
+          setPercentageInput(value)
+          setPercentageError(null)
+        }}
+        onRemove={(value) =>
+          void save({
+            percentages: percentages.filter(
+              (percentage) => percentage !== value
+            ),
+          })
+        }
+        placeholder={t("settings.tips.percentages.placeholder")}
+        presets={percentages}
+        renderPreset={(value) =>
+          t("settings.tips.percentages.value", { value })
+        }
+      />
+
+      <TipPresetField
+        addLabel={t("settings.tips.fixedAmounts.add")}
+        disabled={pending}
+        error={fixedAmountError}
+        keyboardType="decimal-pad"
+        inputValue={fixedAmountInput}
+        label={t("settings.tips.fixedAmounts.label")}
+        onAdd={() => void addFixedAmount()}
+        onInputChange={(value) => {
+          setFixedAmountInput(value)
+          setFixedAmountError(null)
+        }}
+        onRemove={(value) =>
+          void save({
+            fixedAmounts: fixedAmounts.filter((amount) => amount !== value),
+          })
+        }
+        placeholder={t("settings.tips.fixedAmounts.placeholder")}
+        presets={fixedAmounts}
+        renderPreset={(value) =>
+          formatMoney(
+            { value: Integer(value), currency: settings.fiatCurrency },
+            locale
+          )
+        }
+      />
+
+      <Button
+        label={t("settings.tips.reset")}
+        iconStart={RotateCcw}
+        variant="outline"
+        disabled={pending}
+        onPress={resetToDefaults}
+      />
+    </YStack>
   )
 }
 
+/**
+ * One list of presets with a remove button each and, while there is room
+ * for another (`maxTipPresetCount`), the input and the Add button under it.
+ */
 function TipPresetField({
   addLabel,
-  description,
   disabled,
   error,
   keyboardType,
@@ -255,7 +249,6 @@ function TipPresetField({
   renderPreset,
 }: {
   readonly addLabel: string
-  readonly description: string
   readonly disabled: boolean
   readonly error: TipPresetError | null
   readonly keyboardType: "number-pad" | "decimal-pad"
@@ -269,11 +262,11 @@ function TipPresetField({
   readonly renderPreset: (value: number) => string
 }) {
   const { t } = useTranslation()
+  const full = presets.length >= maxTipPresetCount
 
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
-      <FieldDescription>{description}</FieldDescription>
       <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
         {presets.map((value) => {
           const text = renderPreset(value)
@@ -296,21 +289,26 @@ function TipPresetField({
           )
         })}
       </YStack>
-      <Input
-        value={inputValue}
-        disabled={disabled}
-        keyboardType={keyboardType}
-        invalid={error !== null}
-        placeholder={placeholder}
-        onChangeText={onInputChange}
-      />
-      <Button
-        label={addLabel}
-        iconStart={Plus}
-        variant="outline"
-        disabled={disabled}
-        onPress={onAdd}
-      />
+      {full ? null : (
+        <>
+          <Input
+            value={inputValue}
+            disabled={disabled}
+            keyboardType={keyboardType}
+            invalid={error !== null}
+            placeholder={placeholder}
+            onChangeText={onInputChange}
+            onSubmitEditing={onAdd}
+          />
+          <Button
+            label={addLabel}
+            iconStart={Plus}
+            variant="outline"
+            disabled={disabled}
+            onPress={onAdd}
+          />
+        </>
+      )}
       <FieldError>{error === null ? undefined : t(error)}</FieldError>
     </Field>
   )

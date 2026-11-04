@@ -1,6 +1,5 @@
 import { sqliteTrue } from "@evolu/common"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { countryLabelKey } from "@payky/app-shared/legal-entity-options"
 import {
   cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
@@ -10,14 +9,11 @@ import {
   sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
-import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
 import Bell from "lucide-react-native/icons/bell"
-import Building from "lucide-react-native/icons/building"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
 import Info from "lucide-react-native/icons/info"
 import Landmark from "lucide-react-native/icons/landmark"
@@ -126,7 +122,6 @@ function createSettingsNavItems(
  */
 const settingsPageQueries = [
   settingsQuery,
-  legalEntityQuery,
   cashRegisterAccountQuery,
   fiatBankAccountQuery,
   sparkAccountQuery,
@@ -143,7 +138,6 @@ export function SettingsPage() {
   const { language, t } = useTranslation()
   const theme = useThemePreference()
   const [settings] = useEvoluQuery(settingsQuery).data
-  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const [cash] = useEvoluQuery(cashRegisterAccountQuery).data
   const [bank] = useEvoluQuery(fiatBankAccountQuery).data
   const eet = useEetSettings()
@@ -170,11 +164,6 @@ export function SettingsPage() {
       .filter(([enabled]) => enabled)
       .map(([, key]) => t(key))
       .join(", ") || t("settings.paymentAccounts.nav.none")
-  const fiatCurrency = getFiatCurrency(settings)
-  const businessValue =
-    legalEntity === undefined
-      ? fiatCurrency
-      : `${t(countryLabelKey(legalEntity.country))} · ${fiatCurrency}`
 
   // Items and tables are set up here, not under the Sales tab, which is
   // the grid alone (navigation/0003).
@@ -187,12 +176,6 @@ export function SettingsPage() {
   )
   const paymentItems = createSettingsNavItems(
     [
-      {
-        icon: Building,
-        title: "settings.legalEntity.title",
-        value: businessValue,
-        href: "/settings/legal-entity",
-      },
       {
         icon: Landmark,
         title: "settings.paymentAccounts.title",

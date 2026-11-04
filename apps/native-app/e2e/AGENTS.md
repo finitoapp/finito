@@ -78,7 +78,8 @@ assertions.
   scan mode need not be on and no `E2E OK` is waited for — assert the bill's
   outcome after it. It does not reach the item form or list, whose scans
   come from hardware keys only. `enable-cashu` (`MODE`) puts the Cashu wallet on the
-  in-app fake mint and turns Cashu on (see the bridge's `fake`);
+  in-app fake mint, turns Bitcoin on and makes Cashu its main method on
+  the Bitcoin screen, where it ends (see the bridge's `fake`);
   `fund-cashu-wallet` takes a Cashu payment and walks to a new Cashu
   withdrawal, by taps only.
   `open-spark-wallet-dialog`, `type-spark-mnemonic`

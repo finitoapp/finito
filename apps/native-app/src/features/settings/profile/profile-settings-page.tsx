@@ -1,16 +1,30 @@
+import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
 import { optionalTextCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  countryCodec,
+  countryLabelKey,
+  countryOptions,
+  OTHER_COUNTRY,
+} from "@payky/app-shared/legal-entity-options"
 import {
   mergeProfileMetadata,
   type NostrProfile,
   profileFromMetadata,
   publishNostrProfile,
 } from "@payky/core/integrations/nostr/nostr-client"
+import { updateSettings } from "@payky/core/modules/app-settings/app-settings-actions"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { setLegalEntity } from "@payky/core/modules/legal-entity/legal-entity-actions"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import type { CountryCode } from "@payky/core/modules/legal-entity/legal-entity-types"
 import Copy from "lucide-react-native/icons/copy"
 import ImageIcon from "lucide-react-native/icons/image"
 import Trash from "lucide-react-native/icons/trash"
 import { useState } from "react"
 import { Image, Text as NativeText } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
+import { z } from "zod"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -22,8 +36,20 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select.tsx"
 import { Skeleton } from "../../../components/ui/skeleton.tsx"
+import { Switch } from "../../../components/ui/switch.tsx"
 import { useCopyToClipboard } from "../../../hooks/use-copy-to-clipboard.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import {
   setOwnNostrProfile,
@@ -39,7 +65,9 @@ import { radius } from "../../../theme/tokens.ts"
  * Edits the name and picture of the account's Nostr profile, as web's
  * `ProfileSettingsPage`: republished with the account's key as soon as it is
  * saved. The editor opens only once the published profile is known, so a save
- * never overwrites fields it could not read.
+ * never overwrites fields it could not read. Between the name and the key
+ * sit the business's country, currency and VAT status (web's legal-entity
+ * screen), unlabelled, each written as soon as it is chosen.
  */
 export function ProfileSettingsPage() {
   const { t } = useTranslation()
@@ -77,6 +105,7 @@ export function ProfileSettingsPage() {
                 <Skeleton h={40} />
               </YStack>
             )}
+            <BusinessFields />
             <YStack gap="1.5">
               <Text fontSize="sm" lineHeight="sm" fontWeight="600">
                 {t("settings.profile.npub.label")}
@@ -220,6 +249,120 @@ function ProfileEditor({
           publish({ name: name ?? "", picture: current.picture })
         }
       />
+    </YStack>
+  )
+}
+
+const settingsPageQueries = [legalEntityQuery, settingsQuery]
+
+/**
+ * Country, accounting currency and VAT status, as web's
+ * `LegalEntitySettingsPage`, without its labels: the country and the
+ * currency read as their value ("Česko", "Kč"), the VAT status as one row
+ * with a switch. Every choice is written at once.
+ */
+function BusinessFields() {
+  usePreloadEvoluQueries(settingsPageQueries)
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
+  const [settings] = useEvoluQuery(settingsQuery).data
+  const vatPayer = legalEntity?.vatPayer === 1
+
+  // `setLegalEntity` always writes both fields, so each control carries the
+  // other one along unchanged.
+  const save = (values: {
+    readonly country: CountryCode | null
+    readonly vatPayer: boolean
+  }) =>
+    runToast(async (run) => {
+      await run.ok(setLegalEntity(values))
+    })
+
+  const country = useInlineChoice<CountryCode | null | undefined>(
+    legalEntity === undefined ? undefined : legalEntity.country,
+    async (next) =>
+      next === undefined ? false : save({ country: next, vatPayer })
+  )
+  const currency = useInlineChoice(getFiatCurrency(settings), (fiatCurrency) =>
+    runToast(async (run) => {
+      await run.ok(updateSettings({ fiatCurrency }))
+    })
+  )
+  const vat = useInlineChoice(vatPayer, (next) =>
+    save({ country: legalEntity?.country ?? null, vatPayer: next })
+  )
+  const countryTitle = (option: (typeof countryOptions)[number]) =>
+    t(countryLabelKey(option === OTHER_COUNTRY ? null : option))
+
+  return (
+    <YStack gap="3">
+      {/* Nothing is selected until a country is chosen: the row does not exist. */}
+      <Select
+        value={
+          country.value === undefined
+            ? null
+            : z.encode(countryCodec, country.value)
+        }
+        onValueChange={(value) => {
+          const parsed = z.safeDecode(countryCodec, value)
+          if (parsed.success) void country.choose(parsed.data)
+        }}
+        items={Object.fromEntries(
+          countryOptions.map((option) => [option, countryTitle(option)])
+        )}
+      >
+        <SelectTrigger
+          fullWidth
+          aria-label={t("settings.legalEntity.country.label")}
+        >
+          <SelectValue
+            placeholder={t("settings.legalEntity.country.placeholder")}
+          />
+        </SelectTrigger>
+        <SelectContent title={t("settings.legalEntity.country.label")}>
+          {countryOptions.map((option) => (
+            <SelectItem key={option} value={option}>
+              {countryTitle(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {/* The currency reads as its sign ("Kč"); the sheet names it too. */}
+      <Select
+        value={currency.value}
+        onValueChange={(value) => void currency.choose(value)}
+        items={Object.fromEntries(
+          fiatCurrencyOptions.map((option) => [option.value, t(option.symbol)])
+        )}
+      >
+        <SelectTrigger
+          fullWidth
+          aria-label={t("settings.legalEntity.currency.label")}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent title={t("settings.legalEntity.currency.label")}>
+          {fiatCurrencyOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {`${t(option.symbol)} · ${t(option.label)}`}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <XStack items="center" justify="space-between" gap="3" minH={44} px={4}>
+        <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+          {t("settings.profile.vatPayer")}
+        </Text>
+        <Switch
+          checked={vat.value}
+          aria-label={t("settings.profile.vatPayer")}
+          // The country comes first: saving this while none is chosen
+          // would write "other" on the user's behalf.
+          disabled={legalEntity === undefined || vat.saving}
+          onCheckedChange={(next) => void vat.choose(next)}
+        />
+      </XStack>
     </YStack>
   )
 }

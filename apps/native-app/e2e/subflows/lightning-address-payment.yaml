@@ -9,6 +9,22 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: ${output.t["settings.lightningAddress.saved"]}
     timeout: 15000
+# Saving keeps Spark the main method (settings/0003): make the address it.
+- runFlow:
+    file: goto.yaml
+    env:
+      ROUTE: settings/payment-accounts/bitcoin
+      TEXT: ${output.t["settings.bitcoin.mainMethod"]}
+- tapOn: ${output.re(output.t["settings.paymentAccounts.method.lightningAddress"])}
+- runFlow:
+    file: tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.bitcoin.mainMethod"]}
+- runFlow:
+    file: assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.bitcoin.mainMethod"]}
+      CHECKED: "true"
 - runFlow:
     file: goto.yaml
     env:

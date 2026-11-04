@@ -296,7 +296,13 @@ export const cashuAccountQuery = createQuery((db) =>
   db
     .selectFrom("account")
     .innerJoin("accountCashu", "accountCashu.id", "account.id")
-    .select(["account.id", "account.name", "account.kind", "account.isDeleted"])
+    .select([
+      "account.id",
+      "account.name",
+      "account.kind",
+      "account.isDeleted",
+      "accountCashu.paymentRequestLegs",
+    ])
     .where("account.kind", "=", "cashu")
     .where("accountCashu.isDeleted", "is not", sqliteTrue)
     .where("account.name", "is not", null)

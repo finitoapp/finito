@@ -39,7 +39,6 @@ export type NativeRoutePath =
   | "/settings/theme"
   | "/settings/notifications"
   | "/settings/profile"
-  | "/settings/legal-entity"
   | "/settings/tax-rates"
   | "/settings/tips"
   | "/settings/payment-number-series"
@@ -136,8 +135,6 @@ export const routeAccess = {
   "/settings/notifications": "free",
   // Like web's `_terminal/settings/profile`: the public profile is owner-only (access/0002).
   "/settings/profile": "admin",
-  // Like web's `_terminal/settings/legal-entity` (access/0002: `settings`).
-  "/settings/legal-entity": "settings",
   // Like web's `_terminal/settings/tax-rates` (access/0002: `settings`).
   "/settings/tax-rates": "settings",
   // Like web's `_terminal/settings/tips` (access/0002: `settings`).

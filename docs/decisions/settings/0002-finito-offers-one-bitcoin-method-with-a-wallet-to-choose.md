@@ -1,6 +1,6 @@
 # 0002 Finito offers one Bitcoin method with a wallet to choose
 
-Status: accepted
+Status: superseded by settings/0003
 Date: 2026-11-03
 
 ## Context

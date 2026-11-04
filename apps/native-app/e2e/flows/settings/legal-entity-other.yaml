@@ -1,5 +1,6 @@
 # web settings-legal-entity.spec.ts: 'choosing "Other" is distinct from never
 # having configured a country'.
+# The business fields live on the profile screen (Finito).
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -7,8 +8,8 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 - runFlow:
     file: ../../subflows/tap-id.yaml
     env:
@@ -21,7 +22,7 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/reopen.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 - assertVisible: ${output.t["country.other"]}
 - assertNotVisible: ${output.t["settings.legalEntity.country.placeholder"]}

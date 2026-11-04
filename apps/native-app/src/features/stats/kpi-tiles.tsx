@@ -242,7 +242,9 @@ function CalculationTrigger({ label }: { readonly label: string }) {
 
 /**
  * The change against the comparison: an arrow, the percentage and the
- * difference itself, so it reads without the colour too.
+ * difference itself, so it reads without the colour too. Good news is the
+ * gold the statistics read in, bad news and no change the muted ink: no
+ * second hue.
  */
 function DeltaLabel({ tile }: { readonly tile: Tile }) {
   const { t } = useTranslation()
@@ -256,8 +258,7 @@ function DeltaLabel({ tile }: { readonly tile: Tile }) {
     )
   }
   const good = ratio === 0 ? null : ratio > 0 === tile.upIsGood
-  const color =
-    good === null ? "muted-foreground" : good ? "success" : "destructive"
+  const color = good === true ? "accent-text" : "muted-foreground"
   const percent = new Intl.NumberFormat(locale, {
     style: "percent",
     maximumFractionDigits: 0,

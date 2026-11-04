@@ -1,3 +1,4 @@
+import { formatMoneyParts } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   clearPaymentMethodPreparation,
@@ -9,12 +10,18 @@ import {
 } from "@payky/app-shared/payment-method-preparation"
 import { useNow } from "@payky/app-shared/use-now"
 import { useRedirectIfClosedOnOpen } from "@payky/app-shared/use-redirect-if-closed-on-open"
-import { buildCashuPaymentUri } from "@payky/core/cashu/cashu-payment-request"
+import {
+  buildCashuPaymentUri,
+  defaultCashuPaymentRequestLegs,
+} from "@payky/core/cashu/cashu-payment-request"
 import {
   fetchNostrProfile,
   getNostrIdentity,
 } from "@payky/core/integrations/nostr/nostr-client"
-import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
+import {
+  cashuAccountQuery,
+  enabledPaymentMethodAccountsQuery,
+} from "@payky/core/modules/account/account-queries"
 import type {
   AccountId,
   BankQrFormat,
@@ -43,7 +50,7 @@ import {
 } from "@payky/core/modules/payment/payment-queries"
 import { derivePaymentStatus } from "@payky/core/modules/payment/payment-status-utils"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
-import { Currency, Integer } from "@payky/core/modules/shared/schema"
+import { Integer } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtom, useAtomValue } from "jotai"
 import Banknote from "lucide-react-native/icons/banknote"
@@ -58,6 +65,7 @@ import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { bitcoinUnitAtom } from "../../atoms/bitcoin-unit.ts"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { useSettleStoredSwitchioResult } from "../../components/app/switchio-restored-result.tsx"
 import { CopyableQrCode } from "../../components/copyable-qr-code.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
@@ -84,7 +92,7 @@ import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatMoney } from "../../lib/format-money.ts"
+import { formatMoney, formatSatsAmount } from "../../lib/format-money.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
@@ -188,6 +196,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [payment] = useEvoluQuery(paymentRequestQuery(paymentId)).data
   const claims = useEvoluQuery(paymentClaimsQuery(paymentId)).data
   const accounts = useEvoluQuery(enabledPaymentMethodAccountsQuery).data
+  const [cashuAccountRow] = useEvoluQuery(cashuAccountQuery).data
   const [settings] = useEvoluQuery(settingsQuery).data
   const masterKey = useAtomValue(accountAtom).masterKey
   // A secp256k1 derivation in JS: once per account, not on every render.
@@ -412,6 +421,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const cashuLnInvoice = payment?.cashuLnInvoice ?? null
   const cashuMintUrl = payment?.cashuMintUrl ?? null
   const cashuAmountSats = payment?.cashuAmountSats ?? 0
+  // Both legs unless the Cashu account narrows the QR to one (settings/0003).
+  const cashuLegs =
+    cashuAccountRow?.paymentRequestLegs ?? defaultCashuPaymentRequestLegs
   const cashuQrPayload = useMemo(
     () =>
       cashuLnInvoice === null || cashuMintUrl === null
@@ -423,8 +435,16 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
             mintUrl: cashuMintUrl,
             nostrPubkey,
             relays: nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS,
+            legs: cashuLegs,
           }),
-    [paymentId, cashuLnInvoice, cashuAmountSats, cashuMintUrl, nostrPubkey]
+    [
+      paymentId,
+      cashuLnInvoice,
+      cashuAmountSats,
+      cashuMintUrl,
+      nostrPubkey,
+      cashuLegs,
+    ]
   )
   const defaultQrFormat = ibanAccount?.ibanDefaultQrFormat ?? "spayd"
   const activeQrFormat = selectedQrFormat ?? defaultQrFormat
@@ -708,6 +728,20 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         : active?.id === "lightningAddress"
           ? (payment.lightningAddressAmountSats ?? null)
           : null
+  const satsNumber = sats === null ? "" : formatSatsAmount(sats, locale)
+  const amountParts =
+    sats !== null && unit === "sats"
+      ? {
+          number: satsNumber,
+          unit: t("withdraw.amount.unitSats"),
+          unitFirst: false,
+          text: t("withdraw.sats", { amount: satsNumber }),
+        }
+      : formatMoneyParts(
+          { value: payment.amount, currency: payment.currency },
+          locale,
+          { fraction: "whenNonZero" }
+        )
 
   return (
     <Screen>
@@ -724,21 +758,19 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           </Text>
           {/* One unit at a time: the shop's money, and for a bitcoin method
               sats once the amount is tapped (`bitcoinUnitAtom`). */}
-          <Text
-            fontSize="4xl"
-            lineHeight="4xl"
-            fontWeight={fontWeight.semibold}
-            fontVariant={["tabular-nums"]}
-            role={sats === null ? "heading" : "button"}
-            aria-level={sats === null ? 1 : undefined}
-            cursor={sats === null ? undefined : "web:pointer"}
+          <AmountFigure
+            number={amountParts.number}
+            unit={amountParts.unit}
+            unitFirst={amountParts.unitFirst}
+            label={amountParts.text}
             onPress={sats === null ? undefined : toggleUnit}
+            pressLabel={
+              sats === null
+                ? undefined
+                : t("settings.cashuAccount.balance.switchUnit")
+            }
             testID="payment-amount"
-          >
-            {sats !== null && unit === "sats"
-              ? formatMoney({ value: sats, currency: Currency.BTC }, locale)
-              : formatMinor(payment.amount)}
-          </Text>
+          />
         </YStack>
 
         {active === undefined ? (

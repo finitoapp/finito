@@ -94,11 +94,11 @@ const paymentAccountsPageQueries = [
 ]
 
 /**
- * What the Bitcoin row says it pays into: the Lightning address itself, or
- * Spark; the Linky wallet, the default, is named by nothing (onboarding/0009).
+ * What the Bitcoin row says it pays into: the main wallet by name, or the
+ * Lightning address itself (settings/0003).
  */
 const bitcoinWalletLabelKeys = {
-  cashu: null,
+  cashu: "settings.paymentAccounts.method.cashu",
   lightningAddress: null,
   spark: "settings.bitcoin.wallet.spark",
 } satisfies Record<

@@ -138,10 +138,26 @@ export const decodeCashuPaymentPayload = (
 }
 
 /**
+ * What the Cashu wallet's QR carries (settings/0003): both legs in one
+ * BIP-321 URI, the default, or one of them bare, for a merchant whose
+ * customers' wallets read only the one. Stored on the Cashu account.
+ */
+export const CashuPaymentRequestLegsSchema = z.enum([
+  "both",
+  "cashu",
+  "lightning",
+])
+export type CashuPaymentRequestLegs = z.output<
+  typeof CashuPaymentRequestLegsSchema
+>
+export const defaultCashuPaymentRequestLegs: CashuPaymentRequestLegs = "both"
+
+/**
  * The QR of a Cashu payment, rebuilt from stored data (cashu/0006): the
  * mint's invoice next to a NUT-18 request for the payment's sats at its
  * mint, delivered to Payky's nprofile over the relays it listens on, with the
- * payment id as the request id.
+ * payment id as the request id. `legs` narrows it to the bare invoice or
+ * the bare request; null when the leg asked for cannot be made.
  */
 export const buildCashuPaymentUri = ({
   paymentId,
@@ -150,6 +166,7 @@ export const buildCashuPaymentUri = ({
   mintUrl,
   nostrPubkey,
   relays,
+  legs = defaultCashuPaymentRequestLegs,
 }: {
   readonly paymentId: string
   readonly lnInvoice: string
@@ -158,19 +175,22 @@ export const buildCashuPaymentUri = ({
   /** Hex; null while the identity is unknown, which leaves the token leg out. */
   readonly nostrPubkey: string | null
   readonly relays: ReadonlyArray<string>
-}): string | null =>
-  buildBip321PaymentUri({
-    lightning: lnInvoice,
-    creq:
-      nostrPubkey === null || amountSats <= 0
-        ? null
-        : encodeNostrPaymentRequest({
-            amount: amountSats,
-            mintUrls: [mintUrl],
-            recipientNprofile: nprofileEncode({
-              pubkey: nostrPubkey,
-              relays: [...relays],
-            }),
-            requestId: paymentId,
+  readonly legs?: CashuPaymentRequestLegs
+}): string | null => {
+  const creq =
+    nostrPubkey === null || amountSats <= 0
+      ? null
+      : encodeNostrPaymentRequest({
+          amount: amountSats,
+          mintUrls: [mintUrl],
+          recipientNprofile: nprofileEncode({
+            pubkey: nostrPubkey,
+            relays: [...relays],
           }),
-  })
+          requestId: paymentId,
+        })
+  if (legs === "cashu") return creq
+  if (legs === "lightning")
+    return trimmedOrNull(stripLightningPrefix(lnInvoice))
+  return buildBip321PaymentUri({ lightning: lnInvoice, creq })
+}

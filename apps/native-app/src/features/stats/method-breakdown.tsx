@@ -24,8 +24,8 @@ import {
 } from "./stats-section.tsx"
 
 /**
- * One colour per method, the same in every period so a method is
- * recognisable at a glance.
+ * One shade of the gold per method, the same in every period so a method
+ * is recognisable at a glance.
  */
 const methodLabelKey = (method: MethodShare["method"]): TranslationKey =>
   method === "unknown" ? "stats.methods.unknown" : paymentMethodLabelKey[method]
@@ -162,7 +162,7 @@ function MethodDonut({
   const radius = donutSize * 0.41
   const circumference = 2 * Math.PI * radius
   const gap = row.methods.length > 1 ? 4 : 0
-  const track = theme["border-color"]?.val ?? "#ddd"
+  const track = theme.muted?.val ?? "#ddd"
   const chosen = row.methods.find((method) => method.method === selected)
 
   let offset = 0
@@ -182,7 +182,6 @@ function MethodDonut({
             cy={donutSize / 2}
             r={radius}
             stroke={track}
-            strokeOpacity={0.4}
             strokeWidth={donutStroke}
             fill="none"
           />

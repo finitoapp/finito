@@ -12,6 +12,10 @@ tags: [cashu]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
 - runFlow: ../../subflows/to-tip-step.yaml
 - tapOn: ${output.re(output.t["paymentTip.none"])}
 - runFlow:

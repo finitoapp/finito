@@ -5,14 +5,14 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 - runFlow: ../../subflows/complete-onboarding.yaml
-# The business is in the Czech Republic and uses CZK.
+# The business is in the Czech Republic and uses CZK (the profile screen).
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 - assertVisible: ${output.re(output.t["country.cz"])}
-- assertVisible: ${output.re(output.t["settings.fiat.czk.title"])}
+- assertVisible: ${output.re(output.t["settings.fiat.czk.symbol"])}
 # The Czech preset tax rates were seeded.
 - runFlow:
     file: ../../subflows/goto.yaml

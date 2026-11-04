@@ -4,12 +4,12 @@ import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-
  * The three ways a bitcoin payment can be received, which Finito offers as
  * one "Bitcoin" method with a wallet to choose (settings/0002): the shared
  * Cashu wallet, the merchant's own Lightning address, or a Spark wallet.
- * At most one of them is enabled at a time; Cashu is the one a fresh
- * switch-on picks.
+ * At most one of them is the main one at a time; Spark is the one a fresh
+ * switch-on picks, for now (settings/0003).
  */
 export const bitcoinWallets = ["cashu", "lightningAddress", "spark"] as const
 export type BitcoinWallet = (typeof bitcoinWallets)[number]
-export const defaultBitcoinWallet: BitcoinWallet = "cashu"
+export const defaultBitcoinWallet: BitcoinWallet = "spark"
 
 export const isBitcoinWallet = (
   method: DefaultPaymentMethod

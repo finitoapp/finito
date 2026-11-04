@@ -63,3 +63,76 @@ export function formatMoney(
 /** A satoshi amount with the locale's digit grouping, and no currency label. */
 export const formatSatsAmount = (sats: number, locale: string): string =>
   new Intl.NumberFormat(locale).format(sats)
+
+/**
+ * An amount split for a display that draws the unit smaller than the
+ * number: the number in the locale's layout, the currency as the locale
+ * writes it ("Kč", "$", "CZK") and whether it comes first there ("$5",
+ * "CZK 120") or last ("120 Kč"). `text` is the whole, as `formatAmount`
+ * writes it.
+ */
+export interface AmountParts {
+  readonly number: string
+  readonly unit: string
+  readonly unitFirst: boolean
+  readonly text: string
+}
+
+export function formatAmountParts(
+  amount: number,
+  currency: Currency,
+  locale: string = "en-US",
+  { fraction = "always" }: FormatMoneyOptions = {}
+): AmountParts {
+  const text = formatAmount(amount, currency, locale, { fraction })
+  if (currency === "BTC") {
+    return {
+      number: text.replace(/\s*Sats$/u, ""),
+      unit: "Sats",
+      unitFirst: false,
+      text,
+    }
+  }
+  try {
+    const parts = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits:
+        fraction === "whenNonZero" && Number.isInteger(amount)
+          ? 0
+          : currencyFractionDigits[currency],
+    }).formatToParts(amount)
+    const unitIndex = parts.findIndex((part) => part.type === "currency")
+    const numberIndex = parts.findIndex(
+      (part) => part.type !== "currency" && part.type !== "literal"
+    )
+    return {
+      number: parts
+        .filter((part) => part.type !== "currency" && part.type !== "literal")
+        .map((part) => part.value)
+        .join(""),
+      unit: parts[unitIndex]?.value ?? currency,
+      unitFirst: unitIndex !== -1 && unitIndex < numberIndex,
+      text,
+    }
+  } catch (_error) {
+    return {
+      number: amount.toLocaleString(),
+      unit: currency,
+      unitFirst: false,
+      text,
+    }
+  }
+}
+
+export const formatMoneyParts = (
+  money: Money,
+  locale: string = "en-US",
+  options: FormatMoneyOptions = {}
+): AmountParts =>
+  formatAmountParts(
+    Number(minorUnitsToDecimalString(money)),
+    money.currency,
+    locale,
+    options
+  )

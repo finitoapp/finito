@@ -1,9 +1,11 @@
 # web's `addInitScript(__e2eCashuMint)` + toggling Cashu on: the `fake`
 # action (cashu=MODE, "manual" or "autopay"; default "autopay") moves on to
 # Settings > Payment methods in-app (a link would reload web and lose the
-# in-memory mint), where the Bitcoin switch is then turned on: Cashu is the
-# wallet it opens on (settings/0002). Needs a seeded app without Spark.
-# From here on navigate by tapping, never by link, on web.
+# in-memory mint), where the Bitcoin switch is turned on (Spark, the
+# default), then the Bitcoin row opened, its Cashu tab picked and its
+# "Main method" switch turned on (settings/0003). Ends on the Bitcoin
+# screen. Needs a seeded app without Spark. From here on navigate by
+# tapping, never by link, on web.
 appId: ${APP_ID}
 ---
 - openLink: '${BASE_URL}e2e/fake?cashu=${typeof MODE === "undefined" ? "autopay" : MODE}&next=/settings/payment-accounts'
@@ -14,3 +16,21 @@ appId: ${APP_ID}
     file: tap-id.yaml
     env:
       LABEL: ${output.t["settings.bitcoin.enabled.label"]}
+# The row ignores a tap until the account behind the switch is written.
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: ${output.re(output.t["settings.paymentAccounts.method.bitcoin"])}
+      - extendedWaitUntil:
+          visible: ${output.re(output.t["settings.bitcoin.mainMethod"])}
+          timeout: 5000
+- tapOn: ${output.re(output.t["settings.paymentAccounts.method.cashu"])}
+- runFlow:
+    file: tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.bitcoin.mainMethod"]}
+- runFlow:
+    file: assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.bitcoin.mainMethod"]}
+      CHECKED: "true"

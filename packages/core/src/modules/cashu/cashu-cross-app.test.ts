@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest"
 
 import {
   buildBip321PaymentUri,
+  buildCashuPaymentUri,
   encodeNostrPaymentRequest,
   pickBip321PayableLeg,
 } from "../../cashu/cashu-payment-request.ts"
@@ -206,6 +207,28 @@ describe("cross-app Cashu vectors (shared with Linky)", () => {
     expect(buildBip321PaymentUri(vector.legs)).toBe(vector.uri)
     if (vector.uri !== null)
       expect(pickBip321PayableLeg(vector.uri)).toEqual(vector.leg)
+  })
+
+  test("the payment QR narrows to one leg when the Cashu account says so (settings/0003)", () => {
+    const request = {
+      paymentId: "p1",
+      lnInvoice: "lightning:lnbc10n1pxyz",
+      amountSats: 10,
+      mintUrl: "https://mint.example",
+      nostrPubkey: "f".repeat(64),
+      relays: ["wss://relay.example"],
+    }
+    const both = buildCashuPaymentUri(request)
+    expect(both).toMatch(/^bitcoin:\?lightning=lnbc10n1pxyz&creq=creqA/u)
+    expect(buildCashuPaymentUri({ ...request, legs: "lightning" })).toBe(
+      "lnbc10n1pxyz"
+    )
+    const cashu = buildCashuPaymentUri({ ...request, legs: "cashu" })
+    expect(cashu).toMatch(/^creqA/u)
+    expect(both).toContain(`creq=${encodeURIComponent(cashu ?? "")}`)
+    expect(
+      buildCashuPaymentUri({ ...request, legs: "cashu", nostrPubkey: null })
+    ).toBeNull()
   })
 
   test.each(MINT_URL_VECTORS)("mint url %j normalises to %j", (input, out) => {

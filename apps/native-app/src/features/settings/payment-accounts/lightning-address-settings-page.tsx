@@ -39,33 +39,27 @@ import { useBitcoinWallet } from "./use-bitcoin-wallet.ts"
  */
 export function LightningAddressSettingsPage() {
   const { t } = useTranslation()
-  const wallet = useBitcoinWallet()
   return (
     <Screen>
       <FadeHeader
         title={t("settings.paymentAccounts.method.lightningAddress")}
       />
-      <LightningAddressSettingsBody
-        onSaved={() => wallet.select("lightningAddress")}
-      />
+      <LightningAddressSettingsBody />
     </Screen>
   )
 }
 
 /**
- * The page's content, also the Bitcoin screen's Lightning address half
- * (settings/0002), where saving an address is choosing the wallet: the
- * save switches the account on, and `onSaved` then switches the other
- * bitcoin wallets off.
+ * The page's content, also the Bitcoin screen's Lightning address tab
+ * (settings/0003). Saving an address keeps the wallet's place: the main
+ * method stays what it was, and the Bitcoin screen's switch is what makes
+ * the address the main one.
  */
-export function LightningAddressSettingsBody({
-  onSaved,
-}: {
-  readonly onSaved: () => Promise<unknown>
-}) {
+export function LightningAddressSettingsBody() {
   const runToast = useRunToast()
   const toast = useToast()
   const { t } = useTranslation()
+  const wallet = useBitcoinWallet()
   const [account] = useEvoluQuery(lightningAddressAccountQuery).data
   const [draft, setDraft] = useState<string | null>(null)
   const [error, setError] = useState<TranslationKey | null>(null)
@@ -91,10 +85,12 @@ export function LightningAddressSettingsBody({
         return
       }
       await run.ok(
-        saveLightningAddressAccount({ enabled: true, address: parsed.address })
+        saveLightningAddressAccount({
+          enabled: wallet.enabled === "lightningAddress",
+          address: parsed.address,
+        })
       )
     })
-    if (saved && !outcome.refused) await onSaved()
     setPending(false)
     if (!saved || outcome.refused) return
     setDraft(null)
