@@ -810,26 +810,27 @@ export const saveCashuAccount =
 
 /**
  * What the Cashu wallet's payment QR carries (settings/0003): both legs,
- * the mint's invoice alone or the NUT-18 request alone. Written on the
- * account the wallet has; `null` while it has none.
+ * the mint's invoice alone or the NUT-18 request alone, on the wallet's
+ * account row.
  */
 export const setCashuPaymentRequestLegs =
-  (
-    legs: CashuPaymentRequestLegs
-  ): Task<AccountId | null, never, EvoluDep & EvoluOwnerDep> =>
+  ({
+    accountId,
+    legs,
+  }: {
+    readonly accountId: AccountId
+    readonly legs: CashuPaymentRequestLegs
+  }): Task<void, never, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
-    const [current] = await evolu.loadQuery(cashuAccountQuery)
-    if (current === undefined) return ok(null)
-
     await runMutationWithCompletion((options) =>
       evolu.update(
         "accountCashu",
-        { id: current.id, paymentRequestLegs: legs },
+        { id: accountId, paymentRequestLegs: legs },
         { ...options, owner: evoluOwner }
       )
     )
-    return ok(current.id)
+    return ok()
   }
 
 /**

@@ -1,4 +1,3 @@
-import { formatMoneyParts } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   clearPaymentMethodPreparation,
@@ -52,7 +51,7 @@ import { derivePaymentStatus } from "@payky/core/modules/payment/payment-status-
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { Integer } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
-import { useAtom, useAtomValue } from "jotai"
+import { useAtomValue } from "jotai"
 import Banknote from "lucide-react-native/icons/banknote"
 import Bitcoin from "lucide-react-native/icons/bitcoin"
 import Check from "lucide-react-native/icons/check"
@@ -64,7 +63,6 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
-import { bitcoinUnitAtom } from "../../atoms/bitcoin-unit.ts"
 import { AmountFigure } from "../../components/amount-figure.tsx"
 import { useSettleStoredSwitchioResult } from "../../components/app/switchio-restored-result.tsx"
 import { CopyableQrCode } from "../../components/copyable-qr-code.tsx"
@@ -87,14 +85,18 @@ import { nativeConsole } from "../../core/native-runtime.ts"
 import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun, useCashuAppRun } from "../../hooks/use-app-run.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatMoney, formatSatsAmount } from "../../lib/format-money.ts"
+import { formatMoney, formatMoneyParts } from "../../lib/format-money.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
+import { satsAmountParts, useBitcoinUnit } from "../shared/bitcoin-amount.tsx"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import { readCashReceived } from "./cash-received.ts"
 import { BoltCardReader } from "./payment-wait-bolt-card.tsx"
@@ -193,6 +195,18 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const cashuRunToast = useCashuRunToast()
   const { require } = useRequirePermission()
   const deviceId = useAtomValue(accountAtom).device.id
+  usePreloadEvoluQueries(
+    useMemo(
+      () => [
+        paymentRequestQuery(paymentId),
+        paymentClaimsQuery(paymentId),
+        enabledPaymentMethodAccountsQuery,
+        cashuAccountQuery,
+        settingsQuery,
+      ],
+      [paymentId]
+    )
+  )
   const [payment] = useEvoluQuery(paymentRequestQuery(paymentId)).data
   const claims = useEvoluQuery(paymentClaimsQuery(paymentId)).data
   const accounts = useEvoluQuery(enabledPaymentMethodAccountsQuery).data
@@ -366,9 +380,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   // detail. Decided once per arrival — this payment, this visit of the
   // screen — so a payment paid while open still shows Paid.
   const visit = useScreenVisit()
-  const [unit, setUnit] = useAtom(bitcoinUnitAtom)
-  const toggleUnit = () =>
-    setUnit((current) => (current === "fiat" ? "sats" : "fiat"))
+  const bitcoinUnit = useBitcoinUnit()
   const closedOnOpen = useRedirectIfClosedOnOpen(
     `${paymentId}@${visit}`,
     status === "paid" || status === "canceled",
@@ -728,19 +740,13 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         : active?.id === "lightningAddress"
           ? (payment.lightningAddressAmountSats ?? null)
           : null
-  const satsNumber = sats === null ? "" : formatSatsAmount(sats, locale)
+  // The payment's own amount is exact, so no "~" as an estimate carries.
   const amountParts =
-    sats !== null && unit === "sats"
-      ? {
-          number: satsNumber,
-          unit: t("withdraw.amount.unitSats"),
-          unitFirst: false,
-          text: t("withdraw.sats", { amount: satsNumber }),
-        }
+    sats !== null && bitcoinUnit.unit === "sats"
+      ? satsAmountParts(sats, locale, t)
       : formatMoneyParts(
           { value: payment.amount, currency: payment.currency },
-          locale,
-          { fraction: "whenNonZero" }
+          locale
         )
 
   return (
@@ -763,12 +769,8 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
             unit={amountParts.unit}
             unitFirst={amountParts.unitFirst}
             label={amountParts.text}
-            onPress={sats === null ? undefined : toggleUnit}
-            pressLabel={
-              sats === null
-                ? undefined
-                : t("settings.cashuAccount.balance.switchUnit")
-            }
+            onPress={sats === null ? undefined : bitcoinUnit.toggle}
+            pressLabel={sats === null ? undefined : bitcoinUnit.switchLabel}
             testID="payment-amount"
           />
         </YStack>

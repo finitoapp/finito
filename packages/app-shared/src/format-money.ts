@@ -15,6 +15,15 @@ export interface FormatMoneyOptions {
   readonly fraction?: "always" | "whenNonZero"
 }
 
+const fractionDigits = (
+  amount: number,
+  currency: Currency,
+  fraction: NonNullable<FormatMoneyOptions["fraction"]>
+) =>
+  fraction === "whenNonZero" && Number.isInteger(amount)
+    ? 0
+    : currencyFractionDigits[currency]
+
 export function formatAmount(
   amount: number,
   currency?: Currency | undefined,
@@ -40,10 +49,7 @@ export function formatAmount(
       ...(currency === undefined
         ? {}
         : {
-            minimumFractionDigits:
-              fraction === "whenNonZero" && Number.isInteger(amount)
-                ? 0
-                : currencyFractionDigits[currency],
+            minimumFractionDigits: fractionDigits(amount, currency, fraction),
           }),
     }).format(amount)
   } catch (_error) {
@@ -78,14 +84,32 @@ export interface AmountParts {
   readonly text: string
 }
 
+/** The unit and the number out of `formatToParts` of a currency format. */
+export const splitCurrencyParts = (
+  parts: ReadonlyArray<Intl.NumberFormatPart>,
+  currency: Currency
+): Omit<AmountParts, "text"> => {
+  const unitIndex = parts.findIndex((part) => part.type === "currency")
+  const isNumber = (part: Intl.NumberFormatPart) =>
+    part.type !== "currency" && part.type !== "literal"
+  return {
+    number: parts
+      .filter(isNumber)
+      .map((part) => part.value)
+      .join(""),
+    unit: parts[unitIndex]?.value ?? currency,
+    unitFirst: unitIndex !== -1 && unitIndex < parts.findIndex(isNumber),
+  }
+}
+
 export function formatAmountParts(
   amount: number,
   currency: Currency,
   locale: string = "en-US",
   { fraction = "always" }: FormatMoneyOptions = {}
 ): AmountParts {
-  const text = formatAmount(amount, currency, locale, { fraction })
   if (currency === "BTC") {
+    const text = formatAmount(amount, currency, locale)
     return {
       number: text.replace(/\s*Sats$/u, ""),
       unit: "Sats",
@@ -97,31 +121,15 @@ export function formatAmountParts(
     const parts = new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
-      minimumFractionDigits:
-        fraction === "whenNonZero" && Number.isInteger(amount)
-          ? 0
-          : currencyFractionDigits[currency],
+      minimumFractionDigits: fractionDigits(amount, currency, fraction),
     }).formatToParts(amount)
-    const unitIndex = parts.findIndex((part) => part.type === "currency")
-    const numberIndex = parts.findIndex(
-      (part) => part.type !== "currency" && part.type !== "literal"
-    )
     return {
-      number: parts
-        .filter((part) => part.type !== "currency" && part.type !== "literal")
-        .map((part) => part.value)
-        .join(""),
-      unit: parts[unitIndex]?.value ?? currency,
-      unitFirst: unitIndex !== -1 && unitIndex < numberIndex,
-      text,
+      ...splitCurrencyParts(parts, currency),
+      text: parts.map((part) => part.value).join(""),
     }
   } catch (_error) {
-    return {
-      number: amount.toLocaleString(),
-      unit: currency,
-      unitFirst: false,
-      text,
-    }
+    const text = amount.toLocaleString()
+    return { number: text, unit: currency, unitFirst: false, text }
   }
 }
 

@@ -10,7 +10,6 @@ import {
   paymentStatusLabelKey,
 } from "@payky/app-shared/activity-labels"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
-import { formatMoneyParts } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { useNow } from "@payky/app-shared/use-now"
 import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client"
@@ -83,7 +82,7 @@ import {
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatMoney } from "../../lib/format-money.ts"
+import { formatMoney, formatMoneyParts } from "../../lib/format-money.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import {
@@ -186,8 +185,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
     return <NotFoundCard messageKey="paymentDetail.notFound" />
   const headline = formatMoneyParts(
     { value: payment.amount, currency: payment.currency },
-    locale,
-    { fraction: "whenNonZero" }
+    locale
   )
 
   const {

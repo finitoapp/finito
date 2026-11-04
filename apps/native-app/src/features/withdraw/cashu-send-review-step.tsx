@@ -3,7 +3,8 @@ import type { CashuSendQuote } from "@payky/core/modules/withdraw/withdraw-cashu
 import { Text, YStack } from "tamagui"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
-import { Mono, SatsWithFiat } from "./withdraw-parts.tsx"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
+import { Mono } from "./withdraw-parts.tsx"
 import { WithdrawReviewCard } from "./withdraw-review-step.tsx"
 
 /**
@@ -41,11 +42,8 @@ export function CashuSendReviewStep({
 
   return (
     <WithdrawReviewCard
-      recipientComment={null}
       comment={comment}
       error={confirmError}
-      nearlyExpired={false}
-      expired={false}
       confirming={confirming}
       requoting={requoting}
       uncertain={uncertain}
@@ -71,13 +69,13 @@ export function CashuSendReviewStep({
           <Text>{formatMintLabel(quote.mint)}</Text>
         </DetailRow>
         <DetailRow label={t("withdraw.review.amount")}>
-          <SatsWithFiat sats={quote.amountSats} />
+          <BitcoinAmount sats={quote.amountSats} />
         </DetailRow>
         <DetailRow label={t("withdraw.cashu.send.review.fee")}>
-          <SatsWithFiat sats={quote.cost.maxFee} />
+          <BitcoinAmount sats={quote.cost.maxFee} />
         </DetailRow>
         <DetailRow label={t("withdraw.review.total")} emphasize>
-          <SatsWithFiat sats={quote.amountSats + quote.cost.maxFee} />
+          <BitcoinAmount sats={quote.amountSats + quote.cost.maxFee} />
         </DetailRow>
         <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
           {t("withdraw.cashu.send.review.note")}

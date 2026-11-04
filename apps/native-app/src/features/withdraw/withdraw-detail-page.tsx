@@ -50,13 +50,9 @@ import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
 import { useSparkBalance } from "../shared/use-spark-balance.ts"
-import {
-  Collapsible,
-  Mono,
-  SatsWithFiat,
-  WithdrawalStatusBadge,
-} from "./withdraw-parts.tsx"
+import { Collapsible, Mono, WithdrawalStatusBadge } from "./withdraw-parts.tsx"
 import { withdrawRoutes } from "./withdraw-routes.ts"
 
 const TXID_REFETCH_INTERVAL_MS = 30_000
@@ -258,7 +254,7 @@ function WithdrawalStatusCard({ view }: { readonly view: WithdrawalView }) {
       <CardContent>
         <YStack gap="3">
           <XStack justify="space-between" items="flex-start" gap="2">
-            <SatsWithFiat sats={view.amountSats} align="start" />
+            <BitcoinAmount sats={view.amountSats} align="start" />
             <WithdrawalStatusBadge view={view} />
           </XStack>
           {state.status === "pending" ? (
@@ -431,7 +427,7 @@ function WithdrawalDetailsCard({ view }: { readonly view: WithdrawalView }) {
             </DetailRow>
           )}
           <DetailRow label={t("withdraw.detail.amount")}>
-            <SatsWithFiat sats={view.amountSats} />
+            <BitcoinAmount sats={view.amountSats} />
           </DetailRow>
           {feeSats === null ? null : (
             <>
@@ -440,10 +436,10 @@ function WithdrawalDetailsCard({ view }: { readonly view: WithdrawalView }) {
                   isMaxFee ? "withdraw.detail.maxFee" : "withdraw.detail.fee"
                 )}
               >
-                <SatsWithFiat sats={feeSats} />
+                <BitcoinAmount sats={feeSats} />
               </DetailRow>
               <DetailRow label={t("withdraw.detail.total")} emphasize>
-                <SatsWithFiat
+                <BitcoinAmount
                   sats={
                     state.status === "done"
                       ? state.debitedSats

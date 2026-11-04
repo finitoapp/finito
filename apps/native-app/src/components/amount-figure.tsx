@@ -1,4 +1,3 @@
-import type { ReactNode } from "react"
 import { Platform } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { control, fontWeight, shape } from "../theme/tokens.ts"
@@ -25,7 +24,6 @@ export function AmountFigure({
   size = "lg",
   align = "center",
   label,
-  caption,
   onPress,
   pressLabel,
   testID,
@@ -37,8 +35,6 @@ export function AmountFigure({
   readonly align?: "center" | "start"
   /** What a screen reader says: the whole amount. */
   readonly label: string
-  /** A small muted line under the figure (syncing, no rate). */
-  readonly caption?: ReactNode
   readonly onPress?: () => void
   /** The press's name on web, as a tooltip. */
   readonly pressLabel?: string
@@ -96,16 +92,6 @@ export function AmountFigure({
         </Text>
         {unitFirst ? null : unitText}
       </XStack>
-      {caption === undefined ? null : (
-        <Text
-          fontSize="xs"
-          lineHeight="xs"
-          color="muted-foreground"
-          text="center"
-        >
-          {caption}
-        </Text>
-      )}
     </YStack>
   )
 }

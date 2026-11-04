@@ -89,7 +89,7 @@ const ItemText = styled(Text, {
 
 const hitSlops = { default: 8, sm: 10, lg: 6 } as const
 
-/** Joined segments: square inner corners, one shared border between items. */
+/** Joined segments: square inner corners. */
 const joinedStyle = (
   vertical: boolean,
   { first, last }: { readonly first: boolean; readonly last: boolean }
@@ -103,7 +103,6 @@ const joinedStyle = (
         borderTopRightRadius: startRadius,
         borderBottomLeftRadius: endRadius,
         borderBottomRightRadius: endRadius,
-        ...(first ? {} : { borderTopWidth: 0 }),
       }
     : {
         px: 8,
@@ -111,7 +110,6 @@ const joinedStyle = (
         borderBottomLeftRadius: startRadius,
         borderTopRightRadius: endRadius,
         borderBottomRightRadius: endRadius,
-        ...(first ? {} : { borderLeftWidth: 0 }),
       }
 }
 

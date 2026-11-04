@@ -2,7 +2,6 @@ import {
   type AmountKeypadKey,
   amountKeypadKeys,
   applyAmountKey,
-  formatAmountInput,
   formatAmountInputParts,
   getDecimalSeparator,
 } from "@payky/app-shared/amount-entry"
@@ -132,10 +131,9 @@ function AmountDisplay({
 }) {
   const amountInput = useAtomValue(amountInputAtom)
   const locale = useLocale()
-  const formattedAmount = formatAmountInput(amountInput, currency, locale)
   const parts = formatAmountInputParts(amountInput, currency, locale)
 
-  const pulse = useChangePulse(formattedAmount)
+  const pulse = useChangePulse(parts.text)
 
   // The one amount figure (`AmountFigure`), at its largest. The transform
   // sits on a wrapper so `adjustsFontSizeToFit` measures the untransformed
@@ -148,7 +146,7 @@ function AmountDisplay({
           number={parts.number}
           unit={parts.unit}
           unitFirst={parts.unitFirst}
-          label={formattedAmount}
+          label={parts.text}
         />
       </Animated.View>
     </YStack>

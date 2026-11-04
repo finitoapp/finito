@@ -1,4 +1,5 @@
 import { Animated, Easing } from "react-native"
+import { isReduceMotionEnabled } from "../platform/reduce-motion.ts"
 
 /**
  * Web's motion, shared by the native effects that port it. Everything runs
@@ -21,6 +22,27 @@ export const changePulseKeyframes = {
   scale: [0.94, 1.03, 1],
   duration: 320,
 } as const
+
+/**
+ * Drives `value` to `toValue` on `timing`'s curve, or at once under reduced
+ * motion: the menu pill's slide, a dragged row's neighbours making room.
+ */
+export const animateTo = (
+  value: Animated.Value,
+  toValue: number,
+  timing: { readonly duration: number; readonly easing: (t: number) => number }
+) => {
+  if (isReduceMotionEnabled()) {
+    value.setValue(toValue)
+    return
+  }
+  Animated.timing(value, {
+    toValue,
+    duration: timing.duration,
+    easing: timing.easing,
+    useNativeDriver: true,
+  }).start()
+}
 
 /** Restarts `progress` from 0 to 1, cutting off a run still in flight. */
 export const replay = (progress: Animated.Value, duration: number) => {

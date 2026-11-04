@@ -111,7 +111,7 @@ export type CashuMeltError =
   | CashuMeltUnpaidError
   | CashuMeltPendingError
 
-const availableAt = (
+export const availableAt = (
   proofs: ReadonlyArray<CashuProofCopy>,
   mint: MintUrl
 ): ReadonlyArray<CashuProofCopy> =>
@@ -120,7 +120,7 @@ const availableAt = (
       proof.mint === mint && proof.state === "available" && proof.unit === "sat"
   )
 
-const toWalletProofs = (proofs: ReadonlyArray<CashuProofCopy>) =>
+export const toWalletProofs = (proofs: ReadonlyArray<CashuProofCopy>) =>
   proofs.map((proof) => ({
     id: proof.keysetId,
     amount: proof.amount,
@@ -128,11 +128,15 @@ const toWalletProofs = (proofs: ReadonlyArray<CashuProofCopy>) =>
     C: proof.c,
   }))
 
+/** The sum of `proofs`' face values. */
+export const totalOf = (proofs: ReadonlyArray<{ readonly amount: number }>) =>
+  proofs.reduce((sum, proof) => sum + proof.amount, 0)
+
 /** How many proofs `amount` splits into: one per set bit. */
-const proofCountOf = (amount: number): number =>
+export const proofCountOf = (amount: number): number =>
   amount.toString(2).replaceAll("0", "").length
 
-const feeOf = (loaded: LoadedCashuWallet, count: number): number =>
+export const feeOf = (loaded: LoadedCashuWallet, count: number): number =>
   count === 0
     ? 0
     : Number(loaded.wallet.getFeesForKeyset(count, loaded.keysetId))
@@ -219,7 +223,7 @@ const heldInputs = async (
     (proof) => proof.operationId === operationId && proof.state === "held"
   )
 
-const setStates = async (
+export const setStates = async (
   deps: CashuTopupDeps,
   proofs: ReadonlyArray<CashuProofCopy>,
   state: "available" | "spent"

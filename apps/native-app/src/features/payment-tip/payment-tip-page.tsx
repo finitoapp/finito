@@ -1,5 +1,4 @@
 import { sqliteTrue } from "@evolu/common"
-import { formatMoneyParts } from "@payky/app-shared/format-money"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
   parseTipFixedAmounts,
@@ -38,7 +37,7 @@ import {
 import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatMoney } from "../../lib/format-money.ts"
+import { formatMoney, formatMoneyParts } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { parseTipSearch } from "./tip-search.ts"
 
@@ -87,9 +86,7 @@ function PaymentTipForm({
 
   const formatMinor = (value: number) =>
     formatMoney({ value: NonNegativeInteger(value), currency }, locale)
-  const orderTotal = formatMoneyParts({ value: amount, currency }, locale, {
-    fraction: "whenNonZero",
-  })
+  const orderTotal = formatMoneyParts({ value: amount, currency }, locale)
   const customMinor = decimalAmountToMinorUnits({
     currency,
     value: customTip,

@@ -147,6 +147,10 @@ export const cashuWithdrawPinDetail = ({
   })
 
 /** The mints holding ecash, by name. */
+/** Everything the wallet holds, over every mint. */
+export const cashuWalletTotal = (balances: ReadonlyMap<unknown, number>) =>
+  [...balances.values()].reduce((sum, sats) => sum + sats, 0)
+
 export const fundedMints = (
   balances: ReadonlyMap<MintUrl, number>
 ): ReadonlyArray<readonly [MintUrl, number]> =>

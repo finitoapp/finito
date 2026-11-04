@@ -28,6 +28,7 @@ import { z } from "zod"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -44,7 +45,6 @@ import {
   SelectValue,
 } from "../../../components/ui/select.tsx"
 import { Skeleton } from "../../../components/ui/skeleton.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import { useCopyToClipboard } from "../../../hooks/use-copy-to-clipboard.ts"
 import {
   useEvoluQuery,
@@ -157,9 +157,6 @@ function ProfileEditor({
   const { t } = useTranslation()
   const runToast = useRunToast()
   const [pictureInvalid, setPictureInvalid] = useState(false)
-  // What this screen last published is what every reader shows
-  // (`setOwnNostrProfile`); `profile` is that value once it is set.
-  const current = profile
 
   // ponytail: each save merges into the profile as last published here, so a
   // name and a picture saved at the same instant can drop one of the two.
@@ -169,17 +166,17 @@ function ProfileEditor({
   }) =>
     runToast(async (run) => {
       const metadata = mergeProfileMetadata({
-        current: current.metadata,
+        current: profile.metadata,
         ...changes,
       })
       const result = await run(publishNostrProfile({ metadata }))
       if (!result.ok) return "settings.profile.saveFailed"
-      setOwnNostrProfile(pubkey, profileFromMetadata(metadata) ?? current)
+      setOwnNostrProfile(pubkey, profileFromMetadata(metadata) ?? profile)
       return undefined
     })
 
-  const picture = useInlineChoice(current.picture, (next) =>
-    publish({ name: current.name ?? "", picture: next })
+  const picture = useInlineChoice(profile.picture, (next) =>
+    publish({ name: profile.name ?? "", picture: next })
   )
 
   const choosePicture = async () => {
@@ -242,11 +239,11 @@ function ProfileEditor({
       <InlineEditField
         label={t("settings.profile.name.label")}
         placeholder={t("settings.profile.name.placeholder")}
-        defaultValue={current.name}
+        defaultValue={profile.name}
         codec={optionalTextCodec}
         errorKey="settings.profile.name.invalid"
         onSave={(name) =>
-          publish({ name: name ?? "", picture: current.picture })
+          publish({ name: name ?? "", picture: profile.picture })
         }
       />
     </YStack>
@@ -350,19 +347,14 @@ function BusinessFields() {
           ))}
         </SelectContent>
       </Select>
-      <XStack items="center" justify="space-between" gap="3" minH={44} px={4}>
-        <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-          {t("settings.profile.vatPayer")}
-        </Text>
-        <Switch
-          checked={vat.value}
-          aria-label={t("settings.profile.vatPayer")}
-          // The country comes first: saving this while none is chosen
-          // would write "other" on the user's behalf.
-          disabled={legalEntity === undefined || vat.saving}
-          onCheckedChange={(next) => void vat.choose(next)}
-        />
-      </XStack>
+      <SwitchRow
+        label={t("settings.profile.vatPayer")}
+        checked={vat.value}
+        // The country comes first: saving this while none is chosen
+        // would write "other" on the user's behalf.
+        disabled={legalEntity === undefined || vat.saving}
+        onCheckedChange={(next) => void vat.choose(next)}
+      />
     </YStack>
   )
 }

@@ -3,10 +3,7 @@ import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
-  cashuAccountQuery,
   fiatBankAccountQuery,
-  lightningAddressAccountQuery,
-  sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
@@ -43,6 +40,10 @@ import {
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
+import {
+  bitcoinWalletQueries,
+  useBitcoinWallet,
+} from "./payment-accounts/use-bitcoin-wallet.ts"
 import {
   privacyQuery,
   usePrivacySettings,
@@ -124,9 +125,7 @@ const settingsPageQueries = [
   settingsQuery,
   cashRegisterAccountQuery,
   fiatBankAccountQuery,
-  sparkAccountQuery,
-  cashuAccountQuery,
-  lightningAddressAccountQuery,
+  ...bitcoinWalletQueries,
   cardSwitchioAccountQuery,
   eetSettingsQuery,
 ]
@@ -142,9 +141,7 @@ export function SettingsPage() {
   const [bank] = useEvoluQuery(fiatBankAccountQuery).data
   const eet = useEetSettings()
   const { aiAssistantAccess } = usePrivacySettings()
-  const [spark] = useEvoluQuery(sparkAccountQuery).data
-  const [cashu] = useEvoluQuery(cashuAccountQuery).data
-  const [lightningAddress] = useEvoluQuery(lightningAddressAccountQuery).data
+  const bitcoin = useBitcoinWallet()
   const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
   const isEnabled = (
     account: { readonly isDeleted: number | null } | undefined
@@ -153,10 +150,7 @@ export function SettingsPage() {
   const enabledMethods = [
     [isEnabled(cash), "settings.paymentAccounts.method.cashRegister"],
     [isEnabled(bank), "settings.paymentAccounts.method.iban"],
-    [
-      isEnabled(cashu) || isEnabled(lightningAddress) || isEnabled(spark),
-      "settings.paymentAccounts.method.bitcoin",
-    ],
+    [bitcoin.enabled !== undefined, "settings.paymentAccounts.method.bitcoin"],
     [isEnabled(card), "settings.paymentAccounts.method.cardSwitchio"],
   ] as const
   const paymentMethodsValue =

@@ -177,6 +177,8 @@ export const buildCashuPaymentUri = ({
   readonly relays: ReadonlyArray<string>
   readonly legs?: CashuPaymentRequestLegs
 }): string | null => {
+  if (legs === "lightning")
+    return trimmedOrNull(stripLightningPrefix(lnInvoice))
   const creq =
     nostrPubkey === null || amountSats <= 0
       ? null
@@ -190,7 +192,5 @@ export const buildCashuPaymentUri = ({
           requestId: paymentId,
         })
   if (legs === "cashu") return creq
-  if (legs === "lightning")
-    return trimmedOrNull(stripLightningPrefix(lnInvoice))
   return buildBip321PaymentUri({ lightning: lnInvoice, creq })
 }

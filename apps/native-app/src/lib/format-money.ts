@@ -1,5 +1,8 @@
 import {
+  type AmountParts,
+  formatAmountParts as formatAmountPartsShared,
   formatAmount as formatAmountShared,
+  formatMoneyParts as formatMoneyPartsShared,
   formatMoney as formatMoneyShared,
   formatSatsAmount,
 } from "@payky/app-shared/format-money"
@@ -22,4 +25,16 @@ export const formatAmount = (
 ): string =>
   formatAmountShared(amount, currency, locale, { fraction: "whenNonZero" })
 
-export { formatSatsAmount }
+/** `formatMoney` split into the number and its unit, for `AmountFigure`. */
+export const formatMoneyParts = (money: Money, locale: string): AmountParts =>
+  formatMoneyPartsShared(money, locale, { fraction: "whenNonZero" })
+
+/** `formatAmount` split into the number and its unit, for `AmountFigure`. */
+export const formatAmountParts = (
+  amount: number,
+  currency: Currency,
+  locale: string
+): AmountParts =>
+  formatAmountPartsShared(amount, currency, locale, { fraction: "whenNonZero" })
+
+export { type AmountParts, formatSatsAmount }
