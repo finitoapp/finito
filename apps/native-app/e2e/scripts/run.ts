@@ -20,7 +20,6 @@ const webPort = Number(process.env.PAYKY_E2E_WEB_PORT ?? 8790)
 const mockPort = Number(process.env.PAYKY_E2E_MOCK_PORT ?? 8791)
 // Not 8081: a developer's own Metro (without the e2e switch) may hold it.
 const metroPort = 8792
-const appId = "fit.finito.app"
 const maestro =
   Bun.which("maestro") ?? join(process.env.HOME ?? "", ".maestro/bin/maestro")
 // The version e2e/AGENTS.md pins: other releases differ in selectors and
@@ -40,6 +39,9 @@ const { values, positionals } = parseArgs({
   },
   allowPositionals: true,
 })
+// The debug build (--dev) installs as its own app, beside a release one
+// (plugins/with-debug-app-id.cjs).
+const appId = values.dev ? "fit.finito.app.dev" : "fit.finito.app"
 const installed = (await $`${maestro} --version`.quiet().nothrow().text())
   .trim()
   .split("\n")
