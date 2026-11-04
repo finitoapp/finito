@@ -95,7 +95,7 @@ import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney, formatMoneyParts } from "../../lib/format-money.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
-import { fontSize, fontWeight } from "../../theme/tokens.ts"
+import { control, fontSize, fontWeight } from "../../theme/tokens.ts"
 import { satsAmountParts, useBitcoinUnit } from "../shared/bitcoin-amount.tsx"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import { readCashReceived } from "./cash-received.ts"
@@ -788,8 +788,11 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         ) : (
           <Tabs value={active.id} onValueChange={setSelected}>
             {/* The method tabs as Activity's: the active one an accent pill
-                with its icon and name, the others their icon alone. */}
-            <TabsList h={46} p={4} gap={2} self="center">
+                with its icon and name, the others their icon alone. A large
+                control's height, with large icons: the one choice on the
+                screen, made at arm's length across the counter. With many
+                methods on a narrow phone the active name gives way first. */}
+            <TabsList h={control.lg} p={4} gap={4} self="center" maxW="100%">
               {methods.map(({ id }) => {
                 const isActive = id === active.id
                 return (
@@ -798,13 +801,14 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                     value={id}
                     aria-label={t(methodLabelKeys[id])}
                     grow={0}
-                    shrink={0}
+                    shrink={isActive ? 1 : 0}
                     flexBasis="auto"
-                    minW={48}
-                    px={isActive ? 16 : 12}
+                    minW={control.lg - 8}
+                    px={isActive ? 20 : 16}
                   >
                     <Icon
                       icon={methodIcons[id]}
+                      size={24}
                       color={
                         isActive ? "primary-foreground" : "muted-foreground"
                       }
@@ -812,9 +816,11 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                     {isActive ? (
                       <Text
                         color="primary-foreground"
-                        fontSize={fontSize.sm}
-                        lineHeight={fontSize.sm}
+                        fontSize={fontSize.base}
+                        lineHeight={fontSize.base}
                         fontWeight={fontWeight.medium}
+                        numberOfLines={1}
+                        shrink={1}
                       >
                         {t(methodLabelKeys[id])}
                       </Text>
