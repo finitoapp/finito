@@ -18,6 +18,7 @@ import {
   useEffect,
   useRef,
 } from "react"
+import { Platform } from "react-native"
 import { accountAtom } from "../../atoms/account.ts"
 import { appMigrationsAtom } from "../../atoms/app-migrations.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "../../atoms/cashu.ts"
@@ -128,7 +129,10 @@ function useBackgroundJobs({
   }, [isDemo, start])
 }
 
-/** The FIO, Spark and EET jobs: none of them reads the Cashu wallet. */
+/**
+ * The FIO, MONETA, Spark, EET, Qerko and Lightning address jobs (the banks
+ * only in the APK): none of them reads the Cashu wallet.
+ */
 function AppBackgroundJobs() {
   const evolu = useAtomValue(evoluAtom)
   const account = useAtomValue(accountAtom)
@@ -139,10 +143,14 @@ function AppBackgroundJobs() {
   const deviceId = account.device.id
   const start = useCallback(() => {
     const run = nativeRun.create(createJobDeps({ evolu, deviceId }))
-    // Native takes web's Capacitor branch: FIO has no CORS limit here.
+    // The APK takes web's Capacitor branch, where FIO and MONETA have no
+    // CORS limit; the PWA takes the browser's, which leaves both banks out,
+    // as their settings screens already do there.
     return {
       run,
-      jobs: run.ok(runBackgroundJobs(getBackgroundJobsForRuntime(true))),
+      jobs: run.ok(
+        runBackgroundJobs(getBackgroundJobsForRuntime(Platform.OS !== "web"))
+      ),
     }
   }, [evolu, deviceId])
 
