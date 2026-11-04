@@ -119,10 +119,6 @@ const SlotFrame = styled(View, {
   name: "InputOTPSlot",
   items: "center",
   justify: "center",
-  borderTopWidth: 1,
-  borderBottomWidth: 1,
-  borderRightWidth: 1,
-  borderColor: "input",
   bg: "input-bg",
 
   variants: {
@@ -132,7 +128,6 @@ const SlotFrame = styled(View, {
     },
     first: {
       true: {
-        borderLeftWidth: 1,
         borderTopLeftRadius: radius.lg,
         borderBottomLeftRadius: radius.lg,
       },
@@ -143,8 +138,8 @@ const SlotFrame = styled(View, {
         borderBottomRightRadius: radius.lg,
       },
     },
-    active: { true: { borderColor: "ring", z: 10 } },
-    invalid: { true: { borderColor: "destructive" } },
+    active: { true: { bg: "neutral-soft", z: 10 } },
+    invalid: { true: { bg: "destructive-tint" } },
   } as const,
 
   defaultVariants: { size: "default" },

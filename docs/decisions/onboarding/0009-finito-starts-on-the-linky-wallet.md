@@ -25,8 +25,9 @@ Finito alone; Payky keeps onboarding/0007.
   account whose Bitcoin row is off, which the settings fix with one switch,
   not an account stuck in onboarding.
 - The payment-method list names no wallet technology for the Linky wallet:
-  the Bitcoin row's status is empty while it is the wallet in use, and the
-  wallet choice on the Bitcoin screen calls it the Linky wallet, not Cashu.
+  the Bitcoin row's status is empty while it is the wallet in use. The
+  Bitcoin screen chooses between Cashu, the Lightning address and Spark as
+  Activity's tabs do.
 
 ## Alternatives considered
 

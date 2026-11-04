@@ -38,9 +38,9 @@ const lightTones = (colors: Palette): Tones => ({
   // Quieter than Linky's solids, as fazole.fit draws them: a tint of the
   // ink over the page, so a section, a tab bar or a secondary button lifts
   // off the background without reading as a box.
-  "surface-raised": oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.08 }),
+  "surface-raised": oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.05 }),
   "neutral-soft": colors["input-50"],
-  card: oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.045 }),
+  card: oklchToHex({ l: 0.2, c: 0.02, h: 260, alpha: 0.03 }),
   // The gold as text or an icon on a light page: the landing's `--landing-ink`.
   "accent-text": oklchToHex({ l: 0.6, c: 0.13, h: 72, alpha: 1 }),
   // ui/button outline: fazole has no outline; it is the neutral fill.
@@ -68,9 +68,9 @@ const lightTones = (colors: Palette): Tones => ({
 })
 
 const darkTones = (colors: Palette): Tones => ({
-  "surface-raised": oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.09 }),
+  "surface-raised": oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.055 }),
   "neutral-soft": colors["input-30"],
-  card: oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.055 }),
+  card: oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.035 }),
   "accent-text": oklchToHex({ l: 0.86, c: 0.15, h: 88, alpha: 1 }),
   "button-outline": colors["input-30"],
   "button-outline-border": "transparent",
@@ -132,6 +132,10 @@ const appTheme = (
   color: foreground,
   "border-color": border,
   ...tones,
+  // A selected segment (Activity's tabs, the payment method pill) is the
+  // accent, as the menu bar's active pill: Linky's `TabBar`.
+  "tabs-active": brandAccent.primary,
+  "tabs-active-border": "transparent",
 })
 
 export const appThemes = {

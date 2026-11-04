@@ -22,11 +22,12 @@ import { fontSize, fontWeight, radius } from "../theme/tokens.ts"
  * color it is given and wraps the control in a `SlidingPillTrack`, which
  * draws its border.
  *
- * Tailwind mirrored: the pill `absolute inset-0 rounded-full bg-foreground`
- * behind the content, the label `whitespace-nowrap pl-1.5` in
- * `text-background`, the icon `text-muted-foreground
- * aria-pressed:text-background transition-colors duration-300` (a
- * cross-fade of the two colors, so it runs on the native driver).
+ * Tailwind mirrored: the pill `absolute inset-0 rounded-full` behind the
+ * content (web's `bg-foreground`; here the accent, as the menu bar's
+ * active pill), the label `whitespace-nowrap pl-1.5` in the accent's text
+ * color, the icon `text-muted-foreground aria-pressed:text-background
+ * transition-colors duration-300` (a cross-fade of the two colors, so it
+ * runs on the native driver).
  *
  * Motion, on web's principle (motion's layout animation, FLIP): a switch
  * lays everything out at its new size at once, and each visible box is then
@@ -240,7 +241,7 @@ export function SlidingPillSegmentContent({
             ...fill,
             transform: pillTransform,
             borderRadius: radius.full,
-            backgroundColor: theme.color?.val,
+            backgroundColor: theme.primary?.val,
           }}
         />
       ) : null}
@@ -249,7 +250,7 @@ export function SlidingPillSegmentContent({
           <Animated.View style={{ transform: iconTransform }}>
             {icon("muted-foreground")}
             <Animated.View style={{ ...fill, opacity: activeIconOpacity }}>
-              {icon("background")}
+              {icon("primary-foreground")}
             </Animated.View>
           </Animated.View>
         </NativeView>
@@ -285,7 +286,7 @@ function SlidingPillLabel({
       <Text
         pl={6}
         numberOfLines={1}
-        color="background"
+        color="primary-foreground"
         fontSize={fontSize.sm}
         lineHeight={fontSize.sm}
         fontWeight={fontWeight.medium}

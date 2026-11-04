@@ -34,7 +34,7 @@ it("keeps the Cashu overview owner-only and read-only", () => {
 it("does not report an unread wallet as empty and refreshes live snapshots", () => {
   expect(page).toContain("if (isError)")
   expect(page).toContain("if (isPending || snapshot === null)")
-  expect(page).toContain("snapshot.hydrated ? null :")
+  expect(page).toContain("snapshot.hydrated ? undefined :")
   expect(page).toContain("total > 0")
   expect(snapshotSubscription).toContain("store.subscribe(")
   expect(snapshotSubscription).toContain("store.subscribeHydration(")

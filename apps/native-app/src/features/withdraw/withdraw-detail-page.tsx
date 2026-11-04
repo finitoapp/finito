@@ -50,7 +50,7 @@ import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
-import { useSparkBalance } from "./use-withdraw-data.ts"
+import { useSparkBalance } from "../shared/use-spark-balance.ts"
 import {
   Collapsible,
   Mono,

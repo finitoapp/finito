@@ -170,13 +170,7 @@ function CurrencyKpis({
         <DeltaLabel tile={netRevenue} />
         <Collapsible open={calculationOpen} onOpenChange={setCalculationOpen}>
           <CalculationTrigger label={t("stats.kpi.howCalculated")} />
-          <CollapsibleContent
-            gap="1"
-            pt="2"
-            mt="2"
-            borderTopWidth={1}
-            borderColor="border-color"
-          >
+          <CollapsibleContent gap="1" pt="2" mt="2">
             <BreakdownLine label={t("stats.kpi.breakdown.sales")}>
               {money(current.gross)}
             </BreakdownLine>

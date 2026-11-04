@@ -305,9 +305,7 @@ function ExistingBillOption({
       items="center"
       justify="space-between"
       rounded={radius.md}
-      borderWidth={1}
-      borderColor={selected ? "primary" : "transparent"}
-      bg={selected ? "primary-10" : "transparent press:muted"}
+      bg={selected ? "accent" : "transparent press:neutral-soft"}
     >
       <YStack flex={1} minW={0}>
         <Text

@@ -1273,6 +1273,5 @@ export const skSettings = {
   "settings.salesGroup": "PREDAJ",
   "catalog.items.form.category.new.placeholder": "Nová kategória",
   "settings.paymentAccounts.status.nativeOnly": "Len v natívnej aplikácii",
-  "settings.bitcoin.wallet.linky": "Peňaženka Linky",
   "settings.cashuAccount.balance.switchUnit": "Prepnúť jednotku",
 } satisfies Record<keyof typeof enSettings, string>

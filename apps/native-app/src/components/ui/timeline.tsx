@@ -118,8 +118,7 @@ export function TimelineIndicator() {
       w={16}
       h={16}
       rounded={radius.full}
-      borderWidth={2}
-      borderColor={completed ? "primary" : "primary-20"}
+      bg={completed ? "primary" : "primary-20"}
     />
   )
 }

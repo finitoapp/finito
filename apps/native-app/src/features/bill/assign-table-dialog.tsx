@@ -132,8 +132,7 @@ function NoTableTile({
         items="center"
         gap={8}
         p={16}
-        borderWidth={selected ? 2 : 1}
-        borderColor={selected ? "primary" : "card-ring"}
+        bg={selected ? "accent" : "neutral-soft"}
       >
         <Icon icon={Ban} size={20} color="muted-foreground" />
         <Text

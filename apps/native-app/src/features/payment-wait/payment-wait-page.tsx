@@ -45,7 +45,7 @@ import { derivePaymentStatus } from "@payky/core/modules/payment/payment-status-
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { Currency, Integer } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
-import { useAtomValue } from "jotai"
+import { useAtom, useAtomValue } from "jotai"
 import Banknote from "lucide-react-native/icons/banknote"
 import Bitcoin from "lucide-react-native/icons/bitcoin"
 import Check from "lucide-react-native/icons/check"
@@ -57,15 +57,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
+import { bitcoinUnitAtom } from "../../atoms/bitcoin-unit.ts"
 import { useSettleStoredSwitchioResult } from "../../components/app/switchio-restored-result.tsx"
 import { CopyableQrCode } from "../../components/copyable-qr-code.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
 import { Screen } from "../../components/screen.tsx"
-import {
-  SlidingPillSegmentContent,
-  SlidingPillTrack,
-} from "../../components/sliding-pill.tsx"
 import { SuccessPanel } from "../../components/success-panel.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
@@ -89,7 +86,7 @@ import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import { readCashReceived } from "./cash-received.ts"
 import { BoltCardReader } from "./payment-wait-bolt-card.tsx"
@@ -360,6 +357,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   // detail. Decided once per arrival — this payment, this visit of the
   // screen — so a payment paid while open still shows Paid.
   const visit = useScreenVisit()
+  const [unit, setUnit] = useAtom(bitcoinUnitAtom)
+  const toggleUnit = () =>
+    setUnit((current) => (current === "fiat" ? "sats" : "fiat"))
   const closedOnOpen = useRedirectIfClosedOnOpen(
     `${paymentId}@${visit}`,
     status === "paid" || status === "canceled",
@@ -722,24 +722,22 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           >
             {t("paymentWait.pay")}
           </Text>
+          {/* One unit at a time: the shop's money, and for a bitcoin method
+              sats once the amount is tapped (`bitcoinUnitAtom`). */}
           <Text
             fontSize="4xl"
             lineHeight="4xl"
             fontWeight={fontWeight.semibold}
             fontVariant={["tabular-nums"]}
-            role="heading"
-            aria-level={1}
+            role={sats === null ? "heading" : "button"}
+            aria-level={sats === null ? 1 : undefined}
+            cursor={sats === null ? undefined : "web:pointer"}
+            onPress={sats === null ? undefined : toggleUnit}
+            testID="payment-amount"
           >
-            {formatMinor(payment.amount)}
-          </Text>
-          <Text
-            fontWeight={fontWeight.medium}
-            color="muted-foreground"
-            fontVariant={["tabular-nums"]}
-          >
-            {sats === null
-              ? "\u00A0"
-              : formatMoney({ value: sats, currency: Currency.BTC }, locale)}
+            {sats !== null && unit === "sats"
+              ? formatMoney({ value: sats, currency: Currency.BTC }, locale)
+              : formatMinor(payment.amount)}
           </Text>
         </YStack>
 
@@ -755,35 +753,42 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           </Text>
         ) : (
           <Tabs value={active.id} onValueChange={setSelected}>
-            <SlidingPillTrack padding={8} bg="neutral-soft">
-              <TabsList h={46} gap={2} p={0} bg="transparent">
-                {methods.map(({ id }) => {
-                  const isActive = id === active.id
-                  return (
-                    <TabsTrigger
-                      key={id}
-                      value={id}
-                      aria-label={t(methodLabelKeys[id])}
-                      flex={0}
-                      minW={48}
-                      px={24}
-                      rounded={radius.full}
-                      bg="transparent"
-                      borderColor="transparent"
-                    >
-                      <SlidingPillSegmentContent
-                        active={isActive}
-                        pillId="payment-method-pill"
-                        icon={(color) => (
-                          <Icon icon={methodIcons[id]} color={color} />
-                        )}
-                        label={t(methodLabelKeys[id])}
-                      />
-                    </TabsTrigger>
-                  )
-                })}
-              </TabsList>
-            </SlidingPillTrack>
+            {/* The method tabs as Activity's: the active one an accent pill
+                with its icon and name, the others their icon alone. */}
+            <TabsList h={46} p={4} gap={2} self="center">
+              {methods.map(({ id }) => {
+                const isActive = id === active.id
+                return (
+                  <TabsTrigger
+                    key={id}
+                    value={id}
+                    aria-label={t(methodLabelKeys[id])}
+                    grow={0}
+                    shrink={0}
+                    flexBasis="auto"
+                    minW={48}
+                    px={isActive ? 16 : 12}
+                  >
+                    <Icon
+                      icon={methodIcons[id]}
+                      color={
+                        isActive ? "primary-foreground" : "muted-foreground"
+                      }
+                    />
+                    {isActive ? (
+                      <Text
+                        color="primary-foreground"
+                        fontSize={fontSize.sm}
+                        lineHeight={fontSize.sm}
+                        fontWeight={fontWeight.medium}
+                      >
+                        {t(methodLabelKeys[id])}
+                      </Text>
+                    ) : null}
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
           </Tabs>
         )}
 

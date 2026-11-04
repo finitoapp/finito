@@ -1272,6 +1272,5 @@ export const enSettings = {
   "settings.salesGroup": "SALES",
   "catalog.items.form.category.new.placeholder": "New category",
   "settings.paymentAccounts.status.nativeOnly": "Only in the native app",
-  "settings.bitcoin.wallet.linky": "Linky wallet",
   "settings.cashuAccount.balance.switchUnit": "Switch the unit",
 } as const

@@ -45,17 +45,17 @@ export function TableTileShell({
       minH={112}
       p={16}
       gap={12}
-      borderWidth={selected ? 2 : 1}
-      borderColor={
+      // No frame (fazole.fit): a chosen tile is the soft accent, an occupied
+      // one its tint, a free one the neutral fill.
+      bg={
         selected
-          ? "primary"
+          ? "accent"
           : occupied
             ? attention
-              ? "info-40"
-              : "primary-30"
-            : "card-ring"
+              ? "info-10"
+              : "primary-10"
+            : "neutral-soft"
       }
-      bg={occupied ? (attention ? "info-10" : "primary-10") : "transparent"}
       {...cardProps}
     >
       <XStack items="flex-start" justify="space-between" gap={8}>

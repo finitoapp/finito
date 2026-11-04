@@ -124,14 +124,7 @@ export function UiKitCard() {
   const [search, setSearch] = useState("")
   const [secret, setSecret] = useState("")
   return (
-    <View
-      bg="card"
-      borderColor="border-color"
-      borderWidth={1}
-      rounded="lg"
-      p="4"
-      gap="3"
-    >
+    <View bg="card" rounded="lg" p="4" gap="3">
       <Text fontWeight="600">UI kit</Text>
       <View flexDirection="row" gap="4" items="center">
         <Icon icon={ArrowLeft} size={20} color="primary" strokeWidth={3} />

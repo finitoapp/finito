@@ -43,14 +43,11 @@ export function SearchInput({
       pl={16}
       pr={8}
       rounded={shape.control}
-      borderWidth={1}
-      borderColor={focused ? "ring" : "transparent"}
-      bg="input-bg"
+      bg={focused ? "neutral-soft" : "input-bg"}
     >
       <Icon icon={Search} size={20} color="muted-foreground" />
       <Input
         flex={1}
-        borderWidth={0}
         bg="transparent"
         fontSize={fontSize.base}
         lineHeight={fontSize.base}

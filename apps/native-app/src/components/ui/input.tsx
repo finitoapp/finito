@@ -19,11 +19,10 @@ const InputFrame = styled(TamaguiInput, {
   name: "Input",
   minH: control.md,
   rounded: shape.control,
-  borderWidth: 1,
-  borderColor: "transparent focus:ring",
-  // The ring is the focus mark; no browser outline on top of it.
+  // No frame (fazole.fit): focus lifts the fill, no browser outline either.
+  borderWidth: 0,
   outlineWidth: 0,
-  bg: "input-bg",
+  bg: "input-bg focus:neutral-soft",
   // Not `px`: on native Tamagui expands it to paddingStart/End too, which
   // beat a caller's `pl`/`pr` (an icon inside the field).
   pl: 12,
@@ -35,7 +34,7 @@ const InputFrame = styled(TamaguiInput, {
   caretColor: "primary",
 
   variants: {
-    invalid: { true: { borderColor: "destructive" } },
+    invalid: { true: { bg: "destructive-tint" } },
   } as const,
 })
 

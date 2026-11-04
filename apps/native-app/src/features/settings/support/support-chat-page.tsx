@@ -239,9 +239,7 @@ function MessageBubble({
           borderTopRightRadius={joined(own && !firstOfGroup)}
           borderBottomLeftRadius={joined(!own && !lastOfGroup)}
           borderBottomRightRadius={joined(own && !lastOfGroup)}
-          bg={own ? "primary" : "card"}
-          borderWidth={own ? 0 : 1}
-          borderColor="card-ring"
+          bg={own ? "primary" : "surface-raised"}
           opacity={entry.status === "sending" ? 0.7 : 1}
         >
           <Text
