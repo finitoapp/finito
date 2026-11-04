@@ -22,16 +22,15 @@ import { useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Field, FieldError, FieldLabel } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
-import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 /** Smallest first, so the payment screen's options read in order. */
 const ascending = (presets: ReadonlyArray<number>) =>
@@ -148,23 +147,14 @@ function TipsSettingsForm({
 
   return (
     <YStack gap={24}>
-      <XStack items="center" justify="space-between" gap={12} minH={44} px={4}>
-        <Text
-          fontSize={fontSize.sm}
-          lineHeight={fontSize.sm}
-          fontWeight={fontWeight.semibold}
-        >
-          {t("settings.tips.enabled.label")}
-        </Text>
-        <Switch
-          checked={enabledChoice.value}
-          disabled={enabledChoice.saving}
-          aria-label={t("settings.tips.enabled.label")}
-          onCheckedChange={(next) => {
-            void enabledChoice.choose(next)
-          }}
-        />
-      </XStack>
+      <SwitchRow
+        label={t("settings.tips.enabled.label")}
+        checked={enabledChoice.value}
+        disabled={enabledChoice.saving}
+        onCheckedChange={(next) => {
+          void enabledChoice.choose(next)
+        }}
+      />
 
       <TipPresetField
         addLabel={t("settings.tips.percentages.add")}

@@ -241,11 +241,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/components/sliding-pill.tsx",
-    web: ["apps/web-app/src/components/sliding-pill.tsx"],
-    status: "matched",
-  },
-  {
     native: "src/components/success-panel.tsx",
     web: ["apps/web-app/src/components/success-panel.tsx"],
     status: "matched",
@@ -1216,6 +1211,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Button:
         "Native's retry button on wallet-query errors and Finito's Withdraw funds button under the balance (Fazole's wallet screen); web offers withdrawing as a list row.",
       Card: "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      VerticalNav:
+        "the wallet's rows are drawn by the shared WalletBody (features/shared/wallet-body.tsx)",
       CardContent:
         "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
       CardDescription:
@@ -1314,6 +1311,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       Switch:
         "known control-type gap: native keeps its existing switch (role switch) for privacy mode where web saves the same choice through InlineEditCheckbox, which wraps ui/checkbox; ui/checkbox exists natively, the swap is left for device acceptance",
+      VerticalNav:
+        "the wallet's rows are drawn by the shared WalletBody (features/shared/wallet-body.tsx)",
     },
   },
   {
@@ -1773,7 +1772,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       SlidingPillTrack:
-        "web gives the control's own border motion's layout animation; RN cannot scale a parent without its children, so the border is drawn behind the control by sliding-pill.tsx",
+        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
       ToggleGroup:
         "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
       ToggleGroupItem:
@@ -1917,6 +1916,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/notifications/notifications-page.tsx",
     web: ["apps/web-app/src/features/notifications/notifications-page.tsx"],
     status: "matched",
+  },
+  {
+    native: "src/features/shared/wallet-body.tsx",
+    web: [],
+    status: "matched",
+    note: "Fazole's wallet screen shared by the Cashu and Spark wallets: the balance, Withdraw funds while funded, the wallet's rows; web draws each wallet's card on its own.",
+    allowedDifferences: {
+      Button: "Withdraw funds under the balance",
+      VerticalNav: "the wallet's rows",
+    },
   },
   {
     native: "src/features/shared/bitcoin-amount.tsx",

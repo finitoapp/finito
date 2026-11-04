@@ -9,7 +9,6 @@ type Tones = Record<
   | "card"
   | "accent-text"
   | "button-outline"
-  | "button-outline-border"
   | "button-outline-pressed"
   | "button-ghost-pressed"
   | "destructive-tint"
@@ -19,10 +18,7 @@ type Tones = Record<
   | "switch-track-off"
   | "switch-thumb-on"
   | "switch-thumb-off"
-  | "checkbox-bg"
-  | "tabs-trigger"
-  | "tabs-active"
-  | "tabs-active-border",
+  | "tabs-trigger",
   string
 >
 
@@ -45,7 +41,6 @@ const lightTones = (colors: Palette): Tones => ({
   "accent-text": oklchToHex({ l: 0.6, c: 0.13, h: 72, alpha: 1 }),
   // ui/button outline: fazole has no outline; it is the neutral fill.
   "button-outline": colors["input-50"],
-  "button-outline-border": "transparent",
   "button-outline-pressed": colors.input,
   // ui/button ghost: pressed, the neutral fill
   "button-ghost-pressed": colors["input-50"],
@@ -59,12 +54,8 @@ const lightTones = (colors: Palette): Tones => ({
   "switch-track-off": colors.input,
   "switch-thumb-on": colors.background,
   "switch-thumb-off": colors.background,
-  // ui/checkbox: `bg-background`
-  "checkbox-bg": colors.background,
-  // ui/tabs trigger: `text-foreground/60`, active `bg-background`
+  // ui/tabs trigger: `text-foreground/60`; the active one is the accent pill
   "tabs-trigger": colors["foreground-60"],
-  "tabs-active": colors.background,
-  "tabs-active-border": "transparent",
 })
 
 const darkTones = (colors: Palette): Tones => ({
@@ -73,7 +64,6 @@ const darkTones = (colors: Palette): Tones => ({
   card: oklchToHex({ l: 0.95, c: 0.005, h: 260, alpha: 0.035 }),
   "accent-text": oklchToHex({ l: 0.86, c: 0.15, h: 88, alpha: 1 }),
   "button-outline": colors["input-30"],
-  "button-outline-border": "transparent",
   "button-outline-pressed": colors["input-50"],
   "button-ghost-pressed": colors["input-30"],
   // `dark:bg-destructive/20 dark:hover:bg-destructive/30`
@@ -87,11 +77,8 @@ const darkTones = (colors: Palette): Tones => ({
   "switch-thumb-on": colors["primary-foreground"],
   "switch-thumb-off": colors.foreground,
   // `dark:bg-input/30`
-  "checkbox-bg": colors["input-30"],
-  // `dark:text-muted-foreground`, active `dark:border-input dark:bg-input/30`
+  // `dark:text-muted-foreground`
   "tabs-trigger": colors["muted-foreground"],
-  "tabs-active": colors["input-30"],
-  "tabs-active-border": colors.input,
 })
 
 /**
@@ -157,10 +144,6 @@ const appTheme = (
   color: foreground,
   "border-color": border,
   ...tones,
-  // A selected segment (Activity's tabs, the payment method pill) is the
-  // accent, as the menu bar's active pill: Linky's `TabBar`.
-  "tabs-active": brandAccent.primary,
-  "tabs-active-border": "transparent",
 })
 
 export const appThemes = {

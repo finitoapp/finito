@@ -138,13 +138,15 @@ export function WithdrawFormStep({
  * options. `onQuote` fetches the wallet's quote and opens the review; it
  * returns the message to show, or `null` once the review is open.
  */
+const idleContact: LinkyContactState = { kind: "idle" }
+
 export function WithdrawFormFields({
   method,
   availableSats,
   draft,
   onDraftChange,
   onQuote,
-  contact: contactProp,
+  contact = idleContact,
   onQuoteContact,
   beforeDestination,
   canSubmit = true,
@@ -172,7 +174,6 @@ export function WithdrawFormFields({
   const locale = useLocale()
   const fiat = useBtcFiat()
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const contact = contactProp
   const [pending, setPending] = useState(false)
   const [scanning, setScanning] = useState(false)
   const toast = useToast()
@@ -196,8 +197,7 @@ export function WithdrawFormFields({
 
   const state = useWithdrawDestination(draft.destination, method)
   const { destination, invoiceAmountSats } = state
-  const contactState: LinkyContactState = contact ?? { kind: "idle" }
-  const isContact = contactState.kind !== "idle"
+  const isContact = contact.kind !== "idle"
   const withdrawAllUnavailable = withdrawAllUnavailableKey(destination)
   const effectiveWithdrawAll =
     draft.withdrawAll && withdrawAllUnavailable === null
@@ -216,9 +216,9 @@ export function WithdrawFormFields({
     if (pendingRef.current) return
     setSubmitError(null)
     if (isContact) {
-      if (contactState.kind === "resolving") return
-      if (contactState.kind === "failed") {
-        setSubmitError(t(contactState.key, { address: contactState.address }))
+      if (contact.kind === "resolving") return
+      if (contact.kind === "failed") {
+        setSubmitError(t(contact.key, { address: contact.address }))
         return
       }
       if (onQuoteContact === undefined) {
@@ -235,7 +235,7 @@ export function WithdrawFormFields({
       try {
         setSubmitError(
           await onQuoteContact(
-            contactState.contact,
+            contact.contact,
             effectiveWithdrawAll || !amount.success ? undefined : amount.data
           )
         )
@@ -336,17 +336,17 @@ export function WithdrawFormFields({
             {destination?.kind === "lightning-address" ? (
               <LightningAddress address={destination.address} />
             ) : null}
-            {contactState.kind === "resolved" ? (
+            {contact.kind === "resolved" ? (
               <Text fontSize={13} color="muted-foreground">
-                {`${t("withdraw.destination.kind.linkyContact")} · ${contactState.contact.address ?? contactState.contact.npub}`}
+                {`${t("withdraw.destination.kind.linkyContact")} · ${contact.contact.address ?? contact.contact.npub}`}
               </Text>
-            ) : contactState.kind === "resolving" ? (
+            ) : contact.kind === "resolving" ? (
               <Text fontSize={13} color="muted-foreground">
                 {t("withdraw.contact.checking")}
               </Text>
-            ) : contactState.kind === "failed" ? (
+            ) : contact.kind === "failed" ? (
               <Text fontSize={13} color="destructive" role="alert">
-                {t(contactState.key, { address: contactState.address })}
+                {t(contact.key, { address: contact.address })}
               </Text>
             ) : null}
             {state.hint === null || isContact ? null : (

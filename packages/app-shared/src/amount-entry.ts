@@ -1,5 +1,6 @@
 import { currencyFractionDigits } from "@payky/core/modules/shared/money"
 import type { Currency } from "@payky/core/modules/shared/schema"
+import { type AmountParts, splitCurrencyParts } from "./format-money.ts"
 
 export const amountKeypadKeys = [
   "1",
@@ -111,27 +112,22 @@ export function formatAmountInput(
 /**
  * `formatAmountInput` in two pieces, for a display that draws the unit
  * smaller than the number: the number in the locale's layout, the currency
- * as the locale writes it ("Kč", "$", "CZK"), and whether the currency
- * comes first there ("$0", "CZK 0") or last ("0 Kč").
+ * as the locale writes it ("Kč", "$", "CZK"), whether the currency comes
+ * first there ("$0", "CZK 0") or last ("0 Kč"), and the whole as one text.
  */
 export function formatAmountInputParts(
   amountInput: string,
   currency: Currency,
   locale: string
-): {
-  readonly number: string
-  readonly unit: string
-  readonly unitFirst: boolean
-} {
-  const parts = currencyLayoutParts(currency, locale)
-  const unit = parts.find((part) => part.type === "currency")?.value ?? currency
-  const unitIndex = parts.findIndex((part) => part.type === "currency")
-  const numberIndex = parts.findIndex((part) =>
-    currencyNumberPartTypes.has(part.type)
+): AmountParts {
+  const parts = splitCurrencyParts(
+    currencyLayoutParts(currency, locale),
+    currency
   )
+  const number = formatAmountNumber(amountInput, locale)
   return {
-    number: formatAmountNumber(amountInput, locale),
-    unit,
-    unitFirst: unitIndex !== -1 && unitIndex < numberIndex,
+    ...parts,
+    number,
+    text: formatAmountInput(amountInput, currency, locale),
   }
 }

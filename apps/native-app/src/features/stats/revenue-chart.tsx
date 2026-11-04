@@ -11,7 +11,7 @@ import {
 import type { Currency } from "@payky/core/modules/shared/schema"
 import { useMemo, useState } from "react"
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg"
-import { Text, useTheme, XStack, YStack } from "tamagui"
+import { Text, useTheme, View, XStack, YStack } from "tamagui"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatAmount } from "../../lib/format-money.ts"
 import { formatStatsRange } from "./kpi-tiles.tsx"
@@ -188,17 +188,6 @@ export function RevenueChart({
                     fill={sales}
                     fillOpacity={0.45}
                   />
-                  {/* The whole slot is the tap target. */}
-                  <Rect
-                    x={x}
-                    y={0}
-                    width={slot}
-                    height={plotHeight}
-                    fill="transparent"
-                    onPress={() =>
-                      setSelected(index === selected ? null : index)
-                    }
-                  />
                 </G>
               )
             })}
@@ -217,6 +206,30 @@ export function RevenueChart({
               ) : null
             )}
           </Svg>
+        )}
+        {/* The tap targets, one per slot, as views over the plot: a handler
+            on an SVG element reaches the DOM as responder props React
+            rejects on web. */}
+        {width === 0 ? null : (
+          <XStack
+            position="absolute"
+            l={axisWidth}
+            t={0}
+            w={plotWidth}
+            h={plotHeight}
+          >
+            {points.map((entry, index) => (
+              <View
+                key={entry.start}
+                flex={1}
+                role="button"
+                aria-label={bucketLabel(entry.start)}
+                aria-pressed={index === selected}
+                cursor="web:pointer"
+                onPress={() => setSelected(index === selected ? null : index)}
+              />
+            ))}
+          </XStack>
         )}
       </YStack>
       {point === undefined ? null : (

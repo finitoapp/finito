@@ -21,12 +21,11 @@ import {
   useNostrProfile,
 } from "../hooks/use-nostr-profile.ts"
 import { useTranslation } from "../hooks/use-translation.ts"
-import { isReduceMotionEnabled } from "../platform/reduce-motion.ts"
 import { control, maxWidth, shape } from "../theme/tokens.ts"
+import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
 
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
-export const menuBarHeight = control.md + 8
 
 /** The wide window's rail, Linky's `NavigationRail` (`$hero`, 112). */
 export const menuSidebarWidth = 112
@@ -67,18 +66,8 @@ const menuTabFaces = {
 const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
 
 /** Drives `value` to `toValue` on the slide curve, or at once under reduced motion. */
-const animateTo = (value: Animated.Value, toValue: number) => {
-  if (isReduceMotionEnabled()) {
-    value.setValue(toValue)
-    return
-  }
-  Animated.timing(value, {
-    toValue,
-    duration: slide.duration,
-    easing: slide.easing,
-    useNativeDriver: true,
-  }).start()
-}
+const slideTo = (value: Animated.Value, toValue: number) =>
+  animateTo(value, toValue, slide)
 
 /**
  * The pill's offset along the bar: `step` is one tab's extent (0 until
@@ -91,7 +80,7 @@ function usePillOffset(index: number, step: number) {
     if (step === 0) return
     const target = index * step
     if (placed.current) {
-      animateTo(offset, target)
+      slideTo(offset, target)
     } else {
       offset.setValue(target)
       placed.current = true
@@ -324,7 +313,7 @@ function MenuNavEntry({
 }) {
   const [progress] = useState(() => new Animated.Value(active ? 1 : 0))
   useEffect(() => {
-    animateTo(progress, active ? 1 : 0)
+    slideTo(progress, active ? 1 : 0)
   }, [active, progress])
   const rail = variant === "rail"
   const iconSize = rail ? 24 : 20

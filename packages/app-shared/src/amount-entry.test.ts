@@ -50,17 +50,17 @@ describe("formatAmountInput", () => {
 
 describe("formatAmountInputParts", () => {
   it("splits the number from the currency and says which comes first", () => {
-    expect(formatAmountInputParts("1234.", "CZK", "en-US")).toEqual({
+    expect(formatAmountInputParts("1234.", "CZK", "en-US")).toMatchObject({
       number: "1,234.",
       unit: "CZK",
       unitFirst: true,
     })
-    expect(formatAmountInputParts("", "USD", "en-US")).toEqual({
+    expect(formatAmountInputParts("", "USD", "en-US")).toMatchObject({
       number: "0",
       unit: "$",
       unitFirst: true,
     })
-    expect(formatAmountInputParts("12.5", "CZK", "cs-CZ")).toEqual({
+    expect(formatAmountInputParts("12.5", "CZK", "cs-CZ")).toMatchObject({
       number: "12,5",
       unit: "Kč",
       unitFirst: false,

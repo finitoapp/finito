@@ -17,14 +17,13 @@ describe("the Cashu account's payment QR legs (settings/0003)", () => {
       masterKey: testCashuMasterKey,
     })
 
-    expect(await run.ok(setCashuPaymentRequestLegs("cashu"))).toBeNull()
-
-    await run.ok(saveCashuAccount({ enabled: true }))
+    const accountId = await run.ok(saveCashuAccount({ enabled: true }))
+    if (accountId === null) throw new Error("no Cashu account")
     await expect
       .poll(() => evolu.loadQuery(cashuAccountQuery))
       .toEqual([expect.objectContaining({ paymentRequestLegs: null })])
 
-    await run.ok(setCashuPaymentRequestLegs("lightning"))
+    await run.ok(setCashuPaymentRequestLegs({ accountId, legs: "lightning" }))
     await expect
       .poll(() => evolu.loadQuery(cashuAccountQuery))
       .toEqual([expect.objectContaining({ paymentRequestLegs: "lightning" })])

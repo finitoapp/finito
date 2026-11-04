@@ -9,7 +9,7 @@ import type {
 import type { Currency } from "@payky/core/modules/shared/schema"
 import CircleQuestionMark from "lucide-react-native/icons/circle-question-mark"
 import { useState } from "react"
-import Svg, { Circle } from "react-native-svg"
+import Svg, { Circle, G } from "react-native-svg"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { Icon } from "../../components/ui/icon.tsx"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
@@ -76,27 +76,54 @@ export function MethodBreakdown({
       }
     >
       {methods.map((row) => (
-        <CurrencyGroup
+        <CurrencyMethods
           key={row.currency}
-          currency={row.currency}
+          row={row}
+          kpis={kpis.find((kpi) => kpi.currency === row.currency)}
+          methodColors={methodColors}
           showCurrency={methods.length > 1}
-        >
-          <MethodDonut row={row} methodColors={methodColors} />
-          {row.methods.map((method) => (
-            <MethodRow
-              key={method.method}
-              method={method}
-              currency={row.currency}
-              methodColors={methodColors}
-            />
-          ))}
-          <ReceivedBreakdown
-            row={row}
-            kpis={kpis.find((kpi) => kpi.currency === row.currency)}
-          />
-        </CurrencyGroup>
+        />
       ))}
     </StatsSection>
+  )
+}
+
+/**
+ * One currency's donut, its method rows and the received breakdown. A
+ * method is picked by its row, which is the donut's legend: its arc
+ * thickens and its figures show under the donut. (Not by the arc: a tap
+ * handler on an SVG element reaches the DOM as responder props React
+ * rejects on web.)
+ */
+function CurrencyMethods({
+  row,
+  kpis,
+  methodColors,
+  showCurrency,
+}: {
+  readonly row: MethodBreakdownRow
+  readonly kpis: SalesKpis | undefined
+  readonly methodColors: Readonly<Record<MethodShare["method"], string>>
+  readonly showCurrency: boolean
+}) {
+  const [selected, setSelected] = useState<MethodShare["method"] | null>(null)
+  return (
+    <CurrencyGroup currency={row.currency} showCurrency={showCurrency}>
+      <MethodDonut row={row} methodColors={methodColors} selected={selected} />
+      {row.methods.map((method) => (
+        <MethodRow
+          key={method.method}
+          method={method}
+          currency={row.currency}
+          methodColors={methodColors}
+          selected={method.method === selected}
+          onPress={() =>
+            setSelected(method.method === selected ? null : method.method)
+          }
+        />
+      ))}
+      <ReceivedBreakdown row={row} kpis={kpis} />
+    </CurrencyGroup>
   )
 }
 
@@ -146,19 +173,20 @@ function ReceivedBreakdown({
 const donutSize = 224
 const donutStroke = 31
 
-/** The shares as arcs of one ring with the total inside; tap an arc for its figures. */
+/** The shares as arcs of one ring with the total inside; the picked method's figures under it. */
 function MethodDonut({
   row,
   methodColors,
+  selected,
 }: {
   readonly row: MethodBreakdownRow
   readonly methodColors: Readonly<Record<MethodShare["method"], string>>
+  readonly selected: MethodShare["method"] | null
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const theme = useTheme()
   const money = useStatsMoney()
-  const [selected, setSelected] = useState<MethodShare["method"] | null>(null)
   const radius = donutSize * 0.41
   const circumference = 2 * Math.PI * radius
   const gap = row.methods.length > 1 ? 4 : 0
@@ -185,26 +213,26 @@ function MethodDonut({
             strokeWidth={donutStroke}
             fill="none"
           />
-          {arcs.map(({ method, length, offset: start }) => (
-            <Circle
-              key={method.method}
-              cx={donutSize / 2}
-              cy={donutSize / 2}
-              r={radius}
-              stroke={methodColors[method.method]}
-              strokeWidth={
-                method.method === selected ? donutStroke + 6 : donutStroke
-              }
-              strokeDasharray={`${length} ${circumference - length}`}
-              strokeDashoffset={-start}
-              fill="none"
-              rotation={-90}
-              origin={`${donutSize / 2}, ${donutSize / 2}`}
-              onPress={() =>
-                setSelected(method.method === selected ? null : method.method)
-              }
-            />
-          ))}
+          {/* The arcs start at twelve o'clock: one rotated group, not a
+              `rotation`/`origin` per arc, which the web renderer writes as
+              a `transform-origin` DOM attribute React rejects. */}
+          <G transform={`rotate(-90 ${donutSize / 2} ${donutSize / 2})`}>
+            {arcs.map(({ method, length, offset: start }) => (
+              <Circle
+                key={method.method}
+                cx={donutSize / 2}
+                cy={donutSize / 2}
+                r={radius}
+                stroke={methodColors[method.method]}
+                strokeWidth={
+                  method.method === selected ? donutStroke + 6 : donutStroke
+                }
+                strokeDasharray={`${length} ${circumference - length}`}
+                strokeDashoffset={-start}
+                fill="none"
+              />
+            ))}
+          </G>
         </Svg>
         <YStack
           position="absolute"
@@ -253,10 +281,14 @@ function MethodRow({
   method,
   currency,
   methodColors,
+  selected,
+  onPress,
 }: {
   readonly method: MethodShare
   readonly currency: Currency
   readonly methodColors: Readonly<Record<MethodShare["method"], string>>
+  readonly selected: boolean
+  readonly onPress: () => void
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -267,7 +299,14 @@ function MethodRow({
       : paymentMethodIcon[method.method]
 
   return (
-    <YStack gap="1.5">
+    <YStack
+      gap="1.5"
+      role="button"
+      aria-pressed={selected}
+      aria-label={t(methodLabelKey(method.method))}
+      cursor="web:pointer"
+      onPress={onPress}
+    >
       <XStack items="center" gap="2">
         <YStack
           width={10}

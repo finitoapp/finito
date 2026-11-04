@@ -3,27 +3,23 @@ import {
   bitcoinWallets,
   defaultBitcoinWallet,
 } from "@payky/app-shared/bitcoin-payment-method"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs.tsx"
 import { usePreloadEvoluQueries } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 import { CashuAccountSettingsBody } from "./cashu-account-settings-page.tsx"
 import { LightningAddressSettingsBody } from "./lightning-address-settings-page.tsx"
 import { SparkAccountSettingsBody } from "./spark-account-settings-page.tsx"
-import { bitcoinWalletQueries, useBitcoinWallet } from "./use-bitcoin-wallet.ts"
-
-const walletLabelKeys = {
-  cashu: "settings.paymentAccounts.method.cashu",
-  lightningAddress: "settings.paymentAccounts.method.lightningAddress",
-  spark: "settings.bitcoin.wallet.spark",
-} satisfies Record<BitcoinWallet, TranslationKey>
+import {
+  bitcoinWalletQueries,
+  useBitcoinWallet,
+  walletLabelKeys,
+} from "./use-bitcoin-wallet.ts"
 
 /**
  * Finito's Bitcoin method (settings/0003): the three wallets as Activity's
@@ -54,7 +50,8 @@ export function BitcoinSettingsPage() {
           </TabsList>
         </Tabs>
         <MainMethodRow
-          wallet={view}
+          wallet={wallet}
+          view={view}
           // The Lightning address can only be the main method once one is
           // saved; its form below saves it.
           canSelect={
@@ -74,40 +71,31 @@ export function BitcoinSettingsPage() {
 }
 
 /**
- * One row with a switch: on makes `wallet` the main bitcoin method, off
+ * One row with a switch: on makes `view` the main bitcoin method, off
  * turns bitcoin off altogether, as the Bitcoin switch in the methods list.
  */
 function MainMethodRow({
   wallet,
+  view,
   canSelect,
 }: {
-  readonly wallet: BitcoinWallet
+  readonly wallet: ReturnType<typeof useBitcoinWallet>
+  readonly view: BitcoinWallet
   readonly canSelect: boolean
 }) {
   const { t } = useTranslation()
-  const bitcoin = useBitcoinWallet()
-  const choice = useInlineChoice(bitcoin.enabled === wallet, (next) =>
-    bitcoin.select(next ? wallet : null)
+  const choice = useInlineChoice(wallet.enabled === view, (next) =>
+    wallet.select(next ? view : null)
   )
-  const label = t("settings.bitcoin.mainMethod")
 
   return (
-    <XStack items="center" justify="space-between" gap={12} minH={44} px={4}>
-      <Text
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-        fontWeight={fontWeight.semibold}
-      >
-        {label}
-      </Text>
-      <Switch
-        checked={choice.value}
-        aria-label={label}
-        disabled={!canSelect || choice.saving}
-        onCheckedChange={(next) => {
-          void choice.choose(next)
-        }}
-      />
-    </XStack>
+    <SwitchRow
+      label={t("settings.bitcoin.mainMethod")}
+      checked={choice.value}
+      disabled={!canSelect || choice.saving}
+      onCheckedChange={(next) => {
+        void choice.choose(next)
+      }}
+    />
   )
 }

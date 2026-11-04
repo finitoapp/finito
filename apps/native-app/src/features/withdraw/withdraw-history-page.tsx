@@ -1,3 +1,4 @@
+import { cashuWalletTotal } from "@payky/app-shared/cashu-withdraw-flow"
 import { formatRelativeDate, formatTime } from "@payky/app-shared/format-date"
 import { groupByDay } from "@payky/app-shared/group-by-day"
 import {
@@ -105,11 +106,7 @@ function CashuBalanceLine() {
   const { snapshot } = useCashuWalletSnapshot()
   return (
     <BalanceSummary
-      balance={
-        snapshot === null
-          ? null
-          : [...snapshot.balances.values()].reduce((sum, sats) => sum + sats, 0)
-      }
+      balance={snapshot === null ? null : cashuWalletTotal(snapshot.balances)}
     />
   )
 }

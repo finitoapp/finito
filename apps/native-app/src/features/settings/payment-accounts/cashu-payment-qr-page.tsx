@@ -33,7 +33,10 @@ export function CashuPaymentQrPage() {
     account?.paymentRequestLegs ?? defaultCashuPaymentRequestLegs,
     (next) =>
       runToast(async (run) => {
-        await run.ok(setCashuPaymentRequestLegs(next))
+        if (account === undefined) return
+        await run.ok(
+          setCashuPaymentRequestLegs({ accountId: account.id, legs: next })
+        )
       })
   )
 

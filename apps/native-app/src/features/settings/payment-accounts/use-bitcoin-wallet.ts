@@ -3,6 +3,7 @@ import {
   bitcoinWallets,
   defaultBitcoinWallet,
 } from "@payky/app-shared/bitcoin-payment-method"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   saveCashuAccount,
   saveLightningAddressAccount,
@@ -15,6 +16,13 @@ import {
 } from "@payky/core/modules/account/account-queries"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useCashuRunToast } from "../../../hooks/use-run-toast.ts"
+
+/** Each wallet's name, as the Bitcoin screen's tabs and the methods list say it. */
+export const walletLabelKeys = {
+  cashu: "settings.paymentAccounts.method.cashu",
+  lightningAddress: "settings.paymentAccounts.method.lightningAddress",
+  spark: "settings.bitcoin.wallet.spark",
+} satisfies Record<BitcoinWallet, TranslationKey>
 
 /** The queries `useBitcoinWallet` reads, for a screen's preload list. */
 export const bitcoinWalletQueries = [

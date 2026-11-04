@@ -92,7 +92,7 @@ const TriggerFrame = styled(View, {
   cursor: "web:pointer",
 
   variants: {
-    active: { true: { bg: "tabs-active" } },
+    active: { true: { bg: "primary" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })

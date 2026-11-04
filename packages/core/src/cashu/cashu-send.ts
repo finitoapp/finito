@@ -1,7 +1,6 @@
 import type { Proof } from "@cashu/cashu-ts"
 import { err, ok, type Task } from "@evolu/common"
 import { defineError } from "../error.ts"
-import type { CashuProofCopy } from "../modules/cashu/cashu-queries.ts"
 import {
   CashuAmount,
   type CashuOperationId,
@@ -17,6 +16,14 @@ import {
   recoverFromCollision,
   withCashuCounter,
 } from "./cashu-counters.ts"
+import {
+  availableAt,
+  feeOf,
+  proofCountOf,
+  setStates,
+  totalOf,
+  toWalletProofs,
+} from "./cashu-melt.ts"
 import { toNewCashuProofs } from "./cashu-restore.ts"
 import type { CashuTopupDeps } from "./cashu-topup.ts"
 import {
@@ -26,7 +33,6 @@ import {
   checkProofStates,
   classifyMintError,
   encodeCashuToken,
-  type LoadedCashuWallet,
   loadCashuWallet,
   type MintFailure,
   MintRejected,
@@ -59,22 +65,12 @@ export type CashuSendNotPendingError = ReturnType<
   typeof createSendNotPendingError
 >
 
-export interface CashuSendCost {
-  /** What the recipient gets. */
-  readonly amount: number
-  /** The most the swap's input fee can take: the fee of every proof it may consume. */
-  readonly maxFee: number
-  /** The mint's balance the cost was sized against. */
-  readonly available: number
-}
-
 export interface CashuSendReceipt {
   readonly operationId: CashuOperationId
   readonly tokenText: CashuTokenText
   readonly amount: number
   /** The input fee the swap took. */
   readonly feePaid: number
-  readonly changeAmount: number
 }
 
 export type CashuSendError =
@@ -83,93 +79,43 @@ export type CashuSendError =
   | AmountConsumedByFeeError
   | CashuSendInsufficientFundsError
 
-const availableAt = (
-  proofs: ReadonlyArray<CashuProofCopy>,
-  mint: MintUrl
-): ReadonlyArray<CashuProofCopy> =>
-  proofs.filter(
-    (proof) =>
-      proof.mint === mint && proof.state === "available" && proof.unit === "sat"
-  )
-
-const toWalletProofs = (proofs: ReadonlyArray<CashuProofCopy>) =>
-  proofs.map((proof) => ({
-    id: proof.keysetId,
-    amount: proof.amount,
-    secret: proof.secret,
-    C: proof.c,
-  }))
-
-const total = (proofs: ReadonlyArray<{ readonly amount: number }>) =>
-  proofs.reduce((sum, proof) => sum + proof.amount, 0)
-
-/** How many proofs `amount` splits into: one per set bit. */
-const proofCountOf = (amount: number): number =>
-  amount.toString(2).replaceAll("0", "").length
-
-const feeOf = (loaded: LoadedCashuWallet, count: number): number =>
-  count === 0
-    ? 0
-    : Number(loaded.wallet.getFeesForKeyset(count, loaded.keysetId))
-
-const setStates = async (
-  deps: CashuTopupDeps,
-  proofs: ReadonlyArray<CashuProofCopy>,
-  state: "available" | "spent"
-) => {
-  for (const proof of proofs)
-    await deps.cashuShardStore.updateProof(proof.id, {
-      state,
-      ...(state === "available" ? { operationId: null } : {}),
-    })
-}
-
-export interface CashuSendBalance {
-  /** The mint's `available` proofs as stored, without asking the mint. */
-  readonly available: number
-  /** The most a swap's input fee can take: the fee of every proof it may consume. */
+export interface CashuSendCost {
+  /** What the recipient gets. */
+  readonly amount: number
+  /** The most the swap's input fee can take: the fee of every proof it may consume. */
   readonly maxFee: number
 }
 
-/** The balance a send from `mint` draws on, and the most its fee can be. Nothing changes state. */
-export const cashuSendBalance =
-  (mint: MintUrl): Task<CashuSendBalance, MintFailure, CashuTopupDeps> =>
-  async (run) => {
-    const loadedResult = await run(loadCashuWallet(mint))
-    if (!loadedResult.ok) return loadedResult
-    const stored = availableAt(
-      await run.deps.cashuShardStore.loadProofs(),
-      mint
-    )
-    return ok({
-      available: total(stored),
-      maxFee: Number(
-        loadedResult.value.wallet.getFeesForProofs(toWalletProofs(stored))
-      ),
-    })
-  }
-
 /**
- * What sending `amount` from `mint` can cost at most, read from stored
- * proofs; nothing changes state (`sendCashu` asks the mint).
+ * What sending from `mint` can cost at most, read from stored proofs;
+ * nothing changes state (`sendCashu` asks the mint). `amount` left out
+ * sizes the send to everything the mint holds less the most the fee can
+ * take, so the whole balance leaves in one token.
  */
 export const costOfCashuSend =
   ({
     mint,
-    amount,
+    amount: askedAmount,
   }: {
     readonly mint: MintUrl
-    readonly amount: number
+    readonly amount?: number
   }): Task<CashuSendCost, CashuSendError, CashuTopupDeps> =>
   async (run) => {
     const loadedResult = await run(loadCashuWallet(mint))
     if (!loadedResult.ok) return loadedResult
-    const recipientFee = feeOf(loadedResult.value, proofCountOf(amount))
+    const loaded = loadedResult.value
+    const stored = availableAt(
+      await run.deps.cashuShardStore.loadProofs(),
+      mint
+    )
+    const available = totalOf(stored)
+    const maxFee = Number(
+      loaded.wallet.getFeesForProofs(toWalletProofs(stored))
+    )
+    const amount = askedAmount ?? available - maxFee
+    const recipientFee = feeOf(loaded, proofCountOf(amount))
     if (amount <= recipientFee)
       return err(AmountConsumedByFee({ amount, fee: recipientFee }))
-    const balance = await run(cashuSendBalance(mint))
-    if (!balance.ok) return balance
-    const { available, maxFee } = balance.value
     if (available < amount + maxFee)
       return err(
         createInsufficientFundsError({
@@ -178,7 +124,7 @@ export const costOfCashuSend =
           available,
         })
       )
-    return ok({ amount, maxFee, available })
+    return ok({ amount, maxFee })
   }
 
 /**
@@ -213,7 +159,7 @@ export const sendCashu =
     const sources = stored.filter(
       (_, index) => states.value[index] === "unspent"
     )
-    const available = total(sources)
+    const available = totalOf(sources)
     const maxFee = Number(
       loaded.wallet.getFeesForProofs(toWalletProofs(sources))
     )
@@ -326,13 +272,12 @@ export const sendCashu =
           sources.filter((proof) => !reused.has(proof.secret)),
           "spent"
         )
-        const changeAmount = total(change)
+        const changeAmount = totalOf(change)
         return ok({
           operationId,
           tokenText,
           amount: sentAmount,
           feePaid: available - sentAmount - changeAmount,
-          changeAmount,
         })
       }
     )

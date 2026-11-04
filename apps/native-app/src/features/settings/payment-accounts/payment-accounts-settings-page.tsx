@@ -1,6 +1,7 @@
 import {
   expandPaymentMethodOrder,
   groupPaymentMethodOrder,
+  movePaymentMethodGroup,
   type PaymentMethodGroup,
 } from "@payky/app-shared/bitcoin-payment-method"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
@@ -18,6 +19,7 @@ import {
 } from "@payky/core/modules/account/account-queries"
 import { setPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import {
   getFiatCurrency,
   getPaymentMethodOrder,
@@ -45,6 +47,7 @@ import {
 } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
+import { animateTo } from "../../../components/motion.ts"
 import { Screen } from "../../../components/screen.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
@@ -58,13 +61,16 @@ import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { hapticButtonPress } from "../../../platform/haptics.ts"
-import { isReduceMotionEnabled } from "../../../platform/reduce-motion.ts"
 import {
   isSwitchioInstalled,
   isSwitchioSupported,
 } from "../../../platform/switchio.ts"
 import { control, fontSize, fontWeight } from "../../../theme/tokens.ts"
-import { bitcoinWalletQueries, useBitcoinWallet } from "./use-bitcoin-wallet.ts"
+import {
+  bitcoinWalletQueries,
+  useBitcoinWallet,
+  walletLabelKeys,
+} from "./use-bitcoin-wallet.ts"
 
 interface PaymentMethodRowState {
   readonly icon: LucideIcon
@@ -92,19 +98,6 @@ const paymentAccountsPageQueries = [
   qerkoPluginQuery,
   ...bitcoinWalletQueries,
 ]
-
-/**
- * What the Bitcoin row says it pays into: the main wallet by name, or the
- * Lightning address itself (settings/0003).
- */
-const bitcoinWalletLabelKeys = {
-  cashu: "settings.paymentAccounts.method.cashu",
-  lightningAddress: null,
-  spark: "settings.bitcoin.wallet.spark",
-} satisfies Record<
-  NonNullable<ReturnType<typeof useBitcoinWallet>["enabled"]>,
-  TranslationKey | null
->
 
 /** How long the other rows take to make room for the dragged one. */
 const shiftTiming = { duration: 150, easing: Easing.out(Easing.quad) }
@@ -202,13 +195,13 @@ export function PaymentAccountsSettingsPage() {
       enabled: bitcoin.enabled !== undefined,
       available: bitcoin.enabled !== undefined,
       canEnable: true,
-      status: (() => {
-        if (bitcoin.enabled === undefined) return null
-        if (bitcoin.enabled === "lightningAddress")
-          return bitcoin.lightningAddress ?? null
-        const key = bitcoinWalletLabelKeys[bitcoin.enabled]
-        return key === null ? null : t(key)
-      })(),
+      // The main wallet by name, or the Lightning address itself (settings/0003).
+      status:
+        bitcoin.enabled === undefined
+          ? null
+          : bitcoin.enabled === "lightningAddress"
+            ? (bitcoin.lightningAddress ?? null)
+            : t(walletLabelKeys[bitcoin.enabled]),
       href: "/settings/payment-accounts/bitcoin",
       saveEnabled: (enabled) =>
         enabled ? bitcoin.enable() : bitcoin.select(null),
@@ -290,19 +283,20 @@ export function PaymentAccountsSettingsPage() {
     draft !== null && draft.key === orderKey ? draft.order : order
   const firstAvailable = shownOrder.find((method) => rows[method].available)
 
-  const store = (nextOrder: ReadonlyArray<PaymentMethodGroup>) =>
+  const storeExpanded = (nextOrder: ReadonlyArray<DefaultPaymentMethod>) =>
     runToast(async (run) => {
-      await run.ok(
-        setPaymentMethodOrder(expandPaymentMethodOrder(nextOrder, storedOrder))
-      )
+      await run.ok(setPaymentMethodOrder(nextOrder))
     })
+  const store = (nextOrder: ReadonlyArray<PaymentMethodGroup>) =>
+    storeExpanded(expandPaymentMethodOrder(nextOrder, storedOrder))
 
   const move = (method: PaymentMethodGroup, offset: -1 | 1) => {
-    const index = order.indexOf(method)
-    const neighbour = order[index + offset]
-    if (index === -1 || neighbour === undefined) return
-
-    void store(order.with(index, neighbour).with(index + offset, method))
+    const moved = movePaymentMethodGroup(
+      storedOrder,
+      order.indexOf(method),
+      offset
+    )
+    if (moved !== undefined) void storeExpanded(moved)
   }
 
   const [rowHeights] = useState(() => new Map<PaymentMethodGroup, number>())
@@ -324,17 +318,8 @@ export function PaymentAccountsSettingsPage() {
     to: number
   } | null>(null)
 
-  const shiftTo = (offset: Animated.Value, value: number) => {
-    if (isReduceMotionEnabled()) {
-      offset.setValue(value)
-      return
-    }
-    Animated.timing(offset, {
-      toValue: value,
-      ...shiftTiming,
-      useNativeDriver: true,
-    }).start()
-  }
+  const shiftTo = (offset: Animated.Value, value: number) =>
+    animateTo(offset, value, shiftTiming)
 
   /** The index the dragged row lands on after moving `dy`: a neighbour is passed once the finger crosses half of it. */
   const landingIndex = (from: number, dy: number) => {

@@ -39,12 +39,7 @@ import {
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
 import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
-import {
-  Collapsible,
-  LightningAddress,
-  Mono,
-  SatsWithFiat,
-} from "./withdraw-parts.tsx"
+import { Collapsible, LightningAddress, Mono } from "./withdraw-parts.tsx"
 
 /** Spark documents no confirmation times per exit speed, so each option says what it trades off. */
 const exitSpeedOptions: ReadonlyArray<{
@@ -135,13 +130,13 @@ function OnchainReview({
           <Mono value={formatAddressGroups(quote.onchainAddress)} />
         </DetailRow>
         <DetailRow label={t("withdraw.review.amount")}>
-          <SatsWithFiat sats={withdrawalRecipientSats(quote, exitSpeed)} />
+          <BitcoinAmount sats={withdrawalRecipientSats(quote, exitSpeed)} />
         </DetailRow>
         <DetailRow label={t("withdraw.review.fee")}>
-          <SatsWithFiat sats={feeSats} />
+          <BitcoinAmount sats={feeSats} />
         </DetailRow>
         <DetailRow label={t("withdraw.review.total")} emphasize>
-          <SatsWithFiat sats={totalSats} />
+          <BitcoinAmount sats={totalSats} />
         </DetailRow>
       </YStack>
     </>
@@ -183,7 +178,7 @@ function LightningReview({
         </DetailRow>
       )}
       <DetailRow label={t("withdraw.review.amount")}>
-        <SatsWithFiat sats={quote.amountSats} />
+        <BitcoinAmount sats={quote.amountSats} />
       </DetailRow>
       <DetailRow label={t("withdraw.review.lightningFee")}>
         {quote.invoice.sparkFallbackIdentity !== null
@@ -194,7 +189,7 @@ function LightningReview({
             })}
       </DetailRow>
       <DetailRow label={t("withdraw.review.maxTotal")} emphasize>
-        <SatsWithFiat sats={quote.amountSats + quote.maxFeeSats} />
+        <BitcoinAmount sats={quote.amountSats + quote.maxFeeSats} />
       </DetailRow>
       <ExpiryRow msLeft={msLeft} />
       <Text color="muted-foreground">{t("withdraw.review.remainder")}</Text>
@@ -230,11 +225,11 @@ export const useMsLeft = (deadline: number): number => {
 /** Shared Spark/Cashu review card; send handlers stay in their flow owners. */
 export function WithdrawReviewCard({
   children,
-  recipientComment,
+  recipientComment = null,
   comment,
   error,
-  nearlyExpired,
-  expired,
+  nearlyExpired = false,
+  expired = false,
   confirming,
   requoting,
   uncertain,
@@ -244,11 +239,12 @@ export function WithdrawReviewCard({
   onOpenHistory,
 }: {
   readonly children: ReactNode
-  readonly recipientComment: string | null
+  readonly recipientComment?: string | null
   readonly comment: string | null
   readonly error: string | null
-  readonly nearlyExpired: boolean
-  readonly expired: boolean
+  /** A quote that expires: unset for a send that holds until confirmed. */
+  readonly nearlyExpired?: boolean
+  readonly expired?: boolean
   readonly confirming: boolean
   readonly requoting: boolean
   /** A send may or may not have happened: nothing may be confirmed again from here. */

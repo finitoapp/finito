@@ -20,9 +20,7 @@ import {
 import { TimestampMs } from "@payky/core/modules/shared/schema"
 import { createDefaultSparkPaymentWallet } from "@payky/core/spark/spark-wallet"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { router } from "expo-router"
 import { useAtomValue } from "jotai"
-import ArrowUpRight from "lucide-react-native/icons/arrow-up-right"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import KeyRound from "lucide-react-native/icons/key-round"
 import ReceiptText from "lucide-react-native/icons/receipt-text"
@@ -66,15 +64,14 @@ import {
 } from "../../../components/ui/field.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { Switch } from "../../../components/ui/switch.tsx"
-import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { useAccess } from "../../../core/use-access.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { BitcoinBalance } from "../../shared/bitcoin-amount.tsx"
 import { useSparkBalance } from "../../shared/use-spark-balance.ts"
+import { WalletBody } from "../../shared/wallet-body.tsx"
 
 const privacyModeQueryKey = (
   activeAccountId: string,
@@ -217,36 +214,25 @@ function SparkWalletBalance({ accountId }: { readonly accountId: AccountId }) {
   const { t } = useTranslation()
   const balance = useSparkBalance(accountId)
   return (
-    <YStack gap={24}>
-      <YStack py={16}>
-        <BitcoinBalance sats={balance ?? 0} testID="spark-balance" />
-      </YStack>
-      {balance !== null && balance > 0 ? (
-        <Button
-          size="lg"
-          iconStart={ArrowUpRight}
-          label={t("settings.cashuAccount.withdraw")}
-          testID="spark-withdraw"
-          onPress={() => router.push("/withdraw/new")}
-        />
-      ) : null}
-      <VerticalNav
-        items={[
-          {
-            kind: "link",
-            href: "/withdraw",
-            icon: <Icon icon={Clock3} color="muted-foreground" />,
-            label: t("settings.withdrawals.title"),
-          },
-          {
-            kind: "link",
-            href: "/settings/payment-accounts/spark/transactions",
-            icon: <Icon icon={ReceiptText} color="muted-foreground" />,
-            label: t("withdraw.transactions.title"),
-          },
-        ]}
-      />
-    </YStack>
+    <WalletBody
+      sats={balance ?? 0}
+      withdrawHref="/withdraw/new"
+      testID="spark-balance"
+      items={[
+        {
+          kind: "link",
+          href: "/withdraw",
+          icon: <Icon icon={Clock3} color="muted-foreground" />,
+          label: t("settings.withdrawals.title"),
+        },
+        {
+          kind: "link",
+          href: "/settings/payment-accounts/spark/transactions",
+          icon: <Icon icon={ReceiptText} color="muted-foreground" />,
+          label: t("withdraw.transactions.title"),
+        },
+      ]}
+    />
   )
 }
 

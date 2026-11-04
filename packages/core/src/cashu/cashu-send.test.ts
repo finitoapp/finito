@@ -45,7 +45,7 @@ describe("sendCashu (withdraw/0015)", () => {
     const cost = await run.orThrow(
       costOfCashuSend({ mint: testMintUrl, amount: 300 })
     )
-    expect(cost).toMatchObject({ amount: 300, available: 1000 })
+    expect(cost).toEqual({ amount: 300, maxFee: 0 })
 
     const receipt = await run.orThrow(
       sendCashu({ mint: testMintUrl, amount: 300 })

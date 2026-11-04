@@ -3,12 +3,8 @@ import type { CashuWithdrawalQuote } from "@payky/core/modules/withdraw/withdraw
 import { Text, YStack } from "tamagui"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
-import {
-  Collapsible,
-  LightningAddress,
-  Mono,
-  SatsWithFiat,
-} from "./withdraw-parts.tsx"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
+import { Collapsible, LightningAddress, Mono } from "./withdraw-parts.tsx"
 import {
   EXPIRY_WARNING_MS,
   ExpiryRow,
@@ -81,18 +77,18 @@ export function CashuWithdrawReviewStep({
           </DetailRow>
         )}
         <DetailRow label={t("withdraw.review.amount")}>
-          <SatsWithFiat sats={quote.amountSats} />
+          <BitcoinAmount sats={quote.amountSats} />
         </DetailRow>
         <DetailRow label={t("withdraw.cashu.review.feeReserve")}>
-          <SatsWithFiat sats={quote.cost.feeReserve} />
+          <BitcoinAmount sats={quote.cost.feeReserve} />
         </DetailRow>
         {quote.cost.inputFee > 0 ? (
           <DetailRow label={t("withdraw.cashu.review.inputFee")}>
-            <SatsWithFiat sats={quote.cost.inputFee} />
+            <BitcoinAmount sats={quote.cost.inputFee} />
           </DetailRow>
         ) : null}
         <DetailRow label={t("withdraw.review.maxTotal")} emphasize>
-          <SatsWithFiat sats={quote.cost.maxTotal} />
+          <BitcoinAmount sats={quote.cost.maxTotal} />
         </DetailRow>
         <ExpiryRow msLeft={msLeft} />
         <Text color="muted-foreground">

@@ -1,4 +1,3 @@
-import { formatAmountParts } from "@payky/app-shared/format-money"
 import { satsToFiat } from "@payky/core/modules/shared/money"
 import { useAtom } from "jotai"
 import { Platform } from "react-native"
@@ -7,7 +6,11 @@ import { bitcoinUnitAtom } from "../../atoms/bitcoin-unit.ts"
 import { AmountFigure } from "../../components/amount-figure.tsx"
 import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatSatsAmount } from "../../lib/format-money.ts"
+import {
+  type AmountParts,
+  formatAmountParts,
+  formatSatsAmount,
+} from "../../lib/format-money.ts"
 import { fontSize } from "../../theme/tokens.ts"
 
 /**
@@ -21,38 +24,60 @@ import { fontSize } from "../../theme/tokens.ts"
  * it is written to the whole unit with a "~" before it ("~1 234 Kč"); the
  * sats are exact, and so is nothing: zero has no "~".
  */
-export function useBitcoinAmount(sats: number) {
+/** The unit every bitcoin amount is read in, and the tap that switches it. */
+export function useBitcoinUnit() {
+  const { t } = useTranslation()
+  const [unit, setUnit] = useAtom(bitcoinUnitAtom)
+  return {
+    unit,
+    switchLabel: t("settings.cashuAccount.balance.switchUnit"),
+    toggle: () => setUnit((current) => (current === "fiat" ? "sats" : "fiat")),
+  }
+}
+
+/** A sats amount as `AmountParts`: "12 300" with "sats" after it. */
+export const satsAmountParts = (
+  sats: number,
+  locale: string,
+  t: ReturnType<typeof useTranslation>["t"]
+): AmountParts => {
+  const number = formatSatsAmount(sats, locale)
+  return {
+    number,
+    unit: t("withdraw.amount.unitSats"),
+    unitFirst: false,
+    text: t("withdraw.sats", { amount: number }),
+  }
+}
+
+function useBitcoinAmount(sats: number) {
   const { t } = useTranslation()
   const locale = useLocale()
   const fiat = useBtcFiat()
-  const [unit, setUnit] = useAtom(bitcoinUnitAtom)
+  const { unit, switchLabel, toggle } = useBitcoinUnit()
   const switchable = fiat.rate !== null
-  const inFiat = switchable && unit === "fiat"
-  const rate = fiat.rate ?? 0
-  const parts = inFiat
-    ? formatAmountParts(
-        Math.round(satsToFiat({ sats, exchangeRate: rate })),
-        fiat.currency,
-        locale,
-        { fraction: "whenNonZero" }
-      )
-    : null
-  const satsNumber = formatSatsAmount(sats, locale)
+  if (!switchable || unit === "sats") {
+    return {
+      ...satsAmountParts(sats, locale, t),
+      switchable,
+      switchLabel,
+      toggle,
+    }
+  }
+  // An estimate at a rate that moves: whole, and "~" unless it is nothing.
   const about = sats === 0 ? "" : "~"
+  const parts = formatAmountParts(
+    Math.round(satsToFiat({ sats, exchangeRate: fiat.rate ?? 0 })),
+    fiat.currency,
+    locale
+  )
   return {
-    /** The figure alone: "~1 234", "0" or "12 300". */
-    number: parts === null ? satsNumber : `${about}${parts.number}`,
-    /** "Kč" or "sats". */
-    unit: parts === null ? t("withdraw.amount.unitSats") : parts.unit,
-    unitFirst: parts === null ? false : parts.unitFirst,
-    /** The figure with its unit, as one text. */
-    text:
-      parts === null
-        ? t("withdraw.sats", { amount: satsNumber })
-        : `${about}${parts.text}`,
+    ...parts,
+    number: `${about}${parts.number}`,
+    text: `${about}${parts.text}`,
     switchable,
-    switchLabel: t("settings.cashuAccount.balance.switchUnit"),
-    toggle: () => setUnit((current) => (current === "fiat" ? "sats" : "fiat")),
+    switchLabel,
+    toggle,
   }
 }
 
@@ -94,16 +119,13 @@ export function BitcoinAmount({
 
 /**
  * A wallet's balance: the one amount figure every screen headlines with
- * (`AmountFigure`), tapped to switch the unit. `caption` sits under it
- * (syncing, no rate).
+ * (`AmountFigure`), tapped to switch the unit.
  */
 export function BitcoinBalance({
   sats,
-  caption,
   testID,
 }: {
   readonly sats: number
-  readonly caption?: string
   readonly testID?: string
 }) {
   const amount = useBitcoinAmount(sats)
@@ -113,7 +135,6 @@ export function BitcoinBalance({
       unit={amount.unit}
       unitFirst={amount.unitFirst}
       label={amount.text}
-      caption={caption}
       onPress={amount.switchable ? amount.toggle : undefined}
       pressLabel={amount.switchable ? amount.switchLabel : undefined}
       testID={testID}

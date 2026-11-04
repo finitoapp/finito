@@ -4,13 +4,13 @@ import {
   type CashuSendCost,
   type CashuSendError,
   type CashuSendNotPendingError,
-  cashuSendBalance,
   costOfCashuSend,
   returnCashuSend,
   sendCashu,
 } from "../../cashu/cashu-send.ts"
 import type { CashuTopupDeps } from "../../cashu/cashu-topup.ts"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
+import type { ResolvedLinkyContact } from "../../integrations/linky/linky-contact.ts"
 import {
   type CashuTokenNotDeliveredError,
   sendCashuTokenMessage,
@@ -35,6 +35,7 @@ import {
   PositiveInteger,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import { markWithdrawalFailed } from "./withdraw-actions.ts"
 import type { WithdrawalId } from "./withdraw-types.ts"
 
 /**
@@ -46,12 +47,8 @@ import type { WithdrawalId } from "./withdraw-types.ts"
  * token, and failed, with the proofs the wallet's again, when none does.
  */
 
-export interface CashuSendRecipient {
-  readonly pubkey: string
-  readonly npub: string
-  /** The NIP-05 address the merchant named them by; `null` for a key given outright. */
-  readonly address: string | null
-}
+/** Who the token goes to: a Linky contact as resolved. */
+export type CashuSendRecipient = ResolvedLinkyContact
 
 export interface CashuSendQuote {
   readonly mint: MintUrl
@@ -81,19 +78,12 @@ export const quoteCashuSend =
     readonly amountSats?: PositiveInteger
   }): Task<CashuSendQuote, QuoteCashuSendError, CashuTopupDeps> =>
   async (run) => {
-    let amount = amountSats ?? 0
-    if (amountSats === undefined) {
-      // The fee of every proof is the most a whole-balance send can cost.
-      const balance = await run(cashuSendBalance(mint))
-      if (!balance.ok) return balance
-      amount = balance.value.available - balance.value.maxFee
-    }
-    const cost = await run(costOfCashuSend({ mint, amount }))
+    const cost = await run(costOfCashuSend({ mint, amount: amountSats }))
     if (!cost.ok) return cost
     return ok({
       mint,
       recipient,
-      amountSats: amount,
+      amountSats: cost.value.amount,
       withdrawAll: amountSats === undefined,
       cost: cost.value,
     })
@@ -170,13 +160,7 @@ export const executeCashuSendWithdrawal =
     })
 
     const fail = () =>
-      runMutationWithCompletion((options) =>
-        run.deps.evolu.update(
-          "withdrawal",
-          { id: withdrawalId, failedAt: now(), failureReason: "rejected" },
-          { ...options, owner }
-        )
-      )
+      run.ok(markWithdrawalFailed({ withdrawalId, reason: "rejected" }))
 
     const sent = await run(
       sendCashu({ mint: quote.mint, amount: quote.amountSats })

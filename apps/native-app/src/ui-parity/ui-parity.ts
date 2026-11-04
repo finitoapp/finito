@@ -30,7 +30,6 @@ const rootKitModules = new Set([
   "scan-code-scanner-dialog",
   "scanner-torch-button",
   "search-input",
-  "sliding-pill",
   "success-panel",
   "vertical-nav",
 ])
