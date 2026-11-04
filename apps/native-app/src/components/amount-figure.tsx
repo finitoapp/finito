@@ -17,6 +17,15 @@ const sizes = {
   lg: { number: "4xl", unit: "xs" },
 } as const
 
+/**
+ * The touch area a pressable figure adds above and below its `lg` number
+ * (a 40 line): enough to reach a large control's 56.
+ */
+const pressSlop = {
+  top: (control.lg - 40) / 2,
+  bottom: (control.lg - 40) / 2,
+}
+
 export function AmountFigure({
   number,
   unit,
@@ -56,7 +65,11 @@ export function AmountFigure({
       self={align === "center" ? "stretch" : "flex-start"}
       gap={4}
       px={onPress === undefined ? 0 : 12}
-      minH={onPress === undefined ? undefined : control.lg}
+      // A pressable figure reaches a large control's height through its
+      // touch area, not its box, so it takes the same room as a plain one:
+      // the payment screen switches between the two with the method, and a
+      // taller box pushed the amount away from "Pay" and back.
+      hitSlop={onPress === undefined ? undefined : pressSlop}
       justify="center"
       rounded={shape.control}
       bg={
