@@ -100,6 +100,7 @@ export default {
     "./plugins/with-library-compile-sdk.cjs",
     "./plugins/with-release-proguard-rules.cjs",
     "./plugins/with-release-signing.cjs",
+    "./plugins/with-debug-app-id.cjs",
     "./plugins/with-e2e-cleartext.cjs",
   ],
 } satisfies ExpoConfig
