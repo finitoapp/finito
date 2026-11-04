@@ -172,7 +172,12 @@ export function TabsList({ children, ...frameProps }: TabsListProps) {
 
 const TriggerFrame = styled(View, {
   name: "TabsTrigger",
-  flex: 1,
+  // An equal share of the list, written as its longhands: Yoga reads an
+  // explicit `flexBasis: "auto"` as no basis at all, so under the `flex: 1`
+  // shorthand a trigger sized by its content (the payment screen's methods)
+  // still started from a zero basis on Android and lost its label.
+  grow: 1,
+  flexBasis: 0,
   self: "stretch",
   flexDirection: "row",
   items: "center",
