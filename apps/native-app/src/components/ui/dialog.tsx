@@ -156,7 +156,5 @@ export const DialogFooter = styled(View, {
   mx: -16,
   mb: -16,
   p: 16,
-  borderTopWidth: 1,
-  borderTopColor: "border-color",
   bg: "muted-50",
 })

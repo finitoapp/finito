@@ -38,9 +38,6 @@ function SandboxBanner() {
         items="center"
         gap={8}
         px={12}
-        borderWidth={1}
-        borderTopWidth={0}
-        borderColor="warning-30"
         bg="warning-10"
         borderBottomLeftRadius={radius.lg}
         borderBottomRightRadius={radius.lg}

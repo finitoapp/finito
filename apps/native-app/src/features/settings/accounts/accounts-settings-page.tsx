@@ -301,8 +301,6 @@ function AccountAvatar({
           height: 36,
           borderRadius: 18,
           backgroundColor: theme.muted.val,
-          borderWidth: active ? 2 : 0,
-          borderColor: theme.primary.val,
         }}
         onError={() => setFailedPicture(picture)}
       />

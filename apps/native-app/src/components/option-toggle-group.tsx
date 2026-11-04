@@ -23,8 +23,9 @@ interface OptionToggleGroupProps<Value extends string> {
  * Web `apps/web-app/src/components/option-toggle-group.tsx`: a vertical
  * single-select list of icon + title + description options, as an outline
  * `ToggleGroup` with `spacing={2}`. An item is `justify-start gap-6 px-6
- * py-4`, selected `border-primary bg-primary/5` with a primary check; the
- * title is semibold, the description `text-xs text-muted-foreground`.
+ * py-4`, selected the soft accent (web: `border-primary bg-primary/5`, no
+ * frame here) with a primary check; the title is semibold, the
+ * description `text-xs text-muted-foreground`.
  */
 export function OptionToggleGroup<Value extends string>({
   value,
@@ -53,7 +54,7 @@ export function OptionToggleGroup<Value extends string>({
             gap={24}
             px={24}
             py={16}
-            {...(selected ? { bg: "primary-5", borderColor: "primary" } : {})}
+            {...(selected ? { bg: "accent" } : {})}
           >
             {option.icon === undefined ? null : (
               <Icon icon={option.icon} color="muted-foreground" />

@@ -231,15 +231,7 @@ function PermissionsEditor({
         ))}
       </FieldGroup>
       {granted.has("admin") ? (
-        <XStack
-          gap={8}
-          rounded={6.8}
-          borderWidth={1}
-          borderColor="destructive-40"
-          bg="destructive-5"
-          p={12}
-          role="alert"
-        >
+        <XStack gap={8} rounded={6.8} bg="destructive-tint" p={12} role="alert">
           <YStack pt={2}>
             <Icon icon={TriangleAlert} color="destructive" />
           </YStack>

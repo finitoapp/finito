@@ -532,7 +532,9 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       TabsContent:
         "web renders a TabsContent per method only as a screen-reader line; native draws the active method's content directly and states it in the prompt",
       SlidingPillTrack:
-        "web gives the control's own border motion's layout animation; RN cannot scale a parent without its children, so the border is drawn behind the control by sliding-pill.tsx",
+        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, the active one an accent pill with its icon and name, with no sliding pill",
+      SlidingPillSegmentContent:
+        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, the active one an accent pill with its icon and name, with no sliding pill",
     },
   },
   {
@@ -1892,14 +1894,23 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     note: "Finito's one Bitcoin method (settings/0002): a wallet choice over the Cashu, Lightning address and Spark bodies, which web lists as three methods.",
     allowedDifferences: {
       FadeHeader: "the screen's title, Bitcoin",
-      OptionToggleGroup:
-        "the wallet choice: Cashu, the Lightning address or Spark",
+      Tabs: "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
+      TabsList:
+        "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
+      TabsTrigger:
+        "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
     },
   },
   {
     native: "src/features/notifications/notifications-page.tsx",
     web: ["apps/web-app/src/features/notifications/notifications-page.tsx"],
     status: "matched",
+  },
+  {
+    native: "src/features/shared/bitcoin-amount.tsx",
+    web: [],
+    status: "matched",
+    note: "Finito reads every bitcoin amount in one unit at a time, the shop's money or sats, switched by a tap (`bitcoinUnitAtom`); web's SatsWithFiat shows both.",
   },
   {
     native: "src/features/shared/activity-tabs.tsx",

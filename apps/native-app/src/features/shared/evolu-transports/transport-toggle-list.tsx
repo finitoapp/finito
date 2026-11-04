@@ -61,8 +61,7 @@ export function TransportToggleList({
                       h={8}
                       shrink={0}
                       rounded="full"
-                      borderWidth={1}
-                      borderColor="muted-foreground"
+                      bg="muted-foreground-30"
                     />
                     <Text
                       fontSize="xs"

@@ -211,12 +211,6 @@ export function WithdrawFormFields({
     onchainMinimumSats,
   })
   const sats = (amount: number) => formatSatsAmount(amount, locale)
-  const equivalent =
-    typedSats === null
-      ? null
-      : draft.unit === "sats"
-        ? fiat.approx(typedSats)
-        : t("withdraw.sats", { amount: sats(typedSats) })
 
   const submit = async () => {
     if (pendingRef.current) return
@@ -417,11 +411,7 @@ export function WithdrawFormFields({
               />
               {invoiceAmountSats !== null ? (
                 <Text fontSize={13} color="muted-foreground">
-                  {`${t("withdraw.amount.fromInvoice")} ${fiat.approx(invoiceAmountSats) ?? ""}`.trim()}
-                </Text>
-              ) : equivalent !== null && !effectiveWithdrawAll ? (
-                <Text fontSize={13} color="muted-foreground">
-                  {equivalent}
+                  {t("withdraw.amount.fromInvoice")}
                 </Text>
               ) : null}
               {state.range === null ? null : (
@@ -449,7 +439,9 @@ export function WithdrawFormFields({
               )}
               {availableSats === null ? null : (
                 <Text fontSize={13} color="muted-foreground">
-                  {`${t("withdraw.amount.available", { amount: sats(availableSats) })} ${fiat.approx(availableSats) ?? ""}`.trim()}
+                  {t("withdraw.amount.available", {
+                    amount: sats(availableSats),
+                  })}
                 </Text>
               )}
             </KitField>

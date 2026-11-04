@@ -433,9 +433,7 @@ function Bubble({
       px={12}
       py={8}
       rounded={radius["2xl"]}
-      bg={own ? "primary" : "card"}
-      borderWidth={own ? 0 : 1}
-      borderColor="card-ring"
+      bg={own ? "primary" : "surface-raised"}
     >
       {typeof children === "string" ? (
         <Text

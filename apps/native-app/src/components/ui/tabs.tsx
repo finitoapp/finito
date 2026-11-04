@@ -10,9 +10,9 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * Tailwind mirrored: `Tabs` `flex-col gap-2`; `TabsList` `h-8 rounded-lg
  * p-[3px] bg-muted`; `TabsTrigger` `flex-1 rounded-md border
  * border-transparent px-1.5 py-0.5 text-sm font-medium text-foreground/60`
- * (dark `text-muted-foreground`), active `bg-background text-foreground`
- * (dark `border-input bg-input/30`); `TabsContent` `flex-1`. The active
- * trigger's light-theme `shadow-sm` is left out.
+ * (dark `text-muted-foreground`); `TabsContent` `flex-1`. The active
+ * trigger is the accent pill with the accent's text, as the menu bar's
+ * (Linky's `TabBar`), where web tints it `bg-background`.
  *
  * Controlled (`value` + `onValueChange`) or not (`defaultValue`), as web.
  * A trigger with its own `onPress` (web's `render={<Link />}`, a tab that is
@@ -105,7 +105,7 @@ const TriggerText = styled(Text, {
   color: "tabs-trigger",
 
   variants: {
-    active: { true: { color: "color" } },
+    active: { true: { color: "primary-foreground" } },
   } as const,
 })
 

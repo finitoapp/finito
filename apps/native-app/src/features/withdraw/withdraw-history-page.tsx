@@ -25,13 +25,14 @@ import { LoadingView } from "../../components/loading-view.tsx"
 import { screenPaddingX } from "../../components/screen.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
-import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
 import { useCashuWalletSnapshot } from "../shared/cashu/use-cashu-wallet-snapshot.ts"
+import { useSparkBalance } from "../shared/use-spark-balance.ts"
 import { useCashuAccountId } from "./use-cashu-withdraw-data.ts"
-import { useSparkAccountId, useSparkBalance } from "./use-withdraw-data.ts"
+import { useSparkAccountId } from "./use-withdraw-data.ts"
 import { WithdrawNoAccountCard } from "./withdraw-no-account-card.tsx"
 import { WithdrawalStatusBadge } from "./withdraw-parts.tsx"
 import { withdrawRoutes } from "./withdraw-routes.ts"
@@ -113,23 +114,10 @@ function CashuBalanceLine() {
   )
 }
 
+/** The wallet's balance in the unit every bitcoin amount is read in, tapped to switch. */
 function BalanceSummary({ balance }: { readonly balance: number | null }) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const fiat = useBtcFiat()
   if (balance === null) return null
-  return (
-    <YStack items="flex-end">
-      <Text fontWeight="600">
-        {t("withdraw.history.balance", {
-          amount: formatSatsAmount(balance, locale),
-        })}
-      </Text>
-      <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-        {fiat.approx(balance)}
-      </Text>
-    </YStack>
-  )
+  return <BitcoinAmount sats={balance} />
 }
 
 function WithdrawHistory({

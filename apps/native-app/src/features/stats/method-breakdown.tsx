@@ -117,7 +117,7 @@ function ReceivedBreakdown({
   if (kpis === undefined) return null
 
   return (
-    <YStack gap="1" pt="3" borderTopWidth={1} borderColor="border-color">
+    <YStack gap="1" pt="3">
       <BreakdownLine label={t("stats.kpi.breakdown.sales")}>
         {money(kpis.gross, row.currency)}
       </BreakdownLine>
@@ -327,12 +327,7 @@ export function ExpectedCashSummary({
               {money(row.expected, row.currency)}
             </Text>
           </YStack>
-          <YStack
-            gap="1.5"
-            pt="3"
-            borderTopWidth={1}
-            borderColor="border-color"
-          >
+          <YStack gap="1.5" pt="3">
             <CashLine label={t("stats.cash.in")}>
               {money(row.cashIn, row.currency)}
             </CashLine>

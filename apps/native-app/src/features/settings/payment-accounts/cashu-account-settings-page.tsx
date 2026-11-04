@@ -1,12 +1,11 @@
-import { satsToFiat } from "@payky/core/modules/shared/money"
 import { router } from "expo-router"
 import ArrowUpRight from "lucide-react-native/icons/arrow-up-right"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import Landmark from "lucide-react-native/icons/landmark"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
-import { Suspense, useState } from "react"
-import { ActivityIndicator, Platform } from "react-native"
-import { Text, View, YStack } from "tamagui"
+import { Suspense } from "react"
+import { ActivityIndicator } from "react-native"
+import { Text, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { LoadingView } from "../../../components/loading-view.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -18,10 +17,8 @@ import {
 import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
-import { useBtcFiat } from "../../../hooks/use-btc-fiat.ts"
-import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
-import { formatAmount, formatSatsAmount } from "../../../lib/format-money.ts"
-import { control, fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
+import { useTranslation } from "../../../hooks/use-translation.ts"
+import { BitcoinBalance } from "../../shared/bitcoin-amount.tsx"
 import { useCashuWalletSnapshot } from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
 
 export function CashuAccountSettingsPage() {
@@ -85,17 +82,14 @@ function CashuAccountSettingsContent() {
 
   return (
     <YStack gap={24}>
-      <YStack items="center" py={24} gap={4}>
-        <WalletBalance sats={total} />
-        {snapshot.hydrated ? null : (
-          <Text
-            fontSize={fontSize.sm}
-            lineHeight={fontSize.sm}
-            color="muted-foreground"
-          >
-            {t("settings.cashuAccount.syncing")}
-          </Text>
-        )}
+      <YStack py={16}>
+        <BitcoinBalance
+          sats={total}
+          caption={
+            snapshot.hydrated ? undefined : t("settings.cashuAccount.syncing")
+          }
+          testID="cashu-balance"
+        />
       </YStack>
       {total > 0 ? (
         <Button
@@ -123,56 +117,5 @@ function CashuAccountSettingsContent() {
         ]}
       />
     </YStack>
-  )
-}
-
-/**
- * The wallet's sats as money: the amount in the shop's currency at today's
- * rate, or in sats while tapped, and in sats alone while there is no rate.
- * Linky's `Amount`: a 48 bold figure with its unit beside it.
- */
-function WalletBalance({ sats }: { readonly sats: number }) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const fiat = useBtcFiat()
-  const [showSats, setShowSats] = useState(false)
-  const inFiat = fiat.rate !== null && !showSats
-  const value = inFiat
-    ? formatAmount(
-        satsToFiat({ sats, exchangeRate: fiat.rate ?? 0 }),
-        fiat.currency,
-        locale
-      )
-    : t("withdraw.sats", { amount: formatSatsAmount(sats, locale) })
-  const switchable = fiat.rate !== null
-  return (
-    <View
-      px={16}
-      minH={control.lg}
-      justify="center"
-      rounded={shape.control}
-      bg={switchable ? "transparent press:neutral-soft" : "transparent"}
-      cursor={switchable ? "web:pointer" : undefined}
-      accessible
-      role={switchable ? "button" : undefined}
-      aria-label={value}
-      {...(Platform.OS === "web" && switchable
-        ? { title: t("settings.cashuAccount.balance.switchUnit") }
-        : {})}
-      onPress={
-        switchable ? () => setShowSats((current) => !current) : undefined
-      }
-      testID="cashu-balance"
-    >
-      <Text
-        fontSize="3xl"
-        lineHeight="3xl"
-        fontWeight={fontWeight.bold}
-        fontVariant={["tabular-nums"]}
-        text="center"
-      >
-        {value}
-      </Text>
-    </View>
   )
 }

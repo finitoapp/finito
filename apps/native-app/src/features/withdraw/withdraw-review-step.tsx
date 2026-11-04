@@ -36,9 +36,9 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "../../components/ui/toggle-group.tsx"
-import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../lib/format-money.ts"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
 import {
   Collapsible,
   LightningAddress,
@@ -86,7 +86,6 @@ function OnchainReview({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const fiat = useBtcFiat()
   const feeSats = quote.feeQuote[exitSpeed].totalFeeSats
   const totalSats = computeTotalDebitedSats({
     amountSats: quote.amountSats,
@@ -112,7 +111,7 @@ function OnchainReview({
               key={option.value}
               value={option.value}
               disabled={unavailable || confirming}
-              aria-label={`${t(option.label)}. ${t(option.hint)}. ${t("withdraw.sats", { amount: formatSatsAmount(optionFee, locale) })}. ${fiat.approx(optionFee) ?? ""}`}
+              aria-label={`${t(option.label)}. ${t(option.hint)}. ${t("withdraw.sats", { amount: formatSatsAmount(optionFee, locale) })}`}
               h="auto"
               w="100%"
               justify="space-between"
@@ -125,16 +124,7 @@ function OnchainReview({
                   {t(option.hint)}
                 </Text>
               </YStack>
-              <YStack items="flex-end">
-                <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                  {t("withdraw.sats", {
-                    amount: formatSatsAmount(optionFee, locale),
-                  })}
-                </Text>
-                <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                  {fiat.approx(optionFee)}
-                </Text>
-              </YStack>
+              <BitcoinAmount sats={optionFee} size="xs" />
             </ToggleGroupItem>
           )
         })}

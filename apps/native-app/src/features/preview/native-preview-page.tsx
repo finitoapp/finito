@@ -39,14 +39,7 @@ export function NativePreviewPage() {
           <Text color="muted-foreground">
             Expo, React Native and Tamagui are ready.
           </Text>
-          <View
-            backgroundColor="card"
-            borderColor="border-color"
-            borderWidth={1}
-            rounded="lg"
-            p="4"
-            gap="3"
-          >
+          <View backgroundColor="card" rounded="lg" p="4" gap="3">
             <Text fontWeight="600">Shared business logic</Text>
             <Text>
               CZK cash rounding: 123.45 →{" "}

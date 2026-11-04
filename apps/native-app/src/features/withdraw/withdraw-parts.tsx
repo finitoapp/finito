@@ -12,10 +12,9 @@ import {
   Collapsible as CollapsibleRoot,
   CollapsibleTrigger,
 } from "../../components/ui/collapsible.tsx"
-import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
-import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatSatsAmount } from "../../lib/format-money.ts"
+import { useTranslation } from "../../hooks/use-translation.ts"
 import type { ThemeColor } from "../../theme/themes.ts"
+import { BitcoinAmount } from "../shared/bitcoin-amount.tsx"
 
 /** The withdrawal screens' small shared display pieces. */
 
@@ -47,6 +46,11 @@ export function Mono({ value }: { readonly value: string }) {
 }
 
 /** The amount in sats, with its fiat equivalent when a rate is known. */
+/**
+ * An amount in the unit every bitcoin amount is read in (the shop's money
+ * or sats, `bitcoinUnitAtom`), tapped to switch; web's `SatsWithFiat`
+ * shows both at once. The name stays web's for the parity map.
+ */
 export function SatsWithFiat({
   sats,
   align = "end",
@@ -54,21 +58,7 @@ export function SatsWithFiat({
   readonly sats: number
   readonly align?: "start" | "end"
 }) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const approx = useBtcFiat().approx(sats)
-  return (
-    <YStack items={align === "start" ? "flex-start" : "flex-end"}>
-      <Text>
-        {t("withdraw.sats", { amount: formatSatsAmount(sats, locale) })}
-      </Text>
-      {approx === null ? null : (
-        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-          {approx}
-        </Text>
-      )}
-    </YStack>
-  )
+  return <BitcoinAmount sats={sats} align={align} />
 }
 
 /** `name@` plain and the domain emphasized: only TLS to that domain vouches for the recipient (withdraw/0005). */

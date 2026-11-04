@@ -20,9 +20,12 @@ import {
 import { TimestampMs } from "@payky/core/modules/shared/schema"
 import { createDefaultSparkPaymentWallet } from "@payky/core/spark/spark-wallet"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { router } from "expo-router"
 import { useAtomValue } from "jotai"
-import ArrowUpFromLine from "lucide-react-native/icons/arrow-up-from-line"
+import ArrowUpRight from "lucide-react-native/icons/arrow-up-right"
+import Clock3 from "lucide-react-native/icons/clock-3"
 import KeyRound from "lucide-react-native/icons/key-round"
+import ReceiptText from "lucide-react-native/icons/receipt-text"
 import Wallet from "lucide-react-native/icons/wallet"
 import { useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
@@ -70,6 +73,8 @@ import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { BitcoinBalance } from "../../shared/bitcoin-amount.tsx"
+import { useSparkBalance } from "../../shared/use-spark-balance.ts"
 
 const privacyModeQueryKey = (
   activeAccountId: string,
@@ -129,6 +134,9 @@ function SparkAccountSettingsContent({
 
   return (
     <>
+      {accountId === undefined ? null : (
+        <SparkWalletBalance accountId={accountId} />
+      )}
       <Card>
         <CardHeader>
           <CardTitle>{t("settings.sparkAccount.form.title")}</CardTitle>
@@ -196,29 +204,49 @@ function SparkAccountSettingsContent({
           </FieldGroup>
         </CardContent>
       </Card>
-
-      {secret === null ? null : (
-        <VerticalNav
-          items={[
-            {
-              kind: "link",
-              href: "/withdraw",
-              icon: <Icon icon={ArrowUpFromLine} color="muted-foreground" />,
-              label: (
-                <YStack gap="1">
-                  <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                    {t("settings.withdrawals.title")}
-                  </Text>
-                  <Text fontSize={13} color="muted-foreground">
-                    {t("settings.withdrawals.description")}
-                  </Text>
-                </YStack>
-              ),
-            },
-          ]}
-        />
-      )}
     </>
+  )
+}
+
+/**
+ * Fazole's wallet screen for the Spark wallet, as the Linky wallet's: the
+ * balance alone, "Withdraw funds" while there is anything to withdraw, then
+ * the rows for the withdrawals and the wallet's transactions.
+ */
+function SparkWalletBalance({ accountId }: { readonly accountId: AccountId }) {
+  const { t } = useTranslation()
+  const balance = useSparkBalance(accountId)
+  return (
+    <YStack gap={24}>
+      <YStack py={16}>
+        <BitcoinBalance sats={balance ?? 0} testID="spark-balance" />
+      </YStack>
+      {balance !== null && balance > 0 ? (
+        <Button
+          size="lg"
+          iconStart={ArrowUpRight}
+          label={t("settings.cashuAccount.withdraw")}
+          testID="spark-withdraw"
+          onPress={() => router.push("/withdraw/new")}
+        />
+      ) : null}
+      <VerticalNav
+        items={[
+          {
+            kind: "link",
+            href: "/withdraw",
+            icon: <Icon icon={Clock3} color="muted-foreground" />,
+            label: t("settings.withdrawals.title"),
+          },
+          {
+            kind: "link",
+            href: "/settings/payment-accounts/spark/transactions",
+            icon: <Icon icon={ReceiptText} color="muted-foreground" />,
+            label: t("withdraw.transactions.title"),
+          },
+        ]}
+      />
+    </YStack>
   )
 }
 

@@ -316,9 +316,7 @@ function PinPad({
               w={12}
               h={12}
               rounded={radius.full}
-              borderWidth={1}
-              borderColor="foreground-40"
-              bg={index < pin.length ? "color" : "transparent"}
+              bg={index < pin.length ? "color" : "foreground-40"}
             />
           )
         )}
@@ -395,9 +393,7 @@ function PhraseForm({
     <YStack gap={16} width="100%" maxW={384}>
       <Text
         rounded={radius.md}
-        borderWidth={1}
-        borderColor="destructive-40"
-        bg="destructive-5"
+        bg="destructive-tint"
         p={12}
         fontSize={fontSize.sm}
         lineHeight={fontSize.sm}

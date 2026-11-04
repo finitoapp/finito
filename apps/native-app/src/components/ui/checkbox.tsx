@@ -18,7 +18,6 @@ const CheckboxFrame = styled(View, {
   w: 16,
   h: 16,
   rounded: 4,
-  borderWidth: 1,
   items: "center",
   justify: "center",
   hitSlop: 16,
@@ -26,8 +25,8 @@ const CheckboxFrame = styled(View, {
 
   variants: {
     checked: {
-      true: { bg: "primary", borderColor: "primary" },
-      false: { bg: "checkbox-bg", borderColor: "input" },
+      true: { bg: "primary" },
+      false: { bg: "surface-raised" },
     },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
