@@ -12,6 +12,7 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  View as RNView,
   type ScrollView,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
@@ -42,6 +43,18 @@ export const ScreenScrollContext = createContext<Animated.Value | null>(null)
 /** The screen's vertical scroll offset, for `FadeHeader`; `null` outside a `Screen`. */
 export const useScreenScroll = () => useContext(ScreenScrollContext)
 
+/**
+ * The height `ScrollAwayHeader` draws over the top of the scroll below it,
+ * which that scroll leaves free in place of its top padding; `null` outside
+ * one. Inside one, the scroll reports its offset to the header's
+ * `ScreenScrollContext` and sits in the header's safe area.
+ */
+export const ScrollAwayHeaderInsetContext = createContext<number | null>(null)
+
+/** `ScrollAwayHeaderInsetContext`'s height, or `null` outside a `ScrollAwayHeader`. */
+export const useScrollAwayHeaderInset = () =>
+  useContext(ScrollAwayHeaderInsetContext)
+
 interface ScrollEvent {
   readonly nativeEvent: {
     readonly contentOffset: { readonly y: number }
@@ -64,6 +77,9 @@ const STICK_TO_BOTTOM_PX = 80
  * reader is at the bottom, leaves them be once they scroll up, with a button
  * back to the latest, and jumps down whenever a non-null key changes, as for
  * the reader's own new message.
+ *
+ * Under a `ScrollAwayHeader` it starts below the header and drives it with
+ * its scroll, inside the header's safe area rather than one of its own.
  */
 export function Screen({
   children,
@@ -77,7 +93,12 @@ export function Screen({
   const theme = useTheme()
   const { t } = useTranslation()
   const column = useColumnScroll()
-  const [scrollY] = useState(() => new Animated.Value(0))
+  const headerInset = useScrollAwayHeaderInset()
+  const headerScroll = useScreenScroll()
+  const [ownScrollY] = useState(() => new Animated.Value(0))
+  const scrollY =
+    headerInset !== null && headerScroll !== null ? headerScroll : ownScrollY
+  const SafeArea = headerInset === null ? SafeAreaView : RNView
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null)
   const chat = followKey !== undefined
   // A ref for following, state only for the button.
@@ -92,7 +113,7 @@ export function Screen({
     scrollRef.current?.scrollToEnd()
   }, [followKey])
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background.val }}>
+    <SafeArea style={{ flex: 1, backgroundColor: theme.background.val }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -106,6 +127,7 @@ export function Screen({
               contentContainerStyle={{
                 flexGrow: 1,
                 padding: screenPadding,
+                paddingTop: headerInset ?? screenPadding,
                 paddingHorizontal: screenPaddingX + column.padding,
                 gap: screenGap,
               }}
@@ -147,6 +169,6 @@ export function Screen({
         </ScreenScrollContext>
         {footer}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </SafeArea>
   )
 }

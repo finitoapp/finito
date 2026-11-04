@@ -11,6 +11,7 @@ import {
   screenPadding,
   screenPaddingX,
   useScreenScroll,
+  useScrollAwayHeaderInset,
 } from "../../components/screen.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
@@ -19,7 +20,6 @@ import { useColumnScroll } from "../../components/web-column.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { paymentMethodIcon } from "../shared/payment-method-display.ts"
-import { useActivityHeader } from "./activity-shell.tsx"
 
 /**
  * The pieces the payment and bill lists share, so the two activity tabs read
@@ -178,7 +178,8 @@ function ActivityDay({ group }: { readonly group: ActivityGroup }) {
  * Day-grouped, paginated list (`useInfinitePages`) as one `FlatList` of day
  * cards with stable keys, so live updates move rows instead of remounting
  * the list. An empty history is the titled card with web's empty state.
- * The shell's header and tabs lead the list, so they scroll with it.
+ * It starts below `ActivityLayout`'s header and tabs and scrolls them away
+ * with it (`ScrollAwayHeader`).
  */
 export function ActivityList({
   groups,
@@ -198,7 +199,7 @@ export function ActivityList({
   readonly isPending: boolean
   readonly loadMore: () => void
 }) {
-  const header = useActivityHeader()
+  const headerInset = useScrollAwayHeaderInset()
   const scrollY = useScreenScroll()
   const column = useColumnScroll()
   return (
@@ -209,6 +210,7 @@ export function ActivityList({
         // Padded inside the scroll, so the list and its scrollbar span the
         // screen's full width.
         padding: screenPadding,
+        paddingTop: headerInset ?? screenPadding,
         paddingHorizontal: screenPaddingX + column.padding,
       }}
       scrollEventThrottle={16}
@@ -220,7 +222,6 @@ export function ActivityList({
               { useNativeDriver: true }
             )
       }
-      ListHeaderComponent={header ?? undefined}
       data={groups}
       keyExtractor={(group) => group.key}
       onEndReachedThreshold={0.5}

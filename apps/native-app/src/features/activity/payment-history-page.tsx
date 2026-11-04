@@ -23,16 +23,11 @@ import {
   ActivityList,
   type ActivityRowData,
 } from "./activity-parts.tsx"
-import { ActivityShell } from "./activity-shell.tsx"
 import { PaymentStatusIcon } from "./payment-status-display.tsx"
 
-/** The Activity tab's payments list. */
+/** The Activity tab's payments list, under `ActivityLayout`'s header and tabs. */
 export function PaymentHistoryPage() {
-  return (
-    <ActivityShell active="payments">
-      <PaymentHistory />
-    </ActivityShell>
-  )
+  return <PaymentHistory />
 }
 
 function PaymentHistory() {

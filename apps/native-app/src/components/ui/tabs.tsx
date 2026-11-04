@@ -1,5 +1,14 @@
-import { createContext, type ReactNode, useContext, useState } from "react"
-import { type GetProps, styled, Text, View } from "tamagui"
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
+import { Animated, Easing, type LayoutRectangle } from "react-native"
+import { type GetProps, styled, Text, useTheme, View } from "tamagui"
+import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 
 /**
@@ -12,7 +21,13 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * border-transparent px-1.5 py-0.5 text-sm font-medium text-foreground/60`
  * (dark `text-muted-foreground`); `TabsContent` `flex-1`. The active
  * trigger is the accent pill with the accent's text, as the menu bar's
- * (Linky's `TabBar`), where web tints it `bg-background`.
+ * (Linky's `TabBar`), where web tints it `bg-background`. The pill is one
+ * view under the triggers that slides and resizes to the active one (web's
+ * `ActivityTabs` slides Base UI's indicator the same way), on the menu
+ * pill's 220 ms ease-out; reduced motion moves it at once. A list mounted
+ * anew (a tab that is its own route) places it without sliding, so a pill
+ * that should travel needs its list to stay mounted, as `ActivityLayout`
+ * keeps Activity's.
  *
  * Controlled (`value` + `onValueChange`) or not (`defaultValue`), as web.
  * A trigger with its own `onPress` (web's `render={<Link />}`, a tab that is
@@ -65,7 +80,7 @@ export function Tabs<Value extends string>(props: TabsProps<Value>) {
   )
 }
 
-export const TabsList = styled(View, {
+const ListFrame = styled(View, {
   name: "TabsList",
   role: "tablist",
   flexDirection: "row",
@@ -76,6 +91,84 @@ export const TabsList = styled(View, {
   rounded: shape.pill,
   bg: "neutral-soft",
 })
+
+/** Where each trigger of a list sits in it, for the pill. */
+const TriggerLayoutContext = createContext<
+  ((value: string, layout: LayoutRectangle) => void) | undefined
+>(undefined)
+
+/** The menu pill's slide (`menu-nav.tsx`): Linky's `base`, 220 ms ease-out. */
+const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
+
+/**
+ * The active trigger's box as animated values: placed at once the first
+ * time it is known, slid there on every later change. Left and width are
+ * layout props, which the native driver cannot animate.
+ */
+function usePillBox(target: LayoutRectangle | undefined) {
+  const [left] = useState(() => new Animated.Value(0))
+  const [width] = useState(() => new Animated.Value(0))
+  const placed = useRef(false)
+  const x = target?.x
+  const w = target?.width
+  useEffect(() => {
+    if (x === undefined || w === undefined) return
+    if (!placed.current || isReduceMotionEnabled()) {
+      left.setValue(x)
+      width.setValue(w)
+      placed.current = true
+      return
+    }
+    Animated.parallel([
+      Animated.timing(left, { toValue: x, ...slide, useNativeDriver: false }),
+      Animated.timing(width, { toValue: w, ...slide, useNativeDriver: false }),
+    ]).start()
+  }, [x, w, left, width])
+  return { left, width }
+}
+
+export type TabsListProps = GetProps<typeof ListFrame>
+
+export function TabsList({ children, ...frameProps }: TabsListProps) {
+  const theme = useTheme()
+  const { value } = useTabs()
+  const [layouts, setLayouts] = useState<
+    Readonly<Record<string, LayoutRectangle>>
+  >({})
+  const target = layouts[value]
+  const { left, width } = usePillBox(target)
+  const report = (trigger: string, layout: LayoutRectangle) => {
+    setLayouts((current) => {
+      const known = current[trigger]
+      return known !== undefined &&
+        known.x === layout.x &&
+        known.y === layout.y &&
+        known.width === layout.width &&
+        known.height === layout.height
+        ? current
+        : { ...current, [trigger]: layout }
+    })
+  }
+  return (
+    <ListFrame {...frameProps}>
+      {target === undefined ? null : (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: target.y,
+            height: target.height,
+            left,
+            width,
+            borderRadius: shape.pill,
+            backgroundColor: theme.primary.val,
+          }}
+        />
+      )}
+      <TriggerLayoutContext value={report}>{children}</TriggerLayoutContext>
+    </ListFrame>
+  )
+}
 
 const TriggerFrame = styled(View, {
   name: "TabsTrigger",
@@ -92,7 +185,6 @@ const TriggerFrame = styled(View, {
   cursor: "web:pointer",
 
   variants: {
-    active: { true: { bg: "primary" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
@@ -110,7 +202,7 @@ const TriggerText = styled(Text, {
 })
 
 export interface TabsTriggerProps
-  extends Omit<GetProps<typeof TriggerFrame>, "children" | "active"> {
+  extends Omit<GetProps<typeof TriggerFrame>, "children"> {
   readonly value: string
   /** Already translated text, or custom content. */
   readonly children: ReactNode
@@ -123,14 +215,19 @@ export function TabsTrigger({
   children,
   disabled = false,
   onPress,
+  onLayout,
   ...frameProps
 }: TabsTriggerProps) {
   const tabs = useTabs()
+  const report = useContext(TriggerLayoutContext)
   const active = tabs.value === value
   return (
     <TriggerFrame
-      active={active}
       disabled={disabled}
+      onLayout={(event) => {
+        report?.(value, event.nativeEvent.layout)
+        onLayout?.(event)
+      }}
       onPress={
         disabled
           ? undefined
