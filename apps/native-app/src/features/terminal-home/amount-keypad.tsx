@@ -16,6 +16,7 @@ import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
 import { useCallback, useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { replay } from "../../components/motion.ts"
 import { Button } from "../../components/ui/button.tsx"
 import { useChangePulse } from "../../hooks/use-change-pulse.ts"
@@ -44,8 +45,8 @@ const bubbleKeyframes = {
  * press re-renders only the display and the Charge button, not the keys.
  * `useState`, not `useMemo`: React may discard a memo and clear the amount.
  *
- * Drawn as web's `TerminalPaymentKeypad`: a spacer, the amount (`text-6xl
- * font-semibold tabular-nums`), the 3-column grid of round ghost keys
+ * Drawn as web's `TerminalPaymentKeypad`: a spacer, the amount (the
+ * `AmountFigure` every screen headlines with, at its largest), the 3-column grid of round ghost keys
  * (`text-3xl`, rows `gap-y-10` around keys that overlap by `-m-6`) and the
  * round outline Charge button (`h-14 rounded-full text-base font-bold`),
  * spread over the height, with web's two motion effects: the amount
@@ -136,44 +137,19 @@ function AmountDisplay({
 
   const pulse = useChangePulse(formattedAmount)
 
-  // Fazole's `Amount`: the unit as a small bold muted caption on the
-  // number's baseline, where the locale puts it. The whole reads as one
-  // heading. The transform sits on a wrapper so `adjustsFontSizeToFit`
-  // measures the untransformed text.
-  const unit = (
-    <Text
-      fontSize={fontSize.base}
-      lineHeight={fontSize.base}
-      fontWeight={fontWeight.bold}
-      color="muted-foreground"
-    >
-      {parts.unit}
-    </Text>
-  )
+  // The one amount figure (`AmountFigure`), at its largest. The transform
+  // sits on a wrapper so `adjustsFontSizeToFit` measures the untransformed
+  // text.
   return (
     <YStack items="center">
       <Animated.View style={[{ maxWidth: "100%" }, pulse]}>
-        <XStack
-          items="baseline"
-          justify="center"
-          gap={8}
-          role="heading"
-          aria-label={formattedAmount}
-        >
-          {parts.unitFirst ? unit : null}
-          <Text
-            fontSize="6xl"
-            lineHeight="6xl"
-            fontWeight={fontWeight.semibold}
-            fontVariant={["tabular-nums"]}
-            adjustsFontSizeToFit
-            numberOfLines={1}
-            shrink={1}
-          >
-            {parts.number}
-          </Text>
-          {parts.unitFirst ? null : unit}
-        </XStack>
+        <AmountFigure
+          size="xl"
+          number={parts.number}
+          unit={parts.unit}
+          unitFirst={parts.unitFirst}
+          label={formattedAmount}
+        />
       </Animated.View>
     </YStack>
   )

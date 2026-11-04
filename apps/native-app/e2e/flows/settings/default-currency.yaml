@@ -1,6 +1,6 @@
 # web settings-misc.spec.ts: "switch the default fiat currency". The select
-# is opened by its current value: on Android its label is the field label's
-# text too.
+# sits on the profile screen and reads as the currency's sign ("$"); the
+# sheet names each currency.
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -8,17 +8,17 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
-- tapOn: ${output.t["settings.fiat.usd.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
+- tapOn: ${output.t["settings.fiat.usd.symbol"]}
 - tapOn: ${output.t["settings.fiat.czk.title"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.fiat.czk.title"]}
+    visible: ${output.t["settings.fiat.czk.symbol"]}
     timeout: 10000
 # The choice survives a restart.
 - runFlow:
     file: ../../subflows/reopen.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
-- assertVisible: ${output.t["settings.fiat.czk.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
+- assertVisible: ${output.t["settings.fiat.czk.symbol"]}

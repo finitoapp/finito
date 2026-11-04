@@ -2,6 +2,7 @@
 # shows a placeholder for an account that never configured it". The disabled
 # VAT-payer checkbox is checked on Android only (Maestro's web driver reports
 # no enabled state).
+# The business fields live on the profile screen (Finito).
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -9,8 +10,8 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 # The placeholder sits inside the country select.
 - assertVisible:
     text: ${output.re(output.t["settings.legalEntity.country.placeholder"])}
@@ -22,5 +23,5 @@ tags: [settings]
       platform: Android
     commands:
       - assertVisible:
-          id: ${output.re(output.t["settings.legalEntity.vatPayer.label"])}
+          id: ${output.re(output.t["settings.profile.vatPayer"])}
           enabled: false

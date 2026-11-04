@@ -24,7 +24,8 @@ const axisHeight = 20
 /**
  * Sales per hour for a one-day period, per day otherwise, in the account
  * currency (the first of the period's currencies), tips stacked on top and
- * the comparison as wider, paler bars behind. Tap a bar for its figures.
+ * the comparison as wider, paler bars behind, all in the one gold the
+ * statistics read in. Tap a bar for its figures.
  *
  * ponytail: a period with several currencies charts only the first; one
  * chart per currency if a mixed-currency shop ever needs it.
@@ -161,16 +162,16 @@ export function RevenueChart({
                     y={y(previousSales)}
                     width={slot * 0.88}
                     height={plotHeight - y(previousSales)}
-                    fill={muted}
-                    fillOpacity={0.3}
+                    fill={sales}
+                    fillOpacity={0.22}
                   />
                   <Rect
                     x={x + slot * 0.06}
                     y={y(previousSales + previousTips)}
                     width={slot * 0.88}
                     height={y(previousSales) - y(previousSales + previousTips)}
-                    fill={muted}
-                    fillOpacity={0.14}
+                    fill={sales}
+                    fillOpacity={0.1}
                   />
                   <Rect
                     x={innerX}
@@ -238,8 +239,8 @@ export function RevenueChart({
           label={t("stats.chart.tips")}
         />
         <LegendItem
-          color={muted}
-          opacity={0.3}
+          color={sales}
+          opacity={0.22}
           label={formatStatsRange(ranges.comparisonWhole, locale)}
         />
       </XStack>

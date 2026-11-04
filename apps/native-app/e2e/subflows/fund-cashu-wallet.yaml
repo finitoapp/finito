@@ -10,6 +10,10 @@ appId: ${APP_ID}
     file: tap-label.yaml
     env:
       LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
 - runFlow: to-tip-step.yaml
 - tapOn: ${output.re(output.t["paymentTip.none"])}
 - runFlow:

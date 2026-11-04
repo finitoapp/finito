@@ -1,4 +1,5 @@
 import { sqliteTrue } from "@evolu/common"
+import { formatMoneyParts } from "@payky/app-shared/format-money"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
   parseTipFixedAmounts,
@@ -17,6 +18,7 @@ import {
 import { Redirect, useLocalSearchParams } from "expo-router"
 import { useRef, useState } from "react"
 import { Text, YStack } from "tamagui"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
 import { Screen } from "../../components/screen.tsx"
@@ -85,6 +87,9 @@ function PaymentTipForm({
 
   const formatMinor = (value: number) =>
     formatMoney({ value: NonNegativeInteger(value), currency }, locale)
+  const orderTotal = formatMoneyParts({ value: amount, currency }, locale, {
+    fraction: "whenNonZero",
+  })
   const customMinor = decimalAmountToMinorUnits({
     currency,
     value: customTip,
@@ -154,16 +159,12 @@ function PaymentTipForm({
         >
           {t("paymentTip.orderTotal")}
         </Text>
-        <Text
-          fontSize="4xl"
-          lineHeight="4xl"
-          fontWeight={fontWeight.semibold}
-          fontVariant={["tabular-nums"]}
-          role="heading"
-          aria-level={1}
-        >
-          {formatMinor(amount)}
-        </Text>
+        <AmountFigure
+          number={orderTotal.number}
+          unit={orderTotal.unit}
+          unitFirst={orderTotal.unitFirst}
+          label={orderTotal.text}
+        />
       </YStack>
 
       <YStack flex={1} justify="center" gap={16} py={16}>

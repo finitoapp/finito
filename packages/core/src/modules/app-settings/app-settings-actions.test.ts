@@ -1,7 +1,6 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
-import { createCashuTest, testCashuMasterKey } from "../../testing/cashu.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -19,7 +18,6 @@ import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import {
   completeOnboarding,
   finishOnboarding,
-  finishOnboardingOnLinkyWallet,
   markRecoveryPhraseVerified,
   requireNotOnboarded,
   setEnabledHomeModes,
@@ -267,25 +265,5 @@ describe("finishOnboarding", () => {
       [],
       [],
     ])
-  })
-})
-
-describe("finishOnboardingOnLinkyWallet", () => {
-  test("enables the Cashu wallet shared with Linky instead of Spark (onboarding/0009)", async () => {
-    await using t = await createCashuTest()
-    const { evolu } = t.deps
-    await using run = testCreateRun({
-      ...t.deps,
-      masterKey: testCashuMasterKey,
-    })
-    await run.orThrow(finishOnboardingOnLinkyWallet({ ...input, iban: null }))
-    await expect
-      .poll(() => evolu.loadQuery(cashuAccountQuery))
-      .toEqual([expect.objectContaining({ isDeleted: 0 })])
-    await expect
-      .poll(() => evolu.loadQuery(cashRegisterAccountQuery))
-      .toEqual([expect.objectContaining({ isDeleted: 0, currency: "CZK" })])
-    expect(await evolu.loadQuery(sparkAccountQuery)).toEqual([])
-    await expect.poll(() => evolu.loadQuery(settingsQuery)).toHaveLength(1)
   })
 })

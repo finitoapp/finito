@@ -10,6 +10,7 @@ import {
   paymentStatusLabelKey,
 } from "@payky/app-shared/activity-labels"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
+import { formatMoneyParts } from "@payky/app-shared/format-money"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { useNow } from "@payky/app-shared/use-now"
 import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client"
@@ -48,6 +49,7 @@ import RotateCw from "lucide-react-native/icons/rotate-cw"
 import { Suspense, useMemo, useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { CollisionAlert } from "../../components/collision-alert.tsx"
 import { DetailRow } from "../../components/detail-row.tsx"
 import { NotFoundCard } from "../../components/not-found-card.tsx"
@@ -182,6 +184,11 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
   // A deleted or never-synced id: the same page, not an error.
   if (payment === undefined)
     return <NotFoundCard messageKey="paymentDetail.notFound" />
+  const headline = formatMoneyParts(
+    { value: payment.amount, currency: payment.currency },
+    locale,
+    { fraction: "whenNonZero" }
+  )
 
   const {
     status,
@@ -242,17 +249,13 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
         </CardHeader>
         <CardContent gap={12}>
           <YStack gap={4}>
-            <Text
-              fontSize="4xl"
-              lineHeight="4xl"
-              fontWeight={fontWeight.semibold}
-              fontVariant={["tabular-nums"]}
-            >
-              {formatMoney(
-                { value: payment.amount, currency: payment.currency },
-                locale
-              )}
-            </Text>
+            <AmountFigure
+              align="start"
+              number={headline.number}
+              unit={headline.unit}
+              unitFirst={headline.unitFirst}
+              label={headline.text}
+            />
             {payment.cashReceivedAmount === null ||
             payment.cashReceivedAmount === payment.amount ? null : (
               <Text

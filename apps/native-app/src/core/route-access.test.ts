@@ -74,7 +74,6 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/profile")).toBe("admin")
     expect(requiredPermission("/settings/security")).toBe("admin")
     expect(requiredPermission("/settings/evolu-export")).toBe("admin")
-    expect(requiredPermission("/settings/legal-entity")).toBe("settings")
     expect(requiredPermission("/settings/tax-rates")).toBe("settings")
     expect(requiredPermission("/settings/tips")).toBe("settings")
     expect(requiredPermission("/settings/payment-number-series")).toBe(

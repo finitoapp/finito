@@ -17,7 +17,6 @@ import { getDeviceLocaleForLanguage } from "@payky/core/evolu/device-client"
 import { publishNostrProfileName } from "@payky/core/integrations/nostr/nostr-client"
 import {
   finishOnboarding,
-  finishOnboardingOnLinkyWallet,
   requireNotOnboarded,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
@@ -46,7 +45,6 @@ import {
   FieldLabel,
 } from "../../components/ui/field.tsx"
 import { Input } from "../../components/ui/input.tsx"
-import { useCashuAppRun } from "../../hooks/use-app-run.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
 import {
   useDeviceEvoluQuery,
@@ -90,7 +88,6 @@ const ONBOARDING_PADDING_X = 20
 export function OnboardingPage() {
   const { language, t } = useTranslation()
   const runToast = useRunToast()
-  const cashuAppRun = useCashuAppRun()
   const setLocale = useSetLocale()
   const [settings] = useEvoluQuery(settingsQuery).data
   const [form, setForm] = useAtom(onboardingFormAtom)
@@ -165,15 +162,9 @@ export function OnboardingPage() {
       // locale follows the one that survived, once (as web does).
       setLocale(getDeviceLocaleForLanguage(language))
 
-      const input = createFinishOnboardingInput(validation.iban)
-      // Finito starts on the Linky wallet (onboarding/0009); a wallet whose
-      // store cannot be made falls back to Payky's Spark.
-      const finishOnLinkyWallet = async () => {
-        await using cashuRun = await cashuAppRun()
-        return await cashuRun(finishOnboardingOnLinkyWallet(input))
-      }
-      const finished = await finishOnLinkyWallet().catch(() =>
-        run(finishOnboarding(input))
+      // Finito starts on Spark, for now (onboarding/0010).
+      const finished = await run(
+        finishOnboarding(createFinishOnboardingInput(validation.iban))
       )
       if (!finished.ok) return "onboarding.alreadyOnboarded"
       setForm(initialOnboardingFormState)

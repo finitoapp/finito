@@ -9,6 +9,7 @@ import {
 } from "@evolu/common"
 import type { RequireExactlyOne, Simplify } from "type-fest"
 import { seedCashuDefaultMint } from "../../cashu/cashu-mints.ts"
+import type { CashuPaymentRequestLegs } from "../../cashu/cashu-payment-request.ts"
 import type { CashuShardStoreDep } from "../../cashu/cashu-shard-store.ts"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
@@ -805,6 +806,30 @@ export const saveCashuAccount =
       })
 
     return ok(id)
+  }
+
+/**
+ * What the Cashu wallet's payment QR carries (settings/0003): both legs,
+ * the mint's invoice alone or the NUT-18 request alone. Written on the
+ * account the wallet has; `null` while it has none.
+ */
+export const setCashuPaymentRequestLegs =
+  (
+    legs: CashuPaymentRequestLegs
+  ): Task<AccountId | null, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    const [current] = await evolu.loadQuery(cashuAccountQuery)
+    if (current === undefined) return ok(null)
+
+    await runMutationWithCompletion((options) =>
+      evolu.update(
+        "accountCashu",
+        { id: current.id, paymentRequestLegs: legs },
+        { ...options, owner: evoluOwner }
+      )
+    )
+    return ok(current.id)
   }
 
 /**

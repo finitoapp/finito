@@ -1,6 +1,9 @@
 import { Integer } from "@payky/core/modules/shared/schema"
 import { describe, expect, test } from "vitest"
-import { formatMoney as formatMoneyRaw } from "./format-money.ts"
+import {
+  formatMoneyParts,
+  formatMoney as formatMoneyRaw,
+} from "./format-money.ts"
 
 /** Intl writes no-break spaces; the expectations below use plain ones. */
 const formatMoney = (...args: Parameters<typeof formatMoneyRaw>) =>
@@ -36,5 +39,33 @@ describe("formatMoney", () => {
         whenNonZero
       )
     ).toBe("$5")
+  })
+})
+
+describe("formatMoneyParts", () => {
+  const parts = (...args: Parameters<typeof formatMoneyParts>) => {
+    const result = formatMoneyParts(...args)
+    return { ...result, text: result.text.replace(/ /gu, " ") }
+  }
+
+  test("splits the unit off where the locale puts it", () => {
+    expect(
+      parts({ value: Integer(12000), currency: "CZK" }, "cs-CZ", {
+        fraction: "whenNonZero",
+      })
+    ).toEqual({ number: "120", unit: "Kč", unitFirst: false, text: "120 Kč" })
+    expect(
+      parts({ value: Integer(500), currency: "USD" }, "en-US", {
+        fraction: "whenNonZero",
+      })
+    ).toEqual({ number: "5", unit: "$", unitFirst: true, text: "$5" })
+  })
+
+  test("keeps the fraction and the grouping in the number", () => {
+    const result = parts({ value: Integer(123450), currency: "CZK" }, "cs-CZ", {
+      fraction: "whenNonZero",
+    })
+    expect(result.number.replace(/ /gu, " ")).toBe("1 234,50")
+    expect(result.unit).toBe("Kč")
   })
 })

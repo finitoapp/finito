@@ -414,6 +414,9 @@ Phase 1 has to prove all of this with real sync before anything is built on it.
     the relays Payky listens on;
   - `i` the payment id;
   - `d` a description, when the payment has one.
+- Finito's Cashu wallet settings can narrow the QR to one leg, the bare
+  `creqA…` request or the bare invoice (`accountCashu.paymentRequestLegs`,
+  settings/0003); both legs stay the default.
 - The QR is `bitcoin:?lightning=<bolt11>&creq=<creqA…>`. Payky has no
   BIP-321 builder today and writes its own, with its own tests, producing what
   Linky's `buildBip321PaymentUri` (`linkshu/src/paymentRequest/bip321.ts`)

@@ -1,5 +1,6 @@
 # web settings-legal-entity.spec.ts: "saves country and VAT-payer status, and
 # persists after reload". The checkbox state is checked on Android only.
+# The business fields live on the profile screen (Finito).
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -7,8 +8,8 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 - runFlow:
     file: ../../subflows/tap-id.yaml
     env:
@@ -20,19 +21,19 @@ tags: [settings]
 - runFlow:
     file: ../../subflows/tap-id.yaml
     env:
-      LABEL: ${output.t["settings.legalEntity.vatPayer.label"]}
+      LABEL: ${output.t["settings.profile.vatPayer"]}
 - runFlow:
     file: ../../subflows/assert-checked.yaml
     env:
-      LABEL: ${output.t["settings.legalEntity.vatPayer.label"]}
+      LABEL: ${output.t["settings.profile.vatPayer"]}
 # Both survive a restart.
 - runFlow:
     file: ../../subflows/reopen.yaml
     env:
-      ROUTE: settings/legal-entity
-      TEXT: ${output.t["settings.legalEntity.title"]}
+      ROUTE: settings/profile
+      TEXT: ${output.t["settings.profile.npub.label"]}
 - assertVisible: ${output.t["country.sk"]}
 - runFlow:
     file: ../../subflows/assert-checked.yaml
     env:
-      LABEL: ${output.t["settings.legalEntity.vatPayer.label"]}
+      LABEL: ${output.t["settings.profile.vatPayer"]}

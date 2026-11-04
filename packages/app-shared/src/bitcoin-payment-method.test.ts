@@ -1,6 +1,7 @@
 import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import { describe, expect, test } from "vitest"
 import {
+  defaultBitcoinWallet,
   expandPaymentMethodOrder,
   groupPaymentMethodOrder,
   movePaymentMethodGroup,
@@ -49,5 +50,9 @@ describe("one Bitcoin method (settings/0002)", () => {
     ])
     expect(movePaymentMethodGroup(order, 0, -1)).toBeUndefined()
     expect(movePaymentMethodGroup(order, 2, 1)).toBeUndefined()
+  })
+
+  test("starts on Spark for now (settings/0003)", () => {
+    expect(defaultBitcoinWallet).toBe("spark")
   })
 })

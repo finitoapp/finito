@@ -25,10 +25,10 @@ export const bitcoinWalletQueries = [
 
 /**
  * Finito's one Bitcoin method over the three wallet accounts
- * (settings/0002): which wallet is on, and a `select` that turns one on and
- * the others off in one run, or every one off with `null`. A Lightning
- * address can only be selected once one is saved (`hasLightningAddress`);
- * its form saves and selects in one go.
+ * (settings/0002, settings/0003): which wallet is the main one, and a
+ * `select` that turns one on and the others off in one run, or every one
+ * off with `null`. A Lightning address can only be selected once one is
+ * saved (`lightningAddress`); its form saves without selecting.
  */
 export function useBitcoinWallet() {
   const cashuRunToast = useCashuRunToast()
@@ -58,7 +58,7 @@ export function useBitcoinWallet() {
     })
 
   return {
-    /** The wallet in use, `undefined` while Bitcoin is off. */
+    /** The main wallet, the one the payment screen offers; `undefined` while Bitcoin is off. */
     enabled,
     /** The address entered so far, enabled or not. */
     lightningAddress: lightningAddress?.address,

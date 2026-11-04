@@ -1,4 +1,5 @@
 import type { IndexesConfig } from "@evolu/common/local-first"
+import { CashuPaymentRequestLegsSchema } from "../../cashu/cashu-payment-request.ts"
 import { DeviceId } from "../device/device-types.ts"
 import { SparkSecretSchema } from "../shared/key-derivation.ts"
 import {
@@ -82,6 +83,12 @@ export const accountQerkoTerminal = {
  */
 export const accountCashu = {
   id: AccountId,
+  /**
+   * What the payment QR carries, both legs unless narrowed (settings/0003);
+   * `null` means both. Nullable, so rows written before the column existed
+   * keep their default.
+   */
+  paymentRequestLegs: CashuPaymentRequestLegsSchema.nullable(),
 } as const
 
 /**

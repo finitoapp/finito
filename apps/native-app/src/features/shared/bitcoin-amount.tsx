@@ -1,12 +1,14 @@
+import { formatAmountParts } from "@payky/app-shared/format-money"
 import { satsToFiat } from "@payky/core/modules/shared/money"
 import { useAtom } from "jotai"
 import { Platform } from "react-native"
-import { Text, View, YStack } from "tamagui"
+import { Text, View } from "tamagui"
 import { bitcoinUnitAtom } from "../../atoms/bitcoin-unit.ts"
+import { AmountFigure } from "../../components/amount-figure.tsx"
 import { useBtcFiat } from "../../hooks/use-btc-fiat.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { formatAmount, formatSatsAmount } from "../../lib/format-money.ts"
-import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import { formatSatsAmount } from "../../lib/format-money.ts"
+import { fontSize } from "../../theme/tokens.ts"
 
 /**
  * A bitcoin amount in one unit at a time: the shop's money at today's
@@ -14,6 +16,10 @@ import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * (`bitcoinUnitAtom`); tapping any of them switches all of them. Sats alone
  * while there is no rate. Never both units at once: a merchant reads the
  * app in the unit they set, and asks for sats when they want them.
+ *
+ * In the shop's money the amount is an estimate at a rate that moves, so
+ * it is written to the whole unit with a "~" before it ("~1 234 Kč"); the
+ * sats are exact.
  */
 export function useBitcoinAmount(sats: number) {
   const { t } = useTranslation()
@@ -23,25 +29,26 @@ export function useBitcoinAmount(sats: number) {
   const switchable = fiat.rate !== null
   const inFiat = switchable && unit === "fiat"
   const rate = fiat.rate ?? 0
+  const parts = inFiat
+    ? formatAmountParts(
+        Math.round(satsToFiat({ sats, exchangeRate: rate })),
+        fiat.currency,
+        locale,
+        { fraction: "whenNonZero" }
+      )
+    : null
+  const satsNumber = formatSatsAmount(sats, locale)
   return {
-    /** The figure alone: "1 234" or "12,30". */
-    value: inFiat
-      ? formatAmount(
-          satsToFiat({ sats, exchangeRate: rate }),
-          undefined,
-          locale
-        )
-      : formatSatsAmount(sats, locale),
+    /** The figure alone: "~1 234" or "12 300". */
+    number: parts === null ? satsNumber : `~${parts.number}`,
     /** "Kč" or "sats". */
-    unit: inFiat ? fiat.currency : t("withdraw.amount.unitSats"),
+    unit: parts === null ? t("withdraw.amount.unitSats") : parts.unit,
+    unitFirst: parts === null ? false : parts.unitFirst,
     /** The figure with its unit, as one text. */
-    text: inFiat
-      ? formatAmount(
-          satsToFiat({ sats, exchangeRate: rate }),
-          fiat.currency,
-          locale
-        )
-      : t("withdraw.sats", { amount: formatSatsAmount(sats, locale) }),
+    text:
+      parts === null
+        ? t("withdraw.sats", { amount: satsNumber })
+        : `~${parts.text}`,
     switchable,
     switchLabel: t("settings.cashuAccount.balance.switchUnit"),
     toggle: () => setUnit((current) => (current === "fiat" ? "sats" : "fiat")),
@@ -85,9 +92,9 @@ export function BitcoinAmount({
 }
 
 /**
- * A wallet's balance, Linky's `Amount`: the figure large with its unit
- * small beneath it, tapped to switch the unit. `caption` sits under the
- * unit (syncing, no rate).
+ * A wallet's balance: the one amount figure every screen headlines with
+ * (`AmountFigure`), tapped to switch the unit. `caption` sits under it
+ * (syncing, no rate).
  */
 export function BitcoinBalance({
   sats,
@@ -100,50 +107,15 @@ export function BitcoinBalance({
 }) {
   const amount = useBitcoinAmount(sats)
   return (
-    <YStack
-      items="center"
-      px={16}
-      minH={control.lg}
-      justify="center"
-      rounded={shape.control}
-      bg={amount.switchable ? "transparent press:neutral-soft" : "transparent"}
-      cursor={amount.switchable ? "web:pointer" : undefined}
-      accessible
-      role={amount.switchable ? "button" : undefined}
-      aria-label={amount.text}
-      {...(Platform.OS === "web" && amount.switchable
-        ? { title: amount.switchLabel }
-        : {})}
+    <AmountFigure
+      number={amount.number}
+      unit={amount.unit}
+      unitFirst={amount.unitFirst}
+      label={amount.text}
+      caption={caption}
       onPress={amount.switchable ? amount.toggle : undefined}
+      pressLabel={amount.switchable ? amount.switchLabel : undefined}
       testID={testID}
-    >
-      <Text
-        fontSize="3xl"
-        lineHeight="3xl"
-        fontWeight={fontWeight.bold}
-        fontVariant={["tabular-nums"]}
-        text="center"
-      >
-        {amount.value}
-      </Text>
-      <Text
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-        fontWeight={fontWeight.semibold}
-        color="muted-foreground"
-      >
-        {amount.unit}
-      </Text>
-      {caption === undefined ? null : (
-        <Text
-          fontSize={fontSize.xs}
-          lineHeight={fontSize.xs}
-          color="muted-foreground"
-          text="center"
-        >
-          {caption}
-        </Text>
-      )}
-    </YStack>
+    />
   )
 }

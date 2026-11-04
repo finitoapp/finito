@@ -1,6 +1,6 @@
 # 0009 Finito starts on the Linky wallet
 
-Status: accepted
+Status: superseded by onboarding/0010
 Date: 2026-11-03
 
 ## Context
@@ -45,4 +45,4 @@ Finito alone; Payky keeps onboarding/0007.
 
 ## Enforced by
 
-- `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboardingOnLinkyWallet > enables the Cashu wallet shared with Linky instead of Spark (onboarding/0009)`
+- `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding > enables cash and Spark without a bank account and leaves Cashu disabled`

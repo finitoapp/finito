@@ -1143,33 +1143,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/settings/legal-entity/legal-entity-settings-page.tsx",
-    web: [
-      "apps/web-app/src/features/settings/legal-entity/legal-entity-settings-page.tsx",
-    ],
-    status: "matched",
-    allowedDifferences: {
-      Checkbox:
-        "native uses the existing controlled checkbox for VAT payer status; the web source routes the same immediate save through InlineEditCheckbox",
-      Field:
-        "native renders the existing country and currency controls inside the shared Field layout; web's InlineEditSelect owns that layout",
-      FieldContent:
-        "native renders VAT text in the shared FieldContent layout; web's InlineEditCheckbox owns that layout",
-      FieldLabel:
-        "native renders the select labels as FieldLabel parts; web's InlineEditSelect owns those labels",
-      Select:
-        "native uses the platform choice sheet; web uses InlineEditSelect, both with the unset country placeholder inside the field",
-      SelectContent:
-        "native's SelectContent presents the available values in the platform choice sheet; web's InlineEditSelect owns its select presentation",
-      SelectItem:
-        "native renders the country and currency options as SelectItem rows; web's InlineEditSelect owns its option list",
-      SelectTrigger:
-        "native uses a SelectTrigger for the platform choice sheet; web's InlineEditSelect owns its select trigger",
-      SelectValue:
-        "native uses SelectValue to show the current choice; web's InlineEditSelect owns its value display",
-    },
-  },
-  {
     native:
       "src/features/settings/payment-accounts/card-switchio-settings-page.tsx",
     web: [
@@ -1245,6 +1218,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Card: "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
       CardContent:
         "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
+      Tabs: "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
+      TabsList:
+        "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
+      TabsTrigger:
+        "what the payment QR carries, both legs or one (settings/0003), as Activity's tabs; web has no such choice",
       CardDescription:
         "Finito shows the balance alone, as Fazole does; web wraps the wallet in a card.",
       CardHeader:
@@ -1398,6 +1376,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "Native groups these controls with the CardContent YStack while keeping the app's shared InlineEditField intact.",
       FieldLabel:
         "The native InlineEditField and picture label render labels inside the controls' existing native components.",
+      Select:
+        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+      SelectTrigger:
+        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+      SelectValue:
+        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+      SelectContent:
+        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+      SelectItem:
+        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+      Switch:
+        "the VAT-payer row is a switch on the profile screen, where web's legal-entity screen has a checkbox",
     },
   },
   {
@@ -1572,7 +1562,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       SavedMessage:
-        "native keeps its existing success toast after Save; web SettingsFormCard displays an inline saved message",
+        "every change saves itself (fazole-ui-minimal-copy); there is no Save and nothing to confirm",
+      Card: "no card on a mobile detail screen; the controls sit on the page",
+      CardHeader:
+        "no card on a mobile detail screen; the controls sit on the page",
+      CardTitle:
+        "no card on a mobile detail screen; the controls sit on the page",
+      CardDescription: "no second-line explanations (fazole-ui-minimal-copy)",
+      CardContent:
+        "no card on a mobile detail screen; the controls sit on the page",
+      CardFooter: "no Save button: every change saves itself",
+      FieldGroup: "the page's own spacing stands in for the group",
+      Checkbox: "the enabled row is a switch, as the other settings rows",
+      Switch: "the enabled row is a switch, as the other settings rows",
+      FieldContent: "the enabled row is one line, label and switch",
+      FieldDescription: "no second-line explanations (fazole-ui-minimal-copy)",
     },
   },
   {
@@ -1891,14 +1895,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/settings/payment-accounts/bitcoin-settings-page.tsx",
     web: [],
     status: "matched",
-    note: "Finito's one Bitcoin method (settings/0002): a wallet choice over the Cashu, Lightning address and Spark bodies, which web lists as three methods.",
+    note: "Finito's one Bitcoin method (settings/0003): the Cashu, Lightning address and Spark bodies as tabs to look at, which web lists as three methods, and a switch making the shown wallet the main one.",
     allowedDifferences: {
       FadeHeader: "the screen's title, Bitcoin",
-      Tabs: "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
+      Tabs: "the wallet to look at, Cashu, the Lightning address or Spark, as Activity's tabs",
       TabsList:
-        "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
+        "the wallet to look at, Cashu, the Lightning address or Spark, as Activity's tabs",
       TabsTrigger:
-        "the wallet choice, Cashu, the Lightning address or Spark, as Activity's tabs",
+        "the wallet to look at, Cashu, the Lightning address or Spark, as Activity's tabs",
+      Switch:
+        "the main-method switch (settings/0003), which web has as a switch per method row",
     },
   },
   {

@@ -117,6 +117,29 @@ const brandAccent = {
 } as const satisfies Partial<Record<keyof Palette, string>>
 
 /**
+ * Finito's statistics read in the gold alone: one ramp of it for every
+ * series, from the full accent to its palest tint, so a chart carries no
+ * second hue. Light pages take the deeper golds (the accent itself is too
+ * pale on them), dark pages run down from the accent.
+ */
+const goldRamp = (mode: "light" | "dark") => {
+  const lightness =
+    mode === "light"
+      ? [0.58, 0.66, 0.74, 0.81, 0.87, 0.92]
+      : [0.83, 0.74, 0.65, 0.56, 0.47, 0.39]
+  const chroma =
+    mode === "light"
+      ? [0.14, 0.14, 0.14, 0.13, 0.1, 0.07]
+      : [0.16, 0.15, 0.14, 0.12, 0.1, 0.08]
+  return Object.fromEntries(
+    lightness.map((l, index) => [
+      `chart-${index + 1}`,
+      oklchToHex({ l, c: chroma[index] ?? 0.1, h: gold.h, alpha: 1 }),
+    ])
+  ) as Record<`chart-${1 | 2 | 3 | 4 | 5 | 6}`, string>
+}
+
+/**
  * The web palette as Tamagui theme keys, with Finito's gold over its
  * primary. Tamagui `Text` reads `color`, so `foreground` is exposed under
  * both names; `border` would clash with the shorthand, so it becomes
@@ -124,10 +147,12 @@ const brandAccent = {
  */
 const appTheme = (
   { foreground, border, ...colors }: Palette,
-  tones: Tones
+  tones: Tones,
+  mode: "light" | "dark"
 ) => ({
   ...colors,
   ...brandAccent,
+  ...goldRamp(mode),
   foreground,
   color: foreground,
   "border-color": border,
@@ -139,8 +164,8 @@ const appTheme = (
 })
 
 export const appThemes = {
-  light: appTheme(palette.light, lightTones(palette.light)),
-  dark: appTheme(palette.dark, darkTones(palette.dark)),
+  light: appTheme(palette.light, lightTones(palette.light), "light"),
+  dark: appTheme(palette.dark, darkTones(palette.dark), "dark"),
 }
 
 /** A theme key a native color prop accepts. */
