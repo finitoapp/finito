@@ -19,7 +19,7 @@ import { fontSize } from "../../theme/tokens.ts"
  *
  * In the shop's money the amount is an estimate at a rate that moves, so
  * it is written to the whole unit with a "~" before it ("~1 234 Kč"); the
- * sats are exact.
+ * sats are exact, and so is nothing: zero has no "~".
  */
 export function useBitcoinAmount(sats: number) {
   const { t } = useTranslation()
@@ -38,9 +38,10 @@ export function useBitcoinAmount(sats: number) {
       )
     : null
   const satsNumber = formatSatsAmount(sats, locale)
+  const about = sats === 0 ? "" : "~"
   return {
-    /** The figure alone: "~1 234" or "12 300". */
-    number: parts === null ? satsNumber : `~${parts.number}`,
+    /** The figure alone: "~1 234", "0" or "12 300". */
+    number: parts === null ? satsNumber : `${about}${parts.number}`,
     /** "Kč" or "sats". */
     unit: parts === null ? t("withdraw.amount.unitSats") : parts.unit,
     unitFirst: parts === null ? false : parts.unitFirst,
@@ -48,7 +49,7 @@ export function useBitcoinAmount(sats: number) {
     text:
       parts === null
         ? t("withdraw.sats", { amount: satsNumber })
-        : `~${parts.text}`,
+        : `${about}${parts.text}`,
     switchable,
     switchLabel: t("settings.cashuAccount.balance.switchUnit"),
     toggle: () => setUnit((current) => (current === "fiat" ? "sats" : "fiat")),
