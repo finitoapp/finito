@@ -12,7 +12,10 @@ import { resolveRouteAccess } from "./route-access.ts"
 
 const appDir = join(import.meta.dirname, "../../app")
 
-/** `app/x/index.tsx` is `/x`, `[id]` is `:id`, as in `route-access.test.ts`. */
+/**
+ * `app/x/index.tsx` is `/x`, `[id]` is `:id`, and a group such as `(tabs)`
+ * adds nothing to the path, as in `route-access.test.ts`.
+ */
 const routePaths = (readdirSync(appDir, { recursive: true }) as string[])
   .filter(
     (file) =>
@@ -24,6 +27,7 @@ const routePaths = (readdirSync(appDir, { recursive: true }) as string[])
     (file) =>
       `/${file
         .replace(/\.tsx$/, "")
+        .replace(/\([^/]+\)\//g, "")
         .replace(/(^|\/)index$/, "")
         .replace(/\[(\w+)\]/g, ":$1")}`.replace(/\/$/u, "") || "/"
   )

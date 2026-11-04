@@ -11,7 +11,6 @@ import { router, useLocalSearchParams } from "expo-router"
 import ChartColumn from "lucide-react-native/icons/chart-column"
 import { Suspense } from "react"
 import { Text, XStack, YStack } from "tamagui"
-import { FadeHeader } from "../../components/fade-header.tsx"
 import { ListSkeleton } from "../../components/list-skeleton.tsx"
 import { PulseDot } from "../../components/pulse-dot.tsx"
 import { Screen } from "../../components/screen.tsx"
@@ -19,7 +18,6 @@ import { Icon } from "../../components/ui/icon.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
-import { ActivityTabs } from "../shared/activity-tabs.tsx"
 import { DeviceBreakdown } from "./device-breakdown.tsx"
 import { formatStatsRange, KpiTiles } from "./kpi-tiles.tsx"
 import { ExpectedCashSummary, MethodBreakdown } from "./method-breakdown.tsx"
@@ -37,12 +35,12 @@ import {
 import { VatRecap } from "./vat-recap.tsx"
 
 /**
- * The sales statistics screen (access/0008): the period selector, then one
+ * The sales statistics screen (access/0008), Activity's third tab under
+ * `ActivityLayout`'s header and tabs: the period selector, then one
  * section per block, top to bottom. The period lives in the route's params so
  * back and a restart keep it; every param falls back instead of throwing.
  */
 export function StatsPage() {
-  const { t } = useTranslation()
   const params = useLocalSearchParams<{
     period?: string
     from?: string
@@ -54,8 +52,6 @@ export function StatsPage() {
 
   return (
     <Screen>
-      <FadeHeader title={t("activity.title")} startAddon={null} />
-      <ActivityTabs active="stats" />
       <PeriodSelector
         period={period}
         onChange={(next: StatsSearch) => {

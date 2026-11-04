@@ -44,6 +44,7 @@ import { MasterPaneContext } from "../src/core/master-pane.ts"
 import { menuDetailRootOf, menuPositionOf } from "../src/core/menu-routes.ts"
 import { queryClient } from "../src/core/query-client.ts"
 import { resolveTheme } from "../src/core/theme-preference.ts"
+import { ActivityLayout } from "../src/features/activity/activity-layout.tsx"
 import { BillHistoryPage } from "../src/features/activity/bill-history-page.tsx"
 import { PaymentHistoryPage } from "../src/features/activity/payment-history-page.tsx"
 import { removeStaleExportFolders } from "../src/features/settings/evolu-export/evolu-export-io"
@@ -164,8 +165,17 @@ function ThemedApp() {
  * components the routes render, mounted a second time left of the stack.
  */
 const masterPages: Readonly<Record<string, ComponentType>> = {
-  "/activity": PaymentHistoryPage,
-  "/activity/bills": BillHistoryPage,
+  // Under the header and tabs `app/activity/(tabs)` draws around them.
+  "/activity": () => (
+    <ActivityLayout>
+      <PaymentHistoryPage />
+    </ActivityLayout>
+  ),
+  "/activity/bills": () => (
+    <ActivityLayout>
+      <BillHistoryPage />
+    </ActivityLayout>
+  ),
   "/settings": SettingsPage,
 }
 

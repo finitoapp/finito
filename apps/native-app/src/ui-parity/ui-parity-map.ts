@@ -271,12 +271,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/activity/activity-shell.tsx",
-    web: ["apps/web-app/src/features/activity/activity-pages.tsx"],
+    native: "src/features/activity/activity-layout.tsx",
+    web: ["apps/web-app/src/features/activity/activity-layout.tsx"],
     status: "matched",
     allowedDifferences: {
       ListSkeleton:
-        "the Suspense fallback; web's is ActivityHistorySkeleton, the same VerticalNav-shaped placeholder",
+        "the lists' Suspense fallback, which native's layout draws under the header; web's pages draw ActivityHistorySkeleton, the same VerticalNav-shaped placeholder",
     },
   },
   {
@@ -527,9 +527,9 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       TabsContent:
         "web renders a TabsContent per method only as a screen-reader line; native draws the active method's content directly and states it in the prompt",
       SlidingPillTrack:
-        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, the active one an accent pill with its icon and name, with no sliding pill",
+        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, whose kit pill slides to the active one, with its icon and name",
       SlidingPillSegmentContent:
-        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, the active one an accent pill with its icon and name, with no sliding pill",
+        "web animates the method pill with motion's layout animation; Finito draws the methods as Activity's tabs, whose kit pill slides to the active one, with its icon and name",
     },
   },
   {

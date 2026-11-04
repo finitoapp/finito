@@ -19,9 +19,10 @@ import { Route as TerminalBillRouteImport } from './routes/_terminal.bill'
 import { Route as TerminalCatalogRouteImport } from './routes/_terminal.catalog'
 import { Route as TerminalNotificationsRouteImport } from './routes/_terminal.notifications'
 import { Route as TerminalSettingsRouteImport } from './routes/_terminal.settings'
+import { Route as TerminalActivityIndexRouteImport } from './routes/_terminal.activity.index'
+import { Route as TerminalActivityBillsRouteImport } from './routes/_terminal.activity.bills'
+import { Route as TerminalActivityStatsRouteImport } from './routes/_terminal.activity.stats'
 import { Route as TerminalActivityPaymentIdRouteImport } from './routes/_terminal.activity_.$paymentId'
-import { Route as TerminalActivityBillsRouteImport } from './routes/_terminal.activity_.bills'
-import { Route as TerminalActivityStatsRouteImport } from './routes/_terminal.activity_.stats'
 import { Route as TerminalCatalogIndexRouteImport } from './routes/_terminal.catalog.index'
 import { Route as TerminalCatalogCategoriesRouteImport } from './routes/_terminal.catalog.categories'
 import { Route as TerminalCatalogItemsRouteImport } from './routes/_terminal.catalog.items'
@@ -141,22 +142,27 @@ const TerminalSettingsRoute = TerminalSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => TerminalRoute,
 } as any)
+const TerminalActivityIndexRoute = TerminalActivityIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TerminalActivityRoute,
+} as any)
+const TerminalActivityBillsRoute = TerminalActivityBillsRouteImport.update({
+  id: '/bills',
+  path: '/bills',
+  getParentRoute: () => TerminalActivityRoute,
+} as any)
+const TerminalActivityStatsRoute = TerminalActivityStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => TerminalActivityRoute,
+} as any)
 const TerminalActivityPaymentIdRoute =
   TerminalActivityPaymentIdRouteImport.update({
     id: '/activity_/$paymentId',
     path: '/activity/$paymentId',
     getParentRoute: () => TerminalRoute,
   } as any)
-const TerminalActivityBillsRoute = TerminalActivityBillsRouteImport.update({
-  id: '/activity_/bills',
-  path: '/activity/bills',
-  getParentRoute: () => TerminalRoute,
-} as any)
-const TerminalActivityStatsRoute = TerminalActivityStatsRouteImport.update({
-  id: '/activity_/stats',
-  path: '/activity/stats',
-  getParentRoute: () => TerminalRoute,
-} as any)
 const TerminalCatalogIndexRoute = TerminalCatalogIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -570,14 +576,14 @@ export interface FileRoutesByFullPath {
   '/error': typeof ErrorRoute
   '/onboarding': typeof OnboardingRoute
   '/restore-account': typeof RestoreAccountRoute
-  '/activity': typeof TerminalActivityRoute
+  '/activity': typeof TerminalActivityRouteWithChildren
   '/bill': typeof TerminalBillRoute
   '/catalog': typeof TerminalCatalogRouteWithChildren
   '/notifications': typeof TerminalNotificationsRoute
   '/settings': typeof TerminalSettingsRouteWithChildren
-  '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/activity/bills': typeof TerminalActivityBillsRoute
   '/activity/stats': typeof TerminalActivityStatsRoute
+  '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
   '/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
   '/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
@@ -604,6 +610,7 @@ export interface FileRoutesByFullPath {
   '/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/settings/theme': typeof TerminalSettingsThemeRoute
   '/settings/tips': typeof TerminalSettingsTipsRoute
+  '/activity/': typeof TerminalActivityIndexRoute
   '/catalog/': typeof TerminalCatalogIndexRoute
   '/settings/': typeof TerminalSettingsIndexRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
@@ -652,13 +659,12 @@ export interface FileRoutesByTo {
   '/error': typeof ErrorRoute
   '/onboarding': typeof OnboardingRoute
   '/restore-account': typeof RestoreAccountRoute
-  '/activity': typeof TerminalActivityRoute
   '/bill': typeof TerminalBillRoute
   '/notifications': typeof TerminalNotificationsRoute
   '/': typeof TerminalIndexRoute
-  '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/activity/bills': typeof TerminalActivityBillsRoute
   '/activity/stats': typeof TerminalActivityStatsRoute
+  '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
   '/payment/tip': typeof TerminalPaymentTipRoute
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/access': typeof TerminalSettingsAccessRoute
@@ -679,6 +685,7 @@ export interface FileRoutesByTo {
   '/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/settings/theme': typeof TerminalSettingsThemeRoute
   '/settings/tips': typeof TerminalSettingsTipsRoute
+  '/activity': typeof TerminalActivityIndexRoute
   '/catalog': typeof TerminalCatalogIndexRoute
   '/settings': typeof TerminalSettingsIndexRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
@@ -723,15 +730,15 @@ export interface FileRoutesById {
   '/error': typeof ErrorRoute
   '/onboarding': typeof OnboardingRoute
   '/restore-account': typeof RestoreAccountRoute
-  '/_terminal/activity': typeof TerminalActivityRoute
+  '/_terminal/activity': typeof TerminalActivityRouteWithChildren
   '/_terminal/bill': typeof TerminalBillRoute
   '/_terminal/catalog': typeof TerminalCatalogRouteWithChildren
   '/_terminal/notifications': typeof TerminalNotificationsRoute
   '/_terminal/settings': typeof TerminalSettingsRouteWithChildren
   '/_terminal/': typeof TerminalIndexRoute
+  '/_terminal/activity/bills': typeof TerminalActivityBillsRoute
+  '/_terminal/activity/stats': typeof TerminalActivityStatsRoute
   '/_terminal/activity_/$paymentId': typeof TerminalActivityPaymentIdRoute
-  '/_terminal/activity_/bills': typeof TerminalActivityBillsRoute
-  '/_terminal/activity_/stats': typeof TerminalActivityStatsRoute
   '/_terminal/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
   '/_terminal/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
   '/_terminal/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
@@ -758,6 +765,7 @@ export interface FileRoutesById {
   '/_terminal/settings/tax-rates': typeof TerminalSettingsTaxRatesRoute
   '/_terminal/settings/theme': typeof TerminalSettingsThemeRoute
   '/_terminal/settings/tips': typeof TerminalSettingsTipsRoute
+  '/_terminal/activity/': typeof TerminalActivityIndexRoute
   '/_terminal/catalog/': typeof TerminalCatalogIndexRoute
   '/_terminal/settings/': typeof TerminalSettingsIndexRoute
   '/_terminal/activity_/bills_/$billId': typeof TerminalActivityBillsBillIdRoute
@@ -814,9 +822,9 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/notifications'
     | '/settings'
-    | '/activity/$paymentId'
     | '/activity/bills'
     | '/activity/stats'
+    | '/activity/$paymentId'
     | '/catalog/categories'
     | '/catalog/items'
     | '/catalog/tables'
@@ -843,6 +851,7 @@ export interface FileRouteTypes {
     | '/settings/tax-rates'
     | '/settings/theme'
     | '/settings/tips'
+    | '/activity/'
     | '/catalog/'
     | '/settings/'
     | '/activity/bills/$billId'
@@ -891,13 +900,12 @@ export interface FileRouteTypes {
     | '/error'
     | '/onboarding'
     | '/restore-account'
-    | '/activity'
     | '/bill'
     | '/notifications'
     | '/'
-    | '/activity/$paymentId'
     | '/activity/bills'
     | '/activity/stats'
+    | '/activity/$paymentId'
     | '/payment/tip'
     | '/payment/$paymentId'
     | '/settings/access'
@@ -918,6 +926,7 @@ export interface FileRouteTypes {
     | '/settings/tax-rates'
     | '/settings/theme'
     | '/settings/tips'
+    | '/activity'
     | '/catalog'
     | '/settings'
     | '/activity/bills/$billId'
@@ -967,9 +976,9 @@ export interface FileRouteTypes {
     | '/_terminal/notifications'
     | '/_terminal/settings'
     | '/_terminal/'
+    | '/_terminal/activity/bills'
+    | '/_terminal/activity/stats'
     | '/_terminal/activity_/$paymentId'
-    | '/_terminal/activity_/bills'
-    | '/_terminal/activity_/stats'
     | '/_terminal/catalog/categories'
     | '/_terminal/catalog/items'
     | '/_terminal/catalog/tables'
@@ -996,6 +1005,7 @@ export interface FileRouteTypes {
     | '/_terminal/settings/tax-rates'
     | '/_terminal/settings/theme'
     | '/_terminal/settings/tips'
+    | '/_terminal/activity/'
     | '/_terminal/catalog/'
     | '/_terminal/settings/'
     | '/_terminal/activity_/bills_/$billId'
@@ -1120,25 +1130,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalSettingsRouteImport
       parentRoute: typeof TerminalRoute
     }
+    '/_terminal/activity/': {
+      id: '/_terminal/activity/'
+      path: '/'
+      fullPath: '/activity/'
+      preLoaderRoute: typeof TerminalActivityIndexRouteImport
+      parentRoute: typeof TerminalActivityRoute
+    }
+    '/_terminal/activity/bills': {
+      id: '/_terminal/activity/bills'
+      path: '/bills'
+      fullPath: '/activity/bills'
+      preLoaderRoute: typeof TerminalActivityBillsRouteImport
+      parentRoute: typeof TerminalActivityRoute
+    }
+    '/_terminal/activity/stats': {
+      id: '/_terminal/activity/stats'
+      path: '/stats'
+      fullPath: '/activity/stats'
+      preLoaderRoute: typeof TerminalActivityStatsRouteImport
+      parentRoute: typeof TerminalActivityRoute
+    }
     '/_terminal/activity_/$paymentId': {
       id: '/_terminal/activity_/$paymentId'
       path: '/activity/$paymentId'
       fullPath: '/activity/$paymentId'
       preLoaderRoute: typeof TerminalActivityPaymentIdRouteImport
-      parentRoute: typeof TerminalRoute
-    }
-    '/_terminal/activity_/bills': {
-      id: '/_terminal/activity_/bills'
-      path: '/activity/bills'
-      fullPath: '/activity/bills'
-      preLoaderRoute: typeof TerminalActivityBillsRouteImport
-      parentRoute: typeof TerminalRoute
-    }
-    '/_terminal/activity_/stats': {
-      id: '/_terminal/activity_/stats'
-      path: '/activity/stats'
-      fullPath: '/activity/stats'
-      preLoaderRoute: typeof TerminalActivityStatsRouteImport
       parentRoute: typeof TerminalRoute
     }
     '/_terminal/catalog/': {
@@ -1627,6 +1644,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface TerminalActivityRouteChildren {
+  TerminalActivityBillsRoute: typeof TerminalActivityBillsRoute
+  TerminalActivityStatsRoute: typeof TerminalActivityStatsRoute
+  TerminalActivityIndexRoute: typeof TerminalActivityIndexRoute
+}
+
+const TerminalActivityRouteChildren: TerminalActivityRouteChildren = {
+  TerminalActivityBillsRoute: TerminalActivityBillsRoute,
+  TerminalActivityStatsRoute: TerminalActivityStatsRoute,
+  TerminalActivityIndexRoute: TerminalActivityIndexRoute,
+}
+
+const TerminalActivityRouteWithChildren =
+  TerminalActivityRoute._addFileChildren(TerminalActivityRouteChildren)
+
 interface TerminalCatalogCategoriesRouteChildren {
   TerminalCatalogCategoriesCatalogCategoryIdRoute: typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
   TerminalCatalogCategoriesNewRoute: typeof TerminalCatalogCategoriesNewRoute
@@ -1947,30 +1979,26 @@ const TerminalSettingsRouteWithChildren =
   TerminalSettingsRoute._addFileChildren(TerminalSettingsRouteChildren)
 
 interface TerminalRouteChildren {
-  TerminalActivityRoute: typeof TerminalActivityRoute
+  TerminalActivityRoute: typeof TerminalActivityRouteWithChildren
   TerminalBillRoute: typeof TerminalBillRoute
   TerminalCatalogRoute: typeof TerminalCatalogRouteWithChildren
   TerminalNotificationsRoute: typeof TerminalNotificationsRoute
   TerminalSettingsRoute: typeof TerminalSettingsRouteWithChildren
   TerminalIndexRoute: typeof TerminalIndexRoute
   TerminalActivityPaymentIdRoute: typeof TerminalActivityPaymentIdRoute
-  TerminalActivityBillsRoute: typeof TerminalActivityBillsRoute
-  TerminalActivityStatsRoute: typeof TerminalActivityStatsRoute
   TerminalPaymentTipRoute: typeof TerminalPaymentTipRoute
   TerminalPaymentPaymentIdRoute: typeof TerminalPaymentPaymentIdRoute
   TerminalActivityBillsBillIdRoute: typeof TerminalActivityBillsBillIdRoute
 }
 
 const TerminalRouteChildren: TerminalRouteChildren = {
-  TerminalActivityRoute: TerminalActivityRoute,
+  TerminalActivityRoute: TerminalActivityRouteWithChildren,
   TerminalBillRoute: TerminalBillRoute,
   TerminalCatalogRoute: TerminalCatalogRouteWithChildren,
   TerminalNotificationsRoute: TerminalNotificationsRoute,
   TerminalSettingsRoute: TerminalSettingsRouteWithChildren,
   TerminalIndexRoute: TerminalIndexRoute,
   TerminalActivityPaymentIdRoute: TerminalActivityPaymentIdRoute,
-  TerminalActivityBillsRoute: TerminalActivityBillsRoute,
-  TerminalActivityStatsRoute: TerminalActivityStatsRoute,
   TerminalPaymentTipRoute: TerminalPaymentTipRoute,
   TerminalPaymentPaymentIdRoute: TerminalPaymentPaymentIdRoute,
   TerminalActivityBillsBillIdRoute: TerminalActivityBillsBillIdRoute,

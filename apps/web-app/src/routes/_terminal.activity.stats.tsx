@@ -2,7 +2,7 @@ import { StatsSearchSchema } from "@payky/app-shared/stats-search"
 import { createFileRoute } from "@tanstack/react-router"
 import { StatsPage } from "@/features/stats/stats-page.tsx"
 
-export const Route = createFileRoute("/_terminal/activity_/stats")({
+export const Route = createFileRoute("/_terminal/activity/stats")({
   component: StatsRoute,
   validateSearch: (search) => StatsSearchSchema.parse(search),
   staticData: {

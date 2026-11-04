@@ -29,7 +29,6 @@ import {
   ActivityList,
   type ActivityRowData,
 } from "./activity-parts.tsx"
-import { ActivityShell } from "./activity-shell.tsx"
 
 const billStatusIcons = {
   open: { bg: "warning-10", color: "warning", icon: RotateCw },
@@ -69,13 +68,9 @@ function BillStatusIcon({
   )
 }
 
-/** The Activity tab's bills list. */
+/** The Activity tab's bills list, under `ActivityLayout`'s header and tabs. */
 export function BillHistoryPage() {
-  return (
-    <ActivityShell active="bills">
-      <BillHistory />
-    </ActivityShell>
-  )
+  return <BillHistory />
 }
 
 function BillHistory() {

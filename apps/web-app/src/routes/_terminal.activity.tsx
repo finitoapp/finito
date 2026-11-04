@@ -1,11 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { PaymentHistoryPage } from "@/features/activity/activity-pages.tsx"
+import { ActivityLayout } from "@/features/activity/activity-layout.tsx"
 
+/**
+ * The header and tabs Activity's three root screens share (navigation/0001),
+ * drawn once so the tabs keep their place and their pill slides between
+ * them. Free: each screen under it declares what it needs, the statistics
+ * `stats` (access/0010).
+ */
 export const Route = createFileRoute("/_terminal/activity")({
-  component: PaymentHistoryPage,
+  component: ActivityLayout,
   staticData: {
-    access: "activity",
+    access: "free",
     menu: { tab: "activity", root: true },
   },
 })

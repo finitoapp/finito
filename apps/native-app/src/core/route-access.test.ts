@@ -9,7 +9,10 @@ import {
 
 const appDir = join(import.meta.dirname, "../../app")
 
-/** `app/pair.tsx` is `/pair`, `app/x/index.tsx` is `/x`, `[id]` is `:id`. */
+/**
+ * `app/pair.tsx` is `/pair`, `app/x/index.tsx` is `/x`, `[id]` is `:id`, and
+ * a group such as `(tabs)` adds nothing to the path.
+ */
 const routeFiles = (readdirSync(appDir, { recursive: true }) as string[])
   .filter(
     (file) =>
@@ -20,6 +23,7 @@ const routeFiles = (readdirSync(appDir, { recursive: true }) as string[])
   .map((file) => {
     const path = `/${file
       .replace(/\.tsx$/, "")
+      .replace(/\([^/]+\)\//g, "")
       .replace(/(^|\/)index$/, "")
       .replace(/\[(\w+)\]/g, ":$1")}`
     return path

@@ -8,11 +8,9 @@ import type { StatsPeriod } from "@payky/core/modules/sales-stats/sales-stats-ty
 import { statsPeriodRanges } from "@payky/core/modules/sales-stats/sales-stats-utils"
 import { ChartColumnIcon } from "lucide-react"
 import { type ReactNode, Suspense } from "react"
-import { FadeHeader } from "@/components/fade-header.tsx"
 import { ListSkeleton } from "@/components/list-skeleton.tsx"
 import { Skeleton } from "@/components/ui/skeleton.tsx"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
-import { ActivityTabs } from "@/features/shared/activity-tabs.tsx"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -35,7 +33,7 @@ import { VatRecap } from "./vat-recap.tsx"
 
 /**
  * The sales statistics screen (access/0010), Activity's third tab
- * (navigation/0001), header and tabs included: the period
+ * (navigation/0001), under `ActivityLayout`'s header and tabs: the period
  * selector, then one section per block, top to bottom. A new section is one
  * more component in `PeriodStats`, fed by `useSalesStats` or its own
  * `useStatsRows`; one not tied to the period is passed in, as `openBills` is.
@@ -47,39 +45,32 @@ export function StatsPage({
   readonly search: StatsSearch
   readonly onSearchChange: (search: StatsSearch) => void
 }) {
-  const { t } = useTranslation()
   const now = useStatsNow()
   const period = statsPeriodFromSearch(search, now)
 
   return (
-    <>
-      <div className="h-6" />
-      <FadeHeader title={t("activity.title")} startAddon={null} />
-
-      <div className="flex flex-col gap-6 pb-8">
-        <ActivityTabs active="stats" />
-        {/*
-         * Stays on screen while the sections scroll under it, so the period
-         * every figure belongs to is always in view. The route's viewport
-         * clips with `overflow-x-clip` so this can stick to the window.
-         */}
-        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+var(--terminal-banner-height,0px))] z-10 -mx-3 flex flex-col gap-2 bg-background px-3 py-2">
-          <PeriodSelector period={period} onChange={onSearchChange} />
-          <PeriodSummary period={period} now={now} />
-        </div>
-        <Suspense fallback={<StatsSkeleton />}>
-          <PeriodStats
-            period={period}
-            now={now}
-            openBills={
-              <Suspense fallback={<ListSkeleton rows={1} />}>
-                <OpenBills />
-              </Suspense>
-            }
-          />
-        </Suspense>
+    <div className="flex flex-col gap-6 pb-8">
+      {/*
+       * Stays on screen while the sections scroll under it, so the period
+       * every figure belongs to is always in view. The route's viewport
+       * clips with `overflow-x-clip` so this can stick to the window.
+       */}
+      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+var(--terminal-banner-height,0px))] z-10 -mx-3 flex flex-col gap-2 bg-background px-3 py-2">
+        <PeriodSelector period={period} onChange={onSearchChange} />
+        <PeriodSummary period={period} now={now} />
       </div>
-    </>
+      <Suspense fallback={<StatsSkeleton />}>
+        <PeriodStats
+          period={period}
+          now={now}
+          openBills={
+            <Suspense fallback={<ListSkeleton rows={1} />}>
+              <OpenBills />
+            </Suspense>
+          }
+        />
+      </Suspense>
+    </div>
   )
 }
 
