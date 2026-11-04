@@ -109,10 +109,14 @@ export function ScanCodeScanner({
   }
 
   return (
-    <View overflow="hidden" rounded="lg" bg="black">
+    // The height is the frame's, which the camera fills: expo-camera's web
+    // view carries `flex: 1`, which react-native-web writes as a zero
+    // flex-basis, so a height on the camera itself drew it 0 px tall in a
+    // frame sized by its content.
+    <View h={320} overflow="hidden" rounded="lg" bg="black">
       {active ? (
         <CameraView
-          style={{ height: 320 }}
+          style={{ flex: 1 }}
           facing="back"
           // ponytail: expo-camera cannot report torch support, so the toggle
           // shows for any ready back camera; a device without a flash ignores it.
