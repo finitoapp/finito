@@ -1516,6 +1516,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "lucide-react-native 1.57.0 has no building-2 module; native uses its available building icon.",
       MenuBarSpacer:
         "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
+      Skeleton:
+        "native holds each row's value behind its own Suspense so the list shows before the database answers; web reads them with the page",
     },
   },
   {
