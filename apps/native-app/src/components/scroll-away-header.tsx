@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react"
 import { Animated } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
 import { useTheme, View } from "tamagui"
+import { SafeAreaView } from "./safe-area-view.tsx"
 import {
   ScreenScrollContext,
   ScrollAwayHeaderInsetContext,

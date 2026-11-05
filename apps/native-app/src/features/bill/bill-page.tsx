@@ -62,11 +62,11 @@ import {
   Pressable,
   ScrollView,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
 import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { LoadingView } from "../../components/loading-view.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
+import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { SearchInput } from "../../components/search-input.tsx"
 import {
   Alert,
