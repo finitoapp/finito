@@ -1,6 +1,6 @@
 import { usePathname } from "expo-router"
-import { type ReactNode, Suspense } from "react"
-import { YStack } from "tamagui"
+import { type ReactNode, Suspense, useState } from "react"
+import { View, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { ListSkeleton } from "../../components/list-skeleton.tsx"
 import { MenuBarSpacer } from "../../components/menu-nav.tsx"
@@ -42,23 +42,42 @@ function ActivityFallback() {
  * start stays empty, as on every root screen of the menu section, whose
  * Home entry leads out. As on web, header and tabs scroll away with the
  * screen under them (`ScrollAwayHeader`).
+ *
+ * A pressed tab answers at once: its pill slides and the placeholder
+ * replaces the screen in the same frame, while the route takes a few more
+ * (Expo Router queues the replace, then the root layout re-renders) and the
+ * new screen then loads behind the same placeholder. The screens stay
+ * mounted, only hidden, meanwhile: they hold the tabs' navigator, and
+ * without it mounted Expo Router would replace the whole Activity route on
+ * the root stack, which animates the entire screen in. Any route change,
+ * Back included, brings the selection in line with the route again.
  */
 export function ActivityLayout({ children }: { readonly children: ReactNode }) {
   const { t } = useTranslation()
-  const active = activityTabOf(usePathname())
+  const routed = activityTabOf(usePathname())
+  const [selected, setSelected] = useState(routed)
+  const [lastRouted, setLastRouted] = useState(routed)
+  if (routed !== lastRouted) {
+    setLastRouted(routed)
+    setSelected(routed)
+  }
+  const switching = selected !== routed
 
   return (
     <ScrollAwayHeader
-      resetKey={active}
+      resetKey={selected}
       footer={<MenuBarSpacer />}
       header={
         <>
           <FadeHeader title={t("activity.title")} startAddon={null} />
-          <ActivityTabs active={active} />
+          <ActivityTabs active={selected} onSelect={setSelected} />
         </>
       }
     >
-      <Suspense fallback={<ActivityFallback />}>{children}</Suspense>
+      {switching ? <ActivityFallback /> : null}
+      <View flex={1} display={switching ? "none" : "flex"}>
+        <Suspense fallback={<ActivityFallback />}>{children}</Suspense>
+      </View>
     </ScrollAwayHeader>
   )
 }
