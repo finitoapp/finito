@@ -15,12 +15,22 @@ const activityTabHrefs = {
  * payments, bills and statistics (navigation/0001), each its own route;
  * switching replaces rather than pushes, so Back and the menu's Home leave
  * Activity instead of rewinding through tabs. The statistics need `stats`,
- * so the access gate asks for the PIN there (access/0010).
+ * so the access gate asks for the PIN there (access/0010). `onSelect`
+ * hears the tab as it is pressed, before the route follows, so the screen
+ * can answer the press at once.
  */
-export function ActivityTabs({ active }: { readonly active: ActivityTab }) {
+export function ActivityTabs({
+  active,
+  onSelect,
+}: {
+  readonly active: ActivityTab
+  readonly onSelect: (tab: ActivityTab) => void
+}) {
   const { t } = useTranslation()
   const go = (tab: ActivityTab) => {
-    if (tab !== active) router.replace(activityTabHrefs[tab])
+    if (tab === active) return
+    onSelect(tab)
+    router.replace(activityTabHrefs[tab])
   }
 
   return (

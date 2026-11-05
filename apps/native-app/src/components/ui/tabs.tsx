@@ -22,9 +22,13 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * (dark `text-muted-foreground`); `TabsContent` `flex-1`. The active
  * trigger is the accent pill with the accent's text, as the menu bar's
  * (Linky's `TabBar`), where web tints it `bg-background`. The pill is one
- * view under the triggers that slides and resizes to the active one (web's
+ * view under the triggers that slides to the active one (web's
  * `ActivityTabs` slides Base UI's indicator the same way), on the menu
- * pill's 220 ms ease-out; reduced motion moves it at once. A list mounted
+ * pill's 220 ms ease-out; reduced motion moves it at once. It slides by
+ * `translateX` on the native driver, so a screen mounting on the JS thread
+ * at the same moment (a tab that is its own route) cannot stall it; the
+ * triggers share the list equally, so it takes the active one's width as
+ * it is rather than animating it. A list mounted
  * anew (a tab that is its own route) places it without sliding, so a pill
  * that should travel needs its list to stay mounted, as `ActivityLayout`
  * keeps Activity's.
@@ -101,30 +105,28 @@ const TriggerLayoutContext = createContext<
 const slide = { duration: 220, easing: Easing.out(Easing.cubic) }
 
 /**
- * The active trigger's box as animated values: placed at once the first
- * time it is known, slid there on every later change. Left and width are
- * layout props, which the native driver cannot animate.
+ * The pill's offset to the active trigger, on the native driver: placed at
+ * once the first time it is known, slid there on every later change.
  */
-function usePillBox(target: LayoutRectangle | undefined) {
-  const [left] = useState(() => new Animated.Value(0))
-  const [width] = useState(() => new Animated.Value(0))
+function usePillOffset(x: number | undefined) {
+  const [offset] = useState(() => new Animated.Value(0))
   const placed = useRef(false)
-  const x = target?.x
-  const w = target?.width
   useEffect(() => {
-    if (x === undefined || w === undefined) return
+    if (x === undefined) return
     if (!placed.current || isReduceMotionEnabled()) {
-      left.setValue(x)
-      width.setValue(w)
+      offset.setValue(x)
       placed.current = true
       return
     }
-    Animated.parallel([
-      Animated.timing(left, { toValue: x, ...slide, useNativeDriver: false }),
-      Animated.timing(width, { toValue: w, ...slide, useNativeDriver: false }),
-    ]).start()
-  }, [x, w, left, width])
-  return { left, width }
+    const animation = Animated.timing(offset, {
+      toValue: x,
+      ...slide,
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [x, offset])
+  return offset
 }
 
 export type TabsListProps = GetProps<typeof ListFrame>
@@ -136,7 +138,7 @@ export function TabsList({ children, ...frameProps }: TabsListProps) {
     Readonly<Record<string, LayoutRectangle>>
   >({})
   const target = layouts[value]
-  const { left, width } = usePillBox(target)
+  const offset = usePillOffset(target?.x)
   const report = (trigger: string, layout: LayoutRectangle) => {
     setLayouts((current) => {
       const known = current[trigger]
@@ -158,8 +160,9 @@ export function TabsList({ children, ...frameProps }: TabsListProps) {
             position: "absolute",
             top: target.y,
             height: target.height,
-            left,
-            width,
+            left: 0,
+            width: target.width,
+            transform: [{ translateX: offset }],
             borderRadius: shape.pill,
             backgroundColor: theme.primary.val,
           }}
