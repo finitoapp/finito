@@ -17,6 +17,7 @@ import { NonEmptyString255, WssUrl } from "../../modules/shared/schema.ts"
 import {
   computeHelloProof,
   computeTransferCode,
+  createTransferPayload,
   PAYKY_PAIR_KIND,
   QR_LIFETIME_MS,
   startTransferSource,
@@ -234,6 +235,28 @@ describe("transfer payload", () => {
         transports: ["wss://a.example", "wss://a.example"],
       }).transports
     ).toEqual(["wss://a.example"])
+  })
+})
+
+describe("createTransferPayload", () => {
+  test("sends each wss transport once, at most eight, and nothing else", () => {
+    const transports = [
+      { url: "wss://a.example" },
+      { url: "https://not-a-relay.example" },
+      { url: "wss://a.example" },
+      ...Array.from({ length: 9 }, (_, i) => ({ url: `wss://r${i}.example` })),
+    ]
+    const sent = createTransferPayload({
+      masterKey: payload.masterKey,
+      name: "Shop",
+      transports,
+    })
+    expect(sent.accountName).toBe("Shop")
+    expect(sent.transports).toEqual([
+      "wss://a.example",
+      ...Array.from({ length: 7 }, (_, i) => `wss://r${i}.example`),
+    ])
+    expect(TransferPayloadSchema.parse(sent)).toEqual(sent)
   })
 })
 

@@ -1,7 +1,5 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { restoredAccountAtom } from "@payky/app-shared/restored-account"
 import { createDateDep } from "@payky/core/deps"
-import { createOrSelectAccount } from "@payky/core/evolu/device-account"
 import {
   formatTransferCode,
   startTransferTarget,
@@ -14,19 +12,13 @@ import {
   parsePairUri,
   type WrongPaykyUriTypeError,
 } from "@payky/core/modules/shared/payky-uri"
-import { router } from "expo-router"
-import { useAtomValue, useSetAtom, useStore } from "jotai"
+import { useAtomValue } from "jotai"
 import RotateCcw from "lucide-react-native/icons/rotate-ccw"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useEffect, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
-import { accountAtom } from "../../atoms/account.ts"
-import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
-import {
-  evoluCounterAtom,
-  reloadAppEvoluAtom,
-} from "../../atoms/evolu-counter.ts"
+import { evoluCounterAtom } from "../../atoms/evolu-counter.ts"
 import {
   QR_SCAN_TYPES,
   ScanCodeScanner,
@@ -37,13 +29,10 @@ import {
   AlertTitle,
 } from "../../components/ui/alert.tsx"
 import { Button } from "../../components/ui/button.tsx"
-import { appDefaultTransports } from "../../core/app-brand.ts"
 import { nativeEnv } from "../../core/native-env.ts"
-import { useRequirePermission } from "../../core/use-access.ts"
-import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
-import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { useAddTransferredAccount } from "./use-add-transferred-account.ts"
 
 const scanErrorKeys = {
   NotPaykyUri: "accountTransfer.target.error.NotPaykyUri",
@@ -92,15 +81,11 @@ export function AccountTransferTarget({
   readonly onRestoreWithPhrase?: () => void
 }) {
   const { t } = useTranslation()
-  const confirm = useConfirm()
-  const toast = useToast()
-  const { require } = useRequirePermission()
-  const store = useStore()
-  const deviceEvolu = useAtomValue(deviceEvoluAtom)
-  const activeAccount = useAtomValue(accountAtom)
   const accountVersion = useAtomValue(evoluCounterAtom)
-  const reloadAppEvolu = useSetAtom(reloadAppEvoluAtom)
-  const setRestoredAccount = useSetAtom(restoredAccountAtom)
+  const addTransferredAccount = useAddTransferredAccount({
+    source,
+    confirmBeforeAdding,
+  })
   const [view, setView] = useState<View>({ phase: "scan", error: null })
   useScreenWakeLock(view.phase === "connecting" || view.phase === "code")
   const cancelRef = useRef<(() => void) | null>(null)
@@ -112,47 +97,9 @@ export function AccountTransferTarget({
   useEffect(() => () => cancelRef.current?.(), [accountVersion])
 
   const addAccount = async (payload: TransferPayload) => {
-    const stale = () => store.get(evoluCounterAtom) !== accountVersion
-    if (stale()) return
-    if (confirmBeforeAdding) {
-      if (!(await require("admin", "accountTransfer.target.confirm.confirm"))) {
-        setView({ phase: "scan", error: null })
-        return
-      }
-      const confirmed = await confirm({
-        title: t("accountTransfer.target.confirm.title", {
-          name: payload.accountName,
-        }),
-        description: t("accountTransfer.target.confirm.description", {
-          name: payload.accountName,
-        }),
-        confirmLabel: t("accountTransfer.target.confirm.confirm"),
-        cancelLabel: t("accountTransfer.target.confirm.cancel"),
-      })
-      if (!confirmed || stale()) {
-        setView({ phase: "scan", error: null })
-        return
-      }
+    if (!(await addTransferredAccount(payload))) {
+      setView({ phase: "scan", error: null })
     }
-
-    const previous = activeAccount.id
-    const { created } = await createOrSelectAccount(
-      deviceEvolu,
-      payload.masterKey,
-      {
-        defaultTransports: appDefaultTransports,
-        name: payload.accountName,
-        transports: payload.transports,
-      }
-    )
-    setRestoredAccount({ created, previous })
-    reloadAppEvolu()
-    toast.success(
-      created
-        ? t("accountTransfer.target.added", { name: payload.accountName })
-        : t("accountTransfer.target.alreadyAdded")
-    )
-    router.replace({ pathname: "/restore-account", params: { source } })
   }
 
   const onScan = (text: string) => {

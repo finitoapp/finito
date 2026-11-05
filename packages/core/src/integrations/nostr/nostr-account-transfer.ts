@@ -74,6 +74,28 @@ export const TransferPayloadSchema = z.object({
 })
 export type TransferPayload = z.output<typeof TransferPayloadSchema>
 
+/**
+ * The payload that sends `account` away, the same for the QR transfer and the
+ * app-to-app request (account/0001, account/0008): its master key and name,
+ * and its transports less any that are not `wss`, each once, at most eight.
+ */
+export const createTransferPayload = (account: {
+  readonly masterKey: TransferPayload["masterKey"]
+  readonly name: string
+  readonly transports: ReadonlyArray<{ readonly url: string }>
+}): TransferPayload => ({
+  masterKey: account.masterKey,
+  accountName: NonEmptyString255Schema.decode(account.name),
+  transports: [
+    ...new Set(
+      account.transports.flatMap(({ url }) => {
+        const parsed = WssUrlSchema.safeParse(url)
+        return parsed.success ? [parsed.data] : []
+      })
+    ),
+  ].slice(0, 8),
+})
+
 const Hex32Schema = z.string().regex(/^[0-9a-f]{64}$/u)
 const AbortMessageSchema = z.object({
   t: z.literal("abort"),

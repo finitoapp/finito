@@ -126,12 +126,6 @@ export const enOnboarding = {
   "accountChoice.new.description":
     "Generate a new recovery phrase and start with an empty account.",
   "accountChoice.new.title": "Create a new account",
-  "accountChoice.restore.description":
-    "Use the 20 words from {appName} to open your existing account data.",
-  "accountChoice.restore.title": "Restore an existing account",
-  "accountChoice.transfer.description":
-    "Scan a QR code on a device where you already use {appName}.",
-  "accountChoice.transfer.title": "Transfer from another device",
   "onboarding.back": "Back",
   "onboarding.alreadyOnboarded": "This account is already set up.",
   "onboarding.cancelSetup": "Cancel account creation",
@@ -170,9 +164,6 @@ export const enOnboarding = {
   "onboarding.restore.subtitle":
     "The phrase from Settings → Security. A seed from another wallet (Spark, Trezor, 12 or 24 words) does not work here.",
   "onboarding.restore.suggestions": "Word suggestions",
-  "onboarding.restore.title": "Restore existing account",
-  "onboarding.restore.transferLink":
-    "Have {appName} on another device? Transfer by scanning a QR code",
   "onboarding.restore.unknownWords": "Unknown word: {words}",
   "onboarding.restore.wordLabel": "Word {index}",
   "onboarding.setup.account.label": "Account number",
@@ -183,7 +174,51 @@ export const enOnboarding = {
   "onboarding.setup.title": "Set up a business",
   "onboarding.title": "Welcome to {appName}",
   "onboarding.welcome.new": "New business",
-  "onboarding.welcome.restore": "Restore existing",
+  "onboarding.welcome.restore": "I already have an account",
   "onboarding.welcome.tagline":
     "A payment terminal for QR payments by bank, card or bitcoin.",
+  "accountFromPayky.title": "Transfer from {sourceApp}",
+  "accountFromPayky.description":
+    "Take over the account from the {sourceApp} app on this phone.",
+  "accountFromPayky.intro":
+    "{sourceApp} opens and shows which app asks for the account. Check the code, approve the request, and you come back here with the account.",
+  "accountFromPayky.open": "Open {sourceApp}",
+  "accountFromPayky.waiting": "Check that {sourceApp} shows the same code:",
+  "accountFromPayky.waiting.hint":
+    "Approve the request in {sourceApp} only when the codes match.",
+  "accountFromPayky.waitingForAnswer":
+    "Waiting for the answer from {sourceApp}…",
+  "accountFromPayky.adding": "Adding the account…",
+  "accountFromPayky.retry": "Try again",
+  "accountFromPayky.failed.title": "No account received",
+  "accountFromPayky.failed.rejected":
+    "The request was declined in {sourceApp}.",
+  "accountFromPayky.failed.busy":
+    "{sourceApp} got another request at the same time, so both were stopped. Try again.",
+  "accountFromPayky.failed.expired":
+    "The request expired in {sourceApp}. Try again.",
+  "accountFromPayky.failed.noAccount":
+    "{sourceApp} has no account set up that it could give.",
+  "accountFromPayky.failed.demo":
+    "{sourceApp} has a demo account open, which cannot be transferred.",
+  "accountFromPayky.failed.notInstalled":
+    "{sourceApp} is no longer on this phone.",
+  "accountFromPayky.failed.cancelled": "The transfer was cancelled.",
+  "accountFromPayky.failed.invalid":
+    "{sourceApp} sent an answer that cannot be used here. Nothing was added.",
+  "accountFromPayky.failed.unsupportedVersion":
+    "This version of {sourceApp} does not understand the request. Update both apps.",
+  "openAccount.title": "Open an existing account",
+  "openAccount.description": "Choose where the account is now.",
+  "openAccount.fromPayky.title": "From {sourceApp} on this phone",
+  "openAccount.fromPayky.description": "No typing, you only approve.",
+  "openAccount.transfer.title": "From another device",
+  "openAccount.transfer.description": "You scan a QR code and type in a code.",
+  "openAccount.phrase.title": "Recovery phrase (20 words)",
+  "openAccount.phrase.description": "When you have no other device at hand.",
+  "accountChoice.existing.title": "I already have an account",
+  "accountChoice.existing.description":
+    "Open it from another device or with its 20 words.",
+  "accountChoice.existing.descriptionWithPayky":
+    "Open it from {sourceApp}, another device or with its 20 words.",
 } as const

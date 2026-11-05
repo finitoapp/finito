@@ -2,16 +2,12 @@ import { useTimestamp } from "@dedalik/use-react"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { createDateDep } from "@payky/core/deps"
 import {
+  createTransferPayload,
   startTransferSource,
-  type TransferPayload,
   type TransferSource,
   type TransferSourceState,
 } from "@payky/core/integrations/nostr/nostr-account-transfer"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
-import {
-  NonEmptyString255,
-  WssUrlSchema,
-} from "@payky/core/modules/shared/schema"
 import { useRouter } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { useAtomValue } from "jotai"
@@ -127,18 +123,7 @@ export function AccountTransferSourcePage() {
   const start = () => {
     sessionRef.current?.cancel()
     setCode("")
-    const payload: TransferPayload = {
-      masterKey: account.masterKey,
-      accountName: NonEmptyString255(account.name),
-      transports: [
-        ...new Set(
-          account.transports.flatMap(({ url }) => {
-            const parsed = WssUrlSchema.safeParse(url)
-            return parsed.success ? [parsed.data] : []
-          })
-        ),
-      ].slice(0, 8),
-    }
+    const payload = createTransferPayload(account)
     sessionRef.current = startTransferSource(
       { ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS), ...createDateDep() },
       { payload, onState: setState }

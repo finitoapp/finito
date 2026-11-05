@@ -4,6 +4,7 @@ import { Provider } from "jotai"
 import { LoaderCircleIcon } from "lucide-react"
 import { Suspense, useEffect } from "react"
 import { jotaiStore } from "@/atoms/store.ts"
+import { AccountShareRequestHost } from "@/components/app/account-share-request-host.tsx"
 import {
   AppBackgroundJobs,
   CashuBackgroundJobs,
@@ -101,6 +102,7 @@ export function App() {
                     <DemoDataSeed />
                     <AppBackgroundJobs />
                     <SwitchioRestoredResult />
+                    <AccountShareRequestHost />
                     <DeviceRegistration />
                     {/*
                      * The Cashu job waits on and can fail with the shared

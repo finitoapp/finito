@@ -92,12 +92,13 @@ it("requires confirm for both diagnostic cash settlements", () => {
 })
 
 it("requires current-account admin before adding a received account", () => {
-  const transferTarget = readFileSync(
-    new URL("../shared/account-transfer-target.tsx", import.meta.url),
+  // Shared by the QR transfer and the request to Payky (account/0008).
+  const addTransferred = readFileSync(
+    new URL("../shared/use-add-transferred-account.ts", import.meta.url),
     "utf8"
   )
-  const addAccount = transferTarget.slice(
-    transferTarget.indexOf("const addAccount")
+  const addAccount = addTransferred.slice(
+    addTransferred.indexOf("return async (payload")
   )
 
   expectInOrder(

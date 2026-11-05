@@ -1,5 +1,6 @@
 import { sqliteFalse } from "@evolu/common"
 import { accountListQuery } from "@payky/core/evolu/device-account"
+import { ACCOUNT_SHARE_REQUEST_LIFETIME_MS } from "@payky/core/integrations/payky-app/account-share-protocol"
 import {
   saveCashRegisterAccount,
   saveFiatBankAccount,
@@ -63,11 +64,18 @@ import {
   PositiveNumber,
   TimestampMsSchema,
 } from "@payky/core/modules/shared/schema"
+import { jsonCodec } from "@payky/core/zod-utils"
 import { useAtomValue } from "jotai"
 import { useEffect } from "react"
 import { z } from "zod"
 import { accountAtom } from "@/atoms/account.ts"
+import {
+  accountShareSessionAtom,
+  createAccountShareSession,
+} from "@/atoms/account-share.ts"
+import { jotaiStore } from "@/atoms/store.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
+import { router } from "@/router.tsx"
 
 declare global {
   interface Window {
@@ -100,7 +108,24 @@ declare global {
     ) => Promise<{ readonly pinUnblockToken: string | null } | null>
     __e2eUnblockThisDevice?: () => Promise<void>
     __e2eDeviceAccountIds?: () => Promise<ReadonlyArray<string>>
+    __e2eSimulateAccountShareRequest?: (options: {
+      readonly callerLabel: string
+      readonly requesterName: string | null
+      readonly code: string
+    }) => Promise<void>
+    __e2eAccountShareAnswers?: () => ReadonlyArray<E2eAccountShareAnswer>
   }
+}
+
+const E2eShareAnswerJson = jsonCodec(
+  z.object({ payload: z.object({ accountName: z.string() }) })
+)
+
+/** What the simulated requester received; the account by its name only. */
+interface E2eAccountShareAnswer {
+  readonly approved: boolean
+  readonly error: string | null
+  readonly accountName: string | null
 }
 
 /**
@@ -193,6 +218,11 @@ declare global {
  * one — e2e runs without a relay, so a second device cannot sync for real.
  * And `window.__e2eDeviceAccountIds`, the ids a typed `/restore-account` URL
  * must not be able to remove (account/0005).
+ *
+ * `window.__e2eSimulateAccountShareRequest` opens the approval page for an
+ * account request as if another app had sent one (account/0008), with a
+ * requester that records its answers in `window.__e2eAccountShareAnswers`;
+ * Playwright cannot send an Android intent.
  *
  * All of them are dead code in any real production build: kept alive only in
  * dev (`import.meta.env.DEV`) and in the one production build
@@ -632,7 +662,50 @@ export function E2eTestBridge() {
       await run.ok(unblockDevice(deviceId))
     }
 
+    const accountShareAnswers: E2eAccountShareAnswer[] = []
+    window.__e2eAccountShareAnswers = () => [...accountShareAnswers]
+    window.__e2eSimulateAccountShareRequest = async ({
+      callerLabel,
+      requesterName,
+      code,
+    }) => {
+      const receivedAt = Date.now()
+      const request = {
+        v: 1 as const,
+        requestId: Array.from(
+          crypto.getRandomValues(new Uint8Array(16)),
+          (byte) => byte.toString(16).padStart(2, "0")
+        ).join(""),
+        code,
+        requesterName,
+        callerPackage: "fit.finito.e2e",
+        callerLabel,
+        callerIcon: null,
+        receivedAt,
+        expiresAt: receivedAt + ACCOUNT_SHARE_REQUEST_LIFETIME_MS,
+      }
+      jotaiStore.set(
+        accountShareSessionAtom,
+        createAccountShareSession(request, async (answer) => {
+          const decoded = answer.approved
+            ? z.safeDecode(E2eShareAnswerJson, answer.account)
+            : null
+          accountShareAnswers.push({
+            approved: answer.approved,
+            error: answer.approved ? null : answer.error,
+            accountName: decoded?.success
+              ? decoded.data.payload.accountName
+              : null,
+          })
+          return true
+        })
+      )
+      await router.navigate({ to: "/settings/accounts/share" })
+    }
+
     return () => {
+      delete window.__e2eSimulateAccountShareRequest
+      delete window.__e2eAccountShareAnswers
       delete window.__e2eSeedDevice
       delete window.__e2eDeviceAccountIds
       delete window.__e2eReadDevice

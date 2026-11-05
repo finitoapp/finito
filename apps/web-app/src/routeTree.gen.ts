@@ -66,6 +66,8 @@ import { Route as TerminalSettingsAboutPrivacyRouteImport } from './routes/_term
 import { Route as TerminalSettingsAboutTermsRouteImport } from './routes/_terminal.settings.about.terms'
 import { Route as TerminalSettingsAccessAddDeviceRouteImport } from './routes/_terminal.settings.access_.add-device'
 import { Route as TerminalSettingsAccountsIndexRouteImport } from './routes/_terminal.settings.accounts.index'
+import { Route as TerminalSettingsAccountsOpenRouteImport } from './routes/_terminal.settings.accounts_.open'
+import { Route as TerminalSettingsAccountsShareRouteImport } from './routes/_terminal.settings.accounts_.share'
 import { Route as TerminalSettingsPaymentAccountsIndexRouteImport } from './routes/_terminal.settings.payment-accounts.index'
 import { Route as TerminalSettingsPaymentAccountsCardSwitchioRouteImport } from './routes/_terminal.settings.payment-accounts.card-switchio'
 import { Route as TerminalSettingsPaymentAccountsCashuRouteImport } from './routes/_terminal.settings.payment-accounts.cashu'
@@ -409,6 +411,18 @@ const TerminalSettingsAccountsIndexRoute =
     path: '/',
     getParentRoute: () => TerminalSettingsAccountsRoute,
   } as any)
+const TerminalSettingsAccountsOpenRoute =
+  TerminalSettingsAccountsOpenRouteImport.update({
+    id: '/accounts_/open',
+    path: '/accounts/open',
+    getParentRoute: () => TerminalSettingsRoute,
+  } as any)
+const TerminalSettingsAccountsShareRoute =
+  TerminalSettingsAccountsShareRouteImport.update({
+    id: '/accounts_/share',
+    path: '/accounts/share',
+    getParentRoute: () => TerminalSettingsRoute,
+  } as any)
 const TerminalSettingsPaymentAccountsIndexRoute =
   TerminalSettingsPaymentAccountsIndexRouteImport.update({
     id: '/',
@@ -630,6 +644,8 @@ export interface FileRoutesByFullPath {
   '/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/settings/access/add-device': typeof TerminalSettingsAccessAddDeviceRoute
+  '/settings/accounts/open': typeof TerminalSettingsAccountsOpenRoute
+  '/settings/accounts/share': typeof TerminalSettingsAccountsShareRoute
   '/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/settings/payment-accounts/cashu': typeof TerminalSettingsPaymentAccountsCashuRouteWithChildren
   '/settings/payment-accounts/iban': typeof TerminalSettingsPaymentAccountsIbanRouteWithChildren
@@ -706,6 +722,8 @@ export interface FileRoutesByTo {
   '/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/settings/access/add-device': typeof TerminalSettingsAccessAddDeviceRoute
+  '/settings/accounts/open': typeof TerminalSettingsAccountsOpenRoute
+  '/settings/accounts/share': typeof TerminalSettingsAccountsShareRoute
   '/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/settings/payment-accounts/lightning-address': typeof TerminalSettingsPaymentAccountsLightningAddressRoute
   '/settings/payment-accounts/qerko-payment': typeof TerminalSettingsPaymentAccountsQerkoPaymentRoute
@@ -787,6 +805,8 @@ export interface FileRoutesById {
   '/_terminal/settings/about/privacy': typeof TerminalSettingsAboutPrivacyRoute
   '/_terminal/settings/about/terms': typeof TerminalSettingsAboutTermsRoute
   '/_terminal/settings/access_/add-device': typeof TerminalSettingsAccessAddDeviceRoute
+  '/_terminal/settings/accounts_/open': typeof TerminalSettingsAccountsOpenRoute
+  '/_terminal/settings/accounts_/share': typeof TerminalSettingsAccountsShareRoute
   '/_terminal/settings/payment-accounts/card-switchio': typeof TerminalSettingsPaymentAccountsCardSwitchioRoute
   '/_terminal/settings/payment-accounts/cashu': typeof TerminalSettingsPaymentAccountsCashuRouteWithChildren
   '/_terminal/settings/payment-accounts/iban': typeof TerminalSettingsPaymentAccountsIbanRouteWithChildren
@@ -874,6 +894,8 @@ export interface FileRouteTypes {
     | '/settings/about/privacy'
     | '/settings/about/terms'
     | '/settings/access/add-device'
+    | '/settings/accounts/open'
+    | '/settings/accounts/share'
     | '/settings/payment-accounts/card-switchio'
     | '/settings/payment-accounts/cashu'
     | '/settings/payment-accounts/iban'
@@ -950,6 +972,8 @@ export interface FileRouteTypes {
     | '/settings/about/privacy'
     | '/settings/about/terms'
     | '/settings/access/add-device'
+    | '/settings/accounts/open'
+    | '/settings/accounts/share'
     | '/settings/payment-accounts/card-switchio'
     | '/settings/payment-accounts/lightning-address'
     | '/settings/payment-accounts/qerko-payment'
@@ -1030,6 +1054,8 @@ export interface FileRouteTypes {
     | '/_terminal/settings/about/privacy'
     | '/_terminal/settings/about/terms'
     | '/_terminal/settings/access_/add-device'
+    | '/_terminal/settings/accounts_/open'
+    | '/_terminal/settings/accounts_/share'
     | '/_terminal/settings/payment-accounts/card-switchio'
     | '/_terminal/settings/payment-accounts/cashu'
     | '/_terminal/settings/payment-accounts/iban'
@@ -1471,6 +1497,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/accounts/'
       preLoaderRoute: typeof TerminalSettingsAccountsIndexRouteImport
       parentRoute: typeof TerminalSettingsAccountsRoute
+    }
+    '/_terminal/settings/accounts_/open': {
+      id: '/_terminal/settings/accounts_/open'
+      path: '/accounts/open'
+      fullPath: '/settings/accounts/open'
+      preLoaderRoute: typeof TerminalSettingsAccountsOpenRouteImport
+      parentRoute: typeof TerminalSettingsRoute
+    }
+    '/_terminal/settings/accounts_/share': {
+      id: '/_terminal/settings/accounts_/share'
+      path: '/accounts/share'
+      fullPath: '/settings/accounts/share'
+      preLoaderRoute: typeof TerminalSettingsAccountsShareRouteImport
+      parentRoute: typeof TerminalSettingsRoute
     }
     '/_terminal/settings/payment-accounts/': {
       id: '/_terminal/settings/payment-accounts/'
@@ -1966,6 +2006,8 @@ interface TerminalSettingsRouteChildren {
   TerminalSettingsTipsRoute: typeof TerminalSettingsTipsRoute
   TerminalSettingsIndexRoute: typeof TerminalSettingsIndexRoute
   TerminalSettingsAccessAddDeviceRoute: typeof TerminalSettingsAccessAddDeviceRoute
+  TerminalSettingsAccountsOpenRoute: typeof TerminalSettingsAccountsOpenRoute
+  TerminalSettingsAccountsShareRoute: typeof TerminalSettingsAccountsShareRoute
   TerminalSettingsSecurityBackupRoute: typeof TerminalSettingsSecurityBackupRoute
 }
 
@@ -1995,6 +2037,8 @@ const TerminalSettingsRouteChildren: TerminalSettingsRouteChildren = {
   TerminalSettingsTipsRoute: TerminalSettingsTipsRoute,
   TerminalSettingsIndexRoute: TerminalSettingsIndexRoute,
   TerminalSettingsAccessAddDeviceRoute: TerminalSettingsAccessAddDeviceRoute,
+  TerminalSettingsAccountsOpenRoute: TerminalSettingsAccountsOpenRoute,
+  TerminalSettingsAccountsShareRoute: TerminalSettingsAccountsShareRoute,
   TerminalSettingsSecurityBackupRoute: TerminalSettingsSecurityBackupRoute,
 }
 
