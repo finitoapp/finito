@@ -16,8 +16,8 @@ const LOGO_SIZE = 112
  * The first screen, as fazole.fit's welcome (Linky's
  * `apps/fazole-app/src/screens/WelcomeScreen.tsx`): the logo, the app's
  * name and its tagline centered in the column, then the two ways in — a new
- * business (the main action) and an existing one (restore from the recovery
- * phrase, or transfer from another device, offered on the restore step).
+ * business (the main action) and an existing account, whose chooser
+ * (onboarding/0011) asks next where it is now.
  */
 export function WelcomeStep({
   pending,

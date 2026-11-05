@@ -10,6 +10,12 @@ import {
   validateOnboardingForm,
 } from "@payky/app-shared/onboarding-utils"
 import {
+  onboardingAccountTypeOfOpenAccountStep,
+  onboardingStepOfOpenAccountStep,
+  openAccountStepCopy,
+  openAccountStepOfOnboardingStep,
+} from "@payky/app-shared/open-account"
+import {
   accountListQuery,
   removeDeviceAccount,
   selectAccount,
@@ -50,8 +56,7 @@ import { Input } from "@/components/ui/input.tsx"
 import { LanguageSelect } from "@/features/onboarding/language-select.tsx"
 import { AccountChoiceStep } from "@/features/onboarding/onboarding-steps/account-choice-step.tsx"
 import { PaymentsStep } from "@/features/onboarding/onboarding-steps/payments-step.tsx"
-import { RestoreAccountStep } from "@/features/onboarding/onboarding-steps/restore-account-step.tsx"
-import { AccountTransferTarget } from "@/features/shared/account/account-transfer-target.tsx"
+import { OpenAccountFlow } from "@/features/shared/account/open-account-flow.tsx"
 import { useRestoreAccount } from "@/features/shared/account/use-restore-account.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
@@ -61,6 +66,23 @@ import { nostrProfileQueryKey } from "@/hooks/use-nostr-profile.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSetLanguage, useTranslation } from "@/hooks/use-translation.ts"
+
+/** The steps that are not part of opening an existing account. */
+type OwnStep = Extract<OnboardingStep, "accountChoice" | "payments">
+
+const ownStepCopy = {
+  accountChoice: {
+    title: "onboarding.title",
+    description: "onboarding.accountChoice.description",
+  },
+  payments: {
+    title: "onboarding.payments.title",
+    description: "onboarding.payments.description",
+  },
+} as const satisfies Record<
+  OwnStep,
+  { readonly title: TranslationKey; readonly description: TranslationKey }
+>
 
 export function OnboardingPage({
   landingLanguage,
@@ -239,18 +261,13 @@ export function OnboardingPage({
     }
   }
 
-  const headingKeys = {
-    accountChoice: "onboarding.title",
-    payments: "onboarding.payments.title",
-    restore: "onboarding.restore.title",
-    transfer: "accountTransfer.target.title",
-  } satisfies Record<OnboardingStep, TranslationKey>
-  const descriptionKeys = {
-    accountChoice: "onboarding.accountChoice.description",
-    payments: "onboarding.payments.description",
-    restore: "onboarding.restore.description",
-    transfer: "accountTransfer.target.description",
-  } satisfies Record<OnboardingStep, TranslationKey>
+  const openAccountStep = openAccountStepOfOnboardingStep(step)
+  const copy =
+    openAccountStep !== null
+      ? openAccountStepCopy[openAccountStep]
+      : step === "accountChoice"
+        ? ownStepCopy.accountChoice
+        : ownStepCopy.payments
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -274,23 +291,26 @@ export function OnboardingPage({
         <div className="flex flex-col gap-8 py-6 sm:py-10">
           <header className="flex flex-col gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-balance">
-              {t(headingKeys[step])}
+              {t(copy.title)}
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {t(descriptionKeys[step])}
+              {t(copy.description)}
             </p>
           </header>
 
           {step === "accountChoice" ? (
             <AccountChoiceStep
               pending={pending}
-              onSelect={(nextAccountType) => {
-                const nextSteps = getOnboardingSteps(nextAccountType)
-                setForm((current) => ({
-                  ...current,
-                  accountType: nextAccountType,
-                  step: nextSteps[1] ?? current.step,
-                }))
+              onSelect={(choice) => {
+                setForm((current) =>
+                  choice === "new"
+                    ? { ...current, accountType: "new", step: "payments" }
+                    : {
+                        ...current,
+                        accountType: "restore",
+                        step: "restoreChoice",
+                      }
+                )
               }}
             />
           ) : null}
@@ -385,34 +405,30 @@ export function OnboardingPage({
             </form>
           ) : null}
 
-          {step === "restore" ? (
-            <RestoreAccountStep
-              error={restoreError}
-              words={restoreWords}
-              pending={pending}
-              onWordsChange={setRestoreWords}
-              onTransfer={() => {
-                setForm((current) => ({ ...current, step: "transfer" }))
-              }}
-              onRestore={() => {
-                void restoreExistingAccount()
-              }}
-            />
-          ) : null}
-
-          {step === "transfer" ? (
-            <AccountTransferTarget
+          {openAccountStep === null ? null : (
+            <OpenAccountFlow
+              step={openAccountStep}
               source="onboarding"
               confirmBeforeAdding={fallbackAccount !== undefined}
-              onRestoreWithPhrase={() => {
+              chooserClassName="border shadow-none"
+              restore={{
+                error: restoreError,
+                words: restoreWords,
+                pending,
+                onWordsChange: setRestoreWords,
+                onRestore: () => {
+                  void restoreExistingAccount()
+                },
+              }}
+              onStepChange={(next) => {
                 setForm((current) => ({
                   ...current,
-                  accountType: "restore",
-                  step: "restore",
+                  accountType: onboardingAccountTypeOfOpenAccountStep[next],
+                  step: onboardingStepOfOpenAccountStep[next],
                 }))
               }}
             />
-          ) : null}
+          )}
         </div>
 
         {fallbackAccount ? (

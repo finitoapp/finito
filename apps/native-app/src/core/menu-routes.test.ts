@@ -71,7 +71,7 @@ describe("menu section (navigation/0001)", () => {
     expect(placed["/withdraw/new"]).toBe("settings")
     expect(placed["/activity/stats"]).toBe("activity")
     expect(placed["/onboarding"]).toBeNull()
-    expect(placed["/pair"]).toBeNull()
+    expect(placed["/settings/accounts/open"]).toBe("settings")
     expect(placed["/e2e/:action"]).toBeNull()
   })
 

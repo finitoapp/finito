@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    Lets canRequestAccount resolve the account request intent (package
+    visibility, Android 11+); without it Payky reads as missing even when it
+    can take the request.
+  -->
+  <queries>
+    <package android:name="me.payky" />
+  </queries>
+</manifest>

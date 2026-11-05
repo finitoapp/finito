@@ -10,7 +10,7 @@ import {
 const appDir = join(import.meta.dirname, "../../app")
 
 /**
- * `app/pair.tsx` is `/pair`, `app/x/index.tsx` is `/x`, `[id]` is `:id`, and
+ * `app/bill.tsx` is `/bill`, `app/x/index.tsx` is `/x`, `[id]` is `:id`, and
  * a group such as `(tabs)` adds nothing to the path.
  */
 const routeFiles = (readdirSync(appDir, { recursive: true }) as string[])
@@ -36,7 +36,7 @@ describe("native route access", () => {
 
   it("treats an unknown path as owner-only", () => {
     expect(requiredPermission("/nope")).toBe("admin")
-    expect(requiredPermission("/pair")).toBe("admin")
+    expect(requiredPermission("/settings/accounts/open")).toBe("admin")
     expect(requiredPermission("/diagnostics")).toBe("admin")
     expect(requiredPermission("/")).toBe("sell")
     expect(requiredPermission("/bill")).toBe("sell")
@@ -136,7 +136,7 @@ describe("native route access", () => {
     expect(isTerminalRoute("/restore-account")).toBe(false)
     expect(isTerminalRoute("/error")).toBe(false)
     expect(isTerminalRoute("/e2e/offline")).toBe(false)
-    expect(isTerminalRoute("/pair")).toBe(false)
+    expect(isTerminalRoute("/settings/accounts/open")).toBe(true)
     expect(isTerminalRoute("/diagnostics")).toBe(false)
   })
 })

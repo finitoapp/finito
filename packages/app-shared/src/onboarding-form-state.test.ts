@@ -7,8 +7,17 @@ describe("getOnboardingSteps", () => {
     expect(getOnboardingSteps("new")).toEqual(["accountChoice", "payments"])
   })
 
-  test("goes directly from account choice to recovery for restoration", () => {
-    expect(getOnboardingSteps("restore")).toEqual(["accountChoice", "restore"])
+  test("opens an existing account through the chooser", () => {
+    expect(getOnboardingSteps("restore")).toEqual([
+      "accountChoice",
+      "restoreChoice",
+      "restore",
+    ])
+    expect(getOnboardingSteps("transfer")).toEqual([
+      "accountChoice",
+      "restoreChoice",
+      "transfer",
+    ])
   })
 
   test("skips the choice step for an already restored phrase", () => {

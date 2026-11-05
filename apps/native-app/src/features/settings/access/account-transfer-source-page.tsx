@@ -2,16 +2,12 @@ import { formatCountdown } from "@payky/app-shared/format-text"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { createDateDep } from "@payky/core/deps"
 import {
+  createTransferPayload,
   startTransferSource,
-  type TransferPayload,
   type TransferSource,
   type TransferSourceState,
 } from "@payky/core/integrations/nostr/nostr-account-transfer"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
-import {
-  NonEmptyString255,
-  WssUrlSchema,
-} from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
 import { useAtomValue, useStore } from "jotai"
 import ArrowRightLeft from "lucide-react-native/icons/arrow-right-left"
@@ -141,18 +137,7 @@ export function AccountTransferSourcePage() {
     sessionRef.current?.cancel()
     setCode("")
     setNow(Date.now())
-    const payload: TransferPayload = {
-      masterKey: account.masterKey,
-      accountName: NonEmptyString255(account.name),
-      transports: [
-        ...new Set(
-          account.transports.flatMap(({ url }) => {
-            const parsed = WssUrlSchema.safeParse(url)
-            return parsed.success ? [parsed.data] : []
-          })
-        ),
-      ].slice(0, 8),
-    }
+    const payload = createTransferPayload(account)
     sessionRef.current = startTransferSource(
       {
         ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),

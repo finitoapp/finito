@@ -1340,4 +1340,22 @@ export const csSettings = {
   "settings.cashuAccount.qr.both": "Obojí",
   "settings.cashuAccount.qr.cashu": "Cashu",
   "settings.cashuAccount.qr.lightning": "Lightning",
+  "accountShare.title": "Žádost o účet",
+  "accountShare.caller": "{caller} žádá o tento účet",
+  "accountShare.claimed": "Aplikace o sobě tvrdí, že je „{claimed}“.",
+  "accountShare.mismatch.title": "Jména nesouhlasí",
+  "accountShare.mismatch.description":
+    "Android hlásí aplikaci {caller}, ale žádost tvrdí, že je od „{claimed}“. Schvalte jen žádost, kterou jste sami spustili v aplikaci, které věříte.",
+  "accountShare.code.instructions":
+    "Zkontrolujte, že {caller} ukazuje stejný kód:",
+  "accountShare.account": "Účet, který se předá: {name}",
+  "accountShare.warning.title": "Plný přístup k účtu",
+  "accountShare.warning.description":
+    "Schválením dáte této aplikaci plný přístup k účtu a jeho penězům. Podpora {appNameGen} vás o to nikdy nežádá.",
+  "accountShare.validFor": "Platí ještě {time}",
+  "accountShare.approve": "Schválit",
+  "accountShare.reject": "Odmítnout",
+  "accountShare.expired":
+    "Platnost žádosti vypršela, nebo ji nahradila jiná. Spusťte ji znovu v aplikaci, která o účet žádala.",
+  "accountShare.none": "Není tu žádná žádost o účet.",
 } satisfies Record<keyof typeof enSettings, string>

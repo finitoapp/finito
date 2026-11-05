@@ -1,8 +1,9 @@
 // Diagnostic source of the account transfer, run from the repo root:
 //   bun apps/native-app/scripts/pair-source.ts
-// Not bundled into the app. Creates a disposable account key, prints the
-// adb deep link for the native pair target, then type the 6-digit code the
-// phone shows (a wrong one tests the attempt limit).
+// Not bundled into the app. Creates a disposable account key and prints
+// the pair URI; scan it in Settings → Accounts → I already have an account →
+// From another device (the adb deep link opens that step), then type the
+// 6-digit code the phone shows (a wrong one tests the attempt limit).
 
 import { createInterface } from "node:readline"
 import { createAppOwner } from "@evolu/common"
@@ -46,7 +47,7 @@ const session = startTransferSource(
         announced = true
         console.log("pair uri:", state.uri)
         console.log(
-          `adb shell am start -a android.intent.action.VIEW -d "finito://pair?hex=${Buffer.from(state.uri).toString("hex")}" fit.finito.app`
+          `adb shell am start -a android.intent.action.VIEW -d "finito://settings/accounts/open?step=transfer" fit.finito.app`
         )
       }
       console.log("state:", JSON.stringify({ ...state, uri: undefined }))

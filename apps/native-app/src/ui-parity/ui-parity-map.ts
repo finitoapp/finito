@@ -450,7 +450,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/onboarding/onboarding-page.tsx",
     web: ["apps/web-app/src/features/onboarding/onboarding-page.tsx"],
     status: "matched",
-    note: "fazole.fit's onboarding: a welcome screen, then a headed setup or restore page under a top bar; the restore page also offers the transfer from another device.",
+    note: "fazole.fit's onboarding: a welcome screen, then a headed setup page, or the chooser of onboarding/0011 and the way picked there, under a top bar. Web's welcome step is AccountTypeChoice with the same two ways in.",
     allowedDifferences: {
       FadeHeader:
         "fazole.fit's top bar: the back button, or the language picker on the welcome screen, where web draws a ghost back button in the column",
@@ -825,24 +825,17 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/settings/accounts/open-account-page.tsx",
+    web: ["apps/web-app/src/features/settings/accounts/open-account-page.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/settings/accounts/accounts-settings-page.tsx",
     web: [
       "apps/web-app/src/features/settings/accounts/accounts-settings-page.tsx",
     ],
     status: "matched",
-    note: "Native account rows use the last persisted nostrPicture; web prefers the active account's current profile query and falls back to the persisted picture.",
-    allowedDifferences: {
-      Dialog:
-        "web opens restore and account-transfer-target dialogs; native keeps restore inline and opens pairing or the source route",
-      DialogContent:
-        "web opens restore and account-transfer-target dialogs; native keeps restore inline and opens pairing or the source route",
-      DialogDescription:
-        "web opens restore and account-transfer-target dialogs; native keeps restore inline and opens pairing or the source route",
-      DialogHeader:
-        "web opens restore and account-transfer-target dialogs; native keeps restore inline and opens pairing or the source route",
-      DialogTitle:
-        "web opens restore and account-transfer-target dialogs; native keeps restore inline and opens pairing or the source route",
-    },
+    note: "Native account rows use the last persisted nostrPicture; web prefers the active account's current profile query and falls back to the persisted picture. Both open an existing account on /settings/accounts/open (onboarding/0011); native's row also names the web app's Android shell (me.payky) when it takes the request (account/0008).",
   },
   {
     native: "src/features/settings/assistant/assistant-chat-page.tsx",
@@ -1610,6 +1603,30 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Switch: "the enabled row is a switch, as the other settings rows",
       FieldContent: "the enabled row is one line, label and switch",
       FieldDescription: "no second-line explanations (fazole-ui-minimal-copy)",
+    },
+  },
+  {
+    native: "src/features/shared/open-account-choice.tsx",
+    web: ["apps/web-app/src/features/shared/account/open-account-choice.tsx"],
+    status: "matched",
+    note: "The chooser of onboarding/0011. Native adds the row for the web app's Android shell (me.payky) on the same phone when it takes the request (account/0008); web has no app-to-app source.",
+  },
+  {
+    native: "src/features/shared/open-account-flow.tsx",
+    web: ["apps/web-app/src/features/shared/account/open-account-flow.tsx"],
+    status: "matched",
+    note: "Native also renders the request to the web app's Android shell (account/0008), which web never offers.",
+  },
+  {
+    native: "src/features/shared/account-from-payky.tsx",
+    web: [],
+    status: "matched",
+    note: "Native only (account/0008): web has no app-to-app source. The other side of the request is apps/web-app/src/features/settings/account-share-page.tsx, a different screen. The code is drawn like account-transfer-target's.",
+    allowedDifferences: {
+      Alert: "native only: why the request ended without an account",
+      AlertDescription: "native only: why the request ended without an account",
+      AlertTitle: "native only: why the request ended without an account",
+      Button: "native only: open the other app, and try again",
     },
   },
   {
