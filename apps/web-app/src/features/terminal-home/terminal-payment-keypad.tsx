@@ -10,16 +10,11 @@ import {
   type Money,
 } from "@payky/core/modules/shared/money"
 import type { Currency, FiatCurrency } from "@payky/core/modules/shared/schema"
-import {
-  atom,
-  type PrimitiveAtom,
-  useAtomValue,
-  useSetAtom,
-  useStore,
-} from "jotai"
+import { type PrimitiveAtom, useAtomValue, useSetAtom, useStore } from "jotai"
 import { LoaderCircle } from "lucide-react"
 import { motion, useAnimationControls, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
+import { terminalAmountInputAtom } from "@/atoms/terminal-amount.ts"
 import { Button } from "@/components/ui/button.tsx"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -62,8 +57,9 @@ function applyKeypadPress(
 }
 
 /**
- * The entered amount lives in a component-scoped Jotai atom passed down as a
- * prop, so only `AmountDisplay` and `ChargeButton` re-render per keypress —
+ * The entered amount lives in `terminalAmountInputAtom`, which outlives the
+ * keypad so a half-typed amount survives leaving home until a payment is
+ * created from it. The atom is passed down as a prop, so only `AmountDisplay` and `ChargeButton` re-render per keypress —
  * not the twelve `KeypadButton`s. Measured (Chrome, CDP `TaskDuration`, 600
  * keypresses): 2.8 ms per keypress with the atom versus 4.95 ms with a plain
  * `useState` here, and a Capacitor WebView on low-end Android multiplies that
@@ -76,11 +72,7 @@ export function TerminalPaymentKeypad({
   readonly currency: FiatCurrency
   readonly onCharge: ChargeHandler
 }) {
-  // `useState`, not `useMemo`: the amount lives in this atom, and `useMemo`
-  // is a cache React is allowed to throw away. A discarded one would mint a
-  // fresh atom and silently clear a half-typed amount. A lazy `useState`
-  // initializer is the guaranteed-once one.
-  const [amountInputAtom] = useState(() => atom(""))
+  const amountInputAtom = terminalAmountInputAtom
   const isChargePendingRef = useRef(false)
   const [isChargePending, setIsChargePending] = useState(false)
 

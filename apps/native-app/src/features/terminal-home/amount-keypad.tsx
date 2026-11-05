@@ -10,11 +10,12 @@ import {
   type FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
-import { router, useFocusEffect } from "expo-router"
-import { atom, type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
-import { useCallback, useRef, useState } from "react"
+import { router } from "expo-router"
+import { type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
+import { useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
+import { terminalAmountInputAtom } from "../../atoms/terminal-amount.ts"
 import { AmountFigure } from "../../components/amount-figure.tsx"
 import { replay } from "../../components/motion.ts"
 import { Button } from "../../components/ui/button.tsx"
@@ -39,10 +40,11 @@ const bubbleKeyframes = {
 } as const
 
 /**
- * The typed amount lives in a component-scoped atom passed down as a prop
- * (AGENTS.md; web's `TerminalPaymentKeypad` has the measurement), so a key
- * press re-renders only the display and the Charge button, not the keys.
- * `useState`, not `useMemo`: React may discard a memo and clear the amount.
+ * The typed amount lives in `terminalAmountInputAtom`, as on web: it
+ * outlives home, so a half-typed amount survives leaving it until a payment
+ * is created from it. The atom is passed down as a prop (AGENTS.md; web's
+ * `TerminalPaymentKeypad` has the measurement), so a key press re-renders
+ * only the display and the Charge button, not the keys.
  *
  * Drawn as web's `TerminalPaymentKeypad`: a spacer, the amount (the
  * `AmountFigure` every screen headlines with, at its largest), the 3-column grid of round ghost keys
@@ -63,12 +65,7 @@ export function AmountKeypad({
   readonly currency: FiatCurrency
   readonly tipsEnabled: boolean
 }) {
-  const [amountInputAtom] = useState(() => atom(""))
-  // Leaving home drops what was typed, as web's unmount does: the stack
-  // keeps home mounted under the payment, so a charged amount would wait
-  // there for the next customer.
-  const setAmountInput = useSetAtom(amountInputAtom)
-  useFocusEffect(useCallback(() => () => setAmountInput(""), [setAmountInput]))
+  const amountInputAtom = terminalAmountInputAtom
   const createTerminalPayment = useCreateTerminalPayment()
   const [pending, setPending] = useState(false)
   // The ref closes the window before `pending` re-renders: a double tap

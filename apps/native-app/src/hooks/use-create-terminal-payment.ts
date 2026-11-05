@@ -5,20 +5,25 @@ import type {
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
-import { useAtomValue } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
 import { useCallback } from "react"
 import { accountAtom } from "../atoms/account.ts"
+import { terminalAmountInputAtom } from "../atoms/terminal-amount.ts"
 import { nativeConsole } from "../core/native-runtime.ts"
 import { useRunToast } from "./use-run-toast.ts"
 
 /**
  * Prepares a payment and opens it, as web's `useCreateTerminalPayment`:
  * failure is logged and toasted here, not signalled back. The route gate
- * already requires `sell` (access/0002), as on web.
+ * already requires `sell` (access/0002), as on web. A payment without a
+ * bill charges what home's keypad holds (directly or through the tip
+ * screen), so creating one clears that amount, as on web; until then it
+ * survives leaving home.
  */
 export function useCreateTerminalPayment() {
   const runToast = useRunToast()
   const { device } = useAtomValue(accountAtom)
+  const setTerminalAmountInput = useSetAtom(terminalAmountInputAtom)
 
   return useCallback(
     async ({
@@ -50,12 +55,13 @@ export function useCreateTerminalPayment() {
           return "payment.create.error"
         }
 
+        if (billId === null) setTerminalAmountInput("")
         router.push({
           pathname: "/payment/[paymentId]",
           params: { paymentId: result.value },
         })
       })
     },
-    [device.id, runToast]
+    [device.id, runToast, setTerminalAmountInput]
   )
 }
