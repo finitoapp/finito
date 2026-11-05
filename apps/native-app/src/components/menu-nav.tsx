@@ -107,12 +107,21 @@ const barExit = { duration: 140, easing: Easing.in(Easing.cubic) }
  * (`MenuBarSpacer`). It slides in on `tab` and out on `undefined`, keeping
  * the tab it left on while it goes; mounted throughout, so the pill can
  * travel between tabs.
+ *
+ * A pressed entry answers at once: the pill sets off to it in that frame,
+ * while the route takes a few more (Expo Router queues the navigation and
+ * the root layout re-renders on the new path). Any route change brings the
+ * pill back in line with the route.
  */
 export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
   const insets = useSafeAreaInsets()
   const visible = tab !== undefined
   const [lastTab, setLastTab] = useState<MenuTab>(tab ?? "terminal")
-  if (tab !== undefined && tab !== lastTab) setLastTab(tab)
+  const [lastRouted, setLastRouted] = useState(tab)
+  if (tab !== lastRouted) {
+    setLastRouted(tab)
+    if (tab !== undefined) setLastTab(tab)
+  }
   const [hidden] = useState(() => new Animated.Value(visible ? 0 : 1))
   useEffect(() => {
     animateTo(hidden, visible ? 0 : 1, visible ? barEnter : barExit)
@@ -136,7 +145,12 @@ export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
         ],
       }}
     >
-      <MenuNav active={tab ?? lastTab} variant="bar" visible={visible} />
+      <MenuNav
+        active={lastTab}
+        variant="bar"
+        visible={visible}
+        onSelect={setLastTab}
+      />
     </Animated.View>
   )
 }
@@ -162,11 +176,14 @@ export function MenuNav({
   active,
   variant,
   visible = true,
+  onSelect,
 }: {
   readonly active: MenuTab
   readonly variant: "bar" | "sidebar"
   /** False while the bar is hidden: it comes back with the pill in place. */
   readonly visible?: boolean
+  /** Hears an entry as it is pressed, before the route follows. */
+  readonly onSelect?: (tab: MenuTab) => void
 }) {
   const { t } = useTranslation()
   const theme = useTheme()
@@ -254,6 +271,7 @@ export function MenuNav({
             tab={tab}
             active={tab === active}
             variant="bar"
+            onSelect={onSelect}
           />
         ))}
       </XStack>
@@ -315,10 +333,12 @@ function MenuNavLink({
   tab,
   active,
   variant,
+  onSelect,
 }: {
   readonly tab: MenuTab
   readonly active: boolean
   readonly variant: "bar" | "rail"
+  readonly onSelect?: ((tab: MenuTab) => void) | undefined
 }) {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -338,6 +358,7 @@ function MenuNavLink({
       variant={variant}
       onPress={() => {
         if (active) return
+        onSelect?.(tab)
         if (home && variant === "bar") {
           if (router.canGoBack()) router.back()
           else router.replace("/")
