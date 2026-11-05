@@ -19,6 +19,8 @@ appId: ${APP_ID}
       ROUTE: e2e/offline?next=/onboarding
       TEXT: ${output.t["onboarding.welcome.new"]}
 - tapOn: ${output.t["onboarding.welcome.restore"]}
+# The chooser of onboarding/0011: the phrase is its last row.
+- tapOn: ${output.t["openAccount.phrase.title"]}
 # One word per field: Maestro types into the element it tapped, so a space
 # would not move on to the next field as it does for a person.
 - evalScript: '${output.words = output.phrase.split(" "); output.slot = 0}'

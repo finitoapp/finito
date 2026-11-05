@@ -8,7 +8,6 @@ export type NativeRoutePath =
   | "/diagnostics"
   | "/error"
   | "/e2e/:action"
-  | "/pair"
   | "/onboarding"
   | "/restore-account"
   | "/bill"
@@ -51,6 +50,7 @@ export type NativeRoutePath =
   | "/settings/tables/new"
   | "/settings/tables/:tableId"
   | "/settings/accounts"
+  | "/settings/accounts/open"
   | "/settings/eet"
   | "/settings/access"
   | "/settings/access/add-device"
@@ -77,14 +77,13 @@ export type NativeRoutePath =
 /**
  * What each Expo Router path needs (access/0003); `route-access.test.ts`
  * keeps it in step with `app/`. `/` is the terminal home and needs `sell`
- * like web's `_terminal/` index (access/0002); `/diagnostics` and `/pair`
- * are owner-level until R03 replaces them. No route group exists yet; when one does, add the
+ * like web's `_terminal/` index (access/0002); `/diagnostics` is
+ * owner-level until R03 replaces them. No route group exists yet; when one does, add the
  * "a `free` child under a gated group fails" check to the test (access/0003).
  */
 export const routeAccess = {
   "/": "sell",
   "/diagnostics": "admin",
-  "/pair": "admin",
   // Like web's /onboarding, outside the gated `_terminal` layout: a fresh
   // account has no PIN yet.
   "/onboarding": "free",
@@ -158,6 +157,8 @@ export const routeAccess = {
   // Like web's `_terminal/settings/access`: the Access section is owner-only (access/0002).
   // Like web's `_terminal/settings/accounts`: switching and removing accounts is owner-only.
   "/settings/accounts": "admin",
+  // Adds an account the user already has (onboarding/0011); owner-only like the accounts screen.
+  "/settings/accounts/open": "admin",
   // Like web's `_terminal/settings/eet`: fiscal reporting is owner-only.
   "/settings/eet": "admin",
   "/settings/access": "admin",
@@ -239,7 +240,7 @@ export const requiredPermission = (pathname: string): Permission | null => {
 }
 
 /**
- * The routes outside web's `_terminal` layout, and native's own `/pair` and
+ * The routes outside web's `_terminal` layout, and native's own
  * `/diagnostics`: the only ones an account that is not onboarded stays on.
  */
 const outsideTerminal: ReadonlyArray<NativeRoutePath> = [
@@ -247,7 +248,6 @@ const outsideTerminal: ReadonlyArray<NativeRoutePath> = [
   "/restore-account",
   "/error",
   "/e2e/:action",
-  "/pair",
   "/diagnostics",
 ]
 

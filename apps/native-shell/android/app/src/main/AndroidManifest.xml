@@ -25,6 +25,27 @@
 
         </activity>
 
+        <!--
+            The account request from another app on this phone (account/0008):
+            a UI-less trampoline that runs in the requester's task, so the
+            singleTask MainActivity can ask the user and still hand back an
+            activity result. See AccountShareActivity.
+        -->
+        <activity
+            android:name=".AccountShareActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+
+            <intent-filter>
+                <action android:name="me.payky.action.SHARE_ACCOUNT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -49,6 +70,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.NFC" />
+    <!-- Lets the account request's approval screen hide other apps' overlays (Android 12+). -->
+    <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

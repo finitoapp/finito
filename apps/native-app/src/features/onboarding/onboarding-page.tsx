@@ -1,13 +1,21 @@
+import { brandName, paykyBrand } from "@payky/app-shared/brand"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   initialOnboardingFormState,
   type OnboardingStep,
   onboardingFormAtom,
+  previousOnboardingStep,
 } from "@payky/app-shared/onboarding-form-state"
 import {
   createFinishOnboardingInput,
   validateOnboardingForm,
 } from "@payky/app-shared/onboarding-utils"
+import {
+  onboardingAccountTypeOfOpenAccountStep,
+  onboardingStepOfOpenAccountStep,
+  openAccountStepCopy,
+  openAccountStepOfOnboardingStep,
+} from "@payky/app-shared/open-account"
 import {
   accountListQuery,
   removeDeviceAccount,
@@ -22,7 +30,6 @@ import {
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { router } from "expo-router"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import QrCode from "lucide-react-native/icons/qr-code"
 import { useEffect, useRef, useState } from "react"
 import { BackHandler, Platform } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
@@ -53,8 +60,7 @@ import {
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useSetLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight, maxWidth } from "../../theme/tokens.ts"
-import { AccountTransferTarget } from "../shared/account-transfer-target.tsx"
-import { RestoreAccountStep } from "../shared/restore-account-step.tsx"
+import { OpenAccountFlow } from "../shared/open-account-flow.tsx"
 import { useRestoreAccount } from "../shared/use-restore-account.ts"
 import { LanguageSelect } from "./language-select.tsx"
 import { PaymentsStep } from "./payments-step.tsx"
@@ -63,16 +69,18 @@ import { WelcomeStep } from "./welcome-step.tsx"
 /** The steps after the welcome screen head their page, as fazole.fit's do. */
 type HeadedStep = Exclude<OnboardingStep, "accountChoice">
 
-const headingKeys = {
-  payments: "onboarding.setup.title",
-  restore: "onboarding.restore.title",
-  transfer: "accountTransfer.target.title",
-} satisfies Record<HeadedStep, TranslationKey>
-const descriptionKeys = {
-  payments: "onboarding.payments.description",
-  restore: "onboarding.restore.description",
-  transfer: "accountTransfer.target.description",
-} satisfies Record<HeadedStep, TranslationKey>
+/** The setup page's heading; the steps of opening an account share theirs with Settings. */
+const stepCopy = (
+  step: HeadedStep
+): { readonly title: TranslationKey; readonly description: TranslationKey } => {
+  const openAccountStep = openAccountStepOfOnboardingStep(step)
+  return openAccountStep === null
+    ? {
+        title: "onboarding.setup.title",
+        description: "onboarding.payments.description",
+      }
+    : openAccountStepCopy[openAccountStep]
+}
 
 /** fazole.fit's page gutter (`$xl`, 20), wider than other screens' sides. */
 const ONBOARDING_PADDING_X = 20
@@ -118,6 +126,7 @@ export function OnboardingPage() {
   const fallbackAccount = deviceAccounts
     .filter((account) => account.id !== activeAccount.id)
     .sort((a, b) => b.lastUseAt - a.lastUseAt)[0]
+  const sourceApp = brandName(paykyBrand)
   const validation = validateOnboardingForm({ iban, businessName })
   const ibanError: TranslationKey | null =
     submitAttempted && validation.ibanInvalid
@@ -126,8 +135,9 @@ export function OnboardingPage() {
   const pending = finishing || restoring || cancelingSetup
   // A phrase whose relays held nothing (`existingMnemonic`) starts on the
   // setup page with no welcome screen to go back to.
-  const canGoBack =
-    step !== "accountChoice" && accountType !== "existingMnemonic"
+  const previousStep = previousOnboardingStep(step, accountType)
+  const canGoBack = previousStep !== null
+  const openAccountStep = openAccountStepOfOnboardingStep(step)
 
   // The appSettings row marks the account as onboarded (same as web): leave
   // so a finished or synced account never finishes again.
@@ -201,19 +211,15 @@ export function OnboardingPage() {
   }
 
   /**
-   * The transfer is reached from the restore page, so it goes back there;
-   * the setup and restore pages go back to the welcome screen.
+   * Each way of opening an account goes back to the chooser, the chooser and
+   * the setup page to the welcome screen (`previousOnboardingStep`).
    */
   const goBack = () => {
-    if (!canGoBack) return false
+    if (previousStep === null) return false
     if (finishingRef.current) return true
     setSubmitAttempted(false)
     setRestoreError(null)
-    setForm((current) =>
-      current.step === "transfer"
-        ? { ...current, accountType: "restore", step: "restore" }
-        : { ...current, step: "accountChoice" }
-    )
+    setForm((current) => ({ ...current, step: previousStep }))
     return true
   }
 
@@ -265,7 +271,7 @@ export function OnboardingPage() {
                 setForm((current) => ({
                   ...current,
                   accountType: "restore",
-                  step: "restore",
+                  step: "restoreChoice",
                 }))
               }
             />
@@ -285,9 +291,11 @@ export function OnboardingPage() {
                 role="heading"
                 aria-level={1}
               >
-                {t(headingKeys[step])}
+                {t(stepCopy(step).title, { sourceApp })}
               </Text>
-              <Text color="muted-foreground">{t(descriptionKeys[step])}</Text>
+              <Text color="muted-foreground">
+                {t(stepCopy(step).description, { sourceApp })}
+              </Text>
             </YStack>
 
             {step === "payments" ? (
@@ -381,48 +389,31 @@ export function OnboardingPage() {
               </YStack>
             ) : null}
 
-            {step === "restore" ? (
-              <YStack gap={20}>
-                <RestoreAccountStep
-                  error={restoreError}
-                  pending={restoring}
-                  submitFullWidth
-                  onRestore={(phrase) => {
+            {openAccountStep === null ? null : (
+              <OpenAccountFlow
+                step={openAccountStep}
+                source="onboarding"
+                confirmBeforeAdding={fallbackAccount !== undefined}
+                disabled={pending}
+                restore={{
+                  error: restoreError,
+                  pending: restoring,
+                  onRestore: (phrase) => {
                     void restore(phrase).then((started) => {
                       if (started) setForm(initialOnboardingFormState)
                     })
-                  }}
-                />
-                <Button
-                  variant="secondary"
-                  w="100%"
-                  iconStart={QrCode}
-                  label={t("accountChoice.transfer.title")}
-                  disabled={pending}
-                  onPress={() =>
-                    setForm((current) => ({
-                      ...current,
-                      accountType: "transfer",
-                      step: "transfer",
-                    }))
-                  }
-                />
-              </YStack>
-            ) : null}
-
-            {step === "transfer" ? (
-              <AccountTransferTarget
-                source="onboarding"
-                confirmBeforeAdding={fallbackAccount !== undefined}
-                onRestoreWithPhrase={() =>
+                  },
+                }}
+                onStepChange={(next) => {
+                  setRestoreError(null)
                   setForm((current) => ({
                     ...current,
-                    accountType: "restore",
-                    step: "restore",
+                    accountType: onboardingAccountTypeOfOpenAccountStep[next],
+                    step: onboardingStepOfOpenAccountStep[next],
                   }))
-                }
+                }}
               />
-            ) : null}
+            )}
           </>
         )}
 

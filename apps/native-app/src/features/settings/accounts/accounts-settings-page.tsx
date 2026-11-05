@@ -1,3 +1,4 @@
+import { brandName, paykyBrand } from "@payky/app-shared/brand"
 import { formatDateTime } from "@payky/app-shared/format-date"
 import {
   accountListQuery,
@@ -7,15 +8,14 @@ import {
   selectAccount,
 } from "@payky/core/evolu/device-account"
 import type { DeviceAccountId } from "@payky/core/evolu/device-client"
-import { router, useLocalSearchParams } from "expo-router"
+import { router } from "expo-router"
 import { useAtomValue, useSetAtom, useStore } from "jotai"
 import Check from "lucide-react-native/icons/check"
-import KeyRound from "lucide-react-native/icons/key-round"
+import LogIn from "lucide-react-native/icons/log-in"
 import MonitorSmartphone from "lucide-react-native/icons/monitor-smartphone"
 import Plus from "lucide-react-native/icons/plus"
-import QrCode from "lucide-react-native/icons/qr-code"
 import Trash from "lucide-react-native/icons/trash"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Image } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
@@ -35,8 +35,7 @@ import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { RestoreAccountStep } from "../../shared/restore-account-step.tsx"
-import { useRestoreAccount } from "../../shared/use-restore-account.ts"
+import { useCanRequestAccountFromPayky } from "../../shared/use-can-request-account-from-payky.ts"
 
 /**
  * Which accounts this device has and which one is active, plus the ways to
@@ -55,15 +54,9 @@ export function AccountsSettingsPage() {
   const reload = useSetAtom(reloadAppEvoluAtom)
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
   const [busy, setBusy] = useState(false)
-  const [restoreOpen, setRestoreOpen] = useState(false)
-  // `/pair`'s "restore with the recovery phrase instead" comes back here.
-  const { restore } = useLocalSearchParams<{ restore?: string }>()
-  useEffect(() => {
-    if (restore !== "1") return
-    setRestoreOpen(true)
-    router.setParams({ restore: undefined })
-  }, [restore])
-  const restoring = useRestoreAccount("settings")
+  // The row names Payky only when the chooser will offer it (account/0008).
+  const canRequestFromPayky = useCanRequestAccountFromPayky()
+  const sourceApp = brandName(paykyBrand)
   const stale = () => store.get(evoluCounterAtom) !== accountVersion
 
   const activate = async (accountId: DeviceAccountId) => {
@@ -204,53 +197,29 @@ export function AccountsSettingsPage() {
               },
             },
             {
-              id: "restore",
+              id: "existing",
               kind: "button",
-              icon: <Icon icon={KeyRound} color="muted-foreground" />,
+              icon: <Icon icon={LogIn} color="muted-foreground" />,
               label: (
                 <YStack gap="1">
                   <Text fontWeight="600">
-                    {t("accountChoice.restore.title")}
+                    {t("accountChoice.existing.title")}
                   </Text>
                   <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {t("accountChoice.restore.description")}
-                  </Text>
-                </YStack>
-              ),
-              disabled: busy || restoring.pending,
-              onPress: () => setRestoreOpen((open) => !open),
-            },
-            {
-              id: "transfer",
-              kind: "button",
-              icon: <Icon icon={QrCode} color="muted-foreground" />,
-              label: (
-                <YStack gap="1">
-                  <Text fontWeight="600">
-                    {t("accountChoice.transfer.title")}
-                  </Text>
-                  <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {t("accountChoice.transfer.description")}
+                    {canRequestFromPayky
+                      ? t("accountChoice.existing.descriptionWithPayky", {
+                          sourceApp,
+                        })
+                      : t("accountChoice.existing.description")}
                   </Text>
                 </YStack>
               ),
               disabled: busy,
-              onPress: () => {
-                router.push("/pair")
-              },
+              // The chooser of onboarding/0011, as onboarding shows it.
+              onPress: () => router.push("/settings/accounts/open"),
             },
           ]}
         />
-        {restoreOpen ? (
-          <RestoreAccountStep
-            error={restoring.error}
-            pending={restoring.pending}
-            onRestore={(phrase) => {
-              if (stale()) return
-              void restoring.restore(phrase)
-            }}
-          />
-        ) : null}
 
         <VerticalNav
           title={t("settings.accounts.elsewhere.title")}

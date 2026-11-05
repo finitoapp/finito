@@ -16,25 +16,15 @@ import { FadeHeader } from "@/components/fade-header.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog.tsx"
-import {
   VerticalNav,
   verticalNavShellClassName,
   verticalNavTitleClassName,
 } from "@/components/vertical-nav.tsx"
 import { appDefaultTransports } from "@/core/app-brand.ts"
-import { AccountTransferTarget } from "@/features/shared/account/account-transfer-target.tsx"
 import {
   type AccountChoice,
   AccountTypeChoice,
 } from "@/features/shared/account/account-type-choice.tsx"
-import { RestoreAccountForm } from "@/features/shared/account/restore-account-form.tsx"
-import { useRestoreAccount } from "@/features/shared/account/use-restore-account.ts"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
@@ -46,8 +36,9 @@ import { cn } from "@/lib/utils.ts"
 
 /**
  * Three questions, one section each: which accounts this device has (and
- * which one is active), how to add another — the same choice onboarding
- * offers — and how to open this one on another device.
+ * which one is active), how to add another — a new one, or one the user
+ * already has, opened on `/settings/accounts/open` as onboarding does it
+ * (onboarding/0011) — and how to open this one on another device.
  */
 export function AccountsSettingsPage() {
   const { language, t } = useTranslation()
@@ -59,18 +50,7 @@ export function AccountsSettingsPage() {
   const { require } = useRequirePermission()
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
   const [busy, setBusy] = useState(false)
-  // The kind outlives `dialogOpen`, so the content stays while it animates out.
-  const [dialog, setDialog] = useState<"restore" | "transfer">("restore")
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const {
-    words,
-    pending: restoring,
-    error,
-    clearError,
-    setWords,
-    restore,
-  } = useRestoreAccount()
-  const pending = busy || restoring
+  const pending = busy
   // Only the active account asks relays; the others show the picture it last
   // had while active (account/0004).
   const activeProfile = useActiveNostrProfile()
@@ -124,20 +104,13 @@ export function AccountsSettingsPage() {
     }
   }
 
-  const restoreAccount = async () => {
-    if (!(await restore())) return
-    setDialogOpen(false)
-    await navigate({ to: "/restore-account", search: { source: "settings" } })
-  }
-
   const chooseAccountType = (choice: AccountChoice) => {
     if (choice === "new") {
       void createNewAccount()
       return
     }
-    clearError()
-    setDialog(choice)
-    setDialogOpen(true)
+    // The chooser of onboarding/0011, on its own screen as onboarding shows it.
+    void navigate({ to: "/settings/accounts/open", search: { step: "choice" } })
   }
 
   return (
@@ -250,51 +223,6 @@ export function AccountsSettingsPage() {
           ]}
         />
       </div>
-
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          if (!restoring) setDialogOpen(open)
-        }}
-      >
-        <DialogContent>
-          {dialog === "restore" ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("accountChoice.restore.title")}</DialogTitle>
-                <DialogDescription>
-                  {t("onboarding.restore.description")}
-                </DialogDescription>
-              </DialogHeader>
-              <RestoreAccountForm
-                error={error}
-                words={words}
-                pending={restoring}
-                onWordsChange={setWords}
-                onTransfer={() => setDialog("transfer")}
-                onRestore={() => {
-                  void restoreAccount()
-                }}
-              />
-            </>
-          ) : null}
-          {dialog === "transfer" && dialogOpen ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{t("accountTransfer.target.title")}</DialogTitle>
-                <DialogDescription>
-                  {t("accountTransfer.target.description")}
-                </DialogDescription>
-              </DialogHeader>
-              <AccountTransferTarget
-                source="settings"
-                confirmBeforeAdding
-                onRestoreWithPhrase={() => setDialog("restore")}
-              />
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

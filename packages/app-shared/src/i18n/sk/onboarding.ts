@@ -128,12 +128,6 @@ export const skOnboarding = {
   "accountChoice.new.description":
     "Vygenerujte novú recovery phrase a začnite s prázdnym účtom.",
   "accountChoice.new.title": "Vytvoriť nový účet",
-  "accountChoice.restore.description":
-    "Pomocou 20 slov z {appNameGen} otvorte dáta svojho existujúceho účtu.",
-  "accountChoice.restore.title": "Obnoviť existujúci účet",
-  "accountChoice.transfer.description":
-    "Naskenujte QR kód na zariadení, kde už {appName} používate.",
-  "accountChoice.transfer.title": "Preniesť z iného zariadenia",
   "onboarding.back": "Späť",
   "onboarding.alreadyOnboarded": "Tento účet je už nastavený.",
   "onboarding.cancelSetup": "Zrušiť vytváranie účtu",
@@ -172,9 +166,6 @@ export const skOnboarding = {
   "onboarding.restore.subtitle":
     "Fráza zo Settings → Security. Seed z inej peňaženky (Spark, Trezor, 12 alebo 24 slov) tu nefunguje.",
   "onboarding.restore.suggestions": "Návrhy slov",
-  "onboarding.restore.title": "Obnovenie existujúceho účtu",
-  "onboarding.restore.transferLink":
-    "Máte {appName} na inom zariadení? Preniesť naskenovaním QR",
   "onboarding.restore.unknownWords": "Neznáme slovo: {words}",
   "onboarding.restore.wordLabel": "Slovo {index}",
   "onboarding.setup.account.label": "Číslo účtu",
@@ -184,7 +175,52 @@ export const skOnboarding = {
   "onboarding.setup.title": "Založiť podnik",
   "onboarding.title": "{appName} vás víta",
   "onboarding.welcome.new": "Nový podnik",
-  "onboarding.welcome.restore": "Obnoviť existujúci",
+  "onboarding.welcome.restore": "Už mám účet",
   "onboarding.welcome.tagline":
     "Platobný terminál pre QR platby bankou, kartou aj bitcoinom.",
+  "accountFromPayky.title": "Preniesť z {sourceApp}",
+  "accountFromPayky.description":
+    "Prevezmite účet z aplikácie {sourceApp} na tomto telefóne.",
+  "accountFromPayky.intro":
+    "Otvorí sa aplikácia {sourceApp} a ukáže, ktorá aplikácia o účet žiada. Skontrolujte kód, schváľte žiadosť a vrátite sa sem aj s účtom.",
+  "accountFromPayky.open": "Otvoriť {sourceApp}",
+  "accountFromPayky.waiting":
+    "Skontrolujte, že {sourceApp} ukazuje rovnaký kód:",
+  "accountFromPayky.waiting.hint":
+    "Žiadosť v aplikácii {sourceApp} schváľte, len keď sa kódy zhodujú.",
+  "accountFromPayky.waitingForAnswer":
+    "Čakám na odpoveď z aplikácie {sourceApp}…",
+  "accountFromPayky.adding": "Pridávam účet…",
+  "accountFromPayky.retry": "Skúsiť znova",
+  "accountFromPayky.failed.title": "Účet neprišiel",
+  "accountFromPayky.failed.rejected":
+    "Žiadosť bola v aplikácii {sourceApp} odmietnutá.",
+  "accountFromPayky.failed.busy":
+    "Aplikácia {sourceApp} dostala v rovnakej chvíli inú žiadosť, preto boli zastavené obe. Skúste to znova.",
+  "accountFromPayky.failed.expired":
+    "Žiadosti v aplikácii {sourceApp} vypršala platnosť. Skúste to znova.",
+  "accountFromPayky.failed.noAccount":
+    "Aplikácia {sourceApp} nemá nastavený účet, ktorý by mohla odovzdať.",
+  "accountFromPayky.failed.demo":
+    "Aplikácia {sourceApp} má otvorený ukážkový účet, ktorý sa nedá preniesť.",
+  "accountFromPayky.failed.notInstalled":
+    "Aplikácia {sourceApp} už na tomto telefóne nie je.",
+  "accountFromPayky.failed.cancelled": "Prenos bol zrušený.",
+  "accountFromPayky.failed.invalid":
+    "Aplikácia {sourceApp} poslala odpoveď, ktorú tu nemožno použiť. Nič nebolo pridané.",
+  "accountFromPayky.failed.unsupportedVersion":
+    "Táto verzia aplikácie {sourceApp} žiadosti nerozumie. Aktualizujte obe aplikácie.",
+  "openAccount.title": "Otvoriť existujúci účet",
+  "openAccount.description": "Vyberte, kde účet teraz máte.",
+  "openAccount.fromPayky.title": "Z aplikácie {sourceApp} v tomto telefóne",
+  "openAccount.fromPayky.description": "Bez opisovania, stačí schváliť.",
+  "openAccount.transfer.title": "Z iného zariadenia",
+  "openAccount.transfer.description": "Naskenujete QR kód a opíšete kód.",
+  "openAccount.phrase.title": "Obnovovacia fráza (20 slov)",
+  "openAccount.phrase.description": "Keď nemáte poruke iné zariadenie.",
+  "accountChoice.existing.title": "Už mám účet",
+  "accountChoice.existing.description":
+    "Otvorte ho z iného zariadenia alebo pomocou 20 slov.",
+  "accountChoice.existing.descriptionWithPayky":
+    "Otvorte ho z aplikácie {sourceApp}, z iného zariadenia alebo pomocou 20 slov.",
 } satisfies Record<keyof typeof enOnboarding, string>

@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(SwitchioPlugin.class);
         registerPlugin(NfcPlugin.class);
+        registerPlugin(AccountSharePlugin.class);
 
         super.onCreate(savedInstanceState);
         enableEdgeToEdge();

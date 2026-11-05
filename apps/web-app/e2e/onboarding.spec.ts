@@ -9,6 +9,7 @@ import {
   completeOnboarding,
   createUnregisteredMnemonic,
   fillRestorePhrase,
+  openRestorePhraseStep,
   submitRestorePhrase,
 } from "./support/onboarding.ts"
 
@@ -331,11 +332,7 @@ test("the restore button stays off until all 20 words are known, and a foreign s
     await page
       .getByRole("heading", { name: translate("en", "onboarding.title") })
       .waitFor()
-    await page
-      .getByRole("button", {
-        name: translate("en", "accountChoice.restore.title"),
-      })
-      .click()
+    await openRestorePhraseStep(page, "en")
     await expect(restoreButton).toBeDisabled()
   })
 

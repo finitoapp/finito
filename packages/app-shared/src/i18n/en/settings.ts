@@ -1342,4 +1342,21 @@ export const enSettings = {
   "settings.cashuAccount.qr.both": "Both",
   "settings.cashuAccount.qr.cashu": "Cashu",
   "settings.cashuAccount.qr.lightning": "Lightning",
+  "accountShare.title": "Account request",
+  "accountShare.caller": "{caller} asks for this account",
+  "accountShare.claimed": "The app calls itself “{claimed}”.",
+  "accountShare.mismatch.title": "The names do not match",
+  "accountShare.mismatch.description":
+    "Android says this is {caller}, but the request claims to come from “{claimed}”. Approve only a request you started yourself, in an app you trust.",
+  "accountShare.code.instructions": "Check that {caller} shows the same code:",
+  "accountShare.account": "Account to share: {name}",
+  "accountShare.warning.title": "Full access to the account",
+  "accountShare.warning.description":
+    "By approving, you give this app full access to the account and its money. {appName} support never asks you for this.",
+  "accountShare.validFor": "Valid for {time}",
+  "accountShare.approve": "Approve",
+  "accountShare.reject": "Decline",
+  "accountShare.expired":
+    "The request has expired or was replaced by another one. Start it again in the app that asked.",
+  "accountShare.none": "There is no account request to answer.",
 } as const

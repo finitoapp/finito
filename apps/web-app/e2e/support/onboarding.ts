@@ -108,7 +108,28 @@ export async function fillRestorePhrase(
 }
 
 /**
- * Picks "restore" on the onboarding page already open and submits
+ * Takes the onboarding page already open from its welcome step to the
+ * recovery phrase: "I already have an account", then the phrase in the
+ * chooser (onboarding/0011).
+ */
+export async function openRestorePhraseStep(
+  page: Page,
+  language: Language
+): Promise<void> {
+  await page
+    .getByRole("button", {
+      name: translate(language, "accountChoice.existing.title"),
+    })
+    .click()
+  await page
+    .getByRole("button", {
+      name: translate(language, "openAccount.phrase.title"),
+    })
+    .click()
+}
+
+/**
+ * Picks the recovery phrase on the onboarding page already open and submits
  * `mnemonic`, leaving the page on the restore sync screen. Navigates nowhere
  * itself, so a caller can take the context offline first.
  */
@@ -117,11 +138,7 @@ export async function submitRestorePhrase(
   language: Language,
   mnemonic: string
 ): Promise<void> {
-  await page
-    .getByRole("button", {
-      name: translate(language, "accountChoice.restore.title"),
-    })
-    .click()
+  await openRestorePhraseStep(page, language)
   await fillRestorePhrase(page, language, mnemonic)
   await page
     .getByRole("button", {

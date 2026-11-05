@@ -1,10 +1,13 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { KeyRound, Plus, QrCode } from "lucide-react"
+import { LogIn, Plus } from "lucide-react"
 import { VerticalNav } from "@/components/vertical-nav.tsx"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
-/** The ways an account gets onto a device, offered the same everywhere. */
-export type AccountChoice = "new" | "restore" | "transfer"
+/**
+ * A new account, or one the user already has; where that one is now is the
+ * next question (`OpenAccountChoice`, onboarding/0011).
+ */
+export type AccountChoice = "new" | "existing"
 
 interface AccountChoiceOption {
   readonly value: AccountChoice
@@ -21,16 +24,11 @@ const accountChoiceOptions: ReadonlyArray<AccountChoiceOption> = [
     icon: Plus,
   },
   {
-    value: "restore",
-    label: "accountChoice.restore.title",
-    description: "accountChoice.restore.description",
-    icon: KeyRound,
-  },
-  {
-    value: "transfer",
-    label: "accountChoice.transfer.title",
-    description: "accountChoice.transfer.description",
-    icon: QrCode,
+    value: "existing",
+    label: "accountChoice.existing.title",
+    // Web has no app-to-app source (account/0008).
+    description: "accountChoice.existing.description",
+    icon: LogIn,
   },
 ]
 

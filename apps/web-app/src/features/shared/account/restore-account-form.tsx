@@ -24,14 +24,12 @@ export function RestoreAccountForm({
   pending,
   onWordsChange,
   onRestore,
-  onTransfer,
 }: {
   readonly error: TranslationKey | null
   readonly words: ReadonlyArray<string>
   readonly pending: boolean
   readonly onWordsChange: (words: ReadonlyArray<string>) => void
   readonly onRestore: () => void
-  readonly onTransfer: () => void
 }) {
   const { t } = useTranslation()
   const [pasteFailed, setPasteFailed] = useState(false)
@@ -109,16 +107,6 @@ export function RestoreAccountForm({
         <Button type="submit" disabled={pending || !analysis.isComplete}>
           <KeyRound data-icon="inline-start" />
           {t("onboarding.restore.action")}
-        </Button>
-      </div>
-      <div className="mt-4 text-center">
-        <Button
-          type="button"
-          variant="link"
-          className="h-auto whitespace-normal text-center"
-          onClick={onTransfer}
-        >
-          {t("onboarding.restore.transferLink")}
         </Button>
       </div>
     </form>

@@ -1344,4 +1344,22 @@ export const skSettings = {
   "settings.cashuAccount.qr.both": "Oboje",
   "settings.cashuAccount.qr.cashu": "Cashu",
   "settings.cashuAccount.qr.lightning": "Lightning",
+  "accountShare.title": "Žiadosť o účet",
+  "accountShare.caller": "{caller} žiada o tento účet",
+  "accountShare.claimed": "Aplikácia o sebe tvrdí, že je „{claimed}“.",
+  "accountShare.mismatch.title": "Mená nesúhlasia",
+  "accountShare.mismatch.description":
+    "Android hlási aplikáciu {caller}, ale žiadosť tvrdí, že je od „{claimed}“. Schváľte len žiadosť, ktorú ste sami spustili v aplikácii, ktorej dôverujete.",
+  "accountShare.code.instructions":
+    "Skontrolujte, že {caller} ukazuje rovnaký kód:",
+  "accountShare.account": "Účet, ktorý sa odovzdá: {name}",
+  "accountShare.warning.title": "Plný prístup k účtu",
+  "accountShare.warning.description":
+    "Schválením dáte tejto aplikácii plný prístup k účtu a jeho peniazom. Podpora {appNameGen} vás o to nikdy nežiada.",
+  "accountShare.validFor": "Platí ešte {time}",
+  "accountShare.approve": "Schváliť",
+  "accountShare.reject": "Odmietnuť",
+  "accountShare.expired":
+    "Platnosť žiadosti vypršala alebo ju nahradila iná. Spustite ju znova v aplikácii, ktorá o účet žiadala.",
+  "accountShare.none": "Nie je tu žiadna žiadosť o účet.",
 } satisfies Record<keyof typeof enSettings, string>
