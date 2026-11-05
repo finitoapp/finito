@@ -8,6 +8,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useStore } from "jotai"
 import { useCallback } from "react"
 import { accountAtom } from "@/atoms/account.ts"
+import { terminalAmountInputAtom } from "@/atoms/terminal-amount.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 
@@ -16,6 +17,10 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
  * rather than signalled back: all three callers wanted the same toast, so the
  * boolean bought nothing and a fourth caller forgetting to check it would have
  * failed silently.
+ *
+ * A payment without a bill charges what home's keypad holds (directly or
+ * through the tip screen), so creating one clears that amount for the next
+ * customer; until then it survives leaving home.
  */
 export function useCreateTerminalPayment() {
   const runToast = useRunToast()
@@ -55,6 +60,7 @@ export function useCreateTerminalPayment() {
           return "payment.create.error"
         }
 
+        if (billId === null) jotaiStore.set(terminalAmountInputAtom, "")
         await navigate({
           to: "/payment/$paymentId",
           params: {
