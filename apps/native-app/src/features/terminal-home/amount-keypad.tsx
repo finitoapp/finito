@@ -49,7 +49,8 @@ const bubbleKeyframes = {
  * Drawn as web's `TerminalPaymentKeypad`: a spacer, the amount (the
  * `AmountFigure` every screen headlines with, at its largest), the 3-column grid of round ghost keys
  * (`text-3xl`, rows `gap-y-10` around keys that overlap by `-m-6`) and the
- * round outline Charge button (`h-14 rounded-full text-base font-bold`),
+ * round Charge button (`h-14 rounded-full text-base font-bold`), filled
+ * with the primary color where web outlines it,
  * spread over the height, with web's two motion effects: the amount
  * bounces when it changes and a key blooms a bubble where it is pressed.
  * Both run on RN `Animated` with the native driver (the Tamagui config has
@@ -302,7 +303,7 @@ function ChargeButton({
 
   return (
     <Button
-      variant="outline"
+      variant="default"
       h={56}
       rounded={radius.full}
       aria-label={t("home.pay")}
@@ -318,6 +319,7 @@ function ChargeButton({
         fontSize={fontSize.base}
         lineHeight={fontSize.base}
         fontWeight={fontWeight.bold}
+        color="primary-foreground"
       >
         {t("home.pay")}
       </Text>
