@@ -1,7 +1,7 @@
 import { router, usePathname } from "expo-router"
 import FlaskConical from "lucide-react-native/icons/flask-conical"
-import { SafeAreaView } from "react-native-safe-area-context"
 import { Text, useTheme, XStack } from "tamagui"
+import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import { isTerminalRoute } from "../../core/route-access.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"

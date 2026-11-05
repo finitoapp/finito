@@ -15,10 +15,10 @@ import {
   View as RNView,
   type ScrollView,
 } from "react-native"
-import { SafeAreaView } from "react-native-safe-area-context"
 import { useTheme, View } from "tamagui"
 import { useTranslation } from "../hooks/use-translation.ts"
 import { radius } from "../theme/tokens.ts"
+import { SafeAreaView } from "./safe-area-view.tsx"
 import { Button } from "./ui/button.tsx"
 import { useColumnScroll } from "./web-column.tsx"
 
