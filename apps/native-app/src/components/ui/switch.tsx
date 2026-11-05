@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Animated, Easing, StyleSheet } from "react-native"
 import { styled, useTheme, View } from "tamagui"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
+import { control } from "../../theme/tokens.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/switch.tsx`: track `bg-primary` when
@@ -13,13 +14,14 @@ import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
  * Base: a controlled Tamagui `View` with the switch role, not RN `Switch`,
  * whose Android thumb overhangs a thin track and takes its own tint, and
  * not Tamagui `Switch`, whose uncontrolled state adds nothing here. The
- * track keeps web's proportions at a size a finger hits (44 × 24, thumb
- * 20) and reaches 48 through `hitSlop`. Web's `size="sm"` is not ported.
+ * track is Material 3's 52 × 32 (thumb 26), the kit's small control
+ * height, so it stands beside a 44-high field rather than shrinking next
+ * to it, and reaches 48 through `hitSlop`. Web's `size="sm"` is not ported.
  */
 
-const TRACK_WIDTH = 44
-const TRACK_HEIGHT = 24
-const THUMB_INSET = 2
+const TRACK_WIDTH = 52
+const TRACK_HEIGHT = control.sm
+const THUMB_INSET = 3
 const THUMB_SIZE = TRACK_HEIGHT - 2 * THUMB_INSET
 const THUMB_TRAVEL = TRACK_WIDTH - THUMB_SIZE - 2 * THUMB_INSET
 
@@ -30,7 +32,7 @@ const SwitchTrack = styled(View, {
   rounded: TRACK_HEIGHT / 2,
   p: THUMB_INSET,
   justify: "center",
-  hitSlop: 12,
+  hitSlop: (48 - TRACK_HEIGHT) / 2,
   cursor: "web:pointer",
 
   variants: {
