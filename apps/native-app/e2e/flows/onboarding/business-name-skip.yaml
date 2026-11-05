@@ -6,7 +6,7 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 - tapOn: ${output.t["onboarding.welcome.new"]}
-- assertVisible: ${output.t["onboarding.payments.title"]}
+- assertVisible: ${output.t["onboarding.setup.title"]}
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
@@ -17,16 +17,11 @@ tags: [onboarding]
       platform: Android
     commands:
       - hideKeyboard
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["onboarding.finishWithoutBankTransfer"]}
+- runFlow: ../../subflows/sell-and-finish.yaml
 - extendedWaitUntil:
     visible: ${output.t["onboarding.businessName.publishFailed.title"]}
     timeout: 30000
-- assertVisible:
-    id: ${output.re(output.t["onboarding.setup.name.label"])}
-    text: " Café Skip "
+- assertVisible: ${output.t["onboarding.selling.title"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:

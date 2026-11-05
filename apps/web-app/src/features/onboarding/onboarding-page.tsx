@@ -56,6 +56,7 @@ import { Input } from "@/components/ui/input.tsx"
 import { LanguageSelect } from "@/features/onboarding/language-select.tsx"
 import { AccountChoiceStep } from "@/features/onboarding/onboarding-steps/account-choice-step.tsx"
 import { PaymentsStep } from "@/features/onboarding/onboarding-steps/payments-step.tsx"
+import { SellingStep } from "@/features/onboarding/onboarding-steps/selling-step.tsx"
 import { OpenAccountFlow } from "@/features/shared/account/open-account-flow.tsx"
 import { useRestoreAccount } from "@/features/shared/account/use-restore-account.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
@@ -68,7 +69,7 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSetLanguage, useTranslation } from "@/hooks/use-translation.ts"
 
 /** The steps that are not part of opening an existing account. */
-type OwnStep = Extract<OnboardingStep, "accountChoice" | "payments">
+type OwnStep = Extract<OnboardingStep, "accountChoice" | "payments" | "selling">
 
 const ownStepCopy = {
   accountChoice: {
@@ -78,6 +79,10 @@ const ownStepCopy = {
   payments: {
     title: "onboarding.payments.title",
     description: "onboarding.payments.description",
+  },
+  selling: {
+    title: "onboarding.selling.title",
+    description: "onboarding.selling.description",
   },
 } as const satisfies Record<
   OwnStep,
@@ -127,12 +132,11 @@ export function OnboardingPage({
     .filter((account) => account.id !== activeAccount.id)
     .sort((a, b) => b.lastUseAt - a.lastUseAt)[0]
 
-  const { step, accountType, businessName, iban } = form
+  const { step, accountType, businessName, iban, homeMode, tipsEnabled } = form
   const onboardingSteps = getOnboardingSteps(accountType)
   const pending = finishing || restoring || cancelingSetup
 
   const validation = validateOnboardingForm({ iban, businessName })
-  const ibanEnabled = iban.trim() !== ""
   const nameInvalid = validation.businessNameInvalid
   const ibanError: TranslationKey | null =
     submitAttempted && validation.ibanInvalid
@@ -173,13 +177,26 @@ export function OnboardingPage({
     }
   }
 
+  const businessDetailsInvalid = validation.ibanInvalid || nameInvalid
+
+  /** The business's name and account checked, on to how it sells. */
+  const continueToSelling = () => {
+    if (businessDetailsInvalid) {
+      setSubmitAttempted(true)
+      return
+    }
+    setForm((current) => ({ ...current, step: "selling" }))
+  }
+
   const finishOnboarding = async (skipProfile = false) => {
     if (pending) return
-    // Onboarding finishes on the payments step, so the IBAN is checked here
-    // rather than when leaving it. The recovery phrase is not asked about:
-    // it stays in Settings > Security (onboarding/0002).
-    if (validation.ibanInvalid || nameInvalid) {
+    // Nothing is preselected: the merchant picks how they sell
+    // (onboarding/0012). The recovery phrase is not asked about: it stays
+    // in Settings > Security (onboarding/0002).
+    if (homeMode === null) return
+    if (businessDetailsInvalid) {
       setSubmitAttempted(true)
+      setForm((current) => ({ ...current, step: "payments" }))
       return
     }
 
@@ -211,7 +228,13 @@ export function OnboardingPage({
       setLocale(getDeviceLocaleForLanguage(language))
 
       const finished = await run(
-        finishOnboardingTask(createFinishOnboardingInput(validation.iban))
+        finishOnboardingTask(
+          createFinishOnboardingInput({
+            iban: validation.iban,
+            homeMode,
+            tipsEnabled,
+          })
+        )
       )
       // An onboarded account leaves through the redirect effect above.
       if (!finished.ok) return "onboarding.alreadyOnboarded"
@@ -267,7 +290,9 @@ export function OnboardingPage({
       ? openAccountStepCopy[openAccountStep]
       : step === "accountChoice"
         ? ownStepCopy.accountChoice
-        : ownStepCopy.payments
+        : step === "selling"
+          ? ownStepCopy.selling
+          : ownStepCopy.payments
 
   return (
     <main className="min-h-svh bg-background text-foreground">
@@ -320,7 +345,7 @@ export function OnboardingPage({
               className="flex flex-col gap-8"
               onSubmit={(event) => {
                 event.preventDefault()
-                void finishOnboarding()
+                continueToSelling()
               }}
             >
               <FieldGroup>
@@ -367,6 +392,36 @@ export function OnboardingPage({
                   setForm((current) => ({ ...current, iban: nextIban }))
                 }}
               />
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full min-h-11"
+                disabled={pending}
+              >
+                {t("onboarding.continue")}
+              </Button>
+            </form>
+          ) : null}
+
+          {step === "selling" ? (
+            <form
+              className="flex flex-col gap-8"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void finishOnboarding()
+              }}
+            >
+              <SellingStep
+                homeMode={homeMode}
+                tipsEnabled={tipsEnabled}
+                pending={pending}
+                onHomeModeChange={(nextMode) => {
+                  setForm((current) => ({ ...current, homeMode: nextMode }))
+                }}
+                onTipsEnabledChange={(enabled) => {
+                  setForm((current) => ({ ...current, tipsEnabled: enabled }))
+                }}
+              />
               {profilePublishFailed ? (
                 <Alert variant="destructive">
                   <AlertTitle>
@@ -381,14 +436,12 @@ export function OnboardingPage({
                 type="submit"
                 size="lg"
                 className="w-full min-h-11"
-                disabled={pending}
+                disabled={pending || homeMode === null}
               >
                 {t(
                   profilePublishFailed
                     ? "onboarding.businessName.retry"
-                    : ibanEnabled
-                      ? "onboarding.finish"
-                      : "onboarding.finishWithoutBankTransfer"
+                    : "onboarding.finish"
                 )}
               </Button>
               {profilePublishFailed ? (

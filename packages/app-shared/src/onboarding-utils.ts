@@ -1,4 +1,7 @@
-import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
+import type {
+  DefaultPaymentMethod,
+  TerminalHomeMode,
+} from "@payky/core/modules/app-settings/app-settings-types"
 import { PaymentMethodOrderJson } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
   BankAccountInputIbanSchema,
@@ -55,13 +58,24 @@ export const validateOnboardingForm = (form: {
 
 /**
  * The `finishOnboarding` input of every new account: Czech, in CZK whatever
- * the UI language (onboarding/0001), and the fixed method order whose first
- * entry is the default (onboarding/0007).
+ * the UI language (onboarding/0001), the fixed method order whose first
+ * entry is the default (onboarding/0007), and how the business sells, with
+ * tips on or off, as its last step chose (onboarding/0012).
  */
-export const createFinishOnboardingInput = (iban: Iban | null) => ({
+export const createFinishOnboardingInput = ({
+  iban,
+  homeMode,
+  tipsEnabled,
+}: {
+  readonly iban: Iban | null
+  readonly homeMode: TerminalHomeMode
+  readonly tipsEnabled: boolean
+}) => ({
   country: "CZ" as const,
   currency: FiatCurrency.CZK,
   iban,
+  homeMode,
+  tipsEnabled,
   defaultPaymentMethod: onboardingPaymentMethodOrder[0],
   paymentMethodOrderJson: z.encode(
     PaymentMethodOrderJson,

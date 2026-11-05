@@ -134,7 +134,6 @@ export const enOnboarding = {
   "onboarding.cancelSetup.confirm.description":
     "This new account will be discarded and you'll switch back to {name}.",
   "onboarding.cancelSetup.confirm.title": "Cancel account creation?",
-  "onboarding.finishWithoutBankTransfer": "Start without bank transfers",
   "onboarding.businessName.placeholder": "Linden Café",
   "onboarding.businessName.label": "Business name (optional)",
   "onboarding.businessName.description":
@@ -172,6 +171,15 @@ export const enOnboarding = {
     "Customers see it as the payment recipient's name.",
   "onboarding.setup.name.label": "Business name",
   "onboarding.setup.title": "Set up a business",
+  "onboarding.continue": "Continue",
+  "onboarding.selling.description": "You can change this later in Settings.",
+  "onboarding.selling.numpad.description": "Type what the customer pays.",
+  "onboarding.selling.numpad.title": "Amount",
+  "onboarding.selling.pos.description": "Add items to a bill.",
+  "onboarding.selling.pos.title": "Bills",
+  "onboarding.selling.tips.description": "Customers can add one when paying.",
+  "onboarding.selling.tips.label": "Tips",
+  "onboarding.selling.title": "How do you sell?",
   "onboarding.title": "Welcome to {appName}",
   "onboarding.welcome.new": "New business",
   "onboarding.welcome.restore": "I already have an account",

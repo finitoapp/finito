@@ -7,9 +7,12 @@ import { gotoPage, reloadPage } from "./support/navigation.ts"
 import { mockNostrProfileRelays } from "./support/nostr-profile.ts"
 import {
   completeOnboarding,
+  continueToSelling,
   createUnregisteredMnemonic,
   fillRestorePhrase,
+  finishOnboardingSelling,
   openRestorePhraseStep,
+  submitOnboardingSelling,
   submitRestorePhrase,
 } from "./support/onboarding.ts"
 
@@ -71,8 +74,8 @@ test("onboarding in English still starts a Czech account in CZK", async ({
 test("the payment methods step derives bank transfers from the account input", async ({
   page,
 }) => {
-  const finishButton = page.getByRole("button", {
-    name: translate("en", "onboarding.finish"),
+  const continueButton = page.getByRole("button", {
+    name: translate("en", "onboarding.continue"),
   })
   const ibanInput = page.getByRole("textbox", {
     name: translate("en", "onboarding.payments.iban.title"),
@@ -114,23 +117,19 @@ test("the payment methods step derives bank transfers from the account input", a
     ).toBe(languageTop)
   })
 
-  await test.step("an empty or whitespace-only account offers to start without bank transfers", async () => {
+  await test.step("an empty or whitespace-only account still lets the setup continue", async () => {
     await expect(page.getByRole("switch")).toHaveCount(0)
-    const skipButton = page.getByRole("button", {
-      name: translate("en", "onboarding.finishWithoutBankTransfer"),
-    })
-    await expect(skipButton).toBeEnabled()
+    await expect(continueButton).toBeEnabled()
     await expect(ibanInput).toBeVisible()
     await expect(ibanInput).toHaveAttribute("aria-invalid", "false")
     await ibanInput.fill("   ")
-    await expect(skipButton).toBeEnabled()
-    await expect(finishButton).toHaveCount(0)
+    await expect(continueButton).toBeEnabled()
   })
 
-  await test.step("entering an account changes the button and going back keeps the draft", async () => {
+  await test.step("entering an account keeps the step going, and going back keeps the draft", async () => {
     await ibanInput.fill("CZ6508000000192000145399")
     await expect(ibanInput).toHaveValue("CZ6508000000192000145399")
-    await expect(finishButton).toBeEnabled()
+    await expect(continueButton).toBeEnabled()
     await expect(
       page.getByRole("button", {
         name: translate("en", "settings.fiatBankAccount.iban.format.iban"),
@@ -144,12 +143,12 @@ test("the payment methods step derives bank transfers from the account input", a
       .getByRole("button", { name: translate("en", "accountChoice.new.title") })
       .click()
     await expect(ibanInput).toHaveValue("CZ6508000000192000145399")
-    await expect(finishButton).toBeEnabled()
+    await expect(continueButton).toBeEnabled()
   })
 
   await test.step("an invalid IBAN swaps the message and still holds the step", async () => {
     await ibanInput.fill("12345")
-    await finishButton.click()
+    await continueButton.click()
     await expect(
       page.getByText(translate("en", "settings.fiatBankAccount.iban.invalid"))
     ).toBeVisible()
@@ -163,10 +162,8 @@ test("the payment methods step derives bank transfers from the account input", a
 
   await test.step("fixing the IBAN lets onboarding complete", async () => {
     await ibanInput.fill("19-2000145399/0800")
-    await finishButton.click()
-    await page
-      .getByRole("button", { name: translate("en", "nav.menu") })
-      .waitFor()
+    await continueButton.click()
+    await finishOnboardingSelling(page, "en", "numpad")
   })
   await test.step("the entered account enables bank transfers", async () => {
     await gotoPage(
@@ -180,6 +177,51 @@ test("the payment methods step derives bank transfers from the account input", a
         name: translate("en", "settings.fiatBankAccount.enabled.label"),
       })
     ).toBeChecked()
+  })
+})
+
+test("a new account picks how it sells before it can finish, and home opens in that mode alone", async ({
+  page,
+}) => {
+  const finishButton = page.getByRole("button", {
+    name: translate("en", "onboarding.finish"),
+  })
+
+  await test.step("the business details lead to how the business sells", async () => {
+    await page.goto("/onboarding", { waitUntil: "domcontentloaded" })
+    await page
+      .getByRole("button", {
+        name: translate("en", "accountChoice.new.title"),
+      })
+      .click()
+    await page
+      .getByRole("button", { name: translate("en", "onboarding.continue") })
+      .click()
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "onboarding.selling.title"),
+      })
+    ).toBeVisible()
+  })
+
+  await test.step("nothing is picked, so it cannot finish yet, and tips start on", async () => {
+    for (const radio of await page.getByRole("radio").all()) {
+      await expect(radio).toHaveAttribute("aria-checked", "false")
+    }
+    await expect(finishButton).toBeDisabled()
+    await expect(
+      page.getByRole("switch", {
+        name: translate("en", "onboarding.selling.tips.label"),
+      })
+    ).toBeChecked()
+  })
+
+  await test.step("picking bills finishes into home's tables, with no mode switch", async () => {
+    await finishOnboardingSelling(page, "en", "pos")
+    await expect(page.getByTestId("no-table-tile")).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: translate("en", "nav.numpad") })
+    ).toHaveCount(0)
   })
 })
 
@@ -203,11 +245,8 @@ test("bank account format switching is only offered for a saved Czech account", 
     await page
       .getByRole("button", { name: translate("en", "accountChoice.new.title") })
       .click()
-    await page
-      .getByRole("button", {
-        name: translate("en", "onboarding.finishWithoutBankTransfer"),
-      })
-      .click()
+    await continueToSelling(page, "en")
+    await finishOnboardingSelling(page, "en", "numpad")
     await expect(page).toHaveURL("/")
     await gotoPage(
       page,
@@ -400,18 +439,14 @@ test("setting up a phrase whose sync failed warns, then goes straight to payment
     await context.setOffline(false)
   })
 
-  await test.step("finish on the payments step", async () => {
+  await test.step("finish after the payments step", async () => {
     await page
       .getByRole("textbox", {
         name: translate("en", "onboarding.payments.iban.title"),
       })
       .fill("CZ6508000000192000145399")
-    await page
-      .getByRole("button", { name: translate("en", "onboarding.finish") })
-      .click()
-    await page
-      .getByRole("button", { name: translate("en", "nav.menu") })
-      .waitFor()
+    await continueToSelling(page, "en")
+    await finishOnboardingSelling(page, "en", "numpad")
   })
 
   await test.step("the empty account from the first start is gone", async () => {
@@ -451,11 +486,8 @@ for (const outcome of ["success", "retry", "skip", "empty"] as const) {
       expect(relay.attempts).toHaveLength(0)
     })
     await test.step("submit and handle a publication failure explicitly", async () => {
-      await page
-        .getByRole("button", {
-          name: translate("en", "onboarding.finishWithoutBankTransfer"),
-        })
-        .click()
+      await continueToSelling(page, "en")
+      await submitOnboardingSelling(page, "en", "numpad")
       if (outcome === "retry" || outcome === "skip") {
         await expect(
           page.getByText(
@@ -464,7 +496,11 @@ for (const outcome of ["success", "retry", "skip", "empty"] as const) {
           )
         ).toBeVisible()
         await expect(page).toHaveURL("/onboarding")
-        await expect(nameInput).toHaveValue(" Café Example ")
+        await expect(
+          page.getByRole("heading", {
+            name: translate("en", "onboarding.selling.title"),
+          })
+        ).toBeVisible()
         if (outcome === "retry") {
           // A kind-0 event includes a second-resolution timestamp; advance
           // past the previous attempt so nostr-tools sends a fresh event.
@@ -536,16 +572,8 @@ for (const bankTransferEnabled of [false, true]) {
           name: translate("en", "onboarding.payments.iban.title"),
         })
         .fill(bankTransferEnabled ? "19-2000145399/0800" : "   ")
-      await page
-        .getByRole("button", {
-          name: translate(
-            "en",
-            bankTransferEnabled
-              ? "onboarding.finish"
-              : "onboarding.finishWithoutBankTransfer"
-          ),
-        })
-        .click()
+      await continueToSelling(page, "en")
+      await finishOnboardingSelling(page, "en", "numpad")
       await expect(page).toHaveURL("/")
     })
 

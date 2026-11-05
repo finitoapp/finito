@@ -1,6 +1,6 @@
 # 0001 The home screen keeps at least one mode
 
-Status: accepted
+Status: superseded by settings/0004
 Date: 2026-10-05
 
 ## Context

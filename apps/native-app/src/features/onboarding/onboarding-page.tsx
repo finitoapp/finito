@@ -64,6 +64,7 @@ import { OpenAccountFlow } from "../shared/open-account-flow.tsx"
 import { useRestoreAccount } from "../shared/use-restore-account.ts"
 import { LanguageSelect } from "./language-select.tsx"
 import { PaymentsStep } from "./payments-step.tsx"
+import { SellingStep } from "./selling-step.tsx"
 import { WelcomeStep } from "./welcome-step.tsx"
 
 /** The steps after the welcome screen head their page, as fazole.fit's do. */
@@ -74,6 +75,11 @@ const stepCopy = (
   step: HeadedStep
 ): { readonly title: TranslationKey; readonly description: TranslationKey } => {
   const openAccountStep = openAccountStepOfOnboardingStep(step)
+  if (step === "selling")
+    return {
+      title: "onboarding.selling.title",
+      description: "onboarding.selling.description",
+    }
   return openAccountStep === null
     ? {
         title: "onboarding.setup.title",
@@ -99,7 +105,7 @@ export function OnboardingPage() {
   const setLocale = useSetLocale()
   const [settings] = useEvoluQuery(settingsQuery).data
   const [form, setForm] = useAtom(onboardingFormAtom)
-  const { step, accountType, iban, businessName } = form
+  const { step, accountType, iban, businessName, homeMode, tipsEnabled } = form
   // Validate only on submission, so an unfinished account number shows no
   // error while it is still being typed (as on web).
   const [submitAttempted, setSubmitAttempted] = useState(false)
@@ -145,11 +151,26 @@ export function OnboardingPage() {
     if (settings !== undefined) router.replace("/")
   }, [settings])
 
+  const businessDetailsInvalid =
+    validation.ibanInvalid || validation.businessNameInvalid
+
+  /** The business's name and account checked, on to how it sells. */
+  const continueToSelling = () => {
+    if (businessDetailsInvalid) {
+      setSubmitAttempted(true)
+      return
+    }
+    setForm((current) => ({ ...current, step: "selling" }))
+  }
+
   const finish = async (skipProfile = false) => {
     if (finishingRef.current) return
+    // Nothing is preselected: the merchant picks how they sell (onboarding/0012).
+    if (homeMode === null) return
     // Validation precedes publishing the name (onboarding/0004, 0006).
-    if (validation.ibanInvalid || validation.businessNameInvalid) {
+    if (businessDetailsInvalid) {
       setSubmitAttempted(true)
+      setForm((current) => ({ ...current, step: "payments" }))
       return
     }
     finishingRef.current = true
@@ -174,7 +195,13 @@ export function OnboardingPage() {
 
       // Finito starts on Spark, for now (onboarding/0010).
       const finished = await run(
-        finishOnboarding(createFinishOnboardingInput(validation.iban))
+        finishOnboarding(
+          createFinishOnboardingInput({
+            iban: validation.iban,
+            homeMode,
+            tipsEnabled,
+          })
+        )
       )
       if (!finished.ok) return "onboarding.alreadyOnboarded"
       setForm(initialOnboardingFormState)
@@ -338,6 +365,31 @@ export function OnboardingPage() {
                     }}
                   />
                 </FieldGroup>
+                <Button
+                  w="100%"
+                  label={t("onboarding.continue")}
+                  disabled={pending}
+                  onPress={continueToSelling}
+                />
+              </YStack>
+            ) : null}
+
+            {step === "selling" ? (
+              <YStack gap={20}>
+                <SellingStep
+                  homeMode={homeMode}
+                  tipsEnabled={tipsEnabled}
+                  pending={pending}
+                  onHomeModeChange={(nextMode) => {
+                    setForm((current) => ({ ...current, homeMode: nextMode }))
+                  }}
+                  onTipsEnabledChange={(enabled) => {
+                    setForm((current) => ({
+                      ...current,
+                      tipsEnabled: enabled,
+                    }))
+                  }}
+                />
                 {profilePublishFailed ? (
                   <Alert variant="destructive">
                     <AlertTitle>
@@ -353,11 +405,10 @@ export function OnboardingPage() {
                   label={t(
                     profilePublishFailed
                       ? "onboarding.businessName.retry"
-                      : iban.trim() === ""
-                        ? "onboarding.finishWithoutBankTransfer"
-                        : "onboarding.finish"
+                      : "onboarding.finish"
                   )}
                   pending={finishing}
+                  disabled={homeMode === null}
                   onPress={() => {
                     void finish()
                   }}

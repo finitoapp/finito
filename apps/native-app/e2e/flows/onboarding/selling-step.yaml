@@ -1,0 +1,43 @@
+# web onboarding.spec.ts: "a new account picks how it sells before it can
+# finish, and home opens in that mode alone" (onboarding/0012).
+appId: ${APP_ID}
+tags: [onboarding]
+---
+- runFlow: ../../subflows/start.yaml
+- tapOn: ${output.t["onboarding.welcome.new"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.continue"]}
+- extendedWaitUntil:
+    visible: ${output.t["onboarding.selling.title"]}
+    timeout: 15000
+# Nothing is picked, so finishing does nothing yet; tips start on.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.finish"]}
+- assertVisible: ${output.t["onboarding.selling.title"]}
+- assertNotVisible: ${output.t["nav.menu"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["onboarding.selling.tips.label"]}
+      CHECKED: "true"
+# Bills: home opens on the tables, with no mode switch.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.selling.pos.title"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.finish"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.table.dialog.none"]}
+    timeout: 30000
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.numpad"]}
+      HIDDEN: "true"

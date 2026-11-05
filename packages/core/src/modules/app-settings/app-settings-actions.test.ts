@@ -77,7 +77,7 @@ describe("setEnabledHomeModes", () => {
     paymentMethodOrderJson: JSON.stringify(defaultPaymentMethodOrder),
   })
 
-  test("onboarding leaves the home modes unset, which means all of them", async () => {
+  test("an account onboarded without a mode leaves the home modes unset, which means all of them", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu
     await using run = testCreateRun(evoluTestDeps(evolu))
@@ -192,9 +192,53 @@ const input = {
   iban: BankAccountInputIbanSchema.parse("CZ6508000000192000145399"),
   defaultPaymentMethod,
   paymentMethodOrderJson: JSON.stringify(defaultPaymentMethodOrder),
+  homeMode: "numpad",
+  tipsEnabled: true,
 } as const
 
 describe("finishOnboarding", () => {
+  test("offers home only the mode the merchant chose and keeps their tips choice", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+
+    await run.orThrow(
+      finishOnboarding({ ...input, homeMode: "pos", tipsEnabled: false })
+    )
+
+    await expect
+      .poll(() => evolu.loadQuery(settingsQuery))
+      .toEqual([
+        expect.objectContaining({
+          enabledHomeModesJson: '["pos"]',
+          tipsEnabled: 0,
+        }),
+      ])
+  })
+
+  test("starts with tips on when the merchant leaves them on", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+
+    await run.orThrow(finishOnboarding(input))
+
+    await expect
+      .poll(() => evolu.loadQuery(settingsQuery))
+      .toEqual([
+        expect.objectContaining({
+          enabledHomeModesJson: '["numpad"]',
+          tipsEnabled: 1,
+        }),
+      ])
+  })
+
   test("enables cash and Spark without a bank account and leaves Cashu disabled", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

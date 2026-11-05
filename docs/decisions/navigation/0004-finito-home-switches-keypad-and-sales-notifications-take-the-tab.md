@@ -11,7 +11,7 @@ screen. In use, a business that sells at tables reaches for the grid as
 often as for the keypad, and one that sells over a counter never needs
 the grid at all: both want their own selling screen to be the one the app
 opens on, which a tab one tap away is not. Payky already lets an account
-choose this (`enabledHomeModesJson`, settings/0001) and remembers on each
+choose this (`enabledHomeModesJson`, settings/0004) and remembers on each
 device which of the enabled modes it showed last. Notifications, kept as a
 row under Settings, were the one destination the menu had no tab for.
 
@@ -26,7 +26,7 @@ Finito alone; Payky is unchanged.
   changes between them; with one enabled there is no switch.
 - **The modes are set up under Settings**, in the SALES group beside Items
   and Tables (`/settings/home-screen`, needing `settings` as on Payky); at
-  least one stays on (settings/0001).
+  least one stays on (settings/0004).
 - **There is no Sales tab.** `/catalog` and `/catalog/sales` are gone. The
   bill, opened from the grid or by a scan on home, belongs to the
   terminal's tab, so the rail marks the terminal while a bill is edited.

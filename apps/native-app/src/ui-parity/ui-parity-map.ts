@@ -466,6 +466,33 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/onboarding/selling-step.tsx",
+    web: [
+      "apps/web-app/src/features/onboarding/onboarding-steps/selling-step.tsx",
+    ],
+    status: "matched",
+    allowedDifferences: {
+      Field:
+        "the tips switch is native's SwitchRow with its hint under it, as the settings switches",
+      FieldContent:
+        "the tips switch is native's SwitchRow with its hint under it, as the settings switches",
+      FieldDescription:
+        "the tips switch is native's SwitchRow with its hint under it, as the settings switches",
+      FieldLabel:
+        "the tips switch is native's SwitchRow with its hint under it, as the settings switches",
+      Switch:
+        "the tips switch is native's SwitchRow with its hint under it, as the settings switches",
+      SwitchRow: "web's Field with a Switch, label and description",
+    },
+  },
+  {
+    native: "src/features/onboarding/selling-mode-illustrations.tsx",
+    web: [
+      "apps/web-app/src/features/onboarding/onboarding-steps/selling-mode-illustrations.tsx",
+    ],
+    status: "matched",
+  },
+  {
     native: "src/features/onboarding/restore-sync-page.tsx",
     web: ["apps/web-app/src/features/onboarding/restore-sync-page.tsx"],
     status: "matched",

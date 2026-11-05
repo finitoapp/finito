@@ -6,7 +6,7 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 - tapOn: ${output.t["onboarding.welcome.new"]}
-- assertVisible: ${output.t["onboarding.payments.title"]}
+- assertVisible: ${output.t["onboarding.setup.title"]}
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
@@ -17,10 +17,7 @@ tags: [onboarding]
       platform: Android
     commands:
       - hideKeyboard
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["onboarding.finishWithoutBankTransfer"]}
+- runFlow: ../../subflows/sell-and-finish.yaml
 - extendedWaitUntil:
     visible: ${output.t["home.pay"]}
     timeout: 30000
