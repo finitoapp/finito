@@ -400,7 +400,7 @@ export const startQerkoTerminalRefund =
       )
     }
 
-    const credentials = await run(loadQerkoCredentials())
+    const credentials = await run(loadQerkoCredentials("terminalPayments"))
     if (!credentials.ok) return credentials
 
     // The terminal that took the money, not the one this device pays on now.
@@ -496,7 +496,7 @@ export const syncQerkoTerminalRefund =
     if (attempt.status === "unknown") return ok({ status: "unresolved" })
     if (attempt.status !== "pending") return ok({ status: "idle" })
 
-    const credentials = await run(loadQerkoCredentials())
+    const credentials = await run(loadQerkoCredentials("terminalPayments"))
     if (!credentials.ok) return credentials
 
     const polled = await run(

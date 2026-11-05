@@ -77,6 +77,21 @@ export const accountQerkoTerminal = {
 } as const
 
 /**
+ * Qerko payments (qerko/0007, qerko/0011): the customer scans a QR code and
+ * pays in the Qerko app, which Payky serves over Qerko's POS websocket. The
+ * API key is the `standard` role's `qerkoPlugin`. Qerko allows one websocket
+ * per restaurant, so `connectionDeviceId` names the one device of the account
+ * that holds it and serves every device's payments; it syncs, so every device
+ * can tell whether anyone does, and the last device chosen wins, as Qerko's
+ * own last connection does.
+ */
+export const accountQerkoPayment = {
+  id: AccountId,
+  currency: FiatCurrencySchema,
+  connectionDeviceId: DeviceId.nullable(),
+} as const
+
+/**
  * The Cashu payment method (cashu.md §4). It has no secret: the wallet is the
  * one Linky shows, derived from the master key, and its mint is Linky's
  * synced default mint, read when a payment is prepared.
@@ -115,6 +130,7 @@ export type SparkAccountSyncPointerRow = InferTable<
 export type AccountCashRegisterRow = InferTable<typeof accountCashRegister>
 export type AccountCardSwitchioRow = InferTable<typeof accountCardSwitchio>
 export type AccountQerkoTerminalRow = InferTable<typeof accountQerkoTerminal>
+export type AccountQerkoPaymentRow = InferTable<typeof accountQerkoPayment>
 export type AccountCashuRow = InferTable<typeof accountCashu>
 export type AccountLightningAddressRow = InferTable<
   typeof accountLightningAddress

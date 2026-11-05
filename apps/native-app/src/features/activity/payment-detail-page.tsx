@@ -34,6 +34,7 @@ import {
   paymentDetailQuery,
   paymentQerkoTerminalByIdQuery,
   paymentReconciliationsQuery,
+  qerkoPaymentAttemptsByPaymentIdQuery,
 } from "@payky/core/modules/payment/payment-queries"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-number/payment-number-queries"
@@ -105,6 +106,7 @@ import {
   OptionalRow,
   Technical,
 } from "./detail-parts.tsx"
+import { PaymentQerkoAttempts } from "./payment-qerko-attempts.tsx"
 import { PaymentRefunds, paymentRefundsQueries } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
 import {
@@ -158,6 +160,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
         paymentReconciliationsQuery(paymentId),
         paymentNumberByPaymentIdQuery(paymentId),
         eetSalesByPaymentIdQuery(paymentId),
+        qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
         ...paymentRefundsQueries(paymentId),
       ],
       [paymentId]
@@ -306,6 +309,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                 ))}
               </XStack>
             ) : null}
+            <PaymentQerkoAttempts paymentId={paymentId} />
             {payment.canceledAt === null ? null : (
               <Text
                 fontSize={fontSize.sm}

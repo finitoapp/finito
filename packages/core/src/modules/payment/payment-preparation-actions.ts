@@ -36,6 +36,7 @@ import {
   cashRegisterAccountByIdQuery,
   ibanAccountByIdQuery,
   lightningAddressAccountByIdQuery,
+  qerkoPaymentAccountByIdQuery,
   qerkoTerminalAccountByIdQuery,
 } from "../account/account-queries.ts"
 import { activeSparkAccountByIdQuery } from "../account/account-spark-queries.ts"
@@ -68,6 +69,7 @@ import type {
   paymentCashRegister,
   paymentIban,
   paymentLightningAddress,
+  paymentQerkoPayment,
   paymentQerkoTerminal,
 } from "./payment.ts"
 import {
@@ -94,6 +96,7 @@ import {
   createLightningAddressAmountOutOfRangeError,
   createPaymentNumberNotFoundError,
   createPaymentPreparationFailedError,
+  createQerkoPaymentAccountNotFoundError,
   createQerkoTerminalAccountNotFoundError,
   createZeroAmountNotPayableError,
   type IbanAccountNotFoundError,
@@ -102,6 +105,7 @@ import {
   type PaymentPreparationFailedError,
   type PrepareLightningAddressMethodError,
   type PreparePaymentMethodError,
+  type QerkoPaymentAccountNotFoundError,
   type QerkoTerminalAccountNotFoundError,
   type ZeroAmountNotPayableError,
 } from "./payment-errors.ts"
@@ -394,6 +398,39 @@ const prepareQerkoTerminalMethod =
     return ok({ id: paymentId, accountId })
   }
 
+const prepareQerkoPaymentMethod =
+  ({
+    paymentId,
+    accountId,
+    paymentCurrency,
+  }: {
+    readonly paymentId: PaymentId
+    readonly accountId: AccountId
+    readonly paymentCurrency: FiatCurrency
+  }): Task<
+    UpsertValues<typeof paymentQerkoPayment>,
+    QerkoPaymentAccountNotFoundError | AccountCurrencyMismatchError,
+    EvoluDep
+  > =>
+  async (run) => {
+    const accountResult = loadAccountWithCurrencyCheck({
+      rows: await run.deps.evolu.loadQuery(
+        qerkoPaymentAccountByIdQuery(accountId)
+      ),
+      notFoundError: createQerkoPaymentAccountNotFoundError({
+        id: accountId,
+      }),
+      accountKind: "qerkoPayment",
+      accountId,
+      expectedCurrency: paymentCurrency,
+    })
+    if (!accountResult.ok) return accountResult
+
+    // The QR code is built in the UI from the pairing's restaurant and the
+    // payment's id, as the bank QR is, so the row needs nothing else.
+    return ok({ id: paymentId, accountId })
+  }
+
 const prepareCardMethod =
   ({
     paymentId,
@@ -633,6 +670,7 @@ export const preparePaymentMethod =
     cashRegister,
     card,
     qerkoTerminal,
+    qerkoPayment,
     spark,
     lightningAddress,
   }: {
@@ -647,6 +685,9 @@ export const preparePaymentMethod =
       readonly accountId: AccountId
     }
     readonly qerkoTerminal?: {
+      readonly accountId: AccountId
+    }
+    readonly qerkoPayment?: {
       readonly accountId: AccountId
     }
     readonly spark?: {
@@ -682,50 +723,67 @@ export const preparePaymentMethod =
     // failing to prepare it — hence one nullable `Result` each, collapsed to
     // plain nullable values below. The cash, card and bank preparations are
     // independent reads, so they run together.
-    const [cashRegisterResult, cardResult, qerkoResult, ibanResult] =
-      await Promise.all([
-        cashRegister === undefined
-          ? null
-          : run(
-              prepareCashRegisterMethod({
-                paymentId,
-                accountId: cashRegister.accountId,
-                paymentCurrency: payment.currency,
-              })
-            ),
-        card === undefined
-          ? null
-          : run(
-              prepareCardMethod({
-                paymentId,
-                accountId: card.accountId,
-                paymentCurrency: payment.currency,
-              })
-            ),
-        qerkoTerminal === undefined
-          ? null
-          : run(
-              prepareQerkoTerminalMethod({
-                paymentId,
-                accountId: qerkoTerminal.accountId,
-                paymentCurrency: payment.currency,
-              })
-            ),
-        bank === undefined
-          ? null
-          : run(
-              prepareIbanMethod({
-                paymentId,
-                accountId: bank.accountId,
-                paymentCurrency: payment.currency,
-              })
-            ),
-      ])
+    const [
+      cashRegisterResult,
+      cardResult,
+      qerkoResult,
+      qerkoPaymentResult,
+      ibanResult,
+    ] = await Promise.all([
+      cashRegister === undefined
+        ? null
+        : run(
+            prepareCashRegisterMethod({
+              paymentId,
+              accountId: cashRegister.accountId,
+              paymentCurrency: payment.currency,
+            })
+          ),
+      card === undefined
+        ? null
+        : run(
+            prepareCardMethod({
+              paymentId,
+              accountId: card.accountId,
+              paymentCurrency: payment.currency,
+            })
+          ),
+      qerkoTerminal === undefined
+        ? null
+        : run(
+            prepareQerkoTerminalMethod({
+              paymentId,
+              accountId: qerkoTerminal.accountId,
+              paymentCurrency: payment.currency,
+            })
+          ),
+      qerkoPayment === undefined
+        ? null
+        : run(
+            prepareQerkoPaymentMethod({
+              paymentId,
+              accountId: qerkoPayment.accountId,
+              paymentCurrency: payment.currency,
+            })
+          ),
+      bank === undefined
+        ? null
+        : run(
+            prepareIbanMethod({
+              paymentId,
+              accountId: bank.accountId,
+              paymentCurrency: payment.currency,
+            })
+          ),
+    ])
     if (cashRegisterResult !== null && !cashRegisterResult.ok) {
       return cashRegisterResult
     }
     if (cardResult !== null && !cardResult.ok) return cardResult
     if (qerkoResult !== null && !qerkoResult.ok) return qerkoResult
+    if (qerkoPaymentResult !== null && !qerkoPaymentResult.ok) {
+      return qerkoPaymentResult
+    }
     if (ibanResult !== null && !ibanResult.ok) return ibanResult
 
     // Spark waits its turn: it calls out to Yadio and the Spark SDK, so
@@ -762,6 +820,7 @@ export const preparePaymentMethod =
     const cashRegisterValues = cashRegisterResult?.value ?? null
     const cardValues = cardResult?.value ?? null
     const qerkoValues = qerkoResult?.value ?? null
+    const qerkoPaymentValues = qerkoPaymentResult?.value ?? null
     const ibanValues = ibanResult?.value ?? null
     const sparkValues = sparkResult?.value ?? null
     const lightningAddressValues = lightningAddressResult?.value ?? null
@@ -770,6 +829,7 @@ export const preparePaymentMethod =
       cashRegisterValues === null &&
       cardValues === null &&
       qerkoValues === null &&
+      qerkoPaymentValues === null &&
       ibanValues === null &&
       sparkValues === null &&
       lightningAddressValues === null
@@ -790,12 +850,14 @@ export const preparePaymentMethod =
       cashRegisterValues !== null ||
       cardValues !== null ||
       qerkoValues !== null ||
+      qerkoPaymentValues !== null ||
       ibanValues !== null ||
       nonExpiringMethods.some(
         (row) =>
           row.cashRegisterAccountId !== null ||
           row.cardAccountId !== null ||
           row.qerkoAccountId !== null ||
+          row.qerkoPaymentAccountId !== null ||
           row.ibanAccountId !== null
       )
 
@@ -816,6 +878,13 @@ export const preparePaymentMethod =
 
       if (qerkoValues !== null) {
         run.deps.evolu.upsert("paymentQerkoTerminal", qerkoValues, {
+          ...options,
+          owner: evoluOwner,
+        })
+      }
+
+      if (qerkoPaymentValues !== null) {
+        run.deps.evolu.upsert("paymentQerkoPayment", qerkoPaymentValues, {
           ...options,
           owner: evoluOwner,
         })

@@ -5,6 +5,8 @@ import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
+import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
+import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { saveQerkoTerminalAccount } from "../../modules/account/account-actions.ts"
 import { createQerkoTerminalAccountId } from "../../modules/account/account-utils.ts"
@@ -94,6 +96,8 @@ const setup = async () => {
     ...evoluTestDeps(evolu),
     ...clock,
     ...createQerkoApiDep({ posId: "pos" }),
+    ...createQerkoSocketDep(),
+    ...createQerkoConnectionStatusDep(),
     sparkWallet: { create: async () => createFakeSparkWallet({}) },
     ...createYadioApiDep(),
     uuid: {
@@ -152,6 +156,7 @@ const setup = async () => {
   await using run = testCreateRun(deps)
   await run.ok(
     saveQerkoPlugin({
+      role: "terminalPayments",
       environment: "sandbox",
       apiKey: NonEmptyStringSchema.decode("secret"),
       apiKeyName: NonEmptyString255("Payky"),

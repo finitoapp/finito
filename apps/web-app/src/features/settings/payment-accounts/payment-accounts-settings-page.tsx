@@ -6,6 +6,7 @@ import {
   saveCashuAccount,
   saveFiatBankAccount,
   saveLightningAddressAccount,
+  saveQerkoPaymentAccount,
   saveQerkoTerminalAccount,
   saveSparkAccount,
 } from "@payky/core/modules/account/account-actions"
@@ -15,6 +16,7 @@ import {
   cashuAccountQuery,
   fiatBankAccountQuery,
   lightningAddressAccountQuery,
+  qerkoPaymentAccountQuery,
   qerkoTerminalAccountQuery,
   sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
@@ -44,6 +46,7 @@ import {
 import { Reorder, useDragControls, useReducedMotion } from "motion/react"
 import { useRef, useState } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
+import { QerkoIcon } from "@/components/qerko-icon.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
@@ -84,7 +87,9 @@ const paymentAccountsPageQueries = [
   cashRegisterAccountQuery,
   cardSwitchioAccountQuery,
   qerkoTerminalAccountQuery,
-  qerkoPluginQuery,
+  qerkoPluginQuery("terminalPayments"),
+  qerkoPaymentAccountQuery,
+  qerkoPluginQuery("standard"),
   cashuAccountQuery,
   lightningAddressAccountQuery,
 ]
@@ -101,7 +106,13 @@ export function PaymentAccountsSettingsPage() {
   const { data: cashData } = useEvoluQuery(cashRegisterAccountQuery)
   const { data: cardData } = useEvoluQuery(cardSwitchioAccountQuery)
   const { data: qerkoData } = useEvoluQuery(qerkoTerminalAccountQuery)
-  const { data: qerkoPluginData } = useEvoluQuery(qerkoPluginQuery)
+  const { data: qerkoPluginData } = useEvoluQuery(
+    qerkoPluginQuery("terminalPayments")
+  )
+  const { data: qerkoPaymentData } = useEvoluQuery(qerkoPaymentAccountQuery)
+  const { data: qerkoPaymentPluginData } = useEvoluQuery(
+    qerkoPluginQuery("standard")
+  )
   const { data: cashuData } = useEvoluQuery(cashuAccountQuery)
   const { data: lightningAddressData } = useEvoluQuery(
     lightningAddressAccountQuery
@@ -112,6 +123,7 @@ export function PaymentAccountsSettingsPage() {
   const [cash] = cashData
   const [card] = cardData
   const [qerko] = qerkoData
+  const [qerkoPayment] = qerkoPaymentData
   const [cashu] = cashuData
   const [lightningAddress] = lightningAddressData
 
@@ -122,6 +134,13 @@ export function PaymentAccountsSettingsPage() {
   const cardEnabled = card !== undefined && card.isDeleted !== 1
   const qerkoEnabled = qerko !== undefined && qerko.isDeleted !== 1
   const qerkoPaired = qerkoPluginData.length > 0
+  const qerkoPaymentEnabled =
+    qerkoPayment !== undefined && qerkoPayment.isDeleted !== 1
+  const qerkoPaymentPaired = qerkoPaymentPluginData.length > 0
+  // Paired but without a location yet, Qerko refuses the key (qerko/0007).
+  const qerkoPaymentReady =
+    qerkoPaymentPluginData[0]?.restaurantId !== null &&
+    qerkoPaymentPluginData[0]?.restaurantId !== undefined
   const cashuEnabled = cashu !== undefined && cashu.isDeleted !== 1
   const lightningAddressEnabled =
     lightningAddress !== undefined && lightningAddress.isDeleted !== 1
@@ -241,6 +260,35 @@ export function PaymentAccountsSettingsPage() {
         await using run = appRun()
         await run.ok(
           saveQerkoTerminalAccount({ enabled, currency: appCurrency })
+        )
+      },
+    },
+    qerkoPayment: {
+      icon: QerkoIcon,
+      title: "settings.paymentAccounts.method.qerkoPayment",
+      switchLabel: "settings.qerkoPayment.enabled.label",
+      enabled: qerkoPaymentEnabled,
+      available:
+        qerkoPaymentReady &&
+        qerkoPaymentEnabled &&
+        qerkoPayment.currency === appCurrency,
+      // Without a location there is no restaurant for the QR code to name.
+      canEnable: qerkoPaymentReady,
+      status: !qerkoPaymentPaired
+        ? t("settings.qerkoPayment.status.notPaired")
+        : !qerkoPaymentReady
+          ? t("settings.qerkoPayment.location.none")
+          : qerkoPaymentEnabled
+            ? (currencyMismatch(qerkoPayment.currency) ??
+              (qerkoPayment.connectionDeviceId === null
+                ? t("settings.qerkoPayment.status.noDevice")
+                : null))
+            : null,
+      to: "/settings/payment-accounts/qerko-payment",
+      saveEnabled: async (enabled) => {
+        await using run = appRun()
+        await run.ok(
+          saveQerkoPaymentAccount({ enabled, currency: appCurrency })
         )
       },
     },

@@ -11,6 +11,8 @@ import type {
 } from "../deps.ts"
 import type { EetApiDep } from "../integrations/eet/eet-client.ts"
 import type { QerkoApiDep } from "../integrations/qerko/qerko-client.ts"
+import type { QerkoConnectionStatusDep } from "../integrations/qerko/qerko-connection-status.ts"
+import type { QerkoSocketDep } from "../integrations/qerko/qerko-socket.ts"
 import type { EvoluDep } from "../modules/shared/evolu-deps.ts"
 
 export interface BackgroundJobOnErrorDep {
@@ -31,7 +33,9 @@ export type AppBackgroundJobContext = BackgroundJobContext &
   DeviceIdDep &
   ConnectivityDep &
   EetApiDep &
-  QerkoApiDep
+  QerkoApiDep &
+  QerkoSocketDep &
+  QerkoConnectionStatusDep
 
 /** What the app's own runs add for the shared Cashu wallet. */
 export type CashuBackgroundJobContext = AppBackgroundJobContext &

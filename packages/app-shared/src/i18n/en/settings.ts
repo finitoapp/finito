@@ -81,6 +81,64 @@ export const enSettings = {
   "settings.qerkoTerminal.company.identificationNumber.invalid":
     "Enter the company ID.",
   "settings.qerkoTerminal.company.identificationNumber.label": "Company ID",
+  "settings.qerkoPayment.title": "Qerko payments",
+  "settings.qerkoPayment.unpaired.description":
+    "Connect your company's Qerko account so customers can pay by scanning the payment's QR code in the Qerko app. Qerko sends a confirmation code to the company's e-mail.",
+  "settings.qerkoPayment.confirm.description":
+    "Qerko payments go through one device of the account at a time, for every device. Keep it on with the app open while customers pay.",
+  "settings.qerkoPayment.confirm.thisDevice":
+    "This device accepts Qerko payments",
+  "settings.qerkoPayment.confirm.finish": "Finish",
+  "settings.qerkoPayment.paired.title": "Connected to Qerko",
+  "settings.qerkoPayment.paired.description":
+    "Customers pay by scanning the payment's QR code in the Qerko app.",
+  "settings.qerkoPayment.paired.device": "Accepts payments",
+  "settings.qerkoPayment.paired.connection": "Connection",
+  "settings.qerkoPayment.device.none": "No device",
+  "settings.qerkoPayment.device.this": "{name} (this device)",
+  "settings.qerkoPayment.device.other": "Another device",
+  "settings.qerkoPayment.acceptHere": "Accept on this device",
+  "settings.qerkoPayment.stopHere": "Stop accepting here",
+  "settings.qerkoPayment.sandbox": "Sandbox",
+  "settings.qerkoPayment.connection.idle": "Not connected",
+  "settings.qerkoPayment.connection.connecting": "Connecting…",
+  "settings.qerkoPayment.connection.connected": "Connected",
+  "settings.qerkoPayment.connection.reconnecting":
+    "Connection lost, reconnecting…",
+  "settings.qerkoPayment.connection.stolen":
+    "Another connection took over Qerko payments. Choose this device again to take them back.",
+  "settings.qerkoPayment.connection.unauthorized":
+    "Qerko no longer accepts this connection. Unpair and pair again.",
+  "settings.qerkoPayment.status.noDevice": "No device accepts Qerko payments",
+  "settings.qerkoPayment.unpair.confirm.description":
+    "Qerko payments stop on every device. Payments already taken stay as they are.",
+  "settings.qerkoPayment.location.title": "Choose the location",
+  "settings.qerkoPayment.location.description":
+    "Qerko payments go to the location you choose here. To change it later, unpair and pair again.",
+  "settings.qerkoPayment.location.label": "Location",
+  "settings.qerkoPayment.location.empty":
+    "Qerko lists no active location for this company.",
+  "settings.qerkoPayment.location.failed":
+    "The locations could not be loaded. Check the connection and try again.",
+  "settings.qerkoPayment.location.keyRejected":
+    "Qerko no longer accepts this connection. Unpair and pair again.",
+  "settings.qerkoPayment.location.notFound":
+    "Qerko no longer knows this location. Choose another one.",
+  "settings.qerkoPayment.location.retry": "Try again",
+  "settings.qerkoPayment.location.use": "Use this location",
+  "settings.qerkoPayment.location.none": "No location chosen",
+  "settings.qerkoPayment.paired.company": "Company",
+  "settings.qerkoPayment.readiness.active": "Active",
+  "settings.qerkoPayment.readiness.connecting": "Connecting…",
+  "settings.qerkoPayment.readiness.notAccepting": "Not accepting payments",
+  "settings.qerkoPayment.paired.enabled": "Method on",
+  "settings.qerkoPayment.paired.success.title": "Qerko payments are on",
+  "settings.qerkoPayment.paired.success.description":
+    "Customers pay by scanning the QR code on the payment screen, in the Qerko tab.",
+  "settings.qerkoPayment.paired.success.noDevice":
+    "No device accepts them yet. Choose one below.",
+  "settings.qerkoPayment.enabled.label": "Enable Qerko payments",
+  "settings.qerkoPayment.status.notPaired": "Not paired with Qerko",
   "settings.qerkoTerminal.enabled.label": "Enable Qerko terminal",
   "settings.qerkoTerminal.environment.description":
     "The sandbox works with test data and charges no real card. Choose it only to try the connection.",
@@ -654,6 +712,7 @@ export const enSettings = {
   "settings.paymentAccounts.method.iban": "Bank transfer",
   "settings.paymentAccounts.method.cashu": "Cashu",
   "settings.paymentAccounts.method.cardSwitchio": "Payment card",
+  "settings.paymentAccounts.method.qerkoPayment": "Qerko payment (QR)",
   "settings.paymentAccounts.method.qerkoTerminal": "Card terminal (Qerko)",
   "settings.paymentAccounts.method.spark": "Bitcoin",
   "settings.paymentAccounts.moveDown.aria": "Move {name} down",

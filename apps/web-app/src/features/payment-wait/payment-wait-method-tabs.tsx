@@ -7,6 +7,7 @@ import { CashPaymentTab } from "@/features/payment-wait/payment-wait-cash-tab.ts
 import { CashuPaymentTab } from "@/features/payment-wait/payment-wait-cashu-tab.tsx"
 import { IbanPaymentTab } from "@/features/payment-wait/payment-wait-iban-tab.tsx"
 import { LightningAddressPaymentTab } from "@/features/payment-wait/payment-wait-lightning-address-tab.tsx"
+import { QerkoPaymentTab as QerkoQrPaymentTab } from "@/features/payment-wait/payment-wait-qerko-payment-tab.tsx"
 import { QerkoPaymentTab } from "@/features/payment-wait/payment-wait-qerko-tab.tsx"
 import { QrPaymentRequest } from "@/features/payment-wait/payment-wait-qr-request.tsx"
 import type {
@@ -148,6 +149,16 @@ export function PaymentMethodTabContent({
           pendingTransactionId={qerkoPendingTransactionId}
           unresolvedTransactionId={qerkoUnresolvedTransactionId}
           failureReason={qerkoFailureReason}
+        />
+      )
+    case "qerkoPayment":
+      return (
+        <QerkoQrPaymentTab
+          paymentId={paymentId}
+          qrPayload={method.qrPayload}
+          payable={payable}
+          connectionDeviceId={method.connectionDeviceId}
+          preparingMessageKey={preparingMessageKey}
         />
       )
     case "card":

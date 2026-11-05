@@ -153,8 +153,16 @@ The word "account" means two unrelated things here.
 - **EET** — Czech electronic registration of sales (`docs/eet.md`).
 - **Switchio** — the SwitchioPay card terminal app, driven through Android
   intents (`apps/web-app/src/platform/switchio.ts`).
-- **Qerko** — the service that drives a card payment terminal remotely over
-  HTTP, so it works in the PWA as well (`docs/qerko.md`). Its account kind is
-  `qerkoTerminal`, its pairing the synced `qerkoPlugin` singleton, and the
-  terminal a device pays on `qerkoTerminalSelection` in the device database.
-  Not the same as **Switchio**: Qerko needs no Android intent.
+- **Qerko** — the service behind two payment methods, each paired on its own
+  (`docs/qerko.md`). Not the same as **Switchio**: Qerko needs no Android
+  intent.
+  - **Qerko terminal** — a card payment terminal Qerko drives remotely over
+    HTTP, so it works in the PWA as well. Its account kind is
+    `qerkoTerminal`, its pairing the `qerkoPlugin` of the `terminalPayments`
+    role, and the terminal a device pays on `qerkoTerminalSelection` in the
+    device database.
+  - **Qerko payment** — a QR code the customer pays in the Qerko app, served
+    over Qerko's POS websocket by the one device of the account chosen for it
+    (`connectionDeviceId`). Its account kind is `qerkoPayment`, its pairing
+    the `qerkoPlugin` of the `standard` role, and each Qerko payment of a
+    payment a **Qerko attempt** (`qerkoPaymentAttempt`).

@@ -17,6 +17,7 @@ export type RefundLineId = typeof RefundLineIdRaw.Output
 export const RefundMethodSchema = z.enum([
   "cashRegister",
   "qerkoTerminal",
+  "qerkoPayment",
   "outside",
 ])
 export type RefundMethod = z.output<typeof RefundMethodSchema>

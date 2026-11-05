@@ -8,6 +8,7 @@ import type {
   RefundPaymentError,
   RefundPaymentTipError,
 } from "@payky/core/modules/refund/refund-actions"
+import type { RefundQerkoPaymentError } from "@payky/core/modules/refund/refund-qerko-payment-actions"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import {
   calculateRefundLineAmount,
@@ -46,8 +47,16 @@ export type RefundQuantities = Readonly<Partial<Record<PaymentLineId, number>>>
 export const refundMethodLabelKey = {
   cashRegister: "paymentDetail.refunds.method.cashRegister",
   qerkoTerminal: "paymentDetail.refunds.method.qerkoTerminal",
+  qerkoPayment: "paymentDetail.refunds.method.qerkoPayment",
   outside: "paymentDetail.refunds.method.outside",
 } satisfies Record<RefundMethod, TranslationKey>
+
+/**
+ * The methods the refund dialog offers. A Qerko payment is not one of them:
+ * Qerko refunds all of it or nothing, so it has a button of its own
+ * (`deriveQerkoPaymentRefund`, qerko/0010).
+ */
+export type RefundDialogMethod = Exclude<RefundMethod, "qerkoPayment">
 
 export const refundErrorKeys = {
   PaymentNotFound: "paymentDetail.notFound",
@@ -73,7 +82,7 @@ export const tipRefundErrorKeys = {
 export const defaultRefundMethod = (
   paymentMethodKinds: ReadonlyArray<string>,
   { qerkoRefundable = false }: { readonly qerkoRefundable?: boolean } = {}
-): RefundMethod =>
+): RefundDialogMethod =>
   paymentMethodKinds.includes("cashRegister")
     ? "cashRegister"
     : qerkoRefundable && paymentMethodKinds.includes("qerkoTerminal")
@@ -116,6 +125,43 @@ export const describeQerkoRefundError = (error: {
   }
   return refundKeys[error.type] ?? describeQerkoPaymentError(error)
 }
+
+/**
+ * The whole amount a Qerko payment's refund returns, or `null` when it cannot
+ * be offered (qerko/0010): the payment was not paid through Qerko, or part of
+ * it is refunded already, which a refund of all of it would refund again.
+ */
+export const deriveQerkoPaymentRefund = ({
+  hasPaidQerkoAttempt,
+  isPaid,
+  refunds,
+  refundableAmount,
+  refundableTipAmount,
+}: {
+  readonly hasPaidQerkoAttempt: boolean
+  readonly isPaid: boolean
+  readonly refunds: ReadonlyArray<unknown>
+  readonly refundableAmount: NonNegativeInteger
+  readonly refundableTipAmount: NonNegativeInteger
+}): NonNegativeInteger | null =>
+  hasPaidQerkoAttempt && isPaid && refunds.length === 0
+    ? NonNegativeInteger(refundableAmount + refundableTipAmount)
+    : null
+
+export const qerkoPaymentRefundErrorKeys = {
+  PaymentNotFound: "paymentDetail.notFound",
+  RefundPaymentNotPaid: "refund.error.notPaid",
+  RefundAmountInvalid: "refund.error.amount",
+  RefundItemsUnavailable: "refund.error.items",
+  RefundLineUnavailable: "refund.error.items",
+  RefundTipUnavailable: "refund.error.tip",
+  QerkoPaymentRefundNotAvailable: "refund.qerkoPayment.error.notAvailable",
+  QerkoPaymentRefundNotCancelled: "refund.qerkoPayment.error.notCancelled",
+  QerkoPluginNotPaired: "paymentWait.qerko.error.notPaired",
+  QerkoHttpError: "refund.qerkoPayment.error.unreachable",
+  QerkoApiError: "refund.qerkoPayment.error.unreachable",
+  FetchError: "refund.qerkoPayment.error.unreachable",
+} satisfies Record<RefundQerkoPaymentError["type"], TranslationKey>
 
 /**
  * What a payment's refund panel offers (refund/0002, 0004, 0005): the limit of

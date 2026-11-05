@@ -105,6 +105,7 @@ const setup = async (handlers: Record<string, Handler>) => {
 
   await run.ok(
     saveQerkoPlugin({
+      role: "terminalPayments",
       environment: "sandbox",
       apiKey: NonEmptyStringSchema.decode("secret"),
       apiKeyName: NonEmptyString255("Payky"),
@@ -449,7 +450,7 @@ describe("qerko terminal payment", () => {
     await test.run.ok(
       (
         await import("../qerko-plugin/qerko-plugin-actions.ts")
-      ).deleteQerkoPlugin()
+      ).deleteQerkoPlugin("terminalPayments")
     )
     await expect
       .poll(() =>

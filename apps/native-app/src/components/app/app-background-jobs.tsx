@@ -8,6 +8,8 @@ import type { Evolu } from "@payky/core/evolu/schema"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
 import { createQerkoApiDep } from "@payky/core/integrations/qerko/qerko-client"
+import { createQerkoConnectionStatusDep } from "@payky/core/integrations/qerko/qerko-connection-status"
+import { createQerkoSocketDep } from "@payky/core/integrations/qerko/qerko-socket"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
 import { useAtomValue } from "jotai"
 import {
@@ -24,6 +26,7 @@ import { appMigrationsAtom } from "../../atoms/app-migrations.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "../../atoms/cashu.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
+import { qerkoConnectionStatusStore } from "../../atoms/qerko-connection-status.ts"
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { nativeEnv } from "../../core/native-env.ts"
 import { nativeConsole, nativeRun } from "../../core/native-runtime.ts"
@@ -63,6 +66,8 @@ const createJobDeps = ({
       posId: nativeEnv.EXPO_PUBLIC_PAYKY_QERKO_POS_ID,
       baseUrl: nativeEnv.EXPO_PUBLIC_PAYKY_QERKO_BASE_URL,
     }),
+    ...createQerkoSocketDep(),
+    ...createQerkoConnectionStatusDep(qerkoConnectionStatusStore),
     // The one lock authority of this JS runtime, shared with `nativeRun`.
     lockManager,
     console: nativeConsole,

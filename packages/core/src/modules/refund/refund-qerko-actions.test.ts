@@ -153,6 +153,7 @@ const setup = async ({
 
   await run.ok(
     saveQerkoPlugin({
+      role: "terminalPayments",
       environment: "sandbox",
       apiKey: NonEmptyStringSchema.decode("secret"),
       apiKeyName: NonEmptyString255("Payky"),
@@ -493,6 +494,7 @@ describe("refund to the card through Qerko", () => {
     const accounts = await createPaymentAccounts(deps)
     await run.ok(
       saveQerkoPlugin({
+        role: "terminalPayments",
         environment: "sandbox",
         apiKey: NonEmptyStringSchema.decode("secret"),
         apiKeyName: NonEmptyString255("Payky"),

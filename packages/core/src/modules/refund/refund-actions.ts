@@ -342,11 +342,15 @@ export const loadTipRefundPlan =
   }
 
 /**
- * What a refund recorded without the terminal can be: a refund `method` of
+ * What a refund recorded without Qerko can be: a refund `method` of
  * `qerkoTerminal` is written only once the terminal approved it
- * (`settleQerkoTerminalRefund`), never on someone's word.
+ * (`settleQerkoTerminalRefund`), and one of `qerkoPayment` once Qerko
+ * cancelled the payment (`refundQerkoPayment`), never on someone's word.
  */
-export type RecordedRefundMethod = Exclude<RefundMethod, "qerkoTerminal">
+export type RecordedRefundMethod = Exclude<
+  RefundMethod,
+  "qerkoTerminal" | "qerkoPayment"
+>
 
 export const refundPayment =
   ({

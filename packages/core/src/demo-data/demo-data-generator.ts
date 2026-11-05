@@ -462,6 +462,7 @@ export const generateDemoData =
       // Paired with a fictional company, so the terminal method is on.
       await demoRun.ok(
         saveQerkoPlugin({
+          role: "terminalPayments",
           environment: "sandbox",
           apiKey: NonEmptyStringSchema.decode("demo-key"),
           apiKeyName: NonEmptyString255("Payky"),

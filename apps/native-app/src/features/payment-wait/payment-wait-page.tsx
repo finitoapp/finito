@@ -17,6 +17,7 @@ import {
   fetchNostrProfile,
   getNostrIdentity,
 } from "@payky/core/integrations/nostr/nostr-client"
+import { createQerkoPaymentQrPayload } from "@payky/core/integrations/qerko/qerko-client"
 import {
   cashuAccountQuery,
   enabledPaymentMethodAccountsQuery,
@@ -49,6 +50,7 @@ import {
 } from "@payky/core/modules/payment/payment-queries"
 import { derivePaymentStatus } from "@payky/core/modules/payment/payment-status-utils"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import { Integer } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
@@ -59,7 +61,7 @@ import CreditCard from "lucide-react-native/icons/credit-card"
 import Landmark from "lucide-react-native/icons/landmark"
 import Nfc from "lucide-react-native/icons/nfc"
 import X from "lucide-react-native/icons/x"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
@@ -67,6 +69,7 @@ import { AmountFigure } from "../../components/amount-figure.tsx"
 import { useSettleStoredSwitchioResult } from "../../components/app/switchio-restored-result.tsx"
 import { CopyableQrCode } from "../../components/copyable-qr-code.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
+import { QerkoIcon } from "../../components/qerko-icon.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
 import { Screen } from "../../components/screen.tsx"
 import { SuccessPanel } from "../../components/success-panel.tsx"
@@ -104,6 +107,7 @@ import { CardPaymentTab } from "./payment-wait-card-tab.tsx"
 import { CashuPaymentTab } from "./payment-wait-cashu-tab.tsx"
 import { IbanPaymentTab } from "./payment-wait-iban-tab.tsx"
 import { LightningAddressPaymentTab } from "./payment-wait-lightning-address-tab.tsx"
+import { QerkoPaymentTab as QerkoQrPaymentTab } from "./payment-wait-qerko-payment-tab.tsx"
 import { QerkoPaymentTab } from "./payment-wait-qerko-tab.tsx"
 
 // Spark/Lightning (with a Bolt Card tap under the QR), cash, bank transfer,
@@ -117,6 +121,7 @@ type MethodId =
   | "cashu"
   | "card"
   | "qerko"
+  | "qerkoPayment"
   | "lightningAddress"
 
 // The three bitcoin wallets are one "Bitcoin" to the customer, as they are
@@ -128,6 +133,7 @@ const methodLabelKeys = {
   cashu: "paymentWait.method.bitcoin",
   card: "paymentWait.method.card",
   qerko: "paymentWait.method.qerko",
+  qerkoPayment: "paymentWait.method.qerkoPayment",
   lightningAddress: "paymentWait.method.bitcoin",
 } satisfies Record<MethodId, TranslationKey>
 
@@ -138,8 +144,40 @@ const methodIcons = {
   cashu: Bitcoin,
   card: CreditCard,
   qerko: Nfc,
+  qerkoPayment: QerkoIcon,
   lightningAddress: Bitcoin,
 } as const satisfies Record<MethodId, unknown>
+
+/** What a tab says while it prepares, or while its first read loads. */
+const preparingKeys = {
+  spark: "paymentWait.preparing.spark",
+  cash: "paymentWait.preparing.cash",
+  iban: "paymentWait.preparing.iban",
+  cashu: "paymentWait.preparing.cashu",
+  card: "paymentWait.preparing.card",
+  qerko: "paymentWait.preparing.qerko",
+  qerkoPayment: "paymentWait.preparing.qerkoPayment",
+  lightningAddress: "paymentWait.preparing.lightningAddress",
+} satisfies Record<MethodId, TranslationKey>
+
+/**
+ * Where a tab's content stands while its first read loads: the QR's square,
+ * so nothing below it moves, as web's pending `CopyableQrCode`.
+ */
+function TabContentFallback({ label }: { readonly label: string }) {
+  return (
+    <YStack w="100%" aspectRatio={1} items="center" justify="center" gap={8}>
+      <ActivityIndicator />
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        color="muted-foreground"
+      >
+        {label}
+      </Text>
+    </YStack>
+  )
+}
 
 /**
  * What `preparePaymentMethod` is asked for each method a run of it prepares.
@@ -152,6 +190,7 @@ const preparationRequests = {
   iban: (accountId: AccountId) => ({ bank: { accountId } }),
   card: (accountId: AccountId) => ({ card: { accountId } }),
   qerko: (accountId: AccountId) => ({ qerkoTerminal: { accountId } }),
+  qerkoPayment: (accountId: AccountId) => ({ qerkoPayment: { accountId } }),
   lightningAddress: (accountId: AccountId) => ({
     lightningAddress: { accountId },
   }),
@@ -293,6 +332,17 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       account.kind === "qerkoTerminal" &&
       account.qerkoTerminalCurrency === payment?.currency
   )
+  // Qerko payments need the restaurant the pairing names for their QR code.
+  const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
+  const qerkoRestaurantId = qerkoPaymentPlugin?.restaurantId ?? null
+  const qerkoPaymentAccount =
+    qerkoRestaurantId === null
+      ? undefined
+      : accounts.find(
+          (account) =>
+            account.kind === "qerkoPayment" &&
+            account.qerkoPaymentCurrency === payment?.currency
+        )
   const lightningAddressAccount = accounts.find(
     (account) =>
       account.kind === "lightningAddress" && account.lightningAddress !== null
@@ -310,6 +360,8 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       found.push({ id: "card", accountId: cardAccount.id })
     if (qerkoAccount !== undefined)
       found.push({ id: "qerko", accountId: qerkoAccount.id })
+    if (qerkoPaymentAccount !== undefined)
+      found.push({ id: "qerkoPayment", accountId: qerkoPaymentAccount.id })
     if (cashuAccount !== undefined)
       found.push({ id: "cashu", accountId: cashuAccount.id })
     if (lightningAddressAccount !== undefined)
@@ -324,6 +376,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       cashu: "cashu",
       card: "cardSwitchio",
       qerko: "qerkoTerminal",
+      qerkoPayment: "qerkoPayment",
       lightningAddress: "lightningAddress",
     } as const satisfies Record<MethodId, DefaultPaymentMethod>
     return found.toSorted(
@@ -337,6 +390,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     cashuAccount,
     cardAccount,
     qerkoAccount,
+    qerkoPaymentAccount,
     lightningAddressAccount,
   ])
   const active = methods.find(({ id }) => id === selected) ?? methods[0]
@@ -352,6 +406,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     iban: isSet(payment?.ibanAccountId),
     card: isSet(payment?.cardAccountId),
     qerko: isSet(payment?.qerkoAccountId),
+    qerkoPayment: isSet(payment?.qerkoPaymentAccountId),
     cashu: isSet(payment?.cashuLnInvoice),
     lightningAddress: isSet(payment?.lightningAddressLnInvoice),
   } satisfies Record<MethodId, boolean>
@@ -832,187 +887,216 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           </Tabs>
         )}
 
-        {active !== undefined && preparationStatus?.status === "failed" ? (
-          <YStack gap={12} items="center">
-            <Text
-              maxW={288}
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              fontWeight={fontWeight.medium}
-              color="destructive"
-              text="center"
-            >
-              {t("paymentWait.prepareError")}
-            </Text>
-            <Button
-              variant="outline"
-              label={t("paymentWait.prepareRetry")}
-              onPress={retryPreparation}
-            />
-          </YStack>
-        ) : active === undefined ? null : active.id === "spark" ? (
-          <YStack gap={12} items="center" w="100%">
-            {sparkInvoice !== null ? (
-              <CopyableQrCode value={sparkInvoice} />
-            ) : (
-              <XStack items="center" gap={8}>
-                <ActivityIndicator />
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  color="muted-foreground"
-                >
-                  {t("paymentWait.preparing.spark")}
-                </Text>
-              </XStack>
-            )}
-            {status === "expired" ? (
-              <Text color="muted-foreground">
-                {t("payment.status.expired")}
-              </Text>
-            ) : null}
-            {/* A Bolt Card pays a Lightning invoice, not a Spark one. */}
-            {status === "pending" && payment.lnInvoice !== null ? (
-              <BoltCardReader paymentId={paymentId} />
-            ) : null}
-          </YStack>
-        ) : active.id === "lightningAddress" ? (
-          <LightningAddressPaymentTab
-            paymentId={paymentId}
-            invoice={payment.lightningAddressLnInvoice ?? null}
-            payable={status === "pending"}
-            expired={status === "expired"}
-          />
-        ) : active.id === "cashu" ? (
-          <YStack gap={12} items="center" w="100%">
-            <CashuPaymentTab
-              paymentId={paymentId}
-              qrPayload={cashuQrPayload}
-              quoteExpired={
-                cashuQuoteExpiresAt !== null &&
-                now.getTime() >= cashuQuoteExpiresAt
-              }
-              newQuotePending={newQuotePending}
-              onNewQuote={() => void requestNewQuote()}
-            />
-          </YStack>
-        ) : active.id === "iban" && ibanNumber !== null ? (
-          <IbanPaymentTab
-            paymentId={paymentId}
-            accountId={active.accountId}
-            createdAt={payment.createdAt}
-            payable={status === "pending"}
-            qrPayload={bankQrPayload}
-            qrPayloads={bankQrPayloads}
-            activeFormat={activeQrFormat}
-            onSelectFormat={setSelectedQrFormat}
-            iban={ibanNumber}
-            variableSymbol={payment.variableSymbol}
-            preparing={preparing}
-            canMarkPaid={canMarkIbanPaid}
-            pending={ibanPending}
-            errorKey={ibanErrorKey}
-            onMarkPaid={() => void markIbanPaid()}
-          />
-        ) : active.id === "qerko" ? (
-          <QerkoPaymentTab
-            paymentId={paymentId}
-            accountId={payment.qerkoAccountId}
-            payable={status === "pending"}
-            pendingTransactionId={payment.qerkoPendingTransactionId}
-            unresolvedTransactionId={payment.qerkoUnresolvedTransactionId}
-            failureReason={payment.qerkoFailureReason}
-          />
-        ) : active.id === "card" ? (
-          <CardPaymentTab
-            canPayCard={canPayCard}
-            pending={cardPending}
-            errorKey={cardErrorKey}
-            hasAccount={cardAccountId !== null && cardAccountId !== undefined}
-            unresolvedTransactionId={cardUnresolvedTransactionId}
-            onPayCard={() => void payCard()}
-          />
-        ) : (
-          <YStack w="100%" items="center" gap={12} py={16}>
-            {preparing ? (
-              <XStack items="center" gap={8}>
-                <ActivityIndicator />
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  color="muted-foreground"
-                >
-                  {t("paymentWait.preparing.cash")}
-                </Text>
-              </XStack>
-            ) : null}
-            <Field w="100%" maxW={288}>
-              <FieldLabel>{t("paymentWait.cashPaid.received")}</FieldLabel>
-              <Input
-                h={48}
-                text="center"
-                fontSize={fontSize.lg}
-                lineHeight={fontSize.lg}
-                fontWeight={fontWeight.semibold}
-                value={text}
-                keyboardType="decimal-pad"
-                autoComplete="off"
-                disabled={markPending}
-                invalid={receivedAmount === null}
-                onChangeText={setEdited}
-              />
-              {receivedAmount === null ? (
-                <FieldError>
-                  {t("paymentWait.cashPaid.receivedTooLow", {
-                    amount: formatMinor(leastReceived),
-                  })}
-                </FieldError>
-              ) : receivedAmount === payment.amount ? null : (
-                <FieldDescription>
-                  {t("paymentWait.cashPaid.difference", {
-                    amount: formatMinor(receivedAmount - payment.amount),
-                  })}
-                </FieldDescription>
-              )}
-            </Field>
-            <Button
-              size="lg"
-              h={56}
-              px={32}
-              iconStart={Check}
-              label={
-                markPending
-                  ? t("paymentWait.cashPaid.pending")
-                  : t("paymentWait.cashPaid.action")
-              }
-              pending={markPending}
-              disabled={!canMarkCashPaid || receivedAmount === null}
-              onPress={() => void markPaid()}
-            />
-            {errorKey === null ? null : (
-              <Text
-                fontSize={fontSize.sm}
-                lineHeight={fontSize.sm}
-                fontWeight={fontWeight.medium}
-                color="destructive"
-                role="alert"
-              >
-                {t(errorKey)}
-              </Text>
-            )}
-            {canMarkCashPaid ? null : (
+        {/* A tab reads its own data only once opened, and its first read
+            suspends. This boundary keeps that to the tab, under a QR-sized
+            placeholder, instead of the route's, which would blank the whole
+            screen for a moment. */}
+        <Suspense
+          fallback={
+            active === undefined ? null : (
+              <TabContentFallback label={t(preparingKeys[active.id])} />
+            )
+          }
+        >
+          {active !== undefined && preparationStatus?.status === "failed" ? (
+            <YStack gap={12} items="center">
               <Text
                 maxW={288}
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
-                color="muted-foreground"
+                fontWeight={fontWeight.medium}
+                color="destructive"
                 text="center"
               >
-                {t("paymentWait.cashPaid.unavailable")}
+                {t("paymentWait.prepareError")}
               </Text>
-            )}
-          </YStack>
-        )}
+              <Button
+                variant="outline"
+                label={t("paymentWait.prepareRetry")}
+                onPress={retryPreparation}
+              />
+            </YStack>
+          ) : active === undefined ? null : active.id === "spark" ? (
+            <YStack gap={12} items="center" w="100%">
+              {sparkInvoice !== null ? (
+                <CopyableQrCode value={sparkInvoice} />
+              ) : (
+                <XStack items="center" gap={8}>
+                  <ActivityIndicator />
+                  <Text
+                    fontSize={fontSize.sm}
+                    lineHeight={fontSize.sm}
+                    color="muted-foreground"
+                  >
+                    {t("paymentWait.preparing.spark")}
+                  </Text>
+                </XStack>
+              )}
+              {status === "expired" ? (
+                <Text color="muted-foreground">
+                  {t("payment.status.expired")}
+                </Text>
+              ) : null}
+              {/* A Bolt Card pays a Lightning invoice, not a Spark one. */}
+              {status === "pending" && payment.lnInvoice !== null ? (
+                <BoltCardReader paymentId={paymentId} />
+              ) : null}
+            </YStack>
+          ) : active.id === "lightningAddress" ? (
+            <LightningAddressPaymentTab
+              paymentId={paymentId}
+              invoice={payment.lightningAddressLnInvoice ?? null}
+              payable={status === "pending"}
+              expired={status === "expired"}
+            />
+          ) : active.id === "cashu" ? (
+            <YStack gap={12} items="center" w="100%">
+              <CashuPaymentTab
+                paymentId={paymentId}
+                qrPayload={cashuQrPayload}
+                quoteExpired={
+                  cashuQuoteExpiresAt !== null &&
+                  now.getTime() >= cashuQuoteExpiresAt
+                }
+                newQuotePending={newQuotePending}
+                onNewQuote={() => void requestNewQuote()}
+              />
+            </YStack>
+          ) : active.id === "iban" && ibanNumber !== null ? (
+            <IbanPaymentTab
+              paymentId={paymentId}
+              accountId={active.accountId}
+              createdAt={payment.createdAt}
+              payable={status === "pending"}
+              qrPayload={bankQrPayload}
+              qrPayloads={bankQrPayloads}
+              activeFormat={activeQrFormat}
+              onSelectFormat={setSelectedQrFormat}
+              iban={ibanNumber}
+              variableSymbol={payment.variableSymbol}
+              preparing={preparing}
+              canMarkPaid={canMarkIbanPaid}
+              pending={ibanPending}
+              errorKey={ibanErrorKey}
+              onMarkPaid={() => void markIbanPaid()}
+            />
+          ) : active.id === "qerkoPayment" ? (
+            <QerkoQrPaymentTab
+              paymentId={paymentId}
+              qrPayload={
+                qerkoRestaurantId !== null &&
+                isSet(payment.qerkoPaymentAccountId)
+                  ? createQerkoPaymentQrPayload({
+                      restaurantId: qerkoRestaurantId,
+                      qrIdentifier: paymentId,
+                    })
+                  : null
+              }
+              payable={status === "pending"}
+              connectionDeviceId={
+                qerkoPaymentAccount?.qerkoPaymentConnectionDeviceId ?? null
+              }
+            />
+          ) : active.id === "qerko" ? (
+            <QerkoPaymentTab
+              paymentId={paymentId}
+              accountId={payment.qerkoAccountId}
+              payable={status === "pending"}
+              pendingTransactionId={payment.qerkoPendingTransactionId}
+              unresolvedTransactionId={payment.qerkoUnresolvedTransactionId}
+              failureReason={payment.qerkoFailureReason}
+            />
+          ) : active.id === "card" ? (
+            <CardPaymentTab
+              canPayCard={canPayCard}
+              pending={cardPending}
+              errorKey={cardErrorKey}
+              hasAccount={cardAccountId !== null && cardAccountId !== undefined}
+              unresolvedTransactionId={cardUnresolvedTransactionId}
+              onPayCard={() => void payCard()}
+            />
+          ) : (
+            <YStack w="100%" items="center" gap={12} py={16}>
+              {preparing ? (
+                <XStack items="center" gap={8}>
+                  <ActivityIndicator />
+                  <Text
+                    fontSize={fontSize.sm}
+                    lineHeight={fontSize.sm}
+                    color="muted-foreground"
+                  >
+                    {t("paymentWait.preparing.cash")}
+                  </Text>
+                </XStack>
+              ) : null}
+              <Field w="100%" maxW={288}>
+                <FieldLabel>{t("paymentWait.cashPaid.received")}</FieldLabel>
+                <Input
+                  h={48}
+                  text="center"
+                  fontSize={fontSize.lg}
+                  lineHeight={fontSize.lg}
+                  fontWeight={fontWeight.semibold}
+                  value={text}
+                  keyboardType="decimal-pad"
+                  autoComplete="off"
+                  disabled={markPending}
+                  invalid={receivedAmount === null}
+                  onChangeText={setEdited}
+                />
+                {receivedAmount === null ? (
+                  <FieldError>
+                    {t("paymentWait.cashPaid.receivedTooLow", {
+                      amount: formatMinor(leastReceived),
+                    })}
+                  </FieldError>
+                ) : receivedAmount === payment.amount ? null : (
+                  <FieldDescription>
+                    {t("paymentWait.cashPaid.difference", {
+                      amount: formatMinor(receivedAmount - payment.amount),
+                    })}
+                  </FieldDescription>
+                )}
+              </Field>
+              <Button
+                size="lg"
+                h={56}
+                px={32}
+                iconStart={Check}
+                label={
+                  markPending
+                    ? t("paymentWait.cashPaid.pending")
+                    : t("paymentWait.cashPaid.action")
+                }
+                pending={markPending}
+                disabled={!canMarkCashPaid || receivedAmount === null}
+                onPress={() => void markPaid()}
+              />
+              {errorKey === null ? null : (
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.medium}
+                  color="destructive"
+                  role="alert"
+                >
+                  {t(errorKey)}
+                </Text>
+              )}
+              {canMarkCashPaid ? null : (
+                <Text
+                  maxW={288}
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  color="muted-foreground"
+                  text="center"
+                >
+                  {t("paymentWait.cashPaid.unavailable")}
+                </Text>
+              )}
+            </YStack>
+          )}
+        </Suspense>
 
         <YStack items="center" gap={16}>
           <Text

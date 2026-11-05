@@ -37,6 +37,8 @@ const methodColors = {
   cardSwitchio: "var(--chart-2)",
   // A card too, so the same colour: a shop rarely takes both.
   qerkoTerminal: "var(--chart-2)",
+  // Qerko's colour, the terminal's: a shop rarely takes both.
+  qerkoPayment: "var(--chart-2)",
   iban: "var(--chart-3)",
   spark: "var(--chart-4)",
   onchain: "var(--chart-5)",

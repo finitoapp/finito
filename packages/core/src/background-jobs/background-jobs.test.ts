@@ -10,6 +10,8 @@ import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
 import { startFioAccountTransactionSyncJob } from "./jobs/fio-account-transaction-sync-job.ts"
 import { startLightningAddressVerifyJob } from "./jobs/lightning-address-verify-job.ts"
 import { startMonetaAccountTransactionSyncJob } from "./jobs/moneta-account-transaction-sync-job.ts"
+import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-job.ts"
+import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
@@ -19,8 +21,19 @@ describe("getBackgroundJobsForRuntime", () => {
       startSparkAccountTransactionSyncJob,
       startEetReportingJob,
       startQerkoTerminalSyncJob,
+      startQerkoPaymentConnectionJob,
+      startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
     ])
+  })
+
+  test("keeps the Qerko payment jobs out of the CLI, which no one chooses to serve them", () => {
+    for (const job of [
+      startQerkoPaymentConnectionJob,
+      startQerkoPaymentSyncJob,
+    ]) {
+      expect(cliBackgroundJobs).not.toContain(job)
+    }
   })
 
   test("schedules the Fio and MONETA jobs in supported native runtimes", () => {
@@ -30,6 +43,8 @@ describe("getBackgroundJobsForRuntime", () => {
       startSparkAccountTransactionSyncJob,
       startEetReportingJob,
       startQerkoTerminalSyncJob,
+      startQerkoPaymentConnectionJob,
+      startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
     ])
   })

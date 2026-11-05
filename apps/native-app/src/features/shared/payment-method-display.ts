@@ -8,6 +8,7 @@ import CreditCard from "lucide-react-native/icons/credit-card"
 import Landmark from "lucide-react-native/icons/landmark"
 import Nfc from "lucide-react-native/icons/nfc"
 import Zap from "lucide-react-native/icons/zap"
+import { QerkoIcon } from "../../components/qerko-icon.tsx"
 
 /**
  * How the method that actually settled a payment (its claimed transaction's
@@ -20,6 +21,7 @@ export const paymentMethodIcon = {
   onchain: Bitcoin,
   cardSwitchio: CreditCard,
   qerkoTerminal: Nfc,
+  qerkoPayment: QerkoIcon,
   spark: Zap,
   cashu: Coins,
   lightningAddress: AtSign,

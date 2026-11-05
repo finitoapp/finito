@@ -17,3 +17,10 @@ export type PaymentAccountKind =
   | "iban"
   | "cardSwitchio"
   | "qerkoTerminal"
+  | "qerkoPayment"
+
+export const QerkoPaymentAttemptIdRaw = id("QerkoPaymentAttempt")
+export const QerkoPaymentAttemptId = standardSchemaToZod(
+  QerkoPaymentAttemptIdRaw
+)
+export type QerkoPaymentAttemptId = typeof QerkoPaymentAttemptIdRaw.Output

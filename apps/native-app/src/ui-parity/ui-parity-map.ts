@@ -316,6 +316,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/activity/payment-qerko-attempts.tsx",
+    web: ["apps/web-app/src/features/activity/payment-qerko-attempts.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/activity/payment-detail-page.tsx",
     web: ["apps/web-app/src/features/activity/payment-detail.tsx"],
     status: "matched",
@@ -479,6 +484,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/payment-wait/payment-wait-bolt-card.tsx",
     web: ["apps/web-app/src/features/payment-wait/payment-wait-bolt-card.tsx"],
+    status: "matched",
+  },
+  {
+    native: "src/features/payment-wait/payment-wait-qerko-payment-tab.tsx",
+    web: [
+      "apps/web-app/src/features/payment-wait/payment-wait-qerko-payment-tab.tsx",
+      "apps/web-app/src/features/payment-wait/payment-wait-qr-request.tsx",
+    ],
     status: "matched",
   },
   {
@@ -1178,6 +1191,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       SelectGroup:
         "Web groups a select's items for its popup; native's SelectContent lists its items in a sheet and has no group part.",
     },
+  },
+  {
+    native: "src/features/settings/payment-accounts/qerko-location-chooser.tsx",
+    web: [
+      "apps/web-app/src/features/settings/payment-accounts/qerko-location-chooser.tsx",
+    ],
+    status: "matched",
+  },
+  {
+    native:
+      "src/features/settings/payment-accounts/qerko-payment-settings-page.tsx",
+    web: [
+      "apps/web-app/src/features/settings/payment-accounts/qerko-payment-settings-page.tsx",
+    ],
+    status: "matched",
   },
   {
     native: "src/features/settings/payment-accounts/qerko-terminal-chooser.tsx",
