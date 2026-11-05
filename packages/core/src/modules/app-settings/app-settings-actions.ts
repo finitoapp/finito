@@ -66,10 +66,21 @@ export const requireNotOnboarded =
  * compatibility with older app versions syncing the same account.
  */
 export const completeOnboarding =
-  (input: {
+  ({
+    homeMode,
+    tipsEnabled,
+    ...input
+  }: {
     readonly fiatCurrency: FiatCurrency
     readonly defaultPaymentMethod: DefaultPaymentMethod
     readonly paymentMethodOrderJson: string
+    /**
+     * The one mode home offers, as the merchant chose it (onboarding/0012);
+     * left out, the modes stay unset, which means all of them.
+     */
+    readonly homeMode?: TerminalHomeMode
+    /** Left out, tips start on. */
+    readonly tipsEnabled?: boolean
   }): Task<AppSettingsId, AlreadyOnboardedError, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
     const { evoluOwner } = run.deps
@@ -85,6 +96,16 @@ export const completeOnboarding =
         {
           ...createDefaultSettings(),
           ...input,
+          ...(homeMode === undefined
+            ? {}
+            : {
+                enabledHomeModesJson: z.encode(EnabledHomeModesJson, [
+                  homeMode,
+                ]),
+              }),
+          ...(tipsEnabled === undefined
+            ? {}
+            : { tipsEnabled: tipsEnabled ? sqliteTrue : sqliteFalse }),
           onboardingCompleted: sqliteTrue,
         },
         { ...options, owner: evoluOwner }
@@ -199,6 +220,9 @@ export const finishOnboarding =
     readonly iban: Iban | null
     readonly defaultPaymentMethod: DefaultPaymentMethod
     readonly paymentMethodOrderJson: string
+    /** How the business sells, chosen on onboarding's last step (onboarding/0012). */
+    readonly homeMode: TerminalHomeMode
+    readonly tipsEnabled: boolean
   }): Task<
     void,
     AlreadyOnboardedError,
@@ -243,6 +267,8 @@ export const finishOnboarding =
         fiatCurrency: input.currency,
         defaultPaymentMethod: input.defaultPaymentMethod,
         paymentMethodOrderJson: input.paymentMethodOrderJson,
+        homeMode: input.homeMode,
+        tipsEnabled: input.tipsEnabled,
       })
     )
     if (!completed.ok) return completed

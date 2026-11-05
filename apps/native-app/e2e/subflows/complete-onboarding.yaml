@@ -9,7 +9,7 @@ appId: ${APP_ID}
     env:
       LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: CZ6508000000192000145399
-- tapOn: ${output.t["onboarding.finish"]}
+- runFlow: sell-and-finish.yaml
 - extendedWaitUntil:
     visible: ${output.t["home.pay"]}
     timeout: 30000

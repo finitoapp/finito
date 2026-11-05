@@ -136,7 +136,6 @@ export const skOnboarding = {
   "onboarding.cancelSetup.confirm.description":
     "Tento nový účet bude zahodený a prepnete sa späť na {name}.",
   "onboarding.cancelSetup.confirm.title": "Zrušiť vytváranie účtu?",
-  "onboarding.finishWithoutBankTransfer": "Začať bez bankových prevodov",
   "onboarding.businessName.placeholder": "Kaviareň U Lipy",
   "onboarding.businessName.label": "Názov podniku (voliteľné)",
   "onboarding.businessName.description":
@@ -173,6 +172,15 @@ export const skOnboarding = {
   "onboarding.setup.name.hint": "Zákazník ho uvidí ako meno príjemcu platby.",
   "onboarding.setup.name.label": "Názov podniku",
   "onboarding.setup.title": "Založiť podnik",
+  "onboarding.continue": "Pokračovať",
+  "onboarding.selling.description": "Neskôr to zmeníte v Nastaveniach.",
+  "onboarding.selling.numpad.description": "Zadáte, koľko zákazník platí.",
+  "onboarding.selling.numpad.title": "Suma",
+  "onboarding.selling.pos.description": "Pridávate položky na účet.",
+  "onboarding.selling.pos.title": "Účty",
+  "onboarding.selling.tips.description": "Zákazník ho môže pridať pri platení.",
+  "onboarding.selling.tips.label": "Prepitné",
+  "onboarding.selling.title": "Ako predávate?",
   "onboarding.title": "{appName} vás víta",
   "onboarding.welcome.new": "Nový podnik",
   "onboarding.welcome.restore": "Už mám účet",

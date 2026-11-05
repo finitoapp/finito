@@ -1,4 +1,5 @@
-import type { Language } from "@payky/app-shared/i18n/resources"
+import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
 import {
   createMasterKey,
   masterKeyToMnemonic,
@@ -153,11 +154,15 @@ export async function submitRestorePhrase(
     .waitFor()
 }
 
-/** Completes onboarding as a new account with a bank account. */
+/** Completes onboarding as a new account with a bank account, selling on the keypad unless told otherwise. */
 export async function completeOnboarding(
   page: Page,
   language: Language,
-  options?: { readonly baseURL?: string }
+  options?: {
+    readonly baseURL?: string
+    /** How the business sells, home's one mode; the keypad by default. */
+    readonly sellingMode?: TerminalHomeMode
+  }
 ): Promise<void> {
   await page.goto(`${options?.baseURL ?? ""}/onboarding`, {
     waitUntil: "domcontentloaded",
@@ -176,11 +181,13 @@ export async function completeOnboarding(
     })
     .fill("CZ6508000000192000145399")
   await page
-    .getByRole("button", { name: translate(language, "onboarding.finish") })
+    .getByRole("button", { name: translate(language, "onboarding.continue") })
     .click()
-  await page
-    .getByRole("button", { name: translate(language, "nav.menu") })
-    .waitFor()
+  await finishOnboardingSelling(
+    page,
+    language,
+    options?.sellingMode ?? "numpad"
+  )
 }
 
 /**
@@ -211,9 +218,61 @@ export async function completeOnboardingDefaults(
     })
     .fill("CZ6508000000192000145399")
   await page
-    .getByRole("button", { name: translate(language, "onboarding.finish") })
+    .getByRole("button", { name: translate(language, "onboarding.continue") })
     .click()
+  await finishOnboardingSelling(page, language, "numpad")
+}
+
+/**
+ * Onboarding's last step (onboarding/0012): picks how the business sells,
+ * which home then offers alone, and finishes, waiting for home.
+ */
+export async function finishOnboardingSelling(
+  page: Page,
+  language: Language,
+  mode: TerminalHomeMode
+): Promise<void> {
+  await submitOnboardingSelling(page, language, mode)
   await page
     .getByRole("button", { name: translate(language, "nav.menu") })
     .waitFor()
 }
+
+/**
+ * Picks how the business sells and presses finish, without waiting for
+ * home: a business name that fails to publish keeps the last step open.
+ */
+export async function submitOnboardingSelling(
+  page: Page,
+  language: Language,
+  mode: TerminalHomeMode
+): Promise<void> {
+  await page
+    .getByRole("radio", {
+      name: new RegExp(translate(language, sellingModeTitleKeys[mode])),
+    })
+    .click()
+  await page
+    .getByRole("button", { name: translate(language, "onboarding.finish") })
+    .click()
+}
+
+/** From the business details to how the business sells (onboarding/0012). */
+export async function continueToSelling(
+  page: Page,
+  language: Language
+): Promise<void> {
+  await page
+    .getByRole("button", { name: translate(language, "onboarding.continue") })
+    .click()
+  await page
+    .getByRole("heading", {
+      name: translate(language, "onboarding.selling.title"),
+    })
+    .waitFor()
+}
+
+const sellingModeTitleKeys = {
+  numpad: "onboarding.selling.numpad.title",
+  pos: "onboarding.selling.pos.title",
+} as const satisfies Record<TerminalHomeMode, TranslationKey>

@@ -1,8 +1,11 @@
+import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
 import { atom } from "jotai"
 
 export type OnboardingStep =
   | "accountChoice"
   | "payments"
+  /** How the business sells, the last step of a new account (onboarding/0012). */
+  | "selling"
   /** Where the account is now: the chooser before any way of opening it (onboarding/0011). */
   | "restoreChoice"
   /** The recovery phrase. */
@@ -23,11 +26,11 @@ export type OnboardingAccountType =
   | "existingMnemonic"
 
 const onboardingStepsByAccountType = {
-  new: ["accountChoice", "payments"],
+  new: ["accountChoice", "payments", "selling"],
   restore: ["accountChoice", "restoreChoice", "restore"],
   transfer: ["accountChoice", "restoreChoice", "transfer"],
   fromPayky: ["accountChoice", "restoreChoice", "fromPayky"],
-  existingMnemonic: ["payments"],
+  existingMnemonic: ["payments", "selling"],
 } satisfies Record<OnboardingAccountType, ReadonlyArray<OnboardingStep>>
 
 export const getOnboardingSteps = (
@@ -40,6 +43,9 @@ interface OnboardingFormState {
   readonly accountType: OnboardingAccountType | null
   readonly businessName: string
   readonly iban: string
+  /** Nothing until the merchant picks one: there is no default (onboarding/0012). */
+  readonly homeMode: TerminalHomeMode | null
+  readonly tipsEnabled: boolean
 }
 
 export const initialOnboardingFormState: OnboardingFormState = {
@@ -47,6 +53,8 @@ export const initialOnboardingFormState: OnboardingFormState = {
   accountType: null,
   businessName: "",
   iban: "",
+  homeMode: null,
+  tipsEnabled: true,
 }
 
 export const onboardingFormAtom = atom<OnboardingFormState>(
@@ -64,4 +72,14 @@ export const previousOnboardingStep = (
   const steps = getOnboardingSteps(accountType)
   const index = steps.indexOf(step)
   return index > 0 ? (steps[index - 1] ?? null) : null
+}
+
+/** The step Continue leads to, or `null` on the last one. */
+export const nextOnboardingStep = (
+  step: OnboardingStep,
+  accountType: OnboardingAccountType | null
+): OnboardingStep | null => {
+  const steps = getOnboardingSteps(accountType)
+  const index = steps.indexOf(step)
+  return index === -1 ? null : (steps[index + 1] ?? null)
 }

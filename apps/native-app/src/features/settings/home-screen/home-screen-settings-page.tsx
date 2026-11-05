@@ -14,7 +14,7 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
  * The modes home offers (navigation/0004), as web's `HomeScreenSettingsPage`
  * without its card and descriptions (fazole-ui-minimal-copy): one switch per
  * mode, written the moment it is touched. Switching off the last one is let
- * through to the save, so its refusal can say why (settings/0001).
+ * through to the save, so its refusal can say why (settings/0004).
  */
 export function HomeScreenSettingsPage() {
   const { t } = useTranslation()

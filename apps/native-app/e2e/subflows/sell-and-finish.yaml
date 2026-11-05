@@ -1,0 +1,25 @@
+# Onboarding's last step (onboarding/0012): from the business details,
+# Continue, then how the business sells (the keypad's card, or the card
+# titled MODE_TITLE), then finish. A publish failure stays on this step.
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.continue"]}
+- extendedWaitUntil:
+    visible: ${output.t["onboarding.selling.title"]}
+    timeout: 15000
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: '${typeof MODE_TITLE === "undefined" ? output.t["onboarding.selling.numpad.title"] : MODE_TITLE}'
+- runFlow:
+    file: tap-label.yaml
+    env:
+      LABEL: ${output.t["onboarding.finish"]}

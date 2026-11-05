@@ -21,11 +21,15 @@ export async function startNewBill(
   page: Page,
   language: Language
 ): Promise<void> {
-  await page
-    .getByRole("button", { name: translate(language, "nav.pos") })
-    .click()
-  await page
-    .getByTestId("no-table-tile")
+  // Home shows the tables already when Sales is its only mode
+  // (onboarding/0012); otherwise its switch goes there.
+  const noTableTile = page.getByTestId("no-table-tile")
+  const salesSwitch = page.getByRole("button", {
+    name: translate(language, "nav.pos"),
+  })
+  await noTableTile.or(salesSwitch).first().waitFor()
+  if (!(await noTableTile.isVisible())) await salesSwitch.click()
+  await noTableTile
     .getByRole("link", { name: translate(language, "tables.tile.newBill") })
     .click()
   await page

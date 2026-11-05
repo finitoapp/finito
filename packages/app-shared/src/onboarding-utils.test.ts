@@ -68,12 +68,18 @@ describe("validateOnboardingForm", () => {
 
 describe("createFinishOnboardingInput", () => {
   test("starts Czech in CZK with iban first, with or without a bank account", () => {
-    const input = createFinishOnboardingInput(null)
+    const input = createFinishOnboardingInput({
+      iban: null,
+      homeMode: "pos",
+      tipsEnabled: false,
+    })
     expect(input).toMatchObject({
       country: "CZ",
       currency: "CZK",
       iban: null,
       defaultPaymentMethod: "iban",
+      homeMode: "pos",
+      tipsEnabled: false,
     })
     expect(JSON.parse(input.paymentMethodOrderJson)).toEqual([
       ...onboardingPaymentMethodOrder,

@@ -6,23 +6,22 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 - tapOn: ${output.t["onboarding.welcome.new"]}
-- assertVisible: ${output.t["onboarding.payments.title"]}
-# An empty or whitespace-only account offers to start without bank transfers.
-- assertVisible: ${output.t["onboarding.finishWithoutBankTransfer"]}
+- assertVisible: ${output.t["onboarding.setup.title"]}
+# An empty or whitespace-only account still lets the setup continue.
+- assertVisible: ${output.t["onboarding.continue"]}
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
       LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "   "
-- assertVisible: ${output.t["onboarding.finishWithoutBankTransfer"]}
-- assertNotVisible: ${output.t["onboarding.finish"]}
-# Entering an account changes the button and going back keeps the draft.
+- assertVisible: ${output.t["onboarding.continue"]}
+# Entering an account keeps the step going and going back keeps the draft.
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
       LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "CZ6508000000192000145399"
-- assertVisible: ${output.t["onboarding.finish"]}
+- assertVisible: ${output.t["onboarding.continue"]}
 - assertNotVisible: ${output.t["settings.fiatBankAccount.iban.format.iban"]}
 # Otherwise the tap only closes Android's keyboard.
 - runFlow:
@@ -36,23 +35,28 @@ tags: [onboarding]
       LABEL: ${output.t["onboarding.back"]}
 - tapOn: ${output.t["onboarding.welcome.new"]}
 - assertVisible: CZ6508000000192000145399
-- assertVisible: ${output.t["onboarding.finish"]}
+- assertVisible: ${output.t["onboarding.continue"]}
 # An invalid IBAN swaps the message and still holds the step.
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
       LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "12345"
-- tapOn: ${output.t["onboarding.finish"]}
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- tapOn: ${output.t["onboarding.continue"]}
 - assertVisible: ${output.re(output.t["settings.fiatBankAccount.iban.invalid"])}
-- assertVisible: ${output.t["onboarding.payments.title"]}
+- assertVisible: ${output.t["onboarding.setup.title"]}
 # Fixing the IBAN lets onboarding complete.
 - runFlow:
     file: ../../subflows/fill-input.yaml
     env:
       LABEL: ${output.t["onboarding.setup.account.label"]}
       VALUE: "19-2000145399/0800"
-- tapOn: ${output.t["onboarding.finish"]}
+- runFlow: ../../subflows/sell-and-finish.yaml
 - extendedWaitUntil:
     visible: ${output.t["home.pay"]}
     timeout: 30000

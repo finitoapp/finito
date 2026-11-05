@@ -304,7 +304,10 @@ const scenarios: ReadonlyArray<ScreenshotScenario> = [
   {
     name: "bill",
     async capture(page, language) {
-      await completeOnboarding(page, language, { baseURL: appUrl })
+      await completeOnboarding(page, language, {
+        baseURL: appUrl,
+        sellingMode: "pos",
+      })
       for (const item of billCatalogByLanguage[language]) {
         await addCatalogItem(page, language, item)
       }
@@ -437,7 +440,10 @@ const scenarios: ReadonlyArray<ScreenshotScenario> = [
   {
     name: "split",
     async capture(page, language) {
-      await completeOnboarding(page, language, { baseURL: appUrl })
+      await completeOnboarding(page, language, {
+        baseURL: appUrl,
+        sellingMode: "pos",
+      })
       const cart = splitCartByLanguage[language]
       for (const item of cart) {
         await addCatalogItem(page, language, item)
