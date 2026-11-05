@@ -36,13 +36,12 @@ export type NativeRoutePath =
   | "/settings/about/privacy"
   | "/settings/language"
   | "/settings/theme"
-  | "/settings/notifications"
+  | "/notifications"
+  | "/settings/home-screen"
   | "/settings/profile"
   | "/settings/tax-rates"
   | "/settings/tips"
   | "/settings/payment-number-series"
-  | "/catalog"
-  | "/catalog/sales"
   | "/settings/items"
   | "/settings/items/new"
   | "/settings/items/:catalogItemId"
@@ -132,8 +131,10 @@ export const routeAccess = {
   "/settings/language": "free",
   // Like web's `_terminal/settings/theme`.
   "/settings/theme": "free",
-  // Web's `_terminal/notifications`, under Settings on native (navigation/0002): nothing to protect yet (access/0010).
-  "/settings/notifications": "free",
+  // Web's `_terminal/notifications`, a tab on native (navigation/0004): nothing to protect yet (access/0010).
+  "/notifications": "free",
+  // Web's `_terminal/settings/home-screen`, the modes home offers (navigation/0004; access/0002: `settings`).
+  "/settings/home-screen": "settings",
   // Like web's `_terminal/settings/profile`: the public profile is owner-only (access/0002).
   "/settings/profile": "admin",
   // Like web's `_terminal/settings/tax-rates` (access/0002: `settings`).
@@ -142,15 +143,11 @@ export const routeAccess = {
   "/settings/tips": "settings",
   // Like web's `_terminal/settings/payment-number-series` (access/0002: `settings`).
   "/settings/payment-number-series": "settings",
-  // Web's `_terminal/catalog/`, which on native opens Sales (navigation/0002).
-  "/catalog": "sell",
-  // Web's home in pos mode, the tables-and-bills grid (access/0010: `sell`).
-  "/catalog/sales": "sell",
-  // Web's `_terminal/catalog/items`, under Settings on native (navigation/0003; access/0010: `catalog`).
+  // Web's `_terminal/catalog/items`, under Settings on native (navigation/0004; access/0010: `catalog`).
   "/settings/items": "catalog",
   "/settings/items/new": "catalog",
   "/settings/items/:catalogItemId": "catalog",
-  // Web's `_terminal/catalog/tables`, under Settings on native (navigation/0003; access/0010: `catalog`).
+  // Web's `_terminal/catalog/tables`, under Settings on native (navigation/0004; access/0010: `catalog`).
   "/settings/tables": "catalog",
   "/settings/tables/new": "catalog",
   "/settings/tables/:tableId": "catalog",

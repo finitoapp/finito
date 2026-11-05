@@ -23,25 +23,20 @@ import { useOpenDetail } from "../../hooks/use-open-detail.ts"
 /**
  * The frame every catalog list screen shares, as web's `CatalogListPage`: a
  * title, a "+" to the create route, and a non-scrolling body so the list
- * inside can be a virtualized `FlatList`. Sales, a menu tab's root, passes
- * `startAddon={null}` for no Back; the items and tables lists under
- * Settings keep it (navigation/0003). `addLabel` is already translated.
+ * inside can be a virtualized `FlatList`, under Back: the items and tables
+ * lists sit under Settings (navigation/0004). `addLabel` is already
+ * translated.
  */
 export function CatalogListShell({
   title,
   addLabel,
   addHref,
-  startAddon,
   children,
-  footer,
 }: {
   readonly title: string
   readonly addLabel: string
   readonly addHref?: Href
-  readonly startAddon?: ReactNode | null
   readonly children: ReactNode
-  /** Fixed under the list, outside its loading state. */
-  readonly footer?: ReactNode
 }) {
   const theme = useTheme()
   // Beside a form on a wide window the "+" replaces it (navigation/0002).
@@ -57,7 +52,6 @@ export function CatalogListShell({
     >
       <FadeHeader
         title={title}
-        startAddon={startAddon}
         endAddon={
           addHref === undefined ? null : (
             <Button
@@ -72,7 +66,6 @@ export function CatalogListShell({
         }
       />
       <Suspense fallback={<LoadingView />}>{children}</Suspense>
-      {footer}
     </SafeAreaView>
   )
 }

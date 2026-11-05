@@ -11,13 +11,13 @@ tags: [menu]
 - extendedWaitUntil:
     visible: ${output.t["activity.title"]}
     timeout: 15000
-# Every tab can be switched to; the catalog's opens on Sales (navigation/0002).
+# Every tab can be switched to, Notifications included (navigation/0004).
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["nav.pos"]}
+      LABEL: ${output.t["nav.notifications"]}
 - extendedWaitUntil:
-    visible: ${output.t["bill.table.dialog.none"]}
+    visible: ${output.t["notifications.empty.title"]}
     timeout: 15000
 - runFlow:
     file: ../../subflows/tap-label.yaml

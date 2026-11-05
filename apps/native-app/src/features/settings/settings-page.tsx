@@ -10,8 +10,8 @@ import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
-import Bell from "lucide-react-native/icons/bell"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
+import House from "lucide-react-native/icons/house"
 import Info from "lucide-react-native/icons/info"
 import Landmark from "lucide-react-native/icons/landmark"
 import Languages from "lucide-react-native/icons/languages"
@@ -35,11 +35,13 @@ import { Screen } from "../../components/screen.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
+import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
 import {
   useEvoluQuery,
   usePreloadDeviceEvoluQueries,
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
+import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
@@ -152,6 +154,17 @@ function EetValue() {
   )
 }
 
+/** The modes home offers, in their order (navigation/0004). */
+function HomeModesValue() {
+  const { t } = useTranslation()
+  const { enabledModes } = useTerminalHomeMode()
+  return (
+    <SettingValue>
+      {enabledModes.map((mode) => t(homeModeLabelKeys[mode])).join(", ")}
+    </SettingValue>
+  )
+}
+
 function ThemeValue() {
   const { t } = useTranslation()
   return <SettingValue>{t(themeLabelKeys[useThemePreference()])}</SettingValue>
@@ -225,12 +238,22 @@ export function SettingsPage() {
   usePreloadDeviceEvoluQueries(settingsPageDeviceQueries)
   const { language, t } = useTranslation()
 
-  // Items and tables are set up here, not under the Sales tab, which is
-  // the grid alone (navigation/0003).
+  // Items, tables and the modes home offers are set up here; the tables
+  // grid itself is a mode of home (navigation/0004).
   const salesItems = createSettingsNavItems(
     [
       { icon: Tag, title: "catalog.items.title", href: "/settings/items" },
       { icon: Table2, title: "catalog.tables.title", href: "/settings/tables" },
+      {
+        icon: House,
+        title: "settings.homeScreen.title",
+        value: (
+          <DeferredValue>
+            <HomeModesValue />
+          </DeferredValue>
+        ),
+        href: "/settings/home-screen",
+      },
     ],
     t
   )
@@ -322,13 +345,6 @@ export function SettingsPage() {
           </DeferredValue>
         ),
         href: "/settings/theme",
-      },
-      // Web's home has a bell for these; native keeps them here
-      // (navigation/0002). Nothing raises one yet.
-      {
-        icon: Bell,
-        title: "notifications.title",
-        href: "/settings/notifications",
       },
     ],
     t

@@ -1809,7 +1809,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/catalog/sales/pos-overview-page.tsx",
+    native: "src/features/terminal-home/pos-overview-page.tsx",
     web: ["apps/web-app/src/features/terminal-home/pos-overview-page.tsx"],
     status: "matched",
     allowedDifferences: {
@@ -1823,13 +1823,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       SlidingPillTrack:
-        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+        "the mode switch is the kit's Tabs, whose pill slides on the native driver (navigation/0004)",
       ToggleGroup:
-        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+        "the mode switch is the kit's Tabs, whose pill slides on the native driver (navigation/0004)",
       ToggleGroupItem:
-        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+        "the mode switch is the kit's Tabs, whose pill slides on the native driver (navigation/0004)",
       SlidingPillSegmentContent:
-        "web's home switches between the keypad and the tables grid; Finito's home is the keypad alone, Sales is a tab (navigation/0002)",
+        "the mode switch is the kit's Tabs, whose pill slides on the native driver (navigation/0004)",
+      Tabs: "the mode switch, web's sliding-pill ToggleGroup (navigation/0004)",
+      TabsList:
+        "the mode switch, web's sliding-pill ToggleGroup (navigation/0004)",
+      TabsTrigger:
+        "the mode switch, web's sliding-pill ToggleGroup (navigation/0004)",
     },
   },
   {
@@ -1921,16 +1926,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/catalog/sales/sales-page.tsx",
-    web: [],
-    status: "matched",
-    note: "native's Sales tab, the catalog shell around web's pos mode of home (navigation/0003); web keeps the grid as a mode of home",
-    allowedDifferences: {
-      MenuBarSpacer:
-        "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
-    },
-  },
-  {
     native: "src/features/withdraw/withdraw-review-step.tsx",
     web: ["apps/web-app/src/features/withdraw/withdraw-review-step.tsx"],
     status: "matched",
@@ -1971,6 +1966,31 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/notifications/notifications-page.tsx",
     web: ["apps/web-app/src/features/notifications/notifications-page.tsx"],
     status: "matched",
+    allowedDifferences: {
+      MenuBarSpacer:
+        "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
+    },
+  },
+  {
+    native: "src/features/settings/home-screen/home-screen-settings-page.tsx",
+    web: [
+      "apps/web-app/src/features/settings/home-screen/home-screen-settings-page.tsx",
+    ],
+    status: "matched",
+    allowedDifferences: {
+      Card: "no card on a mobile detail screen; the switches sit on the page",
+      CardHeader:
+        "no card on a mobile detail screen; the switches sit on the page",
+      CardTitle:
+        "no card on a mobile detail screen; the switches sit on the page",
+      CardDescription: "no second-line explanations (fazole-ui-minimal-copy)",
+      CardContent:
+        "no card on a mobile detail screen; the switches sit on the page",
+      FieldGroup: "the switches sit on the page, one SwitchRow each",
+      InlineEditSwitch:
+        "native's SwitchRow over useInlineChoice, as the tips switch",
+      SwitchRow: "web's InlineEditSwitch, as the tips switch",
+    },
   },
   {
     native: "src/features/shared/wallet-body.tsx",

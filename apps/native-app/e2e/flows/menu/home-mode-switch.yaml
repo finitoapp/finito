@@ -1,0 +1,44 @@
+# web home-mode-toggle.spec.ts: home switches between the keypad and Sales
+# while both are enabled, and with one disabled in settings the switch goes
+# away and home shows the other (navigation/0004, settings/0001).
+appId: ${APP_ID}
+tags: [menu]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+# Both modes are enabled by default: the keypad first, then Sales.
+- extendedWaitUntil:
+    visible: ${output.t["home.pay"]}
+    timeout: 15000
+- runFlow: ../../subflows/open-sales.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.numpad"]}
+- extendedWaitUntil:
+    visible: ${output.t["home.pay"]}
+    timeout: 15000
+# Settings › Home screen: the keypad switched off. By its testID, which
+# home's switch, mounted under the settings screen, does not carry.
+- runFlow:
+    file: ../../subflows/open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["settings.homeScreen.title"]}
+      FROM_HOME: "true"
+- tapOn:
+    id: ${output.re(output.t["nav.numpad"])}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["nav.numpad"]}
+      CHECKED: "false"
+# Home now shows Sales alone, with no switch.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["bill.table.dialog.none"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.numpad"]}
+      HIDDEN: "true"

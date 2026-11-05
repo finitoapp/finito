@@ -1,10 +1,10 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { router, usePathname } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
+import Bell from "lucide-react-native/icons/bell"
 import Calculator from "lucide-react-native/icons/calculator"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import Settings from "lucide-react-native/icons/settings"
-import Store from "lucide-react-native/icons/store"
 import { Suspense, useEffect, useRef, useState } from "react"
 import {
   Animated,
@@ -43,7 +43,7 @@ export const menuSidebarMinWidth = 961
 const menuTabFaces = {
   terminal: { icon: Calculator, labelKey: "nav.home" },
   activity: { icon: Clock3, labelKey: "nav.activity" },
-  catalog: { icon: Store, labelKey: "nav.pos" },
+  notifications: { icon: Bell, labelKey: "nav.notifications" },
   settings: { icon: Settings, labelKey: "nav.settings" },
 } as const satisfies Record<
   MenuTab,

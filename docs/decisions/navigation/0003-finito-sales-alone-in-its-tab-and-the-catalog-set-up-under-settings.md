@@ -1,6 +1,6 @@
 # 0003 Finito: Sales alone in its tab, the catalog set up under Settings, a category made on the item
 
-Status: accepted
+Status: superseded by navigation/0004
 Date: 2026-11-03
 
 ## Context
