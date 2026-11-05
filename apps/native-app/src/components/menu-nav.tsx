@@ -6,7 +6,13 @@ import Clock3 from "lucide-react-native/icons/clock-3"
 import Settings from "lucide-react-native/icons/settings"
 import Store from "lucide-react-native/icons/store"
 import { Suspense, useEffect, useRef, useState } from "react"
-import { Animated, Easing, Image, Platform } from "react-native"
+import {
+  Animated,
+  Easing,
+  Image,
+  Platform,
+  useWindowDimensions,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme, View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
@@ -26,6 +32,7 @@ import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
 
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
+export const menuBarHeight = control.md + 8
 
 /** The wide window's rail, Linky's `NavigationRail` (`$hero`, 112). */
 export const menuSidebarWidth = 112
@@ -54,8 +61,8 @@ const menuTabFaces = {
  * pinned to the bottom. Both open with the terminal, a calculator: on the
  * phone it is Home, the way out of the section; on the rail, which stays
  * on every screen, it is the terminal's own tab. The root layout mounts
- * it beside its stack, which leaves it the room it takes, and keeps it
- * mounted across the tab routes, which is what lets the pill travel.
+ * the rail beside its stack and the bar over it (`MenuBar`), and keeps
+ * either mounted across the tab routes, which is what lets the pill travel.
  * Switching tabs replaces the screen, so Back and Home leave the section
  * instead of rewinding through tabs.
  *
@@ -71,22 +78,78 @@ const slideTo = (value: Animated.Value, toValue: number) =>
 
 /**
  * The pill's offset along the bar: `step` is one tab's extent (0 until
- * measured), `index` the active tab. The first measure places it at once.
+ * measured), `index` the active tab. The first measure places it at once,
+ * and so does a bar coming back from hidden, which arrives on its tab
+ * rather than sliding from the one it left on.
  */
-function usePillOffset(index: number, step: number) {
+function usePillOffset(index: number, step: number, visible: boolean) {
   const [offset] = useState(() => new Animated.Value(0))
-  const placed = useRef(false)
+  const shown = useRef(false)
   useEffect(() => {
     if (step === 0) return
     const target = index * step
-    if (placed.current) {
-      slideTo(offset, target)
-    } else {
-      offset.setValue(target)
-      placed.current = true
-    }
-  }, [index, step, offset])
+    if (shown.current) slideTo(offset, target)
+    else offset.setValue(target)
+    shown.current = visible
+  }, [index, step, visible, offset])
   return offset
+}
+
+/** The bar's quick slide in from below the screen and back out. */
+const barEnter = { duration: 160, easing: Easing.out(Easing.cubic) }
+const barExit = { duration: 140, easing: Easing.in(Easing.cubic) }
+
+/**
+ * The phone's bottom bar, drawn over the stack rather than beside it, so
+ * showing or hiding it never resizes the screen under it: going from home
+ * to Activity used to shrink home for a frame before Activity arrived.
+ * The screens that have the bar keep its room themselves
+ * (`MenuBarSpacer`). It slides in on `tab` and out on `undefined`, keeping
+ * the tab it left on while it goes; mounted throughout, so the pill can
+ * travel between tabs.
+ */
+export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
+  const insets = useSafeAreaInsets()
+  const visible = tab !== undefined
+  const [lastTab, setLastTab] = useState<MenuTab>(tab ?? "terminal")
+  if (tab !== undefined && tab !== lastTab) setLastTab(tab)
+  const [hidden] = useState(() => new Animated.Value(visible ? 0 : 1))
+  useEffect(() => {
+    animateTo(hidden, visible ? 0 : 1, visible ? barEnter : barExit)
+  }, [visible, hidden])
+  return (
+    <Animated.View
+      pointerEvents={visible ? "box-none" : "none"}
+      aria-hidden={!visible}
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        transform: [
+          {
+            translateY: hidden.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, menuBarHeight + insets.bottom],
+            }),
+          },
+        ],
+      }}
+    >
+      <MenuNav active={tab ?? lastTab} variant="bar" visible={visible} />
+    </Animated.View>
+  )
+}
+
+/**
+ * The room a screen with the bar leaves at its bottom for `MenuBar`, which
+ * draws over it; nothing on a wide window, which has the rail instead. It
+ * sits inside the screen's safe area, which already keeps the bottom inset
+ * the bar pads itself with.
+ */
+export function MenuBarSpacer() {
+  const wide = useWindowDimensions().width >= menuSidebarMinWidth
+  return wide ? null : <View h={menuBarHeight} shrink={0} />
 }
 
 /** Linky's rail entries: `$row` (64) high, `gap-2` apart, `px-1 py-2`. */
@@ -98,16 +161,19 @@ const railLogoSize = 44
 export function MenuNav({
   active,
   variant,
+  visible = true,
 }: {
   readonly active: MenuTab
   readonly variant: "bar" | "sidebar"
+  /** False while the bar is hidden: it comes back with the pill in place. */
+  readonly visible?: boolean
 }) {
   const { t } = useTranslation()
   const theme = useTheme()
   const insets = useSafeAreaInsets()
   const index = menuTabOrder.indexOf(active)
   const [tabWidth, setTabWidth] = useState(0)
-  const barOffset = usePillOffset(index, tabWidth)
+  const barOffset = usePillOffset(index, tabWidth, visible)
 
   if (variant === "sidebar") {
     const tabs = menuTabOrder.filter((tab) => tab !== "settings")

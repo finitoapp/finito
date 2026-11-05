@@ -3,6 +3,7 @@ import { type ReactNode, Suspense } from "react"
 import { YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { ListSkeleton } from "../../components/list-skeleton.tsx"
+import { MenuBarSpacer } from "../../components/menu-nav.tsx"
 import {
   screenPaddingX,
   useScrollAwayHeaderInset,
@@ -49,6 +50,7 @@ export function ActivityLayout({ children }: { readonly children: ReactNode }) {
   return (
     <ScrollAwayHeader
       resetKey={active}
+      footer={<MenuBarSpacer />}
       header={
         <>
           <FadeHeader title={t("activity.title")} startAddon={null} />

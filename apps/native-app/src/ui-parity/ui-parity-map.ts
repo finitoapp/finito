@@ -277,6 +277,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       ListSkeleton:
         "the lists' Suspense fallback, which native's layout draws under the header; web's pages draw ActivityHistorySkeleton, the same VerticalNav-shaped placeholder",
+      MenuBarSpacer:
+        "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
     },
   },
   {
@@ -1512,6 +1514,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       Building2:
         "lucide-react-native 1.57.0 has no building-2 module; native uses its available building icon.",
+      MenuBarSpacer:
+        "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
     },
   },
   {
@@ -1919,6 +1923,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     web: [],
     status: "matched",
     note: "native's Sales tab, the catalog shell around web's pos mode of home (navigation/0003); web keeps the grid as a mode of home",
+    allowedDifferences: {
+      MenuBarSpacer:
+        "the room under the bottom bar, which native draws over its stack (MenuBar); web's _terminal layout draws the bar beside the page",
+    },
   },
   {
     native: "src/features/withdraw/withdraw-review-step.tsx",
