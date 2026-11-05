@@ -26,12 +26,14 @@ import SunMoon from "lucide-react-native/icons/sun-moon"
 import Table2 from "lucide-react-native/icons/table-2"
 import Tag from "lucide-react-native/icons/tag"
 import UserRound from "lucide-react-native/icons/user-round"
+import { type ReactNode, Suspense } from "react"
 import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
 import { MenuBarSpacer } from "../../components/menu-nav.tsx"
 import { Screen } from "../../components/screen.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
+import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
 import {
   useEvoluQuery,
@@ -54,13 +56,105 @@ import { themeLabelKeys } from "./theme/theme-settings-page.tsx"
 
 /**
  * One line per row (Fazole's settings): the title and, at most, its current
- * value. No second line explaining the screen behind it.
+ * value. No second line explaining the screen behind it. A value read from
+ * the database is a `DeferredValue`, so the row shows before it.
  */
 interface SettingRow {
   readonly icon: LucideIcon
   readonly title: TranslationKey
-  readonly value?: string
+  readonly value?: ReactNode
   readonly href: Href
+}
+
+/** A row's current value, muted and right-aligned beside its title. */
+function SettingValue({ children }: { readonly children: string | undefined }) {
+  return (
+    <Text
+      color="muted-foreground"
+      fontSize="sm"
+      lineHeight="sm"
+      numberOfLines={1}
+      ml="auto"
+      maxW="100%"
+      flexShrink={1}
+    >
+      {children}
+    </Text>
+  )
+}
+
+/**
+ * A value that waits for its query on its own: a short skeleton holds its
+ * place, so the list around it never waits for the database.
+ */
+function DeferredValue({ children }: { readonly children: ReactNode }) {
+  return (
+    <Suspense fallback={<Skeleton ml="auto" w={64} h={14} />}>
+      {children}
+    </Suspense>
+  )
+}
+
+const isEnabled = (
+  account: { readonly isDeleted: number | null } | undefined
+) => account !== undefined && account.isDeleted !== 1
+
+/** The enabled payment methods, the three bitcoin wallets as one (settings/0002). */
+function PaymentMethodsValue() {
+  const { t } = useTranslation()
+  const [cash] = useEvoluQuery(cashRegisterAccountQuery).data
+  const [bank] = useEvoluQuery(fiatBankAccountQuery).data
+  const bitcoin = useBitcoinWallet()
+  const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
+  const enabledMethods = [
+    [isEnabled(cash), "settings.paymentAccounts.method.cashRegister"],
+    [isEnabled(bank), "settings.paymentAccounts.method.iban"],
+    [bitcoin.enabled !== undefined, "settings.paymentAccounts.method.bitcoin"],
+    [isEnabled(card), "settings.paymentAccounts.method.cardSwitchio"],
+  ] as const
+  return (
+    <SettingValue>
+      {enabledMethods
+        .filter(([enabled]) => enabled)
+        .map(([, key]) => t(key))
+        .join(", ") || t("settings.paymentAccounts.nav.none")}
+    </SettingValue>
+  )
+}
+
+function TipsValue() {
+  const { t } = useTranslation()
+  const [settings] = useEvoluQuery(settingsQuery).data
+  return (
+    <SettingValue>
+      {t(
+        settings?.tipsEnabled === sqliteTrue
+          ? "settings.tips.nav.on"
+          : "settings.tips.nav.off"
+      )}
+    </SettingValue>
+  )
+}
+
+function EetValue() {
+  const { t } = useTranslation()
+  const eet = useEetSettings()
+  return (
+    <SettingValue>
+      {t(
+        !eet.isEnabled
+          ? "settings.eet.nav.off"
+          : eet.isSandboxActive
+            ? "settings.eet.nav.sandbox"
+            : "settings.eet.nav.production"
+      )}
+    </SettingValue>
+  )
+}
+
+function ThemeValue() {
+  const { t } = useTranslation()
+  return <SettingValue>{t(themeLabelKeys[useThemePreference()])}</SettingValue>
 }
 
 function createSettingsNavItems(
@@ -98,18 +192,10 @@ function createSettingsNavItems(
           >
             {label}
           </Text>
-          {item.value === undefined ? null : (
-            <Text
-              color="muted-foreground"
-              fontSize="sm"
-              lineHeight="sm"
-              numberOfLines={1}
-              ml="auto"
-              maxW="100%"
-              flexShrink={1}
-            >
-              {item.value}
-            </Text>
+          {typeof item.value === "string" ? (
+            <SettingValue>{item.value}</SettingValue>
+          ) : (
+            item.value
           )}
         </XStack>
       ),
@@ -119,8 +205,10 @@ function createSettingsNavItems(
 
 /** The settings groups follow web's order; unavailable native routes stay omitted. */
 /**
- * Everything the list reads, `useEetSettings` included, in one round trip;
- * `usePrivacySettings` reads the device database, preloaded beside it.
+ * Everything the list's values read, `useEetSettings` included, started in
+ * one round trip as the page mounts; `usePrivacySettings` reads the device
+ * database, preloaded beside it. Nothing on the page waits for them: each
+ * value waits on its own (`DeferredValue`), and so does the assistant row.
  */
 const settingsPageQueries = [
   settingsQuery,
@@ -136,29 +224,6 @@ export function SettingsPage() {
   usePreloadEvoluQueries(settingsPageQueries)
   usePreloadDeviceEvoluQueries(settingsPageDeviceQueries)
   const { language, t } = useTranslation()
-  const theme = useThemePreference()
-  const [settings] = useEvoluQuery(settingsQuery).data
-  const [cash] = useEvoluQuery(cashRegisterAccountQuery).data
-  const [bank] = useEvoluQuery(fiatBankAccountQuery).data
-  const eet = useEetSettings()
-  const { aiAssistantAccess } = usePrivacySettings()
-  const bitcoin = useBitcoinWallet()
-  const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
-  const isEnabled = (
-    account: { readonly isDeleted: number | null } | undefined
-  ) => account !== undefined && account.isDeleted !== 1
-  // The three bitcoin wallets are one method here (settings/0002).
-  const enabledMethods = [
-    [isEnabled(cash), "settings.paymentAccounts.method.cashRegister"],
-    [isEnabled(bank), "settings.paymentAccounts.method.iban"],
-    [bitcoin.enabled !== undefined, "settings.paymentAccounts.method.bitcoin"],
-    [isEnabled(card), "settings.paymentAccounts.method.cardSwitchio"],
-  ] as const
-  const paymentMethodsValue =
-    enabledMethods
-      .filter(([enabled]) => enabled)
-      .map(([, key]) => t(key))
-      .join(", ") || t("settings.paymentAccounts.nav.none")
 
   // Items and tables are set up here, not under the Sales tab, which is
   // the grid alone (navigation/0003).
@@ -174,16 +239,20 @@ export function SettingsPage() {
       {
         icon: Landmark,
         title: "settings.paymentAccounts.title",
-        value: paymentMethodsValue,
+        value: (
+          <DeferredValue>
+            <PaymentMethodsValue />
+          </DeferredValue>
+        ),
         href: "/settings/payment-accounts",
       },
       {
         icon: BadgeDollarSign,
         title: "settings.tips.title",
-        value: t(
-          settings?.tipsEnabled === sqliteTrue
-            ? "settings.tips.nav.on"
-            : "settings.tips.nav.off"
+        value: (
+          <DeferredValue>
+            <TipsValue />
+          </DeferredValue>
         ),
         href: "/settings/tips",
       },
@@ -205,12 +274,10 @@ export function SettingsPage() {
       {
         icon: Stamp,
         title: "settings.eet.title",
-        value: t(
-          !eet.isEnabled
-            ? "settings.eet.nav.off"
-            : eet.isSandboxActive
-              ? "settings.eet.nav.sandbox"
-              : "settings.eet.nav.production"
+        value: (
+          <DeferredValue>
+            <EetValue />
+          </DeferredValue>
         ),
         href: "/settings/eet",
       },
@@ -249,7 +316,11 @@ export function SettingsPage() {
       {
         icon: SunMoon,
         title: "settings.theme.title",
-        value: t(themeLabelKeys[theme]),
+        value: (
+          <DeferredValue>
+            <ThemeValue />
+          </DeferredValue>
+        ),
         href: "/settings/theme",
       },
       // Web's home has a bell for these; native keeps them here
@@ -262,22 +333,46 @@ export function SettingsPage() {
     ],
     t
   )
-  const supportItems = createSettingsNavItems(
+  return (
+    <Screen footer={<MenuBarSpacer />}>
+      <FadeHeader title={t("settings.title")} startAddon={null} />
+      <ProfileCard />
+      <VerticalNav title={t("settings.payments")} items={paymentItems} />
+      <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
+      <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
+      <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
+      <VerticalNav title={t("settings.appearance")} items={appearanceItems} />
+      {/* The assistant row joins once the device's privacy setting is read. */}
+      <Suspense fallback={<SupportNav assistant={false} />}>
+        <SupportNavWithAssistant />
+      </Suspense>
+    </Screen>
+  )
+}
+
+function SupportNavWithAssistant() {
+  const { aiAssistantAccess } = usePrivacySettings()
+  return <SupportNav assistant={aiAssistantAccess !== "off"} />
+}
+
+function SupportNav({ assistant }: { readonly assistant: boolean }) {
+  const { t } = useTranslation()
+  const items = createSettingsNavItems(
     [
       {
         icon: LifeBuoy,
         title: "settings.supportChat.title",
         href: "/settings/support",
       },
-      ...(aiAssistantAccess === "off"
-        ? []
-        : [
+      ...(assistant
+        ? [
             {
               icon: Sparkles,
               title: "settings.assistant.title",
               href: "/settings/assistant",
             } as const,
-          ]),
+          ]
+        : []),
       {
         icon: HeartHandshake,
         title: "settings.donations.title",
@@ -291,17 +386,5 @@ export function SettingsPage() {
     ],
     t
   )
-
-  return (
-    <Screen footer={<MenuBarSpacer />}>
-      <FadeHeader title={t("settings.title")} startAddon={null} />
-      <ProfileCard />
-      <VerticalNav title={t("settings.payments")} items={paymentItems} />
-      <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
-      <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
-      <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
-      <VerticalNav title={t("settings.appearance")} items={appearanceItems} />
-      <VerticalNav title={t("settings.support")} items={supportItems} />
-    </Screen>
-  )
+  return <VerticalNav title={t("settings.support")} items={items} />
 }
