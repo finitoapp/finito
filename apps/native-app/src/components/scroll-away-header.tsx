@@ -26,16 +26,19 @@ const headerGap = 24
  * follows as it would inside a `Screen`. Nothing below renders until the
  * header has been measured, so the content never starts under it.
  * `resetKey` is the screen below: a new one starts at the top, so the
- * header comes back with it.
+ * header comes back with it. `footer` stays fixed under the content, as
+ * `Screen`'s does.
  */
 export function ScrollAwayHeader({
   header,
   resetKey,
   children,
+  footer,
 }: {
   readonly header: ReactNode
   readonly resetKey: string
   readonly children: ReactNode
+  readonly footer?: ReactNode
 }) {
   const theme = useTheme()
   const [scrollY] = useState(() => new Animated.Value(0))
@@ -72,6 +75,7 @@ export function ScrollAwayHeader({
             {header}
           </Animated.View>
         </View>
+        {footer}
       </ScreenScrollContext>
     </SafeAreaView>
   )

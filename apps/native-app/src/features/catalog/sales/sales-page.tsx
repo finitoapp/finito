@@ -1,3 +1,4 @@
+import { MenuBarSpacer } from "../../../components/menu-nav.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogListShell } from "../catalog-list-parts.tsx"
 import { PosOverviewPage } from "./pos-overview-page.tsx"
@@ -11,7 +12,12 @@ import { PosOverviewPage } from "./pos-overview-page.tsx"
 export function SalesPage() {
   const { t } = useTranslation()
   return (
-    <CatalogListShell title={t("nav.pos")} addLabel="" startAddon={null}>
+    <CatalogListShell
+      title={t("nav.pos")}
+      addLabel=""
+      startAddon={null}
+      footer={<MenuBarSpacer />}
+    >
       <PosOverviewPage />
     </CatalogListShell>
   )

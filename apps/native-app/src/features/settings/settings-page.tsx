@@ -29,6 +29,7 @@ import UserRound from "lucide-react-native/icons/user-round"
 import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
+import { MenuBarSpacer } from "../../components/menu-nav.tsx"
 import { Screen } from "../../components/screen.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
@@ -292,7 +293,7 @@ export function SettingsPage() {
   )
 
   return (
-    <Screen>
+    <Screen footer={<MenuBarSpacer />}>
       <FadeHeader title={t("settings.title")} startAddon={null} />
       <ProfileCard />
       <VerticalNav title={t("settings.payments")} items={paymentItems} />

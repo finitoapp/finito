@@ -30,6 +30,7 @@ import { SentryController } from "../src/components/app/sentry-controller.tsx"
 import { SwitchioRestoredResult } from "../src/components/app/switchio-restored-result.tsx"
 import { ToastHost } from "../src/components/app/toast-host.tsx"
 import {
+  MenuBar,
   MenuNav,
   menuSidebarMinWidth,
   menuSidebarWidth,
@@ -243,7 +244,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
             </WebColumn>
           </View>
         </XStack>
-        {bar ? <MenuNav active={menu.tab} variant="bar" /> : null}
+        {wide ? null : <MenuBar tab={bar ? menu.tab : undefined} />}
       </View>
     </ThemeProvider>
   )
