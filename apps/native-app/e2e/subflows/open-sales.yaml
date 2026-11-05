@@ -1,12 +1,17 @@
-# From the terminal home, in-app (a PIN session survives): the hamburger,
-# then the Sales tab (navigation/0002), the tables-and-bills grid that used
-# to be home's tables mode, and waits for its "no table" strip.
+# From the terminal home, in-app (a PIN session survives): home's switch to
+# Sales (navigation/0004), the tables-and-bills grid that is web's pos mode,
+# and waits for its "no table" strip. Home remembers the mode, so it may
+# already show the grid.
 appId: ${APP_ID}
 ---
 - runFlow:
-    file: open-menu-tab.yaml
-    env:
-      TAB: ${output.t["nav.pos"]}
+    when:
+      notVisible: ${output.t["bill.table.dialog.none"]}
+    commands:
+      - runFlow:
+          file: tap-label.yaml
+          env:
+            LABEL: ${output.t["nav.pos"]}
 - extendedWaitUntil:
     visible: ${output.t["bill.table.dialog.none"]}
     timeout: 15000

@@ -1,26 +1,26 @@
 import type { RouteAccess } from "@payky/core/modules/access/access-types"
 
 /**
- * A tab of the rail and the bar (navigation/0001, navigation/0002,
- * navigation/0003): the terminal, then the menu section's Activity, Sales
- * and Settings. The terminal is the rail's first entry on a wide window and
- * the bar's Home on a phone, where its root screen keeps the hamburger
- * instead of the bar.
+ * A tab of the rail and the bar (navigation/0001, navigation/0004): the
+ * terminal, then the menu section's Activity, Notifications and Settings.
+ * The terminal is the rail's first entry on a wide window and the bar's
+ * Home on a phone, where its root screen keeps the hamburger instead of
+ * the bar. The tables grid is a mode of home, not a tab.
  */
-export type MenuTab = "terminal" | "activity" | "catalog" | "settings"
+export type MenuTab = "terminal" | "activity" | "notifications" | "settings"
 
 /**
  * Each tab's root screen, the one it opens on, and the permission that
  * screen needs, in the order the bar and the sidebar draw them. Web routes
  * declare `staticData.menu`; Expo Router has no per-route data, so the tab
- * a path belongs to comes from `menuTabPrefixes`. The catalog tab is Sales,
- * the tables-and-bills grid, which selling staff need (access/0010); its
- * items and tables are set up under Settings (navigation/0003).
+ * a path belongs to comes from `menuTabPrefixes`. Notifications protect
+ * nothing yet (access/0010); items and tables are set up under Settings
+ * (navigation/0004).
  */
 export const menuTabTargets = {
   terminal: { href: "/", permission: "sell" },
   activity: { href: "/activity", permission: "activity" },
-  catalog: { href: "/catalog/sales", permission: "sell" },
+  notifications: { href: "/notifications", permission: "free" },
   settings: { href: "/settings", permission: "free" },
 } as const satisfies Record<
   MenuTab,
@@ -32,16 +32,16 @@ export const menuTabOrder = Object.keys(
 ) as ReadonlyArray<MenuTab>
 
 /**
- * The paths each tab owns. The terminal owns home and the payment steps;
- * the bill, opened from a table or the "no table" strip, is Sales' work
- * (navigation/0003); settings also owns the withdrawal screens, which web
- * keeps under `/settings/payment-accounts/*` and native at the top. `/`
- * matches itself alone, the other prefixes their subtree too.
+ * The paths each tab owns. The terminal owns home, the bill (opened from
+ * home's tables grid or by a scan there) and the payment steps; settings
+ * also owns the withdrawal screens, which web keeps under
+ * `/settings/payment-accounts/*` and native at the top. `/` matches itself
+ * alone, the other prefixes their subtree too.
  */
 const menuTabPrefixes = {
-  terminal: ["/", "/payment"],
+  terminal: ["/", "/payment", "/bill"],
   activity: ["/activity"],
-  catalog: ["/catalog", "/bill"],
+  notifications: ["/notifications"],
   settings: ["/settings", "/withdraw", "/cashu-withdraw"],
 } as const satisfies Record<MenuTab, ReadonlyArray<string>>
 
@@ -55,7 +55,7 @@ export const menuRootPaths: ReadonlySet<string> = new Set([
   "/activity",
   "/activity/bills",
   "/activity/stats",
-  "/catalog/sales",
+  "/notifications",
   "/settings",
 ])
 

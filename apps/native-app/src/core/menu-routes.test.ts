@@ -41,7 +41,7 @@ describe("menu section (navigation/0001)", () => {
     expect(menuTabOrder).toEqual([
       "terminal",
       "activity",
-      "catalog",
+      "notifications",
       "settings",
     ])
   })
@@ -85,7 +85,7 @@ describe("menu section (navigation/0001)", () => {
       tab: "settings",
       root: false,
     })
-    expect(menuPositionOf("/catalog")).toEqual({ tab: "catalog", root: false })
+    expect(menuPositionOf("/catalog")).toBeUndefined()
     expect(menuPositionOf("/activity/stats")).toEqual({
       tab: "activity",
       root: true,
@@ -94,41 +94,41 @@ describe("menu section (navigation/0001)", () => {
   })
 })
 
-describe("the terminal, Sales and nesting (navigation/0002, navigation/0003)", () => {
-  it("gives the terminal its own tab, with home and the payment steps", () => {
+describe("the terminal, home's modes, notifications and nesting (navigation/0004)", () => {
+  it("gives the terminal its own tab, with home, the bill and the payment steps", () => {
     expect(placed["/"]).toBe("terminal")
+    expect(placed["/bill"]).toBe("terminal")
     expect(placed["/payment/:paymentId"]).toBe("terminal")
     expect(placed["/payment/tip"]).toBe("terminal")
     expect(menuPositionOf("/")).toEqual({ tab: "terminal", root: true })
+    expect(menuPositionOf("/bill")).toEqual({ tab: "terminal", root: false })
   })
 
-  it("opens the catalog on Sales, which selling staff can reach, and the bill is Sales' too", () => {
-    expect(menuTabTargets.catalog).toEqual({
-      href: "/catalog/sales",
-      permission: "sell",
-    })
-    expect(placed["/catalog/sales"]).toBe("catalog")
-    expect(menuPositionOf("/catalog/sales")?.root).toBe(true)
-    expect(placed["/bill"]).toBe("catalog")
-    expect(menuPositionOf("/bill")).toEqual({ tab: "catalog", root: false })
-  })
-
-  it("keeps Sales the catalog tab's only screen, items and tables under Settings", () => {
+  it("keeps the tables grid a mode of home, with no Sales tab or route", () => {
+    expect(routePaths.filter((path) => path.startsWith("/catalog"))).toEqual([])
     expect(
       [...menuRootPaths].filter((path) => path.startsWith("/catalog"))
-    ).toEqual(["/catalog/sales"])
-    expect(routePaths.filter((path) => path.startsWith("/catalog/"))).toEqual([
-      "/catalog/sales",
-    ])
+    ).toEqual([])
+  })
+
+  it("sets up items, tables and home's modes under Settings", () => {
     expect(placed["/settings/items"]).toBe("settings")
     expect(placed["/settings/items/new"]).toBe("settings")
     expect(placed["/settings/tables/:tableId"]).toBe("settings")
+    expect(placed["/settings/home-screen"]).toBe("settings")
     expect(routePaths.some((path) => path.includes("categories"))).toBe(false)
   })
 
-  it("keeps notifications under Settings rather than on home", () => {
-    expect(routePaths).not.toContain("/notifications")
-    expect(placed["/settings/notifications"]).toBe("settings")
+  it("gives notifications a tab of their own, which anyone can open", () => {
+    expect(menuTabTargets.notifications).toEqual({
+      href: "/notifications",
+      permission: "free",
+    })
+    expect(menuPositionOf("/notifications")).toEqual({
+      tab: "notifications",
+      root: true,
+    })
+    expect(routePaths).not.toContain("/settings/notifications")
   })
 
   it("nests a detail under the longest root above it, or its tab's root", () => {

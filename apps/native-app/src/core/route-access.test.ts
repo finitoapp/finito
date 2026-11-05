@@ -74,7 +74,8 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/about/terms")).toBeNull()
     expect(requiredPermission("/settings/language")).toBeNull()
     expect(requiredPermission("/settings/theme")).toBeNull()
-    expect(requiredPermission("/settings/notifications")).toBeNull()
+    expect(requiredPermission("/notifications")).toBeNull()
+    expect(requiredPermission("/settings/home-screen")).toBe("settings")
     expect(requiredPermission("/settings/profile")).toBe("admin")
     expect(requiredPermission("/settings/security")).toBe("admin")
     expect(requiredPermission("/settings/evolu-export")).toBe("admin")
@@ -83,8 +84,6 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/payment-number-series")).toBe(
       "settings"
     )
-    expect(requiredPermission("/catalog")).toBe("sell")
-    expect(requiredPermission("/catalog/sales")).toBe("sell")
     expect(requiredPermission("/settings/items")).toBe("catalog")
     expect(requiredPermission("/settings/items/new")).toBe("catalog")
     expect(requiredPermission("/settings/items/abc123")).toBe("catalog")

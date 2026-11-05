@@ -57,8 +57,9 @@ tags: [bill]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: catalog/sales
-      TEXT: ${output.t["bill.table.dialog.none"]}
+      ROUTE: ""
+      TEXT: ${output.re(output.t["home.pay"])}|${output.re(output.t["bill.table.dialog.none"])}
+- runFlow: ../../subflows/open-sales.yaml
 - runFlow: ../../subflows/new-bill.yaml
 - runFlow:
     file: ../../subflows/inject-scan.yaml

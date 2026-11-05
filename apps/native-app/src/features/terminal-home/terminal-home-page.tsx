@@ -5,30 +5,39 @@ import {
   isInitialSyncPending,
 } from "@payky/core/evolu/initial-sync-state"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
+import {
+  getFiatCurrency,
+  terminalHomeModes,
+} from "@payky/core/modules/app-settings/app-settings-utils"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
 import { Redirect, router } from "expo-router"
 import { useAtomValue } from "jotai"
 import Menu from "lucide-react-native/icons/menu"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { Suspense, useEffect, useState, useSyncExternalStore } from "react"
 import { ActivityIndicator, Platform, useWindowDimensions } from "react-native"
 import { useTheme, View, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
+import { LoadingView } from "../../components/loading-view.tsx"
 import { menuSidebarMinWidth } from "../../components/menu-nav.tsx"
 import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { screenPaddingX } from "../../components/screen.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
+import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
+import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { maxWidth } from "../../theme/tokens.ts"
 import { AmountKeypad } from "./amount-keypad.tsx"
 import { BackupReminderDialog } from "./backup-reminder-dialog.tsx"
+import { PosOverviewPage } from "./pos-overview-page.tsx"
 
 /**
  * On a wide window web's keypad page is the `max-w-xl` column itself, with
@@ -41,16 +50,19 @@ const keypadColumn = {
 } as const
 
 /**
- * The root screen, like web's `_terminal/` index, the keypad alone
- * (navigation/0002: the tables grid is the Sales tab, not a mode of home):
- * an account without its appSettings row is not onboarded and goes to
- * onboarding (a restore runs its own sync screen first, so no initial-sync
- * wait is needed here).
+ * The root screen, like web's `_terminal/` index: the keypad or the tables
+ * grid, by the modes the account enables and the one this device last
+ * chose, with a switch between them at the top left when both are enabled
+ * (navigation/0004). An account without its appSettings row is not
+ * onboarded and goes to onboarding (a restore runs its own sync screen
+ * first, so no initial-sync wait is needed here).
  */
 export function TerminalHomePage() {
   const theme = useTheme()
   const { t } = useTranslation()
   const [settings] = useEvoluQuery(settingsQuery).data
+  const { mode, enabledModes, setMode } = useTerminalHomeMode()
+  const showSwitch = enabledModes.length > 1
   // On a wide window the rail beside the screen holds the menu.
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   useScreenWakeLock(true)
@@ -77,32 +89,82 @@ export function TerminalHomePage() {
           paddingHorizontal: screenPaddingX,
           backgroundColor: theme.background.val,
         },
-        // The keypad keeps web's column.
-        Platform.OS === "web" ? keypadColumn : null,
+        // The keypad keeps web's column; the grid takes the width.
+        Platform.OS === "web" && mode === "numpad" ? keypadColumn : null,
       ]}
     >
-      {/* Web's header and keypad add `px-4` to the screen's sides. The
-          hamburger opens the menu on its first tab (navigation/0001); a wide
-          window has the rail instead, so the header goes away. */}
-      {wide ? null : (
-        <XStack items="center" justify="flex-end" mb={12} px={16}>
-          <Button
-            variant="ghost"
-            aria-label={t("nav.menu")}
-            onPress={() => router.push("/activity")}
-          >
-            <Icon icon={Menu} size={24} strokeWidth={3} />
-          </Button>
+      {/* Web's header and keypad add `px-4` to the screen's sides. The mode
+          switch sits at the start; the hamburger opens the menu on its first
+          tab (navigation/0001), and a wide window has the rail instead, so a
+          header with neither goes away. */}
+      {wide && !showSwitch ? null : (
+        <XStack
+          items="center"
+          justify="space-between"
+          gap={12}
+          mb={12}
+          px={16}
+          minH={44}
+        >
+          {showSwitch ? (
+            <HomeModeSwitch mode={mode} onChange={setMode} />
+          ) : (
+            <View />
+          )}
+          {wide ? null : (
+            <Button
+              variant="ghost"
+              aria-label={t("nav.menu")}
+              onPress={() => router.push("/activity")}
+            >
+              <Icon icon={Menu} size={24} strokeWidth={3} />
+            </Button>
+          )}
         </XStack>
       )}
       <BackupReminderDialog />
-      <YStack flex={1} px={16}>
-        <AmountKeypad
-          currency={getFiatCurrency(settings)}
-          tipsEnabled={settings.tipsEnabled === sqliteTrue}
-        />
-      </YStack>
+      {mode === "numpad" ? (
+        <YStack flex={1} px={16}>
+          <AmountKeypad
+            currency={getFiatCurrency(settings)}
+            tipsEnabled={settings.tipsEnabled === sqliteTrue}
+          />
+        </YStack>
+      ) : (
+        <Suspense fallback={<LoadingView />}>
+          <PosOverviewPage />
+        </Suspense>
+      )}
     </SafeAreaView>
+  )
+}
+
+/**
+ * Web's home-mode toggle in its header: both modes named, the active one on
+ * the kit's sliding pill. Shown only while both are enabled.
+ */
+function HomeModeSwitch({
+  mode,
+  onChange,
+}: {
+  readonly mode: TerminalHomeMode
+  readonly onChange: (mode: TerminalHomeMode) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <Tabs value={mode} onValueChange={onChange}>
+      <TabsList w={240}>
+        {terminalHomeModes.map((option) => (
+          <TabsTrigger
+            key={option}
+            value={option}
+            aria-label={t(homeModeLabelKeys[option])}
+          >
+            {t(homeModeLabelKeys[option])}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   )
 }
 

@@ -17,8 +17,9 @@ appId: ${APP_ID}
 - runFlow:
     file: goto.yaml
     env:
-      ROUTE: catalog/sales
-      TEXT: ${output.t["bill.table.dialog.none"]}
+      ROUTE: ""
+      TEXT: ${output.re(output.t["home.pay"])}|${output.re(output.t["bill.table.dialog.none"])}
+- runFlow: open-sales.yaml
 # A free table's tile starts a bill on it.
 - tapOn: Merge Table
 - extendedWaitUntil:
