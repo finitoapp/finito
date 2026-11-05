@@ -11,6 +11,7 @@ import {
 import { useNow } from "@payky/app-shared/use-now"
 import { useRedirectIfClosedOnOpen } from "@payky/app-shared/use-redirect-if-closed-on-open"
 import { buildCashuPaymentUri } from "@payky/core/cashu/cashu-payment-request"
+import { createQerkoPaymentQrPayload } from "@payky/core/integrations/qerko/qerko-client"
 import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import type { BankQrFormat } from "@payky/core/modules/account/account-types"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
@@ -36,6 +37,7 @@ import {
 } from "@payky/core/modules/payment/payment-queries"
 import { derivePaymentStatus } from "@payky/core/modules/payment/payment-status-utils"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import {
   Currency,
   type NonNegativeInteger,
@@ -54,9 +56,10 @@ import {
   ZapIcon,
 } from "lucide-react"
 import { LayoutGroup, motion } from "motion/react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { accountAtom } from "@/atoms/account.ts"
 import { FadeHeader } from "@/components/fade-header.tsx"
+import { QerkoIcon } from "@/components/qerko-icon.tsx"
 import { RouteMessage } from "@/components/route-message.tsx"
 import {
   SlidingPillSegmentContent,
@@ -73,6 +76,7 @@ import {
 } from "@/components/ui/tabs.tsx"
 import { appEnv } from "@/core/app-env.ts"
 import { PaymentMethodTabContent } from "@/features/payment-wait/payment-wait-method-tabs.tsx"
+import { QrPaymentRequest } from "@/features/payment-wait/payment-wait-qr-request.tsx"
 import type {
   PaymentMethodOption,
   PaymentMethodTab,
@@ -98,6 +102,7 @@ const preparingPaymentMethodKeys = {
   cash: "paymentWait.preparing.cash",
   card: "paymentWait.preparing.card",
   qerko: "paymentWait.preparing.qerko",
+  qerkoPayment: "paymentWait.preparing.qerkoPayment",
   cashu: "paymentWait.preparing.cashu",
   lightningAddress: "paymentWait.preparing.lightningAddress",
 } satisfies Record<PaymentMethodTab, TranslationKey>
@@ -176,6 +181,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const { data: enabledPaymentMethodAccounts } = useEvoluQuery(
     enabledPaymentMethodAccountsQuery
   )
+  const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
   const payment = payments[0]
   const [settings] = settingsData
   // The profile name is the recipient the bank QR names (payment/0005). It
@@ -340,6 +346,37 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       })
     }
 
+    // Qerko payments need the restaurant the pairing names for their QR code.
+    const qerkoRestaurantId = qerkoPaymentPlugin?.restaurantId ?? null
+    const enabledQerkoPaymentAccount =
+      qerkoRestaurantId === null
+        ? undefined
+        : enabledPaymentMethodAccounts.find(
+            (account) =>
+              account.kind === "qerkoPayment" &&
+              account.qerkoPaymentCurrency === payment?.currency
+          )
+    if (enabledQerkoPaymentAccount && qerkoRestaurantId !== null) {
+      const prepared =
+        payment?.qerkoPaymentAccountId !== null &&
+        payment?.qerkoPaymentAccountId !== undefined
+      paymentMethods.push({
+        id: "qerkoPayment",
+        kind: "qerkoPayment",
+        accountId: enabledQerkoPaymentAccount.id,
+        label: t("paymentWait.method.qerkoPayment"),
+        qrPayload: prepared
+          ? createQerkoPaymentQrPayload({
+              restaurantId: qerkoRestaurantId,
+              qrIdentifier: paymentId,
+            })
+          : null,
+        connectionDeviceId:
+          enabledQerkoPaymentAccount.qerkoPaymentConnectionDeviceId,
+        icon: <QerkoIcon />,
+      })
+    }
+
     const enabledCashuAccount = enabledPaymentMethodAccounts.find(
       (account) => account.kind === "cashu"
     )
@@ -396,6 +433,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     paymentId,
     profileName,
     pubkey,
+    qerkoPaymentPlugin,
     selectedIbanQrFormat,
     settings,
     t,
@@ -440,6 +478,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       (activePaymentMethod.id === "qerko" &&
         payment.qerkoAccountId !== null &&
         payment.qerkoAccountId !== undefined) ||
+      (activePaymentMethod.id === "qerkoPayment" &&
+        payment.qerkoPaymentAccountId !== null &&
+        payment.qerkoPaymentAccountId !== undefined) ||
       (activePaymentMethod.id === "cashu" &&
         payment.cashuLnInvoice !== null &&
         payment.cashuLnInvoice !== undefined) ||
@@ -477,6 +518,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                 : {}),
               ...(method.kind === "qerkoTerminal"
                 ? { qerkoTerminal: { accountId: method.accountId } }
+                : {}),
+              ...(method.kind === "qerkoPayment"
+                ? { qerkoPayment: { accountId: method.accountId } }
                 : {}),
               ...(method.kind === "iban"
                 ? { bank: { accountId: method.accountId } }
@@ -888,48 +932,63 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           ) : null}
 
           {activePaymentMethod ? (
-            <PaymentMethodTabContent
-              method={activePaymentMethod}
-              boltCardPaymentId={boltCardPaymentId}
-              amount={payment.amount}
-              currency={payment.currency}
-              canMarkCashPaid={canMarkCashPaid}
-              cashPaymentErrorKey={cashPaymentErrorKey}
-              cashPaymentPending={cashPaymentPending}
-              cashRegisterAccountId={cashRegisterAccountId}
-              canPayCard={canPayCard}
-              cardPaymentErrorKey={cardPaymentErrorKey}
-              cardPaymentPending={cardPaymentPending}
-              cardAccountId={cardAccountId}
-              cardUnresolvedTransactionId={
-                cardPaymentPending ? null : cardUnresolvedTransactionId
+            // A tab reads its own data only once opened, and its first read
+            // suspends. This boundary keeps that to the tab, under a QR-sized
+            // placeholder, instead of the route's, which would blank the whole
+            // screen for a moment.
+            <Suspense
+              fallback={
+                <QrPaymentRequest
+                  qrPayload={null}
+                  preparingMessageKey={
+                    preparingPaymentMethodKeys[activePaymentMethod.id]
+                  }
+                />
               }
-              canMarkIbanPaid={canMarkIbanPaid}
-              ibanPaymentErrorKey={ibanPaymentErrorKey}
-              ibanPaymentPending={ibanPaymentPending}
-              ibanVariableSymbol={payment.variableSymbol}
-              preparingMessageKey={activePreparingPaymentMethodKey}
-              selectedIbanQrFormat={selectedIbanQrFormat}
-              onSelectIbanQrFormat={setSelectedIbanQrFormat}
-              onMarkCashPaid={(receivedAmount) =>
-                void handleMarkCashPaid(receivedAmount)
-              }
-              onMarkIbanPaid={() => void handleMarkIbanPaid()}
-              onPayCard={() => void handlePayCard()}
-              qerkoPaymentId={paymentId}
-              qerkoAccountId={payment.qerkoAccountId}
-              qerkoPayable={paymentStatus === "pending"}
-              qerkoPendingTransactionId={payment.qerkoPendingTransactionId}
-              qerkoUnresolvedTransactionId={
-                payment.qerkoUnresolvedTransactionId
-              }
-              qerkoFailureReason={payment.qerkoFailureReason}
-              paymentId={paymentId}
-              paymentCreatedAt={payment.createdAt}
-              payable={paymentStatus === "pending"}
-              newCashuQuotePending={newCashuQuotePending}
-              onNewCashuQuote={() => void handleNewCashuQuote()}
-            />
+            >
+              <PaymentMethodTabContent
+                method={activePaymentMethod}
+                boltCardPaymentId={boltCardPaymentId}
+                amount={payment.amount}
+                currency={payment.currency}
+                canMarkCashPaid={canMarkCashPaid}
+                cashPaymentErrorKey={cashPaymentErrorKey}
+                cashPaymentPending={cashPaymentPending}
+                cashRegisterAccountId={cashRegisterAccountId}
+                canPayCard={canPayCard}
+                cardPaymentErrorKey={cardPaymentErrorKey}
+                cardPaymentPending={cardPaymentPending}
+                cardAccountId={cardAccountId}
+                cardUnresolvedTransactionId={
+                  cardPaymentPending ? null : cardUnresolvedTransactionId
+                }
+                canMarkIbanPaid={canMarkIbanPaid}
+                ibanPaymentErrorKey={ibanPaymentErrorKey}
+                ibanPaymentPending={ibanPaymentPending}
+                ibanVariableSymbol={payment.variableSymbol}
+                preparingMessageKey={activePreparingPaymentMethodKey}
+                selectedIbanQrFormat={selectedIbanQrFormat}
+                onSelectIbanQrFormat={setSelectedIbanQrFormat}
+                onMarkCashPaid={(receivedAmount) =>
+                  void handleMarkCashPaid(receivedAmount)
+                }
+                onMarkIbanPaid={() => void handleMarkIbanPaid()}
+                onPayCard={() => void handlePayCard()}
+                qerkoPaymentId={paymentId}
+                qerkoAccountId={payment.qerkoAccountId}
+                qerkoPayable={paymentStatus === "pending"}
+                qerkoPendingTransactionId={payment.qerkoPendingTransactionId}
+                qerkoUnresolvedTransactionId={
+                  payment.qerkoUnresolvedTransactionId
+                }
+                qerkoFailureReason={payment.qerkoFailureReason}
+                paymentId={paymentId}
+                paymentCreatedAt={payment.createdAt}
+                payable={paymentStatus === "pending"}
+                newCashuQuotePending={newCashuQuotePending}
+                onNewCashuQuote={() => void handleNewCashuQuote()}
+              />
+            </Suspense>
           ) : null}
 
           <div className="flex flex-col items-center gap-4">

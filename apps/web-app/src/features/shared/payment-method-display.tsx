@@ -10,6 +10,7 @@ import {
   NfcIcon,
   ZapIcon,
 } from "lucide-react"
+import { QerkoIcon } from "@/components/qerko-icon.tsx"
 
 /**
  * How the method that actually settled a payment (its claimed transaction's
@@ -22,6 +23,7 @@ export const paymentMethodIcon = {
   onchain: BitcoinIcon,
   cardSwitchio: CreditCardIcon,
   qerkoTerminal: NfcIcon,
+  qerkoPayment: QerkoIcon,
   spark: ZapIcon,
   cashu: CoinsIcon,
   lightningAddress: AtSignIcon,

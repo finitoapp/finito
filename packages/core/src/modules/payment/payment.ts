@@ -21,7 +21,7 @@ import {
   VariableSymbolSchema,
 } from "../shared/schema.ts"
 import { TableId } from "../table/table-types.ts"
-import { PaymentId } from "./payment-types.ts"
+import { PaymentId, QerkoPaymentAttemptId } from "./payment-types.ts"
 
 export const payment = {
   id: PaymentId,
@@ -219,6 +219,50 @@ export const paymentLightningAddress = {
   preimage: NonEmptyStringSchema.nullable(),
 } as const
 
+/**
+ * A payment offered as a Qerko payment (qerko/0007): written once when the
+ * method is prepared and never changed. The QR code is built from the
+ * pairing's restaurant and the payment's own id, so nothing else is stored;
+ * what happens in Qerko is recorded per attempt in `qerkoPaymentAttempt`.
+ */
+export const paymentQerkoPayment = {
+  id: PaymentId,
+  accountId: AccountId,
+} as const
+
+/**
+ * One Qerko payment of a payment (qerko/0013). Several devices write it — the
+ * one holding the websocket, every device's sync job (`get-payment`) and a
+ * refund from anywhere — and Evolu merges each column by last write, so the
+ * row is shaped to make every write agree:
+ *
+ * - its id derives from Qerko's payment id, so every writer reaches the same
+ *   row and no attempt is recorded twice;
+ * - `paymentId`, `qerkoPaymentId` and `startedAt` are written by `paymentStart`
+ *   and the rest only ever go from null to a value (`fillQerkoPaymentAttempt`),
+ *   never back or to another value. Qerko's final state does not change, so
+ *   two devices writing it write the same values.
+ *
+ * A late `PROCESSING` therefore cannot undo a `PAID`, and a late answer for
+ * one attempt cannot touch another. An attempt is in progress while
+ * `closedAt` is null; `outcome` says how it ended.
+ */
+export const qerkoPaymentAttempt = {
+  id: QerkoPaymentAttemptId,
+  paymentId: PaymentId,
+  qerkoPaymentId: NonEmptyString255Schema,
+  startedAt: TimestampMsSchema,
+  processingAt: TimestampMsSchema.nullable(),
+  closedAt: TimestampMsSchema.nullable(),
+  outcome: z.enum(["paid", "failed"]).nullable(),
+  /** Qerko's final state when it was not `PAID`, as Qerko named it. */
+  failureReason: NonEmptyString255Schema.nullable(),
+  /** The sum of `parts[].total`: what the customer paid through Qerko. */
+  chargedAmount: NonNegativeIntegerSchema.nullable(),
+  /** The provider types that paid (`CARD`, `MEAL_TICKET`, ...), as JSON. */
+  providers: NonEmptyStringSchema.nullable(),
+} as const
+
 export const paymentIndexes = ((create) => [
   create("payment_billId").on("payment").column("billId"),
   create("payment_tableId").on("payment").column("tableId"),
@@ -247,6 +291,16 @@ export const paymentIndexes = ((create) => [
   create("paymentQerkoTerminal_pendingTransactionId")
     .on("paymentQerkoTerminal")
     .column("pendingTransactionId"),
+  create("paymentQerkoPayment_accountId")
+    .on("paymentQerkoPayment")
+    .column("accountId"),
+  create("qerkoPaymentAttempt_paymentId_startedAt")
+    .on("qerkoPaymentAttempt")
+    .columns(["paymentId", "startedAt"]),
+  // The sync job watches the attempts still in progress.
+  create("qerkoPaymentAttempt_closedAt")
+    .on("qerkoPaymentAttempt")
+    .column("closedAt"),
   create("paymentIban_accountId").on("paymentIban").column("accountId"),
   create("paymentCashu_quoteId").on("paymentCashu").column("quoteId"),
   create("paymentCashu_receiveOperationId")
@@ -275,6 +329,8 @@ export type PaymentBtcSparkRow = InferTable<typeof paymentBtcSpark>
 export type PaymentIbanRow = InferTable<typeof paymentIban>
 export type PaymentCardSwitchioRow = InferTable<typeof paymentCardSwitchio>
 export type PaymentQerkoTerminalRow = InferTable<typeof paymentQerkoTerminal>
+export type PaymentQerkoPaymentRow = InferTable<typeof paymentQerkoPayment>
+export type QerkoPaymentAttemptRow = InferTable<typeof qerkoPaymentAttempt>
 export type PaymentCashuRow = InferTable<typeof paymentCashu>
 export type PaymentLightningAddressRow = InferTable<
   typeof paymentLightningAddress

@@ -55,7 +55,7 @@ import { QerkoTerminalChooser } from "./qerko-terminal-chooser.tsx"
  */
 export function QerkoTerminalSettingsPage() {
   const { t } = useTranslation()
-  const plugin = useEvoluQuery(qerkoPluginQuery).data[0]
+  const plugin = useEvoluQuery(qerkoPluginQuery("terminalPayments")).data[0]
   // Pairing saves the key, which would swap the wizard for the paired view
   // before the terminal is chosen.
   const [finishingPairing, setFinishingPairing] = useState(false)
@@ -67,13 +67,22 @@ export function QerkoTerminalSettingsPage() {
       <FadeHeader title={t("settings.qerkoTerminal.title")} />
       {plugin === undefined || finishingPairing ? (
         <QerkoPairingWizard
+          qerkoRole="terminalPayments"
           onPaired={() => {
             setFinishingPairing(true)
           }}
-          onFinished={(terminalId) => {
-            setChosenTerminalId(terminalId)
-            setFinishingPairing(false)
-          }}
+          lastStep={
+            <QerkoTerminalChooser
+              enableAccount
+              onChosen={(terminalId) => {
+                setChosenTerminalId(terminalId)
+                setFinishingPairing(false)
+              }}
+              onSkip={() => {
+                setFinishingPairing(false)
+              }}
+            />
+          }
         />
       ) : (
         <QerkoPairedView
@@ -146,7 +155,7 @@ function QerkoPairedView({
     if (!confirmed) return
 
     await runToast(async (run) => {
-      await run.ok(deleteQerkoPlugin())
+      await run.ok(deleteQerkoPlugin("terminalPayments"))
       await run.ok(
         saveQerkoTerminalAccount({
           enabled: false,

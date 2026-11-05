@@ -11,15 +11,17 @@ import {
   qerkoCountryLabelKeys,
   qerkoCountryOptions,
   qerkoEnvironmentLabelKeys,
+  qerkoPairingCopyKeys,
 } from "@payky/app-shared/qerko-terminal-flow"
 import {
   type QerkoCountry,
   type QerkoEnvironment,
   QerkoEnvironmentSchema,
+  type QerkoRole,
   requestQerkoPairing,
 } from "@payky/core/integrations/qerko/qerko-client"
 import { completeQerkoPairing } from "@payky/core/modules/qerko-plugin/qerko-plugin-actions"
-import { useEffect, useState } from "react"
+import { type ReactNode, useEffect, useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
@@ -67,14 +69,13 @@ import {
 import { appBrand } from "../../../core/app-brand.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { QerkoTerminalChooser } from "./qerko-terminal-chooser.tsx"
 
-type Phase = "company" | "code" | "terminal"
+type Phase = "company" | "code" | "last"
 
 const stepByPhase = {
   company: 1,
   code: 2,
-  terminal: 3,
+  last: 3,
 } satisfies Record<Phase, number>
 
 const codeSlots = Array.from({ length: QERKO_CODE_LENGTH }, (_, slot) => slot)
@@ -86,18 +87,20 @@ interface PairingRequest {
 
 /**
  * The first-time pairing with Qerko, as web's `QerkoPairingWizard`: the
- * company, the code Qerko e-mails to it, and the terminal this device pays
- * on. Pairing saves the key, which turns the screen behind this one into the
- * paired view; `onPaired` lets that screen keep this wizard up until the
- * terminal is chosen.
+ * company, the code Qerko e-mails to it, and a last step that depends on what
+ * `qerkoRole` is paired for (qerko/0007) — the terminal this device pays on,
+ * or which device serves Qerko payments. Pairing saves the key, which turns
+ * the screen behind this one into the paired view; `onPaired` lets that
+ * screen keep this wizard up through the last step.
  */
 export function QerkoPairingWizard({
+  qerkoRole: role,
   onPaired,
-  onFinished,
+  lastStep,
 }: {
+  readonly qerkoRole: QerkoRole
   readonly onPaired: () => void
-  /** The terminal chosen, or nothing when the merchant chose later. */
-  readonly onFinished: (terminalId?: string) => void
+  readonly lastStep: ReactNode
 }) {
   const { t } = useTranslation()
   const appRun = useAppRun()
@@ -116,6 +119,7 @@ export function QerkoPairingWizard({
   const [invalidCompany, setInvalidCompany] = useState(false)
   const [pending, setPending] = useState(false)
   const [now, setNow] = useState(() => Date.now())
+  const copy = qerkoPairingCopyKeys[role]
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
@@ -134,6 +138,7 @@ export function QerkoPairingWizard({
     await using run = appRun()
     const result = await run(
       requestQerkoPairing({
+        role,
         environment,
         identificationNumber: parsed,
         country,
@@ -159,6 +164,7 @@ export function QerkoPairingWizard({
     await using run = appRun()
     const result = await run(
       completeQerkoPairing({
+        role,
         environment,
         pairingRequestId: request.pairingRequestId,
         code,
@@ -169,7 +175,7 @@ export function QerkoPairingWizard({
     setPending(false)
     if (result.ok) {
       onPaired()
-      setPhase("terminal")
+      setPhase("last")
       return
     }
 
@@ -210,14 +216,14 @@ export function QerkoPairingWizard({
             ? t("settings.qerkoTerminal.unpaired.title")
             : phase === "code"
               ? t("settings.qerkoTerminal.code.title")
-              : t("settings.qerkoTerminal.terminals.title")}
+              : t(copy.lastStepTitle)}
         </CardTitle>
         <CardDescription>
           {phase === "company"
-            ? t("settings.qerkoTerminal.unpaired.description")
+            ? t(copy.unpairedDescription)
             : phase === "code"
               ? t("settings.qerkoTerminal.code.instructions")
-              : t("settings.qerkoTerminal.terminals.description")}
+              : t(copy.lastStepDescription)}
         </CardDescription>
       </CardHeader>
 
@@ -422,17 +428,7 @@ export function QerkoPairingWizard({
         </>
       ) : null}
 
-      {phase === "terminal" ? (
-        <CardContent>
-          <QerkoTerminalChooser
-            enableAccount
-            onChosen={onFinished}
-            onSkip={() => {
-              onFinished()
-            }}
-          />
-        </CardContent>
-      ) : null}
+      {phase === "last" ? <CardContent>{lastStep}</CardContent> : null}
     </Card>
   )
 }

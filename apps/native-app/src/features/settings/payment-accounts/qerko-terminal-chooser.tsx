@@ -48,7 +48,7 @@ export function QerkoTerminalChooser({
   const runToast = useRunToast()
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
-  const plugin = useEvoluQuery(qerkoPluginQuery).data[0]
+  const plugin = useEvoluQuery(qerkoPluginQuery("terminalPayments")).data[0]
   const settings = useEvoluQuery(settingsQuery).data[0]
 
   const terminals = useQuery({

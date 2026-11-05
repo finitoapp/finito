@@ -9,8 +9,10 @@ import {
   createQerkoApiDep,
   createQerkoTerminalPayment,
   createQerkoTerminalRefund,
+  getQerkoLocations,
   getQerkoTerminalPaymentStatus,
   getQerkoTerminals,
+  pairQerkoLocation,
   type QerkoApiDep,
   requestQerkoPairing,
 } from "./qerko-client.ts"
@@ -81,6 +83,7 @@ describe("qerko client", () => {
 
     const result = await run(
       requestQerkoPairing({
+        role: "terminalPayments",
         environment: "sandbox",
         identificationNumber: "12345678",
         country: "CZ",
@@ -102,6 +105,95 @@ describe("qerko client", () => {
         },
       },
     ])
+  })
+
+  test("requests a pairing for the standard role", async () => {
+    const { requests, deps } = setup({
+      pairingRequestId: "p-1",
+      resendAvailableInSeconds: 60,
+    })
+    await using run = testCreateRun(deps)
+
+    await run(
+      requestQerkoPairing({
+        role: "standard",
+        environment: "sandbox",
+        identificationNumber: "12345678",
+        country: "CZ",
+      })
+    )
+
+    expect(requests[0]?.body).toMatchObject({ roles: ["standard"] })
+  })
+
+  test("lists the locations of a key's company", async () => {
+    const reply = {
+      legalEntity: {
+        id: "le-1",
+        name: "Cafe s.r.o.",
+        identificationNumber: "12345678",
+        country: "CZ",
+      },
+      locations: [
+        {
+          id: "loc-1",
+          name: "Cafe Praha",
+          address: {
+            street: "Dlouhá",
+            descriptiveNumber: "1",
+            city: "Praha",
+            zipCode: "11000",
+            country: "CZ",
+          },
+        },
+      ],
+      pairedLocationId: null,
+    }
+    const { requests, deps } = setup(reply)
+    await using run = testCreateRun(deps)
+
+    await expect(run(getQerkoLocations(credentials))).resolves.toEqual({
+      ok: true,
+      value: reply,
+    })
+    expect(requests).toEqual([
+      {
+        url: "https://sandbox.qerko.com/api/v4/pos/get-locations",
+        headers: {
+          "content-type": "application/json",
+          "pos-id": "pos-1",
+          authorization: "Bearer key-1",
+        },
+        body: {},
+      },
+    ])
+  })
+
+  test("pairs a key with a location", async () => {
+    const { requests, deps } = setup({ status: "Accepted" })
+    await using run = testCreateRun(deps)
+
+    await expect(
+      run(pairQerkoLocation({ credentials, locationId: "loc-1" }))
+    ).resolves.toEqual({ ok: true, value: undefined })
+    expect(requests).toMatchObject([
+      {
+        url: "https://sandbox.qerko.com/api/v4/pos/pair-location",
+        body: { locationId: "loc-1" },
+      },
+    ])
+  })
+
+  test("an unknown location is Qerko's 404", async () => {
+    const { deps } = setup({ message: "Location not found" }, 404)
+    await using run = testCreateRun(deps)
+
+    await expect(
+      run(pairQerkoLocation({ credentials, locationId: "gone" }))
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "QerkoHttpError", status: 404 },
+    })
   })
 
   test("uses the production host for the production environment", async () => {

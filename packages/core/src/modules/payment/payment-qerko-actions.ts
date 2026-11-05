@@ -265,7 +265,7 @@ export const startQerkoTerminalPayment =
     const payable = await run(requirePayablePayment(payment))
     if (!payable.ok) return payable
 
-    const credentials = await run(loadQerkoCredentials())
+    const credentials = await run(loadQerkoCredentials("terminalPayments"))
     if (!credentials.ok) return credentials
 
     const [[row], [paymentNumber]] = await Promise.all([
@@ -392,7 +392,7 @@ export const syncQerkoTerminalPayment =
       return ok({ status: "idle" })
     }
 
-    const credentials = await run(loadQerkoCredentials())
+    const credentials = await run(loadQerkoCredentials("terminalPayments"))
     if (!credentials.ok) return credentials
 
     const polled = await run(
@@ -457,7 +457,7 @@ export const cancelQerkoTerminalPayment =
       return ok("unknownTransaction")
     }
 
-    const credentials = await run(loadQerkoCredentials())
+    const credentials = await run(loadQerkoCredentials("terminalPayments"))
     if (!credentials.ok) return credentials
 
     return run(

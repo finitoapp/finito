@@ -9,12 +9,14 @@ import {
   saveCardSwitchioAccount,
   saveCashRegisterAccount,
   saveFiatBankAccount,
+  saveQerkoPaymentAccount,
   saveQerkoTerminalAccount,
 } from "@payky/core/modules/account/account-actions"
 import {
   cardSwitchioAccountQuery,
   cashRegisterAccountQuery,
   fiatBankAccountQuery,
+  qerkoPaymentAccountQuery,
   qerkoTerminalAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { setPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-actions"
@@ -48,6 +50,7 @@ import {
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { animateTo } from "../../../components/motion.ts"
+import { QerkoIcon } from "../../../components/qerko-icon.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
@@ -95,7 +98,9 @@ const paymentAccountsPageQueries = [
   cashRegisterAccountQuery,
   cardSwitchioAccountQuery,
   qerkoTerminalAccountQuery,
-  qerkoPluginQuery,
+  qerkoPluginQuery("terminalPayments"),
+  qerkoPaymentAccountQuery,
+  qerkoPluginQuery("standard"),
   ...bitcoinWalletQueries,
 ]
 
@@ -141,7 +146,14 @@ export function PaymentAccountsSettingsPage() {
   const [cash] = useEvoluQuery(cashRegisterAccountQuery).data
   const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
   const [qerko] = useEvoluQuery(qerkoTerminalAccountQuery).data
-  const qerkoPaired = useEvoluQuery(qerkoPluginQuery).data.length > 0
+  const qerkoPaired =
+    useEvoluQuery(qerkoPluginQuery("terminalPayments")).data.length > 0
+  const [qerkoPayment] = useEvoluQuery(qerkoPaymentAccountQuery).data
+  const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
+  const qerkoPaymentPaired = qerkoPaymentPlugin !== undefined
+  // Paired but without a location yet, Qerko refuses the key (qerko/0007).
+  const qerkoPaymentReady =
+    qerkoPaymentPlugin !== undefined && qerkoPaymentPlugin.restaurantId !== null
   const bitcoin = useBitcoinWallet()
 
   const appCurrency = getFiatCurrency(settings)
@@ -149,6 +161,8 @@ export function PaymentAccountsSettingsPage() {
   const cashEnabled = cash !== undefined && cash.isDeleted !== 1
   const cardEnabled = card !== undefined && card.isDeleted !== 1
   const qerkoEnabled = qerko !== undefined && qerko.isDeleted !== 1
+  const qerkoPaymentEnabled =
+    qerkoPayment !== undefined && qerkoPayment.isDeleted !== 1
 
   const currencyMismatch = (currency: FiatCurrency | undefined) =>
     currency === undefined || currency === appCurrency
@@ -262,6 +276,35 @@ export function PaymentAccountsSettingsPage() {
         runToast(async (run) => {
           await run.ok(
             saveQerkoTerminalAccount({ enabled, currency: appCurrency })
+          )
+        }),
+    },
+    qerkoPayment: {
+      icon: QerkoIcon,
+      title: "settings.paymentAccounts.method.qerkoPayment",
+      switchLabel: "settings.qerkoPayment.enabled.label",
+      enabled: qerkoPaymentEnabled,
+      available:
+        qerkoPaymentReady &&
+        qerkoPaymentEnabled &&
+        qerkoPayment.currency === appCurrency,
+      // Without a location there is no restaurant for the QR code to name.
+      canEnable: qerkoPaymentReady,
+      status: !qerkoPaymentPaired
+        ? t("settings.qerkoPayment.status.notPaired")
+        : !qerkoPaymentReady
+          ? t("settings.qerkoPayment.location.none")
+          : qerkoPaymentEnabled
+            ? (currencyMismatch(qerkoPayment.currency) ??
+              (qerkoPayment.connectionDeviceId === null
+                ? t("settings.qerkoPayment.status.noDevice")
+                : null))
+            : null,
+      href: "/settings/payment-accounts/qerko-payment",
+      saveEnabled: (enabled) =>
+        runToast(async (run) => {
+          await run.ok(
+            saveQerkoPaymentAccount({ enabled, currency: appCurrency })
           )
         }),
     },

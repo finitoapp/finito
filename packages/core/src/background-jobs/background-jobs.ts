@@ -8,6 +8,8 @@ import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
 import { startFioAccountTransactionSyncJob } from "./jobs/fio-account-transaction-sync-job.ts"
 import { startLightningAddressVerifyJob } from "./jobs/lightning-address-verify-job.ts"
 import { startMonetaAccountTransactionSyncJob } from "./jobs/moneta-account-transaction-sync-job.ts"
+import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-job.ts"
+import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
@@ -24,6 +26,8 @@ const nativeBackgroundJobs = [
   ...cliBackgroundJobs,
   startEetReportingJob,
   startQerkoTerminalSyncJob,
+  startQerkoPaymentConnectionJob,
+  startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
@@ -33,12 +37,15 @@ const nativeBackgroundJobs = [
  * limitation the settings screens warn about in
  * `settings.fioPlugin.nativeRuntimeWarning` and
  * `settings.monetaPlugin.nativeRuntimeWarning`. Qerko allows cross-origin calls,
- * so its job runs in both, and so do the wallets behind Lightning addresses.
+ * so its jobs run in both, Qerko payments' connection and sync included, and
+ * so do the wallets behind Lightning addresses.
  */
 const browserBackgroundJobs = [
   startSparkAccountTransactionSyncJob,
   startEetReportingJob,
   startQerkoTerminalSyncJob,
+  startQerkoPaymentConnectionJob,
+  startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 

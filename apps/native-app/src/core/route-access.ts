@@ -70,6 +70,7 @@ export type NativeRoutePath =
   | "/settings/payment-accounts/spark/transactions"
   | "/settings/payment-accounts/card-switchio"
   | "/settings/payment-accounts/qerko-terminal"
+  | "/settings/payment-accounts/qerko-payment"
   | "/settings/payment-accounts/lightning-address"
   | "/settings/payment-accounts/bitcoin"
 
@@ -194,6 +195,8 @@ export const routeAccess = {
   "/settings/payment-accounts/card-switchio": "admin",
   // Like web's `_terminal/settings/payment-accounts/qerko-terminal` (owner-only).
   "/settings/payment-accounts/qerko-terminal": "admin",
+  // Like web's `_terminal/settings/payment-accounts/qerko-payment` (owner-only).
+  "/settings/payment-accounts/qerko-payment": "admin",
   // Like web's `_terminal/settings/payment-accounts/lightning-address` (owner-only).
   "/settings/payment-accounts/lightning-address": "admin",
   // Finito's one Bitcoin method over the three wallets above (settings/0002): the same owner-only gate.

@@ -23,6 +23,7 @@ describe("onboarding payment method order", () => {
       "iban",
       "cardSwitchio",
       "qerkoTerminal",
+      "qerkoPayment",
       "spark",
       "cashu",
       "lightningAddress",

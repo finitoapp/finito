@@ -43,6 +43,7 @@ describe("parsePaymentMethodOrder", () => {
       "cashRegister",
       "cardSwitchio",
       "qerkoTerminal",
+      "qerkoPayment",
       "cashu",
       "lightningAddress",
     ])
@@ -59,6 +60,7 @@ describe("parsePaymentMethodOrder", () => {
       "cashRegister",
       "cardSwitchio",
       "qerkoTerminal",
+      "qerkoPayment",
       "cashu",
       "lightningAddress",
     ])
@@ -85,6 +87,7 @@ describe("getPaymentMethodOrder", () => {
       "cashRegister",
       "cardSwitchio",
       "qerkoTerminal",
+      "qerkoPayment",
       "cashu",
       "lightningAddress",
     ])
@@ -107,6 +110,7 @@ describe("getPaymentMethodOrder", () => {
       "spark",
       "cardSwitchio",
       "qerkoTerminal",
+      "qerkoPayment",
       "cashu",
       "lightningAddress",
     ])

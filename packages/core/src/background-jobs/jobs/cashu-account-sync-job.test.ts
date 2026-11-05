@@ -8,6 +8,8 @@ import { createCashuWalletDep } from "../../cashu/cashu-wallet.ts"
 import type { DeviceAccountId } from "../../evolu/device-client.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
+import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
+import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { saveCashuAccount } from "../../modules/account/account-actions.ts"
 import type { DeviceId } from "../../modules/device/device-types.ts"
@@ -47,6 +49,8 @@ const setup = async () => {
       ...fetchDep,
       ...createYadioApiDep(),
       ...createQerkoApiDep({ posId: "test" }),
+      ...createQerkoSocketDep(),
+      ...createQerkoConnectionStatusDep(),
       ...createEetApiDep({ ...dateDep, ...fetchDep }),
       masterKey: testCashuMasterKey,
       nostr: relays.nostr,

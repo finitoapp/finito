@@ -58,6 +58,20 @@ export const skPayment = {
   "paymentDetail.refunds.action": "Vrátiť peniaze",
   "paymentDetail.refunds.method.cashRegister": "Z pokladne",
   "paymentDetail.refunds.method.outside": "Mimo {appNameGen}",
+  "paymentDetail.refunds.method.qerkoPayment": "V Qerku",
+  "paymentDetail.refunds.qerkoPaymentAction": "Vrátiť v Qerku ({amount})",
+  "refund.qerkoPayment.confirm.title": "Vrátiť platbu v Qerku?",
+  "refund.qerkoPayment.confirm.description":
+    "Qerko vráti celú platbu, {amount}, tak, ako zákazník platil. Nedá sa to vziať späť.",
+  "refund.qerkoPayment.confirm.confirm": "Vrátiť",
+  "refund.qerkoPayment.confirm.cancel": "Zrušiť",
+  "refund.qerkoPayment.done": "Qerko platbu vrátilo.",
+  "refund.qerkoPayment.error.notAvailable":
+    "Túto platbu nejde vrátiť v Qerku: nebola v ňom zaplatená, alebo je už časť vrátená.",
+  "refund.qerkoPayment.error.notCancelled":
+    "Qerko platbu nevrátilo. Skúste to neskôr.",
+  "refund.qerkoPayment.error.unreachable":
+    "Qerko nie je dostupné. Skontrolujte pripojenie a skúste to znova.",
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
   "paymentDetail.refunds.title": "Vrátenia",
   "paymentDetail.refunds.tipAction": "Vrátiť sprepitné ({amount})",
@@ -118,6 +132,17 @@ export const skPayment = {
   "paymentDetail.invalidId": "Neplatné ID platby.",
   "paymentDetail.notFound": "Platba sa nenašla.",
   "paymentDetail.paymentMethod.card": "Platobnou kartou",
+  "paymentDetail.qerkoAttempts.title": "V Qerku",
+  "paymentDetail.qerkoAttempts.state.started": "Začatá",
+  "paymentDetail.qerkoAttempts.state.processing": "Potvrdzuje sa",
+  "paymentDetail.qerkoAttempts.state.paid": "Zaplatené",
+  "paymentDetail.qerkoAttempts.state.failed": "Neprešla",
+  "paymentDetail.qerkoProvider.card": "kartou",
+  "paymentDetail.qerkoProvider.mealTicket": "stravenkou",
+  "paymentDetail.qerkoProvider.voucher": "poukážkou",
+  "paymentDetail.qerkoProvider.bankTransfer": "prevodom",
+  "paymentDetail.qerkoProvider.invoice": "na faktúru",
+  "paymentDetail.paymentMethod.qerkoPayment": "Qerko",
   "paymentDetail.paymentMethod.qerkoTerminal": "Platobnou kartou (terminál)",
   "paymentDetail.paymentMethod.qerkoTerminalTid":
     "Platobnou kartou (terminál {tid})",
@@ -245,6 +270,17 @@ export const skPayment = {
   "paymentWait.ibanPaid.pending": "Potvrdzujem...",
   "paymentWait.invalidId": "Neplatné ID platby.",
   "paymentWait.method.cashu": "Cashu",
+  "paymentWait.method.qerkoPayment": "Qerko",
+  "paymentWait.preparing.qerkoPayment": "Pripravujem platbu cez Qerko…",
+  "paymentWait.qerkoPayment.scan": "Zákazník naskenuje kód v aplikácii Qerko.",
+  "paymentWait.qerkoPayment.started": "Zákazník platí v Qerku…",
+  "paymentWait.qerkoPayment.processing": "Qerko potvrdzuje platbu…",
+  "paymentWait.qerkoPayment.failed":
+    "Platba v Qerku neprešla. Zákazník to môže skúsiť znova.",
+  "paymentWait.qerkoPayment.noDevice":
+    "Žiadne zariadenie neprijíma platby cez Qerko. Zvoľte ho v nastaveniach.",
+  "paymentWait.qerkoPayment.disconnected":
+    "Toto zariadenie nie je pripojené ku Qerku, zákazníci zatiaľ nemôžu platiť.",
   "paymentWait.method.qerko": "Terminál",
   "paymentWait.preparing.cashu": "Pripravujem Cashu platbu...",
   "paymentWait.cashu.quoteExpired":

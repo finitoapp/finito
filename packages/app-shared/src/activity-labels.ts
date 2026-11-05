@@ -29,6 +29,7 @@ export const paymentMethodLabelKey = {
   onchain: "paymentDetail.paymentMethod.onchain",
   cardSwitchio: "paymentDetail.paymentMethod.card",
   qerkoTerminal: "paymentDetail.paymentMethod.qerkoTerminal",
+  qerkoPayment: "paymentDetail.paymentMethod.qerkoPayment",
   spark: "paymentDetail.paymentMethod.spark",
   cashu: "paymentDetail.paymentMethod.cashu",
   lightningAddress: "paymentDetail.paymentMethod.lightningAddress",

@@ -573,6 +573,7 @@ for (const bankTransferEnabled of [false, true]) {
         "iban",
         "cardSwitchio",
         "qerkoTerminal",
+        "qerkoPayment",
         "spark",
         "cashu",
         "lightningAddress",

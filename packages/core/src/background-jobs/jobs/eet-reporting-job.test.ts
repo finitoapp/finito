@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest"
 import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
+import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
+import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createAccount } from "../../modules/account/account-actions.ts"
 import {
   addManualAmountToBill,
@@ -99,6 +101,8 @@ const startJob = async (
   const jobDeps: AppBackgroundJobContext = {
     ...context.deps,
     ...createQerkoApiDep({ posId: "test" }),
+    ...createQerkoSocketDep(),
+    ...createQerkoConnectionStatusDep(),
     ...connectivity,
     deviceId,
     onError: (error) => {

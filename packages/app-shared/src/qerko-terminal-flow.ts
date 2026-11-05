@@ -3,12 +3,15 @@ import {
   type QerkoCountry,
   QerkoCountrySchema,
   type QerkoEnvironment,
+  type QerkoLocations,
   type QerkoNotStartedReason,
   type QerkoPaymentFailureReason,
+  type QerkoRole,
   type QerkoStep,
   type QerkoTerminalStatus,
   type QerkoTerminals,
 } from "@payky/core/integrations/qerko/qerko-client"
+import type { QerkoConnectionStatus } from "@payky/core/integrations/qerko/qerko-connection-status"
 import type {
   QerkoPairingCodeExpiredError,
   QerkoPairingInvalidCodeError,
@@ -36,6 +39,137 @@ export const qerkoEnvironmentLabelKeys = {
   production: "settings.qerkoTerminal.environment.production",
   sandbox: "settings.qerkoTerminal.environment.sandbox",
 } satisfies Record<QerkoEnvironment, TranslationKey>
+
+/**
+ * What the pairing wizard says that depends on what is paired (qerko/0007):
+ * the company and code steps are the same for both, the last one is not —
+ * the terminal to pay on, or the restaurant and the device serving Qerko
+ * payments.
+ */
+export const qerkoPairingCopyKeys = {
+  terminalPayments: {
+    unpairedDescription: "settings.qerkoTerminal.unpaired.description",
+    lastStepTitle: "settings.qerkoTerminal.terminals.title",
+    lastStepDescription: "settings.qerkoTerminal.terminals.description",
+  },
+  standard: {
+    unpairedDescription: "settings.qerkoPayment.unpaired.description",
+    lastStepTitle: "settings.qerkoPayment.location.title",
+    lastStepDescription: "settings.qerkoPayment.location.description",
+  },
+} satisfies Record<
+  QerkoRole,
+  Record<
+    "unpairedDescription" | "lastStepTitle" | "lastStepDescription",
+    TranslationKey
+  >
+>
+
+/** A location a Qerko payment key may be paired with (qerko/0007). */
+export interface QerkoLocationChoice {
+  readonly locationId: string
+  readonly name: string
+  readonly address: string
+}
+
+export const selectableQerkoPaymentLocations = (
+  locations: QerkoLocations
+): ReadonlyArray<QerkoLocationChoice> =>
+  locations.locations.map(({ id, name, address }) => ({
+    locationId: id,
+    name,
+    address: `${address.street} ${address.descriptiveNumber}, ${address.zipCode} ${address.city}`,
+  }))
+
+/**
+ * The location the chooser starts on: the one the key is already paired with,
+ * else the only one there is; with several and none paired, the merchant picks.
+ */
+export const preselectedQerkoLocationId = (
+  locations: QerkoLocations
+): string | null =>
+  locations.pairedLocationId ??
+  (locations.locations.length === 1
+    ? (locations.locations[0]?.id ?? null)
+    : null)
+
+export interface QerkoLocationsFailure {
+  readonly key: TranslationKey
+  /** Qerko refuses the key itself: only pairing anew helps. */
+  readonly keyRejected: boolean
+}
+
+/** How a failed location list or location pairing reads. */
+export const describeQerkoLocationsFailure = (error: {
+  readonly type: string
+  readonly status?: unknown
+}): QerkoLocationsFailure =>
+  isQerkoKeyRejected(error) || error.type === "QerkoPluginNotPaired"
+    ? { key: "settings.qerkoPayment.location.keyRejected", keyRejected: true }
+    : error.type === "QerkoHttpError" && error.status === 404
+      ? { key: "settings.qerkoPayment.location.notFound", keyRejected: false }
+      : { key: "settings.qerkoPayment.location.failed", keyRejected: false }
+
+/** What keeps Qerko payments from being taken, the first one found. */
+export type QerkoPaymentBlocker =
+  | "noLocation"
+  | "disabled"
+  | "noDevice"
+  | "stolen"
+  | "unauthorized"
+
+/**
+ * Whether customers can pay through Qerko now, for the settings' summary.
+ * It needs a location (qerko/0007), the method on and a device chosen to hold
+ * the connection (qerko/0011); when that device is this one, its connection
+ * is known too, while another device's is taken as up.
+ */
+export type QerkoPaymentReadiness =
+  | { readonly type: "active" }
+  | { readonly type: "connecting" }
+  | { readonly type: "notAccepting"; readonly blocker: QerkoPaymentBlocker }
+
+export const deriveQerkoPaymentReadiness = ({
+  hasLocation,
+  enabled,
+  connectionDeviceId,
+  thisDeviceId,
+  connection,
+}: {
+  readonly hasLocation: boolean
+  readonly enabled: boolean
+  readonly connectionDeviceId: string | null
+  readonly thisDeviceId: string
+  readonly connection: QerkoConnectionStatus["type"]
+}): QerkoPaymentReadiness => {
+  if (!hasLocation) return { type: "notAccepting", blocker: "noLocation" }
+  if (!enabled) return { type: "notAccepting", blocker: "disabled" }
+  if (connectionDeviceId === null) {
+    return { type: "notAccepting", blocker: "noDevice" }
+  }
+  if (connectionDeviceId !== thisDeviceId) return { type: "active" }
+  if (connection === "connected") return { type: "active" }
+  if (connection === "stolen" || connection === "unauthorized") {
+    return { type: "notAccepting", blocker: connection }
+  }
+  return { type: "connecting" }
+}
+
+export const qerkoPaymentReadinessKeys = {
+  active: "settings.qerkoPayment.readiness.active",
+  connecting: "settings.qerkoPayment.readiness.connecting",
+  notAccepting: "settings.qerkoPayment.readiness.notAccepting",
+} satisfies Record<QerkoPaymentReadiness["type"], TranslationKey>
+
+/** How this device's Qerko payment connection reads (qerko/0011). */
+export const qerkoConnectionStatusKeys = {
+  idle: "settings.qerkoPayment.connection.idle",
+  connecting: "settings.qerkoPayment.connection.connecting",
+  connected: "settings.qerkoPayment.connection.connected",
+  reconnecting: "settings.qerkoPayment.connection.reconnecting",
+  stolen: "settings.qerkoPayment.connection.stolen",
+  unauthorized: "settings.qerkoPayment.connection.unauthorized",
+} satisfies Record<QerkoConnectionStatus["type"], TranslationKey>
 
 export const defaultQerkoCountry: QerkoCountry = "CZ"
 

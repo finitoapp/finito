@@ -14,6 +14,7 @@ export const onboardingPaymentMethodOrder = [
   "iban",
   "cardSwitchio",
   "qerkoTerminal",
+  "qerkoPayment",
   "spark",
   "cashu",
   "lightningAddress",

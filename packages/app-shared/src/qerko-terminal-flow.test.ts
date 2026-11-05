@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest"
 
 import {
+  deriveQerkoPaymentReadiness,
+  describeQerkoLocationsFailure,
   describeQerkoPairingFailure,
   describeQerkoPaymentError,
   describeQerkoTerminalStatus,
@@ -8,8 +10,71 @@ import {
   isQerkoCodeComplete,
   isQerkoStepCancellable,
   parseQerkoIdentificationNumber,
+  preselectedQerkoLocationId,
   selectableQerkoLocations,
+  selectableQerkoPaymentLocations,
 } from "./qerko-terminal-flow.ts"
+
+const location = (id: string) => ({
+  id,
+  name: `Cafe ${id}`,
+  address: {
+    street: "Dlouhá",
+    descriptiveNumber: "1",
+    city: "Praha",
+    zipCode: "11000",
+    country: "CZ" as const,
+  },
+})
+
+const qerkoLocations = (
+  ids: ReadonlyArray<string>,
+  pairedLocationId: string | null = null
+) => ({
+  legalEntity: {
+    id: "le",
+    name: "Cafe s.r.o.",
+    identificationNumber: "12345678",
+    country: "CZ" as const,
+  },
+  locations: ids.map(location),
+  pairedLocationId,
+})
+
+describe("Qerko payment locations", () => {
+  test("lists each location with its address on one line", () => {
+    expect(selectableQerkoPaymentLocations(qerkoLocations(["a"]))).toEqual([
+      { locationId: "a", name: "Cafe a", address: "Dlouhá 1, 11000 Praha" },
+    ])
+  })
+
+  test("preselects the paired location, else the only one", () => {
+    expect(preselectedQerkoLocationId(qerkoLocations(["a", "b"], "b"))).toBe(
+      "b"
+    )
+    expect(preselectedQerkoLocationId(qerkoLocations(["a"]))).toBe("a")
+    expect(preselectedQerkoLocationId(qerkoLocations(["a", "b"]))).toBeNull()
+  })
+
+  test("a refused key asks to pair again, an unknown location for another", () => {
+    expect(
+      describeQerkoLocationsFailure({ type: "QerkoHttpError", status: 401 })
+    ).toEqual({
+      key: "settings.qerkoPayment.location.keyRejected",
+      keyRejected: true,
+    })
+    expect(
+      describeQerkoLocationsFailure({ type: "QerkoHttpError", status: 404 })
+    ).toEqual({
+      key: "settings.qerkoPayment.location.notFound",
+      keyRejected: false,
+    })
+    expect(describeQerkoLocationsFailure({ type: "FetchError" })).toEqual({
+      key: "settings.qerkoPayment.location.failed",
+      keyRejected: false,
+    })
+  })
+})
 
 describe("parseQerkoIdentificationNumber", () => {
   test("drops the spaces a company id is grouped by", () => {
@@ -203,5 +268,55 @@ describe("describeQerkoTerminalsFailure", () => {
       key: "settings.qerkoTerminal.terminals.failed",
       keyRejected: false,
     })
+  })
+})
+
+describe("deriveQerkoPaymentReadiness", () => {
+  const ready = {
+    hasLocation: true,
+    enabled: true,
+    connectionDeviceId: "this",
+    thisDeviceId: "this",
+    connection: "connected",
+  } as const
+
+  test("is active once this device is connected, or another device serves", () => {
+    expect(deriveQerkoPaymentReadiness(ready)).toEqual({ type: "active" })
+    expect(
+      deriveQerkoPaymentReadiness({
+        ...ready,
+        connectionDeviceId: "other",
+        connection: "idle",
+      })
+    ).toEqual({ type: "active" })
+  })
+
+  test.each([["idle"], ["connecting"], ["reconnecting"]] as const)(
+    "is connecting while this device's connection is %s",
+    (connection) => {
+      expect(deriveQerkoPaymentReadiness({ ...ready, connection })).toEqual({
+        type: "connecting",
+      })
+    }
+  )
+
+  test("names the first thing that keeps payments out", () => {
+    expect(
+      deriveQerkoPaymentReadiness({
+        ...ready,
+        hasLocation: false,
+        enabled: false,
+      })
+    ).toEqual({ type: "notAccepting", blocker: "noLocation" })
+    expect(deriveQerkoPaymentReadiness({ ...ready, enabled: false })).toEqual({
+      type: "notAccepting",
+      blocker: "disabled",
+    })
+    expect(
+      deriveQerkoPaymentReadiness({ ...ready, connectionDeviceId: null })
+    ).toEqual({ type: "notAccepting", blocker: "noDevice" })
+    expect(
+      deriveQerkoPaymentReadiness({ ...ready, connection: "stolen" })
+    ).toEqual({ type: "notAccepting", blocker: "stolen" })
   })
 })

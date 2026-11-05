@@ -18,6 +18,7 @@ const manualPaymentTransactionIdPrefixes = {
   iban: "accountTransaction:iban:manual:payment:",
   cardSwitchio: "accountTransaction:cardSwitchio:payment:",
   qerkoTerminal: "accountTransaction:qerkoTerminal:payment:",
+  qerkoPayment: "accountTransaction:qerkoPayment:payment:",
 } satisfies Record<PaymentAccountKind, string>
 
 /**
@@ -52,6 +53,14 @@ export const deriveQerkoRefundAccountTransactionId = (
 ): AccountTransactionId =>
   createIdFromString<"AccountTransaction">(
     `accountTransaction:qerkoTerminal:refund:${refundId}`
+  )
+
+/** The id the money a Qerko payment's refund took back is recorded under. */
+export const deriveQerkoPaymentRefundAccountTransactionId = (
+  refundId: RefundId
+): AccountTransactionId =>
+  createIdFromString<"AccountTransaction">(
+    `accountTransaction:qerkoPayment:refund:${refundId}`
   )
 
 /**

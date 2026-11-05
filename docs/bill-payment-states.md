@@ -68,7 +68,7 @@ query performance.
   or the expiry of the invoice the merchant's Lightning address issued,
   `lightning-address/0004`; with both prepared at once, the earlier one).
   `null` means the payment never expires on its own (cash, card terminal
-  — Switchio or Qerko —, IBAN transfer — there is no natural "too late" for those; staff waits as
+  — Switchio or Qerko —, a Qerko payment, IBAN transfer — there is no natural "too late" for those; staff waits as
   long as it takes, or explicitly cancels — see ["Editing
   lock"](#editing-lock)). It describes the payment as a whole, and payment
   methods are not mutually exclusive, so it is only non-`null` while *every*
@@ -134,6 +134,14 @@ the payment arrived late — the money is real regardless of the clock, so it
 still counts as Paid.
 
 **Pending** is the status that matters for locking a bill — see below.
+
+**A Qerko attempt is not a status.** While the customer pays a Qerko payment
+(the QR one) in the Qerko app, its `qerkoPaymentAttempt` is `started` or
+`processing` (derived from its write-once columns, `qerko/0013`), and the
+payment stays **Pending**: only Qerko's `PAID` records the money and its claim
+(`qerko/0008`). A failed attempt leaves the payment Pending too, so the
+customer can try again; another attempt is refused only while one is still in
+progress.
 
 ### Guard
 
@@ -221,6 +229,13 @@ meanwhile, and the refund, its lines and the money leaving the Qerko account
 are written together on approval ([`qerko/0004`](decisions/qerko/0004-a-card-refund-is-recorded-only-once-the-terminal-approved-it.md)).
 It is offered only for a payment taken through Qerko, and `refundPayment`
 does not accept that method.
+
+A Qerko payment (the QR one) is refunded whole or not at all: Qerko cancels
+it, which returns all of it, and the refund is recorded as its goods and its
+tip once Qerko says `CANCELLED`
+([`qerko/0010`](decisions/qerko/0010-a-qerko-payment-is-refunded-whole-once-qerko-cancelled-it.md)).
+It is refused once part of the payment is refunded another way, and
+`refundPayment` does not accept that method either.
 
 A refund is not a state. It never touches `canceledAt`, `confirmedPaidAt` or
 any claim, so the payment stays Paid, and coverage still sums the claimed

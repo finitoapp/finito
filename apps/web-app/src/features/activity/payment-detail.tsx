@@ -39,6 +39,7 @@ import {
   paymentDetailQuery,
   paymentQerkoTerminalByIdQuery,
   paymentReconciliationsQuery,
+  qerkoPaymentAttemptsByPaymentIdQuery,
 } from "@payky/core/modules/payment/payment-queries"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-number/payment-number-queries"
@@ -90,6 +91,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx"
 import { BillCancellationCollisionPanel } from "@/features/activity/bill-cancellation-collision-panel.tsx"
 import { BillCoverageWarning } from "@/features/activity/bill-coverage-warning.tsx"
 import { billStatusBadgeClassName } from "@/features/activity/bill-status-display.ts"
+import { PaymentQerkoAttempts } from "@/features/activity/payment-qerko-attempts.tsx"
 import {
   PaymentDetailRefunds,
   paymentRefundsQueries,
@@ -162,6 +164,7 @@ function PaymentDetailContent({
     paymentReconciliationsQuery(paymentId),
     paymentNumberByPaymentIdQuery(paymentId),
     eetSalesByPaymentIdQuery(paymentId),
+    qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
     ...paymentRefundsQueries(paymentId),
   ])
   const { t } = useTranslation()
@@ -323,6 +326,7 @@ function PaymentDetailContent({
                 })}
               </span>
             ) : null}
+            <PaymentQerkoAttempts paymentId={paymentId} />
             {payment.canceledAt === null ? null : (
               <span className="text-sm text-muted-foreground">
                 {t("paymentDetail.canceledAtValue", {

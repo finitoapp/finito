@@ -79,6 +79,65 @@ export const skSettings = {
   "settings.qerkoTerminal.company.identificationNumber.invalid":
     "Zadajte IČO firmy.",
   "settings.qerkoTerminal.company.identificationNumber.label": "IČO",
+  "settings.qerkoPayment.title": "Platby cez Qerko",
+  "settings.qerkoPayment.unpaired.description":
+    "Prepojte účet firmy v Qerku a zákazníci budú platiť naskenovaním QR kódu platby v aplikácii Qerko. Qerko pošle potvrdzovací kód na e-mail firmy.",
+  "settings.qerkoPayment.confirm.description":
+    "Platby cez Qerko prijíma vždy jedno zariadenie účtu, za všetky zariadenia. Nechajte ho zapnuté s otvorenou aplikáciou, kým zákazníci platia.",
+  "settings.qerkoPayment.confirm.thisDevice":
+    "Toto zariadenie prijíma platby cez Qerko",
+  "settings.qerkoPayment.confirm.finish": "Dokončiť",
+  "settings.qerkoPayment.paired.title": "Prepojené s Qerkom",
+  "settings.qerkoPayment.paired.description":
+    "Zákazníci platia naskenovaním QR kódu platby v aplikácii Qerko.",
+  "settings.qerkoPayment.paired.device": "Prijíma platby",
+  "settings.qerkoPayment.paired.connection": "Spojenie",
+  "settings.qerkoPayment.device.none": "Žiadne zariadenie",
+  "settings.qerkoPayment.device.this": "{name} (toto zariadenie)",
+  "settings.qerkoPayment.device.other": "Iné zariadenie",
+  "settings.qerkoPayment.acceptHere": "Prijímať na tomto zariadení",
+  "settings.qerkoPayment.stopHere": "Prestať prijímať tu",
+  "settings.qerkoPayment.sandbox": "Sandbox",
+  "settings.qerkoPayment.connection.idle": "Nepripojené",
+  "settings.qerkoPayment.connection.connecting": "Pripájam…",
+  "settings.qerkoPayment.connection.connected": "Pripojené",
+  "settings.qerkoPayment.connection.reconnecting":
+    "Spojenie sa prerušilo, pripájam znova…",
+  "settings.qerkoPayment.connection.stolen":
+    "Platby cez Qerko prevzalo iné spojenie. Zvoľte toto zariadenie znova, aby ste ich vrátili sem.",
+  "settings.qerkoPayment.connection.unauthorized":
+    "Qerko už toto spojenie neprijíma. Zrušte spárovanie a spárujte znova.",
+  "settings.qerkoPayment.status.noDevice":
+    "Žiadne zariadenie neprijíma platby cez Qerko",
+  "settings.qerkoPayment.unpair.confirm.description":
+    "Platby cez Qerko skončia na všetkých zariadeniach. Už prijaté platby zostanú, ako sú.",
+  "settings.qerkoPayment.location.title": "Vyberte prevádzku",
+  "settings.qerkoPayment.location.description":
+    "Platby cez Qerko pôjdu na prevádzku, ktorú tu zvolíte. Zmeniť ju pôjde len zrušením spárovania a novým spárovaním.",
+  "settings.qerkoPayment.location.label": "Prevádzka",
+  "settings.qerkoPayment.location.empty":
+    "Qerko pri tejto firme neeviduje žiadnu aktívnu prevádzku.",
+  "settings.qerkoPayment.location.failed":
+    "Prevádzky sa nepodarilo načítať. Skontrolujte pripojenie a skúste to znova.",
+  "settings.qerkoPayment.location.keyRejected":
+    "Qerko už toto spojenie neprijíma. Zrušte spárovanie a spárujte znova.",
+  "settings.qerkoPayment.location.notFound":
+    "Qerko túto prevádzku už nepozná. Vyberte inú.",
+  "settings.qerkoPayment.location.retry": "Skúsiť znova",
+  "settings.qerkoPayment.location.use": "Použiť túto prevádzku",
+  "settings.qerkoPayment.location.none": "Prevádzka nevybraná",
+  "settings.qerkoPayment.paired.company": "Firma",
+  "settings.qerkoPayment.readiness.active": "Aktívne",
+  "settings.qerkoPayment.readiness.connecting": "Pripájam…",
+  "settings.qerkoPayment.readiness.notAccepting": "Neprijíma platby",
+  "settings.qerkoPayment.paired.enabled": "Metóda zapnutá",
+  "settings.qerkoPayment.paired.success.title": "Platby cez Qerko sú zapnuté",
+  "settings.qerkoPayment.paired.success.description":
+    "Zákazníci zaplatia naskenovaním QR kódu na obrazovke platby, v záložke Qerko.",
+  "settings.qerkoPayment.paired.success.noDevice":
+    "Zatiaľ ich však neprijíma žiadne zariadenie. Zvoľte ho nižšie.",
+  "settings.qerkoPayment.enabled.label": "Zapnúť platby cez Qerko",
+  "settings.qerkoPayment.status.notPaired": "Nespárované s Qerkom",
   "settings.qerkoTerminal.enabled.label": "Zapnúť terminál Qerko",
   "settings.qerkoTerminal.environment.description":
     "Sandbox pracuje s testovacími údajmi a nestrháva peniaze zo žiadnej skutočnej karty. Vyberte ho len na vyskúšanie prepojenia.",
@@ -654,6 +713,7 @@ export const skSettings = {
   "settings.paymentAccounts.method.iban": "Bankový prevod",
   "settings.paymentAccounts.method.cashu": "Cashu",
   "settings.paymentAccounts.method.cardSwitchio": "Platobná karta",
+  "settings.paymentAccounts.method.qerkoPayment": "Platba cez Qerko (QR)",
   "settings.paymentAccounts.method.qerkoTerminal": "Platobný terminál (Qerko)",
   "settings.paymentAccounts.method.spark": "Bitcoin",
   "settings.paymentAccounts.moveDown.aria": "Posunúť {name} nadol",

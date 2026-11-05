@@ -13,6 +13,7 @@ export const AccountKindSchema = z.enum([
   "cashRegister",
   "cardSwitchio",
   "qerkoTerminal",
+  "qerkoPayment",
   "cashu",
   "lightningAddress",
 ])

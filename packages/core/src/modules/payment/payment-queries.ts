@@ -7,7 +7,7 @@ import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { NonEmptyString, NonEmptyString255 } from "../shared/schema.ts"
-import type { PaymentId } from "./payment-types.ts"
+import type { PaymentId, QerkoPaymentAttemptId } from "./payment-types.ts"
 
 /**
  * Just the payment fields bill coverage needs, plus the satoshis each
@@ -201,11 +201,17 @@ export const paymentNonExpiringMethodsByIdQuery = (idValue: PaymentId) =>
           .onRef("paymentQerkoTerminal.id", "=", "payment.id")
           .on("paymentQerkoTerminal.isDeleted", "is not", sqliteTrue)
       )
+      .leftJoin("paymentQerkoPayment", (join) =>
+        join
+          .onRef("paymentQerkoPayment.id", "=", "payment.id")
+          .on("paymentQerkoPayment.isDeleted", "is not", sqliteTrue)
+      )
       .select([
         "paymentIban.accountId as ibanAccountId",
         "paymentCashRegister.accountId as cashRegisterAccountId",
         "paymentCardSwitchio.accountId as cardAccountId",
         "paymentQerkoTerminal.accountId as qerkoAccountId",
+        "paymentQerkoPayment.accountId as qerkoPaymentAccountId",
       ])
       .where("payment.id", "=", idValue)
       .where("payment.isDeleted", "is not", sqliteTrue)
@@ -231,6 +237,86 @@ export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
  * for the previous attempt, and `syncQerkoTerminalPayment` for the one it
  * polls.
  */
+/** The Qerko payment row of a payment: present once the method was prepared. */
+export const paymentQerkoPaymentByIdQuery = (idValue: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("paymentQerkoPayment")
+      .select(["id", "accountId"])
+      .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("accountId", "is not", null)
+      .$narrowType<{ accountId: KyselyNotNull }>()
+  )
+
+const qerkoPaymentAttemptColumns = [
+  "id",
+  "paymentId",
+  "qerkoPaymentId",
+  "startedAt",
+  "processingAt",
+  "closedAt",
+  "outcome",
+  "failureReason",
+  "chargedAmount",
+  "providers",
+] as const
+
+/** One Qerko attempt, by the id `createQerkoPaymentAttemptId` derives. */
+export const qerkoPaymentAttemptByIdQuery = (idValue: QerkoPaymentAttemptId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("qerkoPaymentAttempt")
+      .select(qerkoPaymentAttemptColumns)
+      .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("paymentId", "is not", null)
+      .where("qerkoPaymentId", "is not", null)
+      .where("startedAt", "is not", null)
+      .$narrowType<{
+        paymentId: KyselyNotNull
+        qerkoPaymentId: KyselyNotNull
+        startedAt: KyselyNotNull
+      }>()
+  )
+
+/** A payment's Qerko attempts, oldest first: its history in Qerko. */
+export const qerkoPaymentAttemptsByPaymentIdQuery = (idValue: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("qerkoPaymentAttempt")
+      .select(qerkoPaymentAttemptColumns)
+      .where("paymentId", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("qerkoPaymentId", "is not", null)
+      .where("startedAt", "is not", null)
+      .orderBy("startedAt")
+      .orderBy("id")
+      .$narrowType<{
+        paymentId: KyselyNotNull
+        qerkoPaymentId: KyselyNotNull
+        startedAt: KyselyNotNull
+      }>()
+  )
+
+/** Every Qerko attempt still in progress, whichever payment it belongs to. */
+export const pendingQerkoPaymentAttemptsQuery = createQuery((db) =>
+  db
+    .selectFrom("qerkoPaymentAttempt")
+    .select(qerkoPaymentAttemptColumns)
+    .where("closedAt", "is", null)
+    .where("isDeleted", "is not", sqliteTrue)
+    .where("paymentId", "is not", null)
+    .where("qerkoPaymentId", "is not", null)
+    .where("startedAt", "is not", null)
+    .orderBy("startedAt")
+    .$narrowType<{
+      paymentId: KyselyNotNull
+      qerkoPaymentId: KyselyNotNull
+      startedAt: KyselyNotNull
+    }>()
+)
+
 export const paymentQerkoTerminalByIdQuery = (idValue: PaymentId) =>
   createQuery((db) =>
     db
@@ -883,6 +969,11 @@ export const paymentRequestQuery = (paymentId: PaymentId) =>
           .onRef("paymentQerkoTerminal.id", "=", "payment.id")
           .on("paymentQerkoTerminal.isDeleted", "is not", sqliteTrue)
       )
+      .leftJoin("paymentQerkoPayment", (join) =>
+        join
+          .onRef("paymentQerkoPayment.id", "=", "payment.id")
+          .on("paymentQerkoPayment.isDeleted", "is not", sqliteTrue)
+      )
       .leftJoin("paymentCashu", (join) =>
         join
           .onRef("paymentCashu.id", "=", "payment.id")
@@ -917,6 +1008,7 @@ export const paymentRequestQuery = (paymentId: PaymentId) =>
         "paymentQerkoTerminal.unresolvedTransactionId as qerkoUnresolvedTransactionId",
         "paymentQerkoTerminal.failureReason as qerkoFailureReason",
         "paymentQerkoTerminal.terminalId as qerkoTerminalId",
+        "paymentQerkoPayment.accountId as qerkoPaymentAccountId",
         "paymentCashu.accountId as cashuAccountId",
         "paymentCashu.amountSats as cashuAmountSats",
         "paymentCashu.lnInvoice as cashuLnInvoice",

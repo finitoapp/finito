@@ -13,6 +13,7 @@ import type { CashuPaymentRequestLegs } from "../../cashu/cashu-payment-request.
 import type { CashuShardStoreDep } from "../../cashu/cashu-shard-store.ts"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import { updateFioPluginAccountRow } from "../fio-plugin/fio-plugin-actions.ts"
 import { fioPluginByIdQuery } from "../fio-plugin/fio-plugin-queries.ts"
 import { fioPluginId } from "../fio-plugin/fio-plugin-utils.ts"
@@ -46,6 +47,7 @@ import {
   cashuAccountQuery,
   fiatBankAccountQuery,
   lightningAddressAccountQuery,
+  qerkoPaymentAccountQuery,
   qerkoTerminalAccountQuery,
   sparkAccountQuery,
 } from "./account-queries.ts"
@@ -57,6 +59,7 @@ import {
   createCashuAccountId,
   createIbanAccountId,
   createLightningAddressAccountId,
+  createQerkoPaymentAccountId,
   createQerkoTerminalAccountId,
   createSparkAccountId,
 } from "./account-utils.ts"
@@ -751,6 +754,103 @@ export const saveQerkoTerminalAccount =
     })
 
     return ok(id)
+  }
+
+/**
+ * Enables or disables Qerko payments (qerko/0007), mirroring
+ * {@link saveQerkoTerminalAccount}. A currency change moves to that
+ * currency's account and takes the device holding the connection with it.
+ */
+export const saveQerkoPaymentAccount =
+  ({
+    enabled,
+    currency,
+  }: {
+    readonly enabled: boolean
+    readonly currency: FiatCurrency
+  }): Task<AccountId | null, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+
+    const [current] = await evolu.loadQuery(qerkoPaymentAccountQuery)
+
+    if (!enabled) {
+      if (current === undefined) return ok(null)
+
+      await runMutationWithCompletion((options) =>
+        evolu.update(
+          "account",
+          { id: current.id, isDeleted: sqliteTrue },
+          { ...options, owner: evoluOwner }
+        )
+      )
+
+      return ok(current.id)
+    }
+
+    const id = createQerkoPaymentAccountId(currency)
+    const moved = current !== undefined && current.id !== id
+
+    await runMutationWithCompletion((options) => {
+      const mutationOptions = { ...options, owner: evoluOwner }
+
+      evolu.upsert(
+        "accountQerkoPayment",
+        removeUndefinedValues({
+          id,
+          currency,
+          connectionDeviceId: moved ? current.connectionDeviceId : undefined,
+        }),
+        mutationOptions
+      )
+
+      if (moved) {
+        evolu.update(
+          "account",
+          { id: current.id, isDeleted: sqliteTrue },
+          mutationOptions
+        )
+      }
+
+      return evolu.upsert(
+        "account",
+        {
+          id,
+          deviceId: null,
+          name: NonEmptyString255("Qerko"),
+          kind: "qerkoPayment",
+          isDeleted: sqliteFalse,
+        },
+        mutationOptions
+      )
+    })
+
+    return ok(id)
+  }
+
+/**
+ * Names the device that holds Qerko's one websocket and serves every device's
+ * Qerko payments (qerko/0011); `null` leaves no device serving them. Choosing
+ * another device takes the connection over: the chosen one connects, and the
+ * one that held it sees the change and disconnects.
+ */
+export const setQerkoPaymentConnectionDevice =
+  ({
+    accountId,
+    deviceId,
+  }: {
+    readonly accountId: AccountId
+    readonly deviceId: DeviceId | null
+  }): Task<void, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "accountQerkoPayment",
+        { id: accountId, connectionDeviceId: deviceId },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok()
   }
 
 /**

@@ -12,6 +12,7 @@ export const DefaultPaymentMethodSchema = z.enum([
   "iban",
   "cardSwitchio",
   "qerkoTerminal",
+  "qerkoPayment",
   "cashu",
   "lightningAddress",
 ])

@@ -11,6 +11,7 @@ import {
   minorUnitsToDecimalString,
 } from "../../modules/shared/money.ts"
 import { Integer } from "../../modules/shared/schema.ts"
+import { type QerkoWirePayment, QerkoWirePaymentSchema } from "./qerko-rpc.ts"
 
 /**
  * Qerko POS API v4 (`docs/qerko.md`): remote control of a payment terminal
@@ -27,6 +28,50 @@ export const qerkoBaseUrls = {
   production: "https://qerko.com/api/v4/pos",
   sandbox: "https://sandbox.qerko.com/api/v4/pos",
 } satisfies Record<QerkoEnvironment, string>
+
+/**
+ * Qerko's POS websocket (`qerko-rpc.ts`). REST is v4, but Qerko serves the
+ * websocket only under v2/v3, so its path is not the REST base's.
+ */
+export const qerkoSocketUrls = {
+  production: "wss://qerko.com/api/v2/pos/ws",
+  sandbox: "wss://sandbox.qerko.com/api/v2/pos/ws",
+} satisfies Record<QerkoEnvironment, string>
+
+/** The websocket of an environment, under the e2e builds' base URL when set. */
+export const getQerkoSocketUrl = (
+  qerkoApi: QerkoApiDep["qerkoApi"],
+  environment: QerkoEnvironment
+): string =>
+  qerkoApi.baseUrl === undefined
+    ? qerkoSocketUrls[environment]
+    : `${qerkoApi.baseUrl.replace(/^http/, "ws")}/ws`
+
+/**
+ * The host of a Qerko payment's QR code. It is production's for both
+ * environments: the Qerko app in sandbox mode reads the same codes.
+ */
+export const qerkoQrBaseUrl = "https://qerko.com"
+
+/**
+ * What a Qerko payment's QR code holds: the restaurant, and after `~` the
+ * identifier Qerko hands back to `searchBills` — the payment's id.
+ */
+export const createQerkoPaymentQrPayload = ({
+  restaurantId,
+  qrIdentifier,
+}: {
+  readonly restaurantId: string
+  readonly qrIdentifier: string
+}): string => `${qerkoQrBaseUrl}/~qr/pos/${restaurantId}~${qrIdentifier}`
+
+/**
+ * What a pairing's API key may do. Each Qerko payment method pairs on its
+ * own (qerko/0007): `terminalPayments` drives the card terminal, `standard`
+ * serves Qerko payments over the POS websocket and the REST calls beside it.
+ */
+export const QerkoRoleSchema = z.enum(["terminalPayments", "standard"])
+export type QerkoRole = z.output<typeof QerkoRoleSchema>
 
 /** The currencies Payky has an account kind for; the API also knows HUF/PLN. */
 export const QerkoCurrencySchema = z.enum(["CZK", "EUR", "USD"])
@@ -306,10 +351,12 @@ export const requestQerkoPairing =
     environment,
     identificationNumber,
     country,
+    role,
   }: {
     readonly environment: QerkoEnvironment
     readonly identificationNumber: string
     readonly country: QerkoCountry
+    readonly role: QerkoRole
   }): Task<
     {
       readonly pairingRequestId: string
@@ -326,7 +373,7 @@ export const requestQerkoPairing =
         body: {
           identificationNumber,
           country,
-          roles: ["terminalPayments"],
+          roles: [role],
         },
         schema: z.object({
           pairingRequestId: z.string().min(1),
@@ -370,6 +417,120 @@ export const confirmQerkoPairing = ({
     body: { pairingRequestId, code, name },
     schema: ConfirmPairingResponseSchema,
     what: "pairing confirmation",
+  })
+
+// Locations (the standard role)
+
+const LocationsResponseSchema = z.object({
+  legalEntity: z.object({
+    id: z.string(),
+    name: z.string(),
+    identificationNumber: z.string(),
+    country: QerkoCountrySchema,
+  }),
+  locations: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string(),
+      address: z.object({
+        street: z.string(),
+        descriptiveNumber: z.string(),
+        city: z.string(),
+        zipCode: z.string(),
+        country: QerkoCountrySchema,
+      }),
+    })
+  ),
+  pairedLocationId: z.string().nullable(),
+})
+
+/**
+ * The company a `standard` key belongs to and its locations (`get-locations`).
+ * A freshly issued key is paired with no location, and Qerko refuses the rest
+ * of its API until it is (`pairQerkoLocation`, qerko/0007); this call is the
+ * one that works before, so it is also the first proof the key works.
+ */
+export type QerkoLocations = z.output<typeof LocationsResponseSchema>
+
+export const getQerkoLocations = (
+  credentials: QerkoCredentials
+): Task<QerkoLocations, QerkoClientError, QerkoApiDep & FetchDep> =>
+  post({
+    environment: credentials.environment,
+    apiKey: credentials.apiKey,
+    path: "get-locations",
+    body: {},
+    schema: LocationsResponseSchema,
+    what: "locations",
+  })
+
+/**
+ * Pairs a `standard` key with one of its company's locations. Its id is the
+ * restaurant a Qerko payment's QR code names. Pairing the location the key
+ * already has changes nothing; Qerko answers an unknown one with 404.
+ */
+export const pairQerkoLocation =
+  ({
+    credentials,
+    locationId,
+  }: {
+    readonly credentials: QerkoCredentials
+    readonly locationId: string
+  }): Task<void, QerkoClientError, QerkoApiDep & FetchDep> =>
+  async (run) => {
+    const paired = await run(
+      post({
+        environment: credentials.environment,
+        apiKey: credentials.apiKey,
+        path: "pair-location",
+        body: { locationId },
+        schema: z.object({ status: z.literal("Accepted") }),
+        what: "location pairing",
+      })
+    )
+    return paired.ok ? ok() : paired
+  }
+
+// Qerko payments (the standard role)
+
+/**
+ * One Qerko payment (`get-payment`), what a Qerko payment's state is read
+ * from when `paymentClosed` never arrived (qerko/0012).
+ */
+export const getQerkoPayment = ({
+  credentials,
+  paymentId,
+}: {
+  readonly credentials: QerkoCredentials
+  readonly paymentId: string
+}): Task<QerkoWirePayment, QerkoClientError, QerkoApiDep & FetchDep> =>
+  post({
+    environment: credentials.environment,
+    apiKey: credentials.apiKey,
+    path: "get-payment",
+    body: { paymentId },
+    schema: QerkoWirePaymentSchema,
+    what: "payment",
+  })
+
+/**
+ * Cancels a paid Qerko payment, which refunds all of it (`cancel-payment`):
+ * Qerko knows no partial refund. Done once the answer says `CANCELLED`.
+ */
+export const cancelQerkoPayment = ({
+  credentials,
+  paymentId,
+}: {
+  readonly credentials: QerkoCredentials
+  readonly paymentId: string
+}): Task<QerkoWirePayment, QerkoClientError, QerkoApiDep & FetchDep> =>
+  post({
+    environment: credentials.environment,
+    apiKey: credentials.apiKey,
+    path: "cancel-payment",
+    body: { paymentId },
+    schema: QerkoWirePaymentSchema,
+    what: "payment cancellation",
   })
 
 // Terminals

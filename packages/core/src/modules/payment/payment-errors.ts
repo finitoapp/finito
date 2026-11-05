@@ -151,6 +151,15 @@ export type QerkoTerminalAccountNotFoundError = ReturnType<
   typeof createQerkoTerminalAccountNotFoundError
 >
 
+export const createQerkoPaymentAccountNotFoundError = defineError(
+  "QerkoPaymentAccountNotFound"
+)<{
+  readonly id: AccountId
+}>()
+export type QerkoPaymentAccountNotFoundError = ReturnType<
+  typeof createQerkoPaymentAccountNotFoundError
+>
+
 export const createAccountCurrencyMismatchError = defineError(
   "AccountCurrencyMismatch"
 )<{
@@ -343,6 +352,7 @@ export type PreparePaymentMethodError =
   | CashRegisterAccountNotFoundError
   | CardSwitchioAccountNotFoundError
   | QerkoTerminalAccountNotFoundError
+  | QerkoPaymentAccountNotFoundError
   | AccountCurrencyMismatchError
   | AccountSparkNotFoundError
   | IbanAccountNotFoundError
@@ -411,3 +421,65 @@ export type SyncQerkoTerminalPaymentError =
   | QerkoPluginNotPairedError
   | QerkoTerminalPaymentFailedError
   | QerkoClientError
+
+/**
+ * Qerko asked for a bill Payky does not offer through Qerko: no such payment,
+ * or one whose Qerko payment method was never prepared (`BILL_NOT_FOUND`).
+ */
+export const createQerkoBillNotFoundError = defineError("QerkoBillNotFound")<{
+  readonly idBill: string
+}>()
+export type QerkoBillNotFoundError = ReturnType<
+  typeof createQerkoBillNotFoundError
+>
+
+/** The payment is no longer waiting for money (`BILL_CLOSED`). */
+export const createQerkoBillClosedError = defineError("QerkoBillClosed")<{
+  readonly id: PaymentId
+}>()
+export type QerkoBillClosedError = ReturnType<typeof createQerkoBillClosedError>
+
+/** Another Qerko payment of the payment is still in progress (`BILL_LOCKED`). */
+export const createQerkoBillLockedError = defineError("QerkoBillLocked")<{
+  readonly id: PaymentId
+  readonly qerkoPaymentId: NonEmptyString255
+}>()
+export type QerkoBillLockedError = ReturnType<typeof createQerkoBillLockedError>
+
+/**
+ * `paymentStart` does not match the bill Payky offered — another currency or
+ * amount, a discount, a tip (`INVALID_DATA`): Qerko refreshes the bill and
+ * tries again.
+ */
+export const createQerkoInvalidDataError = defineError("QerkoInvalidData")<{
+  readonly id: PaymentId
+  readonly reason: "currency" | "amount" | "discount"
+}>()
+export type QerkoInvalidDataError = ReturnType<
+  typeof createQerkoInvalidDataError
+>
+
+/** Qerko names a Qerko payment that `paymentStart` never recorded. */
+export const createQerkoPaymentAttemptNotFoundError = defineError(
+  "QerkoPaymentAttemptNotFound"
+)<{
+  readonly qerkoPaymentId: string
+}>()
+export type QerkoPaymentAttemptNotFoundError = ReturnType<
+  typeof createQerkoPaymentAttemptNotFoundError
+>
+
+export type ResolveQerkoBillError =
+  | QerkoBillNotFoundError
+  | QerkoBillClosedError
+
+export type StartQerkoPaymentError =
+  | ResolveQerkoBillError
+  | QerkoBillLockedError
+  | QerkoInvalidDataError
+
+export type SettleQerkoPaymentError =
+  | QerkoPaymentAttemptNotFoundError
+  | PaymentNotFoundError
+  | QerkoPaymentAccountNotFoundError
+  | AccountCurrencyMismatchError

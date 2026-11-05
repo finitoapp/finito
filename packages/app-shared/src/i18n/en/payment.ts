@@ -58,6 +58,20 @@ export const enPayment = {
   "paymentDetail.refunds.action": "Refund money",
   "paymentDetail.refunds.method.cashRegister": "From the cash register",
   "paymentDetail.refunds.method.outside": "Outside {appName}",
+  "paymentDetail.refunds.method.qerkoPayment": "In Qerko",
+  "paymentDetail.refunds.qerkoPaymentAction": "Refund in Qerko ({amount})",
+  "refund.qerkoPayment.confirm.title": "Refund the payment in Qerko?",
+  "refund.qerkoPayment.confirm.description":
+    "Qerko returns the whole payment, {amount}, to how the customer paid. This cannot be undone.",
+  "refund.qerkoPayment.confirm.confirm": "Refund",
+  "refund.qerkoPayment.confirm.cancel": "Cancel",
+  "refund.qerkoPayment.done": "Qerko refunded the payment.",
+  "refund.qerkoPayment.error.notAvailable":
+    "This payment cannot be refunded in Qerko: it was not paid there, or part of it is refunded already.",
+  "refund.qerkoPayment.error.notCancelled":
+    "Qerko did not refund the payment. Try again later.",
+  "refund.qerkoPayment.error.unreachable":
+    "Qerko could not be reached. Check the connection and try again.",
   "paymentDetail.refunds.method.qerkoTerminal": "To the card",
   "paymentDetail.refunds.title": "Refunds",
   "paymentDetail.refunds.tipAction": "Refund the tip ({amount})",
@@ -117,6 +131,17 @@ export const enPayment = {
   "paymentDetail.invalidId": "Invalid payment id.",
   "paymentDetail.notFound": "Payment was not found.",
   "paymentDetail.paymentMethod.card": "Payment card",
+  "paymentDetail.qerkoAttempts.title": "In Qerko",
+  "paymentDetail.qerkoAttempts.state.started": "Started",
+  "paymentDetail.qerkoAttempts.state.processing": "Being confirmed",
+  "paymentDetail.qerkoAttempts.state.paid": "Paid",
+  "paymentDetail.qerkoAttempts.state.failed": "Did not go through",
+  "paymentDetail.qerkoProvider.card": "card",
+  "paymentDetail.qerkoProvider.mealTicket": "meal voucher",
+  "paymentDetail.qerkoProvider.voucher": "voucher",
+  "paymentDetail.qerkoProvider.bankTransfer": "bank transfer",
+  "paymentDetail.qerkoProvider.invoice": "invoice",
+  "paymentDetail.paymentMethod.qerkoPayment": "Qerko",
   "paymentDetail.paymentMethod.qerkoTerminal": "Payment card (terminal)",
   "paymentDetail.paymentMethod.qerkoTerminalTid":
     "Payment card (terminal {tid})",
@@ -245,6 +270,18 @@ export const enPayment = {
   "paymentWait.ibanPaid.pending": "Confirming...",
   "paymentWait.invalidId": "Invalid payment id.",
   "paymentWait.method.cashu": "Cashu",
+  "paymentWait.method.qerkoPayment": "Qerko",
+  "paymentWait.preparing.qerkoPayment": "Preparing the Qerko payment…",
+  "paymentWait.qerkoPayment.scan":
+    "The customer scans the code in the Qerko app.",
+  "paymentWait.qerkoPayment.started": "The customer is paying in Qerko…",
+  "paymentWait.qerkoPayment.processing": "Qerko is confirming the payment…",
+  "paymentWait.qerkoPayment.failed":
+    "The payment in Qerko did not go through. The customer can try again.",
+  "paymentWait.qerkoPayment.noDevice":
+    "No device accepts Qerko payments. Choose one in the settings.",
+  "paymentWait.qerkoPayment.disconnected":
+    "This device is not connected to Qerko, so customers cannot pay yet.",
   "paymentWait.method.qerko": "Terminal",
   "paymentWait.preparing.cashu": "Preparing Cashu request...",
   "paymentWait.cashu.quoteExpired":

@@ -19,6 +19,7 @@ export type PaymentMethodTab =
   | "cash"
   | "card"
   | "qerko"
+  | "qerkoPayment"
   | "cashu"
   | "lightningAddress"
 
@@ -42,6 +43,13 @@ export type PaymentMethodOption = PaymentMethodOptionBase &
     | { readonly id: "cash"; readonly qrPayload: null }
     | { readonly id: "card"; readonly qrPayload: null }
     | { readonly id: "qerko"; readonly qrPayload: null }
+    | {
+        readonly id: "qerkoPayment"
+        /** Qerko's QR for the restaurant and this payment, once prepared. */
+        readonly qrPayload: string | null
+        /** The device serving Qerko payments, `null` when none does. */
+        readonly connectionDeviceId: string | null
+      }
     | {
         readonly id: "cashu"
         /** The BIP-321 URI with the mint's invoice (and later a NUT-18 request). */
