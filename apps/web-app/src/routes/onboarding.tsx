@@ -1,5 +1,5 @@
+import { LanguageSchema } from "@payky/app-shared/i18n/language-schema"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import { LandingLanguageSchema } from "@payky/web-shared/landing-redirect"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 import { evoluAtom } from "@/atoms/evolu.ts"
@@ -7,7 +7,7 @@ import { OnboardingPage } from "@/features/onboarding/onboarding-page.tsx"
 
 const OnboardingSearchSchema = z.object({
   /** The language of the landing page the visitor came from (landing/0003). */
-  lang: LandingLanguageSchema.optional().catch(undefined),
+  lang: LanguageSchema.optional().catch(undefined),
 })
 
 export const Route = createFileRoute("/onboarding")({

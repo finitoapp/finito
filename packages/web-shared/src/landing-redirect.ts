@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core"
+import { LanguageSchema } from "@payky/app-shared/i18n/language-schema"
 import { jsonCodec } from "@payky/core/zod-utils"
 import { z } from "zod"
 export type Language = "cs" | "en" | "sk"
@@ -42,11 +43,8 @@ export const createLandingSitePaths = (
 /** Payky's landing, where the web app sends a visitor (landing/0001). */
 export const landingPaths = createLandingSitePaths("/landing").home
 
-export const LandingLanguageSchema: z.ZodType<Language> = z.enum([
-  "cs",
-  "en",
-  "sk",
-])
+/** The landing's languages are the app's (`LanguageSchema`). */
+export const LandingLanguageSchema: z.ZodType<Language> = LanguageSchema
 
 const LandingLanguageJson = jsonCodec(LandingLanguageSchema)
 

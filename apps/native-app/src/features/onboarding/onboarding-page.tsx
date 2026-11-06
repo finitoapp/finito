@@ -1,5 +1,5 @@
 import { brandName, paykyBrand } from "@payky/app-shared/brand"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import type { Language, TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   initialOnboardingFormState,
   type OnboardingStep,
@@ -58,7 +58,11 @@ import {
   useEvoluQuery,
 } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
-import { useSetLocale, useTranslation } from "../../hooks/use-translation.ts"
+import {
+  useSetLanguage,
+  useSetLocale,
+  useTranslation,
+} from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight, maxWidth } from "../../theme/tokens.ts"
 import { OpenAccountFlow } from "../shared/open-account-flow.tsx"
 import { useRestoreAccount } from "../shared/use-restore-account.ts"
@@ -97,10 +101,16 @@ const ONBOARDING_PADDING_X = 20
  * screen with the two ways in, a business setup page, and a restore page
  * that also offers the transfer from another device. The steps and the
  * form live in `onboardingFormAtom`, shared with web, so the restore sync
- * page can send a phrase back here.
+ * page can send a phrase back here. `landingLanguage` is the `?lang=` of
+ * the landing page that sent the visitor here (landing/0003).
  */
-export function OnboardingPage() {
+export function OnboardingPage({
+  landingLanguage,
+}: {
+  readonly landingLanguage?: Language | undefined
+}) {
   const { language, t } = useTranslation()
+  const setLanguage = useSetLanguage()
   const runToast = useRunToast()
   const setLocale = useSetLocale()
   const [settings] = useEvoluQuery(settingsQuery).data
@@ -150,6 +160,16 @@ export function OnboardingPage() {
   useEffect(() => {
     if (settings !== undefined) router.replace("/")
   }, [settings])
+
+  // A visitor arriving from the landing page continues in its language; a
+  // device whose account is set up keeps its own (landing/0003) and the
+  // effect above takes it home. The parameter is dropped once read, so a
+  // reload or Back does not undo a language picked here meanwhile.
+  useEffect(() => {
+    if (landingLanguage === undefined || settings !== undefined) return
+    setLanguage(landingLanguage)
+    router.setParams({ lang: undefined })
+  }, [landingLanguage, settings, setLanguage])
 
   const businessDetailsInvalid =
     validation.ibanInvalid || validation.businessNameInvalid

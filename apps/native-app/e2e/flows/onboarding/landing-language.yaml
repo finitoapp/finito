@@ -1,0 +1,16 @@
+# web landing-redirect.spec.ts: "the app starts in the language of the
+# landing page it was opened from" (landing/0003). Finito's landing links
+# app.finito.fit/onboarding?lang=, so web only.
+appId: ${APP_ID}
+tags: [onboarding]
+---
+- runFlow:
+    when:
+      platform: Web
+    commands:
+      # A fresh device in English opens onboarding in the landing's Czech.
+      - runFlow: ../../subflows/start.yaml
+      - openLink: ${BASE_URL}onboarding?lang=cs
+      - extendedWaitUntil:
+          visible: ${output.cs["onboarding.welcome.new"]}
+          timeout: 15000
