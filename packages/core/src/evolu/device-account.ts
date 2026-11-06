@@ -190,9 +190,10 @@ export const resolveTransportUrl = (
  */
 export const createDefaultEvoluTransportUrls = (
   liveRelayHost: string
-): readonly [WssUrl, WssUrl] => [
+): readonly [WssUrl, WssUrl, WssUrl] => [
   WssUrl("wss://evolu.linky.fit"),
   WssUrl(`wss://${liveRelayHost}/${appOwnerIdPlaceholder}`),
+  WssUrl("wss://evolu.agora.gripe"),
 ]
 
 const createAccountEvoluTransportId = ({

@@ -134,7 +134,7 @@ landing.tech.backup.diagram.caption
 U cloudové aplikace má klíč k datům provozovatel. Přečte je tedy on i kdokoli, kdo se k serveru dostane: podpora, technici, obchodní oddělení nebo útočník při úniku. U Finita vidí relay jen šifrovaný šum a klíč máte jen vy. Ani naše podpora vaše data nevidí — zná jen to, co jí sami napíšete.
 
 landing.tech.backup.where.body
-Záloha jde na relay Finita (live-relay.finito.fit) a zároveň na relay spřáteleného projektu Linky (evolu.linky.fit), který stojí na stejných principech. Když jeden vypadne, druhý jede dál. V nastavení je můžete vypnout nebo přidat vlastní, třeba na svém serveru.
+Záloha jde na relay Finita (live-relay.finito.fit), zároveň na relay spřáteleného projektu Linky (evolu.linky.fit), který stojí na stejných principech, a na relay jednoho z vývojářů Finita (evolu.agora.gripe). Když jeden vypadne, ostatní jedou dál. V nastavení je můžete vypnout nebo přidat vlastní, třeba na svém serveru.
 
 landing.tech.compare.payky
 Finito
@@ -203,7 +203,10 @@ landing.tech.services.body
 Každá služba, se kterou Finito mluví: co jí posílá, kdy a u našich serverů i proč. Seřazené podle toho, kdy ke spojení dochází.
 
 landing.tech.services.highlight
-Dokud nic nezapnete ani nepoužijete, mluví aplikace nanejvýš s webem app.finito.fit a se dvěma relayi. A těm posílá jen zašifrovaná data.
+Dokud nic nezapnete ani nepoužijete, mluví aplikace nanejvýš s webem app.finito.fit a se třemi relayi. A těm posílá jen zašifrovaná data.
+
+landing.tech.services.agora.name
+Relay jednoho z vývojářů Finita (evolu.agora.gripe)
 
 landing.tech.services.owner.payky
 Server Finita

@@ -395,8 +395,8 @@ export const csLanding = {
   "landing.tech.backup.restore.title": "Obnova",
   "landing.tech.backup.title": "Záloha, kterou nepřečte nikdo kromě vás",
   "landing.tech.backup.where.body":
-    "Záloha jde na relay {appNameGen} ({liveRelayHost}) a zároveň na relay spřáteleného projektu Linky (evolu.linky.fit), který stojí na stejných principech. Když jeden vypadne, druhý jede dál. V nastavení je můžete vypnout nebo přidat vlastní, třeba na svém serveru.",
-  "landing.tech.backup.where.title": "Dva relaye zároveň",
+    "Záloha jde na relay {appNameGen} ({liveRelayHost}), zároveň na relay spřáteleného projektu Linky (evolu.linky.fit), který stojí na stejných principech, a na relay jednoho z vývojářů {appNameGen} (evolu.agora.gripe). Když jeden vypadne, ostatní jedou dál. V nastavení je můžete vypnout nebo přidat vlastní, třeba na svém serveru.",
+  "landing.tech.backup.where.title": "Tři relaye zároveň",
   "landing.tech.compare.cloud": "Běžná cloudová aplikace",
   "landing.tech.compare.cloudFlow.caption":
     "Aplikace posílá všechno na server provozovatele a teprve ten mluví s vaší bankou. Přitom drží data všech obchodníků.",
@@ -662,11 +662,15 @@ export const csLanding = {
   "landing.tech.services.group.always": "Pokaždé, když aplikaci používáte",
   "landing.tech.services.group.enabled": "Jen když si to zapnete",
   "landing.tech.services.highlight":
-    "Dokud nic nezapnete ani nepoužijete, mluví aplikace nanejvýš s webem {appHost} a se dvěma relayi. A těm posílá jen zašifrovaná data.",
+    "Dokud nic nezapnete ani nepoužijete, mluví aplikace nanejvýš s webem {appHost} a se třemi relayi. A těm posílá jen zašifrovaná data.",
   "landing.tech.services.lightningAddress.name": "Lightning adresa příjemce",
   "landing.tech.services.lightningAddress.sent": "Žádost o fakturu.",
   "landing.tech.services.lightningAddress.when":
     "Když vybíráte na Lightning adresu.",
+  "landing.tech.services.agora.name":
+    "Relay jednoho z vývojářů {appNameGen} (evolu.agora.gripe)",
+  "landing.tech.services.agora.sent": "Zašifrovaná data účtu.",
+  "landing.tech.services.agora.when": "Pořád, ale dá se vypnout.",
   "landing.tech.services.linky.name":
     "Relay spřáteleného projektu Linky (evolu.linky.fit)",
   "landing.tech.services.linky.sent": "Zašifrovaná data účtu.",

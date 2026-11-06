@@ -18,8 +18,9 @@ donations that do go through Payky's server.
 A technical claim appears on the page only when the code does it. Where
 the honest answer is "partly", the page says which part, as these do:
 
-- The backup goes to two relays by default, Payky's and that of Linky, a
-  friendly project built on the same principles (`defaultEvoluTransportUrls`).
+- The backup goes to three relays by default: Payky's, that of Linky, a
+  friendly project built on the same principles, and that of one of Payky's
+  developers (`createDefaultEvoluTransportUrls`).
   Relays see an account identifier, timing and size, not content.
 - QR payments: no Payky server takes part; automatic matching works with
   Fio banka and MONETA Money Bank only (moneta/0001), in the mobile app.
