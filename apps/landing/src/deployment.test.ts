@@ -68,6 +68,18 @@ describe("landing deployment", () => {
     )
   })
 
+  test("caches the build's assets for a year, as their names change with their content", () => {
+    expect(landingConfig.headers).toContainEqual({
+      source: "/landing/assets/(.*)",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=31536000, immutable",
+        },
+      ],
+    })
+  })
+
   test("proxies landing pages, assets and sitemap before the app fallback", () => {
     const fallback = appConfig.rewrites.findIndex(
       (route) => route.destination === "/index.html"
