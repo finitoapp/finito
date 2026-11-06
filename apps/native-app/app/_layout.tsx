@@ -52,6 +52,8 @@ import { removeStaleExportFolders } from "../src/features/settings/evolu-export/
 import { SettingsPage } from "../src/features/settings/settings-page.tsx"
 import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
+import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
+import { palette } from "../src/theme/palette.ts"
 import { tamaguiConfig } from "../tamagui.config.ts"
 
 // Kept until the first screen is ready (src/core/first-screen.ts) instead
@@ -123,6 +125,9 @@ function ThemedApp() {
   const preference = useThemePreference()
   const systemScheme = useColorScheme()
   const theme = resolveTheme(preference, systemScheme)
+  useEffect(() => {
+    setBrowserThemeColor(palette[theme].background)
+  }, [theme])
   // App jobs first, the Cashu one after, each once the screen is left alone.
   const appJobsMayStart = useIdleAfterFirstScreen(1500)
   const cashuJobsMayStart = useIdleAfterFirstScreen(3000)
