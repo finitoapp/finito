@@ -123,7 +123,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: payky-apk
-          path: apps/native-shell/android/app/build/outputs/apk/**/*-signed.apk
+          # One file, not a glob: upload-artifact keeps a glob's path below its
+          # wildcard, and `github-release` reads the APK at the artifact's root.
+          path: apps/native-shell/android/app/build/outputs/apk/release/app-release-signed.apk
           if-no-files-found: error
 
       - name: Upload to Google Play internal track
@@ -219,14 +221,17 @@ jobs:
           path: apps/native-app/android/app/build/outputs/finito-release-signed.apk
           if-no-files-found: error
 
-      - name: Upload to Google Play internal track
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: fit.finito.app
-          releaseFiles: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
-          tracks: internal
-          status: completed
+      # Off until the Google Play service account may release fit.finito.app:
+      # v26.11.1's upload failed with "The caller does not have permission".
+      # Until then Finito ships through the GitHub release's APK only.
+      # - name: Upload to Google Play internal track
+      #   uses: r0adkll/upload-google-play@v1
+      #   with:
+      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      #     packageName: fit.finito.app
+      #     releaseFiles: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
+      #     tracks: internal
+      #     status: completed
 
   github-release:
     name: Publish the GitHub release
