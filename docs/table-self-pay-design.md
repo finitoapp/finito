@@ -239,7 +239,7 @@ Its payment carries a reference that starts with 9, which no bill reference
 does, and the device that takes orders records it as a bill of its own, priced
 from the menu version the guest ordered from
 ([menu-ordering/0001](decisions/menu-ordering/0001-guests-order-from-a-published-menu-and-a-paid-order-is-a-bill.md),
-[menu-ordering/0002](decisions/menu-ordering/0002-one-device-takes-orders.md)).
+[menu-ordering/0005](decisions/menu-ordering/0005-one-device-takes-orders-and-switching-on-moves-them-only-when-none-is-taken.md)).
 With bill paying switched off, a table's view lists no bill and names only the
 menu, so a sticker reveals nothing about what the table ordered
 ([menu-ordering/0003](decisions/menu-ordering/0003-a-table-publishes-nothing-about-what-it-ordered.md)).

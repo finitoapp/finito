@@ -8,7 +8,8 @@ import { useEffect, useRef } from "react"
 import { useAccess } from "../../core/use-access.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useToast } from "../../hooks/use-toast.ts"
-import { useTranslation } from "../../hooks/use-translation.ts"
+import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
+import { formatMoney } from "../../lib/format-money.ts"
 
 /** Web's `MenuOrderAnnouncer`, for an onboarded account. */
 export function MenuOrderAnnouncer() {
@@ -21,6 +22,7 @@ export function MenuOrderAnnouncer() {
 
 function NewOrderToasts() {
   const { t } = useTranslation()
+  const locale = useLocale()
   const toast = useToast()
   const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
   const { data: tables } = useEvoluQuery(tablesQuery)
@@ -35,13 +37,14 @@ function NewOrderToasts() {
       orders,
       tables,
       t,
+      formatMoney: (money) => formatMoney(money, locale),
     })) {
       toast.withAction(message, {
         label: t("orders.announced.open"),
         onPress: () => router.push("/orders"),
       })
     }
-  }, [orders, tables, t, toast])
+  }, [orders, tables, t, toast, locale])
 
   return null
 }

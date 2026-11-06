@@ -1,4 +1,3 @@
-import { sqliteTrue } from "@evolu/common"
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
@@ -15,6 +14,7 @@ import {
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import { openBillsQuery } from "@payky/core/modules/bill/bill-queries"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
@@ -268,7 +268,7 @@ function ToServeStrip() {
   const [settings] = useEvoluQuery(selfPaySettingsQuery).data
   const orders = useEvoluQuery(menuOrdersToServeQuery).data
 
-  if (settings?.menuOrdering !== sqliteTrue && orders.length === 0) return null
+  if (!offersOrders(settings) && orders.length === 0) return null
 
   return (
     <Pressable role="link" onPress={() => router.push("/orders")}>

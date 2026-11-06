@@ -1,0 +1,88 @@
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Bar
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["home.pay"]}
+- runFlow: ../../subflows/open-sales.yaml
+- tapOn: ${output.re(output.t["nav.orders"])}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveWrittenOrder
+      QUERY: table=Bar&text=2x%20pivo&named=9000&amount=9000
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("orders.announced.written", { number: 1, table: "Bar", amount: "\u002490", text: "2x pivo" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '.*${output.re(output.tv("orders.number", { number: 1 }))}.*'
+- assertVisible: .*Bar.*
+- assertVisible: '${output.re(output.tv("orders.written", { text: "2x pivo" }))}'
+- assertVisible: ${output.re(output.t["orders.paid"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.served"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveWrittenOrder
+      QUERY: table=Bar&text=2x%20pivo&named=9000&amount=8000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '.*${output.re(output.tv("orders.number", { number: 2 }))}.*'
+- assertVisible: ${output.re(output.t["orders.notFullyPaid"])}

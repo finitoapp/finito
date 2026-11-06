@@ -40,6 +40,7 @@ export const appSettings = {
   selfPayGuestName: NonEmptyString255Schema.nullable(),
   selfPayBillsHidden: SqliteTrueSchema.nullable(),
   menuOrdering: SqliteTrueSchema.nullable(),
+  writtenOrders: SqliteTrueSchema.nullable(),
   orderDeviceId: DeviceId.nullable(),
 } as const
 

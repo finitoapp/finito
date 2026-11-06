@@ -195,7 +195,7 @@ function ItemList({
       {rows.map((row) => (
         <StatsBarRow
           key={row.catalogItemId ?? row.itemId}
-          label={row.name}
+          label={row.written === 1 ? t("stats.items.written") : row.name}
           detail={t("stats.items.quantity", {
             quantity: row.quantity.toLocaleString(locale, {
               maximumFractionDigits: 3,

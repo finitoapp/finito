@@ -8,9 +8,11 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
+import type { NonNegativeInteger } from "../shared/schema.ts"
 import type { BillLineRow } from "./bill-line.ts"
 import { billLinesByBillIdQuery } from "./bill-line-queries.ts"
 import type { BillLineSummary } from "./bill-line-summary.ts"
+import type { BillLineId } from "./bill-line-types.ts"
 import { calculateBillLineSummaries } from "./bill-line-utils.ts"
 
 /**
@@ -36,6 +38,15 @@ export const upsertBillLineRows = (
   for (const line of lines) {
     evolu.upsert("billLine", removeUndefinedValues(line), options)
   }
+}
+
+export const updateBillLineTotal = (
+  evolu: EvoluDep["evolu"],
+  id: BillLineId,
+  totalAmount: NonNegativeInteger,
+  options: MutationOptions
+): void => {
+  evolu.update("billLine", { id, totalAmount }, options)
 }
 
 export const loadCalculatedBillLineSummaries =

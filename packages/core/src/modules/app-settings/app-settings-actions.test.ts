@@ -1,4 +1,4 @@
-import { testCreateRun } from "@evolu/common"
+import { createIdFromString, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
@@ -21,9 +21,11 @@ import {
   markRecoveryPhraseVerified,
   requireNotOnboarded,
   setEnabledHomeModes,
+  setMenuOrdering,
+  setWrittenOrders,
   updateTipSettings,
 } from "./app-settings-actions.ts"
-import { settingsQuery } from "./app-settings-queries.ts"
+import { selfPaySettingsQuery, settingsQuery } from "./app-settings-queries.ts"
 import {
   createDefaultSettings,
   defaultPaymentMethod,
@@ -309,5 +311,89 @@ describe("finishOnboarding", () => {
       [],
       [],
     ])
+  })
+})
+
+describe("guests writing what they pay for", () => {
+  const thisDevice = createIdFromString<"Device">("this device")
+
+  test("switching writing on names this device to take orders when none is named", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    evolu.upsert("appSettings", createDefaultSettings(), {
+      owner: evolu.appOwner,
+    })
+
+    await run.ok(setWrittenOrders({ on: true, deviceId: thisDevice }))
+
+    await expect
+      .poll(() => evolu.loadQuery(selfPaySettingsQuery))
+      .toEqual([
+        expect.objectContaining({
+          writtenOrders: 1,
+          orderDeviceId: thisDevice,
+        }),
+      ])
+  })
+})
+
+describe("the device that takes orders", () => {
+  const thisDevice = createIdFromString<"Device">("this device")
+  const otherDevice = createIdFromString<"Device">("other device")
+
+  const openAccount = async () => {
+    const testEvolu = await createEvoluTest()
+    testEvolu.evolu.upsert("appSettings", createDefaultSettings(), {
+      owner: testEvolu.evolu.appOwner,
+    })
+    return testEvolu
+  }
+
+  const orderDeviceOf = async (evolu: EvoluDep["evolu"]) => {
+    const [settings] = await evolu.loadQuery(selfPaySettingsQuery)
+    return settings?.orderDeviceId
+  }
+
+  test("switching ordering on while writing is on keeps the device that takes orders", async () => {
+    await using testEvolu = await openAccount()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    await run.ok(setWrittenOrders({ on: true, deviceId: otherDevice }))
+
+    await run.ok(setMenuOrdering({ on: true, deviceId: thisDevice }))
+
+    expect(await orderDeviceOf(testEvolu.evolu)).toBe(otherDevice)
+  })
+
+  test("switching writing on while ordering is on keeps the device that takes orders", async () => {
+    await using testEvolu = await openAccount()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    await run.ok(setMenuOrdering({ on: true, deviceId: otherDevice }))
+
+    await run.ok(setWrittenOrders({ on: true, deviceId: thisDevice }))
+
+    expect(await orderDeviceOf(testEvolu.evolu)).toBe(otherDevice)
+  })
+
+  test("switching ordering on while both are off names this device, though another one is named", async () => {
+    await using testEvolu = await openAccount()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    await run.ok(setWrittenOrders({ on: true, deviceId: otherDevice }))
+    await run.ok(setWrittenOrders({ on: false, deviceId: otherDevice }))
+
+    await run.ok(setMenuOrdering({ on: true, deviceId: thisDevice }))
+
+    expect(await orderDeviceOf(testEvolu.evolu)).toBe(thisDevice)
+  })
+
+  test("switching writing on while both are off names this device, though another one is named", async () => {
+    await using testEvolu = await openAccount()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    await run.ok(setMenuOrdering({ on: true, deviceId: otherDevice }))
+    await run.ok(setMenuOrdering({ on: false, deviceId: otherDevice }))
+
+    await run.ok(setWrittenOrders({ on: true, deviceId: thisDevice }))
+
+    expect(await orderDeviceOf(testEvolu.evolu)).toBe(thisDevice)
   })
 })

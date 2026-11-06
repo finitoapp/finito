@@ -1155,6 +1155,9 @@ export const enSettings = {
   "catalog.tables.selfPayOptions.orderDevice.placeholder": "Choose a device",
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (this device)",
   "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
+  "catalog.tables.selfPayOptions.written": "Guests write what they pay for",
+  "catalog.tables.selfPayOptions.written.description":
+    "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line carries no tax rate.",
   "catalog.tables.selfPayOptions.title": "What guests can do",
   "catalog.tables.sticker.check": "Check a sticker",
   "catalog.tables.sticker.current": "This sticker belongs to {name}.",

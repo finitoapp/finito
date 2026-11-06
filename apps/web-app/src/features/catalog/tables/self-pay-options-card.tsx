@@ -4,6 +4,7 @@ import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
+  setWrittenOrders,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
@@ -42,6 +43,7 @@ export function SelfPayOptionsCard() {
     data: [settings],
   } = useEvoluQuery(selfPaySettingsQuery)
   const menuOrdering = settings?.menuOrdering === sqliteTrue
+  const writtenOrders = settings?.writtenOrders === sqliteTrue
 
   const saveBillsShown = async (shown: boolean) => {
     await using run = appRun()
@@ -51,6 +53,11 @@ export function SelfPayOptionsCard() {
   const saveMenuOrdering = async (on: boolean) => {
     await using run = appRun()
     await run.ok(setMenuOrdering({ on, deviceId: thisDeviceId }))
+  }
+
+  const saveWrittenOrders = async (on: boolean) => {
+    await using run = appRun()
+    await run.ok(setWrittenOrders({ on, deviceId: thisDeviceId }))
   }
 
   return (
@@ -70,13 +77,15 @@ export function SelfPayOptionsCard() {
           defaultValue={menuOrdering}
           onSave={saveMenuOrdering}
         />
-        {menuOrdering && (
-          <>
-            <OrderDeviceSelect
-              orderDeviceId={settings?.orderDeviceId ?? null}
-            />
-            <MenuStatus />
-          </>
+        {menuOrdering && <MenuStatus />}
+        <InlineEditSwitch
+          label={t("catalog.tables.selfPayOptions.written")}
+          description={t("catalog.tables.selfPayOptions.written.description")}
+          defaultValue={writtenOrders}
+          onSave={saveWrittenOrders}
+        />
+        {(menuOrdering || writtenOrders) && (
+          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
         )}
       </CardContent>
     </Card>

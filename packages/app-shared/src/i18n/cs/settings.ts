@@ -1156,6 +1156,9 @@ export const csSettings = {
   "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zařízení",
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zařízení)",
   "catalog.tables.selfPayOptions.payBill": "Hosté platí účet stolu",
+  "catalog.tables.selfPayOptions.written": "Hosté píšou, co platí",
+  "catalog.tables.selfPayOptions.written.description":
+    "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek nemá žádnou sazbu daně.",
   "catalog.tables.selfPayOptions.title": "Co mohou hosté",
   "catalog.tables.sticker.check": "Zkontrolovat nálepku",
   "catalog.tables.sticker.current": "Tato nálepka patří ke stolu {name}.",

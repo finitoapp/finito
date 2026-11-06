@@ -5,6 +5,7 @@ import { createQuery } from "../../evolu/schema.ts"
 import {
   setMenuOrdering,
   setOrderDevice,
+  setWrittenOrders,
 } from "../app-settings/app-settings-actions.ts"
 import { loadBillCoverage } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
@@ -43,6 +44,7 @@ import {
   deriveOrderSelfPayReference,
   formatSelfPayBankMessage,
   formatSelfPayLightningMemo,
+  type SelfPayPointer,
 } from "../table-self-pay/table-self-pay-reference-utils.ts"
 import {
   createSelfPayTestContext,
@@ -65,6 +67,7 @@ import {
 } from "./menu-order-actions.ts"
 import {
   createSelfPayOrderSelectionText,
+  createSelfPayWrittenSelectionText,
   deriveSelfPayMenuItemKey,
   type SelfPayMenu,
   SelfPayOrderSelectionSchema,
@@ -84,7 +87,7 @@ const menuOrderByBillIdQuery = (billId: BillId) =>
   createQuery((db) =>
     db
       .selectFrom("menuOrder")
-      .select(["id", "number", "note", "servedAt"])
+      .select(["id", "number", "note", "writtenAmount", "servedAt"])
       .where("billId", "=", billId)
       .where("isDeleted", "is not", sqliteTrue)
   )
@@ -692,6 +695,7 @@ describe("money for an order that cannot be recorded", () => {
           pointer: order.pointer,
           reference: order.reference,
           selection,
+          arrived: 13_000,
           deviceId: context.deviceId,
           root: selfPayTestRoot,
         })
@@ -704,6 +708,312 @@ describe("money for an order that cannot be recorded", () => {
       second?.bill.lines.map(({ id }) => id)
     )
     expect(first?.menuOrder.id).toBe(second?.menuOrder.id)
+  })
+})
+
+const openBar = async (context: SelfPayTestContext) => {
+  await using run = testCreateRun(context.deps)
+  await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+  return await publishMenu(context)
+}
+
+const writeOrder = async (
+  context: SelfPayTestContext,
+  menu: SelfPayMenu,
+  {
+    text = "2x pivo",
+    amount = 9000,
+    table = bytesToHex(
+      deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
+    ),
+  }: {
+    readonly text?: string
+    readonly amount?: number
+    readonly table?: string
+  } = {}
+) => {
+  const { pointer, event } = createSelfPaySelectionEvent({
+    selectionText: createSelfPayWrittenSelectionText({
+      tablePublicKey: table,
+      menu,
+      text,
+      amount,
+    }),
+    selectionKey,
+    createdAt: Math.floor(context.clock.date.now().getTime() / 1000),
+  })
+  await context.deps.nostrRelayClient.publish(
+    context.deps.selfPayDefaultRelays,
+    event
+  )
+  return { pointer, event, reference: deriveOrderSelfPayReference(pointer) }
+}
+
+const lineOf = async (
+  context: SelfPayTestContext,
+  order: { readonly pointer: SelfPayPointer }
+) => {
+  await using run = testCreateRun(context.deps)
+  const lines = await run.ok(
+    loadCalculatedBillLineSummaries(deriveMenuOrderBillId(order.pointer))
+  )
+  expect(lines).toHaveLength(1)
+  return lines[0]
+}
+
+describe("a paid written order", () => {
+  test("becomes a bill of its own on the table, with one line named by the guest's text", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    const { paymentId } = await pay(context, order, 9000)
+
+    expect(await tipOf(context, paymentId)).toBe(0)
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 9000,
+      coverage: "paid",
+    })
+    expect(await lineOf(context, order)).toMatchObject({
+      name: "2x pivo",
+      type: "manualAmount",
+      catalogItemId: null,
+      taxRateId: null,
+      quantity: 1,
+      totalAmount: 9000,
+    })
+    expect(await orderRowOf(context, order)).toMatchObject({
+      number: 1,
+      note: null,
+      writtenAmount: 9000,
+    })
+    const [bill] = await context.deps.evolu.loadQuery(
+      billClosedAtQuery(deriveMenuOrderBillId(order.pointer))
+    )
+    expect(bill?.tableId).toBe(context.tableId)
+    expect(bill?.closedAt).not.toBe(null)
+  })
+
+  test("takes what arrived above it as the tip", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    const { paymentId } = await pay(context, order, 10_000)
+
+    expect(await tipOf(context, paymentId)).toBe(1000)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 9000 })
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 9000,
+      coverage: "paid",
+    })
+  })
+
+  test("closes at what arrived when less arrives, and leaves nothing owed", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    const { paymentId } = await pay(context, order, 8000)
+
+    expect(await tipOf(context, paymentId)).toBe(0)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 8000 })
+    expect(await coverageOf(context, order)).toMatchObject({
+      billTotal: 8000,
+      claimedSum: 8000,
+      coverage: "paid",
+    })
+    expect(await orderRowOf(context, order)).toMatchObject({
+      writtenAmount: 9000,
+    })
+  })
+
+  test("closes at the minimum when a stranger names millions, and leaves nothing owed", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, { amount: 999_999_999 })
+
+    await pay(context, order, 100)
+
+    expect(await coverageOf(context, order)).toMatchObject({
+      billTotal: 100,
+      coverage: "paid",
+    })
+  })
+
+  test("raises its line when the rest arrives, up to what the guest named", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    await pay(context, order, 8000)
+    await pay(context, order, 1000)
+
+    const paidInParts = await lineOf(context, order)
+    await pay(context, order, 5000)
+
+    expect(paidInParts).toMatchObject({ totalAmount: 9000 })
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 9000 })
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 14_000,
+      coverage: "overpaid",
+    })
+  })
+
+  test("counts the rest when it is below the self-pay minimum", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    await pay(context, order, 8950)
+    const { paymentId } = await pay(context, order, 50)
+
+    expect(paymentId).not.toBe(null)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 9000 })
+  })
+
+  test("paid twice is one bill, overpaid for staff to resolve", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    await pay(context, order, 9000)
+    await pay(context, order, 9000)
+
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 9000 })
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 18_000,
+      coverage: "overpaid",
+    })
+  })
+
+  test("is numbered with the day's menu orders", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee } = await openCafe(context)
+    const menu = await openBar(context)
+    const ordered = await orderFrom(context, menu, [[coffee, 1]])
+    const written = await writeOrder(context, menu)
+
+    await pay(context, ordered, 6500)
+    await pay(context, written, 9000)
+
+    expect(await orderRowOf(context, ordered)).toMatchObject({ number: 1 })
+    expect(await orderRowOf(context, written)).toMatchObject({ number: 2 })
+  })
+
+  test("takes the rest of an order already recorded, though writing has been switched off since", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+    await pay(context, order, 8000)
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: false, deviceId: context.deviceId }))
+
+    const { paymentId } = await pay(context, order, 1000)
+
+    expect(paymentId).not.toBe(null)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 9000 })
+  })
+
+  test("leaves money that arrives long after its bill closed unmatched, and the order as it was", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+    await pay(context, order, 8000)
+    const before = await orderRowOf(context, order)
+    context.clock.advance(8 * 24 * 60 * 60 * 1000)
+
+    const { paymentId } = await pay(context, order, 1000)
+
+    expect(paymentId).toBe(null)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 8000 })
+    expect(await orderRowOf(context, order)).toEqual(before)
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 8000,
+      coverage: "paid",
+    })
+  })
+
+  test("paid by Lightning is capped by what the money is worth", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    const { paymentId } = await payByLightning(context, order, {
+      amount: 8000,
+      amountSats: 3200,
+    })
+
+    expect(paymentId).not.toBe(null)
+    expect(await lineOf(context, order)).toMatchObject({ totalAmount: 8000 })
+  })
+})
+
+describe("money for a written order that cannot be recorded", () => {
+  test("waits unmatched when writing is off as the money arrives, though the menu it names offered writing", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: false, deviceId: context.deviceId }))
+
+    expect((await pay(context, order, 9000)).paymentId).toBe(null)
+    expect(await orderRowOf(context, order)).toBe(undefined)
+  })
+
+  test("waits unmatched when it names a table without self-pay", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, { table: "00".repeat(32) })
+
+    expect((await pay(context, order, 9000)).paymentId).toBe(null)
+  })
+
+  test.each([
+    ["a line break", "2x pivo\nzaplaceno"],
+    ["a right-to-left override", "2x pivo\u202Eonevalpaz"],
+    ["only spaces", "   "],
+    ["a space it would trim", " 2x pivo"],
+    ["256 characters", "x".repeat(256)],
+  ])(
+    "waits unmatched when its text breaks the rules with %s",
+    async (_name, text) => {
+      await using context = await createSelfPayTestContext()
+      const menu = await openBar(context)
+      const order = await writeOrder(context, menu, { text })
+
+      expect((await pay(context, order, 9000)).paymentId).toBe(null)
+    }
+  )
+
+  test.each([
+    ["below the self-pay minimum", 99],
+    ["above what a QR payment carries", 1_000_000_000],
+  ])("waits unmatched when its amount is %s", async (_name, amount) => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, { amount })
+
+    expect((await pay(context, order, 9000)).paymentId).toBe(null)
+  })
+
+  test("waits unmatched when its first payment is below the self-pay minimum", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    expect((await pay(context, order, 99)).paymentId).toBe(null)
+  })
+
+  test("waits unmatched when the order names a menu this account never published", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, {
+      ...menu,
+      version: "0".repeat(32),
+    })
+
+    expect((await pay(context, order, 9000)).paymentId).toBe(null)
   })
 })
 
@@ -747,6 +1057,57 @@ describe("what staff serve", () => {
       ])
     )
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+  })
+
+  test("lists a written order with the whole text, as paid when the money covers what the guest named", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const text = "x".repeat(255)
+    await pay(context, await writeOrder(context, menu, { text }), 9000)
+    await using run = testCreateRun(context.deps)
+
+    expect(await run.ok(loadMenuOrdersToServe())).toEqual([
+      expect.objectContaining({
+        number: 1,
+        tableName: "Table 3",
+        note: null,
+        isFullyPaid: true,
+        written: {
+          text,
+          arrived: { value: 9000, currency: "CZK" },
+          named: { value: 9000, currency: "CZK" },
+        },
+      }),
+    ])
+  })
+
+  test("lists a written order that less arrived for with both amounts, not fully paid", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    await pay(context, await writeOrder(context, menu), 8000)
+    await using run = testCreateRun(context.deps)
+
+    expect(await run.ok(loadMenuOrdersToServe())).toEqual([
+      expect.objectContaining({
+        isFullyPaid: false,
+        written: {
+          text: "2x pivo",
+          arrived: { value: 8000, currency: "CZK" },
+          named: { value: 9000, currency: "CZK" },
+        },
+      }),
+    ])
+  })
+
+  test("lists a menu order with nothing written", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    await pay(context, await orderFrom(context, menu, [[coffee, 1]]), 6500)
+    await using run = testCreateRun(context.deps)
+
+    expect(await run.ok(loadMenuOrdersToServe())).toEqual([
+      expect.objectContaining({ isFullyPaid: true, written: null }),
+    ])
   })
 
   test("lists money whose order no relay returned yet", async () => {

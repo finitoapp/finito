@@ -251,7 +251,7 @@ allocation. A pointer cut short does not parse and counts at once.
 
 A variable symbol or memo reference that starts with 9 names an order
 (menu-ordering/0001). Only the device named in `appSettings.orderDeviceId`
-records orders (menu-ordering/0002). It looks the order up like a selection,
+records orders (menu-ordering/0005). It looks the order up like a selection,
 prices it from the stored `menuVersion` it names, and writes in the same
 batch as the payment:
 - the order's `bill` on its table, with ids derived from the pointer;

@@ -59,7 +59,10 @@ import {
   loadSelfPayMenu,
   saveSelfPayMenuVersion,
 } from "@payky/core/modules/menu-order/menu-order-actions"
-import { createSelfPayOrderSelectionText } from "@payky/core/modules/menu-order/menu-order-utils"
+import {
+  createSelfPayOrderSelectionText,
+  createSelfPayWrittenSelectionText,
+} from "@payky/core/modules/menu-order/menu-order-utils"
 import {
   createPayment,
   markPaymentPaidCash,
@@ -211,6 +214,13 @@ const ReceiveMenuOrderParams = z.object({
     .transform((items) => items.split(","))
     .pipe(z.array(OrderedItemParam)),
   note: z.string().optional(),
+  amount: z.coerce.number().int().positive(),
+})
+
+const ReceiveWrittenOrderParams = z.object({
+  table: z.string().min(1),
+  text: z.string().min(1),
+  named: z.coerce.number().int().positive(),
   amount: z.coerce.number().int().positive(),
 })
 
@@ -813,6 +823,43 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
           return { key: item.key, quantity }
         }),
         note: note ?? null,
+      }),
+      selectionKey: deriveSelfPaySelectionKey(root),
+      createdAt: Math.floor(run.deps.date.now().getTime() / 1000),
+    })
+    await createNostrRelayClient().publish(
+      nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+      event
+    )
+    await receiveBankTransfer(run, deviceId, {
+      amount,
+      currency: menu.currency,
+      variableSymbol: deriveOrderSelfPayReference(pointer),
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    return undefined
+  },
+
+  receiveWrittenOrder: async (run, params, { deviceId }) => {
+    const { table, text, named, amount } =
+      ReceiveWrittenOrderParams.parse(params)
+    const root = deriveTableSelfPayRoot(run.deps.masterKey)
+    const [{ menu }, tables] = await Promise.all([
+      run.ok(loadSelfPayMenu()),
+      run.deps.evolu.loadQuery(selfPayTablesQuery),
+    ])
+    await run.ok(saveSelfPayMenuVersion(menu))
+    const tableRow = tables.find(({ name }) => name === table)
+    if (tableRow === undefined) throw new Error(`Table ${table} not found.`)
+    const { pointer, event } = createSelfPaySelectionEvent({
+      selectionText: createSelfPayWrittenSelectionText({
+        tablePublicKey: bytesToHex(
+          deriveTableSelfPayKeys(root, tableRow.id, tableRow.selfPayEpoch ?? 0)
+            .publicKey
+        ),
+        menu,
+        text,
+        amount: named,
       }),
       selectionKey: deriveSelfPaySelectionKey(root),
       createdAt: Math.floor(run.deps.date.now().getTime() / 1000),

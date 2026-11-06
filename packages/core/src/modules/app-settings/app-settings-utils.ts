@@ -51,6 +51,12 @@ export const getFiatCurrency = (
   settings: { readonly fiatCurrency: FiatCurrency | null } | undefined
 ): FiatCurrency => settings?.fiatCurrency ?? defaultFiatCurrency
 
+export const offersOrders = (
+  settings: Pick<AppSettingsRow, "menuOrdering" | "writtenOrders"> | undefined
+): boolean =>
+  settings?.menuOrdering === sqliteTrue ||
+  settings?.writtenOrders === sqliteTrue
+
 export const createDefaultSettings = (): Omit<
   AppSettingsRow,
   | "enabledHomeModesJson"
@@ -58,6 +64,7 @@ export const createDefaultSettings = (): Omit<
   | "selfPayGuestName"
   | "selfPayBillsHidden"
   | "menuOrdering"
+  | "writtenOrders"
   | "orderDeviceId"
 > => ({
   id: settingsId,

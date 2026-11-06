@@ -1,4 +1,5 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
+import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
 import {
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
@@ -131,25 +132,29 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
           </CardAction>
         </CardHeader>
         <CardContent gap={12}>
-          <YStack gap={4}>
-            {order.lines.map((line) => (
-              <XStack key={line.id} items="center" gap={8}>
-                <Text
-                  fontSize={fontSize.lg}
-                  lineHeight={fontSize.lg}
-                  fontWeight={fontWeight.medium}
-                >
-                  {t("orders.line", {
-                    name: line.name,
-                    quantity: line.quantity,
-                  })}
-                </Text>
-                {line.isSoldOut && (
-                  <Badge variant="destructive" label={t("orders.soldOut")} />
-                )}
-              </XStack>
-            ))}
-          </YStack>
+          {order.written !== null ? (
+            <WrittenOrder written={order.written} />
+          ) : (
+            <YStack gap={4}>
+              {order.lines.map((line) => (
+                <XStack key={line.id} items="center" gap={8}>
+                  <Text
+                    fontSize={fontSize.lg}
+                    lineHeight={fontSize.lg}
+                    fontWeight={fontWeight.medium}
+                  >
+                    {t("orders.line", {
+                      name: line.name,
+                      quantity: line.quantity,
+                    })}
+                  </Text>
+                  {line.isSoldOut && (
+                    <Badge variant="destructive" label={t("orders.soldOut")} />
+                  )}
+                </XStack>
+              ))}
+            </YStack>
+          )}
           {order.note !== null && (
             <Text fontSize={fontSize.sm} lineHeight={fontSize.sm}>
               {t("orders.note", { note: order.note })}
@@ -169,6 +174,34 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
         </CardFooter>
       </Card>
     </YStack>
+  )
+}
+
+function WrittenOrder({
+  written,
+}: {
+  readonly written: NonNullable<MenuOrderToServe["written"]>
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  return (
+    <>
+      <Text
+        fontSize={fontSize.lg}
+        lineHeight={fontSize.lg}
+        fontWeight={fontWeight.medium}
+      >
+        {t("orders.written", { text: written.text })}
+      </Text>
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontVariant={["tabular-nums"]}
+      >
+        {writtenOrderAmount(written, t, (money) => formatMoney(money, locale))}
+      </Text>
+    </>
   )
 }
 

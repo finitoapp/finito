@@ -6,10 +6,13 @@ import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
+import { formatMoney } from "@/lib/format-utils.ts"
 
 export function MenuOrderAnnouncer() {
   const { t } = useTranslation()
+  const locale = useLocale()
   const navigate = useNavigate()
   const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
   const { data: tables } = useEvoluQuery(tablesQuery)
@@ -24,6 +27,7 @@ export function MenuOrderAnnouncer() {
       orders,
       tables,
       t,
+      formatMoney: (money) => formatMoney(money, locale),
     })) {
       toast.success(message, {
         action: {
@@ -34,7 +38,7 @@ export function MenuOrderAnnouncer() {
         },
       })
     }
-  }, [orders, tables, navigate, t])
+  }, [orders, tables, navigate, t, locale])
 
   return null
 }

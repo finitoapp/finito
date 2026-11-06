@@ -1,4 +1,5 @@
 import {
+  createIdFromString,
   sqliteQueryStringToSqliteQuery,
   sqliteTrue,
   testCreateRun,
@@ -66,6 +67,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
+  DateStringSchema,
   type FiatCurrency,
   NonEmptyString255,
   NonEmptyStringSchema,
@@ -74,6 +76,7 @@ import {
   PositiveNumber,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import { deriveSelfPayPointer } from "../table-self-pay/table-self-pay-pointer-utils.ts"
 import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
@@ -804,6 +807,68 @@ describe("items and categories", () => {
       "Coffee",
       "Corkage",
       "Juice",
+    ])
+  })
+
+  test("counts 30 written orders with different texts as one row of written orders", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    for (const index of Array.from({ length: 30 }, (_, i) => i)) {
+      const billId = await context.createTestBill()
+      await r.orThrow(
+        addManualAmountToBill({
+          billId,
+          deviceId: null,
+          totalAmount: NonNegativeInteger(100),
+          name: NonEmptyString255(`${index}x pivo`),
+          currency: "CZK",
+        })
+      )
+      context.evolu.upsert(
+        "menuOrder",
+        {
+          id: createIdFromString<"MenuOrder">(`written-${index}`),
+          billId,
+          pointer: deriveSelfPayPointer(`written-${index}`),
+          day: DateStringSchema.decode("2026-06-05"),
+          number: PositiveInteger(index + 1),
+          note: null,
+          writtenAmount: PositiveInteger(100),
+        },
+        { owner: context.evolu.appOwner }
+      )
+      await context.payBill(billId)
+    }
+
+    const rows = await context.load(itemSalesQuery(june5))
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      written: 1,
+      quantity: 30,
+      amount: 3000,
+    })
+  })
+
+  test("keeps a keypad amount in its own row", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const billId = await context.createTestBill()
+    await r.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        totalAmount: NonNegativeInteger(700),
+        name: NonEmptyString255("Corkage"),
+        currency: "CZK",
+      })
+    )
+    await context.payBill(billId)
+
+    expect(await context.load(itemSalesQuery(june5))).toEqual([
+      expect.objectContaining({ name: "Corkage", written: 0, amount: 700 }),
     ])
   })
 

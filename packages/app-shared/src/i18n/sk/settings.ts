@@ -1158,6 +1158,9 @@ export const skSettings = {
   "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zariadenie",
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zariadenie)",
   "catalog.tables.selfPayOptions.payBill": "Hostia platia účet stola",
+  "catalog.tables.selfPayOptions.written": "Hostia píšu, čo platia",
+  "catalog.tables.selfPayOptions.written.description":
+    "Hosť pri stole napíše jeden riadok a sumu. {appName} kontroluje len to, či peniaze prišli, a riadok nemá žiadnu sadzbu dane.",
   "catalog.tables.selfPayOptions.title": "Čo môžu hostia",
   "catalog.tables.sticker.check": "Skontrolovať nálepku",
   "catalog.tables.sticker.current": "Táto nálepka patrí k stolu {name}.",

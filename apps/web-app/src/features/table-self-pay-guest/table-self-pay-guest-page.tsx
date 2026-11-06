@@ -4,6 +4,8 @@ import { useNow } from "@payky/app-shared/use-now"
 import {
   countSelfPayMenuItems,
   createSelfPayOrderSelectionText,
+  createSelfPayWrittenSelectionText,
+  type SelfPayMenu,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import {
   type FiatCurrency,
@@ -62,7 +64,8 @@ import { GuestCheckout, type GuestPaymentChoice } from "./guest-checkout.tsx"
 import { formatGuestAmount, formatGuestTime } from "./guest-format.ts"
 import { useGuestLanguage } from "./guest-language.tsx"
 import { GuestLightningPayment } from "./guest-lightning-payment.tsx"
-import { GuestMenu, type GuestOrderChoice } from "./guest-menu.tsx"
+import { GuestMenu } from "./guest-menu.tsx"
+import { guestMenuOffer } from "./guest-menu-offer.ts"
 import {
   GuestOrderList,
   guestOrderLeft,
@@ -85,6 +88,7 @@ import {
   guestTabListClassName,
 } from "./guest-pick-styles.ts"
 import { GuestStatusRegion, useGuestStatus } from "./guest-status.tsx"
+import { GuestWrittenOrder } from "./guest-written-order.tsx"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 import {
   paymentWaitEndsAt,
@@ -290,6 +294,20 @@ const orderBill = (pointer: SelfPayPointer, currency: FiatCurrency) => ({
   currency,
 })
 
+function GuestMenuTabLabel({
+  address,
+  menuKeys,
+}: {
+  readonly address: TableSelfPayAddress
+  readonly menuKeys: NonNullable<SelfPayView["menu"]>
+}) {
+  const { t } = useGuestTranslation()
+  const menu = useSelfPayMenu(address, menuKeys).data?.menu?.value ?? null
+  return menu?.written === true && countSelfPayMenuItems(menu) === 0
+    ? t("selfPay.written.tab")
+    : t("selfPay.menu.tab.menu")
+}
+
 function GuestOrdering({
   address,
   view,
@@ -311,6 +329,7 @@ function GuestOrdering({
   const [session, setSession] = useState<OrderPaymentSession | null>(null)
   const [isPreparing, setIsPreparing] = useState(false)
   const [isRefused, setIsRefused] = useState(false)
+  const [isWriting, setIsWriting] = useState(false)
   const ordersBlock = useRef<HTMLElement>(null)
   const tableOrders = ordersAtTable(orders, table)
   const confirmations = useGuestOrderConfirmations({
@@ -379,29 +398,30 @@ function GuestOrdering({
 
   const menu = data?.menu?.value ?? null
   const liveness = data?.liveness?.value ?? null
-  const orderableMenu =
-    menu !== null &&
-    countSelfPayMenuItems(menu) > 0 &&
-    (findSelfPayBank(view, menu) !== null || view.lightning !== null)
-      ? menu
-      : null
+  const { orderable, writable } = guestMenuOffer(view, menu)
 
   const startPayment = (payment: OrderPaymentSession) => {
     history.pushState(PAYMENT_HISTORY_STATE, "")
     setSession(payment)
   }
 
-  const placeOrder = async (choice: GuestOrderChoice) => {
-    if (orderableMenu === null) return
+  const placeOrder = async (
+    { currency }: SelfPayMenu,
+    selectionText: string,
+    {
+      total,
+      amount,
+      summary,
+    }: {
+      readonly total: number
+      readonly amount: number
+      readonly summary: string
+    }
+  ) => {
     setIsPreparing(true)
     setIsRefused(false)
     const { pointer, event } = createSelfPaySelectionEvent({
-      selectionText: createSelfPayOrderSelectionText({
-        tablePublicKey: table,
-        menu: orderableMenu,
-        items: choice.items,
-        note: choice.note,
-      }),
+      selectionText,
       selectionKey: hexToBytes(selectionKey),
       createdAt: Math.floor(Date.now() / 1000),
     })
@@ -418,15 +438,15 @@ function GuestOrdering({
         pointer,
         table,
         event,
-        currency: orderableMenu.currency,
-        total: choice.total,
-        summary: choice.summary,
+        currency,
+        total,
+        summary,
         startedAt,
       })
     )
     startPayment({
-      bill: orderBill(pointer, orderableMenu.currency),
-      amount: choice.amount,
+      bill: orderBill(pointer, currency),
+      amount,
       pointer,
       isSeenByRestaurant: true,
       startedAt,
@@ -480,7 +500,7 @@ function GuestOrdering({
             {t("selfPay.order.back")}
           </Button>
         </>
-      ) : orderableMenu === null ? (
+      ) : orderable === null && writable === null ? (
         <GuestMessage
           title={t("selfPay.order.unavailable.title")}
           description={t("selfPay.order.unavailable.description")}
@@ -499,13 +519,58 @@ function GuestOrdering({
               {t("selfPay.order.refused")}
             </p>
           ) : null}
-          <GuestMenu
-            menu={orderableMenu}
-            isPreparing={isPreparing}
-            onOrder={(choice) => {
-              void placeOrder(choice)
-            }}
-          />
+          {orderable !== null && writable !== null ? (
+            <Tabs
+              value={isWriting ? "write" : "menu"}
+              onValueChange={(value) => {
+                setIsWriting(value === "write")
+              }}
+            >
+              <TabsList className={guestTabListClassName}>
+                <TabsTrigger value="menu" className={guestTabClassName}>
+                  {t("selfPay.menu.tab.menu")}
+                </TabsTrigger>
+                <TabsTrigger value="write" className={guestTabClassName}>
+                  {t("selfPay.written.tab")}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : null}
+          {writable !== null && (isWriting || orderable === null) ? (
+            <GuestWrittenOrder
+              menu={writable}
+              isPreparing={isPreparing}
+              onOrder={({ text, named, amount }) => {
+                void placeOrder(
+                  writable,
+                  createSelfPayWrittenSelectionText({
+                    tablePublicKey: table,
+                    menu: writable,
+                    text,
+                    amount: named,
+                  }),
+                  { total: named, amount, summary: text }
+                )
+              }}
+            />
+          ) : orderable !== null ? (
+            <GuestMenu
+              menu={orderable}
+              isPreparing={isPreparing}
+              onOrder={({ items, note, ...choice }) => {
+                void placeOrder(
+                  orderable,
+                  createSelfPayOrderSelectionText({
+                    tablePublicKey: table,
+                    menu: orderable,
+                    items,
+                    note,
+                  }),
+                  choice
+                )
+              }}
+            />
+          ) : null}
         </>
       )}
     </div>
@@ -748,7 +813,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
               {t("selfPay.menu.tab.bill")}
             </TabsTrigger>
             <TabsTrigger value="menu" className={guestTabClassName}>
-              {t("selfPay.menu.tab.menu")}
+              <GuestMenuTabLabel address={address} {...menuOffer} />
             </TabsTrigger>
           </TabsList>
         </Tabs>

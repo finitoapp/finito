@@ -4,6 +4,7 @@ import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
+  setWrittenOrders,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
@@ -61,6 +62,7 @@ export function SelfPayOptionsCard() {
     data: [settings],
   } = useEvoluQuery(selfPaySettingsQuery)
   const menuOrdering = settings?.menuOrdering === sqliteTrue
+  const writtenOrders = settings?.writtenOrders === sqliteTrue
 
   const billsShown = useInlineChoice(
     settings?.selfPayBillsHidden !== sqliteTrue,
@@ -72,6 +74,11 @@ export function SelfPayOptionsCard() {
   const ordering = useInlineChoice(menuOrdering, (on) =>
     runToast(async (run) => {
       await run.ok(setMenuOrdering({ on, deviceId: thisDeviceId }))
+    })
+  )
+  const writing = useInlineChoice(writtenOrders, (on) =>
+    runToast(async (run) => {
+      await run.ok(setWrittenOrders({ on, deviceId: thisDeviceId }))
     })
   )
 
@@ -112,13 +119,27 @@ export function SelfPayOptionsCard() {
             </FieldDescription>
           </FieldContent>
         </Field>
-        {menuOrdering && (
-          <>
-            <OrderDeviceSelect
-              orderDeviceId={settings?.orderDeviceId ?? null}
-            />
-            <MenuStatus />
-          </>
+        {menuOrdering && <MenuStatus />}
+        <Field orientation="horizontal">
+          <Switch
+            aria-label={t("catalog.tables.selfPayOptions.written")}
+            checked={writing.value}
+            disabled={writing.saving}
+            onCheckedChange={(checked) => {
+              void writing.choose(checked)
+            }}
+          />
+          <FieldContent>
+            <FieldLabel>
+              {t("catalog.tables.selfPayOptions.written")}
+            </FieldLabel>
+            <FieldDescription>
+              {t("catalog.tables.selfPayOptions.written.description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
+        {(menuOrdering || writtenOrders) && (
+          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
         )}
       </CardContent>
     </Card>

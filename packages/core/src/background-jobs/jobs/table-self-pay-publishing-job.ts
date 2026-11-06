@@ -1,4 +1,4 @@
-import { DateIso, ok, type Run, sqliteTrue } from "@evolu/common"
+import { DateIso, ok, type Run } from "@evolu/common"
 import type { NostrEvent } from "../../integrations/nostr/nostr-event.ts"
 import { fetchYadioBtcExchangeRate } from "../../integrations/yadio/yadio-client.ts"
 import {
@@ -9,6 +9,7 @@ import {
   selfPaySettingsQuery,
   settingsQuery,
 } from "../../modules/app-settings/app-settings-queries.ts"
+import { offersOrders } from "../../modules/app-settings/app-settings-utils.ts"
 import { loadBillCoverage } from "../../modules/bill/bill-guards.ts"
 import { catalogCategoriesQuery } from "../../modules/catalog-category/catalog-category-queries.ts"
 import { catalogItemsQuery } from "../../modules/catalog-item/catalog-item-queries.ts"
@@ -226,16 +227,12 @@ class TableSelfPayPublishing {
     this.queue.enqueue("confirmations", () => this.publishConfirmations())
   }
 
-  private async takesOrders(): Promise<boolean> {
-    const [settings] = await this.run.deps.evolu.loadQuery(selfPaySettingsQuery)
-    return (
-      settings?.menuOrdering === sqliteTrue &&
-      settings.orderDeviceId === this.run.deps.deviceId
-    )
-  }
-
   private async publishMenu(): Promise<void> {
-    if (!(await this.takesOrders())) {
+    const [settings] = await this.run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    if (
+      settings?.orderDeviceId !== this.run.deps.deviceId ||
+      !offersOrders(settings)
+    ) {
       this.liveMenu = null
       this.liveMenuVersion = null
       return
@@ -273,7 +270,8 @@ class TableSelfPayPublishing {
   }
 
   private async publishConfirmations(): Promise<void> {
-    if (!(await this.takesOrders())) return
+    const [settings] = await this.run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    if (settings?.orderDeviceId !== this.run.deps.deviceId) return
     const now = this.run.deps.date.now().getTime()
     const orders = await this.run.deps.evolu.loadQuery(
       recentMenuOrdersQuery(
@@ -290,11 +288,12 @@ class TableSelfPayPublishing {
         loadBillCoverage(order.billId)
       )
       const last = this.confirmedOrders.get(order.pointer)
+      const total = order.writtenAmount ?? billTotal
       const confirmation: SelfPayOrderConfirmation = {
         v: 1,
         number: order.number,
-        total: billTotal,
-        covered: Math.min(claimedSum, billTotal),
+        total,
+        covered: Math.min(claimedSum, total),
         at: Math.max(Math.floor(now / 1000), (last?.createdAt ?? 0) + 1),
       }
       const shown = JSON.stringify([confirmation.number, confirmation.covered])

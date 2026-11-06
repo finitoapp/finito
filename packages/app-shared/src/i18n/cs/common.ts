@@ -104,6 +104,10 @@ export const csCommon = {
   "notifications.title": "Oznámení",
   "orders.announced": "Nová objednávka {number} · {table}",
   "orders.announced.noTable": "Nová objednávka {number}",
+  "orders.announced.written":
+    "Nová objednávka {number} · {table} · {amount} · {text}",
+  "orders.announced.written.noTable":
+    "Nová objednávka {number} · {amount} · {text}",
   "orders.announced.open": "Otevřít",
   "orders.empty": "Není co vydat.",
   "orders.line": "{name} × {quantity}",
@@ -118,6 +122,8 @@ export const csCommon = {
   "orders.served": "Vydáno",
   "orders.soldOut": "Vyprodáno",
   "orders.title": "K vydání",
+  "orders.written": "Text hosta: „{text}“",
+  "orders.written.arrivedOf": "{arrived} z {named}",
   "passwordTextarea.hide": "Skrýt obsah",
   "passwordTextarea.show": "Zobrazit obsah",
   "scanner.dialog.title": "Naskenovat kód",
@@ -165,6 +171,7 @@ export const csCommon = {
   "stats.items.metric": "Řadit položky",
   "stats.items.quantity": "{quantity} ×",
   "stats.items.showAll": "Zobrazit vše",
+  "stats.items.written": "Psané objednávky",
   "stats.items.showTop": "Zobrazit prvních 10",
   "stats.kpi.averageSale": "Průměrný prodej",
   "stats.kpi.breakdown.excess": "Přebytek",

@@ -72,6 +72,10 @@ where it is specified; the specification wins over this page.
 - **Order** (`menu-order`) — what a guest ordered from the menu and paid. Once
   paid it is a bill of its own with a number of the day; staff mark it served.
   Not a bill line and not a payment.
+- **Written order** (`menuOrder.writtenAmount`) — an order whose one line is the
+  guest's own text, at the money that arrived, up to the amount the guest named
+  (`docs/decisions/menu-ordering/0004`). Stored like a manual amount, but not
+  one: a guest wrote it, not staff.
 
 ## Collecting money
 

@@ -24,6 +24,7 @@ export const menuOrder = {
   day: DateStringSchema,
   number: PositiveIntegerSchema,
   note: NonEmptyString255Schema.nullable(),
+  writtenAmount: PositiveIntegerSchema.nullable(),
   servedAt: TimestampMsSchema.nullable(),
 } as const
 

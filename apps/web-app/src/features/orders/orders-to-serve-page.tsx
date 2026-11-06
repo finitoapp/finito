@@ -1,3 +1,4 @@
+import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
 import {
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
@@ -117,21 +118,25 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <ul className="flex flex-col gap-1">
-            {order.lines.map((line) => (
-              <li key={line.id} className="flex items-center gap-2">
-                <span className="text-lg font-medium">
-                  {t("orders.line", {
-                    name: line.name,
-                    quantity: line.quantity,
-                  })}
-                </span>
-                {line.isSoldOut && (
-                  <Badge variant="destructive">{t("orders.soldOut")}</Badge>
-                )}
-              </li>
-            ))}
-          </ul>
+          {order.written !== null ? (
+            <WrittenOrder written={order.written} />
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {order.lines.map((line) => (
+                <li key={line.id} className="flex items-center gap-2">
+                  <span className="text-lg font-medium">
+                    {t("orders.line", {
+                      name: line.name,
+                      quantity: line.quantity,
+                    })}
+                  </span>
+                  {line.isSoldOut && (
+                    <Badge variant="destructive">{t("orders.soldOut")}</Badge>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           {order.note !== null && (
             <p className="text-sm">{t("orders.note", { note: order.note })}</p>
           )}
@@ -150,6 +155,26 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
         </CardFooter>
       </Card>
     </li>
+  )
+}
+
+function WrittenOrder({
+  written,
+}: {
+  readonly written: NonNullable<MenuOrderToServe["written"]>
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  return (
+    <>
+      <p className="text-lg font-medium wrap-anywhere">
+        {t("orders.written", { text: written.text })}
+      </p>
+      <p className="text-sm tabular-nums">
+        {writtenOrderAmount(written, t, (money) => formatMoney(money, locale))}
+      </p>
+    </>
   )
 }
 

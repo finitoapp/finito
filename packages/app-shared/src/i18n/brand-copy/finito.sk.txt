@@ -26,6 +26,7 @@ settings.supportChat.empty: "Zatiaľ tu nie sú žiadne správy. Popíšte, s č
 settings.assistant.description: "Opýtajte sa na účty, platby a ako Finito funguje"
 settings.assistant.empty: "Opýtajte sa na svoje účty a platby alebo na to, ako Finito funguje. Asistent číta vaše dáta v tomto zariadení a dokumentáciu Finita a odpovedá pomocou poskytovateľa AI."
 settings.assistant.emptyPublic: "Opýtajte sa, ako Finito funguje. Asistent číta dokumentáciu a kód Finita, nie vaše dáta, a odpovedá pomocou poskytovateľa AI."
+catalog.tables.selfPayOptions.written.description: "Hosť pri stole napíše jeden riadok a sumu. Finito kontroluje len to, či peniaze prišli, a riadok nemá žiadnu sadzbu dane."
 settings.lightningAddress.form.description: "Platby idú rovno do peňaženky za adresou. Finito si od nej len vyžiada invoice a sleduje, či je zaplatený; nedrží žiadne kľúče ani peniaze."
 settings.lightningAddress.address.description: "Peňaženka musí podporovať LUD-21 verify a prezradiť dôkaz platby (preimage). Inak Finito nespozná, že je platba zaplatená."
 settings.lightningAddress.error.verifyUnsupported: "Táto peňaženka neumožní Finitu overiť, či je invoice zaplatený (LUD-21 verify). Použite inú peňaženku."

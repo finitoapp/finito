@@ -1,6 +1,6 @@
 # 0002 One device takes orders
 
-Status: accepted
+Status: superseded by menu-ordering/0005
 Date: 2026-10-22
 
 ## Context

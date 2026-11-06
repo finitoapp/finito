@@ -278,6 +278,15 @@ export const enBill = {
   "selfPay.unavailable.description":
     "Try again in a moment, or pay with the staff.",
   "selfPay.unavailable.title": "The bill is not available right now",
+  "selfPay.written.amount.label": "Amount",
+  "selfPay.written.amount.tooHigh": "The largest amount is {amount}.",
+  "selfPay.written.amount.tooLow": "The smallest amount is {amount}.",
+  "selfPay.written.nothing": "Write what you pay for and the amount",
+  "selfPay.written.summary": "You pay {amount}",
+  "selfPay.written.tab": "Write",
+  "selfPay.written.text.label": "What are you paying for?",
+  "selfPay.written.text.unreadable":
+    "This text holds a character that cannot be shown. Please retype it.",
   "selfPay.waiting":
     "The restaurant confirms your payment once the money arrives.",
   "selfPay.waiting.over.announcement": "{title}. {description}",

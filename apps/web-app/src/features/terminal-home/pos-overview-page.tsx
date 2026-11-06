@@ -1,5 +1,4 @@
 import { useTimestamp } from "@dedalik/use-react"
-import { sqliteTrue } from "@evolu/common"
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
@@ -16,6 +15,7 @@ import {
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
   type OpenBillRow,
   openBillsQuery,
@@ -209,7 +209,7 @@ function ToServeStrip() {
   } = useEvoluQuery(selfPaySettingsQuery)
   const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
 
-  if (settings?.menuOrdering !== sqliteTrue && orders.length === 0) return null
+  if (!offersOrders(settings) && orders.length === 0) return null
 
   return (
     <Link

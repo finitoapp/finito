@@ -26,6 +26,7 @@ settings.supportChat.empty: "No messages yet. Describe what you need help with a
 settings.assistant.description: "Ask about your bills, payments and how Finito works"
 settings.assistant.empty: "Ask about your bills and payments, or how Finito works. The assistant reads your data on this device and Finito's documentation, and answers through an AI provider."
 settings.assistant.emptyPublic: "Ask how Finito works. The assistant reads Finito's documentation and code, not your data, and answers through an AI provider."
+catalog.tables.selfPayOptions.written.description: "A guest at a table writes one line and names the amount. Finito checks only that the money arrived, and the line carries no tax rate."
 settings.lightningAddress.form.description: "Payments go straight to the wallet behind the address. Finito only asks it for an invoice and watches whether it is paid; it holds no keys and no money."
 settings.lightningAddress.address.description: "The wallet must support LUD-21 verify and reveal the proof of payment (preimage). Otherwise Finito cannot tell that a payment is paid."
 settings.lightningAddress.error.verifyUnsupported: "This wallet does not let Finito check whether an invoice is paid (LUD-21 verify). Use another wallet."

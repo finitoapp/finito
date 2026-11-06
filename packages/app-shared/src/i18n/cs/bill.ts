@@ -280,6 +280,15 @@ export const csBill = {
   "selfPay.unavailable.description":
     "Zkuste to za chvíli znovu, nebo zaplaťte u obsluhy.",
   "selfPay.unavailable.title": "Účet teď není dostupný",
+  "selfPay.written.amount.label": "Částka",
+  "selfPay.written.amount.tooHigh": "Největší částka je {amount}.",
+  "selfPay.written.amount.tooLow": "Nejmenší částka je {amount}.",
+  "selfPay.written.nothing": "Napište, co platíte, a částku",
+  "selfPay.written.summary": "Platíte {amount}",
+  "selfPay.written.tab": "Napsat",
+  "selfPay.written.text.label": "Co platíte?",
+  "selfPay.written.text.unreadable":
+    "Text obsahuje znak, který nejde zobrazit. Napište ho prosím znovu.",
   "selfPay.waiting": "Restaurace platbu potvrdí, jakmile peníze dorazí.",
   "selfPay.waiting.over.announcement": "{title}. {description}",
   "selfPay.waiting.over.description":

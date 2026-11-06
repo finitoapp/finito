@@ -11,6 +11,7 @@ import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
+  setWrittenOrders,
 } from "../../modules/app-settings/app-settings-actions.ts"
 import {
   createCatalogItemAtEnd,
@@ -25,8 +26,10 @@ import { menuVersionsNewestFirstQuery } from "../../modules/menu-order/menu-orde
 import {
   createSelfPayOrderConfirmationFilter,
   createSelfPayOrderSelectionText,
+  createSelfPayWrittenSelectionText,
   deriveSelfPayMenuItemKey,
   openSelfPayOrderConfirmation,
+  type SelfPayMenu,
   SelfPayMenuSchema,
 } from "../../modules/menu-order/menu-order-utils.ts"
 import { createRowId } from "../../modules/shared/evolu-utils.ts"
@@ -43,6 +46,7 @@ import { createSelfPaySelectionEvent } from "../../modules/table-self-pay/table-
 import {
   deriveOrderSelfPayReference,
   formatSelfPayBankMessage,
+  type SelfPayPointer,
 } from "../../modules/table-self-pay/table-self-pay-reference-utils.ts"
 import {
   createSelfPayTestContext,
@@ -135,6 +139,46 @@ const openCafe = async (context: SelfPayTestContext) => {
   await run.ok(setCatalogItemInMenu({ id: coffee, inMenu: true }))
   return coffee
 }
+
+const latestMenu = (context: SelfPayTestContext) =>
+  publishedMenus(context).at(-1)
+
+const payWrittenOrder = async (
+  context: SelfPayTestContext,
+  menu: SelfPayMenu,
+  { named, arrived }: { readonly named: number; readonly arrived: number }
+) => {
+  const { pointer, event } = createSelfPaySelectionEvent({
+    selectionText: createSelfPayWrittenSelectionText({
+      tablePublicKey: bytesToHex(
+        deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
+      ),
+      menu,
+      text: "2x pivo",
+      amount: named,
+    }),
+    selectionKey,
+    createdAt: Math.floor(context.clock.date.now().getTime() / 1000),
+  })
+  await context.deps.nostrRelayClient.publish(
+    context.deps.selfPayDefaultRelays,
+    event
+  )
+  await receiveBankTransfer(context, {
+    amount: arrived,
+    variableSymbol: deriveOrderSelfPayReference(pointer),
+    recipientMessage: formatSelfPayBankMessage({ pointer }),
+  })
+  return pointer
+}
+
+const confirmationOf = (context: SelfPayTestContext, pointer: SelfPayPointer) =>
+  openSelfPayOrderConfirmation({
+    events: context.relay.received(),
+    menuPublicKey: bytesToHex(menuKeys.publicKey),
+    pointer,
+    selectionKey,
+  })
 
 describe("publishing the menu", () => {
   test("publishes the menu from the device that takes orders, and again when a price changes", async () => {
@@ -247,6 +291,127 @@ describe("publishing the menu", () => {
       createdAt: 1,
     }).pointer
     expect(await confirmationOf(anotherGuest)).toBe(null)
+  })
+})
+
+describe("guests writing what they pay for", () => {
+  test("publishes a menu with no items that offers writing while only writing is on, and the view names it", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await openCafe(context)
+    await run.ok(setMenuOrdering({ on: false, deviceId: context.deviceId }))
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+
+    expect(latestMenu(context)?.categories).toEqual([])
+    const { view } = await loadSelfPayTestView(context)
+    expect(view.menu).toEqual({
+      publicKey: bytesToHex(menuKeys.publicKey),
+      readKey: bytesToHex(menuKeys.readKey),
+    })
+  })
+
+  test("publishes a new menu version when writing is switched on over an unchanged menu", async () => {
+    await using context = await createSelfPayTestContext()
+    await openCafe(context)
+    await using _job = await startJob(context)
+    await waitFor(() => (latestMenu(context) ?? null) !== null)
+    const before = latestMenu(context)
+    await using run = testCreateRun(context.deps)
+
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await waitFor(() => latestMenu(context)?.written === true)
+
+    expect(before?.written).toBe(false)
+    expect(latestMenu(context)?.version).not.toBe(before?.version)
+    expect(latestMenu(context)?.categories).toEqual(before?.categories)
+  })
+
+  test("stops offering writing once the owner switches it off", async () => {
+    await using context = await createSelfPayTestContext()
+    await openCafe(context)
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+
+    await run.ok(setWrittenOrders({ on: false, deviceId: context.deviceId }))
+
+    await waitFor(() => latestMenu(context)?.written === false)
+  })
+
+  test("confirms an order recorded just before both switches went off", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+    const menu = latestMenu(context)
+    if (menu === undefined || menu === null) throw new Error("Expected a menu.")
+    const pointer = await payWrittenOrder(context, menu, {
+      named: 9000,
+      arrived: 9000,
+    })
+    await run.ok(setWrittenOrders({ on: false, deviceId: context.deviceId }))
+
+    await waitFor(() => confirmationOf(context, pointer) !== null)
+
+    expect(confirmationOf(context, pointer)).toMatchObject({
+      number: 1,
+      total: 9000,
+      covered: 9000,
+    })
+  })
+
+  test("reads a menu without the flag as offering no writing", () => {
+    expect(
+      SelfPayMenuSchema.parse({
+        v: 1,
+        version: "aa".repeat(16),
+        currency: "CZK",
+        categories: [],
+      }).written
+    ).toBe(false)
+  })
+
+  test("confirms what is left of a written order that less arrived for", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+    const menu = latestMenu(context)
+    if (menu === undefined || menu === null) throw new Error("Expected a menu.")
+
+    const pointer = await payWrittenOrder(context, menu, {
+      named: 9000,
+      arrived: 8000,
+    })
+    await waitFor(() => confirmationOf(context, pointer) !== null)
+
+    expect(confirmationOf(context, pointer)).toMatchObject({
+      total: 9000,
+      covered: 8000,
+    })
+  })
+
+  test("says nothing in the table's view about a paid order", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+    const menu = latestMenu(context)
+    if (menu === undefined || menu === null) throw new Error("Expected a menu.")
+
+    await payWrittenOrder(context, menu, { named: 9000, arrived: 8000 })
+    const { view } = await loadSelfPayTestView(context)
+
+    expect(view.bills).toEqual([])
+    expect(view.confirmations).toEqual([])
+    expect(JSON.stringify(view)).not.toContain("2x pivo")
   })
 })
 
