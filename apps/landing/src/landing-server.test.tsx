@@ -23,6 +23,24 @@ describe("renderLandingDocument", () => {
     }
   )
 
+  test("preloads the Manrope faces its language's text needs", () => {
+    const preloads = (language: "cs" | "en" | "sk") =>
+      [
+        ...renderLandingDocument(template, language).matchAll(
+          /<link rel="preload" href="([^"]+)" as="font" type="font\/woff2" crossorigin="anonymous"\/>/gu
+        ),
+      ].map((match) => match[1])
+
+    for (const language of ["cs", "en", "sk"] as const) {
+      expect(
+        preloads(language).filter((href) => href?.includes("manrope-latin-"))
+      ).toHaveLength(language === "en" ? 3 : 6)
+    }
+    expect(
+      preloads("en").some((href) => href?.includes("manrope-latin-ext-"))
+    ).toBe(false)
+  })
+
   test("links every language's page to the others", () => {
     const document = renderLandingDocument(template, "cs")
 

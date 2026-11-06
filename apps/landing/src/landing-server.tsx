@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { renderToStaticMarkup, renderToString } from "react-dom/server"
+import { landingFontPreloads } from "@/core/landing-font-preloads.ts"
 import {
   installsFromLanding,
   landingResources,
@@ -167,6 +168,17 @@ function LandingHead({
     <>
       <title>{title}</title>
       <meta name="description" content={description} />
+      {/* Before anything else, so the text is in Manrope by its first paint. */}
+      {landingFontPreloads[language].map((href) => (
+        <link
+          key={href}
+          rel="preload"
+          href={href}
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      ))}
       <link rel="canonical" href={pageUrl(document, language)} />
       {landingLanguages.map((alternate) => (
         <link
