@@ -48,6 +48,7 @@
       "browser": "./src/deps.ts",
       "bun": "./src/deps.ts",
       "development": "./src/deps.ts",
+      "react-native": "./src/deps.ts",
       "default": "./dist/deps.js"
     },
     "./error": {
@@ -55,6 +56,7 @@
       "browser": "./src/error.ts",
       "bun": "./src/error.ts",
       "development": "./src/error.ts",
+      "react-native": "./src/error.ts",
       "default": "./dist/error.js"
     },
     "./switchio": {
@@ -62,6 +64,7 @@
       "browser": "./src/switchio.ts",
       "bun": "./src/switchio.ts",
       "development": "./src/switchio.ts",
+      "react-native": "./src/switchio.ts",
       "default": "./dist/switchio.js"
     },
     "./zod-utils": {
@@ -69,6 +72,7 @@
       "browser": "./src/zod-utils.ts",
       "bun": "./src/zod-utils.ts",
       "development": "./src/zod-utils.ts",
+      "react-native": "./src/zod-utils.ts",
       "default": "./dist/zod-utils.js"
     },
     "./modules/*": {
@@ -76,6 +80,7 @@
       "browser": "./src/modules/*.ts",
       "bun": "./src/modules/*.ts",
       "development": "./src/modules/*.ts",
+      "react-native": "./src/modules/*.ts",
       "default": "./dist/modules/*.js"
     },
     "./evolu/*": {
@@ -83,6 +88,7 @@
       "browser": "./src/evolu/*.ts",
       "bun": "./src/evolu/*.ts",
       "development": "./src/evolu/*.ts",
+      "react-native": "./src/evolu/*.ts",
       "default": "./dist/evolu/*.js"
     },
     "./migrations/*": {
@@ -90,6 +96,7 @@
       "browser": "./src/migrations/*.ts",
       "bun": "./src/migrations/*.ts",
       "development": "./src/migrations/*.ts",
+      "react-native": "./src/migrations/*.ts",
       "default": "./dist/migrations/*.js"
     },
     "./integrations/*": {
@@ -97,6 +104,7 @@
       "browser": "./src/integrations/*.ts",
       "bun": "./src/integrations/*.ts",
       "development": "./src/integrations/*.ts",
+      "react-native": "./src/integrations/*.ts",
       "default": "./dist/integrations/*.js"
     },
     "./background-jobs/*": {
@@ -104,6 +112,7 @@
       "browser": "./src/background-jobs/*.ts",
       "bun": "./src/background-jobs/*.ts",
       "development": "./src/background-jobs/*.ts",
+      "react-native": "./src/background-jobs/*.ts",
       "default": "./dist/background-jobs/*.js"
     },
     "./cashu/*": {
@@ -111,6 +120,7 @@
       "browser": "./src/cashu/*.ts",
       "bun": "./src/cashu/*.ts",
       "development": "./src/cashu/*.ts",
+      "react-native": "./src/cashu/*.ts",
       "default": "./dist/cashu/*.js"
     },
     "./spark/*": {
@@ -118,6 +128,7 @@
       "browser": "./src/spark/*.ts",
       "bun": "./src/spark/*.ts",
       "development": "./src/spark/*.ts",
+      "react-native": "./src/spark/*.ts",
       "default": "./dist/spark/*.js"
     },
     "./ai/*": {
@@ -125,6 +136,7 @@
       "browser": "./src/ai/*.ts",
       "bun": "./src/ai/*.ts",
       "development": "./src/ai/*.ts",
+      "react-native": "./src/ai/*.ts",
       "default": "./dist/ai/*.js"
     },
     "./demo-data/*": {
@@ -132,6 +144,7 @@
       "browser": "./src/demo-data/*.ts",
       "bun": "./src/demo-data/*.ts",
       "development": "./src/demo-data/*.ts",
+      "react-native": "./src/demo-data/*.ts",
       "default": "./dist/demo-data/*.js"
     },
     "./utils/*": {
@@ -139,6 +152,7 @@
       "browser": "./src/utils/*.ts",
       "bun": "./src/utils/*.ts",
       "development": "./src/utils/*.ts",
+      "react-native": "./src/utils/*.ts",
       "default": "./dist/utils/*.js"
     },
     "./runtime/node-evolu": {
@@ -146,6 +160,7 @@
       "browser": "./src/runtime/node-evolu.ts",
       "bun": "./src/runtime/node-evolu.ts",
       "development": "./src/runtime/node-evolu.ts",
+      "react-native": "./src/runtime/node-evolu.ts",
       "default": "./dist/runtime/node-evolu.js"
     },
     "./runtime/in-process-lock-manager": {
@@ -153,6 +168,7 @@
       "browser": "./src/runtime/in-process-lock-manager.ts",
       "bun": "./src/runtime/in-process-lock-manager.ts",
       "development": "./src/runtime/in-process-lock-manager.ts",
+      "react-native": "./src/runtime/in-process-lock-manager.ts",
       "default": "./dist/runtime/in-process-lock-manager.js"
     },
     "./testing/*": {
@@ -160,6 +176,7 @@
       "browser": "./src/testing/*.ts",
       "bun": "./src/testing/*.ts",
       "development": "./src/testing/*.ts",
+      "react-native": "./src/testing/*.ts",
       "default": "./src/testing/*.ts"
     }
   }
