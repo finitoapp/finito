@@ -249,6 +249,15 @@ jobs:
           path: apps/native-app/android/app/build/outputs/finito-release-signed.apk
           if-no-files-found: error
 
+      # For uploading to Google Play by hand while the upload below is off;
+      # a run artifact, not a release asset, so nobody installs it by mistake.
+      - name: Keep the AAB for Google Play
+        uses: actions/upload-artifact@v4
+        with:
+          name: finito-aab
+          path: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
       # Off until the Google Play service account may release fit.finito.app:
       # v26.11.1's upload failed with "The caller does not have permission".
       # Until then Finito ships through the GitHub release's APK only.
@@ -276,6 +285,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: apks
+          pattern: "*-apk"
           merge-multiple: true
 
       - name: Create GitHub release
