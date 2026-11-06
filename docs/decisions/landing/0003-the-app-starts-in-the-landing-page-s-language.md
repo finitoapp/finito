@@ -38,8 +38,14 @@ Only the landing page's links carry the language: a visitor who types
 the app's address keeps the browser's language. The device locale follows
 the language when onboarding finishes, as it already did.
 
+Finito's landing links its PWA, the native app's web build, the same way
+(`app.finito.fit/onboarding?lang=`), and its onboarding reads the
+parameter as the web app's does. Both read it through `LanguageSchema`
+from `@payky/app-shared`, so an unknown value is ignored alike.
+
 ## Enforced by
 
 - `apps/web-app/e2e/landing-redirect.spec.ts > the app starts in the language of the landing page it was opened from`
 - `apps/web-app/e2e/landing-redirect.spec.ts > a device with an account keeps its language when opened from the landing page`
 - `apps/web-app/e2e/landing-redirect.spec.ts > the landing page's start buttons open the app in its language`
+- `packages/app-shared/src/i18n/language-schema.test.ts > LanguageSchema > refuses anything else, such as a landing link's unknown or missing language`

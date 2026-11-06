@@ -1,0 +1,16 @@
+# web landing-redirect.spec.ts: "a device with an account keeps its
+# language when opened from the landing page" (landing/0003). Web only, as
+# the landing links only the PWA.
+appId: ${APP_ID}
+tags: [onboarding]
+---
+- runFlow:
+    when:
+      platform: Web
+    commands:
+      - runFlow: ../../subflows/seed-onboarding.yaml
+      - openLink: ${BASE_URL}onboarding?lang=cs
+      - extendedWaitUntil:
+          visible: ${output.t["home.pay"]}
+          timeout: 15000
+      - assertNotVisible: ${output.cs["home.pay"]}
