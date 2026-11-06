@@ -18,6 +18,17 @@ const transportLabel = (url: string): string => {
   return queryIndex === -1 ? url : url.slice(0, queryIndex)
 }
 
+export const orderDefaultTransportsFirst = <T extends { readonly url: string }>(
+  transports: ReadonlyArray<T>,
+  defaultUrls: ReadonlyArray<string>
+): ReadonlyArray<T> => {
+  const rank = (url: string): number => {
+    const index = defaultUrls.indexOf(url)
+    return index === -1 ? defaultUrls.length : index
+  }
+  return transports.toSorted((a, b) => rank(a.url) - rank(b.url))
+}
+
 /**
  * The relay state of `url` for `ownerId` in the database `name`, or null
  * while the shared worker has not reported it — before it connects, or right
