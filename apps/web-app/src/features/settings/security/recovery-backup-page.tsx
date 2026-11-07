@@ -29,7 +29,7 @@ const saveResultKeys = {
 type BackupStep = "intro" | "words" | "verify"
 
 /**
- * The recovery-phrase backup (account/0007): what the phrase is, the words,
+ * The recovery-phrase backup (account/0009): what the phrase is, the words,
  * then the optional check. Leaves for Security when done or skipped; only the
  * check writes "verified".
  */

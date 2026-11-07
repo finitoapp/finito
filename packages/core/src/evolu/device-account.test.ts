@@ -1,5 +1,5 @@
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { MasterKey } from "../modules/shared/key-derivation.ts"
 import { NonEmptyString255, WssUrl } from "../modules/shared/schema.ts"
 import { createTestDeviceEvolu } from "../testing/device-evolu.ts"
@@ -240,11 +240,15 @@ describe("insertDemoAccount", () => {
     const { deviceEvolu } = test
     await createOrSelectAccount(deviceEvolu, masterKey, { defaultTransports })
 
+    // The active account is the latest used; in the same millisecond the
+    // two would tie and SQLite could return either.
+    vi.setSystemTime(Date.now() + 1)
     const accountId = insertDemoAccount(
       deviceEvolu,
       NonEmptyString255("Demo"),
       defaultTransports
     )
+    vi.useRealTimers()
 
     await expect
       .poll(() => deviceEvolu.loadQuery(activeAccountQuery))

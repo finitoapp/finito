@@ -1,6 +1,6 @@
 # 0007 The backup reminder opens on entering home and snoozes for a week
 
-Status: accepted
+Status: superseded by account/0009
 Date: 2026-11-01
 
 ## Context

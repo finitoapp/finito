@@ -27,7 +27,7 @@ export const appSettings = {
   enabledHomeModesJson: z.string().nullable(),
   /**
    * When the merchant proved the recovery phrase is written down correctly
-   * (account/0007); `null` means not verified. Nullable and left out of
+   * (account/0009); `null` means not verified. Nullable and left out of
    * `settingsQuery`'s filter like `enabledHomeModesJson`. It lives on the
    * account, so verifying on one device clears the reminder on all of them.
    * Carries a timestamp only, never the phrase or any word of it.

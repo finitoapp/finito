@@ -11,7 +11,7 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /**
- * The optional backup check (account/0007): three random words of the phrase.
+ * The optional backup check (account/0009): three random words of the phrase.
  * A wrong answer says so without naming which word. `onDone` runs after a
  * successful check and after a skip alike.
  */

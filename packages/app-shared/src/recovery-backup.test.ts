@@ -4,6 +4,7 @@ import {
   backupReminderSnoozedUntil,
   checkVerifyAnswers,
   isBackupReminderDue,
+  mayBackupReminderBeDue,
   pickVerifyIndexes,
   VERIFY_WORD_COUNT,
 } from "./recovery-backup.ts"
@@ -55,18 +56,42 @@ describe("checkVerifyAnswers", () => {
 describe("isBackupReminderDue", () => {
   const now = Date.UTC(2026, 10, 1, 12)
   const base = {
-    hasPaidPayment: true,
+    walletBalances: [10_001],
     verifiedAt: null,
     isDemo: false,
     snoozedUntil: null,
     now,
   }
 
-  test("shows after the first paid payment until verified", () => {
+  test("shows once the wallets hold more than 10,000 sats until verified", () => {
     expect(isBackupReminderDue(base)).toBe(true)
+    expect(
+      isBackupReminderDue({ ...base, walletBalances: [6_000, 4_001] })
+    ).toBe(true)
   })
-  test("shows nothing before a payment", () => {
-    expect(isBackupReminderDue({ ...base, hasPaidPayment: false })).toBe(false)
+  test("shows nothing while the wallets hold 10,000 sats or less", () => {
+    expect(isBackupReminderDue({ ...base, walletBalances: [10_000] })).toBe(
+      false
+    )
+    expect(
+      isBackupReminderDue({ ...base, walletBalances: [6_000, 4_000] })
+    ).toBe(false)
+    expect(isBackupReminderDue({ ...base, walletBalances: [] })).toBe(false)
+  })
+  test("waits for a wallet still loading unless the others are already over the line", () => {
+    expect(
+      isBackupReminderDue({ ...base, walletBalances: [5_000, null] })
+    ).toBe(null)
+    expect(
+      isBackupReminderDue({ ...base, walletBalances: [10_001, null] })
+    ).toBe(true)
+    expect(
+      isBackupReminderDue({ ...base, walletBalances: [null], verifiedAt: 1 })
+    ).toBe(false)
+  })
+  test("reads no balance on an account it would not ask", () => {
+    expect(mayBackupReminderBeDue(base)).toBe(true)
+    expect(mayBackupReminderBeDue({ ...base, isDemo: true })).toBe(false)
   })
   test("shows nothing once verified", () => {
     expect(isBackupReminderDue({ ...base, verifiedAt: 1 })).toBe(false)

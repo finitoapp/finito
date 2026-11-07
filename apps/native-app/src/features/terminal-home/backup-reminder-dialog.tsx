@@ -17,7 +17,7 @@ import { useBackupReminder } from "./use-backup-reminder.ts"
 
 /**
  * Web's `BackupReminderDialog`: asks on home to back up the recovery phrase
- * (account/0007). Closing it any way puts it off for a week on this device.
+ * (account/0009). Closing it any way puts it off for a week on this device.
  */
 export function BackupReminderDialog() {
   const { t } = useTranslation()

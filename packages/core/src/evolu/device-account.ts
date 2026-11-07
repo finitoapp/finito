@@ -412,7 +412,7 @@ export const backupReminderSnoozeQuery = (accountId: DeviceAccountId) =>
 
 /**
  * Keeps the account's recovery-phrase backup reminder away on this device
- * until `until` (account/0007).
+ * until `until` (account/0009).
  */
 export function snoozeBackupReminder(
   deviceEvolu: DeviceEvolu,

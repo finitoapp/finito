@@ -1,6 +1,7 @@
-# web recovery-backup.spec.ts: "the backup reminder waits for the first payment,
-# Later puts it off, and verifying the backup ends it" (native shows no copy action; the check
-# refuses a wrong word and accepts the right ones).
+# web recovery-backup.spec.ts: "the backup reminder waits for more than 10,000
+# sats in the wallet, Later puts it off, and verifying the backup ends it"
+# (native shows no copy action; the check refuses a wrong word and accepts the
+# right ones).
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -8,16 +9,50 @@ tags: [settings]
     file: ../../subflows/seed-onboarding.yaml
     env:
       QUERY: unverifiedBackup=true
-# Nothing is shown before the first payment.
+# Nothing is shown before a payment, nor after a cash one: the wallets are empty.
 - assertNotVisible:
     id: backup-reminder
 - runFlow: ../../subflows/take-cash-payment.yaml
-# Home opens covered by the reminder, so wait for it, not for home's Pay.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: ""
-      TEXT: ${output.re(output.t["settings.security.reminder.text"])}
+      TEXT: ${output.t["home.pay"]}
+- assertNotVisible:
+    id: backup-reminder
+# A Cashu payment of 200 (about 13,333 sats at the mocked rate) fills the
+# wallet over 10,000 sats. The fake mint lives in the page, so from here on
+# by taps only.
+- runFlow: ../../subflows/enable-cashu.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow:
+    file: ../../subflows/enter-amount.yaml
+    env:
+      AMOUNT: "200"
+- tapOn: ${output.t["home.pay"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["paymentTip.none"])}
+    timeout: 15000
+- tapOn: ${output.re(output.t["paymentTip.none"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentWait.method.bitcoin"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentWait.paid"]}
+    timeout: 45000
+# Back home, the reminder opens once the wallet balance is in.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentWait.back"]}
 - extendedWaitUntil:
     visible:
       id: backup-reminder

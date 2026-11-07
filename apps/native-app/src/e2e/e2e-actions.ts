@@ -127,7 +127,7 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
    * USD, tips on defaults; `spark=true` adds Spark, `fiatCurrency=` another
    * currency), plus English, so no flow depends on the device locale. It
    * marks the recovery phrase verified, as web's does, so the backup reminder
-   * (account/0007) does not cover the screen after the first payment;
+   * (account/0009) does not cover the screen once a wallet fills;
    * `unverifiedBackup=true` keeps it for a flow that tests the reminder.
    */
   seedOnboarding: async (run, params) => {

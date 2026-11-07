@@ -118,7 +118,7 @@ const deviceEvoluSchema = {
     demo: DemoAccountStateSchema.nullable(),
     /**
      * Until when the recovery-phrase backup reminder stays away on this
-     * device (account/0007); `null` until it is first dismissed.
+     * device (account/0009); `null` until it is first dismissed.
      */
     backupReminderSnoozedUntil: TimestampMsSchema.nullable(),
   },

@@ -26,7 +26,7 @@ import { RecoveryWordsGrid } from "./recovery-words-grid.tsx"
 type BackupStep = "intro" | "words" | "verify"
 
 /**
- * Web's `RecoveryBackupPage` (account/0007): what the phrase is, the words,
+ * Web's `RecoveryBackupPage` (account/0009): what the phrase is, the words,
  * then the optional check. The phrase is derived only while its steps show
  * (a zero-lifetime query, never stored or logged), asks for the owner
  * permission to appear, goes back to the intro when the screen unmounts or

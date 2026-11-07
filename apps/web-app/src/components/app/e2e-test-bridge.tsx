@@ -134,7 +134,7 @@ interface E2eAccountShareAnswer {
  * pass `{ spark: true }` to also enable Spark, `{ fiatCurrency }` to seed a
  * different currency), so e2e specs can skip clicking through onboarding.
  * It also marks the recovery phrase verified, so the backup reminder
- * (account/0007) does not cover home after a wallet payment; pass
+ * (account/0009) does not cover home after a wallet payment; pass
  * `{ unverifiedBackup: true }` for a spec that tests the reminder.
  *
  * Also exposes `window.__e2eMarkSparkPaid`/`window.__e2eMarkIbanPaid`, which

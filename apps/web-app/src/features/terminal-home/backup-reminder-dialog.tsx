@@ -13,7 +13,7 @@ import { useBackupReminder } from "@/features/terminal-home/use-backup-reminder.
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /**
- * Asks on home to back up the recovery phrase (account/0007). Closing it any
+ * Asks on home to back up the recovery phrase (account/0009). Closing it any
  * way puts it off for a week on this device; a click outside it does not
  * close it.
  */

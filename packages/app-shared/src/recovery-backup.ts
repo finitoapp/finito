@@ -44,27 +44,59 @@ export function checkVerifyAnswers(
   )
 }
 
-/** How long "Later" or "Back up now" keeps the reminder away (account/0007). */
+/** How long "Later" or "Back up now" keeps the reminder away (account/0009). */
 export const BACKUP_REMINDER_SNOOZE_DAYS = 7
 
-/**
- * Whether the recovery-phrase backup reminder is due (account/0007): after
- * the account's first paid payment, until the phrase is verified, never on a
- * demo account, and not while this device's snooze still holds.
- */
-export function isBackupReminderDue(input: {
-  readonly hasPaidPayment: boolean
+/** The reminder asks only once the wallets hold more than this (account/0009). */
+export const BACKUP_REMINDER_MIN_WALLET_SATS = 10_000
+
+/** What the reminder reads besides the wallet balances. */
+export interface BackupReminderAccountState {
   readonly verifiedAt: number | null
   readonly isDemo: boolean
   readonly snoozedUntil: number | null
   readonly now: number
-}): boolean {
-  return (
-    input.hasPaidPayment &&
-    input.verifiedAt === null &&
-    !input.isDemo &&
-    (input.snoozedUntil === null || input.snoozedUntil <= input.now)
+}
+
+/**
+ * Whether the recovery-phrase backup reminder is due (account/0009): once the
+ * account's bitcoin wallets hold more than `BACKUP_REMINDER_MIN_WALLET_SATS`
+ * together, until the phrase is verified, never on a demo account, and not
+ * while this device's snooze still holds.
+ *
+ * `walletBalances` holds one balance in sats per wallet, `null` for one still
+ * loading or unreadable. The answer is `null` while those decide it: no
+ * balance can be negative, so the known ones already over the line make it
+ * due, and it is not due only once every one is known.
+ */
+export function isBackupReminderDue(
+  input: BackupReminderAccountState & {
+    readonly walletBalances: ReadonlyArray<number | null>
+  }
+): boolean | null {
+  if (
+    input.verifiedAt !== null ||
+    input.isDemo ||
+    (input.snoozedUntil !== null && input.snoozedUntil > input.now)
+  ) {
+    return false
+  }
+  const known = input.walletBalances.reduce<number>(
+    (sum, sats) => sum + (sats ?? 0),
+    0
   )
+  if (known > BACKUP_REMINDER_MIN_WALLET_SATS) return true
+  return input.walletBalances.includes(null) ? null : false
+}
+
+/**
+ * Whether the reminder may need the wallet balances at all, so a device
+ * that will not be asked does not read them.
+ */
+export function mayBackupReminderBeDue(
+  input: BackupReminderAccountState
+): boolean {
+  return isBackupReminderDue({ ...input, walletBalances: [null] }) !== false
 }
 
 /** Until when a dismissed reminder stays away. */

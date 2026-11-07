@@ -556,6 +556,20 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/payment-wait/payment-wait-qr-request.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      ToggleGroup:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+      ToggleGroupItem:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+      Dialog:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+      DialogContent:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+      DialogHeader:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+      DialogTitle:
+        'Finito shows the bank QR in the account\'s default format only, with the IBAN, variable symbol and cancel in a "More information" dialog; web keeps the format switch and the inline details',
+    },
   },
   {
     native: "src/features/payment-wait/payment-wait-page.tsx",
@@ -1478,7 +1492,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       Input:
-        "Web shows the words in read-only inputs; native draws them as unselectable Text, so the phrase cannot be selected or copied (account/0007).",
+        "Web shows the words in read-only inputs; native draws them as unselectable Text, so the phrase cannot be selected or copied (account/0009).",
     },
   },
   {
