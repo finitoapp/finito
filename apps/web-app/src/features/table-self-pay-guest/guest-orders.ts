@@ -12,7 +12,7 @@ import { z } from "zod"
 
 const STORAGE_KEY = "payky.selfPay.orders"
 const MAX_REMEMBERED_ORDERS = 20
-const ORDER_SHOWN_FOR_MS = 24 * 60 * 60 * 1000
+export const ORDER_SHOWN_FOR_MS = 24 * 60 * 60 * 1000
 
 const GuestOrderSchema = z.object({
   pointer: SelfPayPointerSchema,

@@ -4,18 +4,17 @@ import { YStack } from "tamagui"
 import {
   dismissToastAtom,
   type Toast as ToastData,
+  toastLifetimeMs,
   toastsAtom,
 } from "../../atoms/toast.ts"
 import { Toast } from "../ui/toast.tsx"
 
-const DISMISS_AFTER_MS = 4000
-
 function ToastItem({ toast }: { readonly toast: ToastData }) {
   const dismiss = useSetAtom(dismissToastAtom)
   useEffect(() => {
-    const timer = setTimeout(() => dismiss(toast.id), DISMISS_AFTER_MS)
+    const timer = setTimeout(() => dismiss(toast.id), toastLifetimeMs(toast))
     return () => clearTimeout(timer)
-  }, [dismiss, toast.id])
+  }, [dismiss, toast])
 
   return (
     <Toast

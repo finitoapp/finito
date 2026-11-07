@@ -23,11 +23,13 @@ import {
   loadNextBillDisplayNumber,
   type MenuOrderBillRows,
 } from "../bill/bill-actions.ts"
+import { claimedTransactionsByBillIdQuery } from "../bill/bill-coverage-queries.ts"
 import {
   type BillCoverageSummary,
   loadBillCoverage,
 } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import { claimedPaymentIdSet } from "../bill/bill-utils.ts"
 import type { BillLineRow } from "../bill-line/bill-line.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import type {
@@ -42,6 +44,7 @@ import { getStaffDisplayName } from "../catalog-item/catalog-item-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { ItemRow } from "../item/item.ts"
 import { createStandaloneItemSnapshot } from "../item/item-utils.ts"
+import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import { deriveTableSelfPayKeys } from "../shared/key-derivation.ts"
@@ -215,6 +218,19 @@ export const dropReplacedMenuVersions =
     return ok(replaced.length)
   }
 
+export const acceptMenuOrder =
+  (id: MenuOrderId): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "menuOrder",
+        { id, acceptedAt: TimestampMs(run.deps.date.now().getTime()) },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok()
+  }
+
 export const markMenuOrderServed =
   (id: MenuOrderId): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
@@ -228,10 +244,47 @@ export const markMenuOrderServed =
     return ok()
   }
 
+export type RejectedMenuOrderRefund =
+  | { readonly type: "payment"; readonly paymentId: PaymentId }
+  | { readonly type: "bill"; readonly billId: BillId }
+
+export const rejectMenuOrder =
+  ({
+    id,
+    billId,
+  }: {
+    readonly id: MenuOrderId
+    readonly billId: BillId
+  }): Task<
+    RejectedMenuOrderRefund,
+    never,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "menuOrder",
+        { id, rejectedAt: TimestampMs(run.deps.date.now().getTime()) },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    const [paymentId, ...otherPayments] = claimedPaymentIdSet(
+      await run.deps.evolu.loadQuery(claimedTransactionsByBillIdQuery(billId))
+    )
+    return ok(
+      paymentId !== undefined && otherPayments.length === 0
+        ? { type: "payment", paymentId }
+        : { type: "bill", billId }
+    )
+  }
+
 export interface MenuOrderArrivalRows {
   readonly bill: MenuOrderBillRows
   readonly reference: SelfPayReference
-  readonly menuOrder: Omit<MenuOrderRow, "servedAt">
+  readonly menuOrder: Omit<
+    MenuOrderRow,
+    "acceptedAt" | "servedAt" | "rejectedAt"
+  >
   readonly askedToPay: number
   readonly total: number
   readonly lines: ReadonlyArray<{
@@ -542,12 +595,14 @@ const toServePayment = (
 
 export interface MenuOrderToServe {
   readonly id: MenuOrderId
+  readonly billId: BillId
   readonly number: number
   readonly tableName: string | null
   readonly createdAt: string
   readonly note: string | null
   readonly written: WrittenOrder | null
   readonly isFullyPaid: boolean
+  readonly isAccepted: boolean
   readonly lines: ReadonlyArray<{
     readonly id: BillLineSummaryId
     readonly name: string
@@ -576,6 +631,7 @@ export const loadMenuOrdersToServe =
           ])
           return {
             id: order.id,
+            billId: order.billId,
             number: order.number,
             tableName:
               order.tableId === null
@@ -584,6 +640,7 @@ export const loadMenuOrdersToServe =
             createdAt: order.createdAt,
             note: order.note,
             ...toServePayment(order, coverage),
+            isAccepted: order.acceptedAt !== null,
             lines: summaries.map((summary) => {
               const catalogItem =
                 summary.catalogItemId === null

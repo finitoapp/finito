@@ -75,6 +75,9 @@ const PUBLISH_DEBOUNCE_MS = 2000
 const LIVENESS_INTERVAL_MS = 5 * 60 * 1000
 const CONFIRMED_ORDERS_WINDOW_MS = 24 * 60 * 60 * 1000
 
+const toUnixSeconds = (ms: number | null): number | undefined =>
+  ms === null ? undefined : Math.floor(ms / 1000)
+
 interface PublishedView {
   readonly content: string
   readonly createdAt: number
@@ -294,9 +297,18 @@ class TableSelfPayPublishing {
         number: order.number,
         total,
         covered: Math.min(claimedSum, total),
+        accepted: toUnixSeconds(order.acceptedAt),
+        served: toUnixSeconds(order.servedAt),
+        rejected: toUnixSeconds(order.rejectedAt),
         at: Math.max(Math.floor(now / 1000), (last?.createdAt ?? 0) + 1),
       }
-      const shown = JSON.stringify([confirmation.number, confirmation.covered])
+      const shown = JSON.stringify([
+        confirmation.number,
+        confirmation.covered,
+        confirmation.accepted,
+        confirmation.served,
+        confirmation.rejected,
+      ])
       if (last?.shown === shown) continue
       const results = await this.run.deps.nostrRelayClient.publish(
         relays,

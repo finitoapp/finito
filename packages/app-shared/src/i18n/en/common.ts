@@ -100,6 +100,7 @@ export const enCommon = {
   "notifications.recoveryBackup.later": "Later",
   "notifications.recoveryBackup.title": "Back up your account",
   "notifications.title": "Notifications",
+  "orders.accept": "Accept",
   "orders.announced": "New order {number} · {table}",
   "orders.announced.noTable": "New order {number}",
   "orders.announced.written":
@@ -116,6 +117,13 @@ export const enCommon = {
   "orders.notFullyPaid": "Not fully paid",
   "orders.number": "#{number}",
   "orders.paid": "Paid",
+  "orders.preparing": "Being prepared",
+  "orders.reject": "Reject",
+  "orders.reject.cancel": "Keep order",
+  "orders.reject.confirm": "Reject order",
+  "orders.reject.description":
+    "The guest's money does not go back by itself. Once you reject the order, the till opens what the guest paid so you can record the refund.",
+  "orders.reject.title": "Reject order {number}?",
   "orders.served": "Served",
   "orders.soldOut": "Sold out",
   "orders.title": "To serve",

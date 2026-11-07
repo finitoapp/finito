@@ -1,13 +1,16 @@
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
 import {
+  acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
   type MenuOrderNotFoundYet,
   type MenuOrderToServe,
   markMenuOrderServed,
+  rejectMenuOrder,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { Suspense } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { ListSkeleton } from "@/components/list-skeleton.tsx"
@@ -22,7 +25,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
@@ -93,6 +98,35 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const runToast = useRunToast()
+  const confirm = useConfirmDialog()
+  const { require } = useRequirePermission()
+  const navigate = useNavigate()
+  const nextStep = order.isAccepted
+    ? { label: t("orders.served"), task: markMenuOrderServed(order.id) }
+    : { label: t("orders.accept"), task: acceptMenuOrder(order.id) }
+
+  const reject = async () => {
+    const confirmed = await confirm({
+      title: t("orders.reject.title", { number: order.number }),
+      description: t("orders.reject.description"),
+      confirmLabel: t("orders.reject.confirm"),
+      cancelLabel: t("orders.reject.cancel"),
+      variant: "destructive",
+    })
+    if (!confirmed) return
+    if (!(await require("refund", "access.action.rejectOrder"))) return
+    await runToast(async (run) => {
+      const refund = await run.ok(rejectMenuOrder(order))
+      void navigate(
+        refund.type === "payment"
+          ? {
+              to: "/activity/$paymentId",
+              params: { paymentId: refund.paymentId },
+            }
+          : { to: "/activity/bills/$billId", params: { billId: refund.billId } }
+      )
+    })
+  }
 
   return (
     <li>
@@ -109,12 +143,13 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
           <CardDescription>
             {formatTime(new Date(order.createdAt), locale)}
           </CardDescription>
-          <CardAction>
+          <CardAction className="flex flex-col items-end gap-1">
             {order.isFullyPaid ? (
               <Badge variant="secondary">{t("orders.paid")}</Badge>
             ) : (
               <Badge variant="destructive">{t("orders.notFullyPaid")}</Badge>
             )}
+            {order.isAccepted && <Badge>{t("orders.preparing")}</Badge>}
           </CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -141,16 +176,25 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
             <p className="text-sm">{t("orders.note", { note: order.note })}</p>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-2">
           <Button
             className="w-full"
             onClick={() => {
               void runToast(async (run) => {
-                await run.ok(markMenuOrderServed(order.id))
+                await run.ok(nextStep.task)
               })
             }}
           >
-            {t("orders.served")}
+            {nextStep.label}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-destructive"
+            onClick={() => {
+              void reject()
+            }}
+          >
+            {t("orders.reject")}
           </Button>
         </CardFooter>
       </Card>

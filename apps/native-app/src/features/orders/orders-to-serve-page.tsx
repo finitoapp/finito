@@ -1,14 +1,17 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
 import {
+  acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
   type MenuOrderNotFoundYet,
   type MenuOrderToServe,
   markMenuOrderServed,
+  rejectMenuOrder,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { router } from "expo-router"
 import { Suspense } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
@@ -25,7 +28,9 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card.tsx"
+import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
+import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
@@ -102,6 +107,37 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   const { t } = useTranslation()
   const locale = useLocale()
   const runToast = useRunToast()
+  const confirm = useConfirm()
+  const { require } = useRequirePermission()
+  const nextStep = order.isAccepted
+    ? { label: t("orders.served"), task: markMenuOrderServed(order.id) }
+    : { label: t("orders.accept"), task: acceptMenuOrder(order.id) }
+
+  const reject = async () => {
+    const confirmed = await confirm({
+      title: t("orders.reject.title", { number: order.number }),
+      description: t("orders.reject.description"),
+      confirmLabel: t("orders.reject.confirm"),
+      cancelLabel: t("orders.reject.cancel"),
+      variant: "destructive",
+    })
+    if (!confirmed) return
+    if (!(await require("refund", "access.action.rejectOrder"))) return
+    await runToast(async (run) => {
+      const refund = await run.ok(rejectMenuOrder(order))
+      router.push(
+        refund.type === "payment"
+          ? {
+              pathname: "/activity/[paymentId]",
+              params: { paymentId: refund.paymentId },
+            }
+          : {
+              pathname: "/activity/bills/[billId]",
+              params: { billId: refund.billId },
+            }
+      )
+    })
+  }
 
   return (
     <YStack testID="order-to-serve">
@@ -123,12 +159,13 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
           <CardDescription>
             {formatTime(new Date(order.createdAt), locale)}
           </CardDescription>
-          <CardAction>
+          <CardAction gap={4} items="flex-end">
             {order.isFullyPaid ? (
               <Badge variant="secondary" label={t("orders.paid")} />
             ) : (
               <Badge variant="destructive" label={t("orders.notFullyPaid")} />
             )}
+            {order.isAccepted && <Badge label={t("orders.preparing")} />}
           </CardAction>
         </CardHeader>
         <CardContent gap={12}>
@@ -161,14 +198,23 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
             </Text>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter flexDirection="column" gap={8}>
           <Button
-            flex={1}
-            label={t("orders.served")}
+            self="stretch"
+            label={nextStep.label}
             onPress={() => {
               void runToast(async (run) => {
-                await run.ok(markMenuOrderServed(order.id))
+                await run.ok(nextStep.task)
               })
+            }}
+          />
+          <Button
+            self="stretch"
+            variant="ghost"
+            labelColor="destructive"
+            label={t("orders.reject")}
+            onPress={() => {
+              void reject()
             }}
           />
         </CardFooter>

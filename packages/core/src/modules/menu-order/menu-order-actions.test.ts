@@ -56,6 +56,7 @@ import {
   signTestSelfPayRate,
 } from "../table-self-pay/table-self-pay-test-fixtures.ts"
 import {
+  acceptMenuOrder,
   deriveMenuOrderBillId,
   dropReplacedMenuVersions,
   loadMenuOrderArrivalRows,
@@ -63,6 +64,7 @@ import {
   loadMenuOrdersToServe,
   loadSelfPayMenu,
   markMenuOrderServed,
+  rejectMenuOrder,
   saveSelfPayMenuVersion,
 } from "./menu-order-actions.ts"
 import {
@@ -87,7 +89,15 @@ const menuOrderByBillIdQuery = (billId: BillId) =>
   createQuery((db) =>
     db
       .selectFrom("menuOrder")
-      .select(["id", "number", "note", "writtenAmount", "servedAt"])
+      .select([
+        "id",
+        "number",
+        "note",
+        "writtenAmount",
+        "acceptedAt",
+        "servedAt",
+        "rejectedAt",
+      ])
       .where("billId", "=", billId)
       .where("isDeleted", "is not", sqliteTrue)
   )
@@ -1057,6 +1067,66 @@ describe("what staff serve", () => {
       ])
     )
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+  })
+
+  test("keeps an accepted order in the list, as accepted, until it is served", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    await pay(context, await writeOrder(context, menu), 9000)
+    await using run = testCreateRun(context.deps)
+    const [order] = await run.ok(loadMenuOrdersToServe())
+    if (order === undefined) throw new Error("Expected an order to serve.")
+
+    await run.ok(acceptMenuOrder(order.id))
+    const accepted = await run.ok(loadMenuOrdersToServe())
+    await run.ok(markMenuOrderServed(order.id))
+
+    expect(order.isAccepted).toBe(false)
+    expect(accepted).toEqual([
+      expect.objectContaining({ id: order.id, isAccepted: true }),
+    ])
+    expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+  })
+
+  test("takes a rejected order off the list for good, keeps its bill and payment, and names that payment for the refund", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const written = await writeOrder(context, menu)
+    const { paymentId } = await pay(context, written, 9000)
+    await using run = testCreateRun(context.deps)
+    const [order] = await run.ok(loadMenuOrdersToServe())
+    if (order === undefined) throw new Error("Expected an order to serve.")
+    await run.ok(acceptMenuOrder(order.id))
+
+    const refund = await run.ok(rejectMenuOrder(order))
+    await run.ok(acceptMenuOrder(order.id))
+
+    expect(refund).toEqual({ type: "payment", paymentId })
+    expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+    expect(await orderRowOf(context, written)).toMatchObject({
+      number: 1,
+      rejectedAt: expect.any(Number),
+    })
+    expect(await coverageOf(context, written)).toMatchObject({
+      claimedSum: 9000,
+      coverage: "paid",
+    })
+  })
+
+  test("names the bill for the refund of an order paid in two payments", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const written = await writeOrder(context, menu)
+    await pay(context, written, 8000)
+    await pay(context, written, 1000)
+    await using run = testCreateRun(context.deps)
+    const [order] = await run.ok(loadMenuOrdersToServe())
+    if (order === undefined) throw new Error("Expected an order to serve.")
+
+    expect(await run.ok(rejectMenuOrder(order))).toEqual({
+      type: "bill",
+      billId: deriveMenuOrderBillId(written.pointer),
+    })
   })
 
   test("lists a written order with the whole text, as paid when the money covers what the guest named", async () => {

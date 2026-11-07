@@ -40,6 +40,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query"
 import { appEnv } from "@/core/app-env.ts"
+import { ORDER_SHOWN_FOR_MS } from "./guest-orders.ts"
 
 const REFRESH_INTERVAL_MS = 15_000
 const PAYMENT_REFRESH_INTERVAL_MS = 5000
@@ -241,8 +242,10 @@ export const useGuestOrderConfirmations = ({
         refetchInterval: (query) => {
           const confirmation = query.state.data?.value
           if (
-            confirmation !== undefined &&
-            confirmation.covered >= confirmation.total
+            confirmation?.rejected !== undefined ||
+            (confirmation?.served !== undefined &&
+              confirmation.covered >= confirmation.total) ||
+            Date.now() >= startedAt + ORDER_SHOWN_FOR_MS
           )
             return false
           return Date.now() < paymentWaitEndsAt(startedAt)

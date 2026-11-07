@@ -14,8 +14,9 @@ export function useToast() {
       error: (message: string) => show({ variant: "error", message }),
       withAction: (
         message: string,
-        action: { readonly label: string; readonly onPress: () => void }
-      ) => show({ variant: "default", message, action }),
+        action: { readonly label: string; readonly onPress: () => void },
+        durationMs?: number
+      ) => show({ variant: "default", message, action, durationMs }),
     }),
     [show]
   )

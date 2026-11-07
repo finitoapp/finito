@@ -60,6 +60,7 @@ export const menuOrdersToServeQuery = createQuery((db) =>
       "menuOrder.number",
       "menuOrder.note",
       "menuOrder.writtenAmount",
+      "menuOrder.acceptedAt",
       "menuOrder.createdAt",
       "bill.tableId",
       "bill.currency",
@@ -79,6 +80,7 @@ export const menuOrdersToServeQuery = createQuery((db) =>
     })
     .where("menuOrder.isDeleted", "is not", sqliteTrue)
     .where("menuOrder.servedAt", "is", null)
+    .where("menuOrder.rejectedAt", "is", null)
     .where("menuOrder.billId", "is not", null)
     .where("menuOrder.number", "is not", null)
     .where("bill.currency", "is not", null)
@@ -100,6 +102,9 @@ export const recentMenuOrdersQuery = (createdSince: DateIso) =>
         "pointer",
         "number",
         "writtenAmount",
+        "acceptedAt",
+        "servedAt",
+        "rejectedAt",
         "createdAt",
       ])
       .where("isDeleted", "is not", sqliteTrue)

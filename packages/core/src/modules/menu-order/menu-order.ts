@@ -25,7 +25,9 @@ export const menuOrder = {
   number: PositiveIntegerSchema,
   note: NonEmptyString255Schema.nullable(),
   writtenAmount: PositiveIntegerSchema.nullable(),
+  acceptedAt: TimestampMsSchema.nullable(),
   servedAt: TimestampMsSchema.nullable(),
+  rejectedAt: TimestampMsSchema.nullable(),
 } as const
 
 export const menuOrderIndexes = ((create) => [

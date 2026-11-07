@@ -26,8 +26,9 @@ changed, and that would add nothing a guest can use.
 
 ## Consequences
 
-Relays see one event per order and one confirmation, so they can count
-orders and their times, but not which table ordered or what.
+Relays see one event per order and its confirmation, so they can count
+orders and their times, but not which table ordered or what. The confirmation
+changes as staff accept, serve or reject the order (`menu-ordering/0006`).
 
 ## Enforced by
 

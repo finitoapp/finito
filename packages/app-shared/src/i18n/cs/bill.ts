@@ -231,11 +231,19 @@ export const csBill = {
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pro kuchyni",
   "selfPay.order.note.length": "{length}/{max}",
-  "selfPay.order.paid": "Objednávka {number} je potvrzená a zaplacená.",
+  "selfPay.order.paid": "Objednávka {number} je zaplacená. Čeká na obsluhu.",
   "selfPay.order.payRest": "Doplatit {amount}",
+  "selfPay.order.preparing": "Objednávka {number} se připravuje.",
+  "selfPay.order.preparing.left":
+    "Objednávka {number} se připravuje. Zbývá zaplatit {amount}.",
   "selfPay.order.refused":
     "Objednávat teď nejde. Objednejte si prosím u obsluhy.",
+  "selfPay.order.rejected":
+    "Objednávka {number} byla odmítnuta. Peníze vám vrátí obsluha.",
   "selfPay.order.remove": "Nezaplaceno, odebrat",
+  "selfPay.order.served": "Objednávka {number} je vydaná.",
+  "selfPay.order.served.left":
+    "Objednávka {number} je vydaná. Zbývá zaplatit {amount}.",
   "selfPay.order.summary": "Vaše objednávka {amount}",
   "selfPay.order.title": "Vaše objednávka",
   "selfPay.order.unavailable.description": "Objednejte si prosím u obsluhy.",

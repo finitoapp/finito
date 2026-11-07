@@ -7,7 +7,13 @@ export interface Toast {
   readonly message: string
   /** A button that runs `onPress` and dismisses the toast, as sonner's. */
   readonly action?: { readonly label: string; readonly onPress: () => void }
+  readonly durationMs?: number
 }
+
+const DISMISS_AFTER_MS = 4000
+
+export const toastLifetimeMs = (toast: Toast): number =>
+  toast.durationMs ?? DISMISS_AFTER_MS
 
 export const toastsAtom = atom<ReadonlyArray<Toast>>([])
 

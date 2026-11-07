@@ -1,16 +1,26 @@
-import { newMenuOrderAnnouncements } from "@payky/app-shared/menu-order-announcement"
+import {
+  MENU_ORDER_ANNOUNCEMENT_MS,
+  newMenuOrderAnnouncements,
+} from "@payky/app-shared/menu-order-announcement"
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { MenuOrderId } from "@payky/core/modules/menu-order/menu-order-types"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { useNavigate } from "@tanstack/react-router"
+import { useAtomValue } from "jotai"
 import { useEffect, useRef } from "react"
 import { toast } from "sonner"
+import { accountAtom } from "@/atoms/account.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatMoney } from "@/lib/format-utils.ts"
 
 export function MenuOrderAnnouncer() {
+  const account = useAtomValue(accountAtom)
+  return <NewOrderToasts key={account.id} />
+}
+
+function NewOrderToasts() {
   const { t } = useTranslation()
   const locale = useLocale()
   const navigate = useNavigate()
@@ -30,6 +40,7 @@ export function MenuOrderAnnouncer() {
       formatMoney: (money) => formatMoney(money, locale),
     })) {
       toast.success(message, {
+        duration: MENU_ORDER_ANNOUNCEMENT_MS,
         action: {
           label: t("orders.announced.open"),
           onClick: () => {

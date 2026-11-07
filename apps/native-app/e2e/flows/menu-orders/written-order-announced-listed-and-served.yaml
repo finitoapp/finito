@@ -63,6 +63,14 @@ tags: [menu-orders]
 - assertVisible: .*Bar.*
 - assertVisible: '${output.re(output.tv("orders.written", { text: "2x pivo" }))}'
 - assertVisible: ${output.re(output.t["orders.paid"])}
+- assertNotVisible: ${output.re(output.t["orders.served"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.accept"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.preparing"])}
+    timeout: 10000
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:

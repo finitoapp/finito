@@ -218,6 +218,18 @@ test("a paid order is announced, listed to serve and served", async ({
     )
   })
 
+  await test.step("Accept marks it as being prepared and only then offers Served", async () => {
+    const served = orderCard.getByRole("button", {
+      name: translate("en", "orders.served"),
+    })
+    await expect(served).toHaveCount(0)
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await expect(served).toBeVisible()
+  })
+
   await test.step("Served takes it off the list", async () => {
     await orderCard
       .getByRole("button", { name: translate("en", "orders.served") })

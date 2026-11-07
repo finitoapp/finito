@@ -6,8 +6,11 @@ import { expect, test } from "./support/fixtures.ts"
 import { translate, translateParams } from "./support/i18n.ts"
 import { toggleInlineSwitch } from "./support/inline-edit.ts"
 import { gotoPage } from "./support/navigation.ts"
+import { seedOnboarding } from "./support/onboarding.ts"
+import { openRefundScreen, refundConfirmButton } from "./support/payment.ts"
 import {
   enableTableSelfPay,
+  fakeSelfPayLightning,
   receiveShownBankTransfer,
   routeFakeNostrRelays,
   seedActiveFioPlugin,
@@ -77,7 +80,12 @@ const bankField = async (
 
 const orderStatus = (
   guest: Page,
-  key: "selfPay.order.paid" | "selfPay.order.left",
+  key:
+    | "selfPay.order.paid"
+    | "selfPay.order.left"
+    | "selfPay.order.preparing"
+    | "selfPay.order.served"
+    | "selfPay.order.rejected",
   params: Readonly<Record<string, string | number>>
 ) => guest.getByRole("main").getByText(translateParams("en", key, params))
 
@@ -271,7 +279,7 @@ test("the device that takes orders records it and the guest sees order 1, 2x piv
   })
 })
 
-test("staff see New order 1 · Bar · $90.00 · 2x pivo, open it and mark it served", async ({
+test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it served, and the guest sees both", async ({
   seededPage: page,
   context,
 }) => {
@@ -313,11 +321,213 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, open it and mark it ser
     await expect(orderCard).toContainText(translate("en", "orders.paid"))
   })
 
-  await test.step("Served takes it off the list", async () => {
+  await test.step("the guest sees it paid and waiting for the staff", async () => {
+    await expect(
+      orderStatus(guest, "selfPay.order.paid", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
+  })
+
+  await test.step("Accept tells the guest it is being prepared", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await expect(
+      orderStatus(guest, "selfPay.order.preparing", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
+  })
+
+  await test.step("Served takes it off the list and tells the guest", async () => {
     await orderCard
       .getByRole("button", { name: translate("en", "orders.served") })
       .click()
     await expect(orderCard).toHaveCount(0)
+    await expect(
+      orderStatus(guest, "selfPay.order.served", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
+  })
+})
+
+test("staff reject a written order, refund it from its payment, and the guest is told", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const orderCard = page.getByTestId("order-to-serve")
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  await test.step("a guest writes and pays while staff wait on To serve", async () => {
+    await gotoOrders(page)
+    await writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 9000,
+      currency: "USD",
+    })
+    await expect(orderCard).toHaveCount(1)
+  })
+
+  await test.step("going back in the dialog keeps the order", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.reject") })
+      .click()
+    const dialog = page.getByRole("alertdialog")
+    await expect(dialog).toContainText(
+      translateParams("en", "orders.reject.title", { number: 1 })
+    )
+    await dialog
+      .getByRole("button", { name: translate("en", "orders.reject.cancel") })
+      .click()
+    await expect(orderCard).toHaveCount(1)
+  })
+
+  await test.step("rejecting opens the order's payment", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.reject") })
+      .click()
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: translate("en", "orders.reject.confirm") })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "paymentDetail.title") })
+      .waitFor()
+  })
+
+  await test.step("the refund goes through from the payment", async () => {
+    await openRefundScreen(page, "en")
+    await refundConfirmButton(page).click()
+    await expect(
+      page.getByText(translate("en", "refund.created"))
+    ).toBeVisible()
+  })
+
+  await test.step("the guest sees it rejected", async () => {
+    await expect(
+      orderStatus(guest, "selfPay.order.rejected", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
+  })
+
+  await test.step("To serve no longer lists it", async () => {
+    await gotoOrders(page)
+    await expect(orderCard).toHaveCount(0)
+  })
+})
+
+test("a guest paying the rest of an order staff reject leaves the payment and is told", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const orderCard = page.getByTestId("order-to-serve")
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  await test.step("the guest pays 80.00 of 90.00 and opens paying the rest", async () => {
+    await gotoOrders(page)
+    await writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 8000,
+      currency: "USD",
+    })
+    const payRest = guest.getByRole("button", {
+      name: translateParams("en", "selfPay.order.payRest", {
+        amount: "$10.00",
+      }),
+    })
+    await expect(payRest).toBeVisible({ timeout: 45_000 })
+    await payRest.click()
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("10.00")
+  })
+
+  await test.step("staff reject it, and the guest's payment closes on the rejection", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.reject") })
+      .click()
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: translate("en", "orders.reject.confirm") })
+      .click()
+    await expect(
+      orderStatus(guest, "selfPay.order.rejected", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
+    await expect(
+      guest.getByRole("button", { name: translate("en", "selfPay.order.back") })
+    ).toHaveCount(0)
+  })
+})
+
+test("a guest paying the rest of one order, then of another, starts the second without the first's Lightning invoice", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(180_000)
+  await routeFakeNostrRelays(context)
+  await fakeSelfPayLightning(context, 100_000)
+  const guestAddress =
+    await test.step("seed the bar with Lightning", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      return seedBar(page)
+    })
+  const guest = await context.newPage()
+  const payRest = (amount: string) =>
+    guest.getByRole("button", {
+      name: translateParams("en", "selfPay.order.payRest", { amount }),
+    })
+  const payByLightning = async () => {
+    await guest
+      .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
+      .click()
+  }
+  let firstInvoice = ""
+
+  await test.step("the guest pays 80.00 of 90.00 for one order and 30.00 of 50.00 for another", async () => {
+    await gotoOrders(page)
+    await writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 8000,
+      currency: "USD",
+    })
+    await expect(payRest("$10.00")).toBeVisible({ timeout: 45_000 })
+    await writeOrder(guest, guestAddress, { text: "kofola", amount: "50.00" })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 3000,
+      currency: "USD",
+    })
+    await expect(payRest("$20.00")).toBeVisible({ timeout: 45_000 })
+  })
+
+  await test.step("the guest creates a Lightning invoice for the rest of the first", async () => {
+    await payRest("$10.00").click()
+    await payByLightning()
+    await guest
+      .getByRole("button", {
+        name: translate("en", "selfPay.lightning.create"),
+      })
+      .click({ timeout: 45_000 })
+    firstInvoice = (await guest.getByText(/^lnbc\d+n1/u).textContent()) ?? ""
+    expect(firstInvoice).toMatch(/^lnbc\d+n1/u)
+  })
+
+  await test.step("paying the rest of the second offers a new invoice, not the first's", async () => {
+    await payRest("$20.00").click()
+    await payByLightning()
+    await expect(
+      guest.getByRole("button", {
+        name: translate("en", "selfPay.lightning.create"),
+      })
+    ).toBeVisible()
+    await expect(guest.getByText(firstInvoice, { exact: true })).toBeHidden()
   })
 })
 

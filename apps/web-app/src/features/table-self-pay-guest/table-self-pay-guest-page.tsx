@@ -355,8 +355,8 @@ function GuestOrdering({
   const settledStatus =
     session !== null &&
     sessionOrder !== undefined &&
-    sessionCovered !== null &&
-    sessionCovered > session.coveredBefore
+    ((sessionCovered !== null && sessionCovered > session.coveredBefore) ||
+      sessionOrder.confirmation?.rejected !== undefined)
       ? guestOrderStatus(sessionOrder, t, locale)
       : null
 
@@ -490,7 +490,12 @@ function GuestOrdering({
       )}
       {session !== null ? (
         <>
-          <GuestPayment view={view} liveness={liveness} session={session} />
+          <GuestPayment
+            key={`${session.pointer}:${session.startedAt}`}
+            view={view}
+            liveness={liveness}
+            session={session}
+          />
           <Button
             type="button"
             variant="ghost"
@@ -707,14 +712,14 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   )
   const bank = bill === undefined ? view.bank : findSelfPayBank(view, bill)
   const offersMethod = bank !== null || view.lightning !== null
-  const menuOffer =
+  const menuAccess =
     view.enabled && view.menu !== null && view.selectionKey !== null
       ? { menuKeys: view.menu, selectionKey: view.selectionKey }
       : null
-  const offersBillAndMenu = menuOffer !== null && view.bills.length > 0
+  const offersBillAndMenu = menuAccess !== null && view.bills.length > 0
   const shownMenu =
-    menuOffer !== null && (!offersBillAndMenu || section === "menu")
-      ? menuOffer
+    menuAccess !== null && (!offersBillAndMenu || section === "menu")
+      ? menuAccess
       : null
 
   const startPayment = async (choice: GuestPaymentChoice) => {
@@ -813,7 +818,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
               {t("selfPay.menu.tab.bill")}
             </TabsTrigger>
             <TabsTrigger value="menu" className={guestTabClassName}>
-              <GuestMenuTabLabel address={address} {...menuOffer} />
+              <GuestMenuTabLabel address={address} {...menuAccess} />
             </TabsTrigger>
           </TabsList>
         </Tabs>

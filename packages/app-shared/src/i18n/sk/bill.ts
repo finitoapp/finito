@@ -236,11 +236,19 @@ export const skBill = {
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pre kuchyňu",
   "selfPay.order.note.length": "{length}/{max}",
-  "selfPay.order.paid": "Objednávka {number} je potvrdená a zaplatená.",
+  "selfPay.order.paid": "Objednávka {number} je zaplatená. Čaká na obsluhu.",
   "selfPay.order.payRest": "Doplatiť {amount}",
+  "selfPay.order.preparing": "Objednávka {number} sa pripravuje.",
+  "selfPay.order.preparing.left":
+    "Objednávka {number} sa pripravuje. Zostáva zaplatiť {amount}.",
   "selfPay.order.refused":
     "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
+  "selfPay.order.rejected":
+    "Objednávka {number} bola odmietnutá. Peniaze vám vráti obsluha.",
   "selfPay.order.remove": "Nezaplatené, odstrániť",
+  "selfPay.order.served": "Objednávka {number} je vydaná.",
+  "selfPay.order.served.left":
+    "Objednávka {number} je vydaná. Zostáva zaplatiť {amount}.",
   "selfPay.order.summary": "Vaša objednávka {amount}",
   "selfPay.order.title": "Vaša objednávka",
   "selfPay.order.unavailable.description": "Objednajte si, prosím, u obsluhy.",

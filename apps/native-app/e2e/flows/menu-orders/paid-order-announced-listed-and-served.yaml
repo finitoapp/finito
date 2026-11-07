@@ -57,6 +57,14 @@ tags: [menu-orders]
 - assertVisible: '${output.re(output.tv("orders.note", { note: "bez cukru" }))}'
 - assertVisible: ${output.re(output.t["orders.paid"])}
 - assertNotVisible: ${output.re(output.t["orders.notFullyPaid"])}
+- assertNotVisible: ${output.re(output.t["orders.served"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.accept"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.preparing"])}
+    timeout: 10000
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:

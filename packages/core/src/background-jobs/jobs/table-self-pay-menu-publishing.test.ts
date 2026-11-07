@@ -19,7 +19,11 @@ import {
   updateCatalogItem,
 } from "../../modules/catalog-item/catalog-item-actions.ts"
 import {
+  acceptMenuOrder,
+  loadMenuOrdersToServe,
   loadSelfPayMenu,
+  markMenuOrderServed,
+  rejectMenuOrder,
   saveSelfPayMenuVersion,
 } from "../../modules/menu-order/menu-order-actions.ts"
 import { menuVersionsNewestFirstQuery } from "../../modules/menu-order/menu-order-queries.ts"
@@ -31,6 +35,7 @@ import {
   openSelfPayOrderConfirmation,
   type SelfPayMenu,
   SelfPayMenuSchema,
+  SelfPayOrderConfirmationSchema,
 } from "../../modules/menu-order/menu-order-utils.ts"
 import { createRowId } from "../../modules/shared/evolu-utils.ts"
 import {
@@ -394,6 +399,73 @@ describe("guests writing what they pay for", () => {
     expect(confirmationOf(context, pointer)).toMatchObject({
       total: 9000,
       covered: 8000,
+    })
+  })
+
+  test("tells the guest when staff accept and serve an order, and when they reject one", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setWrittenOrders({ on: true, deviceId: context.deviceId }))
+    await using _job = await startJob(context)
+    await waitFor(() => latestMenu(context)?.written === true)
+    const menu = latestMenu(context)
+    if (menu === undefined || menu === null) throw new Error("Expected a menu.")
+    const served = await payWrittenOrder(context, menu, {
+      named: 9000,
+      arrived: 9000,
+    })
+    const rejected = await payWrittenOrder(context, menu, {
+      named: 5000,
+      arrived: 5000,
+    })
+    await waitFor(
+      () =>
+        confirmationOf(context, served) !== null &&
+        confirmationOf(context, rejected) !== null
+    )
+    const toServe = await run.ok(loadMenuOrdersToServe())
+    const orderOf = (pointer: SelfPayPointer) => {
+      const number = confirmationOf(context, pointer)?.number
+      const order = toServe.find((candidate) => candidate.number === number)
+      if (order === undefined) throw new Error("Expected an order to serve.")
+      return order
+    }
+    const paid = confirmationOf(context, served)
+
+    await run.ok(acceptMenuOrder(orderOf(served).id))
+    await waitFor(() => confirmationOf(context, served)?.accepted !== undefined)
+    await run.ok(markMenuOrderServed(orderOf(served).id))
+    await waitFor(() => confirmationOf(context, served)?.served !== undefined)
+    await run.ok(rejectMenuOrder(orderOf(rejected)))
+    await waitFor(
+      () => confirmationOf(context, rejected)?.rejected !== undefined
+    )
+
+    expect(paid).not.toHaveProperty("accepted")
+    expect(confirmationOf(context, served)).toMatchObject({
+      covered: 9000,
+      accepted: expect.any(Number),
+      served: expect.any(Number),
+    })
+    expect(confirmationOf(context, served)).not.toHaveProperty("rejected")
+    expect(confirmationOf(context, rejected)).not.toHaveProperty("accepted")
+  })
+
+  test("reads a confirmation from a device that knows no staff states as paid and waiting", () => {
+    expect(
+      SelfPayOrderConfirmationSchema.parse({
+        v: 1,
+        number: 1,
+        total: 9000,
+        covered: 9000,
+        at: 1_762_528_140,
+      })
+    ).toEqual({
+      v: 1,
+      number: 1,
+      total: 9000,
+      covered: 9000,
+      at: 1_762_528_140,
     })
   })
 

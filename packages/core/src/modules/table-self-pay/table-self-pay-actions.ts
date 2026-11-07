@@ -86,6 +86,7 @@ import {
   VariableSymbol,
   type WssUrl,
 } from "../shared/schema.ts"
+import type { TableId } from "../table/table-types.ts"
 import {
   createSelfPaySelectionFilter,
   deriveSelfPayShareBillVersion,
@@ -340,6 +341,37 @@ const allocateSelfPaySelection =
 const selfPayPaymentId = (transaction: SelfPayTransaction) =>
   createIdFromString<"Payment">(`self-pay:${transaction.id}`)
 
+const selfPayPaymentRows = ({
+  transaction,
+  bill,
+  amount,
+  tipAmount,
+  ...method
+}: Pick<SelfPayPaymentRows, "iban" | "spark" | "pointer"> & {
+  readonly transaction: SelfPayTransaction
+  readonly bill: {
+    readonly id: BillId
+    readonly deviceId: DeviceId
+    readonly tableId?: TableId | null
+    readonly currency: FiatCurrency
+  }
+  readonly amount: number
+  readonly tipAmount: number
+}): SelfPayPaymentRows => ({
+  payment: {
+    id: selfPayPaymentId(transaction),
+    deviceId: bill.deviceId,
+    billId: bill.id,
+    tableId: bill.tableId,
+    amount: NonNegativeInteger(amount),
+    currency: bill.currency,
+    tipAmount: NonNegativeInteger(tipAmount),
+    canceledAt: null,
+    expiresAt: null,
+  },
+  ...method,
+})
+
 const loadSelfPayCoveredBefore =
   (
     bill: SelfPayBill,
@@ -402,24 +434,17 @@ const creditSelfPayArrival =
         credited: amount,
       })
     )
-    const paymentId = selfPayPaymentId(transaction)
+    const rows = selfPayPaymentRows({
+      transaction,
+      bill,
+      amount,
+      tipAmount: allocation.tipAmount,
+      pointer,
+      ...method,
+    })
     return ok({
-      rows: {
-        payment: {
-          id: paymentId,
-          deviceId: bill.deviceId,
-          billId: bill.id,
-          tableId: bill.tableId,
-          amount: NonNegativeInteger(amount),
-          currency: bill.currency,
-          tipAmount: NonNegativeInteger(allocation.tipAmount),
-          canceledAt: null,
-          expiresAt: null,
-        },
-        pointer,
-        ...method,
-      },
-      allocations: allocationWrites(paymentId, bill.id, allocation.lines),
+      rows,
+      allocations: allocationWrites(rows.payment.id, bill.id, allocation.lines),
       order: null,
       writtenOrderRest: null,
     })
@@ -585,27 +610,19 @@ const creditMenuOrderArrival =
       return ok(null)
     }
 
-    const billId = order.bill.bill.id
     const covers = amount >= order.total
-    const paymentId = selfPayPaymentId(transaction)
+    const rows = selfPayPaymentRows({
+      transaction,
+      bill: { ...order.bill.bill, deviceId, currency: intent.currency },
+      amount,
+      tipAmount: covers ? amount - order.total : 0,
+      pointer,
+      ...method,
+    })
     return ok({
-      rows: {
-        payment: {
-          id: paymentId,
-          deviceId,
-          billId,
-          tableId: order.bill.bill.tableId,
-          amount: NonNegativeInteger(amount),
-          currency: intent.currency,
-          tipAmount: NonNegativeInteger(covers ? amount - order.total : 0),
-          canceledAt: null,
-          expiresAt: null,
-        },
-        pointer,
-        ...method,
-      },
+      rows,
       allocations: covers
-        ? allocationWrites(paymentId, billId, order.lines)
+        ? allocationWrites(rows.payment.id, order.bill.bill.id, order.lines)
         : [],
       order,
       writtenOrderRest: null,
@@ -641,21 +658,14 @@ const creditWrittenOrderRest =
       return ok(null)
     }
     return ok({
-      rows: {
-        payment: {
-          id: selfPayPaymentId(transaction),
-          deviceId: bill.deviceId,
-          billId: bill.id,
-          tableId: bill.tableId,
-          amount: NonNegativeInteger(amount),
-          currency: bill.currency,
-          tipAmount: NonNegativeInteger(0),
-          canceledAt: null,
-          expiresAt: null,
-        },
+      rows: selfPayPaymentRows({
+        transaction,
+        bill,
+        amount,
+        tipAmount: 0,
         pointer,
         ...method,
-      },
+      }),
       allocations: [],
       order: null,
       writtenOrderRest: raiseWrittenOrderLine({

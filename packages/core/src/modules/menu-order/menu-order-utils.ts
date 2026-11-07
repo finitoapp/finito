@@ -166,6 +166,9 @@ export const SelfPayOrderConfirmationSchema = z.object({
   number: z.number().int().positive(),
   total: AmountSchema,
   covered: AmountSchema,
+  accepted: z.number().int().nonnegative().optional(),
+  served: z.number().int().nonnegative().optional(),
+  rejected: z.number().int().nonnegative().optional(),
   at: z.number().int().nonnegative(),
 })
 export type SelfPayOrderConfirmation = z.output<

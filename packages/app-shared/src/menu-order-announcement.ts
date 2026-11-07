@@ -12,6 +12,8 @@ type FormatMoney = (money: Money) => string
 
 const ANNOUNCED_TEXT_LENGTH = 60
 
+export const MENU_ORDER_ANNOUNCEMENT_MS = 30_000
+
 const shortenForAnnouncement = (text: string): string => {
   const characters = [...text]
   return characters.length <= ANNOUNCED_TEXT_LENGTH

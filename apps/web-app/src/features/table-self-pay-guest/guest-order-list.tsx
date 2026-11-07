@@ -3,6 +3,7 @@ import type { SelfPayOrderConfirmation } from "@payky/core/modules/menu-order/me
 import { TimestampMs } from "@payky/core/modules/shared/schema"
 import {
   CircleCheckIcon,
+  CircleXIcon,
   LoaderCircleIcon,
   TriangleAlertIcon,
 } from "lucide-react"
@@ -23,7 +24,26 @@ export interface ShownGuestOrder {
 }
 
 export const guestOrderLeft = ({ confirmation }: ShownGuestOrder): number =>
-  confirmation === null ? 0 : confirmation.total - confirmation.covered
+  confirmation === null || confirmation.rejected !== undefined
+    ? 0
+    : confirmation.total - confirmation.covered
+
+type GuestOrderStep = "paid" | "preparing" | "served"
+
+const guestOrderStatusKeys = {
+  paid: { paid: "selfPay.order.paid", owing: "selfPay.order.left" },
+  preparing: {
+    paid: "selfPay.order.preparing",
+    owing: "selfPay.order.preparing.left",
+  },
+  served: { paid: "selfPay.order.served", owing: "selfPay.order.served.left" },
+} satisfies Record<
+  GuestOrderStep,
+  {
+    readonly paid: Parameters<GuestTranslate>[0]
+    readonly owing: Parameters<GuestTranslate>[0]
+  }
+>
 
 export const guestOrderStatus = (
   shown: ShownGuestOrder,
@@ -32,14 +52,53 @@ export const guestOrderStatus = (
 ): string => {
   const { order, confirmation } = shown
   if (confirmation === null) return t("selfPay.order.waiting")
+  const { number } = confirmation
+  if (confirmation.rejected !== undefined)
+    return t("selfPay.order.rejected", { number })
+  const keys =
+    guestOrderStatusKeys[
+      confirmation.served !== undefined
+        ? "served"
+        : confirmation.accepted !== undefined
+          ? "preparing"
+          : "paid"
+    ]
   const left = guestOrderLeft(shown)
   return left > 0
-    ? t("selfPay.order.left", {
-        number: confirmation.number,
+    ? t(keys.owing, {
+        number,
         amount: formatGuestAmount(left, order, locale),
       })
-    : t("selfPay.order.paid", { number: confirmation.number })
+    : t(keys.paid, { number })
 }
+
+type GuestOrderTone = "rejected" | "paid" | "waiting" | "attention"
+
+const guestOrderTones = {
+  rejected: {
+    card: "bg-destructive/10",
+    Icon: CircleXIcon,
+    icon: "text-destructive",
+  },
+  paid: { card: "bg-primary/10", Icon: CircleCheckIcon, icon: "text-primary" },
+  waiting: {
+    card: "bg-amber-500/10",
+    Icon: LoaderCircleIcon,
+    icon: "animate-spin text-muted-foreground",
+  },
+  attention: {
+    card: "bg-amber-500/10",
+    Icon: TriangleAlertIcon,
+    icon: "text-amber-600",
+  },
+} satisfies Record<
+  GuestOrderTone,
+  {
+    readonly card: string
+    readonly Icon: typeof CircleCheckIcon
+    readonly icon: string
+  }
+>
 
 function GuestOrderCard({
   shown,
@@ -56,31 +115,19 @@ function GuestOrderCard({
   const now = useNow([TimestampMs(waitEndsAt)])
   const left = guestOrderLeft(shown)
   const isWaitOver = confirmation === null && now.getTime() >= waitEndsAt
-  const isPaid = confirmation !== null && left <= 0
+  const tone: GuestOrderTone =
+    confirmation?.rejected !== undefined
+      ? "rejected"
+      : confirmation !== null && left <= 0
+        ? "paid"
+        : confirmation === null && !isWaitOver
+          ? "waiting"
+          : "attention"
+  const { card, Icon, icon } = guestOrderTones[tone]
 
   return (
-    <li
-      className={cn(
-        "flex items-start gap-2 rounded-xl p-3 text-sm",
-        isPaid ? "bg-primary/10" : "bg-amber-500/10"
-      )}
-    >
-      {isPaid ? (
-        <CircleCheckIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 text-primary"
-        />
-      ) : confirmation === null && !isWaitOver ? (
-        <LoaderCircleIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 animate-spin text-muted-foreground"
-        />
-      ) : (
-        <TriangleAlertIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 text-amber-600"
-        />
-      )}
+    <li className={cn("flex items-start gap-2 rounded-xl p-3 text-sm", card)}>
+      <Icon aria-hidden="true" className={cn("size-5 shrink-0", icon)} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className="font-semibold">
           {isWaitOver

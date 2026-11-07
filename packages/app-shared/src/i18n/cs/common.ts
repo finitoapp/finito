@@ -102,6 +102,7 @@ export const csCommon = {
   "notifications.recoveryBackup.later": "Později",
   "notifications.recoveryBackup.title": "Zazálohujte si účet",
   "notifications.title": "Oznámení",
+  "orders.accept": "Přijmout",
   "orders.announced": "Nová objednávka {number} · {table}",
   "orders.announced.noTable": "Nová objednávka {number}",
   "orders.announced.written":
@@ -119,6 +120,13 @@ export const csCommon = {
   "orders.notFullyPaid": "Zaplaceno jen zčásti",
   "orders.number": "#{number}",
   "orders.paid": "Zaplaceno",
+  "orders.preparing": "Připravuje se",
+  "orders.reject": "Odmítnout",
+  "orders.reject.cancel": "Ponechat objednávku",
+  "orders.reject.confirm": "Odmítnout objednávku",
+  "orders.reject.description":
+    "Peníze se hostovi samy nevrátí. Po odmítnutí pokladna otevře, co host zaplatil, a vrácení tam zaznamenáte.",
+  "orders.reject.title": "Odmítnout objednávku {number}?",
   "orders.served": "Vydáno",
   "orders.soldOut": "Vyprodáno",
   "orders.title": "K vydání",

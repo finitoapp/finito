@@ -1,4 +1,7 @@
-import { newMenuOrderAnnouncements } from "@payky/app-shared/menu-order-announcement"
+import {
+  MENU_ORDER_ANNOUNCEMENT_MS,
+  newMenuOrderAnnouncements,
+} from "@payky/app-shared/menu-order-announcement"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { MenuOrderId } from "@payky/core/modules/menu-order/menu-order-types"
@@ -39,10 +42,14 @@ function NewOrderToasts() {
       t,
       formatMoney: (money) => formatMoney(money, locale),
     })) {
-      toast.withAction(message, {
-        label: t("orders.announced.open"),
-        onPress: () => router.push("/orders"),
-      })
+      toast.withAction(
+        message,
+        {
+          label: t("orders.announced.open"),
+          onPress: () => router.push("/orders"),
+        },
+        MENU_ORDER_ANNOUNCEMENT_MS
+      )
     }
   }, [orders, tables, t, toast, locale])
 

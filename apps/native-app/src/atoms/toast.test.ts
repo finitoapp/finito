@@ -1,6 +1,11 @@
 import { createStore } from "jotai"
 import { describe, expect, test } from "vitest"
-import { dismissToastAtom, showToastAtom, toastsAtom } from "./toast.ts"
+import {
+  dismissToastAtom,
+  showToastAtom,
+  toastLifetimeMs,
+  toastsAtom,
+} from "./toast.ts"
 
 describe("toast queue", () => {
   test("enqueues with distinct ids and dismisses by id", () => {
@@ -14,5 +19,19 @@ describe("toast queue", () => {
     ])
     store.set(dismissToastAtom, a)
     expect(store.get(toastsAtom).map((toast) => toast.message)).toEqual(["b"])
+  })
+
+  test("keeps a toast that names its length for that long, and any other for 4 seconds", () => {
+    expect(
+      toastLifetimeMs({
+        id: 1,
+        variant: "default",
+        message: "Nová objednávka 1",
+        durationMs: 30_000,
+      })
+    ).toBe(30_000)
+    expect(
+      toastLifetimeMs({ id: 2, variant: "success", message: "Uloženo" })
+    ).toBe(4000)
   })
 })

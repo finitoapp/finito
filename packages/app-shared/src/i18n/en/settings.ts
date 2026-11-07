@@ -1270,6 +1270,7 @@ export const enSettings = {
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
   "access.action.resolveOverpayment": "Resolve an overpayment",
+  "access.action.rejectOrder": "Reject an order",
   "access.action.removeAccount": "Remove the account from this device",
   "access.action.removeLines": "Remove items from the bill",
   "access.action.switchAccount": "Switch account",
