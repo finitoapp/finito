@@ -42,6 +42,18 @@ export default {
       backgroundColor: "#00000000",
     },
     allowBackup: false,
+    // Removed from the merged manifest: the prebuild template's storage and
+    // overlay permissions, and expo-screen-capture's screenshot detection
+    // (only `usePreventScreenCapture`, FLAG_SECURE, is used). Files are
+    // picked through the system picker and shared through a FileProvider,
+    // so nothing reads or writes shared storage.
+    blockedPermissions: [
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.DETECT_SCREEN_CAPTURE",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.SYSTEM_ALERT_WINDOW",
+    ],
     versionCode: year * 1_000_000 + month * 10_000 + micro,
   },
   plugins: [
