@@ -1,0 +1,35 @@
+repository: https://github.com/finitoapp/finito
+pubkey: npub1t24anjd3ztxdd9e3dwz55pmyep8ynvvc2srdd99mwqtudmunnqesu43elx
+
+name: Finito
+summary: Finito combines bank transfers, cash, and Bitcoin payments in one local-first payment terminal.
+description: |
+    Finito is a local-first payment terminal that combines classic bank transfers for the Czech and Slovak markets, cash payments, and Bitcoin Lightning payments.
+    Create payment requests, show QR codes, and keep a clear history of payments on your device.
+
+    Main features:
+    • Accept Czech and Slovak bank transfer QR payments
+    • Record cash payments
+    • Accept Bitcoin Lightning payments
+    • Create payment requests
+    • Track payment history
+    • Manage terminal settings locally
+    • Sync app data with Evolu
+
+    Finito is designed for small merchants, events, pop-ups, and anyone who needs a simple payment terminal.
+
+tags:
+    - privacy
+    - open-source
+
+license: MIT
+website: https://finito.fit
+
+icon: ./public/pwa-icon-192.png
+images:
+    - ./docs/screenshots/en/home.png
+    - ./docs/screenshots/en/payment.png
+    - ./docs/screenshots/en/paid.png
+    - ./docs/screenshots/en/settings.png
+metadata_sources:
+    - github

@@ -1,7 +1,5 @@
-repository: https://github.com/finitoapp/payky
+repository: https://github.com/finitoapp/finito
 pubkey: npub1t24anjd3ztxdd9e3dwz55pmyep8ynvvc2srdd99mwqtudmunnqesu43elx
-
-release_source: ./apps/native-shell/android/app/build/outputs/apk/release/app-release-signed.apk
 
 name: Payky
 summary: Payky combines bank transfers, cash, and Bitcoin payments in one local-first payment terminal.
@@ -27,9 +25,11 @@ tags:
 license: MIT
 website: https://payky.me
 
-icon: ./apps/web-app/public/pwa-icon-192.png
+icon: ./public/pwa-icon-192.png
 images:
     - ./docs/screenshots/en/home.png
     - ./docs/screenshots/en/payment.png
     - ./docs/screenshots/en/paid.png
     - ./docs/screenshots/en/settings.png
+metadata_sources:
+    - github
