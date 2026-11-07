@@ -60,16 +60,18 @@ export function TableTileShell({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-base font-semibold lg:text-lg">{name}</p>
-          {subtitle !== undefined && (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          )}
-        </div>
+      <div className="min-w-0">
+        <p className="line-clamp-3 text-base font-semibold lg:text-lg">
+          {name}
+        </p>
+        {subtitle !== undefined && (
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
+        )}
+      </div>
+      <div className="flex items-end gap-2">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">{children}</div>
         {icon}
       </div>
-      {children}
     </Card>
   )
 }

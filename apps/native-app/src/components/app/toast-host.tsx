@@ -1,5 +1,6 @@
 import { useAtomValue, useSetAtom } from "jotai"
 import { useEffect } from "react"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { YStack } from "tamagui"
 import {
   dismissToastAtom,
@@ -39,10 +40,11 @@ function ToastItem({ toast }: { readonly toast: ToastData }) {
 /** Mount once inside the Jotai Provider and TamaguiProvider. */
 export function ToastHost() {
   const toasts = useAtomValue(toastsAtom)
+  const insets = useSafeAreaInsets()
   return (
     <YStack
       position="absolute"
-      b={24}
+      b={24 + insets.bottom}
       l={16}
       r={16}
       gap="2"

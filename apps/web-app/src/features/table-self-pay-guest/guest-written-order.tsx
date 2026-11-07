@@ -22,6 +22,7 @@ import {
   isCustomTipUnreadable,
   NO_TIP,
   resolveGuestTip,
+  useTipReveal,
 } from "./guest-tip-picker.tsx"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
@@ -46,6 +47,7 @@ export function GuestWrittenOrder({
   const [typedAmount, setTypedAmount] = useState("")
   const [tipChoice, setTipChoice] = useState<GuestTipChoice>(NO_TIP)
   const payBar = usePayBarScrollPadding()
+  const { tipPicker, revealTipsAfterTyping } = useTipReveal()
   const { currency } = menu
   const format = (amount: number) => formatGuestAmount(amount, menu, locale)
 
@@ -114,10 +116,17 @@ export function GuestWrittenOrder({
               id="guest-written-amount"
               className="h-11"
               inputMode="decimal"
+              enterKeyHint="done"
               autoComplete="off"
               value={typedAmount}
               onChange={(event) => {
                 setTypedAmount(event.currentTarget.value)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur()
+              }}
+              onBlur={(event) => {
+                if (named > 0) revealTipsAfterTyping(event)
               }}
             />
             <span className="text-muted-foreground">
@@ -141,6 +150,7 @@ export function GuestWrittenOrder({
       </section>
 
       <GuestTipPicker
+        ref={tipPicker}
         currency={currency}
         share={named}
         choice={tipChoice}

@@ -143,7 +143,13 @@ function GuestMessage({
   )
 }
 
-function GuestPaymentWait({ session }: { readonly session: PaymentSession }) {
+function GuestPaymentWait({
+  session,
+  isWatching,
+}: {
+  readonly session: PaymentSession
+  readonly isWatching: boolean
+}) {
   const { t, locale } = useGuestTranslation()
   const announce = useGuestStatus()
   const waitEndsAt = paymentWaitEndsAt(session.startedAt)
@@ -163,11 +169,13 @@ function GuestPaymentWait({ session }: { readonly session: PaymentSession }) {
   if (!isWaitOver) {
     return (
       <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-        <LoaderCircleIcon
-          aria-hidden="true"
-          data-testid="self-pay-waiting-indicator"
-          className="size-4 animate-spin"
-        />
+        {isWatching ? (
+          <LoaderCircleIcon
+            aria-hidden="true"
+            data-testid="self-pay-waiting-indicator"
+            className="size-4 animate-spin"
+          />
+        ) : null}
         {t("selfPay.waiting")}
       </p>
     )
@@ -207,6 +215,7 @@ function GuestPayment({
   const [method, setMethod] = useState<PaymentMethod>(
     bank === null ? "lightning" : "bank"
   )
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
   const now = useNow(
     selfPayRateChangesAt(liveness, session.bill.currency).map((moment) =>
       TimestampMs(moment * 1000)
@@ -277,10 +286,14 @@ function GuestPayment({
             rate={rate}
             amount={session.amount}
             pointer={session.pointer}
+            onInvoiceOpenChange={setIsInvoiceOpen}
           />
         </div>
       )}
-      <GuestPaymentWait session={session} />
+      <GuestPaymentWait
+        session={session}
+        isWatching={method === "bank" || isInvoiceOpen}
+      />
     </section>
   )
 }

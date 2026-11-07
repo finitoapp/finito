@@ -1,6 +1,6 @@
 import Table2 from "lucide-react-native/icons/table-2"
 import type { ReactNode } from "react"
-import { type GetProps, Text, View, XStack } from "tamagui"
+import { type GetProps, Text, View, XStack, YStack } from "tamagui"
 import { fontSize, fontWeight } from "../theme/tokens.ts"
 import { Card } from "./ui/card.tsx"
 import { Icon } from "./ui/icon.tsx"
@@ -15,9 +15,9 @@ import { Icon } from "./ui/icon.tsx"
  *
  * Tailwind mirrored: a `Card` with `h-full gap-3 p-4`; occupied `bg-primary/10
  * ring-primary/30`, attention `bg-info/10 ring-info/40`, free
- * `bg-transparent`; selected `ring-2 ring-primary`; the name `truncate
+ * `bg-transparent`; selected `ring-2 ring-primary`; the name `line-clamp-3
  * text-base font-semibold`, the subtitle `text-sm text-muted-foreground`,
- * the icon a muted `size-5` `Table2` at the top right.
+ * the icon a muted `size-5` `Table2` at the bottom right.
  */
 export function TableTileShell({
   name,
@@ -58,29 +58,31 @@ export function TableTileShell({
       }
       {...cardProps}
     >
-      <XStack items="flex-start" justify="space-between" gap={8}>
-        <View shrink={1} minW={0}>
+      <View minW={0}>
+        <Text
+          fontSize={fontSize.base}
+          lineHeight={fontSize.base}
+          fontWeight={fontWeight.semibold}
+          numberOfLines={3}
+        >
+          {name}
+        </Text>
+        {subtitle === undefined ? null : (
           <Text
-            fontSize={fontSize.base}
-            lineHeight={fontSize.base}
-            fontWeight={fontWeight.semibold}
-            numberOfLines={1}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            color="muted-foreground"
           >
-            {name}
+            {subtitle}
           </Text>
-          {subtitle === undefined ? null : (
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color="muted-foreground"
-            >
-              {subtitle}
-            </Text>
-          )}
-        </View>
+        )}
+      </View>
+      <XStack items="flex-end" gap={8}>
+        <YStack flex={1} minW={0} gap={8}>
+          {children}
+        </YStack>
         {icon}
       </XStack>
-      {children}
     </Card>
   )
 }

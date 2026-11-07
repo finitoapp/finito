@@ -42,12 +42,14 @@ export function GuestLightningPayment({
   rate,
   amount,
   pointer,
+  onInvoiceOpenChange,
 }: {
   readonly lightning: NonNullable<SelfPayView["lightning"]>
   readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly rate: SelfPaySignedRate | null
   readonly amount: number
   readonly pointer: SelfPayPointer
+  readonly onInvoiceOpenChange: (isOpen: boolean) => void
 }) {
   const { t } = useGuestTranslation()
   const announce = useGuestStatus()
@@ -68,11 +70,16 @@ export function GuestLightningPayment({
   const expiresAt = invoiceExpiresAt(invoice.data)
   const now = useNow([expiresAt])
   const isExpired = expiresAt !== null && now.getTime() > expiresAt
+  const isInvoiceOpen = invoice.data !== undefined && !isExpired
   const expiredText = t("selfPay.lightning.expired")
 
   useEffect(() => {
     if (isExpired) announce(expiredText)
   }, [announce, expiredText, isExpired])
+
+  useEffect(() => {
+    onInvoiceOpenChange(isInvoiceOpen)
+  }, [isInvoiceOpen, onInvoiceOpenChange])
 
   if (isExpired) {
     return (

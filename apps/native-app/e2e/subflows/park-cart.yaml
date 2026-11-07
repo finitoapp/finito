@@ -24,7 +24,7 @@ appId: ${APP_ID}
     env:
       LABEL: '${output.tv("bill.brick.add.aria", { name: "Coffee" })}'
 - extendedWaitUntil:
-    visible: '${output.tv("bill.list.label", { number: "\\d+" })}'
+    visible: '.*${output.tv("bill.list.label", { number: "\\d+" })}.*'
     timeout: 10000
 - runFlow:
     file: tap-label.yaml

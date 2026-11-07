@@ -312,15 +312,7 @@ function TableTile({
         // row stretches its tiles, when one of them lists several bills.
         className="min-h-36 justify-between gap-2"
         icon={
-          occupied ? (
-            <NewBillLink
-              tableId={table.id}
-              aria-label={t("tables.tile.newBill")}
-              className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
-            >
-              <PlusIcon className="size-4" />
-            </NewBillLink>
-          ) : (
+          occupied ? null : (
             <PlusIcon className="size-5 shrink-0 text-muted-foreground" />
           )
         }
@@ -348,31 +340,44 @@ function TableTile({
               {isPartlyPaid ? t("tables.tile.left", { amount: left }) : left}
             </p>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
-            {occupied ? (
-              <>
-                <span className={elapsedClassName(now - openedAt)}>
-                  {formatElapsed(now - openedAt, locale)}
-                </span>
-                <span>{t("tables.tile.itemCount", { value: itemCount })}</span>
-                {paymentState !== undefined && (
-                  <BillPaymentStateBadge
-                    paymentState={paymentState}
-                    paid={paymentState === "partiallyPaid" ? paid : undefined}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                <span>{t("tables.tile.free")}</span>
-                <span className="flex items-center gap-0.5">
-                  <UsersIcon aria-hidden className="size-3.5" />
-                  <span aria-hidden>{table.seatCount}</span>
-                  <span className="sr-only">
-                    {t("tables.seatCount", { value: table.seatCount })}
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
+              {occupied ? (
+                <>
+                  <span className={elapsedClassName(now - openedAt)}>
+                    {formatElapsed(now - openedAt, locale)}
                   </span>
-                </span>
-              </>
+                  <span>
+                    {t("tables.tile.itemCount", { value: itemCount })}
+                  </span>
+                  {paymentState !== undefined && (
+                    <BillPaymentStateBadge
+                      paymentState={paymentState}
+                      paid={paymentState === "partiallyPaid" ? paid : undefined}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>{t("tables.tile.free")}</span>
+                  <span className="flex items-center gap-0.5">
+                    <UsersIcon aria-hidden className="size-3.5" />
+                    <span aria-hidden>{table.seatCount}</span>
+                    <span className="sr-only">
+                      {t("tables.seatCount", { value: table.seatCount })}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+            {occupied && (
+              <NewBillLink
+                tableId={table.id}
+                aria-label={t("tables.tile.newBill")}
+                className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
+              >
+                <PlusIcon className="size-4" />
+              </NewBillLink>
             )}
           </div>
         </div>

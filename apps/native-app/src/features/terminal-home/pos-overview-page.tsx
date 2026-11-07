@@ -410,18 +410,7 @@ function TableTile({
       justify="space-between"
       gap={8}
       icon={
-        occupied ? (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            m={-6}
-            rounded={radius.full}
-            bg="background-60 press:background"
-            iconStart={Plus}
-            aria-label={t("tables.tile.newBill")}
-            onPress={newBill}
-          />
-        ) : (
+        occupied ? null : (
           <Icon icon={Plus} size={20} color="muted-foreground" />
         )
       }
@@ -459,27 +448,39 @@ function TableTile({
           </Text>
         )}
         {occupied ? (
-          <XStack gap={6} flexWrap="wrap" items="center">
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color={elapsedColors[elapsedSeverity(elapsedMs)]}
-            >
-              {formatElapsed(elapsedMs, locale)}
-            </Text>
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color="muted-foreground"
-            >
-              {t("tables.tile.itemCount", { value: itemCount })}
-            </Text>
-            {paymentState !== undefined && (
-              <BillPaymentStateBadge
-                paymentState={paymentState}
-                paid={paymentState === "partiallyPaid" ? paid : undefined}
-              />
-            )}
+          <XStack items="center" gap={8}>
+            <XStack flex={1} minW={0} gap={6} flexWrap="wrap" items="center">
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color={elapsedColors[elapsedSeverity(elapsedMs)]}
+              >
+                {formatElapsed(elapsedMs, locale)}
+              </Text>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {t("tables.tile.itemCount", { value: itemCount })}
+              </Text>
+              {paymentState !== undefined && (
+                <BillPaymentStateBadge
+                  paymentState={paymentState}
+                  paid={paymentState === "partiallyPaid" ? paid : undefined}
+                />
+              )}
+            </XStack>
+            <Button
+              variant="ghost"
+              size="icon"
+              m={-6}
+              rounded={radius.full}
+              bg="background-60 press:background"
+              iconStart={Plus}
+              aria-label={t("tables.tile.newBill")}
+              onPress={newBill}
+            />
           </XStack>
         ) : (
           <XStack gap={6} items="center">

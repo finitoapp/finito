@@ -4,7 +4,7 @@ import { TimestampMs } from "@payky/core/modules/shared/schema"
 import {
   CircleCheckIcon,
   CircleXIcon,
-  LoaderCircleIcon,
+  ClockIcon,
   TriangleAlertIcon,
 } from "lucide-react"
 import type { Ref } from "react"
@@ -83,8 +83,8 @@ const guestOrderTones = {
   paid: { card: "bg-primary/10", Icon: CircleCheckIcon, icon: "text-primary" },
   waiting: {
     card: "bg-amber-500/10",
-    Icon: LoaderCircleIcon,
-    icon: "animate-spin text-muted-foreground",
+    Icon: ClockIcon,
+    icon: "text-muted-foreground",
   },
   attention: {
     card: "bg-amber-500/10",

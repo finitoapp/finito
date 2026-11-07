@@ -1,6 +1,6 @@
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
-import { useState } from "react"
+import { type FocusEvent, type Ref, useRef, useState } from "react"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
@@ -57,12 +57,28 @@ export const isCustomTipUnreadable = (
   choice.customText.trim() !== "" &&
   readCustomTip(choice, currency) === null
 
+export const useTipReveal = () => {
+  const tipPicker = useRef<HTMLElement>(null)
+  const revealTipsAfterTyping = ({ relatedTarget }: FocusEvent) => {
+    if (relatedTarget !== null) return
+    tipPicker.current?.scrollIntoView({
+      block: "nearest",
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    })
+  }
+  return { tipPicker, revealTipsAfterTyping }
+}
+
 export function GuestTipPicker({
+  ref,
   currency,
   share,
   choice,
   onChange,
 }: {
+  readonly ref?: Ref<HTMLElement>
   readonly currency: FiatCurrency
   readonly share: number
   readonly choice: GuestTipChoice
@@ -76,8 +92,14 @@ export function GuestTipPicker({
   const showsUnreadable =
     hasLeftCustomTip && isCustomTipUnreadable(choice, currency)
 
+  if (share === 0) return null
+
   return (
-    <section aria-labelledby="guest-tip-title" className="flex flex-col gap-3">
+    <section
+      ref={ref}
+      aria-labelledby="guest-tip-title"
+      className="flex flex-col gap-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
+    >
       <h2 id="guest-tip-title" className="font-semibold">
         {t("selfPay.tip.label")}
       </h2>

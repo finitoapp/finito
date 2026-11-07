@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
 } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { styled, Text, View } from "tamagui"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Button } from "./button.tsx"
@@ -57,6 +58,7 @@ export function Dialog({
   children,
   dismissOnOverlayPress = true,
 }: DialogProps) {
+  const insets = useSafeAreaInsets()
   return (
     <DialogContext value={{ onOpenChange }}>
       <Modal
@@ -67,7 +69,15 @@ export function Dialog({
         onRequestClose={() => onOpenChange(false)}
       >
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <View flex={1} justify="center" items="center" p={16}>
+          <View
+            flex={1}
+            justify="center"
+            items="center"
+            pt={16 + insets.top}
+            pr={16 + insets.right}
+            pb={16 + insets.bottom}
+            pl={16 + insets.left}
+          >
             <Pressable
               accessible={false}
               onPress={

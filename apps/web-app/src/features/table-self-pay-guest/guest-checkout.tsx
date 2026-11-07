@@ -38,6 +38,7 @@ import {
   isCustomTipUnreadable,
   NO_TIP,
   resolveGuestTip,
+  useTipReveal,
 } from "./guest-tip-picker.tsx"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
@@ -305,6 +306,7 @@ export function GuestCheckout({
   const choiceTitle = useRef<HTMLHeadingElement>(null)
   const amountField = useRef<HTMLInputElement>(null)
   const payBar = usePayBarScrollPadding()
+  const { tipPicker, revealTipsAfterTyping } = useTipReveal()
   const format = (amount: number) => formatGuestAmount(amount, bill, locale)
   const payableLines = bill.lines.filter((line) => remainingOnLine(line) > 0)
   const typedAmount = decimalAmountToMinorUnits({
@@ -461,6 +463,7 @@ export function GuestCheckout({
                 ref={amountField}
                 id="guest-amount"
                 inputMode="decimal"
+                enterKeyHint="done"
                 autoComplete="off"
                 placeholder="0"
                 className="h-11 pr-12"
@@ -474,8 +477,12 @@ export function GuestCheckout({
                 onChange={(event) => {
                   setAmountText(event.currentTarget.value)
                 }}
-                onBlur={() => {
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur()
+                }}
+                onBlur={(event) => {
                   setHasLeftAmount(true)
+                  if (share.amount > 0) revealTipsAfterTyping(event)
                 }}
               />
               <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
@@ -509,6 +516,7 @@ export function GuestCheckout({
       </section>
 
       <GuestTipPicker
+        ref={tipPicker}
         currency={bill.currency}
         share={share.amount}
         choice={tipChoice}

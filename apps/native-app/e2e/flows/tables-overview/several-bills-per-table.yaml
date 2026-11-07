@@ -74,7 +74,7 @@ tags: [tables-overview]
 - extendedWaitUntil:
     visible: '${output.tv("bill.itemsCount", { value: 1 })}'
     timeout: 10000
-- assertVisible: '${output.tv("bill.list.label", { number: 1 })}'
+- assertVisible: '.*${output.re(output.tv("bill.list.label", { number: 1 }))}.*'
 - assertVisible: Table B
 # Table B's "+" starts another bill on the same table.
 - runFlow:
