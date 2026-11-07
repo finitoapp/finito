@@ -16,6 +16,7 @@ import {
 import {
   type MockupScreen,
   mockupHeight,
+  mockupMarks,
   mockupsByLanguage,
   mockupWidth,
 } from "@/features/landing/landing-mockups.ts"
@@ -209,7 +210,11 @@ function PhoneScreen({
       {screen === "paid" ? (
         <div
           aria-hidden="true"
-          className="landing-check-ping absolute top-[37.8%] left-1/2 aspect-square w-[15.3%]"
+          className="landing-check-ping absolute left-1/2 aspect-square"
+          style={{
+            top: `${mockupMarks.paidCheck.top}%`,
+            width: `${mockupMarks.paidCheck.width}%`,
+          }}
         />
       ) : null}
     </div>

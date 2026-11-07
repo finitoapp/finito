@@ -10,7 +10,9 @@ import { type PointerEvent, useId } from "react"
 import { buttonVariants } from "@/components/ui/button.tsx"
 import { landingAppEntryUrl } from "@/core/landing-site.ts"
 import {
+  mockupBoxStyle,
   mockupHeight,
+  mockupMarks,
   mockupsByLanguage,
   mockupWidth,
 } from "@/features/landing/landing-mockups.ts"
@@ -240,7 +242,8 @@ function Stage() {
         {/* Over the QR card of the payment mockup, the same in every language. */}
         <div
           aria-hidden="true"
-          className="landing-scan absolute top-[37.1%] left-[21.8%] h-[32%] w-[56.4%]"
+          className="landing-scan absolute"
+          style={mockupBoxStyle(mockupMarks.qrCard)}
         />
       </Placed>
       {/* Stamped on the phone's corner: the one thing a Czech merchant asks first. */}

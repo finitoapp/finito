@@ -31,7 +31,7 @@ curl -sfL "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5
 fc-cache -f >/dev/null
 
 for screen in payment paid; do
-  magick "docs/mockup/$lang/$screen.webp" -trim +repage -resize x700 "$work/$screen.png"
+  magick "apps/web-app/docs/mockup/$lang/$screen.webp" -trim +repage -resize x700 "$work/$screen.png"
 done
 paid="data:image/png;base64,$(base64 -w0 "$work/paid.png")"
 payment="data:image/png;base64,$(base64 -w0 "$work/payment.png")"

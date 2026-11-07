@@ -9,9 +9,9 @@ shadcn-style local UI components, Base UI primitives, Zod validation, and Evolu
 for persistent application data.
 
 <p>
-  <img src="./docs/mockup/en/home.webp" alt="Payky numpad" width="32%" />
-  <img src="./docs/mockup/en/payment.webp" alt="Payky payment" width="32%" />
-  <img src="./docs/mockup/en/paid.webp" alt="Payky paid payment" width="32%" />
+  <img src="./apps/web-app/docs/mockup/en/home.webp" alt="Payky numpad" width="32%" />
+  <img src="./apps/web-app/docs/mockup/en/payment.webp" alt="Payky payment" width="32%" />
+  <img src="./apps/web-app/docs/mockup/en/paid.webp" alt="Payky paid payment" width="32%" />
 </p>
 
 ## Requirements

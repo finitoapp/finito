@@ -29,6 +29,7 @@
     "check:decisions": "bun run bin/check-decisions.ts",
     "check": "bun run check:lint && bun run check:ts && bun run check:decisions && bun run check:tests",
     "docs:screenshots": "bun run --cwd apps/web-app docs:screenshots",
+    "docs:screenshots:native": "bun run --cwd apps/native-app docs:screenshots",
     "docs:screenshots:install-browser": "bun run --cwd apps/web-app docs:screenshots:install-browser",
     "docs:videos:capture": "bun run --cwd apps/web-app docs:videos:capture",
     "docs:videos:render": "bun run --cwd apps/web-app docs:videos:render",

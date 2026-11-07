@@ -21,7 +21,7 @@ fc-cache -f >/dev/null
 
 qrencode -t SVG -m 2 -o "$work/qr.svg" "https://payky.me"
 rsvg-convert -w 900 apps/web-app/public/pwa-icon.svg -o "$work/logo.png"
-magick "docs/mockup/$lang/payment.webp" -trim +repage -bordercolor none -border 30 \
+magick "apps/web-app/docs/mockup/$lang/payment.webp" -trim +repage -bordercolor none -border 30 \
   -resize 1200x "$work/phone.png"
 
 python3 - "$work" "$lang" $(identify -format "%w %h" "$work/phone.png") <<'PY'

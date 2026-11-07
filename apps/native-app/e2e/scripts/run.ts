@@ -10,6 +10,7 @@ import { join, relative, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { $ } from "bun"
 import { serveMocks } from "./mock-server.ts"
+import { pointAtMocks } from "./point-at-mocks.ts"
 import { serveWeb } from "./serve-web.ts"
 
 const appDir = resolve(import.meta.dirname, "../..")
@@ -104,21 +105,6 @@ for (const flow of flows) {
   if (tags.some((tag) => sharedStateTags.includes(tag))) sharedState.add(flow)
 }
 
-/**
- * Points the build at the mock server (mock-server.ts) at `host`, as the app
- * sees it: 127.0.0.1 on web, the emulator's 10.0.2.2 alias of the host on
- * Android. Expo inlines EXPO_PUBLIC_* at build time, so the host is baked in.
- */
-const pointAtMocks = (host: string) => {
-  const base = `http://${host}:${mockPort}`
-  process.env.EXPO_PUBLIC_PAYKY_API_BASE_URL = base
-  process.env.EXPO_PUBLIC_PAYKY_YADIO_URL = base
-  process.env.EXPO_PUBLIC_PAYKY_QERKO_BASE_URL = `${base}/qerko`
-  process.env.EXPO_PUBLIC_PAYKY_EET_PRODUCTION_URL = `${base}/eet/services/EETServiceSOAP/v4`
-  process.env.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS = `ws://${host}:${mockPort}/nostr`
-  process.env.EXPO_PUBLIC_PAYKY_EET_PLAYGROUND_URL = `${base}/eet-playground/services/EETServiceSOAP/v4`
-}
-
 const mocks = serveMocks(mockPort)
 const exitCode = platform === "web" ? await runWeb() : await runAndroid()
 mocks.stop(true)
@@ -127,7 +113,7 @@ process.exit(exitCode)
 
 async function runWeb(): Promise<number> {
   const webDir = join(generated, "web")
-  pointAtMocks("127.0.0.1")
+  pointAtMocks("127.0.0.1", mockPort)
   if (values.build || !existsSync(join(webDir, "index.html")))
     await $`bun x expo export --platform web --output-dir ${webDir}`.cwd(appDir)
   const server = serveWeb(webDir, webPort)
@@ -225,7 +211,10 @@ async function runAndroid(): Promise<number> {
     return 2
   }
   // Emulator only, as for Metro below; a USB device would need `adb reverse`.
-  pointAtMocks(serial.startsWith("emulator-") ? "10.0.2.2" : "127.0.0.1")
+  pointAtMocks(
+    serial.startsWith("emulator-") ? "10.0.2.2" : "127.0.0.1",
+    mockPort
+  )
   if (!serial.startsWith("emulator-"))
     await $`adb -s ${serial} reverse tcp:${mockPort} tcp:${mockPort}`.quiet()
   const variant = values.dev ? "debug" : "release"
