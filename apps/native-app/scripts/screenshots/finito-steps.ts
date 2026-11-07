@@ -14,9 +14,9 @@ const resources = {
 }
 
 /**
- * Playwright steps over Finito's web export for the documentation
- * screenshots (generate-doc-screenshots.ts): web's `e2e/support` helpers, as
- * the Maestro subflows in `e2e/subflows` drive the same screens.
+ * Playwright steps over Finito's web export for its screenshots
+ * (finito-scenarios.ts): web's `e2e/support` helpers, as the Maestro
+ * subflows in `e2e/subflows` drive the same screens.
  */
 
 /** The copy as Finito shows it, its `{name}`-style params filled from `params`. */
