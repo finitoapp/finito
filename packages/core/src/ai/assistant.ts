@@ -27,8 +27,11 @@ const maxSteps = 10
 /** How much of a long conversation the model sees, to bound its tokens. */
 const maxMessages = 20
 
-const systemPrompt = `You are the assistant inside Payky, a point-of-sale app for merchants that takes Bitcoin (Lightning), bank transfer, card and cash payments.
-Answer the merchant's question. Use the data tools, when you have them, to look at their bills and payments, and the documentation and source code tools, when you have them, to explain how Payky behaves. Without the data tools you cannot see the merchant's data; say so when a question needs it.
+/** The instructions the model gets, naming the app it answers inside. */
+const systemPrompt = (
+  appName: string
+) => `You are the assistant inside ${appName}, a point-of-sale app for merchants that takes Bitcoin (Lightning), bank transfer, card and cash payments.
+Answer the merchant's question. Use the data tools, when you have them, to look at their bills and payments, and the documentation and source code tools, when you have them, to explain how ${appName} behaves. Without the data tools you cannot see the merchant's data; say so when a question needs it.
 Money amounts in the data are integer minor units of the row's currency (cents for fiat, sats for bitcoin).
 If the code suggests a bug, say it only looks like one, and name the file and line that makes you think so.
 Reply in the language of the question. Keep the answer short and readable for a merchant, not a developer.
@@ -91,15 +94,18 @@ export const recentMessages = (
  * `tools` are all the model may call: the data tools (`createDataTools`), the
  * documentation and source code tools, or none.
  * `onToolCall` names each tool as the model starts it, so a caller can show
- * what the wait is for.
+ * what the wait is for. `appName` is the brand the app ships as, which the
+ * assistant introduces itself and the app by.
  */
 export const askAssistant =
   ({
+    appName,
     messages,
     tools,
     onText,
     onToolCall,
   }: {
+    readonly appName: string
     readonly messages: ReadonlyArray<ModelMessage>
     readonly tools: ToolSet
     readonly onText: (text: string) => void
@@ -109,7 +115,7 @@ export const askAssistant =
     let streamError: unknown = null
     const result = streamText({
       model: run.deps.aiModel,
-      system: systemPrompt,
+      system: systemPrompt(appName),
       messages: recentMessages(messages),
       tools,
       stopWhen: isStepCount(maxSteps),
