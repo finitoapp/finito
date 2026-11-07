@@ -245,11 +245,16 @@ type SelfPayLookupDeps = EvoluDep &
 
 export type SelfPayArrivalDeps = SelfPayLookupDeps & DateDep
 
+type SelfPaySelectionAnswer<T> =
+  | { readonly type: "found"; readonly selection: T }
+  | { readonly type: "notFound" }
+  | { readonly type: "cannotAsk" }
+
 export const lookUpSelfPaySelection =
   <T>(
     pointer: SelfPayPointer,
     schema: z.ZodType<T>
-  ): Task<T | null, never, SelfPayLookupDeps> =>
+  ): Task<SelfPaySelectionAnswer<T>, never, SelfPayLookupDeps> =>
   async (run) => {
     const { nostrRelayClient, selfPayDefaultRelays, tableSelfPayRoot } =
       run.deps
@@ -258,7 +263,7 @@ export const lookUpSelfPaySelection =
       selfPayDefaultRelays === undefined ||
       tableSelfPayRoot === undefined
     ) {
-      return ok(null)
+      return ok({ type: "cannotAsk" })
     }
     const rows = await run.deps.evolu.loadQuery(selfPayRelaysQuery)
     const relays = [
@@ -272,7 +277,15 @@ export const lookUpSelfPaySelection =
       relays,
       createSelfPaySelectionFilter(pointer, selectionKey)
     )
-    return ok(openSelfPaySelection({ events, pointer, selectionKey, schema }))
+    const selection = openSelfPaySelection({
+      events,
+      pointer,
+      selectionKey,
+      schema,
+    })
+    return ok(
+      selection === null ? { type: "notFound" } : { type: "found", selection }
+    )
   }
 
 type SelfPaySelectionLookup =
@@ -289,13 +302,15 @@ const resolveSelfPaySelection =
   ): Task<SelfPaySelectionLookup, never, SelfPayArrivalDeps> =>
   async (run) => {
     if (pointer === null) return ok({ type: "resolved", selection: null })
-    const selection = await run.ok(
+    const answer = await run.ok(
       lookUpSelfPaySelection(pointer, SelfPayShareSelectionSchema)
     )
-    if (selection !== null) return ok({ type: "resolved", selection })
+    if (answer.type === "found") {
+      return ok({ type: "resolved", selection: answer.selection })
+    }
     const waited = run.deps.date.now().getTime() - firstSeenAt
     return ok(
-      waited < SELECTION_LOOKUP_GRACE_MS
+      answer.type === "cannotAsk" || waited < SELECTION_LOOKUP_GRACE_MS
         ? { type: "waiting" }
         : { type: "resolved", selection: null }
     )
@@ -494,10 +509,11 @@ const loadMenuOrderIntent =
     pointer: SelfPayPointer
   ): Task<MenuOrderIntent | null, never, SelfPayArrivalDeps> =>
   async (run) => {
-    const selection = await run.ok(
+    const answer = await run.ok(
       lookUpSelfPaySelection(pointer, SelfPayOrderIntentSchema)
     )
-    if (selection === null) return ok(null)
+    if (answer.type !== "found") return ok(null)
+    const { selection } = answer
     const menu = await run.ok(loadSelfPayMenuVersion(selection.menu))
     return ok(menu === null ? null : { selection, currency: menu.currency })
   }

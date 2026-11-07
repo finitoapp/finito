@@ -88,6 +88,25 @@ describe("Ask before the edit", () => {
     ).toEqual({ type: "overpaid", unresolved: 250 })
   })
 
+  test("Removing every line after a guest paid by Cashu", async () => {
+    await using context = await createOverpaymentContext()
+    const billId = await context.createBillOf([
+      { name: "Soup", unitAmount: 250, quantity: 2 },
+    ])
+    const paymentId = await context.createTestPayment({ amount: 250, billId })
+    await context.settleByCashu(paymentId, 1000)
+    await using run = testCreateRun(context.deps)
+
+    expect(
+      await run.orThrow(
+        loadBillEditOutcome(
+          billId,
+          await linesMoving(context, billId, ["Soup"])
+        )
+      )
+    ).toEqual({ type: "overpaid", unresolved: 250 })
+  })
+
   test("Removal that leaves the bill paid exactly", async () => {
     await using context = await createOverpaymentContext()
     const billId = await context.createBillOf([

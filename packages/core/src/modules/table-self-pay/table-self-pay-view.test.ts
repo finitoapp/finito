@@ -6,11 +6,17 @@ import {
   createBill,
 } from "../bill/bill-actions.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
+import { CashuQuoteIdSchema, MintUrlSchema } from "../cashu/cashu-types.ts"
+import { createPayment } from "../payment/payment-actions.ts"
+import { claimManualReconciliation } from "../reconciliation-claim/reconciliation-claim-actions.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
+  Integer,
   NonEmptyString255,
+  NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
+  PositiveNumberSchema,
   TimestampMs,
 } from "../shared/schema.ts"
 import { createTableAtEnd } from "../table/table-actions.ts"
@@ -165,6 +171,72 @@ describe("table self-pay view", () => {
       { name: "Pizza", allocatedAmount: 2020 },
       { name: "Beer", allocatedAmount: 0 },
     ])
+  })
+
+  test("leaves out what staff took by Cashu", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId } = await openSelfPayBill(context, {
+      lines: [{ name: "Pizza", amount: 10_000 }],
+    })
+    await using run = testCreateRun(context.deps)
+    const paymentId = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId,
+        tableId: null,
+        amount: NonNegativeInteger(4000),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+      })
+    )
+    const accountTransactionId =
+      createIdFromString<"AccountTransaction">("cashu-transaction")
+    await runMutationWithCompletion((options) => {
+      context.deps.evolu.upsert(
+        "paymentCashu",
+        {
+          id: paymentId,
+          accountId: context.sparkAccountId,
+          amountSats: NonNegativeInteger(1600),
+          exchangeRate: PositiveNumberSchema.decode(2.5),
+          exchangeRateSource: "yadio",
+          exchangeRateFetchedAt: TimestampMs(0),
+          mintUrl: MintUrlSchema.decode("https://mint.example.com"),
+          quoteId: CashuQuoteIdSchema.decode("quote"),
+          lnInvoice: NonEmptyStringSchema.decode("lnbc1"),
+          quoteExpiresAt: null,
+          receiveOperationId: null,
+        },
+        { ...options, owner: context.deps.evoluOwner }
+      )
+      context.deps.evolu.upsert(
+        "accountTransaction",
+        {
+          id: accountTransactionId,
+          accountId: context.sparkAccountId,
+          kind: "cashu",
+          amount: Integer(1600),
+          currency: "BTC",
+          occurredAt: TimestampMs(0),
+          note: null,
+          internalTransferGroupId: null,
+        },
+        { ...options, owner: context.deps.evoluOwner }
+      )
+    })
+    await run.ok(
+      claimManualReconciliation({
+        paymentId,
+        accountTransactionId,
+        deviceId: null,
+      })
+    )
+
+    const { view } = await loadView(context)
+
+    expect(view.bills[0]?.remainder).toBe(6000)
   })
 
   test("moves its version forward with every change, a closing bill included", async () => {

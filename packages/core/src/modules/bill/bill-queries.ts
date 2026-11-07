@@ -139,12 +139,27 @@ export const openBillsQuery = createQuery((db) =>
               .onRef("paymentBtc.id", "=", "payment.id")
               .on("paymentBtc.isDeleted", "is not", sqliteTrue)
           )
+          .leftJoin("paymentCashu", (join) =>
+            join
+              .onRef("paymentCashu.id", "=", "payment.id")
+              .on("paymentCashu.isDeleted", "is not", sqliteTrue)
+          )
+          .leftJoin("paymentLightningAddress", (join) =>
+            join
+              .onRef("paymentLightningAddress.id", "=", "payment.id")
+              .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
+          )
           .select([
             "reconciliationClaim.paymentId",
             "payment.tipAmount",
             "payment.amount as paymentAmount",
             "payment.currency as paymentCurrency",
-            "paymentBtc.amountSats as paymentAmountSats",
+            quotedAmountSatsSql({
+              kind: "accountTransaction.kind",
+              btc: "paymentBtc.amountSats",
+              cashu: "paymentCashu.amountSats",
+              lightningAddress: "paymentLightningAddress.amountSats",
+            }).as("paymentAmountSats"),
             "reconciliationClaim.accountTransactionId",
             "accountTransaction.amount",
             "accountTransaction.currency",

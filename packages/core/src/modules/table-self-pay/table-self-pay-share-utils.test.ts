@@ -447,6 +447,34 @@ describe("calculateSelfPayShare", () => {
     ).toEqual({ amount: 34_040, lines: [{ key: "PIZZAAAA", amount: 34_040 }] })
   })
 
+  test("items or a fraction of the bill above what it owes pay the whole remainder", () => {
+    const current = bill(
+      [
+        { key: "PIZZAAAA", totalAmount: 30_000 },
+        { key: "BEERAAAA", totalAmount: 10_000 },
+      ],
+      30_000
+    )
+
+    expect(
+      calculateSelfPayShare(
+        current,
+        {
+          kind: "lines",
+          fractions: [{ key: "PIZZAAAA", numerator: 1, denominator: 1 }],
+        },
+        "CZK"
+      )
+    ).toEqual({ amount: 10_000, lines: [] })
+    expect(
+      calculateSelfPayShare(
+        current,
+        { kind: "fractionOfBill", denominator: 2 },
+        "CZK"
+      )
+    ).toEqual({ amount: 10_000, lines: [] })
+  })
+
   test("items that would leave less than the minimum take the rest of the bill", () => {
     const current = bill([
       { key: "BEERAAAA", totalAmount: 4500 },

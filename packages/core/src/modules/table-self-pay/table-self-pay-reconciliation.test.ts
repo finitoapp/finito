@@ -10,7 +10,10 @@ import {
   saveCardSwitchioAccount,
 } from "../account/account-actions.ts"
 import { createCardSwitchioAccountId } from "../account/account-utils.ts"
-import type { CreateAccountTransactionInput } from "../account-transaction/account-transaction-actions.ts"
+import {
+  type CreateAccountTransactionInput,
+  createAccountTransaction,
+} from "../account-transaction/account-transaction-actions.ts"
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
 import { appendRemoveBillLine, cancelBill } from "../bill/bill-actions.ts"
 import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
@@ -25,7 +28,10 @@ import {
 import { preparePaymentMethod } from "../payment/payment-preparation-actions.ts"
 import { paymentWithDetailsByIdQuery } from "../payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
-import { loadAutomaticReconciliation } from "../reconciliation-claim/reconciliation-claim-actions.ts"
+import {
+  loadAutomaticReconciliation,
+  reconcileAccountTransaction,
+} from "../reconciliation-claim/reconciliation-claim-actions.ts"
 import { refundPayment } from "../refund/refund-actions.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
@@ -650,6 +656,63 @@ describe("self-pay by bank transfer", () => {
   })
 })
 
+describe("a device that cannot reach the relays", () => {
+  test("leaves a transfer waiting, so a device that can credits the lines the guest picked", async () => {
+    await using context = await createSelfPayTestContext({ now: new Date() })
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [
+        { name: "Pizza", amount: 10_100 },
+        { name: "Beer", amount: 4500 },
+      ],
+    })
+    const [, beer] = (await selectSelfPayTestShare(context, reference)).bill
+      .lines
+    if (beer === undefined) throw new Error("Expected the beer line.")
+    const { pointer } = await selectSelfPayTestShare(context, reference, {
+      kind: "lines",
+      fractions: [{ key: beer.key, numerator: 1, denominator: 1 }],
+    })
+    await using run = testCreateRun(context.deps)
+    const accountTransactionId = await run.ok(
+      createAccountTransaction({
+        accountId: context.ibanAccountId,
+        amount: Integer(4500),
+        currency: "CZK",
+        occurredAt: TimestampMsSchema.decode(
+          context.clock.date.now().getTime()
+        ),
+        note: null,
+        internalTransferGroupId: null,
+        source: { deviceId: null, source: "auto" },
+        iban: {
+          variableSymbol: VariableSymbol(reference),
+          constantSymbol: null,
+          specificSymbol: null,
+          bankReference: NonEmptyString255("transfer"),
+          recipientMessage: NonEmptyStringSchema.decode(
+            formatSelfPayBankMessage({ pointer })
+          ),
+        },
+      })
+    )
+    context.clock.advance(11 * 60 * 1000)
+    const { nostrRelayClient: _relays, ...withoutRelays } = context.deps
+    await using screenRun = testCreateRun(withoutRelays)
+
+    expect(
+      await screenRun.ok(reconcileAccountTransaction(accountTransactionId))
+    ).toBe(null)
+    await run.ok(reconcileAccountTransaction(accountTransactionId))
+    expect(
+      (
+        await context.deps.evolu.loadQuery(
+          selfPayAllocationsByBillIdQuery(billId)
+        )
+      ).map(({ lineKey, amount }) => ({ lineKey, amount }))
+    ).toEqual([{ lineKey: beer.key, amount: 4500 }])
+  })
+})
+
 describe("self-pay by Lightning", () => {
   test("credits a share at the rate the merchant published", async () => {
     await using context = await createSelfPayTestContext()
@@ -873,6 +936,72 @@ describe("self-pay by Lightning", () => {
       expect(paymentId).toBe(null)
     }
     expect((await loadCoverage(context, billId)).claimedSum).toBe(0)
+  })
+
+  test("keeps the lines and tip of the first of two jobs on one device that reconcile one payment at once", async () => {
+    await using context = await createSelfPayTestContext({ now: new Date() })
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Beer", amount: 4500 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    const rate = signTestSelfPayRate(context.clock.date.now())
+    await using run = testCreateRun(context.deps)
+    const accountTransactionId = await run.ok(
+      createAccountTransaction({
+        accountId: context.sparkAccountId,
+        amount: Integer(2000),
+        currency: "BTC",
+        occurredAt: TimestampMsSchema.decode(
+          context.clock.date.now().getTime()
+        ),
+        note: null,
+        internalTransferGroupId: null,
+        source: { deviceId: null, source: "auto" },
+        spark: {
+          sparkTransferId: NonEmptyStringSchema.decode("transfer"),
+          lightning: {
+            lnInvoice: NonEmptyStringSchema.decode(
+              createTestLightningInvoice({
+                amountSats: 2000,
+                createdAt: rate.validFrom + 60,
+                memo: formatSelfPayLightningMemo({
+                  reference,
+                  pointer,
+                  amount: 5000,
+                  rate,
+                }),
+              })
+            ),
+            preImage: null,
+            paymentHash: null,
+          },
+        },
+      })
+    )
+    context.clock.advance(11 * 60 * 1000)
+    await using withRelays = testCreateRun(context.deps)
+    await using withoutRelays = testCreateRun({
+      ...context.deps,
+      nostrRelayClient: {
+        ...context.deps.nostrRelayClient,
+        query: async () => [],
+      },
+    })
+
+    const [paymentId] = await Promise.all([
+      withRelays.ok(reconcileAccountTransaction(accountTransactionId)),
+      withoutRelays.ok(reconcileAccountTransaction(accountTransactionId)),
+    ])
+
+    if (paymentId === null) throw new Error("Expected a payment.")
+    expect((await loadPayment(context, paymentId))?.tipAmount).toBe(500)
+    expect(
+      (
+        await context.deps.evolu.loadQuery(
+          selfPayAllocationsByBillIdQuery(billId)
+        )
+      ).map(({ amount }) => amount)
+    ).toEqual([4500])
   })
 
   test("credits the last 0.40 CZK of a bill by Lightning", async () => {

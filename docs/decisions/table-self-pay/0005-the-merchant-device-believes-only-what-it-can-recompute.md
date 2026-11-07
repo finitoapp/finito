@@ -46,6 +46,7 @@ decisions rest on.
 
 ## Enforced by
 
+- `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by Lightning > keeps the lines and tip of the first of two jobs on one device that reconcile one payment at once`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > credits exactly what arrived with another bill's reference`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > leaves money with %s unmatched`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > leaves a transfer in another currency than the bill unmatched`

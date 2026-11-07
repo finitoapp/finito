@@ -56,7 +56,8 @@ When a device does not find the selection, it keeps asking for 10 minutes
 after it first saw the money. `self-pay-pointer-job.ts` asks again at 1, 3, 6
 and 11 minutes. After that the device counts the money toward the bill
 without allocation, so a device that found the selection writes its rows
-first (`table-self-pay/0005`).
+first (`table-self-pay/0005`). A run that cannot ask the relays at all, such
+as a payment screen's own bank sync, leaves the money for one that can.
 
 ## Alternatives considered
 
@@ -117,6 +118,7 @@ keys.
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > self-pay allocation > marks the lines the payment's pointer names as paid`
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > self-pay allocation > counts a cut pointer toward the bill at once without allocation`
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > self-pay allocation > counts an edited pointer toward the bill without allocation once 10 minutes passed`
+- `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > a device that cannot reach the relays > leaves a transfer waiting, so a device that can credits the lines the guest picked`
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > looking up the selection a payment points to > credits money whose selection no relay returns without allocation once 10 minutes passed`
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > looking up the selection a payment points to > marks the lines paid when a relay returns the selection on a later try`
 - `packages/core/src/modules/table-self-pay/table-self-pay-allocation.test.ts > looking up the selection a payment points to > keeps the lines a device that found the selection recorded, when another device could not look it up`

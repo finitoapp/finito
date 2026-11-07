@@ -505,6 +505,14 @@ export const reconcileAccountTransaction =
       return await run.deps.lockManager.request(
         SELF_PAY_ARRIVAL_LOCK,
         async () => {
+          const [claimed] = await run.deps.evolu.loadQuery(
+            activeReconciliationClaimByAccountTransactionIdQuery(
+              accountTransactionId
+            )
+          )
+          if (claimed?.paymentId !== null && claimed?.paymentId !== undefined) {
+            return ok(claimed.paymentId)
+          }
           const reconciliation = await run.ok(
             loadSelfPayReconciliation({
               ...transaction,

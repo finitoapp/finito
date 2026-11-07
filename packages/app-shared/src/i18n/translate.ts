@@ -1,5 +1,6 @@
 import { applyBrandName, type Brand, type BrandPlaceholder } from "../brand.ts"
 import type { en } from "./en.ts"
+import { interpolate } from "./interpolate.ts"
 import { type Language, resources, type TranslationKey } from "./resources.ts"
 
 /**
@@ -28,15 +29,6 @@ export type ParamsArgs<K extends TranslationKey> = K extends TranslationKey
     ? [params?: undefined]
     : [params: Readonly<Record<ParamsFor<K>, string | number>>]
   : never
-
-function interpolate(
-  text: string,
-  params: Readonly<Record<string, string | number>>
-): string {
-  return text.replace(/\{([^{}]+)\}/gu, (placeholder, name: string) =>
-    Object.hasOwn(params, name) ? String(params[name]) : placeholder
-  )
-}
 
 /**
  * The `t` function both apps' `useTranslation` hooks return for a language,

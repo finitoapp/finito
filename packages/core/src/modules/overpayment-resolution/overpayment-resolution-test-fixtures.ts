@@ -1,4 +1,4 @@
-import { testCreateRun } from "@evolu/common"
+import { createIdFromString, sqliteFalse, testCreateRun } from "@evolu/common"
 
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
@@ -13,6 +13,7 @@ import {
   appendBillLines,
   loadCalculatedBillLineSummaries,
 } from "../bill-line/bill-line-actions.ts"
+import { CashuQuoteIdSchema, MintUrlSchema } from "../cashu/cashu-types.ts"
 import { createCatalogItem } from "../catalog-item/catalog-item-actions.ts"
 import {
   createPayment,
@@ -24,11 +25,17 @@ import type { PaymentId } from "../payment/payment-types.ts"
 import { claimManualReconciliation } from "../reconciliation-claim/reconciliation-claim-actions.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../shared/evolu-utils.ts"
+import {
   Integer,
   NonEmptyString255,
+  NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
   PositiveNumber,
+  PositiveNumberSchema,
   TimestampMs,
 } from "../shared/schema.ts"
 
@@ -150,6 +157,65 @@ export const createOverpaymentContext = async () => {
     )
   }
 
+  const settleByCashu = async (paymentId: PaymentId, sats: number) => {
+    const owner = deps.evoluOwner
+    const accountId = createIdFromString<"Account">("cashu")
+    const accountTransactionId = createRowId<"AccountTransaction">()
+    await runMutationWithCompletion((options) => {
+      evolu.upsert("accountCashu", { id: accountId }, { ...options, owner })
+      evolu.upsert(
+        "account",
+        {
+          id: accountId,
+          deviceId: null,
+          name: NonEmptyString255("Cashu"),
+          kind: "cashu",
+          isDeleted: sqliteFalse,
+        },
+        { ...options, owner }
+      )
+      evolu.upsert(
+        "paymentCashu",
+        {
+          id: paymentId,
+          accountId,
+          amountSats: NonNegativeInteger(sats),
+          exchangeRate: PositiveNumberSchema.decode(2.5),
+          exchangeRateSource: "yadio",
+          exchangeRateFetchedAt: TimestampMs(clock.date.now().getTime()),
+          mintUrl: MintUrlSchema.decode("https://mint.example.com"),
+          quoteId: CashuQuoteIdSchema.decode("quote"),
+          lnInvoice: NonEmptyStringSchema.decode("lnbc1"),
+          quoteExpiresAt: null,
+          receiveOperationId: null,
+        },
+        { ...options, owner }
+      )
+      evolu.upsert(
+        "accountTransaction",
+        {
+          id: accountTransactionId,
+          accountId,
+          kind: "cashu",
+          amount: Integer(sats),
+          currency: "BTC",
+          occurredAt: TimestampMs(clock.date.now().getTime()),
+          note: null,
+          internalTransferGroupId: null,
+        },
+        { ...options, owner }
+      )
+    })
+    await using run = testCreateRun(deps)
+    await run.ok(
+      claimManualReconciliation({
+        paymentId,
+        accountTransactionId,
+        deviceId: null,
+      })
+    )
+  }
+
   const removeLineOnAnotherDevice = async (billId: BillId, name: string) => {
     await using run = testCreateRun(deps)
     const summaries = await run.ok(loadCalculatedBillLineSummaries(billId))
@@ -196,6 +262,7 @@ export const createOverpaymentContext = async () => {
     settleInCash,
     settleByTransfer,
     settleWithTransfer,
+    settleByCashu,
     removeLineOnAnotherDevice,
     createOverpaidBill,
     deriveOverpayment,

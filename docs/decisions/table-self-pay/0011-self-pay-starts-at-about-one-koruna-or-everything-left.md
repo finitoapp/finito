@@ -23,8 +23,8 @@ money made, so every device decides the same.
 
 A share that would leave the bill owing more than zero and less than the
 minimum is the whole remainder instead (`calculateSelfPayShare`), on the
-guest page and on the merchant device alike, and so is a typed amount above
-what the bill owes. The page says it added the rest. A share below the minimum that is not everything left cannot be paid,
+guest page and on the merchant device alike, and so is any share above what
+the bill owes, typed or picked. The page says it added the rest. A share below the minimum that is not everything left cannot be paid,
 and the page says where paying starts.
 
 Money that creates no payment is never reported to EET.
@@ -58,6 +58,7 @@ always money the bill still owes, and never more than it owes.
 - `packages/core/src/modules/table-self-pay/table-self-pay-share-utils.test.ts > the self-pay minimum > lets money below it count only when it covers everything left`
 - `packages/core/src/modules/table-self-pay/table-self-pay-share-utils.test.ts > calculateSelfPayShare > an amount that would leave less than the minimum pays the whole remainder`
 - `packages/core/src/modules/table-self-pay/table-self-pay-share-utils.test.ts > calculateSelfPayShare > an amount above what the bill owes pays the whole remainder`
+- `packages/core/src/modules/table-self-pay/table-self-pay-share-utils.test.ts > calculateSelfPayShare > items or a fraction of the bill above what it owes pay the whole remainder`
 - `packages/core/src/modules/table-self-pay/table-self-pay-share-utils.test.ts > calculateSelfPayShare > items that would leave less than the minimum take the rest of the bill`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > credits the last 0.40 CZK of a bill, the same way once it is recorded`
 - `packages/core/src/modules/table-self-pay/table-self-pay-reconciliation.test.ts > self-pay by bank transfer > leaves 0.40 CZK unmatched once the bill is paid`
