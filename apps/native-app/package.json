@@ -17,11 +17,11 @@
     "google-play:assets": "bun scripts/generate-google-play-assets.ts"
   },
   "dependencies": {
-    "@evolu/common": "8.26.0",
+    "@evolu/common": "8.27.2",
     "@evolu/react": "11.2.3",
-    "@evolu/react-native": "16.2.2",
+    "@evolu/react-native": "16.2.3",
     "@evolu/sqlite-wasm": "3.54.1-build3",
-    "@evolu/web": "3.7.0",
+    "@evolu/web": "3.7.1",
     "@expo-google-fonts/manrope": "0.4.2",
     "@expo/metro-runtime": "58.0.14",
     "@finitoapp/eet-client": "0.4.0",

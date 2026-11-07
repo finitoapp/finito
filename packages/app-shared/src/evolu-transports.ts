@@ -85,7 +85,7 @@ export const toTransportSyncKind = (
       return "error"
     case "Synced":
       return "synced"
-    case "Offline":
+    case "Disconnected":
       return "offline"
     case "Syncing":
       return relay.transport.connection.type === "Connecting"
