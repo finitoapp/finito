@@ -1,10 +1,15 @@
 /**
  * Geometry shared between the screenshot mockup compositor
- * (generate-doc-screenshots.ts, via sharp) and the video mockup composition
- * (remotion/PaymentVideo.tsx, via CSS) so both frame their captures
+ * (compose-mockup.ts, via sharp) and the web app's video mockup composition
+ * (remotion/ScenarioVideo.tsx, via CSS) so both frame their captures
  * identically. Keep this the single source of truth for these numbers
  * instead of duplicating them.
  */
+
+// The viewport, in CSS pixels, every app's screenshots and videos are
+// captured at, so their mockups share one layout.
+export const captureWidth = 406
+export const captureHeight = 818
 
 // Screenshots are captured at this pixel density for crispness; the ratio
 // math below is scale-invariant, but the absolute inset pixel amounts
@@ -18,8 +23,8 @@ export const outputWidth = 1260
 export const contentTopInset = Math.round(60 * deviceScaleFactor)
 export const contentBottomInset = Math.round(38 * deviceScaleFactor)
 
-// Native size of docs/mockup/phone-frame.svg and the screen cutout inside
-// it, in the frame artwork's own coordinate space.
+// Native size of phone-frame.svg and the screen cutout inside it, in the
+// frame artwork's own coordinate space.
 export const frameWidth = 1164
 export const frameHeight = 2044
 export const frameScreenLeft = 202
@@ -31,7 +36,7 @@ export const frameScreenCornerRadius = 80
 // Tight bounding box of the visible phone body within the frame artwork
 // (frameWidth x frameHeight above), i.e. excluding the drop-shadow's
 // margin — derived once from the body path/button rects in
-// docs/mockup/phone-frame.svg, plus a little padding so the shadow isn't
+// phone-frame.svg, plus a little padding so the shadow isn't
 // clipped hard. Only the video composition uses this: it wants the frame to
 // fill its canvas edge to edge, whereas the screenshot mockup keeps the
 // shadow's margin on purpose (reads better as a standalone image).
@@ -50,7 +55,7 @@ export interface FramedContentLayout {
 }
 
 /**
- * Replicates generate-doc-screenshots.ts's composeScreenshot pipeline
+ * Replicates compose-mockup.ts's composeMockup pipeline
  * (resize to outputWidth, pad top/bottom by the content insets, "cover"-fit
  * into the screen cutout) algebraically, so any renderer can place a
  * `contentWidth x contentHeight` capture inside the cutout the same way,

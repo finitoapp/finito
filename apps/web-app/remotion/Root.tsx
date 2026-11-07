@@ -1,9 +1,9 @@
-import type { FC } from "react"
-import { Composition, staticFile } from "remotion"
 import {
   frameBodyHeight as FRAME_BODY_HEIGHT,
   frameBodyWidth as FRAME_BODY_WIDTH,
-} from "../scripts/phone-frame-geometry.ts"
+} from "@payky/doc-mockups/phone-frame-geometry"
+import type { FC } from "react"
+import { Composition, staticFile } from "remotion"
 import type { CaptionTimelineFile } from "../scripts/video/captions.ts"
 import { ScenarioVideo, scenarioVideoSchema } from "./ScenarioVideo.tsx"
 

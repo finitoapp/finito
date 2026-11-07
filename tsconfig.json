@@ -26,6 +26,9 @@
       "path": "./packages/web-shared"
     },
     {
+      "path": "./packages/doc-mockups"
+    },
+    {
       "path": "./apps/native-app"
     }
   ]

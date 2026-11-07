@@ -1,14 +1,4 @@
-import type { FC } from "react"
-import {
-  AbsoluteFill,
-  Img,
-  OffthreadVideo,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion"
-import { z } from "zod"
-import phoneFrame from "../../../docs/mockup/phone-frame.svg"
-import { pageHeight, pageWidth } from "../e2e/support/viewport.ts"
+import phoneFrame from "@payky/doc-mockups/phone-frame.svg"
 import {
   computeFramedContentLayout,
   frameBodyHeight as FRAME_BODY_HEIGHT,
@@ -22,7 +12,17 @@ import {
   frameScreenTop as FRAME_SCREEN_TOP,
   frameScreenWidth as FRAME_SCREEN_WIDTH,
   frameWidth as FRAME_WIDTH,
-} from "../scripts/phone-frame-geometry.ts"
+} from "@payky/doc-mockups/phone-frame-geometry"
+import type { FC } from "react"
+import {
+  AbsoluteFill,
+  Img,
+  OffthreadVideo,
+  useCurrentFrame,
+  useVideoConfig,
+} from "remotion"
+import { z } from "zod"
+import { pageHeight, pageWidth } from "../e2e/support/viewport.ts"
 import type { CaptionTimelineFile } from "../scripts/video/captions.ts"
 
 // A real zod schema (rather than a plain interface) is what lets

@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer"
 import { spawn } from "node:child_process"
 import { mkdir, rm } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
@@ -7,8 +6,19 @@ import {
   resources,
   type TranslationKey,
 } from "@payky/app-shared/i18n/resources"
+import { composeMockup, type ShotName } from "@payky/doc-mockups/compose-mockup"
+import { deviceScaleFactor } from "@payky/doc-mockups/phone-frame-geometry"
+import {
+  billCartByLanguage,
+  billCatalogByLanguage,
+  type CartItem,
+  paymentAmountByLanguage,
+  splitCartByLanguage,
+  statsHistoryDays,
+  tableNamesByLanguage,
+  tablesCartItemByLanguage,
+} from "@payky/doc-mockups/screenshot-content"
 import { chromium, expect, type Page } from "@playwright/test"
-import sharp from "sharp"
 import { addCatalogItem, addTable, startNewBill } from "../e2e/support/bill.ts"
 import { translate } from "../e2e/support/i18n.ts"
 import {
@@ -24,32 +34,6 @@ import {
 } from "../e2e/support/payment.ts"
 import { pageHeight, pageWidth } from "../e2e/support/viewport.ts"
 import { docEnv } from "./doc-env.ts"
-import {
-  contentBottomInset,
-  contentTopInset,
-  deviceScaleFactor,
-  frameHeight,
-  frameScreenCornerRadius,
-  frameScreenHeight,
-  frameScreenLeft,
-  frameScreenTop,
-  frameScreenWidth,
-  frameWidth,
-  outputWidth,
-} from "./phone-frame-geometry.ts"
-
-type ShotName =
-  | "home"
-  | "payment"
-  | "paid"
-  | "settings"
-  | "bill"
-  | "tables"
-  | "table-bill"
-  | "items"
-  | "split"
-  | "stats"
-  | "stats-charts"
 
 interface ScreenshotScenario {
   readonly name: ShotName
@@ -66,31 +50,16 @@ const localeByLanguage: Record<Language, string> = {
   sk: "sk-SK",
 }
 
-const capturedWidth = pageWidth * deviceScaleFactor
-const capturedHeight = pageHeight * deviceScaleFactor
-const appScreenshotHeight = Math.round(
-  (capturedHeight / capturedWidth) * outputWidth
-)
-const outputHeight = contentTopInset + appScreenshotHeight + contentBottomInset
 const projectRoot = fileURLToPath(new URL("..", import.meta.url))
 const rawScreenshotsDirectory = `${projectRoot}/.tmp/docs-screenshots`
-const screenshotsDirectory = `${projectRoot}/../../docs/screenshots`
-const mockupsDirectory = `${projectRoot}/../../docs/mockup`
-const framePath = `${mockupsDirectory}/phone-frame.svg`
+const screenshotsDirectory = `${projectRoot}/docs/screenshots`
+const mockupsDirectory = `${projectRoot}/docs/mockup`
 const appUrl = "http://127.0.0.1:4173"
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds)
   })
-}
-
-function createFrameScreenMask(): Buffer {
-  return Buffer.from(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="${frameScreenWidth}" height="${frameScreenHeight}" viewBox="0 0 ${frameScreenWidth} ${frameScreenHeight}">
-      <rect width="${frameScreenWidth}" height="${frameScreenHeight}" rx="${frameScreenCornerRadius}" fill="#ffffff"/>
-    </svg>
-  `)
 }
 
 async function waitForApp(): Promise<void> {
@@ -117,90 +86,6 @@ function nameParam(
 ): string {
   return translate(language, key).replace("{name}", name)
 }
-
-interface CatalogItem {
-  readonly name: string
-  readonly price: string
-}
-
-interface CartItem extends CatalogItem {
-  readonly quantity: number
-}
-
-/**
- * A fuller-looking catalog grid for the bill screenshot. Only the first
- * two items are actually added to the cart (2x and 1x, see
- * `billCartByLanguage`); the rest just fill out the grid.
- */
-const billCatalogByLanguage: Record<Language, ReadonlyArray<CatalogItem>> = {
-  en: [
-    { name: "Coffee", price: "4.5" },
-    { name: "Croissant", price: "3.25" },
-    { name: "Sandwich", price: "6" },
-    { name: "Orange Juice", price: "3.5" },
-    { name: "Bagel", price: "4" },
-    { name: "Iced Tea", price: "3.75" },
-  ],
-  cs: [
-    { name: "Káva", price: "65" },
-    { name: "Croissant", price: "55" },
-    { name: "Sendvič", price: "89" },
-    { name: "Pomerančový džus", price: "45" },
-    { name: "Bagel", price: "60" },
-    { name: "Ledový čaj", price: "55" },
-  ],
-  sk: [
-    { name: "Káva", price: "2.5" },
-    { name: "Croissant", price: "2" },
-    { name: "Sendvič", price: "3.5" },
-    { name: "Pomarančový džús", price: "1.8" },
-    { name: "Bagel", price: "2.2" },
-    { name: "Ľadový čaj", price: "2" },
-  ],
-}
-
-const billCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
-  en: [
-    { name: "Coffee", price: "4.5", quantity: 2 },
-    { name: "Croissant", price: "3.25", quantity: 1 },
-  ],
-  cs: [
-    { name: "Káva", price: "65", quantity: 2 },
-    { name: "Croissant", price: "55", quantity: 1 },
-  ],
-  sk: [
-    { name: "Káva", price: "2.5", quantity: 2 },
-    { name: "Croissant", price: "2", quantity: 1 },
-  ],
-}
-
-const tableNamesByLanguage: Record<
-  Language,
-  readonly [string, string, string, string, string, string]
-> = {
-  en: ["Table 1", "Table 2", "Table 3", "Table 4", "Table 5", "Table 6"],
-  cs: ["Stůl 1", "Stůl 2", "Stůl 3", "Stůl 4", "Stůl 5", "Stůl 6"],
-  sk: ["Stôl 1", "Stôl 2", "Stôl 3", "Stôl 4", "Stôl 5", "Stôl 6"],
-}
-
-const tablesCartItemByLanguage: Record<Language, CartItem> = {
-  en: { name: "Coffee", price: "4.5", quantity: 1 },
-  cs: { name: "Káva", price: "65", quantity: 1 },
-  sk: { name: "Káva", price: "2.5", quantity: 1 },
-}
-
-/** The split screenshot moves one of each brick off a bill holding all of them. */
-const splitCartByLanguage: Record<Language, ReadonlyArray<CartItem>> = {
-  en: [...billCartByLanguage.en, { name: "Sandwich", price: "6", quantity: 1 }],
-  cs: [...billCartByLanguage.cs, { name: "Sendvič", price: "89", quantity: 1 }],
-  sk: [
-    ...billCartByLanguage.sk,
-    { name: "Sendvič", price: "3.5", quantity: 1 },
-  ],
-}
-
-/** Days of demo history the stats screenshot waits for: its week and a day to compare. */
-const statsHistoryDays = 8
 
 /** Matches `demoData.running.progress`, capturing `{done}`. */
 function demoProgressPattern(language: Language): RegExp {
@@ -229,13 +114,6 @@ async function addCart(
   await expect
     .poll(() => new URL(page.url()).searchParams.get("billId"))
     .not.toBeNull()
-}
-
-// A koruna amount reads as a real sale; the euro and dollar defaults already do.
-const paymentAmountByLanguage: Record<Language, string> = {
-  en: "5.9",
-  cs: "249",
-  sk: "5.9",
 }
 
 async function capturePage(
@@ -560,80 +438,16 @@ if (selectedScenarios.length === 0) {
   )
 }
 
-async function composeScreenshot(
-  name: ShotName,
-  language: Language
-): Promise<void> {
-  const rawPath = `${rawScreenshotsDirectory}/${language}/${name}.png`
-  const screenshotPath = `${screenshotsDirectory}/${language}/${name}.png`
-  const mockupPath = `${mockupsDirectory}/${language}/${name}.webp`
-  const raw = await sharp(rawPath).metadata()
+/** The web app's dark `--background`, behind the capture in its screenshot. */
+const screenshotBackground = "#101314"
 
-  if (raw.width !== capturedWidth || raw.height !== capturedHeight) {
-    throw new Error(
-      `Expected ${name} to be ${capturedWidth}x${capturedHeight}, received ${raw.width}x${raw.height}.`
-    )
-  }
-
-  const appScreenshot = await sharp(rawPath)
-    .resize({ width: outputWidth })
-    .toBuffer()
-
-  const phoneScreenshot = await sharp({
-    create: {
-      width: outputWidth,
-      height: outputHeight,
-      channels: 4,
-      background: "#101314",
-    },
+function composeScreenshot(name: ShotName, language: Language): Promise<void> {
+  return composeMockup({
+    rawPath: `${rawScreenshotsDirectory}/${language}/${name}.png`,
+    screenshotPath: `${screenshotsDirectory}/${language}/${name}.png`,
+    mockupPath: `${mockupsDirectory}/${language}/${name}.webp`,
+    background: screenshotBackground,
   })
-    .composite([
-      {
-        input: appScreenshot,
-        top: contentTopInset,
-        left: 0,
-      },
-    ])
-    .png()
-    .toBuffer()
-
-  await rm(`${screenshotsDirectory}/${language}/${name}.jpg`, { force: true })
-
-  await sharp(phoneScreenshot).png().toFile(screenshotPath)
-
-  const frameScreenshot = await sharp(phoneScreenshot)
-    .resize({
-      width: frameScreenWidth,
-      height: frameScreenHeight,
-      fit: "cover",
-      position: "centre",
-    })
-    .toBuffer()
-
-  const clippedFrameScreenshot = await sharp(frameScreenshot)
-    .ensureAlpha()
-    .composite([{ input: createFrameScreenMask(), blend: "dest-in" }])
-    .png()
-    .toBuffer()
-
-  await sharp({
-    create: {
-      width: frameWidth,
-      height: frameHeight,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .composite([
-      {
-        input: clippedFrameScreenshot,
-        top: frameScreenTop,
-        left: frameScreenLeft,
-      },
-      { input: framePath, top: 0, left: 0 },
-    ])
-    .webp({ lossless: true })
-    .toFile(mockupPath)
 }
 
 async function run(): Promise<void> {

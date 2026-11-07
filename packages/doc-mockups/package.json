@@ -1,0 +1,13 @@
+{
+  "name": "@payky/doc-mockups",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./phone-frame.svg": "./src/phone-frame.svg",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@payky/app-shared": "workspace:*",
+    "sharp": "0.35.5"
+  }
+}

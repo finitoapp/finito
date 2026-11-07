@@ -12,7 +12,8 @@
     "build:web": "bun scripts/build-web.ts",
     "check:ts": "tsc -b",
     "ui-parity": "bun scripts/ui-parity.ts",
-    "test:e2e": "bun e2e/scripts/run.ts"
+    "test:e2e": "bun e2e/scripts/run.ts",
+    "docs:screenshots": "bun scripts/generate-doc-screenshots.ts"
   },
   "dependencies": {
     "@evolu/common": "8.26.0",
@@ -70,6 +71,8 @@
   },
   "devDependencies": {
     "@babel/plugin-transform-explicit-resource-management": "7.29.7",
+    "@payky/doc-mockups": "workspace:*",
+    "@playwright/test": "1.64.1",
     "@types/react": "19.3.0",
     "babel-preset-expo": "58.0.17",
     "typescript": "6.0.3"
