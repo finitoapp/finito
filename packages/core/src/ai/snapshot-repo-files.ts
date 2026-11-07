@@ -17,7 +17,7 @@ export const snapshotRepoFiles = (
   note:
     version === appVersion
       ? null
-      : `Note: this is the code of Payky ${version}, while the app runs ${appVersion}.`,
+      : `Note: this is the code of version ${version}, while the app runs ${appVersion}.`,
 })
 
 let loaded: Promise<RepoFiles> | null = null

@@ -4,6 +4,7 @@ import {
   assistantConversationAtom,
   toAssistantMessages,
 } from "@payky/app-shared/assistant-conversation"
+import { brandName } from "@payky/app-shared/brand"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { createAiModelDep } from "@payky/core/ai/ai-model"
 import { askAssistant } from "@payky/core/ai/assistant"
@@ -30,6 +31,7 @@ import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
+import { appBrand } from "../../../core/app-brand.ts"
 import { apiUrl } from "../../../core/native-env.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -201,6 +203,7 @@ function useAssistantConversation(access: Access) {
     })
     const current = run.abortable(
       askAssistant({
+        appName: brandName(appBrand),
         messages: toAssistantMessages(earlier, question),
         tools,
         onText: (text) =>

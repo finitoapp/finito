@@ -25,6 +25,8 @@ export const registerAiCommand =
         async action({ prompt }) {
           const result = await run(
             askAssistant({
+              // The CLI is Payky's (`payky ai`), on Payky's AI proxy by default.
+              appName: "Payky",
               messages: [{ role: "user", content: prompt }],
               tools: {
                 ...createDataTools(run),

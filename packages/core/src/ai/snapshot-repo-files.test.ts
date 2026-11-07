@@ -22,7 +22,7 @@ describe("snapshotRepoFiles", () => {
 
   test("notes when the snapshot is of another version than the app", () => {
     expect(snapshotRepoFiles(snapshot, "def5678").note).toBe(
-      "Note: this is the code of Payky abc1234, while the app runs def5678."
+      "Note: this is the code of version abc1234, while the app runs def5678."
     )
   })
 })

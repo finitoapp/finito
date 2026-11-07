@@ -76,6 +76,7 @@ describe("askAssistant", () => {
     const toolCalls: string[] = []
     const reply = await run.orThrow(
       askAssistant({
+        appName: "Finito",
         messages: [{ role: "user", content: "What is open?" }],
         tools: createDataTools(run),
         onText: (text) => streamed.push(text),
@@ -87,6 +88,9 @@ describe("askAssistant", () => {
     expect(streamed.join("")).toBe(reply)
     expect(toolCalls).toEqual(["listOpenBills"])
     expect(JSON.stringify(aiModel.doStreamCalls[1]?.prompt)).toContain("Dinner")
+    const systemPrompt = JSON.stringify(aiModel.doStreamCalls[0]?.prompt[0])
+    expect(systemPrompt).toContain("assistant inside Finito")
+    expect(systemPrompt).not.toContain("Payky")
   })
 
   test("returns AiRequestError when the model endpoint fails", async () => {
@@ -102,6 +106,7 @@ describe("askAssistant", () => {
 
     const result = await run(
       askAssistant({
+        appName: "Finito",
         messages: [{ role: "user", content: "Hi" }],
         tools: {},
         onText: () => undefined,
@@ -143,6 +148,7 @@ describe("askAssistant", () => {
     const streamed: string[] = []
     const fiber = run.abortable(
       askAssistant({
+        appName: "Finito",
         messages: [{ role: "user", content: "Hi" }],
         tools: {},
         onText: (text) => {
