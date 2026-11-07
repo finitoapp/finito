@@ -7,7 +7,7 @@ Date: 2026-10-13
 
 An account stores its sync relays as device rows when it is created
 (`insertAccount` in `packages/core/src/evolu/device-account.ts`), so a relay added to
-`defaultEvoluTransportUrls` later reaches only new accounts. Payky now runs
+`createDefaultEvoluTransportUrls` later reaches only new accounts. Payky now runs
 its own Evolu relay, `wss://evolu.agora.gripe`, and existing accounts should
 sync through it too. Some accounts were brought from another device with
 relays of their owner's choosing and deliberately carry none of the

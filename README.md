@@ -257,9 +257,6 @@ Supported variables:
 - `PAYKY_EET_PRODUCTION_URL`: EET's production endpoint, without which the CLI
   reports nothing to EET ([`docs/cli.md`](docs/cli.md)).
 
-Under Bun the CLI stores data through `bun:sqlite`, because Bun cannot load the
-native addon of `better-sqlite3`, which Node and Vitest keep using.
-
 `bun run cli` replaces `bun bin/cli.ts`. The launcher preserves the caller's
 working directory. `payky ai` is a prototype assistant: it reads
 the local data, and the docs and source code git tracks. It never writes.

@@ -26,7 +26,7 @@ lines. The check for each claim is in docs/table-self-pay-design.md §4.
 Allocations only mark lines paid. Coverage and status read money alone.
 Every row a match writes derives from the transaction, its message and the
 bill, and the payment id derives from `self-pay:{transactionId}`
-(`createSelfPayArrival`), so two merchant devices that see the same
+(`loadSelfPayArrival`), so two merchant devices that see the same
 arrival write the same rows. Two values are the exception: the claim time
 of a bank transfer (`table-self-pay/0008`), and the `closedAt` of a bill
 the match closes, which the device stamps with its own clock.
