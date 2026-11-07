@@ -1,203 +1,127 @@
-# Payky
+# Finito
 
-Payky is a local-first point-of-sale application for managing terminal bill
-flows, catalog items, bills, payments, account transactions, and background sync
-jobs.
-
-The app is built with React, TypeScript, Vite, TanStack Router, Tailwind CSS,
-shadcn-style local UI components, Base UI primitives, Zod validation, and Evolu
-for persistent application data.
+Finito turns a phone into a payment terminal for small merchants, events,
+pop-ups and restaurants. It combines Czech and Slovak bank transfer QR
+payments, cash and Bitcoin (Lightning, Spark, Cashu) in one local-first app:
+the customer scans a code and pays straight into the merchant's account, with
+no fees, no contract and no extra hardware.
 
 <p>
-  <img src="./apps/web-app/docs/mockup/en/home.webp" alt="Payky numpad" width="32%" />
-  <img src="./apps/web-app/docs/mockup/en/payment.webp" alt="Payky payment" width="32%" />
-  <img src="./apps/web-app/docs/mockup/en/paid.webp" alt="Payky paid payment" width="32%" />
+  <img src="./apps/native-app/docs/mockup/en/payment.webp" alt="Finito payment QR code" width="32%" />
+  <img src="./apps/native-app/docs/mockup/en/tables.webp" alt="Finito tables" width="32%" />
+  <img src="./apps/native-app/docs/mockup/en/stats.webp" alt="Finito statistics" width="32%" />
 </p>
+
+- **Payments**: bank transfer QR codes (CZ and SK), cash, Bitcoin, card
+  terminals, tips, refunds and Czech EET reporting.
+- **Bills and tables**: a catalog of items, open bills seated at tables,
+  bills split between guests.
+- **Activity and statistics**: the history of payments and bills, sales,
+  payment methods and expected cash.
+- **Local-first**: data lives on the device and syncs between devices
+  through [Evolu](https://www.evolu.dev), end-to-end encrypted, backed up
+  with one recovery phrase.
+
+Finito runs on Android and as a PWA at [app.finito.fit](https://app.finito.fit).
+Download the APK from the
+[latest release](https://github.com/finitoapp/finito/releases/latest/download/finito-release-signed.apk)
+or read more at [finito.fit](https://finito.fit).
 
 ## Requirements
 
-- Bun
-
-For native iOS development, install Xcode and the Xcode Command Line Tools.
-Capacitor 8 targets iOS 15 and newer.
-
-Install dependencies with exact versions:
+- Bun, for dependencies and scripts. Versions are pinned: keep `exact = true`
+  in `bunfig.toml`.
+- Node 22.13+ for the Expo tooling.
+- Android Studio with an Android SDK and an emulator or a device.
 
 ```bash
 bun install
+bunx skills experimental_install  # the locked agent skills from skills-lock.json
 ```
 
-Dependency versions are pinned through Bun. Keep `exact = true` in
-`bunfig.toml`.
+Keep local `.env` files at the repository root (`apps/web-app/.env.example`
+is the template).
 
-Install the locked Codex skills from `skills-lock.json`:
+## Development
+
+Finito is the Expo + React Native + Tamagui app in `apps/native-app`. From
+the repository root:
 
 ```bash
-bunx skills experimental_install
+bun run native:android  # build and install a development client on Android
+bun run dev:native      # start Metro for an installed development client
+bun run native:web      # run the PWA in the browser
+```
+
+`native:android` generates the Android project locally (`apps/native-app/android`
+is not committed) and installs it as `fit.finito.app.dev`, beside a released
+Finito. After adding or upgrading a native module, run it again; restarting
+Metro is not enough. The root native commands build `packages/core` first.
+
+```bash
+bun run build:native:web  # the PWA export deployed to app.finito.fit
+bun run build:native      # the Android and iOS bundles into apps/native-app/dist
+bun run check:native      # native TypeScript, also part of bun run check
+```
+
+Releases, the Android build and the deployments are described in
+[releases](docs/releases.md) and [Finito deployment](docs/finito-deployment.md).
+
+## End-to-end tests and screenshots
+
+The Maestro flows in `apps/native-app/e2e` run against the PWA or an Android
+emulator, both over a local mock server (`apps/native-app/e2e/AGENTS.md`):
+
+```bash
+bun run test:e2e:native:web
+bun run test:e2e:native:android
+```
+
+Playwright drives the same PWA for the store and documentation images:
+
+```bash
+bun run docs:screenshots:native  # apps/native-app/docs: screenshots and mockups
+bun run google-play:assets       # the Google Play listing, into apps/native-app/.tmp/google-play
 ```
 
 ## Workspaces
 
-`apps/web-app` owns the web app, API and documentation tools.
-`apps/landing` owns the independently deployed marketing site at `/landing`
-(see [landing deployment](docs/landing-deployment.md)).
-`packages/web-shared` owns the browser navigation contract and shared hooks.
-`apps/native-shell` wraps its `dist-native` build in Capacitor; `apps/cli` runs
-local commands. All use the single domain implementation in `packages/core`.
-`apps/native-app` is the separate Expo + React Native + Tamagui application,
-currently limited to a native preview and shared-core smoke check.
-Core uses explicit package subpaths such as
-`@payky/core/modules/payment/payment-actions`; `@/` stays local to the web app.
+- `apps/native-app`: Finito, its PWA export and the API handlers it deploys.
+- `packages/core`: the single domain implementation both apps share, imported
+  through explicit subpaths such as `@payky/core/modules/payment/payment-actions`.
+- `packages/app-shared`: the brands and the English, Czech and Slovak
+  translations both apps use.
+- `apps/landing`: the marketing site, built as finito.fit
+  (`PAYKY_LANDING_BRAND=finito`, see [landing deployment](docs/landing-deployment.md)).
+- `apps/cli`: local commands over the same data.
+- `packages/doc-mockups`: the phone frame and the shared composition of the
+  screenshots.
 
-Keep local `.env` files at the repository root (use
-`apps/web-app/.env.example` as the template). Vite loads that directory for both
-root and direct workspace commands. Run the CLI from the root, or use Bun's
-`--env-file` option when launching it elsewhere.
+The repository also holds Payky, the same app under another brand over one
+account (`docs/decisions/brand/`): the React web app in `apps/web-app`, which
+also owns the API, and its Capacitor shell in `apps/native-shell`. Finito's
+screens mirror Payky's; `apps/native-app/src/ui-parity` checks they do not
+drift.
 
-`bun run build` emits core JavaScript for production API loading before building
-the web app. `bun run check:api` checks every API module with Node against those
-emitted exports. Browser and Bun consumers resolve core source instead.
-The shared release version stays in the root `package.json`.
+`AGENTS.md` describes the structure and the rules of the codebase in detail,
+`docs/glossary.md` the domain words, and `docs/decisions` the business
+decisions and the tests that hold them.
 
-## Development
+## Project Layout
 
-Start the Vite dev server:
-
-```bash
-bun run dev
-```
-
-Build the app:
-
-```bash
-bun run build
-```
-
-Preview a production build:
-
-```bash
-bun run preview
-```
-
-## Expo native application
-
-Use Node 22.13+ on a supported release line for Expo tooling, and Bun for
-dependencies and scripts. Install Android Studio and an Android SDK/emulator
-for Android; iOS requires macOS and Xcode. The existing Vite and Capacitor
-commands remain available independently.
-
-From the repository root:
-
-```bash
-bun install
-bun run native:android  # build/install a development client on Android
-bun run native:ios     # build/install a development client on iOS (macOS)
-bun run dev:native     # start Metro for an already installed development client
-```
-
-`native:android` and `native:ios` generate their native projects locally; they
-are ignored by Git. The native app ships as Finito (`fit.finito.app`, the
-`finito` scheme), so it coexists with the Capacitor app (`me.payky`); a
-development build replaces an installed Finito.
-Use a development client rather than relying on Expo Go availability for SDK
-58. The Expo app has no environment variables or connected services yet.
-
-The root native commands build `packages/core` first. Metro uses its existing
-public exports; the native app never imports web application source. Keep
-`bun run dev` running in a second terminal when developing the Vite web app
-alongside Expo. For an offline Metro session use `bun run dev:native --offline`.
-
-```bash
-bun run check:native   # native TypeScript; also included in bun run check
-bun run check:lint     # shared Biome configuration includes native source
-bun run build:native   # export Android and iOS bundles into apps/native-app/dist
-```
-
-The preview loads bundled Inter fonts, follows the system light/dark theme,
-and calls the existing core cash-rounding function with an asserted result.
-`entry.ts` installs secure random values and UUIDs from Expo Crypto before
-loading Expo Router: Evolu needs randomness while importing the shared core.
-After adding or upgrading native modules, rebuild the development client with
-`bun run native:android` or `bun run native:ios`; restarting Metro is insufficient.
-On a device, check that `123.45` becomes `123.00` and that **Run shared logic
-again** increments the passed-check count. Change the system theme to verify
-both palettes. This verifies the shared helper in the native renderer; exporting
-a bundle alone does not verify device execution.
-
-No accounts, SQLite persistence, wallet, payment terminal or background jobs
-are wired up or mocked. Those remain subsequent runtime-spike tasks in
-[the migration plan](MIGRATION_PLAN.md).
-
-## Native Targets
-
-Capacitor is available as the Android native target:
-
-```bash
-bun run cap:android:sync
-bun run cap:android:dev
-bun run cap:android:build
-bun run cap:ios:sync
-bun run cap:ios:run
-bun run cap:ios:open
-```
-
-Capacitor builds use the native HTTP bridge through `CapacitorHttp` so mobile
-requests are not limited by browser CORS behavior.
-
-For Capacitor Android live reload, run:
-
-```bash
-bun run cap:android:dev
-```
-
-The script starts the HTTP Vite dev server, waits for
-`http://127.0.0.1:5173`, forwards the port through Capacitor's Android live
-reload flow, and launches the native Android app. The HTTP server is used only
-for this debug flow so Android WebView does not reject Vite's self-signed HTTPS
-certificate.
-
-For Capacitor iOS simulator development, run:
-
-```bash
-bun run cap:ios:run
-```
-
-For Xcode-driven iOS development, run:
-
-```bash
-bun run cap:ios:sync
-bun run cap:ios:open
-```
-
-Configure the signing team, bundle identifier, provisioning profile, display
-name, icons, launch screen, and deployment target in Xcode. The default bundle
-identifier is `me.payky`.
-
-For iOS live reload on a physical iPhone, start Vite on the local network in one
-terminal:
-
-```bash
-PAYKY_DISABLE_BASIC_SSL=1 bun run dev -- --host 0.0.0.0 --strictPort
-```
-
-Then point Capacitor at the Mac LAN URL from another terminal:
-
-```bash
-PAYKY_CAPACITOR_SERVER_URL=http://<mac-lan-ip>:5173 bun run cap run ios
-```
-
-The iPhone and Mac must be on the same network. iOS does not have an `adb
-reverse` equivalent, so a physical device cannot use `localhost` to reach the
-Mac dev server.
-
-The Android release build signs with `payky-release.keystore`. Set these
-environment variables before running `bun run cap:android:build`:
-
-```bash
-PAYKY_ANDROID_KEYSTORE_PASSWORD=...
-PAYKY_ANDROID_KEY_ALIAS=...
-PAYKY_ANDROID_KEY_PASSWORD=...
-```
+- `apps/native-app/app` contains the expo-router routes.
+- `apps/native-app/src/features` contains the screens, one folder per feature.
+- `apps/native-app/src/components/ui` contains Finito's own UI kit on Tamagui.
+- `apps/native-app/src/theme` contains the palette and themes.
+- `apps/native-app/modules` contains the local Expo modules (card terminal,
+  NFC, the account request to Payky).
+- `packages/core/src/evolu` creates the Evolu client and composes the
+  application schema.
+- `packages/core/src/modules` contains the domain modules: accounts, catalog
+  items, bills, payments, tables, settings, devices and the rest.
+- `packages/core/src/integrations` contains one folder per external service
+  (banks, EET, Lightning, Qerko, ...).
+- `bin` contains repository checks and release scripts.
 
 ## Checks
 
@@ -218,8 +142,7 @@ bun run check:coverage
 ```
 
 `check:decisions` verifies that every business decision in `docs/decisions`
-names the tests that hold it. End-to-end tests are not part of `check`; run
-them with `bun run test:e2e`.
+names the tests that hold it. End-to-end tests are not part of `check`.
 
 Format files with Biome:
 
@@ -232,42 +155,6 @@ Run Vitest in watch mode:
 ```bash
 bun run test:watch
 ```
-
-## Project Layout
-
-- `apps/web-app/src/main.tsx` is the browser entry point.
-- `apps/web-app/src/App.tsx` wires top-level providers and the TanStack Router provider.
-- `apps/web-app/src/routes` contains file-based route definitions.
-- `apps/web-app/src/components/ui` contains reusable shadcn-style UI primitives built on
-  Base UI.
-- `apps/web-app/src/i18n` contains the English, Czech and Slovak translations, one
-  `<lang>/<group>.ts` file per group of keys.
-- `packages/core/src/evolu` creates the Evolu client and composes the application schema.
-- `packages/core/src/modules` contains domain modules for accounts, transactions,
-  catalog items, bills, payments, tables, reconciliation claims, settings,
-  devices, and Fio integration.
-- `apps/cli/src` contains CLI commands for local data management and background jobs.
-- `apps/native-shell` owns the Capacitor configuration and Android/iOS projects.
-- `bin` contains repository checks and release scripts.
-
-## UI Components
-
-Local UI components live in `apps/web-app/src/components/ui` and should be imported directly
-from their owning module:
-
-```tsx
-import { Button } from "@/components/ui/button.tsx"
-```
-
-When adding shadcn components, use Bun:
-
-```bash
-cd apps/web-app
-bunx shadcn@latest add button
-```
-
-Keep generic reusable UI in `apps/web-app/src/components/ui`; feature and domain logic should
-live outside that directory.
 
 ## Data Model
 
@@ -299,7 +186,7 @@ E = HMAC-SHA512(
 )[0:32]
 ```
 
-Payky paths follow [BIP-85](https://github.com/bitcoin/bips/blob/master/bip-0085.mediawiki)
+The paths follow [BIP-85](https://github.com/bitcoin/bips/blob/master/bip-0085.mediawiki)
 with the BIP-39 application: `m/83696968'/39'/{language}'/{words}'/{index}'`,
 language `0'` = English. The word count encodes how much of `E` the consumer
 uses (24 words = 32 bytes, 12 words = 16 bytes). The paths must never change
@@ -366,8 +253,10 @@ PAYKY_AI_BASE_URL=http://localhost:11434/v1 PAYKY_AI_MODEL=qwen3 \
 
 ## Internationalization
 
-All user-facing React text goes through `t(key)`. Add each key to the group file
-its namespace belongs to — `apps/web-app/src/i18n/en/<group>.ts`, then the same file under
-`cs/` and `sk/` — and use stable, feature-scoped names such as `bill.save`,
-`catalog.items.title`, or `activity.empty`. `bun run check:ts` fails while a
-key is missing from any language.
+All user-facing text goes through `t(key)`. The translations live in
+`packages/app-shared/src/i18n`: add each key to the group file its namespace
+belongs to, `en/<group>.ts`, then the same file under `cs/` and `sk/`, and use
+stable, feature-scoped names such as `bill.save`, `catalog.items.title` or
+`activity.empty`. `bun run check:ts` fails while a key is missing from any
+language. Name the app only through the `{appName}` placeholders, never
+"Finito" or "Payky".
