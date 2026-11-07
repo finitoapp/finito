@@ -6,7 +6,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@evolu/common": "8.26.0",
+    "@evolu/common": "8.27.2",
     "@payky/core": "workspace:*",
     "ai": "7.0.142",
     "date-fns": "4.4.0",

@@ -36,7 +36,7 @@ Three constraints shaped how:
   switched off, and the security settings show them locked with a note.
 - A demo account runs no background jobs (`AppBackgroundJobs`): every job
   talks to an outside service.
-- Evolu is patched (`patches/@evolu%2Fcommon@8.26.0.patch`) with
+- Evolu is patched (`patches/@evolu%2Fcommon@8.27.2.patch`) with
   `evolu.setMutationBackdate(millis | null)`. While set, mutations are
   stamped at that time from a separate per-owner clock that stays unique and
   ordered, and the real clock is not advanced, so later writes are dated

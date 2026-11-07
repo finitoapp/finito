@@ -8,7 +8,7 @@
     "check:tests": "vitest run"
   },
   "dependencies": {
-    "@evolu/common": "8.26.0",
+    "@evolu/common": "8.27.2",
     "@evolu/nodejs": "4.6.0",
     "@payky/core": "workspace:*",
     "@t3-oss/env-core": "0.13.11",

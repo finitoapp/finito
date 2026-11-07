@@ -67,7 +67,7 @@ const isRelayFailed = (relay: RelaySyncState): boolean => {
   const { connection } = relay.transport
   return (
     status === "Error" ||
-    (status === "Offline" &&
+    (status === "Disconnected" &&
       connection.type === "Disconnected" &&
       connection.error !== null)
   )

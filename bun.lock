@@ -22,7 +22,7 @@
     "apps/cli": {
       "name": "@payky/cli",
       "dependencies": {
-        "@evolu/common": "8.26.0",
+        "@evolu/common": "8.27.2",
         "@evolu/nodejs": "4.6.0",
         "@payky/core": "workspace:*",
         "@t3-oss/env-core": "0.13.11",
@@ -40,8 +40,8 @@
       "dependencies": {
         "@base-ui/react": "1.9.0",
         "@dedalik/use-react": "1.1.2",
-        "@evolu/common": "8.26.0",
-        "@evolu/web": "3.7.0",
+        "@evolu/common": "8.27.2",
+        "@evolu/web": "3.7.1",
         "@fontsource/manrope": "5.3.0",
         "@payky/app-shared": "workspace:*",
         "@payky/core": "workspace:*",
@@ -71,11 +71,11 @@
     "apps/native-app": {
       "name": "@payky/native-app",
       "dependencies": {
-        "@evolu/common": "8.26.0",
+        "@evolu/common": "8.27.2",
         "@evolu/react": "11.2.3",
-        "@evolu/react-native": "16.2.2",
+        "@evolu/react-native": "16.2.3",
         "@evolu/sqlite-wasm": "3.54.1-build3",
-        "@evolu/web": "3.7.0",
+        "@evolu/web": "3.7.1",
         "@expo-google-fonts/manrope": "0.4.2",
         "@expo/metro-runtime": "58.0.14",
         "@finitoapp/eet-client": "0.4.0",
@@ -160,9 +160,9 @@
         "@capacitor/haptics": "8.0.2",
         "@capacitor/share": "8.0.3",
         "@dedalik/use-react": "1.1.2",
-        "@evolu/common": "8.26.0",
+        "@evolu/common": "8.27.2",
         "@evolu/sqlite-wasm": "3.54.1-build3",
-        "@evolu/web": "3.7.0",
+        "@evolu/web": "3.7.1",
         "@payky/app-shared": "workspace:*",
         "@payky/core": "workspace:*",
         "@payky/web-shared": "workspace:*",
@@ -221,7 +221,7 @@
     "packages/app-shared": {
       "name": "@payky/app-shared",
       "dependencies": {
-        "@evolu/common": "8.26.0",
+        "@evolu/common": "8.27.2",
         "@payky/core": "workspace:*",
         "@scure/bip39": "2.4.0",
         "ai": "7.0.142",
@@ -246,7 +246,7 @@
         "@buildonspark/spark-sdk": "0.14.0",
         "@cashu/cashu-ts": "4.11.0",
         "@date-fns/tz": "1.5.0",
-        "@evolu/common": "8.26.0",
+        "@evolu/common": "8.27.2",
         "@evolu/nodejs": "4.6.0",
         "@finitoapp/eet-client": "0.4.0",
         "@noble/curves": "2.4.0",
@@ -303,7 +303,7 @@
     "@sentry/cli",
   ],
   "patchedDependencies": {
-    "@evolu/common@8.26.0": "patches/@evolu%2Fcommon@8.26.0.patch",
+    "@evolu/common@8.27.2": "patches/@evolu%2Fcommon@8.27.2.patch",
     "@expo/metro-config@58.0.14": "patches/@expo%2Fmetro-config@58.0.14.patch",
   },
   "packages": {
@@ -667,17 +667,17 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.1", "", { "os": "win32", "cpu": "x64" }, "sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A=="],
 
-    "@evolu/common": ["@evolu/common@8.26.0", "", { "dependencies": { "@noble/ciphers": "2.4.0", "@noble/hashes": "2.4.0", "@scure/bip39": "2.4.0", "kysely": "0.29.7", "random": "5.5.1" } }, "sha512-Gv+6Bb1K0WZ5ZPUvbJv9v1hPR9Ry+bwJY8i39Wqd3mYO5B3fnq6CMGn5RKlh0972sE4ZIFBnjFBtEpbSBiD/ng=="],
+    "@evolu/common": ["@evolu/common@8.27.2", "", { "dependencies": { "@noble/ciphers": "2.4.0", "@noble/hashes": "2.4.0", "@scure/bip39": "2.4.0", "kysely": "0.29.7", "random": "5.5.1" } }, "sha512-EETPoPu7btARtbks5IF1oofTwO40f0/6ofH8ooIDWP3zNPj1qVm3Ej6bOZGQeQ8sXlcOyLKqTperNlt9LuyHRg=="],
 
     "@evolu/nodejs": ["@evolu/nodejs@4.6.0", "", { "dependencies": { "ws": "8.22.0" }, "peerDependencies": { "@evolu/common": "^8.26.0", "@evolu/oxlint-config": "^0.4.1", "@evolu/typescript-config": "^0.1.1", "oxlint": "^1.87.0", "oxlint-tsgolint": "7.0.2005", "typescript": ">=7.0.0", "vite": ">=8.0.0", "webpack": ">=5.108.4" }, "optionalPeers": ["@evolu/oxlint-config", "@evolu/typescript-config", "oxlint", "oxlint-tsgolint", "typescript", "vite", "webpack"] }, "sha512-6HV6BUlocJVT+10vzGFIubvL9O1QFuoQCT5oPk3DtVVdbq9qhs3EZexsDTiLIMC/vVtum3b3X8mrQDbK0H3rvQ=="],
 
     "@evolu/react": ["@evolu/react@11.2.3", "", { "peerDependencies": { "@evolu/common": "^8.26.0", "react": ">=19" } }, "sha512-Z6kvuCKLE/70dEliZqg2bDCbqtFxBlwHeq6yEIc+dy5BIRarcDAgLZ7lp5TI4ZdkiNJInmYmGc+RtYEw76l1ZQ=="],
 
-    "@evolu/react-native": ["@evolu/react-native@16.2.2", "", { "dependencies": { "array-from-async": "3.0.0", "array.prototype.tosorted": "1.1.4", "promise.try": "2.0.2", "promise.withresolvers": "1.0.4", "set.prototype.difference": "1.1.7", "set.prototype.intersection": "1.1.8", "set.prototype.isdisjointfrom": "1.1.5", "set.prototype.issubsetof": "1.1.4", "set.prototype.issupersetof": "1.1.3", "set.prototype.symmetricdifference": "1.1.3", "set.prototype.union": "1.1.3" }, "peerDependencies": { "@evolu/common": "^8.26.0", "@evolu/react": "^11.2.3", "react": ">=19", "react-native": ">=0.88", "react-native-svg": ">=15.15" }, "optionalPeers": ["react-native-svg"] }, "sha512-3V9ymEQcIFA6yur5FrZjxe/FKlvok0UuhglltLqIELyTlo1ivYhbtHGAO07umjG2gkzbq/O42o2wcyCkPBrHtg=="],
+    "@evolu/react-native": ["@evolu/react-native@16.2.3", "", { "dependencies": { "array-from-async": "3.0.0", "array.prototype.tosorted": "1.1.4", "promise.try": "2.0.2", "promise.withresolvers": "1.0.4", "set.prototype.difference": "1.1.7", "set.prototype.intersection": "1.1.8", "set.prototype.isdisjointfrom": "1.1.5", "set.prototype.issubsetof": "1.1.4", "set.prototype.issupersetof": "1.1.3", "set.prototype.symmetricdifference": "1.1.3", "set.prototype.union": "1.1.3" }, "peerDependencies": { "@evolu/common": "^8.27.2", "@evolu/react": "^11.2.3", "react": ">=19", "react-native": ">=0.88", "react-native-svg": ">=15.15" }, "optionalPeers": ["react-native-svg"] }, "sha512-QnttwvV9XFnWGLmUQOwc/ML79WoZKk7wbEV+W45A+zr0QoXXSXx5Ivs8Y7OeyBdoYp3GVPM4QTs5a5+NbV+CNA=="],
 
     "@evolu/sqlite-wasm": ["@evolu/sqlite-wasm@3.54.1-build3", "", { "peerDependencies": { "@evolu/common": "^8.24.1" } }, "sha512-Q/JPDKxsavAKSu2sUOVX3SF1V+jdbl+3mp3k89n4cKpiradciH53CtlLbG04ewDx/l55DK+RGzWQljNBa93NrA=="],
 
-    "@evolu/web": ["@evolu/web@3.7.0", "", { "dependencies": { "@evolu/sqlite-wasm": "3.54.1-build3" }, "peerDependencies": { "@evolu/common": "^8.26.0" } }, "sha512-YzztchgMLlgR1anZtK/+wLDvSrCgtES/bfQBwwAp+Lll0V5WNYXLL2UPjzm/ITCBQaxsv1Zi8tNRgm568kE5mw=="],
+    "@evolu/web": ["@evolu/web@3.7.1", "", { "dependencies": { "@evolu/sqlite-wasm": "3.54.1-build3" }, "peerDependencies": { "@evolu/common": "^8.27.2" } }, "sha512-7rdDdjQdcBV1iBpQfC7n5SAG7wtv5UPK+izOHW30SsqC/w5fUkyJkbYkzVygZpuXvHk09KWuKOOgo8YgVUKW+g=="],
 
     "@expo-google-fonts/manrope": ["@expo-google-fonts/manrope@0.4.2", "", {}, "sha512-BZsKe8d9BJrVnIQIZcTS7/Kac0TbXnqs/+8EBSiQxrmK6GoCO6eTkmr50D1weIk/EoF20pTmAkpWICnovATr/g=="],
 
