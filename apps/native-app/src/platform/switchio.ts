@@ -59,9 +59,18 @@ const unreadable = () =>
     createSwitchioResultUnreadableError({ resultCode: null, rawResult: null })
   )
 
-export const createSwitchioTerminalDep = (): SwitchioTerminalDep => ({
+/**
+ * Takes card payments through SwitchioPay. A demo account calls no outside
+ * service (demo-data/0001), so it never reaches the terminal.
+ */
+export const createSwitchioTerminalDep = ({
+  demo,
+}: {
+  readonly demo: boolean
+}): SwitchioTerminalDep => ({
   switchioTerminal: {
     pay: async (request) => {
+      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
       if (switchio === null) {
         return err(
           createSwitchioUnavailableError({ reason: "notNativeRuntime" })
@@ -135,7 +144,8 @@ export const createSwitchioClosureDep = ({
 }): SwitchioClosureDep => ({
   switchioClosure: {
     close: async () => {
-      if (switchio === null || demo) {
+      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
+      if (switchio === null) {
         return err(
           createSwitchioUnavailableError({ reason: "notNativeRuntime" })
         )

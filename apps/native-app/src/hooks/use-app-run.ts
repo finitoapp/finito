@@ -54,7 +54,7 @@ function useAppRunDeps() {
         baseUrl: nativeEnv.EXPO_PUBLIC_PAYKY_QERKO_BASE_URL,
       }),
       uuid: { create: () => Crypto.randomUUID() },
-      ...createSwitchioTerminalDep(),
+      ...createSwitchioTerminalDep({ demo: account.demo !== null }),
       ...createSwitchioClosureDep({ demo: account.demo !== null }),
       ...createEetApiDep(
         { ...dateDep, ...fetchDep },

@@ -220,6 +220,8 @@ export const skPayment = {
   "paymentWait.cardPaid.error.declined": "Platba platobnou kartou neprebehla.",
   "paymentWait.cardPaid.error.generic":
     "Platbu platobnou kartou nie je možné vykonať.",
+  "paymentWait.cardPaid.error.demo":
+    "V demo účte nemožno prijať skutočnú platbu kartou.",
   "paymentWait.cardPaid.error.unavailable":
     "Aplikácia terminálu SwitchioPay nie je na tomto zariadení dostupná.",
   "paymentWait.cardPaid.error.unreadable":

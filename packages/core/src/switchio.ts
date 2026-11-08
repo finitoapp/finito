@@ -50,10 +50,14 @@ const SwitchioTransactionResultSchema = z.object({
 })
 const SwitchioTransactionResultJson = jsonCodec(SwitchioTransactionResultSchema)
 
+/**
+ * The terminal was never reached. `demo`: a demo account calls no outside
+ * service (demo-data/0001), so it never launches the real SwitchioPay.
+ */
 export const createSwitchioUnavailableError = defineError(
   "SwitchioUnavailable"
 )<{
-  readonly reason: "notNativeRuntime" | "notInstalled"
+  readonly reason: "notNativeRuntime" | "notInstalled" | "demo"
 }>()
 export type SwitchioUnavailableError = ReturnType<
   typeof createSwitchioUnavailableError
