@@ -2,7 +2,11 @@ import { err } from "@evolu/common"
 import {
   createSwitchioResultUnreadableError,
   createSwitchioUnavailableError,
+  interpretSwitchioClosureResult,
   interpretSwitchioPaymentResult,
+  type SwitchioClosureDep,
+  type SwitchioNativeClosureResult,
+  SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
   SwitchioNativePayResultSchema,
   type SwitchioTerminalDep,
@@ -25,6 +29,9 @@ declare class PaykySwitchioNativeModule extends NativeModule {
   ): Promise<unknown>
   peekStoredResult(): unknown
   acknowledgeResult(transactionId: string | null): void
+  close(): Promise<unknown>
+  peekStoredClosureResult(): unknown
+  acknowledgeClosureResult(): void
 }
 
 /** Matched by the Kotlin module: the one rejection known to precede any charge. */
@@ -112,5 +119,67 @@ export const takeRestoredSwitchioResult = ():
 
   const parsed = SwitchioNativePayResultSchema.safeParse(stored)
   switchio.acknowledgeResult(parsed.success ? parsed.data.transactionId : null)
+  return parsed.success ? parsed.data : "unusable"
+}
+
+/**
+ * Closes the batch of the SwitchioPay terminal on this phone. Has its own
+ * request code and result store on the native side, so a closure is never
+ * taken for a payment's result (payment/0008). A demo account calls no
+ * outside service (demo-data/0001), so it never reaches the terminal.
+ */
+export const createSwitchioClosureDep = ({
+  demo,
+}: {
+  readonly demo: boolean
+}): SwitchioClosureDep => ({
+  switchioClosure: {
+    close: async () => {
+      if (switchio === null || demo) {
+        return err(
+          createSwitchioUnavailableError({ reason: "notNativeRuntime" })
+        )
+      }
+
+      // An earlier closure's result no one has recorded yet would be
+      // overwritten by this one: let `SwitchioRestoredClosure` record it.
+      if (switchio.peekStoredClosureResult() !== null) return unreadable()
+
+      try {
+        const raw = await switchio.close()
+        // Recorded by the caller from this promise; the stored copy is only
+        // for a promise lost with the process.
+        switchio.acknowledgeClosureResult()
+        const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
+        return parsed.success
+          ? interpretSwitchioClosureResult(parsed.data)
+          : unreadable()
+      } catch (error) {
+        // As with a payment, only a missing SwitchioPay is known to fail
+        // before the batch could have been closed.
+        if (isNotInstalledRejection(error)) {
+          return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+        }
+        return unreadable()
+      }
+    },
+  },
+})
+
+/**
+ * The result of a closure whose promise was lost when Android killed the
+ * app, if one is waiting. Clears it as it is taken;
+ * `recordRestoredCardSwitchioClosure` is idempotent too.
+ */
+export const takeRestoredSwitchioClosureResult = ():
+  | SwitchioNativeClosureResult
+  | "unusable"
+  | null => {
+  if (switchio === null) return null
+  const stored = switchio.peekStoredClosureResult()
+  if (stored === null || stored === undefined) return null
+
+  switchio.acknowledgeClosureResult()
+  const parsed = SwitchioNativeClosureResultSchema.safeParse(stored)
   return parsed.success ? parsed.data : "unusable"
 }

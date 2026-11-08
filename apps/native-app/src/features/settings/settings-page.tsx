@@ -10,6 +10,7 @@ import { eetSettingsQuery } from "@payky/core/modules/eet/eet-queries"
 import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import BadgeDollarSign from "lucide-react-native/icons/badge-dollar-sign"
+import CalendarCheck from "lucide-react-native/icons/calendar-check"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
 import House from "lucide-react-native/icons/house"
 import Info from "lucide-react-native/icons/info"
@@ -44,6 +45,7 @@ import {
 import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import {
   bitcoinWalletQueries,
@@ -257,31 +259,6 @@ export function SettingsPage() {
     ],
     t
   )
-  const paymentItems = createSettingsNavItems(
-    [
-      {
-        icon: Landmark,
-        title: "settings.paymentAccounts.title",
-        value: (
-          <DeferredValue>
-            <PaymentMethodsValue />
-          </DeferredValue>
-        ),
-        href: "/settings/payment-accounts",
-      },
-      {
-        icon: BadgeDollarSign,
-        title: "settings.tips.title",
-        value: (
-          <DeferredValue>
-            <TipsValue />
-          </DeferredValue>
-        ),
-        href: "/settings/tips",
-      },
-    ],
-    t
-  )
   const taxItems = createSettingsNavItems(
     [
       {
@@ -353,7 +330,10 @@ export function SettingsPage() {
     <Screen footer={<MenuBarSpacer />}>
       <FadeHeader title={t("settings.title")} startAddon={null} />
       <ProfileCard />
-      <VerticalNav title={t("settings.payments")} items={paymentItems} />
+      {/* The card closure row joins once the card account is read. */}
+      <Suspense fallback={<PaymentsNav cardClosure={false} />}>
+        <PaymentsNavWithCardClosure />
+      </Suspense>
       <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
       <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
       <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
@@ -364,6 +344,55 @@ export function SettingsPage() {
       </Suspense>
     </Screen>
   )
+}
+
+/**
+ * The closure is a shift lead's task (access/0011), so it sits under
+ * Settings rather than behind the owner-only payment methods; shown only
+ * where the card terminal is enabled and this build can reach SwitchioPay.
+ */
+function PaymentsNavWithCardClosure() {
+  const [card] = useEvoluQuery(cardSwitchioAccountQuery).data
+  return <PaymentsNav cardClosure={isEnabled(card) && isSwitchioSupported()} />
+}
+
+function PaymentsNav({ cardClosure }: { readonly cardClosure: boolean }) {
+  const { t } = useTranslation()
+  const items = createSettingsNavItems(
+    [
+      {
+        icon: Landmark,
+        title: "settings.paymentAccounts.title",
+        value: (
+          <DeferredValue>
+            <PaymentMethodsValue />
+          </DeferredValue>
+        ),
+        href: "/settings/payment-accounts",
+      },
+      ...(cardClosure
+        ? [
+            {
+              icon: CalendarCheck,
+              title: "settings.cardClosure.title",
+              href: "/settings/card-closure",
+            } as const,
+          ]
+        : []),
+      {
+        icon: BadgeDollarSign,
+        title: "settings.tips.title",
+        value: (
+          <DeferredValue>
+            <TipsValue />
+          </DeferredValue>
+        ),
+        href: "/settings/tips",
+      },
+    ],
+    t
+  )
+  return <VerticalNav title={t("settings.payments")} items={items} />
 }
 
 function SupportNavWithAssistant() {

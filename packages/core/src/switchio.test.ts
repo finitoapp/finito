@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest"
-import { interpretSwitchioPaymentResult } from "./switchio.ts"
+import {
+  interpretSwitchioClosureResult,
+  interpretSwitchioPaymentResult,
+} from "./switchio.ts"
 
 const approvedResult = JSON.stringify({
   amount: 500,
@@ -147,5 +150,143 @@ describe("interpretSwitchioPaymentResult", () => {
     expect(!result.ok && result.error).toMatchObject({
       type: "SwitchioResultUnreadable",
     })
+  })
+})
+
+const batchTotals = {
+  shiftNumber: 3,
+  batchNumber: 42,
+  debitsCount: 5,
+  debitsAmount: 128_900,
+  creditsCount: 1,
+  creditsAmount: 9_900,
+  adjsCount: 0,
+  adjsAmount: 0,
+}
+
+const closedBatch = JSON.stringify({
+  transactionType: "CLOSE_BATCH",
+  dateTimeTerminal: "Nov 8, 2026 22:14:03",
+  responseCode: "OK",
+  responseMessage: "Uzávěrka provedena",
+  batchTotals,
+})
+
+describe("interpretSwitchioClosureResult", () => {
+  test("accepts a closed batch and keeps its totals", () => {
+    expect(
+      interpretSwitchioClosureResult({
+        resultCode: -1,
+        transactionResult: closedBatch,
+      })
+    ).toEqual({
+      ok: true,
+      value: {
+        ...batchTotals,
+        terminalDateTime: "Nov 8, 2026 22:14:03",
+        responseMessage: "Uzávěrka provedena",
+      },
+    })
+  })
+
+  test("accepts success without a response code, since the field is optional", () => {
+    const result = interpretSwitchioClosureResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({ batchTotals }),
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      value: { ...batchTotals, terminalDateTime: null, responseMessage: null },
+    })
+  })
+
+  test("rejects an explicit non-OK response code even on a success result code", () => {
+    const result = interpretSwitchioClosureResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        responseCode: "HOST_UNREACHABLE",
+        responseMessage: "Server nedostupný",
+        batchTotals,
+      }),
+    })
+
+    expect(!result.ok && result.error).toEqual({
+      type: "SwitchioClosureFailed",
+      resultCode: -1,
+      responseCode: "HOST_UNREACHABLE",
+      responseMessage: "Server nedostupný",
+    })
+  })
+
+  test("reports a busy terminal as a failed closure carrying its message", () => {
+    const result = interpretSwitchioClosureResult({
+      resultCode: 2,
+      transactionResult: JSON.stringify({
+        responseCode: "UNDEFINED",
+        responseMessage: "Terminal busy",
+      }),
+    })
+
+    expect(!result.ok && result.error).toMatchObject({
+      type: "SwitchioClosureFailed",
+      resultCode: 2,
+      responseMessage: "Terminal busy",
+    })
+  })
+
+  test("reports an init failure without a payload as a failed closure", () => {
+    const result = interpretSwitchioClosureResult({
+      resultCode: 1,
+      transactionResult: null,
+    })
+
+    expect(!result.ok && result.error).toMatchObject({
+      type: "SwitchioClosureFailed",
+      resultCode: 1,
+      responseCode: null,
+    })
+  })
+
+  test("reports a cancelled result with no payload as an unknown outcome, not a failure", () => {
+    for (const transactionResult of [null, "", "not json"]) {
+      const result = interpretSwitchioClosureResult({
+        resultCode: 0,
+        transactionResult,
+      })
+
+      expect(!result.ok && result.error).toMatchObject({
+        type: "SwitchioResultUnreadable",
+        resultCode: 0,
+      })
+    }
+  })
+
+  test("never reports an unreadable success payload as a failed closure", () => {
+    const result = interpretSwitchioClosureResult({
+      resultCode: -1,
+      transactionResult: "not json",
+    })
+
+    expect(!result.ok && result.error).toMatchObject({
+      type: "SwitchioResultUnreadable",
+      rawResult: "not json",
+    })
+  })
+
+  test("treats a success without readable batch totals as unknown, since nothing can be kept", () => {
+    for (const payload of [
+      { responseCode: "OK" },
+      { responseCode: "OK", batchTotals: { batchNumber: "42" } },
+    ]) {
+      const result = interpretSwitchioClosureResult({
+        resultCode: -1,
+        transactionResult: JSON.stringify(payload),
+      })
+
+      expect(!result.ok && result.error).toMatchObject({
+        type: "SwitchioResultUnreadable",
+      })
+    }
   })
 })

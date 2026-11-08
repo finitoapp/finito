@@ -197,3 +197,159 @@ export interface SwitchioTerminalDep {
     }) => Promise<Result<SwitchioCardPaymentResult, SwitchioPaymentError>>
   }
 }
+
+/**
+ * What the native `close` callback resolves with, and what the closure's own
+ * result store keeps when Android killed this app while SwitchioPay was
+ * closing the batch. Unlike a payment it has no `transactionId`: a closure
+ * request carries nothing to echo.
+ */
+export const SwitchioNativeClosureResultSchema = z.object({
+  resultCode: z.number(),
+  transactionResult: z.string().nullable().default(null),
+})
+export type SwitchioNativeClosureResult = z.output<
+  typeof SwitchioNativeClosureResultSchema
+>
+
+const BatchCountSchema = z.number().int().nonnegative()
+const BatchAmountSchema = z.number().int()
+
+/**
+ * The `CLOSE_BATCH` result of ECR v8 (section 4.1, appendix BatchTotals).
+ * Read as leniently as a payment result; only `batchTotals` is required for
+ * a closure to be kept, since without it there is nothing to record.
+ */
+const SwitchioClosureResultSchema = z.object({
+  transactionType: z.string().nullish(),
+  responseCode: z.string().nullish(),
+  responseMessage: z.string().nullish(),
+  dateTimeTerminal: z.string().nullish(),
+  batchTotals: z
+    .object({
+      shiftNumber: BatchCountSchema,
+      batchNumber: BatchCountSchema,
+      debitsCount: BatchCountSchema,
+      debitsAmount: BatchAmountSchema,
+      creditsCount: BatchCountSchema,
+      creditsAmount: BatchAmountSchema,
+      adjsCount: BatchCountSchema,
+      adjsAmount: BatchAmountSchema,
+    })
+    .nullish()
+    .catch(null),
+})
+const SwitchioClosureResultJson = jsonCodec(SwitchioClosureResultSchema)
+
+const createSwitchioClosureFailedError = defineError("SwitchioClosureFailed")<{
+  readonly resultCode: number
+  readonly responseCode: string | null
+  readonly responseMessage: string | null
+}>()
+export type SwitchioClosureFailedError = ReturnType<
+  typeof createSwitchioClosureFailedError
+>
+
+/**
+ * The closure's failures. {@link SwitchioResultUnreadableError} means the
+ * batch may well have been closed: staff has to check SwitchioPay, so it is
+ * never reported as a failed closure.
+ */
+export type SwitchioClosureError =
+  | SwitchioUnavailableError
+  | SwitchioClosureFailedError
+  | SwitchioResultUnreadableError
+
+/**
+ * A closed batch as the terminal reported it. `debitsAmount` is what the
+ * cards were charged, tips included, in minor units of the terminal's
+ * currency, which the result does not name.
+ */
+export interface SwitchioClosure {
+  readonly batchNumber: number
+  readonly shiftNumber: number
+  readonly debitsCount: number
+  readonly debitsAmount: number
+  readonly creditsCount: number
+  readonly creditsAmount: number
+  readonly adjsCount: number
+  readonly adjsAmount: number
+  readonly terminalDateTime: string | null
+  readonly responseMessage: string | null
+}
+
+/**
+ * Turns one closure intent result into a domain Result, by the same rules as
+ * {@link interpretSwitchioPaymentResult}: success needs the success result
+ * code and a `responseCode` that is `"OK"` or absent, a cancelled result with
+ * no data is an unknown outcome rather than a failure, and a success whose
+ * totals cannot be read is unknown too — the batch may be closed, but there
+ * is nothing to keep.
+ */
+export const interpretSwitchioClosureResult = ({
+  resultCode,
+  transactionResult,
+}: SwitchioNativeClosureResult): Result<
+  SwitchioClosure,
+  SwitchioClosureError
+> => {
+  const parsed = ((): z.output<typeof SwitchioClosureResultSchema> | null => {
+    if (transactionResult === null || transactionResult === "") return null
+    const result = z.safeDecode(SwitchioClosureResultJson, transactionResult)
+    return result.success ? result.data : null
+  })()
+
+  const unreadable = err(
+    createSwitchioResultUnreadableError({
+      resultCode,
+      rawResult: transactionResult,
+    })
+  )
+
+  if (resultCode === switchioResultCode.failure && parsed === null) {
+    return unreadable
+  }
+
+  if (resultCode !== switchioResultCode.success) {
+    return err(
+      createSwitchioClosureFailedError({
+        resultCode,
+        responseCode: optionalString(parsed?.responseCode),
+        responseMessage: optionalString(parsed?.responseMessage),
+      })
+    )
+  }
+
+  if (parsed === null) return unreadable
+
+  const responseCode = optionalString(parsed.responseCode)
+  if (responseCode !== null && responseCode !== "OK") {
+    return err(
+      createSwitchioClosureFailedError({
+        resultCode,
+        responseCode,
+        responseMessage: optionalString(parsed.responseMessage),
+      })
+    )
+  }
+
+  const totals = parsed.batchTotals
+  if (totals === null || totals === undefined) return unreadable
+
+  return ok({
+    ...totals,
+    terminalDateTime: optionalString(parsed.dateTimeTerminal),
+    responseMessage: optionalString(parsed.responseMessage),
+  })
+}
+
+/**
+ * Closes the batch of the SwitchioPay terminal on this phone. Kept apart from
+ * {@link SwitchioTerminalDep} so that an app which only takes payments (web's
+ * Capacitor bridge) need not implement it.
+ */
+export interface SwitchioClosureDep {
+  readonly switchioClosure: {
+    readonly close: () => Promise<Result<SwitchioClosure, SwitchioClosureError>>
+  }
+}

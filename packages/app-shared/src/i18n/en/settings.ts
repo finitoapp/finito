@@ -1359,4 +1359,52 @@ export const enSettings = {
   "accountShare.expired":
     "The request has expired or was replaced by another one. Start it again in the app that asked.",
   "accountShare.none": "There is no account request to answer.",
+  "settings.cardClosure.title": "Card terminal closure",
+  "settings.cardClosure.action": "Close the batch",
+  "access.action.closeCardBatch": "Close the card terminal batch",
+  "settings.cardClosure.confirm.title": "Close the terminal's batch?",
+  "settings.cardClosure.confirm.description":
+    "Payments since the last closure will be sent for settlement.",
+  "settings.cardClosure.confirm.cancel": "Cancel",
+  "settings.cardClosure.thisTerminal.title": "This terminal",
+  "settings.cardClosure.thisTerminal.description":
+    "Closes the batch of the SwitchioPay terminal on this phone. Close it daily, after the end of the shift.",
+  "settings.cardClosure.thisTerminal.last": "Last closure",
+  "settings.cardClosure.thisTerminal.never": "No closure yet",
+  "settings.cardClosure.result.title": "Closure result",
+  "settings.cardClosure.result.payments": "Payments, tips included",
+  "settings.cardClosure.result.refunds": "Refunds",
+  "settings.cardClosure.result.adjustments": "Adjustments",
+  "settings.cardClosure.result.countAndAmount": "{count}× · {amount}",
+  "settings.cardClosure.result.batch": "Batch",
+  "settings.cardClosure.result.shift": "Shift",
+  "settings.cardClosure.result.terminalTime": "Terminal time",
+  "settings.cardClosure.result.closedAt": "Closed",
+  "settings.cardClosure.result.batchAndShift": "Batch {batch}, shift {shift}",
+  "settings.cardClosure.terminals.title": "Business terminals",
+  "settings.cardClosure.terminals.description":
+    "Each terminal is closed on its own phone; another phone's batch cannot be closed from here.",
+  "settings.cardClosure.terminals.notClosedToday": "Not closed today",
+  "settings.cardClosure.terminals.closedToday": "Closed today",
+  "settings.cardClosure.terminals.thisDevice": "This phone",
+  "settings.cardClosure.terminals.unknownDevice": "Unknown device",
+  "settings.cardClosure.terminals.empty":
+    "No terminal has been closed from this app yet.",
+  "settings.cardClosure.history.title": "History",
+  "settings.cardClosure.history.empty": "No closures yet",
+  "settings.cardClosure.error.failed":
+    "The closure failed. Try again or check SwitchioPay.",
+  "settings.cardClosure.error.busy":
+    "The terminal is busy. Finish what it is doing and try again.",
+  "settings.cardClosure.error.unavailable":
+    "SwitchioPay is not available on this device.",
+  "settings.cardClosure.error.accountMissing":
+    "The card terminal is not enabled.",
+  "settings.cardClosure.error.unknown":
+    "The result of the closure is unknown. Check the closure in SwitchioPay.",
+  "settings.cardClosure.restored.closed":
+    "The card terminal closure is complete.",
+  "settings.cardClosure.restored.unresolved":
+    "The result of the closure could not be read. Check it in SwitchioPay.",
+  "settings.cardSwitchioAccount.closureLink": "Daily closure",
 } as const

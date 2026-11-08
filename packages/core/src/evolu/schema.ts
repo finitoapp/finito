@@ -30,6 +30,10 @@ import { appSettings } from "../modules/app-settings/app-settings.ts"
 import { bill, billIndexes } from "../modules/bill/bill.ts"
 import { billLine, billLineIndexes } from "../modules/bill-line/bill-line.ts"
 import {
+  cardSwitchioClosure,
+  cardSwitchioClosureIndexes,
+} from "../modules/card-switchio-closure/card-switchio-closure.ts"
+import {
   _cashuBookingCursor,
   cashuIndexes,
   cashuOperation,
@@ -147,6 +151,7 @@ export const AppSchema = {
   paymentBtcSpark,
   paymentIban,
   paymentCardSwitchio,
+  cardSwitchioClosure,
   paymentQerkoTerminal,
   paymentQerkoPayment,
   qerkoPaymentAttempt,
@@ -198,6 +203,7 @@ export const createAppIndexes: IndexesConfig = (create) => [
   ...billIndexes(create),
   ...billLineIndexes(create),
   ...paymentIndexes(create),
+  ...cardSwitchioClosureIndexes(create),
   ...paymentLineIndexes(create),
   ...reconciliationClaimIndexes(create),
   ...deviceIndexes(create),
