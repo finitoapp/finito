@@ -1,21 +1,22 @@
 import { useAtomValue, useSetAtom } from "jotai"
-import { useEffect } from "react"
+import { type ReactNode, useEffect } from "react"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { YStack } from "tamagui"
 import {
   dismissToastAtom,
   type Toast as ToastData,
-  toastLifetimeMs,
   toastsAtom,
 } from "../../atoms/toast.ts"
 import { Toast } from "../ui/toast.tsx"
 
+const DISMISS_AFTER_MS = 4000
+
 function ToastItem({ toast }: { readonly toast: ToastData }) {
   const dismiss = useSetAtom(dismissToastAtom)
   useEffect(() => {
-    const timer = setTimeout(() => dismiss(toast.id), toastLifetimeMs(toast))
+    const timer = setTimeout(() => dismiss(toast.id), DISMISS_AFTER_MS)
     return () => clearTimeout(timer)
-  }, [dismiss, toast])
+  }, [dismiss, toast.id])
 
   return (
     <Toast
@@ -38,7 +39,7 @@ function ToastItem({ toast }: { readonly toast: ToastData }) {
 }
 
 /** Mount once inside the Jotai Provider and TamaguiProvider. */
-export function ToastHost() {
+export function ToastHost({ children }: { readonly children?: ReactNode }) {
   const toasts = useAtomValue(toastsAtom)
   const insets = useSafeAreaInsets()
   return (
@@ -53,6 +54,7 @@ export function ToastHost() {
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />
       ))}
+      {children}
     </YStack>
   )
 }

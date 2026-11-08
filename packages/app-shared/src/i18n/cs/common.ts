@@ -138,6 +138,7 @@ export const csCommon = {
   "orders.served": "Vydáno",
   "orders.soldOut": "Vyprodáno",
   "orders.title": "K vydání",
+  "orders.waiting": "Čekající objednávky: {count}",
   "orders.written": "Text hosta: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
   "orders.written.remember": "Zapamatovat na dnešek",

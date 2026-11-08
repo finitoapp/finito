@@ -1,17 +1,19 @@
 import { createIdFromString } from "@evolu/common"
 import type { Money } from "@payky/core/modules/shared/money"
+import { TimestampMs } from "@payky/core/modules/shared/schema"
 import { describe, expect, test } from "vitest"
 import { paykyBrand } from "./brand.ts"
 import { createTranslate } from "./i18n/translate.ts"
-import { newMenuOrderAnnouncements } from "./menu-order-announcement.ts"
+import { waitingMenuOrdersNotice } from "./menu-order-announcement.ts"
 
 const t = createTranslate("en", paykyBrand)
 const terrace = createIdFromString<"Table">("terrace")
-type AnnouncedOrder = Parameters<
-  typeof newMenuOrderAnnouncements
+type WaitingOrder = Parameters<
+  typeof waitingMenuOrdersNotice
 >[0]["orders"][number]
 
 const nothingWritten = {
+  acceptedAt: null,
   currency: "CZK",
   writtenAmount: null,
   writtenText: null,
@@ -29,10 +31,11 @@ const second = {
   tableId: terrace,
   ...nothingWritten,
 }
-const written: AnnouncedOrder = {
+const written: WaitingOrder = {
   id: createIdFromString<"MenuOrder">("order-7"),
   number: 7,
   tableId: terrace,
+  acceptedAt: null,
   currency: "CZK",
   writtenAmount: 9000,
   writtenText: "2x pivo",
@@ -42,93 +45,72 @@ const tables = [{ id: terrace, name: "Terrace" }]
 const formatMoney = ({ value, currency }: Money) =>
   `${(value / 100).toFixed(2)} ${currency}`
 
-describe("newMenuOrderAnnouncements", () => {
-  test("announces nothing from the first list", () => {
-    expect(
-      newMenuOrderAnnouncements({
-        announced: null,
-        orders: [first],
-        tables,
-        t,
-        formatMoney,
-      })
-    ).toEqual([])
+describe("waitingMenuOrdersNotice", () => {
+  const notice = (
+    orders: ReadonlyArray<WaitingOrder>,
+    shownTables: typeof tables = tables
+  ) => waitingMenuOrdersNotice({ orders, tables: shownTables, t, formatMoney })
+  const accepted = { acceptedAt: TimestampMs(1) }
+
+  test("says nothing while no order waits for the staff", () => {
+    expect(notice([])).toBeNull()
+    expect(notice([{ ...first, ...accepted }])).toBeNull()
   })
 
-  test("announces only the orders not announced yet, by number and table", () => {
-    expect(
-      newMenuOrderAnnouncements({
-        announced: new Set([first.id]),
-        orders: [first, second],
-        tables,
-        t,
-        formatMoney,
-      })
-    ).toEqual(["New order 2 · Terrace"])
+  test("names the one order waiting for the staff by number and table", () => {
+    expect(notice([{ ...first, ...accepted }, second])).toBe(
+      "New order 2 · Terrace"
+    )
+  })
+
+  test("counts the orders when more wait for the staff", () => {
+    expect(notice([first, second])).toBe("Orders waiting: 2")
   })
 
   test("leaves the table out when the order has none or it is gone", () => {
-    expect(
-      newMenuOrderAnnouncements({
-        announced: new Set(),
-        orders: [{ ...first, tableId: null }, second],
-        tables: [],
-        t,
-        formatMoney,
-      })
-    ).toEqual(["New order 1", "New order 2"])
+    expect(notice([{ ...first, tableId: null }])).toBe("New order 1")
+    expect(notice([first], [])).toBe("New order 1")
   })
 
-  const announce = (order: AnnouncedOrder) =>
-    newMenuOrderAnnouncements({
-      announced: new Set(),
-      orders: [order],
-      tables,
-      t,
-      formatMoney,
-    })
+  const announce = (order: WaitingOrder) => notice([order])
 
   test("announces a written order with its table, number, amount and the guest's text", () => {
-    expect(announce(written)).toEqual([
-      "New order 7 · Terrace · 90.00 CZK · 2x pivo",
-    ])
+    expect(announce(written)).toBe(
+      "New order 7 · Terrace · 90.00 CZK · 2x pivo"
+    )
   })
 
   test("says both amounts when less arrived", () => {
     expect(
       announce({ ...written, writtenAmount: 90_000, writtenArrived: 100 })
-    ).toEqual(["New order 7 · Terrace · 1.00 CZK of 900.00 CZK · 2x pivo"])
+    ).toBe("New order 7 · Terrace · 1.00 CZK of 900.00 CZK · 2x pivo")
   })
 
   test("shortens a long text", () => {
-    const [message] = announce({ ...written, writtenText: "x".repeat(140) })
-
-    expect(message).toBe(
+    expect(announce({ ...written, writtenText: "x".repeat(140) })).toBe(
       `New order 7 · Terrace · 90.00 CZK · ${"x".repeat(60)}…`
     )
   })
 
   test("shortens a long text without breaking an emoji", () => {
-    const [message] = announce({ ...written, writtenText: "🍺".repeat(70) })
-
-    expect(message).toBe(
+    expect(announce({ ...written, writtenText: "🍺".repeat(70) })).toBe(
       `New order 7 · Terrace · 90.00 CZK · ${"🍺".repeat(60)}…`
     )
   })
 
   test("announces a written order without a table", () => {
-    expect(announce({ ...written, tableId: null })).toEqual([
-      "New order 7 · 90.00 CZK · 2x pivo",
-    ])
+    expect(announce({ ...written, tableId: null })).toBe(
+      "New order 7 · 90.00 CZK · 2x pivo"
+    )
   })
 
   test("shows a text of placeholders and patterns as typed", () => {
     expect(
       announce({ ...written, writtenText: "{amount} {table} $& $'" })
-    ).toEqual(["New order 7 · Terrace · 90.00 CZK · {amount} {table} $& $'"])
+    ).toBe("New order 7 · Terrace · 90.00 CZK · {amount} {table} $& $'")
   })
 
   test("keeps announcing a menu order whose catalog item was deleted as a menu order", () => {
-    expect(announce(first)).toEqual(["New order 1 · Terrace"])
+    expect(announce(first)).toBe("New order 1 · Terrace")
   })
 })

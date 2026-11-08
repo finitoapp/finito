@@ -174,8 +174,9 @@ test("a paid order is announced, listed to serve and served", async ({
     await expect(nothingToServe).toBeVisible()
   })
 
-  await test.step("a guest pays an order with a note", () =>
-    receiveMenuOrder(page, {
+  await test.step("a guest pays an order with a note while staff are on the floor", async () => {
+    await gotoPosOverview(page, "en")
+    await receiveMenuOrder(page, {
       table: "Table 3",
       items: [
         { name: "Svíčková na smetaně", quantity: 1 },
@@ -183,17 +184,24 @@ test("a paid order is announced, listed to serve and served", async ({
       ],
       note: "bez cukru",
       amount: 35000,
-    }))
+    })
+  })
 
-  await test.step("the till announces it", async () => {
-    await expect(
-      page.getByText(
-        translateParams("en", "orders.announced", {
-          number: 1,
-          table: "Table 3",
-        })
-      )
-    ).toBeVisible()
+  await test.step("the till announces it until staff open it", async () => {
+    const notice = page.getByText(
+      translateParams("en", "orders.announced", {
+        number: 1,
+        table: "Table 3",
+      })
+    )
+    await expect(notice).toBeVisible()
+    await page
+      .getByRole("button", { name: translate("en", "orders.announced.open") })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "orders.title") })
+      .waitFor()
+    await expect(notice).toHaveCount(0)
   })
 
   await test.step("To serve shows it by internal names, with the note", async () => {

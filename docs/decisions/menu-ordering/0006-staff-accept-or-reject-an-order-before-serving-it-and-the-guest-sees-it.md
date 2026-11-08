@@ -57,6 +57,8 @@ A rejected order not paid in full also discards its bill
 (`menu-ordering/0009`).
 Money that arrives for an order after it is rejected waits unmatched
 (`menu-ordering/0010`).
+The till keeps showing an order until staff accept or reject it
+(`menu-ordering/0014`).
 
 ## Enforced by
 
@@ -67,4 +69,3 @@ Money that arrives for an order after it is rejected waits unmatched
 - `packages/core/src/background-jobs/jobs/table-self-pay-menu-publishing.test.ts > guests writing what they pay for > reads a confirmation from a device that knows no staff states as paid and waiting`
 - `apps/web-app/src/features/table-self-pay-guest/guest-order-list.test.ts > where the guest's order stands > asks for nothing more once the order is rejected`
 - `apps/web-app/e2e/written-orders.spec.ts > a guest paying the rest of an order staff reject leaves the payment and is told`
-- `apps/native-app/src/atoms/toast.test.ts > toast queue > keeps a toast that names its length for that long, and any other for 4 seconds`

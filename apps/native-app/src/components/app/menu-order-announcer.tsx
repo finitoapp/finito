@@ -1,57 +1,43 @@
-import {
-  MENU_ORDER_ANNOUNCEMENT_MS,
-  newMenuOrderAnnouncements,
-} from "@payky/app-shared/menu-order-announcement"
+import { waitingMenuOrdersNotice } from "@payky/app-shared/menu-order-announcement"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
-import type { MenuOrderId } from "@payky/core/modules/menu-order/menu-order-types"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
-import { router } from "expo-router"
-import { useEffect, useRef } from "react"
-import { useAccess } from "../../core/use-access.ts"
+import { router, usePathname } from "expo-router"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
-import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
+import { Toast } from "../ui/toast.tsx"
 
 /** Web's `MenuOrderAnnouncer`, for an onboarded account. */
 export function MenuOrderAnnouncer() {
-  const { accountId } = useAccess()
   const [settings] = useEvoluQuery(settingsQuery).data
 
   if (settings === undefined) return null
-  return <NewOrderToasts key={accountId} />
+  return <WaitingOrdersToast />
 }
 
-function NewOrderToasts() {
+function WaitingOrdersToast() {
   const { t } = useTranslation()
   const locale = useLocale()
-  const toast = useToast()
+  const onOrders = usePathname() === "/orders"
   const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
   const { data: tables } = useEvoluQuery(tablesQuery)
-  const announcedRef = useRef<ReadonlySet<MenuOrderId> | null>(null)
+  const notice = waitingMenuOrdersNotice({
+    orders,
+    tables,
+    t,
+    formatMoney: (money) => formatMoney(money, locale),
+  })
 
-  useEffect(() => {
-    const announced = announcedRef.current
-    announcedRef.current = new Set(orders.map(({ id }) => id))
-
-    for (const message of newMenuOrderAnnouncements({
-      announced,
-      orders,
-      tables,
-      t,
-      formatMoney: (money) => formatMoney(money, locale),
-    })) {
-      toast.withAction(
-        message,
-        {
-          label: t("orders.announced.open"),
-          onPress: () => router.push("/orders"),
-        },
-        MENU_ORDER_ANNOUNCEMENT_MS
-      )
-    }
-  }, [orders, tables, t, toast, locale])
-
-  return null
+  if (onOrders || notice === null) return null
+  return (
+    <Toast
+      variant="default"
+      message={notice}
+      action={{
+        label: t("orders.announced.open"),
+        onPress: () => router.push("/orders"),
+      }}
+    />
+  )
 }

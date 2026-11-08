@@ -138,6 +138,7 @@ export const skCommon = {
   "orders.served": "Vydané",
   "orders.soldOut": "Vypredané",
   "orders.title": "Na výdaj",
+  "orders.waiting": "Čakajúce objednávky: {count}",
   "orders.written": "Text hosťa: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
   "orders.written.remember": "Zapamätať na dnešok",

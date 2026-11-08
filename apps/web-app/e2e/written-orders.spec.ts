@@ -9,7 +9,7 @@ import {
   toggleInlineCheckbox,
   toggleInlineSwitch,
 } from "./support/inline-edit.ts"
-import { gotoPage } from "./support/navigation.ts"
+import { gotoPage, gotoPosOverview } from "./support/navigation.ts"
 import { seedOnboarding } from "./support/onboarding.ts"
 import { openRefundScreen, refundConfirmButton } from "./support/payment.ts"
 import {
@@ -96,6 +96,15 @@ const orderStatus = (
 
 const gotoOrders = (page: Page) =>
   gotoPage(page, "/orders", "en", "orders.title")
+
+const openOrdersFromNotice = async (page: Page) => {
+  await page
+    .getByRole("button", { name: translate("en", "orders.announced.open") })
+    .click()
+  await page
+    .getByRole("heading", { name: translate("en", "orders.title") })
+    .waitFor()
+}
 
 test("the owner switches writing on and a sticker printed before shows the form", async ({
   seededPage: page,
@@ -540,8 +549,8 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
   const guestAddress = await test.step("seed the bar", () => seedBar(page))
   const guest = await context.newPage()
 
-  await test.step("staff wait on To serve while a guest writes and pays", async () => {
-    await gotoOrders(page)
+  await test.step("staff wait on the floor while a guest writes and pays", async () => {
+    await gotoPosOverview(page, "en")
     await writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" })
     await receiveShownBankTransfer(page, {
       payer: guest,
@@ -551,17 +560,18 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
     })
   })
 
-  await test.step("the till announces the table, the number, the money and the text", async () => {
-    await expect(
-      page.getByText(
-        translateParams("en", "orders.announced.written", {
-          number: 1,
-          table: "Bar",
-          amount: "$90.00",
-          text: "2x pivo",
-        })
-      )
-    ).toBeVisible()
+  await test.step("the till announces the table, the number, the money and the text until staff open it", async () => {
+    const notice = page.getByText(
+      translateParams("en", "orders.announced.written", {
+        number: 1,
+        table: "Bar",
+        amount: "$90.00",
+        text: "2x pivo",
+      })
+    )
+    await expect(notice).toBeVisible()
+    await openOrdersFromNotice(page)
+    await expect(notice).toHaveCount(0)
   })
 
   await test.step("To serve shows the text as the guest's, paid", async () => {
@@ -856,7 +866,7 @@ test("a guest who pays less leaves nothing owed, staff see both amounts, and the
   const guest = await context.newPage()
 
   await test.step("the guest writes 90.00 and 80.00 arrives", async () => {
-    await gotoOrders(page)
+    await gotoPosOverview(page, "en")
     await writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" })
     await receiveShownBankTransfer(page, {
       payer: guest,
@@ -880,6 +890,7 @@ test("a guest who pays less leaves nothing owed, staff see both amounts, and the
         })
       )
     ).toBeVisible()
+    await openOrdersFromNotice(page)
     await expect(orderCard).toContainText(
       translateParams("en", "orders.written.arrivedOf", {
         arrived: "$80.00",
@@ -936,7 +947,7 @@ test("a text of <b>pivo</b> {amount} $& shows its characters in the announcement
   const guest = await context.newPage()
 
   await test.step("a guest writes markup and placeholders and pays", async () => {
-    await gotoOrders(page)
+    await gotoPosOverview(page, "en")
     await writeOrder(guest, guestAddress, { text, amount: "90.00" })
     await receiveShownBankTransfer(page, {
       payer: guest,
@@ -950,6 +961,7 @@ test("a text of <b>pivo</b> {amount} $& shows its characters in the announcement
     await expect(
       page.getByText(`New order 1 · Bar · $90.00 · ${text}`, { exact: true })
     ).toBeVisible()
+    await openOrdersFromNotice(page)
   })
 
   await test.step("To serve shows its characters", async () => {

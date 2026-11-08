@@ -4,6 +4,7 @@ import {
   writtenOrderOf,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import type { Money } from "@payky/core/modules/shared/money"
+import type { TimestampMs } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import type { createTranslate } from "./i18n/translate.ts"
 
@@ -11,8 +12,6 @@ type Translate = ReturnType<typeof createTranslate>
 type FormatMoney = (money: Money) => string
 
 const ANNOUNCED_TEXT_LENGTH = 60
-
-export const MENU_ORDER_ANNOUNCEMENT_MS = 30_000
 
 const shortenForAnnouncement = (text: string): string => {
   const characters = [...text]
@@ -33,20 +32,18 @@ export const writtenOrderAmount = (
       })
     : formatMoney(arrived)
 
-/** Messages for orders not in `announced`; null, the first list, announces none. */
-export const newMenuOrderAnnouncements = ({
-  announced,
+export const waitingMenuOrdersNotice = ({
   orders,
   tables,
   t,
   formatMoney,
 }: {
-  readonly announced: ReadonlySet<MenuOrderId> | null
   readonly orders: ReadonlyArray<
     WrittenOrderColumns & {
       readonly id: MenuOrderId
       readonly number: number
       readonly tableId: TableId | null
+      readonly acceptedAt: TimestampMs | null
     }
   >
   readonly tables: ReadonlyArray<{
@@ -55,27 +52,28 @@ export const newMenuOrderAnnouncements = ({
   }>
   readonly t: Translate
   readonly formatMoney: FormatMoney
-}): ReadonlyArray<string> => {
-  if (announced === null) return []
-  const tableNames = new Map(tables.map(({ id, name }) => [id, name]))
-  return orders
-    .filter(({ id }) => !announced.has(id))
-    .map((order) => {
-      const table =
-        order.tableId === null ? undefined : tableNames.get(order.tableId)
-      const written = writtenOrderOf(order)
-      if (written === null) {
-        return table === undefined
-          ? t("orders.announced.noTable", { number: order.number })
-          : t("orders.announced", { number: order.number, table })
-      }
-      const params = {
-        number: order.number,
-        amount: writtenOrderAmount(written, t, formatMoney),
-        text: shortenForAnnouncement(written.text),
-      }
-      return table === undefined
-        ? t("orders.announced.written.noTable", params)
-        : t("orders.announced.written", { ...params, table })
-    })
+}): string | null => {
+  const waiting = orders.filter(({ acceptedAt }) => acceptedAt === null)
+  const [order] = waiting
+  if (order === undefined) return null
+  if (waiting.length > 1) return t("orders.waiting", { count: waiting.length })
+
+  const table =
+    order.tableId === null
+      ? undefined
+      : tables.find(({ id }) => id === order.tableId)?.name
+  const written = writtenOrderOf(order)
+  if (written === null) {
+    return table === undefined
+      ? t("orders.announced.noTable", { number: order.number })
+      : t("orders.announced", { number: order.number, table })
+  }
+  const params = {
+    number: order.number,
+    amount: writtenOrderAmount(written, t, formatMoney),
+    text: shortenForAnnouncement(written.text),
+  }
+  return table === undefined
+    ? t("orders.announced.written.noTable", params)
+    : t("orders.announced.written", { ...params, table })
 }

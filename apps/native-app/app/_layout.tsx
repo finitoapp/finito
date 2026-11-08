@@ -148,10 +148,11 @@ function ThemedApp() {
           {cashuJobsMayStart ? <CashuEvoluConsumers /> : null}
           <ConfirmHost />
           <PinPromptHost />
-          <ToastHost />
-          <Suspense fallback={null}>
-            <MenuOrderAnnouncer />
-          </Suspense>
+          <ToastHost>
+            <Suspense fallback={null}>
+              <MenuOrderAnnouncer />
+            </Suspense>
+          </ToastHost>
           {/* Its own boundary: the pending check suspends on every account switch. */}
           <Suspense fallback={null}>
             <AppMigrations />

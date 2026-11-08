@@ -87,6 +87,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/components/app/menu-order-announcer.tsx",
     web: ["apps/web-app/src/components/app/menu-order-announcer.tsx"],
     status: "matched",
+    allowedDifferences: {
+      Toast:
+        "Web keeps sonner's toast up by its id; native draws the kit Toast inside ToastHost for as long as an order waits.",
+    },
   },
   {
     native: "src/components/app/pin-prompt-host.tsx",

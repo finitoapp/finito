@@ -1,55 +1,59 @@
-import {
-  MENU_ORDER_ANNOUNCEMENT_MS,
-  newMenuOrderAnnouncements,
-} from "@payky/app-shared/menu-order-announcement"
+import { waitingMenuOrdersNotice } from "@payky/app-shared/menu-order-announcement"
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
-import type { MenuOrderId } from "@payky/core/modules/menu-order/menu-order-types"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
-import { useNavigate } from "@tanstack/react-router"
-import { useAtomValue } from "jotai"
-import { useEffect, useRef } from "react"
+import { useLocation, useNavigate } from "@tanstack/react-router"
+import { useEffect } from "react"
 import { toast } from "sonner"
-import { accountAtom } from "@/atoms/account.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatMoney } from "@/lib/format-utils.ts"
 
-export function MenuOrderAnnouncer() {
-  const account = useAtomValue(accountAtom)
-  return <NewOrderToasts key={account.id} />
-}
+const WAITING_ORDERS_TOAST_ID = "menu-orders-waiting"
 
-function NewOrderToasts() {
+export function MenuOrderAnnouncer() {
   const { t } = useTranslation()
   const locale = useLocale()
   const navigate = useNavigate()
+  const onOrders = useLocation({
+    select: (location) => location.pathname === "/orders",
+  })
   const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
   const { data: tables } = useEvoluQuery(tablesQuery)
-  const announcedRef = useRef<ReadonlySet<MenuOrderId> | null>(null)
+  const notice = onOrders
+    ? null
+    : waitingMenuOrdersNotice({
+        orders,
+        tables,
+        t,
+        formatMoney: (money) => formatMoney(money, locale),
+      })
 
   useEffect(() => {
-    const announced = announcedRef.current
-    announcedRef.current = new Set(orders.map(({ id }) => id))
-
-    for (const message of newMenuOrderAnnouncements({
-      announced,
-      orders,
-      tables,
-      t,
-      formatMoney: (money) => formatMoney(money, locale),
-    })) {
-      toast.success(message, {
-        duration: MENU_ORDER_ANNOUNCEMENT_MS,
-        action: {
-          label: t("orders.announced.open"),
-          onClick: () => {
-            void navigate({ to: "/orders" })
-          },
-        },
-      })
+    if (notice === null) {
+      toast.dismiss(WAITING_ORDERS_TOAST_ID)
+      return
     }
-  }, [orders, tables, navigate, t, locale])
+    toast.success(notice, {
+      id: WAITING_ORDERS_TOAST_ID,
+      duration: Number.POSITIVE_INFINITY,
+      dismissible: false,
+      action: {
+        label: t("orders.announced.open"),
+        onClick: (event) => {
+          event.preventDefault()
+          void navigate({ to: "/orders" })
+        },
+      },
+    })
+  }, [notice, navigate, t])
+
+  useEffect(
+    () => () => {
+      toast.dismiss(WAITING_ORDERS_TOAST_ID)
+    },
+    []
+  )
 
   return null
 }

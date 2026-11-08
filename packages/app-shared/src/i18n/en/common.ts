@@ -135,6 +135,7 @@ export const enCommon = {
   "orders.served": "Served",
   "orders.soldOut": "Sold out",
   "orders.title": "To serve",
+  "orders.waiting": "Orders waiting: {count}",
   "orders.written": "Guest's text: “{text}”",
   "orders.written.arrivedOf": "{arrived} of {named}",
   "orders.written.remember": "Remember for today",
