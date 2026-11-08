@@ -1195,12 +1195,30 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/settings/card-closure/card-closure-detail-page.tsx",
+    web: [],
+    note: "Finito only: one recorded closure of the SwitchioPay batch, which web does not close (payment/0008, access/0011).",
+    status: "matched",
+    allowedDifferences: {
+      FadeHeader: "the screen's title, Closure detail",
+      NotFoundCard: "an id that matches no closure",
+      Card: "the closure's totals",
+      CardHeader: "the card's title and when the closure was recorded",
+      CardTitle: "the card's title",
+      CardDescription: "when the closure was recorded",
+      CardContent: "the card's body",
+      DetailRow:
+        "the counts and amounts of payments, refunds and adjustments, then the terminal, batch, shift and terminal time",
+      Separator: "the totals apart from where and when the batch was closed",
+    },
+  },
+  {
     native: "src/features/settings/card-closure/card-closure-page.tsx",
     web: [],
     note: "Finito only: closing the SwitchioPay batch needs the Expo module's closure intent, which web's Capacitor bridge does not have (payment/0008, access/0011).",
     status: "matched",
     allowedDifferences: {
-      FadeHeader: "the screen's title, Card terminal closure",
+      FadeHeader: "the screen's title, Terminal closures",
       Card: "one card each for this terminal, the result, the business's terminals and the history",
       CardHeader: "each card's title and description",
       CardTitle: "each card's title",
@@ -1214,8 +1232,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       AlertTitle: "the unknown outcome's message",
       AlertDescription: "the missing-SwitchioPay warning",
       Button: "the one action, Close the batch",
-      Separator: "the totals apart from the batch, shift and terminal time",
       Badge: "whether each terminal was closed today",
+      VerticalNavTitle:
+        "the history card's heading, drawn above its rows in the one virtualized list",
+      VerticalNavRow:
+        "the last closure and each history row, which open the closure's detail",
     },
   },
   {

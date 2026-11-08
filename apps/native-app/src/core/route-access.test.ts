@@ -56,6 +56,7 @@ describe("native route access", () => {
 
   it("lets a shift lead close the card terminal's batch, while its settings stay owner-only", () => {
     expect(requiredPermission("/settings/card-closure")).toBe("confirm")
+    expect(requiredPermission("/settings/card-closure/abc123")).toBe("confirm")
     expect(requiredPermission("/settings/payment-accounts")).toBe("admin")
     expect(requiredPermission("/settings/payment-accounts/card-switchio")).toBe(
       "admin"
