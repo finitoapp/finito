@@ -14,7 +14,12 @@ import {
   SqliteTrueSchema,
   TimestampMsSchema,
 } from "../shared/schema.ts"
-import { RefundId, RefundLineId, RefundMethodSchema } from "./refund-types.ts"
+import {
+  CardSwitchioRefundAttemptId,
+  RefundId,
+  RefundLineId,
+  RefundMethodSchema,
+} from "./refund-types.ts"
 
 export const refund = {
   id: RefundId,
@@ -63,6 +68,49 @@ export const qerkoTerminalRefundAttempt = {
   startedAt: TimestampMsSchema,
 } as const
 
+/**
+ * A refund to the card the SwitchioPay terminal on one phone is working on,
+ * or was (refund/0007). Like {@link qerkoTerminalRefundAttempt}, the `refund`
+ * row and its money movement are written only once the terminal approved;
+ * until then this row is all there is.
+ *
+ * Unlike Qerko's, each attempt has its own random id and its row is never
+ * reused, so `transactionId` never changes and a result that comes back late
+ * — restored after Android killed the app, or asked of the terminal — still
+ * finds its attempt after another one began. `refundId` is the refund it
+ * will write, fixed when it starts.
+ *
+ * Only `deviceId`, the phone that launched SwitchioPay, ever gets the result,
+ * so only it writes `status` and `failureReason`. Another device only takes
+ * the attempt away (`isDeleted`), after staff checked SwitchioPay: a separate
+ * column, so neither write overwrites the other. A taken-away attempt is
+ * still found by its `transactionId`, and an approved result for it is
+ * still recorded, since the money did go back.
+ *
+ * `pending` is waiting for SwitchioPay; `unknown` means the card may have
+ * been refunded and blocks another attempt; `failed` is a definite no, kept
+ * so the screen can say so. `kind` and `tipAmount` are for the reversal
+ * (plan phase 3); until then every attempt is a `referralRefund`.
+ */
+export const cardSwitchioRefundAttempt = {
+  id: CardSwitchioRefundAttemptId,
+  paymentId: PaymentId,
+  deviceId: DeviceId,
+  /** The ECR request id, stored before SwitchioPay is launched. */
+  transactionId: NonEmptyString255Schema,
+  kind: z.enum(["reversal", "referralRefund"]),
+  refundId: RefundId,
+  /** The goods, or the tip when `isTip`. */
+  amount: NonNegativeIntegerSchema,
+  /** The tip a reversal returns together with the goods. */
+  tipAmount: NonNegativeIntegerSchema.nullable(),
+  isTip: SqliteTrueSchema.nullable(),
+  linesJson: NonEmptyStringSchema.nullable(),
+  status: z.enum(["pending", "failed", "unknown"]),
+  failureReason: z.enum(["declined", "cancelled"]).nullable(),
+  startedAt: TimestampMsSchema,
+} as const
+
 export const refundIndexes = ((create) => [
   create("refund_paymentId").on("refund").column("paymentId"),
   create("refund_deviceId").on("refund").column("deviceId"),
@@ -75,10 +123,22 @@ export const refundIndexes = ((create) => [
   create("qerkoTerminalRefundAttempt_status")
     .on("qerkoTerminalRefundAttempt")
     .column("status"),
+  create("cardSwitchioRefundAttempt_paymentId")
+    .on("cardSwitchioRefundAttempt")
+    .column("paymentId"),
+  create("cardSwitchioRefundAttempt_transactionId")
+    .on("cardSwitchioRefundAttempt")
+    .column("transactionId"),
+  create("cardSwitchioRefundAttempt_deviceId_status")
+    .on("cardSwitchioRefundAttempt")
+    .columns(["deviceId", "status"]),
 ]) satisfies IndexesConfig
 
 export type RefundRow = InferTable<typeof refund>
 export type RefundLineRow = InferTable<typeof refundLine>
 export type QerkoTerminalRefundAttemptRow = InferTable<
   typeof qerkoTerminalRefundAttempt
+>
+export type CardSwitchioRefundAttemptRow = InferTable<
+  typeof cardSwitchioRefundAttempt
 >

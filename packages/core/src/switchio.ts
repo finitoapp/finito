@@ -377,3 +377,189 @@ export interface SwitchioClosureDep {
     readonly close: () => Promise<Result<SwitchioClosure, SwitchioClosureError>>
   }
 }
+
+/**
+ * A referral refund (ECR 5.17): money back to the card that paid, named by
+ * the `refundId` the payment's result carried. The terminal declines it when
+ * it cannot find that payment, so the money never goes to another card.
+ */
+export interface SwitchioReferralRefundRequest {
+  readonly transactionId: string
+  /** Minor units, at most what the payment charged. */
+  readonly amount: number
+  readonly currencyCode: number
+  /** The payment's `refundId`, the terminal's 18 digits. */
+  readonly refundId: string
+  readonly invoiceNumber?: string
+}
+
+const createSwitchioRefundFailedError = defineError("SwitchioRefundFailed")<{
+  readonly resultCode: number
+  readonly responseCode: string | null
+  readonly responseMessage: string | null
+}>()
+export type SwitchioRefundFailedError = ReturnType<
+  typeof createSwitchioRefundFailedError
+>
+
+/**
+ * The terminal answered busy or not initialised: codes known to come before
+ * it does anything (payment/0006), so nothing was refunded.
+ */
+const createSwitchioRefundNotStartedError = defineError(
+  "SwitchioRefundNotStarted"
+)<{ readonly resultCode: number }>()
+export type SwitchioRefundNotStartedError = ReturnType<
+  typeof createSwitchioRefundNotStartedError
+>
+
+/**
+ * A refund's failures. {@link SwitchioResultUnreadableError} means the money
+ * may have gone back to the card, so it is never shown as a decline.
+ */
+export type SwitchioRefundError =
+  | SwitchioUnavailableError
+  | SwitchioRefundFailedError
+  | SwitchioRefundNotStartedError
+  | SwitchioResultUnreadableError
+
+/** What a refund the terminal approved leaves for tracing it. */
+export interface SwitchioCardRefundResult {
+  readonly responseCode: string | null
+  readonly authCode: string | null
+  readonly sequenceNumber: string | null
+  readonly maskedPan: string | null
+  readonly terminalDateTime: string | null
+}
+
+const parseRefundResult = (
+  transactionResult: string | null
+): z.output<typeof SwitchioTransactionResultSchema> | null => {
+  if (transactionResult === null || transactionResult === "") return null
+  const result = z.safeDecode(SwitchioTransactionResultJson, transactionResult)
+  return result.success ? result.data : null
+}
+
+const toCardRefundResult = (
+  parsed: z.output<typeof SwitchioTransactionResultSchema>
+): SwitchioCardRefundResult => ({
+  responseCode: optionalString(parsed.responseCode),
+  authCode: optionalString(parsed.authCode),
+  sequenceNumber: optionalString(parsed.sequenceNumber),
+  maskedPan: optionalString(parsed.pan),
+  terminalDateTime: optionalString(parsed.dateTimeTerminal),
+})
+
+/**
+ * Turns one refund intent result into a domain Result, by the payment's
+ * rules ({@link interpretSwitchioPaymentResult}) with one more: busy and not
+ * initialised are {@link SwitchioRefundNotStartedError}, not a decline, so the
+ * attempt can be dropped rather than kept as failed.
+ */
+export const interpretSwitchioRefundResult = ({
+  resultCode,
+  transactionResult,
+}: {
+  readonly resultCode: number
+  readonly transactionResult: string | null
+}): Result<SwitchioCardRefundResult, SwitchioRefundError> => {
+  const parsed = parseRefundResult(transactionResult)
+  const unreadable = err(
+    createSwitchioResultUnreadableError({
+      resultCode,
+      rawResult: transactionResult,
+    })
+  )
+
+  if (
+    resultCode === switchioResultCode.terminalBusy ||
+    resultCode === switchioResultCode.initFailure
+  ) {
+    return err(createSwitchioRefundNotStartedError({ resultCode }))
+  }
+  if (resultCode === switchioResultCode.failure && parsed === null) {
+    return unreadable
+  }
+  if (resultCode !== switchioResultCode.success) {
+    return err(
+      createSwitchioRefundFailedError({
+        resultCode,
+        responseCode: optionalString(parsed?.responseCode),
+        responseMessage: optionalString(parsed?.responseMessage),
+      })
+    )
+  }
+  if (parsed === null) return unreadable
+
+  const responseCode = optionalString(parsed.responseCode)
+  if (responseCode !== null && responseCode !== "OK") {
+    return err(
+      createSwitchioRefundFailedError({
+        resultCode,
+        responseCode,
+        responseMessage: optionalString(parsed.responseMessage),
+      })
+    )
+  }
+  return ok(toCardRefundResult(parsed))
+}
+
+/**
+ * What the terminal says about one of its transactions (`get_transaction`,
+ * ECR 5.12), asked after a refund's own result was lost or unreadable.
+ *
+ * There is no "not found" yet: what the terminal answers for an id it never
+ * saw is to be checked on a device (plan `docs/plans/switchio-refund.md`,
+ * open question 4), and until then such an answer is `unknown`, which
+ * changes nothing.
+ */
+export type SwitchioTransactionLookup =
+  | { readonly type: "approved"; readonly result: SwitchioCardRefundResult }
+  | { readonly type: "declined" }
+  | { readonly type: "unknown" }
+
+/**
+ * Reads a `get_transaction` answer. Only an answer about the transaction
+ * asked for counts: one naming another `transactionId` is `unknown`, so the
+ * terminal's last transaction can never pass for this one.
+ */
+export const interpretSwitchioTransactionLookup = ({
+  transactionId,
+  resultCode,
+  transactionResult,
+}: {
+  readonly transactionId: string
+  readonly resultCode: number
+  readonly transactionResult: string | null
+}): SwitchioTransactionLookup => {
+  const parsed = parseRefundResult(transactionResult)
+  if (
+    resultCode !== switchioResultCode.success ||
+    parsed === null ||
+    parsed.transactionId !== transactionId
+  ) {
+    return { type: "unknown" }
+  }
+  const responseCode = optionalString(parsed.responseCode)
+  if (responseCode === "OK") {
+    return { type: "approved", result: toCardRefundResult(parsed) }
+  }
+  return responseCode === null ? { type: "unknown" } : { type: "declined" }
+}
+
+/**
+ * Refunds to the card through the SwitchioPay terminal on this phone, and
+ * asks it what became of a refund whose result was lost. Kept apart from
+ * {@link SwitchioTerminalDep} and {@link SwitchioClosureDep}, so that an app
+ * which only takes payments need not implement it.
+ */
+export interface SwitchioRefundDep {
+  readonly switchioRefund: {
+    readonly referralRefund: (
+      request: SwitchioReferralRefundRequest
+    ) => Promise<Result<SwitchioCardRefundResult, SwitchioRefundError>>
+    readonly lookup: (
+      transactionId: string
+    ) => Promise<SwitchioTransactionLookup>
+  }
+}

@@ -6,9 +6,11 @@ import {
 
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
-import type { RefundId } from "./refund-types.ts"
+import type { NonEmptyString255 } from "../shared/schema.ts"
+import type { CardSwitchioRefundAttemptId, RefundId } from "./refund-types.ts"
 
 const refundColumns = [
   "refund.id",
@@ -283,3 +285,111 @@ export const pendingQerkoTerminalRefundAttemptsQuery = createQuery((db) =>
     .where("transactionId", "is not", null)
     .$narrowType<{ transactionId: KyselyNotNull }>()
 )
+
+const cardSwitchioRefundAttemptColumns = [
+  "id",
+  "paymentId",
+  "deviceId",
+  "transactionId",
+  "kind",
+  "refundId",
+  "amount",
+  "tipAmount",
+  "isTip",
+  "linesJson",
+  "status",
+  "failureReason",
+  "startedAt",
+] as const
+
+type CardSwitchioRefundAttemptRequiredColumns = {
+  paymentId: KyselyNotNull
+  deviceId: KyselyNotNull
+  transactionId: KyselyNotNull
+  kind: KyselyNotNull
+  refundId: KyselyNotNull
+  amount: KyselyNotNull
+  status: KyselyNotNull
+  startedAt: KyselyNotNull
+}
+
+/** The SwitchioPay refunds to the card of one payment not written as refunds yet, newest first. */
+export const cardSwitchioRefundAttemptsByPaymentIdQuery = (
+  paymentId: PaymentId
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cardSwitchioRefundAttempt")
+      .select(cardSwitchioRefundAttemptColumns)
+      .where("paymentId", "=", paymentId)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("deviceId", "is not", null)
+      .where("transactionId", "is not", null)
+      .where("kind", "is not", null)
+      .where("refundId", "is not", null)
+      .where("amount", "is not", null)
+      .where("status", "is not", null)
+      .where("startedAt", "is not", null)
+      .orderBy("startedAt", "desc")
+      .orderBy("id")
+      .$narrowType<CardSwitchioRefundAttemptRequiredColumns>()
+  )
+
+export const cardSwitchioRefundAttemptByIdQuery = (
+  attemptId: CardSwitchioRefundAttemptId
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cardSwitchioRefundAttempt")
+      .select(cardSwitchioRefundAttemptColumns)
+      .where("id", "=", attemptId)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("paymentId", "is not", null)
+      .where("deviceId", "is not", null)
+      .where("transactionId", "is not", null)
+      .where("kind", "is not", null)
+      .where("refundId", "is not", null)
+      .where("amount", "is not", null)
+      .where("status", "is not", null)
+      .where("startedAt", "is not", null)
+      .$narrowType<CardSwitchioRefundAttemptRequiredColumns>()
+  )
+
+/**
+ * The attempt a SwitchioPay result belongs to, by the request id it echoes.
+ * Taken-away attempts are included on purpose: staff may have dismissed an
+ * attempt whose approved result only comes back later, and that money did
+ * go back to the card (refund/0007).
+ */
+export const cardSwitchioRefundAttemptByTransactionIdQuery = (
+  transactionId: NonEmptyString255
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cardSwitchioRefundAttempt")
+      .select(cardSwitchioRefundAttemptColumns)
+      .where("transactionId", "=", transactionId)
+      .where("paymentId", "is not", null)
+      .where("deviceId", "is not", null)
+      .where("kind", "is not", null)
+      .where("refundId", "is not", null)
+      .where("amount", "is not", null)
+      .where("status", "is not", null)
+      .where("startedAt", "is not", null)
+      .$narrowType<CardSwitchioRefundAttemptRequiredColumns>()
+  )
+
+/** The attempts one phone launched whose outcome it has not settled yet. */
+export const openCardSwitchioRefundAttemptsByDeviceIdQuery = (
+  deviceId: DeviceId
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cardSwitchioRefundAttempt")
+      .select(["id", "transactionId", "status"])
+      .where("deviceId", "=", deviceId)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("status", "in", ["pending", "unknown"])
+      .where("transactionId", "is not", null)
+      .$narrowType<{ transactionId: KyselyNotNull; status: KyselyNotNull }>()
+  )

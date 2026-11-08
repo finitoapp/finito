@@ -48,15 +48,20 @@ export const refundMethodLabelKey = {
   cashRegister: "paymentDetail.refunds.method.cashRegister",
   qerkoTerminal: "paymentDetail.refunds.method.qerkoTerminal",
   qerkoPayment: "paymentDetail.refunds.method.qerkoPayment",
+  cardSwitchio: "paymentDetail.refunds.method.cardSwitchio",
   outside: "paymentDetail.refunds.method.outside",
 } satisfies Record<RefundMethod, TranslationKey>
 
 /**
  * The methods the refund dialog offers. A Qerko payment is not one of them:
  * Qerko refunds all of it or nothing, so it has a button of its own
- * (`deriveQerkoPaymentRefund`, qerko/0010).
+ * (`deriveQerkoPaymentRefund`, qerko/0010). Nor, yet, is the refund to the
+ * card through SwitchioPay, which only Finito will offer (refund/0007).
  */
-export type RefundDialogMethod = Exclude<RefundMethod, "qerkoPayment">
+export type RefundDialogMethod = Exclude<
+  RefundMethod,
+  "qerkoPayment" | "cardSwitchio"
+>
 
 export const refundErrorKeys = {
   PaymentNotFound: "paymentDetail.notFound",

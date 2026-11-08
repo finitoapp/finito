@@ -7,7 +7,6 @@ import {
   type Task,
   type UpsertValues,
 } from "@evolu/common"
-import { z } from "zod"
 
 import type { DateDep, EvoluOwnerDep, FetchDep, UuidDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
@@ -20,11 +19,6 @@ import {
   type QerkoRefund,
   type QerkoStep,
 } from "../../integrations/qerko/qerko-client.ts"
-import { jsonCodec } from "../../zod-utils.ts"
-import {
-  computeAccountTransactionRows,
-  upsertAccountTransactionRows,
-} from "../account-transaction/account-transaction-actions.ts"
 import { deriveQerkoRefundAccountTransactionId } from "../account-transaction/account-transaction-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { PaymentNotFoundError } from "../payment/payment-errors.ts"
@@ -34,7 +28,6 @@ import {
   paymentQerkoTerminalByIdQuery,
 } from "../payment/payment-queries.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
-import { PaymentLineId } from "../payment-line/payment-line-types.ts"
 import {
   loadQerkoCredentials,
   type QerkoPluginNotPairedError,
@@ -48,11 +41,7 @@ import {
   Integer,
   type NonEmptyString,
   NonEmptyString255,
-  NonEmptyStringSchema,
   type NonNegativeInteger,
-  NonNegativeIntegerSchema,
-  type PositiveNumber,
-  PositiveNumberSchema,
   TimestampMs,
 } from "../shared/schema.ts"
 import type { qerkoTerminalRefundAttempt } from "./refund.ts"
@@ -66,6 +55,11 @@ import {
   type RefundPaymentNotPaidError,
   type RefundTipUnavailableError,
 } from "./refund-actions.ts"
+import {
+  computeCardRefundRows,
+  encodeRefundLines,
+  upsertCardRefundRows,
+} from "./refund-card-settlement.ts"
 import {
   qerkoTerminalRefundAttemptByIdQuery,
   qerkoTerminalRefundAttemptsByPaymentIdQuery,
@@ -141,38 +135,6 @@ export type QerkoTerminalRefundProgress =
   /** The outcome is unknown: the card may have been refunded. */
   | { readonly status: "unresolved" }
 
-const RefundLinesJson = jsonCodec(
-  z
-    .array(
-      z.object({
-        // A plain string: `PaymentLineId` is a one-way transform, which
-        // `z.encode` cannot write. It is checked when the lines are read.
-        paymentLineId: z.string(),
-        quantity: PositiveNumberSchema,
-        amount: NonNegativeIntegerSchema,
-      })
-    )
-    .readonly()
-)
-
-const encodeRefundLines = (
-  lines: ReadonlyArray<{
-    readonly paymentLineId: string
-    readonly quantity: PositiveNumber
-    readonly amount: NonNegativeInteger
-  }>
-): NonEmptyString =>
-  NonEmptyStringSchema.decode(
-    z.encode(
-      RefundLinesJson,
-      lines.map(({ paymentLineId, quantity, amount }) => ({
-        paymentLineId,
-        quantity,
-        amount,
-      }))
-    )
-  )
-
 type QerkoRefundDeps = EvoluDep &
   EvoluOwnerDep &
   DateDep &
@@ -210,68 +172,25 @@ const settleQerkoTerminalRefund =
       return ok({ status: "unresolved" })
     }
 
-    const now = run.deps.date.now()
-    const refundedAt = TimestampMs(now.getTime())
-    const lines = (
-      attempt.linesJson === null
-        ? []
-        : (z.safeDecode(RefundLinesJson, attempt.linesJson).data ?? [])
-    ).flatMap((line) => {
-      const paymentLineId = PaymentLineId.safeParse(line.paymentLineId)
-      return paymentLineId.success
-        ? [{ ...line, paymentLineId: paymentLineId.data }]
-        : []
-    })
-    const accountTransaction = computeAccountTransactionRows(
+    const rows = computeCardRefundRows(
       {
-        id: deriveQerkoRefundAccountTransactionId(refundId),
-        accountId: qerkoPayment.accountId,
-        kind: "qerkoTerminal",
-        amount: Integer(-attempt.amount),
+        refundId,
+        paymentId: attempt.paymentId,
+        deviceId: attempt.deviceId,
+        amount: attempt.amount,
         currency: payment.currency,
-        occurredAt: refundedAt,
-        note: null,
-        internalTransferGroupId: null,
-        source: { deviceId: attempt.deviceId, source: "manual" },
+        method: "qerkoTerminal",
+        isTip: attempt.isTip,
+        linesJson: attempt.linesJson,
+        accountId: qerkoPayment.accountId,
+        accountTransactionId: deriveQerkoRefundAccountTransactionId(refundId),
       },
-      now
+      run.deps.date.now()
     )
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
-      evolu.upsert(
-        "refund",
-        {
-          id: refundId,
-          paymentId: attempt.paymentId,
-          deviceId: attempt.deviceId,
-          amount: attempt.amount,
-          currency: payment.currency,
-          method: "qerkoTerminal",
-          refundedAt,
-          ...(attempt.isTip === sqliteTrue ? { isTip: sqliteTrue } : {}),
-          isDeleted: sqliteFalse,
-        },
-        mutationOptions
-      )
-      for (const line of lines) {
-        evolu.upsert(
-          "refundLine",
-          {
-            id: createIdFromString<"RefundLine">(
-              `refundLine:${refundId}:${line.paymentLineId}`
-            ),
-            refundId,
-            paymentId: attempt.paymentId,
-            paymentLineId: line.paymentLineId,
-            quantity: line.quantity,
-            amount: line.amount,
-            isDeleted: sqliteFalse,
-          },
-          mutationOptions
-        )
-      }
-      upsertAccountTransactionRows(evolu, accountTransaction, mutationOptions)
+      upsertCardRefundRows(evolu, rows, mutationOptions)
       evolu.update(
         "qerkoTerminalRefundAttempt",
         { id: refundId, isDeleted: sqliteTrue },

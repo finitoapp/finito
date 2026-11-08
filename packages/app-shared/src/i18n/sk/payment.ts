@@ -73,6 +73,7 @@ export const skPayment = {
   "refund.qerkoPayment.error.unreachable":
     "Qerko nie je dostupné. Skontrolujte pripojenie a skúste to znova.",
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
+  "paymentDetail.refunds.method.cardSwitchio": "Na kartu",
   "paymentDetail.refunds.title": "Vrátenia",
   "paymentDetail.refunds.tipAction": "Vrátiť sprepitné ({amount})",
   "paymentDetail.refunds.tip": "Sprepitné",

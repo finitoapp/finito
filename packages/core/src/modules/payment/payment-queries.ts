@@ -239,6 +239,22 @@ export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
   )
 
 /**
+ * What refunding a SwitchioPay payment to the card needs (payment/0009):
+ * its card account, the terminal's `refundId`, and the phone that charged
+ * the card. Present once the payment was paid on the terminal.
+ */
+export const paymentCardSwitchioRefundSourceQuery = (idValue: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("paymentCardSwitchio")
+      .select(["id", "accountId", "refundId", "deviceId", "approvedAt"])
+      .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("accountId", "is not", null)
+      .$narrowType<{ accountId: KyselyNotNull }>()
+  )
+
+/**
  * The Qerko terminal row of a payment: what `startQerkoTerminalPayment` reads
  * for the previous attempt, and `syncQerkoTerminalPayment` for the one it
  * polls.

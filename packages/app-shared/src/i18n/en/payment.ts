@@ -73,6 +73,7 @@ export const enPayment = {
   "refund.qerkoPayment.error.unreachable":
     "Qerko could not be reached. Check the connection and try again.",
   "paymentDetail.refunds.method.qerkoTerminal": "To the card",
+  "paymentDetail.refunds.method.cardSwitchio": "To the card",
   "paymentDetail.refunds.title": "Refunds",
   "paymentDetail.refunds.tipAction": "Refund the tip ({amount})",
   "paymentDetail.refunds.tip": "Tip",

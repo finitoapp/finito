@@ -55,6 +55,17 @@ export const deriveQerkoRefundAccountTransactionId = (
     `accountTransaction:qerkoTerminal:refund:${refundId}`
   )
 
+/**
+ * The id the money a refund to the card took back through the SwitchioPay
+ * terminal is recorded under (refund/0007).
+ */
+export const deriveSwitchioRefundAccountTransactionId = (
+  refundId: RefundId
+): AccountTransactionId =>
+  createIdFromString<"AccountTransaction">(
+    `accountTransaction:cardSwitchio:refund:${refundId}`
+  )
+
 /** The id the money a Qerko payment's refund took back is recorded under. */
 export const deriveQerkoPaymentRefundAccountTransactionId = (
   refundId: RefundId
