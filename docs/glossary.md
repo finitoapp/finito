@@ -162,8 +162,12 @@ The word "account" means two unrelated things here.
     money back to the card that paid, named by the payment's `refundId`
     (payment/0009); may be less than was paid. Finito writes the `refund`
     (method `cardSwitchio`) only once the terminal approved it, until then a
-    `cardSwitchioRefundAttempt` (refund/0007). Not a **storno** (ECR
-    *reversal*), which cancels a whole payment before the batch is closed.
+    `cardSwitchioRefundAttempt` (refund/0007). Not a **reversal**, which
+    takes back a whole completed payment before its batch is closed.
+  - **Reversal** (ECR *reversal*) — takes back a whole completed payment, tip
+    included, on the phone that took it and only until its batch is closed.
+    Not a **cancel** (cs *storno*), which interrupts a payment still in
+    progress; Finito does not cancel payments.
 - **Qerko** — the service behind two payment methods, each paired on its own
   (`docs/qerko.md`). Not the same as **Switchio**: Qerko needs no Android
   intent.
