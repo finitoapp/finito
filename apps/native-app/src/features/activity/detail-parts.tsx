@@ -53,13 +53,22 @@ export function OptionalRow({
   label,
   value,
   mono,
+  stacked,
 }: {
   readonly label: string
   readonly value: string | null
   readonly mono?: boolean
+  readonly stacked?: boolean
 }) {
   if (value === null) return null
-  return <DetailRow label={label} value={value} mono={mono === true} />
+  return (
+    <DetailRow
+      label={label}
+      value={value}
+      mono={mono === true}
+      stacked={stacked === true}
+    />
+  )
 }
 
 /**

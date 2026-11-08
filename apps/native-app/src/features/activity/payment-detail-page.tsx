@@ -129,6 +129,8 @@ import {
 import { usePaymentCollisionActions } from "./use-payment-collision-actions.ts"
 import { paymentRefundsQueries } from "./use-payment-refund-state.ts"
 
+const sideBySideMinWidth = 400
+
 const claimSourceLabelKey = {
   auto: "paymentDetail.reconciliation.source.auto",
   manual: "paymentDetail.reconciliation.source.manual",
@@ -181,6 +183,8 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
   )
   const { t } = useTranslation()
   const locale = useLocale()
+  const [detailsWidth, setDetailsWidth] = useState<number | null>(null)
+  const stacked = detailsWidth === null || detailsWidth < sideBySideMinWidth
   const [payment] = useEvoluQuery(paymentDetailQuery(paymentId)).data
   // The terminal's TID tells staff which one took the card (qerko/0006).
   const qerkoTerminalTid =
@@ -442,8 +446,18 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                   <TimelineIndicator />
                   <TimelineSeparator />
                   <TimelineContent>
-                    <YStack mt={8} gap={8} rounded={8.8} bg="muted-20" p={12}>
+                    <YStack
+                      mt={8}
+                      gap={8}
+                      rounded={8.8}
+                      bg="muted-20"
+                      p={12}
+                      onLayout={(event) =>
+                        setDetailsWidth(event.nativeEvent.layout.width)
+                      }
+                    >
                       <DetailRow
+                        stacked={stacked}
                         label={t("paymentDetail.transaction.amount")}
                         value={formatMoney(
                           {
@@ -455,21 +469,25 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                         emphasize
                       />
                       <OptionalRow
+                        stacked={stacked}
                         label={t("paymentDetail.transaction.account")}
                         value={
                           reconciliation.accountName ?? reconciliation.accountId
                         }
                       />
                       <OptionalRow
+                        stacked={stacked}
                         label={t("paymentDetail.transaction.variableSymbol")}
                         value={reconciliation.variableSymbol}
                       />
                       <OptionalRow
+                        stacked={stacked}
                         label={t("paymentDetail.transaction.note")}
                         value={reconciliation.transactionNote}
                       />
                       <Technical>
                         <DetailRow
+                          stacked={stacked}
                           label={t("paymentDetail.transaction.occurredAt")}
                           value={formatDateTime(
                             new Date(reconciliation.transactionOccurredAt),
@@ -479,6 +497,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                         {reconciliation.transactionRecordedAt ===
                         null ? null : (
                           <DetailRow
+                            stacked={stacked}
                             label={t("paymentDetail.transaction.recordedAt")}
                             value={formatDateTime(
                               new Date(reconciliation.transactionRecordedAt),
@@ -488,6 +507,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                         )}
                         {reconciliation.transactionSource === null ? null : (
                           <DetailRow
+                            stacked={stacked}
                             label={t("paymentDetail.transaction.source")}
                             value={t(
                               claimSourceLabelKey[
@@ -497,31 +517,37 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
                           />
                         )}
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.transaction.id")}
                           value={reconciliation.accountTransactionId}
                         />
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.transaction.bankReference")}
                           value={reconciliation.bankReference}
                         />
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.transaction.sparkTransferId")}
                           value={reconciliation.sparkTransferId}
                         />
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.transaction.paymentHash")}
                           value={reconciliation.paymentHash}
                         />
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.transaction.preimage")}
                           value={reconciliation.preimage}
                         />
                         <OptionalRow
+                          stacked={stacked}
                           mono
                           label={t("paymentDetail.reconciliation.id")}
                           value={reconciliation.id}
