@@ -35,7 +35,6 @@ import { Badge } from "../../components/ui/badge.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
   Card,
-  CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -202,14 +201,14 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
           <CardDescription>
             {formatTime(new Date(order.createdAt), locale)}
           </CardDescription>
-          <CardAction gap={4} items="flex-end">
+          <XStack gap={4} flexWrap="wrap">
             {order.isFullyPaid ? (
               <Badge variant="secondary" label={t("orders.paid")} />
             ) : (
               <Badge variant="destructive" label={t("orders.notFullyPaid")} />
             )}
             {order.isAccepted && <Badge label={t("orders.preparing")} />}
-          </CardAction>
+          </XStack>
         </CardHeader>
         <CardContent gap={12}>
           {order.written !== null ? (

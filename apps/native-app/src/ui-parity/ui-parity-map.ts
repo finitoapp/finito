@@ -566,6 +566,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/orders/orders-to-serve-page.tsx",
     web: ["apps/web-app/src/features/orders/orders-to-serve-page.tsx"],
     status: "matched",
+    allowedDifferences: {
+      CardAction:
+        "native's CardAction sits absolutely in the header's corner, so an order's badges beside a long table name covered it; they wrap under the time instead",
+    },
   },
   {
     native: "src/features/payment-tip/payment-tip-page.tsx",
