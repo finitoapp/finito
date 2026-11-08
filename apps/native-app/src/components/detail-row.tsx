@@ -14,7 +14,7 @@ import { CopyLink } from "./copy-link.tsx"
  * `max-w-56 text-right font-medium` (`emphasize`: `font-semibold`).
  *
  * Native addition: `mono` is web's payment-detail copy row folded in, an
- * identifier drawn small, selectable and one line, with a Copy link.
+ * identifier drawn small and one line, with a Copy link.
  */
 export function DetailRow({
   label,
@@ -28,7 +28,7 @@ export function DetailRow({
   readonly value?: string
   readonly stacked?: boolean
   readonly emphasize?: boolean
-  /** Identifiers: selectable, with a Copy link. */
+  /** Identifiers, with a Copy link. */
   readonly mono?: boolean
   readonly children?: ReactNode
 }) {
@@ -40,6 +40,7 @@ export function DetailRow({
     return (
       <XStack justify="space-between" items="center" gap={16}>
         <Text
+          shrink={1}
           fontSize={fontSize.sm}
           lineHeight={fontSize.sm}
           color="muted-foreground"
@@ -47,10 +48,11 @@ export function DetailRow({
           {label}
         </Text>
         <RNText
-          selectable
           numberOfLines={1}
+          ellipsizeMode="middle"
           style={{
             flex: 1,
+            minWidth: 72,
             textAlign: "right",
             fontSize: 12,
             lineHeight: 16,
