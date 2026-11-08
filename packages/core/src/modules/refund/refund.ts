@@ -89,8 +89,10 @@ export const qerkoTerminalRefundAttempt = {
  *
  * `pending` is waiting for SwitchioPay; `unknown` means the card may have
  * been refunded and blocks another attempt; `failed` is a definite no, kept
- * so the screen can say so. `kind` and `tipAmount` are for the reversal
- * (plan phase 3); until then every attempt is a `referralRefund`.
+ * so the screen can say so. `kind` says whether the terminal is asked to take
+ * the payment back (`reversal`) or to refund to the card (`referralRefund`,
+ * refund/0008); `tipAmount` is the tip such an attempt returns beside the
+ * goods, written as the tip's own refund.
  */
 export const cardSwitchioRefundAttempt = {
   id: CardSwitchioRefundAttemptId,

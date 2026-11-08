@@ -1,6 +1,8 @@
 import { type InferRow, type KyselyNotNull, sqliteTrue } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
+import type { DeviceId } from "../device/device-types.ts"
+import type { TimestampMs } from "../shared/schema.ts"
 import type { CardSwitchioClosureId } from "./card-switchio-closure-types.ts"
 
 const closureColumns = [
@@ -49,6 +51,28 @@ export const cardSwitchioClosuresQuery = (limit: number) =>
       .orderBy("cardSwitchioClosure.id")
       .limit(limit)
       .$narrowType<ClosureNotNull>()
+  )
+
+/**
+ * Whether one phone closed its terminal's batch after a moment, by that
+ * phone's own clock (refund/0008): the closures it recorded since. Its own
+ * writes, so never stale on the phone itself.
+ */
+export const cardSwitchioClosuresOfDeviceSinceQuery = ({
+  deviceId,
+  since,
+}: {
+  readonly deviceId: DeviceId
+  readonly since: TimestampMs
+}) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cardSwitchioClosure")
+      .select(["id", "closedAt"])
+      .where("deviceId", "=", deviceId)
+      .where("closedAt", ">", since)
+      .where("isDeleted", "is not", sqliteTrue)
+      .limit(1)
   )
 
 export type CardSwitchioClosureListRow = InferRow<

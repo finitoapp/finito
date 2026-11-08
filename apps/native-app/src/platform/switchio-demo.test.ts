@@ -8,6 +8,7 @@ const native = vi.hoisted(() => ({
   acknowledgeResult: vi.fn(),
   peekStoredClosureResult: vi.fn(() => null),
   acknowledgeClosureResult: vi.fn(),
+  reversal: vi.fn(),
   referralRefund: vi.fn(),
   lookupTransaction: vi.fn(),
   peekStoredRefundResult: vi.fn(() => null),
@@ -55,7 +56,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
     expect(native.close).not.toHaveBeenCalled()
   })
 
-  it("never refunds to the card nor asks the terminal", async () => {
+  it("never takes a payment back, refunds to the card nor asks the terminal", async () => {
     const { switchioRefund } = createSwitchioRefundDep({ demo: true })
 
     await expect(
@@ -69,9 +70,19 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
       ok: false,
       error: { type: "SwitchioUnavailable", reason: "demo" },
     })
+    await expect(
+      switchioRefund.reverse({
+        transactionId: "t1",
+        originalTransactionId: "payment-1",
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "SwitchioUnavailable", reason: "demo" },
+    })
     await expect(switchioRefund.lookup("t1")).resolves.toEqual({
       type: "unknown",
     })
+    expect(native.reversal).not.toHaveBeenCalled()
     expect(native.referralRefund).not.toHaveBeenCalled()
     expect(native.lookupTransaction).not.toHaveBeenCalled()
   })

@@ -252,8 +252,11 @@ export const loadGoodsRefundPlan =
     lines,
   }: {
     readonly paymentId: PaymentId
-    /** Exactly one of the two is given: the callers' types say so. */
-    readonly amount: NonNegativeInteger | undefined
+    /**
+     * Exactly one of the two is given: the callers' types say so. `remaining`
+     * asks for every goods amount still refundable.
+     */
+    readonly amount: NonNegativeInteger | "remaining" | undefined
     readonly lines: ReadonlyArray<RefundLineInput> | undefined
   }): Task<
     GoodsRefundPlan,
@@ -297,7 +300,10 @@ export const loadGoodsRefundPlan =
           sumGoodsRefundAmounts(refunds)
       )
     )
-    const refundAmount = amount ?? sumRefundAmounts(refundLines)
+    const refundAmount =
+      amount === "remaining"
+        ? remainingAmount
+        : (amount ?? sumRefundAmounts(refundLines))
     if (refundAmount === 0 || refundAmount > remainingAmount) {
       return err(
         createRefundAmountInvalidError({

@@ -16,6 +16,7 @@ private const val URI_AUTHORITY = "switchiopay"
 private const val URI_PATH_PAYMENT = "api/main/v8/payment"
 private const val URI_PATH_CLOSURE = "api/main/v8/closure"
 private const val URI_PATH_REFERRAL_REFUND = "api/main/v8/referral_refund"
+private const val URI_PATH_REVERSAL = "api/main/v8/reversal"
 private const val URI_PATH_GET_TRANSACTION = "api/light/v8/get_transaction"
 
 /**
@@ -63,8 +64,9 @@ private fun closureIntent(): Intent {
  * and [SwitchioClosureStore], so a closure result never reaches the payment
  * path and its recovery.
  *
- * `referralRefund` refunds to the card (ECR 5.17) and resolves like `pay`,
- * with its own request code, promise and [SwitchioRefundStore].
+ * `reversal` takes a payment back (ECR 5.13) and `referralRefund` refunds to
+ * the card (ECR 5.17); both resolve like `pay` and share their own request
+ * code, promise and [SwitchioRefundStore].
  * `lookupTransaction` asks the terminal about one of its transactions
  * (`get_transaction`, ECR 5.12) and resolves like `close`; it stores nothing.
  */
@@ -76,6 +78,20 @@ class PaykySwitchioModule : Module() {
 
   private val context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+
+  /** Launches a reversal or a referral refund, its id stored before the terminal can act. */
+  private fun launchRefund(intent: Intent, transactionId: String, promise: Promise) {
+    intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+    SwitchioRefundStore.begin(context, transactionId)
+    pendingRefundPromise = promise
+    try {
+      appContext.throwingActivity.startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)
+    } catch (exception: ActivityNotFoundException) {
+      pendingRefundPromise = null
+      SwitchioRefundStore.clearAttempt(context)
+      promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("PaykySwitchio")
@@ -123,6 +139,19 @@ class PaykySwitchioModule : Module() {
       }
     }
 
+    AsyncFunction("reversal") { transactionId: String, originalTransactionId: String, promise: Promise ->
+      // Never without the original: a reversal without it takes back the
+      // terminal's last transaction, whatever that is (ECR 5.13).
+      if (originalTransactionId.isEmpty()) {
+        promise.reject(CodedException("SWITCHIO_NO_ORIGINAL", "A reversal needs the original transaction", null))
+      } else {
+        val data = JSONObject()
+        data.put("transactionId", transactionId)
+        data.put("originalTransactionId", originalTransactionId)
+        launchRefund(dataIntent(URI_PATH_REVERSAL, data.toString()), transactionId, promise)
+      }
+    }
+
     AsyncFunction("referralRefund") { transactionId: String, amount: Int, currencyCode: Int, refundId: String, promise: Promise ->
       val data = JSONObject()
       data.put("transactionId", transactionId)
@@ -132,19 +161,7 @@ class PaykySwitchioModule : Module() {
       // not fit a JavaScript number, and never went through one.
       data.put("refundId", refundId)
 
-      val intent = dataIntent(URI_PATH_REFERRAL_REFUND, data.toString())
-      intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-
-      // Durable before the terminal can refund the card.
-      SwitchioRefundStore.begin(context, transactionId)
-      pendingRefundPromise = promise
-      try {
-        appContext.throwingActivity.startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)
-      } catch (exception: ActivityNotFoundException) {
-        pendingRefundPromise = null
-        SwitchioRefundStore.clearAttempt(context)
-        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
-      }
+      launchRefund(dataIntent(URI_PATH_REFERRAL_REFUND, data.toString()), transactionId, promise)
     }
 
     AsyncFunction("lookupTransaction") { transactionId: String, promise: Promise ->

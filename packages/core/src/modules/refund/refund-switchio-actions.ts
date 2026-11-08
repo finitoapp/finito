@@ -13,12 +13,14 @@ import type { DateDep, EvoluOwnerDep, UuidDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import {
   interpretSwitchioRefundResult,
+  interpretSwitchioReversalResult,
   type SwitchioCardRefundResult,
   type SwitchioNativePayResult,
   type SwitchioRefundDep,
   type SwitchioRefundError,
 } from "../../switchio.ts"
 import { deriveSwitchioRefundAccountTransactionId } from "../account-transaction/account-transaction-utils.ts"
+import { cardSwitchioClosuresOfDeviceSinceQuery } from "../card-switchio-closure/card-switchio-closure-queries.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { optionalNonEmptyString255 } from "../payment/payment-actions.ts"
 import type { PaymentNotFoundError } from "../payment/payment-errors.ts"
@@ -36,7 +38,7 @@ import { currencyNumericCodes } from "../shared/money.ts"
 import {
   type NonEmptyString,
   NonEmptyString255,
-  type NonNegativeInteger,
+  NonNegativeInteger,
   TimestampMs,
 } from "../shared/schema.ts"
 import type {
@@ -62,13 +64,17 @@ import {
   cardSwitchioRefundAttemptByIdQuery,
   cardSwitchioRefundAttemptByTransactionIdQuery,
   cardSwitchioRefundAttemptsByPaymentIdQuery,
+  refundsByPaymentIdQuery,
 } from "./refund-queries.ts"
+import { chooseSwitchioRefundKind } from "./refund-switchio-utils.ts"
 import type { CardSwitchioRefundAttemptId, RefundId } from "./refund-types.ts"
 
 /**
  * Refunding to the card through the SwitchioPay terminal on this phone
- * (refund/0007), by a referral refund that names the payment by the
- * `refundId` its result carried (payment/0009). As with Qerko (qerko/0004),
+ * (refund/0007): by a reversal, which takes the whole payment back and is
+ * cheaper, whenever one can be made (refund/0008), and otherwise by a
+ * referral refund that names the payment by the `refundId` its result
+ * carried (payment/0009). As with Qerko (qerko/0004),
  * nothing is recorded as a refund until the terminal approved: a
  * `cardSwitchioRefundAttempt` carries it meanwhile.
  *
@@ -105,6 +111,21 @@ export type CardSwitchioRefundDeclinedError = ReturnType<
   typeof createCardSwitchioRefundDeclinedError
 >
 
+/**
+ * The terminal would not take the payment back: most likely its batch was
+ * closed outside Finito. A referral refund may still be made, with the card.
+ */
+export const createCardSwitchioReversalDeclinedError = defineError(
+  "CardSwitchioReversalDeclined"
+)<{
+  readonly attemptId: CardSwitchioRefundAttemptId
+  readonly responseCode: string | null
+  readonly responseMessage: string | null
+}>()
+export type CardSwitchioReversalDeclinedError = ReturnType<
+  typeof createCardSwitchioReversalDeclinedError
+>
+
 export const createCardSwitchioRefundAttemptNotFoundError = defineError(
   "CardSwitchioRefundAttemptNotFound"
 )<{ readonly transactionId: string | null }>()
@@ -131,6 +152,7 @@ export type CardSwitchioRefundProgress =
 /** What the terminal's answer leaves of the attempt's own error union. */
 type OutcomeError =
   | CardSwitchioRefundDeclinedError
+  | CardSwitchioReversalDeclinedError
   | Exclude<
       SwitchioRefundError,
       { readonly type: "SwitchioRefundFailed" | "SwitchioResultUnreadable" }
@@ -158,16 +180,23 @@ type AttemptRow = Pick<
   | "id"
   | "paymentId"
   | "deviceId"
+  | "kind"
   | "refundId"
   | "amount"
+  | "tipAmount"
   | "isTip"
   | "linesJson"
 > & {
   readonly paymentId: PaymentId
   readonly deviceId: DeviceId
+  readonly kind: "reversal" | "referralRefund"
   readonly refundId: RefundId
   readonly amount: NonNegativeInteger
 }
+
+/** The tip is refunded once per payment, whichever way (refund/0004). */
+const tipRefundId = (paymentId: PaymentId): RefundId =>
+  createIdFromString<"Refund">(`refund:tip:${paymentId}`)
 
 /**
  * Writes the refund the terminal approved and takes the attempt away, in one
@@ -176,7 +205,9 @@ type AttemptRow = Pick<
  * the promise and restored, or restored and asked — writes the same rows.
  * The checks the start made are not made again: the money went back, so
  * what the terminal did is recorded even if another device refunded part of
- * the payment meanwhile.
+ * the payment meanwhile. An attempt that returned the tip with the goods (a
+ * reversal, or a referral refund of the whole payment) writes it as the
+ * tip's own refund beside the goods' (refund/0004).
  */
 const settleApprovedAttempt =
   (attempt: AttemptRow): Task<CardSwitchioRefundProgress, never, SettleDeps> =>
@@ -194,26 +225,45 @@ const settleApprovedAttempt =
       return ok({ status: "unresolved" })
     }
 
-    const rows = computeCardRefundRows(
-      {
-        refundId: attempt.refundId,
-        paymentId: attempt.paymentId,
-        deviceId: attempt.deviceId,
-        amount: attempt.amount,
-        currency: payment.currency,
-        method: "cardSwitchio",
-        isTip: attempt.isTip,
-        linesJson: attempt.linesJson,
-        accountId: card.accountId,
-        accountTransactionId: deriveSwitchioRefundAccountTransactionId(
-          attempt.refundId
-        ),
-      },
-      run.deps.date.now()
-    )
+    const now = run.deps.date.now()
+    const refundRows = (refund: {
+      readonly refundId: RefundId
+      readonly amount: NonNegativeInteger
+      readonly isTip: typeof sqliteTrue | null
+      readonly linesJson: NonEmptyString | null
+    }) =>
+      computeCardRefundRows(
+        {
+          ...refund,
+          paymentId: attempt.paymentId,
+          deviceId: attempt.deviceId,
+          currency: payment.currency,
+          method: "cardSwitchio",
+          accountId: card.accountId,
+          accountTransactionId: deriveSwitchioRefundAccountTransactionId(
+            refund.refundId
+          ),
+        },
+        now
+      )
+    const rows = [
+      refundRows(attempt),
+      ...(attempt.tipAmount === null || attempt.tipAmount === 0
+        ? []
+        : [
+            refundRows({
+              refundId: tipRefundId(attempt.paymentId),
+              amount: attempt.tipAmount,
+              isTip: sqliteTrue,
+              linesJson: null,
+            }),
+          ]),
+    ]
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
-      upsertCardRefundRows(evolu, rows, mutationOptions)
+      for (const refund of rows) {
+        upsertCardRefundRows(evolu, refund, mutationOptions)
+      }
       evolu.update(
         "cardSwitchioRefundAttempt",
         { id: attempt.id, isDeleted: sqliteTrue },
@@ -266,10 +316,16 @@ const applyRefundOutcome =
       case "SwitchioRefundFailed":
         await update({ status: "failed", failureReason: "declined" })
         return err(
-          createCardSwitchioRefundDeclinedError({
-            attemptId: attempt.id,
-            responseMessage: error.responseMessage,
-          })
+          attempt.kind === "reversal"
+            ? createCardSwitchioReversalDeclinedError({
+                attemptId: attempt.id,
+                responseCode: error.responseCode,
+                responseMessage: error.responseMessage,
+              })
+            : createCardSwitchioRefundDeclinedError({
+                attemptId: attempt.id,
+                responseMessage: error.responseMessage,
+              })
         )
       case "SwitchioRefundNotStarted":
       case "SwitchioUnavailable":
@@ -279,10 +335,33 @@ const applyRefundOutcome =
   }
 
 /**
- * Starts refunding to the card on the SwitchioPay terminal of this phone,
- * for an amount (or goods lines), or the payment's tip. The same checks as
- * any refund decide what may be asked for; on top, the payment must have
- * been taken through SwitchioPay with the `refundId` its result carried.
+ * What a refund to the card through SwitchioPay asks for. Named because the
+ * payment screen retries the same request as a referral refund when the
+ * terminal declines the reversal.
+ */
+export type StartCardSwitchioRefundInput = {
+  readonly paymentId: PaymentId
+  /** This phone: the one whose SwitchioPay will answer. */
+  readonly deviceId: DeviceId
+  /** A referral refund even where a reversal could be made. */
+  readonly referral?: boolean
+} & (
+  | { readonly tip: true }
+  | { readonly whole: true }
+  | { readonly amount: NonNegativeInteger }
+  | { readonly lines: ReadonlyArray<RefundLineInput> }
+)
+
+/**
+ * Starts refunding to the card on the SwitchioPay terminal of this phone:
+ * an amount (or goods lines), the payment's tip, or the `whole` payment —
+ * every goods amount still refundable and the tip. The same checks as any
+ * refund decide what may be asked for; on top, the payment must have been
+ * taken through SwitchioPay with the `refundId` its result carried.
+ *
+ * A reversal is made whenever one can be (refund/0008): it is cheaper. When
+ * the terminal declines it, `CardSwitchioReversalDeclined` lets the caller
+ * offer a referral refund instead, started again with `referral`.
  *
  * A refund started while another one of the payment is pending or unknown
  * is refused: the card could be refunded twice. The attempt is written
@@ -293,16 +372,9 @@ export const startCardSwitchioRefund =
   ({
     paymentId,
     deviceId,
+    referral = false,
     ...what
-  }: {
-    readonly paymentId: PaymentId
-    /** This phone: the one whose SwitchioPay will answer. */
-    readonly deviceId: DeviceId
-  } & (
-    | { readonly tip: true }
-    | { readonly amount: NonNegativeInteger }
-    | { readonly lines: ReadonlyArray<RefundLineInput> }
-  )): Task<
+  }: StartCardSwitchioRefundInput): Task<
     CardSwitchioRefundProgress,
     StartCardSwitchioRefundError,
     SettleDeps & UuidDep & SwitchioRefundDep
@@ -311,37 +383,48 @@ export const startCardSwitchioRefund =
     const { evolu, evoluOwner } = run.deps
     const attemptId = createRowId<"CardSwitchioRefundAttempt">()
 
-    let currency: keyof typeof currencyNumericCodes
-    let amount: NonNegativeInteger
+    let payment: {
+      readonly currency: keyof typeof currencyNumericCodes
+      readonly amount: NonNegativeInteger
+    }
+    let goods = NonNegativeInteger(0)
+    let tip = NonNegativeInteger(0)
     let linesJson: NonEmptyString | null = null
-    let refundId: RefundId
     if ("tip" in what) {
       const plan = await run(loadTipRefundPlan(paymentId))
       if (!plan.ok) return plan
-      currency = plan.value.payment.currency
-      amount = plan.value.tipAmount
-      // The tip is refunded once per payment, whichever way (refund/0004).
-      refundId = createIdFromString<"Refund">(`refund:tip:${paymentId}`)
+      payment = plan.value.payment
+      tip = plan.value.tipAmount
     } else {
       const plan = await run(
         loadGoodsRefundPlan({
           paymentId,
-          amount: "amount" in what ? what.amount : undefined,
+          amount:
+            "whole" in what
+              ? "remaining"
+              : "amount" in what
+                ? what.amount
+                : undefined,
           lines: "lines" in what ? what.lines : undefined,
         })
       )
       if (!plan.ok) return plan
-      currency = plan.value.payment.currency
-      amount = plan.value.refundAmount
+      payment = plan.value.payment
+      goods = plan.value.refundAmount
       if (plan.value.refundLines.length > 0) {
         linesJson = encodeRefundLines(plan.value.refundLines)
       }
-      refundId = createIdFromString<"Refund">(`refund:switchio:${attemptId}`)
+      if ("whole" in what) {
+        const tipPlan = await run(loadTipRefundPlan(paymentId))
+        if (tipPlan.ok) tip = tipPlan.value.tipAmount
+        else if (tipPlan.error.type !== "RefundTipUnavailable") return tipPlan
+      }
     }
 
-    const [[card], attempts] = await Promise.all([
+    const [[card], attempts, refunds] = await Promise.all([
       evolu.loadQuery(paymentCardSwitchioRefundSourceQuery(paymentId)),
       evolu.loadQuery(cardSwitchioRefundAttemptsByPaymentIdQuery(paymentId)),
+      evolu.loadQuery(refundsByPaymentIdQuery(paymentId)),
     ])
     if (card === undefined || card.refundId === null) {
       return err(createCardSwitchioRefundNotAvailableError({ paymentId }))
@@ -356,22 +439,54 @@ export const startCardSwitchioRefund =
       )
     }
 
+    const closedSinceApproval =
+      card.deviceId !== null && card.approvedAt !== null
+        ? (
+            await evolu.loadQuery(
+              cardSwitchioClosuresOfDeviceSinceQuery({
+                deviceId: card.deviceId,
+                since: card.approvedAt,
+              })
+            )
+          ).length > 0
+        : true
+    const kind = referral
+      ? "referralRefund"
+      : chooseSwitchioRefundKind({
+          deviceId,
+          charged: payment.amount,
+          requested: { goods, tip },
+          refundCount: refunds.length,
+          source: card,
+          closedSinceApproval,
+        })
+
+    // The tip alone is the tip's refund; goods, with or without the tip
+    // beside them, are the goods' refund, the tip written as its own.
+    const tipOnly = "tip" in what
+    const refundId = tipOnly
+      ? tipRefundId(paymentId)
+      : createIdFromString<"Refund">(
+          kind === "reversal"
+            ? `refund:reversal:${paymentId}`
+            : `refund:switchio:${attemptId}`
+        )
     const transactionId = NonEmptyString255(run.deps.uuid.create())
     const attempt = {
       id: attemptId,
       paymentId,
       deviceId,
       transactionId,
-      kind: "referralRefund",
+      kind,
       refundId,
-      amount,
-      tipAmount: null,
+      amount: tipOnly ? tip : goods,
+      tipAmount: tipOnly || tip === 0 ? null : tip,
       linesJson,
       status: "pending",
       failureReason: null,
       startedAt: TimestampMs(run.deps.date.now().getTime()),
       isDeleted: sqliteFalse,
-      ...("tip" in what ? { isTip: sqliteTrue } : {}),
+      ...(tipOnly ? { isTip: sqliteTrue } : {}),
     } satisfies UpsertValues<typeof cardSwitchioRefundAttempt>
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
@@ -386,12 +501,18 @@ export const startCardSwitchioRefund =
       evolu.upsert("cardSwitchioRefundAttempt", attempt, mutationOptions)
     })
 
-    const outcome = await run.deps.switchioRefund.referralRefund({
-      transactionId,
-      amount,
-      currencyCode: currencyNumericCodes[currency],
-      refundId: card.refundId,
-    })
+    const outcome =
+      kind === "reversal" && card.transactionId !== null
+        ? await run.deps.switchioRefund.reverse({
+            transactionId,
+            originalTransactionId: card.transactionId,
+          })
+        : await run.deps.switchioRefund.referralRefund({
+            transactionId,
+            amount: goods + tip,
+            currencyCode: currencyNumericCodes[payment.currency],
+            refundId: card.refundId,
+          })
     return run(
       applyRefundOutcome({
         attempt: { ...attempt, isTip: attempt.isTip ?? null },
@@ -433,7 +554,10 @@ export const settleRestoredCardSwitchioRefund =
     return run(
       applyRefundOutcome({
         attempt,
-        outcome: interpretSwitchioRefundResult(restored),
+        outcome:
+          attempt.kind === "reversal"
+            ? interpretSwitchioReversalResult(restored)
+            : interpretSwitchioRefundResult(restored),
       })
     )
   }

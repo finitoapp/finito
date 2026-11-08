@@ -240,14 +240,22 @@ export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
 
 /**
  * What refunding a SwitchioPay payment to the card needs (payment/0009):
- * its card account, the terminal's `refundId`, and the phone that charged
- * the card. Present once the payment was paid on the terminal.
+ * its card account, the terminal's `refundId`, the phone that charged the
+ * card and when, and the approved attempt's `transactionId`, which a
+ * reversal names. Present once the payment was paid on the terminal.
  */
 export const paymentCardSwitchioRefundSourceQuery = (idValue: PaymentId) =>
   createQuery((db) =>
     db
       .selectFrom("paymentCardSwitchio")
-      .select(["id", "accountId", "refundId", "deviceId", "approvedAt"])
+      .select([
+        "id",
+        "accountId",
+        "refundId",
+        "deviceId",
+        "approvedAt",
+        "transactionId",
+      ])
       .where("id", "=", idValue)
       .where("isDeleted", "is not", sqliteTrue)
       .where("accountId", "is not", null)
