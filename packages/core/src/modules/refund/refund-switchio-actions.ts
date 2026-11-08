@@ -113,7 +113,7 @@ export type CardSwitchioRefundDeclinedError = ReturnType<
 
 /**
  * The terminal would not take the payment back: most likely its batch was
- * closed outside Finito. A referral refund may still be made, with the card.
+ * closed outside Finito. A referral refund may still be made.
  */
 export const createCardSwitchioReversalDeclinedError = defineError(
   "CardSwitchioReversalDeclined"

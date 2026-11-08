@@ -385,8 +385,7 @@ export const csPayment = {
   "refund.dialog.method.qerkoTerminal": "Zpět na kartu přes terminál",
   "refund.dialog.method.qerkoTerminalTid": "Zpět na kartu na terminálu {tid}",
   "refund.dialog.method.cardSwitchio": "Zpět na kartu přes SwitchioPay",
-  "refund.switchio.hint":
-    "Zákazník přiloží k tomuto telefonu kartu, kterou platil.",
+  "refund.switchio.hint": "Peníze se vrátí na kartu, kterou zákazník platil.",
   "refund.switchio.done": "Peníze se vrátily na kartu.",
   "refund.switchio.pending": "Vracím na kartu přes SwitchioPay",
   "refund.switchio.pendingElsewhere":
@@ -413,13 +412,13 @@ export const csPayment = {
   "paymentDetail.refunds.wholeAction": "Vrátit celou platbu ({amount})",
   "refund.switchio.whole.title": "Vrátit celou platbu?",
   "refund.switchio.whole.description":
-    "{amount} včetně spropitného se vrátí na kartu, kterou zákazník platil. Terminál nejdřív zkusí vzít platbu zpět celou. Když to už nepůjde, nabídne se vrácení na kartu, ke kterému zákazník kartu přiloží k telefonu.",
+    "{amount} včetně spropitného se vrátí na kartu, kterou zákazník platil. Dokud to jde, terminál platbu vezme zpět, jinak peníze na kartu vrátí.",
   "refund.switchio.whole.confirm": "Vrátit",
   "refund.switchio.whole.cancel": "Zpět",
   "refund.switchio.reversalDeclined.title":
     "Terminál už platbu nemůže vzít zpět",
   "refund.switchio.reversalDeclined.description":
-    "Jeho dávka byla nejspíš uzavřena. Vrátit peníze na kartu? Zákazník přiloží k telefonu kartu, kterou platil.",
+    "Jeho dávka byla nejspíš uzavřena. Peníze ale jde vrátit na kartu, kterou zákazník platil. Vrátit je?",
   "refund.switchio.reversalDeclined.confirm": "Vrátit na kartu",
   "refund.switchio.reversalDeclined.cancel": "Zpět",
   "refund.qerko.dismiss": "Zavřít",

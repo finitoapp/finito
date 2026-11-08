@@ -10,7 +10,8 @@ protocol v6.19.0). A reversal (section 5.13) takes the whole original
 transaction back, tip included — there is no partial one — and only on the
 terminal that took it, until its batch is closed. A referral refund (section
 5.17) returns any amount up to the payment to the card that paid, by the
-payment's `refundId`, with the customer's card (refund/0007). A reversal
+payment's `refundId` (refund/0007). Neither needs the customer's card
+again: both were made without it on a device. A reversal
 costs the business less than a refund. A cancel (storno) interrupts a
 payment still in progress; it is not a way to give money back, and Finito
 does not make one.
@@ -32,8 +33,7 @@ of these hold:
 
 Anything else — part of the goods, the tip alone, another phone, an earlier
 refund, a closure since — is a referral refund. The whole payment refunded
-to the card is one referral refund of goods and tip together, one tap of the
-card.
+to the card is one referral refund of goods and tip together.
 
 A reversal names the approved attempt's `transactionId`, always: without it
 the terminal reverses its last transaction, whatever that is. A reversal's
@@ -43,9 +43,9 @@ written twice, record it once.
 
 A closure made outside Finito (in SwitchioPay, or its automatic one) is not
 known to it, so the terminal may decline a reversal Finito chose. Any
-declined reversal then offers a refund to the card, with the customer's
-card, whatever the terminal's reason; it is started again as a referral
-refund, not chosen anew.
+declined reversal then offers a refund to the card, whatever the terminal's
+reason (after a closure it answers `TransactionInvalidData`, "Trn not
+found"); it is started again as a referral refund, not chosen anew.
 
 ## Alternatives considered
 
@@ -60,9 +60,8 @@ is not documented; it only sharpens the message.
 
 The reversed payment leaves the batch's debits; a referral refund shows in
 its credits, which the closure's reconciliation can count. A whole payment
-once partly refunded can only be refunded to the card. Whether a reversal
-needs the customer's card is still to be checked on a device, so the screen
-does not promise it does not.
+once partly refunded can only be refunded to the card. The screen does not
+ask for the card either way.
 
 ## Enforced by
 
@@ -72,7 +71,7 @@ does not promise it does not.
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > reverses a refund of every goods amount of a payment without a tip`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > two reversals of one payment write one refund of the goods and one of the tip`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds to the card when %s`
-- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds the whole payment to the card, in one tap, from another phone`
+- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds the whole payment to the card as one refund from another phone`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds to the card once the charging phone closed its batch`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds to the card what is left after an earlier refund`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > a reversal the terminal declines lets a refund to the card follow`
