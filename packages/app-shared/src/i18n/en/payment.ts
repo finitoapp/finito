@@ -392,8 +392,7 @@ export const enPayment = {
   "refund.dialog.method.qerkoTerminal": "Back to the card on the terminal",
   "refund.dialog.method.qerkoTerminalTid": "Back to the card on terminal {tid}",
   "refund.dialog.method.cardSwitchio": "Back to the card in SwitchioPay",
-  "refund.switchio.hint":
-    "The customer holds the card that paid to this phone.",
+  "refund.switchio.hint": "The money goes back to the card that paid.",
   "refund.switchio.done": "The money went back to the card.",
   "refund.switchio.pending": "Refunding to the card in SwitchioPay",
   "refund.switchio.pendingElsewhere":
@@ -420,13 +419,13 @@ export const enPayment = {
   "paymentDetail.refunds.wholeAction": "Refund the whole payment ({amount})",
   "refund.switchio.whole.title": "Refund the whole payment?",
   "refund.switchio.whole.description":
-    "{amount}, the tip included, goes back to the card that paid. The terminal first tries to take the payment back whole; if it no longer can, a refund to the card is offered, for which the customer holds the card to the phone.",
+    "{amount}, the tip included, goes back to the card that paid. The terminal takes the payment back while it still can; otherwise the money is refunded to the card.",
   "refund.switchio.whole.confirm": "Refund",
   "refund.switchio.whole.cancel": "Back",
   "refund.switchio.reversalDeclined.title":
     "The terminal can no longer take the payment back",
   "refund.switchio.reversalDeclined.description":
-    "Its batch was most likely closed. Refund the money to the card instead? The customer holds the card that paid to this phone.",
+    "Its batch was most likely closed. The money can still be refunded to the card that paid. Refund it?",
   "refund.switchio.reversalDeclined.confirm": "Refund to the card",
   "refund.switchio.reversalDeclined.cancel": "Back",
   "refund.qerko.dismiss": "Dismiss",

@@ -759,7 +759,7 @@ describe("a reversal before the refund to the card (refund/0008)", () => {
     15_000
   )
 
-  test("refunds the whole payment to the card, in one tap, from another phone", async () => {
+  test("refunds the whole payment to the card as one refund from another phone", async () => {
     await using t = await setup({ tipAmount: 2_000, answers: [approvedRefund] })
 
     await t.run.orThrow(

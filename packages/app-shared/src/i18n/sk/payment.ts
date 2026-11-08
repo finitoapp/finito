@@ -388,8 +388,7 @@ export const skPayment = {
   "refund.dialog.method.qerkoTerminal": "Späť na kartu cez terminál",
   "refund.dialog.method.qerkoTerminalTid": "Späť na kartu na terminále {tid}",
   "refund.dialog.method.cardSwitchio": "Späť na kartu cez SwitchioPay",
-  "refund.switchio.hint":
-    "Zákazník priloží k tomuto telefónu kartu, ktorou platil.",
+  "refund.switchio.hint": "Peniaze sa vrátia na kartu, ktorou zákazník platil.",
   "refund.switchio.done": "Peniaze sa vrátili na kartu.",
   "refund.switchio.pending": "Vraciam na kartu cez SwitchioPay",
   "refund.switchio.pendingElsewhere":
@@ -416,13 +415,13 @@ export const skPayment = {
   "paymentDetail.refunds.wholeAction": "Vrátiť celú platbu ({amount})",
   "refund.switchio.whole.title": "Vrátiť celú platbu?",
   "refund.switchio.whole.description":
-    "{amount} vrátane prepitného sa vráti na kartu, ktorou zákazník platil. Terminál najprv skúsi vziať platbu späť celú. Keď to už nepôjde, ponúkne sa vrátenie na kartu, ku ktorému zákazník kartu priloží k telefónu.",
+    "{amount} vrátane prepitného sa vráti na kartu, ktorou zákazník platil. Kým sa to dá, terminál platbu vezme späť, inak peniaze na kartu vráti.",
   "refund.switchio.whole.confirm": "Vrátiť",
   "refund.switchio.whole.cancel": "Späť",
   "refund.switchio.reversalDeclined.title":
     "Terminál už platbu nemôže vziať späť",
   "refund.switchio.reversalDeclined.description":
-    "Jeho dávka bola najskôr uzavretá. Vrátiť peniaze na kartu? Zákazník priloží k telefónu kartu, ktorou platil.",
+    "Jeho dávka bola najskôr uzavretá. Peniaze sa však dajú vrátiť na kartu, ktorou zákazník platil. Vrátiť ich?",
   "refund.switchio.reversalDeclined.confirm": "Vrátiť na kartu",
   "refund.switchio.reversalDeclined.cancel": "Späť",
   "refund.qerko.dismiss": "Zavrieť",
