@@ -553,6 +553,9 @@ const resolveSelfPayTarget =
       const [recorded] = await run.deps.evolu.loadQuery(
         menuOrderByBillIdQuery(orderBillId)
       )
+      if (recorded !== undefined && recorded.rejectedAt !== null) {
+        return ok(null)
+      }
       const writtenAmount = recorded?.writtenAmount ?? null
       if (bill !== null) {
         return ok(

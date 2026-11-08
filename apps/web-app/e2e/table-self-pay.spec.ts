@@ -12,6 +12,7 @@ import {
   waitForLocalWriteToSettle,
 } from "./support/navigation.ts"
 import { seedOnboarding } from "./support/onboarding.ts"
+import { overpaymentCard, resolveOverpayment } from "./support/overpayment.ts"
 import {
   addBillLines,
   disableTableSelfPay,
@@ -1811,6 +1812,55 @@ test.describe("the till", () => {
         })
         .click()
       await expect(question).toBeHidden()
+    })
+  })
+
+  test("the guest money a discarded bill holds is answered on its overpayment card", async ({
+    seededPage: page,
+    context,
+  }) => {
+    test.setTimeout(120_000)
+    await routeFakeNostrRelays(context)
+    const { guestAddress, billId } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 16"))
+
+    await test.step("a guest pays the beer", async () => {
+      const guest = await context.newPage()
+      await guest.goto(guestAddress)
+      await payAllOfTheBeer(page, guest)
+      await guest.close()
+      await expect(
+        page.getByText(
+          translateParams("en", "bill.brick.guestPaid", { amount: "$45.00" }),
+          { exact: true }
+        )
+      ).toBeVisible({ timeout: 30_000 })
+    })
+
+    await test.step("staff discard the bill", async () => {
+      await page
+        .getByRole("button", { name: translate("en", "bill.discard") })
+        .click()
+      await page
+        .getByRole("alertdialog")
+        .getByRole("button", {
+          name: translate("en", "bill.discard.confirm.confirm"),
+        })
+        .click()
+      await waitForLocalWriteToSettle(page)
+    })
+
+    await test.step("the canceled bill offers the guest's money, and keeping it resolves it", async () => {
+      await page.goto(`/activity/bills/${billId}`)
+      const card = overpaymentCard(page)
+      await expect(card).toContainText(
+        translateParams("en", "overpayment.title", { amount: "$45.00" })
+      )
+      await resolveOverpayment(page, "en", { kind: "kept", amount: "45" })
+      await expect(card).toContainText(
+        translate("en", "overpayment.resolved.title")
+      )
     })
   })
 })

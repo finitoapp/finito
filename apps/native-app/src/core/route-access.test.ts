@@ -49,7 +49,6 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/support")).toBe("settings")
     expect(requiredPermission("/settings/debug-console")).toBe("admin")
     expect(requiredPermission("/activity/stats")).toBe("stats")
-    expect(requiredPermission("/orders")).toBeNull()
     expect(requiredPermission("/settings/demo-data")).toBe("admin")
     expect(requiredPermission("/settings/donations")).toBeNull()
     expect(requiredPermission("/settings/donations-invoice")).toBeNull()
@@ -62,6 +61,10 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/payment-accounts/card-switchio")).toBe(
       "admin"
     )
+  })
+
+  it("asks for sell before the orders to serve, whose accept and served sync", () => {
+    expect(requiredPermission("/orders")).toBe("sell")
   })
 
   it("matches a dynamic segment and prefers the static sibling", () => {

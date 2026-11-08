@@ -53,6 +53,10 @@ that takes orders is offline, the guest sees an acceptance made on another
 device only once it is back. Staff who reject an order and skip the refund
 leave the guest's money with the business; the guest's page tells the guest to
 ask for it.
+A rejected order not paid in full also discards its bill
+(`menu-ordering/0009`).
+Money that arrives for an order after it is rejected waits unmatched
+(`menu-ordering/0010`).
 
 ## Enforced by
 

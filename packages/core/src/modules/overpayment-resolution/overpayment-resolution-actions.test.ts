@@ -1,6 +1,7 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
+import { cancelBill } from "../bill/bill-actions.ts"
 import { cancelPayment } from "../payment/payment-actions.ts"
 import { refundPayment } from "../refund/refund-actions.ts"
 import { NonNegativeInteger, PositiveInteger } from "../shared/schema.ts"
@@ -63,6 +64,31 @@ describe("Staff resolves an overpayment", () => {
       { source: { type: "return" }, amount: 6_000, answered: 6_000 },
       { source: { type: "kept", id: kept.value }, answered: 4_000 },
     ])
+  })
+
+  test("Money a guest paid on a discarded bill", async () => {
+    await using context = await createOverpaymentContext()
+    const billId = await context.createBillOf([
+      { name: "Soup", unitAmount: 250, quantity: 2 },
+    ])
+    const paymentId = await context.createTestPayment({ amount: 250, billId })
+    await context.settleByTransfer(paymentId)
+    {
+      await using run = testCreateRun(context.deps)
+      await run.orThrow(cancelBill(billId))
+    }
+    const discarded = await context.deriveOverpayment({ billId })
+
+    const kept = await record(context, {
+      paymentId,
+      kind: "kept",
+      amount: PositiveInteger(250),
+      deviceId: null,
+    })
+
+    expect(discarded.unresolved).toBe(250)
+    expect(kept.ok).toBe(true)
+    expect((await context.deriveOverpayment({ billId })).unresolved).toBe(0)
   })
 
   test("Resolution larger than the overpayment", async () => {

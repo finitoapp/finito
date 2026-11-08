@@ -11,6 +11,7 @@ import { openRefundScreen, refundConfirmButton } from "./support/payment.ts"
 import {
   enableTableSelfPay,
   fakeSelfPayLightning,
+  receiveBankTransfer,
   receiveShownBankTransfer,
   routeFakeNostrRelays,
   seedActiveFioPlugin,
@@ -460,6 +461,69 @@ test("a guest paying the rest of an order staff reject leaves the payment and is
     await expect(
       guest.getByRole("button", { name: translate("en", "selfPay.order.back") })
     ).toHaveCount(0)
+  })
+})
+
+test("money a guest sends after staff reject the order stays off its bill, listed apart by the order's number", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  const rest =
+    await test.step("the guest pays 80.00 of 90.00 and opens paying the rest", async () => {
+      await gotoOrders(page)
+      await writeOrder(guest, guestAddress, {
+        text: "2x pivo",
+        amount: "90.00",
+      })
+      await receiveShownBankTransfer(page, {
+        payer: guest,
+        language: "en",
+        amount: 8000,
+        currency: "USD",
+      })
+      const payRest = guest.getByRole("button", {
+        name: translateParams("en", "selfPay.order.payRest", {
+          amount: "$10.00",
+        }),
+      })
+      await expect(payRest).toBeVisible({ timeout: 45_000 })
+      await payRest.click()
+      return {
+        variableSymbol: await bankField(guest, "selfPay.bank.variableSymbol"),
+        recipientMessage: await bankField(guest, "selfPay.bank.message"),
+      }
+    })
+
+  await test.step("staff reject the order", async () => {
+    await page
+      .getByTestId("order-to-serve")
+      .getByRole("button", { name: translate("en", "orders.reject") })
+      .click()
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: translate("en", "orders.reject.confirm") })
+      .click()
+    await gotoOrders(page)
+  })
+
+  await test.step("the rest the guest sends anyway is listed apart, by the order's number", async () => {
+    await receiveBankTransfer(page, { amount: 1000, currency: "USD", ...rest })
+    await expect(
+      page.getByText(translate("en", "orders.paidAfterRejection.title"))
+    ).toBeVisible({ timeout: 45_000 })
+    await expect(
+      page.getByText(
+        translateParams("en", "orders.paidAfterRejection.entry", {
+          number: 1,
+          amount: "$10.00",
+        })
+      )
+    ).toBeVisible()
   })
 })
 

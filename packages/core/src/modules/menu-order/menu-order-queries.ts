@@ -4,6 +4,7 @@ import { sql } from "kysely"
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import type { DateString } from "../shared/schema.ts"
+import type { SelfPayPointer } from "../table-self-pay/table-self-pay-reference-utils.ts"
 import type { MenuVersionId } from "./menu-order-types.ts"
 
 export const menuVersionByIdQuery = (id: MenuVersionId) =>
@@ -45,9 +46,22 @@ export const menuOrderByBillIdQuery = (billId: BillId) =>
   createQuery((db) =>
     db
       .selectFrom("menuOrder")
-      .select(["id", "writtenAmount"])
+      .select(["id", "writtenAmount", "rejectedAt"])
       .where("billId", "=", billId)
       .where("isDeleted", "is not", sqliteTrue)
+  )
+
+export const rejectedMenuOrdersByPointerQuery = (
+  pointers: ReadonlyArray<SelfPayPointer>
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("menuOrder")
+      .select(["pointer", "number"])
+      .where("pointer", "in", pointers)
+      .where("rejectedAt", "is not", null)
+      .where("isDeleted", "is not", sqliteTrue)
+      .$narrowType<{ pointer: KyselyNotNull; number: KyselyNotNull }>()
   )
 
 export const menuOrdersToServeQuery = createQuery((db) =>

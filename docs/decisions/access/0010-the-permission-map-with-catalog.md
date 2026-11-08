@@ -21,7 +21,7 @@ complete by `satisfies Record<Permission, TranslationKey>`:
 
 | Permission | Covers |
 |---|---|
-| `sell` | home (pos, numpad), the bill including adding lines, splitting a bill, payment, tip |
+| `sell` | home (pos, numpad), the bill including adding lines, splitting a bill, payment, tip, accepting and serving guests' orders |
 | `activity` | payment and bill history, payment detail, retrying an EET delivery, the AI assistant |
 | `discard` | discarding a bill, any cart write with a `remove` line, cancelling a payment |
 | `refund` | refunds, the one offered on a collision included, and acknowledging an excess settlement |
@@ -117,6 +117,8 @@ counting as no permissions.
 ## Enforced by
 
 - `packages/core/src/modules/access/access-utils.test.ts > access presets (access/0010) > the catalog is granted from Manager up, and to no lower preset`
+- `apps/web-app/src/router.test.ts > _terminal route access (access/0003) > the orders to serve need sell, since accepting and serving sync`
+- `apps/native-app/src/core/route-access.test.ts > native route access > asks for sell before the orders to serve, whose accept and served sync`
 - `apps/web-app/e2e/catalog-items.spec.ts > a Basic device opening the catalog gets the PIN prompt`
 - `packages/core/src/modules/access/access-utils.test.ts > device permissions > an unknown permission is dropped and the known ones kept`
 - `packages/app-shared/src/cart-lines.test.ts > linesNeedDiscard (access/0002) > clearing the cart needs discard`

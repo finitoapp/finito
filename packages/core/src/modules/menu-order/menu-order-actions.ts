@@ -20,6 +20,7 @@ import {
 } from "../app-settings/app-settings-queries.ts"
 import { getFiatCurrency } from "../app-settings/app-settings-utils.ts"
 import {
+  cancelBill,
   loadNextBillDisplayNumber,
   type MenuOrderBillRows,
 } from "../bill/bill-actions.ts"
@@ -27,6 +28,7 @@ import { claimedTransactionsByBillIdQuery } from "../bill/bill-coverage-queries.
 import {
   type BillCoverageSummary,
   loadBillCoverage,
+  loadBillStatus,
 } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { claimedPaymentIdSet } from "../bill/bill-utils.ts"
@@ -76,6 +78,7 @@ import {
   menuOrdersToServeQuery,
   menuVersionByIdQuery,
   menuVersionsNewestFirstQuery,
+  rejectedMenuOrdersByPointerQuery,
 } from "./menu-order-queries.ts"
 import type { MenuOrderId } from "./menu-order-types.ts"
 import {
@@ -261,6 +264,10 @@ export const rejectMenuOrder =
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
+    const status = await run(loadBillStatus(billId))
+    if (status.ok && status.value === "open") {
+      await run.orThrow(cancelBill(billId))
+    }
     await runMutationWithCompletion((options) =>
       run.deps.evolu.update(
         "menuOrder",
@@ -471,12 +478,11 @@ export const loadMenuOrderArrivalRows =
         selfPaySettingsQuery,
       ])
     )
-    if (
-      selection.kind === "written" &&
-      settings?.writtenOrders !== sqliteTrue
-    ) {
-      return ok(null)
-    }
+    const takesKind =
+      selection.kind === "written"
+        ? settings?.writtenOrders
+        : settings?.menuOrdering
+    if (takesKind !== sqliteTrue) return ok(null)
     const table = tables.find(
       (candidate) =>
         candidate.selfPayEnabled === sqliteTrue &&
@@ -668,6 +674,7 @@ export interface MenuOrderNotFoundYet {
   readonly amount: Integer
   readonly currency: Currency
   readonly occurredAt: TimestampMs
+  readonly rejectedOrderNumber: number | null
 }
 
 export const loadMenuOrdersNotFoundYet =
@@ -680,25 +687,36 @@ export const loadMenuOrdersNotFoundYet =
         )
       )
     )
+    const unmatched = rows.flatMap((row) => {
+      const reference = SelfPayReferenceSchema.safeParse(row.variableSymbol)
+      const pointer = parseSelfPayBankMessage(row.recipientMessage)?.pointer
+      return reference.success &&
+        isOrderSelfPayReference(reference.data) &&
+        pointer !== undefined &&
+        row.amount !== null &&
+        row.currency !== null &&
+        row.occurredAt !== null
+        ? [
+            {
+              id: row.id,
+              amount: row.amount,
+              currency: row.currency,
+              occurredAt: row.occurredAt,
+              pointer,
+            },
+          ]
+        : []
+    })
+    const rejected = await run.deps.evolu.loadQuery(
+      rejectedMenuOrdersByPointerQuery(unmatched.map(({ pointer }) => pointer))
+    )
+    const rejectedNumbers = new Map(
+      rejected.map(({ pointer, number }) => [pointer, number])
+    )
     return ok(
-      rows.flatMap((row) => {
-        const reference = SelfPayReferenceSchema.safeParse(row.variableSymbol)
-        const pointer = parseSelfPayBankMessage(row.recipientMessage)?.pointer
-        return reference.success &&
-          isOrderSelfPayReference(reference.data) &&
-          pointer !== undefined &&
-          row.amount !== null &&
-          row.currency !== null &&
-          row.occurredAt !== null
-          ? [
-              {
-                id: row.id,
-                amount: row.amount,
-                currency: row.currency,
-                occurredAt: row.occurredAt,
-              },
-            ]
-          : []
-      })
+      unmatched.map(({ pointer, ...entry }) => ({
+        ...entry,
+        rejectedOrderNumber: rejectedNumbers.get(pointer) ?? null,
+      }))
     )
   }

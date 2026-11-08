@@ -52,6 +52,8 @@ lower what an earlier tip counts. Ordering by the sync clock reads Evolu's
 history, which `evolu-history-shape.test.ts` guards. The card, the bill and
 payment histories, the payment detail and the sales statistics read the same
 derivation.
+A canceled bill keeps no goods, so the money on it is its overpayment
+(`payment/0014`).
 
 ## Enforced by
 

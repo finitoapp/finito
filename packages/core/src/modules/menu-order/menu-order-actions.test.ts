@@ -7,7 +7,7 @@ import {
   setOrderDevice,
   setWrittenOrders,
 } from "../app-settings/app-settings-actions.ts"
-import { loadBillCoverage } from "../bill/bill-guards.ts"
+import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import {
@@ -671,6 +671,30 @@ describe("money for an order that cannot be recorded", () => {
     expect(await coverageOf(context, order)).toMatchObject({ coverage: "paid" })
   })
 
+  test("waits unmatched when ordering is off as the money arrives", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    const order = await orderFrom(context, menu, [[coffee, 99]])
+    await using run = testCreateRun(context.deps)
+    await run.ok(setMenuOrdering({ on: false, deviceId: context.deviceId }))
+
+    expect((await pay(context, order, 100)).paymentId).toBe(null)
+    expect(await orderRowOf(context, order)).toBe(undefined)
+  })
+
+  test("takes the rest of an order already recorded, though ordering has been switched off since", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    const order = await orderFrom(context, menu, [[coffee, 2]])
+    await pay(context, order, 6500)
+    await using run = testCreateRun(context.deps)
+    await run.ok(setMenuOrdering({ on: false, deviceId: context.deviceId }))
+
+    await pay(context, order, 6500)
+
+    expect(await coverageOf(context, order)).toMatchObject({ coverage: "paid" })
+  })
+
   test("is left to the device that takes orders", async () => {
     await using context = await createSelfPayTestContext()
     const { coffee, menu } = await openCafe(context)
@@ -1113,6 +1137,56 @@ describe("what staff serve", () => {
     })
   })
 
+  test("discards the bill of a rejected order not paid in full, so the table owes nothing for it", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    const order = await orderFrom(context, menu, [[coffee, 99]])
+    await pay(context, order, 100)
+    await using run = testCreateRun(context.deps)
+    const [toServe] = await run.ok(loadMenuOrdersToServe())
+    if (toServe === undefined) throw new Error("Expected an order to serve.")
+
+    await run.ok(rejectMenuOrder(toServe))
+
+    expect(
+      await run.orThrow(loadBillStatus(deriveMenuOrderBillId(order.pointer)))
+    ).toBe("canceled")
+  })
+
+  test("keeps the closed bill of a rejected order paid in full", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    const order = await orderFrom(context, menu, [[coffee, 1]])
+    await pay(context, order, 6500)
+    await using run = testCreateRun(context.deps)
+    const [toServe] = await run.ok(loadMenuOrdersToServe())
+    if (toServe === undefined) throw new Error("Expected an order to serve.")
+
+    await run.ok(rejectMenuOrder(toServe))
+
+    expect(
+      await run.orThrow(loadBillStatus(deriveMenuOrderBillId(order.pointer)))
+    ).toBe("closed")
+  })
+
+  test("leaves money that arrives after the order is rejected unmatched, named by the order's number", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const written = await writeOrder(context, menu)
+    await pay(context, written, 9000)
+    await using run = testCreateRun(context.deps)
+    const [order] = await run.ok(loadMenuOrdersToServe())
+    if (order === undefined) throw new Error("Expected an order to serve.")
+    await run.ok(rejectMenuOrder(order))
+
+    const late = await pay(context, written, 9000)
+
+    expect(late.paymentId).toBe(null)
+    expect(await run.ok(loadMenuOrdersNotFoundYet())).toEqual([
+      expect.objectContaining({ amount: 9000, rejectedOrderNumber: 1 }),
+    ])
+  })
+
   test("names the bill for the refund of an order paid in two payments", async () => {
     await using context = await createSelfPayTestContext()
     const menu = await openBar(context)
@@ -1190,7 +1264,11 @@ describe("what staff serve", () => {
     await using run = testCreateRun(context.deps)
 
     expect(await run.ok(loadMenuOrdersNotFoundYet())).toEqual([
-      expect.objectContaining({ amount: 6500, currency: "CZK" }),
+      expect.objectContaining({
+        amount: 6500,
+        currency: "CZK",
+        rejectedOrderNumber: null,
+      }),
     ])
   })
 })

@@ -77,6 +77,13 @@ function OrdersToServe() {
 
   if (toServe === undefined) return <ListSkeleton />
 
+  const notFoundYet = toServe.notFoundYet.filter(
+    ({ rejectedOrderNumber }) => rejectedOrderNumber === null
+  )
+  const paidAfterRejection = toServe.notFoundYet.filter(
+    ({ rejectedOrderNumber }) => rejectedOrderNumber !== null
+  )
+
   return (
     <YStack gap={16}>
       {toServe.orders.length === 0 ? (
@@ -96,8 +103,19 @@ function OrdersToServe() {
           ))}
         </YStack>
       )}
-      {toServe.notFoundYet.length > 0 && (
-        <NotFoundYet entries={toServe.notFoundYet} />
+      {notFoundYet.length > 0 && (
+        <UnmatchedOrderMoney
+          title={t("orders.notFoundYet.title")}
+          description={t("orders.notFoundYet.description")}
+          entries={notFoundYet}
+        />
+      )}
+      {paidAfterRejection.length > 0 && (
+        <UnmatchedOrderMoney
+          title={t("orders.paidAfterRejection.title")}
+          description={t("orders.paidAfterRejection.description")}
+          entries={paidAfterRejection}
+        />
       )}
     </YStack>
   )
@@ -123,6 +141,12 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
     })
     if (!confirmed) return
     if (!(await require("refund", "access.action.rejectOrder"))) return
+    if (
+      !order.isFullyPaid &&
+      !(await require("discard", "access.action.discardBill"))
+    ) {
+      return
+    }
     await runToast(async (run) => {
       const refund = await run.ok(rejectMenuOrder(order))
       router.push(
@@ -251,9 +275,13 @@ function WrittenOrder({
   )
 }
 
-function NotFoundYet({
+function UnmatchedOrderMoney({
+  title,
+  description,
   entries,
 }: {
+  readonly title: string
+  readonly description: string
   readonly entries: ReadonlyArray<MenuOrderNotFoundYet>
 }) {
   const { t } = useTranslation()
@@ -262,32 +290,40 @@ function NotFoundYet({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("orders.notFoundYet.title")}</CardTitle>
-        <CardDescription>{t("orders.notFoundYet.description")}</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent gap={8}>
-        {entries.map((entry) => (
-          <XStack key={entry.id} justify="space-between" gap={12}>
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              fontWeight={fontWeight.medium}
-              fontVariant={["tabular-nums"]}
-            >
-              {formatMoney(
-                { value: entry.amount, currency: entry.currency },
-                locale
-              )}
-            </Text>
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color="muted-foreground"
-            >
-              {formatDateTime(new Date(entry.occurredAt), locale)}
-            </Text>
-          </XStack>
-        ))}
+        {entries.map((entry) => {
+          const amount = formatMoney(
+            { value: entry.amount, currency: entry.currency },
+            locale
+          )
+          return (
+            <XStack key={entry.id} justify="space-between" gap={12}>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.medium}
+                fontVariant={["tabular-nums"]}
+              >
+                {entry.rejectedOrderNumber === null
+                  ? amount
+                  : t("orders.paidAfterRejection.entry", {
+                      number: entry.rejectedOrderNumber,
+                      amount,
+                    })}
+              </Text>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {formatDateTime(new Date(entry.occurredAt), locale)}
+              </Text>
+            </XStack>
+          )
+        })}
       </CardContent>
     </Card>
   )

@@ -539,7 +539,7 @@ const ledgerAt = (ledger: Ledger, clock: SyncClockHex): Ledger => ({
 })
 
 const buildLedger = (input: BillOverpaymentInput): Ledger => {
-  const total = input.billTotal
+  const total = input.isCanceled ? 0 : input.billTotal
   const asks = new Map(
     input.payments.map((payment) => [
       payment.id,
@@ -654,16 +654,6 @@ const buildLedger = (input: BillOverpaymentInput): Ledger => {
 export const deriveBillOverpayment = (
   input: BillOverpaymentInput
 ): BillOverpayment => {
-  const none = NonNegativeInteger(0)
-  if (input.isCanceled) {
-    return {
-      overpayment: none,
-      unresolved: none,
-      answers: [],
-      roomByPayment: new Map(input.payments.map(({ id }) => [id, none])),
-    }
-  }
-
   const ledger = buildLedger(input)
   const allocation = allocate(ledger)
   const answerOf = (
@@ -734,15 +724,12 @@ export const deriveRefundOverpaymentAmount = (
     readonly kind: OverpaymentRefundKind
   }
 ): NonNegativeInteger =>
-  NonNegativeInteger(
-    input.isCanceled ? 0 : refundOverpaymentAmount(buildLedger(input), refund)
-  )
+  NonNegativeInteger(refundOverpaymentAmount(buildLedger(input), refund))
 
 export const deriveReturnableOverpayment = (
   input: BillOverpaymentInput,
   paymentId: PaymentId
 ): NonNegativeInteger => {
-  if (input.isCanceled) return NonNegativeInteger(0)
   const ledger = buildLedger(input)
   return NonNegativeInteger(returnableOf(ledger, allocate(ledger), paymentId))
 }

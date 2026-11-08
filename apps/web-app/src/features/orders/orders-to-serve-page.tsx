@@ -74,6 +74,13 @@ function OrdersToServe() {
 
   if (toServe === undefined) return <ListSkeleton />
 
+  const notFoundYet = toServe.notFoundYet.filter(
+    ({ rejectedOrderNumber }) => rejectedOrderNumber === null
+  )
+  const paidAfterRejection = toServe.notFoundYet.filter(
+    ({ rejectedOrderNumber }) => rejectedOrderNumber !== null
+  )
+
   return (
     <div className="flex flex-col gap-4">
       {toServe.orders.length === 0 ? (
@@ -87,8 +94,19 @@ function OrdersToServe() {
           ))}
         </ul>
       )}
-      {toServe.notFoundYet.length > 0 && (
-        <NotFoundYet entries={toServe.notFoundYet} />
+      {notFoundYet.length > 0 && (
+        <UnmatchedOrderMoney
+          title={t("orders.notFoundYet.title")}
+          description={t("orders.notFoundYet.description")}
+          entries={notFoundYet}
+        />
+      )}
+      {paidAfterRejection.length > 0 && (
+        <UnmatchedOrderMoney
+          title={t("orders.paidAfterRejection.title")}
+          description={t("orders.paidAfterRejection.description")}
+          entries={paidAfterRejection}
+        />
       )}
     </div>
   )
@@ -115,6 +133,12 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
     })
     if (!confirmed) return
     if (!(await require("refund", "access.action.rejectOrder"))) return
+    if (
+      !order.isFullyPaid &&
+      !(await require("discard", "access.action.discardBill"))
+    ) {
+      return
+    }
     await runToast(async (run) => {
       const refund = await run.ok(rejectMenuOrder(order))
       void navigate(
@@ -222,9 +246,13 @@ function WrittenOrder({
   )
 }
 
-function NotFoundYet({
+function UnmatchedOrderMoney({
+  title,
+  description,
   entries,
 }: {
+  readonly title: string
+  readonly description: string
   readonly entries: ReadonlyArray<MenuOrderNotFoundYet>
 }) {
   const { t } = useTranslation()
@@ -233,24 +261,32 @@ function NotFoundYet({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("orders.notFoundYet.title")}</CardTitle>
-        <CardDescription>{t("orders.notFoundYet.description")}</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-2">
-          {entries.map((entry) => (
-            <li key={entry.id} className="flex justify-between gap-3 text-sm">
-              <span className="font-medium tabular-nums">
-                {formatMoney(
-                  { value: entry.amount, currency: entry.currency },
-                  locale
-                )}
-              </span>
-              <span className="text-muted-foreground">
-                {formatDateTime(new Date(entry.occurredAt), locale)}
-              </span>
-            </li>
-          ))}
+          {entries.map((entry) => {
+            const amount = formatMoney(
+              { value: entry.amount, currency: entry.currency },
+              locale
+            )
+            return (
+              <li key={entry.id} className="flex justify-between gap-3 text-sm">
+                <span className="font-medium tabular-nums">
+                  {entry.rejectedOrderNumber === null
+                    ? amount
+                    : t("orders.paidAfterRejection.entry", {
+                        number: entry.rejectedOrderNumber,
+                        amount,
+                      })}
+                </span>
+                <span className="text-muted-foreground">
+                  {formatDateTime(new Date(entry.occurredAt), locale)}
+                </span>
+              </li>
+            )
+          })}
         </ul>
       </CardContent>
     </Card>

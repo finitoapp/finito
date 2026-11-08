@@ -39,6 +39,8 @@ Staff get one more question on a table with self-pay, and only when the
 edit touches guest money. The discard question counts every claimed
 payment on the bill as paid, so a partial payment staff took on another
 device is named there too.
+Staff answer the money on a canceled bill on its overpayment card
+(`payment/0014`).
 
 ## Enforced by
 

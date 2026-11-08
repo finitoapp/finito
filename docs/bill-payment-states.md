@@ -574,7 +574,8 @@ rewrites `createdAt`. What no answer covers is the **unresolved
 overpayment**. The card, the bill and payment histories and the payment
 detail flag a bill overpaid only while it is above zero; once it is zero the
 card lists how it was resolved, with the part of an answer beyond what the
-money allows shown as not counted. A canceled bill has none. Tips from an
+money allows shown as not counted. A canceled bill keeps no goods, so all
+the money on it is its overpayment (`payment/0014`). Tips from an
 overpayment count in the sales statistics on the day they were recorded.
 See [`payment/0013`](decisions/payment/0013-an-overpayment-is-returned-tipped-or-kept.md).
 
