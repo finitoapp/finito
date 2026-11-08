@@ -158,6 +158,12 @@ The word "account" means two unrelated things here.
     closes the SwitchioPay on the phone it runs on; Finito records each
     successful one per device (`cardSwitchioClosure`, payment/0008). Not a
     bill's `closed` status.
+  - **Refund to the card** (cs *vrácení na kartu*, ECR *referral refund*) —
+    money back to the card that paid, named by the payment's `refundId`
+    (payment/0009); may be less than was paid. Finito writes the `refund`
+    (method `cardSwitchio`) only once the terminal approved it, until then a
+    `cardSwitchioRefundAttempt` (refund/0007). Not a **storno** (ECR
+    *reversal*), which cancels a whole payment before the batch is closed.
 - **Qerko** — the service behind two payment methods, each paired on its own
   (`docs/qerko.md`). Not the same as **Switchio**: Qerko needs no Android
   intent.
