@@ -27,6 +27,7 @@ import { EvoluStartupError } from "../src/components/app/evolu-startup-error.tsx
 import { NotOnboardedRedirect } from "../src/components/app/not-onboarded-redirect.tsx"
 import { PinPromptHost } from "../src/components/app/pin-prompt-host.tsx"
 import { SentryController } from "../src/components/app/sentry-controller.tsx"
+import { SwitchioRestoredClosure } from "../src/components/app/switchio-restored-closure.tsx"
 import { SwitchioRestoredResult } from "../src/components/app/switchio-restored-result.tsx"
 import { ToastHost } from "../src/components/app/toast-host.tsx"
 import {
@@ -158,6 +159,7 @@ function ThemedApp() {
             <DeviceRegistration />
             <DemoDataSeed />
             <SwitchioRestoredResult />
+            <SwitchioRestoredClosure />
           </Suspense>
         </Theme>
       </TamaguiProvider>

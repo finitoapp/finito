@@ -1,3 +1,5 @@
+import { router } from "expo-router"
+import CalendarCheck from "lucide-react-native/icons/calendar-check"
 import ExternalLink from "lucide-react-native/icons/external-link"
 import { Linking } from "react-native"
 import { Text, YStack } from "tamagui"
@@ -47,6 +49,14 @@ export function CardSwitchioSettingsPage() {
           </YStack>
         </CardContent>
       </Card>
+      {/* The closure has its own screen: it needs `confirm`, this one `admin` (access/0011). */}
+      <Button
+        size="lg"
+        variant="secondary"
+        iconStart={CalendarCheck}
+        label={t("settings.cardSwitchioAccount.closureLink")}
+        onPress={() => router.push("/settings/card-closure")}
+      />
     </Screen>
   )
 }

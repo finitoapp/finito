@@ -1358,4 +1358,50 @@ export const csSettings = {
   "accountShare.expired":
     "Platnost žádosti vypršela, nebo ji nahradila jiná. Spusťte ji znovu v aplikaci, která o účet žádala.",
   "accountShare.none": "Není tu žádná žádost o účet.",
+  "settings.cardClosure.title": "Uzávěrka karet",
+  "settings.cardClosure.action": "Provést uzávěrku",
+  "access.action.closeCardBatch": "Provést uzávěrku karetního terminálu",
+  "settings.cardClosure.confirm.title": "Uzavřít dávku terminálu?",
+  "settings.cardClosure.confirm.description":
+    "Platby od poslední uzávěrky se odešlou k vypořádání.",
+  "settings.cardClosure.confirm.cancel": "Zrušit",
+  "settings.cardClosure.thisTerminal.title": "Tento terminál",
+  "settings.cardClosure.thisTerminal.description":
+    "Uzavře dávku terminálu SwitchioPay v tomto telefonu. Provádějte ji denně po konci směny.",
+  "settings.cardClosure.thisTerminal.last": "Poslední uzávěrka",
+  "settings.cardClosure.thisTerminal.never": "Zatím žádná uzávěrka",
+  "settings.cardClosure.result.title": "Výsledek uzávěrky",
+  "settings.cardClosure.result.payments": "Platby včetně dýška",
+  "settings.cardClosure.result.refunds": "Refundace",
+  "settings.cardClosure.result.adjustments": "Úpravy",
+  "settings.cardClosure.result.countAndAmount": "{count}× · {amount}",
+  "settings.cardClosure.result.batch": "Dávka",
+  "settings.cardClosure.result.shift": "Směna",
+  "settings.cardClosure.result.terminalTime": "Čas terminálu",
+  "settings.cardClosure.result.closedAt": "Uzavřeno",
+  "settings.cardClosure.result.batchAndShift": "Dávka {batch}, směna {shift}",
+  "settings.cardClosure.terminals.title": "Terminály podniku",
+  "settings.cardClosure.terminals.description":
+    "Každý terminál se uzavírá na svém telefonu, dávku jiného telefonu odsud uzavřít nelze.",
+  "settings.cardClosure.terminals.notClosedToday": "Dnes neuzavřeno",
+  "settings.cardClosure.terminals.closedToday": "Dnes uzavřeno",
+  "settings.cardClosure.terminals.thisDevice": "Tento telefon",
+  "settings.cardClosure.terminals.unknownDevice": "Neznámé zařízení",
+  "settings.cardClosure.terminals.empty":
+    "Z aplikace zatím žádný terminál uzavřen nebyl.",
+  "settings.cardClosure.history.title": "Historie",
+  "settings.cardClosure.history.empty": "Zatím žádné uzávěrky",
+  "settings.cardClosure.error.failed":
+    "Uzávěrka selhala. Zkuste to znovu nebo ji ověřte v SwitchioPay.",
+  "settings.cardClosure.error.busy":
+    "Terminál je zaneprázdněn. Dokončete rozpracovanou operaci a zkuste to znovu.",
+  "settings.cardClosure.error.unavailable":
+    "SwitchioPay není na tomto zařízení dostupný.",
+  "settings.cardClosure.error.accountMissing": "Karetní terminál není zapnutý.",
+  "settings.cardClosure.error.unknown":
+    "Výsledek uzávěrky je neznámý. Ověřte uzávěrku v SwitchioPay.",
+  "settings.cardClosure.restored.closed": "Uzávěrka karet byla dokončena.",
+  "settings.cardClosure.restored.unresolved":
+    "Výsledek uzávěrky se nepodařilo přečíst. Ověřte ji v SwitchioPay.",
+  "settings.cardSwitchioAccount.closureLink": "Denní uzávěrka",
 } satisfies Record<keyof typeof enSettings, string>

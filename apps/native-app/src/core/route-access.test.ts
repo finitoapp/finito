@@ -54,6 +54,14 @@ describe("native route access", () => {
     expect(requiredPermission("/settings/donations-invoice")).toBeNull()
   })
 
+  it("lets a shift lead close the card terminal's batch, while its settings stay owner-only", () => {
+    expect(requiredPermission("/settings/card-closure")).toBe("confirm")
+    expect(requiredPermission("/settings/payment-accounts")).toBe("admin")
+    expect(requiredPermission("/settings/payment-accounts/card-switchio")).toBe(
+      "admin"
+    )
+  })
+
   it("matches a dynamic segment and prefers the static sibling", () => {
     expect(requiredPermission("/payment/tip")).toBe("sell")
     expect(requiredPermission("/payment/abc123")).toBe("sell")

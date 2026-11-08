@@ -17,13 +17,16 @@ import { createE2eSparkWalletDep } from "../e2e/e2e-spark-presets.ts"
 import { eetNativeCrypto } from "../platform/eet-crypto"
 import { lockManager } from "../platform/evolu-runtime"
 import { createFetchDep } from "../platform/native-deps.ts"
-import { createSwitchioTerminalDep } from "../platform/switchio.ts"
+import {
+  createSwitchioClosureDep,
+  createSwitchioTerminalDep,
+} from "../platform/switchio.ts"
 
 /**
  * Native composition root for Task actions, the counterpart of web's
  * `useAppRun`: the same dependency set (console, evolu, deviceEvolu,
  * evoluOwner, masterKey, lockManager, date, fetch, sparkWallet, yadioApi,
- * qerkoApi, switchioTerminal, eetApi, nostr), built fresh for each run. Use as
+ * qerkoApi, switchioTerminal, switchioClosure, eetApi, nostr), built fresh for each run. Use as
  * `await using run = appRun()`. The Cashu wallet comes from `useCashuAppRun`.
  */
 /** Every app dependency but the Cashu ones, built fresh for each run. */
@@ -52,6 +55,7 @@ function useAppRunDeps() {
       }),
       uuid: { create: () => Crypto.randomUUID() },
       ...createSwitchioTerminalDep(),
+      ...createSwitchioClosureDep({ demo: account.demo !== null }),
       ...createEetApiDep(
         { ...dateDep, ...fetchDep },
         {
@@ -62,7 +66,7 @@ function useAppRunDeps() {
       ),
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
     }
-  }, [account.masterKey, deviceEvolu, evolu])
+  }, [account.demo, account.masterKey, deviceEvolu, evolu])
 }
 
 export function useAppRun() {

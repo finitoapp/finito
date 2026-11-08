@@ -112,6 +112,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/components/app/switchio-restored-closure.tsx",
+    web: [],
+    note: "Finito only: web's Capacitor bridge takes card payments but cannot close the terminal's batch, so there is no closure to restore (payment/0008).",
+    status: "matched",
+  },
+  {
     native: "src/components/app/toast-host.tsx",
     web: ["apps/web-app/src/components/ui/sonner.tsx"],
     status: "matched",
@@ -1187,6 +1193,30 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/language/language-settings-page.tsx",
     ],
     status: "matched",
+  },
+  {
+    native: "src/features/settings/card-closure/card-closure-page.tsx",
+    web: [],
+    note: "Finito only: closing the SwitchioPay batch needs the Expo module's closure intent, which web's Capacitor bridge does not have (payment/0008, access/0011).",
+    status: "matched",
+    allowedDifferences: {
+      FadeHeader: "the screen's title, Card terminal closure",
+      Card: "one card each for this terminal, the result, the business's terminals and the history",
+      CardHeader: "each card's title and description",
+      CardTitle: "each card's title",
+      CardDescription:
+        "what the closure does, when the shown result was recorded, and that another phone's terminal cannot be closed from here",
+      CardContent: "each card's body",
+      DetailRow:
+        "the last closure's time and the result's totals, batch and shift",
+      Alert:
+        "SwitchioPay missing on this device, and an unknown outcome that stays on screen until staff checks SwitchioPay",
+      AlertTitle: "the unknown outcome's message",
+      AlertDescription: "the missing-SwitchioPay warning",
+      Button: "the one action, Close the batch",
+      Separator: "the totals apart from the batch, shift and terminal time",
+      Badge: "whether each terminal was closed today",
+    },
   },
   {
     native:
