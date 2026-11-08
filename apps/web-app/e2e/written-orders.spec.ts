@@ -1,10 +1,14 @@
 import { defaultSelfPayRelays } from "@payky/core/integrations/nostr/nostr-default-relays"
 import type { Page } from "@playwright/test"
 
-import { addTable } from "./support/bill.ts"
+import { addTable, addTaxRate } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { translate, translateParams } from "./support/i18n.ts"
-import { toggleInlineSwitch } from "./support/inline-edit.ts"
+import {
+  pickInlineOption,
+  toggleInlineCheckbox,
+  toggleInlineSwitch,
+} from "./support/inline-edit.ts"
 import { gotoPage } from "./support/navigation.ts"
 import { seedOnboarding } from "./support/onboarding.ts"
 import { openRefundScreen, refundConfirmButton } from "./support/payment.ts"
@@ -148,6 +152,133 @@ test("the owner switches writing on and a sticker printed before shows the form"
   })
 })
 
+test("a VAT payer's guests can write once the owner picks the tax rate of a written line", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guest = await context.newPage()
+  const missingRate = page.getByText(
+    translate(
+      "en",
+      "catalog.tables.selfPayOptions.written.taxRate.missing.title"
+    )
+  )
+
+  const guestAddress =
+    await test.step("a VAT payer switches writing on and is told guests can't write yet", async () => {
+      await gotoPage(
+        page,
+        "/settings/legal-entity",
+        "en",
+        "settings.legalEntity.title"
+      )
+      await pickInlineOption(
+        page,
+        "settings.legalEntity.country.label",
+        translate("en", "country.cz")
+      )
+      await toggleInlineCheckbox(page, "settings.legalEntity.vatPayer.label")
+      await addTaxRate(page, "en", { name: "Standard", rate: "21" })
+      const address = await seedBar(page)
+      await expect(missingRate).toBeVisible()
+      return address
+    })
+
+  await test.step("the guest is asked to order with the staff and offered nothing to write", async () => {
+    await guest.goto(guestAddress)
+    await expect(
+      guest.getByText(translate("en", "selfPay.order.unavailable.title"))
+    ).toBeVisible({ timeout: 45_000 })
+    await expect(textField(guest)).toHaveCount(0)
+  })
+
+  await test.step("once the owner picks the rate, the guest can write", async () => {
+    await pickInlineOption(
+      page,
+      "catalog.tables.selfPayOptions.written.taxRate.label",
+      /^Standard/
+    )
+    await expect(missingRate).toHaveCount(0)
+    await openForm(guest, guestAddress)
+  })
+})
+
+test("a VAT payer's staff switch a written item to another tax rate before accepting the order, and it holds after", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(150_000)
+  await routeFakeNostrRelays(context)
+  const orderCard = page.getByTestId("order-to-serve")
+  const guest = await context.newPage()
+  const mealRates = orderCard.getByRole("group", {
+    name: translateParams("en", "orders.written.taxRate", { text: "utopenec" }),
+  })
+
+  const guestAddress =
+    await test.step("a VAT payer with a standard and a food rate writes lines at the standard one", async () => {
+      await gotoPage(
+        page,
+        "/settings/legal-entity",
+        "en",
+        "settings.legalEntity.title"
+      )
+      await pickInlineOption(
+        page,
+        "settings.legalEntity.country.label",
+        translate("en", "country.cz")
+      )
+      await toggleInlineCheckbox(page, "settings.legalEntity.vatPayer.label")
+      await addTaxRate(page, "en", { name: "Standard", rate: "21" })
+      await addTaxRate(page, "en", { name: "Food", rate: "12" })
+      const address = await seedBar(page)
+      await pickInlineOption(
+        page,
+        "catalog.tables.selfPayOptions.written.taxRate.label",
+        /^Standard/
+      )
+      return address
+    })
+
+  await test.step("a guest writes a beer and a meal and pays", async () => {
+    await gotoOrders(page)
+    await openForm(guest, guestAddress)
+    await textField(guest).fill("2x pivo")
+    await amountField(guest).fill("90.00")
+    await guest
+      .getByRole("button", { name: translate("en", "selfPay.written.add") })
+      .click()
+    await textField(guest).nth(1).fill("utopenec")
+    await amountField(guest).nth(1).fill("60.00")
+    await payButton(guest, "$150.00").click()
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 15_000,
+      currency: "USD",
+    })
+  })
+
+  await test.step("staff switch the meal to the food rate, then accept the order", async () => {
+    const food = mealRates.getByRole("button", { name: /^Food/ })
+    await expect(food).toBeVisible({ timeout: 45_000 })
+    await food.click()
+    await expect(food).toHaveAttribute("aria-pressed", "true")
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+  })
+
+  await test.step("the accepted order shows each rate and offers no switch", async () => {
+    await expect(mealRates).toHaveCount(0)
+    await expect(orderCard).toContainText("Standard (21%)")
+    await expect(orderCard).toContainText("Food (12%)")
+  })
+})
+
 test("a guest writes 2x pivo for 90.00 and the QR asks for 90.00 with a reference that starts with 9", async ({
   seededPage: page,
   context,
@@ -168,6 +299,52 @@ test("a guest writes 2x pivo for 90.00 and the QR asks for 90.00 with a referenc
     const message = await bankField(guest, "selfPay.bank.message")
     expect(message).toMatch(/^PK1[A-Z2-7]{32}$/u)
     expect(message).not.toContain("pivo")
+  })
+})
+
+test("a guest writes two items, pays their total, and staff see each with its amount and the total", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const orderCard = page.getByTestId("order-to-serve")
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  await test.step("the guest writes 2x pivo for 90.00, adds utopenec for 60.00 and pays 150.00", async () => {
+    await gotoOrders(page)
+    await openForm(guest, guestAddress)
+    await textField(guest).fill("2x pivo")
+    await amountField(guest).fill("90.00")
+    await guest
+      .getByRole("button", { name: translate("en", "selfPay.written.add") })
+      .click()
+    await textField(guest).nth(1).fill("utopenec")
+    await amountField(guest).nth(1).fill("60.00")
+    await payButton(guest, "$150.00").click()
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("150.00")
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 15_000,
+      currency: "USD",
+    })
+  })
+
+  await test.step("To serve lists each item as the guest's, with its amount, and the total", async () => {
+    for (const [text, amount] of [
+      ["2x pivo", "$90.00"],
+      ["utopenec", "$60.00"],
+    ] as const) {
+      await expect(orderCard).toContainText(
+        translateParams("en", "orders.written", { text })
+      )
+      await expect(orderCard).toContainText(amount)
+    }
+    await expect(orderCard).toContainText(
+      translateParams("en", "orders.written.total", { amount: "$150.00" })
+    )
   })
 })
 

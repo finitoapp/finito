@@ -63,8 +63,7 @@ describe("the data tools", () => {
           deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
         ),
         menu,
-        text,
-        amount: 9000,
+        lines: [{ text, amount: 9000 }],
       }),
       selectionKey: deriveSelfPaySelectionKey(selfPayTestRoot),
       createdAt: Math.floor(context.clock.date.now().getTime() / 1000),
@@ -104,8 +103,7 @@ describe("the data tools", () => {
           deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
         ),
         menu,
-        text,
-        amount: 9000,
+        lines: [{ text, amount: 9000 }],
       }),
       selectionKey: deriveSelfPaySelectionKey(selfPayTestRoot),
       createdAt: Math.floor(context.clock.date.now().getTime() / 1000),

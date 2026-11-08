@@ -1157,7 +1157,13 @@ export const enSettings = {
   "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
   "catalog.tables.selfPayOptions.written": "Guests write what they pay for",
   "catalog.tables.selfPayOptions.written.description":
-    "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line carries no tax rate.",
+    "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line takes the tax rate below.",
+  "catalog.tables.selfPayOptions.written.taxRate.label":
+    "Tax rate of a written line",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.description":
+    "As a VAT payer, pick the tax rate a written line takes. Until then, guests can't write.",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.title":
+    "Guests can't write yet",
   "catalog.tables.selfPayOptions.title": "What guests can do",
   "catalog.tables.sticker.check": "Check a sticker",
   "catalog.tables.sticker.current": "This sticker belongs to {name}.",

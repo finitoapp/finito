@@ -18,6 +18,7 @@ import {
   createSelfPayMenuEvent,
   createSelfPayWrittenSelectionText,
   deriveSelfPayMenuItemKey,
+  fillWrittenOrderLines,
   fitSelfPayMenuIntoEvent,
   isWrittenAmountInRange,
   priceSelfPayOrder,
@@ -181,8 +182,7 @@ describe("what a guest writes", () => {
     createSelfPayWrittenSelectionText({
       tablePublicKey: "aa".repeat(32),
       menu: { version: "bb".repeat(16) },
-      text,
-      amount,
+      lines: [{ text, amount }],
     })
 
   test("reads as a written order, and an order's reader refuses nothing else", () => {
@@ -192,9 +192,34 @@ describe("what a guest writes", () => {
 
     expect(parsed).toMatchObject({
       kind: "written",
-      text: "2x pivo",
-      amount: 9000,
+      lines: [{ text: "2x pivo", amount: 9000 }],
     })
+  })
+
+  test("reads up to 20 lines whose total a QR payment carries", () => {
+    const written = (lines: ReadonlyArray<{ text: string; amount: number }>) =>
+      SelfPayWrittenSelectionSchema.safeParse({
+        ...JSON.parse(selectionText("2x pivo", 9000)),
+        lines,
+      }).success
+    const line = { text: "pivo", amount: 4500 }
+
+    expect(written(Array.from({ length: 20 }, () => line))).toBe(true)
+    expect(written(Array.from({ length: 21 }, () => line))).toBe(false)
+    expect(written([])).toBe(false)
+    expect(
+      written([
+        { text: "pivo", amount: 600_000_000 },
+        { text: "rum", amount: 400_000_000 },
+      ])
+    ).toBe(false)
+  })
+
+  test("fills the lines with the money in the order the guest wrote them", () => {
+    expect(fillWrittenOrderLines([5000, 3000, 2000], 6000)).toEqual([
+      5000, 1000, 0,
+    ])
+    expect(fillWrittenOrderLines([5000, 3000], 9000)).toEqual([5000, 3000])
   })
 
   test.each([

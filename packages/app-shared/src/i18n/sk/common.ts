@@ -136,6 +136,10 @@ export const skCommon = {
   "orders.title": "Na výdaj",
   "orders.written": "Text hosťa: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
+  "orders.written.taxRate": "Sadzba DPH položky „{text}“",
+  "orders.written.taxRate.locked":
+    "Objednávka je prijatá, sadzby sa už nedajú zmeniť.",
+  "orders.written.total": "Spolu {amount}",
   "passwordTextarea.hide": "Skryť obsah",
   "passwordTextarea.show": "Zobraziť obsah",
   "scanner.dialog.title": "Naskenovať kód",

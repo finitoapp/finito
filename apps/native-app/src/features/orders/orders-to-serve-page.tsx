@@ -1,15 +1,27 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
+  type MenuOrderDecidedError,
   type MenuOrderNotFoundYet,
   type MenuOrderToServe,
   markMenuOrderServed,
   rejectMenuOrder,
+  setWrittenOrderLineTaxRate,
+  type TaxRateNotOfferedError,
+  type WrittenOrderLineNotFoundError,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { router } from "expo-router"
 import { Suspense } from "react"
@@ -28,6 +40,10 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card.tsx"
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "../../components/ui/toggle-group.tsx"
 import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
@@ -194,7 +210,11 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
         </CardHeader>
         <CardContent gap={12}>
           {order.written !== null ? (
-            <WrittenOrder written={order.written} />
+            <WrittenOrder
+              billId={order.billId}
+              written={order.written}
+              isAccepted={order.isAccepted}
+            />
           ) : (
             <YStack gap={4}>
               {order.lines.map((line) => (
@@ -248,30 +268,131 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
 }
 
 function WrittenOrder({
+  billId,
   written,
+  isAccepted,
 }: {
+  readonly billId: MenuOrderToServe["billId"]
   readonly written: NonNullable<MenuOrderToServe["written"]>
+  readonly isAccepted: boolean
 }) {
+  const {
+    data: [legalEntity],
+  } = useEvoluQuery(legalEntityQuery)
   const { t } = useTranslation()
   const locale = useLocale()
+  const amount = (money: Pick<typeof written, "arrived" | "named">) =>
+    writtenOrderAmount(money, t, (value) => formatMoney(value, locale))
 
   return (
     <>
-      <Text
-        fontSize={fontSize.lg}
-        lineHeight={fontSize.lg}
-        fontWeight={fontWeight.medium}
-      >
-        {t("orders.written", { text: written.text })}
-      </Text>
+      {written.lines.map((line) => (
+        <YStack key={line.id} gap={2}>
+          <Text
+            fontSize={fontSize.lg}
+            lineHeight={fontSize.lg}
+            fontWeight={fontWeight.medium}
+          >
+            {t("orders.written", { text: line.text })}
+          </Text>
+          <Text
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontVariant={["tabular-nums"]}
+          >
+            {amount(line)}
+          </Text>
+          {isVatPayer(legalEntity) ? (
+            <WrittenLineTaxRate
+              billId={billId}
+              line={line}
+              isAccepted={isAccepted}
+            />
+          ) : null}
+        </YStack>
+      ))}
+      {written.lines.length > 1 ? (
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.medium}
+          fontVariant={["tabular-nums"]}
+        >
+          {t("orders.written.total", { amount: amount(written) })}
+        </Text>
+      ) : null}
+    </>
+  )
+}
+
+const taxRateErrorKeys = {
+  MenuOrderDecided: "orders.written.taxRate.locked",
+  WrittenOrderLineNotFound: "app.saveFailed",
+  TaxRateNotOffered: "app.saveFailed",
+} satisfies Record<
+  | MenuOrderDecidedError["type"]
+  | WrittenOrderLineNotFoundError["type"]
+  | TaxRateNotOfferedError["type"],
+  TranslationKey
+>
+
+function WrittenLineTaxRate({
+  billId,
+  line,
+  isAccepted,
+}: {
+  readonly billId: MenuOrderToServe["billId"]
+  readonly line: NonNullable<MenuOrderToServe["written"]>["lines"][number]
+  readonly isAccepted: boolean
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const rates = filterSelectableTaxRates(taxRates, line.taxRateId)
+
+  if (isAccepted) {
+    const rate = rates.find(({ id }) => id === line.taxRateId)
+    return (
       <Text
         fontSize={fontSize.sm}
         lineHeight={fontSize.sm}
-        fontVariant={["tabular-nums"]}
+        color="muted-foreground"
       >
-        {writtenOrderAmount(written, t, (money) => formatMoney(money, locale))}
+        {rate === undefined
+          ? t("catalog.items.form.taxRate.none")
+          : formatTaxRateLabel(rate)}
       </Text>
-    </>
+    )
+  }
+
+  return (
+    <ToggleGroup
+      aria-label={t("orders.written.taxRate", { text: line.text })}
+      variant="outline"
+      size="sm"
+      columns={2}
+      value={line.taxRateId}
+      onValueChange={(value) => {
+        const rate = rates.find(({ id }) => id === value)
+        if (rate === undefined) return
+        void runToast(async (run) => {
+          const result = await run(
+            setWrittenOrderLineTaxRate({
+              billId,
+              lineId: line.id,
+              taxRateId: rate.id,
+            })
+          )
+          if (!result.ok) return taxRateErrorKeys[result.error.type]
+        })
+      }}
+    >
+      {rates.map((rate) => (
+        <ToggleGroupItem key={rate.id} value={rate.id}>
+          {formatTaxRateLabel(rate)}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   )
 }
 

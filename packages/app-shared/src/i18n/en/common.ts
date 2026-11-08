@@ -133,6 +133,10 @@ export const enCommon = {
   "orders.title": "To serve",
   "orders.written": "Guest's text: “{text}”",
   "orders.written.arrivedOf": "{arrived} of {named}",
+  "orders.written.taxRate": "Tax rate of “{text}”",
+  "orders.written.taxRate.locked":
+    "The order is accepted, so its tax rates no longer change.",
+  "orders.written.total": "Together {amount}",
   "passwordTextarea.hide": "Hide content",
   "passwordTextarea.show": "Show content",
   "scanner.dialog.title": "Scan code",

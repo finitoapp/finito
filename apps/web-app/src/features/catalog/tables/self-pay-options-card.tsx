@@ -1,17 +1,29 @@
 import { sqliteTrue } from "@evolu/common"
-import { optionalIdCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  NO_OPTION,
+  optionalIdCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
   setWrittenOrders,
+  setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
 import { countSelfPayMenuItems } from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
 import { TriangleAlertIcon } from "lucide-react"
@@ -34,6 +46,7 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
+const taxRateCodec = optionalIdCodec<TaxRateId>()
 
 export function SelfPayOptionsCard() {
   const { t } = useTranslation()
@@ -84,11 +97,69 @@ export function SelfPayOptionsCard() {
           defaultValue={writtenOrders}
           onSave={saveWrittenOrders}
         />
+        {writtenOrders && (
+          <WrittenOrderTaxRateSelect
+            taxRateId={settings?.writtenOrderTaxRateId ?? null}
+          />
+        )}
         {(menuOrdering || writtenOrders) && (
           <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function WrittenOrderTaxRateSelect({
+  taxRateId,
+}: {
+  readonly taxRateId: TaxRateId | null
+}) {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const {
+    data: [legalEntity],
+  } = useEvoluQuery(legalEntityQuery)
+
+  const save = async (id: TaxRateId | null) => {
+    await using run = appRun()
+    await run.ok(setWrittenOrderTaxRate(id))
+  }
+
+  return (
+    <>
+      <InlineEditSelect
+        label={t("catalog.tables.selfPayOptions.written.taxRate.label")}
+        defaultValue={taxRateId}
+        codec={taxRateCodec}
+        options={[
+          { value: NO_OPTION, label: t("catalog.items.form.taxRate.none") },
+          ...filterSelectableTaxRates(taxRates, taxRateId).map((rate) => ({
+            value: rate.id,
+            label: `${formatTaxRateLabel(rate)}${
+              rate.deactivatedAt !== null
+                ? ` — ${t("settings.taxRates.archived.title")}`
+                : ""
+            }`,
+          })),
+        ]}
+        onSave={save}
+      />
+      {taxRateId === null && isVatPayer(legalEntity) && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertTitle className="line-clamp-none">
+            {t("catalog.tables.selfPayOptions.written.taxRate.missing.title")}
+          </AlertTitle>
+          <AlertDescription>
+            {t(
+              "catalog.tables.selfPayOptions.written.taxRate.missing.description"
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
   )
 }
 

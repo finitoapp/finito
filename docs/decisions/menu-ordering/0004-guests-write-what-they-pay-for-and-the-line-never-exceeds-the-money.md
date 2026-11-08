@@ -72,8 +72,9 @@ runs on the honor system. A guest who pays less than they named is recorded at
 what arrived; the announcement and the "To serve" list say both amounts and
 staff decide what to serve.
 
-A written line has no tax rate, as a keypad amount has none, so a VAT payer
-keeps the switch off.
+A written line takes the tax rate the owner sets (menu-ordering/0007).
+
+A guest writes the order item by item, one line each (menu-ordering/0011).
 
 Finito runs nothing in the background, so while the till app is closed nothing
 is recorded or announced, and the money waits.

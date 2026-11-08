@@ -3,6 +3,7 @@ import { type MutationOptions, ok, type Task } from "@evolu/common"
 import type { EvoluOwnerDep } from "../../deps.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { itemsByBillIdQuery } from "../item/item-queries.ts"
+import type { ItemId } from "../item/item-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
   removeUndefinedValues,
@@ -47,6 +48,15 @@ export const updateBillLineTotal = (
   options: MutationOptions
 ): void => {
   evolu.update("billLine", { id, totalAmount }, options)
+}
+
+export const updateBillLineItem = (
+  evolu: EvoluDep["evolu"],
+  id: BillLineId,
+  itemId: ItemId,
+  options: MutationOptions
+): void => {
+  evolu.update("billLine", { id, itemId }, options)
 }
 
 export const loadCalculatedBillLineSummaries =

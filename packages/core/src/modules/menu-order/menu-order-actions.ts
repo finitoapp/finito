@@ -1,6 +1,7 @@
 import {
   createIdFromString,
   DateIso,
+  err,
   type MutationOptions,
   ok,
   sqliteFalse,
@@ -12,6 +13,7 @@ import { format, subDays } from "date-fns"
 import { z } from "zod"
 
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
+import { defineError } from "../../error.ts"
 import { unclaimedIncomingTransactionsSinceQuery } from "../account-transaction/account-transaction-queries.ts"
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
 import {
@@ -33,7 +35,11 @@ import {
 import type { BillId } from "../bill/bill-types.ts"
 import { claimedPaymentIdSet } from "../bill/bill-utils.ts"
 import type { BillLineRow } from "../bill-line/bill-line.ts"
-import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
+import {
+  loadCalculatedBillLineSummaries,
+  updateBillLineItem,
+} from "../bill-line/bill-line-actions.ts"
+import { billLinesByBillIdQuery } from "../bill-line/bill-line-queries.ts"
 import type {
   BillLineId,
   BillLineSummaryId,
@@ -45,16 +51,21 @@ import { catalogItemsQuery } from "../catalog-item/catalog-item-queries.ts"
 import { getStaffDisplayName } from "../catalog-item/catalog-item-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { ItemRow } from "../item/item.ts"
+import { upsertItemSnapshot } from "../item/item-actions.ts"
+import { itemsByBillIdQuery } from "../item/item-queries.ts"
 import { createStandaloneItemSnapshot } from "../item/item-utils.ts"
+import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
+import { isVatPayer } from "../legal-entity/legal-entity-utils.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import { deriveTableSelfPayKeys } from "../shared/key-derivation.ts"
+import type { Money } from "../shared/money.ts"
 import {
   type Currency,
   DateStringSchema,
   type FiatCurrency,
-  type Integer,
+  Integer,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
@@ -72,9 +83,13 @@ import {
   type SelfPayReference,
   SelfPayReferenceSchema,
 } from "../table-self-pay/table-self-pay-reference-utils.ts"
+import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
+import { filterSelectableTaxRates } from "../tax-rate/tax-rate-utils.ts"
 import type { MenuOrderRow } from "./menu-order.ts"
 import {
   lastMenuOrderNumberQuery,
+  menuOrderByBillIdQuery,
   menuOrdersToServeQuery,
   menuVersionByIdQuery,
   menuVersionsNewestFirstQuery,
@@ -85,18 +100,20 @@ import {
   buildSelfPayMenu,
   countSelfPayMenuItems,
   deriveSelfPayMenuItemKey,
+  fillWrittenOrderLines,
   fitSelfPayMenuIntoEvent,
   isOfferedInMenu,
   isWrittenAmountInRange,
+  MAX_WRITTEN_LINES,
   MenuJson,
   priceSelfPayOrder,
   type SelfPayMenu,
   type SelfPayOrderIntent,
   type SelfPayOrderSelection,
   type SelfPayWrittenSelection,
-  type WrittenOrder,
   type WrittenOrderColumns,
   writtenOrderOf,
+  writtenOrderTotal,
 } from "./menu-order-utils.ts"
 
 const REPLACED_MENU_RETENTION_DAYS = 7
@@ -119,13 +136,14 @@ export interface SelfPayMenuSnapshot {
 
 export const loadSelfPayMenu =
   (): Task<SelfPayMenuSnapshot, never, EvoluDep> => async (run) => {
-    const [items, categories, [settings], [selfPaySettings]] =
+    const [items, categories, [settings], [selfPaySettings], [legalEntity]] =
       await Promise.all(
         run.deps.evolu.loadQueries([
           catalogItemsQuery,
           catalogCategoriesQuery,
           settingsQuery,
           selfPaySettingsQuery,
+          legalEntityQuery,
         ])
       )
     const currency = getFiatCurrency(settings)
@@ -133,7 +151,10 @@ export const loadSelfPayMenu =
       items: selfPaySettings?.menuOrdering === sqliteTrue ? items : [],
       categories,
       currency,
-      written: selfPaySettings?.writtenOrders === sqliteTrue,
+      written:
+        selfPaySettings?.writtenOrders === sqliteTrue &&
+        (selfPaySettings.writtenOrderTaxRateId !== null ||
+          !isVatPayer(legalEntity)),
     })
     const menu = fitSelfPayMenuIntoEvent(full)
     return ok({
@@ -314,6 +335,18 @@ interface OrderedLine {
   readonly allocation: { readonly key: string; readonly amount: number }
 }
 
+const mergeAllocations = (
+  allocations: ReadonlyArray<OrderedLine["allocation"]>
+): ReadonlyArray<OrderedLine["allocation"]> => {
+  const byKey = new Map<string, number>()
+  for (const { key, amount } of allocations) {
+    byKey.set(key, (byKey.get(key) ?? 0) + amount)
+  }
+  return [...byKey].flatMap(([key, amount]) =>
+    amount > 0 ? [{ key, amount }] : []
+  )
+}
+
 const orderedLine = ({
   billId,
   lineId,
@@ -355,8 +388,11 @@ const orderedLine = ({
   }
 }
 
-const deriveWrittenOrderLineId = (pointer: SelfPayPointer): BillLineId =>
-  createIdFromString<"BillLine">(`menu-order-line:${pointer}:written`)
+const deriveWrittenOrderLineId = (
+  pointer: SelfPayPointer,
+  index: number
+): BillLineId =>
+  createIdFromString<"BillLine">(`menu-order-line:${pointer}:written:${index}`)
 
 interface MenuOrderLines {
   readonly askedToPay: number
@@ -368,6 +404,7 @@ const writtenOrderLines = ({
   billId,
   selection,
   currency,
+  taxRateId,
   arrived,
   deviceId,
 }: {
@@ -375,32 +412,38 @@ const writtenOrderLines = ({
   readonly billId: BillId
   readonly selection: SelfPayWrittenSelection
   readonly currency: FiatCurrency
+  readonly taxRateId: TaxRateId | null
   readonly arrived: number
   readonly deviceId: DeviceId
-}): MenuOrderLines | null =>
-  isWrittenAmountInRange(selection.amount, currency)
-    ? {
-        askedToPay: selection.amount,
-        ordered: [
-          orderedLine({
-            billId,
-            lineId: deriveWrittenOrderLineId(pointer),
-            snapshot: createStandaloneItemSnapshot({
-              catalogItemId: null,
-              name: NonEmptyString255(selection.text),
-              description: null,
-              currency,
-              unitAmount: NonNegativeInteger(selection.amount),
-              taxRateId: null,
-            }),
-            type: "manualAmount",
-            quantity: 1,
-            totalAmount: Math.min(arrived, selection.amount),
-            deviceId,
-          }),
-        ],
-      }
-    : null
+}): MenuOrderLines | null => {
+  const askedToPay = writtenOrderTotal(selection.lines)
+  if (!isWrittenAmountInRange(askedToPay, currency)) return null
+  const filled = fillWrittenOrderLines(
+    selection.lines.map(({ amount }) => amount),
+    arrived
+  )
+  return {
+    askedToPay,
+    ordered: selection.lines.map(({ text, amount }, index) =>
+      orderedLine({
+        billId,
+        lineId: deriveWrittenOrderLineId(pointer, index),
+        snapshot: createStandaloneItemSnapshot({
+          catalogItemId: null,
+          name: NonEmptyString255(text),
+          description: null,
+          currency,
+          unitAmount: NonNegativeInteger(amount),
+          taxRateId,
+        }),
+        type: "manualAmount",
+        quantity: 1,
+        totalAmount: filled[index] ?? 0,
+        deviceId,
+      })
+    ),
+  }
+}
 
 const pricedOrderLines = ({
   pointer,
@@ -504,6 +547,7 @@ export const loadMenuOrderArrivalRows =
             billId,
             selection,
             currency: menu.currency,
+            taxRateId: settings?.writtenOrderTaxRateId ?? null,
             arrived,
             deviceId,
           })
@@ -550,14 +594,137 @@ export const loadMenuOrderArrivalRows =
             ? NonEmptyString255(selection.note)
             : null,
         writtenAmount:
-          selection.kind === "written"
-            ? PositiveInteger(selection.amount)
-            : null,
+          selection.kind === "written" ? PositiveInteger(askedToPay) : null,
       },
       askedToPay,
       total: ordered.reduce((sum, { line }) => sum + line.totalAmount, 0),
-      lines: ordered.map(({ allocation }) => allocation),
+      lines: mergeAllocations(ordered.map(({ allocation }) => allocation)),
     })
+  }
+
+export interface WrittenOrderLineRow {
+  readonly id: BillLineId
+  readonly text: string
+  readonly currency: FiatCurrency
+  readonly named: number
+  readonly arrived: number
+  readonly taxRateId: TaxRateId | null
+}
+
+export const loadWrittenOrderLines =
+  ({
+    billId,
+    pointer,
+  }: {
+    readonly billId: BillId
+    readonly pointer: SelfPayPointer
+  }): Task<ReadonlyArray<WrittenOrderLineRow>, never, EvoluDep> =>
+  async (run) => {
+    const [lines, items] = await Promise.all(
+      run.deps.evolu.loadQueries([
+        billLinesByBillIdQuery(billId),
+        itemsByBillIdQuery(billId),
+      ])
+    )
+    const lineById = new Map(lines.map((line) => [line.id, line]))
+    const itemById = new Map(items.map((item) => [item.id, item]))
+    return ok(
+      Array.from({ length: MAX_WRITTEN_LINES }, (_, index) =>
+        lineById.get(deriveWrittenOrderLineId(pointer, index))
+      ).flatMap((line) => {
+        const item = line === undefined ? undefined : itemById.get(line.itemId)
+        return line === undefined || item === undefined
+          ? []
+          : [
+              {
+                id: line.id,
+                text: item.name,
+                currency: item.currency,
+                named: item.unitAmount,
+                arrived: line.totalAmount,
+                taxRateId: item.taxRateId,
+              },
+            ]
+      })
+    )
+  }
+
+const createMenuOrderDecidedError = defineError("MenuOrderDecided")<{
+  readonly billId: BillId
+}>()
+export type MenuOrderDecidedError = ReturnType<
+  typeof createMenuOrderDecidedError
+>
+
+const createWrittenOrderLineNotFoundError = defineError(
+  "WrittenOrderLineNotFound"
+)<{ readonly lineId: BillLineId }>()
+export type WrittenOrderLineNotFoundError = ReturnType<
+  typeof createWrittenOrderLineNotFoundError
+>
+
+const createTaxRateNotOfferedError = defineError("TaxRateNotOffered")<{
+  readonly taxRateId: TaxRateId
+}>()
+export type TaxRateNotOfferedError = ReturnType<
+  typeof createTaxRateNotOfferedError
+>
+
+export const setWrittenOrderLineTaxRate =
+  ({
+    billId,
+    lineId,
+    taxRateId,
+  }: {
+    readonly billId: BillId
+    readonly lineId: BillLineId
+    readonly taxRateId: TaxRateId
+  }): Task<
+    void,
+    | MenuOrderDecidedError
+    | WrittenOrderLineNotFoundError
+    | TaxRateNotOfferedError,
+    EvoluDep & EvoluOwnerDep
+  > =>
+  async (run) => {
+    const [order] = await run.deps.evolu.loadQuery(
+      menuOrderByBillIdQuery(billId)
+    )
+    if (order === undefined || order.pointer === null) {
+      return err(createWrittenOrderLineNotFoundError({ lineId }))
+    }
+    if (order.acceptedAt !== null || order.rejectedAt !== null) {
+      return err(createMenuOrderDecidedError({ billId }))
+    }
+    const lines = await run.ok(
+      loadWrittenOrderLines({ billId, pointer: order.pointer })
+    )
+    const line = lines.find(({ id }) => id === lineId)
+    if (line === undefined) {
+      return err(createWrittenOrderLineNotFoundError({ lineId }))
+    }
+    const rates = await run.deps.evolu.loadQuery(taxRatesQuery)
+    if (
+      !filterSelectableTaxRates(rates, line.taxRateId).some(
+        ({ id }) => id === taxRateId
+      )
+    ) {
+      return err(createTaxRateNotOfferedError({ taxRateId }))
+    }
+    const snapshot = createStandaloneItemSnapshot({
+      catalogItemId: null,
+      name: NonEmptyString255(line.text),
+      description: null,
+      currency: line.currency,
+      unitAmount: NonNegativeInteger(line.named),
+      taxRateId,
+    })
+    await runMutationWithCompletion((options) => {
+      const owned = { ...options, owner: run.deps.evoluOwner }
+      upsertItemSnapshot(run.deps.evolu, snapshot, owned)
+      updateBillLineItem(run.deps.evolu, lineId, snapshot.id, owned)
+    })
+    return ok()
   }
 
 export interface WrittenOrderRest {
@@ -565,38 +732,61 @@ export interface WrittenOrderRest {
   readonly totalAmount: NonNegativeInteger
 }
 
-export const raiseWrittenOrderLine = ({
-  pointer,
-  writtenAmount,
+export const raiseWrittenOrderLines = ({
+  lines,
   coveredBefore,
   amount,
 }: {
-  readonly pointer: SelfPayPointer
-  readonly writtenAmount: number
+  readonly lines: ReadonlyArray<Pick<WrittenOrderLineRow, "id" | "named">>
   readonly coveredBefore: number
   readonly amount: number
-}): WrittenOrderRest | null =>
-  coveredBefore >= writtenAmount
-    ? null
-    : {
-        lineId: deriveWrittenOrderLineId(pointer),
-        totalAmount: NonNegativeInteger(
-          Math.min(writtenAmount, coveredBefore + amount)
-        ),
-      }
+}): ReadonlyArray<WrittenOrderRest> | null => {
+  const named = lines.map((line) => line.named)
+  if (coveredBefore >= named.reduce((sum, value) => sum + value, 0)) {
+    return null
+  }
+  const filled = fillWrittenOrderLines(named, coveredBefore + amount)
+  return lines.map(({ id }, index) => ({
+    lineId: id,
+    totalAmount: NonNegativeInteger(filled[index] ?? 0),
+  }))
+}
+
+export interface WrittenOrderToServe {
+  readonly lines: ReadonlyArray<
+    Pick<WrittenOrderLineRow, "id" | "text" | "taxRateId"> & {
+      readonly arrived: Money
+      readonly named: Money
+    }
+  >
+  readonly arrived: Money
+  readonly named: Money
+}
 
 const toServePayment = (
   order: WrittenOrderColumns,
+  writtenLines: ReadonlyArray<WrittenOrderLineRow>,
   { claimedSum, coverage }: BillCoverageSummary
-) => {
+): Pick<MenuOrderToServe, "written" | "isFullyPaid"> => {
   const written = writtenOrderOf(order)
-  return {
-    written,
-    isFullyPaid:
-      written === null
-        ? coverage !== "underpaid"
-        : claimedSum >= written.named.value,
-  }
+  const money = (value: number): Money => ({
+    value: Integer(value),
+    currency: order.currency,
+  })
+  return written === null
+    ? { written: null, isFullyPaid: coverage !== "underpaid" }
+    : {
+        written: {
+          lines: writtenLines.map(({ named, arrived, currency, ...line }) => ({
+            ...line,
+            named: money(named),
+            arrived: money(arrived),
+          })),
+          arrived: written.arrived,
+          named: written.named,
+        },
+        isFullyPaid: claimedSum >= written.named.value,
+      }
 }
 
 export interface MenuOrderToServe {
@@ -606,7 +796,7 @@ export interface MenuOrderToServe {
   readonly tableName: string | null
   readonly createdAt: string
   readonly note: string | null
-  readonly written: WrittenOrder | null
+  readonly written: WrittenOrderToServe | null
   readonly isFullyPaid: boolean
   readonly isAccepted: boolean
   readonly lines: ReadonlyArray<{
@@ -631,9 +821,12 @@ export const loadMenuOrdersToServe =
     return ok(
       await Promise.all(
         orders.map(async (order) => {
-          const [summaries, coverage] = await Promise.all([
+          const [summaries, coverage, writtenLines] = await Promise.all([
             run.ok(loadCalculatedBillLineSummaries(order.billId)),
             run.ok(loadBillCoverage(order.billId)),
+            order.writtenAmount === null
+              ? []
+              : run.ok(loadWrittenOrderLines(order)),
           ])
           return {
             id: order.id,
@@ -645,7 +838,7 @@ export const loadMenuOrdersToServe =
                 : (tableNames.get(order.tableId) ?? null),
             createdAt: order.createdAt,
             note: order.note,
-            ...toServePayment(order, coverage),
+            ...toServePayment(order, writtenLines, coverage),
             isAccepted: order.acceptedAt !== null,
             lines: summaries.map((summary) => {
               const catalogItem =

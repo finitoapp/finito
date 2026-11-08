@@ -558,16 +558,19 @@ function GuestOrdering({
             <GuestWrittenOrder
               menu={writable}
               isPreparing={isPreparing}
-              onOrder={({ text, named, amount }) => {
+              onOrder={({ lines, named, amount }) => {
                 void placeOrder(
                   writable,
                   createSelfPayWrittenSelectionText({
                     tablePublicKey: table,
                     menu: writable,
-                    text,
-                    amount: named,
+                    lines,
                   }),
-                  { total: named, amount, summary: text }
+                  {
+                    total: named,
+                    amount,
+                    summary: lines.map(({ text }) => text).join(", "),
+                  }
                 )
               }}
             />

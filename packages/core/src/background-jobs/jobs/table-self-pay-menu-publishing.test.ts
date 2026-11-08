@@ -159,8 +159,7 @@ const payWrittenOrder = async (
         deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
       ),
       menu,
-      text: "2x pivo",
-      amount: named,
+      lines: [{ text: "2x pivo", amount: named }],
     }),
     selectionKey,
     createdAt: Math.floor(context.clock.date.now().getTime() / 1000),

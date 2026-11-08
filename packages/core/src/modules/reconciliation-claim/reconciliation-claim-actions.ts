@@ -187,7 +187,7 @@ export interface AutomaticReconciliation {
   readonly selfPayPayment: SelfPayPaymentRows | null
   readonly selfPayAllocations: ReadonlyArray<SelfPayAllocationWrite>
   readonly menuOrder: MenuOrderArrivalRows | null
-  readonly writtenOrderRest: WrittenOrderRest | null
+  readonly writtenOrderRest: ReadonlyArray<WrittenOrderRest> | null
 }
 
 const loadSelfPayReconciliation =
@@ -349,13 +349,8 @@ export const upsertAutomaticReconciliationRows = (
     )
     upsertMenuOrderRows(evolu, menuOrder.menuOrder, options)
   }
-  if (writtenOrderRest !== null) {
-    updateBillLineTotal(
-      evolu,
-      writtenOrderRest.lineId,
-      writtenOrderRest.totalAmount,
-      options
-    )
+  for (const { lineId, totalAmount } of writtenOrderRest ?? []) {
+    updateBillLineTotal(evolu, lineId, totalAmount, options)
   }
   if (selfPayPayment !== null) {
     upsertSelfPayPaymentRows(evolu, selfPayPayment, options)

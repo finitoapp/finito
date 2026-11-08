@@ -37,6 +37,7 @@ export const MAX_ORDER_NOTE_LENGTH = 140
 export const MAX_ORDER_QUANTITY = 99
 export const MAX_WRITTEN_TEXT_LENGTH = 255
 export const MAX_WRITTEN_AMOUNT = 999_999_999
+export const MAX_WRITTEN_LINES = 20
 
 const UNREADABLE_WRITTEN_CODE_POINTS = [
   [0x0000, 0x001f],
@@ -142,14 +143,28 @@ export const WrittenOrderTextSchema = z
   .refine((text) => text === text.trim())
   .refine(isReadableWrittenText)
 
+const WrittenOrderLineSchema = z.object({
+  text: WrittenOrderTextSchema,
+  amount: z.number().int().positive(),
+})
+export type WrittenOrderLine = z.output<typeof WrittenOrderLineSchema>
+
+export const writtenOrderTotal = (
+  lines: ReadonlyArray<WrittenOrderLine>
+): number => lines.reduce((sum, { amount }) => sum + amount, 0)
+
 export const SelfPayWrittenSelectionSchema = z.object({
   v: z.literal(1),
   kind: z.literal("written"),
   nonce: HexSchema(16),
   table: HexSchema(32),
   menu: HexSchema(MENU_VERSION_BYTES),
-  text: WrittenOrderTextSchema,
-  amount: z.number().int().positive().max(MAX_WRITTEN_AMOUNT),
+  lines: z
+    .array(WrittenOrderLineSchema)
+    .min(1)
+    .max(MAX_WRITTEN_LINES)
+    .refine((lines) => writtenOrderTotal(lines) <= MAX_WRITTEN_AMOUNT)
+    .readonly(),
 })
 export type SelfPayWrittenSelection = z.output<
   typeof SelfPayWrittenSelectionSchema
@@ -381,13 +396,11 @@ export const writtenOrderOf = ({
 export const createSelfPayWrittenSelectionText = ({
   tablePublicKey,
   menu,
-  text,
-  amount,
+  lines,
 }: {
   readonly tablePublicKey: string
   readonly menu: Pick<SelfPayMenu, "version">
-  readonly text: string
-  readonly amount: number
+  readonly lines: ReadonlyArray<WrittenOrderLine>
 }): string =>
   JSON.stringify({
     v: 1,
@@ -395,9 +408,20 @@ export const createSelfPayWrittenSelectionText = ({
     nonce: createSelfPaySelectionNonce(),
     table: tablePublicKey,
     menu: menu.version,
-    text,
-    amount,
+    lines,
   } satisfies SelfPayWrittenSelection)
+
+export const fillWrittenOrderLines = (
+  named: ReadonlyArray<number>,
+  covered: number
+): ReadonlyArray<number> => {
+  let left = covered
+  return named.map((amount) => {
+    const filled = Math.min(amount, Math.max(0, left))
+    left -= filled
+    return filled
+  })
+}
 
 export const createSelfPayMenuFilter = ({
   publicKey,

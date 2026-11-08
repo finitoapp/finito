@@ -1,17 +1,29 @@
 import { sqliteTrue } from "@evolu/common"
-import { optionalIdCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  NO_OPTION,
+  optionalIdCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
   setWrittenOrders,
+  setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
 import { countSelfPayMenuItems } from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
@@ -52,6 +64,7 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
+const taxRateCodec = optionalIdCodec<TaxRateId>()
 
 /** Self-pay options of the account, as web's `SelfPayOptionsCard`. */
 export function SelfPayOptionsCard() {
@@ -138,11 +151,98 @@ export function SelfPayOptionsCard() {
             </FieldDescription>
           </FieldContent>
         </Field>
+        {writtenOrders && (
+          <WrittenOrderTaxRateSelect
+            taxRateId={settings?.writtenOrderTaxRateId ?? null}
+          />
+        )}
         {(menuOrdering || writtenOrders) && (
           <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function WrittenOrderTaxRateSelect({
+  taxRateId,
+}: {
+  readonly taxRateId: TaxRateId | null
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const {
+    data: [legalEntity],
+  } = useEvoluQuery(legalEntityQuery)
+  const taxRate = useInlineChoice(taxRateId, (id) =>
+    runToast(async (run) => {
+      await run.ok(setWrittenOrderTaxRate(id))
+    })
+  )
+  const options = [
+    { value: NO_OPTION, label: t("catalog.items.form.taxRate.none") },
+    ...filterSelectableTaxRates(taxRates, taxRateId).map((rate) => ({
+      value: rate.id,
+      label: `${formatTaxRateLabel(rate)}${
+        rate.deactivatedAt !== null
+          ? ` — ${t("settings.taxRates.archived.title")}`
+          : ""
+      }`,
+    })),
+  ]
+
+  return (
+    <YStack gap={16}>
+      <Field>
+        <FieldLabel>
+          {t("catalog.tables.selfPayOptions.written.taxRate.label")}
+        </FieldLabel>
+        <Select
+          value={z.encode(taxRateCodec, taxRate.value)}
+          disabled={taxRate.saving}
+          onValueChange={(value) => {
+            const parsed = z.safeDecode(taxRateCodec, value)
+            if (parsed.success) void taxRate.choose(parsed.data)
+          }}
+          items={Object.fromEntries(
+            options.map((option) => [option.value, option.label])
+          )}
+        >
+          <SelectTrigger
+            fullWidth
+            aria-label={t(
+              "catalog.tables.selfPayOptions.written.taxRate.label"
+            )}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            title={t("catalog.tables.selfPayOptions.written.taxRate.label")}
+          >
+            <SelectGroup>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </Field>
+      {taxRate.value === null && isVatPayer(legalEntity) && (
+        <Alert variant="warning" icon={TriangleAlert}>
+          <AlertTitle numberOfLines={0}>
+            {t("catalog.tables.selfPayOptions.written.taxRate.missing.title")}
+          </AlertTitle>
+          <AlertDescription>
+            {t(
+              "catalog.tables.selfPayOptions.written.taxRate.missing.description"
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+    </YStack>
   )
 }
 

@@ -27,6 +27,7 @@ import {
 import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import type { appSettings } from "./app-settings.ts"
 import { selfPaySettingsQuery, settingsQuery } from "./app-settings-queries.ts"
 import {
@@ -324,6 +325,11 @@ export const setWrittenOrders = ({
   on
     ? switchOrdersOn({ writtenOrders: sqliteTrue }, deviceId)
     : updateSettings({ writtenOrders: null })
+
+export const setWrittenOrderTaxRate = (
+  taxRateId: TaxRateId | null
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ writtenOrderTaxRateId: taxRateId })
 
 export const setOrderDevice = (
   deviceId: DeviceId

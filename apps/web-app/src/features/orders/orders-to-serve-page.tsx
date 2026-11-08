@@ -1,14 +1,26 @@
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersToServe,
+  type MenuOrderDecidedError,
   type MenuOrderNotFoundYet,
   type MenuOrderToServe,
   markMenuOrderServed,
   rejectMenuOrder,
+  setWrittenOrderLineTaxRate,
+  type TaxRateNotOfferedError,
+  type WrittenOrderLineNotFoundError,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { Suspense } from "react"
@@ -25,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
@@ -178,7 +191,11 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {order.written !== null ? (
-            <WrittenOrder written={order.written} />
+            <WrittenOrder
+              billId={order.billId}
+              written={order.written}
+              isAccepted={order.isAccepted}
+            />
           ) : (
             <ul className="flex flex-col gap-1">
               {order.lines.map((line) => (
@@ -227,22 +244,114 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
 }
 
 function WrittenOrder({
+  billId,
   written,
+  isAccepted,
 }: {
+  readonly billId: MenuOrderToServe["billId"]
   readonly written: NonNullable<MenuOrderToServe["written"]>
+  readonly isAccepted: boolean
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const {
+    data: [legalEntity],
+  } = useEvoluQuery(legalEntityQuery)
+  const amount = (money: Pick<typeof written, "arrived" | "named">) =>
+    writtenOrderAmount(money, t, (value) => formatMoney(value, locale))
 
   return (
     <>
-      <p className="text-lg font-medium wrap-anywhere">
-        {t("orders.written", { text: written.text })}
-      </p>
-      <p className="text-sm tabular-nums">
-        {writtenOrderAmount(written, t, (money) => formatMoney(money, locale))}
-      </p>
+      <ul className="flex flex-col gap-2">
+        {written.lines.map((line) => (
+          <li key={line.id} className="flex flex-col gap-0.5">
+            <span className="text-lg font-medium wrap-anywhere">
+              {t("orders.written", { text: line.text })}
+            </span>
+            <span className="text-sm tabular-nums">{amount(line)}</span>
+            {isVatPayer(legalEntity) ? (
+              <WrittenLineTaxRate
+                billId={billId}
+                line={line}
+                isAccepted={isAccepted}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {written.lines.length > 1 ? (
+        <p className="text-sm font-medium tabular-nums">
+          {t("orders.written.total", { amount: amount(written) })}
+        </p>
+      ) : null}
     </>
+  )
+}
+
+const taxRateErrorKeys = {
+  MenuOrderDecided: "orders.written.taxRate.locked",
+  WrittenOrderLineNotFound: "app.saveFailed",
+  TaxRateNotOffered: "app.saveFailed",
+} satisfies Record<
+  | MenuOrderDecidedError["type"]
+  | WrittenOrderLineNotFoundError["type"]
+  | TaxRateNotOfferedError["type"],
+  TranslationKey
+>
+
+function WrittenLineTaxRate({
+  billId,
+  line,
+  isAccepted,
+}: {
+  readonly billId: MenuOrderToServe["billId"]
+  readonly line: NonNullable<MenuOrderToServe["written"]>["lines"][number]
+  readonly isAccepted: boolean
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const rates = filterSelectableTaxRates(taxRates, line.taxRateId)
+
+  if (isAccepted) {
+    const rate = rates.find(({ id }) => id === line.taxRateId)
+    return (
+      <span className="text-sm text-muted-foreground">
+        {rate === undefined
+          ? t("catalog.items.form.taxRate.none")
+          : formatTaxRateLabel(rate)}
+      </span>
+    )
+  }
+
+  return (
+    <ToggleGroup
+      aria-label={t("orders.written.taxRate", { text: line.text })}
+      className="mt-1 grid w-full grid-cols-2"
+      variant="outline"
+      size="sm"
+      value={line.taxRateId === null ? [] : [line.taxRateId]}
+      onValueChange={(values) => {
+        const rate = rates.find(({ id }) => id === values[0])
+        if (rate === undefined) return
+        void runToast(async (run) => {
+          const result = await run(
+            setWrittenOrderLineTaxRate({
+              billId,
+              lineId: line.id,
+              taxRateId: rate.id,
+            })
+          )
+          if (!result.ok) return taxRateErrorKeys[result.error.type]
+        })
+      }}
+    >
+      {rates.map((rate) => (
+        <ToggleGroupItem key={rate.id} value={rate.id}>
+          {formatTaxRateLabel(rate)}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   )
 }
 

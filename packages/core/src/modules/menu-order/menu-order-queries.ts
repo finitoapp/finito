@@ -46,7 +46,7 @@ export const menuOrderByBillIdQuery = (billId: BillId) =>
   createQuery((db) =>
     db
       .selectFrom("menuOrder")
-      .select(["id", "writtenAmount", "rejectedAt"])
+      .select(["id", "pointer", "writtenAmount", "acceptedAt", "rejectedAt"])
       .where("billId", "=", billId)
       .where("isDeleted", "is not", sqliteTrue)
   )
@@ -71,6 +71,7 @@ export const menuOrdersToServeQuery = createQuery((db) =>
     .select([
       "menuOrder.id",
       "menuOrder.billId",
+      "menuOrder.pointer",
       "menuOrder.number",
       "menuOrder.note",
       "menuOrder.writtenAmount",
@@ -80,26 +81,31 @@ export const menuOrdersToServeQuery = createQuery((db) =>
       "bill.currency",
     ])
     .select((eb) => {
-      const writtenLine = eb
+      const writtenLines = eb
         .selectFrom("billLine")
         .innerJoin("item", "item.id", "billLine.itemId")
         .whereRef("billLine.billId", "=", "menuOrder.billId")
         .where("menuOrder.writtenAmount", "is not", null)
         .where("billLine.isDeleted", "is not", sqliteTrue)
-        .limit(1)
       return [
-        writtenLine.select("item.name").as("writtenText"),
-        writtenLine.select("billLine.totalAmount").as("writtenArrived"),
+        writtenLines
+          .select(sql<string>`group_concat("item"."name", ', ')`.as("text"))
+          .as("writtenText"),
+        writtenLines
+          .select(sql<number>`sum("billLine"."totalAmount")`.as("arrived"))
+          .as("writtenArrived"),
       ]
     })
     .where("menuOrder.isDeleted", "is not", sqliteTrue)
     .where("menuOrder.servedAt", "is", null)
     .where("menuOrder.rejectedAt", "is", null)
     .where("menuOrder.billId", "is not", null)
+    .where("menuOrder.pointer", "is not", null)
     .where("menuOrder.number", "is not", null)
     .where("bill.currency", "is not", null)
     .$narrowType<{
       billId: KyselyNotNull
+      pointer: KyselyNotNull
       number: KyselyNotNull
       currency: KyselyNotNull
     }>()

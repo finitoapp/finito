@@ -65,6 +65,7 @@ export const createDefaultSettings = (): Omit<
   | "selfPayBillsHidden"
   | "menuOrdering"
   | "writtenOrders"
+  | "writtenOrderTaxRateId"
   | "orderDeviceId"
 > => ({
   id: settingsId,

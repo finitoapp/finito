@@ -6,6 +6,7 @@ import {
   setMenuOrdering,
   setOrderDevice,
   setWrittenOrders,
+  setWrittenOrderTaxRate,
 } from "../app-settings/app-settings-actions.ts"
 import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
@@ -17,6 +18,7 @@ import {
   updateCatalogItem,
 } from "../catalog-item/catalog-item-actions.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
+import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import {
   connectMonetaPlugin,
   syncMonetaTransactions,
@@ -55,6 +57,8 @@ import {
   selfPayTestRoot,
   signTestSelfPayRate,
 } from "../table-self-pay/table-self-pay-test-fixtures.ts"
+import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
+import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
 import {
   acceptMenuOrder,
   deriveMenuOrderBillId,
@@ -66,6 +70,7 @@ import {
   markMenuOrderServed,
   rejectMenuOrder,
   saveSelfPayMenuVersion,
+  setWrittenOrderLineTaxRate,
 } from "./menu-order-actions.ts"
 import {
   createSelfPayOrderSelectionText,
@@ -757,12 +762,17 @@ const writeOrder = async (
   {
     text = "2x pivo",
     amount = 9000,
+    lines = [{ text, amount }],
     table = bytesToHex(
       deriveTableSelfPayKeys(selfPayTestRoot, context.tableId, 0).publicKey
     ),
   }: {
     readonly text?: string
     readonly amount?: number
+    readonly lines?: ReadonlyArray<{
+      readonly text: string
+      readonly amount: number
+    }>
     readonly table?: string
   } = {}
 ) => {
@@ -770,8 +780,7 @@ const writeOrder = async (
     selectionText: createSelfPayWrittenSelectionText({
       tablePublicKey: table,
       menu,
-      text,
-      amount,
+      lines,
     }),
     selectionKey,
     createdAt: Math.floor(context.clock.date.now().getTime() / 1000),
@@ -794,6 +803,116 @@ const lineOf = async (
   expect(lines).toHaveLength(1)
   return lines[0]
 }
+
+const createWrittenOrderTaxRate = async (context: SelfPayTestContext) => {
+  await using run = testCreateRun(context.deps)
+  const taxRateId = await run.ok(
+    createTaxRate({
+      name: NonEmptyString255("Standard"),
+      rate: TaxRatePercentage(21),
+      isDefault: false,
+    })
+  )
+  await run.ok(setWrittenOrderTaxRate(taxRateId))
+  return taxRateId
+}
+
+describe("the tax rate of a written line", () => {
+  test("is the one the owner set for written lines", async () => {
+    await using context = await createSelfPayTestContext()
+    const taxRateId = await createWrittenOrderTaxRate(context)
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu)
+
+    await pay(context, order, 9000)
+
+    expect(await lineOf(context, order)).toMatchObject({ taxRateId })
+  })
+
+  test("is needed before a VAT payer's guests can write", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+    const withoutRate = await openBar(context)
+    await createWrittenOrderTaxRate(context)
+    const withRate = await publishMenu(context)
+
+    expect(withoutRate.written).toBe(false)
+    expect(withRate.written).toBe(true)
+  })
+
+  test("is set by staff on each line, one by one, until they accept the order", async () => {
+    await using context = await createSelfPayTestContext()
+    const standard = await createWrittenOrderTaxRate(context)
+    await using run = testCreateRun(context.deps)
+    const reduced = await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Reduced"),
+        rate: TaxRatePercentage(1200),
+        isDefault: false,
+      })
+    )
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, {
+      lines: [
+        { text: "2x pivo", amount: 9000 },
+        { text: "utopenec", amount: 6000 },
+      ],
+    })
+    await pay(context, order, 15_000)
+    const [toServe] = await run.ok(loadMenuOrdersToServe())
+    const [, meal] = toServe?.written?.lines ?? []
+    if (toServe === undefined || meal === undefined) {
+      throw new Error("Expected a written order of two lines.")
+    }
+    const rates = async () =>
+      Object.fromEntries(
+        (
+          await run.ok(
+            loadCalculatedBillLineSummaries(
+              deriveMenuOrderBillId(order.pointer)
+            )
+          )
+        ).map(({ name, taxRateId }) => [name, taxRateId])
+      )
+
+    const switched = await run(
+      setWrittenOrderLineTaxRate({
+        billId: toServe.billId,
+        lineId: meal.id,
+        taxRateId: reduced,
+      })
+    )
+    const afterSwitch = await rates()
+    const notOffered = await run(
+      setWrittenOrderLineTaxRate({
+        billId: toServe.billId,
+        lineId: meal.id,
+        taxRateId: createRowId<"TaxRate">(),
+      })
+    )
+    await run.ok(acceptMenuOrder(toServe.id))
+    const afterAccept = await run(
+      setWrittenOrderLineTaxRate({
+        billId: toServe.billId,
+        lineId: meal.id,
+        taxRateId: standard,
+      })
+    )
+
+    expect(switched.ok).toBe(true)
+    expect(afterSwitch).toEqual({ "2x pivo": standard, utopenec: reduced })
+    expect(notOffered).toMatchObject({
+      ok: false,
+      error: { type: "TaxRateNotOffered" },
+    })
+    expect(afterAccept).toMatchObject({
+      ok: false,
+      error: { type: "MenuOrderDecided" },
+    })
+    expect(await rates()).toEqual(afterSwitch)
+  })
+})
 
 describe("a paid written order", () => {
   test("becomes a bill of its own on the table, with one line named by the guest's text", async () => {
@@ -891,6 +1010,37 @@ describe("a paid written order", () => {
     expect(await coverageOf(context, order)).toMatchObject({
       claimedSum: 14_000,
       coverage: "overpaid",
+    })
+  })
+
+  test("of several lines fills them in the order written, and the rest raises the next", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, {
+      lines: [
+        { text: "2x pivo", amount: 5000 },
+        { text: "utopenec", amount: 4000 },
+      ],
+    })
+    const totals = async () => {
+      await using run = testCreateRun(context.deps)
+      const lines = await run.ok(
+        loadCalculatedBillLineSummaries(deriveMenuOrderBillId(order.pointer))
+      )
+      return Object.fromEntries(
+        lines.map(({ name, totalAmount }) => [name, totalAmount])
+      )
+    }
+
+    await pay(context, order, 6000)
+    const first = await totals()
+    await pay(context, order, 3000)
+
+    expect(first).toEqual({ "2x pivo": 5000, utopenec: 1000 })
+    expect(await totals()).toEqual({ "2x pivo": 5000, utopenec: 4000 })
+    expect(await coverageOf(context, order)).toMatchObject({
+      claimedSum: 9000,
+      coverage: "paid",
     })
   })
 
@@ -1217,7 +1367,13 @@ describe("what staff serve", () => {
         note: null,
         isFullyPaid: true,
         written: {
-          text,
+          lines: [
+            expect.objectContaining({
+              text,
+              arrived: { value: 9000, currency: "CZK" },
+              named: { value: 9000, currency: "CZK" },
+            }),
+          ],
           arrived: { value: 9000, currency: "CZK" },
           named: { value: 9000, currency: "CZK" },
         },
@@ -1225,19 +1381,41 @@ describe("what staff serve", () => {
     ])
   })
 
-  test("lists a written order that less arrived for with both amounts, not fully paid", async () => {
+  test("lists a written order line by line as the guest wrote it, filled in that order, and not fully paid when less arrived", async () => {
     await using context = await createSelfPayTestContext()
     const menu = await openBar(context)
-    await pay(context, await writeOrder(context, menu), 8000)
+    const lines = [
+      { text: "2x pivo", amount: 5000 },
+      { text: "utopenec", amount: 4000 },
+      { text: "rum", amount: 2000 },
+    ]
+    await pay(context, await writeOrder(context, menu, { lines }), 8000)
     await using run = testCreateRun(context.deps)
+    const czk = (value: number) => ({ value, currency: "CZK" })
 
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([
       expect.objectContaining({
         isFullyPaid: false,
         written: {
-          text: "2x pivo",
-          arrived: { value: 8000, currency: "CZK" },
-          named: { value: 9000, currency: "CZK" },
+          lines: [
+            expect.objectContaining({
+              text: "2x pivo",
+              arrived: czk(5000),
+              named: czk(5000),
+            }),
+            expect.objectContaining({
+              text: "utopenec",
+              arrived: czk(3000),
+              named: czk(4000),
+            }),
+            expect.objectContaining({
+              text: "rum",
+              arrived: czk(0),
+              named: czk(2000),
+            }),
+          ],
+          arrived: czk(8000),
+          named: czk(11_000),
         },
       }),
     ])

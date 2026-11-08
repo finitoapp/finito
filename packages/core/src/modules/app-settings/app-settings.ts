@@ -8,6 +8,7 @@ import {
   SqliteTrueSchema,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 
 import {
   AppSettingsId,
@@ -41,6 +42,7 @@ export const appSettings = {
   selfPayBillsHidden: SqliteTrueSchema.nullable(),
   menuOrdering: SqliteTrueSchema.nullable(),
   writtenOrders: SqliteTrueSchema.nullable(),
+  writtenOrderTaxRateId: TaxRateId.nullable(),
   orderDeviceId: DeviceId.nullable(),
 } as const
 

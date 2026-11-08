@@ -1,14 +1,17 @@
 import {
   isWrittenAmountInRange,
   MAX_WRITTEN_AMOUNT,
+  MAX_WRITTEN_LINES,
   MAX_WRITTEN_TEXT_LENGTH,
   type SelfPayMenu,
+  type WrittenOrderLine,
   WrittenOrderTextSchema,
+  writtenOrderTotal,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import { selfPayMinimum } from "@payky/core/modules/table-self-pay/table-self-pay-share-utils"
-import { LoaderCircleIcon } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { LoaderCircleIcon, PlusIcon, XIcon } from "lucide-react"
+import { type FocusEvent, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
@@ -27,10 +30,18 @@ import {
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
 export interface GuestWrittenChoice {
-  readonly text: string
+  readonly lines: ReadonlyArray<WrittenOrderLine>
   readonly named: number
   readonly amount: number
 }
+
+interface TypedLine {
+  readonly id: number
+  readonly text: string
+  readonly amount: string
+}
+
+const emptyLine = (id: number): TypedLine => ({ id, text: "", amount: "" })
 
 export function GuestWrittenOrder({
   menu,
@@ -43,23 +54,31 @@ export function GuestWrittenOrder({
 }) {
   const { t, locale } = useGuestTranslation()
   const announce = useGuestStatus()
-  const [typedText, setTypedText] = useState("")
-  const [typedAmount, setTypedAmount] = useState("")
+  const [typedLines, setTypedLines] = useState<ReadonlyArray<TypedLine>>([
+    emptyLine(0),
+  ])
   const [tipChoice, setTipChoice] = useState<GuestTipChoice>(NO_TIP)
   const payBar = usePayBarScrollPadding()
   const { tipPicker, revealTipsAfterTyping } = useTipReveal()
   const { currency } = menu
   const format = (amount: number) => formatGuestAmount(amount, menu, locale)
 
-  const text = typedText.trim()
-  const isTextValid = WrittenOrderTextSchema.safeParse(text).success
-  const named = decimalAmountToMinorUnits({ currency, value: typedAmount }) ?? 0
+  const lines = typedLines
+    .map((line) => ({
+      text: line.text.trim(),
+      amount: decimalAmountToMinorUnits({ currency, value: line.amount }) ?? 0,
+    }))
+    .filter(({ text, amount }) => text !== "" || amount > 0)
+  const named = writtenOrderTotal(lines)
   const tipAmount = guestTipAmount(named, resolveGuestTip(tipChoice, currency))
   const amount = named + tipAmount
   const isAmountTooLow = named > 0 && named < selfPayMinimum(currency)
   const isAmountTooHigh = amount > MAX_WRITTEN_AMOUNT
   const canPay =
-    isTextValid &&
+    lines.every(
+      (line) =>
+        WrittenOrderTextSchema.safeParse(line.text).success && line.amount > 0
+    ) &&
     isWrittenAmountInRange(named, currency) &&
     !isAmountTooHigh &&
     !isCustomTipUnreadable(tipChoice, currency)
@@ -74,79 +93,69 @@ export function GuestWrittenOrder({
     announce(payLabel)
   }, [announce, payLabel])
 
+  const change = (id: number, typed: Partial<Omit<TypedLine, "id">>) => {
+    setTypedLines((current) =>
+      current.map((line) => (line.id === id ? { ...line, ...typed } : line))
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="guest-written-text">
-            {t("selfPay.written.text.label")}
-          </Label>
-          <Input
-            id="guest-written-text"
-            className="h-11"
-            maxLength={MAX_WRITTEN_TEXT_LENGTH}
-            autoComplete="off"
-            aria-describedby="guest-written-text-length"
-            value={typedText}
-            onChange={(event) => {
-              setTypedText(event.currentTarget.value)
-            }}
-          />
-          <p
-            id="guest-written-text-length"
-            className="text-sm text-muted-foreground tabular-nums"
-          >
-            {t("selfPay.order.note.length", {
-              length: typedText.length,
-              max: MAX_WRITTEN_TEXT_LENGTH,
-            })}
-          </p>
-          {text !== "" && !isTextValid ? (
-            <p className="text-sm text-destructive" role="alert">
-              {t("selfPay.written.text.unreadable")}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="guest-written-amount">
-            {t("selfPay.written.amount.label")}
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="guest-written-amount"
-              className="h-11"
-              inputMode="decimal"
-              enterKeyHint="done"
-              autoComplete="off"
-              value={typedAmount}
-              onChange={(event) => {
-                setTypedAmount(event.currentTarget.value)
+      <section className="flex flex-col gap-4">
+        <ol className="flex flex-col gap-5">
+          {typedLines.map((line, index) => (
+            <GuestWrittenLine
+              key={line.id}
+              line={line}
+              number={index + 1}
+              currency={currency}
+              onChange={(typed) => {
+                change(line.id, typed)
               }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur()
-              }}
-              onBlur={(event) => {
+              onRemove={
+                typedLines.length > 1
+                  ? () => {
+                      setTypedLines((current) =>
+                        current.filter(({ id }) => id !== line.id)
+                      )
+                    }
+                  : null
+              }
+              onAmountBlur={(event) => {
                 if (named > 0) revealTipsAfterTyping(event)
               }}
             />
-            <span className="text-muted-foreground">
-              {guestCurrencySymbol(currency, locale)}
-            </span>
-          </div>
-          {isAmountTooLow ? (
-            <p className="text-sm text-destructive" role="alert">
-              {t("selfPay.written.amount.tooLow", {
-                amount: format(selfPayMinimum(currency)),
-              })}
-            </p>
-          ) : isAmountTooHigh ? (
-            <p className="text-sm text-destructive" role="alert">
-              {t("selfPay.written.amount.tooHigh", {
-                amount: format(MAX_WRITTEN_AMOUNT),
-              })}
-            </p>
-          ) : null}
-        </div>
+          ))}
+        </ol>
+        {typedLines.length < MAX_WRITTEN_LINES ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 self-start"
+            onClick={() => {
+              setTypedLines((current) => [
+                ...current,
+                emptyLine(Math.max(...current.map(({ id }) => id)) + 1),
+              ])
+            }}
+          >
+            <PlusIcon aria-hidden="true" />
+            {t("selfPay.written.add")}
+          </Button>
+        ) : null}
+        {isAmountTooLow ? (
+          <p className="text-sm text-destructive" role="alert">
+            {t("selfPay.written.amount.tooLow", {
+              amount: format(selfPayMinimum(currency)),
+            })}
+          </p>
+        ) : isAmountTooHigh ? (
+          <p className="text-sm text-destructive" role="alert">
+            {t("selfPay.written.amount.tooHigh", {
+              amount: format(MAX_WRITTEN_AMOUNT),
+            })}
+          </p>
+        ) : null}
       </section>
 
       <GuestTipPicker
@@ -182,7 +191,7 @@ export function GuestWrittenOrder({
             className="h-12 text-base"
             disabled={isPreparing}
             onClick={() => {
-              onOrder({ text, named, amount })
+              onOrder({ lines, named, amount })
             }}
           >
             {isPreparing ? (
@@ -193,5 +202,94 @@ export function GuestWrittenOrder({
         ) : null}
       </footer>
     </div>
+  )
+}
+
+function GuestWrittenLine({
+  line,
+  number,
+  currency,
+  onChange,
+  onRemove,
+  onAmountBlur,
+}: {
+  readonly line: TypedLine
+  readonly number: number
+  readonly currency: SelfPayMenu["currency"]
+  readonly onChange: (typed: Partial<Omit<TypedLine, "id">>) => void
+  readonly onRemove: (() => void) | null
+  readonly onAmountBlur: (event: FocusEvent) => void
+}) {
+  const { t, locale } = useGuestTranslation()
+  const text = line.text.trim()
+  const textId = `guest-written-text-${line.id}`
+  const lengthId = `guest-written-text-length-${line.id}`
+  const amountId = `guest-written-amount-${line.id}`
+
+  return (
+    <li className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor={textId}>{t("selfPay.written.text.label")}</Label>
+          {onRemove === null ? null : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 rounded-full"
+              aria-label={t("selfPay.written.remove", { number })}
+              onClick={onRemove}
+            >
+              <XIcon />
+            </Button>
+          )}
+        </div>
+        <Input
+          id={textId}
+          className="h-11"
+          maxLength={MAX_WRITTEN_TEXT_LENGTH}
+          autoComplete="off"
+          aria-describedby={lengthId}
+          value={line.text}
+          onChange={(event) => {
+            onChange({ text: event.currentTarget.value })
+          }}
+        />
+        <p id={lengthId} className="text-sm text-muted-foreground tabular-nums">
+          {t("selfPay.order.note.length", {
+            length: line.text.length,
+            max: MAX_WRITTEN_TEXT_LENGTH,
+          })}
+        </p>
+        {text !== "" && !WrittenOrderTextSchema.safeParse(text).success ? (
+          <p className="text-sm text-destructive" role="alert">
+            {t("selfPay.written.text.unreadable")}
+          </p>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor={amountId}>{t("selfPay.written.amount.label")}</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id={amountId}
+            className="h-11"
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+            value={line.amount}
+            onChange={(event) => {
+              onChange({ amount: event.currentTarget.value })
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur()
+            }}
+            onBlur={onAmountBlur}
+          />
+          <span className="text-muted-foreground">
+            {guestCurrencySymbol(currency, locale)}
+          </span>
+        </div>
+      </div>
+    </li>
   )
 }

@@ -1160,7 +1160,13 @@ export const skSettings = {
   "catalog.tables.selfPayOptions.payBill": "Hostia platia účet stola",
   "catalog.tables.selfPayOptions.written": "Hostia píšu, čo platia",
   "catalog.tables.selfPayOptions.written.description":
-    "Hosť pri stole napíše jeden riadok a sumu. {appName} kontroluje len to, či peniaze prišli, a riadok nemá žiadnu sadzbu dane.",
+    "Hosť pri stole napíše jeden riadok a sumu. {appName} kontroluje len to, či peniaze prišli, a riadok dostane sadzbu dane vybranú nižšie.",
+  "catalog.tables.selfPayOptions.written.taxRate.label":
+    "Sadzba dane písaného riadku",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.description":
+    "Ako platiteľ DPH vyberte sadzbu, ktorú písaný riadok dostane. Dovtedy hostia písať nemôžu.",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.title":
+    "Hostia zatiaľ písať nemôžu",
   "catalog.tables.selfPayOptions.title": "Čo môžu hostia",
   "catalog.tables.sticker.check": "Skontrolovať nálepku",
   "catalog.tables.sticker.current": "Táto nálepka patrí k stolu {name}.",

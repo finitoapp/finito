@@ -52,8 +52,9 @@ import {
   deriveMenuOrderBillId,
   loadMenuOrderArrivalRows,
   loadSelfPayMenuVersion,
+  loadWrittenOrderLines,
   type MenuOrderArrivalRows,
-  raiseWrittenOrderLine,
+  raiseWrittenOrderLines,
   type WrittenOrderRest,
 } from "../menu-order/menu-order-actions.ts"
 import { menuOrderByBillIdQuery } from "../menu-order/menu-order-queries.ts"
@@ -211,7 +212,7 @@ interface SelfPayArrival {
   readonly rows: SelfPayPaymentRows
   readonly allocations: ReadonlyArray<SelfPayAllocationWrite>
   readonly order: MenuOrderArrivalRows | null
-  readonly writtenOrderRest: WrittenOrderRest | null
+  readonly writtenOrderRest: ReadonlyArray<WrittenOrderRest> | null
 }
 
 interface SelfPaySelectionAllocation {
@@ -687,9 +688,10 @@ const creditWrittenOrderRest =
       }),
       allocations: [],
       order: null,
-      writtenOrderRest: raiseWrittenOrderLine({
-        pointer,
-        writtenAmount,
+      writtenOrderRest: raiseWrittenOrderLines({
+        lines: await run.ok(
+          loadWrittenOrderLines({ billId: bill.id, pointer })
+        ),
         coveredBefore,
         amount,
       }),

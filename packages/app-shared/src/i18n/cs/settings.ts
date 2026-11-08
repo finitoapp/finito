@@ -1158,7 +1158,13 @@ export const csSettings = {
   "catalog.tables.selfPayOptions.payBill": "Hosté platí účet stolu",
   "catalog.tables.selfPayOptions.written": "Hosté píšou, co platí",
   "catalog.tables.selfPayOptions.written.description":
-    "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek nemá žádnou sazbu daně.",
+    "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek dostane sazbu daně vybranou níže.",
+  "catalog.tables.selfPayOptions.written.taxRate.label":
+    "Sazba daně psaného řádku",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.description":
+    "Jako plátce DPH vyberte sazbu, kterou psaný řádek dostane. Do té doby hosté psát nemohou.",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.title":
+    "Hosté zatím psát nemohou",
   "catalog.tables.selfPayOptions.title": "Co mohou hosté",
   "catalog.tables.sticker.check": "Zkontrolovat nálepku",
   "catalog.tables.sticker.current": "Tato nálepka patří ke stolu {name}.",

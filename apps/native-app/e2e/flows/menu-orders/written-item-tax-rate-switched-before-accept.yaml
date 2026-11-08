@@ -1,0 +1,76 @@
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedWrittenOrderTaxRates
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Bar
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveWrittenOrder
+      QUERY: table=Bar&text=2x%20pivo&named=9000&also=utopenec&alsoNamed=6000&amount=15000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '${output.re(output.tv("orders.written", { text: "utopenec" }))}'
+- runFlow:
+    when:
+      platform: Web
+    commands:
+      - tapOn:
+          id: Food \(12%\)
+          index: 1
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: Food \(12%\)
+          index: 1
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.accept"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.preparing"])}
+    timeout: 10000
+- assertVisible: Standard \(21%\)
+- assertVisible: Food \(12%\)

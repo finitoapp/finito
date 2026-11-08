@@ -136,6 +136,10 @@ export const csCommon = {
   "orders.title": "K vydání",
   "orders.written": "Text hosta: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
+  "orders.written.taxRate": "Sazba DPH položky „{text}“",
+  "orders.written.taxRate.locked":
+    "Objednávka je přijatá, sazby už nejde změnit.",
+  "orders.written.total": "Celkem {amount}",
   "passwordTextarea.hide": "Skrýt obsah",
   "passwordTextarea.show": "Zobrazit obsah",
   "scanner.dialog.title": "Naskenovat kód",

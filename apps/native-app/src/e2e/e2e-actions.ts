@@ -22,6 +22,7 @@ import {
   markRecoveryPhraseVerified,
   setMenuOrdering,
   setSelfPayBillsHidden,
+  setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
@@ -55,6 +56,7 @@ import { toEetCashRegisterId } from "@payky/core/modules/eet/eet-utils"
 import { saveFioPlugin } from "@payky/core/modules/fio-plugin/fio-plugin-actions"
 import { upsertItemSnapshot } from "@payky/core/modules/item/item-actions"
 import { createStandaloneItemSnapshot } from "@payky/core/modules/item/item-utils"
+import { setLegalEntity } from "@payky/core/modules/legal-entity/legal-entity-actions"
 import {
   loadSelfPayMenu,
   saveSelfPayMenuVersion,
@@ -109,6 +111,8 @@ import {
   deriveOrderSelfPayReference,
   formatSelfPayBankMessage,
 } from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
+import { createTaxRate } from "@payky/core/modules/tax-rate/tax-rate-actions"
+import { TaxRatePercentage } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router } from "expo-router"
 import type { createStore } from "jotai"
 import type { SetStateAction } from "react"
@@ -221,6 +225,8 @@ const ReceiveWrittenOrderParams = z.object({
   table: z.string().min(1),
   text: z.string().min(1),
   named: z.coerce.number().int().positive(),
+  also: z.string().min(1).optional(),
+  alsoNamed: z.coerce.number().int().positive().optional(),
   amount: z.coerce.number().int().positive(),
 })
 
@@ -840,8 +846,37 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
     return undefined
   },
 
+  /**
+   * `__e2eSeedWrittenOrderTaxRates`: a Czech VAT payer with a Standard (21%)
+   * and a Food (12%) rate, Standard taken by written lines.
+   */
+  seedWrittenOrderTaxRates: async (run) => {
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+    const standard = await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Standard"),
+        rate: TaxRatePercentage(2100),
+        isDefault: false,
+      })
+    )
+    await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Food"),
+        rate: TaxRatePercentage(1200),
+        isDefault: false,
+      })
+    )
+    await run.ok(setWrittenOrderTaxRate(standard))
+    return undefined
+  },
+
+  /**
+   * `__e2eReceiveWrittenOrder`: a guest writes `text` for `named` at `table`,
+   * and `also` for `alsoNamed` when given, publishes it and pays `amount` by
+   * bank transfer.
+   */
   receiveWrittenOrder: async (run, params, { deviceId }) => {
-    const { table, text, named, amount } =
+    const { table, text, named, also, alsoNamed, amount } =
       ReceiveWrittenOrderParams.parse(params)
     const root = deriveTableSelfPayRoot(run.deps.masterKey)
     const [{ menu }, tables] = await Promise.all([
@@ -858,8 +893,12 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
             .publicKey
         ),
         menu,
-        text,
-        amount: named,
+        lines: [
+          { text, amount: named },
+          ...(also === undefined || alsoNamed === undefined
+            ? []
+            : [{ text: also, amount: alsoNamed }]),
+        ],
       }),
       selectionKey: deriveSelfPaySelectionKey(root),
       createdAt: Math.floor(run.deps.date.now().getTime() / 1000),
