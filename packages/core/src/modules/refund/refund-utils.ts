@@ -121,8 +121,11 @@ export const deriveRefundState = ({
 }
 
 export interface PaymentRefundSummary {
+  /** The goods refunded: what the refunded state is measured by (refund/0004). */
   readonly refundedAmount: NonNegativeInteger
   readonly refundableAmount: NonNegativeInteger
+  /** Every amount given back, the tip included: what the badge shows (refund/0009). */
+  readonly returnedAmount: NonNegativeInteger
   readonly currency: FiatCurrency
 }
 
@@ -155,10 +158,14 @@ export const summarizeRefundsByPayment = (
       })),
       amount: refund.paymentAmount,
     })
+    const previous = summaries.get(refund.paymentId)
     summaries.set(refund.paymentId, {
       refundedAmount: NonNegativeInteger(
-        (summaries.get(refund.paymentId)?.refundedAmount ?? 0) +
+        (previous?.refundedAmount ?? 0) +
           (isTipRefund(refund) ? 0 : refund.amount)
+      ),
+      returnedAmount: NonNegativeInteger(
+        (previous?.returnedAmount ?? 0) + refund.amount
       ),
       refundableAmount: deriveRefundableAmount({
         amount: refund.paymentAmount,
