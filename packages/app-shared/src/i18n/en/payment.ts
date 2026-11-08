@@ -417,6 +417,18 @@ export const enPayment = {
     "Only the phone that started this refund can ask its SwitchioPay.",
   "refund.switchio.restored.unusable":
     "A refund result from before the app restarted could not be processed. Check the refund in SwitchioPay.",
+  "paymentDetail.refunds.wholeAction": "Refund the whole payment ({amount})",
+  "refund.switchio.whole.title": "Refund the whole payment?",
+  "refund.switchio.whole.description":
+    "{amount}, the tip included, goes back to the card that paid. The terminal first tries to take the payment back whole; if it no longer can, a refund to the card is offered, for which the customer holds the card to the phone.",
+  "refund.switchio.whole.confirm": "Refund",
+  "refund.switchio.whole.cancel": "Back",
+  "refund.switchio.reversalDeclined.title":
+    "The terminal can no longer take the payment back",
+  "refund.switchio.reversalDeclined.description":
+    "Its batch was most likely closed. Refund the money to the card instead? The customer holds the card that paid to this phone.",
+  "refund.switchio.reversalDeclined.confirm": "Refund to the card",
+  "refund.switchio.reversalDeclined.cancel": "Back",
   "refund.qerko.dismiss": "Dismiss",
   "refund.qerko.dismissUnresolved": "I have checked, dismiss",
   "refund.qerko.error.notAvailable":

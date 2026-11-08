@@ -410,6 +410,18 @@ export const csPayment = {
     "Stav v SwitchioPay může zjistit jen telefon, který vrácení spustil.",
   "refund.switchio.restored.unusable":
     "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení v SwitchioPay.",
+  "paymentDetail.refunds.wholeAction": "Vrátit celou platbu ({amount})",
+  "refund.switchio.whole.title": "Vrátit celou platbu?",
+  "refund.switchio.whole.description":
+    "{amount} včetně spropitného se vrátí na kartu, kterou zákazník platil. Terminál nejdřív zkusí vzít platbu zpět celou. Když to už nepůjde, nabídne se vrácení na kartu, ke kterému zákazník kartu přiloží k telefonu.",
+  "refund.switchio.whole.confirm": "Vrátit",
+  "refund.switchio.whole.cancel": "Zpět",
+  "refund.switchio.reversalDeclined.title":
+    "Terminál už platbu nemůže vzít zpět",
+  "refund.switchio.reversalDeclined.description":
+    "Jeho dávka byla nejspíš uzavřena. Vrátit peníze na kartu? Zákazník přiloží k telefonu kartu, kterou platil.",
+  "refund.switchio.reversalDeclined.confirm": "Vrátit na kartu",
+  "refund.switchio.reversalDeclined.cancel": "Zpět",
   "refund.qerko.dismiss": "Zavřít",
   "refund.qerko.dismissUnresolved": "Zkontroloval(a) jsem, zavřít",
   "refund.qerko.error.notAvailable":

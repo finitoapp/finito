@@ -3,6 +3,7 @@ import {
   interpretSwitchioClosureResult,
   interpretSwitchioPaymentResult,
   interpretSwitchioRefundResult,
+  interpretSwitchioReversalResult,
   interpretSwitchioTransactionLookup,
 } from "./switchio.ts"
 
@@ -406,6 +407,39 @@ describe("interpretSwitchioRefundResult", () => {
         resultCode,
       })
     }
+  })
+})
+
+describe("interpretSwitchioReversalResult", () => {
+  test("accepts an approved reversal, with or without the reversal flag", () => {
+    for (const extra of [{}, { reversal: true }]) {
+      const result = interpretSwitchioReversalResult({
+        resultCode: -1,
+        transactionResult: JSON.stringify({ responseCode: "OK", ...extra }),
+      })
+      expect(result.ok).toBe(true)
+    }
+  })
+
+  test("takes an approval that says it is no reversal as an unknown outcome", () => {
+    const result = interpretSwitchioReversalResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        responseCode: "OK",
+        reversal: false,
+      }),
+    })
+
+    expect(!result.ok && result.error.type).toBe("SwitchioResultUnreadable")
+  })
+
+  test("reports a declined reversal as a decline", () => {
+    const result = interpretSwitchioReversalResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({ responseCode: "DECLINED" }),
+    })
+
+    expect(!result.ok && result.error.type).toBe("SwitchioRefundFailed")
   })
 })
 

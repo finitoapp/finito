@@ -62,6 +62,7 @@ import {
   dismissCardSwitchioRefundAttempt,
   resolveCardSwitchioRefundAttempt,
   type StartCardSwitchioRefundError,
+  type StartCardSwitchioRefundInput,
   startCardSwitchioRefund,
 } from "@payky/core/modules/refund/refund-switchio-actions"
 import {
@@ -72,7 +73,7 @@ import {
 import {
   type FiatCurrency,
   Integer,
-  type NonNegativeInteger,
+  NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import { useQuery } from "@tanstack/react-query"
 import { parseISO } from "date-fns"
@@ -173,6 +174,7 @@ const switchioRefundErrorKeys = {
   CardSwitchioRefundNotAvailable: "refund.switchio.error.notAvailable",
   CardSwitchioRefundAttemptRunning: "refund.switchio.error.running",
   CardSwitchioRefundDeclined: "refund.switchio.failed",
+  CardSwitchioReversalDeclined: "refund.switchio.reversalDeclined.title",
   SwitchioRefundNotStarted: "refund.switchio.error.notStarted",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
 } satisfies Record<StartCardSwitchioRefundError["type"], TranslationKey>
@@ -194,6 +196,38 @@ const switchioRefundOutcomeKey = (
   return result.value.status === "refunded"
     ? undefined
     : "refund.switchio.unresolved"
+}
+
+type RefundRun = Parameters<Parameters<ReturnType<typeof useRunToast>>[0]>[0]
+
+/**
+ * Refunds to the card through SwitchioPay inside `useRunToast`'s action,
+ * a reversal first wherever one can be made (refund/0008). When the terminal
+ * declines the reversal, staff are asked whether to refund to the card
+ * instead, with the customer's card.
+ */
+function useStartSwitchioRefund() {
+  const { t } = useTranslation()
+  const confirm = useConfirm()
+  return async (
+    run: RefundRun,
+    input: StartCardSwitchioRefundInput
+  ): Promise<TranslationKey | undefined> => {
+    const result = await run(startCardSwitchioRefund(input))
+    if (result.ok || result.error.type !== "CardSwitchioReversalDeclined") {
+      return switchioRefundOutcomeKey(result)
+    }
+    const referral = await confirm({
+      title: t("refund.switchio.reversalDeclined.title"),
+      description: t("refund.switchio.reversalDeclined.description"),
+      confirmLabel: t("refund.switchio.reversalDeclined.confirm"),
+      cancelLabel: t("refund.switchio.reversalDeclined.cancel"),
+    })
+    if (!referral) return "refund.switchio.reversalDeclined.title"
+    return switchioRefundOutcomeKey(
+      await run(startCardSwitchioRefund({ ...input, referral: true }))
+    )
+  }
 }
 
 /**
@@ -284,6 +318,13 @@ export function PaymentRefunds({
     paymentLines,
     hasOtherClaimedPayment: otherClaimedPayments.length > 0,
   })
+  // A payment nothing was refunded of yet goes back whole in one step,
+  // taken back on the terminal wherever it can be (refund/0008).
+  const canRefundWholeToCard =
+    switchioRefundable &&
+    canRefund &&
+    refunds.length === 0 &&
+    !switchioAttempts.some(({ status }) => status !== "failed")
   // Qerko refunds a Qerko payment whole or not at all (qerko/0010).
   const qerkoPaymentRefundAmount = deriveQerkoPaymentRefund({
     hasPaidQerkoAttempt: qerkoPaymentAttempts.some(
@@ -313,6 +354,7 @@ export function PaymentRefunds({
     canRefundTip ||
     qerkoAttempts.length > 0 ||
     switchioAttempts.length > 0 ||
+    canRefundWholeToCard ||
     qerkoPaymentRefundAmount !== null ? (
       <YStack gap={8}>
         {qerkoPaymentRefundAmount === null ? null : (
@@ -335,6 +377,14 @@ export function PaymentRefunds({
             formatMinor={money}
           />
         ))}
+        {canRefundWholeToCard ? (
+          <SwitchioWholeRefundButton
+            paymentId={payment.id}
+            amount={money(
+              NonNegativeInteger(remainingAmount + refundableTipAmount)
+            )}
+          />
+        ) : null}
         {canRefund ? (
           <Button
             variant="outline"
@@ -535,6 +585,7 @@ function RefundSheet({
   const toast = useToast()
   const { require } = useRequirePermission()
   const { device } = useAtomValue(accountAtom)
+  const startSwitchioRefund = useStartSwitchioRefund()
   const [mode, setMode] = useState<RefundMode>("amount")
   const [method, setMethod] = useState<NativeRefundMethod>(defaultMethod)
   const [typedAmountText, setTypedAmountText] = useState<string | null>(null)
@@ -571,14 +622,11 @@ function RefundSheet({
       }))
       if (method === "cardSwitchio") {
         if (!switchioRefundable) return "refund.switchio.error.notAvailable"
-        return switchioRefundOutcomeKey(
-          await run(
-            startCardSwitchioRefund({
-              paymentId,
-              deviceId: device.id,
-              ...(mode === "amount" ? { amount: refundAmount } : { lines }),
-            })
-          )
+        return startSwitchioRefund(
+          run,
+          mode === "amount"
+            ? { paymentId, deviceId: device.id, amount: refundAmount }
+            : { paymentId, deviceId: device.id, lines }
         )
       }
       if (method === "qerkoTerminal") {
@@ -744,6 +792,7 @@ function TipRefundSheet({
   const toast = useToast()
   const { require } = useRequirePermission()
   const { device } = useAtomValue(accountAtom)
+  const startSwitchioRefund = useStartSwitchioRefund()
   const [method, setMethod] = useState<NativeRefundMethod>(defaultMethod)
   const [pending, setPending] = useState(false)
   const formattedTip = formatMoney({ value: tipAmount, currency }, locale)
@@ -757,15 +806,11 @@ function TipRefundSheet({
     const refunded = await runToast(async (run) => {
       if (method === "cardSwitchio") {
         if (!switchioRefundable) return "refund.switchio.error.notAvailable"
-        return switchioRefundOutcomeKey(
-          await run(
-            startCardSwitchioRefund({
-              paymentId,
-              deviceId: device.id,
-              tip: true,
-            })
-          )
-        )
+        return startSwitchioRefund(run, {
+          paymentId,
+          deviceId: device.id,
+          tip: true,
+        })
       }
       if (method === "qerkoTerminal") {
         if (!qerkoRefundable) return "refund.qerko.error.notAvailable"
@@ -1140,6 +1185,59 @@ function QerkoRefundAttempt({
         </>
       ) : null}
     </YStack>
+  )
+}
+
+/**
+ * Refunds all of a SwitchioPay payment to the card, goods and tip in one
+ * step, after a confirmation that says so: a reversal wherever the terminal
+ * can still take the payment back, a refund to the card otherwise
+ * (refund/0008).
+ */
+function SwitchioWholeRefundButton({
+  paymentId,
+  amount,
+}: {
+  readonly paymentId: PaymentId
+  readonly amount: string
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const toast = useToast()
+  const confirm = useConfirm()
+  const { require } = useRequirePermission()
+  const { device } = useAtomValue(accountAtom)
+  const startSwitchioRefund = useStartSwitchioRefund()
+  const [pending, setPending] = useState(false)
+
+  const refund = async () => {
+    if (pending) return
+    if (!(await require("refund", "access.action.refund"))) return
+    const confirmed = await confirm({
+      title: t("refund.switchio.whole.title"),
+      description: t("refund.switchio.whole.description", { amount }),
+      confirmLabel: t("refund.switchio.whole.confirm"),
+      cancelLabel: t("refund.switchio.whole.cancel"),
+      variant: "destructive",
+    })
+    if (!confirmed) return
+    setPending(true)
+    const refunded = await runToast((run) =>
+      startSwitchioRefund(run, { paymentId, deviceId: device.id, whole: true })
+    )
+    setPending(false)
+    if (refunded) toast.success(t("refund.switchio.done"))
+  }
+
+  return (
+    <Button
+      variant="outline"
+      h={48}
+      iconStart={Undo2}
+      pending={pending}
+      label={t("paymentDetail.refunds.wholeAction", { amount })}
+      onPress={() => void refund()}
+    />
   )
 }
 

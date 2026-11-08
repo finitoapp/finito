@@ -47,6 +47,8 @@ const SwitchioTransactionResultSchema = z.object({
   brand: z.string().nullish(),
   terminalIdAcquirer: z.string().nullish(),
   dateTimeTerminal: z.string().nullish(),
+  /** Whether the transaction is a reversal (ECR result structure). */
+  reversal: z.boolean().nullish().catch(null),
 })
 const SwitchioTransactionResultJson = jsonCodec(SwitchioTransactionResultSchema)
 
@@ -379,6 +381,17 @@ export interface SwitchioClosureDep {
 }
 
 /**
+ * A reversal (ECR 5.13): takes back the whole payment `originalTransactionId`
+ * names, tip included, on the terminal that took it and only until its batch
+ * is closed. Both ids are required: without `originalTransactionId` the
+ * terminal reverses its *last* transaction, whatever that is.
+ */
+export interface SwitchioReversalRequest {
+  readonly transactionId: string
+  readonly originalTransactionId: string
+}
+
+/**
  * A referral refund (ECR 5.17): money back to the card that paid, named by
  * the `refundId` the payment's result carried. The terminal declines it when
  * it cannot find that payment, so the money never goes to another card.
@@ -505,6 +518,30 @@ export const interpretSwitchioRefundResult = ({
 }
 
 /**
+ * Reads a reversal's result by the refund's rules, with one more: a result
+ * that says it is not a reversal (`reversal: false`) is unknown rather than
+ * approved — whatever the terminal did, it was not this.
+ */
+export const interpretSwitchioReversalResult = (answer: {
+  readonly resultCode: number
+  readonly transactionResult: string | null
+}): Result<SwitchioCardRefundResult, SwitchioRefundError> => {
+  const result = interpretSwitchioRefundResult(answer)
+  if (
+    result.ok &&
+    parseRefundResult(answer.transactionResult)?.reversal === false
+  ) {
+    return err(
+      createSwitchioResultUnreadableError({
+        resultCode: answer.resultCode,
+        rawResult: answer.transactionResult,
+      })
+    )
+  }
+  return result
+}
+
+/**
  * What the terminal says about one of its transactions (`get_transaction`,
  * ECR 5.12), asked after a refund's own result was lost or unreadable.
  *
@@ -548,13 +585,17 @@ export const interpretSwitchioTransactionLookup = ({
 }
 
 /**
- * Refunds to the card through the SwitchioPay terminal on this phone, and
- * asks it what became of a refund whose result was lost. Kept apart from
+ * Takes payments back (reversal) or refunds them to the card (referral
+ * refund) through the SwitchioPay terminal on this phone, and asks it what
+ * became of one whose result was lost. Kept apart from
  * {@link SwitchioTerminalDep} and {@link SwitchioClosureDep}, so that an app
  * which only takes payments need not implement it.
  */
 export interface SwitchioRefundDep {
   readonly switchioRefund: {
+    readonly reverse: (
+      request: SwitchioReversalRequest
+    ) => Promise<Result<SwitchioCardRefundResult, SwitchioRefundError>>
     readonly referralRefund: (
       request: SwitchioReferralRefundRequest
     ) => Promise<Result<SwitchioCardRefundResult, SwitchioRefundError>>

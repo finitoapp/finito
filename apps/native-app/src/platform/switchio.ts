@@ -1,17 +1,20 @@
-import { err } from "@evolu/common"
+import { err, type Result } from "@evolu/common"
 import {
   createSwitchioResultUnreadableError,
   createSwitchioUnavailableError,
   interpretSwitchioClosureResult,
   interpretSwitchioPaymentResult,
   interpretSwitchioRefundResult,
+  interpretSwitchioReversalResult,
   interpretSwitchioTransactionLookup,
+  type SwitchioCardRefundResult,
   type SwitchioClosureDep,
   type SwitchioNativeClosureResult,
   SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
   SwitchioNativePayResultSchema,
   type SwitchioRefundDep,
+  type SwitchioRefundError,
   type SwitchioTerminalDep,
 } from "@payky/core/switchio"
 import { NativeModule, requireOptionalNativeModule } from "expo"
@@ -35,6 +38,10 @@ declare class PaykySwitchioNativeModule extends NativeModule {
   close(): Promise<unknown>
   peekStoredClosureResult(): unknown
   acknowledgeClosureResult(): void
+  reversal(
+    transactionId: string,
+    originalTransactionId: string
+  ): Promise<unknown>
   referralRefund(
     transactionId: string,
     amount: number,
@@ -227,8 +234,59 @@ const whileInFlight = async <T>(work: () => Promise<T>): Promise<T> => {
 }
 
 /**
- * Refunds to the card through SwitchioPay and asks it about a refund whose
- * result was lost (refund/0007). Has its own request code and result store
+ * Launches a reversal or a referral refund and reads its answer. Both share
+ * the native refund store, so an earlier result no one has settled yet
+ * blocks either.
+ */
+const launchRefund = async ({
+  demo,
+  transactionId,
+  launch,
+  interpret,
+}: {
+  readonly demo: boolean
+  readonly transactionId: string
+  readonly launch: (module: PaykySwitchioNativeModule) => Promise<unknown>
+  readonly interpret: (answer: {
+    readonly resultCode: number
+    readonly transactionResult: string | null
+  }) => Result<SwitchioCardRefundResult, SwitchioRefundError>
+}): Promise<Result<SwitchioCardRefundResult, SwitchioRefundError>> => {
+  if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
+  if (switchio === null) {
+    return err(createSwitchioUnavailableError({ reason: "notNativeRuntime" }))
+  }
+  if (refundInFlight) return unreadable()
+
+  // An earlier refund's result no one has settled yet would be overwritten
+  // by this one: let `SwitchioRestoredRefund` settle it.
+  if (switchio.peekStoredRefundResult() !== null) return unreadable()
+
+  const module = switchio
+  return whileInFlight(async () => {
+    try {
+      const raw = await launch(module)
+      // The attempt was written before SwitchioPay was launched, so a crash
+      // before its outcome is applied leaves it pending, to be asked about,
+      // never forgotten.
+      module.acknowledgeRefundResult(transactionId)
+      const parsed = SwitchioNativePayResultSchema.safeParse(raw)
+      return parsed.success ? interpret(parsed.data) : unreadable()
+    } catch (error) {
+      // As with a payment, only a missing SwitchioPay is known to fail
+      // before the card could have been refunded.
+      if (isNotInstalledRejection(error)) {
+        return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+      }
+      return unreadable()
+    }
+  })
+}
+
+/**
+ * Takes payments back (reversal) and refunds them to the card through
+ * SwitchioPay, and asks it about one whose result was lost (refund/0007,
+ * refund/0008). Has its own request code and result store
  * on the native side, so a refund result is never taken for a payment's or a
  * closure's. A demo account calls no outside service (demo-data/0001), so it
  * never reaches the terminal.
@@ -239,47 +297,27 @@ export const createSwitchioRefundDep = ({
   readonly demo: boolean
 }): SwitchioRefundDep => ({
   switchioRefund: {
-    referralRefund: async (request) => {
-      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
-      if (switchio === null) {
-        return err(
-          createSwitchioUnavailableError({ reason: "notNativeRuntime" })
-        )
-      }
-      if (refundInFlight) return unreadable()
-
-      // An earlier refund's result no one has settled yet would be
-      // overwritten by this one: let `SwitchioRestoredRefund` settle it.
-      if (switchio.peekStoredRefundResult() !== null) return unreadable()
-
-      return whileInFlight(async () => {
-        try {
-          const raw = await switchio.referralRefund(
+    reverse: (request) =>
+      launchRefund({
+        demo,
+        transactionId: request.transactionId,
+        launch: (module) =>
+          module.reversal(request.transactionId, request.originalTransactionId),
+        interpret: interpretSwitchioReversalResult,
+      }),
+    referralRefund: (request) =>
+      launchRefund({
+        demo,
+        transactionId: request.transactionId,
+        launch: (module) =>
+          module.referralRefund(
             request.transactionId,
             request.amount,
             request.currencyCode,
             request.refundId
-          )
-          // The attempt was written before SwitchioPay was launched, so a
-          // crash before its outcome is applied leaves it pending, to be
-          // asked about, never forgotten.
-          switchio.acknowledgeRefundResult(request.transactionId)
-          const parsed = SwitchioNativePayResultSchema.safeParse(raw)
-          return parsed.success
-            ? interpretSwitchioRefundResult(parsed.data)
-            : unreadable()
-        } catch (error) {
-          // As with a payment, only a missing SwitchioPay is known to fail
-          // before the card could have been refunded.
-          if (isNotInstalledRejection(error)) {
-            return err(
-              createSwitchioUnavailableError({ reason: "notInstalled" })
-            )
-          }
-          return unreadable()
-        }
-      })
-    },
+          ),
+        interpret: interpretSwitchioRefundResult,
+      }),
     lookup: async (transactionId) => {
       if (demo || switchio === null || refundInFlight) {
         return { type: "unknown" }

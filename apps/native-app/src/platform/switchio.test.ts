@@ -27,8 +27,9 @@ it("uses the same not-installed rejection code on both sides", () => {
 })
 
 it("stores the attempt before the terminal is launched", () => {
-  const begin = module.indexOf("SwitchioResultStore.begin(")
-  const launch = module.indexOf("startActivityForResult(")
+  const pay = module.slice(module.indexOf('AsyncFunction("pay")'))
+  const begin = pay.indexOf("SwitchioResultStore.begin(")
+  const launch = pay.indexOf("startActivityForResult(")
   expect(begin).toBeGreaterThan(-1)
   expect(launch).toBeGreaterThan(begin)
 })
@@ -87,7 +88,7 @@ it("names the refund functions the same in JS and Kotlin", () => {
     expect(js).toContain(`${fn}(`)
     expect(module).toContain(`Function("${fn}")`)
   }
-  for (const fn of ["referralRefund", "lookupTransaction"]) {
+  for (const fn of ["reversal", "referralRefund", "lookupTransaction"]) {
     expect(js).toContain(`${fn}(`)
     expect(module).toContain(`AsyncFunction("${fn}")`)
   }
@@ -105,10 +106,24 @@ it("refunds through the v8 referral refund intent, naming the payment by its ref
   expect(refund).toContain('data.put("refundId", refundId)')
 })
 
+it("takes a payment back through the v8 reversal intent, never without the original", () => {
+  expect(module).toContain('URI_PATH_REVERSAL = "api/main/v8/reversal"')
+  const reversal = module.slice(
+    module.indexOf('AsyncFunction("reversal")'),
+    module.indexOf('AsyncFunction("referralRefund")')
+  )
+  expect(reversal).toContain(
+    'data.put("originalTransactionId", originalTransactionId)'
+  )
+  const guard = reversal.indexOf("originalTransactionId.isEmpty()")
+  expect(guard).toBeGreaterThan(-1)
+  expect(reversal.indexOf("launchRefund(")).toBeGreaterThan(guard)
+})
+
 it("stores the refund before the terminal is launched, under its own request code", () => {
-  const refund = module.slice(module.indexOf('AsyncFunction("referralRefund")'))
-  const begin = refund.indexOf("SwitchioRefundStore.begin(")
-  const launch = refund.indexOf(
+  const launcher = module.slice(module.indexOf("private fun launchRefund("))
+  const begin = launcher.indexOf("SwitchioRefundStore.begin(")
+  const launch = launcher.indexOf(
     "startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)"
   )
   expect(begin).toBeGreaterThan(-1)
@@ -164,7 +179,7 @@ it("never hands a closure result to the payment's store or recovery", () => {
     plugin.indexOf("const storeBranch"),
     plugin.indexOf("const LATER_BRANCHES")
   )
-  expect(template).toContain("if (requestCode == ${store}.REQUEST_CODE)")
+  expect(template).toMatch(/if \(requestCode == \$\{store\}\.REQUEST_CODE\)/u)
   expect(template).not.toMatch(/Switchio\w+Store/u)
   expect(plugin).toContain('storeBranch("SwitchioClosureStore")')
   expect(plugin).toContain(
