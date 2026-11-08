@@ -1,8 +1,8 @@
 diff --git a/dist/src/local-first/Db.js b/dist/src/local-first/Db.js
-index 61a1177e10a4fa860411205ba7e25800ca8cd1eb..f6fce71826345fb904091530eca7312736937745 100644
+index 07168fec1001cc6c89a45a06e4281d796fa674f7..2c0622ba9f583122423a8e01c43a2b6bf5f98b11 100644
 --- a/dist/src/local-first/Db.js
 +++ b/dist/src/local-first/Db.js
-@@ -1024,6 +1024,13 @@ const createClientStorage = (deps) => {
+@@ -1088,6 +1088,13 @@ const createClientStorage = (deps) => {
          },
      };
  };
@@ -16,7 +16,7 @@ index 61a1177e10a4fa860411205ba7e25800ca8cd1eb..f6fce71826345fb904091530eca73127
  const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction(() => {
      const messagesByOwnerId = new Map();
      let clockTimestamp = deps.clock.get();
-@@ -1032,6 +1039,25 @@ const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction
+@@ -1096,6 +1103,25 @@ const handleMutation = (deps) => (message, now) => getOk(deps.sqlite.transaction
              applyLocalOnlyChange(deps)(change, now);
              continue;
          }
@@ -43,10 +43,10 @@ index 61a1177e10a4fa860411205ba7e25800ca8cd1eb..f6fce71826345fb904091530eca73127
          // stores it in quarantine instead of its table.
          const nextTimestamp = sendTimestamp(deps)(clockTimestamp, now);
 diff --git a/dist/src/local-first/Evolu.d.ts b/dist/src/local-first/Evolu.d.ts
-index 93feb209b3210c60f4611af24550def4d457db4d..3ad45ec91c9c11015e1e9ac9ffc8bfa12af3db09 100644
+index 1b2a759e8a0f370e9cde44ae2b35e1e429b944cb..02a0ef2b4674c41e7d6b8e769cbfebfa69dddfb0 100644
 --- a/dist/src/local-first/Evolu.d.ts
 +++ b/dist/src/local-first/Evolu.d.ts
-@@ -464,6 +464,16 @@ export interface Evolu<S extends EvoluSchema = EvoluSchema> extends AsyncDisposa
+@@ -468,6 +468,16 @@ export interface Evolu<S extends EvoluSchema = EvoluSchema> extends AsyncDisposa
       * @see {@link Mutation}
       */
      readonly upsert: Mutation<S, "upsert">;
@@ -64,10 +64,10 @@ index 93feb209b3210c60f4611af24550def4d457db4d..3ad45ec91c9c11015e1e9ac9ffc8bfa1
       * Returns the size of a mutation of `table` with `values`, measured as
       * {@link maxMutationSize} describes.
 diff --git a/dist/src/local-first/Evolu.js b/dist/src/local-first/Evolu.js
-index 74e5b705f1317baee1478449abd6f48b24e6a2d4..087555a84dad35c8595916ddbd0acd33fa7d3d19 100644
+index ec47e0d05947f7c8dcf2c369609afd2d35c960ef..e999d3abb58278b9a7596c9d50b8ac34b50efb69 100644
 --- a/dist/src/local-first/Evolu.js
 +++ b/dist/src/local-first/Evolu.js
-@@ -523,6 +523,7 @@ export const createEvolu = (schema, config) => async (run) => {
+@@ -546,6 +546,7 @@ export const createEvolu = (schema, config) => async (run) => {
                  return;
              postMessage({ type: "UseOwner", actions });
          }));
@@ -75,7 +75,7 @@ index 74e5b705f1317baee1478449abd6f48b24e6a2d4..087555a84dad35c8595916ddbd0acd33
          const createMutation = (kind) => (table, values, options) => {
              const { id = createId(run.deps), isDeleted, ...changeValues } = values;
              const dbChange = {
-@@ -593,7 +594,14 @@ export const createEvolu = (schema, config) => async (run) => {
+@@ -616,7 +617,14 @@ export const createEvolu = (schema, config) => async (run) => {
              // the mutation does not return rows cached before it.
              releaseUnsubscribedLoadingPromises();
              mutateBatch.push({
@@ -91,7 +91,7 @@ index 74e5b705f1317baee1478449abd6f48b24e6a2d4..087555a84dad35c8595916ddbd0acd33
                  onComplete: options?.onComplete,
              });
              return { id };
-@@ -665,6 +673,9 @@ export const createEvolu = (schema, config) => async (run) => {
+@@ -687,6 +695,9 @@ export const createEvolu = (schema, config) => async (run) => {
              insert: createMutation("insert"),
              update: createMutation("update"),
              upsert: createMutation("upsert"),
