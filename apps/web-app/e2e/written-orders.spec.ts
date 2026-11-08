@@ -323,8 +323,19 @@ test("staff remember a written item for today as Řízek for 199.00, and the nex
     ).toContainText("4:00")
   })
 
-  await test.step("staff remember it as Řízek for 199.00", async () => {
+  await test.step("staff serve it, then remember it from Served as Řízek for 199.00", async () => {
     await gotoOrders(page)
+    const orderCard = page.getByTestId("order-to-serve")
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.served") })
+      .click()
+    await expect(orderCard).toHaveCount(0)
+    await page
+      .getByRole("tab", { name: translate("en", "orders.tabs.served") })
+      .click()
     await page
       .getByRole("button", { name: translate("en", "orders.written.remember") })
       .click()

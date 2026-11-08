@@ -246,6 +246,18 @@ test("a paid order is announced, listed to serve and served", async ({
     await expect(nothingToServe).toBeVisible()
   })
 
+  await test.step("Served lists it among the orders served today", async () => {
+    await page
+      .getByRole("tab", { name: translate("en", "orders.tabs.served") })
+      .click()
+    await expect(page.getByTestId("served-order")).toContainText(
+      translateParams("en", "orders.number", { number: 1 })
+    )
+    await page
+      .getByRole("tab", { name: translate("en", "orders.tabs.toServe") })
+      .click()
+  })
+
   await test.step("an order paid in part says so", async () => {
     await receiveMenuOrder(page, {
       table: "Table 3",

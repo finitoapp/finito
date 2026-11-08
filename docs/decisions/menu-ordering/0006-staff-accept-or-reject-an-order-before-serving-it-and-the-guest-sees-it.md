@@ -59,6 +59,8 @@ Money that arrives for an order after it is rejected waits unmatched
 (`menu-ordering/0010`).
 The till keeps showing an order until staff accept or reject it
 (`menu-ordering/0014`).
+"To serve" lists the orders served today under "Served"
+(`menu-ordering/0015`).
 
 ## Enforced by
 

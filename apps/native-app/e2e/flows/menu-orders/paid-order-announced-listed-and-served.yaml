@@ -57,7 +57,9 @@ tags: [menu-orders]
 - assertVisible: '${output.re(output.tv("orders.note", { note: "bez cukru" }))}'
 - assertVisible: ${output.re(output.t["orders.paid"])}
 - assertNotVisible: ${output.re(output.t["orders.notFullyPaid"])}
-- assertNotVisible: ${output.re(output.t["orders.served"])}
+- assertNotVisible:
+    text: ${output.re(output.t["orders.served"])}
+    below: ${output.re(output.t["orders.paid"])}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
@@ -65,10 +67,9 @@ tags: [menu-orders]
 - extendedWaitUntil:
     visible: ${output.re(output.t["orders.preparing"])}
     timeout: 10000
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["orders.served"]}
+- tapOn:
+    text: ${output.re(output.t["orders.served"])}
+    below: ${output.re(output.t["orders.preparing"])}
 - extendedWaitUntil:
     visible: ${output.re(output.t["orders.empty"])}
     timeout: 10000
@@ -90,3 +91,11 @@ tags: [menu-orders]
     timeout: 10000
 - assertVisible: '.*${output.re(output.tv("orders.number", { number: 2 }))}.*'
 - assertVisible: ${output.re(output.t["orders.notFullyPaid"])}
+- tapOn: ${output.re(output.t["orders.tabs.served"])}
+- extendedWaitUntil:
+    visible:
+      id: served-order
+    timeout: 10000
+- assertVisible: '.*${output.re(output.tv("orders.number", { number: 1 }))}.*'
+- assertNotVisible:
+    id: order-to-serve

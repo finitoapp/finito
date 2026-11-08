@@ -52,6 +52,8 @@ lists the item, and an order from it is priced from that version, as
 catalog items. An item the owner deleted stays deleted when staff remember it
 again from the same order. A new hour applies to the items remembered after
 the owner picks it.
+Staff can remember an item from an order they already served, under "Served"
+(`menu-ordering/0015`).
 
 ## Enforced by
 

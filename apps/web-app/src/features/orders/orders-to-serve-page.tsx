@@ -7,6 +7,7 @@ import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
+  loadMenuOrdersServedToday,
   loadMenuOrdersToServe,
   type MenuOrderDecidedError,
   type MenuOrderNotFoundYet,
@@ -25,7 +26,7 @@ import {
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Suspense } from "react"
+import { type ReactNode, Suspense } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { ListSkeleton } from "@/components/list-skeleton.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
@@ -39,6 +40,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useAppRun } from "@/hooks/use-app-run.ts"
@@ -57,10 +64,60 @@ export function OrdersToServePage() {
     <div className="flex flex-col gap-2">
       <div className="h-6" />
       <FadeHeader title={t("orders.title")} />
-      <Suspense fallback={<ListSkeleton />}>
-        <OrdersToServe />
-      </Suspense>
+      <Tabs defaultValue="toServe" className="gap-4">
+        <TabsList className="w-full">
+          <TabsTrigger value="toServe">{t("orders.tabs.toServe")}</TabsTrigger>
+          <TabsTrigger value="served">{t("orders.tabs.served")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="toServe">
+          <Suspense fallback={<ListSkeleton />}>
+            <OrdersToServe />
+          </Suspense>
+        </TabsContent>
+        <TabsContent value="served">
+          <Suspense fallback={<ListSkeleton />}>
+            <OrdersServedToday />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </div>
+  )
+}
+
+function useOrdersServedToday() {
+  const appRun = useAppRun()
+  const {
+    data: [history],
+  } = useEvoluQuery(evoluHistoryMaxRowidQuery)
+  const { data } = useQuery({
+    queryKey: ["ordersServedToday", history?.maxRowid ?? null],
+    queryFn: async () => {
+      await using run = appRun()
+      return await run.ok(loadMenuOrdersServedToday())
+    },
+    placeholderData: keepPreviousData,
+  })
+  return data
+}
+
+function OrdersServedToday() {
+  const { t } = useTranslation()
+  const served = useOrdersServedToday()
+
+  if (served === undefined) return <ListSkeleton />
+
+  return served.length === 0 ? (
+    <p className="py-6 text-center text-sm text-muted-foreground">
+      {t("orders.served.empty")}
+    </p>
+  ) : (
+    <ul className="flex flex-col gap-3">
+      {served.map((order) => (
+        <li key={order.id}>
+          <OrderCard order={order} />
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -106,7 +163,9 @@ function OrdersToServe() {
       ) : (
         <ul className="flex flex-col gap-3">
           {toServe.orders.map((order) => (
-            <OrderToServe key={order.id} order={order} />
+            <li key={order.id}>
+              <OrderToServe order={order} />
+            </li>
           ))}
         </ul>
       )}
@@ -130,7 +189,6 @@ function OrdersToServe() {
 
 function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const runToast = useRunToast()
   const confirm = useConfirmDialog()
   const { require } = useRequirePermission()
@@ -169,80 +227,97 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   }
 
   return (
-    <li>
-      <Card data-testid="order-to-serve">
-        <CardHeader>
-          <CardTitle className="flex items-baseline gap-3">
-            <span className="text-4xl font-semibold tabular-nums">
-              {t("orders.number", { number: order.number })}
-            </span>
-            <span className="text-lg">
-              {order.tableName ?? t("orders.noTable")}
-            </span>
-          </CardTitle>
-          <CardDescription>
-            {formatTime(new Date(order.createdAt), locale)}
-          </CardDescription>
-          <CardAction className="flex flex-col items-end gap-1">
-            {order.isFullyPaid ? (
-              <Badge variant="secondary">{t("orders.paid")}</Badge>
-            ) : (
-              <Badge variant="destructive">{t("orders.notFullyPaid")}</Badge>
-            )}
-            {order.isAccepted && <Badge>{t("orders.preparing")}</Badge>}
-          </CardAction>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {order.written !== null ? (
-            <WrittenOrder
-              billId={order.billId}
-              written={order.written}
-              isAccepted={order.isAccepted}
-            />
+    <OrderCard order={order}>
+      <CardFooter className="flex flex-col gap-2">
+        <Button
+          className="w-full"
+          onClick={() => {
+            void runToast(async (run) => {
+              await run.ok(nextStep.task)
+            })
+          }}
+        >
+          {nextStep.label}
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full text-destructive"
+          onClick={() => {
+            void reject()
+          }}
+        >
+          {t("orders.reject")}
+        </Button>
+      </CardFooter>
+    </OrderCard>
+  )
+}
+
+function OrderCard({
+  order,
+  children,
+}: {
+  readonly order: MenuOrderToServe
+  readonly children?: ReactNode
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  return (
+    <Card data-testid={order.isServed ? "served-order" : "order-to-serve"}>
+      <CardHeader>
+        <CardTitle className="flex items-baseline gap-3">
+          <span className="text-4xl font-semibold tabular-nums">
+            {t("orders.number", { number: order.number })}
+          </span>
+          <span className="text-lg">
+            {order.tableName ?? t("orders.noTable")}
+          </span>
+        </CardTitle>
+        <CardDescription>
+          {formatTime(new Date(order.createdAt), locale)}
+        </CardDescription>
+        <CardAction className="flex flex-col items-end gap-1">
+          {order.isFullyPaid ? (
+            <Badge variant="secondary">{t("orders.paid")}</Badge>
           ) : (
-            <ul className="flex flex-col gap-1">
-              {order.lines.map((line) => (
-                <li key={line.id} className="flex items-center gap-2">
-                  <span className="text-lg font-medium">
-                    {t("orders.line", {
-                      name: line.name,
-                      quantity: line.quantity,
-                    })}
-                  </span>
-                  {line.isSoldOut && (
-                    <Badge variant="destructive">{t("orders.soldOut")}</Badge>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <Badge variant="destructive">{t("orders.notFullyPaid")}</Badge>
           )}
-          {order.note !== null && (
-            <p className="text-sm">{t("orders.note", { note: order.note })}</p>
+          {order.isAccepted && !order.isServed && (
+            <Badge>{t("orders.preparing")}</Badge>
           )}
-        </CardContent>
-        <CardFooter className="flex flex-col gap-2">
-          <Button
-            className="w-full"
-            onClick={() => {
-              void runToast(async (run) => {
-                await run.ok(nextStep.task)
-              })
-            }}
-          >
-            {nextStep.label}
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full text-destructive"
-            onClick={() => {
-              void reject()
-            }}
-          >
-            {t("orders.reject")}
-          </Button>
-        </CardFooter>
-      </Card>
-    </li>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {order.written !== null ? (
+          <WrittenOrder
+            billId={order.billId}
+            written={order.written}
+            isAccepted={order.isAccepted}
+          />
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {order.lines.map((line) => (
+              <li key={line.id} className="flex items-center gap-2">
+                <span className="text-lg font-medium">
+                  {t("orders.line", {
+                    name: line.name,
+                    quantity: line.quantity,
+                  })}
+                </span>
+                {line.isSoldOut && (
+                  <Badge variant="destructive">{t("orders.soldOut")}</Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {order.note !== null && (
+          <p className="text-sm">{t("orders.note", { note: order.note })}</p>
+        )}
+      </CardContent>
+      {children}
+    </Card>
   )
 }
 

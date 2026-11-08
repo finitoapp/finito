@@ -67,6 +67,7 @@ import {
   dropReplacedMenuVersions,
   loadMenuOrderArrivalRows,
   loadMenuOrdersNotFoundYet,
+  loadMenuOrdersServedToday,
   loadMenuOrdersToServe,
   loadSelfPayMenu,
   markMenuOrderServed,
@@ -1334,6 +1335,35 @@ describe("what staff serve", () => {
       expect.objectContaining({ id: order.id, isAccepted: true }),
     ])
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+  })
+
+  test("lists the orders served since the owner's hour, the last served first", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    await pay(context, await writeOrder(context, menu, { text: "pivo" }), 9000)
+    await pay(
+      context,
+      await writeOrder(context, menu, { text: "kofola" }),
+      9000
+    )
+    await using run = testCreateRun(context.deps)
+    const [first, second] = await run.ok(loadMenuOrdersToServe())
+    if (first === undefined || second === undefined) {
+      throw new Error("Expected two orders to serve.")
+    }
+
+    await run.ok(markMenuOrderServed(first.id))
+    context.clock.advance(60_000)
+    await run.ok(markMenuOrderServed(second.id))
+    context.clock.advance(14 * 60 * 60 * 1000 - 60_000 - 1)
+    const lastMoment = await run.ok(loadMenuOrdersServedToday())
+    context.clock.advance(1)
+
+    expect(lastMoment).toEqual([
+      expect.objectContaining({ id: second.id, isServed: true }),
+      expect.objectContaining({ id: first.id, isServed: true }),
+    ])
+    expect(await run.ok(loadMenuOrdersServedToday())).toEqual([])
   })
 
   test("takes a rejected order off the list for good, keeps its bill and payment, and names that payment for the refund", async () => {

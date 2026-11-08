@@ -92,6 +92,7 @@ import type { MenuOrderRow } from "./menu-order.ts"
 import {
   lastMenuOrderNumberQuery,
   menuOrderByBillIdQuery,
+  menuOrdersServedSinceQuery,
   menuOrdersToServeQuery,
   menuVersionByIdQuery,
   menuVersionsNewestFirstQuery,
@@ -860,6 +861,7 @@ export interface MenuOrderToServe {
   readonly written: WrittenOrderToServe | null
   readonly isFullyPaid: boolean
   readonly isAccepted: boolean
+  readonly isServed: boolean
   readonly lines: ReadonlyArray<{
     readonly id: BillLineSummaryId
     readonly name: string
@@ -868,14 +870,13 @@ export interface MenuOrderToServe {
   }>
 }
 
-export const loadMenuOrdersToServe =
-  (): Task<ReadonlyArray<MenuOrderToServe>, never, EvoluDep> => async (run) => {
+const loadListedMenuOrders =
+  (
+    query: typeof menuOrdersToServeQuery
+  ): Task<ReadonlyArray<MenuOrderToServe>, never, EvoluDep> =>
+  async (run) => {
     const [orders, tables, catalogItems] = await Promise.all(
-      run.deps.evolu.loadQueries([
-        menuOrdersToServeQuery,
-        tablesQuery,
-        catalogItemsQuery,
-      ])
+      run.deps.evolu.loadQueries([query, tablesQuery, catalogItemsQuery])
     )
     const catalogById = new Map(catalogItems.map((item) => [item.id, item]))
     const tableNames = new Map(tables.map(({ id, name }) => [id, name]))
@@ -901,6 +902,7 @@ export const loadMenuOrdersToServe =
             note: order.note,
             ...toServePayment(order, writtenLines, coverage),
             isAccepted: order.acceptedAt !== null,
+            isServed: order.servedAt !== null,
             lines: summaries.map((summary) => {
               const catalogItem =
                 summary.catalogItemId === null
@@ -919,6 +921,29 @@ export const loadMenuOrdersToServe =
             }),
           }
         })
+      )
+    )
+  }
+
+export const loadMenuOrdersToServe = (): Task<
+  ReadonlyArray<MenuOrderToServe>,
+  never,
+  EvoluDep
+> => loadListedMenuOrders(menuOrdersToServeQuery)
+
+export const loadMenuOrdersServedToday =
+  (): Task<ReadonlyArray<MenuOrderToServe>, never, EvoluDep & DateDep> =>
+  async (run) => {
+    const [settings] = await run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    const dayStart = subDays(
+      menuDayEndAfter(run.deps.date.now(), menuDayEndHourOf(settings)),
+      1
+    )
+    return ok(
+      await run.ok(
+        loadListedMenuOrders(
+          menuOrdersServedSinceQuery(TimestampMs(dayStart.getTime()))
+        )
       )
     )
   }

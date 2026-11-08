@@ -8,6 +8,7 @@ import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
+  loadMenuOrdersServedToday,
   loadMenuOrdersToServe,
   type MenuOrderDecidedError,
   type MenuOrderNotFoundYet,
@@ -26,7 +27,7 @@ import {
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { router } from "expo-router"
-import { Suspense } from "react"
+import { type ReactNode, Suspense } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { ListSkeleton } from "../../components/list-skeleton.tsx"
@@ -41,6 +42,12 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card.tsx"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs.tsx"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -62,10 +69,64 @@ export function OrdersToServePage() {
   return (
     <Screen>
       <FadeHeader title={t("orders.title")} />
-      <Suspense fallback={<ListSkeleton />}>
-        <OrdersToServe />
-      </Suspense>
+      <Tabs defaultValue="toServe">
+        <TabsList>
+          <TabsTrigger value="toServe">{t("orders.tabs.toServe")}</TabsTrigger>
+          <TabsTrigger value="served">{t("orders.tabs.served")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="toServe">
+          <Suspense fallback={<ListSkeleton />}>
+            <OrdersToServe />
+          </Suspense>
+        </TabsContent>
+        <TabsContent value="served">
+          <Suspense fallback={<ListSkeleton />}>
+            <OrdersServedToday />
+          </Suspense>
+        </TabsContent>
+      </Tabs>
     </Screen>
+  )
+}
+
+function useOrdersServedToday() {
+  const appRun = useAppRun()
+  const {
+    data: [history],
+  } = useEvoluQuery(evoluHistoryMaxRowidQuery)
+  const { data } = useQuery({
+    queryKey: ["ordersServedToday", history?.maxRowid ?? null],
+    queryFn: async () => {
+      await using run = appRun()
+      return await run.ok(loadMenuOrdersServedToday())
+    },
+    placeholderData: keepPreviousData,
+  })
+  return data
+}
+
+function OrdersServedToday() {
+  const { t } = useTranslation()
+  const served = useOrdersServedToday()
+
+  if (served === undefined) return <ListSkeleton />
+
+  return served.length === 0 ? (
+    <Text
+      py="6"
+      text="center"
+      fontSize={fontSize.sm}
+      lineHeight={fontSize.sm}
+      color="muted-foreground"
+    >
+      {t("orders.served.empty")}
+    </Text>
+  ) : (
+    <YStack gap={12}>
+      {served.map((order) => (
+        <OrderCard key={order.id} order={order} />
+      ))}
+    </YStack>
   )
 }
 
@@ -141,7 +202,6 @@ function OrdersToServe() {
 
 function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   const { t } = useTranslation()
-  const locale = useLocale()
   const runToast = useRunToast()
   const confirm = useConfirm()
   const { require } = useRequirePermission()
@@ -182,7 +242,43 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
   }
 
   return (
-    <YStack testID="order-to-serve">
+    <OrderCard order={order}>
+      <CardFooter flexDirection="column" gap={8}>
+        <Button
+          self="stretch"
+          label={nextStep.label}
+          onPress={() => {
+            void runToast(async (run) => {
+              await run.ok(nextStep.task)
+            })
+          }}
+        />
+        <Button
+          self="stretch"
+          variant="ghost"
+          labelColor="destructive"
+          label={t("orders.reject")}
+          onPress={() => {
+            void reject()
+          }}
+        />
+      </CardFooter>
+    </OrderCard>
+  )
+}
+
+function OrderCard({
+  order,
+  children,
+}: {
+  readonly order: MenuOrderToServe
+  readonly children?: ReactNode
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+
+  return (
+    <YStack testID={order.isServed ? "served-order" : "order-to-serve"}>
       <Card>
         <CardHeader>
           <CardTitle>
@@ -207,7 +303,9 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
             ) : (
               <Badge variant="destructive" label={t("orders.notFullyPaid")} />
             )}
-            {order.isAccepted && <Badge label={t("orders.preparing")} />}
+            {order.isAccepted && !order.isServed && (
+              <Badge label={t("orders.preparing")} />
+            )}
           </XStack>
         </CardHeader>
         <CardContent gap={12}>
@@ -244,26 +342,7 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
             </Text>
           )}
         </CardContent>
-        <CardFooter flexDirection="column" gap={8}>
-          <Button
-            self="stretch"
-            label={nextStep.label}
-            onPress={() => {
-              void runToast(async (run) => {
-                await run.ok(nextStep.task)
-              })
-            }}
-          />
-          <Button
-            self="stretch"
-            variant="ghost"
-            labelColor="destructive"
-            label={t("orders.reject")}
-            onPress={() => {
-              void reject()
-            }}
-          />
-        </CardFooter>
+        {children}
       </Card>
     </YStack>
   )

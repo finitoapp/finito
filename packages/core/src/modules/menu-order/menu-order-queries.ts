@@ -3,7 +3,7 @@ import { sql } from "kysely"
 
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
-import type { DateString } from "../shared/schema.ts"
+import type { DateString, TimestampMs } from "../shared/schema.ts"
 import type { SelfPayPointer } from "../table-self-pay/table-self-pay-reference-utils.ts"
 import type { MenuVersionId } from "./menu-order-types.ts"
 
@@ -64,7 +64,9 @@ export const rejectedMenuOrdersByPointerQuery = (
       .$narrowType<{ pointer: KyselyNotNull; number: KyselyNotNull }>()
   )
 
-export const menuOrdersToServeQuery = createQuery((db) =>
+type QueryDb = Parameters<Parameters<typeof createQuery>[0]>[0]
+
+const selectListedMenuOrders = (db: QueryDb) =>
   db
     .selectFrom("menuOrder")
     .innerJoin("bill", "bill.id", "menuOrder.billId")
@@ -76,6 +78,7 @@ export const menuOrdersToServeQuery = createQuery((db) =>
       "menuOrder.note",
       "menuOrder.writtenAmount",
       "menuOrder.acceptedAt",
+      "menuOrder.servedAt",
       "menuOrder.createdAt",
       "bill.tableId",
       "bill.currency",
@@ -97,7 +100,6 @@ export const menuOrdersToServeQuery = createQuery((db) =>
       ]
     })
     .where("menuOrder.isDeleted", "is not", sqliteTrue)
-    .where("menuOrder.servedAt", "is", null)
     .where("menuOrder.rejectedAt", "is", null)
     .where("menuOrder.billId", "is not", null)
     .where("menuOrder.pointer", "is not", null)
@@ -109,8 +111,19 @@ export const menuOrdersToServeQuery = createQuery((db) =>
       number: KyselyNotNull
       currency: KyselyNotNull
     }>()
+
+export const menuOrdersToServeQuery = createQuery((db) =>
+  selectListedMenuOrders(db)
+    .where("menuOrder.servedAt", "is", null)
     .orderBy("menuOrder.createdAt", "asc")
 )
+
+export const menuOrdersServedSinceQuery = (since: TimestampMs) =>
+  createQuery((db) =>
+    selectListedMenuOrders(db)
+      .where("menuOrder.servedAt", ">=", since)
+      .orderBy("menuOrder.servedAt", "desc")
+  )
 
 export const recentMenuOrdersQuery = (createdSince: DateIso) =>
   createQuery((db) =>
