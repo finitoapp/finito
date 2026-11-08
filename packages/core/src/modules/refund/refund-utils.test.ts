@@ -214,6 +214,7 @@ describe("summarizeRefundsByPayment", () => {
     expect(summary).toEqual({
       refundedAmount: 25_000,
       refundableAmount: 50_000,
+      returnedAmount: 25_000,
       currency: "CZK",
     })
     expect(summary === undefined ? null : deriveRefundState(summary)).toBe(
@@ -239,6 +240,7 @@ describe("summarizeRefundsByPayment", () => {
     expect(goodsAndTip).toMatchObject({
       refundedAmount: 23_000,
       refundableAmount: 23_000,
+      returnedAmount: 25_000,
     })
     expect(
       goodsAndTip === undefined ? null : deriveRefundState(goodsAndTip)

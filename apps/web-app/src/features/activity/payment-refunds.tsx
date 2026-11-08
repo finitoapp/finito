@@ -60,6 +60,7 @@ import {
   isTipRefund,
   type RefundableLine,
   sumGoodsRefundAmounts,
+  sumRefundAmounts,
 } from "@payky/core/modules/refund/refund-utils"
 import {
   type FiatCurrency,
@@ -289,6 +290,7 @@ export function PaymentDetailRefunds({
               <RefundBadge
                 summary={{
                   refundedAmount: sumGoodsRefundAmounts(refunds),
+                  returnedAmount: sumRefundAmounts(refunds),
                   refundableAmount,
                   currency: payment.currency,
                 }}

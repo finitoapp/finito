@@ -69,6 +69,7 @@ import {
   isTipRefund,
   type RefundableLine,
   sumGoodsRefundAmounts,
+  sumRefundAmounts,
 } from "@payky/core/modules/refund/refund-utils"
 import {
   type FiatCurrency,
@@ -204,7 +205,7 @@ type RefundRun = Parameters<Parameters<ReturnType<typeof useRunToast>>[0]>[0]
  * Refunds to the card through SwitchioPay inside `useRunToast`'s action,
  * a reversal first wherever one can be made (refund/0008). When the terminal
  * declines the reversal, staff are asked whether to refund to the card
- * instead, with the customer's card.
+ * instead.
  */
 function useStartSwitchioRefund() {
   const { t } = useTranslation()
@@ -420,6 +421,7 @@ export function PaymentRefunds({
               <RefundBadge
                 summary={{
                   refundedAmount: sumGoodsRefundAmounts(refunds),
+                  returnedAmount: sumRefundAmounts(refunds),
                   refundableAmount,
                   currency: payment.currency,
                 }}

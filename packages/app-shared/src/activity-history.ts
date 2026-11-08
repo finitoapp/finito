@@ -233,7 +233,7 @@ export const refundBadgeLabel = (
 
   return t(refundStateLabelKey[state], {
     amount: formatMoney(
-      { value: summary.refundedAmount, currency: summary.currency },
+      { value: summary.returnedAmount, currency: summary.currency },
       locale
     ),
   })

@@ -179,8 +179,17 @@ describe("formatActivityDayTitle", () => {
 })
 
 describe("refundBadgeLabel", () => {
-  const summary = (refundedAmount: number, refundableAmount: number) =>
-    ({ refundedAmount, refundableAmount, currency: "CZK" }) as never
+  const summary = (
+    refundedAmount: number,
+    refundableAmount: number,
+    returnedAmount = refundedAmount
+  ) =>
+    ({
+      refundedAmount,
+      refundableAmount,
+      returnedAmount,
+      currency: "CZK",
+    }) as never
 
   test("is empty for no summary or nothing refunded", () => {
     expect(refundBadgeLabel(undefined, t, "en-US")).toBeNull()
@@ -193,6 +202,13 @@ describe("refundBadgeLabel", () => {
     expect(partial).not.toBeNull()
     expect(full).not.toBeNull()
     expect(partial).not.toBe(full)
+  })
+
+  test("shows every amount given back, the tip included, while its state counts goods", () => {
+    // All 50 of the goods and a tip of 5: refunded in full, 55 back.
+    const label = refundBadgeLabel(summary(5_000, 5_000, 5_500), t, "en-US")
+    expect(label).toBe(refundBadgeLabel(summary(5_500, 5_500), t, "en-US"))
+    expect(label).toContain("55")
   })
 })
 
