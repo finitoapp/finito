@@ -225,7 +225,13 @@ export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
   createQuery((db) =>
     db
       .selectFrom("paymentCardSwitchio")
-      .select(["id", "accountId", "transactionId", "unresolvedTransactionId"])
+      .select([
+        "id",
+        "accountId",
+        "transactionId",
+        "unresolvedTransactionId",
+        "approvedAt",
+      ])
       .where("id", "=", idValue)
       .where("isDeleted", "is not", sqliteTrue)
       .where("accountId", "is not", null)

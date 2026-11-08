@@ -103,6 +103,25 @@ export interface SwitchioCardPaymentResult {
   readonly cardLabel: string | null
   readonly terminalId: string | null
   readonly terminalDateTime: string | null
+  /**
+   * What a referral refund names the payment by (ECR 5.17, SwitchioPay
+   * 3.1.2 and later), always as the terminal's digits; `null` when the
+   * terminal sent none, and such a payment cannot be refunded to the card.
+   */
+  readonly refundId: string | null
+}
+
+/**
+ * Takes `refundId` from the raw result text rather than from the parsed
+ * object. The ECR documents it as a `long` and a referral refund wants it
+ * 18 digits long, past what a JavaScript number holds exactly, so
+ * `JSON.parse` would round a numeric one before any schema saw it. A quoted
+ * one is taken as it is; anything but digits is ignored.
+ */
+const readRawRefundId = (transactionResult: string | null): string | null => {
+  if (transactionResult === null) return null
+  const match = /"refundId"\s*:\s*(?:"(\d+)"|(\d+))/.exec(transactionResult)
+  return match?.[1] ?? match?.[2] ?? null
 }
 
 const optionalString = (value: string | null | undefined): string | null =>
@@ -187,6 +206,7 @@ export const interpretSwitchioPaymentResult = ({
     cardLabel: optionalString(parsed.appLabel) ?? optionalString(parsed.brand),
     terminalId: optionalString(parsed.terminalIdAcquirer),
     terminalDateTime: optionalString(parsed.dateTimeTerminal),
+    refundId: readRawRefundId(transactionResult),
   })
 }
 

@@ -62,7 +62,7 @@ import {
   NonEmptyString255,
   NonEmptyString255Schema,
   type NonNegativeInteger,
-  type TimestampMs,
+  TimestampMs,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import {
@@ -725,6 +725,15 @@ const recordSwitchioTerminalOutcome =
     if (!settleResult.ok) return settleResult
 
     const result = terminalResult.value
+    const [cardRow] = await run.deps.evolu.loadQuery(
+      paymentCardSwitchioByIdQuery(paymentId)
+    )
+    // The same result recorded again — through its promise, then restored —
+    // keeps the moment it was first recorded.
+    const approvedAt =
+      cardRow?.transactionId === transactionId && cardRow.approvedAt !== null
+        ? cardRow.approvedAt
+        : TimestampMs(run.deps.date.now().getTime())
     await runMutationWithCompletion((options) =>
       run.deps.evolu.update(
         "paymentCardSwitchio",
@@ -739,6 +748,9 @@ const recordSwitchioTerminalOutcome =
           cardLabel: optionalNonEmptyString255(result.cardLabel),
           terminalId: optionalNonEmptyString255(result.terminalId),
           terminalDateTime: optionalNonEmptyString255(result.terminalDateTime),
+          refundId: optionalNonEmptyString255(result.refundId),
+          deviceId: deviceId ?? null,
+          approvedAt,
         },
         { ...options, owner: evoluOwner }
       )
