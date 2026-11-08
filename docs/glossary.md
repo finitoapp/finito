@@ -153,7 +153,7 @@ The word "account" means two unrelated things here.
 - **EET** — Czech electronic registration of sales (`docs/eet.md`).
 - **Switchio** — the SwitchioPay card terminal app, driven through Android
   intents (`apps/web-app/src/platform/switchio.ts`).
-  - **Closure** (cs *uzávěrka*) — closing the terminal's batch of card
+  - **Closure** (cs *uzávěrka terminálu*) — closing the terminal's batch of card
     transactions at the end of the day, which sends them for settlement. It
     closes the SwitchioPay on the phone it runs on; Finito records each
     successful one per device (`cardSwitchioClosure`, payment/0008). Not a

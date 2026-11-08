@@ -16,7 +16,8 @@ PIN every evening.
 Closing the batch needs `confirm`, the permission of the shift lead preset
 and above, which already covers confirming that money arrived. It has its
 own screen, `/settings/card-closure`, straight under Settings, gated by
-`confirm`; the button checks `confirm` again before it launches the
+`confirm`, and so is the detail of one closure it opens,
+`/settings/card-closure/[closureId]`; the button checks `confirm` again before it launches the
 terminal, so the action is held even where the route is not. The payment
 methods and the card terminal's settings stay `admin`; they link to the
 closure screen.

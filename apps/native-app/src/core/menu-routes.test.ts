@@ -142,6 +142,7 @@ describe("the terminal, home's modes, notifications and nesting (navigation/0004
     expect(menuDetailRootOf("/settings/items/new")).toBe("/settings")
     expect(menuDetailRootOf("/settings/tables/abc/")).toBe("/settings")
     expect(menuDetailRootOf("/settings/card-closure")).toBe("/settings")
+    expect(menuDetailRootOf("/settings/card-closure/abc")).toBe("/settings")
   })
 
   it("nests nothing under a root screen, the terminal, the bill or outside the tabs", () => {

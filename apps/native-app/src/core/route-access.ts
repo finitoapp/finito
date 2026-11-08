@@ -69,6 +69,7 @@ export type NativeRoutePath =
   | "/settings/payment-accounts/spark/transactions"
   | "/settings/payment-accounts/card-switchio"
   | "/settings/card-closure"
+  | "/settings/card-closure/:closureId"
   | "/settings/payment-accounts/qerko-terminal"
   | "/settings/payment-accounts/qerko-payment"
   | "/settings/payment-accounts/lightning-address"
@@ -194,6 +195,8 @@ export const routeAccess = {
   "/settings/payment-accounts/card-switchio": "admin",
   // Finito only, no web route: closing the terminal's batch is a shift lead's task (access/0011), so it is not under the owner-only payment methods.
   "/settings/card-closure": "confirm",
+  // One closure of the history, under the same gate as the list (access/0011).
+  "/settings/card-closure/:closureId": "confirm",
   // Like web's `_terminal/settings/payment-accounts/qerko-terminal` (owner-only).
   "/settings/payment-accounts/qerko-terminal": "admin",
   // Like web's `_terminal/settings/payment-accounts/qerko-payment` (owner-only).
