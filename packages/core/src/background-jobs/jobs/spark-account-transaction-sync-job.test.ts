@@ -937,6 +937,62 @@ describe("spark account transaction sync job", () => {
     expect(errors).toEqual([])
   })
 
+  test("notes a guest's Lightning payment by its invoice's description, not the memo Spark encodes", async () => {
+    await using context = await createSelfPayTestContext()
+    const { billId, reference } = await openSelfPayBill(context, {
+      lines: [{ name: "Menu", amount: 45_000 }],
+    })
+    const { pointer } = await selectSelfPayTestShare(context, reference)
+    const rate = signTestSelfPayRate(context.clock.date.now())
+    const memo = formatSelfPayLightningMemo({
+      reference,
+      pointer,
+      amount: 45_000,
+      rate,
+    })
+    const encodedInvoice = createTestLightningInvoice({
+      amountSats: 18_000,
+      createdAt: rate.validFrom + 60,
+      memo,
+    })
+    const transfer = createSelfPayTransfer(
+      encodedInvoice,
+      context.clock.date.now()
+    )
+    const wallet = new FakeSparkWallet([
+      {
+        ...transfer,
+        userRequest: {
+          invoice: {
+            encodedInvoice,
+            paymentHash: "payment-hash-self-pay",
+            memo: btoa(memo),
+          },
+          paymentPreimage: "preimage-self-pay",
+        },
+      },
+    ])
+    await using run = testCreateRun(context.deps)
+    await using jobRun = testCreateRun({
+      ...context.deps,
+      fetch: unimplementedFetch,
+      onError: () => undefined,
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: async () => wallet,
+        recheckIntervalMs: 60_000,
+      })
+    )
+
+    await expect.poll(() => run.orThrow(loadBillStatus(billId))).toBe("closed")
+    expect(
+      await context.deps.evolu.loadQuery(
+        sparkTransactionsByAccountIdQuery(context.sparkAccountId)
+      )
+    ).toMatchObject([{ note: memo }])
+  })
+
   test("pays a self-pay bill once when Spark reports the transfer in its history and live", async () => {
     await using context = await createSelfPayTestContext()
     const { billId, reference } = await openSelfPayBill(context, {

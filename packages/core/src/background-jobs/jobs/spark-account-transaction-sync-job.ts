@@ -790,13 +790,14 @@ const getSparkTransactionPayload = (
   if (!result.success) return null
 
   const { paymentPreimage, invoice } = result.data
+  const parsed = parseLightningInvoice(invoice.encodedInvoice)
   return {
     details: {
       lnInvoice: invoice.encodedInvoice,
       preImage: paymentPreimage,
       paymentHash: invoice.paymentHash,
     },
-    memo: invoice.memo ?? "",
+    memo: (parsed.ok ? parsed.value.description : null) ?? invoice.memo ?? "",
   }
 }
 
