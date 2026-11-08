@@ -384,6 +384,32 @@ export const csPayment = {
   "refund.created": "Vratka je zaznamenaná.",
   "refund.dialog.method.qerkoTerminal": "Zpět na kartu přes terminál",
   "refund.dialog.method.qerkoTerminalTid": "Zpět na kartu na terminálu {tid}",
+  "refund.dialog.method.cardSwitchio": "Zpět na kartu přes SwitchioPay",
+  "refund.switchio.hint":
+    "Zákazník přiloží k tomuto telefonu kartu, kterou platil.",
+  "refund.switchio.done": "Peníze se vrátily na kartu.",
+  "refund.switchio.pending": "Vracím na kartu přes SwitchioPay",
+  "refund.switchio.pendingElsewhere":
+    "Čeká se na SwitchioPay na jiném telefonu. Pokud ten telefon není k dispozici, zkontrolujte SwitchioPay a vrácení zavřete.",
+  "refund.switchio.unresolved":
+    "Výsledek vrácení na kartu není znám, karta tedy mohla být vrácená. Před dalším vrácením zkontrolujte SwitchioPay.",
+  "refund.switchio.failed": "Terminál vrácení na kartu zamítl.",
+  "refund.switchio.check": "Zjistit stav v SwitchioPay",
+  "refund.switchio.dismissPending.title": "Zavřít vrácení?",
+  "refund.switchio.dismissPending.description":
+    "Druhý telefon ho může ještě nahlásit. Pokud se peníze vrátily, vrácení se pak zapíše i tak.",
+  "refund.switchio.dismissPending.confirm": "Zavřít",
+  "refund.switchio.dismissPending.cancel": "Zpět",
+  "refund.switchio.error.notAvailable":
+    "Tuto platbu nelze vrátit na kartu: terminál k ní nevydal identifikátor, který vrácení potřebuje.",
+  "refund.switchio.error.running":
+    "Jiné vrácení této platby na kartu ještě není vyřízené.",
+  "refund.switchio.error.notStarted":
+    "SwitchioPay je zaneprázdněný nebo není připravený. Nic se nevrátilo, zkuste to znovu.",
+  "refund.switchio.error.otherDevice":
+    "Stav v SwitchioPay může zjistit jen telefon, který vrácení spustil.",
+  "refund.switchio.restored.unusable":
+    "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení v SwitchioPay.",
   "refund.qerko.dismiss": "Zavřít",
   "refund.qerko.dismissUnresolved": "Zkontroloval(a) jsem, zavřít",
   "refund.qerko.error.notAvailable":

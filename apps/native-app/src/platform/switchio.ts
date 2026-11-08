@@ -4,11 +4,14 @@ import {
   createSwitchioUnavailableError,
   interpretSwitchioClosureResult,
   interpretSwitchioPaymentResult,
+  interpretSwitchioRefundResult,
+  interpretSwitchioTransactionLookup,
   type SwitchioClosureDep,
   type SwitchioNativeClosureResult,
   SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
   SwitchioNativePayResultSchema,
+  type SwitchioRefundDep,
   type SwitchioTerminalDep,
 } from "@payky/core/switchio"
 import { NativeModule, requireOptionalNativeModule } from "expo"
@@ -32,6 +35,15 @@ declare class PaykySwitchioNativeModule extends NativeModule {
   close(): Promise<unknown>
   peekStoredClosureResult(): unknown
   acknowledgeClosureResult(): void
+  referralRefund(
+    transactionId: string,
+    amount: number,
+    currencyCode: number,
+    refundId: string
+  ): Promise<unknown>
+  lookupTransaction(transactionId: string): Promise<unknown>
+  peekStoredRefundResult(): unknown
+  acknowledgeRefundResult(transactionId: string | null): void
 }
 
 /** Matched by the Kotlin module: the one rejection known to precede any charge. */
@@ -191,5 +203,121 @@ export const takeRestoredSwitchioClosureResult = ():
 
   switchio.acknowledgeClosureResult()
   const parsed = SwitchioNativeClosureResultSchema.safeParse(stored)
+  return parsed.success ? parsed.data : "unusable"
+}
+
+/**
+ * Whether a refund or a lookup is waiting on SwitchioPay in this process.
+ * Asking the terminal about a pending attempt makes sense only when nothing
+ * is: `resolveCardSwitchioRefundAttempt` turns a pending attempt it cannot
+ * account for into an unknown one. A new process starts with nothing in
+ * flight, which is right: the promise of the old one is gone.
+ */
+let refundInFlight = false
+
+export const isSwitchioRefundInFlight = (): boolean => refundInFlight
+
+const whileInFlight = async <T>(work: () => Promise<T>): Promise<T> => {
+  refundInFlight = true
+  try {
+    return await work()
+  } finally {
+    refundInFlight = false
+  }
+}
+
+/**
+ * Refunds to the card through SwitchioPay and asks it about a refund whose
+ * result was lost (refund/0007). Has its own request code and result store
+ * on the native side, so a refund result is never taken for a payment's or a
+ * closure's. A demo account calls no outside service (demo-data/0001), so it
+ * never reaches the terminal.
+ */
+export const createSwitchioRefundDep = ({
+  demo,
+}: {
+  readonly demo: boolean
+}): SwitchioRefundDep => ({
+  switchioRefund: {
+    referralRefund: async (request) => {
+      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
+      if (switchio === null) {
+        return err(
+          createSwitchioUnavailableError({ reason: "notNativeRuntime" })
+        )
+      }
+      if (refundInFlight) return unreadable()
+
+      // An earlier refund's result no one has settled yet would be
+      // overwritten by this one: let `SwitchioRestoredRefund` settle it.
+      if (switchio.peekStoredRefundResult() !== null) return unreadable()
+
+      return whileInFlight(async () => {
+        try {
+          const raw = await switchio.referralRefund(
+            request.transactionId,
+            request.amount,
+            request.currencyCode,
+            request.refundId
+          )
+          // The attempt was written before SwitchioPay was launched, so a
+          // crash before its outcome is applied leaves it pending, to be
+          // asked about, never forgotten.
+          switchio.acknowledgeRefundResult(request.transactionId)
+          const parsed = SwitchioNativePayResultSchema.safeParse(raw)
+          return parsed.success
+            ? interpretSwitchioRefundResult(parsed.data)
+            : unreadable()
+        } catch (error) {
+          // As with a payment, only a missing SwitchioPay is known to fail
+          // before the card could have been refunded.
+          if (isNotInstalledRejection(error)) {
+            return err(
+              createSwitchioUnavailableError({ reason: "notInstalled" })
+            )
+          }
+          return unreadable()
+        }
+      })
+    },
+    lookup: async (transactionId) => {
+      if (demo || switchio === null || refundInFlight) {
+        return { type: "unknown" }
+      }
+      return whileInFlight(async () => {
+        try {
+          const raw = await switchio.lookupTransaction(transactionId)
+          const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
+          return parsed.success
+            ? interpretSwitchioTransactionLookup({
+                transactionId,
+                ...parsed.data,
+              })
+            : { type: "unknown" }
+        } catch {
+          return { type: "unknown" }
+        }
+      })
+    },
+  },
+})
+
+/**
+ * The result of a refund whose promise was lost when Android killed the
+ * app, if one is waiting. Clears it as it is taken;
+ * `settleRestoredCardSwitchioRefund` is idempotent too.
+ */
+export const takeRestoredSwitchioRefundResult = ():
+  | SwitchioNativePayResult
+  | "unusable"
+  | null => {
+  if (switchio === null) return null
+  const stored = switchio.peekStoredRefundResult()
+  if (stored === null || stored === undefined) return null
+
+  const parsed = SwitchioNativePayResultSchema.safeParse(stored)
+  switchio.acknowledgeRefundResult(
+    parsed.success ? parsed.data.transactionId : null
+  )
   return parsed.success ? parsed.data : "unusable"
 }

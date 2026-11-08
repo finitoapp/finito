@@ -19,6 +19,7 @@ import { lockManager } from "../platform/evolu-runtime"
 import { createFetchDep } from "../platform/native-deps.ts"
 import {
   createSwitchioClosureDep,
+  createSwitchioRefundDep,
   createSwitchioTerminalDep,
 } from "../platform/switchio.ts"
 
@@ -26,8 +27,8 @@ import {
  * Native composition root for Task actions, the counterpart of web's
  * `useAppRun`: the same dependency set (console, evolu, deviceEvolu,
  * evoluOwner, masterKey, lockManager, date, fetch, sparkWallet, yadioApi,
- * qerkoApi, switchioTerminal, switchioClosure, eetApi, nostr), built fresh for each run. Use as
- * `await using run = appRun()`. The Cashu wallet comes from `useCashuAppRun`.
+ * qerkoApi, switchioTerminal, switchioClosure, switchioRefund, eetApi,
+ * nostr), built fresh for each run. Use as `await using run = appRun()`. The Cashu wallet comes from `useCashuAppRun`.
  */
 /** Every app dependency but the Cashu ones, built fresh for each run. */
 function useAppRunDeps() {
@@ -56,6 +57,7 @@ function useAppRunDeps() {
       uuid: { create: () => Crypto.randomUUID() },
       ...createSwitchioTerminalDep({ demo: account.demo !== null }),
       ...createSwitchioClosureDep({ demo: account.demo !== null }),
+      ...createSwitchioRefundDep({ demo: account.demo !== null }),
       ...createEetApiDep(
         { ...dateDep, ...fetchDep },
         {

@@ -15,19 +15,29 @@ private const val URI_SCHEME = "app"
 private const val URI_AUTHORITY = "switchiopay"
 private const val URI_PATH_PAYMENT = "api/main/v8/payment"
 private const val URI_PATH_CLOSURE = "api/main/v8/closure"
+private const val URI_PATH_REFERRAL_REFUND = "api/main/v8/referral_refund"
+private const val URI_PATH_GET_TRANSACTION = "api/light/v8/get_transaction"
+
+/**
+ * The request code of `get_transaction`. It changes nothing, so it has no
+ * store: a lookup lost with the process is simply asked again.
+ */
+private const val LOOKUP_REQUEST_CODE = 53704
 
 /** Matched by `src/platform/switchio.ts`: the one rejection known to happen before anything could be charged. */
 private const val NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
 
-private fun paymentIntent(data: String): Intent {
+private fun dataIntent(path: String, data: String): Intent {
   val uri = Uri.Builder()
     .scheme(URI_SCHEME)
     .authority(URI_AUTHORITY)
-    .path(URI_PATH_PAYMENT)
+    .path(path)
     .appendQueryParameter("data", data)
     .build()
   return Intent(ECR_ACTION, uri)
 }
+
+private fun paymentIntent(data: String): Intent = dataIntent(URI_PATH_PAYMENT, data)
 
 /** The batch closure request carries no data (ECR section 4.1). */
 private fun closureIntent(): Intent {
@@ -52,10 +62,17 @@ private fun closureIntent(): Intent {
  * `{ resultCode, transactionResult }`. It has its own request code, promise
  * and [SwitchioClosureStore], so a closure result never reaches the payment
  * path and its recovery.
+ *
+ * `referralRefund` refunds to the card (ECR 5.17) and resolves like `pay`,
+ * with its own request code, promise and [SwitchioRefundStore].
+ * `lookupTransaction` asks the terminal about one of its transactions
+ * (`get_transaction`, ECR 5.12) and resolves like `close`; it stores nothing.
  */
 class PaykySwitchioModule : Module() {
   private var pendingPromise: Promise? = null
   private var pendingClosurePromise: Promise? = null
+  private var pendingRefundPromise: Promise? = null
+  private var pendingLookupPromise: Promise? = null
 
   private val context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
@@ -104,6 +121,60 @@ class PaykySwitchioModule : Module() {
         SwitchioClosureStore.clear(context)
         promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
       }
+    }
+
+    AsyncFunction("referralRefund") { transactionId: String, amount: Int, currencyCode: Int, refundId: String, promise: Promise ->
+      val data = JSONObject()
+      data.put("transactionId", transactionId)
+      data.put("amount", amount)
+      data.put("currencyCode", currencyCode)
+      // A string, as the request documents it: the terminal's 18 digits do
+      // not fit a JavaScript number, and never went through one.
+      data.put("refundId", refundId)
+
+      val intent = dataIntent(URI_PATH_REFERRAL_REFUND, data.toString())
+      intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+
+      // Durable before the terminal can refund the card.
+      SwitchioRefundStore.begin(context, transactionId)
+      pendingRefundPromise = promise
+      try {
+        appContext.throwingActivity.startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)
+      } catch (exception: ActivityNotFoundException) {
+        pendingRefundPromise = null
+        SwitchioRefundStore.clearAttempt(context)
+        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+      }
+    }
+
+    AsyncFunction("lookupTransaction") { transactionId: String, promise: Promise ->
+      val data = JSONObject()
+      data.put("transactionId", transactionId)
+
+      val intent = dataIntent(URI_PATH_GET_TRANSACTION, data.toString())
+      intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+
+      pendingLookupPromise = promise
+      try {
+        appContext.throwingActivity.startActivityForResult(intent, LOOKUP_REQUEST_CODE)
+      } catch (exception: ActivityNotFoundException) {
+        pendingLookupPromise = null
+        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+      }
+    }
+
+    /** The result of a refund whose promise was lost with the process, or null. */
+    Function("peekStoredRefundResult") {
+      val stored = SwitchioRefundStore.peek(context)
+      if (stored == null) null else mapOf(
+        "transactionId" to stored.transactionId,
+        "resultCode" to stored.resultCode,
+        "transactionResult" to stored.transactionResult
+      )
+    }
+
+    Function("acknowledgeRefundResult") { transactionId: String? ->
+      SwitchioRefundStore.acknowledge(context, transactionId)
     }
 
     /** The result of a closure whose promise was lost with the process, or null. */
@@ -161,6 +232,28 @@ class PaykySwitchioModule : Module() {
           )
         )
         pendingClosurePromise = null
+      } else if (payload.requestCode == SwitchioRefundStore.REQUEST_CODE) {
+        val stored = SwitchioRefundStore.save(
+          context,
+          payload.resultCode,
+          payload.data?.getStringExtra(SwitchioRefundStore.RESULT_KEY)
+        )
+        pendingRefundPromise?.resolve(
+          mapOf(
+            "transactionId" to stored.transactionId,
+            "resultCode" to stored.resultCode,
+            "transactionResult" to stored.transactionResult
+          )
+        )
+        pendingRefundPromise = null
+      } else if (payload.requestCode == LOOKUP_REQUEST_CODE) {
+        pendingLookupPromise?.resolve(
+          mapOf(
+            "resultCode" to payload.resultCode,
+            "transactionResult" to payload.data?.getStringExtra(SwitchioRefundStore.RESULT_KEY)
+          )
+        )
+        pendingLookupPromise = null
       }
     }
   }

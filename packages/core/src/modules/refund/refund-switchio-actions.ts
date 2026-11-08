@@ -147,6 +147,10 @@ export type StartCardSwitchioRefundError =
   | CardSwitchioRefundAttemptRunningError
   | OutcomeError
 
+export type SettleRestoredCardSwitchioRefundError =
+  | OutcomeError
+  | CardSwitchioRefundAttemptNotFoundError
+
 type SettleDeps = EvoluDep & EvoluOwnerDep & DateDep
 
 type AttemptRow = Pick<
@@ -408,7 +412,7 @@ export const settleRestoredCardSwitchioRefund =
     readonly restored: SwitchioNativePayResult
   }): Task<
     CardSwitchioRefundProgress,
-    OutcomeError | CardSwitchioRefundAttemptNotFoundError,
+    SettleRestoredCardSwitchioRefundError,
     SettleDeps
   > =>
   async (run) => {
