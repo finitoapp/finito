@@ -370,7 +370,7 @@ function WrittenLineTaxRate({
       aria-label={t("orders.written.taxRate", { text: line.text })}
       variant="outline"
       size="sm"
-      columns={2}
+      orientation="vertical"
       value={line.taxRateId}
       onValueChange={(value) => {
         const rate = rates.find(({ id }) => id === value)

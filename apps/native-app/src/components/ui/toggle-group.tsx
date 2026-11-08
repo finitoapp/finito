@@ -136,11 +136,13 @@ export function ToggleGroupItem({
     throw new Error("ToggleGroupItem must be inside a ToggleGroup")
   const selected = group.value === value
   const inactive = group.disabled || disabled
+  const filled = selected && group.variant === "outline"
   return (
     <ItemFrame
       variant={group.variant}
       size={group.size}
       selected={selected}
+      {...(filled ? { bg: "primary press:primary-pressed" } : {})}
       disabled={inactive}
       hitSlop={hitSlops[group.size]}
       onPress={inactive ? undefined : () => group.onValueChange(value)}
@@ -154,7 +156,11 @@ export function ToggleGroupItem({
       {...frameProps}
     >
       {typeof children === "string" ? (
-        <ItemText size={group.size} numberOfLines={1}>
+        <ItemText
+          size={group.size}
+          numberOfLines={1}
+          {...(filled ? { color: "primary-foreground" } : {})}
+        >
           {children}
         </ItemText>
       ) : (
