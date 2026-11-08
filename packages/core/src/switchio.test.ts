@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest"
 import {
   interpretSwitchioClosureResult,
   interpretSwitchioPaymentResult,
+  interpretSwitchioRefundResult,
+  interpretSwitchioTransactionLookup,
 } from "./switchio.ts"
 
 const approvedResult = JSON.stringify({
@@ -327,6 +329,132 @@ describe("interpretSwitchioClosureResult", () => {
       expect(!result.ok && result.error).toMatchObject({
         type: "SwitchioResultUnreadable",
       })
+    }
+  })
+})
+
+describe("interpretSwitchioRefundResult", () => {
+  test("accepts an approved refund and keeps its trace", () => {
+    expect(
+      interpretSwitchioRefundResult({
+        resultCode: -1,
+        transactionResult: approvedResult,
+      })
+    ).toEqual({
+      ok: true,
+      value: {
+        responseCode: "OK",
+        authCode: "114546",
+        sequenceNumber: "001001614",
+        maskedPan: "970348******3910",
+        terminalDateTime: "Jul 16, 2020 14:39:37",
+      },
+    })
+  })
+
+  test("accepts success without a response code, since the field is optional", () => {
+    const result = interpretSwitchioRefundResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({ authCode: "1" }),
+    })
+
+    expect(result.ok).toBe(true)
+  })
+
+  test("reports an explicit non-OK answer as declined", () => {
+    const result = interpretSwitchioRefundResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        responseCode: "DECLINED",
+        responseMessage: "zamitnuto",
+      }),
+    })
+
+    expect(!result.ok && result.error).toMatchObject({
+      type: "SwitchioRefundFailed",
+      responseCode: "DECLINED",
+      responseMessage: "zamitnuto",
+    })
+  })
+
+  test("reports a cancelled result with no payload as an unknown outcome, not a decline", () => {
+    const result = interpretSwitchioRefundResult({
+      resultCode: 0,
+      transactionResult: null,
+    })
+
+    expect(!result.ok && result.error.type).toBe("SwitchioResultUnreadable")
+  })
+
+  test("reports a success it cannot read as an unknown outcome", () => {
+    const result = interpretSwitchioRefundResult({
+      resultCode: -1,
+      transactionResult: "{not json",
+    })
+
+    expect(!result.ok && result.error.type).toBe("SwitchioResultUnreadable")
+  })
+
+  test("reports busy and not initialised as a refund that never started", () => {
+    for (const resultCode of [1, 2]) {
+      const result = interpretSwitchioRefundResult({
+        resultCode,
+        transactionResult: null,
+      })
+      expect(!result.ok && result.error).toEqual({
+        type: "SwitchioRefundNotStarted",
+        resultCode,
+      })
+    }
+  })
+})
+
+describe("interpretSwitchioTransactionLookup", () => {
+  const transactionId = "48a3ea7d-b82f-4b42-abbb-5043365e4faa"
+
+  test("reports the transaction asked for as approved when the terminal says OK", () => {
+    expect(
+      interpretSwitchioTransactionLookup({
+        transactionId,
+        resultCode: -1,
+        transactionResult: approvedResult,
+      })
+    ).toMatchObject({ type: "approved", result: { authCode: "114546" } })
+  })
+
+  test("reports an explicit non-OK answer as declined", () => {
+    expect(
+      interpretSwitchioTransactionLookup({
+        transactionId,
+        resultCode: -1,
+        transactionResult: JSON.stringify({
+          transactionId,
+          responseCode: "DECLINED",
+        }),
+      })
+    ).toEqual({ type: "declined" })
+  })
+
+  test("never takes an answer about another transaction for this one", () => {
+    expect(
+      interpretSwitchioTransactionLookup({
+        transactionId: "another",
+        resultCode: -1,
+        transactionResult: approvedResult,
+      })
+    ).toEqual({ type: "unknown" })
+  })
+
+  test("leaves everything else unknown, an answer for an unseen id included", () => {
+    for (const answer of [
+      { resultCode: 0, transactionResult: null },
+      { resultCode: 2, transactionResult: null },
+      { resultCode: -1, transactionResult: "{not json" },
+      { resultCode: -1, transactionResult: JSON.stringify({ transactionId }) },
+    ]) {
+      expect(
+        interpretSwitchioTransactionLookup({ transactionId, ...answer })
+      ).toEqual({ type: "unknown" })
     }
   })
 })

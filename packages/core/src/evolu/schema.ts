@@ -99,6 +99,7 @@ import {
   reconciliationClaimIndexes,
 } from "../modules/reconciliation-claim/reconciliation-claim.ts"
 import {
+  cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,
   refund,
   refundIndexes,
@@ -177,6 +178,7 @@ export const AppSchema = {
   eetReversalConfirmation,
   refund,
   refundLine,
+  cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,
   withdrawal,
   withdrawalOnchain,

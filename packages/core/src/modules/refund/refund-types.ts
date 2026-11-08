@@ -10,14 +10,23 @@ export const RefundLineIdRaw = id("RefundLine")
 export const RefundLineId = standardSchemaToZod(RefundLineIdRaw)
 export type RefundLineId = typeof RefundLineIdRaw.Output
 
+export const CardSwitchioRefundAttemptIdRaw = id("CardSwitchioRefundAttempt")
+export const CardSwitchioRefundAttemptId = standardSchemaToZod(
+  CardSwitchioRefundAttemptIdRaw
+)
+export type CardSwitchioRefundAttemptId =
+  typeof CardSwitchioRefundAttemptIdRaw.Output
+
 /**
  * Where a refund's money went: out of the drawer, back to the card through
- * the Qerko terminal (qerko/0004), or `outside` Payky, which only records it.
+ * the Qerko terminal (qerko/0004) or the SwitchioPay terminal (refund/0007),
+ * or `outside` Payky, which only records it.
  */
 export const RefundMethodSchema = z.enum([
   "cashRegister",
   "qerkoTerminal",
   "qerkoPayment",
+  "cardSwitchio",
   "outside",
 ])
 export type RefundMethod = z.output<typeof RefundMethodSchema>
