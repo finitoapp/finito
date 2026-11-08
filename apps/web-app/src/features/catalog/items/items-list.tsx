@@ -1,7 +1,10 @@
 import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import { catalogItemsPageQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import type { CategoryFilter } from "@payky/core/modules/catalog-item/catalog-item-types"
-import { getStaffDisplayName } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import {
+  getStaffDisplayName,
+  isInMenu,
+} from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { Integer } from "@payky/core/modules/shared/schema"
 import { ChevronRight, TagIcon } from "lucide-react"
 import { useCallback, useMemo } from "react"
@@ -55,7 +58,7 @@ export function ItemsList({
           <span className="flex flex-col">
             <span className="flex flex-wrap items-center gap-2">
               <span>{getStaffDisplayName(item)}</span>
-              {item.inMenu !== null &&
+              {isInMenu(item, new Date()) &&
                 (item.soldOut === null ? (
                   <Badge variant="secondary">{t("catalog.items.inMenu")}</Badge>
                 ) : (

@@ -646,6 +646,7 @@ export const csSettings = {
   "catalog.items.form.description.label": "Popis",
   "catalog.items.form.description.placeholder": "Nepovinné",
   "catalog.items.form.inMenu.label": "V menu",
+  "catalog.items.form.inMenu.until": "Z menu zmizí v {time}",
   "catalog.items.form.internalDescription.invalid":
     "Interní popis je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalDescription.label": "Interní popis",
@@ -1157,6 +1158,10 @@ export const csSettings = {
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zařízení)",
   "catalog.tables.selfPayOptions.payBill": "Hosté platí účet stolu",
   "catalog.tables.selfPayOptions.written": "Hosté píšou, co platí",
+  "catalog.tables.selfPayOptions.written.dayEnd.description":
+    "Obsluha může napsanou položku hosta dát na dnešek do menu. V tuto hodinu z menu zmizí.",
+  "catalog.tables.selfPayOptions.written.dayEnd.label":
+    "Položky zapamatované na dnešek zmizí z menu v",
   "catalog.tables.selfPayOptions.written.description":
     "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek dostane sazbu daně vybranou níže.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
@@ -1268,6 +1273,7 @@ export const csSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Označit zrušenou platbu jako zaplacenou",
   "access.action.createItem": "Vytvořit položku katalogu",
+  "access.action.rememberItem": "Dát položku hosta do menu",
   "access.action.disable": "Vypnout řízení přístupu",
   "access.action.exportDatabase": "Exportovat databázi aplikace",
   "access.action.revealRecoveryPhrase": "Zobrazit obnovovací frázi",

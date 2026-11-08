@@ -495,6 +495,7 @@ class TableSelfPayPublishing {
       await this.publishTableLiveness(relays, rates, tableId)
     }
     if (liveMenu !== null) await this.publishLiveness(relays, rates, liveMenu)
+    this.queueMenu()
     this.queueConfirmations()
     await this.run.ok(dropExpiredSelfPayViewVersions())
     if (this.liveMenuVersion !== null) {

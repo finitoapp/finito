@@ -14,6 +14,7 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
+import type { TimestampMs } from "../shared/schema.ts"
 import type { CatalogItem } from "./catalog-item.ts"
 import { lastCatalogItemSortOrderQuery } from "./catalog-item-queries.ts"
 import type { CatalogItemId } from "./catalog-item-types.ts"
@@ -121,7 +122,38 @@ export const setCatalogItemInMenu = ({
   readonly id: CatalogItemId
   readonly inMenu: boolean
 }): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
-  updateCatalogItem({ id, inMenu: inMenu ? sqliteTrue : null })
+  updateCatalogItem({
+    id,
+    inMenu: inMenu ? sqliteTrue : null,
+    inMenuUntil: null,
+  })
+
+export const putCatalogItemInMenuUntil =
+  (
+    input: Pick<
+      InsertValues<CatalogItem>,
+      "name" | "currency" | "unitAmount" | "taxRateId"
+    > & {
+      readonly id: CatalogItemId
+      readonly inMenuUntil: TimestampMs
+    }
+  ): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const [last] = await run.deps.evolu.loadQuery(lastCatalogItemSortOrderQuery)
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.upsert(
+        "catalogItem",
+        {
+          ...input,
+          sortOrder: getNextSortOrder(last),
+          inMenu: sqliteTrue,
+          soldOut: null,
+        },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok(input.id)
+  }
 
 export const setCatalogItemSoldOut = ({
   id,

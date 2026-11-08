@@ -128,11 +128,17 @@ export const enCommon = {
   "orders.reject.description":
     "The guest's money does not go back by itself. Once you reject the order, the till opens what the guest paid so you can record the refund.",
   "orders.reject.title": "Reject order {number}?",
+  "orders.remember.description":
+    "Guests can order it from the menu until {time}. You can change the name and the price.",
+  "orders.remember.save": "Put in the menu",
+  "orders.remember.title": "Remember “{text}” for today",
   "orders.served": "Served",
   "orders.soldOut": "Sold out",
   "orders.title": "To serve",
   "orders.written": "Guest's text: “{text}”",
   "orders.written.arrivedOf": "{arrived} of {named}",
+  "orders.written.remember": "Remember for today",
+  "orders.written.remembered": "In the menu until {time}",
   "orders.written.taxRate": "Tax rate of “{text}”",
   "orders.written.taxRate.locked":
     "The order is accepted, so its tax rates no longer change.",

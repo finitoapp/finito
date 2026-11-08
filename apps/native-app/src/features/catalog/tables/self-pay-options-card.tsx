@@ -1,9 +1,11 @@
 import { sqliteTrue } from "@evolu/common"
+import { formatTime } from "@payky/app-shared/format-date"
 import {
   NO_OPTION,
   optionalIdCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import {
+  setMenuDayEndHour,
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
@@ -11,13 +13,18 @@ import {
   setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
-import { countSelfPayMenuItems } from "@payky/core/modules/menu-order/menu-order-utils"
+import {
+  countSelfPayMenuItems,
+  menuDayEndHourOf,
+} from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import {
@@ -60,7 +67,7 @@ import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
-import { useTranslation } from "../../../hooks/use-translation.ts"
+import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
@@ -156,6 +163,9 @@ export function SelfPayOptionsCard() {
             taxRateId={settings?.writtenOrderTaxRateId ?? null}
           />
         )}
+        {remembersWrittenItems(settings) && (
+          <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
+        )}
         {(menuOrdering || writtenOrders) && (
           <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
         )}
@@ -243,6 +253,62 @@ function WrittenOrderTaxRateSelect({
         </Alert>
       )}
     </YStack>
+  )
+}
+
+const hoursOfDay = Array.from({ length: 24 }, (_, hour) => hour)
+
+function MenuDayEndSelect({ hour }: { readonly hour: number }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const runToast = useRunToast()
+  const dayEnd = useInlineChoice(hour, (next) =>
+    runToast(async (run) => {
+      await run.ok(setMenuDayEndHour(NonNegativeInteger(next)))
+    })
+  )
+  const options = hoursOfDay.map((value) => ({
+    value: String(value),
+    label: formatTime(new Date(2000, 0, 1, value), locale),
+  }))
+
+  return (
+    <Field>
+      <FieldLabel>
+        {t("catalog.tables.selfPayOptions.written.dayEnd.label")}
+      </FieldLabel>
+      <Select
+        value={String(dayEnd.value)}
+        disabled={dayEnd.saving}
+        onValueChange={(value) => {
+          void dayEnd.choose(Number(value))
+        }}
+        items={Object.fromEntries(
+          options.map((option) => [option.value, option.label])
+        )}
+      >
+        <SelectTrigger
+          fullWidth
+          aria-label={t("catalog.tables.selfPayOptions.written.dayEnd.label")}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent
+          title={t("catalog.tables.selfPayOptions.written.dayEnd.label")}
+        >
+          <SelectGroup>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <FieldDescription>
+        {t("catalog.tables.selfPayOptions.written.dayEnd.description")}
+      </FieldDescription>
+    </Field>
   )
 }
 

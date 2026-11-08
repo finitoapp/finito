@@ -648,6 +648,7 @@ export const enSettings = {
   "catalog.items.form.description.label": "Description",
   "catalog.items.form.description.placeholder": "Optional",
   "catalog.items.form.inMenu.label": "In the menu",
+  "catalog.items.form.inMenu.until": "Leaves the menu at {time}",
   "catalog.items.form.internalDescription.invalid":
     "Internal description is too long (255 characters max).",
   "catalog.items.form.internalDescription.label": "Internal description",
@@ -1156,6 +1157,10 @@ export const enSettings = {
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (this device)",
   "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
   "catalog.tables.selfPayOptions.written": "Guests write what they pay for",
+  "catalog.tables.selfPayOptions.written.dayEnd.description":
+    "Staff can put a guest's written item in the menu for the day. It leaves the menu at this hour.",
+  "catalog.tables.selfPayOptions.written.dayEnd.label":
+    "Items remembered for the day leave the menu at",
   "catalog.tables.selfPayOptions.written.description":
     "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line takes the tax rate below.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
@@ -1268,6 +1273,7 @@ export const enSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Mark the canceled payment as paid",
   "access.action.createItem": "Create a catalog item",
+  "access.action.rememberItem": "Put a guest's item in the menu",
   "access.action.disable": "Turn access control off",
   "access.action.exportDatabase": "Export the app database",
   "access.action.revealRecoveryPhrase": "Reveal the recovery phrase",

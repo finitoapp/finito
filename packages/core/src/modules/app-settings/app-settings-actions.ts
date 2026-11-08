@@ -24,7 +24,12 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
-import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
+import {
+  type FiatCurrency,
+  type Iban,
+  type NonNegativeInteger,
+  TimestampMs,
+} from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
@@ -330,6 +335,11 @@ export const setWrittenOrderTaxRate = (
   taxRateId: TaxRateId | null
 ): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
   updateSettings({ writtenOrderTaxRateId: taxRateId })
+
+export const setMenuDayEndHour = (
+  hour: NonNegativeInteger | null
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ menuDayEndHour: hour })
 
 export const setOrderDevice = (
   deviceId: DeviceId

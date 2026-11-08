@@ -3,6 +3,7 @@ import { bytesToHex } from "@noble/hashes/utils.js"
 import { describe, expect, onTestFinished, test, vi } from "vitest"
 import { createQuery } from "../../evolu/schema.ts"
 import {
+  setMenuDayEndHour,
   setMenuOrdering,
   setOrderDevice,
   setWrittenOrders,
@@ -17,6 +18,7 @@ import {
   setCatalogItemSoldOut,
   updateCatalogItem,
 } from "../catalog-item/catalog-item-actions.ts"
+import { catalogItemByIdQuery } from "../catalog-item/catalog-item-queries.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import {
@@ -69,6 +71,7 @@ import {
   loadSelfPayMenu,
   markMenuOrderServed,
   rejectMenuOrder,
+  rememberWrittenItemForToday,
   saveSelfPayMenuVersion,
   setWrittenOrderLineTaxRate,
 } from "./menu-order-actions.ts"
@@ -911,6 +914,77 @@ describe("the tax rate of a written line", () => {
       error: { type: "MenuOrderDecided" },
     })
     expect(await rates()).toEqual(afterSwitch)
+  })
+})
+
+describe("a written item staff remember for the day", () => {
+  const rememberPaidItem = async (context: SelfPayTestContext) => {
+    await using run = testCreateRun(context.deps)
+    await run.ok(setMenuOrdering({ on: true, deviceId: context.deviceId }))
+    const menu = await openBar(context)
+    const order = await writeOrder(context, menu, {
+      text: "řízek s kaší",
+      amount: 18_900,
+    })
+    await pay(context, order, 18_900)
+    const [toServe] = await run.ok(loadMenuOrdersToServe())
+    const [line] = toServe?.written?.lines ?? []
+    if (toServe === undefined || line === undefined) {
+      throw new Error("Expected a written order.")
+    }
+    return async () => {
+      await using rememberRun = testCreateRun(context.deps)
+      return await rememberRun.orThrow(
+        rememberWrittenItemForToday({
+          billId: toServe.billId,
+          lineId: line.id,
+          name: NonEmptyString255("Řízek"),
+          unitAmount: NonNegativeInteger(19_900),
+        })
+      )
+    }
+  }
+  const offered = async (context: SelfPayTestContext) =>
+    (await publishMenu(context)).categories.flatMap(({ items }) =>
+      items.map(({ name, unitAmount }) => ({ name, unitAmount }))
+    )
+
+  test("is in the menu under the name and price staff give it, at its rate, until 4:00", async () => {
+    await using context = await createSelfPayTestContext()
+    const taxRateId = await createWrittenOrderTaxRate(context)
+    const remember = await rememberPaidItem(context)
+
+    const id = await remember()
+    const again = await remember()
+    const [stored] = await context.deps.evolu.loadQuery(
+      catalogItemByIdQuery(id)
+    )
+    const today = await offered(context)
+    context.clock.advance(14 * 60 * 60 * 1000 - 1)
+    const lastMoment = await offered(context)
+    context.clock.advance(1)
+    const nextDay = await offered(context)
+
+    expect(again).toBe(id)
+    expect(stored).toMatchObject({ taxRateId })
+    expect(today).toEqual([{ name: "Řízek", unitAmount: 19_900 }])
+    expect(lastMoment).toEqual(today)
+    expect(nextDay).toEqual([])
+  })
+
+  test("leaves the menu at the hour the owner set", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setMenuDayEndHour(NonNegativeInteger(23)))
+    const remember = await rememberPaidItem(context)
+
+    await remember()
+    context.clock.advance(9 * 60 * 60 * 1000 - 1)
+    const before = await offered(context)
+    context.clock.advance(1)
+
+    expect(before).toHaveLength(1)
+    expect(await offered(context)).toEqual([])
   })
 })
 

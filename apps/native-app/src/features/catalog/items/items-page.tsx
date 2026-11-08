@@ -8,6 +8,7 @@ import type { CategoryFilter } from "@payky/core/modules/catalog-item/catalog-it
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
+  isInMenu,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { Integer } from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
@@ -150,12 +151,13 @@ function ItemsList({
       renderRow={(item) => ({
         id: item.id,
         title: getStaffDisplayName(item),
-        badge:
-          item.inMenu === null ? undefined : item.soldOut === null ? (
+        badge: isInMenu(item, new Date()) ? (
+          item.soldOut === null ? (
             <Badge variant="secondary" label={t("catalog.items.inMenu")} />
           ) : (
             <Badge variant="destructive" label={t("catalog.items.soldOut")} />
-          ),
+          )
+        ) : undefined,
         href: `/settings/items/${item.id}`,
         subtitle:
           item.categoryId === null

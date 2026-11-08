@@ -1,6 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js"
 import { bytesToHex, concatBytes, utf8ToBytes } from "@noble/hashes/utils.js"
 import { base32nopad } from "@scure/base"
+import { addDays, set } from "date-fns"
 import { z } from "zod"
 
 import {
@@ -10,8 +11,10 @@ import {
 } from "../../integrations/nostr/nostr-event.ts"
 import type { NostrFilter } from "../../integrations/nostr/nostr-relay-client.ts"
 import { jsonCodec } from "../../zod-utils.ts"
+import type { AppSettingsRow } from "../app-settings/app-settings.ts"
 import type { CatalogCategoryRow } from "../catalog-category/catalog-category.ts"
 import type { CatalogItemRow } from "../catalog-item/catalog-item.ts"
+import { isInMenu } from "../catalog-item/catalog-item-utils.ts"
 import type { Money } from "../shared/money.ts"
 import {
   type FiatCurrency,
@@ -224,23 +227,45 @@ const createMenu = (
   categories,
 })
 
+export const DEFAULT_MENU_DAY_END_HOUR = 4
+
+export const menuDayEndHourOf = (
+  settings: Pick<AppSettingsRow, "menuDayEndHour"> | undefined
+): number => {
+  const hour = settings?.menuDayEndHour ?? null
+  return hour !== null && hour < 24 ? hour : DEFAULT_MENU_DAY_END_HOUR
+}
+
+export const menuDayEndAfter = (now: Date, hour: number): Date => {
+  const today = set(now, {
+    hours: hour,
+    minutes: 0,
+    seconds: 0,
+    milliseconds: 0,
+  })
+  return today > now ? today : addDays(today, 1)
+}
+
 export const isOfferedInMenu = (
-  item: Pick<CatalogItemRow, "inMenu" | "soldOut">
-): boolean => item.inMenu !== null && item.soldOut === null
+  item: Pick<CatalogItemRow, "inMenu" | "inMenuUntil" | "soldOut">,
+  now: Date
+): boolean => isInMenu(item, now) && item.soldOut === null
 
 export const buildSelfPayMenu = ({
   items,
   categories,
   currency,
   written,
+  now,
 }: {
   readonly items: ReadonlyArray<CatalogItemRow>
   readonly categories: ReadonlyArray<CatalogCategoryRow>
   readonly currency: SelfPayMenu["currency"]
   readonly written: boolean
+  readonly now: Date
 }): SelfPayMenu => {
   const offered = items.filter(
-    (item) => isOfferedInMenu(item) && item.currency === currency
+    (item) => isOfferedInMenu(item, now) && item.currency === currency
   )
   const toMenuItem = (item: CatalogItemRow): SelfPayMenuItem => ({
     key: deriveSelfPayMenuItemKey(item.id),

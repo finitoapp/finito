@@ -1,5 +1,7 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
@@ -46,6 +48,7 @@ import { useLocale } from "@/hooks/use-locale.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format-utils.ts"
+import { RememberWrittenItem } from "./remember-written-item.tsx"
 
 export function OrdersToServePage() {
   const { t } = useTranslation()
@@ -257,6 +260,9 @@ function WrittenOrder({
   const {
     data: [legalEntity],
   } = useEvoluQuery(legalEntityQuery)
+  const {
+    data: [selfPaySettings],
+  } = useEvoluQuery(selfPaySettingsQuery)
   const amount = (money: Pick<typeof written, "arrived" | "named">) =>
     writtenOrderAmount(money, t, (value) => formatMoney(value, locale))
 
@@ -275,6 +281,9 @@ function WrittenOrder({
                 line={line}
                 isAccepted={isAccepted}
               />
+            ) : null}
+            {remembersWrittenItems(selfPaySettings) ? (
+              <RememberWrittenItem billId={billId} line={line} />
             ) : null}
           </li>
         ))}

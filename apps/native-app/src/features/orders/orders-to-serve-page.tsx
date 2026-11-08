@@ -1,6 +1,8 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
@@ -52,6 +54,7 @@ import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
+import { RememberWrittenItem } from "./remember-written-item.tsx"
 
 /** Paid orders waiting to be served, as web's `OrdersToServePage`. */
 export function OrdersToServePage() {
@@ -279,6 +282,9 @@ function WrittenOrder({
   const {
     data: [legalEntity],
   } = useEvoluQuery(legalEntityQuery)
+  const {
+    data: [selfPaySettings],
+  } = useEvoluQuery(selfPaySettingsQuery)
   const { t } = useTranslation()
   const locale = useLocale()
   const amount = (money: Pick<typeof written, "arrived" | "named">) =>
@@ -308,6 +314,9 @@ function WrittenOrder({
               line={line}
               isAccepted={isAccepted}
             />
+          ) : null}
+          {remembersWrittenItems(selfPaySettings) ? (
+            <RememberWrittenItem billId={billId} line={line} />
           ) : null}
         </YStack>
       ))}

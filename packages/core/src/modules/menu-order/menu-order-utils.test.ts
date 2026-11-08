@@ -8,7 +8,11 @@ import {
   deriveTableSelfPayRoot,
   MasterKey,
 } from "../shared/key-derivation.ts"
-import { NonEmptyString255, NonNegativeInteger } from "../shared/schema.ts"
+import {
+  NonEmptyString255,
+  NonNegativeInteger,
+  TimestampMs,
+} from "../shared/schema.ts"
 import { pickNewestSelfPayContent } from "../table-self-pay/table-self-pay-guest-utils.ts"
 import { createSelfPaySelectionEvent } from "../table-self-pay/table-self-pay-pointer-utils.ts"
 import { deriveSelfPayViewTag } from "../table-self-pay/table-self-pay-view-utils.ts"
@@ -21,6 +25,8 @@ import {
   fillWrittenOrderLines,
   fitSelfPayMenuIntoEvent,
   isWrittenAmountInRange,
+  menuDayEndAfter,
+  menuDayEndHourOf,
   priceSelfPayOrder,
   SelfPayMenuSchema,
   SelfPayOrderIntentSchema,
@@ -47,11 +53,18 @@ const item = (
   taxRateId: null,
   inMenu: 1,
   soldOut: null,
+  inMenuUntil: null,
   ...overrides,
 })
 
 const menuOf = (items: ReadonlyArray<CatalogItemRow>) =>
-  buildSelfPayMenu({ items, categories: [], currency: "CZK", written: false })
+  buildSelfPayMenu({
+    items,
+    categories: [],
+    currency: "CZK",
+    written: false,
+    now: new Date(),
+  })
 
 describe("the menu", () => {
   test("leaves out an item nobody put in the menu, and one in another currency", () => {
@@ -62,6 +75,27 @@ describe("the menu", () => {
     ])
 
     expect(countSelfPayMenuItems(menu)).toBe(1)
+  })
+
+  test("offers an item remembered for the day until its time, then leaves it out", () => {
+    const items = [
+      item("soup", {
+        inMenuUntil: TimestampMs(Date.parse("2026-06-06T02:00:00Z")),
+      }),
+    ]
+    const count = (now: string) =>
+      countSelfPayMenuItems(
+        buildSelfPayMenu({
+          items,
+          categories: [],
+          currency: "CZK",
+          written: false,
+          now: new Date(now),
+        })
+      )
+
+    expect(count("2026-06-06T01:59:59Z")).toBe(1)
+    expect(count("2026-06-06T02:00:00Z")).toBe(0)
   })
 
   test("keeps the items that fit one event, in catalog order", () => {
@@ -249,6 +283,24 @@ describe("what a guest writes", () => {
 
     expect(pointerOf(nonceless("2x pivo"))).not.toBe(
       pointerOf(nonceless("3x pivo"))
+    )
+  })
+})
+
+describe("the day of an item remembered for it", () => {
+  test("ends when the clock next strikes the owner's hour, 4:00 unless set", () => {
+    const end = (now: string, hour: number) =>
+      menuDayEndAfter(new Date(now), hour).toISOString()
+
+    expect(menuDayEndHourOf({ menuDayEndHour: null })).toBe(4)
+    expect(menuDayEndHourOf({ menuDayEndHour: NonNegativeInteger(23) })).toBe(
+      23
+    )
+    expect(end("2026-06-05T14:00:00+02:00", 4)).toBe("2026-06-06T02:00:00.000Z")
+    expect(end("2026-06-06T01:30:00+02:00", 4)).toBe("2026-06-06T02:00:00.000Z")
+    expect(end("2026-06-06T04:00:00+02:00", 4)).toBe("2026-06-07T02:00:00.000Z")
+    expect(end("2026-06-05T14:00:00+02:00", 23)).toBe(
+      "2026-06-05T21:00:00.000Z"
     )
   })
 })

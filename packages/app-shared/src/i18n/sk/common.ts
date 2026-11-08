@@ -131,11 +131,17 @@ export const skCommon = {
   "orders.reject.description":
     "Peniaze sa hosťovi samy nevrátia. Po odmietnutí pokladňa otvorí, čo hosť zaplatil, a vrátenie tam zaznamenáte.",
   "orders.reject.title": "Odmietnuť objednávku {number}?",
+  "orders.remember.description":
+    "Hostia si ju môžu objednať z menu do {time}. Názov aj cenu môžete zmeniť.",
+  "orders.remember.save": "Dať do menu",
+  "orders.remember.title": "Zapamätať „{text}“ na dnešok",
   "orders.served": "Vydané",
   "orders.soldOut": "Vypredané",
   "orders.title": "Na výdaj",
   "orders.written": "Text hosťa: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
+  "orders.written.remember": "Zapamätať na dnešok",
+  "orders.written.remembered": "V menu do {time}",
   "orders.written.taxRate": "Sadzba DPH položky „{text}“",
   "orders.written.taxRate.locked":
     "Objednávka je prijatá, sadzby sa už nedajú zmeniť.",

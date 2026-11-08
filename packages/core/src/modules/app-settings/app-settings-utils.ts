@@ -57,6 +57,12 @@ export const offersOrders = (
   settings?.menuOrdering === sqliteTrue ||
   settings?.writtenOrders === sqliteTrue
 
+export const remembersWrittenItems = (
+  settings: Pick<AppSettingsRow, "menuOrdering" | "writtenOrders"> | undefined
+): boolean =>
+  settings?.menuOrdering === sqliteTrue &&
+  settings?.writtenOrders === sqliteTrue
+
 export const createDefaultSettings = (): Omit<
   AppSettingsRow,
   | "enabledHomeModesJson"
@@ -67,6 +73,7 @@ export const createDefaultSettings = (): Omit<
   | "writtenOrders"
   | "writtenOrderTaxRateId"
   | "orderDeviceId"
+  | "menuDayEndHour"
 > => ({
   id: settingsId,
   onboardingCompleted: null,

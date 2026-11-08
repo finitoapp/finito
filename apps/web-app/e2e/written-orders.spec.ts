@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test"
 
 import { addTable, addTaxRate } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { translate, translateParams } from "./support/i18n.ts"
+import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
   pickInlineOption,
   toggleInlineCheckbox,
@@ -276,6 +276,79 @@ test("a VAT payer's staff switch a written item to another tax rate before accep
     await expect(mealRates).toHaveCount(0)
     await expect(orderCard).toContainText("Standard (21%)")
     await expect(orderCard).toContainText("Food (12%)")
+  })
+})
+
+test("staff remember a written item for today as Řízek for 199.00, and the next guest orders it from the menu", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(150_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  await test.step("a guest writes a schnitzel and pays it", async () => {
+    await writeOrder(guest, guestAddress, {
+      text: "řízek s kaší",
+      amount: "189.00",
+    })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 18_900,
+      currency: "USD",
+    })
+  })
+
+  await test.step("the owner switches ordering from the menu on", async () => {
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.order")
+    await expect(
+      page.getByRole("combobox", {
+        name: translate(
+          "en",
+          "catalog.tables.selfPayOptions.written.dayEnd.label"
+        ),
+      })
+    ).toContainText("4:00")
+  })
+
+  await test.step("staff remember it as Řízek for 199.00", async () => {
+    await gotoOrders(page)
+    await page
+      .getByRole("button", { name: translate("en", "orders.written.remember") })
+      .click()
+    const dialog = page.getByRole("dialog")
+    const name = dialog.getByRole("textbox", {
+      name: translate("en", "catalog.items.form.name.label"),
+    })
+    await expect(name).toHaveValue("řízek s kaší")
+    await name.fill("Řízek")
+    await dialog
+      .getByRole("textbox", {
+        name: translate("en", "catalog.items.form.price.label"),
+      })
+      .fill("199.00")
+    await dialog
+      .getByRole("button", { name: translate("en", "orders.remember.save") })
+      .click()
+    await expect(dialog).toHaveCount(0)
+    await expect(
+      page.getByText(
+        translateParams("en", "orders.written.remembered", { time: "4:00 AM" })
+      )
+    ).toBeVisible()
+  })
+
+  await test.step("the next guest finds Řízek in the menu", async () => {
+    const next = await context.newPage()
+    await next.goto(guestAddress)
+    await expect(
+      next.getByRole("button", {
+        name: nameParam("selfPay.menu.quantity.increase", "Řízek"),
+      })
+    ).toBeVisible({ timeout: 45_000 })
   })
 })
 

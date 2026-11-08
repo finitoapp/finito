@@ -1,0 +1,96 @@
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Bar
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.order"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written.dayEnd.label"]}
+- assertVisible: 4:00.*
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveWrittenOrder
+      QUERY: table=Bar&text=rizek%20s%20kasi&named=18900&amount=18900
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- runFlow:
+    when:
+      platform: Web
+    commands:
+      - tapOn:
+          id: '${output.re(output.tv("orders.remember.title", { text: "rizek s kasi" }))}'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: remember-written-line
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.name.label"]}
+      VALUE: Rizek
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.price.label"]}
+      VALUE: "199.00"
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.remember.save"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("orders.written.remembered", { time: "4:00" }))}.*'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/items
+      TEXT: Rizek
+- assertVisible: ${output.re(output.t["catalog.items.inMenu"])}

@@ -47,7 +47,9 @@ import type {
 import { createBillLineSummaryId } from "../bill-line/bill-line-utils.ts"
 import { catalogCategoriesQuery } from "../catalog-category/catalog-category-queries.ts"
 import type { CatalogItemRow } from "../catalog-item/catalog-item.ts"
+import { putCatalogItemInMenuUntil } from "../catalog-item/catalog-item-actions.ts"
 import { catalogItemsQuery } from "../catalog-item/catalog-item-queries.ts"
+import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { getStaffDisplayName } from "../catalog-item/catalog-item-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { ItemRow } from "../item/item.ts"
@@ -106,6 +108,8 @@ import {
   isWrittenAmountInRange,
   MAX_WRITTEN_LINES,
   MenuJson,
+  menuDayEndAfter,
+  menuDayEndHourOf,
   priceSelfPayOrder,
   type SelfPayMenu,
   type SelfPayOrderIntent,
@@ -135,7 +139,8 @@ export interface SelfPayMenuSnapshot {
 }
 
 export const loadSelfPayMenu =
-  (): Task<SelfPayMenuSnapshot, never, EvoluDep> => async (run) => {
+  (): Task<SelfPayMenuSnapshot, never, EvoluDep & DateDep> => async (run) => {
+    const now = run.deps.date.now()
     const [items, categories, [settings], [selfPaySettings], [legalEntity]] =
       await Promise.all(
         run.deps.evolu.loadQueries([
@@ -155,13 +160,14 @@ export const loadSelfPayMenu =
         selfPaySettings?.writtenOrders === sqliteTrue &&
         (selfPaySettings.writtenOrderTaxRateId !== null ||
           !isVatPayer(legalEntity)),
+      now,
     })
     const menu = fitSelfPayMenuIntoEvent(full)
     return ok({
       menu,
       leftOut: countSelfPayMenuItems(full) - countSelfPayMenuItems(menu),
       otherCurrency: items.filter(
-        (item) => isOfferedInMenu(item) && item.currency !== currency
+        (item) => isOfferedInMenu(item, now) && item.currency !== currency
       ).length,
     })
   }
@@ -725,6 +731,61 @@ export const setWrittenOrderLineTaxRate =
       updateBillLineItem(run.deps.evolu, lineId, snapshot.id, owned)
     })
     return ok()
+  }
+
+export const deriveRememberedCatalogItemId = (
+  lineId: BillLineId
+): CatalogItemId => createIdFromString<"CatalogItem">(`remembered:${lineId}`)
+
+export const rememberWrittenItemForToday =
+  ({
+    billId,
+    lineId,
+    name,
+    unitAmount,
+  }: {
+    readonly billId: BillId
+    readonly lineId: BillLineId
+    readonly name: NonEmptyString255
+    readonly unitAmount: NonNegativeInteger
+  }): Task<
+    CatalogItemId,
+    WrittenOrderLineNotFoundError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const [[order], [settings]] = await Promise.all(
+      run.deps.evolu.loadQueries([
+        menuOrderByBillIdQuery(billId),
+        selfPaySettingsQuery,
+      ])
+    )
+    if (order === undefined || order.pointer === null) {
+      return err(createWrittenOrderLineNotFoundError({ lineId }))
+    }
+    const lines = await run.ok(
+      loadWrittenOrderLines({ billId, pointer: order.pointer })
+    )
+    const line = lines.find(({ id }) => id === lineId)
+    if (line === undefined) {
+      return err(createWrittenOrderLineNotFoundError({ lineId }))
+    }
+    const until = menuDayEndAfter(
+      run.deps.date.now(),
+      menuDayEndHourOf(settings)
+    )
+    return ok(
+      await run.ok(
+        putCatalogItemInMenuUntil({
+          id: deriveRememberedCatalogItemId(lineId),
+          name,
+          currency: line.currency,
+          unitAmount,
+          taxRateId: line.taxRateId,
+          inMenuUntil: TimestampMs(until.getTime()),
+        })
+      )
+    )
   }
 
 export interface WrittenOrderRest {

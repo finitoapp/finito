@@ -649,6 +649,7 @@ export const skSettings = {
   "catalog.items.form.description.label": "Popis",
   "catalog.items.form.description.placeholder": "Nepovinné",
   "catalog.items.form.inMenu.label": "V menu",
+  "catalog.items.form.inMenu.until": "Z menu zmizne o {time}",
   "catalog.items.form.internalDescription.invalid":
     "Interný popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalDescription.label": "Interný popis",
@@ -1159,6 +1160,10 @@ export const skSettings = {
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zariadenie)",
   "catalog.tables.selfPayOptions.payBill": "Hostia platia účet stola",
   "catalog.tables.selfPayOptions.written": "Hostia píšu, čo platia",
+  "catalog.tables.selfPayOptions.written.dayEnd.description":
+    "Obsluha môže napísanú položku hosťa dať na dnešok do menu. O túto hodinu z menu zmizne.",
+  "catalog.tables.selfPayOptions.written.dayEnd.label":
+    "Položky zapamätané na dnešok zmiznú z menu o",
   "catalog.tables.selfPayOptions.written.description":
     "Hosť pri stole napíše jeden riadok a sumu. {appName} kontroluje len to, či peniaze prišli, a riadok dostane sadzbu dane vybranú nižšie.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
@@ -1271,6 +1276,7 @@ export const skSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Označiť zrušenú platbu ako zaplatenú",
   "access.action.createItem": "Vytvoriť položku katalógu",
+  "access.action.rememberItem": "Dať položku hosťa do menu",
   "access.action.disable": "Vypnúť riadenie prístupu",
   "access.action.exportDatabase": "Exportovať databázu aplikácie",
   "access.action.revealRecoveryPhrase": "Zobraziť obnovovaciu frázu",

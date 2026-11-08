@@ -17,12 +17,18 @@ import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-c
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { saveFiatBankAccount } from "../../modules/account/account-actions.ts"
-import { setSelfPayBillsHidden } from "../../modules/app-settings/app-settings-actions.ts"
+import {
+  setMenuOrdering,
+  setSelfPayBillsHidden,
+} from "../../modules/app-settings/app-settings-actions.ts"
 import { addManualAmountToBill } from "../../modules/bill/bill-actions.ts"
+import { putCatalogItemInMenuUntil } from "../../modules/catalog-item/catalog-item-actions.ts"
 import { saveFioPlugin } from "../../modules/fio-plugin/fio-plugin-actions.ts"
+import { SelfPayMenuSchema } from "../../modules/menu-order/menu-order-utils.ts"
 import { connectMonetaPlugin } from "../../modules/moneta-plugin/moneta-plugin-actions.ts"
 import { createRowId } from "../../modules/shared/evolu-utils.ts"
 import {
+  deriveSelfPayMenuKeys,
   deriveSelfPayRateKey,
   deriveTableSelfPayKeys,
   deriveTableSelfPayRoot,
@@ -33,6 +39,7 @@ import {
   NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
+  TimestampMs,
   WssUrl,
 } from "../../modules/shared/schema.ts"
 import {
@@ -459,6 +466,39 @@ describe("table self-pay publishing job", () => {
     expect(published?.event.tags.some(([name]) => name === "expiration")).toBe(
       true
     )
+  })
+
+  test("takes an item remembered for the day out of the menu in the round after its hour", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await run.ok(setMenuOrdering({ on: true, deviceId: context.deviceId }))
+    await run.ok(
+      putCatalogItemInMenuUntil({
+        id: createRowId<"CatalogItem">(),
+        name: NonEmptyString255("Soup"),
+        currency: "CZK",
+        unitAmount: NonNegativeInteger(9_900),
+        taxRateId: null,
+        inMenuUntil: TimestampMs(context.clock.date.now().getTime() + 60_000),
+      })
+    )
+    const { readKey } = deriveSelfPayMenuKeys(root)
+    const menuItems = () => {
+      const event = newestWithTag(context, deriveSelfPayViewTag(readKey))
+      const menu =
+        event === undefined
+          ? null
+          : parseSelfPayContent(SelfPayMenuSchema, readKey, event.content)
+      return menu?.categories.flatMap(({ items }) =>
+        items.map(({ name }) => name)
+      )
+    }
+
+    await using _job = await startJob(context)
+    await expect.poll(menuItems).toEqual(["Soup"])
+    context.clock.advance(60_000)
+
+    await expect.poll(menuItems).toEqual([])
   })
 
   test("asks Yadio for a currency once a round, however many tables use it", async () => {

@@ -558,6 +558,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/orders/remember-written-item.tsx",
+    web: ["apps/web-app/src/features/orders/remember-written-item.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/orders/orders-to-serve-page.tsx",
     web: ["apps/web-app/src/features/orders/orders-to-serve-page.tsx"],
     status: "matched",

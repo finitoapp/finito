@@ -25,6 +25,7 @@ const makeItem = (
   taxRateId: null,
   inMenu: null,
   soldOut: null,
+  inMenuUntil: null,
   ...overrides,
 })
 

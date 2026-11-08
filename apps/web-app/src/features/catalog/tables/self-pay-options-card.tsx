@@ -1,9 +1,11 @@
 import { sqliteTrue } from "@evolu/common"
 import {
   NO_OPTION,
+  nonNegativeIntegerCodec,
   optionalIdCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import {
+  setMenuDayEndHour,
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
@@ -11,13 +13,18 @@ import {
   setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
-import { countSelfPayMenuItems } from "@payky/core/modules/menu-order/menu-order-utils"
+import {
+  countSelfPayMenuItems,
+  menuDayEndHourOf,
+} from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import {
@@ -25,6 +32,7 @@ import {
   formatTaxRateLabel,
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { set } from "date-fns"
 import { useAtomValue } from "jotai"
 import { TriangleAlertIcon } from "lucide-react"
 import { accountAtom } from "@/atoms/account.ts"
@@ -43,7 +51,9 @@ import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx
 import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
+import { formatTime } from "@/lib/format-utils.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
@@ -101,6 +111,9 @@ export function SelfPayOptionsCard() {
           <WrittenOrderTaxRateSelect
             taxRateId={settings?.writtenOrderTaxRateId ?? null}
           />
+        )}
+        {remembersWrittenItems(settings) && (
+          <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
         )}
         {(menuOrdering || writtenOrders) && (
           <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
@@ -160,6 +173,37 @@ function WrittenOrderTaxRateSelect({
         </Alert>
       )}
     </>
+  )
+}
+
+function MenuDayEndSelect({ hour }: { readonly hour: number }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const appRun = useAppRun()
+  const today = new Date()
+
+  const save = async (next: NonNegativeInteger) => {
+    await using run = appRun()
+    await run.ok(setMenuDayEndHour(next))
+  }
+
+  return (
+    <InlineEditSelect
+      label={t("catalog.tables.selfPayOptions.written.dayEnd.label")}
+      description={t(
+        "catalog.tables.selfPayOptions.written.dayEnd.description"
+      )}
+      defaultValue={NonNegativeInteger(hour)}
+      codec={nonNegativeIntegerCodec}
+      options={Array.from({ length: 24 }, (_, option) => ({
+        value: String(option),
+        label: formatTime(
+          set(today, { hours: option, minutes: 0, seconds: 0 }),
+          locale
+        ),
+      }))}
+      onSave={save}
+    />
   )
 }
 
