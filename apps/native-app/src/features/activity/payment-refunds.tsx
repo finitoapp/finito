@@ -35,6 +35,7 @@ import {
   parseEetDateTime,
 } from "@payky/core/modules/eet/eet-utils"
 import {
+  paymentCardSwitchioRefundSourceQuery,
   paymentQerkoTerminalByIdQuery,
   qerkoPaymentAttemptsByPaymentIdQuery,
 } from "@payky/core/modules/payment/payment-queries"
@@ -50,13 +51,19 @@ import {
 } from "@payky/core/modules/refund/refund-qerko-actions"
 import { refundQerkoPayment } from "@payky/core/modules/refund/refund-qerko-payment-actions"
 import {
+  cardSwitchioRefundAttemptsByPaymentIdQuery,
   otherClaimedPaymentOfBillQuery,
   qerkoTerminalRefundAttemptsByPaymentIdQuery,
   refundablePaymentLinesQuery,
   refundLinesByPaymentIdQuery,
   refundsByPaymentIdQuery,
 } from "@payky/core/modules/refund/refund-queries"
-
+import {
+  dismissCardSwitchioRefundAttempt,
+  resolveCardSwitchioRefundAttempt,
+  type StartCardSwitchioRefundError,
+  startCardSwitchioRefund,
+} from "@payky/core/modules/refund/refund-switchio-actions"
 import {
   isTipRefund,
   type RefundableLine,
@@ -115,6 +122,10 @@ import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
+import {
+  isSwitchioInstalled,
+  isSwitchioRefundInFlight,
+} from "../../platform/switchio.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import {
   EetSaleStatusLabel,
@@ -136,7 +147,54 @@ export const paymentRefundsQueries = (paymentId: PaymentId) => [
   paymentQerkoTerminalByIdQuery(paymentId),
   qerkoTerminalRefundAttemptsByPaymentIdQuery(paymentId),
   qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
+  paymentCardSwitchioRefundSourceQuery(paymentId),
+  cardSwitchioRefundAttemptsByPaymentIdQuery(paymentId),
 ]
+
+/**
+ * The methods Finito's refund dialogs offer: the shared ones, and the refund
+ * to the card through SwitchioPay, which only Finito makes (refund/0007).
+ */
+type NativeRefundMethod = RefundDialogMethod | "cardSwitchio"
+
+/** The success toast of a method whose refund is not simply recorded. */
+const refundCreatedKeys: Partial<Record<NativeRefundMethod, TranslationKey>> = {
+  qerkoTerminal: "refund.qerko.started",
+  cardSwitchio: "refund.switchio.done",
+}
+
+const switchioRefundErrorKeys = {
+  PaymentNotFound: "paymentDetail.notFound",
+  RefundPaymentNotPaid: "refund.error.notPaid",
+  RefundAmountInvalid: "refund.error.amount",
+  RefundItemsUnavailable: "refund.error.items",
+  RefundLineUnavailable: "refund.error.items",
+  RefundTipUnavailable: "refund.error.tip",
+  CardSwitchioRefundNotAvailable: "refund.switchio.error.notAvailable",
+  CardSwitchioRefundAttemptRunning: "refund.switchio.error.running",
+  CardSwitchioRefundDeclined: "refund.switchio.failed",
+  SwitchioRefundNotStarted: "refund.switchio.error.notStarted",
+  SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
+} satisfies Record<StartCardSwitchioRefundError["type"], TranslationKey>
+
+/**
+ * What a refund to the card through SwitchioPay leaves for `useRunToast`'s
+ * action: a failure's toast key, the unknown outcome's warning, or nothing
+ * once the terminal approved.
+ */
+const switchioRefundOutcomeKey = (
+  result:
+    | { readonly ok: true; readonly value: { readonly status: string } }
+    | {
+        readonly ok: false
+        readonly error: { readonly type: StartCardSwitchioRefundError["type"] }
+      }
+): TranslationKey | undefined => {
+  if (!result.ok) return switchioRefundErrorKeys[result.error.type]
+  return result.value.status === "refunded"
+    ? undefined
+    : "refund.switchio.unresolved"
+}
 
 /**
  * Native counterpart of web's `PaymentDetailRefunds`: the refunds already
@@ -194,9 +252,22 @@ export function PaymentRefunds({
     qerkoPayment.qerkoRefundId !== null &&
     qerkoPayment.terminalId !== null
   const qerkoTerminalTid = qerkoPayment?.terminalTid ?? null
-  const defaultMethod = defaultRefundMethod(paymentMethodKinds, {
-    qerkoRefundable,
-  })
+  const switchioSource = useEvoluQuery(
+    paymentCardSwitchioRefundSourceQuery(payment.id)
+  ).data[0]
+  const switchioAttempts = useEvoluQuery(
+    cardSwitchioRefundAttemptsByPaymentIdQuery(payment.id)
+  ).data
+  // A refund to the card needs the id the terminal gave the payment
+  // (payment/0009) and a SwitchioPay on this phone to send it from.
+  const switchioRefundable =
+    switchioSource !== undefined &&
+    switchioSource.refundId !== null &&
+    isSwitchioInstalled()
+  const defaultMethod: NativeRefundMethod =
+    switchioRefundable && paymentMethodKinds.includes("cardSwitchio")
+      ? "cardSwitchio"
+      : defaultRefundMethod(paymentMethodKinds, { qerkoRefundable })
   const {
     refundableAmount,
     remainingAmount,
@@ -229,6 +300,7 @@ export function PaymentRefunds({
   if (
     refunds.length === 0 &&
     qerkoAttempts.length === 0 &&
+    switchioAttempts.length === 0 &&
     qerkoPaymentRefundAmount === null &&
     !canRefund &&
     !canRefundTip
@@ -240,6 +312,7 @@ export function PaymentRefunds({
     canRefund ||
     canRefundTip ||
     qerkoAttempts.length > 0 ||
+    switchioAttempts.length > 0 ||
     qerkoPaymentRefundAmount !== null ? (
       <YStack gap={8}>
         {qerkoPaymentRefundAmount === null ? null : (
@@ -250,6 +323,13 @@ export function PaymentRefunds({
         )}
         {qerkoAttempts.map((attempt) => (
           <QerkoRefundAttempt
+            key={attempt.id}
+            attempt={attempt}
+            formatMinor={money}
+          />
+        ))}
+        {switchioAttempts.map((attempt) => (
+          <SwitchioRefundAttempt
             key={attempt.id}
             attempt={attempt}
             formatMinor={money}
@@ -362,6 +442,7 @@ export function PaymentRefunds({
           defaultMethod={defaultMethod}
           qerkoRefundable={qerkoRefundable}
           qerkoTerminalTid={qerkoTerminalTid}
+          switchioRefundable={switchioRefundable}
           onClose={() => setSheet(null)}
         />
       ) : null}
@@ -373,6 +454,7 @@ export function PaymentRefunds({
           defaultMethod={defaultMethod}
           qerkoRefundable={qerkoRefundable}
           qerkoTerminalTid={qerkoTerminalTid}
+          switchioRefundable={switchioRefundable}
           onClose={() => setSheet(null)}
         />
       ) : null}
@@ -430,6 +512,7 @@ function RefundSheet({
   defaultMethod,
   qerkoRefundable,
   qerkoTerminalTid,
+  switchioRefundable,
   onClose,
 }: {
   readonly paymentId: PaymentId
@@ -438,10 +521,12 @@ function RefundSheet({
   readonly excess: NonNegativeInteger
   readonly refundableLines: ReadonlyArray<RefundableLine<RefundablePaymentLine>>
   readonly tipAmount: NonNegativeInteger
-  readonly defaultMethod: RefundDialogMethod
+  readonly defaultMethod: NativeRefundMethod
   /** Set when the card can be refunded from this device. */
   readonly qerkoRefundable: boolean
   readonly qerkoTerminalTid: string | null
+  /** Set when the card can be refunded through SwitchioPay from this phone. */
+  readonly switchioRefundable: boolean
   readonly onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -451,7 +536,7 @@ function RefundSheet({
   const { require } = useRequirePermission()
   const { device } = useAtomValue(accountAtom)
   const [mode, setMode] = useState<RefundMode>("amount")
-  const [method, setMethod] = useState<RefundDialogMethod>(defaultMethod)
+  const [method, setMethod] = useState<NativeRefundMethod>(defaultMethod)
   const [typedAmountText, setTypedAmountText] = useState<string | null>(null)
   const [quantities, setQuantities] = useState<RefundQuantities>({})
   const [pending, setPending] = useState(false)
@@ -484,6 +569,18 @@ function RefundSheet({
         paymentLineId,
         quantity,
       }))
+      if (method === "cardSwitchio") {
+        if (!switchioRefundable) return "refund.switchio.error.notAvailable"
+        return switchioRefundOutcomeKey(
+          await run(
+            startCardSwitchioRefund({
+              paymentId,
+              deviceId: device.id,
+              ...(mode === "amount" ? { amount: refundAmount } : { lines }),
+            })
+          )
+        )
+      }
       if (method === "qerkoTerminal") {
         if (!qerkoRefundable) return "refund.qerko.error.notAvailable"
         const result = await run(
@@ -507,11 +604,7 @@ function RefundSheet({
     })
     setPending(false)
     if (refunded) {
-      toast.success(
-        t(
-          method === "qerkoTerminal" ? "refund.qerko.started" : "refund.created"
-        )
-      )
+      toast.success(t(refundCreatedKeys[method] ?? "refund.created"))
       onClose()
     }
   }
@@ -617,6 +710,7 @@ function RefundSheet({
         disabled={pending}
         qerkoAvailable={qerkoRefundable}
         qerkoTerminalTid={qerkoTerminalTid}
+        switchioAvailable={switchioRefundable}
         onChange={setMethod}
       />
     </Sheet>
@@ -630,15 +724,18 @@ function TipRefundSheet({
   defaultMethod,
   qerkoRefundable,
   qerkoTerminalTid,
+  switchioRefundable,
   onClose,
 }: {
   readonly paymentId: PaymentId
   readonly currency: FiatCurrency
   readonly tipAmount: NonNegativeInteger
-  readonly defaultMethod: RefundDialogMethod
+  readonly defaultMethod: NativeRefundMethod
   /** Set when the card can be refunded from this device. */
   readonly qerkoRefundable: boolean
   readonly qerkoTerminalTid: string | null
+  /** Set when the card can be refunded through SwitchioPay from this phone. */
+  readonly switchioRefundable: boolean
   readonly onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -647,7 +744,7 @@ function TipRefundSheet({
   const toast = useToast()
   const { require } = useRequirePermission()
   const { device } = useAtomValue(accountAtom)
-  const [method, setMethod] = useState<RefundDialogMethod>(defaultMethod)
+  const [method, setMethod] = useState<NativeRefundMethod>(defaultMethod)
   const [pending, setPending] = useState(false)
   const formattedTip = formatMoney({ value: tipAmount, currency }, locale)
 
@@ -658,6 +755,18 @@ function TipRefundSheet({
     if (!(await require("refund", "access.action.refund"))) return
     setPending(true)
     const refunded = await runToast(async (run) => {
+      if (method === "cardSwitchio") {
+        if (!switchioRefundable) return "refund.switchio.error.notAvailable"
+        return switchioRefundOutcomeKey(
+          await run(
+            startCardSwitchioRefund({
+              paymentId,
+              deviceId: device.id,
+              tip: true,
+            })
+          )
+        )
+      }
       if (method === "qerkoTerminal") {
         if (!qerkoRefundable) return "refund.qerko.error.notAvailable"
         const result = await run(
@@ -677,13 +786,7 @@ function TipRefundSheet({
     })
     setPending(false)
     if (refunded) {
-      toast.success(
-        t(
-          method === "qerkoTerminal"
-            ? "refund.qerko.started"
-            : "refund.tipCreated"
-        )
-      )
+      toast.success(t(refundCreatedKeys[method] ?? "refund.tipCreated"))
       onClose()
     }
   }
@@ -715,6 +818,7 @@ function TipRefundSheet({
         disabled={pending}
         qerkoAvailable={qerkoRefundable}
         qerkoTerminalTid={qerkoTerminalTid}
+        switchioAvailable={switchioRefundable}
         onChange={setMethod}
       />
     </Sheet>
@@ -794,15 +898,18 @@ function MethodChoice({
   disabled,
   qerkoAvailable,
   qerkoTerminalTid,
+  switchioAvailable,
   onChange,
 }: {
-  readonly method: RefundDialogMethod
+  readonly method: NativeRefundMethod
   readonly disabled: boolean
   /** The card can be refunded through the terminal from this device. */
   readonly qerkoAvailable: boolean
   /** Names the terminal the refund must go to, when the payment recorded it. */
   readonly qerkoTerminalTid: string | null
-  readonly onChange: (method: RefundDialogMethod) => void
+  /** The card can be refunded through SwitchioPay on this phone. */
+  readonly switchioAvailable: boolean
+  readonly onChange: (method: NativeRefundMethod) => void
 }) {
   const { t } = useTranslation()
   return (
@@ -830,10 +937,24 @@ function MethodChoice({
                 })}
           </ToggleGroupItem>
         ) : null}
+        {switchioAvailable ? (
+          <ToggleGroupItem value="cardSwitchio" justify="flex-start">
+            {t("refund.dialog.method.cardSwitchio")}
+          </ToggleGroupItem>
+        ) : null}
         <ToggleGroupItem value="outside" justify="flex-start">
           {t("refund.dialog.method.outside")}
         </ToggleGroupItem>
       </ToggleGroup>
+      {method === "cardSwitchio" ? (
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {t("refund.switchio.hint")}
+        </Text>
+      ) : null}
     </FieldSet>
   )
 }
@@ -1011,6 +1132,156 @@ function QerkoRefundAttempt({
           >
             {t("refund.qerko.unresolved")}
           </Text>
+          <Button
+            variant="outline"
+            label={t("refund.qerko.dismissUnresolved")}
+            onPress={() => void dismiss()}
+          />
+        </>
+      ) : null}
+    </YStack>
+  )
+}
+
+type SwitchioRefundAttemptRow = InferRow<
+  ReturnType<typeof cardSwitchioRefundAttemptsByPaymentIdQuery>
+>
+
+/**
+ * A refund to the card through SwitchioPay that is not written as a refund
+ * (refund/0007). Only the phone that launched it can ask its SwitchioPay
+ * what became of it; any device can dismiss it once staff checked, a
+ * pending one too, since its phone may be gone.
+ */
+function SwitchioRefundAttempt({
+  attempt,
+  formatMinor,
+}: {
+  readonly attempt: SwitchioRefundAttemptRow
+  readonly formatMinor: (value: NonNegativeInteger) => string
+}) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const toast = useToast()
+  const confirm = useConfirm()
+  const { device } = useAtomValue(accountAtom)
+  const [checking, setChecking] = useState(false)
+  const isOwnPhone = attempt.deviceId === device.id
+  // On its own phone a pending attempt is waiting on SwitchioPay right now;
+  // `SwitchioRestoredRefund` asks about it once nothing is.
+  const waitingHere = attempt.status === "pending" && isOwnPhone
+
+  const dismiss = async () => {
+    if (attempt.status === "pending") {
+      const confirmed = await confirm({
+        title: t("refund.switchio.dismissPending.title"),
+        description: t("refund.switchio.dismissPending.description"),
+        confirmLabel: t("refund.switchio.dismissPending.confirm"),
+        cancelLabel: t("refund.switchio.dismissPending.cancel"),
+        variant: "destructive",
+      })
+      if (!confirmed) return
+    }
+    await runToast(async (run) => {
+      await run.ok(dismissCardSwitchioRefundAttempt(attempt.id))
+    })
+  }
+
+  const check = async () => {
+    if (checking || isSwitchioRefundInFlight()) return
+    setChecking(true)
+    let refunded = false
+    await runToast(async (run) => {
+      const result = await run(
+        resolveCardSwitchioRefundAttempt({
+          attemptId: attempt.id,
+          deviceId: device.id,
+        })
+      )
+      if (!result.ok) {
+        return result.error.type === "CardSwitchioRefundOtherDevice"
+          ? "refund.switchio.error.otherDevice"
+          : "refund.switchio.failed"
+      }
+      if (result.value.status === "unresolved") {
+        return "refund.switchio.unresolved"
+      }
+      refunded = result.value.status === "refunded"
+      return undefined
+    })
+    setChecking(false)
+    if (refunded) toast.success(t("refund.switchio.done"))
+  }
+
+  return (
+    <YStack
+      testID="payment-detail-switchio-refund"
+      gap={8}
+      bg="neutral-soft"
+      rounded={8}
+      px={12}
+      py={8}
+    >
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
+      >
+        {t("refund.switchio.pending")} · {formatMinor(attempt.amount)}
+      </Text>
+      {waitingHere ? <ActivityIndicator /> : null}
+      {attempt.status === "pending" && !isOwnPhone ? (
+        <>
+          <Text
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            color="muted-foreground"
+          >
+            {t("refund.switchio.pendingElsewhere")}
+          </Text>
+          <Button
+            variant="outline"
+            label={t("refund.qerko.dismissUnresolved")}
+            onPress={() => void dismiss()}
+          />
+        </>
+      ) : null}
+      {attempt.status === "failed" ? (
+        <>
+          <Text
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.medium}
+            color="destructive"
+          >
+            {t("refund.switchio.failed")}
+          </Text>
+          <Button
+            variant="outline"
+            label={t("refund.qerko.dismiss")}
+            onPress={() => void dismiss()}
+          />
+        </>
+      ) : null}
+      {attempt.status === "unknown" ? (
+        <>
+          <Text
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.medium}
+            color="destructive"
+          >
+            {t("refund.switchio.unresolved")}
+          </Text>
+          {isOwnPhone ? (
+            <Button
+              variant="outline"
+              iconStart={RotateCw}
+              pending={checking}
+              label={t("refund.switchio.check")}
+              onPress={() => void check()}
+            />
+          ) : null}
           <Button
             variant="outline"
             label={t("refund.qerko.dismissUnresolved")}

@@ -118,6 +118,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/components/app/switchio-restored-refund.tsx",
+    web: [],
+    note: "Finito only: web does not refund to the card through SwitchioPay, so there is no refund result to restore or attempt to ask about (refund/0007).",
+    status: "matched",
+  },
+  {
     native: "src/components/app/toast-host.tsx",
     web: ["apps/web-app/src/components/ui/sonner.tsx"],
     status: "matched",

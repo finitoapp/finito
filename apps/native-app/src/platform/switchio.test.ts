@@ -9,6 +9,7 @@ const root =
 const module = read(`${root}PaykySwitchioModule.kt`)
 const store = read(`${root}SwitchioResultStore.kt`)
 const closureStore = read(`${root}SwitchioClosureStore.kt`)
+const refundStore = read(`${root}SwitchioRefundStore.kt`)
 const plugin = read("../../plugins/with-switchio-result-capture.cjs")
 
 it("names the module and its functions the same in JS and Kotlin", () => {
@@ -81,19 +82,94 @@ const requestCodeBranches = (source: string, store: string) =>
     .filter((part) => part.includes(`== ${store}.REQUEST_CODE)`))
     .map((part) => part.slice(0, part.indexOf("\n    }")))
 
+it("names the refund functions the same in JS and Kotlin", () => {
+  for (const fn of ["peekStoredRefundResult", "acknowledgeRefundResult"]) {
+    expect(js).toContain(`${fn}(`)
+    expect(module).toContain(`Function("${fn}")`)
+  }
+  for (const fn of ["referralRefund", "lookupTransaction"]) {
+    expect(js).toContain(`${fn}(`)
+    expect(module).toContain(`AsyncFunction("${fn}")`)
+  }
+})
+
+it("refunds through the v8 referral refund intent, naming the payment by its refund id as a string", () => {
+  expect(module).toContain(
+    'URI_PATH_REFERRAL_REFUND = "api/main/v8/referral_refund"'
+  )
+  const refund = module.slice(
+    module.indexOf('AsyncFunction("referralRefund")'),
+    module.indexOf('AsyncFunction("lookupTransaction")')
+  )
+  expect(refund).toContain("refundId: String")
+  expect(refund).toContain('data.put("refundId", refundId)')
+})
+
+it("stores the refund before the terminal is launched, under its own request code", () => {
+  const refund = module.slice(module.indexOf('AsyncFunction("referralRefund")'))
+  const begin = refund.indexOf("SwitchioRefundStore.begin(")
+  const launch = refund.indexOf(
+    "startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)"
+  )
+  expect(begin).toBeGreaterThan(-1)
+  expect(launch).toBeGreaterThan(begin)
+  expect(refundStore).toContain("REQUEST_CODE = 53703")
+  expect(refundStore).toContain('PREFS = "payky_switchio_refund"')
+  expect(plugin).toContain('storeBranch("SwitchioRefundStore")')
+})
+
+it("asks the terminal about a transaction through get_transaction, storing nothing", () => {
+  expect(module).toContain(
+    'URI_PATH_GET_TRANSACTION = "api/light/v8/get_transaction"'
+  )
+  const lookup = module.slice(
+    module.indexOf('AsyncFunction("lookupTransaction")'),
+    module.indexOf('Function("peekStoredRefundResult")')
+  )
+  expect(lookup).toContain("LOOKUP_REQUEST_CODE")
+  expect(lookup).not.toContain("Store.")
+})
+
+it("never hands a refund result to the payment's or the closure's store, nor theirs to it", () => {
+  for (const branch of requestCodeBranches(module, "SwitchioRefundStore")) {
+    expect(branch).not.toContain("SwitchioResultStore")
+    expect(branch).not.toContain("SwitchioClosureStore")
+  }
+  for (const store of ["SwitchioResultStore", "SwitchioClosureStore"]) {
+    for (const branch of requestCodeBranches(module, store)) {
+      expect(branch).not.toContain("SwitchioRefundStore")
+    }
+  }
+  const takeRestored = js.slice(
+    js.indexOf("export const takeRestoredSwitchioRefundResult")
+  )
+  expect(takeRestored).not.toContain("peekStoredResult()")
+  expect(takeRestored).not.toContain("Closure")
+})
+
 it("never hands a closure result to the payment's store or recovery", () => {
   // Each request code writes only its own store, in the module and in
   // MainActivity, so `settleRestoredSwitchioCardPayment` (fed from
   // `peekStoredResult`) cannot be given a closure.
-  for (const source of [module, plugin]) {
-    const payment = requestCodeBranches(source, "SwitchioResultStore")
-    const closure = requestCodeBranches(source, "SwitchioClosureStore")
-    expect(payment.length).toBeGreaterThan(0)
-    expect(closure.length).toBeGreaterThan(0)
-    for (const branch of payment) expect(branch).not.toContain("Closure")
-    for (const branch of closure)
-      expect(branch).not.toContain("SwitchioResultStore")
-  }
+  const payment = requestCodeBranches(module, "SwitchioResultStore")
+  const closure = requestCodeBranches(module, "SwitchioClosureStore")
+  expect(payment.length).toBeGreaterThan(0)
+  expect(closure.length).toBeGreaterThan(0)
+  for (const branch of payment) expect(branch).not.toContain("Closure")
+  for (const branch of closure)
+    expect(branch).not.toContain("SwitchioResultStore")
+  // MainActivity's branches come from one template, each naming only the
+  // store it is made for.
+  const template = plugin.slice(
+    plugin.indexOf("const storeBranch"),
+    plugin.indexOf("const LATER_BRANCHES")
+  )
+  expect(template).toContain("if (requestCode == ${store}.REQUEST_CODE)")
+  expect(template).not.toMatch(/Switchio\w+Store/u)
+  expect(plugin).toContain('storeBranch("SwitchioClosureStore")')
+  expect(plugin).toContain(
+    "if (requestCode == SwitchioResultStore.REQUEST_CODE)"
+  )
   const takeRestored = js.slice(
     js.indexOf("export const takeRestoredSwitchioResult"),
     js.indexOf("export const createSwitchioClosureDep")

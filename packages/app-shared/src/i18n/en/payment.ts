@@ -391,6 +391,32 @@ export const enPayment = {
   "refund.created": "Refund recorded.",
   "refund.dialog.method.qerkoTerminal": "Back to the card on the terminal",
   "refund.dialog.method.qerkoTerminalTid": "Back to the card on terminal {tid}",
+  "refund.dialog.method.cardSwitchio": "Back to the card in SwitchioPay",
+  "refund.switchio.hint":
+    "The customer holds the card that paid to this phone.",
+  "refund.switchio.done": "The money went back to the card.",
+  "refund.switchio.pending": "Refunding to the card in SwitchioPay",
+  "refund.switchio.pendingElsewhere":
+    "Waiting for SwitchioPay on another phone. If that phone is gone, check SwitchioPay and dismiss the refund.",
+  "refund.switchio.unresolved":
+    "The refund's result is not known, so the card may have been refunded. Check SwitchioPay before refunding again.",
+  "refund.switchio.failed": "The terminal declined the refund to the card.",
+  "refund.switchio.check": "Ask SwitchioPay",
+  "refund.switchio.dismissPending.title": "Dismiss the refund?",
+  "refund.switchio.dismissPending.description":
+    "The other phone may still report it. If the money went back, the refund is recorded then anyway.",
+  "refund.switchio.dismissPending.confirm": "Dismiss",
+  "refund.switchio.dismissPending.cancel": "Back",
+  "refund.switchio.error.notAvailable":
+    "This payment cannot be refunded to the card: the terminal did not give it the id a refund needs.",
+  "refund.switchio.error.running":
+    "Another refund of this payment to the card is not settled yet.",
+  "refund.switchio.error.notStarted":
+    "SwitchioPay is busy or not ready. Nothing was refunded; try again.",
+  "refund.switchio.error.otherDevice":
+    "Only the phone that started this refund can ask its SwitchioPay.",
+  "refund.switchio.restored.unusable":
+    "A refund result from before the app restarted could not be processed. Check the refund in SwitchioPay.",
   "refund.qerko.dismiss": "Dismiss",
   "refund.qerko.dismissUnresolved": "I have checked, dismiss",
   "refund.qerko.error.notAvailable":

@@ -8,6 +8,10 @@ const native = vi.hoisted(() => ({
   acknowledgeResult: vi.fn(),
   peekStoredClosureResult: vi.fn(() => null),
   acknowledgeClosureResult: vi.fn(),
+  referralRefund: vi.fn(),
+  lookupTransaction: vi.fn(),
+  peekStoredRefundResult: vi.fn(() => null),
+  acknowledgeRefundResult: vi.fn(),
 }))
 
 vi.mock("expo", () => ({
@@ -15,9 +19,11 @@ vi.mock("expo", () => ({
   requireOptionalNativeModule: () => native,
 }))
 
-const { createSwitchioClosureDep, createSwitchioTerminalDep } = await import(
-  "./switchio.ts"
-)
+const {
+  createSwitchioClosureDep,
+  createSwitchioRefundDep,
+  createSwitchioTerminalDep,
+} = await import("./switchio.ts")
 
 describe("a demo account and SwitchioPay (demo-data/0001)", () => {
   it("never launches the terminal for a card payment", async () => {
@@ -47,6 +53,27 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
       error: { type: "SwitchioUnavailable", reason: "demo" },
     })
     expect(native.close).not.toHaveBeenCalled()
+  })
+
+  it("never refunds to the card nor asks the terminal", async () => {
+    const { switchioRefund } = createSwitchioRefundDep({ demo: true })
+
+    await expect(
+      switchioRefund.referralRefund({
+        transactionId: "t1",
+        amount: 100,
+        currencyCode: 203,
+        refundId: "123456789012345678",
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "SwitchioUnavailable", reason: "demo" },
+    })
+    await expect(switchioRefund.lookup("t1")).resolves.toEqual({
+      type: "unknown",
+    })
+    expect(native.referralRefund).not.toHaveBeenCalled()
+    expect(native.lookupTransaction).not.toHaveBeenCalled()
   })
 
   it("launches the terminal for an account that is not a demo", async () => {

@@ -28,6 +28,7 @@ import { NotOnboardedRedirect } from "../src/components/app/not-onboarded-redire
 import { PinPromptHost } from "../src/components/app/pin-prompt-host.tsx"
 import { SentryController } from "../src/components/app/sentry-controller.tsx"
 import { SwitchioRestoredClosure } from "../src/components/app/switchio-restored-closure.tsx"
+import { SwitchioRestoredRefund } from "../src/components/app/switchio-restored-refund.tsx"
 import { SwitchioRestoredResult } from "../src/components/app/switchio-restored-result.tsx"
 import { ToastHost } from "../src/components/app/toast-host.tsx"
 import {
@@ -160,6 +161,7 @@ function ThemedApp() {
             <DemoDataSeed />
             <SwitchioRestoredResult />
             <SwitchioRestoredClosure />
+            <SwitchioRestoredRefund />
           </Suspense>
         </Theme>
       </TamaguiProvider>

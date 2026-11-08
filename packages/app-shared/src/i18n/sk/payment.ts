@@ -387,6 +387,32 @@ export const skPayment = {
   "refund.created": "Vrátenie je zaznamenané.",
   "refund.dialog.method.qerkoTerminal": "Späť na kartu cez terminál",
   "refund.dialog.method.qerkoTerminalTid": "Späť na kartu na terminále {tid}",
+  "refund.dialog.method.cardSwitchio": "Späť na kartu cez SwitchioPay",
+  "refund.switchio.hint":
+    "Zákazník priloží k tomuto telefónu kartu, ktorou platil.",
+  "refund.switchio.done": "Peniaze sa vrátili na kartu.",
+  "refund.switchio.pending": "Vraciam na kartu cez SwitchioPay",
+  "refund.switchio.pendingElsewhere":
+    "Čaká sa na SwitchioPay na inom telefóne. Ak ten telefón nie je k dispozícii, skontrolujte SwitchioPay a vrátenie zatvorte.",
+  "refund.switchio.unresolved":
+    "Výsledok vrátenia na kartu nie je známy, karta teda mohla byť vrátená. Pred ďalším vrátením skontrolujte SwitchioPay.",
+  "refund.switchio.failed": "Terminál vrátenie na kartu zamietol.",
+  "refund.switchio.check": "Zistiť stav v SwitchioPay",
+  "refund.switchio.dismissPending.title": "Zatvoriť vrátenie?",
+  "refund.switchio.dismissPending.description":
+    "Druhý telefón ho môže ešte nahlásiť. Ak sa peniaze vrátili, vrátenie sa potom zapíše aj tak.",
+  "refund.switchio.dismissPending.confirm": "Zatvoriť",
+  "refund.switchio.dismissPending.cancel": "Späť",
+  "refund.switchio.error.notAvailable":
+    "Túto platbu nemožno vrátiť na kartu: terminál k nej nevydal identifikátor, ktorý vrátenie potrebuje.",
+  "refund.switchio.error.running":
+    "Iné vrátenie tejto platby na kartu ešte nie je vybavené.",
+  "refund.switchio.error.notStarted":
+    "SwitchioPay je zaneprázdnený alebo nie je pripravený. Nič sa nevrátilo, skúste to znova.",
+  "refund.switchio.error.otherDevice":
+    "Stav v SwitchioPay môže zistiť len telefón, ktorý vrátenie spustil.",
+  "refund.switchio.restored.unusable":
+    "Výsledok vrátenia na kartu z doby pred reštartom aplikácie sa nepodarilo spracovať. Skontrolujte vrátenie v SwitchioPay.",
   "refund.qerko.dismiss": "Zavrieť",
   "refund.qerko.dismissUnresolved": "Skontroloval(a) som, zavrieť",
   "refund.qerko.error.notAvailable":
