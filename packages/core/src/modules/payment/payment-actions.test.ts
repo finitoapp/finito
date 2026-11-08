@@ -17,7 +17,7 @@ import {
   interpretSwitchioPaymentResult,
   type SwitchioTerminalDep,
 } from "../../switchio.ts"
-import { createTestDateDep } from "../../testing/date-dep.ts"
+import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { saveCardSwitchioAccount } from "../account/account-actions.ts"
@@ -2887,6 +2887,7 @@ describe("payment actions", () => {
             cardLabel: "Air Bank",
             terminalId: "M1TNEXGO01",
             terminalDateTime: "Jul 16, 2020 14:39:37",
+            refundId: "123456789012345678",
           })
         },
       },
@@ -2971,6 +2972,7 @@ describe("payment actions", () => {
           cardLabel: "Air Bank",
           terminalId: "M1TNEXGO01",
           terminalDateTime: "Jul 16, 2020 14:39:37",
+          refundId: "123456789012345678",
         },
       ])
   }, 15_000)
@@ -3083,6 +3085,7 @@ describe("payment actions", () => {
       cardLabel: null,
       terminalId: null,
       terminalDateTime: null,
+      refundId: "123456789012345678",
     })
 
     const setUp = async (
@@ -3091,9 +3094,10 @@ describe("payment actions", () => {
       const testEvolu = await createEvoluTest()
       const { evolu } = testEvolu
       const requests: Array<{ readonly transactionId: string }> = []
+      const dateDep = createTestDateDep()
       const deps = {
         ...evoluTestDeps(evolu),
-        ...createTestDateDep(),
+        ...dateDep,
         switchioTerminal: {
           pay: async (request) => {
             requests.push(request)
@@ -3122,6 +3126,7 @@ describe("payment actions", () => {
         requests,
         accountId,
         paymentId,
+        advanceClock: dateDep.advance,
         [Symbol.asyncDispose]: async () => {
           await run[Symbol.asyncDispose]()
           await testEvolu[Symbol.asyncDispose]()
@@ -3143,6 +3148,58 @@ describe("payment actions", () => {
           evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
         )
         .toMatchObject([{ deviceId }])
+    }, 15_000)
+
+    test("keeps what a refund to the card needs: the terminal's refund id, the phone that charged the card and when", async () => {
+      await using ctx = await setUp(async () => approved)
+      const { evolu, run, requests, accountId, paymentId } = ctx
+      // `setUp` creates the payment without a device: as if another device
+      // had created it and this phone took the card when it was reopened.
+      const chargingDeviceId = createRowId<"Device">()
+
+      await run.orThrow(
+        payPaymentWithSwitchioCard({
+          paymentId,
+          accountId,
+          deviceId: chargingDeviceId,
+        })
+      )
+
+      const [row] = await evolu.loadQuery(
+        paymentCardSwitchioByPaymentIdQuery(paymentId)
+      )
+      expect(row).toMatchObject({
+        transactionId: requests[0]?.transactionId,
+        refundId: "123456789012345678",
+        deviceId: chargingDeviceId,
+        approvedAt: testFixedDate.getTime(),
+      })
+    }, 15_000)
+
+    test("keeps the first approval time when the same result is recorded again after a restart", async () => {
+      await using ctx = await setUp(async () => approved)
+      const { evolu, run, requests, accountId, paymentId, advanceClock } = ctx
+      await run.orThrow(payPaymentWithSwitchioCard({ paymentId, accountId }))
+      const transactionId = requests[0]?.transactionId ?? null
+
+      advanceClock(60_000)
+      await run.orThrow(
+        settleRestoredSwitchioCardPayment({
+          restored: {
+            resultCode: -1,
+            transactionId,
+            transactionResult: JSON.stringify({
+              responseCode: "OK",
+              refundId: "123456789012345678",
+            }),
+          },
+        })
+      )
+
+      const [row] = await evolu.loadQuery(
+        paymentCardSwitchioByPaymentIdQuery(paymentId)
+      )
+      expect(row?.approvedAt).toBe(testFixedDate.getTime())
     }, 15_000)
 
     test("refuses an already paid payment before the terminal is asked", async () => {

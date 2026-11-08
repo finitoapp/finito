@@ -97,6 +97,14 @@ export const paymentBtcSpark = {
  * tracing a transaction with the acquirer; everything else the terminal
  * returns (EMV data, tokens, DCC) is deliberately dropped. See
  * `src/core/native/switchio.ts`.
+ *
+ * `refundId`, `deviceId` and `approvedAt` are what refunding the card needs,
+ * written with the approved result (payment/0009): the terminal's id a
+ * referral refund names the payment by, kept as the terminal's digits; the
+ * phone whose SwitchioPay charged the card — not `payment.deviceId`, the
+ * device that created the payment, since a pending payment can be paid on
+ * any device — and when that phone recorded the approval, by the same clock
+ * that stamps its `cardSwitchioClosure.closedAt`.
  */
 export const paymentCardSwitchio = {
   id: PaymentId,
@@ -110,6 +118,9 @@ export const paymentCardSwitchio = {
   cardLabel: NonEmptyString255Schema.nullable(),
   terminalId: NonEmptyString255Schema.nullable(),
   terminalDateTime: NonEmptyString255Schema.nullable(),
+  refundId: NonEmptyString255Schema.nullable(),
+  deviceId: DeviceId.nullable(),
+  approvedAt: TimestampMsSchema.nullable(),
 } as const
 
 /**

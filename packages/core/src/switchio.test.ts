@@ -35,8 +35,48 @@ describe("interpretSwitchioPaymentResult", () => {
         cardLabel: "Air Bank",
         terminalId: "M1TNEXGO01",
         terminalDateTime: "Jul 16, 2020 14:39:37",
+        refundId: null,
       },
     })
+  })
+
+  test("keeps an 18-digit numeric refund id digit for digit, past what a number holds", () => {
+    // 2^53 is 16 digits: `JSON.parse` would round this to ...680.
+    const result = interpretSwitchioPaymentResult({
+      resultCode: -1,
+      transactionResult: '{"responseCode":"OK","refundId": 123456789012345678}',
+    })
+
+    expect(result.ok && result.value.refundId).toBe("123456789012345678")
+  })
+
+  test("takes a quoted refund id as it is", () => {
+    const result = interpretSwitchioPaymentResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        responseCode: "OK",
+        refundId: "000012345678901234",
+      }),
+    })
+
+    expect(result.ok && result.value.refundId).toBe("000012345678901234")
+  })
+
+  test("leaves the refund id out when the terminal sends none or no digits", () => {
+    const missing = interpretSwitchioPaymentResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({ responseCode: "OK" }),
+    })
+    const notDigits = interpretSwitchioPaymentResult({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        responseCode: "OK",
+        refundId: "n/a",
+      }),
+    })
+
+    expect(missing.ok && missing.value.refundId).toBe(null)
+    expect(notDigits.ok && notDigits.value.refundId).toBe(null)
   })
 
   test("falls back to the card brand when the app label is missing", () => {

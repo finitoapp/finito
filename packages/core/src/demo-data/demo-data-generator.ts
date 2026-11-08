@@ -377,6 +377,8 @@ export const generateDemoData =
             ),
             terminalId: "PAYKY001",
             terminalDateTime: format(simulatedNow, "yyyy-MM-dd'T'HH:mm:ss"),
+            // 18 digits, as a referral refund wants it.
+            refundId: `${random.int(100_000_000, 999_999_999)}${random.int(100_000_000, 999_999_999)}`,
           }),
       },
     }
