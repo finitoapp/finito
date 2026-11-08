@@ -218,6 +218,8 @@ export const csPayment = {
   "paymentWait.cardPaid.action": "Zaplatit platební kartou",
   "paymentWait.cardPaid.error.declined": "Platba platební kartou neproběhla.",
   "paymentWait.cardPaid.error.generic": "Platbu platební kartou nelze provést.",
+  "paymentWait.cardPaid.error.demo":
+    "V demo účtu nelze přijmout skutečnou platbu kartou.",
   "paymentWait.cardPaid.error.unavailable":
     "Aplikace terminálu SwitchioPay není na tomto zařízení dostupná.",
   "paymentWait.cardPaid.error.unreadable":

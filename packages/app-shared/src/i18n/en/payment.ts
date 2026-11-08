@@ -221,6 +221,8 @@ export const enPayment = {
     "Payment by payment card did not go through.",
   "paymentWait.cardPaid.error.generic":
     "Could not take payment by payment card.",
+  "paymentWait.cardPaid.error.demo":
+    "A real card payment cannot be taken in a demo account.",
   "paymentWait.cardPaid.error.unavailable":
     "The SwitchioPay terminal app is not available on this device.",
   "paymentWait.cardPaid.error.unreadable":

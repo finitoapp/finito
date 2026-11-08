@@ -107,3 +107,5 @@ Three constraints shaped how:
 - `packages/core/src/evolu/device-account.test.ts > insertDemoAccount > adds an active demo account whose relays are all switched off`
 - `packages/core/src/demo-data/demo-data-generator.test.ts > generateDemoData > stopped early, leaves the newest days with bills numbered as if the older ones existed`
 - `apps/web-app/e2e/demo-data.spec.ts > a demo account generates from today back until stopped, with its relays locked off`
+- `apps/native-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay (demo-data/0001) > never launches the terminal for a card payment`
+- `apps/native-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay (demo-data/0001) > never closes the terminal's batch`

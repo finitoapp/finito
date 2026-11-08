@@ -209,6 +209,14 @@ const cardPaymentErrorKeys = {
   SwitchioResultUnreadable: "paymentWait.cardPaid.error.unreadable",
 } satisfies Record<PayPaymentWithSwitchioCardError["type"], TranslationKey>
 
+/** A demo account never reaches the terminal (demo-data/0001), and says so. */
+const cardPaymentErrorKey = (
+  error: PayPaymentWithSwitchioCardError
+): TranslationKey =>
+  error.type === "SwitchioUnavailable" && error.reason === "demo"
+    ? "paymentWait.cardPaid.error.demo"
+    : cardPaymentErrorKeys[error.type]
+
 const goHome = () => router.dismissTo("/")
 
 export function PaymentWaitPage() {
@@ -681,7 +689,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         )
         if (!result.ok) {
           nativeConsole.error("Failed to take the card payment", result.error)
-          setCardErrorKey(cardPaymentErrorKeys[result.error.type])
+          setCardErrorKey(cardPaymentErrorKey(result.error))
         }
         return undefined
       })
