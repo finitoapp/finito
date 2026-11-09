@@ -13,6 +13,8 @@ import {
 import {
   eetExtraClaimsQuery,
   eetPaymentsToReportQuery,
+  eetReversalByRefundIdQuery,
+  eetReversalsByPaymentIdQuery,
   eetSaleByIdQuery,
   eetSalesToDeliverQuery,
   unconfirmedEetReversalsQuery,
@@ -212,6 +214,66 @@ describe("unconfirmedEetReversalsQuery", () => {
         ({ id }) => id
       )
     ).toEqual([neverSent, pending])
+  })
+})
+
+describe("eetReversalByRefundIdQuery", () => {
+  test("finds the reversal of one refund, the row the payment's list holds", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    const saleId = await createSale(context)
+    await using run = testCreateRun(context.deps)
+    await run.orThrow(
+      deliverEetSale({ id: saleId, deviceId: context.deviceId })
+    )
+    const [sale] = await context.deps.evolu.loadQuery(eetSaleByIdQuery(saleId))
+    if (sale === undefined) throw new Error("Expected a created sale.")
+    const reverse = async () => {
+      const refundId = createRowId<"Refund">()
+      const reversalId = await run.ok(
+        createEetReversal({
+          refund: {
+            id: refundId,
+            paymentId: sale.paymentId,
+            amount: NonNegativeInteger(5_000),
+            cashHandedAmount: null,
+            isTip: null,
+            refundedAt: TimestampMs(context.clock.date.now().getTime()),
+            saleId,
+          },
+          deviceId: context.deviceId,
+        })
+      )
+      if (reversalId === null) throw new Error("Expected a reversal.")
+      return { refundId, reversalId }
+    }
+    const { refundId: first } = await reverse()
+    const { refundId: second, reversalId } = await reverse()
+    await run.orThrow(
+      deliverEetReversal({ id: reversalId, deviceId: context.deviceId })
+    )
+
+    const byPayment = await context.deps.evolu.loadQuery(
+      eetReversalsByPaymentIdQuery(sale.paymentId)
+    )
+    const [reversal] = await context.deps.evolu.loadQuery(
+      eetReversalByRefundIdQuery(second)
+    )
+    expect(reversal).toEqual(
+      byPayment.find(({ refundId }) => refundId === second)
+    )
+    expect(reversal).toMatchObject({
+      refundId: second,
+      pok: expect.any(String),
+    })
+    await expect(
+      context.deps.evolu.loadQuery(eetReversalByRefundIdQuery(first))
+    ).resolves.toMatchObject([{ refundId: first, pok: null }])
+    await expect(
+      context.deps.evolu.loadQuery(
+        eetReversalByRefundIdQuery(createRowId<"Refund">())
+      )
+    ).resolves.toEqual([])
   })
 })
 

@@ -55,6 +55,7 @@ import {
 import {
   qerkoTerminalRefundAttemptsByPaymentIdQuery,
   refundablePaymentLinesQuery,
+  refundByIdQuery,
   refundLinesByPaymentIdQuery,
   refundsByPaymentIdQuery,
 } from "./refund-queries.ts"
@@ -246,6 +247,14 @@ const setup = async ({
   }
 }
 
+/** Every `refundQerkoTerminal` row, deleted or not. */
+const qerkoTerminalDetailsQuery = createQuery((db) =>
+  db
+    .selectFrom("refundQerkoTerminal")
+    .select(["id", "accountId", "transactionId", "terminalId", "isDeleted"])
+    .orderBy("id")
+)
+
 const refundTransactionsQuery = (accountId: unknown) =>
   createQuery((db) =>
     db
@@ -307,6 +316,17 @@ describe("refund to the card through Qerko", () => {
       )
       .toMatchObject([{ amount: -10_000, kind: "qerkoTerminal" }])
     await expect.poll(() => test.attempts()).toEqual([])
+    // What staff find the refund by on the terminal is kept beside it.
+    await expect(
+      test.evolu.loadQuery(refundByIdQuery(attempt.id))
+    ).resolves.toMatchObject([
+      {
+        qerkoTerminalAccountId: accountId,
+        qerkoTerminalTransactionId: attempt.transactionId,
+        qerkoTerminalTerminalId: "terminal-1",
+        cardSwitchioTransactionId: null,
+      },
+    ])
   }, 20_000)
 
   test("what was refunded is no longer refundable", async () => {
@@ -630,11 +650,29 @@ describe("refund of the whole payment to the card through Qerko", () => {
         { amount: -2_000, kind: "qerkoTerminal" },
       ])
     )
+    // Both went through one terminal transaction, and each keeps it.
+    const detail = {
+      accountId,
+      transactionId: attempt.transactionId,
+      terminalId: "terminal-1",
+      isDeleted: sqliteFalse,
+    }
+    await expect(
+      test.evolu.loadQuery(qerkoTerminalDetailsQuery)
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        { id: attempt.id, ...detail },
+        { id: tipRefundId(test.paymentId), ...detail },
+      ])
+    )
     // The tip is written: nothing to repair.
     await expect(test.run(repairQerkoTerminalTipRefunds())).resolves.toEqual({
       ok: true,
       value: 0,
     })
+    await expect(
+      test.evolu.loadQuery(qerkoTerminalDetailsQuery)
+    ).resolves.toHaveLength(2)
     await expect(startWhole(test)).resolves.toMatchObject({
       ok: false,
       error: { type: "RefundAmountInvalid", remainingAmount: 0 },
@@ -692,6 +730,17 @@ describe("refund of the whole payment to the card through Qerko", () => {
         { amount: 23_000, method: "outside" },
         { id: attempt.id, amount: 2_000, isTip: sqliteTrue },
       ])
+    await expect(
+      test.evolu.loadQuery(qerkoTerminalDetailsQuery)
+    ).resolves.toEqual([
+      {
+        id: attempt.id,
+        accountId,
+        transactionId: attempt.transactionId,
+        terminalId: "terminal-1",
+        isDeleted: sqliteFalse,
+      },
+    ])
   }, 20_000)
 
   test("the tip an older version left out when it settled the attempt is written once", async () => {
@@ -755,6 +804,22 @@ describe("refund of the whole payment to the card through Qerko", () => {
     await expect(negativeTransactions(test)).resolves.toEqual([
       { amount: -2_000, kind: "qerkoTerminal" },
     ])
+    // The repaired tip keeps the transaction the taken-away attempt names;
+    // the goods an older version wrote have no detail.
+    await expect(
+      test.evolu.loadQuery(qerkoTerminalDetailsQuery)
+    ).resolves.toEqual([
+      {
+        id: tipRefundId(test.paymentId),
+        accountId,
+        transactionId: attempt.transactionId,
+        terminalId: "terminal-1",
+        isDeleted: sqliteFalse,
+      },
+    ])
+    await expect(
+      test.evolu.loadQuery(refundByIdQuery(attempt.id))
+    ).resolves.toMatchObject([{ qerkoTerminalTransactionId: null }])
   }, 20_000)
 
   test("a dismissed attempt was never approved and needs no repair", async () => {

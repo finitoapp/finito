@@ -17,10 +17,12 @@ import type { DeviceId } from "../device/device-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { PaymentLineId } from "../payment-line/payment-line-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
+import { removeUndefinedValues } from "../shared/evolu-utils.ts"
 import {
   type FiatCurrency,
   Integer,
   type NonEmptyString,
+  type NonEmptyString255,
   NonEmptyStringSchema,
   type NonNegativeInteger,
   NonNegativeIntegerSchema,
@@ -34,8 +36,9 @@ import type { RefundId, RefundMethod } from "./refund-types.ts"
  * What a refund to the card writes once its terminal approved it, for every
  * terminal that refunds that way (Qerko's, qerko/0004; SwitchioPay's,
  * refund/0007): the `refund` row, its goods lines, and the money going out
- * of the terminal's account. The attempt tables stay each terminal's own;
- * only this part is the same.
+ * of the terminal's account, and what the terminal answered, in its own
+ * detail table. The attempt tables stay each terminal's own; only this part
+ * is the same.
  */
 
 interface RefundLineValue {
@@ -87,13 +90,33 @@ const decodeRefundLines = (
       : []
   })
 
+/**
+ * The terminal transaction that refunded to the card, kept under the refund
+ * as `refundQerkoTerminal` or `refundCardSwitchio`. A refund of the whole
+ * payment writes it under both its refunds, goods and tip.
+ */
+export type CardRefundTerminal =
+  | {
+      readonly method: Extract<RefundMethod, "qerkoTerminal">
+      readonly transactionId: NonEmptyString255
+      readonly terminalId: NonEmptyString255
+    }
+  | {
+      readonly method: Extract<RefundMethod, "cardSwitchio">
+      readonly transactionId: NonEmptyString255
+      readonly kind: "reversal" | "referralRefund"
+      /** What the terminal's receipt prints, when its answer carried it. */
+      readonly authCode: NonEmptyString255 | null
+      readonly sequenceNumber: NonEmptyString255 | null
+    }
+
 export interface CardRefund {
   readonly refundId: RefundId
   readonly paymentId: PaymentId
   readonly deviceId: DeviceId | null
   readonly amount: NonNegativeInteger
   readonly currency: FiatCurrency
-  readonly method: Extract<RefundMethod, "qerkoTerminal" | "cardSwitchio">
+  readonly terminal: CardRefundTerminal
   readonly isTip: typeof sqliteTrue | null
   readonly linesJson: NonEmptyString | null
   /** The terminal's account the money goes back out of. */
@@ -117,7 +140,7 @@ export const computeCardRefundRows = (refund: CardRefund, now: Date) => {
       {
         id: refund.accountTransactionId,
         accountId: refund.accountId,
-        kind: refund.method,
+        kind: refund.terminal.method,
         amount: Integer(-refund.amount),
         currency: refund.currency,
         occurredAt: refundedAt,
@@ -148,7 +171,7 @@ export const upsertCardRefundRows = (
       deviceId: refund.deviceId,
       amount: refund.amount,
       currency: refund.currency,
-      method: refund.method,
+      method: refund.terminal.method,
       refundedAt,
       ...(refund.isTip === sqliteTrue ? { isTip: sqliteTrue } : {}),
       isDeleted: sqliteFalse,
@@ -172,5 +195,43 @@ export const upsertCardRefundRows = (
       options
     )
   }
+  upsertCardRefundTerminalRow(evolu, refund, options)
   upsertAccountTransactionRows(evolu, accountTransaction, options)
+}
+
+const upsertCardRefundTerminalRow = (
+  evolu: EvoluDep["evolu"],
+  { refundId, accountId, terminal }: CardRefund,
+  options: MutationOptions
+): void => {
+  if (terminal.method === "qerkoTerminal") {
+    evolu.upsert(
+      "refundQerkoTerminal",
+      {
+        id: refundId,
+        accountId,
+        transactionId: terminal.transactionId,
+        terminalId: terminal.terminalId,
+        isDeleted: sqliteFalse,
+      },
+      options
+    )
+    return
+  }
+  // What the receipt prints is written when known and never erased: the
+  // same refund settled again from an answer without it (the terminal asked
+  // afterwards) keeps what the first answer said.
+  evolu.upsert(
+    "refundCardSwitchio",
+    removeUndefinedValues({
+      id: refundId,
+      accountId,
+      transactionId: terminal.transactionId,
+      kind: terminal.kind,
+      authCode: terminal.authCode ?? undefined,
+      sequenceNumber: terminal.sequenceNumber ?? undefined,
+      isDeleted: sqliteFalse,
+    }),
+    options
+  )
 }
