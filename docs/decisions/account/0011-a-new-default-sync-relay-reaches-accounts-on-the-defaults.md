@@ -7,8 +7,8 @@ Date: 2026-10-13
 
 An account stores its sync relays as device rows when it is created
 (`insertAccount` in `packages/core/src/evolu/device-account.ts`), so a relay added to
-`createDefaultEvoluTransportUrls` later reaches only new accounts. Payky now runs
-its own Evolu relay, `wss://evolu.agora.gripe`, and existing accounts should
+`createDefaultEvoluTransportUrls` later reaches only new accounts. One of Payky's
+developers now runs an Evolu relay, `wss://evolu.agora.gripe`, and existing accounts should
 sync through it too. Some accounts were brought from another device with
 relays of their owner's choosing and deliberately carry none of the
 defaults.
@@ -26,7 +26,7 @@ owner who switched agora's relay off keeps it off.
 
 ## Alternatives considered
 
-- New accounts only: existing accounts would never sync through Payky's own
+- New accounts only: existing accounts would never sync through agora's
   relay unless their owner added it by hand.
 - Every account: an account on a custom relay only would start sending its
   encrypted data to a server its owner did not choose.
