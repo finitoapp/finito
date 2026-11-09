@@ -1,5 +1,7 @@
 # web access.spec.ts: "a refund raises the one-shot PIN prompt naming the
-# permission it needs".
+# permission it needs". Finito asks when the refund screen opens, its route
+# needing `refund` (docs/plans/refund-flow.md); web follows in the plan's
+# Phase 3.
 appId: ${APP_ID}
 tags: [access]
 ---
@@ -25,16 +27,21 @@ tags: [access]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
-- tapOn: '${output.re(output.tv("refund.dialog.confirm", { amount: "\u00245" }))}'
-# The one-shot prompt names the action and the permission.
+# The screen's lock names the permission it needs.
 - extendedWaitUntil:
-    visible: '${output.tv("access.pin.why.action", { action: output.t["access.action.refund"] })}'
+    visible: '${output.tv("access.pin.why.route", { permission: output.t["access.permission.refund"] })}'
     timeout: 15000
-- assertVisible: '${output.tv("access.pin.help", { permission: output.t["access.permission.refund"] })}'
 - runFlow:
     file: ../../subflows/type-pin.yaml
     env:
       PIN: "4821"
+- extendedWaitUntil:
+    visible: ${output.t["refund.dialog.method.label"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      PATTERN: '${output.re(output.tv("refund.dialog.confirm", { amount: "\u00245" }))}'
 - extendedWaitUntil:
     visible: ${output.t["refund.created"]}
     timeout: 15000

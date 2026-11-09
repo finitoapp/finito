@@ -359,6 +359,71 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/activity/payment-refunds.tsx",
     web: ["apps/web-app/src/features/activity/payment-refunds.tsx"],
     status: "matched",
+    allowedDifferences: {
+      Dialog:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      DialogContent:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      DialogHeader:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      DialogTitle:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      DialogDescription:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      DialogFooter:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      ToggleGroup:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      ToggleGroupItem:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      Field:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      FieldLabel:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      FieldError:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      FieldSet:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      FieldLegend:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+      Input:
+        "Finito moved the refund dialog to refund-page.tsx; web still draws it here until web gets the same screen",
+    },
+  },
+  {
+    native: "src/features/activity/refund-page.tsx",
+    web: ["apps/web-app/src/features/activity/payment-refunds.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      CardHeader:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      CardTitle:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      CardAction:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      Dialog:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      DialogContent:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      DialogHeader:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      DialogTitle:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      DialogDescription:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      DialogFooter:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      NotFoundCard:
+        "Finito draws the refund as a screen of its own; web still refunds from the payment detail's dialogs until web gets the same screen",
+      Alert:
+        "a reversal SwitchioPay declined offers the refund to the card on the screen (refund/0008); SwitchioPay is Finito-only",
+      AlertTitle:
+        "a reversal SwitchioPay declined offers the refund to the card on the screen (refund/0008); SwitchioPay is Finito-only",
+      AlertDescription:
+        "a reversal SwitchioPay declined offers the refund to the card on the screen (refund/0008); SwitchioPay is Finito-only",
+      AlertAction:
+        "a reversal SwitchioPay declined offers the refund to the card on the screen (refund/0008); SwitchioPay is Finito-only",
+    },
   },
   {
     native: "src/features/activity/bill-status-display.tsx",

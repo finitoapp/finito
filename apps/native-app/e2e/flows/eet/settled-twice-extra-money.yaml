@@ -57,6 +57,10 @@ tags: [eet]
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
 - extendedWaitUntil:
+    visible: ${output.t["refund.page.choice.part"]}
+    timeout: 10000
+- tapOn: ${output.t["refund.page.choice.part"]}
+- extendedWaitUntil:
     visible:
       id: ${output.re(output.t["refund.dialog.amount.label"])}
       text: "6"
@@ -70,18 +74,6 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["refund.dialog.cancel"]}
-- extendedWaitUntil:
-    notVisible: ${output.re(output.t["refund.dialog.description"])}
-    timeout: 10000
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["paymentDetail.refunds.action"]}
-- tapOn: ${output.t["refund.dialog.method.outside"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
       PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.+" })}'
 - extendedWaitUntil:
     visible: ${output.t["refund.created"]}
@@ -90,9 +82,6 @@ tags: [eet]
     file: ../../subflows/eet-mock.yaml
     env:
       PATH: /__mock/eet/expect?count=3&lastNegates=1
-- extendedWaitUntil:
-    notVisible: ${output.re(output.t["refund.dialog.description"])}
-    timeout: 10000
 - runFlow:
     file: ../../subflows/assert-label.yaml
     env:

@@ -66,6 +66,7 @@ describe("menu section (navigation/0001)", () => {
 
   it("puts every route of the section in its tab and leaves the rest out", () => {
     expect(placed["/activity/:paymentId"]).toBe("activity")
+    expect(placed["/activity/:paymentId/refund"]).toBe("activity")
     expect(placed["/settings/items/:catalogItemId"]).toBe("settings")
     expect(placed["/settings/language"]).toBe("settings")
     expect(placed["/withdraw/new"]).toBe("settings")
@@ -138,6 +139,8 @@ describe("the terminal, home's modes, notifications and nesting (navigation/0004
     )
     expect(menuDetailRootOf("/withdraw/new")).toBe("/settings")
     expect(menuDetailRootOf("/activity/abc")).toBe("/activity")
+    // The refund screen takes the payment's place beside the list (refund-flow).
+    expect(menuDetailRootOf("/activity/abc/refund")).toBe("/activity")
     expect(menuDetailRootOf("/activity/bills/abc")).toBe("/activity/bills")
     expect(menuDetailRootOf("/settings/items/new")).toBe("/settings")
     expect(menuDetailRootOf("/settings/tables/abc/")).toBe("/settings")
