@@ -3,12 +3,14 @@ import { translate, translateValue } from "./support/i18n.ts"
 import { gotoPage, waitForLocalWriteToSettle } from "./support/navigation.ts"
 import {
   enterAmount,
+  escapeRegExp,
   getPaymentIdFromUrl,
   markCashPaid,
   openRefundScreen,
   refundAction,
   refundChoiceButton,
   refundConfirmButton,
+  refundMethodRadio,
 } from "./support/payment.ts"
 
 test("refund a whole payment in cash: the goods and the tip come back as two refunds", async ({
@@ -37,22 +39,31 @@ test("refund a whole payment in cash: the goods and the tip come back as two ref
   await test.step("the screen starts on the whole payment, back from the register", async () => {
     await gotoPage(page, `/activity/${paymentId}`, "en", "paymentDetail.title")
     await openRefundScreen(page, "en")
-    await expect(refundChoiceButton(page, "en", "whole")).toHaveAttribute(
-      "aria-pressed",
-      "true"
+    await expect(refundChoiceButton(page, "en", "whole")).toBeChecked()
+    await expect(refundChoiceButton(page, "en", "whole")).toHaveAccessibleName(
+      new RegExp(
+        escapeRegExp(
+          translate("en", "refund.page.choice.whole.tipIncluded").split(
+            "{amount}"
+          )[1] ?? ""
+        ),
+        "u"
+      )
     )
-    await expect(refundChoiceButton(page, "en", "whole")).toContainText(
-      translate("en", "refund.page.choice.whole.tipIncluded").split(
-        "{amount}"
-      )[1] ?? ""
+    const cashRegister = refundMethodRadio(
+      page,
+      translate("en", "refund.dialog.method.cashRegister")
     )
-    await expect(
-      page.getByRole("button", {
-        name: translate("en", "refund.dialog.method.cashRegister"),
-      })
-    ).toHaveAttribute("aria-pressed", "true")
-    await expect(page.getByTestId("refund-outcome")).toContainText(
-      translate("en", "refund.outcome.cashRegister").split("{amount}")[0] ?? ""
+    await expect(cashRegister).toBeChecked()
+    // The card says what confirming it does.
+    await expect(cashRegister).toHaveAccessibleName(
+      new RegExp(
+        escapeRegExp(
+          translate("en", "refund.outcome.cashRegister").split("{amount}")[0] ??
+            ""
+        ),
+        "u"
+      )
     )
   })
 

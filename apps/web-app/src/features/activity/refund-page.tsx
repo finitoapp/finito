@@ -38,13 +38,18 @@ import { refundQerkoPayment } from "@payky/core/modules/refund/refund-qerko-paym
 import type { qerkoTerminalRefundAttemptsByPaymentIdQuery } from "@payky/core/modules/refund/refund-queries"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type {
-  FiatCurrency,
-  NonNegativeInteger,
-} from "@payky/core/modules/shared/schema"
+import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
-import { LoaderCircleIcon, MinusIcon, PlusIcon } from "lucide-react"
+import {
+  BanknoteIcon,
+  CreditCardIcon,
+  ExternalLinkIcon,
+  LoaderCircleIcon,
+  type LucideIcon,
+  MinusIcon,
+  PlusIcon,
+} from "lucide-react"
 import {
   type ReactNode,
   Suspense,
@@ -57,16 +62,20 @@ import { toast } from "sonner"
 import { accountAtom } from "@/atoms/account.ts"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { NotFoundCard } from "@/components/not-found-card.tsx"
+import { QerkoIcon } from "@/components/qerko-icon.tsx"
 import { Button } from "@/components/ui/button.tsx"
-import { Card, CardContent } from "@/components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { PaymentDetailSkeleton } from "@/features/activity/payment-detail.tsx"
 import {
@@ -90,8 +99,8 @@ import { formatMoney } from "@/lib/format-utils.ts"
 /**
  * `/activity/$paymentId/refund`: the one screen every refund starts from
  * (refund-flow): what to refund (the whole payment, a part of the goods or
- * the tip alone), how much of a part, how the money goes back, and one
- * sentence saying what confirming does. Its route asks for `refund`
+ * the tip alone), how much of a part, and how the money goes back, each
+ * method saying what confirming it does. Its route asks for `refund`
  * (access/0002), so its actions ask nothing more. `initialChoice` starts it
  * on a choice other than the default, as the payment's collision does.
  */
@@ -188,6 +197,22 @@ type RefundWhat =
   | { readonly amount: NonNegativeInteger }
   | { readonly lines: ReadonlyArray<RefundLineInput> }
 
+/** Each method's mark on its choice card. */
+const refundMethodIcons = {
+  cardSwitchio: CreditCardIcon,
+  qerkoTerminal: CreditCardIcon,
+  qerkoPayment: QerkoIcon,
+  cashRegister: BanknoteIcon,
+  outside: ExternalLinkIcon,
+} satisfies Record<RefundMethod, LucideIcon>
+
+/**
+ * A choice card's row (`FieldLabel` around a `Field`): at least 56 high,
+ * its radio, icon and text centered whether the text takes one line or two.
+ */
+const choiceCardClassName =
+  "min-h-14 gap-3 has-[>[data-slot=field-content]]:items-center"
+
 /** The success toast of each choice refunded by a recorded method. */
 const recordedRefundDoneKeys = {
   whole: "refund.created",
@@ -245,27 +270,37 @@ function RefundForm({
           method: pickedMethod ?? options.defaultMethod ?? "outside",
         })
   const mode = options.partModes.includes(pickedMode) ? pickedMode : "amount"
-  const amountText = deriveRefundAmountText({
-    typedAmountText,
-    remainingAmount,
-    excess,
-    method: method ?? "outside",
-    currency: payment.currency,
-  })
-  const form = deriveRefundForm({
-    mode,
-    amountText,
-    quantities,
-    refundableLines,
-    remainingAmount,
-    currency: payment.currency,
-  })
-  const refundAmount =
+  /** The amount field and the form as they stand for a method. */
+  const formOf = (forMethod: RefundMethod) => {
+    const text = deriveRefundAmountText({
+      typedAmountText,
+      remainingAmount,
+      excess,
+      method: forMethod,
+      currency: payment.currency,
+    })
+    return {
+      amountText: text,
+      ...deriveRefundForm({
+        mode,
+        amountText: text,
+        quantities,
+        refundableLines,
+        remainingAmount,
+        currency: payment.currency,
+      }),
+    }
+  }
+  /** What confirming refunds by a method, `null` while the form is invalid. */
+  const refundAmountOf = (forMethod: RefundMethod) =>
     choiceOption === undefined
       ? null
       : choiceOption.choice === "part"
-        ? form.refundAmount
+        ? formOf(forMethod).refundAmount
         : choiceOption.amount
+  const form = formOf(method ?? "outside")
+  const { amountText } = form
+  const refundAmount = refundAmountOf(method ?? "outside")
 
   const backToPayment = useCallback(() => {
     if (router.history.canGoBack()) router.history.back()
@@ -433,178 +468,197 @@ function RefundForm({
   return (
     <div className="flex flex-col gap-4">
       {header}
-      <Card>
-        <CardContent className="flex flex-col gap-6">
-          {options.choices.length > 1 ? (
-            <FieldSet>
-              <FieldLegend variant="label">
-                {t("refund.dialog.mode.label")}
-              </FieldLegend>
-              <ToggleGroup
-                aria-label={t("refund.dialog.mode.label")}
-                className="w-full"
-                variant="outline"
-                orientation="vertical"
-                disabled={busy}
-                value={[choice]}
-                onValueChange={(values) => {
-                  const next = options.choices.find(
-                    (option) => option.choice === values[0]
-                  )
-                  if (next !== undefined) changeChoice(next.choice)
-                }}
-              >
-                {options.choices.map((option) => (
-                  <ToggleGroupItem
-                    key={option.choice}
-                    value={option.choice}
-                    className="h-auto min-h-12 justify-between px-3 py-2 text-left"
+      <div className="flex flex-col gap-8">
+        {options.choices.length > 1 ? (
+          <FieldSet>
+            <FieldLegend variant="label">
+              {t("refund.dialog.mode.label")}
+            </FieldLegend>
+            <RadioGroup
+              aria-label={t("refund.dialog.mode.label")}
+              disabled={busy}
+              value={choice}
+              onValueChange={(value) => {
+                const next = options.choices.find(
+                  (option) => option.choice === value
+                )
+                if (next !== undefined) changeChoice(next.choice)
+              }}
+            >
+              {options.choices.map((option) => (
+                <FieldLabel
+                  key={option.choice}
+                  htmlFor={`refund-choice-${option.choice}`}
+                >
+                  <Field
+                    orientation="horizontal"
+                    data-disabled={busy}
+                    className={choiceCardClassName}
                   >
-                    <span className="text-sm font-medium">
-                      {t(refundChoiceLabelKey[option.choice])}
-                    </span>
-                    <span className="flex flex-col items-end gap-0.5">
-                      <span className="text-sm tabular-nums">
-                        {option.choice === "part"
-                          ? t("refund.page.choice.part.left", {
-                              amount: money(option.amount),
-                            })
-                          : money(option.amount)}
-                      </span>
+                    <RadioGroupItem
+                      value={option.choice}
+                      id={`refund-choice-${option.choice}`}
+                    />
+                    <FieldContent>
+                      <FieldTitle>
+                        {t(refundChoiceLabelKey[option.choice])}
+                      </FieldTitle>
                       {option.choice === "whole" && option.tipAmount > 0 ? (
-                        <span className="text-xs text-muted-foreground">
+                        <FieldDescription>
                           {t("refund.page.choice.whole.tipIncluded", {
                             amount: money(option.tipAmount),
                           })}
-                        </span>
+                        </FieldDescription>
                       ) : null}
+                    </FieldContent>
+                    <span className="text-sm tabular-nums">
+                      {option.choice === "part"
+                        ? t("refund.page.choice.part.left", {
+                            amount: money(option.amount),
+                          })
+                        : money(option.amount)}
                     </span>
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </FieldSet>
-          ) : null}
+                  </Field>
+                </FieldLabel>
+              ))}
+            </RadioGroup>
+          </FieldSet>
+        ) : null}
 
-          {choice === "part" ? (
-            <FieldSet>
-              <FieldLegend variant="label">
-                {t("refund.page.amount.label")}
-              </FieldLegend>
-              {refundableTipAmount > 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("refund.dialog.tipHint", {
-                    amount: money(refundableTipAmount),
-                  })}
-                </p>
-              ) : null}
-              {options.partModes.includes("items") ? (
-                <ToggleGroup
-                  aria-label={t("refund.page.amount.label")}
-                  className="grid w-full grid-cols-2"
-                  variant="outline"
-                  disabled={busy}
-                  value={[mode]}
-                  onValueChange={(values) => {
-                    const [value] = values
-                    if (value === "amount" || value === "items") setMode(value)
-                  }}
-                >
-                  <ToggleGroupItem value="amount">
-                    {t("refund.dialog.mode.amount")}
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="items">
-                    {t("refund.dialog.mode.items")}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              ) : null}
-              {mode === "amount" ? (
-                <Field data-invalid={form.typedAmount === null}>
-                  <FieldLabel htmlFor="refund-amount">
-                    {t("refund.dialog.amount.label")}
-                  </FieldLabel>
-                  <Input
-                    id="refund-amount"
-                    value={amountText}
-                    inputMode="decimal"
-                    autoComplete="off"
-                    disabled={busy}
-                    aria-invalid={form.typedAmount === null}
-                    onChange={(event) =>
-                      setTypedAmountText(event.currentTarget.value)
-                    }
-                  />
-                  <FieldError>
-                    {form.typedAmount === null
-                      ? t("refund.dialog.amount.invalid", {
-                          amount: money(remainingAmount),
-                        })
-                      : null}
-                  </FieldError>
-                </Field>
-              ) : (
-                <div className="flex flex-col divide-y">
-                  {refundableLines.map((refundable) => (
-                    <RefundItemRow
-                      key={refundable.line.id}
-                      refundable={refundable}
-                      quantity={quantities[refundable.line.id] ?? 0}
-                      disabled={busy}
-                      onStep={(direction) =>
-                        setQuantities(
-                          stepRefundQuantity(quantities, refundable, direction)
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </FieldSet>
-          ) : null}
-
+        {choice === "part" ? (
           <FieldSet>
             <FieldLegend variant="label">
-              {t("refund.dialog.method.label")}
+              {t("refund.page.amount.label")}
             </FieldLegend>
-            <ToggleGroup
-              aria-label={t("refund.dialog.method.label")}
-              className="w-full"
-              variant="outline"
-              orientation="vertical"
-              disabled={busy}
-              value={[method]}
-              onValueChange={(values) => {
-                const next = options.methods[choice].find(
-                  (option) => option === values[0]
-                )
-                if (next !== undefined) setPickedMethod(next)
-              }}
-            >
-              {options.methods[choice].map((option) => (
-                <ToggleGroupItem
-                  key={option}
-                  value={option}
-                  className="justify-start"
-                >
-                  {option === "qerkoTerminal" && qerkoTerminalTid !== null
-                    ? t("refund.dialog.method.qerkoTerminalTid", {
-                        tid: qerkoTerminalTid,
-                      })
-                    : t(refundOptionMethodLabelKey[option])}
+            {refundableTipAmount > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("refund.dialog.tipHint", {
+                  amount: money(refundableTipAmount),
+                })}
+              </p>
+            ) : null}
+            {options.partModes.includes("items") ? (
+              <ToggleGroup
+                aria-label={t("refund.page.amount.label")}
+                className="grid w-full grid-cols-2"
+                variant="outline"
+                disabled={busy}
+                value={[mode]}
+                onValueChange={(values) => {
+                  const [value] = values
+                  if (value === "amount" || value === "items") setMode(value)
+                }}
+              >
+                <ToggleGroupItem value="amount">
+                  {t("refund.dialog.mode.amount")}
                 </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+                <ToggleGroupItem value="items">
+                  {t("refund.dialog.mode.items")}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            ) : null}
+            {mode === "amount" ? (
+              <Field data-invalid={form.typedAmount === null}>
+                <FieldLabel htmlFor="refund-amount">
+                  {t("refund.dialog.amount.label")}
+                </FieldLabel>
+                <Input
+                  id="refund-amount"
+                  value={amountText}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  disabled={busy}
+                  aria-invalid={form.typedAmount === null}
+                  onChange={(event) =>
+                    setTypedAmountText(event.currentTarget.value)
+                  }
+                />
+                <FieldError>
+                  {form.typedAmount === null
+                    ? t("refund.dialog.amount.invalid", {
+                        amount: money(remainingAmount),
+                      })
+                    : null}
+                </FieldError>
+              </Field>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {refundableLines.map((refundable) => (
+                  <RefundItemRow
+                    key={refundable.line.id}
+                    refundable={refundable}
+                    quantity={quantities[refundable.line.id] ?? 0}
+                    disabled={busy}
+                    onStep={(direction) =>
+                      setQuantities(
+                        stepRefundQuantity(quantities, refundable, direction)
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </FieldSet>
+        ) : null}
 
-          <RefundOutcome
-            choice={choice}
-            method={method}
-            amount={refundAmount ?? choiceOption.amount}
-            tipAmount={choiceOption.tipAmount}
-            currency={payment.currency}
-            formatAmount={money}
-          />
-        </CardContent>
-      </Card>
+        <FieldSet>
+          <FieldLegend variant="label">
+            {t("refund.dialog.method.label")}
+          </FieldLegend>
+          <RadioGroup
+            aria-label={t("refund.dialog.method.label")}
+            disabled={busy}
+            value={method}
+            onValueChange={(value) => {
+              const next = options.methods[choice].find(
+                (option) => option === value
+              )
+              if (next !== undefined) setPickedMethod(next)
+            }}
+          >
+            {options.methods[choice].map((option) => {
+              const MethodIcon = refundMethodIcons[option]
+              const outcome = describeRefundOutcome({
+                choice,
+                method: option,
+                // Web offers no refund through SwitchioPay (refund/0007).
+                switchioRefundKind: null,
+                amount: refundAmountOf(option) ?? choiceOption.amount,
+                tipAmount: choiceOption.tipAmount,
+                currency: payment.currency,
+                formatAmount: money,
+              })
+              return (
+                <FieldLabel key={option} htmlFor={`refund-method-${option}`}>
+                  <Field
+                    orientation="horizontal"
+                    data-disabled={busy}
+                    className={choiceCardClassName}
+                  >
+                    <RadioGroupItem
+                      value={option}
+                      id={`refund-method-${option}`}
+                    />
+                    <MethodIcon className="size-5 shrink-0 text-muted-foreground" />
+                    <FieldContent>
+                      <FieldTitle>
+                        {option === "qerkoTerminal" && qerkoTerminalTid !== null
+                          ? t("refund.dialog.method.qerkoTerminalTid", {
+                              tid: qerkoTerminalTid,
+                            })
+                          : t(refundOptionMethodLabelKey[option])}
+                      </FieldTitle>
+                      <FieldDescription>
+                        {t(outcome.key, outcome.params)}
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
+                </FieldLabel>
+              )
+            })}
+          </RadioGroup>
+        </FieldSet>
+      </div>
 
       {step.kind === "qerko" ? (
         <CardProgress
@@ -720,43 +774,6 @@ function CardProgress({
   )
 }
 
-/**
- * The sentence under the form saying what confirming does
- * (`describeRefundOutcome`). Web offers no refund through SwitchioPay, so
- * whether the terminal could take the payment back is never asked.
- */
-function RefundOutcome({
-  choice,
-  method,
-  amount,
-  tipAmount,
-  currency,
-  formatAmount,
-}: {
-  readonly choice: RefundChoice
-  readonly method: RefundMethod
-  readonly amount: NonNegativeInteger
-  readonly tipAmount: NonNegativeInteger
-  readonly currency: FiatCurrency
-  readonly formatAmount: (value: NonNegativeInteger) => string
-}) {
-  const { t } = useTranslation()
-  const outcome = describeRefundOutcome({
-    choice,
-    method,
-    switchioRefundKind: null,
-    amount,
-    tipAmount,
-    currency,
-    formatAmount,
-  })
-  return (
-    <p className="text-sm text-muted-foreground" data-testid="refund-outcome">
-      {t(outcome.key, outcome.params)}
-    </p>
-  )
-}
-
 function RefundItemRow({
   refundable,
   quantity,
@@ -772,7 +789,7 @@ function RefundItemRow({
   const { name } = refundable.line
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{name}</p>
         <p className="text-xs text-muted-foreground">

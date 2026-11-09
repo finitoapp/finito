@@ -1,13 +1,15 @@
 import {
   createContext,
+  isValidElement,
   type ReactNode,
   useContext,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react"
 import { type GetProps, styled, Text, View } from "tamagui"
-import { fontSize, fontWeight } from "../../theme/tokens.ts"
+import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/field.tsx`: the same parts, in
@@ -31,6 +33,16 @@ import { fontSize, fontWeight } from "../../theme/tokens.ts"
  * but Maestro reads neither, only a label (the e2e flows find inputs so).
  * `orientation`
  * has no `responsive` value: a phone is always the narrow layout.
+ *
+ * Choice card: as on web, a `FieldLabel` around a `Field` is a card the
+ * whole of which presses the control inside it (`ui/radio-group`'s
+ * `RadioGroupItem`), which hands the card its state through
+ * `useFieldLabelControl` where web's `<label htmlFor>` reaches its input.
+ * Web draws `rounded-lg border p-2.5`, checked `bg-primary/5
+ * border-primary/30`; here, without borders, a `surface-raised` fill,
+ * checked the `primary-10` tint, 12 round, at least 56 high, 12 inside. The
+ * card is the one element a screen reader reads, with the control's role and
+ * checked state; the control inside it is hidden from it.
  */
 
 interface FieldLabelContextValue {
@@ -109,6 +121,80 @@ const FieldLabelText = styled(Text, {
   color: "foreground-70",
 })
 
+/** What a control inside a choice card tells the card about itself. */
+export interface FieldLabelControl {
+  readonly role: "radio" | "checkbox"
+  readonly checked: boolean
+  readonly disabled: boolean
+  readonly onPress: () => void
+}
+
+const FieldLabelControlContext = createContext<
+  ((control: FieldLabelControl | undefined) => void) | undefined
+>(undefined)
+
+/**
+ * Hands the choice card around a control its state and press, as web's
+ * `<label>` forwards a click to its control. Returns whether the control is
+ * in a card, which then draws the press target and reads it to screen readers.
+ */
+export function useFieldLabelControl({
+  role,
+  checked,
+  disabled,
+  onPress,
+}: FieldLabelControl): boolean {
+  const register = useContext(FieldLabelControlContext)
+  const onPressRef = useRef(onPress)
+  useEffect(() => {
+    onPressRef.current = onPress
+  })
+  useEffect(() => {
+    register?.({ role, checked, disabled, onPress: () => onPressRef.current() })
+  }, [register, role, checked, disabled])
+  useEffect(
+    () => (register === undefined ? undefined : () => register(undefined)),
+    [register]
+  )
+  return register !== undefined
+}
+
+const FieldLabelCardFrame = styled(View, {
+  name: "FieldLabelCard",
+  minH: control.lg,
+  justify: "center",
+  px: 12,
+  py: 10,
+  rounded: shape.control,
+  bg: "surface-raised press:neutral-soft",
+  cursor: "web:pointer",
+
+  variants: {
+    checked: { true: { bg: "primary-10 press:primary-15" } },
+    disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
+  } as const,
+})
+
+function FieldLabelCard({ children }: { readonly children: ReactNode }) {
+  const [control, setControl] = useState<FieldLabelControl>()
+  const checked = control?.checked ?? false
+  const disabled = control?.disabled ?? false
+  return (
+    <FieldLabelControlContext value={setControl}>
+      <FieldLabelCardFrame
+        checked={checked}
+        disabled={disabled}
+        onPress={disabled ? undefined : control?.onPress}
+        role={control?.role}
+        aria-checked={checked}
+        aria-disabled={disabled}
+      >
+        {children}
+      </FieldLabelCardFrame>
+    </FieldLabelControlContext>
+  )
+}
+
 export function FieldLabel(props: GetProps<typeof FieldLabelText>) {
   const field = useContext(FieldLabelContext)
   const text = typeof props.children === "string" ? props.children : undefined
@@ -116,6 +202,9 @@ export function FieldLabel(props: GetProps<typeof FieldLabelText>) {
   useEffect(() => {
     setText?.(text)
   }, [setText, text])
+  // Web's `has-[>[data-slot=field]]`: a label around a field is a card.
+  if (isValidElement(props.children) && props.children.type === Field)
+    return <FieldLabelCard>{props.children}</FieldLabelCard>
   return <FieldLabelText id={field?.id} {...props} />
 }
 

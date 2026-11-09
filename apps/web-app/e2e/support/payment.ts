@@ -248,7 +248,7 @@ export async function startBillAndBeginCashPayment(
   return billId
 }
 
-const escapeRegExp = (text: string) =>
+export const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")
 
 /** What the refund screen offers to give back, by its translation key. */
@@ -275,17 +275,31 @@ export const refundAction = (page: Page, language: Language) =>
     exact: true,
   })
 
-/** One of the refund screen's choices: the whole payment, a part, the tip. */
+/**
+ * One of the refund screen's choices: the whole payment, a part, the tip. A
+ * choice card's radio is named after the whole card, so its name starts with
+ * the choice and goes on with its amount.
+ */
 export const refundChoiceButton = (
   page: Page,
   language: Language,
   choice: RefundChoice
 ) =>
-  page.getByRole("button", {
+  page.getByRole("radio", {
     name: new RegExp(
       `^${escapeRegExp(translate(language, refundChoiceKeys[choice]))}`,
       "u"
     ),
+  })
+
+/**
+ * One of the refund screen's methods by its label (`refund.dialog.method.*`,
+ * already translated). Its radio is named after the whole card, the label
+ * followed by the sentence saying what confirming it does.
+ */
+export const refundMethodRadio = (page: Page, label: string) =>
+  page.getByRole("radio", {
+    name: new RegExp(`^${escapeRegExp(label)}`, "u"),
   })
 
 /** Opens the refund screen from the payment detail and waits for its form. */
@@ -349,11 +363,10 @@ export async function refundFromPaymentDetail(
     }
   }
   if (outside) {
-    await page
-      .getByRole("button", {
-        name: translate(language, "refund.dialog.method.outside"),
-      })
-      .click()
+    await refundMethodRadio(
+      page,
+      translate(language, "refund.dialog.method.outside")
+    ).click()
   }
   await refundConfirmButton(page).click()
   await page
