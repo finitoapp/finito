@@ -17,7 +17,7 @@ import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { saveCardSwitchioAccount } from "../account/account-actions.ts"
 import { createCardSwitchioAccountId } from "../account/account-utils.ts"
-import { registerDevice } from "../device/device-actions.ts"
+import { registerDevice, removeDevice } from "../device/device-actions.ts"
 import { NonEmptyString255 } from "../shared/schema.ts"
 import {
   closeCardSwitchioBatch,
@@ -326,5 +326,45 @@ describe("lastCardSwitchioClosurePerDeviceQuery", () => {
         { deviceId: thisDevice, deviceName: "Bar", batchNumber: 2 },
         { deviceId: otherDevice, deviceName: "Terrace", batchNumber: 7 },
       ])
+  })
+
+  test("leaves out a removed device until it registers again", async () => {
+    await using t = await setUp([
+      interpretSwitchioClosureResult(closedBatch),
+      interpretSwitchioClosureResult({
+        ...closedBatch,
+        transactionResult: JSON.stringify({
+          responseCode: "OK",
+          batchTotals: { ...batchTotals, batchNumber: 43 },
+        }),
+      }),
+    ])
+    await t.run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+    const register = (id: typeof thisDevice, name: string) =>
+      t.run.ok(
+        registerDevice({
+          id,
+          name: NonEmptyString255(name),
+          deviceType: null,
+          browserName: null,
+          osName: null,
+        })
+      )
+    await register(thisDevice, "Bar")
+    await register(otherDevice, "Old phone")
+    await t.run.orThrow(closeCardSwitchioBatch({ deviceId: thisDevice }))
+    await t.run.orThrow(closeCardSwitchioBatch({ deviceId: otherDevice }))
+
+    await t.run.ok(removeDevice(otherDevice))
+
+    await expect
+      .poll(() => t.evolu.loadQuery(lastCardSwitchioClosurePerDeviceQuery))
+      .toMatchObject([{ deviceId: thisDevice }])
+
+    await register(otherDevice, "Old phone")
+
+    await expect
+      .poll(() => t.evolu.loadQuery(lastCardSwitchioClosurePerDeviceQuery))
+      .toHaveLength(2)
   })
 })

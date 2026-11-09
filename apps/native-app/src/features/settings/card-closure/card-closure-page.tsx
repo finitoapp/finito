@@ -1,5 +1,6 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { useNow } from "@payky/app-shared/use-now"
 import { cardSwitchioAccountQuery } from "@payky/core/modules/account/account-queries"
 import {
   type CloseCardSwitchioBatchError,
@@ -11,8 +12,8 @@ import {
   lastCardSwitchioClosurePerDeviceQuery,
 } from "@payky/core/modules/card-switchio-closure/card-switchio-closure-queries"
 import type { CardSwitchioClosureId } from "@payky/core/modules/card-switchio-closure/card-switchio-closure-types"
-import { Integer } from "@payky/core/modules/shared/schema"
-import { isSameDay } from "date-fns"
+import { Integer, TimestampMs } from "@payky/core/modules/shared/schema"
+import { isSameDay, startOfTomorrow } from "date-fns"
 import type { Href } from "expo-router"
 import { useAtomValue } from "jotai"
 import CalendarCheck from "lucide-react-native/icons/calendar-check"
@@ -377,7 +378,8 @@ function TerminalsCard() {
   const locale = useLocale()
   const deviceId = useAtomValue(accountAtom).device.id
   const rows = useEvoluQuery(lastCardSwitchioClosurePerDeviceQuery).data
-  const now = new Date()
+  // "Closed today" turns over at midnight even with the screen left open.
+  const now = useNow([TimestampMs(startOfTomorrow().getTime())])
 
   return (
     <Card>
