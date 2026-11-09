@@ -83,7 +83,7 @@ migration of stored sets.
 - `packages/app-shared/src/cart-lines.test.ts > linesNeedDiscard (access/0002) > clearing the cart needs discard`
 - `packages/app-shared/src/cart-lines.test.ts > linesNeedDiscard (access/0002) > undoing an added line needs discard, since it writes a remove`
 - `packages/app-shared/src/cart-lines.test.ts > linesNeedDiscard (access/0002) > adding a line needs no discard`
-- `apps/web-app/e2e/access.spec.ts > a refund raises the one-shot PIN prompt naming the permission it needs`
+- `apps/web-app/e2e/access.spec.ts > a refund asks for the PIN when its screen opens, naming the permission it needs`
 - `apps/web-app/e2e/access-gates.spec.ts > every cart write that takes items off the bill asks a Basic device for the PIN`
 - `apps/web-app/e2e/access-gates.spec.ts > cancelling a payment and confirming money by hand ask a Basic device for the PIN`
 - `apps/web-app/e2e/bill.spec.ts > shows the right message for a closed or missing bill`

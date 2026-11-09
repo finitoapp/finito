@@ -30,8 +30,12 @@ import {
   getPaymentIdFromUrl,
   markCashPaid,
   markCashPaidAndSettle,
-  openRefundDialog,
+  openRefundScreen,
+  pickRefundChoice,
   prepareIbanPayment,
+  refundAction,
+  refundChoiceButton,
+  refundConfirmButton,
   refundFromPaymentDetail,
   refundTipFromPaymentDetail,
   startBillAndBeginCashPayment,
@@ -585,12 +589,6 @@ test("a refunded tip reaches EET only while tips belong to the business", async 
   test.slow()
   const reportedAmounts = () =>
     fakeEet.production.requests.map(({ data }) => data.celk_trzba)
-  const tipActionPrefix = translate("en", "paymentDetail.refunds.tipAction")
-    .split("{amount}")[0]
-    ?.replace("(", "\\(")
-  const tipAction = page.getByRole("button", {
-    name: new RegExp(`^${tipActionPrefix}`, "u"),
-  })
   const payWithTip = async () => {
     await page.goto("/", { waitUntil: "domcontentloaded" })
     await enterAmount(page, "en")
@@ -622,22 +620,21 @@ test("a refunded tip reaches EET only while tips belong to the business", async 
     const paymentId = await payWithTip()
     await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("6.49")
     await openPaymentDetail(page, paymentId)
-    const refundDialog = await openRefundDialog(page, "en")
+    await openRefundScreen(page, "en")
+    await pickRefundChoice(page, "en", "part")
     await expect(
-      refundDialog.getByText(
+      page.getByText(
         translate("en", "refund.dialog.tipHint").replace("{amount}", "CZK 0.49")
       )
     ).toBeVisible()
-    await refundDialog
-      .getByRole("button", { name: translate("en", "refund.dialog.cancel") })
-      .click()
-    await expect(refundDialog).toBeHidden()
+    await page.goBack()
     await refundTipFromPaymentDetail(page, "en")
     await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("-0.49")
     await expect(page.getByTestId("payment-detail-refund")).toContainText(
       translate("en", "paymentDetail.refunds.tip")
     )
-    await expect(tipAction).toHaveCount(0)
+    await openRefundScreen(page, "en")
+    await expect(refundChoiceButton(page, "en", "tip")).toHaveCount(0)
   })
 
   await test.step("a tip that belongs to employees is not reversed", async () => {
@@ -770,11 +767,7 @@ test("refunds of a paid bill reach EET as negative sales", async ({ page }) => {
       ],
       eetDeliveryTimeout
     )
-    await expect(
-      page.getByRole("button", {
-        name: translate("en", "paymentDetail.refunds.action"),
-      })
-    ).toHaveCount(0)
+    await expect(refundAction(page, "en")).toHaveCount(0)
   })
 
   await test.step("the payment shows refunded while its bill stays closed", async () => {
@@ -828,30 +821,38 @@ test("a payment settled twice reports the extra money, and refunding it reverses
 
   await test.step("the refund offers the extra money and reverses only it", async () => {
     const extraSale = fakeEet.production.requests.at(1)
-    const refundDialog = await openRefundDialog(page, "en")
-    const refundAmount = refundDialog.getByLabel(
+    // The collision's refund opens the screen on a part of the payment,
+    // prefilled with the extra money.
+    await page
+      .getByRole("button", {
+        name: translate("en", "paymentDetail.collision.refund"),
+        exact: true,
+      })
+      .click()
+    await expect(refundChoiceButton(page, "en", "part")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    const refundAmount = page.getByLabel(
       translate("en", "refund.dialog.amount.label")
     )
     await expect(refundAmount).toHaveValue("6")
-    await refundDialog
+    await page
       .getByRole("button", {
         name: translate("en", "refund.dialog.method.outside"),
       })
       .click()
     await expect(refundAmount).toHaveValue("5.9")
-    await refundDialog
-      .getByRole("button", { name: translate("en", "refund.dialog.cancel") })
-      .click()
-    await expect(refundDialog).toBeHidden()
-    await refundFromPaymentDetail(page, "en", { outside: true })
+    await refundConfirmButton(page).click()
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "paymentDetail.title"),
+      })
+    ).toBeVisible()
     await expect
       .poll(lastReportedAmount, eetDeliveryTimeout)
       .toBe(`-${extraSale?.data.celk_trzba}`)
-    await expect(
-      page.getByRole("button", {
-        name: translate("en", "paymentDetail.refunds.action"),
-      })
-    ).toBeVisible()
+    await expect(refundAction(page, "en")).toBeVisible()
   })
 
   await test.step("the history shows the payment partly refunded", async () => {

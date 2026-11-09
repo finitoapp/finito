@@ -13,6 +13,8 @@ import {
   createPayment,
   getPaymentIdFromUrl,
   markCashPaidAndSettle,
+  refundAction,
+  refundConfirmButton,
 } from "./support/payment.ts"
 
 const routeLockHeading = (page: Page, permission: string) =>
@@ -106,7 +108,7 @@ test("a device with no permissions starts on the PIN screen", async ({
   })
 })
 
-test("a refund raises the one-shot PIN prompt naming the permission it needs", async ({
+test("a refund asks for the PIN when its screen opens, naming the permission it needs", async ({
   seededPage: page,
 }) => {
   const paymentId = await test.step("take a cash payment", async () => {
@@ -120,33 +122,15 @@ test("a refund raises the one-shot PIN prompt naming the permission it needs", a
   await test.step("turn access control on, this device set to Basic", () =>
     turnOnAccessControl(page, "en"))
 
-  await test.step("refunding asks for the PIN", async () => {
+  await test.step("opening the refund screen asks for the PIN", async () => {
     await gotoPage(page, `/activity/${paymentId}`, "en", "paymentDetail.title")
-    await page
-      .getByRole("button", {
-        name: translate("en", "paymentDetail.refunds.action"),
-      })
-      .click()
-    const [confirmPrefix = ""] = translate("en", "refund.dialog.confirm").split(
-      "{amount}"
-    )
-    await page
-      .getByRole("button", { name: new RegExp(`^${confirmPrefix}.+`, "u") })
-      .click()
+    await refundAction(page, "en").click()
 
-    const prompt = page.getByRole("dialog", {
-      name: translate("en", "access.action.refund"),
-    })
     await expect(
-      prompt.getByText(
-        translate("en", "access.pin.why.action").replace(
-          "{action}",
-          translate("en", "access.action.refund")
-        )
-      )
+      routeLockHeading(page, translate("en", "access.permission.refund"))
     ).toBeVisible()
     await expect(
-      prompt.getByText(
+      page.getByText(
         translate("en", "access.pin.help").replace(
           "{permission}",
           translate("en", "access.permission.refund")
@@ -155,8 +139,9 @@ test("a refund raises the one-shot PIN prompt naming the permission it needs", a
     ).toBeVisible()
   })
 
-  await test.step("the PIN answers the prompt and the refund goes through", async () => {
+  await test.step("the PIN opens the screen and the refund goes through", async () => {
     await typePin(page, "en", ownerPin)
+    await refundConfirmButton(page).click()
     await expect(
       page.getByText(translate("en", "refund.created"))
     ).toBeVisible()

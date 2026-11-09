@@ -1,7 +1,12 @@
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
 import { gotoPage, waitForLocalWriteToSettle } from "./support/navigation.ts"
-import { createPayment, getPaymentIdFromUrl } from "./support/payment.ts"
+import {
+  createPayment,
+  getPaymentIdFromUrl,
+  openRefundScreen,
+  refundConfirmButton,
+} from "./support/payment.ts"
 import {
   pairQerko,
   qerkoLegalEntityName,
@@ -353,12 +358,9 @@ test("refund a card payment back to the card through the terminal", async ({
         )
       )
     ).toBeVisible()
-    await page
-      .getByRole("button", { name: t("paymentDetail.refunds.action") })
-      .click()
-    const dialog = page.getByRole("dialog")
+    await openRefundScreen(page, "en")
     await expect(
-      dialog.getByRole("button", {
+      page.getByRole("button", {
         // The refund names the terminal the payment was taken on.
         name: t("refund.dialog.method.qerkoTerminalTid").replace(
           "{tid}",
@@ -366,14 +368,18 @@ test("refund a card payment back to the card through the terminal", async ({
         ),
       })
     ).toHaveAttribute("aria-pressed", "true")
-    const [confirmPrefix = ""] = t("refund.dialog.confirm").split("{amount}")
-    await dialog
-      .getByRole("button", { name: new RegExp(`^${confirmPrefix}.+`, "u") })
-      .click()
-    await dialog.waitFor({ state: "hidden" })
+    await expect(page.getByTestId("refund-outcome")).toHaveText(
+      t("refund.outcome.card")
+    )
+    await refundConfirmButton(page).click()
   })
 
   await test.step("the terminal's approval is recorded as a refund to the card", async () => {
+    // The screen waits for the terminal, then hands back to the payment.
+    await expect(page.getByText(t("refund.page.qerko.done"))).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: t("paymentDetail.title") })
+    ).toBeVisible()
     await expect(page.getByTestId("payment-detail-refund")).toContainText(
       t("paymentDetail.refunds.method.qerkoTerminal")
     )
@@ -403,16 +409,10 @@ test("a card refund waiting on a key Qerko refuses: the attempt says to pair aga
   await gotoPage(page, `/activity/${paymentId}`, "en", "paymentDetail.title")
 
   qerko.holdRefund = true
-  await page
-    .getByRole("button", { name: t("paymentDetail.refunds.action") })
-    .click()
-  const dialog = page.getByRole("dialog")
-  const [confirmPrefix = ""] = t("refund.dialog.confirm").split("{amount}")
-  await dialog
-    .getByRole("button", { name: new RegExp(`^${confirmPrefix}.+`, "u") })
-    .click()
-  await dialog.waitFor({ state: "hidden" })
-  const attempt = page.getByTestId("payment-detail-qerko-refund")
+  await openRefundScreen(page, "en")
+  await refundConfirmButton(page).click()
+  // The refund screen follows the terminal while it waits for the card.
+  const attempt = page.getByTestId("refund-card-progress")
   await expect(
     attempt.getByText(t("paymentWait.qerko.step.waitingForCard"))
   ).toBeVisible()
@@ -448,14 +448,8 @@ test("a card refund when the original terminal is no longer activated: the messa
   await gotoPage(page, `/activity/${paymentId}`, "en", "paymentDetail.title")
 
   qerko.refundNotStarted = "terminalNotActivated"
-  await page
-    .getByRole("button", { name: t("paymentDetail.refunds.action") })
-    .click()
-  const dialog = page.getByRole("dialog")
-  const [confirmPrefix = ""] = t("refund.dialog.confirm").split("{amount}")
-  await dialog
-    .getByRole("button", { name: new RegExp(`^${confirmPrefix}.+`, "u") })
-    .click()
+  await openRefundScreen(page, "en")
+  await refundConfirmButton(page).click()
 
   await expect(
     page.getByText(t("refund.qerko.error.terminalNotActivated"))

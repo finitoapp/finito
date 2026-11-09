@@ -46,7 +46,7 @@ import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-numbe
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { parseISO } from "date-fns"
 import { useAtomValue } from "jotai"
 import {
@@ -92,16 +92,14 @@ import { BillCancellationCollisionPanel } from "@/features/activity/bill-cancell
 import { BillCoverageWarning } from "@/features/activity/bill-coverage-warning.tsx"
 import { billStatusBadgeClassName } from "@/features/activity/bill-status-display.ts"
 import { PaymentQerkoAttempts } from "@/features/activity/payment-qerko-attempts.tsx"
-import {
-  PaymentDetailRefunds,
-  paymentRefundsQueries,
-} from "@/features/activity/payment-refunds.tsx"
+import { PaymentDetailRefunds } from "@/features/activity/payment-refunds.tsx"
 import { paymentStatusBadgeClassName } from "@/features/activity/payment-status-display.tsx"
 import { useBillCoverage } from "@/features/activity/use-bill-coverage.ts"
 import {
   billLineSummaryDiffQueries,
   useBillLineSummaryDiff,
 } from "@/features/activity/use-bill-line-summary-diff.ts"
+import { paymentRefundsQueries } from "@/features/activity/use-payment-refund-state.ts"
 import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import {
   EetSaleStatusBadge,
@@ -171,6 +169,7 @@ function PaymentDetailContent({
   const locale = useLocale()
   const runToast = useRunToast()
   const { require } = useRequirePermission()
+  const navigate = useNavigate()
   const [resolvePending, setResolvePending] = useState(false)
   const [excessResolvePending, setExcessResolvePending] = useState(false)
   const query = paymentDetailQuery(paymentId)
@@ -227,8 +226,14 @@ function PaymentDetailContent({
     setExcessResolvePending(false)
   }
 
+  // The refund screen asks for `refund` itself (access/0002); a part of the
+  // payment starts on the money that came in on top (refund/0005).
   const handleRefund = () => {
-    toast.info(t("paymentDetail.collision.refund.comingSoon"))
+    void navigate({
+      to: "/activity/$paymentId/refund",
+      params: { paymentId },
+      search: { choice: "part" },
+    })
   }
   return (
     <div className="flex flex-col gap-4">
