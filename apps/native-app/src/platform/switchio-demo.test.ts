@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 
 const native = vi.hoisted(() => ({
@@ -118,4 +119,19 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
     expect(result.ok).toBe(true)
     expect(native.close).toHaveBeenCalledOnce()
   })
+})
+
+it("is told by useAppRun whether the active account is a demo", () => {
+  const useAppRun = readFileSync(
+    new URL("../hooks/use-app-run.ts", import.meta.url),
+    "utf8"
+  )
+  for (const dep of ["Terminal", "Closure", "Refund"]) {
+    expect(useAppRun).toMatch(
+      new RegExp(
+        `createSwitchio${dep}Dep\\(\\{\\s*demo: account\\.demo !== null`,
+        "u"
+      )
+    )
+  }
 })

@@ -109,3 +109,6 @@ Three constraints shaped how:
 - `apps/web-app/e2e/demo-data.spec.ts > a demo account generates from today back until stopped, with its relays locked off`
 - `apps/native-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay (demo-data/0001) > never launches the terminal for a card payment`
 - `apps/native-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay (demo-data/0001) > never closes the terminal's batch`
+- `apps/native-app/src/platform/switchio-demo.test.ts > is told by useAppRun whether the active account is a demo`
+- `apps/web-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay in Payky (demo-data/0001) > never launches the terminal for a card payment`
+- `apps/web-app/src/platform/switchio-demo.test.ts > a demo account and SwitchioPay in Payky (demo-data/0001) > is told by useAppRun whether the active account is a demo`
