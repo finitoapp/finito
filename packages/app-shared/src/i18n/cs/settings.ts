@@ -1403,6 +1403,8 @@ export const csSettings = {
   "settings.cardClosure.error.unknown":
     "Nevíme, jestli uzávěrka proběhla. Zkontrolujte ji v aplikaci SwitchioPay.",
   "settings.cardClosure.restored.closed": "Uzávěrka terminálu byla dokončena.",
+  "settings.cardClosure.restored.unanswered":
+    "Uzávěrka terminálu nedostala ze SwitchioPay odpověď. Zkontrolujte v aplikaci SwitchioPay, zda byla dávka uzavřena.",
   "settings.cardClosure.restored.unresolved":
     "Výsledek uzávěrky se nepodařilo přečíst. Zkontrolujte ji v aplikaci SwitchioPay.",
   "settings.cardSwitchioAccount.closureLink": "Uzávěrky terminálů",

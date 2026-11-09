@@ -1405,6 +1405,8 @@ export const enSettings = {
   "settings.cardClosure.error.unknown":
     "We don't know whether the closure went through. Check it in the SwitchioPay app.",
   "settings.cardClosure.restored.closed": "The terminal closure is complete.",
+  "settings.cardClosure.restored.unanswered":
+    "A terminal closure got no answer from SwitchioPay. Check in the SwitchioPay app whether the batch was closed.",
   "settings.cardClosure.restored.unresolved":
     "The closure's result could not be read. Check it in the SwitchioPay app.",
   "settings.cardSwitchioAccount.closureLink": "Terminal closures",

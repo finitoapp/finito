@@ -10,6 +10,10 @@ import android.content.Context
  * `MainActivity.onActivityResult` writes the result here before React or the
  * module are involved, so JS can still record the closure afterwards. JS
  * clears it (`acknowledgeClosureResult`), never native code.
+ *
+ * A closure begun but never answered — SwitchioPay crashed, or Android
+ * killed it too — stays [PENDING] with no result, and [peekUnanswered]
+ * hands it to JS, which warns that the batch may have been closed.
  */
 object SwitchioClosureStore {
   /** The activity-result request code of the closure intent. */
@@ -68,6 +72,15 @@ object SwitchioClosureStore {
       p.getString(RESULT_JSON, null),
       p.getString(ACCOUNT_ID, null)
     )
+  }
+
+  class Unanswered(val closureId: String?, val accountId: String?)
+
+  /** A closure begun with no result stored, or null. Does not clear it. */
+  fun peekUnanswered(context: Context): Unanswered? {
+    val p = prefs(context)
+    if (p.getBoolean(HAS_RESULT, false) || !p.getBoolean(PENDING, false)) return null
+    return Unanswered(p.getString(CLOSURE_ID, null), p.getString(ACCOUNT_ID, null))
   }
 
   /** Forgets the stored result, or an attempt that never reached the terminal. */

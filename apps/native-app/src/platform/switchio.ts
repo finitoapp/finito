@@ -88,6 +88,9 @@ export interface SwitchioResultOwner {
   readonly deviceAccountIds: ReadonlySet<string>
 }
 
+/** A closure begun with no result stored: SwitchioPay never answered it. */
+const UnansweredClosureSchema = z.object({ unanswered: z.literal(true) })
+
 /** Null for a result stored by a build that did not keep the account. */
 const StoredResultAccountSchema = z.object({
   accountId: z.string().nullable().default(null),
@@ -293,13 +296,16 @@ export const createSwitchioClosureDep = ({
  * The result of a closure whose promise was lost when Android killed the
  * app, if one is waiting. Clears it as it is taken, and leaves it to the
  * promise of a closure still in flight, so one result is recorded once.
+ * A closure begun but never answered, with no promise left to wait for it,
+ * comes back as `unanswered`: the batch may have been closed, and there are
+ * no totals to record.
  * Only the active account takes it (`claimStoredResult`): one launched in
  * another account of this device waits for that account, and one whose
  * account is gone is cleared as unusable.
  */
 export const takeRestoredSwitchioClosureResult = (
   owner: SwitchioResultOwner
-): SwitchioNativeRestoredClosure | "unusable" | null => {
+): SwitchioNativeRestoredClosure | "unusable" | "unanswered" | null => {
   if (switchio === null || inFlight.closure) return null
   const stored = switchio.peekStoredClosureResult()
   if (stored === null || stored === undefined) return null
@@ -307,6 +313,9 @@ export const takeRestoredSwitchioClosureResult = (
   if (claim === "wait") return null
 
   switchio.acknowledgeClosureResult()
+  if (UnansweredClosureSchema.safeParse(stored).success) {
+    return claim === "take" ? "unanswered" : "unusable"
+  }
   const parsed = SwitchioNativeRestoredClosureSchema.safeParse(stored)
   return parsed.success && claim === "take" ? parsed.data : "unusable"
 }

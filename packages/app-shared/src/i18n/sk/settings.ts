@@ -1407,6 +1407,8 @@ export const skSettings = {
   "settings.cardClosure.error.unknown":
     "Nevieme, či uzávierka prebehla. Skontrolujte ju v aplikácii SwitchioPay.",
   "settings.cardClosure.restored.closed": "Uzávierka terminálu bola dokončená.",
+  "settings.cardClosure.restored.unanswered":
+    "Uzávierka terminálu nedostala zo SwitchioPay odpoveď. Skontrolujte v aplikácii SwitchioPay, či bola dávka uzavretá.",
   "settings.cardClosure.restored.unresolved":
     "Výsledok uzávierky sa nepodarilo prečítať. Skontrolujte ju v aplikácii SwitchioPay.",
   "settings.cardSwitchioAccount.closureLink": "Uzávierky terminálov",

@@ -28,6 +28,10 @@ reconciliation with Finito's own card payments has a window to count in.
   success whose totals cannot be read) may have closed the batch, so it is
   shown as an unknown outcome to check in SwitchioPay, never as a failure —
   the same reasoning as payment/0006 — but there is nothing to record.
+  So is a closure begun and never answered (SwitchioPay crashed, or Android
+  killed it too): the native store keeps it as begun, and once no promise
+  waits for it, the app warns that the batch may have been closed and
+  forgets it.
 - The terminal's identity is the device: the result carries no terminal id,
   and one closure closes exactly the SwitchioPay of that phone. A business
   with several terminals closes each on its own phone.
@@ -86,3 +90,5 @@ but does not close batches.
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > a closure's id > is derived from the result for a closure stored by a build that minted none`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure with the closure id it was launched as`
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > closeCardSwitchioBatch > records a batch the terminal closed even when card payments were switched off meanwhile`
+- `apps/native-app/src/platform/switchio-restore.test.ts > a closure SwitchioPay never answered (payment/0008) > comes back as unanswered once no promise waits for it`
+- `apps/native-app/src/platform/switchio-restore.test.ts > a closure SwitchioPay never answered (payment/0008) > is left to the promise of a closure still in flight`
