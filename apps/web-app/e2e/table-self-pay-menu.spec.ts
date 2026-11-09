@@ -288,7 +288,7 @@ test("a guest who paid an order short sees what is left, also after reopening th
   })
 })
 
-test("a guest who never pays an order is told the payment was not seen once the wait is over, removes the order, and it stays gone", async ({
+test("a guest who leaves an order's payment is offered to pay it from the order at once and after the wait, and sees it paid", async ({
   seededPage: page,
   context,
 }) => {
@@ -299,40 +299,53 @@ test("a guest who never pays an order is told the payment was not seen once the 
       seedCafe(page, "Table 6"))
   const guest = await context.newPage()
   await guest.clock.install()
-  const orders = guest.getByRole("heading", {
+  const orders = guest.getByRole("region", {
     name: translate("en", "selfPay.order.list.title"),
   })
+  const payOrder = orders.getByRole("button", {
+    name: translateParams("en", "selfPay.pay.total", { amount: "$219.00" }),
+  })
+  const inOrders = (
+    key:
+      | "selfPay.order.waiting"
+      | "selfPay.order.waiting.description"
+      | "selfPay.order.unseen"
+      | "selfPay.order.unseen.description"
+  ) => orders.getByText(translate("en", key))
 
-  await test.step("the guest orders and sends no money", async () => {
+  await test.step("while the guest pays, the order offers no second payment", async () => {
     await orderCoffeesAndCake(guest, guestAddress)
-    await expect(
-      guest
-        .getByRole("main")
-        .getByText(translate("en", "selfPay.order.waiting"))
-    ).toBeVisible()
+    await expect(inOrders("selfPay.order.waiting")).toBeVisible()
+    await expect(payOrder).toHaveCount(0)
   })
 
-  await test.step("past the wait, the order says the payment was not seen", async () => {
-    await guest.clock.fastForward("10:10")
-    await expect(
-      guest.getByRole("main").getByText(translate("en", "selfPay.order.unseen"))
-    ).toBeVisible()
-    await expect(
-      guest
-        .getByRole("main")
-        .getByText(translate("en", "selfPay.order.unseen.description"))
-    ).toBeVisible()
-  })
-
-  await test.step("the guest removes the order, and it stays gone after a reload", async () => {
+  await test.step("leaving the payment, the order offers paying 219.00 at once and tells a guest who paid to wait", async () => {
     await guest
-      .getByRole("button", { name: translate("en", "selfPay.order.remove") })
+      .getByRole("button", { name: translate("en", "selfPay.order.back") })
       .click()
-    await expect(orders).toHaveCount(0)
-    await expect(oneMore(guest, "Coffee")).toBeVisible()
-    await guest.reload()
-    await expect(oneMore(guest, "Coffee")).toBeVisible({ timeout: 45_000 })
-    await expect(orders).toHaveCount(0)
+    await expect(inOrders("selfPay.order.waiting.description")).toBeVisible()
+    await expect(payOrder).toBeVisible()
+  })
+
+  await test.step("past the wait, the order says the payment was not seen and still offers paying", async () => {
+    await guest.clock.fastForward("10:10")
+    await expect(inOrders("selfPay.order.unseen")).toBeVisible()
+    await expect(inOrders("selfPay.order.unseen.description")).toBeVisible()
+    await expect(payOrder).toBeVisible()
+  })
+
+  await test.step("the guest pays the order's 219.00 from it and sees it paid", async () => {
+    await payOrder.click()
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("219.00")
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 21_900,
+      currency: "USD",
+    })
+    await expect(
+      orderStatus(guest, "selfPay.order.paid", { number: 1 })
+    ).toBeVisible({ timeout: 45_000 })
   })
 })
 

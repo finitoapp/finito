@@ -102,12 +102,12 @@ const guestOrderTones = {
 
 function GuestOrderCard({
   shown,
+  canPay,
   onPayRest,
-  onRemove,
 }: {
   readonly shown: ShownGuestOrder
+  readonly canPay: boolean
   readonly onPayRest: (shown: ShownGuestOrder) => void
-  readonly onRemove: (shown: ShownGuestOrder) => void
 }) {
   const { t, locale } = useGuestTranslation()
   const { order, confirmation } = shown
@@ -124,6 +124,17 @@ function GuestOrderCard({
           ? "waiting"
           : "attention"
   const { card, Icon, icon } = guestOrderTones[tone]
+  const payLabel = !canPay
+    ? null
+    : confirmation === null
+      ? t("selfPay.pay.total", {
+          amount: formatGuestAmount(order.total, order, locale),
+        })
+      : left > 0
+        ? t("selfPay.order.payRest", {
+            amount: formatGuestAmount(left, order, locale),
+          })
+        : null
 
   return (
     <li className={cn("flex items-start gap-2 rounded-xl p-3 text-sm", card)}>
@@ -151,19 +162,11 @@ function GuestOrderCard({
                 ),
               })}
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-2 h-11 self-start"
-              onClick={() => {
-                onRemove(shown)
-              }}
-            >
-              {t("selfPay.order.remove")}
-            </Button>
           </>
+        ) : confirmation === null && canPay ? (
+          <p>{t("selfPay.order.waiting.description")}</p>
         ) : null}
-        {left > 0 ? (
+        {payLabel === null ? null : (
           <Button
             type="button"
             variant="outline"
@@ -172,11 +175,9 @@ function GuestOrderCard({
               onPayRest(shown)
             }}
           >
-            {t("selfPay.order.payRest", {
-              amount: formatGuestAmount(left, order, locale),
-            })}
+            {payLabel}
           </Button>
-        ) : null}
+        )}
       </div>
     </li>
   )
@@ -185,13 +186,13 @@ function GuestOrderCard({
 export function GuestOrderList({
   ref,
   orders,
+  canPay,
   onPayRest,
-  onRemove,
 }: {
   readonly ref: Ref<HTMLElement>
   readonly orders: ReadonlyArray<ShownGuestOrder>
+  readonly canPay: (shown: ShownGuestOrder) => boolean
   readonly onPayRest: (shown: ShownGuestOrder) => void
-  readonly onRemove: (shown: ShownGuestOrder) => void
 }) {
   const { t } = useGuestTranslation()
   return (
@@ -209,8 +210,8 @@ export function GuestOrderList({
           <GuestOrderCard
             key={shown.order.pointer}
             shown={shown}
+            canPay={canPay(shown)}
             onPayRest={onPayRest}
-            onRemove={onRemove}
           />
         ))}
       </ul>

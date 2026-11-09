@@ -240,7 +240,6 @@ export const csBill = {
     "Objednávat teď nejde. Objednejte si prosím u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} byla odmítnuta. Peníze vám vrátí obsluha.",
-  "selfPay.order.remove": "Nezaplaceno, odebrat",
   "selfPay.order.served": "Objednávka {number} je vydaná.",
   "selfPay.order.served.left":
     "Objednávka {number} je vydaná. Zbývá zaplatit {amount}.",
@@ -252,6 +251,8 @@ export const csBill = {
   "selfPay.order.unseen.description":
     "Pokud jste zaplatili, ukažte tuto obrazovku obsluze.",
   "selfPay.order.waiting": "Restaurace vaši objednávku zatím nepotvrdila.",
+  "selfPay.order.waiting.description":
+    "Pokud jste už zaplatili, čekáme na potvrzení platby.",
   "selfPay.paidFor.equal": "1/{people} účtu",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "Platíte za",

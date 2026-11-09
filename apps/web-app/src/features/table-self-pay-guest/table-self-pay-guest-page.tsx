@@ -73,7 +73,6 @@ import {
   type ShownGuestOrder,
 } from "./guest-order-list.tsx"
 import {
-  forgetGuestOrder,
   ordersAtTable,
   readGuestOrders,
   rememberGuestOrder,
@@ -473,7 +472,7 @@ function GuestOrdering({
     setOrders((current) => rememberGuestOrder(current, { ...order, startedAt }))
     startPayment({
       bill: orderBill(order.pointer, order.currency),
-      amount: guestOrderLeft(shown),
+      amount: confirmation === null ? order.total : guestOrderLeft(shown),
       pointer: order.pointer,
       isSeenByRestaurant: true,
       startedAt,
@@ -486,19 +485,16 @@ function GuestOrdering({
     leavePaymentHistoryEntry()
   }
 
-  const removeOrder = ({ order }: ShownGuestOrder) => {
-    if (session?.pointer === order.pointer) leavePayment()
-    setOrders((current) => forgetGuestOrder(current, order.pointer))
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {shownOrders.length === 0 ? null : (
         <GuestOrderList
           ref={ordersBlock}
           orders={shownOrders}
+          canPay={({ order }) =>
+            isEveryConfirmationRead && order.pointer !== session?.pointer
+          }
           onPayRest={payRest}
-          onRemove={removeOrder}
         />
       )}
       {session !== null ? (
