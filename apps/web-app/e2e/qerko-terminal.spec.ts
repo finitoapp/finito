@@ -3,9 +3,11 @@ import { translate } from "./support/i18n.ts"
 import { gotoPage, waitForLocalWriteToSettle } from "./support/navigation.ts"
 import {
   createPayment,
+  escapeRegExp,
   getPaymentIdFromUrl,
   openRefundScreen,
   refundConfirmButton,
+  refundMethodRadio,
 } from "./support/payment.ts"
 import {
   pairQerko,
@@ -359,17 +361,17 @@ test("refund a card payment back to the card through the terminal", async ({
       )
     ).toBeVisible()
     await openRefundScreen(page, "en")
-    await expect(
-      page.getByRole("button", {
-        // The refund names the terminal the payment was taken on.
-        name: t("refund.dialog.method.qerkoTerminalTid").replace(
-          "{tid}",
-          qerkoTerminalTid
-        ),
-      })
-    ).toHaveAttribute("aria-pressed", "true")
-    await expect(page.getByTestId("refund-outcome")).toHaveText(
-      t("refund.outcome.card")
+    // The refund names the terminal the payment was taken on.
+    const terminal = refundMethodRadio(
+      page,
+      t("refund.dialog.method.qerkoTerminalTid").replace(
+        "{tid}",
+        qerkoTerminalTid
+      )
+    )
+    await expect(terminal).toBeChecked()
+    await expect(terminal).toHaveAccessibleName(
+      new RegExp(`${escapeRegExp(t("refund.outcome.card"))}$`, "u")
     )
     await refundConfirmButton(page).click()
   })

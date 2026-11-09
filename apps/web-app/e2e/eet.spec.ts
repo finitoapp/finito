@@ -37,6 +37,7 @@ import {
   refundChoiceButton,
   refundConfirmButton,
   refundFromPaymentDetail,
+  refundMethodRadio,
   refundTipFromPaymentDetail,
   startBillAndBeginCashPayment,
 } from "./support/payment.ts"
@@ -831,19 +832,15 @@ test("a payment settled twice reports the extra money, and refunding it reverses
         exact: true,
       })
       .click()
-    await expect(refundChoiceButton(page, "en", "part")).toHaveAttribute(
-      "aria-pressed",
-      "true"
-    )
+    await expect(refundChoiceButton(page, "en", "part")).toBeChecked()
     const refundAmount = page.getByLabel(
       translate("en", "refund.dialog.amount.label")
     )
     await expect(refundAmount).toHaveValue("6")
-    await page
-      .getByRole("button", {
-        name: translate("en", "refund.dialog.method.outside"),
-      })
-      .click()
+    await refundMethodRadio(
+      page,
+      translate("en", "refund.dialog.method.outside")
+    ).click()
     await expect(refundAmount).toHaveValue("5.9")
     await refundConfirmButton(page).click()
     await expect(

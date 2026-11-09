@@ -46,12 +46,13 @@ import {
 import { chooseSwitchioRefundKind } from "@payky/core/modules/refund/refund-switchio-utils"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type {
-  FiatCurrency,
-  NonNegativeInteger,
-} from "@payky/core/modules/shared/schema"
+import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
+import type { LucideIcon } from "lucide-react-native"
+import Banknote from "lucide-react-native/icons/banknote"
+import CreditCard from "lucide-react-native/icons/credit-card"
+import ExternalLink from "lucide-react-native/icons/external-link"
 import Minus from "lucide-react-native/icons/minus"
 import Plus from "lucide-react-native/icons/plus"
 import {
@@ -67,6 +68,7 @@ import { Text, XStack, YStack } from "tamagui"
 import { z } from "zod"
 import { accountAtom } from "../../atoms/account.ts"
 import { NotFoundCard } from "../../components/not-found-card.tsx"
+import { QerkoIcon } from "../../components/qerko-icon.tsx"
 import {
   Alert,
   AlertAction,
@@ -74,15 +76,19 @@ import {
   AlertTitle,
 } from "../../components/ui/alert.tsx"
 import { Button } from "../../components/ui/button.tsx"
-import { Card, CardContent } from "../../components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
 } from "../../components/ui/field.tsx"
+import { Icon } from "../../components/ui/icon.tsx"
 import { Input } from "../../components/ui/input.tsx"
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group.tsx"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -112,8 +118,8 @@ const RefundChoiceParam = z.enum(["whole", "part", "tip"]).optional()
 /**
  * `/activity/[paymentId]/refund`: the one screen every refund starts from
  * (refund-flow): what to refund (the whole payment, a part of the goods or
- * the tip alone), how much of a part, how the money goes back, and one
- * sentence saying what confirming does. Its route asks for `refund`
+ * the tip alone), how much of a part, and how the money goes back, each
+ * method saying what confirming it does. Its route asks for `refund`
  * (access/0002), so its actions ask nothing more. `?choice=` starts it on
  * a choice other than the default, as the payment's collision does.
  */
@@ -223,6 +229,15 @@ const switchioRefundErrorKeys = {
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
 } satisfies Record<StartCardSwitchioRefundError["type"], TranslationKey>
 
+/** Each method's mark on its choice card. */
+const refundMethodIcons = {
+  cardSwitchio: CreditCard,
+  qerkoTerminal: CreditCard,
+  qerkoPayment: QerkoIcon,
+  cashRegister: Banknote,
+  outside: ExternalLink,
+} satisfies Record<RefundMethod, LucideIcon>
+
 /** The success toast of each choice refunded by a recorded method. */
 const recordedRefundDoneKeys = {
   whole: "refund.created",
@@ -285,27 +300,51 @@ function RefundForm({
           method: pickedMethod ?? options.defaultMethod ?? "outside",
         })
   const mode = options.partModes.includes(pickedMode) ? pickedMode : "amount"
-  const amountText = deriveRefundAmountText({
-    typedAmountText,
-    remainingAmount,
-    excess,
-    method: method ?? "outside",
-    currency: payment.currency,
-  })
-  const form = deriveRefundForm({
-    mode,
-    amountText,
-    quantities,
-    refundableLines,
-    remainingAmount,
-    currency: payment.currency,
-  })
-  const refundAmount =
+  /** The amount field and the form as they stand for a method. */
+  const formOf = (forMethod: RefundMethod) => {
+    const text = deriveRefundAmountText({
+      typedAmountText,
+      remainingAmount,
+      excess,
+      method: forMethod,
+      currency: payment.currency,
+    })
+    return {
+      amountText: text,
+      ...deriveRefundForm({
+        mode,
+        amountText: text,
+        quantities,
+        refundableLines,
+        remainingAmount,
+        currency: payment.currency,
+      }),
+    }
+  }
+  /** What confirming refunds by a method, `null` while the form is invalid. */
+  const refundAmountOf = (forMethod: RefundMethod) =>
     choiceOption === undefined
       ? null
       : choiceOption.choice === "part"
-        ? form.refundAmount
+        ? formOf(forMethod).refundAmount
         : choiceOption.amount
+  const form = formOf(method ?? "outside")
+  const { amountText } = form
+  const refundAmount = refundAmountOf(method ?? "outside")
+  const switchioRefundKind = useSwitchioRefundKind(
+    choiceOption?.choice === "whole" &&
+      options.methods.whole.includes("cardSwitchio") &&
+      switchioSource !== undefined
+      ? {
+          deviceId: device.id,
+          charged: payment.amount,
+          goods: remainingAmount,
+          tip: choiceOption.tipAmount,
+          refundCount: refunds.length,
+          source: switchioSource,
+        }
+      : null
+  )
 
   const backToPayment = useCallback(() => {
     if (router.canGoBack()) router.back()
@@ -498,192 +537,171 @@ function RefundForm({
   return (
     <YStack gap={16}>
       {header}
-      <Card>
-        <CardContent gap={24}>
-          {options.choices.length > 1 ? (
-            <FieldSet>
-              <FieldLegend variant="label">
-                {t("refund.dialog.mode.label")}
-              </FieldLegend>
-              <ToggleGroup
-                aria-label={t("refund.dialog.mode.label")}
-                value={choice}
-                onValueChange={changeChoice}
-                variant="outline"
-                orientation="vertical"
-                disabled={busy}
-              >
-                {options.choices.map((option) => (
-                  <ToggleGroupItem
-                    key={option.choice}
-                    value={option.choice}
-                    justify="space-between"
-                    h="auto"
-                    minH={48}
-                    py={8}
-                    px={12}
-                  >
-                    <Text
-                      fontSize={fontSize.sm}
-                      lineHeight={fontSize.sm}
-                      fontWeight={fontWeight.medium}
-                    >
-                      {t(refundChoiceLabelKey[option.choice])}
-                    </Text>
-                    <YStack items="flex-end" gap={2}>
-                      <Text
-                        fontSize={fontSize.sm}
-                        lineHeight={fontSize.sm}
-                        fontVariant={["tabular-nums"]}
-                      >
-                        {option.choice === "part"
-                          ? t("refund.page.choice.part.left", {
-                              amount: money(option.amount),
-                            })
-                          : money(option.amount)}
-                      </Text>
+      <YStack gap={32}>
+        {options.choices.length > 1 ? (
+          <FieldSet>
+            <FieldLegend variant="label">
+              {t("refund.dialog.mode.label")}
+            </FieldLegend>
+            <RadioGroup
+              aria-label={t("refund.dialog.mode.label")}
+              value={choice}
+              onValueChange={changeChoice}
+              disabled={busy}
+            >
+              {options.choices.map((option) => (
+                <FieldLabel key={option.choice}>
+                  <Field orientation="horizontal" gap={12}>
+                    <RadioGroupItem value={option.choice} />
+                    <FieldContent>
+                      <FieldTitle>
+                        {t(refundChoiceLabelKey[option.choice])}
+                      </FieldTitle>
                       {option.choice === "whole" && option.tipAmount > 0 ? (
-                        <Text
-                          fontSize={fontSize.xs}
-                          lineHeight={fontSize.xs}
-                          color="muted-foreground"
-                        >
+                        <FieldDescription>
                           {t("refund.page.choice.whole.tipIncluded", {
                             amount: money(option.tipAmount),
                           })}
-                        </Text>
+                        </FieldDescription>
                       ) : null}
-                    </YStack>
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </FieldSet>
-          ) : null}
+                    </FieldContent>
+                    <Text
+                      fontSize={fontSize.sm}
+                      lineHeight={fontSize.sm}
+                      fontVariant={["tabular-nums"]}
+                    >
+                      {option.choice === "part"
+                        ? t("refund.page.choice.part.left", {
+                            amount: money(option.amount),
+                          })
+                        : money(option.amount)}
+                    </Text>
+                  </Field>
+                </FieldLabel>
+              ))}
+            </RadioGroup>
+          </FieldSet>
+        ) : null}
 
-          {choice === "part" ? (
-            <FieldSet>
-              <FieldLegend variant="label">
-                {t("refund.page.amount.label")}
-              </FieldLegend>
-              {refundableTipAmount > 0 ? (
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  color="muted-foreground"
-                >
-                  {t("refund.dialog.tipHint", {
-                    amount: money(refundableTipAmount),
-                  })}
-                </Text>
-              ) : null}
-              {options.partModes.includes("items") ? (
-                <ToggleGroup
-                  aria-label={t("refund.page.amount.label")}
-                  value={mode}
-                  onValueChange={setMode}
-                  variant="outline"
-                  columns={2}
-                  disabled={busy}
-                >
-                  <ToggleGroupItem value="amount">
-                    {t("refund.dialog.mode.amount")}
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="items">
-                    {t("refund.dialog.mode.items")}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              ) : null}
-              {mode === "amount" ? (
-                <Field>
-                  <FieldLabel>{t("refund.dialog.amount.label")}</FieldLabel>
-                  <Input
-                    value={amountText}
-                    keyboardType="decimal-pad"
-                    autoComplete="off"
-                    disabled={busy}
-                    invalid={form.typedAmount === null}
-                    onChangeText={setTypedAmountText}
-                  />
-                  <FieldError>
-                    {form.typedAmount === null
-                      ? t("refund.dialog.amount.invalid", {
-                          amount: money(remainingAmount),
-                        })
-                      : undefined}
-                  </FieldError>
-                </Field>
-              ) : (
-                <YStack>
-                  {refundableLines.map((refundable) => (
-                    <RefundItemRow
-                      key={refundable.line.id}
-                      refundable={refundable}
-                      quantity={quantities[refundable.line.id] ?? 0}
-                      disabled={busy}
-                      onStep={(direction) =>
-                        setQuantities(
-                          stepRefundQuantity(quantities, refundable, direction)
-                        )
-                      }
-                    />
-                  ))}
-                </YStack>
-              )}
-            </FieldSet>
-          ) : null}
-
+        {choice === "part" ? (
           <FieldSet>
             <FieldLegend variant="label">
-              {t("refund.dialog.method.label")}
+              {t("refund.page.amount.label")}
             </FieldLegend>
-            <ToggleGroup
-              aria-label={t("refund.dialog.method.label")}
-              value={method}
-              onValueChange={setPickedMethod}
-              variant="outline"
-              orientation="vertical"
-              disabled={busy}
-            >
-              {options.methods[choice].map((option) => (
-                <ToggleGroupItem
-                  key={option}
-                  value={option}
-                  justify="flex-start"
-                >
-                  {option === "qerkoTerminal" && qerkoTerminalTid !== null
-                    ? t("refund.dialog.method.qerkoTerminalTid", {
-                        tid: qerkoTerminalTid,
-                      })
-                    : t(refundOptionMethodLabelKey[option])}
+            {refundableTipAmount > 0 ? (
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {t("refund.dialog.tipHint", {
+                  amount: money(refundableTipAmount),
+                })}
+              </Text>
+            ) : null}
+            {options.partModes.includes("items") ? (
+              <ToggleGroup
+                aria-label={t("refund.page.amount.label")}
+                value={mode}
+                onValueChange={setMode}
+                variant="outline"
+                columns={2}
+                disabled={busy}
+              >
+                <ToggleGroupItem value="amount">
+                  {t("refund.dialog.mode.amount")}
                 </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+                <ToggleGroupItem value="items">
+                  {t("refund.dialog.mode.items")}
+                </ToggleGroupItem>
+              </ToggleGroup>
+            ) : null}
+            {mode === "amount" ? (
+              <Field>
+                <FieldLabel>{t("refund.dialog.amount.label")}</FieldLabel>
+                <Input
+                  value={amountText}
+                  keyboardType="decimal-pad"
+                  autoComplete="off"
+                  disabled={busy}
+                  invalid={form.typedAmount === null}
+                  onChangeText={setTypedAmountText}
+                />
+                <FieldError>
+                  {form.typedAmount === null
+                    ? t("refund.dialog.amount.invalid", {
+                        amount: money(remainingAmount),
+                      })
+                    : undefined}
+                </FieldError>
+              </Field>
+            ) : (
+              <YStack gap={8}>
+                {refundableLines.map((refundable) => (
+                  <RefundItemRow
+                    key={refundable.line.id}
+                    refundable={refundable}
+                    quantity={quantities[refundable.line.id] ?? 0}
+                    disabled={busy}
+                    onStep={(direction) =>
+                      setQuantities(
+                        stepRefundQuantity(quantities, refundable, direction)
+                      )
+                    }
+                  />
+                ))}
+              </YStack>
+            )}
           </FieldSet>
+        ) : null}
 
-          <RefundOutcome
-            choice={choice}
-            method={method}
-            amount={refundAmount ?? choiceOption.amount}
-            tipAmount={choiceOption.tipAmount}
-            currency={payment.currency}
-            formatAmount={money}
-            switchio={
-              method === "cardSwitchio" &&
-              choice === "whole" &&
-              switchioSource !== undefined
-                ? {
-                    deviceId: device.id,
-                    charged: payment.amount,
-                    goods: remainingAmount,
-                    tip: choiceOption.tipAmount,
-                    refundCount: refunds.length,
-                    source: switchioSource,
-                  }
-                : null
-            }
-          />
-        </CardContent>
-      </Card>
+        <FieldSet>
+          <FieldLegend variant="label">
+            {t("refund.dialog.method.label")}
+          </FieldLegend>
+          <RadioGroup
+            aria-label={t("refund.dialog.method.label")}
+            value={method}
+            onValueChange={setPickedMethod}
+            disabled={busy}
+          >
+            {options.methods[choice].map((option) => {
+              const outcome = describeRefundOutcome({
+                choice,
+                method: option,
+                switchioRefundKind,
+                amount: refundAmountOf(option) ?? choiceOption.amount,
+                tipAmount: choiceOption.tipAmount,
+                currency: payment.currency,
+                formatAmount: money,
+              })
+              return (
+                <FieldLabel key={option}>
+                  <Field orientation="horizontal" gap={12}>
+                    <RadioGroupItem value={option} />
+                    <Icon
+                      icon={refundMethodIcons[option]}
+                      color="muted-foreground"
+                    />
+                    <FieldContent>
+                      <FieldTitle>
+                        {option === "qerkoTerminal" && qerkoTerminalTid !== null
+                          ? t("refund.dialog.method.qerkoTerminalTid", {
+                              tid: qerkoTerminalTid,
+                            })
+                          : t(refundOptionMethodLabelKey[option])}
+                      </FieldTitle>
+                      <FieldDescription>
+                        {t(outcome.key, outcome.params)}
+                      </FieldDescription>
+                    </FieldContent>
+                  </Field>
+                </FieldLabel>
+              )
+            })}
+          </RadioGroup>
+        </FieldSet>
+      </YStack>
 
       {step.kind === "switchio" ? (
         <CardProgress
@@ -845,28 +863,14 @@ function CardProgress({
 }
 
 /**
- * The sentence under the form saying what confirming does
- * (`describeRefundOutcome`). For the whole payment to the card through
- * SwitchioPay it asks `chooseSwitchioRefundKind` whether the terminal can
- * still take the payment back (refund/0008), which needs the closures of
- * the phone that charged it.
+ * Whether SwitchioPay can still take the whole payment back
+ * (`chooseSwitchioRefundKind`, refund/0008), which the SwitchioPay card's
+ * sentence tells (`describeRefundOutcome`); `null` while the screen offers
+ * no whole refund through it. It needs the closures of the phone that
+ * charged the payment.
  */
-function RefundOutcome({
-  choice,
-  method,
-  amount,
-  tipAmount,
-  currency,
-  formatAmount,
-  switchio,
-}: {
-  readonly choice: RefundChoice
-  readonly method: RefundMethod
-  readonly amount: NonNegativeInteger
-  readonly tipAmount: NonNegativeInteger
-  readonly currency: FiatCurrency
-  readonly formatAmount: (value: NonNegativeInteger) => string
-  readonly switchio: {
+function useSwitchioRefundKind(
+  switchio: {
     readonly deviceId: DeviceId
     readonly charged: NonNegativeInteger
     readonly goods: NonNegativeInteger
@@ -874,8 +878,7 @@ function RefundOutcome({
     readonly refundCount: number
     readonly source: Parameters<typeof chooseSwitchioRefundKind>[0]["source"]
   } | null
-}) {
-  const { t } = useTranslation()
+) {
   const { source } = switchio ?? {}
   const closures = useOptionalEvoluQuery(
     source?.deviceId === null ||
@@ -887,38 +890,19 @@ function RefundOutcome({
           since: source.approvedAt,
         })
   ).data
-  const switchioRefundKind =
-    switchio === null
-      ? null
-      : chooseSwitchioRefundKind({
-          deviceId: switchio.deviceId,
-          charged: switchio.charged,
-          requested: { goods: switchio.goods, tip: switchio.tip },
-          refundCount: switchio.refundCount,
-          source: switchio.source,
-          closedSinceApproval:
-            switchio.source.deviceId === null ||
-            switchio.source.approvedAt === null ||
-            closures.length > 0,
-        })
-  const outcome = describeRefundOutcome({
-    choice,
-    method,
-    switchioRefundKind,
-    amount,
-    tipAmount,
-    currency,
-    formatAmount,
-  })
-  return (
-    <Text
-      fontSize={fontSize.sm}
-      lineHeight={fontSize.sm}
-      color="muted-foreground"
-    >
-      {t(outcome.key, outcome.params)}
-    </Text>
-  )
+  return switchio === null
+    ? null
+    : chooseSwitchioRefundKind({
+        deviceId: switchio.deviceId,
+        charged: switchio.charged,
+        requested: { goods: switchio.goods, tip: switchio.tip },
+        refundCount: switchio.refundCount,
+        source: switchio.source,
+        closedSinceApproval:
+          switchio.source.deviceId === null ||
+          switchio.source.approvedAt === null ||
+          closures.length > 0,
+      })
 }
 
 function RefundItemRow({
@@ -936,7 +920,15 @@ function RefundItemRow({
   const { name } = refundable.line
 
   return (
-    <XStack items="center" justify="space-between" gap={12} py={8}>
+    <XStack
+      items="center"
+      justify="space-between"
+      gap={12}
+      bg="surface-raised"
+      rounded={12}
+      px={12}
+      py={8}
+    >
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.sm}
