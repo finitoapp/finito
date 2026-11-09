@@ -49,7 +49,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
     const result = await createSwitchioClosureDep({
       demo: true,
       accountId: "a1",
-    }).switchioClosure.close()
+    }).switchioClosure.close({ closureId: "c1" })
 
     expect(result).toEqual({
       ok: false,
@@ -113,7 +113,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
     const result = await createSwitchioClosureDep({
       demo: false,
       accountId: "a1",
-    }).switchioClosure.close()
+    }).switchioClosure.close({ closureId: "c1" })
 
     expect(result.ok).toBe(true)
     expect(native.close).toHaveBeenCalledOnce()

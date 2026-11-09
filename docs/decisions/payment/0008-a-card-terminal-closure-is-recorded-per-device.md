@@ -31,10 +31,14 @@ reconciliation with Finito's own card payments has a window to count in.
 - The terminal's identity is the device: the result carries no terminal id,
   and one closure closes exactly the SwitchioPay of that phone. A business
   with several terminals closes each on its own phone.
-- The row's id derives from the device, the batch number and the terminal's
-  time, so the same result recorded twice — through its promise and again
-  from the copy `MainActivity` stores when Android killed the app meanwhile
-  — is one row, and the second write keeps the first `closedAt`. Native
+- Each closure gets its row's id before the terminal is launched, and the
+  native store keeps it with the result, so the same closure recorded twice
+  — through its promise and again from the copy `MainActivity` stores when
+  Android killed the app meanwhile — is one row, and the second write keeps
+  the first `closedAt`. Two closures are two rows even when the terminal
+  repeats the batch number and sends no time. A result stored by a build
+  that kept no id is recorded under one derived from the device, the batch
+  number and the terminal's time, as that build did. Native
   code stores the result before it resolves the promise, and nothing orders
   the promise against the app coming back to the foreground, so the restore
   path leaves the stored copy alone while a closure is in flight in this JS
@@ -46,14 +50,18 @@ reconciliation with Finito's own card payments has a window to count in.
 Showing the result without storing it, which leaves the business no view of
 which terminals were closed and nothing to reconcile against. Keying a
 closure on a terminal id, which the result does not have. A random id per
-recording, which would turn a restored result into a second closure.
+recording, which would turn a restored result into a second closure. An id
+derived from the device, the batch number and the terminal's time, which
+merges two closures into one when the terminal omits the time and the batch
+number repeats.
 
 ## Consequences
 
 A closure started in SwitchioPay itself, or SwitchioPay's own automatic
 closure, is not recorded: Finito never sees it. Whether the batch number
 survives reinstalling or re-pairing SwitchioPay is still to be checked on a
-device; if it restarts, the terminal's time keeps two closures apart. The
+device; if it restarts, the closures are still told apart by their own
+ids. The
 closure has its own request code and result store on the native side, so its
 result never reaches the payment's recovery. Web (Payky) takes card payments
 but does not close batches.
@@ -70,3 +78,6 @@ but does not close batches.
 - `apps/native-app/src/platform/switchio.test.ts > never hands a closure result to the payment's store or recovery`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > leaves a closure's stored result to its promise while the closure is in flight`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure result no promise in this runtime is waiting for`
+- `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > a closure's id > keeps two closures apart when the terminal repeats the batch number and sends no time`
+- `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > a closure's id > is derived from the result for a closure stored by a build that minted none`
+- `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure with the closure id it was launched as`

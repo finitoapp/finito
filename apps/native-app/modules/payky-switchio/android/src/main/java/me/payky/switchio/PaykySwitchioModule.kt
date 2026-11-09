@@ -124,11 +124,11 @@ class PaykySwitchioModule : Module() {
       }
     }
 
-    AsyncFunction("close") { accountId: String, promise: Promise ->
+    AsyncFunction("close") { closureId: String, accountId: String, promise: Promise ->
       val intent = closureIntent()
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
-      SwitchioClosureStore.begin(context, accountId)
+      SwitchioClosureStore.begin(context, closureId, accountId)
       pendingClosurePromise = promise
       try {
         appContext.throwingActivity.startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)
@@ -199,6 +199,7 @@ class PaykySwitchioModule : Module() {
     Function("peekStoredClosureResult") {
       val stored = SwitchioClosureStore.peek(context)
       if (stored == null) null else mapOf(
+        "closureId" to stored.closureId,
         "resultCode" to stored.resultCode,
         "transactionResult" to stored.transactionResult,
         "accountId" to stored.accountId

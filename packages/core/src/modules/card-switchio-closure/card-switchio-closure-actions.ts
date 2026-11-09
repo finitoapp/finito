@@ -7,13 +7,16 @@ import {
   type SwitchioClosure,
   type SwitchioClosureDep,
   type SwitchioClosureError,
-  type SwitchioNativeClosureResult,
+  type SwitchioNativeRestoredClosure,
 } from "../../switchio.ts"
 import { cardSwitchioAccountQuery } from "../account/account-queries.ts"
 import type { AccountId } from "../account/account-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
-import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
+import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../shared/evolu-utils.ts"
 import {
   type FiatCurrency,
   Integer,
@@ -22,7 +25,7 @@ import {
   TimestampMs,
 } from "../shared/schema.ts"
 import { cardSwitchioClosureByIdQuery } from "./card-switchio-closure-queries.ts"
-import type { CardSwitchioClosureId } from "./card-switchio-closure-types.ts"
+import { CardSwitchioClosureId } from "./card-switchio-closure-types.ts"
 import { createCardSwitchioClosureId } from "./card-switchio-closure-utils.ts"
 
 const createCardSwitchioClosureAccountNotFoundError = defineError(
@@ -61,16 +64,19 @@ const loadCardSwitchioAccount =
   }
 
 /**
- * Writes one closed batch. The id derives from the device and the result, so
- * the same result recorded twice leaves one row (payment/0008); the second
- * time returns the first record untouched, keeping its `closedAt`, which
- * orders the history and bounds a closure's window.
+ * Writes one closed batch as the row `id`, the closure's own id minted
+ * before the terminal was launched, so the same closure recorded twice
+ * leaves one row (payment/0008); the second time returns the first record
+ * untouched, keeping its `closedAt`, which orders the history and bounds a
+ * closure's window.
  */
 const recordCardSwitchioClosure =
   ({
+    id,
     closure,
     deviceId,
   }: {
+    readonly id: CardSwitchioClosureId
     readonly closure: SwitchioClosure
     readonly deviceId: DeviceId
   }): Task<
@@ -79,7 +85,6 @@ const recordCardSwitchioClosure =
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
-    const id = createCardSwitchioClosureId({ deviceId, closure })
     const [existing] = await run.deps.evolu.loadQuery(
       cardSwitchioClosureByIdQuery(id)
     )
@@ -137,9 +142,12 @@ const recordCardSwitchioClosure =
 
 const recordClosureResult =
   ({
+    id,
     result,
     deviceId,
   }: {
+    /** The closure's id; derived from its totals when none was stored. */
+    readonly id: CardSwitchioClosureId | null
     readonly result: Result<SwitchioClosure, SwitchioClosureError>
     readonly deviceId: DeviceId
   }): Task<
@@ -153,7 +161,13 @@ const recordClosureResult =
       return result
     }
     return await run(
-      recordCardSwitchioClosure({ closure: result.value, deviceId })
+      recordCardSwitchioClosure({
+        id:
+          id ??
+          createCardSwitchioClosureId({ deviceId, closure: result.value }),
+        closure: result.value,
+        deviceId,
+      })
     )
   }
 
@@ -176,21 +190,31 @@ export const closeCardSwitchioBatch =
     const account = await run(loadCardSwitchioAccount())
     if (!account.ok) return account
 
-    const result = await run.deps.switchioClosure.close()
-    return await run(recordClosureResult({ result, deviceId }))
+    const id = createRowId<"CardSwitchioClosure">()
+    const result = await run.deps.switchioClosure.close({ closureId: id })
+    return await run(recordClosureResult({ id, result, deviceId }))
   }
 
 /**
  * Records a closure result whose promise was lost when Android killed the
- * app while SwitchioPay was in the foreground. The derived id makes this
- * idempotent with the promise path.
+ * app while SwitchioPay was in the foreground, as the row of the closure id
+ * stored with it. A result stored by a build that minted no closure id is
+ * recorded under one derived from its totals, as that build did.
  */
+const parseStoredClosureId = (
+  closureId: string | null
+): CardSwitchioClosureId | null => {
+  if (closureId === null) return null
+  const parsed = CardSwitchioClosureId.safeParse(closureId)
+  return parsed.success ? parsed.data : null
+}
+
 export const recordRestoredCardSwitchioClosure =
   ({
     restored,
     deviceId,
   }: {
-    readonly restored: SwitchioNativeClosureResult
+    readonly restored: SwitchioNativeRestoredClosure
     readonly deviceId: DeviceId
   }): Task<
     RecordedCardSwitchioClosure,
@@ -200,6 +224,7 @@ export const recordRestoredCardSwitchioClosure =
   async (run) =>
     await run(
       recordClosureResult({
+        id: parseStoredClosureId(restored.closureId),
         result: interpretSwitchioClosureResult(restored),
         deviceId,
       })

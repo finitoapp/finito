@@ -88,7 +88,7 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
     const closing = createSwitchioClosureDep({
       demo: false,
       accountId: "a1",
-    }).switchioClosure.close()
+    }).switchioClosure.close({ closureId: "c1" })
     // SwitchioPay has returned: MainActivity stored the result, and the app
     // came back to the foreground before the promise's continuation ran.
     native.stored.closure = closureResult
@@ -103,10 +103,22 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
     expect(takeRestoredSwitchioClosureResult(owner)).toBeNull()
   })
 
+  it("takes a stored closure with the closure id it was launched as", () => {
+    native.stored.closure = { ...closureResult, closureId: "c1" }
+
+    expect(takeRestoredSwitchioClosureResult(owner)).toEqual({
+      ...closureResult,
+      closureId: "c1",
+    })
+  })
+
   it("takes a stored closure result no promise in this runtime is waiting for", () => {
     native.stored.closure = closureResult
 
-    expect(takeRestoredSwitchioClosureResult(owner)).toEqual(closureResult)
+    expect(takeRestoredSwitchioClosureResult(owner)).toEqual({
+      ...closureResult,
+      closureId: null,
+    })
     expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
   })
 
@@ -118,8 +130,8 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
       accountId: "a1",
     })
 
-    const first = switchioClosure.close()
-    const second = await switchioClosure.close()
+    const first = switchioClosure.close({ closureId: "c1" })
+    const second = await switchioClosure.close({ closureId: "c1" })
 
     expect(second).toEqual({
       ok: false,
@@ -213,7 +225,7 @@ describe("a stored SwitchioPay result belongs to the account it was launched in"
     await createSwitchioClosureDep({
       demo: false,
       accountId: "a",
-    }).switchioClosure.close()
+    }).switchioClosure.close({ closureId: "c1" })
     await createSwitchioTerminalDep({
       demo: false,
       accountId: "a",
@@ -231,7 +243,7 @@ describe("a stored SwitchioPay result belongs to the account it was launched in"
       originalTransactionId: "t1",
     })
 
-    expect(native.close).toHaveBeenCalledWith("a")
+    expect(native.close).toHaveBeenCalledWith("c1", "a")
     expect(native.pay.mock.calls[0]?.at(-1)).toBe("a")
     expect(native.reversal.mock.calls[0]?.at(-1)).toBe("a")
   })
@@ -247,7 +259,7 @@ describe("a stored SwitchioPay result belongs to the account it was launched in"
         ...twoAccounts,
         activeAccountId: "a",
       })
-    ).toEqual(closureResult)
+    ).toEqual({ ...closureResult, closureId: null })
     expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
   })
 
@@ -297,8 +309,9 @@ describe("a stored SwitchioPay result belongs to the account it was launched in"
   it("takes a result stored before the account was kept in the active account", () => {
     native.stored.closure = closureResult
 
-    expect(takeRestoredSwitchioClosureResult(twoAccounts)).toEqual(
-      closureResult
-    )
+    expect(takeRestoredSwitchioClosureResult(twoAccounts)).toEqual({
+      ...closureResult,
+      closureId: null,
+    })
   })
 })

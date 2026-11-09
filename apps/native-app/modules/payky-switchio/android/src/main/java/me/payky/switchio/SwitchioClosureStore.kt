@@ -20,19 +20,27 @@ object SwitchioClosureStore {
   private const val PENDING = "pending"
   /** The account the closure was started in; null for one stored before it was kept. */
   private const val ACCOUNT_ID = "accountId"
+  /** The row the closure is recorded as; null for one stored before it was kept. */
+  private const val CLOSURE_ID = "closureId"
   private const val HAS_RESULT = "hasResult"
   private const val RESULT_CODE = "resultCode"
   private const val RESULT_JSON = "transactionResult"
 
-  class Result(val resultCode: Int, val transactionResult: String?, val accountId: String?)
+  class Result(
+    val closureId: String?,
+    val resultCode: Int,
+    val transactionResult: String?,
+    val accountId: String?
+  )
 
   private fun prefs(context: Context) =
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
   /** Called before the terminal is launched. Replaces any earlier result. */
-  fun begin(context: Context, accountId: String) {
+  fun begin(context: Context, closureId: String, accountId: String) {
     prefs(context).edit()
       .putBoolean(PENDING, true)
+      .putString(CLOSURE_ID, closureId)
       .putString(ACCOUNT_ID, accountId)
       .remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
@@ -47,7 +55,7 @@ object SwitchioClosureStore {
       .putInt(RESULT_CODE, resultCode)
       .putString(RESULT_JSON, transactionResult)
       .commit()
-    return Result(resultCode, transactionResult, p.getString(ACCOUNT_ID, null))
+    return Result(p.getString(CLOSURE_ID, null), resultCode, transactionResult, p.getString(ACCOUNT_ID, null))
   }
 
   /** The stored result, or null when none is waiting. Does not clear it. */
@@ -55,6 +63,7 @@ object SwitchioClosureStore {
     val p = prefs(context)
     if (!p.getBoolean(HAS_RESULT, false)) return null
     return Result(
+      p.getString(CLOSURE_ID, null),
       p.getInt(RESULT_CODE, 0),
       p.getString(RESULT_JSON, null),
       p.getString(ACCOUNT_ID, null)
@@ -64,7 +73,7 @@ object SwitchioClosureStore {
   /** Forgets the stored result, or an attempt that never reached the terminal. */
   fun clear(context: Context) {
     prefs(context).edit()
-      .remove(PENDING).remove(ACCOUNT_ID).remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
+      .remove(PENDING).remove(CLOSURE_ID).remove(ACCOUNT_ID).remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
 }
