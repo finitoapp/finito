@@ -18,6 +18,11 @@ const webServerCommand = useProductionBuild
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
+  // One Vite dev server serves every worker. Playwright's default of half
+  // the cores (8 on a 16-core machine) overloads it until tests time out;
+  // 4 runs the whole suite clean. CI keeps the default on its smaller
+  // runner and a production build.
+  workers: process.env.CI ? undefined : 4,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI
