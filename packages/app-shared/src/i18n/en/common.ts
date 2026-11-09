@@ -130,6 +130,9 @@ export const enCommon = {
   "orders.reject.title": "Reject order {number}?",
   "orders.remember.description":
     "Guests can order it from the menu until {time}. You can change the name and the price.",
+  "orders.remember.forGood.description":
+    "Guests can order it from the menu every day from now on. You can change the name and the price.",
+  "orders.remember.forGood.title": "Add “{text}” to the menu for good",
   "orders.remember.save": "Put in the menu",
   "orders.remember.title": "Remember “{text}” for today",
   "orders.served": "Served",
@@ -141,6 +144,8 @@ export const enCommon = {
   "orders.waiting": "Orders waiting: {count}",
   "orders.written": "Guest's text: “{text}”",
   "orders.written.arrivedOf": "{arrived} of {named}",
+  "orders.written.addForGood": "Add to the menu for good",
+  "orders.written.keepForGood": "Keep in the menu for good",
   "orders.written.remember": "Remember for today",
   "orders.written.remembered": "In the menu until {time}",
   "orders.written.taxRate": "Tax rate of “{text}”",

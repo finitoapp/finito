@@ -6,12 +6,13 @@ import {
   settingsQuery,
 } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { setCatalogItemInMenu } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import { isInMenu } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import {
   deriveRememberedCatalogItemId,
   type MenuOrderToServe,
-  rememberWrittenItemForToday,
+  rememberWrittenItem,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import {
   menuDayEndAfter,
@@ -51,44 +52,75 @@ export function RememberWrittenItem({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const [open, setOpen] = useState(false)
+  const runToast = useRunToast()
+  const { require } = useRequirePermission()
+  const [dialogForGood, setDialogForGood] = useState<boolean | null>(null)
+  const id = deriveRememberedCatalogItemId(line.id)
   const {
     data: [remembered],
-  } = useEvoluQuery(
-    catalogItemByIdQuery(deriveRememberedCatalogItemId(line.id))
-  )
+  } = useEvoluQuery(catalogItemByIdQuery(id))
   const now = useNow([remembered?.inMenuUntil ?? null])
 
+  const keepForGood = async () => {
+    if (!(await require("catalog", "access.action.rememberItem"))) return
+    await runToast(async (run) => {
+      await run.ok(setCatalogItemInMenu({ id, inMenu: true }))
+    })
+  }
+
   if (remembered !== undefined && isInMenu(remembered, now)) {
+    const { inMenuUntil } = remembered
     return (
-      <span className="text-sm text-muted-foreground">
-        {remembered.inMenuUntil === null
-          ? t("catalog.items.inMenu")
-          : t("orders.written.remembered", {
-              time: formatTime(new Date(remembered.inMenuUntil), locale),
-            })}
-      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm text-muted-foreground">
+          {inMenuUntil === null
+            ? t("catalog.items.inMenu")
+            : t("orders.written.remembered", {
+                time: formatTime(new Date(inMenuUntil), locale),
+              })}
+        </span>
+        {inMenuUntil === null ? null : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void keepForGood()}
+          >
+            {t("orders.written.keepForGood")}
+          </Button>
+        )}
+      </div>
     )
   }
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="self-start"
-        onClick={() => setOpen(true)}
-      >
-        {t("orders.written.remember")}
-      </Button>
-      {open ? (
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setDialogForGood(false)}
+        >
+          {t("orders.written.remember")}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setDialogForGood(true)}
+        >
+          {t("orders.written.addForGood")}
+        </Button>
+      </div>
+      {dialogForGood === null ? null : (
         <RememberWrittenItemDialog
           billId={billId}
           line={line}
-          onClose={() => setOpen(false)}
+          forGood={dialogForGood}
+          onClose={() => setDialogForGood(null)}
         />
-      ) : null}
+      )}
     </>
   )
 }
@@ -96,10 +128,12 @@ export function RememberWrittenItem({
 function RememberWrittenItemDialog({
   billId,
   line,
+  forGood,
   onClose,
 }: {
   readonly billId: MenuOrderToServe["billId"]
   readonly line: NonNullable<MenuOrderToServe["written"]>["lines"][number]
+  readonly forGood: boolean
   readonly onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -135,10 +169,14 @@ function RememberWrittenItemDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t("orders.remember.title", { text: line.text })}
+            {forGood
+              ? t("orders.remember.forGood.title", { text: line.text })
+              : t("orders.remember.title", { text: line.text })}
           </DialogTitle>
           <DialogDescription>
-            {t("orders.remember.description", { time: until })}
+            {forGood
+              ? t("orders.remember.forGood.description")
+              : t("orders.remember.description", { time: until })}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -170,11 +208,12 @@ function RememberWrittenItemDialog({
               setPending(true)
               await runToast(async (run) => {
                 const remembered = await run(
-                  rememberWrittenItemForToday({
+                  rememberWrittenItem({
                     billId,
                     lineId: line.id,
                     name: values.name,
                     unitAmount: values.price,
+                    forGood,
                   })
                 )
                 if (!remembered.ok) return "app.saveFailed"

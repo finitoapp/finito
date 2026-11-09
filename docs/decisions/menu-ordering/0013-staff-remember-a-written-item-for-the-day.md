@@ -1,6 +1,6 @@
 # 0013 Staff remember a written item for the day, and guests order it from the menu
 
-Status: accepted
+Status: superseded by menu-ordering/0018
 Date: 2026-11-08
 
 ## Context

@@ -135,7 +135,7 @@ export const putCatalogItemInMenuUntil =
       "name" | "currency" | "unitAmount" | "taxRateId"
     > & {
       readonly id: CatalogItemId
-      readonly inMenuUntil: TimestampMs
+      readonly inMenuUntil: TimestampMs | null
     }
   ): Task<CatalogItemId, never, EvoluDep & EvoluOwnerDep> =>
   async (run) => {

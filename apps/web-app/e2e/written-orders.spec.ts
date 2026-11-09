@@ -1,5 +1,5 @@
 import { defaultSelfPayRelays } from "@payky/core/integrations/nostr/nostr-default-relays"
-import type { Page } from "@playwright/test"
+import type { BrowserContext, Page } from "@playwright/test"
 
 import { addTable, addTaxRate } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
@@ -96,6 +96,41 @@ const orderStatus = (
 
 const gotoOrders = (page: Page) =>
   gotoPage(page, "/orders", "en", "orders.title")
+
+const putInMenuAs = async (
+  page: Page,
+  { text, name, price }: { text: string; name: string; price: string }
+) => {
+  const dialog = page.getByRole("dialog")
+  const nameField = dialog.getByRole("textbox", {
+    name: translate("en", "catalog.items.form.name.label"),
+  })
+  await expect(nameField).toHaveValue(text)
+  await nameField.fill(name)
+  await dialog
+    .getByRole("textbox", {
+      name: translate("en", "catalog.items.form.price.label"),
+    })
+    .fill(price)
+  await dialog
+    .getByRole("button", { name: translate("en", "orders.remember.save") })
+    .click()
+  await expect(dialog).toHaveCount(0)
+}
+
+const nextGuestFindsInMenu = async (
+  context: BrowserContext,
+  guestAddress: string,
+  name: string
+) => {
+  const next = await context.newPage()
+  await next.goto(guestAddress)
+  await expect(
+    next.getByRole("button", {
+      name: nameParam("selfPay.menu.quantity.increase", name),
+    })
+  ).toBeVisible({ timeout: 45_000 })
+}
 
 const openOrdersFromNotice = async (page: Page) => {
   await page
@@ -288,7 +323,7 @@ test("a VAT payer's staff switch a written item to another tax rate before accep
   })
 })
 
-test("staff remember a written item for today as Řízek for 199.00, and the next guest orders it from the menu", async ({
+test("staff remember a written item for today as Řízek for 199.00, the next guest orders it from the menu, and staff keep it for good", async ({
   seededPage: page,
   context,
 }) => {
@@ -339,21 +374,11 @@ test("staff remember a written item for today as Řízek for 199.00, and the nex
     await page
       .getByRole("button", { name: translate("en", "orders.written.remember") })
       .click()
-    const dialog = page.getByRole("dialog")
-    const name = dialog.getByRole("textbox", {
-      name: translate("en", "catalog.items.form.name.label"),
+    await putInMenuAs(page, {
+      text: "řízek s kaší",
+      name: "Řízek",
+      price: "199.00",
     })
-    await expect(name).toHaveValue("řízek s kaší")
-    await name.fill("Řízek")
-    await dialog
-      .getByRole("textbox", {
-        name: translate("en", "catalog.items.form.price.label"),
-      })
-      .fill("199.00")
-    await dialog
-      .getByRole("button", { name: translate("en", "orders.remember.save") })
-      .click()
-    await expect(dialog).toHaveCount(0)
     await expect(
       page.getByText(
         translateParams("en", "orders.written.remembered", { time: "4:00 AM" })
@@ -362,13 +387,79 @@ test("staff remember a written item for today as Řízek for 199.00, and the nex
   })
 
   await test.step("the next guest finds Řízek in the menu", async () => {
-    const next = await context.newPage()
-    await next.goto(guestAddress)
-    await expect(
-      next.getByRole("button", {
-        name: nameParam("selfPay.menu.quantity.increase", "Řízek"),
+    await nextGuestFindsInMenu(context, guestAddress, "Řízek")
+  })
+
+  await test.step("staff keep Řízek in the menu for good", async () => {
+    await page
+      .getByRole("button", {
+        name: translate("en", "orders.written.keepForGood"),
       })
-    ).toBeVisible({ timeout: 45_000 })
+      .click()
+    await expect(
+      page.getByText(translate("en", "catalog.items.inMenu"), { exact: true })
+    ).toBeVisible()
+  })
+})
+
+test("staff add a written item to the menu for good as Řízek for 199.00 from To serve, and the next guest orders it from the menu", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(150_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+  const orderCard = page.getByTestId("order-to-serve")
+
+  await test.step("a guest writes a schnitzel and pays it, and the owner switches ordering from the menu on", async () => {
+    await writeOrder(guest, guestAddress, {
+      text: "řízek s kaší",
+      amount: "189.00",
+    })
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 18_900,
+      currency: "USD",
+    })
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.order")
+  })
+
+  await test.step("staff add it to the menu for good as Řízek for 199.00, and the order says it is in the menu", async () => {
+    await gotoOrders(page)
+    await orderCard
+      .getByRole("button", {
+        name: translate("en", "orders.written.addForGood"),
+      })
+      .click()
+    await expect(
+      page.getByRole("dialog").getByRole("heading", {
+        name: translateParams("en", "orders.remember.forGood.title", {
+          text: "řízek s kaší",
+        }),
+      })
+    ).toBeVisible()
+    await putInMenuAs(page, {
+      text: "řízek s kaší",
+      name: "Řízek",
+      price: "199.00",
+    })
+    await expect(
+      orderCard.getByText(translate("en", "catalog.items.inMenu"), {
+        exact: true,
+      })
+    ).toBeVisible()
+    await expect(
+      orderCard.getByRole("button", {
+        name: translate("en", "orders.written.keepForGood"),
+      })
+    ).toHaveCount(0)
+  })
+
+  await test.step("the next guest finds Řízek in the menu", async () => {
+    await nextGuestFindsInMenu(context, guestAddress, "Řízek")
   })
 })
 

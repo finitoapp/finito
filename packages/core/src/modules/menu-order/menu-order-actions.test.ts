@@ -72,7 +72,7 @@ import {
   loadSelfPayMenu,
   markMenuOrderServed,
   rejectMenuOrder,
-  rememberWrittenItemForToday,
+  rememberWrittenItem,
   saveSelfPayMenuVersion,
   setWrittenOrderLineTaxRate,
 } from "./menu-order-actions.ts"
@@ -918,7 +918,7 @@ describe("the tax rate of a written line", () => {
   })
 })
 
-describe("a written item staff remember for the day", () => {
+describe("a written item staff remember for the day or for good", () => {
   const rememberPaidItem = async (context: SelfPayTestContext) => {
     await using run = testCreateRun(context.deps)
     await run.ok(setMenuOrdering({ on: true, deviceId: context.deviceId }))
@@ -933,14 +933,15 @@ describe("a written item staff remember for the day", () => {
     if (toServe === undefined || line === undefined) {
       throw new Error("Expected a written order.")
     }
-    return async () => {
+    return async (forGood: boolean) => {
       await using rememberRun = testCreateRun(context.deps)
       return await rememberRun.orThrow(
-        rememberWrittenItemForToday({
+        rememberWrittenItem({
           billId: toServe.billId,
           lineId: line.id,
           name: NonEmptyString255("Řízek"),
           unitAmount: NonNegativeInteger(19_900),
+          forGood,
         })
       )
     }
@@ -955,8 +956,8 @@ describe("a written item staff remember for the day", () => {
     const taxRateId = await createWrittenOrderTaxRate(context)
     const remember = await rememberPaidItem(context)
 
-    const id = await remember()
-    const again = await remember()
+    const id = await remember(false)
+    const again = await remember(false)
     const [stored] = await context.deps.evolu.loadQuery(
       catalogItemByIdQuery(id)
     )
@@ -979,13 +980,42 @@ describe("a written item staff remember for the day", () => {
     await run.ok(setMenuDayEndHour(NonNegativeInteger(23)))
     const remember = await rememberPaidItem(context)
 
-    await remember()
+    await remember(false)
     context.clock.advance(9 * 60 * 60 * 1000 - 1)
     const before = await offered(context)
     context.clock.advance(1)
 
     expect(before).toHaveLength(1)
     expect(await offered(context)).toEqual([])
+  })
+
+  test("added for good is still in the menu the next day", async () => {
+    await using context = await createSelfPayTestContext()
+    await createWrittenOrderTaxRate(context)
+    const remember = await rememberPaidItem(context)
+
+    await remember(true)
+    context.clock.advance(24 * 60 * 60 * 1000)
+
+    expect(await offered(context)).toEqual([
+      { name: "Řízek", unitAmount: 19_900 },
+    ])
+  })
+
+  test("remembered for today and kept for good is one catalog item that stays", async () => {
+    await using context = await createSelfPayTestContext()
+    await using run = testCreateRun(context.deps)
+    await createWrittenOrderTaxRate(context)
+    const remember = await rememberPaidItem(context)
+
+    const id = await remember(false)
+    await run.ok(setCatalogItemInMenu({ id, inMenu: true }))
+    context.clock.advance(24 * 60 * 60 * 1000)
+    const nextDay = await offered(context)
+    const again = await remember(true)
+
+    expect(nextDay).toEqual([{ name: "Řízek", unitAmount: 19_900 }])
+    expect(again).toBe(id)
   })
 })
 

@@ -10,12 +10,13 @@ import {
   settingsQuery,
 } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
+import { setCatalogItemInMenu } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import { isInMenu } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import {
   deriveRememberedCatalogItemId,
   type MenuOrderToServe,
-  rememberWrittenItemForToday,
+  rememberWrittenItem,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import {
   menuDayEndAfter,
@@ -23,7 +24,7 @@ import {
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useState } from "react"
-import { Text } from "tamagui"
+import { Text, XStack } from "tamagui"
 import { z } from "zod"
 import { Button } from "../../components/ui/button.tsx"
 import {
@@ -56,50 +57,86 @@ export function RememberWrittenItem({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const [isOpen, setIsOpen] = useState(false)
+  const runToast = useRunToast()
+  const { require } = useRequirePermission()
+  const [dialogForGood, setDialogForGood] = useState<boolean | null>(null)
+  const id = deriveRememberedCatalogItemId(line.id)
   const {
     data: [remembered],
-  } = useEvoluQuery(
-    catalogItemByIdQuery(deriveRememberedCatalogItemId(line.id))
-  )
+  } = useEvoluQuery(catalogItemByIdQuery(id))
   const now = useNow([remembered?.inMenuUntil ?? null])
 
+  const keepForGood = async () => {
+    if (!(await require("catalog", "access.action.rememberItem"))) return
+    await runToast(async (run) => {
+      await run.ok(setCatalogItemInMenu({ id, inMenu: true }))
+      return undefined
+    })
+  }
+
   if (remembered !== undefined && isInMenu(remembered, now)) {
+    const { inMenuUntil } = remembered
     return (
-      <Text
-        testID="written-line-remembered"
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-        color="muted-foreground"
-      >
-        {remembered.inMenuUntil === null
-          ? t("catalog.items.inMenu")
-          : t("orders.written.remembered", {
-              time: formatTime(new Date(remembered.inMenuUntil), locale),
-            })}
-      </Text>
+      <XStack gap={8} flexWrap="wrap" items="center">
+        <Text
+          testID="written-line-remembered"
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {inMenuUntil === null
+            ? t("catalog.items.inMenu")
+            : t("orders.written.remembered", {
+                time: formatTime(new Date(inMenuUntil), locale),
+              })}
+        </Text>
+        {inMenuUntil === null ? null : (
+          <Button
+            variant="secondary"
+            size="sm"
+            testID="keep-written-line-for-good"
+            label={t("orders.written.keepForGood")}
+            onPress={() => void keepForGood()}
+          />
+        )}
+      </XStack>
     )
   }
 
   return (
     <>
-      <Button
-        self="flex-start"
-        variant="secondary"
-        size="sm"
-        testID="remember-written-line"
-        aria-label={t("orders.remember.title", { text: line.text })}
-        label={t("orders.written.remember")}
-        onPress={() => setIsOpen(true)}
-      />
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        {isOpen ? (
+      <XStack gap={8} flexWrap="wrap">
+        <Button
+          variant="secondary"
+          size="sm"
+          testID="remember-written-line"
+          aria-label={t("orders.remember.title", { text: line.text })}
+          label={t("orders.written.remember")}
+          onPress={() => setDialogForGood(false)}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          testID="add-written-line-for-good"
+          aria-label={t("orders.remember.forGood.title", { text: line.text })}
+          label={t("orders.written.addForGood")}
+          onPress={() => setDialogForGood(true)}
+        />
+      </XStack>
+      <Dialog
+        open={dialogForGood !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialogForGood(null)
+        }}
+      >
+        {dialogForGood === null ? null : (
           <RememberWrittenItemForm
             billId={billId}
             line={line}
-            onRemembered={() => setIsOpen(false)}
+            forGood={dialogForGood}
+            onRemembered={() => setDialogForGood(null)}
           />
-        ) : null}
+        )}
       </Dialog>
     </>
   )
@@ -108,10 +145,12 @@ export function RememberWrittenItem({
 function RememberWrittenItemForm({
   billId,
   line,
+  forGood,
   onRemembered,
 }: {
   readonly billId: MenuOrderToServe["billId"]
   readonly line: NonNullable<MenuOrderToServe["written"]>["lines"][number]
+  readonly forGood: boolean
   readonly onRemembered: () => void
 }) {
   const { t } = useTranslation()
@@ -154,11 +193,12 @@ function RememberWrittenItemForm({
     setPending(true)
     await runToast(async (run) => {
       const result = await run(
-        rememberWrittenItemForToday({
+        rememberWrittenItem({
           billId,
           lineId: line.id,
           name: parsed.value.name,
           unitAmount: parsed.value.price,
+          forGood,
         })
       )
       if (!result.ok) return "app.saveFailed"
@@ -172,15 +212,22 @@ function RememberWrittenItemForm({
     <DialogContent closeLabel={t("dialog.close")}>
       <DialogHeader>
         <DialogTitle>
-          {t("orders.remember.title", { text: line.text })}
+          {forGood
+            ? t("orders.remember.forGood.title", { text: line.text })
+            : t("orders.remember.title", { text: line.text })}
         </DialogTitle>
         <DialogDescription>
-          {t("orders.remember.description", {
-            time: formatTime(
-              menuDayEndAfter(new Date(), menuDayEndHourOf(selfPaySettings)),
-              locale
-            ),
-          })}
+          {forGood
+            ? t("orders.remember.forGood.description")
+            : t("orders.remember.description", {
+                time: formatTime(
+                  menuDayEndAfter(
+                    new Date(),
+                    menuDayEndHourOf(selfPaySettings)
+                  ),
+                  locale
+                ),
+              })}
         </DialogDescription>
       </DialogHeader>
       <FieldGroup>

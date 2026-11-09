@@ -738,17 +738,19 @@ export const deriveRememberedCatalogItemId = (
   lineId: BillLineId
 ): CatalogItemId => createIdFromString<"CatalogItem">(`remembered:${lineId}`)
 
-export const rememberWrittenItemForToday =
+export const rememberWrittenItem =
   ({
     billId,
     lineId,
     name,
     unitAmount,
+    forGood,
   }: {
     readonly billId: BillId
     readonly lineId: BillLineId
     readonly name: NonEmptyString255
     readonly unitAmount: NonNegativeInteger
+    readonly forGood: boolean
   }): Task<
     CatalogItemId,
     WrittenOrderLineNotFoundError,
@@ -771,10 +773,9 @@ export const rememberWrittenItemForToday =
     if (line === undefined) {
       return err(createWrittenOrderLineNotFoundError({ lineId }))
     }
-    const until = menuDayEndAfter(
-      run.deps.date.now(),
-      menuDayEndHourOf(settings)
-    )
+    const until = forGood
+      ? null
+      : menuDayEndAfter(run.deps.date.now(), menuDayEndHourOf(settings))
     return ok(
       await run.ok(
         putCatalogItemInMenuUntil({
@@ -783,7 +784,7 @@ export const rememberWrittenItemForToday =
           currency: line.currency,
           unitAmount,
           taxRateId: line.taxRateId,
-          inMenuUntil: TimestampMs(until.getTime()),
+          inMenuUntil: until === null ? null : TimestampMs(until.getTime()),
         })
       )
     )

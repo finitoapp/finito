@@ -133,6 +133,9 @@ export const skCommon = {
   "orders.reject.title": "Odmietnuť objednávku {number}?",
   "orders.remember.description":
     "Hostia si ju môžu objednať z menu do {time}. Názov aj cenu môžete zmeniť.",
+  "orders.remember.forGood.description":
+    "Hostia si ju odteraz môžu objednať z menu každý deň. Názov aj cenu môžete zmeniť.",
+  "orders.remember.forGood.title": "Pridať „{text}“ do menu natrvalo",
   "orders.remember.save": "Dať do menu",
   "orders.remember.title": "Zapamätať „{text}“ na dnešok",
   "orders.served": "Vydané",
@@ -144,6 +147,8 @@ export const skCommon = {
   "orders.waiting": "Čakajúce objednávky: {count}",
   "orders.written": "Text hosťa: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
+  "orders.written.addForGood": "Pridať do menu natrvalo",
+  "orders.written.keepForGood": "Ponechať v menu natrvalo",
   "orders.written.remember": "Zapamätať na dnešok",
   "orders.written.remembered": "V menu do {time}",
   "orders.written.taxRate": "Sadzba DPH položky „{text}“",

@@ -14,11 +14,12 @@ kept no list of what they had served.
 
 "To serve" has two tabs. "To serve" lists the orders waiting for the staff and
 being prepared, as before. "Served" lists the orders served since the owner's
-hour, 4:00 unless the owner picks another one (`menu-ordering/0013`), the last
+hour, 4:00 unless the owner picks another one (`menu-ordering/0018`), the last
 served first. A served order shows its number, table, time, items and note,
 and whether it was paid in full, with no button to change it. Each item of a
 written order shows its tax rate and, while guests both order from the menu and
-write their orders, offers to remember it for the day, as under "To serve".
+write their orders, offers to remember it for the day or add it to the menu
+for good, as under "To serve" (`menu-ordering/0018`).
 
 ## Alternatives considered
 
@@ -38,4 +39,4 @@ notice of a waiting order stays hidden, as everywhere on "To serve"
 
 - `packages/core/src/modules/menu-order/menu-order-actions.test.ts > what staff serve > lists the orders served since the owner's hour, the last served first`
 - `apps/web-app/e2e/menu-orders.spec.ts > a paid order is announced, listed to serve and served`
-- `apps/web-app/e2e/written-orders.spec.ts > staff remember a written item for today as Řízek for 199.00, and the next guest orders it from the menu`
+- `apps/web-app/e2e/written-orders.spec.ts > staff remember a written item for today as Řízek for 199.00, the next guest orders it from the menu, and staff keep it for good`

@@ -89,6 +89,13 @@ tags: [menu-orders]
     visible: '${output.re(output.tv("orders.written.remembered", { time: "4:00" }))}.*'
     timeout: 10000
 - runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.written.keepForGood"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["catalog.items.inMenu"])}
+    timeout: 10000
+- runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/items

@@ -133,6 +133,9 @@ export const csCommon = {
   "orders.reject.title": "Odmítnout objednávku {number}?",
   "orders.remember.description":
     "Hosté si ji můžou objednat z menu do {time}. Název i cenu můžete změnit.",
+  "orders.remember.forGood.description":
+    "Hosté si ji od teď můžou objednat z menu každý den. Název i cenu můžete změnit.",
+  "orders.remember.forGood.title": "Přidat „{text}“ do menu natrvalo",
   "orders.remember.save": "Dát do menu",
   "orders.remember.title": "Zapamatovat „{text}“ na dnešek",
   "orders.served": "Vydáno",
@@ -144,6 +147,8 @@ export const csCommon = {
   "orders.waiting": "Čekající objednávky: {count}",
   "orders.written": "Text hosta: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
+  "orders.written.addForGood": "Přidat do menu natrvalo",
+  "orders.written.keepForGood": "Ponechat v menu natrvalo",
   "orders.written.remember": "Zapamatovat na dnešek",
   "orders.written.remembered": "V menu do {time}",
   "orders.written.taxRate": "Sazba DPH položky „{text}“",
