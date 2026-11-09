@@ -254,6 +254,8 @@ Supported variables:
   ([`docs/cli.md`](docs/cli.md)).
 - `PAYKY_SELF_PAY_RELAYS`: the relays the account's self-pay relay list starts
   from ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_QERKO_POS_ID`: the `Pos-Id` header of the Qerko card terminal API
+  ([`docs/cli.md`](docs/cli.md)).
 - `PAYKY_EET_PRODUCTION_URL`: EET's production endpoint, without which the CLI
   reports nothing to EET ([`docs/cli.md`](docs/cli.md)).
 

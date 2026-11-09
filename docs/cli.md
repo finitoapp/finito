@@ -22,10 +22,12 @@ and
 
 `background-jobs run` registers the CLI as a device of the account, named
 `CLI on <hostname>`, of type `cli` and holding no permissions. Then it runs
-the jobs a native device runs: Fio and MONETA sync, Spark sync, EET
-reporting with `PAYKY_EET_PRODUCTION_URL` set, settling Qerko card payments and Lightning address payments,
-the self-pay publishing and the lookups of guests' selections, and closing bills that money paid. Guests see their payments and can pay by Lightning while
-no app is open.
+the jobs a native device runs, all but Qerko QR payments: Fio and MONETA
+sync, Spark sync, EET reporting with `PAYKY_EET_PRODUCTION_URL` set,
+settling Qerko card payments and Lightning address payments, the self-pay
+publishing and the lookups of guests' selections, and closing bills that
+money paid. Guests see their payments and can pay by Lightning while no app
+is open.
 
 It keeps its device id in `device-id` in its data directory, readable only by
 its user, so every new data directory is a new device. The owner removes a stale one in

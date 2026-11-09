@@ -24,7 +24,8 @@ everything a device needs.
   reporting once it has EET's production endpoint (`PAYKY_EET_PRODUCTION_URL`),
   since without one it would send a production account's sales to the
   playground, settling Qerko terminal and Lightning address payments
-  (qerko/0005) and self-pay publishing, with the device id and the self-pay
+  (qerko/0005), self-pay publishing, asking again for self-pay selections
+  and orders not found yet, and bill closing, with the device id and the self-pay
   root the app derives
   from the same master key. It publishes to the account's
   self-pay relays (table-self-pay/0003), whose defaults it takes from
