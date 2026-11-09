@@ -55,9 +55,18 @@ function useAppRunDeps() {
         baseUrl: nativeEnv.EXPO_PUBLIC_PAYKY_QERKO_BASE_URL,
       }),
       uuid: { create: () => Crypto.randomUUID() },
-      ...createSwitchioTerminalDep({ demo: account.demo !== null }),
-      ...createSwitchioClosureDep({ demo: account.demo !== null }),
-      ...createSwitchioRefundDep({ demo: account.demo !== null }),
+      ...createSwitchioTerminalDep({
+        demo: account.demo !== null,
+        accountId: account.id,
+      }),
+      ...createSwitchioClosureDep({
+        demo: account.demo !== null,
+        accountId: account.id,
+      }),
+      ...createSwitchioRefundDep({
+        demo: account.demo !== null,
+        accountId: account.id,
+      }),
       ...createEetApiDep(
         { ...dateDep, ...fetchDep },
         {
@@ -68,7 +77,7 @@ function useAppRunDeps() {
       ),
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
     }
-  }, [account.demo, account.masterKey, deviceEvolu, evolu])
+  }, [account.demo, account.id, account.masterKey, deviceEvolu, evolu])
 }
 
 export function useAppRun() {

@@ -30,6 +30,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
   it("never launches the terminal for a card payment", async () => {
     const result = await createSwitchioTerminalDep({
       demo: true,
+      accountId: "a1",
     }).switchioTerminal.pay({
       transactionId: "t1",
       amount: 100,
@@ -47,6 +48,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
   it("never closes the terminal's batch", async () => {
     const result = await createSwitchioClosureDep({
       demo: true,
+      accountId: "a1",
     }).switchioClosure.close()
 
     expect(result).toEqual({
@@ -57,7 +59,10 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
   })
 
   it("never takes a payment back, refunds to the card nor asks the terminal", async () => {
-    const { switchioRefund } = createSwitchioRefundDep({ demo: true })
+    const { switchioRefund } = createSwitchioRefundDep({
+      demo: true,
+      accountId: "a1",
+    })
 
     await expect(
       switchioRefund.referralRefund({
@@ -107,6 +112,7 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
 
     const result = await createSwitchioClosureDep({
       demo: false,
+      accountId: "a1",
     }).switchioClosure.close()
 
     expect(result.ok).toBe(true)

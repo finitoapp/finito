@@ -19,6 +19,7 @@ import {
   isSwitchioRefundInFlight,
   takeRestoredSwitchioRefundResult,
 } from "../../platform/switchio.ts"
+import { useLoadSwitchioResultOwner } from "./use-switchio-result-owner.ts"
 
 const restoredRefundErrorKeys = {
   CardSwitchioRefundDeclined: "refund.switchio.failed",
@@ -48,6 +49,7 @@ export function SwitchioRestoredRefund() {
   const appRun = useAppRun()
   const evolu = useAtomValue(evoluAtom)
   const deviceId = useAtomValue(accountAtom).device.id
+  const loadOwner = useLoadSwitchioResultOwner()
   const toast = useToast()
   const { t } = useTranslation()
   const asked = useRef(new Set<CardSwitchioRefundAttemptId>())
@@ -57,7 +59,7 @@ export function SwitchioRestoredRefund() {
     if (running.current || isSwitchioRefundInFlight()) return
     running.current = true
     try {
-      const restored = takeRestoredSwitchioRefundResult()
+      const restored = takeRestoredSwitchioRefundResult(await loadOwner())
       if (restored === "unusable") {
         nativeConsole.warn("[refund] Unusable restored Switchio refund result")
         toast.error(t("refund.switchio.restored.unusable"))
@@ -98,7 +100,7 @@ export function SwitchioRestoredRefund() {
     } finally {
       running.current = false
     }
-  }, [appRun, evolu, deviceId, toast, t])
+  }, [appRun, evolu, deviceId, loadOwner, toast, t])
 
   useEffect(() => {
     void settle()

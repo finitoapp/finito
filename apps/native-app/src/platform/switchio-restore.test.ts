@@ -71,6 +71,8 @@ const closureResult = {
   }),
 }
 
+const owner = { activeAccountId: "a1", deviceAccountIds: new Set(["a1"]) }
+
 beforeEach(() => {
   vi.clearAllMocks()
   native.stored.payment = null
@@ -85,32 +87,36 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
 
     const closing = createSwitchioClosureDep({
       demo: false,
+      accountId: "a1",
     }).switchioClosure.close()
     // SwitchioPay has returned: MainActivity stored the result, and the app
     // came back to the foreground before the promise's continuation ran.
     native.stored.closure = closureResult
 
-    expect(takeRestoredSwitchioClosureResult()).toBeNull()
+    expect(takeRestoredSwitchioClosureResult(owner)).toBeNull()
     expect(native.acknowledgeClosureResult).not.toHaveBeenCalled()
 
     launch.resolve(closureResult)
     await closing
 
     expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
-    expect(takeRestoredSwitchioClosureResult()).toBeNull()
+    expect(takeRestoredSwitchioClosureResult(owner)).toBeNull()
   })
 
   it("takes a stored closure result no promise in this runtime is waiting for", () => {
     native.stored.closure = closureResult
 
-    expect(takeRestoredSwitchioClosureResult()).toEqual(closureResult)
+    expect(takeRestoredSwitchioClosureResult(owner)).toEqual(closureResult)
     expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
   })
 
   it("refuses a second closure while one is on SwitchioPay", async () => {
     const launch = returnedButUnresolved<unknown>()
     native.close.mockReturnValueOnce(launch.promise)
-    const { switchioClosure } = createSwitchioClosureDep({ demo: false })
+    const { switchioClosure } = createSwitchioClosureDep({
+      demo: false,
+      accountId: "a1",
+    })
 
     const first = switchioClosure.close()
     const second = await switchioClosure.close()
@@ -139,6 +145,7 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
 
     const paying = createSwitchioTerminalDep({
       demo: false,
+      accountId: "a1",
     }).switchioTerminal.pay({
       transactionId: "t1",
       amount: 100,
@@ -147,7 +154,7 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
     })
     native.stored.payment = payResult
 
-    expect(takeRestoredSwitchioResult()).toBeNull()
+    expect(takeRestoredSwitchioResult(owner)).toBeNull()
     expect(native.acknowledgeResult).not.toHaveBeenCalled()
 
     launch.resolve(payResult)
@@ -167,18 +174,131 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
 
     const reversing = createSwitchioRefundDep({
       demo: false,
+      accountId: "a1",
     }).switchioRefund.reverse({
       transactionId: "r1",
       originalTransactionId: "t1",
     })
     native.stored.refund = refundResult
 
-    expect(takeRestoredSwitchioRefundResult()).toBeNull()
+    expect(takeRestoredSwitchioRefundResult(owner)).toBeNull()
     expect(native.acknowledgeRefundResult).not.toHaveBeenCalled()
 
     launch.resolve(refundResult)
     await reversing
 
     expect(native.acknowledgeRefundResult).toHaveBeenCalledExactlyOnceWith("r1")
+  })
+})
+
+describe("a stored SwitchioPay result belongs to the account it was launched in", () => {
+  const twoAccounts = {
+    activeAccountId: "b",
+    deviceAccountIds: new Set(["a", "b"]),
+  }
+
+  it("stores the account with each launch", async () => {
+    native.close.mockResolvedValueOnce(closureResult)
+    native.pay.mockResolvedValueOnce({
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+    })
+    native.reversal.mockResolvedValueOnce({
+      transactionId: "r1",
+      resultCode: 0,
+      transactionResult: null,
+    })
+
+    await createSwitchioClosureDep({
+      demo: false,
+      accountId: "a",
+    }).switchioClosure.close()
+    await createSwitchioTerminalDep({
+      demo: false,
+      accountId: "a",
+    }).switchioTerminal.pay({
+      transactionId: "t1",
+      amount: 100,
+      tipAmount: 0,
+      currencyCode: 203,
+    })
+    await createSwitchioRefundDep({
+      demo: false,
+      accountId: "a",
+    }).switchioRefund.reverse({
+      transactionId: "r1",
+      originalTransactionId: "t1",
+    })
+
+    expect(native.close).toHaveBeenCalledWith("a")
+    expect(native.pay.mock.calls[0]?.at(-1)).toBe("a")
+    expect(native.reversal.mock.calls[0]?.at(-1)).toBe("a")
+  })
+
+  it("leaves a closure of another account on this device for that account", () => {
+    native.stored.closure = { ...closureResult, accountId: "a" }
+
+    expect(takeRestoredSwitchioClosureResult(twoAccounts)).toBeNull()
+    expect(native.acknowledgeClosureResult).not.toHaveBeenCalled()
+
+    expect(
+      takeRestoredSwitchioClosureResult({
+        ...twoAccounts,
+        activeAccountId: "a",
+      })
+    ).toEqual(closureResult)
+    expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
+  })
+
+  it("clears a result whose account is gone from this device as unusable", () => {
+    native.stored.closure = { ...closureResult, accountId: "gone" }
+    native.stored.payment = {
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+      accountId: "gone",
+    }
+    native.stored.refund = {
+      transactionId: "r1",
+      resultCode: 0,
+      transactionResult: null,
+      accountId: "gone",
+    }
+
+    expect(takeRestoredSwitchioClosureResult(twoAccounts)).toBe("unusable")
+    expect(takeRestoredSwitchioResult(twoAccounts)).toBe("unusable")
+    expect(takeRestoredSwitchioRefundResult(twoAccounts)).toBe("unusable")
+    expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
+    expect(native.acknowledgeResult).toHaveBeenCalledExactlyOnceWith("t1")
+    expect(native.acknowledgeRefundResult).toHaveBeenCalledExactlyOnceWith("r1")
+  })
+
+  it("leaves a payment and a refund of another account on this device for that account", () => {
+    native.stored.payment = {
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+      accountId: "a",
+    }
+    native.stored.refund = {
+      transactionId: "r1",
+      resultCode: 0,
+      transactionResult: null,
+      accountId: "a",
+    }
+
+    expect(takeRestoredSwitchioResult(twoAccounts)).toBeNull()
+    expect(takeRestoredSwitchioRefundResult(twoAccounts)).toBeNull()
+    expect(native.acknowledgeResult).not.toHaveBeenCalled()
+    expect(native.acknowledgeRefundResult).not.toHaveBeenCalled()
+  })
+
+  it("takes a result stored before the account was kept in the active account", () => {
+    native.stored.closure = closureResult
+
+    expect(takeRestoredSwitchioClosureResult(twoAccounts)).toEqual(
+      closureResult
+    )
   })
 })

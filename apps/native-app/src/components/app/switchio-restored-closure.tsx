@@ -12,6 +12,7 @@ import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { takeRestoredSwitchioClosureResult } from "../../platform/switchio.ts"
+import { useLoadSwitchioResultOwner } from "./use-switchio-result-owner.ts"
 
 const restoredClosureErrorKeys = {
   SwitchioClosureFailed: "settings.cardClosure.error.failed",
@@ -32,11 +33,12 @@ const restoredClosureErrorKeys = {
 export function SwitchioRestoredClosure() {
   const appRun = useAppRun()
   const deviceId = useAtomValue(accountAtom).device.id
+  const loadOwner = useLoadSwitchioResultOwner()
   const toast = useToast()
   const { t } = useTranslation()
 
   const record = useCallback(async (): Promise<void> => {
-    const restored = takeRestoredSwitchioClosureResult()
+    const restored = takeRestoredSwitchioClosureResult(await loadOwner())
     if (restored === null) return
 
     if (restored === "unusable") {
@@ -55,7 +57,7 @@ export function SwitchioRestoredClosure() {
       nativeConsole.warn("[switchio] Restored closure result", result.error)
       toast.error(t(restoredClosureErrorKeys[result.error.type]))
     }
-  }, [appRun, deviceId, toast, t])
+  }, [appRun, deviceId, loadOwner, toast, t])
 
   useEffect(() => {
     void record()
