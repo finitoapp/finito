@@ -51,6 +51,7 @@ import { Route as TerminalSettingsSupportRouteImport } from './routes/_terminal.
 import { Route as TerminalSettingsTaxRatesRouteImport } from './routes/_terminal.settings.tax-rates'
 import { Route as TerminalSettingsThemeRouteImport } from './routes/_terminal.settings.theme'
 import { Route as TerminalSettingsTipsRouteImport } from './routes/_terminal.settings.tips'
+import { Route as TerminalActivityPaymentIdRefundRouteImport } from './routes/_terminal.activity_.$paymentId_.refund'
 import { Route as TerminalActivityBillsBillIdRouteImport } from './routes/_terminal.activity_.bills_.$billId'
 import { Route as TerminalCatalogCategoriesIndexRouteImport } from './routes/_terminal.catalog.categories.index'
 import { Route as TerminalCatalogCategoriesCatalogCategoryIdRouteImport } from './routes/_terminal.catalog.categories.$catalogCategoryId'
@@ -322,6 +323,12 @@ const TerminalSettingsTipsRoute = TerminalSettingsTipsRouteImport.update({
   path: '/tips',
   getParentRoute: () => TerminalSettingsRoute,
 } as any)
+const TerminalActivityPaymentIdRefundRoute =
+  TerminalActivityPaymentIdRefundRouteImport.update({
+    id: '/activity_/$paymentId_/refund',
+    path: '/activity/$paymentId/refund',
+    getParentRoute: () => TerminalRoute,
+  } as any)
 const TerminalActivityBillsBillIdRoute =
   TerminalActivityBillsBillIdRouteImport.update({
     id: '/activity_/bills_/$billId',
@@ -634,6 +641,7 @@ export interface FileRoutesByFullPath {
   '/activity/': typeof TerminalActivityIndexRoute
   '/catalog/': typeof TerminalCatalogIndexRoute
   '/settings/': typeof TerminalSettingsIndexRoute
+  '/activity/$paymentId/refund': typeof TerminalActivityPaymentIdRefundRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
   '/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
   '/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
@@ -712,6 +720,7 @@ export interface FileRoutesByTo {
   '/activity': typeof TerminalActivityIndexRoute
   '/catalog': typeof TerminalCatalogIndexRoute
   '/settings': typeof TerminalSettingsIndexRoute
+  '/activity/$paymentId/refund': typeof TerminalActivityPaymentIdRefundRoute
   '/activity/bills/$billId': typeof TerminalActivityBillsBillIdRoute
   '/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
   '/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
@@ -795,6 +804,7 @@ export interface FileRoutesById {
   '/_terminal/activity/': typeof TerminalActivityIndexRoute
   '/_terminal/catalog/': typeof TerminalCatalogIndexRoute
   '/_terminal/settings/': typeof TerminalSettingsIndexRoute
+  '/_terminal/activity_/$paymentId_/refund': typeof TerminalActivityPaymentIdRefundRoute
   '/_terminal/activity_/bills_/$billId': typeof TerminalActivityBillsBillIdRoute
   '/_terminal/catalog/categories/$catalogCategoryId': typeof TerminalCatalogCategoriesCatalogCategoryIdRoute
   '/_terminal/catalog/categories/new': typeof TerminalCatalogCategoriesNewRoute
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/activity/'
     | '/catalog/'
     | '/settings/'
+    | '/activity/$paymentId/refund'
     | '/activity/bills/$billId'
     | '/catalog/categories/$catalogCategoryId'
     | '/catalog/categories/new'
@@ -962,6 +973,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/catalog'
     | '/settings'
+    | '/activity/$paymentId/refund'
     | '/activity/bills/$billId'
     | '/catalog/categories/$catalogCategoryId'
     | '/catalog/categories/new'
@@ -1044,6 +1056,7 @@ export interface FileRouteTypes {
     | '/_terminal/activity/'
     | '/_terminal/catalog/'
     | '/_terminal/settings/'
+    | '/_terminal/activity_/$paymentId_/refund'
     | '/_terminal/activity_/bills_/$billId'
     | '/_terminal/catalog/categories/$catalogCategoryId'
     | '/_terminal/catalog/categories/new'
@@ -1392,6 +1405,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/tips'
       preLoaderRoute: typeof TerminalSettingsTipsRouteImport
       parentRoute: typeof TerminalSettingsRoute
+    }
+    '/_terminal/activity_/$paymentId_/refund': {
+      id: '/_terminal/activity_/$paymentId_/refund'
+      path: '/activity/$paymentId/refund'
+      fullPath: '/activity/$paymentId/refund'
+      preLoaderRoute: typeof TerminalActivityPaymentIdRefundRouteImport
+      parentRoute: typeof TerminalRoute
     }
     '/_terminal/activity_/bills_/$billId': {
       id: '/_terminal/activity_/bills_/$billId'
@@ -2055,6 +2075,7 @@ interface TerminalRouteChildren {
   TerminalActivityPaymentIdRoute: typeof TerminalActivityPaymentIdRoute
   TerminalPaymentTipRoute: typeof TerminalPaymentTipRoute
   TerminalPaymentPaymentIdRoute: typeof TerminalPaymentPaymentIdRoute
+  TerminalActivityPaymentIdRefundRoute: typeof TerminalActivityPaymentIdRefundRoute
   TerminalActivityBillsBillIdRoute: typeof TerminalActivityBillsBillIdRoute
 }
 
@@ -2068,6 +2089,7 @@ const TerminalRouteChildren: TerminalRouteChildren = {
   TerminalActivityPaymentIdRoute: TerminalActivityPaymentIdRoute,
   TerminalPaymentTipRoute: TerminalPaymentTipRoute,
   TerminalPaymentPaymentIdRoute: TerminalPaymentPaymentIdRoute,
+  TerminalActivityPaymentIdRefundRoute: TerminalActivityPaymentIdRefundRoute,
   TerminalActivityBillsBillIdRoute: TerminalActivityBillsBillIdRoute,
 }
 
