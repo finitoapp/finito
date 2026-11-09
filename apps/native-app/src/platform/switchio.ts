@@ -7,7 +7,6 @@ import {
   interpretSwitchioRefundResult,
   interpretSwitchioReversalResult,
   interpretSwitchioTransactionLookup,
-  type SwitchioCardRefundResult,
   type SwitchioClosureDep,
   SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
@@ -15,8 +14,9 @@ import {
   type SwitchioNativeRestoredClosure,
   SwitchioNativeRestoredClosureSchema,
   type SwitchioRefundDep,
-  type SwitchioRefundError,
+  type SwitchioResultUnreadableError,
   type SwitchioTerminalDep,
+  type SwitchioUnavailableError,
 } from "@payky/core/switchio"
 import { NativeModule, requireOptionalNativeModule } from "expo"
 import { z } from "zod"
@@ -150,8 +150,140 @@ const whileInFlight = async <T>(
 }
 
 /**
- * Takes card payments through SwitchioPay. A demo account calls no outside
- * service (demo-data/0001), so it never reaches the terminal.
+ * One of the native result stores — the payment's, the closure's, the
+ * refund's — each with its own request code, so a result never reaches
+ * another kind's recovery (payment/0008).
+ */
+interface SwitchioResultStore {
+  /** The in-flight flag its launches hold. */
+  readonly launch: "payment" | "closure" | "refund"
+  /**
+   * Whether a launch on it is waiting on SwitchioPay: a second would take
+   * the first one's promise on the native side, and the restore path must
+   * leave its result to that promise.
+   */
+  readonly busy: () => boolean
+  readonly peek: (module: PaykySwitchioNativeModule) => unknown
+}
+
+const paymentStore: SwitchioResultStore = {
+  launch: "payment",
+  busy: () => inFlight.payment,
+  peek: (module) => module.peekStoredResult(),
+}
+
+const closureStore: SwitchioResultStore = {
+  launch: "closure",
+  busy: () => inFlight.closure,
+  peek: (module) => module.peekStoredClosureResult(),
+}
+
+/** A lookup stores nothing, but asks the terminal the refund depends on. */
+const refundStore: SwitchioResultStore = {
+  launch: "refund",
+  busy: () => inFlight.refund || inFlight.lookup,
+  peek: (module) => module.peekStoredRefundResult(),
+}
+
+/**
+ * Launches SwitchioPay for one request and reads its answer, the same way
+ * for every kind:
+ *
+ * - a demo account calls no outside service (demo-data/0001), and a build
+ *   without the module has none to call;
+ * - a launch while another on the same store is in flight, or while a
+ *   result no one has settled yet waits there, is refused as unreadable:
+ *   it would overwrite what the terminal did, so the restore path settles
+ *   that first;
+ * - the stored copy is acknowledged as soon as the promise answers, since
+ *   the caller settles it from the promise;
+ * - only a missing SwitchioPay is known to fail before the terminal could
+ *   act. Any other rejection (a dropped bridge call, a recreated activity)
+ *   may come after it took the card or closed the batch, so it is an
+ *   unknown outcome, never "unavailable".
+ */
+const launchSwitchio = async <Answer, Value, Error>({
+  demo,
+  store,
+  launch,
+  acknowledge,
+  schema,
+  interpret,
+}: {
+  readonly demo: boolean
+  readonly store: SwitchioResultStore
+  readonly launch: (module: PaykySwitchioNativeModule) => Promise<unknown>
+  readonly acknowledge: (module: PaykySwitchioNativeModule) => void
+  readonly schema: z.ZodType<Answer>
+  readonly interpret: (answer: Answer) => Result<Value, Error>
+}): Promise<
+  Result<
+    Value,
+    Error | SwitchioUnavailableError | SwitchioResultUnreadableError
+  >
+> => {
+  if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
+  if (switchio === null) {
+    return err(createSwitchioUnavailableError({ reason: "notNativeRuntime" }))
+  }
+  if (store.busy()) return unreadable()
+  if (store.peek(switchio) !== null) return unreadable()
+
+  const module = switchio
+  return whileInFlight(store.launch, async () => {
+    try {
+      const raw = await launch(module)
+      acknowledge(module)
+      const parsed = schema.safeParse(raw)
+      return parsed.success ? interpret(parsed.data) : unreadable()
+    } catch (error) {
+      if (isNotInstalledRejection(error)) {
+        return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+      }
+      return unreadable()
+    }
+  })
+}
+
+/**
+ * The result of a launch whose promise was lost when Android killed the app,
+ * if one is waiting, the same way for every kind. Nothing while a launch on
+ * its store is in flight: that promise settles it. Only the active account
+ * takes it (`claimStoredResult`): one launched in another account of this
+ * device waits for that account, and one whose account is gone is cleared
+ * as unusable. Cleared as it is taken, so this path settles a result at
+ * most once; the settling Tasks are idempotent too.
+ */
+const takeStoredSwitchioResult = <Stored>({
+  store,
+  owner,
+  schema,
+  acknowledge,
+}: {
+  readonly store: SwitchioResultStore
+  readonly owner: SwitchioResultOwner
+  readonly schema: z.ZodType<Stored>
+  readonly acknowledge: (
+    module: PaykySwitchioNativeModule,
+    stored: Stored | null
+  ) => void
+}): Stored | "unusable" | null => {
+  if (switchio === null || store.busy()) return null
+  const stored = store.peek(switchio)
+  if (stored === null || stored === undefined) return null
+  const claim = claimStoredResult(stored, owner)
+  if (claim === "wait") return null
+
+  const parsed = schema.safeParse(stored)
+  acknowledge(switchio, parsed.success ? parsed.data : null)
+  return parsed.success && claim === "take" ? parsed.data : "unusable"
+}
+
+/**
+ * Takes card payments through SwitchioPay. The attempt's marker
+ * (`unresolvedTransactionId`) is stored before the terminal is launched, so
+ * acknowledging the answer cannot lose information: a crash before the
+ * outcome is recorded leaves the attempt unresolved, never silently unpaid.
  */
 export const createSwitchioTerminalDep = ({
   demo,
@@ -162,84 +294,43 @@ export const createSwitchioTerminalDep = ({
   readonly accountId: string
 }): SwitchioTerminalDep => ({
   switchioTerminal: {
-    pay: async (request) => {
-      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
-      if (switchio === null) {
-        return err(
-          createSwitchioUnavailableError({ reason: "notNativeRuntime" })
-        )
-      }
-
-      // A result no one has settled yet belongs to an earlier attempt and
-      // would be overwritten by this one: wait until it has been settled
-      // (`SwitchioRestoredResult` does that at start-up).
-      if (switchio.peekStoredResult() !== null) return unreadable()
-
-      const module = switchio
-      return whileInFlight("payment", async () => {
-        try {
-          const raw = await module.pay(
+    pay: (request) =>
+      launchSwitchio({
+        demo,
+        store: paymentStore,
+        launch: (module) =>
+          module.pay(
             request.transactionId,
             request.amount,
             request.tipAmount,
             request.currencyCode,
             request.invoiceNumber ?? null,
             accountId
-          )
-          // The attempt's marker (`unresolvedTransactionId`) was stored before
-          // the terminal was launched, so acknowledging here cannot lose
-          // information: a crash before the outcome is recorded leaves the
-          // attempt unresolved, never silently unpaid.
-          module.acknowledgeResult(request.transactionId)
-          const parsed = SwitchioNativePayResultSchema.safeParse(raw)
-          return parsed.success
-            ? interpretSwitchioPaymentResult(parsed.data)
-            : unreadable()
-        } catch (error) {
-          // Only a missing SwitchioPay activity is known to fail before
-          // anything was charged. Any other rejection (a dropped bridge call,
-          // a recreated activity) may come after the terminal took the card,
-          // so it is an unknown outcome, never "unavailable".
-          if (isNotInstalledRejection(error)) {
-            return err(
-              createSwitchioUnavailableError({ reason: "notInstalled" })
-            )
-          }
-          return unreadable()
-        }
-      })
-    },
+          ),
+        acknowledge: (module) =>
+          module.acknowledgeResult(request.transactionId),
+        schema: SwitchioNativePayResultSchema,
+        interpret: interpretSwitchioPaymentResult,
+      }),
   },
 })
 
-/**
- * The result of an attempt whose promise was lost when Android killed the
- * app, if one is waiting. Clears it first, so a result is settled at most
- * once by this path, and leaves it to the promise of a payment still in
- * flight; `settleRestoredSwitchioCardPayment` is idempotent too.
- * Only the active account takes it (`claimStoredResult`): one launched in
- * another account of this device waits for that account, and one whose
- * account is gone is cleared as unusable.
- */
+/** A payment's result whose promise was lost; see `takeStoredSwitchioResult`. */
 export const takeRestoredSwitchioResult = (
   owner: SwitchioResultOwner
-): SwitchioNativePayResult | "unusable" | null => {
-  if (switchio === null || inFlight.payment) return null
-  const stored = switchio.peekStoredResult()
-  if (stored === null || stored === undefined) return null
-  const claim = claimStoredResult(stored, owner)
-  if (claim === "wait") return null
-
-  const parsed = SwitchioNativePayResultSchema.safeParse(stored)
-  switchio.acknowledgeResult(parsed.success ? parsed.data.transactionId : null)
-  return parsed.success && claim === "take" ? parsed.data : "unusable"
-}
+): SwitchioNativePayResult | "unusable" | null =>
+  takeStoredSwitchioResult({
+    store: paymentStore,
+    owner,
+    schema: SwitchioNativePayResultSchema,
+    acknowledge: (module, stored) =>
+      module.acknowledgeResult(stored?.transactionId ?? null),
+  })
 
 /**
- * Closes the batch of the SwitchioPay terminal on this phone. Has its own
- * request code and result store on the native side, so a closure is never
- * taken for a payment's result (payment/0008). A demo account calls no
- * outside service (demo-data/0001), so it never reaches the terminal.
+ * Closes the batch of the SwitchioPay terminal on this phone. The caller
+ * records the closure from the promise; the stored copy is only for a
+ * promise lost with the process.
  */
 export const createSwitchioClosureDep = ({
   demo,
@@ -250,74 +341,38 @@ export const createSwitchioClosureDep = ({
   readonly accountId: string
 }): SwitchioClosureDep => ({
   switchioClosure: {
-    close: async ({ closureId }) => {
-      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
-      if (switchio === null) {
-        return err(
-          createSwitchioUnavailableError({ reason: "notNativeRuntime" })
-        )
-      }
-
-      // A closure already on SwitchioPay would lose its promise to this one
-      // on the native side.
-      if (inFlight.closure) return unreadable()
-
-      // An earlier closure's result no one has recorded yet would be
-      // overwritten by this one: let `SwitchioRestoredClosure` record it.
-      if (switchio.peekStoredClosureResult() !== null) return unreadable()
-
-      const module = switchio
-      return whileInFlight("closure", async () => {
-        try {
-          const raw = await module.close(closureId, accountId)
-          // Recorded by the caller from this promise; the stored copy is only
-          // for a promise lost with the process.
-          module.acknowledgeClosureResult()
-          const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
-          return parsed.success
-            ? interpretSwitchioClosureResult(parsed.data)
-            : unreadable()
-        } catch (error) {
-          // As with a payment, only a missing SwitchioPay is known to fail
-          // before the batch could have been closed.
-          if (isNotInstalledRejection(error)) {
-            return err(
-              createSwitchioUnavailableError({ reason: "notInstalled" })
-            )
-          }
-          return unreadable()
-        }
-      })
-    },
+    close: ({ closureId }) =>
+      launchSwitchio({
+        demo,
+        store: closureStore,
+        launch: (module) => module.close(closureId, accountId),
+        acknowledge: (module) => module.acknowledgeClosureResult(),
+        schema: SwitchioNativeClosureResultSchema,
+        interpret: interpretSwitchioClosureResult,
+      }),
   },
 })
 
 /**
- * The result of a closure whose promise was lost when Android killed the
- * app, if one is waiting. Clears it as it is taken, and leaves it to the
- * promise of a closure still in flight, so one result is recorded once.
- * A closure begun but never answered, with no promise left to wait for it,
- * comes back as `unanswered`: the batch may have been closed, and there are
- * no totals to record.
- * Only the active account takes it (`claimStoredResult`): one launched in
- * another account of this device waits for that account, and one whose
- * account is gone is cleared as unusable.
+ * A closure's result whose promise was lost; see `takeStoredSwitchioResult`.
+ * A closure begun but never answered comes back as `unanswered`: the batch
+ * may have been closed, and there are no totals to record.
  */
 export const takeRestoredSwitchioClosureResult = (
   owner: SwitchioResultOwner
 ): SwitchioNativeRestoredClosure | "unusable" | "unanswered" | null => {
-  if (switchio === null || inFlight.closure) return null
-  const stored = switchio.peekStoredClosureResult()
-  if (stored === null || stored === undefined) return null
-  const claim = claimStoredResult(stored, owner)
-  if (claim === "wait") return null
-
-  switchio.acknowledgeClosureResult()
-  if (UnansweredClosureSchema.safeParse(stored).success) {
-    return claim === "take" ? "unanswered" : "unusable"
-  }
-  const parsed = SwitchioNativeRestoredClosureSchema.safeParse(stored)
-  return parsed.success && claim === "take" ? parsed.data : "unusable"
+  const taken = takeStoredSwitchioResult({
+    store: closureStore,
+    owner,
+    schema: z.union([
+      UnansweredClosureSchema,
+      SwitchioNativeRestoredClosureSchema,
+    ]),
+    acknowledge: (module) => module.acknowledgeClosureResult(),
+  })
+  return taken !== null && typeof taken === "object" && "unanswered" in taken
+    ? "unanswered"
+    : taken
 }
 
 /**
@@ -326,66 +381,15 @@ export const takeRestoredSwitchioClosureResult = (
  * is: `resolveCardSwitchioRefundAttempt` turns a pending attempt it cannot
  * account for into an unknown one.
  */
-export const isSwitchioRefundInFlight = (): boolean =>
-  inFlight.refund || inFlight.lookup
-
-/**
- * Launches a reversal or a referral refund and reads its answer. Both share
- * the native refund store, so an earlier result no one has settled yet
- * blocks either.
- */
-const launchRefund = async ({
-  demo,
-  transactionId,
-  launch,
-  interpret,
-}: {
-  readonly demo: boolean
-  readonly transactionId: string
-  readonly launch: (module: PaykySwitchioNativeModule) => Promise<unknown>
-  readonly interpret: (answer: {
-    readonly resultCode: number
-    readonly transactionResult: string | null
-  }) => Result<SwitchioCardRefundResult, SwitchioRefundError>
-}): Promise<Result<SwitchioCardRefundResult, SwitchioRefundError>> => {
-  if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
-  if (switchio === null) {
-    return err(createSwitchioUnavailableError({ reason: "notNativeRuntime" }))
-  }
-  if (isSwitchioRefundInFlight()) return unreadable()
-
-  // An earlier refund's result no one has settled yet would be overwritten
-  // by this one: let `SwitchioRestoredRefund` settle it.
-  if (switchio.peekStoredRefundResult() !== null) return unreadable()
-
-  const module = switchio
-  return whileInFlight("refund", async () => {
-    try {
-      const raw = await launch(module)
-      // The attempt was written before SwitchioPay was launched, so a crash
-      // before its outcome is applied leaves it pending, to be asked about,
-      // never forgotten.
-      module.acknowledgeRefundResult(transactionId)
-      const parsed = SwitchioNativePayResultSchema.safeParse(raw)
-      return parsed.success ? interpret(parsed.data) : unreadable()
-    } catch (error) {
-      // As with a payment, only a missing SwitchioPay is known to fail
-      // before the card could have been refunded.
-      if (isNotInstalledRejection(error)) {
-        return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
-      }
-      return unreadable()
-    }
-  })
-}
+export const isSwitchioRefundInFlight = (): boolean => refundStore.busy()
 
 /**
  * Takes payments back (reversal) and refunds them to the card through
  * SwitchioPay, and asks it about one whose result was lost (refund/0007,
- * refund/0008). Has its own request code and result store
- * on the native side, so a refund result is never taken for a payment's or a
- * closure's. A demo account calls no outside service (demo-data/0001), so it
- * never reaches the terminal.
+ * refund/0008). A reversal and a referral refund share the refund store;
+ * the attempt is written before SwitchioPay is launched, so a crash before
+ * its outcome is applied leaves it pending, to be asked about, never
+ * forgotten.
  */
 export const createSwitchioRefundDep = ({
   demo,
@@ -397,21 +401,24 @@ export const createSwitchioRefundDep = ({
 }): SwitchioRefundDep => ({
   switchioRefund: {
     reverse: (request) =>
-      launchRefund({
+      launchSwitchio({
         demo,
-        transactionId: request.transactionId,
+        store: refundStore,
         launch: (module) =>
           module.reversal(
             request.transactionId,
             request.originalTransactionId,
             accountId
           ),
+        acknowledge: (module) =>
+          module.acknowledgeRefundResult(request.transactionId),
+        schema: SwitchioNativePayResultSchema,
         interpret: interpretSwitchioReversalResult,
       }),
     referralRefund: (request) =>
-      launchRefund({
+      launchSwitchio({
         demo,
-        transactionId: request.transactionId,
+        store: refundStore,
         launch: (module) =>
           module.referralRefund(
             request.transactionId,
@@ -420,15 +427,20 @@ export const createSwitchioRefundDep = ({
             request.refundId,
             accountId
           ),
+        acknowledge: (module) =>
+          module.acknowledgeRefundResult(request.transactionId),
+        schema: SwitchioNativePayResultSchema,
         interpret: interpretSwitchioRefundResult,
       }),
+    // Stores nothing and changes nothing, so every failure is `unknown`.
     lookup: async (transactionId) => {
-      if (demo || switchio === null || isSwitchioRefundInFlight()) {
+      if (demo || switchio === null || refundStore.busy()) {
         return { type: "unknown" }
       }
+      const module = switchio
       return whileInFlight("lookup", async () => {
         try {
-          const raw = await switchio.lookupTransaction(transactionId)
+          const raw = await module.lookupTransaction(transactionId)
           const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
           return parsed.success
             ? interpretSwitchioTransactionLookup({
@@ -444,27 +456,14 @@ export const createSwitchioRefundDep = ({
   },
 })
 
-/**
- * The result of a refund whose promise was lost when Android killed the
- * app, if one is waiting. Clears it as it is taken, and leaves it to the
- * promise of a refund still in flight; `settleRestoredCardSwitchioRefund` is
- * idempotent too.
- * Only the active account takes it (`claimStoredResult`): one launched in
- * another account of this device waits for that account, and one whose
- * account is gone is cleared as unusable.
- */
+/** A refund's result whose promise was lost; see `takeStoredSwitchioResult`. */
 export const takeRestoredSwitchioRefundResult = (
   owner: SwitchioResultOwner
-): SwitchioNativePayResult | "unusable" | null => {
-  if (switchio === null || inFlight.refund) return null
-  const stored = switchio.peekStoredRefundResult()
-  if (stored === null || stored === undefined) return null
-  const claim = claimStoredResult(stored, owner)
-  if (claim === "wait") return null
-
-  const parsed = SwitchioNativePayResultSchema.safeParse(stored)
-  switchio.acknowledgeRefundResult(
-    parsed.success ? parsed.data.transactionId : null
-  )
-  return parsed.success && claim === "take" ? parsed.data : "unusable"
-}
+): SwitchioNativePayResult | "unusable" | null =>
+  takeStoredSwitchioResult({
+    store: refundStore,
+    owner,
+    schema: SwitchioNativePayResultSchema,
+    acknowledge: (module, stored) =>
+      module.acknowledgeRefundResult(stored?.transactionId ?? null),
+  })
