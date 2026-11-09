@@ -56,7 +56,9 @@ const closedBatch = {
 const setUp = async (
   results: ReadonlyArray<Result<SwitchioClosure, SwitchioClosureError>> = [
     interpretSwitchioClosureResult(closedBatch),
-  ]
+  ],
+  /** Runs while the terminal is closing the batch, as another device would. */
+  duringClose: () => Promise<void> = async () => {}
 ) => {
   const testEvolu = await createEvoluTest()
   const queue = [...results]
@@ -65,18 +67,19 @@ const setUp = async (
   const dateDep = createTestDateDep()
   const switchioClosure: SwitchioClosureDep = {
     switchioClosure: {
-      close: ({ closureId }) => {
+      close: async ({ closureId }) => {
         calls += 1
         closureIds.push(closureId)
+        await duringClose()
         const next = queue.shift()
-        return Promise.resolve(
+        return (
           next ??
-            err(
-              createSwitchioResultUnreadableError({
-                resultCode: null,
-                rawResult: null,
-              })
-            )
+          err(
+            createSwitchioResultUnreadableError({
+              resultCode: null,
+              rawResult: null,
+            })
+          )
         )
       },
     },
@@ -150,6 +153,29 @@ describe("closeCardSwitchioBatch", () => {
     expect(!busy.ok && busy.error.type).toBe("SwitchioClosureFailed")
     expect(!unknown.ok && unknown.error.type).toBe("SwitchioResultUnreadable")
     expect(await t.evolu.loadQuery(cardSwitchioClosuresQuery(30))).toEqual([])
+  })
+
+  test("records a batch the terminal closed even when card payments were switched off meanwhile", async () => {
+    let switchOff = async () => {}
+    await using t = await setUp(undefined, () => switchOff())
+    await t.run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+    switchOff = async () => {
+      await t.run.ok(
+        saveCardSwitchioAccount({ enabled: false, currency: "CZK" })
+      )
+    }
+
+    const recorded = await t.run.orThrow(
+      closeCardSwitchioBatch({ deviceId: thisDevice })
+    )
+
+    expect(recorded).toMatchObject({
+      accountId: createCardSwitchioAccountId("CZK"),
+      currency: "CZK",
+    })
+    await expect
+      .poll(() => t.evolu.loadQuery(cardSwitchioClosuresQuery(30)))
+      .toMatchObject([{ id: recorded.id, currency: "CZK" }])
   })
 
   test("does not launch the terminal without a card account", async () => {
