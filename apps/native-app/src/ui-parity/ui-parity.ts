@@ -23,6 +23,7 @@ const rootKitModules = new Set([
   "list-skeleton",
   "menu-nav",
   "not-found-card",
+  "notification-dot",
   "option-toggle-group",
   "password-textarea",
   "route-message",

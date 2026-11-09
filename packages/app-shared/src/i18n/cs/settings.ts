@@ -907,9 +907,6 @@ export const csSettings = {
   "settings.security.verify.success": "Záloha ověřena.",
   "settings.security.verify.status.verified": "Ověřeno {date}",
   "settings.security.verify.status.unverified": "Neověřeno",
-  "settings.security.reminder.text": "Zazálohujte si účet",
-  "settings.security.reminder.action": "Zálohovat teď",
-  "settings.security.reminder.later": "Později",
   "settings.security.backup.description":
     "Zda je recovery phrase zazálohovaná a ověřená.",
   "settings.security.backup.open": "Zálohovat",
@@ -917,8 +914,6 @@ export const csSettings = {
   "settings.security.backup.start": "Zobrazit recovery phrase",
   "settings.security.backup.continue": "Mám zapsáno — ověřit",
   "settings.security.verify.skip": "Přeskočit ověření",
-  "settings.security.reminder.description":
-    "Když přijdete o telefon, bez zálohy se do svého účtu nedostanete. Zabere to asi minutu.",
   "settings.security.title": "Bezpečnost a synchronizace",
   "settings.security.transports.add": "Přidat transport",
   "settings.security.transports.demo":

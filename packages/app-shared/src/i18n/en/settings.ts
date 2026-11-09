@@ -908,9 +908,6 @@ export const enSettings = {
   "settings.security.verify.success": "Backup verified.",
   "settings.security.verify.status.verified": "Verified {date}",
   "settings.security.verify.status.unverified": "Not verified",
-  "settings.security.reminder.text": "Back up your account",
-  "settings.security.reminder.action": "Back up now",
-  "settings.security.reminder.later": "Later",
   "settings.security.backup.description":
     "Whether your recovery phrase is backed up and checked.",
   "settings.security.backup.open": "Back up",
@@ -918,8 +915,6 @@ export const enSettings = {
   "settings.security.backup.start": "Show recovery phrase",
   "settings.security.backup.continue": "I wrote it down — verify",
   "settings.security.verify.skip": "Skip verification",
-  "settings.security.reminder.description":
-    "If you lose this phone, you won't be able to get back into your account without a backup. It takes about a minute.",
   "settings.security.title": "Security & Sync",
   "settings.security.transports.add": "Add transport",
   "settings.security.transports.demo":

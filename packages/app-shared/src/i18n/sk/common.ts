@@ -87,6 +87,7 @@ export const skCommon = {
   "nav.home": "Domov",
   "nav.menu": "Menu",
   "nav.notifications": "Oznámenia",
+  "nav.notificationsUnread": "Oznámenia – nové",
   "nav.numpad": "Klávesnica",
   "nav.pos": "Predaj",
   "nav.settings": "Nastavenia",
@@ -94,6 +95,11 @@ export const skCommon = {
   "notifications.empty.description":
     "Čokoľvek, čo bude vyžadovať vašu pozornosť, sa objaví tu.",
   "notifications.empty.title": "Žiadne oznámenia",
+  "notifications.recoveryBackup.action": "Zálohovať",
+  "notifications.recoveryBackup.description":
+    "Keď prídete o telefón, bez zálohy sa do svojho účtu nedostanete. Zaberie to asi minútu.",
+  "notifications.recoveryBackup.later": "Neskôr",
+  "notifications.recoveryBackup.title": "Zálohujte si účet",
   "notifications.title": "Oznámenia",
   "passwordTextarea.hide": "Skryť obsah",
   "passwordTextarea.show": "Zobraziť obsah",

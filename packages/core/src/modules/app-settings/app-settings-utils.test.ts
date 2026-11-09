@@ -5,6 +5,7 @@ import {
   defaultPaymentMethodOrder,
   getFiatCurrency,
   getPaymentMethodOrder,
+  isBackupReminderDue,
   parseEnabledHomeModes,
   parsePaymentMethodOrder,
   resolveTerminalHomeMode,
@@ -154,5 +155,39 @@ describe("getFiatCurrency", () => {
     expect(getFiatCurrency({ fiatCurrency: "EUR" })).toBe("EUR")
     expect(getFiatCurrency({ fiatCurrency: null })).toBe("CZK")
     expect(getFiatCurrency(undefined)).toBe("CZK")
+  })
+})
+
+describe("isBackupReminderDue", () => {
+  const now = Date.UTC(2026, 10, 1, 12)
+  const base = {
+    hasPaidPayment: true,
+    verifiedAt: null,
+    isDemo: false,
+    snoozedUntil: null,
+    now,
+  }
+
+  test("shows after the first paid payment until verified", () => {
+    expect(isBackupReminderDue(base)).toBe(true)
+  })
+  test("shows nothing before a payment", () => {
+    expect(isBackupReminderDue({ ...base, hasPaidPayment: false })).toBe(false)
+  })
+  test("shows nothing once verified", () => {
+    expect(isBackupReminderDue({ ...base, verifiedAt: 1 })).toBe(false)
+  })
+  test("never shows on a demo account", () => {
+    expect(isBackupReminderDue({ ...base, isDemo: true })).toBe(false)
+  })
+  test("stays away until the snooze runs out", () => {
+    const snoozedUntil = now + 7 * 24 * 60 * 60 * 1000
+    expect(isBackupReminderDue({ ...base, snoozedUntil })).toBe(false)
+    expect(
+      isBackupReminderDue({ ...base, snoozedUntil, now: snoozedUntil - 1 })
+    ).toBe(false)
+    expect(
+      isBackupReminderDue({ ...base, snoozedUntil, now: snoozedUntil })
+    ).toBe(true)
   })
 })

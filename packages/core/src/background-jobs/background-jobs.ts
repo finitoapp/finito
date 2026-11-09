@@ -11,6 +11,7 @@ import { startMonetaAccountTransactionSyncJob } from "./jobs/moneta-account-tran
 import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-job.ts"
 import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
+import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
 /**
@@ -29,6 +30,7 @@ const nativeBackgroundJobs = [
   startQerkoPaymentConnectionJob,
   startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
+  startRecoveryBackupReminderJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**
@@ -47,6 +49,7 @@ const browserBackgroundJobs = [
   startQerkoPaymentConnectionJob,
   startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
+  startRecoveryBackupReminderJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
 
 export function getBackgroundJobsForRuntime(

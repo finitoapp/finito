@@ -57,6 +57,10 @@ import {
   PositiveInteger,
   TimestampMs,
 } from "../../modules/shared/schema.ts"
+import {
+  createTestDeviceAccountDep,
+  testNotificationsDep,
+} from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
   createEetReportingJob,
@@ -101,7 +105,10 @@ const startJob = async (
   } = {}
 ) => {
   const errors: unknown[] = []
+  const device = await createTestDeviceAccountDep()
   const jobDeps: AppBackgroundJobContext = {
+    ...device.deviceAccount,
+    ...testNotificationsDep(),
     ...context.deps,
     ...createQerkoApiDep({ posId: "test" }),
     ...createQerkoSocketDep(),
@@ -122,6 +129,7 @@ const startJob = async (
     [Symbol.asyncDispose]: async () => {
       await job[Symbol.asyncDispose]()
       await run[Symbol.asyncDispose]()
+      await device[Symbol.asyncDispose]()
     },
   }
 }

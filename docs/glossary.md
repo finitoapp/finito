@@ -38,6 +38,14 @@ where it is specified; the specification wins over this page.
   (`docs/decisions/access/0010`). Finito has no catalog tab: its items and
   tables are set up under `/settings`, and Notifications take the tab's
   place (`docs/decisions/navigation/0004`).
+- **Notification** (`JobNotification`,
+  `packages/core/src/background-jobs/notifications.ts`) — something a
+  background job raises while its state calls for it, such as the
+  recovery-phrase backup reminder, listed on `/notifications` and announced
+  by a dot (`docs/decisions/notification/0001`, `navigation/0005`). Held in
+  the app's memory only, never a stored row: the job hands over its whole
+  list each time and it goes when the job stops. Core carries the data,
+  each app's renderer the title, actions and permission.
 
 ## Selling
 
@@ -142,7 +150,7 @@ The word "account" means two unrelated things here.
 - **Recovery phrase** — the 20 SLIP-39 words derived from an account's master
   key (`seed` in Linky): the only way to restore the account elsewhere.
   **Verified** means the merchant typed three random words of it back
-  (`appSettings.recoveryPhraseVerifiedAt`, `account/0007`); it is the account's
+  (`appSettings.recoveryPhraseVerifiedAt`, `account/0009`); it is the account's
   own fact and syncs, unlike a device's PIN session.
 - **Linky owner** — the Evolu identity of Linky, the owner's personal wallet
   app, derived from the same master key next to Payky's own owner

@@ -25,9 +25,11 @@ import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { screenPaddingX } from "../../components/screen.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
+import { NotificationDot } from "../../components/ui/notification-dot.tsx"
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
 import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
+import { useActiveNotifications } from "../../hooks/use-active-notifications.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
@@ -36,7 +38,6 @@ import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { maxWidth } from "../../theme/tokens.ts"
 import { AmountKeypad } from "./amount-keypad.tsx"
-import { BackupReminderDialog } from "./backup-reminder-dialog.tsx"
 import { PosOverviewPage } from "./pos-overview-page.tsx"
 
 /**
@@ -67,6 +68,9 @@ export function TerminalHomePage() {
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   useScreenWakeLock(true)
   const confirmOpen = useIsConfirmOpen()
+  // The hamburger stands for the menu, Notifications its tab, so it carries
+  // their dot (a wide window shows it on the rail's tab instead).
+  const unread = useActiveNotifications().length > 0
   // A scan starts a new bill without a table; the bill then adds the item
   // as if it had been scanned there (scanner/0001).
   useHardwareScanner({
@@ -95,8 +99,9 @@ export function TerminalHomePage() {
     >
       {/* Web's header and keypad add `px-4` to the screen's sides. The mode
           switch sits at the start; the hamburger opens the menu on its first
-          tab (navigation/0001), and a wide window has the rail instead, so a
-          header with neither goes away. */}
+          tab (navigation/0001) and carries the notifications' dot, and a
+          wide window has the rail instead, so a header with neither goes
+          away. */}
       {wide && !showSwitch ? null : (
         <XStack
           items="center"
@@ -114,15 +119,17 @@ export function TerminalHomePage() {
           {wide ? null : (
             <Button
               variant="ghost"
-              aria-label={t("nav.menu")}
+              aria-label={t(unread ? "nav.notificationsUnread" : "nav.menu")}
               onPress={() => router.push("/activity")}
             >
-              <Icon icon={Menu} size={24} strokeWidth={3} />
+              <View>
+                <Icon icon={Menu} size={24} strokeWidth={3} />
+                {unread ? <NotificationDot /> : null}
+              </View>
             </Button>
           )}
         </XStack>
       )}
-      <BackupReminderDialog />
       {mode === "numpad" ? (
         <YStack flex={1} px={16}>
           <AmountKeypad

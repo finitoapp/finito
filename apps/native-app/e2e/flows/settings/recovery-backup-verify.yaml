@@ -1,6 +1,9 @@
-# web recovery-backup.spec.ts: "the backup reminder waits for the first payment,
-# Later puts it off, and verifying the backup ends it" (native shows no copy action; the check
-# refuses a wrong word and accepts the right ones).
+# web recovery-backup.spec.ts: "the backup reminder waits for the first payment
+# and Later puts it off" and "verifying the backup ends the reminder" (native
+# shows no copy action; the check refuses a wrong word and accepts the right
+# ones). The reminder is a notification (account/0009): a card on the
+# Notifications tab and a dot on home's hamburger and on the tab
+# (navigation/0005), each then named nav.notificationsUnread.
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -8,23 +11,35 @@ tags: [settings]
     file: ../../subflows/seed-onboarding.yaml
     env:
       QUERY: unverifiedBackup=true
-# Nothing is shown before the first payment.
-- assertNotVisible:
-    id: backup-reminder
+# Nothing is lit before the first payment.
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}
 - runFlow: ../../subflows/take-cash-payment.yaml
-# Home opens covered by the reminder, so wait for it, not for home's Pay.
+# After it home's hamburger lights up, and no dialog covers home.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: ""
-      TEXT: ${output.re(output.t["settings.security.reminder.text"])}
-- extendedWaitUntil:
-    visible:
-      id: backup-reminder
-    timeout: 15000
-- tapOn: ${output.t["settings.security.reminder.later"]}
-- assertNotVisible:
-    id: backup-reminder
+      TEXT: ${output.t["home.pay"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.notificationsUnread"]}
+- assertNotVisible: ${output.re(output.t["notifications.recoveryBackup.title"])}
+# The Notifications tab holds the reminder's card, its tab lit in the bar.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: notifications
+      TEXT: ${output.re(output.t["notifications.recoveryBackup.title"])}
+- assertVisible: ${output.re(output.t["notifications.recoveryBackup.description"])}
+- assertVisible: ${output.t["notifications.recoveryBackup.later"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.notificationsUnread"]}
 # Security only reports the status.
 - runFlow:
     file: ../../subflows/goto.yaml
@@ -61,3 +76,29 @@ tags: [settings]
     visible: ${output.t["settings.security.title"]}
     timeout: 15000
 - assertNotVisible: ${output.t["settings.security.verify.status.unverified"]}
+# The reminder is over: the card gives way to the empty state, and neither
+# the tab nor home's hamburger is lit.
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: notifications
+      TEXT: ${output.t["notifications.empty.title"]}
+- assertNotVisible: ${output.re(output.t["notifications.recoveryBackup.title"])}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.notifications"]}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["home.pay"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.menu"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["nav.notificationsUnread"]}
+      HIDDEN: "true"

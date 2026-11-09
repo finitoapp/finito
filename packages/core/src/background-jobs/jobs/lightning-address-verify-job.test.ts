@@ -1,6 +1,5 @@
 import { testCreateConsole, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
-
 import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
@@ -16,6 +15,10 @@ import {
 import { createRowId } from "../../modules/shared/evolu-utils.ts"
 import { testPreimage } from "../../modules/shared/lightning-invoice-test-fixtures.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
+import {
+  createTestDeviceAccountDep,
+  testNotificationsDep,
+} from "../../testing/background-jobs.ts"
 import type { AppBackgroundJobContext } from "../background-job-types.ts"
 import {
   createLightningAddressVerifyJob,
@@ -58,7 +61,9 @@ const setup = async () => {
     readonly retryBaseDelayMs: number
     readonly giveUpAfterMs?: number
   }) => {
+    const device = await createTestDeviceAccountDep()
     const jobDeps: AppBackgroundJobContext = {
+      ...device.deviceAccount,
       ...s.deps,
       ...createEetApiDep(s.deps),
       ...createQerkoApiDep({ posId: "pos" }),
@@ -67,6 +72,7 @@ const setup = async () => {
       ...connectivity,
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       console: testCreateConsole(),
       onError: (error) => {
         errors.push(error)
@@ -78,6 +84,7 @@ const setup = async () => {
       [Symbol.asyncDispose]: async () => {
         await job[Symbol.asyncDispose]()
         await jobRun[Symbol.asyncDispose]()
+        await device[Symbol.asyncDispose]()
       },
     }
   }

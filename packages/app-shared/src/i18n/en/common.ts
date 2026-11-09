@@ -85,6 +85,7 @@ export const enCommon = {
   "nav.home": "Home",
   "nav.menu": "Menu",
   "nav.notifications": "Notifications",
+  "nav.notificationsUnread": "Notifications – new",
   "nav.numpad": "Keypad",
   "nav.pos": "Sales",
   "nav.settings": "Settings",
@@ -92,6 +93,11 @@ export const enCommon = {
   "notifications.empty.description":
     "Anything that needs your attention will show up here.",
   "notifications.empty.title": "No notifications",
+  "notifications.recoveryBackup.action": "Back up",
+  "notifications.recoveryBackup.description":
+    "If you lose this phone, you won't be able to get back into your account without a backup. It takes about a minute.",
+  "notifications.recoveryBackup.later": "Later",
+  "notifications.recoveryBackup.title": "Back up your account",
   "notifications.title": "Notifications",
   "passwordTextarea.hide": "Hide content",
   "passwordTextarea.show": "Show content",

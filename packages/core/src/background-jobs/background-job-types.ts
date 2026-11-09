@@ -13,7 +13,11 @@ import type { EetApiDep } from "../integrations/eet/eet-client.ts"
 import type { QerkoApiDep } from "../integrations/qerko/qerko-client.ts"
 import type { QerkoConnectionStatusDep } from "../integrations/qerko/qerko-connection-status.ts"
 import type { QerkoSocketDep } from "../integrations/qerko/qerko-socket.ts"
-import type { EvoluDep } from "../modules/shared/evolu-deps.ts"
+import type {
+  DeviceAccountDep,
+  EvoluDep,
+} from "../modules/shared/evolu-deps.ts"
+import type { NotificationsDep } from "./notifications.ts"
 
 export interface BackgroundJobOnErrorDep {
   readonly onError: (error: unknown) => void
@@ -25,12 +29,14 @@ export type BackgroundJobContext = EvoluDep &
   DateDep &
   FetchDep &
   LockManagerDep &
+  NotificationsDep &
   BackgroundJobOnErrorDep
 
 export type BackgroundJob = Task<AsyncDisposable, never, BackgroundJobContext>
 
 export type AppBackgroundJobContext = BackgroundJobContext &
   DeviceIdDep &
+  DeviceAccountDep &
   ConnectivityDep &
   EetApiDep &
   QerkoApiDep &

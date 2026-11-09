@@ -87,6 +87,7 @@ export const csCommon = {
   "nav.home": "Domů",
   "nav.menu": "Menu",
   "nav.notifications": "Oznámení",
+  "nav.notificationsUnread": "Oznámení – nová",
   "nav.numpad": "Klávesnice",
   "nav.pos": "Prodej",
   "nav.settings": "Nastavení",
@@ -94,6 +95,11 @@ export const csCommon = {
   "notifications.empty.description":
     "Cokoli, co bude vyžadovat vaši pozornost, se objeví tady.",
   "notifications.empty.title": "Žádná oznámení",
+  "notifications.recoveryBackup.action": "Zálohovat",
+  "notifications.recoveryBackup.description":
+    "Když přijdete o telefon, bez zálohy se do svého účtu nedostanete. Zabere to asi minutu.",
+  "notifications.recoveryBackup.later": "Později",
+  "notifications.recoveryBackup.title": "Zazálohujte si účet",
   "notifications.title": "Oznámení",
   "passwordTextarea.hide": "Skrýt obsah",
   "passwordTextarea.show": "Zobrazit obsah",

@@ -909,9 +909,6 @@ export const skSettings = {
   "settings.security.verify.success": "Záloha overená.",
   "settings.security.verify.status.verified": "Overené {date}",
   "settings.security.verify.status.unverified": "Neoverené",
-  "settings.security.reminder.text": "Zazálohujte si účet",
-  "settings.security.reminder.action": "Zálohovať teraz",
-  "settings.security.reminder.later": "Neskôr",
   "settings.security.backup.description":
     "Či je recovery phrase zálohovaná a overená.",
   "settings.security.backup.open": "Zálohovať",
@@ -919,8 +916,6 @@ export const skSettings = {
   "settings.security.backup.start": "Zobraziť recovery phrase",
   "settings.security.backup.continue": "Mám zapísané — overiť",
   "settings.security.verify.skip": "Preskočiť overenie",
-  "settings.security.reminder.description":
-    "Keď prídete o telefón, bez zálohy sa do svojho účtu nedostanete. Zaberie to asi minútu.",
   "settings.security.title": "Bezpečnosť a synchronizácia",
   "settings.security.transports.add": "Pridať transport",
   "settings.security.transports.demo":

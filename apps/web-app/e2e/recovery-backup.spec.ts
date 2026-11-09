@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test"
 import { openRecoveryWords, readShownRecoveryWords } from "./support/access.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
@@ -6,38 +7,109 @@ import { createPayment, markCashPaidAndSettle } from "./support/payment.ts"
 
 test.use({ unverifiedBackup: true })
 
-const homeReady = (page: import("@playwright/test").Page) =>
+const homeReady = (page: Page) =>
   expect(
     page.getByRole("button", { name: translate("en", "home.pay") })
   ).toBeVisible()
 
-test("the backup reminder waits for the first payment, Later puts it off, and verifying the backup ends it", async ({
+/** Home's bell, by the label it has with (`lit`) or without the dot. */
+const bell = (page: Page, lit: boolean) =>
+  page.getByRole("button", {
+    name: translate(
+      "en",
+      lit ? "nav.notificationsUnread" : "nav.notifications"
+    ),
+    exact: true,
+  })
+
+const dot = (page: Page) => page.getByTestId("notification-dot")
+
+const reminderCard = (page: Page) =>
+  page.getByTestId("notification-recoveryPhraseBackup")
+
+/** The account's first paid payment, then back on home. */
+const payOnce = async (page: Page) => {
+  await createPayment(page, "en")
+  await markCashPaidAndSettle(page, "en")
+  await page.goto("/", { waitUntil: "domcontentloaded" })
+  await homeReady(page)
+}
+
+const expectNoReminder = async (page: Page) => {
+  await homeReady(page)
+  await expect(bell(page, false)).toBeVisible()
+  await expect(dot(page)).toHaveCount(0)
+}
+
+test("the backup reminder waits for the first payment and Later puts it off", async ({
   seededPage: page,
 }) => {
-  const reminder = page.getByTestId("backup-reminder")
-
-  await test.step("nothing is shown before the first payment", async () => {
-    await homeReady(page)
-    await expect(reminder).toBeHidden()
+  await test.step("nothing is lit before the first payment", async () => {
+    await expectNoReminder(page)
   })
 
-  await test.step("back on home after a paid payment, the reminder appears", async () => {
-    await createPayment(page, "en")
-    await markCashPaidAndSettle(page, "en")
-    await page.goto("/", { waitUntil: "domcontentloaded" })
-    await expect(reminder).toBeVisible()
+  await test.step("after a paid payment the bell lights up, with no dialog", async () => {
+    await payOnce(page)
+    await expect(bell(page, true)).toBeVisible()
+    await expect(dot(page)).toBeVisible()
+    await expect(page.getByRole("dialog")).toHaveCount(0)
   })
 
-  await test.step("Remind me next time puts it off, past a restart", async () => {
-    await reminder
+  await test.step("the bell opens the reminder's card", async () => {
+    await bell(page, true).click()
+    await expect(reminderCard(page)).toBeVisible()
+  })
+
+  await test.step("Later hides the card and the dot, past a restart", async () => {
+    await reminderCard(page)
       .getByRole("button", {
-        name: translate("en", "settings.security.reminder.later"),
+        name: translate("en", "notifications.recoveryBackup.later"),
       })
       .click()
-    await expect(reminder).toBeHidden()
+    await expect(reminderCard(page)).toHaveCount(0)
+    await expect(
+      page.getByText(translate("en", "notifications.empty.title"))
+    ).toBeVisible()
+    await page.goto("/", { waitUntil: "domcontentloaded" })
+    await expectNoReminder(page)
     await page.reload({ waitUntil: "domcontentloaded" })
-    await homeReady(page)
-    await expect(reminder).toBeHidden()
+    await expectNoReminder(page)
+  })
+})
+
+test("Back up on the reminder opens the backup and leaves the reminder on", async ({
+  seededPage: page,
+}) => {
+  await test.step("a paid payment lights the bell", async () => {
+    await payOnce(page)
+    await expect(dot(page)).toBeVisible()
+  })
+
+  await test.step("Back up opens the backup screen", async () => {
+    await bell(page, true).click()
+    await reminderCard(page)
+      .getByRole("button", {
+        name: translate("en", "notifications.recoveryBackup.action"),
+      })
+      .click()
+    await expect(page).toHaveURL(/\/settings\/security\/backup$/u)
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "settings.security.mnemonic.title"),
+      })
+    ).toBeVisible()
+  })
+
+  await test.step("an unfinished backup leaves the bell lit", async () => {
+    await page.goto("/", { waitUntil: "domcontentloaded" })
+    await expect(dot(page)).toBeVisible()
+  })
+})
+
+test("verifying the backup ends the reminder", async ({ seededPage: page }) => {
+  await test.step("a paid payment lights the bell", async () => {
+    await payOnce(page)
+    await expect(dot(page)).toBeVisible()
   })
 
   await test.step("Security only reports the backup status", async () => {
@@ -92,10 +164,14 @@ test("the backup reminder waits for the first payment, Later puts it off, and ve
     )
   })
 
-  await test.step("the reminder does not come back", async () => {
+  await test.step("no dot on the bell and Notifications is empty", async () => {
     await page.goto("/", { waitUntil: "domcontentloaded" })
-    await homeReady(page)
-    await expect(reminder).toBeHidden()
+    await expectNoReminder(page)
+    await bell(page, false).click()
+    await expect(
+      page.getByText(translate("en", "notifications.empty.title"))
+    ).toBeVisible()
+    await expect(reminderCard(page)).toHaveCount(0)
   })
 })
 

@@ -2,8 +2,13 @@ import {
   cashuBackgroundJobs,
   getBackgroundJobsForRuntime,
 } from "@payky/core/background-jobs/background-jobs"
+import type { NotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
+import type {
+  DeviceAccountId,
+  DeviceEvolu,
+} from "@payky/core/evolu/device-client"
 import type { Evolu } from "@payky/core/evolu/schema"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
@@ -26,6 +31,7 @@ import { appMigrationsAtom } from "../../atoms/app-migrations.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "../../atoms/cashu.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
+import { notificationStoreAtom } from "../../atoms/notifications.ts"
 import { qerkoConnectionStatusStore } from "../../atoms/qerko-connection-status.ts"
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { nativeEnv } from "../../core/native-env.ts"
@@ -40,17 +46,26 @@ import {
 /** The job context: the same effects web's `AppBackgroundJobs` passes. */
 const createJobDeps = ({
   evolu,
+  deviceEvolu,
+  deviceAccountId,
   deviceId,
+  notificationStore,
 }: {
   readonly evolu: Evolu
+  readonly deviceEvolu: DeviceEvolu
+  readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
+  readonly notificationStore: NotificationStore
 }) => {
   const dateDep = createDateDep()
   const fetchDep = createFetchDep()
   return {
     evolu,
     evoluOwner: evolu.appOwner,
+    deviceEvolu,
+    deviceAccountId,
     deviceId,
+    notifications: notificationStore.notifications,
     ...dateDep,
     ...fetchDep,
     ...createConnectivityDep(),
@@ -141,13 +156,24 @@ function useBackgroundJobs({
 function AppBackgroundJobs() {
   const evolu = useAtomValue(evoluAtom)
   const account = useAtomValue(accountAtom)
+  const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  const notificationStore = useAtomValue(notificationStoreAtom)
   // Jobs start behind the data migrations, so none reads a half-migrated
   // database. A failed migration still lets them start, as on web.
   useAtomValue(appMigrationsAtom)
 
   const deviceId = account.device.id
+  const deviceAccountId = account.id
   const start = useCallback(() => {
-    const run = nativeRun.create(createJobDeps({ evolu, deviceId }))
+    const run = nativeRun.create(
+      createJobDeps({
+        evolu,
+        deviceEvolu,
+        deviceAccountId,
+        deviceId,
+        notificationStore,
+      })
+    )
     // The APK takes web's Capacitor branch, where FIO and MONETA have no
     // CORS limit; the PWA takes the browser's, which leaves both banks out,
     // as their settings screens already do there.
@@ -157,7 +183,7 @@ function AppBackgroundJobs() {
         runBackgroundJobs(getBackgroundJobsForRuntime(Platform.OS !== "web"))
       ),
     }
-  }, [evolu, deviceId])
+  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
@@ -175,20 +201,36 @@ function CashuBackgroundJobs() {
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const cashuShardStore = useAtomValue(cashuShardStoreAtom)
   const cashuWalletDep = useAtomValue(cashuWalletDepAtom)
+  const notificationStore = useAtomValue(notificationStoreAtom)
   useAtomValue(appMigrationsAtom)
   const deviceId = account.device.id
+  const deviceAccountId = account.id
   const { masterKey } = account
   const start = useCallback(() => {
     const run = nativeRun.create({
-      ...createJobDeps({ evolu, deviceId }),
-      deviceEvolu,
+      ...createJobDeps({
+        evolu,
+        deviceEvolu,
+        deviceAccountId,
+        deviceId,
+        notificationStore,
+      }),
       masterKey,
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
       cashuShardStore,
       ...cashuWalletDep,
     })
     return { run, jobs: run.ok(runBackgroundJobs(cashuBackgroundJobs)) }
-  }, [cashuShardStore, cashuWalletDep, deviceEvolu, deviceId, evolu, masterKey])
+  }, [
+    cashuShardStore,
+    cashuWalletDep,
+    deviceAccountId,
+    deviceEvolu,
+    deviceId,
+    evolu,
+    masterKey,
+    notificationStore,
+  ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })
   return null
