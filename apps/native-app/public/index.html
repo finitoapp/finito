@@ -36,6 +36,16 @@
         height: 100%;
         flex: 1;
       }
+      /* An installed iOS web app with the black-translucent status bar draws
+         the page from the top of the screen but sizes 100% without the
+         status bar, leaving a strip at the bottom where the hidden menu bar,
+         slid just below the page, still showed. Add the status bar back. */
+      @media all and (display-mode: standalone) {
+        html,
+        body {
+          height: calc(100% + env(safe-area-inset-top));
+        }
+      }
     </style>
     <style>
       /* The palette's background before the app paints, so a dark device

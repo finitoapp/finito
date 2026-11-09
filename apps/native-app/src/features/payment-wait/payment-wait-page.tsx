@@ -22,10 +22,7 @@ import {
   cashuAccountQuery,
   enabledPaymentMethodAccountsQuery,
 } from "@payky/core/modules/account/account-queries"
-import type {
-  AccountId,
-  BankQrFormat,
-} from "@payky/core/modules/account/account-types"
+import type { AccountId } from "@payky/core/modules/account/account-types"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -267,9 +264,6 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [cardPending, setCardPending] = useState(false)
   const [cardErrorKey, setCardErrorKey] = useState<TranslationKey | null>(null)
   const [selected, setSelected] = useState<MethodId | null>(null)
-  const [selectedQrFormat, setSelectedQrFormat] = useState<BankQrFormat | null>(
-    null
-  )
   // The profile name is the recipient the bank QR names (payment/0005). It
   // comes from relays, so the QR shows at once and takes the name when it
   // lands rather than waiting on a relay that may be slow or down.
@@ -513,11 +507,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       cashuLegs,
     ]
   )
+  // One QR, in the account's default format: no switch at the counter.
   const defaultQrFormat = ibanAccount?.ibanDefaultQrFormat ?? "spayd"
-  const activeQrFormat = selectedQrFormat ?? defaultQrFormat
   const bankQrPayload =
     (
-      bankQrPayloads.find(({ format }) => format === activeQrFormat) ??
       bankQrPayloads.find(({ format }) => format === defaultQrFormat) ??
       bankQrPayloads[0]
     )?.payload ?? null
@@ -969,16 +962,16 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               createdAt={payment.createdAt}
               payable={status === "pending"}
               qrPayload={bankQrPayload}
-              qrPayloads={bankQrPayloads}
-              activeFormat={activeQrFormat}
-              onSelectFormat={setSelectedQrFormat}
               iban={ibanNumber}
+              recipient={profileName ?? ibanName}
               variableSymbol={payment.variableSymbol}
               preparing={preparing}
               canMarkPaid={canMarkIbanPaid}
               pending={ibanPending}
               errorKey={ibanErrorKey}
               onMarkPaid={() => void markIbanPaid()}
+              cancelPending={cancelPending}
+              onCancel={() => void cancel()}
             />
           ) : active.id === "qerkoPayment" ? (
             <QerkoQrPaymentTab
@@ -1098,33 +1091,38 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           )}
         </Suspense>
 
-        <YStack items="center" gap={16}>
-          <Text
-            fontSize={fontSize.lg}
-            lineHeight={fontSize.lg}
-            fontWeight={fontWeight.semibold}
-            text="center"
-          >
-            {t(
-              active?.id === "cash"
-                ? "paymentWait.cashPaid.prompt"
-                : active?.id === "card" || active?.id === "qerko"
-                  ? "paymentWait.cardPaid.prompt"
-                  : "paymentWait.scanOrTap"
-            )}
-          </Text>
-          <YStack pt={8}>
-            <Button
-              size="lg"
-              variant="outline"
-              iconStart={X}
-              label={t("paymentWait.cancel")}
-              pending={cancelPending}
-              disabled={markPending || ibanPending || cardPending}
-              onPress={() => void cancel()}
-            />
+        {/* The bank transfer keeps its cancel behind "More information". */}
+        {active?.id === "iban" && ibanNumber !== null ? null : (
+          <YStack items="center" gap={16}>
+            {active?.id === "cash" ||
+            active?.id === "card" ||
+            active?.id === "qerko" ? (
+              <Text
+                fontSize={fontSize.lg}
+                lineHeight={fontSize.lg}
+                fontWeight={fontWeight.semibold}
+                text="center"
+              >
+                {t(
+                  active.id === "cash"
+                    ? "paymentWait.cashPaid.prompt"
+                    : "paymentWait.cardPaid.prompt"
+                )}
+              </Text>
+            ) : null}
+            <YStack pt={8}>
+              <Button
+                size="lg"
+                variant="outline"
+                iconStart={X}
+                label={t("paymentWait.cancel")}
+                pending={cancelPending}
+                disabled={markPending || ibanPending || cardPending}
+                onPress={() => void cancel()}
+              />
+            </YStack>
           </YStack>
-        </YStack>
+        )}
       </YStack>
     </Screen>
   )

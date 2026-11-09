@@ -556,6 +556,22 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/payment-wait/payment-wait-qr-request.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      ToggleGroup:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      ToggleGroupItem:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      Dialog:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      DialogContent:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      DialogHeader:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      DialogTitle:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+      DetailRow:
+        'Finito shows the bank QR in the account\'s default format only, with the variable symbol, account and recipient as plain rows and the cancel in a "More information" dialog; web keeps the format switch and the inline copy rows',
+    },
   },
   {
     native: "src/features/payment-wait/payment-wait-page.tsx",

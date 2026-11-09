@@ -1,6 +1,6 @@
 # web payment-iban.spec.ts: "pay with IBAN: bank details stay hidden until
 # toggled, show the IBAN grouped in fours, and let the IBAN/VS be copied and
-# the transfer confirmed manually".
+# the transfer confirmed manually" — Finito shows them in a dialog, without copying.
 appId: ${APP_ID}
 tags: [payment-iban]
 ---
@@ -15,55 +15,29 @@ tags: [payment-iban]
     file: ../../subflows/assert-label.yaml
     env:
       LABEL: ${output.t["paymentWait.copyQr"]}
-# Hidden until the toggle is pressed.
-- assertNotVisible: CZ65 0800 0000 1920 0014 5399
+# Finito keeps the details behind "More information", in a dialog: the
+# Czech account number rather than the IBAN, nothing to copy.
+- assertNotVisible: 19-2000145399/0800
 - runFlow:
     file: ../../subflows/scroll-to-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.ibanDetails.show"]}
+      LABEL: ${output.t["paymentWait.ibanDetails.more"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.ibanDetails.show"]}
+      LABEL: ${output.t["paymentWait.ibanDetails.more"]}
 - extendedWaitUntil:
-    visible: CZ65 0800 0000 1920 0014 5399
+    visible: 19-2000145399/0800
     timeout: 10000
-- runFlow:
-    file: ../../subflows/scroll-to-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.ibanDetails.iban.copy"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.ibanDetails.iban.copy"]}
-- extendedWaitUntil:
-    visible: ${output.t["paymentWait.ibanDetails.iban.copied"]}
-    timeout: 10000
-- runFlow:
-    file: ../../subflows/scroll-to-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.ibanDetails.variableSymbol.copy"]}
+- assertVisible: ${output.t["paymentWait.ibanDetails.variableSymbol.label"]}
+- assertVisible: ${output.t["paymentWait.cancel"]}
+# Closing the dialog hides the details again.
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["paymentWait.ibanDetails.variableSymbol.copy"]}
+      LABEL: ${output.t["dialog.close"]}
 - extendedWaitUntil:
-    visible: ${output.t["paymentWait.ibanDetails.variableSymbol.copied"]}
-    timeout: 10000
-# Toggling again hides the details (once the toast no longer covers it).
-- extendedWaitUntil:
-    notVisible: ${output.t["paymentWait.ibanDetails.variableSymbol.copied"]}
-    timeout: 15000
-- runFlow:
-    file: ../../subflows/scroll-to-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.ibanDetails.hide"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["paymentWait.ibanDetails.hide"]}
-- extendedWaitUntil:
-    notVisible: CZ65 0800 0000 1920 0014 5399
+    notVisible: 19-2000145399/0800
     timeout: 10000
 # Manual confirmation.
 - scrollUntilVisible:
