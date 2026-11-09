@@ -27,6 +27,7 @@ import {
   cardSwitchioClosuresQuery,
   lastCardSwitchioClosurePerDeviceQuery,
 } from "./card-switchio-closure-queries.ts"
+import { createCardSwitchioClosureId } from "./card-switchio-closure-utils.ts"
 
 const thisDevice = createIdFromString<"Device">("closure-this-device")
 const otherDevice = createIdFromString<"Device">("closure-other-device")
@@ -60,11 +61,13 @@ const setUp = async (
   const testEvolu = await createEvoluTest()
   const queue = [...results]
   let calls = 0
+  const closureIds: string[] = []
   const dateDep = createTestDateDep()
   const switchioClosure: SwitchioClosureDep = {
     switchioClosure: {
-      close: () => {
+      close: ({ closureId }) => {
         calls += 1
+        closureIds.push(closureId)
         const next = queue.shift()
         return Promise.resolve(
           next ??
@@ -88,6 +91,7 @@ const setUp = async (
     run,
     dateDep,
     calls: () => calls,
+    closureIds: (): ReadonlyArray<string> => closureIds,
     async [Symbol.asyncDispose]() {
       await run[Symbol.asyncDispose]()
       await testEvolu[Symbol.asyncDispose]()
@@ -173,11 +177,12 @@ describe("recordRestoredCardSwitchioClosure", () => {
     t.dateDep.advance(60_000)
     const restored = await t.run.orThrow(
       recordRestoredCardSwitchioClosure({
-        restored: closedBatch,
+        restored: { ...closedBatch, closureId: t.closureIds()[0] ?? null },
         deviceId: thisDevice,
       })
     )
 
+    expect(t.closureIds()).toEqual([first.id])
     expect(restored.id).toBe(first.id)
     expect(restored.closedAt).toBe(first.closedAt)
     expect(
@@ -191,13 +196,68 @@ describe("recordRestoredCardSwitchioClosure", () => {
 
     const result = await t.run(
       recordRestoredCardSwitchioClosure({
-        restored: { resultCode: -1, transactionResult: "not json" },
+        restored: {
+          resultCode: -1,
+          transactionResult: "not json",
+          closureId: null,
+        },
         deviceId: thisDevice,
       })
     )
 
     expect(!result.ok && result.error.type).toBe("SwitchioResultUnreadable")
     expect(await t.evolu.loadQuery(cardSwitchioClosuresQuery(30))).toEqual([])
+  })
+})
+
+describe("a closure's id", () => {
+  const withoutTerminalTime = {
+    resultCode: -1,
+    transactionResult: JSON.stringify({ responseCode: "OK", batchTotals }),
+  }
+
+  test("keeps two closures apart when the terminal repeats the batch number and sends no time", async () => {
+    await using t = await setUp([
+      interpretSwitchioClosureResult(withoutTerminalTime),
+      interpretSwitchioClosureResult(withoutTerminalTime),
+    ])
+    await t.run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+
+    const first = await t.run.orThrow(
+      closeCardSwitchioBatch({ deviceId: thisDevice })
+    )
+    t.dateDep.advance(60_000)
+    const second = await t.run.orThrow(
+      closeCardSwitchioBatch({ deviceId: thisDevice })
+    )
+
+    expect(second.id).not.toBe(first.id)
+    expect(second.closedAt).toBeGreaterThan(first.closedAt)
+    await expect
+      .poll(() => t.evolu.loadQuery(cardSwitchioClosuresQuery(30)))
+      .toHaveLength(2)
+  })
+
+  test("is derived from the result for a closure stored by a build that minted none", async () => {
+    await using t = await setUp()
+    await t.run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+
+    const restored = await t.run.orThrow(
+      recordRestoredCardSwitchioClosure({
+        restored: { ...closedBatch, closureId: null },
+        deviceId: thisDevice,
+      })
+    )
+
+    expect(restored.id).toBe(
+      createCardSwitchioClosureId({
+        deviceId: thisDevice,
+        closure: {
+          batchNumber: batchTotals.batchNumber,
+          terminalDateTime: "Nov 8, 2026 22:14:03",
+        },
+      })
+    )
   })
 })
 

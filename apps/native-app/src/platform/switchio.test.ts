@@ -51,7 +51,21 @@ it("names the closure functions the same in JS and Kotlin", () => {
     expect(js).toContain(`${fn}()`)
     expect(module).toContain(`Function("${fn}")`)
   }
-  expect(js).toContain("close(accountId: string): Promise<unknown>")
+  expect(js).toContain(
+    "close(closureId: string, accountId: string): Promise<unknown>"
+  )
+  expect(module).toContain(
+    'AsyncFunction("close") { closureId: String, accountId: String'
+  )
+  // The closure id is kept with the result and handed back with it, so a
+  // restored closure is recorded as the row it was launched as.
+  expect(closureStore).toContain(".putString(CLOSURE_ID, closureId)")
+  expect(closureStore).toContain("p.getString(CLOSURE_ID, null)")
+  const peek = module.slice(
+    module.indexOf('Function("peekStoredClosureResult")'),
+    module.indexOf('Function("acknowledgeClosureResult")')
+  )
+  expect(peek).toContain('"closureId" to stored.closureId')
   expect(module).toContain('AsyncFunction("close")')
 })
 

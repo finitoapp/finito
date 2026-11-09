@@ -9,10 +9,11 @@ import {
   interpretSwitchioTransactionLookup,
   type SwitchioCardRefundResult,
   type SwitchioClosureDep,
-  type SwitchioNativeClosureResult,
   SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
   SwitchioNativePayResultSchema,
+  type SwitchioNativeRestoredClosure,
+  SwitchioNativeRestoredClosureSchema,
   type SwitchioRefundDep,
   type SwitchioRefundError,
   type SwitchioTerminalDep,
@@ -37,7 +38,7 @@ declare class PaykySwitchioNativeModule extends NativeModule {
   ): Promise<unknown>
   peekStoredResult(): unknown
   acknowledgeResult(transactionId: string | null): void
-  close(accountId: string): Promise<unknown>
+  close(closureId: string, accountId: string): Promise<unknown>
   peekStoredClosureResult(): unknown
   acknowledgeClosureResult(): void
   reversal(
@@ -246,7 +247,7 @@ export const createSwitchioClosureDep = ({
   readonly accountId: string
 }): SwitchioClosureDep => ({
   switchioClosure: {
-    close: async () => {
+    close: async ({ closureId }) => {
       if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
       if (switchio === null) {
         return err(
@@ -265,7 +266,7 @@ export const createSwitchioClosureDep = ({
       const module = switchio
       return whileInFlight("closure", async () => {
         try {
-          const raw = await module.close(accountId)
+          const raw = await module.close(closureId, accountId)
           // Recorded by the caller from this promise; the stored copy is only
           // for a promise lost with the process.
           module.acknowledgeClosureResult()
@@ -298,7 +299,7 @@ export const createSwitchioClosureDep = ({
  */
 export const takeRestoredSwitchioClosureResult = (
   owner: SwitchioResultOwner
-): SwitchioNativeClosureResult | "unusable" | null => {
+): SwitchioNativeRestoredClosure | "unusable" | null => {
   if (switchio === null || inFlight.closure) return null
   const stored = switchio.peekStoredClosureResult()
   if (stored === null || stored === undefined) return null
@@ -306,7 +307,7 @@ export const takeRestoredSwitchioClosureResult = (
   if (claim === "wait") return null
 
   switchio.acknowledgeClosureResult()
-  const parsed = SwitchioNativeClosureResultSchema.safeParse(stored)
+  const parsed = SwitchioNativeRestoredClosureSchema.safeParse(stored)
   return parsed.success && claim === "take" ? parsed.data : "unusable"
 }
 

@@ -240,6 +240,19 @@ export type SwitchioNativeClosureResult = z.output<
   typeof SwitchioNativeClosureResultSchema
 >
 
+/**
+ * A closure result as the closure's store keeps it, with the id of the
+ * closure it was launched as (payment/0008). Null for a result stored by a
+ * build that minted no such id.
+ */
+export const SwitchioNativeRestoredClosureSchema =
+  SwitchioNativeClosureResultSchema.extend({
+    closureId: z.string().nullable().default(null),
+  })
+export type SwitchioNativeRestoredClosure = z.output<
+  typeof SwitchioNativeRestoredClosureSchema
+>
+
 const BatchCountSchema = z.number().int().nonnegative()
 const BatchAmountSchema = z.number().int()
 
@@ -378,7 +391,14 @@ export const interpretSwitchioClosureResult = ({
  */
 export interface SwitchioClosureDep {
   readonly switchioClosure: {
-    readonly close: () => Promise<Result<SwitchioClosure, SwitchioClosureError>>
+    /**
+     * `closureId` is the row the closure will be recorded as, stored with
+     * its result before the terminal is launched, so the same closure
+     * restored after a restart is that row again.
+     */
+    readonly close: (request: {
+      readonly closureId: string
+    }) => Promise<Result<SwitchioClosure, SwitchioClosureError>>
   }
 }
 
