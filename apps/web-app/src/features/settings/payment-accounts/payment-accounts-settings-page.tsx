@@ -349,12 +349,15 @@ export function PaymentAccountsSettingsPage() {
       await run.ok(setPaymentMethodOrder(nextOrder))
     })
 
+  // From the order on screen, not the stored one: right after a drag the
+  // store may still hold the order the drag left, and a key pressed then
+  // would move the method from where it no longer is.
   const move = (method: DefaultPaymentMethod, offset: -1 | 1) => {
-    const index = order.indexOf(method)
-    const neighbour = order[index + offset]
+    const index = shownOrder.indexOf(method)
+    const neighbour = shownOrder[index + offset]
     if (index === -1 || neighbour === undefined) return
 
-    void store(order.with(index, neighbour).with(index + offset, method))
+    void store(shownOrder.with(index, neighbour).with(index + offset, method))
   }
 
   const reorder = (next: ReadonlyArray<DefaultPaymentMethod>) => {

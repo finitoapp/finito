@@ -75,6 +75,15 @@ test("reorder payment methods and let the first available one be the default", a
     ).toBeVisible()
   })
 
+  // The list shows a drag's order before it is stored. Wait for the store,
+  // or a key pressed next races the drag's write and one of them is lost.
+  await test.step("the dragged order is stored", async () => {
+    await reloadPage(page, "en", "settings.paymentAccounts.title")
+    await expect(methodRows(page).first()).toContainText(
+      en("settings.paymentAccounts.method.iban")
+    )
+  })
+
   await test.step("the arrow keys move a focused grip too", async () => {
     const grip = reorderGrip(page, "settings.paymentAccounts.method.iban")
     await grip.focus()
