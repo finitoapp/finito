@@ -34,7 +34,11 @@ reconciliation with Finito's own card payments has a window to count in.
 - The row's id derives from the device, the batch number and the terminal's
   time, so the same result recorded twice — through its promise and again
   from the copy `MainActivity` stores when Android killed the app meanwhile
-  — is one row, and the second write keeps the first `closedAt`.
+  — is one row, and the second write keeps the first `closedAt`. Native
+  code stores the result before it resolves the promise, and nothing orders
+  the promise against the app coming back to the foreground, so the restore
+  path leaves the stored copy alone while a closure is in flight in this JS
+  runtime: each result is recorded by one path, never by both at once.
 - The currency is the card account's at closing time; the result names none.
 
 ## Alternatives considered
@@ -64,3 +68,5 @@ but does not close batches.
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > recordRestoredCardSwitchioClosure > records the same result once, whether it came back through the promise or after a restart`
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > lastCardSwitchioClosurePerDeviceQuery > lists each device's latest closure with the device's name`
 - `apps/native-app/src/platform/switchio.test.ts > never hands a closure result to the payment's store or recovery`
+- `apps/native-app/src/platform/switchio-in-flight.test.ts > a SwitchioPay result is settled by one path (payment/0008) > leaves a closure's stored result to its promise while the closure is in flight`
+- `apps/native-app/src/platform/switchio-in-flight.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure result no promise in this runtime is waiting for`
