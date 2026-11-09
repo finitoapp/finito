@@ -1,5 +1,4 @@
 import {
-  createIdFromString,
   err,
   ok,
   sqliteFalse,
@@ -48,12 +47,14 @@ import type { qerkoTerminalRefundAttempt } from "./refund.ts"
 import {
   loadGoodsRefundPlan,
   loadTipRefundPlan,
+  loadWholeRefundPlan,
   type RefundAmountInvalidError,
   type RefundItemsUnavailableError,
   type RefundLineInput,
   type RefundLineUnavailableError,
   type RefundPaymentNotPaidError,
   type RefundTipUnavailableError,
+  tipRefundId,
 } from "./refund-actions.ts"
 import {
   computeCardRefundRows,
@@ -63,6 +64,7 @@ import {
 import {
   qerkoTerminalRefundAttemptByIdQuery,
   qerkoTerminalRefundAttemptsByPaymentIdQuery,
+  qerkoTerminalRefundsMissingTipQuery,
 } from "./refund-queries.ts"
 import type { RefundId } from "./refund-types.ts"
 
@@ -172,25 +174,50 @@ const settleQerkoTerminalRefund =
       return ok({ status: "unresolved" })
     }
 
-    const rows = computeCardRefundRows(
-      {
-        refundId,
-        paymentId: attempt.paymentId,
-        deviceId: attempt.deviceId,
-        amount: attempt.amount,
-        currency: payment.currency,
-        method: "qerkoTerminal",
-        isTip: attempt.isTip,
-        linesJson: attempt.linesJson,
-        accountId: qerkoPayment.accountId,
-        accountTransactionId: deriveQerkoRefundAccountTransactionId(refundId),
-      },
-      run.deps.date.now()
-    )
+    const now = run.deps.date.now()
+    const refundRows = (refund: {
+      readonly refundId: RefundId
+      readonly amount: NonNegativeInteger
+      readonly isTip: typeof sqliteTrue | null
+      readonly linesJson: NonEmptyString | null
+    }) =>
+      computeCardRefundRows(
+        {
+          ...refund,
+          paymentId: attempt.paymentId,
+          deviceId: attempt.deviceId,
+          currency: payment.currency,
+          method: "qerkoTerminal",
+          accountId: qerkoPayment.accountId,
+          accountTransactionId: deriveQerkoRefundAccountTransactionId(
+            refund.refundId
+          ),
+        },
+        now
+      )
+    // A refund of the whole payment returned the tip with the goods: it is
+    // written as the tip's own refund (refund/0004).
+    const rows = [
+      refundRows({ ...attempt, refundId }),
+      ...(attempt.isTip === sqliteTrue ||
+      attempt.tipAmount === null ||
+      attempt.tipAmount === 0
+        ? []
+        : [
+            refundRows({
+              refundId: tipRefundId(attempt.paymentId),
+              amount: attempt.tipAmount,
+              isTip: sqliteTrue,
+              linesJson: null,
+            }),
+          ]),
+    ]
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
-      upsertCardRefundRows(evolu, rows, mutationOptions)
+      for (const refund of rows) {
+        upsertCardRefundRows(evolu, refund, mutationOptions)
+      }
       evolu.update(
         "qerkoTerminalRefundAttempt",
         { id: refundId, isDeleted: sqliteTrue },
@@ -243,9 +270,12 @@ const applyQerkoRefund =
 
 /**
  * Starts refunding to the card on the terminal that took the payment (qerko/0006),
- * for an amount (or goods lines), or the payment's tip. The same checks as any
- * refund decide what may be asked for; on top, the payment must have been
- * taken through Qerko, which hands out the id its refund needs.
+ * for an amount (or goods lines), the payment's tip, or the `whole` payment —
+ * every goods amount still refundable and the tip, which the terminal returns
+ * in one go and which is written as two refunds once it approved, the goods'
+ * and the tip's (refund/0004). The same checks as any refund decide what may
+ * be asked for; on top, the payment must have been taken through Qerko,
+ * which hands out the id its refund needs.
  *
  * A refund started while another one of the payment is pending or unknown is
  * refused: the terminal could end up refunding twice.
@@ -260,6 +290,7 @@ export const startQerkoTerminalRefund =
     readonly deviceId: DeviceId | null
   } & (
     | { readonly tip: true }
+    | { readonly whole: true }
     | { readonly amount: NonNegativeInteger }
     | { readonly lines: ReadonlyArray<RefundLineInput> }
   )): Task<
@@ -272,14 +303,22 @@ export const startQerkoTerminalRefund =
 
     let payment: { readonly currency: "CZK" | "EUR" | "USD" }
     let refundAmount: NonNegativeInteger
+    let tipAmount: NonNegativeInteger | null = null
+    let isTip = "tip" in what
     let linesJson: NonEmptyString | null = null
-    let refundId: RefundId
     if ("tip" in what) {
       const plan = await run(loadTipRefundPlan(paymentId))
       if (!plan.ok) return plan
       payment = plan.value.payment
       refundAmount = plan.value.tipAmount
-      refundId = createIdFromString<"Refund">(`refund:tip:${paymentId}`)
+    } else if ("whole" in what) {
+      const plan = await run(loadWholeRefundPlan(paymentId))
+      if (!plan.ok) return plan
+      payment = plan.value.payment
+      // Only the tip left is the tip's refund; goods carry the tip beside.
+      isTip = plan.value.goodsAmount === 0
+      refundAmount = isTip ? plan.value.tipAmount : plan.value.goodsAmount
+      if (!isTip && plan.value.tipAmount > 0) tipAmount = plan.value.tipAmount
     } else {
       const plan = await run(
         loadGoodsRefundPlan({
@@ -294,8 +333,8 @@ export const startQerkoTerminalRefund =
       if (plan.value.refundLines.length > 0) {
         linesJson = encodeRefundLines(plan.value.refundLines)
       }
-      refundId = createRowId<"Refund">()
     }
+    const refundId = isTip ? tipRefundId(paymentId) : createRowId<"Refund">()
 
     const [[qerkoPayment], attempts] = await Promise.all([
       evolu.loadQuery(paymentQerkoTerminalByIdQuery(paymentId)),
@@ -344,6 +383,7 @@ export const startQerkoTerminalRefund =
         transactionId,
         terminalId,
         amount: refundAmount,
+        tipAmount,
         linesJson,
         status: "pending",
         failureReason: null,
@@ -352,7 +392,7 @@ export const startQerkoTerminalRefund =
       }
       evolu.upsert(
         "qerkoTerminalRefundAttempt",
-        "tip" in what ? { ...attempt, isTip: sqliteTrue } : attempt,
+        isTip ? { ...attempt, isTip: sqliteTrue } : attempt,
         mutationOptions
       )
     })
@@ -363,7 +403,7 @@ export const startQerkoTerminalRefund =
         terminalId,
         transactionId,
         refundId: qerkoPayment.qerkoRefundId,
-        amount: Integer(refundAmount),
+        amount: Integer(refundAmount + (tipAmount ?? 0)),
         currency: payment.currency,
       })
     )
@@ -464,4 +504,55 @@ export const dismissQerkoTerminalRefundAttempt =
       )
     )
     return ok()
+  }
+
+/**
+ * Writes the tip of every refund of a whole payment to the card whose goods
+ * were written without it. An older version settles such an attempt knowing
+ * nothing of its `tipAmount`, and the attempt may be settled on any device
+ * (qerko/0005), so the tip the terminal returned would go unrecorded. The
+ * tip's refund has its one id per payment (refund/0004) and its money
+ * movement derives from it, so a repair that runs twice, or beside a newer
+ * settlement, writes the same rows. It is dated as the goods were.
+ */
+export const repairQerkoTerminalTipRefunds =
+  (): Task<number, never, EvoluDep & EvoluOwnerDep> => async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    const missing = await evolu.loadQuery(qerkoTerminalRefundsMissingTipQuery)
+    const rows: Array<ReturnType<typeof computeCardRefundRows>> = []
+    for (const attempt of missing) {
+      if (attempt.tipAmount === 0) continue
+      const [qerkoPayment] = await evolu.loadQuery(
+        paymentQerkoTerminalByIdQuery(attempt.paymentId)
+      )
+      if (qerkoPayment === undefined) continue
+      const refundId = tipRefundId(attempt.paymentId)
+      rows.push(
+        computeCardRefundRows(
+          {
+            refundId,
+            paymentId: attempt.paymentId,
+            deviceId: attempt.deviceId,
+            amount: attempt.tipAmount,
+            currency: attempt.currency,
+            method: "qerkoTerminal",
+            isTip: sqliteTrue,
+            linesJson: null,
+            accountId: qerkoPayment.accountId,
+            accountTransactionId:
+              deriveQerkoRefundAccountTransactionId(refundId),
+          },
+          new Date(attempt.refundedAt)
+        )
+      )
+    }
+    if (rows.length === 0) return ok(0)
+
+    await runMutationWithCompletion((options) => {
+      const mutationOptions = { ...options, owner: evoluOwner }
+      for (const refund of rows) {
+        upsertCardRefundRows(evolu, refund, mutationOptions)
+      }
+    })
+    return ok(rows.length)
   }

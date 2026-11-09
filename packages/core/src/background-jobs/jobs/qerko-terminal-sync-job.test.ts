@@ -1,4 +1,9 @@
-import { testCreateConsole, testCreateRun } from "@evolu/common"
+import {
+  sqliteFalse,
+  sqliteTrue,
+  testCreateConsole,
+  testCreateRun,
+} from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import type { ConnectivityDep } from "../../deps.ts"
@@ -16,9 +21,16 @@ import { startQerkoTerminalPayment } from "../../modules/payment/payment-qerko-a
 import { accountTransactionsByPaymentIdQuery } from "../../modules/payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
 import { saveQerkoPlugin } from "../../modules/qerko-plugin/qerko-plugin-actions.ts"
+import { tipRefundId } from "../../modules/refund/refund-actions.ts"
 import { startQerkoTerminalRefund } from "../../modules/refund/refund-qerko-actions.ts"
-import { refundsByPaymentIdQuery } from "../../modules/refund/refund-queries.ts"
-import { createRowId } from "../../modules/shared/evolu-utils.ts"
+import {
+  qerkoTerminalRefundAttemptsByPaymentIdQuery,
+  refundsByPaymentIdQuery,
+} from "../../modules/refund/refund-queries.ts"
+import {
+  createRowId,
+  runMutationWithCompletion,
+} from "../../modules/shared/evolu-utils.ts"
 import {
   NonEmptyString255,
   NonEmptyStringSchema,
@@ -81,7 +93,11 @@ const approved = (transactionId: string) => ({
 })
 
 /** A payment with an attempt pending on a Qerko that answers `status` from `answer`. */
-const setup = async () => {
+const setup = async ({
+  tipAmount = 0,
+}: {
+  readonly tipAmount?: number
+} = {}) => {
   const testEvolu = await createEvoluTest()
   const { evolu } = testEvolu
   const state = {
@@ -173,7 +189,7 @@ const setup = async () => {
       tableId: null,
       amount: NonNegativeInteger(12_900),
       currency: "CZK",
-      tipAmount: NonNegativeInteger(0),
+      tipAmount: NonNegativeInteger(tipAmount),
       canceledAt: null,
       expiresAt: null,
     })
@@ -318,6 +334,63 @@ describe("qerko terminal sync job", () => {
     await expect
       .poll(() => test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId)))
       .toMatchObject([{ amount: 5_000, method: "qerkoTerminal" }])
+    expect(test.errors).toEqual([])
+  }, 15_000)
+
+  test("writes the tip an older version left out when it settled a whole refund", async () => {
+    await using test = await setup({ tipAmount: 900 })
+    test.state.answer = "approved"
+    await using _job = await test.startJob(5)
+    await expect
+      .poll(() =>
+        test.evolu.loadQuery(
+          accountTransactionsByPaymentIdQuery(test.paymentId)
+        )
+      )
+      .toHaveLength(1)
+
+    await using run = testCreateRun(test.deps)
+    await run.orThrow(
+      startQerkoTerminalRefund({
+        paymentId: test.paymentId,
+        deviceId: null,
+        whole: true,
+      })
+    )
+    const [attempt] = await test.evolu.loadQuery(
+      qerkoTerminalRefundAttemptsByPaymentIdQuery(test.paymentId)
+    )
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+
+    // Another device on a version that knows no `tipAmount` settles it.
+    await runMutationWithCompletion((options) => {
+      test.evolu.upsert(
+        "refund",
+        {
+          id: attempt.id,
+          paymentId: test.paymentId,
+          deviceId: null,
+          amount: attempt.amount,
+          currency: "CZK",
+          method: "qerkoTerminal",
+          refundedAt: attempt.startedAt,
+          isDeleted: sqliteFalse,
+        },
+        options
+      )
+      test.evolu.update(
+        "qerkoTerminalRefundAttempt",
+        { id: attempt.id, isDeleted: sqliteTrue },
+        options
+      )
+    })
+
+    await expect
+      .poll(() => test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId)))
+      .toMatchObject([
+        { id: attempt.id, amount: 12_000 },
+        { id: tipRefundId(test.paymentId), amount: 900, isTip: sqliteTrue },
+      ])
     expect(test.errors).toEqual([])
   }, 15_000)
 

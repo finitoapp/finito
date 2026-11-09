@@ -2,6 +2,7 @@ import {
   createIdFromString,
   err,
   type InferRow,
+  type MutationOptions,
   ok,
   sqliteFalse,
   sqliteTrue,
@@ -189,48 +190,138 @@ const loadPaidPayment =
     return ok(payment)
   }
 
-const prepareCashRefund =
+/**
+ * A refund recorded on staff's word (cash from the register or outside the
+ * app), with the cash movement it makes, computed outside the mutation that
+ * writes it ({@link upsertRecordedRefundRows}) so several can share a batch.
+ */
+interface RecordedRefund {
+  readonly id: RefundId
+  readonly paymentId: PaymentId
+  readonly deviceId: DeviceId | null
+  readonly amount: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly method: RecordedRefundMethod
+  readonly refundedAt: TimestampMs
+  readonly isTip: boolean
+  readonly lines: ReadonlyArray<RefundLineValues>
+  /** The cash leaving the register, for a refund from it. */
+  readonly cashTransaction: ReturnType<
+    typeof computeAccountTransactionRows
+  > | null
+}
+
+const prepareRecordedRefund =
   ({
-    refundId,
-    currency,
-    amount,
-    deviceId,
-    refundedAt,
     now,
-  }: {
-    readonly refundId: RefundId
-    readonly currency: FiatCurrency
-    readonly amount: NonNegativeInteger
-    readonly deviceId: DeviceId | null
-    readonly refundedAt: TimestampMs
+    ...refund
+  }: Omit<RecordedRefund, "refundedAt" | "cashTransaction"> & {
     readonly now: Date
-  }): Task<
-    ReturnType<typeof computeAccountTransactionRows>,
-    CashRegisterAccountNotFoundError,
-    EvoluDep
-  > =>
+  }): Task<RecordedRefund, CashRegisterAccountNotFoundError, EvoluDep> =>
   async (run) => {
-    const accountId = createCashRegisterAccountId(currency)
+    const refundedAt = TimestampMs(now.getTime())
+    if (refund.method !== "cashRegister") {
+      return ok({ ...refund, refundedAt, cashTransaction: null })
+    }
+    const accountId = createCashRegisterAccountId(refund.currency)
     const account = getFirstOr(
       await run.deps.evolu.loadQuery(cashRegisterAccountByIdQuery(accountId)),
       createCashRegisterAccountNotFoundError({ id: accountId })
     )
     if (!account.ok) return account
-    return ok(
-      computeAccountTransactionRows(
+    return ok({
+      ...refund,
+      refundedAt,
+      cashTransaction: computeAccountTransactionRows(
         {
-          id: deriveCashRefundAccountTransactionId(refundId),
+          id: deriveCashRefundAccountTransactionId(refund.id),
           accountId,
-          amount: Integer(-amount),
-          currency,
+          amount: Integer(-refund.amount),
+          currency: refund.currency,
           occurredAt: refundedAt,
           note: null,
           internalTransferGroupId: null,
-          source: { deviceId, source: "manual" },
+          source: { deviceId: refund.deviceId, source: "manual" },
         },
         now
+      ),
+    })
+  }
+
+const upsertRecordedRefundRows = (
+  evolu: EvoluDep["evolu"],
+  refund: RecordedRefund,
+  options: MutationOptions
+): void => {
+  evolu.upsert(
+    "refund",
+    {
+      id: refund.id,
+      paymentId: refund.paymentId,
+      deviceId: refund.deviceId,
+      amount: refund.amount,
+      currency: refund.currency,
+      method: refund.method,
+      refundedAt: refund.refundedAt,
+      ...(refund.isTip ? { isTip: sqliteTrue } : {}),
+      isDeleted: sqliteFalse,
+    },
+    options
+  )
+  for (const line of refund.lines) {
+    evolu.upsert(
+      "refundLine",
+      {
+        id: createRowId<"RefundLine">(),
+        refundId: refund.id,
+        paymentId: refund.paymentId,
+        paymentLineId: line.paymentLineId,
+        quantity: line.quantity,
+        amount: line.amount,
+        isDeleted: sqliteFalse,
+      },
+      options
+    )
+  }
+  if (refund.cashTransaction !== null) {
+    upsertAccountTransactionRows(evolu, refund.cashTransaction, options)
+  }
+}
+
+/** The tip is refunded once per payment, whichever way (refund/0004). */
+export const tipRefundId = (paymentId: PaymentId): RefundId =>
+  createIdFromString<"Refund">(`refund:tip:${paymentId}`)
+
+/**
+ * The goods of a paid payment still refundable: what it received for goods
+ * and any excess (refund/0003, 0005), less the goods refunded already.
+ */
+const loadRemainingGoodsAmount =
+  (
+    payment: InferRow<ReturnType<typeof paymentDetailQuery>>
+  ): Task<
+    {
+      readonly remainingAmount: NonNegativeInteger
+      readonly refunds: InferRow<ReturnType<typeof refundsByPaymentIdQuery>>[]
+    },
+    never,
+    EvoluDep
+  > =>
+  async (run) => {
+    const { evolu } = run.deps
+    const [refunds, claims] = await Promise.all([
+      evolu.loadQuery(refundsByPaymentIdQuery(payment.id)),
+      evolu.loadQuery(activeClaimedTransactionsByPaymentIdQuery(payment.id)),
+    ])
+    const excess = calculatePaymentExcess({ claims, amount: payment.amount })
+    const remainingAmount = NonNegativeInteger(
+      Math.max(
+        0,
+        deriveRefundableAmount({ ...payment, excess }) -
+          sumGoodsRefundAmounts(refunds)
       )
     )
+    return ok({ remainingAmount, refunds: [...refunds] })
   }
 
 export interface GoodsRefundPlan {
@@ -268,7 +359,6 @@ export const loadGoodsRefundPlan =
     EvoluDep & DateDep
   > =>
   async (run) => {
-    const { evolu } = run.deps
     const paymentResult = await run(loadPaidPayment(paymentId))
     if (!paymentResult.ok) return paymentResult
     const payment = paymentResult.value
@@ -286,20 +376,7 @@ export const loadGoodsRefundPlan =
       refundLines = linesResult.value
     }
 
-    const refunds = await evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
-    const excess = calculatePaymentExcess({
-      claims: await evolu.loadQuery(
-        activeClaimedTransactionsByPaymentIdQuery(paymentId)
-      ),
-      amount: payment.amount,
-    })
-    const remainingAmount = NonNegativeInteger(
-      Math.max(
-        0,
-        deriveRefundableAmount({ ...payment, excess }) -
-          sumGoodsRefundAmounts(refunds)
-      )
-    )
+    const { remainingAmount } = await run.ok(loadRemainingGoodsAmount(payment))
     const refundAmount =
       amount === "remaining"
         ? remainingAmount
@@ -347,6 +424,47 @@ export const loadTipRefundPlan =
     return ok({ payment, tipAmount })
   }
 
+export interface WholeRefundPlan {
+  readonly payment: InferRow<ReturnType<typeof paymentDetailQuery>>
+  /** Every goods amount still refundable, 0 once the goods are all back. */
+  readonly goodsAmount: NonNegativeInteger
+  /** The tip, 0 when there is none or it was refunded (refund/0004). */
+  readonly tipAmount: NonNegativeInteger
+}
+
+/**
+ * Everything a payment may still give back: the goods left and the tip, each
+ * exactly, with no cash rounding (refund/0006 only shapes a typed amount's
+ * prefill). `RefundAmountInvalid` with nothing remaining when both are gone.
+ */
+export const loadWholeRefundPlan =
+  (
+    paymentId: PaymentId
+  ): Task<
+    WholeRefundPlan,
+    PaymentNotFoundError | RefundPaymentNotPaidError | RefundAmountInvalidError,
+    EvoluDep & DateDep
+  > =>
+  async (run) => {
+    const paymentResult = await run(loadPaidPayment(paymentId))
+    if (!paymentResult.ok) return paymentResult
+    const payment = paymentResult.value
+
+    const { remainingAmount, refunds } = await run.ok(
+      loadRemainingGoodsAmount(payment)
+    )
+    const tipAmount = deriveRefundableTipAmount({ ...payment, refunds })
+    if (remainingAmount === 0 && tipAmount === 0) {
+      return err(
+        createRefundAmountInvalidError({
+          amount: NonNegativeInteger(0),
+          remainingAmount,
+        })
+      )
+    }
+    return ok({ payment, goodsAmount: remainingAmount, tipAmount })
+  }
+
 /**
  * What a refund recorded without Qerko can be: a refund `method` of
  * `qerkoTerminal` is written only once the terminal approved it
@@ -375,68 +493,33 @@ export const refundPayment =
   }>): Task<RefundId, RefundPaymentError, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
-    const now = run.deps.date.now()
     const plan = await run(loadGoodsRefundPlan({ paymentId, amount, lines }))
     if (!plan.ok) return plan
     const { payment, refundLines, refundAmount } = plan.value
 
-    const id = createRowId<"Refund">()
-    const refundedAt = TimestampMs(now.getTime())
-    let cashTransaction: ReturnType<
-      typeof computeAccountTransactionRows
-    > | null = null
-    if (method === "cashRegister") {
-      const cashResult = await run(
-        prepareCashRefund({
-          refundId: id,
-          currency: payment.currency,
-          amount: refundAmount,
-          deviceId,
-          refundedAt,
-          now,
-        })
-      )
-      if (!cashResult.ok) return cashResult
-      cashTransaction = cashResult.value
-    }
+    const refund = await run(
+      prepareRecordedRefund({
+        id: createRowId<"Refund">(),
+        paymentId,
+        deviceId,
+        amount: refundAmount,
+        currency: payment.currency,
+        method,
+        isTip: false,
+        lines: refundLines,
+        now: run.deps.date.now(),
+      })
+    )
+    if (!refund.ok) return refund
 
     await runMutationWithCompletion((options) => {
-      const mutationOptions = { ...options, owner: evoluOwner }
-      evolu.upsert(
-        "refund",
-        {
-          id,
-          paymentId,
-          deviceId,
-          amount: refundAmount,
-          currency: payment.currency,
-          method,
-          refundedAt,
-          isDeleted: sqliteFalse,
-        },
-        mutationOptions
-      )
-      for (const line of refundLines) {
-        evolu.upsert(
-          "refundLine",
-          {
-            id: createRowId<"RefundLine">(),
-            refundId: id,
-            paymentId,
-            paymentLineId: line.paymentLineId,
-            quantity: line.quantity,
-            amount: line.amount,
-            isDeleted: sqliteFalse,
-          },
-          mutationOptions
-        )
-      }
-      if (cashTransaction !== null) {
-        upsertAccountTransactionRows(evolu, cashTransaction, mutationOptions)
-      }
+      upsertRecordedRefundRows(evolu, refund.value, {
+        ...options,
+        owner: evoluOwner,
+      })
     })
 
-    return ok(id)
+    return ok(refund.value.id)
   }
 
 export type RefundPaymentTipError =
@@ -461,52 +544,110 @@ export const refundPaymentTip =
   > =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
-    const now = run.deps.date.now()
     const plan = await run(loadTipRefundPlan(paymentId))
     if (!plan.ok) return plan
     const { payment, tipAmount } = plan.value
 
-    const id = createIdFromString<"Refund">(`refund:tip:${paymentId}`)
-    const refundedAt = TimestampMs(now.getTime())
-    let cashTransaction: ReturnType<
-      typeof computeAccountTransactionRows
-    > | null = null
-    if (method === "cashRegister") {
-      const cashResult = await run(
-        prepareCashRefund({
-          refundId: id,
-          currency: payment.currency,
-          amount: tipAmount,
+    const refund = await run(
+      prepareRecordedRefund({
+        id: tipRefundId(paymentId),
+        paymentId,
+        deviceId,
+        amount: tipAmount,
+        currency: payment.currency,
+        method,
+        isTip: true,
+        lines: [],
+        now: run.deps.date.now(),
+      })
+    )
+    if (!refund.ok) return refund
+
+    await runMutationWithCompletion((options) => {
+      upsertRecordedRefundRows(evolu, refund.value, {
+        ...options,
+        owner: evoluOwner,
+      })
+    })
+
+    return ok(refund.value.id)
+  }
+
+export type RefundWholePaymentError =
+  | PaymentNotFoundError
+  | RefundPaymentNotPaidError
+  | RefundAmountInvalidError
+  | CashRegisterAccountNotFoundError
+
+/**
+ * Gives back everything a payment still may in one step, from the cash
+ * register or outside the app: the goods left as one refund and the tip, if
+ * any is left, as its own (refund/0004), written in one batch. Each is the
+ * refund `refundPayment` and `refundPaymentTip` would record, cash movement
+ * included, the tip under its one id per payment. Once nothing is left,
+ * another run is refused with `RefundAmountInvalid`, so it never doubles.
+ */
+export const refundWholePayment =
+  ({
+    paymentId,
+    method,
+    deviceId,
+  }: {
+    readonly paymentId: PaymentId
+    /** A card's whole refund goes through its terminal instead. */
+    readonly method: Extract<RefundMethod, "cashRegister" | "outside">
+    readonly deviceId: DeviceId | null
+  }): Task<
+    {
+      /** The goods' refund, `null` when only the tip was left. */
+      readonly goodsRefundId: RefundId | null
+      /** The tip's refund, `null` when no tip was left. */
+      readonly tipRefundId: RefundId | null
+    },
+    RefundWholePaymentError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    const now = run.deps.date.now()
+    const plan = await run(loadWholeRefundPlan(paymentId))
+    if (!plan.ok) return plan
+    const { payment, goodsAmount, tipAmount } = plan.value
+
+    const parts = [
+      ...(goodsAmount === 0
+        ? []
+        : [{ id: createRowId<"Refund">(), amount: goodsAmount, isTip: false }]),
+      ...(tipAmount === 0
+        ? []
+        : [{ id: tipRefundId(paymentId), amount: tipAmount, isTip: true }]),
+    ]
+    const refunds: RecordedRefund[] = []
+    for (const part of parts) {
+      const refund = await run(
+        prepareRecordedRefund({
+          ...part,
+          paymentId,
           deviceId,
-          refundedAt,
+          currency: payment.currency,
+          method,
+          lines: [],
           now,
         })
       )
-      if (!cashResult.ok) return cashResult
-      cashTransaction = cashResult.value
+      if (!refund.ok) return refund
+      refunds.push(refund.value)
     }
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
-      evolu.upsert(
-        "refund",
-        {
-          id,
-          paymentId,
-          deviceId,
-          amount: tipAmount,
-          currency: payment.currency,
-          method,
-          refundedAt,
-          isTip: sqliteTrue,
-          isDeleted: sqliteFalse,
-        },
-        mutationOptions
-      )
-      if (cashTransaction !== null) {
-        upsertAccountTransactionRows(evolu, cashTransaction, mutationOptions)
+      for (const refund of refunds) {
+        upsertRecordedRefundRows(evolu, refund, mutationOptions)
       }
     })
 
-    return ok(id)
+    return ok({
+      goodsRefundId: refunds.find(({ isTip }) => !isTip)?.id ?? null,
+      tipRefundId: refunds.find(({ isTip }) => isTip)?.id ?? null,
+    })
   }

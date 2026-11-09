@@ -54,6 +54,7 @@ import {
   type RefundLineUnavailableError,
   type RefundPaymentNotPaidError,
   type RefundTipUnavailableError,
+  tipRefundId,
 } from "./refund-actions.ts"
 import {
   computeCardRefundRows,
@@ -193,10 +194,6 @@ type AttemptRow = Pick<
   readonly refundId: RefundId
   readonly amount: NonNegativeInteger
 }
-
-/** The tip is refunded once per payment, whichever way (refund/0004). */
-const tipRefundId = (paymentId: PaymentId): RefundId =>
-  createIdFromString<"Refund">(`refund:tip:${paymentId}`)
 
 /**
  * Writes the refund the terminal approved and takes the attempt away, in one

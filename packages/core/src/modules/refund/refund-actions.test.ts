@@ -30,7 +30,12 @@ import {
   PositiveInteger,
   PositiveNumber,
 } from "../shared/schema.ts"
-import { refundPayment, refundPaymentTip } from "./refund-actions.ts"
+import {
+  refundPayment,
+  refundPaymentTip,
+  refundWholePayment,
+  tipRefundId,
+} from "./refund-actions.ts"
 import {
   refundablePaymentLinesQuery,
   refundLinesByPaymentIdQuery,
@@ -180,6 +185,35 @@ const refundTipOf = async (
 ) => {
   await using run = testCreateRun(context.deps)
   return await run(refundPaymentTip(input))
+}
+
+/**
+ * Runs `refundWholePayment` on an Evolu that notes the batch of every write:
+ * each `runMutationWithCompletion` hands its writes its own `onComplete`.
+ */
+const refundWholeOf = async (
+  context: RefundContext,
+  input: Parameters<typeof refundWholePayment>[0]
+) => {
+  const batches = new Set<unknown>()
+  const { evolu } = context.deps
+  const noteBatch =
+    <TArgs extends ReadonlyArray<unknown>, TResult>(
+      write: (...args: TArgs) => TResult
+    ) =>
+    (...args: TArgs): TResult => {
+      const options = args[2] as { readonly onComplete?: unknown } | undefined
+      batches.add(options?.onComplete)
+      return write(...args)
+    }
+  const counted: typeof evolu = Object.assign(Object.create(evolu), {
+    upsert: noteBatch(evolu.upsert.bind(evolu)),
+    update: noteBatch(evolu.update.bind(evolu)),
+    insert: noteBatch(evolu.insert.bind(evolu)),
+  })
+  await using run = testCreateRun({ ...context.deps, evolu: counted })
+  const result = await run(refundWholePayment(input))
+  return { result, batches: batches.size }
 }
 
 const billWithBeersAndGoulash = [
@@ -660,6 +694,189 @@ describe("refunds of a payment with a tip", () => {
     ).resolves.toMatchObject({
       ok: false,
       error: { type: "RefundPaymentNotPaid", paymentId: unpaid },
+    })
+  })
+})
+
+describe("refundWholePayment", () => {
+  test("records the goods and the tip as two refunds in one batch", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 25_000,
+      tipAmount: 2_000,
+    })
+    await context.settleInCash(paymentId, 25_000)
+    context.clock.advance(60_000)
+    const refundedAt = context.clock.date.now().getTime()
+
+    const { result, batches } = await refundWholeOf(context, {
+      paymentId,
+      method: "cashRegister",
+      deviceId: null,
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      value: { tipRefundId: tipRefundId(paymentId) },
+    })
+    expect(batches).toBe(1)
+
+    const refunds = await context.evolu.loadQuery(
+      refundsByPaymentIdQuery(paymentId)
+    )
+    expect(refunds).toHaveLength(2)
+    // Exact goods and tip, as the two separate refunds would record them.
+    expect(refunds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          amount: 23_000,
+          method: "cashRegister",
+          refundedAt,
+          isTip: null,
+        }),
+        expect.objectContaining({
+          id: tipRefundId(paymentId),
+          amount: 2_000,
+          method: "cashRegister",
+          refundedAt,
+          isTip: sqliteTrue,
+        }),
+      ])
+    )
+    const transactions = await context.evolu.loadQuery(
+      accountTransactionsQuery(context.cashRegisterAccountId)
+    )
+    expect(transactions.map(({ amount }) => amount)).toEqual(
+      expect.arrayContaining([25_000, -23_000, -2_000])
+    )
+    expect(transactions).toHaveLength(3)
+  })
+
+  test("a second run records nothing twice", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 25_000,
+      tipAmount: 2_000,
+    })
+    await context.settleByTransfer(paymentId)
+
+    await expect(
+      refundWholeOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({ result: { ok: true } })
+    await expect(
+      refundWholeOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({
+      result: {
+        ok: false,
+        error: { type: "RefundAmountInvalid", amount: 0, remainingAmount: 0 },
+      },
+      batches: 0,
+    })
+    await expect(
+      context.evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
+    ).resolves.toHaveLength(2)
+  })
+
+  test("writes only the goods of a payment without a tip", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({ amount: 7_890 })
+    await context.settleInCash(paymentId, 7_900)
+
+    await expect(
+      refundWholeOf(context, {
+        paymentId,
+        method: "cashRegister",
+        deviceId: null,
+      })
+    ).resolves.toMatchObject({
+      result: { ok: true, value: { tipRefundId: null } },
+      batches: 1,
+    })
+    // What the cash received for goods, rounding included (refund/0003).
+    await expect(
+      context.evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
+    ).resolves.toMatchObject([{ amount: 7_900, isTip: null }])
+  })
+
+  test("writes only the tip once the goods are all back", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 25_000,
+      tipAmount: 2_000,
+    })
+    await context.settleByTransfer(paymentId)
+    await expect(
+      refundOf(context, {
+        paymentId,
+        method: "outside",
+        deviceId: null,
+        amount: NonNegativeInteger(23_000),
+      })
+    ).resolves.toMatchObject({ ok: true })
+
+    await expect(
+      refundWholeOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({
+      result: {
+        ok: true,
+        value: { goodsRefundId: null, tipRefundId: tipRefundId(paymentId) },
+      },
+      batches: 1,
+    })
+    await expect(
+      context.evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
+    ).resolves.toMatchObject([
+      { amount: 23_000, isTip: null },
+      { id: tipRefundId(paymentId), amount: 2_000, isTip: sqliteTrue },
+    ])
+  })
+
+  test("writes only the goods left once the tip is back", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 25_000,
+      tipAmount: 2_000,
+    })
+    await context.settleByTransfer(paymentId)
+    await expect(
+      refundTipOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({ ok: true })
+    await expect(
+      refundOf(context, {
+        paymentId,
+        method: "outside",
+        deviceId: null,
+        amount: NonNegativeInteger(3_000),
+      })
+    ).resolves.toMatchObject({ ok: true })
+
+    await expect(
+      refundWholeOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({
+      result: { ok: true, value: { tipRefundId: null } },
+    })
+    const refunds = await context.evolu.loadQuery(
+      refundsByPaymentIdQuery(paymentId)
+    )
+    expect(refunds).toHaveLength(3)
+    expect(refunds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ amount: 20_000, isTip: null }),
+      ])
+    )
+  })
+
+  test("refuses a payment that is not paid", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 25_000,
+      tipAmount: 2_000,
+    })
+
+    await expect(
+      refundWholeOf(context, { paymentId, method: "outside", deviceId: null })
+    ).resolves.toMatchObject({
+      result: { ok: false, error: { type: "RefundPaymentNotPaid" } },
+      batches: 0,
     })
   })
 })

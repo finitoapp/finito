@@ -223,6 +223,7 @@ const qerkoRefundAttemptColumns = [
   "transactionId",
   "terminalId",
   "amount",
+  "tipAmount",
   "isTip",
   "linesJson",
   "status",
@@ -284,6 +285,50 @@ export const pendingQerkoTerminalRefundAttemptsQuery = createQuery((db) =>
     .where("status", "=", "pending")
     .where("transactionId", "is not", null)
     .$narrowType<{ transactionId: KyselyNotNull }>()
+)
+
+/**
+ * Refunds of a whole payment to the card through Qerko whose goods were
+ * written but whose tip was not: an older version settled the attempt
+ * without knowing its `tipAmount`. The attempt is taken away once settled,
+ * so it is read here in that state, and only beside its goods' refund, which
+ * is what tells a settled attempt from a dismissed one.
+ */
+export const qerkoTerminalRefundsMissingTipQuery = createQuery((db) =>
+  db
+    .selectFrom("qerkoTerminalRefundAttempt as attempt")
+    .innerJoin("refund as goods", (join) =>
+      join
+        .onRef("goods.id", "=", "attempt.id")
+        .on("goods.isDeleted", "is not", sqliteTrue)
+    )
+    .leftJoin("refund as tip", (join) =>
+      join
+        .onRef("tip.paymentId", "=", "attempt.paymentId")
+        .on("tip.isTip", "=", sqliteTrue)
+        .on("tip.isDeleted", "is not", sqliteTrue)
+    )
+    .select([
+      "attempt.id",
+      "attempt.paymentId",
+      "attempt.deviceId",
+      "attempt.tipAmount",
+      "goods.currency",
+      "goods.refundedAt",
+    ])
+    .where("attempt.isDeleted", "=", sqliteTrue)
+    .where("attempt.isTip", "is", null)
+    .where("attempt.tipAmount", "is not", null)
+    .where("attempt.paymentId", "is not", null)
+    .where("goods.currency", "is not", null)
+    .where("goods.refundedAt", "is not", null)
+    .where("tip.id", "is", null)
+    .$narrowType<{
+      paymentId: KyselyNotNull
+      tipAmount: KyselyNotNull
+      currency: KyselyNotNull
+      refundedAt: KyselyNotNull
+    }>()
 )
 
 const cardSwitchioRefundAttemptColumns = [

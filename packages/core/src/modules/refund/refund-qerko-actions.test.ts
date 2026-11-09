@@ -1,4 +1,4 @@
-import { testCreateRun } from "@evolu/common"
+import { sqliteFalse, sqliteTrue, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import type { DateDep, EvoluOwnerDep, FetchDep, UuidDep } from "../../deps.ts"
@@ -37,6 +37,7 @@ import {
 import type { PaymentId } from "../payment/payment-types.ts"
 import { saveQerkoPlugin } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
+import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
   NonEmptyString255,
   NonEmptyStringSchema,
@@ -44,9 +45,10 @@ import {
   PositiveInteger,
   PositiveNumber,
 } from "../shared/schema.ts"
-import { refundPayment } from "./refund-actions.ts"
+import { refundPayment, tipRefundId } from "./refund-actions.ts"
 import {
   dismissQerkoTerminalRefundAttempt,
+  repairQerkoTerminalTipRefunds,
   startQerkoTerminalRefund,
   syncQerkoTerminalRefund,
 } from "./refund-qerko-actions.ts"
@@ -547,5 +549,241 @@ describe("refund to the card through Qerko", () => {
         })
       )
     ).resolves.toMatchObject({ ok: true })
+  }, 20_000)
+})
+
+describe("refund of the whole payment to the card through Qerko", () => {
+  const pendingThenApproved = {
+    "create-terminal-refund": (body: Record<string, unknown>) => ({
+      type: "started",
+      refund: refundResponse("pending", body.transactionId),
+    }),
+    "get-terminal-refund-status": (body: Record<string, unknown>) => ({
+      type: "found",
+      refund: refundResponse("approved", body.transactionId),
+    }),
+  }
+  const startWhole = (test: Awaited<ReturnType<typeof setup>>) =>
+    test.run(
+      startQerkoTerminalRefund({
+        paymentId: test.paymentId,
+        deviceId: null,
+        whole: true,
+      })
+    )
+  const negativeTransactions = async (
+    test: Awaited<ReturnType<typeof setup>>
+  ) =>
+    (await test.evolu.loadQuery(refundTransactionsQuery(accountId))).filter(
+      ({ amount }) => amount !== null && amount < 0
+    )
+
+  test("asks the terminal once for the goods and the tip and records them as two refunds", async () => {
+    await using test = await setup({
+      amount: 25_000,
+      tipAmount: 2_000,
+      handlers: pendingThenApproved,
+    })
+
+    await expect(startWhole(test)).resolves.toMatchObject({
+      ok: true,
+      value: { status: "pending" },
+    })
+    expect(test.refundRequests()).toHaveLength(1)
+    expect(test.refundRequests()[0]?.body).toMatchObject({ amount: "250" })
+    const [attempt] = await test.attempts()
+    expect(attempt).toMatchObject({
+      amount: 23_000,
+      tipAmount: 2_000,
+      isTip: null,
+    })
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+
+    await expect(
+      test.run(syncQerkoTerminalRefund(attempt.id))
+    ).resolves.toEqual({ ok: true, value: { status: "refunded" } })
+
+    await expect
+      .poll(() => test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId)))
+      .toHaveLength(2)
+    await expect(
+      test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId))
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: attempt.id,
+          amount: 23_000,
+          method: "qerkoTerminal",
+          isTip: null,
+        }),
+        expect.objectContaining({
+          id: tipRefundId(test.paymentId),
+          amount: 2_000,
+          method: "qerkoTerminal",
+          isTip: sqliteTrue,
+        }),
+      ])
+    )
+    await expect(negativeTransactions(test)).resolves.toEqual(
+      expect.arrayContaining([
+        { amount: -23_000, kind: "qerkoTerminal" },
+        { amount: -2_000, kind: "qerkoTerminal" },
+      ])
+    )
+    // The tip is written: nothing to repair.
+    await expect(test.run(repairQerkoTerminalTipRefunds())).resolves.toEqual({
+      ok: true,
+      value: 0,
+    })
+    await expect(startWhole(test)).resolves.toMatchObject({
+      ok: false,
+      error: { type: "RefundAmountInvalid", remainingAmount: 0 },
+    })
+    expect(test.refundRequests()).toHaveLength(1)
+  }, 20_000)
+
+  test("a payment without a tip refunds only its goods", async () => {
+    await using test = await setup({
+      amount: 10_000,
+      handlers: pendingThenApproved,
+    })
+
+    await startWhole(test)
+    const [attempt] = await test.attempts()
+    expect(attempt).toMatchObject({ amount: 10_000, tipAmount: null })
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+    await test.run(syncQerkoTerminalRefund(attempt.id))
+
+    await expect
+      .poll(() => test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId)))
+      .toMatchObject([{ id: attempt.id, amount: 10_000, isTip: null }])
+  }, 20_000)
+
+  test("with only the tip left, refunds the tip as the tip", async () => {
+    await using test = await setup({
+      amount: 25_000,
+      tipAmount: 2_000,
+      handlers: pendingThenApproved,
+    })
+    await test.run.orThrow(
+      refundPayment({
+        paymentId: test.paymentId,
+        method: "outside",
+        deviceId: null,
+        amount: NonNegativeInteger(23_000),
+      })
+    )
+
+    await startWhole(test)
+    expect(test.refundRequests()[0]?.body).toMatchObject({ amount: "20" })
+    const [attempt] = await test.attempts()
+    expect(attempt).toMatchObject({
+      id: tipRefundId(test.paymentId),
+      amount: 2_000,
+      tipAmount: null,
+      isTip: sqliteTrue,
+    })
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+    await test.run(syncQerkoTerminalRefund(attempt.id))
+
+    await expect
+      .poll(() => test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId)))
+      .toMatchObject([
+        { amount: 23_000, method: "outside" },
+        { id: attempt.id, amount: 2_000, isTip: sqliteTrue },
+      ])
+  }, 20_000)
+
+  test("the tip an older version left out when it settled the attempt is written once", async () => {
+    await using test = await setup({
+      amount: 25_000,
+      tipAmount: 2_000,
+      handlers: pendingThenApproved,
+    })
+    await startWhole(test)
+    const [attempt] = await test.attempts()
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+
+    // What a version that knows no `tipAmount` writes on approval: the
+    // goods' refund and money, and the attempt taken away.
+    await runMutationWithCompletion((options) => {
+      test.evolu.upsert(
+        "refund",
+        {
+          id: attempt.id,
+          paymentId: test.paymentId,
+          deviceId: null,
+          amount: attempt.amount,
+          currency: "CZK",
+          method: "qerkoTerminal",
+          refundedAt: attempt.startedAt,
+          isDeleted: sqliteFalse,
+        },
+        options
+      )
+      test.evolu.update(
+        "qerkoTerminalRefundAttempt",
+        { id: attempt.id, isDeleted: sqliteTrue },
+        options
+      )
+    })
+    await expect(
+      test.run(syncQerkoTerminalRefund(attempt.id))
+    ).resolves.toEqual({ ok: true, value: { status: "idle" } })
+
+    await expect(test.run(repairQerkoTerminalTipRefunds())).resolves.toEqual({
+      ok: true,
+      value: 1,
+    })
+    await expect(test.run(repairQerkoTerminalTipRefunds())).resolves.toEqual({
+      ok: true,
+      value: 0,
+    })
+
+    await expect(
+      test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId))
+    ).resolves.toMatchObject([
+      { id: attempt.id, amount: 23_000, isTip: null },
+      {
+        id: tipRefundId(test.paymentId),
+        amount: 2_000,
+        method: "qerkoTerminal",
+        refundedAt: attempt.startedAt,
+        isTip: sqliteTrue,
+      },
+    ])
+    await expect(negativeTransactions(test)).resolves.toEqual([
+      { amount: -2_000, kind: "qerkoTerminal" },
+    ])
+  }, 20_000)
+
+  test("a dismissed attempt was never approved and needs no repair", async () => {
+    await using test = await setup({
+      amount: 25_000,
+      tipAmount: 2_000,
+      handlers: {
+        "create-terminal-refund": (body) => ({
+          type: "started",
+          refund: refundResponse("pending", body.transactionId),
+        }),
+        "get-terminal-refund-status": (body) => ({
+          type: "found",
+          refund: refundResponse("unknown", body.transactionId),
+        }),
+      },
+    })
+    await startWhole(test)
+    const [attempt] = await test.attempts()
+    if (attempt === undefined) throw new Error("Expected an attempt.")
+    await test.run(syncQerkoTerminalRefund(attempt.id))
+    await test.run.ok(dismissQerkoTerminalRefundAttempt(attempt.id))
+
+    await expect(test.run(repairQerkoTerminalTipRefunds())).resolves.toEqual({
+      ok: true,
+      value: 0,
+    })
+    await expect(
+      test.evolu.loadQuery(refundsByPaymentIdQuery(test.paymentId))
+    ).resolves.toEqual([])
   }, 20_000)
 })
