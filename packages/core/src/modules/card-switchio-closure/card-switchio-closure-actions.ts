@@ -15,6 +15,7 @@ import type { DeviceId } from "../device/device-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
   createRowId,
+  removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
@@ -128,7 +129,7 @@ const recordCardSwitchioClosure =
     await runMutationWithCompletion((options) =>
       run.deps.evolu.upsert(
         "cardSwitchioClosure",
-        {
+        removeUndefinedValues({
           id: recorded.id,
           accountId: recorded.accountId,
           deviceId,
@@ -146,7 +147,7 @@ const recordCardSwitchioClosure =
               ? null
               : NonEmptyString255(closure.terminalDateTime.slice(0, 255)),
           closedAt: recorded.closedAt,
-        },
+        }),
         { ...options, owner: run.deps.evoluOwner }
       )
     )
