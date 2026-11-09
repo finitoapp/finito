@@ -146,6 +146,43 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
     await first
   })
 
+  it("refuses a second payment while one is on SwitchioPay", async () => {
+    const launch = returnedButUnresolved<unknown>()
+    native.pay.mockReturnValueOnce(launch.promise)
+    const { switchioTerminal } = createSwitchioTerminalDep({
+      demo: false,
+      accountId: "a1",
+    })
+    const request = {
+      transactionId: "t1",
+      amount: 100,
+      tipAmount: 0,
+      currencyCode: 203,
+    }
+
+    const first = switchioTerminal.pay(request)
+    const second = await switchioTerminal.pay({
+      ...request,
+      transactionId: "t2",
+    })
+
+    expect(second).toEqual({
+      ok: false,
+      error: {
+        type: "SwitchioResultUnreadable",
+        resultCode: null,
+        rawResult: null,
+      },
+    })
+    expect(native.pay).toHaveBeenCalledTimes(1)
+    launch.resolve({
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+    })
+    await first
+  })
+
   it("leaves a payment's stored result to its promise while the payment is in flight", async () => {
     const launch = returnedButUnresolved<unknown>()
     native.pay.mockReturnValueOnce(launch.promise)
