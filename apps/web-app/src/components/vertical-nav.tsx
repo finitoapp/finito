@@ -62,12 +62,12 @@ export function VerticalNav({
       {title && <div className={verticalNavTitleClassName}>{title}</div>}
       <nav className={"divide-y"}>
         {items.length === 0 && empty !== undefined ? (
-          <NavItemComponent
+          <VerticalNavRow
             item={{ kind: "static", disableAction: true, label: empty }}
           />
         ) : (
           items.map((item, index) => (
-            <NavItemComponent key={item.id ?? index} item={item} />
+            <VerticalNavRow key={item.id ?? index} item={item} />
           ))
         )}
       </nav>
@@ -75,7 +75,12 @@ export function VerticalNav({
   )
 }
 
-function NavItemComponent({ item }: { item: NavItem }) {
+/**
+ * One row of a `VerticalNav`, exported for a list drawn inside another card
+ * (the refunds on the payment detail), where the nav's own shell would be a
+ * card in a card.
+ */
+export function VerticalNavRow({ item }: { readonly item: NavItem }) {
   const layoutClassName =
     "text-left flex w-full items-center gap-3 px-3 py-2 text-sm font-medium"
 

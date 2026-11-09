@@ -758,12 +758,10 @@ test("refunds of a paid bill reach EET as negative sales", async ({ page }) => {
   await test.step("the rest is refunded and reversed", async () => {
     await refundFromPaymentDetail(page, "en")
     await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("-200.00")
-    await expect(page.getByTestId("payment-detail-eet-reversal")).toHaveCount(2)
-    await expect(
-      page
-        .getByTestId("payment-detail-eet-reversal")
-        .getByTestId("eet-sale-status")
-    ).toHaveText(
+    // Each refund's row shows only its reversal's status.
+    const refunds = page.getByTestId("payment-detail-refund")
+    await expect(refunds).toHaveCount(2)
+    await expect(refunds.getByTestId("eet-sale-status")).toHaveText(
       [
         translate("en", "eet.status.confirmed"),
         translate("en", "eet.status.confirmed"),
@@ -771,6 +769,36 @@ test("refunds of a paid bill reach EET as negative sales", async ({ page }) => {
       eetDeliveryTimeout
     )
     await expect(refundAction(page, "en")).toHaveCount(0)
+  })
+
+  await test.step("each refund's detail shows its items and its reversal", async () => {
+    for (const expected of [
+      { amount: "CZK 50.00", lines: ["1 × Beer"] },
+      // The rest went back as an amount, which has no items.
+      { amount: "CZK 200.00", lines: [] },
+    ]) {
+      await page
+        .getByTestId("payment-detail-refund")
+        .filter({ hasText: expected.amount })
+        .click()
+      await page
+        .getByRole("heading", { name: translate("en", "refundDetail.title") })
+        .waitFor()
+      const lines = page.getByTestId("refund-detail-lines")
+      if (expected.lines.length === 0) await expect(lines).toHaveCount(0)
+      for (const line of expected.lines) {
+        await expect(lines.getByText(line)).toBeVisible()
+      }
+      const reversal = page.getByTestId("payment-detail-eet-reversal")
+      await expect(reversal).toContainText(expected.amount)
+      await expect(reversal.getByTestId("eet-sale-status")).toHaveText(
+        translate("en", "eet.status.confirmed")
+      )
+      await page.goBack()
+      await page
+        .getByRole("heading", { name: translate("en", "paymentDetail.title") })
+        .waitFor()
+    }
   })
 
   await test.step("the payment shows refunded while its bill stays closed", async () => {

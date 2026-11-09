@@ -1,6 +1,6 @@
 # docs/plans/refund-detail.md: a bank transfer refunded in cash hands out
 # whole crowns (refund/0012), and the refund's detail shows the cash handed
-# out beside the rounding. Finito-only until web's refund detail (its Phase 3).
+# out beside the rounding. Web's twin is the cash-rounding test in refund.spec.ts.
 appId: ${APP_ID}
 tags: [activity]
 ---
