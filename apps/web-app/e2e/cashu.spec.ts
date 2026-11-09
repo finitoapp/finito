@@ -139,9 +139,7 @@ const walkToNewCashuWithdrawal = (page: Page) =>
     await openSettingsEntry(page, "en", "settings.paymentAccounts.title")
     await page
       .getByRole("link", {
-        name: new RegExp(
-          translate("en", "settings.paymentAccounts.method.cashu")
-        ),
+        name: new RegExp(translate("en", "settings.bitcoin.wallet.linky")),
       })
       .first()
       .click()
