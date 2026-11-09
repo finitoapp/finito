@@ -98,6 +98,7 @@ function PaymentHistory() {
         date: group.date,
         now,
         locale,
+        format: (money) => formatMoney(money, locale),
         amounts: group.items
           .filter(
             (item) => derivePaymentHistoryRowState(item, now).status === "paid"

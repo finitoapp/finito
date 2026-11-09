@@ -149,6 +149,7 @@ function BillHistory() {
         date: group.date,
         now,
         locale,
+        format: (money) => formatMoney(money, locale),
         // Only closed bills count: an open one isn't settled yet and a
         // canceled one never will be.
         amounts: group.items

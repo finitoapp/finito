@@ -155,6 +155,7 @@ describe("formatActivityDayTitle", () => {
       locale: "en-US",
       amounts,
       isComplete: true,
+      format: money,
     })
     const incomplete = formatActivityDayTitle({
       date: now,
@@ -162,10 +163,24 @@ describe("formatActivityDayTitle", () => {
       locale: "en-US",
       amounts,
       isComplete: false,
+      format: money,
     })
     expect(complete.startsWith(incomplete)).toBe(true)
     expect(complete).toContain("·")
     expect(incomplete).not.toContain("·")
+  })
+
+  test("writes the total through the app's own formatter", () => {
+    const title = formatActivityDayTitle({
+      date: now,
+      now,
+      locale: "en-US",
+      amounts,
+      isComplete: true,
+      format: (value) =>
+        formatMoney(value, "en-US", { fraction: "whenNonZero" }),
+    })
+    expect(title).toMatch(/CZK\s15$/u)
   })
 
   test("leaves the total off for a day without paid amounts", () => {
@@ -176,6 +191,7 @@ describe("formatActivityDayTitle", () => {
         locale: "en-US",
         amounts: [],
         isComplete: true,
+        format: money,
       })
     ).not.toContain("·")
   })

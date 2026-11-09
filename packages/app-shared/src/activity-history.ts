@@ -26,7 +26,6 @@ import type { Money } from "@payky/core/modules/shared/money"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { refundStateLabelKey } from "./activity-labels.ts"
 import { formatRelativeDate } from "./format-date.ts"
-import { formatMoney } from "./format-money.ts"
 import type { createTranslate } from "./i18n/translate.ts"
 
 /**
@@ -40,7 +39,7 @@ type Translate = ReturnType<typeof createTranslate>
 /** A day's total, one sum per currency — the fiat currency is a setting, so one day can mix them. */
 const formatCurrencyTotals = (
   amounts: ReadonlyArray<Money>,
-  locale: string
+  format: (money: Money) => string
 ): string | null => {
   const totals = new Map<Money["currency"], number>()
   for (const { value, currency } of amounts) {
@@ -49,14 +48,16 @@ const formatCurrencyTotals = (
   if (totals.size === 0) return null
 
   return Array.from(totals, ([currency, value]) =>
-    formatMoney({ value: NonNegativeInteger(value), currency }, locale)
+    format({ value: NonNegativeInteger(value), currency })
   ).join(" + ")
 }
 
 /**
  * "Today · $12.00". `isComplete` is false for the last group while more
  * pages are still to load — that day may continue on the next page, so its
- * total would undercount and is left off until it's whole.
+ * total would undercount and is left off until it's whole. The totals go
+ * through the app's own `formatMoney`, as Finito writes a whole amount
+ * without its minor units and Payky with them.
  */
 export const formatActivityDayTitle = ({
   date,
@@ -64,15 +65,17 @@ export const formatActivityDayTitle = ({
   locale,
   amounts,
   isComplete,
+  format,
 }: {
   readonly date: Date
   readonly now: Date
   readonly locale: string
   readonly amounts: ReadonlyArray<Money>
   readonly isComplete: boolean
+  readonly format: (money: Money) => string
 }): string => {
   const dayLabel = formatRelativeDate(date, now, locale)
-  const totals = isComplete ? formatCurrencyTotals(amounts, locale) : null
+  const totals = isComplete ? formatCurrencyTotals(amounts, format) : null
   return totals === null ? dayLabel : `${dayLabel} · ${totals}`
 }
 
