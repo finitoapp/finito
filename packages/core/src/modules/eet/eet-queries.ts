@@ -8,6 +8,7 @@ import {
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
+import type { RefundId } from "../refund/refund-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { EetDateTime, EetReversalId, EetSaleId } from "./eet-types.ts"
 import { eetSettingsId } from "./eet-utils.ts"
@@ -610,47 +611,14 @@ type EetReversalRequiredColumns = {
   saleAt: KyselyNotNull
 }
 
-export const eetReversalByIdQuery = (reversalId: EetReversalId) =>
-  createQuery((db) =>
-    db
-      .selectFrom("eetReversal")
-      .leftJoin("eetReversalConfirmation", (join) =>
-        join
-          .onRef("eetReversalConfirmation.id", "=", "eetReversal.id")
-          .on("eetReversalConfirmation.isDeleted", "is not", sqliteTrue)
-      )
-      .leftJoin(paymentSalesConfirmation(db), (join) =>
-        join.onRef("paymentSales.paymentId", "=", "eetReversal.paymentId")
-      )
-      .select(eetReversalColumns)
-      .where("eetReversal.id", "=", reversalId)
-      .where("eetReversal.isDeleted", "is not", sqliteTrue)
-      .where("eetReversal.refundId", "is not", null)
-      .where("eetReversal.saleAt", "is not", null)
-      .$narrowType<EetReversalRequiredColumns>()
-  )
-
-export const eetReversalsByPaymentIdQuery = (paymentId: PaymentId) =>
-  createQuery((db) =>
-    db
-      .selectFrom("eetReversal")
-      .leftJoin("eetReversalConfirmation", (join) =>
-        join
-          .onRef("eetReversalConfirmation.id", "=", "eetReversal.id")
-          .on("eetReversalConfirmation.isDeleted", "is not", sqliteTrue)
-      )
-      .leftJoin(paymentSalesConfirmation(db), (join) =>
-        join.onRef("paymentSales.paymentId", "=", "eetReversal.paymentId")
-      )
-      .select(eetReversalColumns)
-      .where("eetReversal.paymentId", "=", paymentId)
-      .where("eetReversal.isDeleted", "is not", sqliteTrue)
-      .where("eetReversal.refundId", "is not", null)
-      .where("eetReversal.saleAt", "is not", null)
-      .$narrowType<EetReversalRequiredColumns>()
-  )
-
-export const unconfirmedEetReversalsQuery = createQuery((db) =>
+/**
+ * Every reversal with its confirmation and whether its sale was confirmed:
+ * the one row shape the queries below share, so a screen renders a reversal
+ * however it found it.
+ */
+const selectEetReversals = (
+  db: Parameters<Parameters<typeof createQuery>[0]>[0]
+) =>
   db
     .selectFrom("eetReversal")
     .leftJoin("eetReversalConfirmation", (join) =>
@@ -662,10 +630,29 @@ export const unconfirmedEetReversalsQuery = createQuery((db) =>
       join.onRef("paymentSales.paymentId", "=", "eetReversal.paymentId")
     )
     .select(eetReversalColumns)
-    .where("eetReversalConfirmation.id", "is", null)
     .where("eetReversal.isDeleted", "is not", sqliteTrue)
     .where("eetReversal.refundId", "is not", null)
     .where("eetReversal.saleAt", "is not", null)
-    .orderBy("eetReversal.saleAt", "desc")
     .$narrowType<EetReversalRequiredColumns>()
+
+export const eetReversalByIdQuery = (reversalId: EetReversalId) =>
+  createQuery((db) =>
+    selectEetReversals(db).where("eetReversal.id", "=", reversalId)
+  )
+
+export const eetReversalsByPaymentIdQuery = (paymentId: PaymentId) =>
+  createQuery((db) =>
+    selectEetReversals(db).where("eetReversal.paymentId", "=", paymentId)
+  )
+
+/** The storno of one refund, for the refund's detail screen. */
+export const eetReversalByRefundIdQuery = (refundId: RefundId) =>
+  createQuery((db) =>
+    selectEetReversals(db).where("eetReversal.refundId", "=", refundId)
+  )
+
+export const unconfirmedEetReversalsQuery = createQuery((db) =>
+  selectEetReversals(db)
+    .where("eetReversalConfirmation.id", "is", null)
+    .orderBy("eetReversal.saleAt", "desc")
 )

@@ -187,7 +187,12 @@ const settleQerkoTerminalRefund =
           paymentId: attempt.paymentId,
           deviceId: attempt.deviceId,
           currency: payment.currency,
-          method: "qerkoTerminal",
+          // Both refunds of a whole payment went through this transaction.
+          terminal: {
+            method: "qerkoTerminal",
+            transactionId: attempt.transactionId,
+            terminalId: attempt.terminalId,
+          },
           accountId: qerkoPayment.accountId,
           accountTransactionId: deriveQerkoRefundAccountTransactionId(
             refund.refundId
@@ -513,7 +518,8 @@ export const dismissQerkoTerminalRefundAttempt =
  * (qerko/0005), so the tip the terminal returned would go unrecorded. The
  * tip's refund has its one id per payment (refund/0011) and its money
  * movement derives from it, so a repair that runs twice, or beside a newer
- * settlement, writes the same rows. It is dated as the goods were.
+ * settlement, writes the same rows. It is dated as the goods were, and keeps
+ * the terminal transaction the taken-away attempt names.
  */
 export const repairQerkoTerminalTipRefunds =
   (): Task<number, never, EvoluDep & EvoluOwnerDep> => async (run) => {
@@ -535,7 +541,12 @@ export const repairQerkoTerminalTipRefunds =
             deviceId: attempt.deviceId,
             amount: attempt.tipAmount,
             currency: attempt.currency,
-            method: "qerkoTerminal",
+            // The transaction that returned the goods returned the tip.
+            terminal: {
+              method: "qerkoTerminal",
+              transactionId: attempt.transactionId,
+              terminalId: attempt.terminalId,
+            },
             isTip: sqliteTrue,
             linesJson: null,
             accountId: qerkoPayment.accountId,

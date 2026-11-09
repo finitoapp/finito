@@ -39,6 +39,7 @@ import { NonNegativeInteger } from "../shared/schema.ts"
 import { refundPayment } from "./refund-actions.ts"
 import {
   cardSwitchioRefundAttemptsByPaymentIdQuery,
+  refundByIdQuery,
   refundsByPaymentIdQuery,
 } from "./refund-queries.ts"
 import {
@@ -169,6 +170,23 @@ const setup = async ({
   const attempts = () =>
     evolu.loadQuery(cardSwitchioRefundAttemptsByPaymentIdQuery(paymentId))
   const refunds = () => evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
+  /** Every `refundCardSwitchio` row, by refund id. */
+  const cardDetails = () =>
+    evolu.loadQuery(
+      createQuery((db) =>
+        db
+          .selectFrom("refundCardSwitchio")
+          .select([
+            "id",
+            "accountId",
+            "transactionId",
+            "kind",
+            "authCode",
+            "sequenceNumber",
+          ])
+          .orderBy("id")
+      )
+    )
   const refundTransactions = () =>
     evolu.loadQuery(
       createQuery((db) =>
@@ -190,6 +208,7 @@ const setup = async ({
     advanceClock: clock.advance,
     attempts,
     refunds,
+    cardDetails,
     refundTransactions,
     [Symbol.asyncDispose]: async () => {
       await run[Symbol.asyncDispose]()
@@ -980,5 +999,176 @@ describe("a reversal before the refund to the card (refund/0008)", () => {
       )
     ).resolves.toEqual({ ok: true, value: { status: "unresolved" } })
     await expect(t.refunds()).resolves.toEqual([])
+  }, 15_000)
+})
+
+describe("what the terminal answered, kept beside the refund", () => {
+  const printed: SwitchioCardRefundResult = {
+    ...approvedRefundResult,
+    authCode: "223344",
+    sequenceNumber: "000077",
+  }
+  const receipt = ok(printed)
+
+  test("a refund to the card keeps its transaction and what the receipt prints", async () => {
+    await using t = await setup({ answers: [receipt] })
+
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        amount: NonNegativeInteger(10_000),
+      })
+    )
+
+    const [refund] = await t.refunds()
+    if (refund === undefined) throw new Error("no refund")
+    await expect(
+      t.run.deps.evolu.loadQuery(refundByIdQuery(refund.id))
+    ).resolves.toMatchObject([
+      {
+        cardSwitchioAccountId: accountId,
+        cardSwitchioTransactionId: "00000000-0000-4000-8000-000000000001",
+        cardSwitchioKind: "referralRefund",
+        cardSwitchioAuthCode: "223344",
+        cardSwitchioSequenceNumber: "000077",
+        qerkoTerminalTransactionId: null,
+      },
+    ])
+  }, 15_000)
+
+  test("a reversal of the whole payment keeps the one transaction under both refunds", async () => {
+    await using t = await setup({ tipAmount: 2_000, answers: [receipt] })
+
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        whole: true,
+      })
+    )
+
+    const detail = {
+      accountId,
+      transactionId: "00000000-0000-4000-8000-000000000001",
+      kind: "reversal",
+      authCode: "223344",
+      sequenceNumber: "000077",
+    }
+    await expect(t.cardDetails()).resolves.toEqual(
+      expect.arrayContaining([
+        { id: createIdFromString(`refund:reversal:${t.paymentId}`), ...detail },
+        { id: createIdFromString(`refund:tip:${t.paymentId}`), ...detail },
+      ])
+    )
+    await expect(t.cardDetails()).resolves.toHaveLength(2)
+  }, 15_000)
+
+  test("a restored result settled again keeps one row and what the first answer said", async () => {
+    await using t = await setup({ answers: [unreadable] })
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        amount: NonNegativeInteger(5_000),
+      })
+    )
+    const [attempt] = await t.attempts()
+    if (attempt === undefined) throw new Error("no attempt")
+    const restore = (result: Record<string, unknown>) =>
+      t.run.orThrow(
+        settleRestoredCardSwitchioRefund({
+          restored: {
+            resultCode: -1,
+            transactionId: attempt.transactionId,
+            transactionResult: JSON.stringify({
+              transactionId: attempt.transactionId,
+              responseCode: "OK",
+              ...result,
+            }),
+          },
+        })
+      )
+
+    await restore({ authCode: "998877", sequenceNumber: "000012" })
+    await restore({})
+
+    await expect(t.cardDetails()).resolves.toEqual([
+      {
+        id: attempt.refundId,
+        accountId,
+        transactionId: attempt.transactionId,
+        kind: "referralRefund",
+        authCode: "998877",
+        sequenceNumber: "000012",
+      },
+    ])
+  }, 15_000)
+
+  test("a refund the terminal reports when asked keeps what its answer carried", async () => {
+    await using t = await setup({
+      answers: [unreadable],
+      lookups: [{ type: "approved", result: printed, reversed: false }],
+    })
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        amount: NonNegativeInteger(5_000),
+      })
+    )
+    const [attempt] = await t.attempts()
+    if (attempt === undefined) throw new Error("no attempt")
+
+    await t.run.orThrow(
+      resolveCardSwitchioRefundAttempt({
+        attemptId: attempt.id,
+        deviceId: t.deviceId,
+      })
+    )
+
+    await expect(t.cardDetails()).resolves.toMatchObject([
+      {
+        id: attempt.refundId,
+        transactionId: attempt.transactionId,
+        kind: "referralRefund",
+        authCode: "223344",
+        sequenceNumber: "000077",
+      },
+    ])
+  }, 15_000)
+
+  test("a reversal recorded because the payment reads as reversed keeps no receipt of the payment's", async () => {
+    await using t = await setup({
+      answers: [
+        interpretSwitchioRefundResult({
+          resultCode: 0,
+          transactionResult: JSON.stringify({
+            responseCode: "TransactionInvalidData",
+            responseMessage: "Trn not found",
+          }),
+        }),
+      ],
+      lookups: [{ type: "approved", result: printed, reversed: true }],
+    })
+
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        whole: true,
+      })
+    )
+
+    await expect(t.cardDetails()).resolves.toEqual([
+      {
+        id: createIdFromString(`refund:reversal:${t.paymentId}`),
+        accountId,
+        transactionId: "00000000-0000-4000-8000-000000000001",
+        kind: "reversal",
+        authCode: null,
+        sequenceNumber: null,
+      },
+    ])
   }, 15_000)
 })

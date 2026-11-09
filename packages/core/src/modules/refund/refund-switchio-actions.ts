@@ -181,6 +181,7 @@ type AttemptRow = Pick<
   | "id"
   | "paymentId"
   | "deviceId"
+  | "transactionId"
   | "kind"
   | "refundId"
   | "amount"
@@ -190,6 +191,7 @@ type AttemptRow = Pick<
 > & {
   readonly paymentId: PaymentId
   readonly deviceId: DeviceId
+  readonly transactionId: NonEmptyString255
   readonly kind: "reversal" | "referralRefund"
   readonly refundId: RefundId
   readonly amount: NonNegativeInteger
@@ -205,9 +207,20 @@ type AttemptRow = Pick<
  * the payment meanwhile. An attempt that returned the tip with the goods (a
  * reversal, or a referral refund of the whole payment) writes it as the
  * tip's own refund beside the goods' (refund/0011).
+ *
+ * `answer` is the terminal's approval of this attempt, kept beside the
+ * refund (`refundCardSwitchio`) for what its receipt prints; `null` when the
+ * refund is recorded without one, because the payment it took back reads as
+ * reversed.
  */
 const settleApprovedAttempt =
-  (attempt: AttemptRow): Task<CardSwitchioRefundProgress, never, SettleDeps> =>
+  ({
+    attempt,
+    answer,
+  }: {
+    readonly attempt: AttemptRow
+    readonly answer: SwitchioCardRefundResult | null
+  }): Task<CardSwitchioRefundProgress, never, SettleDeps> =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
     const [[card], [payment]] = await Promise.all([
@@ -235,7 +248,14 @@ const settleApprovedAttempt =
           paymentId: attempt.paymentId,
           deviceId: attempt.deviceId,
           currency: payment.currency,
-          method: "cardSwitchio",
+          // Both refunds of a whole payment went through this transaction.
+          terminal: {
+            method: "cardSwitchio",
+            transactionId: attempt.transactionId,
+            kind: attempt.kind,
+            authCode: optionalNonEmptyString255(answer?.authCode),
+            sequenceNumber: optionalNonEmptyString255(answer?.sequenceNumber),
+          },
           accountId: card.accountId,
           accountTransactionId: deriveSwitchioRefundAccountTransactionId(
             refund.refundId
@@ -286,7 +306,9 @@ const applyRefundOutcome =
   }): Task<CardSwitchioRefundProgress, OutcomeError, SettleDeps> =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
-    if (outcome.ok) return run(settleApprovedAttempt(attempt))
+    if (outcome.ok) {
+      return run(settleApprovedAttempt({ attempt, answer: outcome.value }))
+    }
 
     const { error } = outcome
     run.deps.console.warn("[refund] Switchio card refund did not go through", {
@@ -526,8 +548,12 @@ export const startCardSwitchioRefund =
     ) {
       const original = await run.deps.switchioRefund.lookup(card.transactionId)
       if (original.type === "approved" && original.reversed) {
+        // The terminal's answer about the payment is not this refund's.
         return run(
-          settleApprovedAttempt({ ...attempt, isTip: attempt.isTip ?? null })
+          settleApprovedAttempt({
+            attempt: { ...attempt, isTip: attempt.isTip ?? null },
+            answer: null,
+          })
         )
       }
     }
@@ -613,7 +639,7 @@ export const resolveCardSwitchioRefundAttempt =
 
     const own = await run.deps.switchioRefund.lookup(attempt.transactionId)
     if (own.type === "approved" && !own.reversed) {
-      return run(settleApprovedAttempt(attempt))
+      return run(settleApprovedAttempt({ attempt, answer: own.result }))
     }
     if (attempt.kind === "reversal") {
       const [source] = await evolu.loadQuery(
@@ -624,7 +650,7 @@ export const resolveCardSwitchioRefundAttempt =
           ? null
           : await run.deps.switchioRefund.lookup(source.transactionId)
       if (original?.type === "approved" && original.reversed) {
-        return run(settleApprovedAttempt(attempt))
+        return run(settleApprovedAttempt({ attempt, answer: null }))
       }
     }
 

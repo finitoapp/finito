@@ -102,9 +102,11 @@ import {
   cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,
   refund,
+  refundCardSwitchio,
   refundCashRegister,
   refundIndexes,
   refundLine,
+  refundQerkoTerminal,
 } from "../modules/refund/refund.ts"
 import { table } from "../modules/table/table.ts"
 import { taxRate, taxRateIndexes } from "../modules/tax-rate/tax-rate.ts"
@@ -179,6 +181,8 @@ export const AppSchema = {
   eetReversalConfirmation,
   refund,
   refundCashRegister,
+  refundCardSwitchio,
+  refundQerkoTerminal,
   refundLine,
   cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,

@@ -48,6 +48,43 @@ export const refundCashRegister = {
   handedAmount: NonNegativeIntegerSchema,
 } as const
 
+/**
+ * What SwitchioPay answered for a refund to the card it approved
+ * (refund/0007), beside the `refund` row under its id, as
+ * `paymentCardSwitchio` keeps a payment's answer. `transactionId` is the ECR
+ * request id the attempt sent, by which SwitchioPay finds the refund; `kind`
+ * whether the terminal took the payment back or refunded to the card
+ * (refund/0008). `authCode` and `sequenceNumber` are what the terminal's
+ * receipt prints, when its answer carried them: a refund recorded because
+ * the payment read as reversed, or because the terminal was asked
+ * afterwards, may know neither. A refund of the whole payment writes one row
+ * under each of its two refunds, goods and tip, for the same transaction. A
+ * refund written by an older version has no row.
+ */
+export const refundCardSwitchio = {
+  id: RefundId,
+  accountId: AccountId,
+  transactionId: NonEmptyString255Schema,
+  kind: z.enum(["reversal", "referralRefund"]),
+  authCode: NonEmptyString255Schema.nullable(),
+  sequenceNumber: NonEmptyString255Schema.nullable(),
+} as const
+
+/**
+ * The Qerko terminal transaction of a refund to the card it approved
+ * (qerko/0004), beside the `refund` row under its id: Qerko's UUID for the
+ * refund and the terminal it went to (qerko/0006). Qerko's approval carries
+ * nothing more. A refund of the whole payment writes one row under each of
+ * its two refunds, goods and tip, for the same transaction. A refund written
+ * by an older version has no row.
+ */
+export const refundQerkoTerminal = {
+  id: RefundId,
+  accountId: AccountId,
+  transactionId: NonEmptyString255Schema,
+  terminalId: NonEmptyString255Schema,
+} as const
+
 export const refundLine = {
   id: RefundLineId,
   refundId: RefundId,
@@ -163,6 +200,8 @@ export const refundIndexes = ((create) => [
 
 export type RefundRow = InferTable<typeof refund>
 export type RefundCashRegisterRow = InferTable<typeof refundCashRegister>
+export type RefundCardSwitchioRow = InferTable<typeof refundCardSwitchio>
+export type RefundQerkoTerminalRow = InferTable<typeof refundQerkoTerminal>
 export type RefundLineRow = InferTable<typeof refundLine>
 export type QerkoTerminalRefundAttemptRow = InferTable<
   typeof qerkoTerminalRefundAttempt

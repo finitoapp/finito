@@ -48,6 +48,61 @@ export const refundsByPaymentIdQuery = (paymentId: PaymentId) =>
       .$narrowType<RefundRequiredColumns>()
   )
 
+/**
+ * One refund for its detail screen: the refund with the cash a refund from
+ * the register handed out (`refundCashRegister`), the name of the device
+ * that recorded it, and what the card terminal answered
+ * (`refundCardSwitchio`, `refundQerkoTerminal`). A refund written before any
+ * of those rows existed reads them as `null`.
+ */
+export const refundByIdQuery = (refundId: RefundId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("refund")
+      .leftJoin("refundCashRegister", (join) =>
+        join
+          .onRef("refundCashRegister.id", "=", "refund.id")
+          .on("refundCashRegister.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("device", (join) =>
+        join
+          .onRef("device.id", "=", "refund.deviceId")
+          .on("device.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("refundCardSwitchio", (join) =>
+        join
+          .onRef("refundCardSwitchio.id", "=", "refund.id")
+          .on("refundCardSwitchio.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("refundQerkoTerminal", (join) =>
+        join
+          .onRef("refundQerkoTerminal.id", "=", "refund.id")
+          .on("refundQerkoTerminal.isDeleted", "is not", sqliteTrue)
+      )
+      .select([
+        ...refundColumns,
+        "refundCashRegister.handedAmount as cashHandedAmount",
+        "refundCashRegister.accountId as cashAccountId",
+        "device.name as deviceName",
+        "refundCardSwitchio.accountId as cardSwitchioAccountId",
+        "refundCardSwitchio.transactionId as cardSwitchioTransactionId",
+        "refundCardSwitchio.kind as cardSwitchioKind",
+        "refundCardSwitchio.authCode as cardSwitchioAuthCode",
+        "refundCardSwitchio.sequenceNumber as cardSwitchioSequenceNumber",
+        "refundQerkoTerminal.accountId as qerkoTerminalAccountId",
+        "refundQerkoTerminal.transactionId as qerkoTerminalTransactionId",
+        "refundQerkoTerminal.terminalId as qerkoTerminalTerminalId",
+      ])
+      .where("refund.id", "=", refundId)
+      .where("refund.isDeleted", "is not", sqliteTrue)
+      .where("refund.paymentId", "is not", null)
+      .where("refund.amount", "is not", null)
+      .where("refund.currency", "is not", null)
+      .where("refund.method", "is not", null)
+      .where("refund.refundedAt", "is not", null)
+      .$narrowType<RefundRequiredColumns>()
+  )
+
 const selectRefundSummaries = (
   db: Parameters<Parameters<typeof createQuery>[0]>[0]
 ) =>
@@ -141,34 +196,47 @@ export const refundSummariesByBillIdQuery = (billId: BillId) =>
     selectRefundSummaries(db).where("payment.billId", "=", billId)
   )
 
+const selectRefundLines = (
+  db: Parameters<Parameters<typeof createQuery>[0]>[0]
+) =>
+  db
+    .selectFrom("refundLine")
+    .innerJoin("paymentLine", "paymentLine.id", "refundLine.paymentLineId")
+    .innerJoin("item", "item.id", "paymentLine.itemId")
+    .select([
+      "refundLine.id",
+      "refundLine.refundId",
+      "refundLine.paymentLineId",
+      "refundLine.quantity",
+      "refundLine.amount",
+      "item.name",
+    ])
+    .where("refundLine.isDeleted", "is not", sqliteTrue)
+    .where("refundLine.refundId", "is not", null)
+    .where("refundLine.paymentLineId", "is not", null)
+    .where("refundLine.quantity", "is not", null)
+    .where("refundLine.amount", "is not", null)
+    .where("item.name", "is not", null)
+    .$narrowType<{
+      refundId: KyselyNotNull
+      paymentLineId: KyselyNotNull
+      quantity: KyselyNotNull
+      amount: KyselyNotNull
+      name: KyselyNotNull
+    }>()
+
 export const refundLinesByPaymentIdQuery = (paymentId: PaymentId) =>
   createQuery((db) =>
-    db
-      .selectFrom("refundLine")
-      .innerJoin("paymentLine", "paymentLine.id", "refundLine.paymentLineId")
-      .innerJoin("item", "item.id", "paymentLine.itemId")
-      .select([
-        "refundLine.id",
-        "refundLine.refundId",
-        "refundLine.paymentLineId",
-        "refundLine.quantity",
-        "refundLine.amount",
-        "item.name",
-      ])
-      .where("refundLine.paymentId", "=", paymentId)
-      .where("refundLine.isDeleted", "is not", sqliteTrue)
-      .where("refundLine.refundId", "is not", null)
-      .where("refundLine.paymentLineId", "is not", null)
-      .where("refundLine.quantity", "is not", null)
-      .where("refundLine.amount", "is not", null)
-      .where("item.name", "is not", null)
-      .$narrowType<{
-        refundId: KyselyNotNull
-        paymentLineId: KyselyNotNull
-        quantity: KyselyNotNull
-        amount: KyselyNotNull
-        name: KyselyNotNull
-      }>()
+    selectRefundLines(db).where("refundLine.paymentId", "=", paymentId)
+  )
+
+/** The goods lines of one refund, named by their item, for its detail screen. */
+export const refundLinesByRefundIdQuery = (refundId: RefundId) =>
+  createQuery((db) =>
+    selectRefundLines(db)
+      .where("refundLine.refundId", "=", refundId)
+      .orderBy("item.name")
+      .orderBy("refundLine.id")
   )
 
 export const refundablePaymentLinesQuery = (paymentId: PaymentId) =>
@@ -312,6 +380,8 @@ export const qerkoTerminalRefundsMissingTipQuery = createQuery((db) =>
       "attempt.id",
       "attempt.paymentId",
       "attempt.deviceId",
+      "attempt.transactionId",
+      "attempt.terminalId",
       "attempt.tipAmount",
       "goods.currency",
       "goods.refundedAt",
@@ -320,11 +390,15 @@ export const qerkoTerminalRefundsMissingTipQuery = createQuery((db) =>
     .where("attempt.isTip", "is", null)
     .where("attempt.tipAmount", "is not", null)
     .where("attempt.paymentId", "is not", null)
+    .where("attempt.transactionId", "is not", null)
+    .where("attempt.terminalId", "is not", null)
     .where("goods.currency", "is not", null)
     .where("goods.refundedAt", "is not", null)
     .where("tip.id", "is", null)
     .$narrowType<{
       paymentId: KyselyNotNull
+      transactionId: KyselyNotNull
+      terminalId: KyselyNotNull
       tipAmount: KyselyNotNull
       currency: KyselyNotNull
       refundedAt: KyselyNotNull
