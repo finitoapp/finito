@@ -82,19 +82,13 @@ const closureErrorKeys = {
   SwitchioResultUnreadable: "settings.cardClosure.error.unknown",
 } satisfies Record<CloseCardSwitchioBatchError["type"], TranslationKey>
 
-/** ECR's "terminal busy" bundle result code (section 3.3). */
-const TERMINAL_BUSY_RESULT_CODE = 2
-
 const closureErrorKey = (
   error: CloseCardSwitchioBatchError
 ): TranslationKey => {
   if (error.type === "SwitchioUnavailable" && error.reason === "demo") {
     return "settings.cardClosure.error.demo"
   }
-  if (
-    error.type === "SwitchioClosureFailed" &&
-    error.resultCode === TERMINAL_BUSY_RESULT_CODE
-  ) {
+  if (error.type === "SwitchioClosureFailed" && error.busy) {
     return "settings.cardClosure.error.busy"
   }
   return closureErrorKeys[error.type]
