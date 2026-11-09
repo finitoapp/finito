@@ -1,3 +1,4 @@
+import type { Money } from "@payky/core/modules/shared/money"
 import { describe, expect, test } from "vitest"
 import {
   type BillHistoryRow,
@@ -12,10 +13,12 @@ import {
   sumSettledTips,
 } from "./activity-history.ts"
 import { paykyBrand } from "./brand.ts"
+import { formatMoney } from "./format-money.ts"
 import { createTranslate } from "./i18n/translate.ts"
 
 const t = createTranslate("en", paykyBrand)
 const now = new Date(2026, 9, 17, 12)
+const money = (value: Money) => formatMoney(value, "en-US")
 
 /** A pending, bill-less payment; tests override only what they exercise. */
 const payment = (overrides: Record<string, unknown> = {}): PaymentHistoryRow =>
@@ -192,13 +195,13 @@ describe("refundBadgeLabel", () => {
     }) as never
 
   test("is empty for no summary or nothing refunded", () => {
-    expect(refundBadgeLabel(undefined, t, "en-US")).toBeNull()
-    expect(refundBadgeLabel(summary(0, 100), t, "en-US")).toBeNull()
+    expect(refundBadgeLabel(undefined, t, money)).toBeNull()
+    expect(refundBadgeLabel(summary(0, 100), t, money)).toBeNull()
   })
 
   test("names a partial and a full refund differently", () => {
-    const partial = refundBadgeLabel(summary(50, 100), t, "en-US")
-    const full = refundBadgeLabel(summary(100, 100), t, "en-US")
+    const partial = refundBadgeLabel(summary(50, 100), t, money)
+    const full = refundBadgeLabel(summary(100, 100), t, money)
     expect(partial).not.toBeNull()
     expect(full).not.toBeNull()
     expect(partial).not.toBe(full)
@@ -206,8 +209,8 @@ describe("refundBadgeLabel", () => {
 
   test("shows every amount given back, the tip included, while its state counts goods", () => {
     // All 50 of the goods and a tip of 5: refunded in full, 55 back.
-    const label = refundBadgeLabel(summary(5_000, 5_000, 5_500), t, "en-US")
-    expect(label).toBe(refundBadgeLabel(summary(5_500, 5_500), t, "en-US"))
+    const label = refundBadgeLabel(summary(5_000, 5_000, 5_500), t, money)
+    expect(label).toBe(refundBadgeLabel(summary(5_500, 5_500), t, money))
     expect(label).toContain("55")
   })
 })
