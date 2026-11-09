@@ -11,6 +11,26 @@ function depsEqual(a: readonly unknown[], b: readonly unknown[]): boolean {
   )
 }
 
+/** The rows a page shows unless a list asks for another size. */
+export const defaultInfinitePageSize = 20
+
+/**
+ * The limit a page query is built with: one row past what is shown, which
+ * is how a page tells whether there is more without a count query.
+ */
+const pageQueryLimit = (shown: number): number => shown + 1
+
+/**
+ * The query of the first page `useInfinitePages` reads, for a screen that
+ * preloads it with its other queries (`usePreloadEvoluQueries`). Built by
+ * the same rule as the hook's own, so the preload is always the query the
+ * list then waits on; pass the list's `pageSize` when it has one.
+ */
+export const firstInfinitePageQuery = <R extends Row>(
+  createPageQuery: (limit: number) => Query<EvoluSchema, R>,
+  { pageSize = defaultInfinitePageSize }: { readonly pageSize?: number } = {}
+): Query<EvoluSchema, R> => createPageQuery(pageQueryLimit(pageSize))
+
 /**
  * Pagination over any Evolu query, for both apps: grows a `limit` and exposes
  * `loadMore`; each app binds it to its own trigger (web's intersection
@@ -36,7 +56,7 @@ export function useInfinitePages<R extends Row>(
   evolu: Evolu<EvoluSchema>,
   deps: readonly unknown[],
   createPageQuery: (limit: number) => Query<EvoluSchema, R>,
-  { pageSize = 20 }: { readonly pageSize?: number } = {}
+  { pageSize = defaultInfinitePageSize }: { readonly pageSize?: number } = {}
 ): {
   readonly rows: QueryRows<R>
   readonly hasMore: boolean
@@ -53,7 +73,7 @@ export function useInfinitePages<R extends Row>(
   const [isPending, startTransition] = useTransition()
 
   const query = useMemo(
-    () => createPageQuery(state.limit + 1),
+    () => createPageQuery(pageQueryLimit(state.limit)),
     [createPageQuery, state.limit]
   )
   const { data: rows } = useEvoluQueryFor(evolu, query)

@@ -1,5 +1,6 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { firstInfinitePageQuery } from "@payky/app-shared/use-infinite-evolu-query"
 import { useNow } from "@payky/app-shared/use-now"
 import { cardSwitchioAccountQuery } from "@payky/core/modules/account/account-queries"
 import {
@@ -61,17 +62,12 @@ import { formatMoney } from "../../../lib/format-money.ts"
 import { shape } from "../../../theme/tokens.ts"
 import { useClosureDeviceLabel } from "./use-closure-device-label.ts"
 
-/**
- * `useInfinitePages`' default page, and the first page it asks for: one row
- * more than it shows, to tell whether another page follows.
- */
-const HISTORY_PAGE_SIZE = 20
-
 /** Every query the screen reads, started in one round trip. */
 const cardClosurePageQueries = [
   cardSwitchioAccountQuery,
   lastCardSwitchioClosurePerDeviceQuery,
-  cardSwitchioClosuresQuery(HISTORY_PAGE_SIZE + 1),
+  // The history's first page, exactly as `CardClosureList` asks for it.
+  firstInfinitePageQuery(cardSwitchioClosuresQuery),
 ]
 
 const closureErrorKeys = {
