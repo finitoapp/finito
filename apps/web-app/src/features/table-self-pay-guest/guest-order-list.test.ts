@@ -33,11 +33,7 @@ const shown = (
 
 describe("where the guest's order stands", () => {
   test.each([
-    [
-      "not confirmed yet",
-      null,
-      "Restaurace vaši objednávku zatím nepotvrdila.",
-    ],
+    ["not confirmed yet", null, "Platba za objednávku zatím nedorazila."],
     [
       "paid and waiting for the staff",
       {},
@@ -48,7 +44,7 @@ describe("where the guest's order stands", () => {
     [
       "rejected, though staff had accepted it",
       { accepted: 2, rejected: 3 },
-      "Objednávka 4 byla odmítnuta. Peníze vám vrátí obsluha.",
+      "Objednávka 4 byla odmítnuta. Požádejte obsluhu o vrácení peněz.",
     ],
   ] as const)("says %s", (_name, confirmation, status) => {
     expect(guestOrderStatus(shown(confirmation), t, "cs")).toBe(status)

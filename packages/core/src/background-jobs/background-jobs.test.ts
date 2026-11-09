@@ -6,6 +6,7 @@ import type { MasterKey } from "../modules/shared/key-derivation.ts"
 import type { AppBackgroundJobContext } from "./background-job-types.ts"
 import {
   appBackgroundJobs,
+  appBackgroundJobsFor,
   bankBackgroundJobs,
   cashuBackgroundJobs,
   cliBackgroundJobs,
@@ -21,8 +22,10 @@ import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
+import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
+import { startTableSelfPayReachJob } from "./jobs/table-self-pay-reach-job.ts"
 
 describe("background job groups", () => {
   test("keeps the Fio and MONETA jobs out of the app jobs, in a group of their own", () => {
@@ -41,6 +44,7 @@ describe("background job groups", () => {
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
       startRecoveryBackupReminderJob,
+      startTableSelfPayReachJob,
       startTableSelfPayPublishingJob,
       startSelfPayPointerJob,
       startBillClosingJob,
@@ -67,6 +71,7 @@ describe("background job groups", () => {
         startRecoveryBackupReminderJob,
         startQerkoPaymentConnectionJob,
         startQerkoPaymentSyncJob,
+        startTableSelfPayReachJob,
       ])
     )
   })
@@ -75,8 +80,22 @@ describe("background job groups", () => {
     expect(cliBackgroundJobs).not.toContain(startRecoveryBackupReminderJob)
   })
 
+  test("keeps the tables' notifications out of the CLI, which shows none", () => {
+    expect(cliBackgroundJobs).not.toContain(startTableSelfPayReachJob)
+  })
+
   test("keeps the Cashu job out of the CLI, which has no Linky owners", () => {
     expect(cliBackgroundJobs).not.toContain(startCashuAccountSyncJob)
+  })
+
+  test("runs the self-pay test transfer job only where a test deployment asks for it", () => {
+    expect(appBackgroundJobsFor()).toEqual(appBackgroundJobs)
+    expect(appBackgroundJobs).not.toContain(startSelfPayTestTransferJob)
+    expect(appBackgroundJobsFor({ selfPayTestTransfers: true })).toEqual([
+      ...appBackgroundJobs,
+      startSelfPayTestTransferJob,
+    ])
+    expect(cliBackgroundJobs).not.toContain(startSelfPayTestTransferJob)
   })
 
   test("keeps the Cashu job apart, so a Cashu wallet that fails to start stops no other job", () => {

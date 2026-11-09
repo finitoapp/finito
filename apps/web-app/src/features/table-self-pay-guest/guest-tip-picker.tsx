@@ -1,6 +1,6 @@
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
-import { type FocusEvent, type Ref, useRef, useState } from "react"
+import { type FocusEvent, type Ref, useId, useRef, useState } from "react"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
@@ -86,6 +86,9 @@ export function GuestTipPicker({
 }) {
   const { t, locale } = useGuestTranslation()
   const [hasLeftCustomTip, setHasLeftCustomTip] = useState(false)
+  const titleId = useId()
+  const customTipId = useId()
+  const customTipErrorId = useId()
   const customTip = guestTipAmount(share, resolveGuestTip(choice, currency))
   const isCustom = choice.option === CUSTOM
   const currencySymbol = guestCurrencySymbol(currency, locale)
@@ -97,14 +100,14 @@ export function GuestTipPicker({
   return (
     <section
       ref={ref}
-      aria-labelledby="guest-tip-title"
+      aria-labelledby={titleId}
       className="flex flex-col gap-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
     >
-      <h2 id="guest-tip-title" className="font-semibold">
+      <h2 id={titleId} className="font-semibold">
         {t("selfPay.tip.label")}
       </h2>
       <ToggleGroup<string>
-        aria-labelledby="guest-tip-title"
+        aria-labelledby={titleId}
         className="grid w-full grid-cols-3 gap-2"
         value={[String(choice.option)]}
         onValueChange={([next]) => {
@@ -151,9 +154,7 @@ export function GuestTipPicker({
       </ToggleGroup>
       {isCustom ? (
         <div className="flex flex-col gap-2">
-          <Label htmlFor="guest-custom-tip">
-            {t("selfPay.tip.custom.label")}
-          </Label>
+          <Label htmlFor={customTipId}>{t("selfPay.tip.custom.label")}</Label>
           <div className="flex items-center gap-2">
             <ToggleGroup<string>
               aria-label={t("selfPay.tip.custom.unit.label")}
@@ -179,14 +180,14 @@ export function GuestTipPicker({
             </ToggleGroup>
             <div className="relative flex-1">
               <Input
-                id="guest-custom-tip"
+                id={customTipId}
                 inputMode="decimal"
                 autoComplete="off"
                 placeholder="0"
                 className="h-11 pr-10"
                 aria-invalid={showsUnreadable}
                 aria-describedby={
-                  showsUnreadable ? "guest-custom-tip-error" : undefined
+                  showsUnreadable ? customTipErrorId : undefined
                 }
                 value={choice.customText}
                 onChange={(event) => {
@@ -202,7 +203,7 @@ export function GuestTipPicker({
             </div>
           </div>
           {showsUnreadable ? (
-            <p id="guest-custom-tip-error" className="text-sm text-destructive">
+            <p id={customTipErrorId} className="text-sm text-destructive">
               {choice.customUnit === "percent"
                 ? t("selfPay.percent.unreadable")
                 : t("selfPay.amount.unreadable")}

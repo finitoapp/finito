@@ -128,7 +128,7 @@ export const skBill = {
   "bill.totalBelowPaid":
     "Účet je čiastočne zaplatený, jeho súčet nemôže klesnúť pod zaplatenú sumu. Peniaze vrátite tlačidlom Vrátiť peniaze pri platbe.",
   "billDetail.noTable": "Bez stola",
-  "billDetail.selfPay": "Platba hosťom",
+  "billDetail.selfPay": "Pri stole",
   "billDetail.selfPay.linePaid": "Hostia zaplatili {paid} z {total}",
   "billDetail.table": "Stôl",
   "billDetail.closedAtValue": "Uzavreté {date}",
@@ -150,15 +150,20 @@ export const skBill = {
   "billHistory.title": "História účtov",
   "billHistory.underpaid": "Nedoplatené",
   "selfPay.amount.unreadable": "Napíšte sumu, napríklad 150 alebo 150,50.",
-  "selfPay.back": "Zmeniť platbu",
-  "selfPay.bank.account": "Číslo účtu",
+  "selfPay.back": "Späť k účtu",
   "selfPay.bank.amount": "Suma",
+  "selfPay.bank.byHand":
+    "Platbu zadávate ručne? Variabilný symbol a správu pre prijímateľa odpíšte presne, podľa nich reštaurácia spozná, že platba je vaša.",
   "selfPay.bank.copy": "Kopírovať {field}",
-  "selfPay.bank.format.payBySquare": "Pay by Square",
-  "selfPay.bank.format.spayd": "QR Platba",
-  "selfPay.bank.hint":
-    "Naskenujte kód v bankovej aplikácii alebo ho uložte a otvorte z galérie. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
-  "selfPay.bank.message": "Správa",
+  "selfPay.bank.format.showPayBySquare":
+    "Slovenská banka? Zobraziť kód PAY by square",
+  "selfPay.bank.format.showSpayd": "Česká banka? Zobraziť kód QR Platba",
+  "selfPay.bank.hint.open":
+    "Na tomto telefóne platbu otvorte v aplikácii banky. Z iného telefónu stačí naskenovať QR kód. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
+  "selfPay.bank.hint.save":
+    "Na tomto telefóne QR kód uložte a v aplikácii banky ho načítajte z galérie. Z iného telefónu ho stačí naskenovať. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
+  "selfPay.bank.iban": "IBAN",
+  "selfPay.bank.message": "Správa pre prijímateľa",
   "selfPay.bank.openInApp": "Otvoriť v aplikácii banky",
   "selfPay.bank.qr": "QR kód na platbu prevodom",
   "selfPay.bank.saveQr": "Uložiť QR kód",
@@ -168,6 +173,15 @@ export const skBill = {
   "selfPay.bill.paid": "Zaplatené",
   "selfPay.bill.remainder": "Zostáva zaplatiť",
   "selfPay.bill.total": "Spolu",
+  "selfPay.billChanged.announcement": "{title} {description}",
+  "selfPay.billChanged.description":
+    "Ak ste peniaze ešte neposlali, vráťte sa a vyberte znova.",
+  "selfPay.billChanged.nothingLeft.description":
+    "Ak ste peniaze ešte neposlali, už ich neposielajte.",
+  "selfPay.billChanged.nothingLeft.title":
+    "Účet sa medzitým zmenil. Už nie je čo platiť.",
+  "selfPay.billChanged.title":
+    "Účet sa medzitým zmenil. Zostáva zaplatiť {amount}.",
   "selfPay.choice.amount": "Zadať inú sumu",
   "selfPay.choice.amount.hint":
     "Od {minimum}. Viac, ako zostáva, zaplatiť nejde.",
@@ -185,6 +199,7 @@ export const skBill = {
   "selfPay.choice.title": "Koľko zaplatíte?",
   "selfPay.confirmation.mine": "Zaplatené {amount}, máte hotovo.",
   "selfPay.confirmation.mine.detail": "Reštaurácia vašu platbu potvrdila.",
+  "selfPay.confirmation.mine.past": "Zaplatili ste {amount} o {time}",
   "selfPay.confirmation.other": "{amount} zaplatené o {time}",
   "selfPay.confirmations.title": "Posledné platby",
   "selfPay.copied": "Skopírované",
@@ -197,16 +212,17 @@ export const skBill = {
   "selfPay.footer": "Reštaurácia vašu platbu uvidí, keď peniaze dorazia.",
   "selfPay.invalid.description": "Požiadajte obsluhu o pomoc s platením.",
   "selfPay.invalid.title": "Tento QR kód sa nedá prečítať",
-  "selfPay.lightning.copy": "Kopírovať faktúru",
-  "selfPay.lightning.create": "Vytvoriť Lightning faktúru",
-  "selfPay.lightning.creating": "Vytvára sa faktúra…",
-  "selfPay.lightning.error": "Faktúru sa nepodarilo vytvoriť. Skúste to znova.",
-  "selfPay.lightning.expired": "Platnosť faktúry vypršala.",
+  "selfPay.lightning.copy": "Kopírovať LN faktúru",
+  "selfPay.lightning.create": "Zobraziť QR kód na zaplatenie",
+  "selfPay.lightning.creating": "Pripravuje sa QR kód…",
+  "selfPay.lightning.error": "QR kód sa nepodarilo pripraviť. Skúste to znova.",
+  "selfPay.lightning.expired":
+    "Platnosť QR kódu vypršala. Ak ste ho už zaplatili, neplaťte znova: reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.lightning.open": "Otvoriť v peňaženke",
-  "selfPay.lightning.qr": "QR kód Lightning faktúry",
-  "selfPay.lightning.restart": "Vytvoriť novú faktúru",
+  "selfPay.lightning.qr": "QR kód na platbu bitcoinom",
+  "selfPay.lightning.restart": "Zobraziť nový QR kód",
   "selfPay.lightning.unavailable":
-    "Platby cez Lightning majú práve výpadok. Zaplaťte inak alebo u obsluhy.",
+    "Platby bitcoinom teraz nefungujú. Zaplaťte inak alebo u obsluhy.",
   "selfPay.line.fullyPaid": "Zaplatené",
   "selfPay.line.paid": "Zaplatené {paid} z {total}",
   "selfPay.line.people": "bolo nás",
@@ -224,23 +240,27 @@ export const skBill = {
   "selfPay.line.unshare": "Zrušiť delenie",
   "selfPay.line.unshare.label": "Zrušiť delenie: {name}",
   "selfPay.language.label": "Jazyk",
-  "selfPay.loading": "Načítava sa účet…",
+  "selfPay.loading": "Načítava sa stôl…",
   "selfPay.menu.loading": "Načítava sa menu…",
   "selfPay.menu.other": "Ostatné",
   "selfPay.menu.quantity.decrease": "Ubrať kus: {name}",
   "selfPay.menu.quantity.increase": "Pridať kus: {name}",
   "selfPay.menu.quantity.label": "Koľko kusov: {name}",
+  "selfPay.menu.removed":
+    "Už nie je k dispozícii a z objednávky bolo odobraté: {names}.",
   "selfPay.menu.tab.bill": "Účet",
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankový prevod",
-  "selfPay.method.lightning": "Lightning",
+  "selfPay.method.lightning": "Bitcoin",
+  "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Platenie pri stole teraz nie je k dispozícii.",
+  "selfPay.offline": "Ste offline. Stránka sa obnoví, keď budete znova online.",
   "selfPay.order.back": "Späť do menu",
   "selfPay.order.hide": "Skryť",
   "selfPay.order.items": "{summary} · {total}",
-  "selfPay.order.left":
-    "Objednávka {number} je potvrdená. Zostáva zaplatiť {amount}.",
+  "selfPay.order.items.paid": "{summary} · zaplatené {amount}",
+  "selfPay.order.left": "Objednávka {number}: zostáva zaplatiť {amount}.",
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pre kuchyňu",
   "selfPay.order.note.length": "{length}/{max}",
@@ -250,10 +270,10 @@ export const skBill = {
   "selfPay.order.preparing.left":
     "Objednávka {number} sa pripravuje. Zostáva zaplatiť {amount}.",
   "selfPay.order.refused":
-    "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
+    "Objednávka sa do reštaurácie nedostala a nič ste nezaplatili. Skúste to znova, alebo si objednajte u obsluhy.",
   "selfPay.order.rejected":
-    "Objednávka {number} bola odmietnutá. Peniaze vám vráti obsluha.",
-  "selfPay.order.remove": "Nezaplatené, odstrániť",
+    "Objednávka {number} bola odmietnutá. Požiadajte obsluhu o vrátenie peňazí.",
+  "selfPay.order.remove": "Nezaplatené, odobrať",
   "selfPay.order.served": "Objednávka {number} je vydaná.",
   "selfPay.order.served.left":
     "Objednávka {number} je vydaná. Zostáva zaplatiť {amount}.",
@@ -261,13 +281,14 @@ export const skBill = {
   "selfPay.order.title": "Vaša objednávka",
   "selfPay.order.unavailable.description": "Objednajte si, prosím, u obsluhy.",
   "selfPay.order.unavailable.title": "Objednávať teraz nejde",
-  "selfPay.order.unseen": "Platbu sme zatiaľ nevideli.",
+  "selfPay.order.unseen": "Peniaze sú možno ešte na ceste.",
   "selfPay.order.unseen.description":
     "Ak ste zaplatili, ukážte túto obrazovku obsluhe.",
-  "selfPay.order.waiting": "Reštaurácia vašu objednávku zatiaľ nepotvrdila.",
+  "selfPay.order.waiting": "Platba za objednávku zatiaľ neprišla.",
   "selfPay.order.waiting.description":
-    "Ak ste už zaplatili, čakáme na potvrdenie platby.",
+    "Ak ste už zaplatili, reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.paidFor.equal": "1/{people} účtu",
+  "selfPay.paidFor.paidBefore": "Už zaplatené",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "Platíte za",
   "selfPay.pay.announcement": "{pay}. {notice}",
@@ -275,7 +296,7 @@ export const skBill = {
     "Tu sa dá zaplatiť od {amount}. Vyberte viac alebo zaplaťte u obsluhy.",
   "selfPay.pay.capped":
     "Viac, ako zostáva, zaplatiť nejde. Platíte zvyšok {amount}.",
-  "selfPay.pay.preparing": "Pripravujem platbu…",
+  "selfPay.pay.preparing": "Pripravuje sa platba…",
   "selfPay.pay.restAdded": "Vrátane zvyšných {amount} z účtu.",
   "selfPay.pay.total": "Zaplatiť {amount}",
   "selfPay.pay.unseen":
@@ -285,6 +306,9 @@ export const skBill = {
   "selfPay.people.decrease": "Ubrať človeka",
   "selfPay.people.increase": "Pridať človeka",
   "selfPay.percent.unreadable": "Napíšte percentá, napríklad 10 alebo 7,5.",
+  "selfPay.settled.announcement": "{title} {description}",
+  "selfPay.settled.description": "Účet je uzavretý. Ďakujeme!",
+  "selfPay.settled.title": "Už nič neplatíte",
   "selfPay.stale":
     "Pred platbou si účet overte u obsluhy. Reštaurácia ho naposledy potvrdila o {time}.",
   "selfPay.stale.never":
@@ -293,6 +317,12 @@ export const skBill = {
   "selfPay.summary.nothing": "Zatiaľ nič nevybrané",
   "selfPay.summary.share": "Vaša časť {amount}",
   "selfPay.summary.tip": "+ prepitné {amount}",
+  "selfPay.test.failed":
+    "Testovací prevod sa do reštaurácie nedostal. Skúste to znova.",
+  "selfPay.test.hint":
+    "Toto je testovacie nasadenie. Namiesto platby pošlite testovací prevod a reštaurácia ho uvidí ako peniaze z banky.",
+  "selfPay.test.send": "Poslať testovací prevod",
+  "selfPay.test.sent": "Testovací prevod odoslaný",
   "selfPay.tip.custom": "Vlastné",
   "selfPay.tip.custom.label": "Vlastné prepitné",
   "selfPay.tip.custom.unit": "% alebo suma",
@@ -301,8 +331,8 @@ export const skBill = {
   "selfPay.tip.none": "Bez",
   "selfPay.tip.percent": "{percent} %",
   "selfPay.unavailable.description":
-    "Skúste to o chvíľu znova alebo zaplaťte u obsluhy.",
-  "selfPay.unavailable.title": "Účet teraz nie je dostupný",
+    "Skúste to o chvíľu znova alebo sa obráťte na obsluhu.",
+  "selfPay.unavailable.title": "Stránka stola teraz nie je dostupná",
   "selfPay.waiting": "Reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.waiting.over.announcement": "{title}. {description}",
   "selfPay.waiting.over.description":

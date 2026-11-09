@@ -9,6 +9,23 @@ import { useTranslation } from "@/hooks/use-translation.ts"
 
 const WAITING_ORDERS_TOAST_ID = "menu-orders-waiting"
 
+const measureWaitingOrdersNotice = (text: HTMLSpanElement | null) => {
+  const notice = text?.closest<HTMLElement>(".waiting-orders-notice")
+  if (notice === null || notice === undefined) return
+  const rootStyle = document.documentElement.style
+  const observer = new ResizeObserver(() => {
+    rootStyle.setProperty(
+      "--waiting-orders-notice-height",
+      `calc(${notice.offsetHeight.toString()}px + 1rem)`
+    )
+  })
+  observer.observe(notice)
+  return () => {
+    observer.disconnect()
+    rootStyle.removeProperty("--waiting-orders-notice-height")
+  }
+}
+
 export function MenuOrderAnnouncer() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -26,8 +43,9 @@ export function MenuOrderAnnouncer() {
       toast.dismiss(WAITING_ORDERS_TOAST_ID)
       return
     }
-    toast.success(notice, {
+    toast(<span ref={measureWaitingOrdersNotice}>{notice}</span>, {
       id: WAITING_ORDERS_TOAST_ID,
+      className: "waiting-orders-notice",
       duration: Number.POSITIVE_INFINITY,
       dismissible: false,
       action: {

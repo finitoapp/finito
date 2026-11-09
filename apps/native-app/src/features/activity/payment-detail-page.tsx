@@ -682,7 +682,7 @@ function PaymentBillCard({
   const taxRates = useEvoluQuery(taxRatesQuery).data
   const summaries = useBillLineSummaries(billId)
   const billStatus = useBillStatus(billId)
-  const { claimedSum, coverage } = useBillCoverage(billId)
+  const { claimedSum } = useBillCoverage(billId)
   const frozenLines = usePaymentLineSummaries(paymentId)
   // `null` when the payment predates the frozen snapshot.
   const lineDiff = useMemo(
@@ -710,7 +710,8 @@ function PaymentBillCard({
     ...new Set(claimedPayments.map((payment) => payment.id)),
   ].filter((id) => id !== paymentId)
   const notice = derivePaymentBillCoverageNotice({
-    coverage,
+    billTotal: totalAmount,
+    isCanceled: billStatus.status === "canceled",
     claimedSum,
     lineDiff,
     otherClaimedPaymentCount: otherClaimedPaymentIds.length,
@@ -821,7 +822,7 @@ function PaymentBillCard({
         {notice.warning === null ? null : (
           <BillCoverageWarning
             coverage={notice.warning}
-            expectedAmount={totalAmount}
+            expectedAmount={notice.expectedAmount}
             claimedSum={claimedSum}
             currency={bill.currency}
             reason={notice.reason satisfies BillCoverageMismatchReason | null}

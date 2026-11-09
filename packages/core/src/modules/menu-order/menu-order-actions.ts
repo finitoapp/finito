@@ -26,8 +26,12 @@ import {
 } from "../bill/bill-actions.ts"
 import { claimedTransactionsByBillIdQuery } from "../bill/bill-coverage-queries.ts"
 import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
+import { loadOverpaymentInput } from "../bill/bill-overpayment-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
-import { claimedPaymentIdSet } from "../bill/bill-utils.ts"
+import {
+  claimedPaymentIdSet,
+  deriveBillOverpayment,
+} from "../bill/bill-utils.ts"
 import type { BillLineRow } from "../bill-line/bill-line.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import type {
@@ -46,10 +50,11 @@ import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import { deriveTableSelfPayKeys } from "../shared/key-derivation.ts"
+import type { Money } from "../shared/money.ts"
 import {
   type Currency,
   DateStringSchema,
-  type Integer,
+  Integer,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
@@ -75,6 +80,7 @@ import {
   menuVersionByIdQuery,
   menuVersionsNewestFirstQuery,
   rejectedMenuOrdersByPointerQuery,
+  rejectedMenuOrdersQuery,
 } from "./menu-order-queries.ts"
 import type { MenuOrderId } from "./menu-order-types.ts"
 import {
@@ -260,6 +266,12 @@ export const rejectMenuOrder =
         { ...options, owner: run.deps.evoluOwner }
       )
     )
+    return ok(await run.ok(loadRejectedMenuOrderRefund(billId)))
+  }
+
+const loadRejectedMenuOrderRefund =
+  (billId: BillId): Task<RejectedMenuOrderRefund, never, EvoluDep> =>
+  async (run) => {
     const [paymentId, ...otherPayments] = claimedPaymentIdSet(
       await run.deps.evolu.loadQuery(claimedTransactionsByBillIdQuery(billId))
     )
@@ -268,6 +280,39 @@ export const rejectMenuOrder =
         ? { type: "payment", paymentId }
         : { type: "bill", billId }
     )
+  }
+
+export interface MenuOrderToReturn {
+  readonly id: MenuOrderId
+  readonly number: number
+  readonly amount: Money
+  readonly refund: RejectedMenuOrderRefund
+}
+
+export const loadMenuOrdersToReturn =
+  (): Task<ReadonlyArray<MenuOrderToReturn>, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const orders = await run.deps.evolu.loadQuery(rejectedMenuOrdersQuery)
+    const toReturn = await Promise.all(
+      orders.map(async (order): Promise<ReadonlyArray<MenuOrderToReturn>> => {
+        const input = await run(loadOverpaymentInput({ billId: order.billId }))
+        if (!input.ok) return []
+        const { unresolved } = deriveBillOverpayment({
+          ...input.value,
+          isCanceled: true,
+        })
+        if (unresolved === 0) return []
+        return [
+          {
+            id: order.id,
+            number: order.number,
+            amount: { value: unresolved, currency: order.currency },
+            refund: await run.ok(loadRejectedMenuOrderRefund(order.billId)),
+          },
+        ]
+      })
+    )
+    return ok(toReturn.flat())
   }
 
 export interface MenuOrderArrivalRows {
@@ -501,6 +546,8 @@ export interface MenuOrderToServe {
   readonly createdAt: string
   readonly note: string | null
   readonly isFullyPaid: boolean
+  readonly paid: Money
+  readonly total: Money
   readonly isAccepted: boolean
   readonly isServed: boolean
   readonly lines: ReadonlyArray<{
@@ -524,10 +571,11 @@ const loadListedMenuOrders =
     return ok(
       await Promise.all(
         orders.map(async (order) => {
-          const [summaries, { coverage }] = await Promise.all([
-            run.ok(loadCalculatedBillLineSummaries(order.billId)),
-            run.ok(loadBillCoverage(order.billId)),
-          ])
+          const [summaries, { billTotal, claimedSum, coverage }] =
+            await Promise.all([
+              run.ok(loadCalculatedBillLineSummaries(order.billId)),
+              run.ok(loadBillCoverage(order.billId)),
+            ])
           return {
             id: order.id,
             billId: order.billId,
@@ -539,6 +587,8 @@ const loadListedMenuOrders =
             createdAt: order.createdAt,
             note: order.note,
             isFullyPaid: coverage !== "underpaid",
+            paid: { value: Integer(claimedSum), currency: order.currency },
+            total: { value: Integer(billTotal), currency: order.currency },
             isAccepted: order.acceptedAt !== null,
             isServed: order.servedAt !== null,
             lines: summaries.map((summary) => {

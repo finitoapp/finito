@@ -34,7 +34,7 @@ vi.mock("react-native", () => ({
 }))
 
 vi.mock("@payky/core/background-jobs/background-jobs", () => ({
-  appBackgroundJobs: [{ group: "app" }],
+  appBackgroundJobsFor: () => [{ group: "app" }],
   bankBackgroundJobs: [{ group: "bank" }],
   cashuBackgroundJobs: [{ group: "cashu" }],
 }))

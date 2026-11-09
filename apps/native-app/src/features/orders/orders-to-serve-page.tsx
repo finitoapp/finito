@@ -1,15 +1,20 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
+import { toServeOrderMoney } from "@payky/app-shared/menu-order-announcement"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersServedToday,
+  loadMenuOrdersToReturn,
   loadMenuOrdersToServe,
   type MenuOrderNotFoundYet,
+  type MenuOrderToReturn,
   type MenuOrderToServe,
   markMenuOrderServed,
+  type RejectedMenuOrderRefund,
   rejectMenuOrder,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import type { Money } from "@payky/core/modules/shared/money"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { router } from "expo-router"
 import { type ReactNode, Suspense } from "react"
@@ -119,11 +124,12 @@ function useOrdersToServe() {
     queryKey: ["ordersToServe", history?.maxRowid ?? null],
     queryFn: async () => {
       await using run = appRun()
-      const [orders, notFoundYet] = await Promise.all([
+      const [orders, notFoundYet, toReturn] = await Promise.all([
         run.ok(loadMenuOrdersToServe()),
         run.ok(loadMenuOrdersNotFoundYet()),
+        run.ok(loadMenuOrdersToReturn()),
       ])
-      return { orders, notFoundYet }
+      return { orders, notFoundYet, toReturn }
     },
     placeholderData: keepPreviousData,
   })
@@ -139,8 +145,9 @@ function OrdersToServe() {
   const notFoundYet = toServe.notFoundYet.filter(
     ({ rejectedOrderNumber }) => rejectedOrderNumber === null
   )
-  const paidAfterRejection = toServe.notFoundYet.filter(
-    ({ rejectedOrderNumber }) => rejectedOrderNumber !== null
+  const paidAfterRejection = toServe.notFoundYet.flatMap(
+    ({ rejectedOrderNumber, ...money }) =>
+      rejectedOrderNumber === null ? [] : [{ ...money, rejectedOrderNumber }]
   )
 
   return (
@@ -169,11 +176,10 @@ function OrdersToServe() {
           entries={notFoundYet}
         />
       )}
-      {paidAfterRejection.length > 0 && (
-        <UnmatchedOrderMoney
-          title={t("orders.paidAfterRejection.title")}
-          description={t("orders.paidAfterRejection.description")}
-          entries={paidAfterRejection}
+      {(toServe.toReturn.length > 0 || paidAfterRejection.length > 0) && (
+        <MoneyToReturn
+          toReturn={toServe.toReturn}
+          paidAfterRejection={paidAfterRejection}
         />
       )}
     </YStack>
@@ -206,18 +212,7 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
       return
     }
     await runToast(async (run) => {
-      const refund = await run.ok(rejectMenuOrder(order))
-      router.push(
-        refund.type === "payment"
-          ? {
-              pathname: "/activity/[paymentId]",
-              params: { paymentId: refund.paymentId },
-            }
-          : {
-              pathname: "/activity/bills/[billId]",
-              params: { billId: refund.billId },
-            }
-      )
+      router.push(refundDestination(await run.ok(rejectMenuOrder(order))))
     })
   }
 
@@ -275,7 +270,11 @@ function OrderCard({
             </Text>
           </CardTitle>
           <CardDescription>
-            {formatTime(new Date(order.createdAt), locale)}
+            {`${formatTime(new Date(order.createdAt), locale)} · ${toServeOrderMoney(
+              order,
+              t,
+              (money) => formatMoney(money, locale)
+            )}`}
           </CardDescription>
           <XStack gap={4} flexWrap="wrap">
             {order.isFullyPaid ? (
@@ -283,8 +282,11 @@ function OrderCard({
             ) : (
               <Badge variant="destructive" label={t("orders.notFullyPaid")} />
             )}
+            {!order.isAccepted && !order.isServed && (
+              <Badge label={t("orders.waiting.badge")} />
+            )}
             {order.isAccepted && !order.isServed && (
-              <Badge label={t("orders.preparing")} />
+              <Badge variant="outline" label={t("orders.preparing")} />
             )}
           </XStack>
         </CardHeader>
@@ -293,6 +295,7 @@ function OrderCard({
             {order.lines.map((line) => (
               <XStack key={line.id} items="center" gap={8}>
                 <Text
+                  shrink={1}
                   fontSize={fontSize.lg}
                   lineHeight={fontSize.lg}
                   fontWeight={fontWeight.medium}
@@ -320,6 +323,103 @@ function OrderCard({
   )
 }
 
+const refundDestination = (refund: RejectedMenuOrderRefund) =>
+  refund.type === "payment"
+    ? {
+        pathname: "/activity/[paymentId]" as const,
+        params: { paymentId: refund.paymentId },
+      }
+    : {
+        pathname: "/activity/bills/[billId]" as const,
+        params: { billId: refund.billId },
+      }
+
+function MoneyToReturn({
+  toReturn,
+  paidAfterRejection,
+}: {
+  readonly toReturn: ReadonlyArray<MenuOrderToReturn>
+  readonly paidAfterRejection: ReadonlyArray<
+    MenuOrderNotFoundYet & { readonly rejectedOrderNumber: number }
+  >
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const entry = (number: number, amount: Money) =>
+    t("orders.toReturn.entry", {
+      number,
+      amount: formatMoney(amount, locale),
+    })
+
+  return (
+    <YStack testID="money-to-return">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("orders.toReturn.title")}</CardTitle>
+        </CardHeader>
+        <CardContent gap={12}>
+          {toReturn.map((order) => (
+            <XStack
+              key={order.id}
+              items="center"
+              justify="space-between"
+              gap={12}
+            >
+              <Text
+                shrink={1}
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.medium}
+                fontVariant={["tabular-nums"]}
+              >
+                {entry(order.number, order.amount)}
+              </Text>
+              <Button
+                size="sm"
+                variant="outline"
+                label={t("orders.toReturn.record")}
+                onPress={() => router.push(refundDestination(order.refund))}
+              />
+            </XStack>
+          ))}
+          {paidAfterRejection.length > 0 && (
+            <Text
+              fontSize={fontSize.sm}
+              lineHeight={fontSize.sm}
+              color="muted-foreground"
+            >
+              {t("orders.paidAfterRejection.description")}
+            </Text>
+          )}
+          {paidAfterRejection.map((money) => (
+            <XStack key={money.id} justify="space-between" gap={12}>
+              <Text
+                shrink={1}
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.medium}
+                fontVariant={["tabular-nums"]}
+              >
+                {entry(money.rejectedOrderNumber, {
+                  value: money.amount,
+                  currency: money.currency,
+                })}
+              </Text>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {formatDateTime(new Date(money.occurredAt), locale)}
+              </Text>
+            </XStack>
+          ))}
+        </CardContent>
+      </Card>
+    </YStack>
+  )
+}
+
 function UnmatchedOrderMoney({
   title,
   description,
@@ -329,7 +429,6 @@ function UnmatchedOrderMoney({
   readonly description: string
   readonly entries: ReadonlyArray<MenuOrderNotFoundYet>
 }) {
-  const { t } = useTranslation()
   const locale = useLocale()
 
   return (
@@ -352,12 +451,7 @@ function UnmatchedOrderMoney({
                 fontWeight={fontWeight.medium}
                 fontVariant={["tabular-nums"]}
               >
-                {entry.rejectedOrderNumber === null
-                  ? amount
-                  : t("orders.paidAfterRejection.entry", {
-                      number: entry.rejectedOrderNumber,
-                      amount,
-                    })}
+                {amount}
               </Text>
               <Text
                 fontSize={fontSize.sm}

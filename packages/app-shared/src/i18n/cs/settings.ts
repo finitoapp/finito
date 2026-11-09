@@ -650,9 +650,9 @@ export const csSettings = {
     "Interní popis je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalDescription.label": "Interní popis",
   "catalog.items.form.internalDescription.placeholder":
-    "Nepovinné – viditelné pouze pro personál",
+    "Nepovinné – viditelné pouze pro obsluhu",
   "catalog.items.form.internalName.hint":
-    "Zobrazí se personálu místo veřejného názvu. Zákazníci na účtu stále vidí veřejný název a popis.",
+    "Zobrazí se obsluze místo veřejného názvu. Zákazníci na účtu stále vidí veřejný název a popis.",
   "catalog.items.form.internalName.invalid":
     "Interní název je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalName.label": "Interní název",
@@ -954,7 +954,7 @@ export const csSettings = {
   "settings.security.selfPayRelays.lastActive":
     "Aspoň jeden relay musí zůstat zapnutý, jinak hosté svůj účet neuvidí.",
   "settings.security.selfPayRelays.refused": "Odmítl poslední publikaci",
-  "settings.security.selfPayRelays.title": "Relaye pro placení u stolu",
+  "settings.security.selfPayRelays.title": "Relaye pro QR kódy na stolech",
   "settings.security.selfPayRelays.toggle": "Publikovat přes {url}",
   "settings.security.selfPayRelays.url.description":
     "Povolené jsou jen zabezpečené WebSocket URL začínající na wss:.",
@@ -1126,17 +1126,24 @@ export const csSettings = {
   "catalog.tables.search.clear.aria": "Vymazat hledání",
   "catalog.tables.seatCount": "{value} míst",
   "catalog.tables.selfPay.bankNote":
-    "Bankovní převody se párují jen tehdy, když některé zařízení synchronizuje bankovní účet: aplikace pro Android nebo CLI.",
+    "Bankovní převody hostů se párují jen tehdy, když bankovní účet synchronizuje aplikace pro Android.",
   "catalog.tables.selfPay.description":
-    "Hosté naskenují QR kód stolu, uvidí otevřený účet a zaplatí ho celý nebo jeho část sami, bez čekání na obsluhu.",
-  "catalog.tables.selfPay.enabled": "Povolit hostům platit u tohoto stolu",
+    "Hosté naskenují QR kód stolu a zaplatí nebo objednají bez čekání na obsluhu. Zapnete ho v detailu stolu.",
+  "catalog.tables.selfPay.enabled": "QR kód na tomto stole",
+  "catalog.tables.selfPay.enabled.description":
+    "Co s ním hosté mohou dělat, nastavíte pro všechny stoly na obrazovce Stoly.",
+  "catalog.tables.selfPay.noPaymentMethod.bankLink": "Otevřít bankovní převod",
+  "catalog.tables.selfPay.noPaymentMethod.bitcoinLink": "Otevřít Bitcoin",
   "catalog.tables.selfPay.noPaymentMethod.description":
-    "Žádnou platební metodou zaplatit nemohou. Zapněte u bankovního účtu synchronizaci přes Fio nebo MONETA plugin, nebo přidejte Lightning peněženku.",
-  "catalog.tables.selfPay.noPaymentMethod.link": "Otevřít platební účty",
+    "Žádnou platební metodou zaplatit nemohou. Zapněte Bitcoin nebo synchronizaci bankovního účtu přes Fio či MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Otevřít platební metody",
+  "catalog.tables.selfPay.noPaymentMethod.spark":
+    "Hosté platí bitcoinem jen přes peněženku Spark. Nastavte Spark jako hlavní bitcoinovou peněženku, nebo synchronizujte bankovní účet přes Fio či MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hosté u tohoto stolu zatím nemohou platit",
   "catalog.tables.selfPay.noRelayAccepted.description":
-    "Poslední publikaci nepřijal žádný relay.",
+    "Žádný z relayů, přes které se stůl dostává k hostům, nepřijal jeho poslední změnu.",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Otevřít relaye",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Zkusit znovu",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Hosté nevidí účet tohoto stolu",
@@ -1152,14 +1159,18 @@ export const csSettings = {
     "Dosud vytištěné nálepky přestanou zobrazovat účty tohoto stolu. Vytiskněte novou a nahraďte je.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Vytvořit nový QR kód pro {name}?",
-  "catalog.tables.selfPay.title": "Placení u stolu",
+  "catalog.tables.selfPay.scanToPay": "Naskenujte a zaplaťte",
+  "catalog.tables.selfPay.title": "QR kód",
   "catalog.tables.selfPayGuestName.description":
     "Host, který platí u stolu, ho uvidí jako příjemce platby na stránce i v QR kódu. Když pole necháte prázdné, žádné jméno neuvidí.",
   "catalog.tables.selfPayGuestName.error": "Zadejte nejvýše 255 znaků.",
   "catalog.tables.selfPayGuestName.label": "Jméno pro hosty",
   "catalog.tables.selfPayGuestName.placeholder": "Kavárna U Lípy",
+  "catalog.tables.selfPayOptions.lastOn":
+    "Jedna možnost zůstane zapnutá. Hosty u stolu zastavíte vypnutím jeho QR kódu.",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "V menu není žádná dostupná položka. Přidejte položky do menu v jejich detailu, nebo je označte jako znovu dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Otevřít položky",
   "catalog.tables.selfPayOptions.menu.empty.title": "Hosté si nemohou objednat",
   "catalog.tables.selfPayOptions.menu.leftOut":
     "Položek, které se do menu nevejdou: {count}. Hosté je nevidí.",
@@ -1167,6 +1178,8 @@ export const csSettings = {
     "Položek s cenou mimo {currency}: {count}. Hosté je nevidí.",
   "catalog.tables.selfPayOptions.menu.visible":
     "Položek, které si hosté mohou objednat: {count}",
+  "catalog.tables.selfPayOptions.noPaymentMethod.title":
+    "Hosté zatím nemohou platit",
   "catalog.tables.selfPayOptions.order": "Hosté objednávají z menu",
   "catalog.tables.selfPayOptions.order.description":
     "Hosté si objednají položky z menu a zaplatí je. Zaplacené objednávky obsluha uvidí v sekci K vydání.",
@@ -1177,7 +1190,9 @@ export const csSettings = {
   "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zařízení",
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zařízení)",
   "catalog.tables.selfPayOptions.payBill": "Hosté platí účet stolu",
-  "catalog.tables.selfPayOptions.title": "Co mohou hosté",
+  "catalog.tables.selfPayOptions.title": "QR kódy na stolech",
+  "catalog.tables.selfPayOptions.withQrCode":
+    "Stolů s QR kódem: {count} z {total}",
   "catalog.tables.sticker.check": "Zkontrolovat nálepku",
   "catalog.tables.sticker.current": "Tato nálepka patří ke stolu {name}.",
   "catalog.tables.sticker.dismiss": "Zavřít",

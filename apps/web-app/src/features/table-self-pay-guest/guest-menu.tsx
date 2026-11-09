@@ -5,8 +5,8 @@ import {
   type SelfPayMenu,
   type SelfPayOrderSelection,
 } from "@payky/core/modules/menu-order/menu-order-utils"
-import { LoaderCircleIcon } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { LoaderCircleIcon, TriangleAlertIcon } from "lucide-react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { Label } from "@/components/ui/label.tsx"
 import { Textarea } from "@/components/ui/textarea.tsx"
@@ -31,30 +31,52 @@ export interface GuestOrderChoice {
   readonly summary: string
 }
 
+interface GuestMenuPick {
+  readonly name: string
+  readonly quantity: number
+}
+
 export function GuestMenu({
   menu,
+  hidden,
   isPreparing,
+  notice,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
+  readonly hidden: boolean
   readonly isPreparing: boolean
+  readonly notice: ReactNode
   readonly onOrder: (order: GuestOrderChoice) => void
 }) {
   const { t, locale } = useGuestTranslation()
   const announce = useGuestStatus()
-  const [quantities, setQuantities] = useState<
-    Readonly<Record<string, number>>
-  >({})
+  const [picks, setPicks] = useState<Readonly<Record<string, GuestMenuPick>>>(
+    {}
+  )
+  const [removedNames, setRemovedNames] = useState<ReadonlyArray<string>>([])
   const [note, setNote] = useState("")
   const [tipChoice, setTipChoice] = useState<GuestTipChoice>(NO_TIP)
   const payBar = usePayBarScrollPadding()
   const format = (amount: number) => formatGuestAmount(amount, menu, locale)
-  const picked = menu.categories
-    .flatMap((category) => category.items)
-    .flatMap(({ key }) => {
-      const quantity = quantities[key] ?? 0
-      return quantity === 0 ? [] : [{ key, quantity }]
-    })
+  const menuItems = menu.categories.flatMap((category) => category.items)
+  const isOnMenu = (key: string) => menuItems.some((item) => item.key === key)
+  const removedPicks = Object.entries(picks).filter(
+    ([key, { quantity }]) => quantity > 0 && !isOnMenu(key)
+  )
+  if (removedPicks.length > 0) {
+    setPicks(
+      Object.fromEntries(Object.entries(picks).filter(([key]) => isOnMenu(key)))
+    )
+    setRemovedNames([
+      ...removedNames,
+      ...removedPicks.map(([, { name }]) => name),
+    ])
+  }
+  const picked = menuItems.flatMap(({ key }) => {
+    const quantity = picks[key]?.quantity ?? 0
+    return quantity === 0 ? [] : [{ key, quantity }]
+  })
   const priced = priceSelfPayOrder(menu, picked)
   const lines = priced?.lines ?? []
   const total = priced?.total ?? 0
@@ -68,12 +90,21 @@ export function GuestMenu({
       ? t("selfPay.summary.nothing")
       : t("selfPay.pay.total", { amount: format(amount) })
   const announced = useRef(payLabel)
+  const removedText =
+    removedNames.length === 0
+      ? null
+      : t("selfPay.menu.removed", { names: removedNames.join(", ") })
 
   useEffect(() => {
-    if (announced.current === payLabel) return
+    if (hidden || announced.current === payLabel) return
     announced.current = payLabel
     announce(payLabel)
-  }, [announce, payLabel])
+  }, [announce, payLabel, hidden])
+
+  useEffect(() => {
+    if (hidden || removedText === null) return
+    announce(removedText)
+  }, [announce, removedText, hidden])
 
   const order = () => {
     const trimmedNote = note.trim()
@@ -93,7 +124,7 @@ export function GuestMenu({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6" hidden={hidden}>
       {menu.categories.map((category, index) => (
         <section
           key={category.name ?? `uncategorized-${index}`}
@@ -122,7 +153,7 @@ export function GuestMenu({
                   </span>
                 </div>
                 <Stepper
-                  value={quantities[item.key] ?? 0}
+                  value={picks[item.key]?.quantity ?? 0}
                   min={0}
                   max={MAX_ORDER_QUANTITY}
                   label={t("selfPay.menu.quantity.label", { name: item.name })}
@@ -133,9 +164,10 @@ export function GuestMenu({
                     name: item.name,
                   })}
                   onChange={(quantity) => {
-                    setQuantities((current) => ({
+                    setRemovedNames([])
+                    setPicks((current) => ({
                       ...current,
-                      [item.key]: quantity,
+                      [item.key]: { name: item.name, quantity },
                     }))
                   }}
                 />
@@ -208,8 +240,18 @@ export function GuestMenu({
 
       <footer
         ref={payBar}
-        className="sticky bottom-0 z-20 -mx-4 flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
       >
+        {notice}
+        {removedText === null ? null : (
+          <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">
+            <TriangleAlertIcon
+              aria-hidden="true"
+              className="size-5 shrink-0 text-amber-600"
+            />
+            {removedText}
+          </p>
+        )}
         <div className="flex justify-between gap-3 text-sm text-muted-foreground tabular-nums">
           <span>
             {total > 0

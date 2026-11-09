@@ -106,7 +106,7 @@ export const enBill = {
   "bill.summary.clear": "Clear",
   "bill.summary.clear.toast": "Bill cleared",
   "bill.summary.decrement.aria": "Remove one {name}",
-  "bill.summary.empty": "Add items from the menu on the left",
+  "bill.summary.empty": "Add items from the catalog on the left",
   "bill.summary.increment.aria": "Add one {name}",
   "bill.summary.leftToPay": "Left to pay",
   "bill.summary.redo": "Redo",
@@ -126,7 +126,7 @@ export const enBill = {
   "bill.totalBelowPaid":
     "This bill is partly paid, so its total can't drop below what has been paid. Give money back with Refund money on the payment.",
   "billDetail.noTable": "No table",
-  "billDetail.selfPay": "Self-pay",
+  "billDetail.selfPay": "At the table",
   "billDetail.selfPay.linePaid": "Guests paid {paid} of {total}",
   "billDetail.table": "Table",
   "billDetail.closedAtValue": "Closed {date}",
@@ -148,15 +148,20 @@ export const enBill = {
   "billHistory.title": "Bill history",
   "billHistory.underpaid": "Underpaid",
   "selfPay.amount.unreadable": "Type an amount such as 150 or 150.50.",
-  "selfPay.back": "Change what I pay",
-  "selfPay.bank.account": "Account",
+  "selfPay.back": "Back to the bill",
   "selfPay.bank.amount": "Amount",
+  "selfPay.bank.byHand":
+    "Typing the payment in by hand? Copy the variable symbol and the message exactly: they tell the restaurant the payment is yours.",
   "selfPay.bank.copy": "Copy {field}",
-  "selfPay.bank.format.payBySquare": "Pay by Square",
-  "selfPay.bank.format.spayd": "QR Platba",
-  "selfPay.bank.hint":
-    "Scan the code in your banking app, or save it and open it from your gallery. An instant payment reaches the restaurant within seconds.",
-  "selfPay.bank.message": "Message",
+  "selfPay.bank.format.showPayBySquare":
+    "Slovak bank? Show the PAY by square code",
+  "selfPay.bank.format.showSpayd": "Czech bank? Show the QR Platba code",
+  "selfPay.bank.hint.open":
+    "On this phone, open the payment in your banking app. From another phone, just scan the QR code. An instant payment reaches the restaurant within seconds.",
+  "selfPay.bank.hint.save":
+    "On this phone, save the QR code and load it from your photos in your banking app. From another phone, just scan it. An instant payment reaches the restaurant within seconds.",
+  "selfPay.bank.iban": "IBAN",
+  "selfPay.bank.message": "Message for the recipient",
   "selfPay.bank.openInApp": "Open in bank app",
   "selfPay.bank.qr": "Bank payment QR code",
   "selfPay.bank.saveQr": "Save QR image",
@@ -166,6 +171,15 @@ export const enBill = {
   "selfPay.bill.paid": "Paid",
   "selfPay.bill.remainder": "Left to pay",
   "selfPay.bill.total": "Total",
+  "selfPay.billChanged.announcement": "{title} {description}",
+  "selfPay.billChanged.description":
+    "If you have not sent the money yet, go back and choose again.",
+  "selfPay.billChanged.nothingLeft.description":
+    "If you have not sent the money yet, do not send it.",
+  "selfPay.billChanged.nothingLeft.title":
+    "The bill has changed in the meantime. Nothing is left to pay.",
+  "selfPay.billChanged.title":
+    "The bill has changed in the meantime. {amount} is left to pay.",
   "selfPay.choice.amount": "Enter another amount",
   "selfPay.choice.amount.hint":
     "From {minimum}. You cannot pay more than what is left.",
@@ -183,6 +197,7 @@ export const enBill = {
   "selfPay.choice.title": "How much do you pay?",
   "selfPay.confirmation.mine": "Paid {amount}, you are done.",
   "selfPay.confirmation.mine.detail": "The restaurant confirmed your payment.",
+  "selfPay.confirmation.mine.past": "You paid {amount} at {time}",
   "selfPay.confirmation.other": "{amount} paid at {time}",
   "selfPay.confirmations.title": "Recent payments",
   "selfPay.copied": "Copied",
@@ -194,16 +209,17 @@ export const enBill = {
   "selfPay.footer": "The restaurant sees your payment once the money arrives.",
   "selfPay.invalid.description": "Ask the staff to help you pay.",
   "selfPay.invalid.title": "This QR code cannot be read",
-  "selfPay.lightning.copy": "Copy invoice",
-  "selfPay.lightning.create": "Create Lightning invoice",
-  "selfPay.lightning.creating": "Creating the invoice…",
-  "selfPay.lightning.error": "The invoice could not be created. Try again.",
-  "selfPay.lightning.expired": "The invoice expired.",
+  "selfPay.lightning.copy": "Copy Lightning invoice",
+  "selfPay.lightning.create": "Show QR code to pay",
+  "selfPay.lightning.creating": "Preparing the QR code…",
+  "selfPay.lightning.error": "The QR code could not be prepared. Try again.",
+  "selfPay.lightning.expired":
+    "The QR code expired. If you already paid it, do not pay again: the restaurant confirms it once the money arrives.",
   "selfPay.lightning.open": "Open in wallet",
-  "selfPay.lightning.qr": "Lightning invoice QR code",
-  "selfPay.lightning.restart": "Create a new invoice",
+  "selfPay.lightning.qr": "Bitcoin payment QR code",
+  "selfPay.lightning.restart": "Show a new QR code",
   "selfPay.lightning.unavailable":
-    "Lightning payments are down right now. Pay another way or with the staff.",
+    "Bitcoin payments are not working right now. Pay another way or with the staff.",
   "selfPay.line.fullyPaid": "Paid",
   "selfPay.line.paid": "{paid} of {total} paid",
   "selfPay.line.people": "shared by",
@@ -217,25 +233,31 @@ export const enBill = {
   "selfPay.line.units.decrease": "One fewer: {name}",
   "selfPay.line.units.increase": "One more: {name}",
   "selfPay.line.units.label": "Units of {name}",
-  "selfPay.line.unshare": "Not shared",
-  "selfPay.line.unshare.label": "Not shared: {name}",
+  "selfPay.line.unshare": "Undo sharing",
+  "selfPay.line.unshare.label": "Undo sharing: {name}",
   "selfPay.language.label": "Language",
-  "selfPay.loading": "Loading the bill…",
+  "selfPay.loading": "Loading the table…",
   "selfPay.menu.loading": "Loading the menu…",
   "selfPay.menu.other": "Other",
   "selfPay.menu.quantity.decrease": "One fewer: {name}",
   "selfPay.menu.quantity.increase": "One more: {name}",
   "selfPay.menu.quantity.label": "How many: {name}",
+  "selfPay.menu.removed":
+    "No longer available and removed from your order: {names}.",
   "selfPay.menu.tab.bill": "Bill",
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bank transfer",
-  "selfPay.method.lightning": "Lightning",
+  "selfPay.method.lightning": "Bitcoin",
+  "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Paying at the table is not available right now.",
+  "selfPay.offline":
+    "You are offline. This page updates once you are back online.",
   "selfPay.order.back": "Back to the menu",
   "selfPay.order.hide": "Hide",
   "selfPay.order.items": "{summary} · {total}",
-  "selfPay.order.left": "Order {number} is confirmed. {amount} is left to pay.",
+  "selfPay.order.items.paid": "{summary} · {amount} paid",
+  "selfPay.order.left": "Order {number}: {amount} is left to pay.",
   "selfPay.order.list.title": "Your orders",
   "selfPay.order.note.label": "Note for the kitchen",
   "selfPay.order.note.length": "{length}/{max}",
@@ -245,9 +267,9 @@ export const enBill = {
   "selfPay.order.preparing.left":
     "Order {number} is being prepared. {amount} is left to pay.",
   "selfPay.order.refused":
-    "Ordering is not available right now. Please order with the staff.",
+    "Your order did not reach the restaurant, and nothing was paid. Try again, or order with the staff.",
   "selfPay.order.rejected":
-    "Order {number} was rejected. The staff will return your money.",
+    "Order {number} was rejected. Ask the staff to return your money.",
   "selfPay.order.remove": "Not paid, remove",
   "selfPay.order.served": "Order {number} has been served.",
   "selfPay.order.served.left":
@@ -256,13 +278,14 @@ export const enBill = {
   "selfPay.order.title": "Your order",
   "selfPay.order.unavailable.description": "Please order with the staff.",
   "selfPay.order.unavailable.title": "Ordering is not available right now",
-  "selfPay.order.unseen": "We have not seen your payment yet.",
+  "selfPay.order.unseen": "The money may still be on its way.",
   "selfPay.order.unseen.description":
     "If you paid, show this screen to the staff.",
-  "selfPay.order.waiting": "The restaurant has not confirmed your order yet.",
+  "selfPay.order.waiting": "Payment for this order has not arrived yet.",
   "selfPay.order.waiting.description":
-    "If you have paid already, the payment is waiting to be confirmed.",
+    "If you have paid already, the restaurant confirms it once the money arrives.",
   "selfPay.paidFor.equal": "1/{people} of the bill",
+  "selfPay.paidFor.paidBefore": "Paid already",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "You pay for",
   "selfPay.pay.announcement": "{pay}. {notice}",
@@ -280,6 +303,9 @@ export const enBill = {
   "selfPay.people.decrease": "One person fewer",
   "selfPay.people.increase": "One person more",
   "selfPay.percent.unreadable": "Type a percent such as 10 or 7.5.",
+  "selfPay.settled.announcement": "{title} {description}",
+  "selfPay.settled.description": "The bill is closed. Thank you!",
+  "selfPay.settled.title": "Nothing more to pay",
   "selfPay.stale":
     "Check the bill with the staff before you pay. The restaurant last confirmed it at {time}.",
   "selfPay.stale.never":
@@ -288,16 +314,21 @@ export const enBill = {
   "selfPay.summary.nothing": "Nothing picked yet",
   "selfPay.summary.share": "Your share {amount}",
   "selfPay.summary.tip": "+ tip {amount}",
+  "selfPay.test.failed":
+    "The test transfer did not reach the restaurant. Try again.",
+  "selfPay.test.hint":
+    "This is a test deployment. Send a test transfer instead of paying, and the restaurant sees it as money from the bank.",
+  "selfPay.test.send": "Send test transfer",
+  "selfPay.test.sent": "Test transfer sent",
   "selfPay.tip.custom": "Custom",
   "selfPay.tip.custom.label": "Custom tip",
   "selfPay.tip.custom.unit": "% or amount",
   "selfPay.tip.custom.unit.label": "Tip in percent or as an amount",
   "selfPay.tip.label": "Tip",
   "selfPay.tip.none": "None",
-  "selfPay.tip.percent": "{percent} %",
-  "selfPay.unavailable.description":
-    "Try again in a moment, or pay with the staff.",
-  "selfPay.unavailable.title": "The bill is not available right now",
+  "selfPay.tip.percent": "{percent}%",
+  "selfPay.unavailable.description": "Try again in a moment, or ask the staff.",
+  "selfPay.unavailable.title": "This table's page is not available right now",
   "selfPay.waiting":
     "The restaurant confirms your payment once the money arrives.",
   "selfPay.waiting.over.announcement": "{title}. {description}",

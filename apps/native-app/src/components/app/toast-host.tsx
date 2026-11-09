@@ -10,9 +10,11 @@ import {
 import {
   dismissToastAtom,
   type Toast as ToastData,
+  toastOffset,
   toastsAtom,
 } from "../../atoms/toast.ts"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
+import { menuBarHeight, useMenuBarTab } from "../menu-nav.tsx"
 import { Toast } from "../ui/toast.tsx"
 
 const DISMISS_AFTER_MS = 4000
@@ -51,6 +53,7 @@ export function ToastHost() {
   const toasts = useAtomValue(toastsAtom)
   const dismiss = useSetAtom(dismissToastAtom)
   const insets = useSafeAreaInsets()
+  const menuBarRoom = useMenuBarTab() === undefined ? 0 : menuBarHeight
   // Read once per mount: Tamagui's driver ignores the system setting.
   const [reducedMotion] = useState(isReduceMotionEnabled)
 
@@ -72,10 +75,10 @@ export function ToastHost() {
     >
       <TamaguiToast.Viewport
         portalToRoot={false}
-        offset={{ bottom: 24, left: 16, right: 16 }}
+        offset={{ bottom: toastOffset, left: 16, right: 16 }}
         // Tamagui's `safe` edges need its own safe-area setup; give the
         // insets directly (web keeps its centered column).
-        b={insets.bottom}
+        b={insets.bottom + menuBarRoom}
         {...(isWeb ? {} : { l: insets.left, r: insets.right })}
       >
         <TamaguiToast.List

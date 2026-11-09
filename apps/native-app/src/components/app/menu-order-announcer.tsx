@@ -3,8 +3,11 @@ import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-que
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { router, usePathname } from "expo-router"
+import { useSetAtom } from "jotai"
 import { useEffect } from "react"
+import { View } from "tamagui"
 import { toast } from "tamagui/unstyled"
+import { waitingOrdersNoticeHeightAtom } from "../../atoms/toast.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { Toast } from "../ui/toast.tsx"
@@ -27,6 +30,13 @@ function WaitingOrdersToast() {
   const notice = onOrders
     ? null
     : waitingMenuOrdersNotice({ orders, tables, t })
+  const shown = notice !== null
+  const setNoticeHeight = useSetAtom(waitingOrdersNoticeHeightAtom)
+
+  useEffect(() => {
+    if (!shown) return
+    return () => setNoticeHeight(0)
+  }, [shown, setNoticeHeight])
 
   useEffect(() => {
     if (notice === null) {
@@ -35,14 +45,18 @@ function WaitingOrdersToast() {
     }
     toast.custom(
       () => (
-        <Toast
-          variant="default"
-          message={notice}
-          action={{
-            label: t("orders.announced.open"),
-            onPress: () => router.push("/orders"),
-          }}
-        />
+        <View
+          onLayout={(event) => setNoticeHeight(event.nativeEvent.layout.height)}
+        >
+          <Toast
+            variant="default"
+            message={notice}
+            action={{
+              label: t("orders.announced.open"),
+              onPress: () => router.push("/orders"),
+            }}
+          />
+        </View>
       ),
       {
         id: WAITING_ORDERS_TOAST_ID,
@@ -50,7 +64,7 @@ function WaitingOrdersToast() {
         dismissible: false,
       }
     )
-  }, [notice, t])
+  }, [notice, t, setNoticeHeight])
 
   useEffect(
     () => () => {

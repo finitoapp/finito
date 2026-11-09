@@ -1962,13 +1962,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/catalog/tables/self-pay-guest-name-card.tsx",
-    web: [
-      "apps/web-app/src/features/catalog/tables/self-pay-guest-name-card.tsx",
-    ],
-    status: "matched",
-  },
-  {
     native: "src/features/catalog/tables/self-pay-options-card.tsx",
     web: [
       "apps/web-app/src/features/catalog/tables/self-pay-options-card.tsx",
@@ -1976,6 +1969,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/shared/forms/inline-edit-select.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Button:
+        "The empty menu's way to the items is a link Button on native; web draws it as a router Link.",
+    },
   },
   {
     native: "src/features/catalog/tables/table-self-pay-card.tsx",

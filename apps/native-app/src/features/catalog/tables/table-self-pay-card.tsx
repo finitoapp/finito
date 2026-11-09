@@ -1,4 +1,3 @@
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   deriveTableSelfPayKeys,
   deriveTableSelfPayRoot,
@@ -10,7 +9,6 @@ import {
 } from "@payky/core/modules/table/table-actions"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { createTableSelfPayAddress } from "@payky/core/modules/table-self-pay/table-self-pay-address-utils"
-import type { GuestsCannotPayReason } from "@payky/core/modules/table-self-pay/table-self-pay-reach-utils"
 import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import ExternalLink from "lucide-react-native/icons/external-link"
@@ -31,7 +29,6 @@ import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -52,7 +49,11 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
 import { printSticker } from "../../../platform/print-sticker"
 import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
 import { useSelfPayRelays } from "../../shared/use-self-pay-relays.ts"
-import { useGuestsCannotPayReason } from "./use-guests-cannot-pay-reason.ts"
+import {
+  useBankAccountIsOn,
+  useGuestsCannotPayReason,
+  useMainBitcoinWalletIsNotSpark,
+} from "./use-guests-cannot-pay-reason.ts"
 
 /** Native counterpart of web's `TableSelfPayCard`. */
 export function TableSelfPayCard({
@@ -95,9 +96,6 @@ export function TableSelfPayCard({
     <Card>
       <CardHeader>
         <CardTitle>{t("catalog.tables.selfPay.title")}</CardTitle>
-        <CardDescription>
-          {t("catalog.tables.selfPay.description")}
-        </CardDescription>
       </CardHeader>
       <CardContent gap={16}>
         <Field orientation="horizontal">
@@ -112,18 +110,20 @@ export function TableSelfPayCard({
           <FieldContent>
             <FieldLabel>{t("catalog.tables.selfPay.enabled")}</FieldLabel>
             <FieldDescription>
-              {t("catalog.tables.selfPay.bankNote")}
+              {t("catalog.tables.selfPay.enabled.description")}
             </FieldDescription>
           </FieldContent>
         </Field>
         {table.selfPayEnabled === 1 ? (
           <>
-            {guestsCannotPayReason === null ? null : (
-              <GuestsCannotPayAlert
-                reason={guestsCannotPayReason}
-                tableId={table.id}
+            {guestsCannotPayReason === "noPaymentMethod" ? (
+              <NoPaymentMethodAlert
+                title={t("catalog.tables.selfPay.noPaymentMethod.title")}
               />
-            )}
+            ) : null}
+            {guestsCannotPayReason === "noRelayAccepted" ? (
+              <NoRelayAcceptedAlert tableId={table.id} />
+            ) : null}
             <NativeView
               ref={stickerRef}
               collapsable={false}
@@ -139,6 +139,14 @@ export function TableSelfPayCard({
                 borderColor="card-ring"
                 style={{ backgroundColor: "#fff" }}
               >
+                <Text
+                  fontSize={fontSize.base}
+                  lineHeight={fontSize.base}
+                  fontWeight={fontWeight.semibold}
+                  style={{ color: "#000" }}
+                >
+                  {t("catalog.tables.selfPay.scanToPay")}
+                </Text>
                 <View
                   w="100%"
                   aspectRatio={1}
@@ -221,43 +229,80 @@ export function TableSelfPayCard({
   )
 }
 
-const guestsCannotPayKeys = {
-  noPaymentMethod: {
-    title: "catalog.tables.selfPay.noPaymentMethod.title",
-    description: "catalog.tables.selfPay.noPaymentMethod.description",
-  },
-  noRelayAccepted: {
-    title: "catalog.tables.selfPay.noRelayAccepted.title",
-    description: "catalog.tables.selfPay.noRelayAccepted.description",
-  },
-} satisfies Record<
-  GuestsCannotPayReason,
-  { readonly title: TranslationKey; readonly description: TranslationKey }
->
-
-function GuestsCannotPayAlert({
-  reason,
-  tableId,
+export function AlertLink({
+  label,
+  onPress,
 }: {
-  readonly reason: GuestsCannotPayReason
-  readonly tableId: TableId
+  readonly label: string
+  readonly onPress: () => void
 }) {
+  return (
+    <Text
+      fontSize={fontSize.xs}
+      lineHeight={fontSize.xs}
+      fontWeight={fontWeight.medium}
+      color="foreground"
+      textDecorationLine="underline"
+      role="link"
+      hitSlop={12}
+      cursor="web:pointer"
+      onPress={onPress}
+    >
+      {label}
+    </Text>
+  )
+}
+
+export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
-  const runToast = useRunToast()
-  const keys = guestsCannotPayKeys[reason]
+  const bankAccountIsOn = useBankAccountIsOn()
+  const mainBitcoinWalletIsNotSpark = useMainBitcoinWalletIsNotSpark()
 
   return (
     <Alert variant="warning" icon={TriangleAlert}>
-      <AlertTitle numberOfLines={0}>{t(keys.title)}</AlertTitle>
+      <AlertTitle numberOfLines={0}>{title}</AlertTitle>
       <AlertDescription>
-        {t(keys.description)}
-        {reason === "noPaymentMethod" ? (
-          <Button
-            variant="link"
-            label={t("catalog.tables.selfPay.noPaymentMethod.link")}
-            onPress={() => router.push("/settings/payment-accounts")}
-          />
-        ) : (
+        {t(
+          mainBitcoinWalletIsNotSpark
+            ? "catalog.tables.selfPay.noPaymentMethod.spark"
+            : "catalog.tables.selfPay.noPaymentMethod.description"
+        )}
+        <XStack flexWrap="wrap" items="center" gap={16}>
+          {mainBitcoinWalletIsNotSpark ? (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.bitcoinLink")}
+              onPress={() => router.push("/settings/payment-accounts/bitcoin")}
+            />
+          ) : (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.link")}
+              onPress={() => router.push("/settings/payment-accounts")}
+            />
+          )}
+          {bankAccountIsOn && (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.bankLink")}
+              onPress={() => router.push("/settings/payment-accounts/iban")}
+            />
+          )}
+        </XStack>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+function NoRelayAcceptedAlert({ tableId }: { readonly tableId: TableId }) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+
+  return (
+    <Alert variant="warning" icon={TriangleAlert}>
+      <AlertTitle numberOfLines={0}>
+        {t("catalog.tables.selfPay.noRelayAccepted.title")}
+      </AlertTitle>
+      <AlertDescription>
+        {t("catalog.tables.selfPay.noRelayAccepted.description")}
+        <XStack flexWrap="wrap" items="center" gap={8}>
           <Button
             variant="outline"
             h={44}
@@ -269,7 +314,11 @@ function GuestsCannotPayAlert({
               })
             }}
           />
-        )}
+          <AlertLink
+            label={t("catalog.tables.selfPay.noRelayAccepted.link")}
+            onPress={() => router.push("/settings/security")}
+          />
+        </XStack>
       </AlertDescription>
     </Alert>
   )

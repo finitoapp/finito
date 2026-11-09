@@ -1,5 +1,8 @@
+import { sqliteTrue } from "@evolu/common"
 import {
+  cashuAccountQuery,
   fiatBankAccountQuery,
+  lightningAddressAccountQuery,
   sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { activeFioPluginsQuery } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
@@ -16,14 +19,56 @@ import {
 import { deriveSelfPayViewTag } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 
-/** Native counterpart of web's `useGuestsCannotPayReason`. */
-export function useGuestsCannotPayReason(
-  viewKey: Uint8Array
-): GuestsCannotPayReason | null {
+function useSelfPayAccounts() {
   const { data: bankAccounts } = useEvoluQuery(fiatBankAccountQuery)
   const { data: sparkAccounts } = useEvoluQuery(sparkAccountQuery)
   const { data: activeFioPlugins } = useEvoluQuery(activeFioPluginsQuery)
   const { data: activeMonetaPlugins } = useEvoluQuery(activeMonetaPluginsQuery)
+
+  return pickSelfPayAccounts({
+    bankAccount: bankAccounts[0],
+    sparkAccount: sparkAccounts[0],
+    activeBankPlugins: [...activeFioPlugins, ...activeMonetaPlugins],
+  })
+}
+
+export function useGuestsHaveNoPaymentMethod(): boolean {
+  return (
+    deriveGuestsCannotPayReason({
+      accounts: useSelfPayAccounts(),
+      lastPublish: null,
+    }) === "noPaymentMethod"
+  )
+}
+
+export function useBankReachesGuests(): boolean {
+  return useSelfPayAccounts().bank !== null
+}
+
+export function useBankAccountIsOn(): boolean {
+  const {
+    data: [bankAccount],
+  } = useEvoluQuery(fiatBankAccountQuery)
+  return bankAccount !== undefined && bankAccount.isDeleted !== sqliteTrue
+}
+
+export function useMainBitcoinWalletIsNotSpark(): boolean {
+  const {
+    data: [cashu],
+  } = useEvoluQuery(cashuAccountQuery)
+  const {
+    data: [lightningAddress],
+  } = useEvoluQuery(lightningAddressAccountQuery)
+  return [cashu, lightningAddress].some(
+    (wallet) => wallet !== undefined && wallet.isDeleted !== sqliteTrue
+  )
+}
+
+/** Native counterpart of web's `useGuestsCannotPayReason`. */
+export function useGuestsCannotPayReason(
+  viewKey: Uint8Array
+): GuestsCannotPayReason | null {
+  const accounts = useSelfPayAccounts()
   const { data: publishResults } = useEvoluQuery(
     selfPayPublishResultsByTagQuery(
       NonEmptyString255(deriveSelfPayViewTag(viewKey))
@@ -31,11 +76,7 @@ export function useGuestsCannotPayReason(
   )
 
   return deriveGuestsCannotPayReason({
-    accounts: pickSelfPayAccounts({
-      bankAccount: bankAccounts[0],
-      sparkAccount: sparkAccounts[0],
-      activeBankPlugins: [...activeFioPlugins, ...activeMonetaPlugins],
-    }),
+    accounts,
     lastPublish: findNewestViewPublish(
       parseSelfPayPublishResults(publishResults)
     ),

@@ -1,7 +1,7 @@
 import type { SyncStateDep } from "@evolu/common/local-first"
 import { createRun } from "@evolu/web"
 import {
-  appBackgroundJobs,
+  appBackgroundJobsFor,
   bankBackgroundJobs,
   cashuBackgroundJobs,
 } from "@payky/core/background-jobs/background-jobs"
@@ -200,7 +200,13 @@ export function AppBackgroundJobs() {
     )
     return {
       run,
-      jobs: run.ok(runBackgroundJobs(appBackgroundJobs)),
+      jobs: run.ok(
+        runBackgroundJobs(
+          appBackgroundJobsFor({
+            selfPayTestTransfers: appEnv.VITE_PAYKY_SELF_PAY_TEST_TRANSFERS,
+          })
+        )
+      ),
     }
   }, [
     console,

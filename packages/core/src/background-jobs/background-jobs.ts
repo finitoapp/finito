@@ -14,8 +14,10 @@ import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
+import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
+import { startTableSelfPayReachJob } from "./jobs/table-self-pay-reach-job.ts"
 
 /**
  * The Fio and MONETA sync jobs. They run apart from the others
@@ -59,10 +61,25 @@ export const appBackgroundJobs: ReadonlyArray<AppDeviceBackgroundJob> = [
   startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
   startRecoveryBackupReminderJob,
+  startTableSelfPayReachJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
   startBillClosingJob,
 ]
+
+/**
+ * `selfPayTestTransfers` is set only by a test deployment's configuration
+ * (table-self-pay/0025): any guest of the account can then mark money as
+ * arrived.
+ */
+export const appBackgroundJobsFor = ({
+  selfPayTestTransfers = false,
+}: {
+  readonly selfPayTestTransfers?: boolean
+} = {}): ReadonlyArray<AppDeviceBackgroundJob> =>
+  selfPayTestTransfers
+    ? [...appBackgroundJobs, startSelfPayTestTransferJob]
+    : appBackgroundJobs
 
 /**
  * The shared Cashu wallet's job, on native and browser alike. It runs apart

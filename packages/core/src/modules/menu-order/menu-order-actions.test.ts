@@ -20,6 +20,7 @@ import {
   connectMonetaPlugin,
   syncMonetaTransactions,
 } from "../moneta-plugin/moneta-plugin-actions.ts"
+import { recordOverpaymentResolution } from "../overpayment-resolution/overpayment-resolution-actions.ts"
 import { paymentWithDetailsByIdQuery } from "../payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { reconcileAccountTransaction } from "../reconciliation-claim/reconciliation-claim-actions.ts"
@@ -37,6 +38,7 @@ import {
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
+  PositiveInteger,
 } from "../shared/schema.ts"
 import { createSelfPaySelectionEvent } from "../table-self-pay/table-self-pay-pointer-utils.ts"
 import {
@@ -60,6 +62,7 @@ import {
   loadMenuOrderArrivalRows,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersServedToday,
+  loadMenuOrdersToReturn,
   loadMenuOrdersToServe,
   loadSelfPayMenu,
   markMenuOrderServed,
@@ -762,6 +765,8 @@ describe("what staff serve", () => {
       tableName: "Table 3",
       note: "bez cukru",
       isFullyPaid: false,
+      paid: { value: 20_000, currency: "CZK" },
+      total: { value: 21_900, currency: "CZK" },
     })
     expect(toServe.lines).toEqual(
       expect.arrayContaining([
@@ -793,6 +798,44 @@ describe("what staff serve", () => {
       expect.objectContaining({ id: order.id, isAccepted: true }),
     ])
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
+  })
+
+  test("lists the orders waiting for the staff first, each part oldest first", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    for (const quantity of [1, 2, 3, 4]) {
+      await pay(
+        context,
+        await orderFrom(context, menu, [[coffee, quantity]]),
+        6500 * quantity
+      )
+      context.clock.advance(60_000)
+    }
+    await using run = testCreateRun(context.deps)
+    const [first, second, third, fourth] = await run.ok(loadMenuOrdersToServe())
+    if (
+      first === undefined ||
+      second === undefined ||
+      third === undefined ||
+      fourth === undefined
+    ) {
+      throw new Error("Expected four orders to serve.")
+    }
+
+    await run.ok(acceptMenuOrder(third.id))
+    await run.ok(acceptMenuOrder(first.id))
+
+    expect(
+      (await run.ok(loadMenuOrdersToServe())).map(({ id, isAccepted }) => ({
+        id,
+        isAccepted,
+      }))
+    ).toEqual([
+      { id: second.id, isAccepted: false },
+      { id: fourth.id, isAccepted: false },
+      { id: first.id, isAccepted: true },
+      { id: third.id, isAccepted: true },
+    ])
   })
 
   test("lists the orders served since 4:00, the last served first", async () => {
@@ -843,6 +886,56 @@ describe("what staff serve", () => {
       claimedSum: 6500,
       coverage: "paid",
     })
+  })
+
+  test("lists the money of a rejected order to return until staff answer it", async () => {
+    await using context = await createSelfPayTestContext()
+    const { coffee, menu } = await openCafe(context)
+    const paidInFull = await pay(
+      context,
+      await orderFrom(context, menu, [[coffee, 1]]),
+      6500
+    )
+    const paidInPart = await pay(
+      context,
+      await orderFrom(context, menu, [[coffee, 2]]),
+      5000
+    )
+    if (paidInPart.paymentId === null) throw new Error("Expected a payment.")
+    await using run = testCreateRun(context.deps)
+    for (const order of await run.ok(loadMenuOrdersToServe())) {
+      await run.ok(rejectMenuOrder(order))
+    }
+
+    const toReturn = await run.ok(loadMenuOrdersToReturn())
+    expect(toReturn).toHaveLength(2)
+    expect(toReturn).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          number: 1,
+          amount: { value: 6500, currency: "CZK" },
+          refund: { type: "payment", paymentId: paidInFull.paymentId },
+        }),
+        expect.objectContaining({
+          number: 2,
+          amount: { value: 5000, currency: "CZK" },
+          refund: { type: "payment", paymentId: paidInPart.paymentId },
+        }),
+      ])
+    )
+
+    await run.orThrow(
+      recordOverpaymentResolution({
+        paymentId: paidInPart.paymentId,
+        kind: "kept",
+        amount: PositiveInteger(5000),
+        deviceId: null,
+      })
+    )
+
+    expect(await run.ok(loadMenuOrdersToReturn())).toEqual([
+      expect.objectContaining({ number: 1 }),
+    ])
   })
 
   test("discards the bill of a rejected order not paid in full, so the table owes nothing for it", async () => {
