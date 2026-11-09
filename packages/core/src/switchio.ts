@@ -286,6 +286,12 @@ const createSwitchioClosureFailedError = defineError("SwitchioClosureFailed")<{
   readonly resultCode: number
   readonly responseCode: string | null
   readonly responseMessage: string | null
+  /**
+   * SwitchioPay was busy with something else and closed nothing: staff can
+   * simply try again once it is free. Read here, so the UI needs no result
+   * codes of its own.
+   */
+  readonly busy: boolean
 }>()
 export type SwitchioClosureFailedError = ReturnType<
   typeof createSwitchioClosureFailedError
@@ -357,6 +363,7 @@ export const interpretSwitchioClosureResult = ({
         resultCode,
         responseCode: optionalString(parsed?.responseCode),
         responseMessage: optionalString(parsed?.responseMessage),
+        busy: resultCode === switchioResultCode.terminalBusy,
       })
     )
   }
@@ -370,6 +377,7 @@ export const interpretSwitchioClosureResult = ({
         resultCode,
         responseCode,
         responseMessage: optionalString(parsed.responseMessage),
+        busy: false,
       })
     )
   }

@@ -259,6 +259,7 @@ describe("interpretSwitchioClosureResult", () => {
       resultCode: -1,
       responseCode: "HOST_UNREACHABLE",
       responseMessage: "Server nedostupný",
+      busy: false,
     })
   })
 
@@ -275,6 +276,7 @@ describe("interpretSwitchioClosureResult", () => {
       type: "SwitchioClosureFailed",
       resultCode: 2,
       responseMessage: "Terminal busy",
+      busy: true,
     })
   })
 
@@ -288,6 +290,7 @@ describe("interpretSwitchioClosureResult", () => {
       type: "SwitchioClosureFailed",
       resultCode: 1,
       responseCode: null,
+      busy: false,
     })
   })
 
