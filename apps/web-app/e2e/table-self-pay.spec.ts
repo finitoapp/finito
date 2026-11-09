@@ -1,12 +1,13 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { defaultSelfPayRelays } from "@payky/core/integrations/nostr/nostr-default-relays"
-import type { Locator, Page } from "@playwright/test"
+import type { BrowserContext, Locator, Page } from "@playwright/test"
 import { addCatalogItem, addTable } from "./support/bill.ts"
 import { cancelBillDirectly } from "./support/collisions.ts"
 import { colorContrast } from "./support/color-contrast.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
+  contentNav,
   gotoPage,
   gotoPosOverview,
   waitForLocalWriteToSettle,
@@ -25,6 +26,7 @@ import {
   pickLineUnits,
   pickShareChoice,
   publishedSelectionIds,
+  readShownLightningInvoice,
   receiveBankTransfer,
   receiveLightningPayment,
   receiveShownBankTransfer,
@@ -120,11 +122,16 @@ test("guests pay a fifth of a line at the table while nobody reserves anything",
       path: `${screenshotDir}/table-self-pay-guest-bank.png`,
       fullPage: true,
     })
-    const payBySquare = payer.getByRole("button", {
-      name: translate("en", "selfPay.bank.format.payBySquare"),
-    })
-    await payBySquare.click()
-    await expect(payBySquare).toHaveAttribute("aria-pressed", "true")
+    await payer
+      .getByRole("button", {
+        name: translate("en", "selfPay.bank.format.showPayBySquare"),
+      })
+      .click()
+    await expect(
+      payer.getByRole("button", {
+        name: translate("en", "selfPay.bank.format.showSpayd"),
+      })
+    ).toBeVisible()
     await expect(
       payer.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
     ).toBeVisible()
@@ -450,6 +457,41 @@ test("a guest switches the table page to Czech without losing the share they pic
   await test.step("the page opens in Czech again after a reload", async () => {
     await guest.reload()
     await expect(czechChoiceTitle).toBeVisible({ timeout: 45_000 })
+  })
+})
+
+test("the table page turns dark when the phone does, and the language picker stays plain", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress } =
+    await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+      seedPizzaAndBeerBill(page, "Table 9"))
+  const guest = await context.newPage()
+  const languagePicker = guest.getByRole("combobox", {
+    name: translate("en", "selfPay.language.label"),
+  })
+
+  await test.step("a guest opens the page on a light phone", async () => {
+    await guest.emulateMedia({ colorScheme: "light" })
+    await guest.goto(guestAddress)
+    await expect(
+      guest.getByRole("button", {
+        name: guestText("selfPay.pay.total", "$146.00"),
+      })
+    ).toBeEnabled({ timeout: 45_000 })
+    await expect(guest.locator("html")).not.toHaveClass(/\bdark\b/u)
+  })
+
+  await test.step("the phone turns dark and the page follows without a reload", async () => {
+    await guest.emulateMedia({ colorScheme: "dark" })
+    await expect(guest.locator("html")).toHaveClass(/\bdark\b/u)
+    await expect(languagePicker).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    )
   })
 })
 
@@ -844,6 +886,31 @@ test("a guest copies the amount to pay, or is told to hold the text when copying
       guest.getByRole("main").getByText(translate("en", "selfPay.copy.failed"))
     ).toBeVisible()
   })
+
+  await test.step("on a Czech page the amount copies with a decimal comma, and the IBAN copies without its spaces", async () => {
+    const guest = await context.newPage()
+    const copyField = (key: TranslationKey) =>
+      guest.getByRole("button", {
+        name: translateParams("cs", "selfPay.bank.copy", {
+          field: translate("cs", key),
+        }),
+      })
+    const clipboard = () => guest.evaluate(() => navigator.clipboard.readText())
+    await openBankPayment(guest)
+    await guest
+      .getByRole("combobox", {
+        name: translate("en", "selfPay.language.label"),
+      })
+      .click()
+    await guest.getByRole("option", { name: "Čeština" }).click()
+    await copyField("selfPay.bank.amount").click()
+    await expect.poll(clipboard).toBe("12,00")
+    await expect(
+      guest.getByText("CZ65 0800 0000 1920 0014 5399", { exact: true })
+    ).toBeVisible()
+    await copyField("selfPay.bank.iban").click()
+    await expect.poll(clipboard).toBe("CZ6508000000192000145399")
+  })
 })
 
 test("a guest sees an empty table, then its bill, then pay-with-staff once self-pay is off", async ({
@@ -976,6 +1043,233 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
+  test("a guest who pays again is done only with the new payment, and the first reads as paid at its time", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 35"))
+    await using phone = await newGuestContext(browser, relays)
+    const guest = await phone.newPage()
+    const main = guest.getByRole("main")
+    const firstDone = guestText("selfPay.confirmation.mine", "$73.00")
+    const firstPaid = translateParams("en", "selfPay.confirmation.mine.past", {
+      amount: "$73.00",
+      time: "",
+    }).trim()
+
+    await test.step("the guest pays half of the bill and is done with it", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await pickEqualShares(guest, 2)
+      await payTotal(guest, "$73.00").click()
+      await receiveShownBankTransfer(page, {
+        payer: guest,
+        language: "en",
+        amount: 7300,
+        currency: "USD",
+      })
+      await expect(main.getByText(firstDone)).toBeVisible({ timeout: 45_000 })
+    })
+
+    await test.step("paying more no longer says done and names the first payment's time", async () => {
+      await guestButton(guest, "selfPay.payMore").click()
+      await expect(main.getByText(firstDone)).toHaveCount(0)
+      await expect(main.getByText(firstPaid)).toBeVisible()
+    })
+
+    await test.step("the second payment is the one that says done", async () => {
+      await pickEqualShares(guest, 4)
+      await payTotal(guest, "$36.50").click()
+      await receiveShownBankTransfer(page, {
+        payer: guest,
+        language: "en",
+        amount: 3650,
+        currency: "USD",
+      })
+      const secondDone = guestText("selfPay.confirmation.mine", "$36.50")
+      await expect(guest.locator(":focus")).toContainText(secondDone, {
+        timeout: 45_000,
+      })
+      await expect(main.getByText(secondDone)).toHaveCount(1)
+      await expect(main.getByText(firstDone)).toHaveCount(0)
+      await expect(main.getByText(firstPaid)).toBeVisible()
+    })
+  })
+
+  test("a guest paying is told what is left once another guest paid meanwhile", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 32"))
+    await using firstPhone = await newGuestContext(browser, relays)
+    await using secondPhone = await newGuestContext(browser, relays)
+    const payer = await firstPhone.newPage()
+    const guest = await secondPhone.newPage()
+    const changed = guestText("selfPay.billChanged.title", "$73.00")
+    const goBack = translate("en", "selfPay.billChanged.description")
+
+    await test.step("a guest opens the payment for the whole bill", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+      await expect(
+        guest.getByRole("heading", { name: "$146.00" })
+      ).toBeFocused()
+    })
+
+    await test.step("another guest pays half, which the payer is not warned about", async () => {
+      await openGuestPage(payer, guestAddress, "$146.00")
+      await pickEqualShares(payer, 2)
+      await payTotal(payer, "$73.00").click()
+      await receiveShownBankTransfer(page, {
+        payer,
+        language: "en",
+        amount: 7300,
+        currency: "USD",
+      })
+      await expect(
+        payer
+          .getByRole("main")
+          .getByText(guestText("selfPay.confirmation.mine", "$73.00"))
+      ).toBeVisible({ timeout: 45_000 })
+      await expect(payer.getByText(changed)).toHaveCount(0)
+    })
+
+    await test.step("the guest still paying is told what is left and to go back", async () => {
+      await expect(guest.getByRole("main").getByText(changed)).toBeVisible({
+        timeout: 45_000,
+      })
+      await expect(guest.getByRole("main").getByText(goBack)).toBeVisible()
+      await expect(guest.getByRole("status")).toHaveText(
+        translateParams("en", "selfPay.billChanged.announcement", {
+          title: changed,
+          description: goBack,
+        })
+      )
+      await expect(
+        guest.getByRole("heading", { name: "$146.00" })
+      ).toBeVisible()
+    })
+  })
+
+  test("a guest paying is told nothing is left once staff remove every line meanwhile", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress, billId } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 33"))
+    await using phone = await newGuestContext(browser, relays)
+    const guest = await phone.newPage()
+    const removeLine = async (name: string) => {
+      await page
+        .getByRole("button", {
+          name: nameParam("bill.brick.remove.aria", name),
+        })
+        .click()
+      await waitForLocalWriteToSettle(page)
+    }
+
+    await test.step("the guest opens the payment for the whole bill", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+    })
+
+    await test.step("staff remove the beer, and the guest is told what is left", async () => {
+      await page.goto(`/bill?billId=${billId}`)
+      await removeLine("Beer")
+      await expect(
+        guest
+          .getByRole("main")
+          .getByText(guestText("selfPay.billChanged.title", "$101.00"))
+      ).toBeVisible({ timeout: 45_000 })
+    })
+
+    await test.step("staff remove the pizza too, and the guest is told not to send money", async () => {
+      await removeLine("Pizza")
+      await expect(
+        guest
+          .getByRole("main")
+          .getByText(translate("en", "selfPay.billChanged.nothingLeft.title"))
+      ).toBeVisible({ timeout: 45_000 })
+      await expect(
+        guest
+          .getByRole("main")
+          .getByText(
+            translate("en", "selfPay.billChanged.nothingLeft.description")
+          )
+      ).toBeVisible()
+    })
+  })
+
+  test("a guest paying keeps the amount and variable symbol and is told nothing is left once staff close the bill", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress, billId } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 34"))
+    await using phone = await newGuestContext(browser, relays)
+    const guest = await phone.newPage()
+    const variableSymbol = guest
+      .getByText(translate("en", "selfPay.bank.variableSymbol"), {
+        exact: true,
+      })
+      .locator("xpath=following-sibling::*[1]")
+    const nothingLeft = translate("en", "selfPay.billChanged.nothingLeft.title")
+    const doNotSend = translate(
+      "en",
+      "selfPay.billChanged.nothingLeft.description"
+    )
+    let shownSymbol = ""
+
+    await test.step("the guest opens the bank payment for the whole bill", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+      shownSymbol = (await variableSymbol.textContent()) ?? ""
+      expect(shownSymbol).toMatch(/^\d{10}$/u)
+    })
+
+    await test.step("staff close the bill, and the payment stays and says nothing is left", async () => {
+      await cancelBillDirectly(page, billId)
+      await expect(guest.getByRole("main").getByText(nothingLeft)).toBeVisible({
+        timeout: 45_000,
+      })
+      await expect(guest.getByRole("status")).toHaveText(
+        translateParams("en", "selfPay.billChanged.announcement", {
+          title: nothingLeft,
+          description: doNotSend,
+        })
+      )
+      await expect(
+        guest.getByRole("heading", { name: "$146.00" })
+      ).toBeVisible()
+      await expect(variableSymbol).toHaveText(shownSymbol)
+      await expect(
+        guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
+      ).toBeVisible()
+      await expect(
+        guest.getByRole("heading", {
+          name: translate("en", "selfPay.empty.title"),
+        })
+      ).toHaveCount(0)
+    })
+  })
+
   test("a guest who presses Back on the bank screen keeps the share and tip, and a new tab knows the payment", async ({
     seededPage: page,
     context,
@@ -1043,13 +1337,37 @@ test.describe("a guest paying at the table", () => {
     const guest = await phone.newPage()
     const waitingIndicator = guest.getByTestId("self-pay-waiting-indicator")
 
-    await test.step("the instructions say from the start that the restaurant confirms the money", async () => {
+    await test.step("the instructions say from the start, under the amount, that the restaurant confirms the money, and what it pays for follows the QR", async () => {
       await openGuestPage(guest, guestAddress, "$146.00")
       await payTotal(guest, "$146.00").click()
       await expect(guest.getByRole("status")).toHaveText(
         translate("en", "selfPay.waiting")
       )
       await expect(waitingIndicator).toBeVisible()
+      const top = async (locator: Locator) =>
+        (await locator.boundingBox())?.y ?? Number.NaN
+      expect(
+        await top(
+          guest.getByRole("main").getByText(translate("en", "selfPay.waiting"))
+        )
+      ).toBeLessThan(
+        await top(
+          guest.getByRole("region", {
+            name: translate("en", "selfPay.paidFor.title"),
+          })
+        )
+      )
+      expect(
+        await top(
+          guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
+        )
+      ).toBeLessThan(
+        await top(
+          guest.getByRole("region", {
+            name: translate("en", "selfPay.paidFor.title"),
+          })
+        )
+      )
     })
 
     await test.step("ten minutes without a confirmation stop the indicator and send the guest to the staff", async () => {
@@ -1094,16 +1412,17 @@ test.describe("a guest paying at the table", () => {
     await phone.clock.install()
     const guest = await phone.newPage()
 
-    await test.step("the guest creates a Lightning invoice", async () => {
-      await openGuestPage(guest, guestAddress, "$101.00")
-      await payTotal(guest, "$101.00").click()
-      await guestButton(guest, "selfPay.lightning.create").click({
-        timeout: 45_000,
-      })
-      await expect(guest.getByText(/^lnbc\d+n1/u)).toBeVisible()
+    const lightningQr = guest.getByRole("img", {
+      name: translate("en", "selfPay.lightning.qr"),
     })
 
-    await test.step("once the invoice expires the guest is told and offered a new one", async () => {
+    await test.step("the guest is shown a Lightning invoice", async () => {
+      await openGuestPage(guest, guestAddress, "$101.00")
+      await payTotal(guest, "$101.00").click()
+      await expect(lightningQr).toBeVisible({ timeout: 45_000 })
+    })
+
+    await test.step("once the invoice expires the guest is told not to pay it again and offered a new one", async () => {
       await phone.clock.fastForward("01:00:01")
       await expect(
         guest
@@ -1113,7 +1432,140 @@ test.describe("a guest paying at the table", () => {
       await expect(
         guestButton(guest, "selfPay.lightning.restart")
       ).toBeVisible()
-      await expect(guest.getByText(/^lnbc\d+n1/u)).toHaveCount(0)
+      await expect(lightningQr).toHaveCount(0)
+    })
+  })
+
+  test("the Bitcoin tab controls a QR code that shows without a tap, opens in the wallet from above it, and spells its code only when copying fails", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    let guestAddress = ""
+
+    await test.step("seed a table that takes bank transfers and Lightning, with a pizza", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Table 43", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 43")
+      await openTableBill(page, "en", { table: "Table 43", items: ["Pizza"] })
+    })
+
+    await using phone = await newGuestContext(browser, relays)
+    await fakeSelfPayLightning(phone, 100_000)
+    await phone.addInitScript(() => {
+      document.execCommand = () => false
+      Object.defineProperty(navigator, "clipboard", {
+        value: {
+          writeText: () => Promise.reject(new Error("NotAllowedError")),
+        },
+      })
+    })
+    const guest = await phone.newPage()
+    const invoiceText = guest.getByText(/^lnbc\d+n1/u)
+
+    await test.step("the Bitcoin tab controls the Bitcoin part, which shows the QR code with Open in wallet above it and no code as text", async () => {
+      await openGuestPage(guest, guestAddress, "$101.00")
+      await payTotal(guest, "$101.00").click()
+      const bitcoinTab = guest.getByRole("tab", {
+        name: translate("en", "selfPay.method.lightning"),
+      })
+      await bitcoinTab.click()
+      const panel = guest.getByRole("tabpanel")
+      await expect(panel).toHaveAttribute(
+        "id",
+        (await bitcoinTab.getAttribute("aria-controls")) ?? "no panel"
+      )
+      const [tabBox, panelBox] = await Promise.all([
+        bitcoinTab.boundingBox(),
+        panel.boundingBox(),
+      ])
+      expect(panelBox?.y ?? 0).toBeGreaterThanOrEqual(
+        (tabBox?.y ?? Number.POSITIVE_INFINITY) + (tabBox?.height ?? 0)
+      )
+      await expect(
+        panel.getByRole("img", {
+          name: translate("en", "selfPay.lightning.qr"),
+        })
+      ).toBeVisible({ timeout: 45_000 })
+      const invoice = await readShownLightningInvoice(guest, "en")
+      expect(invoice).toMatch(/^lnbc\d+n1/u)
+      const [openBox, qrBox] = await Promise.all([
+        guestButton(guest, "selfPay.lightning.open").boundingBox(),
+        guest
+          .getByRole("img", { name: translate("en", "selfPay.lightning.qr") })
+          .boundingBox(),
+      ])
+      expect(openBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(qrBox?.y ?? 0)
+      await expect(guestButton(guest, "selfPay.lightning.create")).toHaveCount(
+        0
+      )
+      await expect(invoiceText).toHaveCount(0)
+    })
+
+    await test.step("a copy that fails tells the guest to hold the code, and shows it", async () => {
+      await guestButton(guest, "selfPay.lightning.copy").click()
+      await expect(
+        guest
+          .getByRole("main")
+          .getByText(translate("en", "selfPay.copy.failed"))
+      ).toBeVisible()
+      await expect(invoiceText).toBeVisible()
+    })
+  })
+
+  test("an offline guest is told so, and a Bitcoin QR code is prepared without waiting for the network", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    let guestAddress = ""
+
+    await test.step("seed a table that takes bank transfers and Lightning, with a pizza", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Table 33", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 33")
+      await openTableBill(page, "en", { table: "Table 33", items: ["Pizza"] })
+    })
+
+    await using phone = await newGuestContext(browser, relays)
+    await fakeSelfPayLightning(phone, 100_000)
+    const guest = await phone.newPage()
+    const offline = guest
+      .getByRole("main")
+      .getByText(translate("en", "selfPay.offline"))
+
+    await test.step("the guest opens the payment and the phone goes offline", async () => {
+      await openGuestPage(guest, guestAddress, "$101.00")
+      await expect(offline).toHaveCount(0)
+      await payTotal(guest, "$101.00").click()
+      await phone.setOffline(true)
+      await expect(offline).toBeVisible()
+    })
+
+    await test.step("opening Bitcoin prepares the QR code at once instead of waiting for the network", async () => {
+      await guest
+        .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
+        .click()
+      await expect(
+        guest
+          .getByRole("img", { name: translate("en", "selfPay.lightning.qr") })
+          .or(guest.getByText(translate("en", "selfPay.lightning.error")))
+      ).toBeVisible()
+    })
+
+    await test.step("back online, the notice goes away", async () => {
+      await phone.setOffline(false)
+      await expect(offline).toHaveCount(0)
     })
   })
 
@@ -1137,7 +1589,7 @@ test.describe("a guest paying at the table", () => {
     })
 
     for (const colorScheme of ["light", "dark"] as const) {
-      await test.step(`in ${colorScheme} mode the picked tip, unit, share, QR format and method stand out`, async () => {
+      await test.step(`in ${colorScheme} mode the picked tip, unit, share and method stand out, and the other QR format reads`, async () => {
         await using phone = await newGuestContext(browser, relays, {
           colorScheme,
         })
@@ -1201,10 +1653,7 @@ test.describe("a guest paying at the table", () => {
 
         await tile("selfPay.tip.none").click()
         await payTotal(guest, "$101.00").click()
-        await pickedAgainstUnpicked(
-          tile("selfPay.bank.format.spayd"),
-          tile("selfPay.bank.format.payBySquare")
-        )
+        await readable(tile("selfPay.bank.format.showPayBySquare"))
         const tab = (key: TranslationKey) =>
           guest.getByRole("tab", { name: translate("en", key) })
         await expect(tab("selfPay.method.bank")).toHaveAttribute(
@@ -1380,7 +1829,7 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
-  test("saving the payment QR hands a PNG to the share sheet, and a QR Platba opens in the bank app as a .spayd file", async ({
+  test("a phone that shares a .spayd opens the QR Platba in the bank app, and saving the QR hands a PNG to the share sheet", async ({
     seededPage: page,
     context,
     browser,
@@ -1421,6 +1870,9 @@ test.describe("a guest paying at the table", () => {
       await expect(
         guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
       ).toHaveJSProperty("tagName", "IMG")
+      await expect(
+        guest.getByText(translate("en", "selfPay.bank.hint.open"))
+      ).toBeVisible()
     })
 
     await test.step("saving it shares the PNG file", async () => {
@@ -1465,11 +1917,121 @@ test.describe("a guest paying at the table", () => {
     })
 
     await test.step("PAY by square offers no bank-app button", async () => {
-      await guestButton(guest, "selfPay.bank.format.payBySquare").click()
+      await guestButton(guest, "selfPay.bank.format.showPayBySquare").click()
       await expect(
-        guestButton(guest, "selfPay.bank.format.payBySquare")
-      ).toHaveAttribute("aria-pressed", "true")
+        guestButton(guest, "selfPay.bank.format.showSpayd")
+      ).toBeVisible()
       await expect(guestButton(guest, "selfPay.bank.openInApp")).toHaveCount(0)
+    })
+  })
+
+  test("the bank QR follows the page language, PAY by square in Slovak and QR Platba in Czech, each one tap from the other", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 42"))
+    const payInLanguage = async (
+      phone: BrowserContext,
+      language: "cs" | "sk"
+    ) => {
+      const guest = await phone.newPage()
+      await guest.goto(guestAddress)
+      const pay = guest.getByRole("button", {
+        name: translateParams(language, "selfPay.pay.total", {
+          amount: new Intl.NumberFormat(language, {
+            style: "currency",
+            currency: "USD",
+          }).format(146),
+        }),
+      })
+      await expect(pay).toBeEnabled({ timeout: 45_000 })
+      await pay.click()
+      await expect(
+        guest.getByRole("img", { name: translate(language, "selfPay.bank.qr") })
+      ).toBeVisible()
+      return (key: TranslationKey) =>
+        guest.getByRole("button", { name: translate(language, key) })
+    }
+
+    await test.step("a Slovak page shows PAY by square and offers QR Platba for a Czech bank", async () => {
+      await using phone = await newGuestContext(browser, relays, {
+        locale: "sk-SK",
+      })
+      const link = await payInLanguage(phone, "sk")
+      await expect(link("selfPay.bank.format.showPayBySquare")).toHaveCount(0)
+      await link("selfPay.bank.format.showSpayd").click()
+      await expect(link("selfPay.bank.format.showPayBySquare")).toBeVisible()
+      await expect(link("selfPay.bank.format.showSpayd")).toHaveCount(0)
+    })
+
+    await test.step("a Czech page shows QR Platba and offers PAY by square for a Slovak bank", async () => {
+      await using phone = await newGuestContext(browser, relays, {
+        locale: "cs-CZ",
+      })
+      const link = await payInLanguage(phone, "cs")
+      await expect(link("selfPay.bank.format.showSpayd")).toHaveCount(0)
+      await link("selfPay.bank.format.showPayBySquare").click()
+      await expect(link("selfPay.bank.format.showSpayd")).toBeVisible()
+    })
+  })
+
+  test("a phone that cannot share a .spayd saves the QR as the main step and offers no bank app", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 41"))
+    await using phone = await newGuestContext(browser, relays)
+    await phone.addInitScript(() => {
+      const shared: Array<string> = []
+      Object.assign(window, { __e2eSharedFiles: shared })
+      Object.defineProperty(navigator, "canShare", {
+        value: ({ files = [] }: ShareData) =>
+          files.every((file) => file.type === "image/png"),
+      })
+      Object.defineProperty(navigator, "share", {
+        value: async ({ files = [] }: ShareData) => {
+          shared.push(...files.map((file) => file.name))
+        },
+      })
+    })
+    const guest = await phone.newPage()
+    const saveQr = guestButton(guest, "selfPay.bank.saveQr")
+    const qr = guest.getByRole("img", {
+      name: translate("en", "selfPay.bank.qr"),
+    })
+
+    await test.step("the guest is told to save the QR, above it, with no bank-app button", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+      await expect(qr).toBeVisible()
+      await expect(
+        guest.getByText(translate("en", "selfPay.bank.hint.save"))
+      ).toBeVisible()
+      await expect(guestButton(guest, "selfPay.bank.openInApp")).toHaveCount(0)
+      const [saveBox, qrBox] = await Promise.all([
+        saveQr.boundingBox(),
+        qr.boundingBox(),
+      ])
+      expect(saveBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(qrBox?.y ?? 0)
+    })
+
+    await test.step("saving it shares only the PNG", async () => {
+      await saveQr.click()
+      await expect
+        .poll(() =>
+          guest.evaluate(() => Reflect.get(window, "__e2eSharedFiles"))
+        )
+        .toEqual([expect.stringMatching(/^payment-\d{10}\.png$/u)])
     })
   })
 
@@ -1525,8 +2087,7 @@ test.describe("a guest paying at the table", () => {
         guest.getByRole("tab", {
           name: translate("en", "selfPay.method.bank"),
         }),
-        guestButton(guest, "selfPay.bank.format.spayd"),
-        guestButton(guest, "selfPay.bank.format.payBySquare"),
+        guestButton(guest, "selfPay.bank.format.showPayBySquare"),
         guestButton(guest, "selfPay.bank.saveQr"),
         guest.getByRole("button", { name: /^Copy /u }),
         guestButton(guest, "selfPay.back"),
@@ -1573,6 +2134,38 @@ test.describe("a guest paying at the table", () => {
       await expect(
         guest.getByText(translate("en", "selfPay.disabled.description"))
       ).toBeHidden()
+    })
+  })
+
+  test("a Bitcoin-only table without a usable rate asks guests to pay with the staff before they choose", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    await context.route("https://api.yadio.io/exrates/**", (route) =>
+      route.abort()
+    )
+    let guestAddress = ""
+
+    await test.step("seed a Lightning account whose till cannot get a rate", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await addTable(page, "en", { name: "Table 32", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Soup", price: "30" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 32")
+      await openTableBill(page, "en", { table: "Table 32", items: ["Soup"] })
+    })
+
+    await test.step("the guest is told paying here is not available, with no choice and no Pay", async () => {
+      await using phone = await newGuestContext(browser, relays)
+      const guest = await phone.newPage()
+      await guest.goto(guestAddress)
+      await expect(
+        guest.getByText(translate("en", "selfPay.noMethod.description"))
+      ).toBeVisible({ timeout: 45_000 })
+      await expect(guest.getByRole("button", { name: /^Pay / })).toHaveCount(0)
     })
   })
 })
@@ -1631,12 +2224,7 @@ test("a guest pays a third of a bill too long to list by Lightning and sees it c
     await guest
       .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
       .click()
-    await guest
-      .getByRole("button", {
-        name: translate("en", "selfPay.lightning.create"),
-      })
-      .click({ timeout: 45_000 })
-    lnInvoice = (await guest.getByText(/^lnbc\d+n1/u).textContent()) ?? ""
+    lnInvoice = await readShownLightningInvoice(guest, "en")
     expect(lnInvoice).toMatch(/^lnbc\d+n1/u)
   })
 
@@ -1647,7 +2235,7 @@ test("a guest pays a third of a bill too long to list by Lightning and sees it c
     await guest
       .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
       .click()
-    await expect(guest.getByText(lnInvoice, { exact: true })).toBeVisible()
+    expect(await readShownLightningInvoice(guest, "en")).toBe(lnInvoice)
     await expect(
       guest.getByRole("button", {
         name: translate("en", "selfPay.lightning.create"),
@@ -1842,6 +2430,44 @@ test.describe("the till", () => {
         })
         .click()
       await waitForLocalWriteToSettle(page)
+    })
+
+    await test.step("the activity reads the discarded bill's money overpaid, never underpaid", async () => {
+      await gotoPage(page, "/activity/bills", "en", "activity.title")
+      const billRow = contentNav(page, "en").locator(`a[href$="/${billId}"]`)
+      await expect(billRow).toContainText(
+        translate("en", "billHistory.overpaid")
+      )
+      await expect(billRow).not.toContainText(
+        translate("en", "billHistory.underpaid")
+      )
+
+      await gotoPage(page, "/activity", "en", "activity.title")
+      const paymentRow = contentNav(page, "en").getByRole("link")
+      await expect(paymentRow).toHaveCount(1)
+      await expect(paymentRow).toContainText(
+        translate("en", "paymentHistory.billOverpaid")
+      )
+      await expect(paymentRow).not.toContainText(
+        translate("en", "paymentHistory.billUnderpaid")
+      )
+
+      await paymentRow.click()
+      await expect(
+        page.getByText(
+          translateParams("en", "overpayment.title", { amount: "$45.00" })
+        )
+      ).toBeVisible()
+      await expect(
+        page.getByRole("button", {
+          name: translate("en", "overpayment.resolveOnBill"),
+        })
+      ).toBeVisible()
+      await expect(
+        page.getByText(
+          translate("en", "paymentDetail.bill.coverage.underpaid.title")
+        )
+      ).toBeHidden()
     })
 
     await test.step("the canceled bill offers the guest's money, and keeping it resolves it", async () => {

@@ -85,6 +85,10 @@ device carries its own proof, and anything without one is ignored:
 | The selection a payment points to | its content hashes to the pointer, and it is signed and encrypted under keys derived from the pointer and the account's selection key | only someone holding both the pointer and a sticker of the merchant, which is the payer |
 | The Lightning rate | an 80-bit MAC under a key derived from the merchant's master key | only the merchant's devices |
 
+A test deployment adds one input without a proof: a test transfer, which any
+sticker holder can send and the till books as money from the bank. Only that
+deployment's configuration turns it on (table-self-pay/0025).
+
 ```mermaid
 sequenceDiagram
   participant T as Merchant device

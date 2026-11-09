@@ -1,5 +1,6 @@
 import type { SelfPayMenu } from "@payky/core/modules/menu-order/menu-order-utils"
 import { IbanSchema } from "@payky/core/modules/shared/schema"
+import type { SelfPaySignedRate } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import type { SelfPayView } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { describe, expect, test } from "vitest"
 import { guestOrderableMenu } from "./guest-menu-offer.ts"
@@ -10,6 +11,8 @@ const bankInCzk = {
   currency: "CZK",
   qrFormat: "spayd",
 } satisfies SelfPayView["bank"]
+
+const rateInCzk = { currency: "CZK" } as SelfPaySignedRate
 
 const view = (overrides: Partial<SelfPayView> = {}) =>
   ({ bank: bankInCzk, lightning: null, ...overrides }) as SelfPayView
@@ -33,19 +36,21 @@ const inMenu = [{ name: null, items: [coffee] }]
 
 describe("the menu the guest page offers to order from", () => {
   test("offers nothing with nothing in the menu", () => {
-    expect(guestOrderableMenu(view(), menu())).toBe(null)
+    expect(guestOrderableMenu(view(), menu(), null)).toBe(null)
   })
 
   test("offers a menu with items the guest can pay for", () => {
     const ordering = menu({ categories: inMenu })
 
-    expect(guestOrderableMenu(view(), ordering)).toBe(ordering)
+    expect(guestOrderableMenu(view(), ordering, null)).toBe(ordering)
   })
 
   test("offers nothing when the bank is in another currency and Lightning is not offered", () => {
     const euro = view({ bank: { ...bankInCzk, currency: "EUR" } })
 
-    expect(guestOrderableMenu(euro, menu({ categories: inMenu }))).toBe(null)
+    expect(guestOrderableMenu(euro, menu({ categories: inMenu }), null)).toBe(
+      null
+    )
   })
 
   test("offers the menu by Lightning alone", () => {
@@ -55,6 +60,19 @@ describe("the menu the guest page offers to order from", () => {
     })
     const ordering = menu({ categories: inMenu })
 
-    expect(guestOrderableMenu(lightningOnly, ordering)).toBe(ordering)
+    expect(guestOrderableMenu(lightningOnly, ordering, rateInCzk)).toBe(
+      ordering
+    )
+  })
+
+  test("offers nothing by Lightning alone without a usable rate", () => {
+    const lightningOnly = view({
+      bank: null,
+      lightning: { identityPublicKey: "02".repeat(33) },
+    })
+
+    expect(
+      guestOrderableMenu(lightningOnly, menu({ categories: inMenu }), null)
+    ).toBe(null)
   })
 })

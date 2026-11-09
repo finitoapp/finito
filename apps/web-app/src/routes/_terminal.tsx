@@ -66,7 +66,8 @@ function TerminalLayout() {
         isSandboxActive && "[--terminal-banner-height:2.5rem]",
         // The room the menu takes (navigation/0001): the phone's bottom bar on
         // a tab's root screen, the sidebar on every screen of a large monitor.
-        menu?.root && "[--menu-nav-height:3rem] lg:[--menu-nav-height:0px]",
+        menu?.root &&
+          "[:root:has(&)]:[--menu-nav-height:3rem] lg:[:root:has(&)]:[--menu-nav-height:0px]",
         menu && "lg:[--menu-sidebar-width:14rem]",
         terminalLayout?.mainClassName
       )}

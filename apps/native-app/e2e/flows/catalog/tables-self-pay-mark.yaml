@@ -22,8 +22,7 @@ tags: [catalog]
       TABLE: Table 7
 # The list marks only the self-pay table. Maestro's web driver cannot select
 # the mark by its testID (a Tamagui `name` attribute shadows it), so on web
-# the mark's copy shows twice in all: Table 7's mark and the guest name
-# card's title.
+# the mark's copy shows once in all: Table 7's mark.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
@@ -39,7 +38,7 @@ tags: [catalog]
     commands:
       - assertNotVisible:
           text: ${output.re(output.t["catalog.tables.selfPay.title"])}
-          index: 2
+          index: 1
 - runFlow:
     when:
       platform: Android

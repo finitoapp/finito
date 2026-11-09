@@ -955,7 +955,7 @@ export const enSettings = {
   "settings.security.selfPayRelays.lastActive":
     "Keep at least one relay on, or guests cannot see their bill.",
   "settings.security.selfPayRelays.refused": "Refused the last publish",
-  "settings.security.selfPayRelays.title": "Pay-at-the-table relays",
+  "settings.security.selfPayRelays.title": "Relays for QR codes on tables",
   "settings.security.selfPayRelays.toggle": "Publish through {url}",
   "settings.security.selfPayRelays.url.description":
     "Only secure WebSocket URLs starting with wss: are allowed.",
@@ -1126,17 +1126,24 @@ export const enSettings = {
   "catalog.tables.search.clear.aria": "Clear search",
   "catalog.tables.seatCount": "{value} seats",
   "catalog.tables.selfPay.bankNote":
-    "Bank transfers are matched only while a device syncs the bank account: the Android app or the CLI.",
+    "Guests' bank transfers are matched only while the Android app syncs the bank account.",
   "catalog.tables.selfPay.description":
-    "Guests scan the table's QR code, see its open bill and pay all or part of it themselves, without waiting for staff.",
-  "catalog.tables.selfPay.enabled": "Let guests pay at this table",
+    "Guests scan a table's QR code to pay or order without waiting for staff. Turn it on in a table's detail.",
+  "catalog.tables.selfPay.enabled": "QR code on this table",
+  "catalog.tables.selfPay.enabled.description":
+    "What guests can do with it is set for all tables on the Tables screen.",
+  "catalog.tables.selfPay.noPaymentMethod.bankLink": "Open bank transfer",
+  "catalog.tables.selfPay.noPaymentMethod.bitcoinLink": "Open Bitcoin",
   "catalog.tables.selfPay.noPaymentMethod.description":
-    "No payment method reaches them. Turn on bank sync with the Fio or MONETA plugin for the bank account, or add a Lightning wallet.",
-  "catalog.tables.selfPay.noPaymentMethod.link": "Open payment accounts",
+    "No payment method reaches them. Turn on Bitcoin, or sync the bank account with the Fio or MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Open payment methods",
+  "catalog.tables.selfPay.noPaymentMethod.spark":
+    "Guests pay by Bitcoin only with the Spark wallet. Make Spark the main Bitcoin wallet, or sync the bank account with the Fio or MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Guests cannot pay at this table yet",
   "catalog.tables.selfPay.noRelayAccepted.description":
-    "No relay accepted its last publish.",
+    "None of the relays that carry this table to guests took its last update.",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Open relays",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Try again",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Guests cannot see this table's bill",
@@ -1152,14 +1159,18 @@ export const enSettings = {
     "Stickers printed so far stop showing this table's bills. Print the new one and replace them.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Regenerate the QR code of {name}?",
-  "catalog.tables.selfPay.title": "Pay at the table",
+  "catalog.tables.selfPay.scanToPay": "Scan to pay",
+  "catalog.tables.selfPay.title": "QR code",
   "catalog.tables.selfPayGuestName.description":
     "Guests paying at the table see it as who they pay, on the page and in the payment QR. Leave it empty and they see no name.",
   "catalog.tables.selfPayGuestName.error": "Use at most 255 characters.",
   "catalog.tables.selfPayGuestName.label": "Name guests see",
   "catalog.tables.selfPayGuestName.placeholder": "Café on the Corner",
+  "catalog.tables.selfPayOptions.lastOn":
+    "One stays on. To stop guests at a table, turn off its QR code.",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "No item in the menu is available. Put items in the menu on their detail, or mark them available again.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Open items",
   "catalog.tables.selfPayOptions.menu.empty.title": "Guests cannot order",
   "catalog.tables.selfPayOptions.menu.leftOut":
     "Items that do not fit the menu: {count}. Guests do not see them.",
@@ -1167,6 +1178,8 @@ export const enSettings = {
     "Items not priced in {currency}: {count}. Guests do not see them.",
   "catalog.tables.selfPayOptions.menu.visible":
     "Items guests can order: {count}",
+  "catalog.tables.selfPayOptions.noPaymentMethod.title":
+    "Guests cannot pay yet",
   "catalog.tables.selfPayOptions.order": "Guests order from the menu",
   "catalog.tables.selfPayOptions.order.description":
     "Guests order the items in the menu and pay for them. Staff see the paid orders under To serve.",
@@ -1176,7 +1189,9 @@ export const enSettings = {
   "catalog.tables.selfPayOptions.orderDevice.placeholder": "Choose a device",
   "catalog.tables.selfPayOptions.orderDevice.this": "{name} (this device)",
   "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
-  "catalog.tables.selfPayOptions.title": "What guests can do",
+  "catalog.tables.selfPayOptions.title": "QR codes on tables",
+  "catalog.tables.selfPayOptions.withQrCode":
+    "Tables with a QR code: {count} of {total}",
   "catalog.tables.sticker.check": "Check a sticker",
   "catalog.tables.sticker.current": "This sticker belongs to {name}.",
   "catalog.tables.sticker.dismiss": "Dismiss",

@@ -1,9 +1,13 @@
 import { sqliteTrue } from "@evolu/common"
-import { optionalIdCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  optionalIdCodec,
+  optionalTextCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import {
   setMenuOrdering,
   setOrderDevice,
   setSelfPayBillsHidden,
+  updateSettings,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { devicesQuery } from "@payky/core/modules/device/device-queries"
@@ -11,12 +15,15 @@ import type { DeviceId } from "@payky/core/modules/device/device-types"
 import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
 import { countSelfPayMenuItems } from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Text, YStack } from "tamagui"
 import { z } from "zod"
 import { accountAtom } from "../../../atoms/account.ts"
+import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import {
   Alert,
   AlertDescription,
@@ -25,6 +32,7 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -49,25 +57,59 @@ import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
+import { AlertLink, NoPaymentMethodAlert } from "./table-self-pay-card.tsx"
+import { TableStickerCheck } from "./table-sticker-check.tsx"
+import {
+  useBankReachesGuests,
+  useGuestsHaveNoPaymentMethod,
+} from "./use-guests-cannot-pay-reason.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
 
 /** Self-pay options of the account, as web's `SelfPayOptionsCard`. */
 export function SelfPayOptionsCard() {
   const { t } = useTranslation()
+  const { data: tables } = useEvoluQuery(tablesQuery)
+  const withQrCode = tables.filter(
+    ({ selfPayEnabled }) => selfPayEnabled === sqliteTrue
+  ).length
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
+        <CardDescription>
+          {withQrCode === 0
+            ? t("catalog.tables.selfPay.description")
+            : t("catalog.tables.selfPayOptions.withQrCode", {
+                count: withQrCode,
+                total: tables.length,
+              })}
+        </CardDescription>
+      </CardHeader>
+      {withQrCode > 0 && <SelfPayOptions />}
+    </Card>
+  )
+}
+
+function SelfPayOptions() {
+  const { t } = useTranslation()
   const runToast = useRunToast()
   const thisDeviceId = useAtomValue(accountAtom).device.id
   const {
     data: [settings],
   } = useEvoluQuery(selfPaySettingsQuery)
+  const billPaying = settings?.selfPayBillsHidden !== sqliteTrue
   const menuOrdering = settings?.menuOrdering === sqliteTrue
+  const optionsOn = [billPaying, menuOrdering].filter((on) => on).length
+  const isLastOn = (on: boolean) => on && optionsOn === 1
+  const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
+  const bankReachesGuests = useBankReachesGuests()
 
-  const billsShown = useInlineChoice(
-    settings?.selfPayBillsHidden !== sqliteTrue,
-    (shown) =>
-      runToast(async (run) => {
-        await run.ok(setSelfPayBillsHidden(!shown))
-      })
+  const billsShown = useInlineChoice(billPaying, (shown) =>
+    runToast(async (run) => {
+      await run.ok(setSelfPayBillsHidden(!shown))
+    })
   )
   const ordering = useInlineChoice(menuOrdering, (on) =>
     runToast(async (run) => {
@@ -76,48 +118,77 @@ export function SelfPayOptionsCard() {
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
-      </CardHeader>
-      <CardContent gap={16}>
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.tables.selfPayOptions.payBill")}
-            checked={billsShown.value}
-            disabled={billsShown.saving}
-            onCheckedChange={(checked) => {
-              void billsShown.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>
-              {t("catalog.tables.selfPayOptions.payBill")}
-            </FieldLabel>
-          </FieldContent>
-        </Field>
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.tables.selfPayOptions.order")}
-            checked={ordering.value}
-            disabled={ordering.saving}
-            onCheckedChange={(checked) => {
-              void ordering.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>{t("catalog.tables.selfPayOptions.order")}</FieldLabel>
-            <FieldDescription>
-              {t("catalog.tables.selfPayOptions.order.description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-        {menuOrdering && <MenuStatus />}
-        {menuOrdering && (
-          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
-        )}
-      </CardContent>
-    </Card>
+    <CardContent gap={16}>
+      {guestsHaveNoPaymentMethod && (
+        <NoPaymentMethodAlert
+          title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
+        />
+      )}
+      <InlineEditField
+        label={t("catalog.tables.selfPayGuestName.label")}
+        description={t("catalog.tables.selfPayGuestName.description")}
+        placeholder={t("catalog.tables.selfPayGuestName.placeholder")}
+        defaultValue={settings?.selfPayGuestName ?? null}
+        codec={optionalTextCodec}
+        errorKey="catalog.tables.selfPayGuestName.error"
+        onSave={(selfPayGuestName) =>
+          runToast(async (run) => {
+            await run.ok(updateSettings({ selfPayGuestName }))
+          })
+        }
+      />
+      <Field orientation="horizontal">
+        <Switch
+          aria-label={t("catalog.tables.selfPayOptions.payBill")}
+          checked={billsShown.value}
+          disabled={billsShown.saving || isLastOn(billPaying)}
+          onCheckedChange={(checked) => {
+            void billsShown.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel>{t("catalog.tables.selfPayOptions.payBill")}</FieldLabel>
+        </FieldContent>
+      </Field>
+      {isLastOn(billPaying) && <LastGuestOptionNote />}
+      <Field orientation="horizontal">
+        <Switch
+          aria-label={t("catalog.tables.selfPayOptions.order")}
+          checked={ordering.value}
+          disabled={ordering.saving || isLastOn(menuOrdering)}
+          onCheckedChange={(checked) => {
+            void ordering.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel>{t("catalog.tables.selfPayOptions.order")}</FieldLabel>
+          <FieldDescription>
+            {t("catalog.tables.selfPayOptions.order.description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      {isLastOn(menuOrdering) && <LastGuestOptionNote />}
+      {menuOrdering && <MenuStatus />}
+      {menuOrdering && (
+        <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
+      )}
+      {bankReachesGuests && (
+        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+          {t("catalog.tables.selfPay.bankNote")}
+        </Text>
+      )}
+      <TableStickerCheck />
+    </CardContent>
+  )
+}
+
+function LastGuestOptionNote() {
+  const { t } = useTranslation()
+
+  return (
+    <Text mt={-8} fontSize="xs" lineHeight="xs" color="muted-foreground">
+      {t("catalog.tables.selfPayOptions.lastOn")}
+    </Text>
   )
 }
 
@@ -218,6 +289,10 @@ function MenuStatus() {
           </AlertTitle>
           <AlertDescription>
             {t("catalog.tables.selfPayOptions.menu.empty.description")}
+            <AlertLink
+              label={t("catalog.tables.selfPayOptions.menu.empty.link")}
+              onPress={() => router.push("/settings/items")}
+            />
           </AlertDescription>
         </Alert>
       ) : (

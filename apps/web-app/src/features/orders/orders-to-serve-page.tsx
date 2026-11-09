@@ -1,14 +1,19 @@
+import { toServeOrderMoney } from "@payky/app-shared/menu-order-announcement"
 import {
   acceptMenuOrder,
   loadMenuOrdersNotFoundYet,
   loadMenuOrdersServedToday,
+  loadMenuOrdersToReturn,
   loadMenuOrdersToServe,
   type MenuOrderNotFoundYet,
+  type MenuOrderToReturn,
   type MenuOrderToServe,
   markMenuOrderServed,
+  type RejectedMenuOrderRefund,
   rejectMenuOrder,
 } from "@payky/core/modules/menu-order/menu-order-actions"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import type { Money } from "@payky/core/modules/shared/money"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import { type ReactNode, Suspense } from "react"
@@ -47,8 +52,8 @@ export function OrdersToServePage() {
     <div className="flex flex-col gap-2">
       <div className="h-6" />
       <FadeHeader title={t("orders.title")} />
-      <Tabs defaultValue="toServe" className="gap-4">
-        <TabsList className="w-full">
+      <Tabs defaultValue="toServe" className="flex-col gap-4">
+        <TabsList className="h-8 w-full">
           <TabsTrigger value="toServe">{t("orders.tabs.toServe")}</TabsTrigger>
           <TabsTrigger value="served">{t("orders.tabs.served")}</TabsTrigger>
         </TabsList>
@@ -113,11 +118,12 @@ function useOrdersToServe() {
     queryKey: ["ordersToServe", history?.maxRowid ?? null],
     queryFn: async () => {
       await using run = appRun()
-      const [orders, notFoundYet] = await Promise.all([
+      const [orders, notFoundYet, toReturn] = await Promise.all([
         run.ok(loadMenuOrdersToServe()),
         run.ok(loadMenuOrdersNotFoundYet()),
+        run.ok(loadMenuOrdersToReturn()),
       ])
-      return { orders, notFoundYet }
+      return { orders, notFoundYet, toReturn }
     },
     placeholderData: keepPreviousData,
   })
@@ -133,8 +139,9 @@ function OrdersToServe() {
   const notFoundYet = toServe.notFoundYet.filter(
     ({ rejectedOrderNumber }) => rejectedOrderNumber === null
   )
-  const paidAfterRejection = toServe.notFoundYet.filter(
-    ({ rejectedOrderNumber }) => rejectedOrderNumber !== null
+  const paidAfterRejection = toServe.notFoundYet.flatMap(
+    ({ rejectedOrderNumber, ...money }) =>
+      rejectedOrderNumber === null ? [] : [{ ...money, rejectedOrderNumber }]
   )
 
   return (
@@ -159,11 +166,10 @@ function OrdersToServe() {
           entries={notFoundYet}
         />
       )}
-      {paidAfterRejection.length > 0 && (
-        <UnmatchedOrderMoney
-          title={t("orders.paidAfterRejection.title")}
-          description={t("orders.paidAfterRejection.description")}
-          entries={paidAfterRejection}
+      {(toServe.toReturn.length > 0 || paidAfterRejection.length > 0) && (
+        <MoneyToReturn
+          toReturn={toServe.toReturn}
+          paidAfterRejection={paidAfterRejection}
         />
       )}
     </div>
@@ -197,15 +203,7 @@ function OrderToServe({ order }: { readonly order: MenuOrderToServe }) {
       return
     }
     await runToast(async (run) => {
-      const refund = await run.ok(rejectMenuOrder(order))
-      void navigate(
-        refund.type === "payment"
-          ? {
-              to: "/activity/$paymentId",
-              params: { paymentId: refund.paymentId },
-            }
-          : { to: "/activity/bills/$billId", params: { billId: refund.billId } }
-      )
+      void navigate(refundDestination(await run.ok(rejectMenuOrder(order))))
     })
   }
 
@@ -258,7 +256,11 @@ function OrderCard({
           </span>
         </CardTitle>
         <CardDescription>
-          {formatTime(new Date(order.createdAt), locale)}
+          {`${formatTime(new Date(order.createdAt), locale)} · ${toServeOrderMoney(
+            order,
+            t,
+            (money) => formatMoney(money, locale)
+          )}`}
         </CardDescription>
         <CardAction className="flex flex-col items-end gap-1">
           {order.isFullyPaid ? (
@@ -266,8 +268,11 @@ function OrderCard({
           ) : (
             <Badge variant="destructive">{t("orders.notFullyPaid")}</Badge>
           )}
+          {!order.isAccepted && !order.isServed && (
+            <Badge>{t("orders.waiting.badge")}</Badge>
+          )}
           {order.isAccepted && !order.isServed && (
-            <Badge>{t("orders.preparing")}</Badge>
+            <Badge variant="outline">{t("orders.preparing")}</Badge>
           )}
         </CardAction>
       </CardHeader>
@@ -296,6 +301,94 @@ function OrderCard({
   )
 }
 
+const refundDestination = (refund: RejectedMenuOrderRefund) =>
+  refund.type === "payment"
+    ? {
+        to: "/activity/$paymentId" as const,
+        params: { paymentId: refund.paymentId },
+      }
+    : {
+        to: "/activity/bills/$billId" as const,
+        params: { billId: refund.billId },
+      }
+
+function MoneyToReturn({
+  toReturn,
+  paidAfterRejection,
+}: {
+  readonly toReturn: ReadonlyArray<MenuOrderToReturn>
+  readonly paidAfterRejection: ReadonlyArray<
+    MenuOrderNotFoundYet & { readonly rejectedOrderNumber: number }
+  >
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const navigate = useNavigate()
+  const entry = (number: number, amount: Money) =>
+    t("orders.toReturn.entry", {
+      number,
+      amount: formatMoney(amount, locale),
+    })
+
+  return (
+    <Card data-testid="money-to-return">
+      <CardHeader>
+        <CardTitle>{t("orders.toReturn.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {toReturn.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {toReturn.map((order) => (
+              <li
+                key={order.id}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="font-medium tabular-nums">
+                  {entry(order.number, order.amount)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void navigate(refundDestination(order.refund))
+                  }}
+                >
+                  {t("orders.toReturn.record")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {paidAfterRejection.length > 0 && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              {t("orders.paidAfterRejection.description")}
+            </p>
+            <ul className="flex flex-col gap-2">
+              {paidAfterRejection.map((money) => (
+                <li
+                  key={money.id}
+                  className="flex justify-between gap-3 text-sm"
+                >
+                  <span className="font-medium tabular-nums">
+                    {entry(money.rejectedOrderNumber, {
+                      value: money.amount,
+                      currency: money.currency,
+                    })}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatDateTime(new Date(money.occurredAt), locale)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function UnmatchedOrderMoney({
   title,
   description,
@@ -305,7 +398,6 @@ function UnmatchedOrderMoney({
   readonly description: string
   readonly entries: ReadonlyArray<MenuOrderNotFoundYet>
 }) {
-  const { t } = useTranslation()
   const locale = useLocale()
 
   return (
@@ -323,14 +415,7 @@ function UnmatchedOrderMoney({
             )
             return (
               <li key={entry.id} className="flex justify-between gap-3 text-sm">
-                <span className="font-medium tabular-nums">
-                  {entry.rejectedOrderNumber === null
-                    ? amount
-                    : t("orders.paidAfterRejection.entry", {
-                        number: entry.rejectedOrderNumber,
-                        amount,
-                      })}
-                </span>
+                <span className="font-medium tabular-nums">{amount}</span>
                 <span className="text-muted-foreground">
                   {formatDateTime(new Date(entry.occurredAt), locale)}
                 </span>

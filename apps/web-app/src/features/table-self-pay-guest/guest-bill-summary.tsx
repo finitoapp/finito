@@ -2,6 +2,7 @@ import type {
   SelfPayViewBill,
   SelfPayViewLine,
 } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
+import { cn } from "@/lib/utils.ts"
 import { formatGuestAmount } from "./guest-format.ts"
 import {
   type GuestTranslate,
@@ -23,7 +24,13 @@ const linePaidText = (
   })
 }
 
-export function GuestBillSummary({ bill }: { readonly bill: SelfPayViewBill }) {
+export function GuestBillSummary({
+  bill,
+  emphasizeRemainder,
+}: {
+  readonly bill: SelfPayViewBill
+  readonly emphasizeRemainder: boolean
+}) {
   const { t, locale } = useGuestTranslation()
   return (
     <section className="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
@@ -76,8 +83,19 @@ export function GuestBillSummary({ bill }: { readonly bill: SelfPayViewBill }) {
         <dd className="text-right tabular-nums">
           {formatGuestAmount(bill.covered, bill, locale)}
         </dd>
-        <dt className="font-medium">{t("selfPay.bill.remainder")}</dt>
-        <dd className="text-right text-lg font-semibold tabular-nums">
+        <dt
+          className={
+            emphasizeRemainder ? "font-medium" : "text-muted-foreground"
+          }
+        >
+          {t("selfPay.bill.remainder")}
+        </dt>
+        <dd
+          className={cn(
+            "text-right tabular-nums",
+            emphasizeRemainder && "text-lg font-semibold"
+          )}
+        >
           {formatGuestAmount(bill.remainder, bill, locale)}
         </dd>
       </dl>

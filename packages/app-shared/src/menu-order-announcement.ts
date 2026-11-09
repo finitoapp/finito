@@ -1,9 +1,31 @@
 import type { MenuOrderId } from "@payky/core/modules/menu-order/menu-order-types"
+import type { Money } from "@payky/core/modules/shared/money"
 import type { TimestampMs } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import type { createTranslate } from "./i18n/translate.ts"
 
 type Translate = ReturnType<typeof createTranslate>
+type FormatMoney = (money: Money) => string
+
+export const toServeOrderMoney = (
+  {
+    isFullyPaid,
+    paid,
+    total,
+  }: {
+    readonly isFullyPaid: boolean
+    readonly paid: Money
+    readonly total: Money
+  },
+  t: Translate,
+  formatMoney: FormatMoney
+): string =>
+  isFullyPaid
+    ? formatMoney(total)
+    : t("orders.paidOf", {
+        paid: formatMoney(paid),
+        total: formatMoney(total),
+      })
 
 export const waitingMenuOrdersNotice = ({
   orders,

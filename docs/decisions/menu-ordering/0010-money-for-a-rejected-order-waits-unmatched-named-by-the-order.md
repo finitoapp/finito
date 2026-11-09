@@ -31,7 +31,10 @@ Money for a rejected order is listed for as long as the device looks for an
 order's money, 7 days. Lightning money names no order a bank statement shows,
 so it is not listed, and the guest asks for it as for the rest of a rejected
 order's money.
+It is listed on the "Money to return" card with the rest of the money owed
+for rejected orders (`menu-ordering/0019`).
 
 ## Enforced by
 
 - `packages/core/src/modules/menu-order/menu-order-actions.test.ts > what staff serve > leaves money that arrives after the order is rejected unmatched, named by the order's number`
+- `apps/web-app/e2e/table-self-pay-menu.spec.ts > money a guest sends after staff reject the order stays off its bill, listed apart by the order's number`

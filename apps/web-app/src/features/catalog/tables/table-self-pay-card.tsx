@@ -1,5 +1,4 @@
 import { Capacitor } from "@capacitor/core"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   deriveTableSelfPayKeys,
   deriveTableSelfPayRoot,
@@ -11,7 +10,6 @@ import {
 } from "@payky/core/modules/table/table-actions"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { createTableSelfPayAddress } from "@payky/core/modules/table-self-pay/table-self-pay-address-utils"
-import type { GuestsCannotPayReason } from "@payky/core/modules/table-self-pay/table-self-pay-reach-utils"
 import { Link } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import {
@@ -33,13 +31,15 @@ import { Button, buttonVariants } from "@/components/ui/button.tsx"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { appEnv } from "@/core/app-env.ts"
 import { renderTableStickerPng } from "@/features/catalog/tables/table-sticker-png.ts"
-import { useGuestsCannotPayReason } from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
+import {
+  useBankAccountIsOn,
+  useGuestsCannotPayReason,
+} from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
 import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useSelfPayRelays } from "@/features/shared/use-self-pay-relays.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
@@ -87,6 +87,7 @@ export function TableSelfPayCard({
         filename: `${table.code}.png`,
         base64Png: await renderTableStickerPng({
           qr,
+          heading: t("catalog.tables.selfPay.scanToPay"),
           name: table.name,
           code: table.code,
         }),
@@ -101,26 +102,28 @@ export function TableSelfPayCard({
     <Card>
       <CardHeader>
         <CardTitle>{t("catalog.tables.selfPay.title")}</CardTitle>
-        <CardDescription>
-          {t("catalog.tables.selfPay.description")}
-        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <InlineEditSwitch
           label={t("catalog.tables.selfPay.enabled")}
-          description={t("catalog.tables.selfPay.bankNote")}
+          description={t("catalog.tables.selfPay.enabled.description")}
           defaultValue={table.selfPayEnabled === 1}
           onSave={(checked) => onSave(checked ? 1 : 0)}
         />
         {table.selfPayEnabled === 1 ? (
           <>
-            {guestsCannotPayReason === null ? null : (
-              <GuestsCannotPayAlert
-                reason={guestsCannotPayReason}
-                tableId={table.id}
+            {guestsCannotPayReason === "noPaymentMethod" ? (
+              <NoPaymentMethodAlert
+                title={t("catalog.tables.selfPay.noPaymentMethod.title")}
               />
-            )}
+            ) : null}
+            {guestsCannotPayReason === "noRelayAccepted" ? (
+              <NoRelayAcceptedAlert tableId={table.id} />
+            ) : null}
             <figure className="self-pay-sticker mx-auto flex w-56 flex-col items-center gap-2 rounded-xl bg-white p-4 text-black ring-1 ring-foreground/10">
+              <p className="text-base font-semibold">
+                {t("catalog.tables.selfPay.scanToPay")}
+              </p>
               <QRCodeSVG
                 ref={qrRef}
                 value={address}
@@ -192,45 +195,50 @@ export function TableSelfPayCard({
   )
 }
 
-const guestsCannotPayKeys = {
-  noPaymentMethod: {
-    title: "catalog.tables.selfPay.noPaymentMethod.title",
-    description: "catalog.tables.selfPay.noPaymentMethod.description",
-  },
-  noRelayAccepted: {
-    title: "catalog.tables.selfPay.noRelayAccepted.title",
-    description: "catalog.tables.selfPay.noRelayAccepted.description",
-  },
-} satisfies Record<
-  GuestsCannotPayReason,
-  { readonly title: TranslationKey; readonly description: TranslationKey }
->
-
-function GuestsCannotPayAlert({
-  reason,
-  tableId,
-}: {
-  readonly reason: GuestsCannotPayReason
-  readonly tableId: TableId
-}) {
+export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
-  const runToast = useRunToast()
-  const keys = guestsCannotPayKeys[reason]
+  const bankAccountIsOn = useBankAccountIsOn()
 
   return (
     <Alert variant="warning">
       <TriangleAlertIcon />
-      <AlertTitle className="line-clamp-none">{t(keys.title)}</AlertTitle>
+      <AlertTitle className="line-clamp-none">{title}</AlertTitle>
       <AlertDescription>
-        <p>{t(keys.description)}</p>
-        {reason === "noPaymentMethod" ? (
+        <p>{t("catalog.tables.selfPay.noPaymentMethod.description")}</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Link
             to="/settings/payment-accounts"
             className="font-medium text-foreground underline underline-offset-4"
           >
             {t("catalog.tables.selfPay.noPaymentMethod.link")}
           </Link>
-        ) : (
+          {bankAccountIsOn && (
+            <Link
+              to="/settings/payment-accounts/iban"
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              {t("catalog.tables.selfPay.noPaymentMethod.bankLink")}
+            </Link>
+          )}
+        </div>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+function NoRelayAcceptedAlert({ tableId }: { readonly tableId: TableId }) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+
+  return (
+    <Alert variant="warning">
+      <TriangleAlertIcon />
+      <AlertTitle className="line-clamp-none">
+        {t("catalog.tables.selfPay.noRelayAccepted.title")}
+      </AlertTitle>
+      <AlertDescription>
+        <p>{t("catalog.tables.selfPay.noRelayAccepted.description")}</p>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Button
             type="button"
             variant="outline"
@@ -244,7 +252,13 @@ function GuestsCannotPayAlert({
             <RefreshCwIcon data-icon="inline-start" />
             {t("catalog.tables.selfPay.noRelayAccepted.retry")}
           </Button>
-        )}
+          <Link
+            to="/settings/security"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            {t("catalog.tables.selfPay.noRelayAccepted.link")}
+          </Link>
+        </div>
       </AlertDescription>
     </Alert>
   )

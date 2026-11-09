@@ -1,9 +1,4 @@
-import {
-  type BankQrFormat,
-  BankQrFormatSchema,
-} from "@payky/core/modules/account/account-types"
-import { minorUnitsToFixedDecimalString } from "@payky/core/modules/shared/money"
-import { Integer } from "@payky/core/modules/shared/schema"
+import type { BankQrFormat } from "@payky/core/modules/account/account-types"
 import { createSelfPayBankQrPayload } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import {
   formatSelfPayBankMessage,
@@ -18,17 +13,20 @@ import { CheckIcon, CopyIcon, DownloadIcon, LandmarkIcon } from "lucide-react"
 import { QRCodeCanvas } from "qrcode.react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
-import { guestToggleClassName } from "./guest-pick-styles.ts"
+import { formatAddressGroups } from "@/lib/format-utils.ts"
+import { guestBankQrFormat, otherBankQrFormat } from "./guest-bank-qr-format.ts"
+import { formatGuestAmount, formatGuestBareAmount } from "./guest-format.ts"
 import { useGuestClipboard } from "./use-guest-clipboard.ts"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
 function CopyRow({
   label,
   value,
+  displayValue = value,
 }: {
   readonly label: string
   readonly value: string
+  readonly displayValue?: string
 }) {
   const { t } = useGuestTranslation()
   const clipboard = useGuestClipboard()
@@ -36,7 +34,9 @@ function CopyRow({
     <div className="flex items-center justify-between gap-3 py-2">
       <div className="min-w-0">
         <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="break-all font-mono text-sm select-all">{value}</div>
+        <div className="break-all font-mono text-sm select-all">
+          {displayValue}
+        </div>
         {clipboard.state === "failed" ? (
           <p className="text-xs text-destructive">{t("selfPay.copy.failed")}</p>
         ) : null}
@@ -73,25 +73,26 @@ const downloadDataUrl = (dataUrl: string, name: string) => {
   link.click()
 }
 
-const shareOrDownload = async (file: File, dataUrl: string) => {
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] })
-      return
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return
-    }
+const canShareFile = (file: File): boolean =>
+  navigator.canShare?.({ files: [file] }) === true
+
+const offerToShare = async (file: File): Promise<boolean> => {
+  try {
+    await navigator.share({ files: [file] })
+    return true
+  } catch (error) {
+    return error instanceof DOMException && error.name === "AbortError"
   }
+}
+
+const shareOrDownload = async (file: File, dataUrl: string) => {
+  if (canShareFile(file) && (await offerToShare(file))) return
   downloadDataUrl(dataUrl, file.name)
 }
 
 const spaydType = "application/x-shortpaymentdescriptor"
 
-const openInBankApp = (spayd: string, name: string) =>
-  shareOrDownload(
-    new File([spayd], name, { type: spaydType }),
-    `data:${spaydType};charset=utf-8,${encodeURIComponent(spayd)}`
-  )
+const mainButtonClassName = "h-12 w-full max-w-64 text-base"
 
 export function GuestBankPayment({
   bank,
@@ -104,12 +105,12 @@ export function GuestBankPayment({
   readonly amount: number
   readonly pointer: SelfPayPointer
 }) {
-  const { t } = useGuestTranslation()
+  const { t, locale } = useGuestTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [qrImage, setQrImage] = useState<string | null>(null)
-  const [format, setFormat] = useState<BankQrFormat>(bank.qrFormat)
-  const payBySquare =
-    bank.qrFormat === "spayd" ? "payBySquare1_2_0" : bank.qrFormat
+  const [chosenFormat, setChosenFormat] = useState<BankQrFormat | null>(null)
+  const format = chosenFormat ?? guestBankQrFormat(locale, bank.qrFormat)
+  const otherFormat = otherBankQrFormat(format, bank.qrFormat)
   const payload = useQuery({
     queryKey: ["selfPayBankQr", format, bank, bill.reference, amount, pointer],
     queryFn: () =>
@@ -117,7 +118,30 @@ export function GuestBankPayment({
     staleTime: Number.POSITIVE_INFINITY,
   })
   const qrFileName = `payment-${bill.reference}.png`
-  const spayd = format === "spayd" ? payload.data : undefined
+  const spaydFile =
+    format === "spayd" && payload.data !== undefined
+      ? new File([payload.data], `payment-${bill.reference}.spayd`, {
+          type: spaydType,
+        })
+      : null
+  const bankAppFile =
+    spaydFile !== null && canShareFile(spaydFile) ? spaydFile : null
+  const saveQrButton = (
+    <Button
+      type="button"
+      variant={bankAppFile === null ? "default" : "outline"}
+      size="lg"
+      className={bankAppFile === null ? mainButtonClassName : "h-11"}
+      disabled={qrImage === null}
+      onClick={() => {
+        if (qrImage !== null)
+          void shareOrDownload(pngFileFromDataUrl(qrImage, qrFileName), qrImage)
+      }}
+    >
+      <DownloadIcon />
+      {t("selfPay.bank.saveQr")}
+    </Button>
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -130,35 +154,22 @@ export function GuestBankPayment({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <ToggleGroup<BankQrFormat>
-        value={[format]}
-        onValueChange={([next]) => {
-          const parsed = BankQrFormatSchema.safeParse(next)
-          if (parsed.success) setFormat(parsed.data)
-        }}
-        variant="outline"
-        className="w-full max-w-64"
-      >
-        <ToggleGroupItem
-          value="spayd"
-          className={`${guestToggleClassName} flex-1`}
-        >
-          {t("selfPay.bank.format.spayd")}
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value={payBySquare}
-          className={`${guestToggleClassName} flex-1`}
-        >
-          {t("selfPay.bank.format.payBySquare")}
-        </ToggleGroupItem>
-      </ToggleGroup>
-      {spayd === undefined ? null : (
+      <p className="text-center text-sm text-muted-foreground">
+        {t(
+          bankAppFile === null
+            ? "selfPay.bank.hint.save"
+            : "selfPay.bank.hint.open"
+        )}
+      </p>
+      {bankAppFile === null ? (
+        saveQrButton
+      ) : (
         <Button
           type="button"
           size="lg"
-          className="h-12 w-full max-w-64 text-base"
+          className={mainButtonClassName}
           onClick={() => {
-            void openInBankApp(spayd, `payment-${bill.reference}.spayd`)
+            void offerToShare(bankAppFile)
           }}
         >
           <LandmarkIcon />
@@ -180,31 +191,32 @@ export function GuestBankPayment({
       </div>
       <Button
         type="button"
-        variant="outline"
+        variant="link"
         className="h-11"
-        disabled={qrImage === null}
         onClick={() => {
-          if (qrImage !== null)
-            void shareOrDownload(
-              pngFileFromDataUrl(qrImage, qrFileName),
-              qrImage
-            )
+          setChosenFormat(otherFormat)
         }}
       >
-        <DownloadIcon />
-        {t("selfPay.bank.saveQr")}
+        {t(
+          otherFormat === "spayd"
+            ? "selfPay.bank.format.showSpayd"
+            : "selfPay.bank.format.showPayBySquare"
+        )}
       </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        {t("selfPay.bank.hint")}
+      {bankAppFile === null ? null : saveQrButton}
+      <p className="w-full text-sm text-muted-foreground">
+        {t("selfPay.bank.byHand")}
       </p>
       <div className="flex w-full flex-col divide-y divide-foreground/10">
-        <CopyRow label={t("selfPay.bank.account")} value={bank.iban} />
+        <CopyRow
+          label={t("selfPay.bank.iban")}
+          value={bank.iban}
+          displayValue={formatAddressGroups(bank.iban)}
+        />
         <CopyRow
           label={t("selfPay.bank.amount")}
-          value={minorUnitsToFixedDecimalString({
-            value: Integer(amount),
-            currency: bill.currency,
-          })}
+          value={formatGuestBareAmount(amount, bill, locale)}
+          displayValue={formatGuestAmount(amount, bill, locale)}
         />
         <CopyRow
           label={t("selfPay.bank.variableSymbol")}

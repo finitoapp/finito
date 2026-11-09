@@ -1,6 +1,7 @@
 import {
   type BillHistoryRow,
   billHistoryIssueLabels,
+  deriveKeptGoodsCoverage,
   formatActivityDayTitle,
   summarizeBillHistoryRow,
   sumSettledTips,
@@ -99,7 +100,7 @@ function BillHistory() {
   }))
   const overpaymentInputs = useOverpaymentInputs(
     summarized
-      .filter(({ summary }) => summary.coverage === "overpaid")
+      .filter(({ summary }) => deriveKeptGoodsCoverage(summary) === "overpaid")
       .map(({ bill, summary }) => ({
         billId: bill.id,
         billTotal: summary.billTotal,

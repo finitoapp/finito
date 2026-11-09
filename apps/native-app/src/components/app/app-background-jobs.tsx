@@ -1,5 +1,5 @@
 import {
-  appBackgroundJobs,
+  appBackgroundJobsFor,
   bankBackgroundJobs,
   cashuBackgroundJobs,
 } from "@payky/core/background-jobs/background-jobs"
@@ -198,7 +198,17 @@ function AppBackgroundJobs() {
         masterKey,
       })
     )
-    return { run, jobs: run.ok(runBackgroundJobs(appBackgroundJobs)) }
+    return {
+      run,
+      jobs: run.ok(
+        runBackgroundJobs(
+          appBackgroundJobsFor({
+            selfPayTestTransfers:
+              nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS,
+          })
+        )
+      ),
+    }
   }, [
     evolu,
     deviceEvolu,

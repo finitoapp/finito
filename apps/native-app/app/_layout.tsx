@@ -8,7 +8,7 @@ import {
 } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
-import { createStore, Provider } from "jotai"
+import { createStore, Provider, useAtomValue } from "jotai"
 import {
   type ComponentType,
   Suspense,
@@ -19,6 +19,7 @@ import {
 } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
+import { waitingOrdersNoticeRoomAtom } from "../src/atoms/toast.ts"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
 import {
   AppEvoluConsumers,
@@ -294,10 +295,11 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const MasterPage =
     masterPath === undefined ? undefined : masterPages[masterPath]
   const panes = MasterPage !== undefined
+  const waitingOrdersNoticeRoom = useAtomValue(waitingOrdersNoticeRoomAtom)
   return (
     <ThemeProvider value={navigationTheme}>
       <View flex={1} bg="background">
-        <XStack flex={1}>
+        <XStack flex={1} pb={waitingOrdersNoticeRoom}>
           {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
           <View flex={1}>
             <WebColumn

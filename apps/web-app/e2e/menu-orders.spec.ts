@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test"
 import { addCatalogItem, addTable } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { translate, translateParams } from "./support/i18n.ts"
@@ -10,6 +11,7 @@ import {
   seedActiveFioPlugin,
   seedMenu,
 } from "./support/self-pay.ts"
+import { pageWidth } from "./support/viewport.ts"
 
 test("an item goes into the menu, sells out and comes back", async ({
   seededPage: page,
@@ -102,12 +104,17 @@ test("ordering is switched on with nothing in the menu, on this device", async (
   await test.step("switch ordering on", () =>
     toggleInlineSwitch(page, "catalog.tables.selfPayOptions.order"))
 
-  await test.step("the card says guests cannot order from an empty menu", async () => {
+  await test.step("the card says guests cannot order from an empty menu and links to the items", async () => {
     await expect(
       page.getByText(
         translate("en", "catalog.tables.selfPayOptions.menu.empty.title")
       )
     ).toBeVisible()
+    await expect(
+      page.getByRole("link", {
+        name: translate("en", "catalog.tables.selfPayOptions.menu.empty.link"),
+      })
+    ).toHaveAttribute("href", "/catalog/items")
   })
 
   await test.step("this device takes the orders", async () => {
@@ -139,6 +146,44 @@ test("ordering is switched on with nothing in the menu, on this device", async (
     await reloadPage(page, "en", "catalog.tables.title")
     await expect(payBill).not.toBeChecked()
     await expect(order).toBeChecked()
+  })
+})
+
+test("one way for guests to use the QR code stays on", async ({
+  seededPage: page,
+  context,
+}) => {
+  await routeFakeNostrRelays(context)
+  const payBill = page.getByRole("switch", {
+    name: translate("en", "catalog.tables.selfPayOptions.payBill"),
+  })
+  const ordering = page.getByRole("switch", {
+    name: translate("en", "catalog.tables.selfPayOptions.order"),
+  })
+  const lastOn = page.getByText(
+    translate("en", "catalog.tables.selfPayOptions.lastOn")
+  )
+
+  await test.step("switch self-pay on for a table", async () => {
+    await addTable(page, "en", { name: "Table 3", seatCount: "4" })
+    await enableTableSelfPay(page, "en", "Table 3")
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+  })
+
+  await test.step("paying the bill, the only way on, stays on and says how to stop guests", async () => {
+    await expect(payBill).toBeChecked()
+    await expect(payBill).toBeDisabled()
+    await expect(lastOn).toBeVisible()
+  })
+
+  await test.step("with ordering on, paying the bill switches off and ordering stays on", async () => {
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.order")
+    await expect(payBill).toBeEnabled()
+    await expect(lastOn).toBeHidden()
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.payBill")
+    await expect(ordering).toBeChecked()
+    await expect(ordering).toBeDisabled()
+    await expect(lastOn).toBeVisible()
   })
 })
 
@@ -187,6 +232,46 @@ test("a paid order is announced, listed to serve and served", async ({
     })
   })
 
+  await test.step("the notice covers neither the menu bar nor the end of a screen", async () => {
+    const notice = page.getByRole("listitem").filter({
+      hasText: translateParams("en", "orders.announced", {
+        number: 1,
+        table: "Table 3",
+      }),
+    })
+    const top = async (locator: Locator) =>
+      (await locator.boundingBox())?.y ?? 0
+    const bottom = async (locator: Locator) => {
+      const box = await locator.boundingBox()
+      return (box?.y ?? 0) + (box?.height ?? 0)
+    }
+
+    await gotoPage(page, "/activity", "en", "activity.title")
+    const menuBar = page.getByRole("navigation", {
+      name: translate("en", "nav.menu"),
+    })
+    await expect(notice).toBeVisible()
+    await expect(menuBar).toBeVisible()
+    await expect
+      .poll(async () => (await bottom(notice)) <= (await top(menuBar)))
+      .toBe(true)
+
+    await menuBar
+      .getByRole("button", { name: translate("en", "nav.home") })
+      .click()
+    await page
+      .getByRole("button", { name: translate("en", "nav.numpad") })
+      .click()
+    const charge = page.getByRole("button", {
+      name: translate("en", "home.pay"),
+    })
+    await expect(charge).toBeVisible()
+    await expect(notice).toBeVisible()
+    await expect
+      .poll(async () => (await bottom(charge)) <= (await top(notice)))
+      .toBe(true)
+  })
+
   await test.step("the till announces it until staff open it", async () => {
     const notice = page.getByText(
       translateParams("en", "orders.announced", {
@@ -221,20 +306,33 @@ test("a paid order is announced, listed to serve and served", async ({
       translateParams("en", "orders.note", { note: "bez cukru" })
     )
     await expect(orderCard).toContainText(translate("en", "orders.paid"))
+    await expect(orderCard).toContainText("$349.00")
     await expect(orderCard).not.toContainText(
       translate("en", "orders.notFullyPaid")
     )
+  })
+
+  await test.step("To serve lays the order out across the screen, under its tabs", async () => {
+    const tabs = await page.getByRole("tablist").boundingBox()
+    const card = await orderCard.boundingBox()
+    expect(card?.width ?? 0).toBeGreaterThan(pageWidth / 2)
+    expect(card?.y ?? 0).toBeGreaterThan((tabs?.y ?? 0) + (tabs?.height ?? 0))
   })
 
   await test.step("Accept marks it as being prepared and only then offers Served", async () => {
     const served = orderCard.getByRole("button", {
       name: translate("en", "orders.served"),
     })
+    const isNew = orderCard.getByText(translate("en", "orders.waiting.badge"), {
+      exact: true,
+    })
     await expect(served).toHaveCount(0)
+    await expect(isNew).toBeVisible()
     await orderCard
       .getByRole("button", { name: translate("en", "orders.accept") })
       .click()
     await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await expect(isNew).toHaveCount(0)
     await expect(served).toBeVisible()
   })
 
@@ -270,6 +368,39 @@ test("a paid order is announced, listed to serve and served", async ({
     )
     await expect(orderCard).toContainText(
       translate("en", "orders.notFullyPaid")
+    )
+    await expect(orderCard).toContainText(
+      translateParams("en", "orders.paidOf", {
+        paid: "$30.00",
+        total: "$65.00",
+      })
+    )
+  })
+
+  await test.step("a new order lists before one being prepared, marked New", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await receiveMenuOrder(page, {
+      table: "Table 3",
+      items: [{ name: "Coffee", quantity: 1 }],
+      amount: 6500,
+    })
+    await expect(orderCard).toHaveCount(2)
+    await expect(orderCard.first()).toContainText(
+      translateParams("en", "orders.number", { number: 3 })
+    )
+    await expect(
+      orderCard
+        .first()
+        .getByText(translate("en", "orders.waiting.badge"), { exact: true })
+    ).toBeVisible()
+    await expect(orderCard.nth(1)).toContainText(
+      translateParams("en", "orders.number", { number: 2 })
+    )
+    await expect(orderCard.nth(1)).toContainText(
+      translate("en", "orders.preparing")
     )
   })
 })
