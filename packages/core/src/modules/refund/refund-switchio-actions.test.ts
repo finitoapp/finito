@@ -519,6 +519,7 @@ describe("asking the terminal what became of a refund", () => {
         {
           type: "approved",
           result: approvedRefundResult,
+          reversed: false,
         },
       ],
     })
@@ -546,11 +547,8 @@ describe("asking the terminal what became of a refund", () => {
     await expect(t.attempts()).resolves.toEqual([])
   }, 15_000)
 
-  test("keeps a decline the terminal reports as failed", async () => {
-    await using t = await setup({
-      answers: [unreadable],
-      lookups: [{ type: "declined" }],
-    })
+  test("never marks an attempt failed on what the terminal cannot find", async () => {
+    await using t = await setup({ answers: [unreadable] })
     await t.run.orThrow(
       startCardSwitchioRefund({
         paymentId: t.paymentId,
@@ -561,15 +559,81 @@ describe("asking the terminal what became of a refund", () => {
     const [attempt] = await t.attempts()
     if (attempt === undefined) throw new Error("no attempt")
 
-    const result = await t.run(
-      resolveCardSwitchioRefundAttempt({
-        attemptId: attempt.id,
+    await expect(
+      t.run(
+        resolveCardSwitchioRefundAttempt({
+          attemptId: attempt.id,
+          deviceId: t.deviceId,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: { status: "unresolved" } })
+
+    await expect(t.attempts()).resolves.toMatchObject([{ status: "unknown" }])
+    await expect(t.refunds()).resolves.toEqual([])
+  }, 15_000)
+
+  test("confirms a lost reversal by the payment it took back reading as reversed", async () => {
+    await using t = await setup({
+      tipAmount: 2_000,
+      answers: [unreadable],
+      // The reversal's own id is not found; the payment reads as reversed.
+      lookups: [
+        { type: "unknown" },
+        { type: "approved", result: approvedRefundResult, reversed: true },
+      ],
+    })
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
         deviceId: t.deviceId,
+        whole: true,
       })
     )
+    const [attempt] = await t.attempts()
+    if (attempt === undefined) throw new Error("no attempt")
 
-    expect(!result.ok && result.error.type).toBe("CardSwitchioRefundDeclined")
-    await expect(t.attempts()).resolves.toMatchObject([{ status: "failed" }])
+    await expect(
+      t.run(
+        resolveCardSwitchioRefundAttempt({
+          attemptId: attempt.id,
+          deviceId: t.deviceId,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: { status: "refunded" } })
+
+    const [source] = await t.run.deps.evolu.loadQuery(
+      paymentCardSwitchioRefundSourceQuery(t.paymentId)
+    )
+    expect(t.looked).toEqual([attempt.transactionId, source?.transactionId])
+    await expect(t.refunds()).resolves.toHaveLength(2)
+  }, 15_000)
+
+  test("does not take a payment that is not reversed for a lost reversal", async () => {
+    await using t = await setup({
+      answers: [unreadable],
+      lookups: [
+        { type: "unknown" },
+        { type: "approved", result: approvedRefundResult, reversed: false },
+      ],
+    })
+    await t.run.orThrow(
+      startCardSwitchioRefund({
+        paymentId: t.paymentId,
+        deviceId: t.deviceId,
+        whole: true,
+      })
+    )
+    const [attempt] = await t.attempts()
+    if (attempt === undefined) throw new Error("no attempt")
+
+    await expect(
+      t.run(
+        resolveCardSwitchioRefundAttempt({
+          attemptId: attempt.id,
+          deviceId: t.deviceId,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: { status: "unresolved" } })
     await expect(t.refunds()).resolves.toEqual([])
   }, 15_000)
 

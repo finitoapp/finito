@@ -49,6 +49,8 @@ const SwitchioTransactionResultSchema = z.object({
   dateTimeTerminal: z.string().nullish(),
   /** Whether the transaction is a reversal (ECR result structure). */
   reversal: z.boolean().nullish().catch(null),
+  /** Whether the transaction was reversed since (ECR result structure). */
+  isReversed: z.boolean().nullish().catch(null),
 })
 const SwitchioTransactionResultJson = jsonCodec(SwitchioTransactionResultSchema)
 
@@ -545,14 +547,18 @@ export const interpretSwitchioReversalResult = (answer: {
  * What the terminal says about one of its transactions (`get_transaction`,
  * ECR 5.12), asked after a refund's own result was lost or unreadable.
  *
- * There is no "not found" yet: what the terminal answers for an id it never
- * saw is to be checked on a device (plan `docs/plans/switchio-refund.md`,
- * open question 4), and until then such an answer is `unknown`, which
- * changes nothing.
+ * Only an approval is an answer. Tried on a device, the terminal answers
+ * `FAILED`, "Transaction not found", for a reversal it had just approved, so
+ * nothing else it says can be read as "not refunded": it is `unknown`, which
+ * changes nothing. `reversed` is the transaction's `isReversed`, which tells
+ * a reversal by the payment it took back.
  */
 export type SwitchioTransactionLookup =
-  | { readonly type: "approved"; readonly result: SwitchioCardRefundResult }
-  | { readonly type: "declined" }
+  | {
+      readonly type: "approved"
+      readonly result: SwitchioCardRefundResult
+      readonly reversed: boolean
+    }
   | { readonly type: "unknown" }
 
 /**
@@ -577,11 +583,13 @@ export const interpretSwitchioTransactionLookup = ({
   ) {
     return { type: "unknown" }
   }
-  const responseCode = optionalString(parsed.responseCode)
-  if (responseCode === "OK") {
-    return { type: "approved", result: toCardRefundResult(parsed) }
-  }
-  return responseCode === null ? { type: "unknown" } : { type: "declined" }
+  return optionalString(parsed.responseCode) === "OK"
+    ? {
+        type: "approved",
+        result: toCardRefundResult(parsed),
+        reversed: parsed.isReversed === true,
+      }
+    : { type: "unknown" }
 }
 
 /**

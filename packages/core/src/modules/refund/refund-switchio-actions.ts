@@ -564,9 +564,15 @@ export const settleRestoredCardSwitchioRefund =
 
 /**
  * Asks the terminal of this phone what became of an attempt whose result was
- * lost or unreadable, and applies a definite answer. Called only while no
- * refund is waiting on SwitchioPay, so a `pending` attempt the terminal
- * cannot account for becomes `unknown`: nothing will answer it any more.
+ * lost or unreadable, and settles it when the terminal says it was approved.
+ * The terminal does not find a reversal by its own id, so a reversal is also
+ * confirmed by the payment it took back reading as reversed.
+ *
+ * Nothing the terminal says is taken for "not refunded" (it answers "not
+ * found" for a reversal it approved), so the attempt is never marked failed
+ * here. Called only while no refund is waiting on SwitchioPay, so a
+ * `pending` attempt the terminal cannot account for becomes `unknown`:
+ * nothing will answer it any more.
  */
 export const resolveCardSwitchioRefundAttempt =
   ({
@@ -577,7 +583,7 @@ export const resolveCardSwitchioRefundAttempt =
     readonly deviceId: DeviceId
   }): Task<
     CardSwitchioRefundProgress,
-    CardSwitchioRefundDeclinedError | CardSwitchioRefundOtherDeviceError,
+    CardSwitchioRefundOtherDeviceError,
     SettleDeps & SwitchioRefundDep
   > =>
   async (run) => {
@@ -592,36 +598,33 @@ export const resolveCardSwitchioRefundAttempt =
       return err(createCardSwitchioRefundOtherDeviceError({ attemptId }))
     }
 
-    const lookup = await run.deps.switchioRefund.lookup(attempt.transactionId)
-    switch (lookup.type) {
-      case "approved":
-        return run(settleApprovedAttempt(attempt))
-      case "declined":
-        await runMutationWithCompletion((options) =>
-          evolu.update(
-            "cardSwitchioRefundAttempt",
-            { id: attemptId, status: "failed", failureReason: "declined" },
-            { ...options, owner: evoluOwner }
-          )
-        )
-        return err(
-          createCardSwitchioRefundDeclinedError({
-            attemptId,
-            responseMessage: null,
-          })
-        )
-      case "unknown":
-        if (attempt.status === "pending") {
-          await runMutationWithCompletion((options) =>
-            evolu.update(
-              "cardSwitchioRefundAttempt",
-              { id: attemptId, status: "unknown" },
-              { ...options, owner: evoluOwner }
-            )
-          )
-        }
-        return ok({ status: "unresolved" })
+    const own = await run.deps.switchioRefund.lookup(attempt.transactionId)
+    if (own.type === "approved" && !own.reversed) {
+      return run(settleApprovedAttempt(attempt))
     }
+    if (attempt.kind === "reversal") {
+      const [source] = await evolu.loadQuery(
+        paymentCardSwitchioRefundSourceQuery(attempt.paymentId)
+      )
+      const original =
+        source?.transactionId === null || source?.transactionId === undefined
+          ? null
+          : await run.deps.switchioRefund.lookup(source.transactionId)
+      if (original?.type === "approved" && original.reversed) {
+        return run(settleApprovedAttempt(attempt))
+      }
+    }
+
+    if (attempt.status === "pending") {
+      await runMutationWithCompletion((options) =>
+        evolu.update(
+          "cardSwitchioRefundAttempt",
+          { id: attemptId, status: "unknown" },
+          { ...options, owner: evoluOwner }
+        )
+      )
+    }
+    return ok({ status: "unresolved" })
   }
 
 /**
