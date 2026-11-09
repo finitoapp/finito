@@ -59,6 +59,7 @@ import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
 import { shape } from "../../../theme/tokens.ts"
+import { useClosureDeviceLabel } from "./use-closure-device-label.ts"
 
 /**
  * `useInfinitePages`' default page, and the first page it asks for: one row
@@ -220,6 +221,7 @@ function HistoryRow({
   readonly locale: string
 }) {
   const { t } = useTranslation()
+  const deviceLabel = useClosureDeviceLabel()
   const closedAt = formatDateTime(new Date(row.closedAt), locale)
   return (
     <VerticalNavRow
@@ -240,8 +242,7 @@ function HistoryRow({
                 numberOfLines={1}
               >
                 {[
-                  row.deviceName ??
-                    t("settings.cardClosure.terminals.unknownDevice"),
+                  deviceLabel(row),
                   t("settings.cardClosure.result.batchAndShift", {
                     batch: String(row.batchNumber),
                     shift: String(row.shiftNumber),
@@ -376,7 +377,7 @@ function ThisTerminalCard() {
 function TerminalsCard() {
   const { t } = useTranslation()
   const locale = useLocale()
-  const deviceId = useAtomValue(accountAtom).device.id
+  const deviceLabel = useClosureDeviceLabel()
   const rows = useEvoluQuery(lastCardSwitchioClosurePerDeviceQuery).data
   // "Closed today" turns over at midnight even with the screen left open.
   const now = useNow([TimestampMs(startOfTomorrow().getTime())])
@@ -401,10 +402,7 @@ function TerminalsCard() {
               <XStack key={row.deviceId} items="center" gap={12}>
                 <YStack flex={1} minW={0} gap={2}>
                   <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                    {row.deviceId === deviceId
-                      ? t("settings.cardClosure.terminals.thisDevice")
-                      : (row.deviceName ??
-                        t("settings.cardClosure.terminals.unknownDevice"))}
+                    {deviceLabel(row)}
                   </Text>
                   <Text color="muted-foreground" fontSize="xs" lineHeight="xs">
                     {formatDateTime(new Date(row.closedAt), locale)}

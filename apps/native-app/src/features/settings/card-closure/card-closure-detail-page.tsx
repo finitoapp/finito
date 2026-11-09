@@ -9,11 +9,9 @@ import {
 } from "@payky/core/modules/card-switchio-closure/card-switchio-closure-types"
 import { Integer } from "@payky/core/modules/shared/schema"
 import { useLocalSearchParams } from "expo-router"
-import { useAtomValue } from "jotai"
 import { Suspense } from "react"
 import { ScrollView } from "react-native"
 import { useTheme } from "tamagui"
-import { accountAtom } from "../../../atoms/account.ts"
 import { DetailRow } from "../../../components/detail-row.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { LoadingView } from "../../../components/loading-view.tsx"
@@ -31,6 +29,7 @@ import { Separator } from "../../../components/ui/separator.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
+import { useClosureDeviceLabel } from "./use-closure-device-label.ts"
 
 /**
  * `/settings/card-closure/[closureId]`: one recorded closure (payment/0008)
@@ -86,7 +85,7 @@ function ClosureResultCard({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const deviceId = useAtomValue(accountAtom).device.id
+  const deviceLabel = useClosureDeviceLabel()
   const money = (amount: number) =>
     formatMoney({ value: Integer(amount), currency: closure.currency }, locale)
   const countAndAmount = (count: number, amount: number) =>
@@ -122,12 +121,7 @@ function ClosureResultCard({
         <Separator />
         <DetailRow
           label={t("settings.cardClosure.result.device")}
-          value={
-            closure.deviceId === deviceId
-              ? t("settings.cardClosure.terminals.thisDevice")
-              : (closure.deviceName ??
-                t("settings.cardClosure.terminals.unknownDevice"))
-          }
+          value={deviceLabel(closure)}
         />
         <DetailRow
           label={t("settings.cardClosure.result.batch")}
