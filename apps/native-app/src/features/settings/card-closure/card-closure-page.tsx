@@ -53,11 +53,11 @@ import {
   usePreloadEvoluQueries,
 } from "../../../hooks/use-evolu-query.ts"
 import { useInfiniteEvoluQuery } from "../../../hooks/use-infinite-evolu-query.ts"
+import { useIsSwitchioInstalled } from "../../../hooks/use-is-switchio-installed.ts"
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
-import { isSwitchioInstalled } from "../../../platform/switchio.ts"
 import { shape } from "../../../theme/tokens.ts"
 
 /**
@@ -277,7 +277,7 @@ function ThisTerminalCard() {
   const last = lastPerDevice.find((row) => row.deviceId === deviceId)
   const [unknownOutcome, setUnknownOutcome] = useState(false)
   const [pending, setPending] = useState(false)
-  const installed = isSwitchioInstalled()
+  const installed = useIsSwitchioInstalled()
 
   const close = async () => {
     if (!(await require("confirm", "access.action.closeCardBatch"))) return

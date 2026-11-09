@@ -61,13 +61,11 @@ import {
   usePreloadEvoluQueries,
 } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
+import { useIsSwitchioInstalled } from "../../../hooks/use-is-switchio-installed.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { hapticButtonPress } from "../../../platform/haptics.ts"
-import {
-  isSwitchioInstalled,
-  isSwitchioSupported,
-} from "../../../platform/switchio.ts"
+import { isSwitchioSupported } from "../../../platform/switchio.ts"
 import { control, fontSize, fontWeight } from "../../../theme/tokens.ts"
 import {
   bitcoinWalletQueries,
@@ -160,6 +158,7 @@ export function PaymentAccountsSettingsPage() {
   const bankEnabled = bank !== undefined && bank.isDeleted !== 1
   const cashEnabled = cash !== undefined && cash.isDeleted !== 1
   const cardEnabled = card !== undefined && card.isDeleted !== 1
+  const switchioInstalled = useIsSwitchioInstalled()
   const qerkoEnabled = qerko !== undefined && qerko.isDeleted !== 1
   const qerkoPaymentEnabled =
     qerkoPayment !== undefined && qerkoPayment.isDeleted !== 1
@@ -248,7 +247,7 @@ export function PaymentAccountsSettingsPage() {
       canEnable: isSwitchioSupported(),
       status: !isSwitchioSupported()
         ? t("settings.paymentAccounts.status.nativeOnly")
-        : !isSwitchioInstalled()
+        : !switchioInstalled
           ? t("settings.cardSwitchioAccount.notInstalledWarning")
           : cardEnabled
             ? currencyMismatch(card.currency)

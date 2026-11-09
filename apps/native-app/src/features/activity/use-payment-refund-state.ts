@@ -24,7 +24,7 @@ import type {
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
-import { isSwitchioInstalled } from "../../platform/switchio.ts"
+import { useIsSwitchioInstalled } from "../../hooks/use-is-switchio-installed.ts"
 
 /**
  * Every query the payment's refund panel and the refund screen read, for
@@ -70,6 +70,7 @@ export function usePaymentRefundState({
   /** The kinds of the transactions that settled the payment. */
   readonly paymentMethodKinds: ReadonlyArray<string>
 }) {
+  const switchioInstalled = useIsSwitchioInstalled()
   const refunds = useEvoluQuery(refundsByPaymentIdQuery(payment.id)).data
   const refundLines = useEvoluQuery(
     refundLinesByPaymentIdQuery(payment.id)
@@ -107,7 +108,7 @@ export function usePaymentRefundState({
   const switchioRefundable =
     switchioSource !== undefined &&
     switchioSource.refundId !== null &&
-    isSwitchioInstalled()
+    switchioInstalled
   const availability = deriveRefundAvailability({
     payment,
     excess,
