@@ -34,6 +34,7 @@ import {
 } from "../../modules/shared/schema.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import type { SparkWalletTransfer } from "../../spark/spark-wallet.ts"
+import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -299,6 +300,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -367,6 +369,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(testFixedDate),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -478,6 +481,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -534,6 +538,7 @@ describe("spark account transaction sync job", () => {
         ...createTestDateDep(),
         fetch: unimplementedFetch,
         lockManager: createInProcessLockManager(),
+        ...testNotificationsDep(),
         onError: (error: unknown) => {
           errors.push(error)
         },
@@ -600,6 +605,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -659,6 +665,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -711,6 +718,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -760,6 +768,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -820,6 +829,7 @@ describe("spark account transaction sync job", () => {
       ...createTestDateDep(),
       fetch: unimplementedFetch,
       lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
       onError: (error: unknown) => {
         errors.push(error)
       },
@@ -921,6 +931,7 @@ describe("spark account transaction sync job, withdrawals", () => {
         ...createTestDateDep(),
         fetch: unimplementedFetch,
         lockManager: createInProcessLockManager(),
+        ...testNotificationsDep(),
         onError: (error: unknown) => {
           errors.push(error)
         },

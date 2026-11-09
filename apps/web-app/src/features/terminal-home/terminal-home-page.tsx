@@ -11,6 +11,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { BellIcon, Calculator, LayoutGrid, MenuIcon } from "lucide-react"
 import { LayoutGroup, motion } from "motion/react"
 import { Suspense } from "react"
+import { NotificationDot } from "@/components/notification-dot.tsx"
 import {
   SlidingPillSegmentContent,
   slidingPillLayout,
@@ -18,9 +19,9 @@ import {
 } from "@/components/sliding-pill.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
-import { BackupReminderDialog } from "@/features/terminal-home/backup-reminder-dialog.tsx"
 import { PosOverviewPage } from "@/features/terminal-home/pos-overview-page.tsx"
 import { TerminalPaymentKeypad } from "@/features/terminal-home/terminal-payment-keypad.tsx"
+import { useActiveNotifications } from "@/hooks/use-active-notifications.ts"
 import { useIsConfirmDialogOpen } from "@/hooks/use-confirm-dialog.ts"
 import { useCreateTerminalPayment } from "@/hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -44,6 +45,7 @@ const Header = () => {
     setMode: setTerminalHomeMode,
   } = useTerminalHomeMode()
   const transition = useSlidingPillTransition()
+  const hasNotifications = useActiveNotifications().length > 0
 
   return (
     <header className="px-4 flex items-center justify-between">
@@ -92,17 +94,27 @@ const Header = () => {
       )}
       {/*
        * Notifications ahead of the menu, which opens on its first tab
-       * (navigation/0001).
+       * (navigation/0001). A dot on the bell says one is active
+       * (navigation/0005); the menu carries none.
        */}
       <div className="ml-auto flex items-center gap-2">
         <Button
           nativeButton={false}
           variant={"ghost"}
+          className="relative"
           render={
-            <Link aria-label={t("nav.notifications")} to="/notifications" />
+            <Link
+              aria-label={t(
+                hasNotifications
+                  ? "nav.notificationsUnread"
+                  : "nav.notifications"
+              )}
+              to="/notifications"
+            />
           }
         >
           <BellIcon className={"size-6"} strokeWidth={3} />
+          {hasNotifications && <NotificationDot />}
         </Button>
         <Button
           nativeButton={false}
@@ -185,7 +197,6 @@ export function TerminalHomePage() {
       )}
     >
       <Header />
-      <BackupReminderDialog />
 
       <Suspense fallback={null}>
         {isNumpadMode ? <TerminalPaymentKeypadLoader /> : <PosOverviewPage />}

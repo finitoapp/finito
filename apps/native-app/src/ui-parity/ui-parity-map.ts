@@ -1584,11 +1584,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/terminal-home/backup-reminder-dialog.tsx",
-    web: ["apps/web-app/src/features/terminal-home/backup-reminder-dialog.tsx"],
-    status: "matched",
-  },
-  {
     native: "src/features/settings/security/security-settings-page.tsx",
     web: [
       "apps/web-app/src/features/settings/security/security-settings-page.tsx",
@@ -2090,6 +2085,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Switch:
         "the main-method switch (settings/0003), which web has as a switch per method row",
     },
+  },
+  {
+    native: "src/features/notifications/notification-renderers.tsx",
+    web: ["apps/web-app/src/features/notifications/notification-renderers.tsx"],
+    status: "matched",
   },
   {
     native: "src/features/notifications/notifications-page.tsx",

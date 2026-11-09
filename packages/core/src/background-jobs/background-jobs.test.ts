@@ -13,6 +13,7 @@ import { startMonetaAccountTransactionSyncJob } from "./jobs/moneta-account-tran
 import { startQerkoPaymentConnectionJob } from "./jobs/qerko-payment-connection-job.ts"
 import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
+import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
 describe("getBackgroundJobsForRuntime", () => {
@@ -24,6 +25,7 @@ describe("getBackgroundJobsForRuntime", () => {
       startQerkoPaymentConnectionJob,
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
+      startRecoveryBackupReminderJob,
     ])
   })
 
@@ -46,6 +48,7 @@ describe("getBackgroundJobsForRuntime", () => {
       startQerkoPaymentConnectionJob,
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
+      startRecoveryBackupReminderJob,
     ])
   })
 
@@ -59,6 +62,10 @@ describe("getBackgroundJobsForRuntime", () => {
 
   test("keeps the Qerko job out of the CLI, which has no terminal device", () => {
     expect(cliBackgroundJobs).not.toContain(startQerkoTerminalSyncJob)
+  })
+
+  test("keeps the backup reminder out of the CLI, which has no device database or screen", () => {
+    expect(cliBackgroundJobs).not.toContain(startRecoveryBackupReminderJob)
   })
 
   test("keeps the Cashu job out of the CLI, which has no Linky owners", () => {

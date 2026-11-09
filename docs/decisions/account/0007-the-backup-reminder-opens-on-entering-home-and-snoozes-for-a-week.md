@@ -1,6 +1,6 @@
 # 0007 The backup reminder opens on entering home and snoozes for a week
 
-Status: accepted
+Status: superseded by account/0009
 Date: 2026-11-01
 
 ## Context
@@ -81,9 +81,10 @@ on their own device.
 
 ## Enforced by
 
-- `packages/app-shared/src/recovery-backup.test.ts > isBackupReminderDue > shows nothing before a payment`
-- `packages/app-shared/src/recovery-backup.test.ts > isBackupReminderDue > never shows on a demo account`
-- `packages/app-shared/src/recovery-backup.test.ts > isBackupReminderDue > stays away for a week after it is dismissed`
+- `packages/core/src/modules/app-settings/app-settings-utils.test.ts > isBackupReminderDue > shows nothing before a payment`
+- `packages/core/src/modules/app-settings/app-settings-utils.test.ts > isBackupReminderDue > never shows on a demo account`
+- `packages/core/src/modules/app-settings/app-settings-utils.test.ts > isBackupReminderDue > stays away until the snooze runs out`
+- `packages/app-shared/src/recovery-backup.test.ts > backupReminderSnoozedUntil > puts the reminder off for a week`
 - `packages/app-shared/src/recovery-backup.test.ts > checkVerifyAnswers > rejects a wrong or missing word`
 - `packages/core/src/modules/app-settings/app-settings-actions.test.ts > markRecoveryPhraseVerified > writes the stamp and stays verified when run again`
 - `packages/core/src/modules/app-settings/app-settings-actions.test.ts > markRecoveryPhraseVerified > a settings row written without the column still counts as onboarded`

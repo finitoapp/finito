@@ -143,3 +143,23 @@ export const resolveTerminalHomeMode = (
   enabled: ReadonlyArray<TerminalHomeMode>
 ): TerminalHomeMode =>
   enabled.includes(remembered) ? remembered : (enabled[0] ?? remembered)
+
+/**
+ * Whether the recovery-phrase backup reminder is due (account/0007): after
+ * the account's first paid payment, until the phrase is verified, never on a
+ * demo account, and not while this device's snooze still holds.
+ */
+export function isBackupReminderDue(input: {
+  readonly hasPaidPayment: boolean
+  readonly verifiedAt: number | null
+  readonly isDemo: boolean
+  readonly snoozedUntil: number | null
+  readonly now: number
+}): boolean {
+  return (
+    input.hasPaidPayment &&
+    input.verifiedAt === null &&
+    !input.isDemo &&
+    (input.snoozedUntil === null || input.snoozedUntil <= input.now)
+  )
+}

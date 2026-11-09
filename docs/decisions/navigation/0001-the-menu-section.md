@@ -32,7 +32,8 @@ numbers and the catalog went home and back each time.
 - **Notifications are a bell on home**, beside the hamburger, opening
   `/notifications` as a screen of its own with Back, outside the section:
   they are a state to check, not a place to work in. Nothing raises one
-  yet, so the bell carries no count.
+  yet, so the bell carries no count. (Since navigation/0005 an active
+  notification lights a dot on the bell.)
 - **The root screens** are `/activity`, `/activity/bills` and `/activity/stats`,
   `/catalog/items`, `/catalog/categories` and `/catalog/tables`,
   and `/settings`. Each tab opens on its first.
@@ -93,6 +94,6 @@ numbers and the catalog went home and back each time.
 - `apps/native-app/src/core/menu-routes.test.ts > menu section (navigation/0001) > opens each tab on one of its root screens, which needs the permission the table names`
 - `apps/native-app/src/core/menu-routes.test.ts > menu section (navigation/0001) > puts every route of the section in its tab and leaves the rest out`
 - `apps/web-app/e2e/menu.spec.ts > Home on a root screen opened by URL goes home`
-- `apps/web-app/e2e/menu.spec.ts > the bell on home opens Notifications, which has Back and no bar`
+- `apps/web-app/e2e/menu.spec.ts > the bell on home, dark on a fresh account, opens Notifications, which has Back and no bar`
 - `apps/web-app/e2e/menu.spec.ts > a large monitor shows the sidebar on every screen of the section`
 - `apps/web-app/e2e/screen-transition.spec.ts > pushes and pops inside a stack transition, the money path does not`

@@ -112,13 +112,18 @@ test("a large monitor shows the sidebar on every screen of the section", async (
   await expect(heading(page, "catalog.items.title")).toBeVisible()
 })
 
-test("the bell on home opens Notifications, which has Back and no bar", async ({
+test("the bell on home, dark on a fresh account, opens Notifications, which has Back and no bar", async ({
   seededPage: page,
 }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" })
-  await page
-    .getByRole("button", { name: translate("en", "nav.notifications") })
-    .click()
+  // A fresh account has nothing to report, so the bell carries no dot.
+  const bell = page.getByRole("button", {
+    name: translate("en", "nav.notifications"),
+    exact: true,
+  })
+  await expect(bell).toBeVisible()
+  await expect(page.getByTestId("notification-dot")).toHaveCount(0)
+  await bell.click()
   await expect(heading(page, "notifications.title")).toBeVisible()
   await expect(menuNav(page)).toHaveCount(0)
   await backButton(page).click()

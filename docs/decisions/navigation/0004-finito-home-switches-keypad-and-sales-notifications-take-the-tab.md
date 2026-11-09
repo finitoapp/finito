@@ -62,6 +62,8 @@ Settings; a category is made on the item; a settings row is one line.
 - Maestro flows reach the grid through home's switch
   (`subflows/open-sales.yaml`), and the notifications flow opens its tab.
 - navigation/0003 is superseded by this record.
+- An active notification lights a dot on home's hamburger and on the
+  Notifications tab and rail entry (navigation/0005).
 
 ## Enforced by
 

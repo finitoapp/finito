@@ -1,6 +1,7 @@
 import { createConsole, ok, type Task } from "@evolu/common"
 import { runMain } from "@evolu/nodejs"
 import { cliBackgroundJobs } from "@payky/core/background-jobs/background-jobs"
+import { createNotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep, type EvoluOwnerDep } from "@payky/core/deps"
 import type { EvoluDep } from "@payky/core/modules/shared/evolu-deps"
@@ -29,6 +30,8 @@ export const registerBackgroundJobsCommand =
             ...createDateDep(),
             ...createFetchDep(),
             lockManager: createInProcessLockManager(),
+            // Nothing in the CLI shows the jobs' notifications.
+            notifications: createNotificationStore().notifications,
             onError: (error: unknown) => {
               appConsole.error("Background job failed.", error)
             },

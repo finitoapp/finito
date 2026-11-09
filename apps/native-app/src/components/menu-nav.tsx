@@ -22,6 +22,7 @@ import {
   menuTabOrder,
   menuTabTargets,
 } from "../core/menu-routes.ts"
+import { useActiveNotifications } from "../hooks/use-active-notifications.ts"
 import {
   useNostrIdentity,
   useNostrProfile,
@@ -30,6 +31,7 @@ import { useTranslation } from "../hooks/use-translation.ts"
 import { control, maxWidth, shape } from "../theme/tokens.ts"
 import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
+import { NotificationDot } from "./ui/notification-dot.tsx"
 
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
 export const menuBarHeight = control.md + 8
@@ -343,6 +345,8 @@ function MenuNavLink({
   const { t } = useTranslation()
   const pathname = usePathname()
   const { icon, labelKey } = menuTabFaces[tab]
+  // The notifications' tab carries their dot (home's hamburger the same).
+  const unread = useActiveNotifications().length > 0 && tab === "notifications"
   // The terminal's entry on the bar is Home: it leaves the section the way
   // it was entered, as web's `MenuHomeEntry` (navigation/0001). The section
   // opens from home and its tab switches replace the screen, so going back
@@ -352,7 +356,8 @@ function MenuNavLink({
   return (
     <MenuNavEntry
       icon={icon}
-      label={t(labelKey)}
+      label={t(unread ? "nav.notificationsUnread" : labelKey)}
+      dot={unread}
       role={home && variant === "bar" ? "button" : "tab"}
       active={active}
       variant={variant}
@@ -380,11 +385,14 @@ function MenuNavLink({
  * One entry of the bar or the rail: a tab's link or Home's button, an icon
  * named by its label. In the bar the icon cross-fades from muted to
  * `onAccent` as the pill arrives under it; in the rail the entry itself
- * takes the soft accent and the accent text color.
+ * takes the soft accent and the accent text color. `dot` puts the
+ * notification dot on the icon's corner, in the pill's foreground on the
+ * active bar entry, where a primary dot would vanish into the pill.
  */
 function MenuNavEntry({
   icon,
   label,
+  dot,
   role,
   active,
   variant,
@@ -393,6 +401,7 @@ function MenuNavEntry({
   readonly icon: LucideIcon
   /** Already translated. */
   readonly label: string
+  readonly dot: boolean
   readonly role: "tab" | "button"
   readonly active: boolean
   readonly variant: "bar" | "rail"
@@ -431,11 +440,14 @@ function MenuNavEntry({
       {...(Platform.OS === "web" ? { title: label } : {})}
     >
       {rail ? (
-        <Icon
-          icon={icon}
-          size={iconSize}
-          color={active ? "accent-text" : "muted-foreground"}
-        />
+        <View>
+          <Icon
+            icon={icon}
+            size={iconSize}
+            color={active ? "accent-text" : "muted-foreground"}
+          />
+          {dot ? <NotificationDot /> : null}
+        </View>
       ) : (
         <View w={iconSize} h={iconSize}>
           <Animated.View
@@ -452,6 +464,11 @@ function MenuNavEntry({
           <Animated.View style={{ position: "absolute", opacity: progress }}>
             <Icon icon={icon} size={iconSize} color="primary-foreground" />
           </Animated.View>
+          {dot ? (
+            <NotificationDot
+              color={active ? "primary-foreground" : "primary"}
+            />
+          ) : null}
         </View>
       )}
     </View>

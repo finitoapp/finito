@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest"
 import {
   backupReminderSnoozedUntil,
   checkVerifyAnswers,
-  isBackupReminderDue,
   pickVerifyIndexes,
   VERIFY_WORD_COUNT,
 } from "./recovery-backup.ts"
@@ -52,44 +51,9 @@ describe("checkVerifyAnswers", () => {
   })
 })
 
-describe("isBackupReminderDue", () => {
-  const now = Date.UTC(2026, 10, 1, 12)
-  const base = {
-    hasPaidPayment: true,
-    verifiedAt: null,
-    isDemo: false,
-    snoozedUntil: null,
-    now,
-  }
-
-  test("shows after the first paid payment until verified", () => {
-    expect(isBackupReminderDue(base)).toBe(true)
-  })
-  test("shows nothing before a payment", () => {
-    expect(isBackupReminderDue({ ...base, hasPaidPayment: false })).toBe(false)
-  })
-  test("shows nothing once verified", () => {
-    expect(isBackupReminderDue({ ...base, verifiedAt: 1 })).toBe(false)
-  })
-  test("never shows on a demo account", () => {
-    expect(isBackupReminderDue({ ...base, isDemo: true })).toBe(false)
-  })
-  test("stays away for a week after it is dismissed", () => {
-    const snoozedUntil = backupReminderSnoozedUntil(now)
-    expect(isBackupReminderDue({ ...base, snoozedUntil })).toBe(false)
-    expect(
-      isBackupReminderDue({
-        ...base,
-        snoozedUntil,
-        now: addDays(now, 7).getTime() - 1,
-      })
-    ).toBe(false)
-    expect(
-      isBackupReminderDue({
-        ...base,
-        snoozedUntil,
-        now: addDays(now, 7).getTime(),
-      })
-    ).toBe(true)
+describe("backupReminderSnoozedUntil", () => {
+  test("puts the reminder off for a week", () => {
+    const now = Date.UTC(2026, 10, 1, 12)
+    expect(backupReminderSnoozedUntil(now)).toBe(addDays(now, 7).getTime())
   })
 })

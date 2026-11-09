@@ -5,6 +5,7 @@ import { generateSecretKey, getPublicKey } from "nostr-tools/pure"
 import { describe, expect, test } from "vitest"
 import { writeCashuDefaultMint } from "../../cashu/cashu-mints.ts"
 import { createCashuWalletDep } from "../../cashu/cashu-wallet.ts"
+import { deriveDeviceAccountId } from "../../evolu/device-account.ts"
 import type { DeviceAccountId } from "../../evolu/device-client.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
@@ -22,6 +23,7 @@ import {
   deriveNostrSecretKey,
 } from "../../modules/shared/key-derivation.ts"
 import { NonNegativeInteger } from "../../modules/shared/schema.ts"
+import { testNotificationsDep } from "../../testing/background-jobs.ts"
 import {
   createCashuTest,
   testCashuMasterKey,
@@ -53,6 +55,8 @@ const setup = async () => {
       ...createQerkoConnectionStatusDep(),
       ...createEetApiDep({ ...dateDep, ...fetchDep }),
       masterKey: testCashuMasterKey,
+      deviceAccountId: deriveDeviceAccountId(testCashuMasterKey),
+      ...testNotificationsDep(),
       nostr: relays.nostr,
       console: createConsole({ level: "silent" }),
       deviceId: "device" as DeviceId,

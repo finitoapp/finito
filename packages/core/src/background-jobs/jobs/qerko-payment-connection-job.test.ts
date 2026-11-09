@@ -1,6 +1,5 @@
 import { testCreateConsole, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
-
 import type { ConnectivityDep } from "../../deps.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
@@ -30,6 +29,10 @@ import {
 } from "../../modules/shared/schema.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
+import {
+  createTestDeviceAccountDep,
+  testNotificationsDep,
+} from "../../testing/background-jobs.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -117,12 +120,15 @@ const setup = async () => {
   const status = createQerkoConnectionStatusStore()
   const errors: unknown[] = []
 
+  const device = await createTestDeviceAccountDep()
   const jobDeps: AppBackgroundJobContext = {
+    ...device.deviceAccount,
     ...deps,
     ...createEetApiDep({ ...deps, ...clock }),
     ...connectivity,
     deviceId,
     lockManager: createInProcessLockManager(),
+    ...testNotificationsDep(),
     console: testCreateConsole(),
     onError: (error) => {
       errors.push(error)
@@ -164,6 +170,7 @@ const setup = async () => {
     [Symbol.asyncDispose]: async () => {
       await job[Symbol.asyncDispose]()
       await jobRun[Symbol.asyncDispose]()
+      await device[Symbol.asyncDispose]()
       await run[Symbol.asyncDispose]()
       await testEvolu[Symbol.asyncDispose]()
     },
