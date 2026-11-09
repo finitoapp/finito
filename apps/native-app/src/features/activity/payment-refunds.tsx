@@ -1298,11 +1298,8 @@ function SwitchioRefundAttempt({
           deviceId: device.id,
         })
       )
-      if (!result.ok) {
-        return result.error.type === "CardSwitchioRefundOtherDevice"
-          ? "refund.switchio.error.otherDevice"
-          : "refund.switchio.failed"
-      }
+      // Only another phone is refused: its terminal never saw the refund.
+      if (!result.ok) return "refund.switchio.error.otherDevice"
       if (result.value.status === "unresolved") {
         return "refund.switchio.unresolved"
       }
@@ -1327,7 +1324,11 @@ function SwitchioRefundAttempt({
         lineHeight={fontSize.sm}
         fontWeight={fontWeight.semibold}
       >
-        {t("refund.switchio.pending")} · {formatMinor(attempt.amount)}
+        {t("refund.switchio.pending")} ·{" "}
+        {formatMinor(
+          // The tip a whole-payment refund returns beside the goods.
+          NonNegativeInteger(attempt.amount + (attempt.tipAmount ?? 0))
+        )}
       </Text>
       {waitingHere ? <ActivityIndicator /> : null}
       {attempt.status === "pending" && !isOwnPhone ? (

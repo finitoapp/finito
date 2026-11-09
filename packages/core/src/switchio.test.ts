@@ -453,20 +453,41 @@ describe("interpretSwitchioTransactionLookup", () => {
         resultCode: -1,
         transactionResult: approvedResult,
       })
-    ).toMatchObject({ type: "approved", result: { authCode: "114546" } })
+    ).toMatchObject({
+      type: "approved",
+      result: { authCode: "114546" },
+      reversed: false,
+    })
   })
 
-  test("reports an explicit non-OK answer as declined", () => {
+  test("tells a payment taken back by its isReversed", () => {
     expect(
       interpretSwitchioTransactionLookup({
         transactionId,
         resultCode: -1,
         transactionResult: JSON.stringify({
           transactionId,
-          responseCode: "DECLINED",
+          responseCode: "OK",
+          isReversed: true,
         }),
       })
-    ).toEqual({ type: "declined" })
+    ).toMatchObject({ type: "approved", reversed: true })
+  })
+
+  test("never reads a failure as not refunded, as the terminal says not found for a reversal it approved", () => {
+    for (const answer of [
+      // What the terminal answered, on a device, for an approved reversal.
+      { responseCode: "FAILED", responseMessage: "Transaction not found" },
+      { responseCode: "DECLINED" },
+    ]) {
+      expect(
+        interpretSwitchioTransactionLookup({
+          transactionId,
+          resultCode: -1,
+          transactionResult: JSON.stringify({ transactionId, ...answer }),
+        })
+      ).toEqual({ type: "unknown" })
+    }
   })
 
   test("never takes an answer about another transaction for this one", () => {

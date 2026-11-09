@@ -87,11 +87,11 @@ export function SwitchioRestoredRefund() {
         const result = await run(
           resolveCardSwitchioRefundAttempt({ attemptId: id, deviceId })
         )
-        if (!result.ok) {
-          toast.error(t("refund.switchio.failed"))
-        } else if (result.value.status === "refunded") {
+        // The attempts asked about are this phone's own, so the only
+        // refusal, another phone's attempt, cannot come back here.
+        if (result.ok && result.value.status === "refunded") {
           toast.success(t("refund.switchio.done"))
-        } else if (result.value.status === "unresolved") {
+        } else if (result.ok && result.value.status === "unresolved") {
           toast.error(t("refund.switchio.unresolved"))
         }
       }

@@ -41,11 +41,13 @@ the card. On top:
   installed) leaves nothing. An unreadable answer leaves the attempt
   unknown, and it blocks another refund of the payment.
 - The phone that launched an attempt asks its terminal about a pending or
-  unknown one when nothing is waiting on SwitchioPay, and applies a definite
-  answer. A pending attempt the terminal cannot account for becomes unknown.
-  Whether the terminal's answer for an id it never saw can be read as "not
-  refunded" is still to be checked on a device; until then it changes
-  nothing.
+  unknown one when nothing is waiting on SwitchioPay (`get_transaction`), and
+  settles it only on an approval. Tried on a device, the terminal answered
+  `FAILED`, "Transaction not found", for a reversal it had just approved, so
+  no other answer is read as "not refunded" and nothing it says marks an
+  attempt failed. A reversal is also confirmed by the payment it took back
+  reading as reversed (`isReversed`, refund/0008). A pending attempt the
+  terminal cannot account for becomes unknown.
 - Staff can take an attempt away from any device after checking
   SwitchioPay, a pending one included, which is the only way out when the
   launching phone is gone. An approved result that comes back for it later
@@ -85,7 +87,9 @@ one would not show. Payky labels these refunds but does not offer them.
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a refund result that comes back later > of an older attempt is recorded after another one began`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a refund result that comes back later > is recorded even when another device refunded part of the payment meanwhile`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > records an approval the terminal reports`
-- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > keeps a decline the terminal reports as failed`
+- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > never marks an attempt failed on what the terminal cannot find`
+- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > confirms a lost reversal by the payment it took back reading as reversed`
+- `packages/core/src/switchio.test.ts > interpretSwitchioTransactionLookup > never reads a failure as not refunded, as the terminal says not found for a reversal it approved`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > turns a pending attempt nothing answers any more into an unknown one`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > asking the terminal what became of a refund > is not asked from a phone whose terminal never saw the refund`
 - `packages/core/src/switchio.test.ts > interpretSwitchioRefundResult > reports a cancelled result with no payload as an unknown outcome, not a decline`
