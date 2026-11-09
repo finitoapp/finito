@@ -220,11 +220,15 @@ export const resolvePaymentTitle = (
   return t("paymentHistory.payment")
 }
 
-/** "Partially refunded 3.00": the refund mark of a payment, `null` when nothing was refunded. */
+/**
+ * "Partially refunded 3.00": the refund mark of a payment, `null` when nothing
+ * was refunded. The amount goes through the app's own `formatMoney`, as Finito
+ * writes a whole amount without its minor units and Payky with them.
+ */
 export const refundBadgeLabel = (
   summary: PaymentRefundSummary | undefined,
   t: Translate,
-  locale: string
+  format: (money: Money) => string
 ): string | null => {
   if (summary === undefined) return null
 
@@ -232,10 +236,10 @@ export const refundBadgeLabel = (
   if (state === "none") return null
 
   return t(refundStateLabelKey[state], {
-    amount: formatMoney(
-      { value: summary.returnedAmount, currency: summary.currency },
-      locale
-    ),
+    amount: format({
+      value: summary.returnedAmount,
+      currency: summary.currency,
+    }),
   })
 }
 

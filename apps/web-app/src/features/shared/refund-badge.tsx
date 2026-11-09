@@ -3,6 +3,7 @@ import type { PaymentRefundSummary } from "@payky/core/modules/refund/refund-uti
 import { Badge } from "@/components/ui/badge.tsx"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
+import { formatMoney } from "@/lib/format-utils.ts"
 import { cn } from "@/lib/utils.ts"
 
 export function RefundBadge({
@@ -14,7 +15,9 @@ export function RefundBadge({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const label = refundBadgeLabel(summary, t, locale)
+  const label = refundBadgeLabel(summary, t, (money) =>
+    formatMoney(money, locale)
+  )
   if (label === null) return null
 
   return (
