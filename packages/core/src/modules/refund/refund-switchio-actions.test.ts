@@ -922,6 +922,37 @@ describe("a reversal before the refund to the card (refund/0008)", () => {
     await expect(t.refunds()).resolves.toHaveLength(1)
   }, 15_000)
 
+  test("a declined reversal of a payment already taken back is recorded, not refunded again", async () => {
+    await using t = await setup({
+      answers: [
+        interpretSwitchioRefundResult({
+          resultCode: 0,
+          transactionResult: JSON.stringify({
+            responseCode: "TransactionInvalidData",
+            responseMessage: "Trn not found",
+          }),
+        }),
+      ],
+      lookups: [
+        { type: "approved", result: approvedRefundResult, reversed: true },
+      ],
+    })
+
+    await expect(
+      t.run(
+        startCardSwitchioRefund({
+          paymentId: t.paymentId,
+          deviceId: t.deviceId,
+          whole: true,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: { status: "refunded" } })
+
+    expect(t.requests).toEqual([])
+    await expect(t.refunds()).resolves.toMatchObject([{ amount: 25_000 }])
+    await expect(t.attempts()).resolves.toEqual([])
+  }, 15_000)
+
   test("a restored answer that is not a reversal leaves the reversal unknown", async () => {
     await using t = await setup({ answers: [unreadable] })
     await t.run.orThrow(

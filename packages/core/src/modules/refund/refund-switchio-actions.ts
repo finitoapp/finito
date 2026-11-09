@@ -513,12 +513,28 @@ export const startCardSwitchioRefund =
             currencyCode: currencyNumericCodes[payment.currency],
             refundId: card.refundId,
           })
-    return run(
+    const applied = await run(
       applyRefundOutcome({
         attempt: { ...attempt, isTip: attempt.isTip ?? null },
         outcome,
       })
     )
+    // A reversal of a payment already taken back is declined too, and a
+    // refund to the card offered after it would pay the customer twice: when
+    // the payment reads as reversed, its money is back, so record that.
+    if (
+      !applied.ok &&
+      applied.error.type === "CardSwitchioReversalDeclined" &&
+      card.transactionId !== null
+    ) {
+      const original = await run.deps.switchioRefund.lookup(card.transactionId)
+      if (original.type === "approved" && original.reversed) {
+        return run(
+          settleApprovedAttempt({ ...attempt, isTip: attempt.isTip ?? null })
+        )
+      }
+    }
+    return applied
   }
 
 /**

@@ -45,7 +45,11 @@ A closure made outside Finito (in SwitchioPay, or its automatic one) is not
 known to it, so the terminal may decline a reversal Finito chose. Any
 declined reversal then offers a refund to the card, whatever the terminal's
 reason (after a closure it answers `TransactionInvalidData`, "Trn not
-found"); it is started again as a referral refund, not chosen anew.
+found"); it is started again as a referral refund, not chosen anew. A
+reversal of a payment already taken back — by an attempt whose result was
+lost — is declined the same way, so before offering the refund Finito asks
+the terminal about the payment: when it reads as reversed (`isReversed`),
+its money is back, and the reversal is recorded instead of refunding twice.
 
 ## Alternatives considered
 
@@ -75,6 +79,7 @@ ask for the card either way.
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds to the card once the charging phone closed its batch`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > refunds to the card what is left after an earlier refund`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > a reversal the terminal declines lets a refund to the card follow`
+- `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > a declined reversal of a payment already taken back is recorded, not refunded again`
 - `packages/core/src/modules/refund/refund-switchio-actions.test.ts > a reversal before the refund to the card (refund/0008) > a restored answer that is not a reversal leaves the reversal unknown`
 - `packages/core/src/switchio.test.ts > interpretSwitchioReversalResult > takes an approval that says it is no reversal as an unknown outcome`
 - `apps/native-app/src/platform/switchio.test.ts > takes a payment back through the v8 reversal intent, never without the original`
