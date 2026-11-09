@@ -1,22 +1,11 @@
 import type { InferRow } from "@evolu/common"
-import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { formatDateTime } from "@payky/app-shared/format-date"
 import {
   isQerkoKeyRejected,
   qerkoStepKeys,
 } from "@payky/app-shared/qerko-terminal-flow"
 import { refundMethodLabelKey } from "@payky/app-shared/refund-form"
-import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client"
-import {
-  type DeliverEetReversalError,
-  deliverEetReversal,
-} from "@payky/core/modules/eet/eet-actions"
 import { eetReversalsByPaymentIdQuery } from "@payky/core/modules/eet/eet-queries"
-import type { EetUnsupportedReason } from "@payky/core/modules/eet/eet-types"
-import {
-  getEetReversalStartsAt,
-  parseEetDateTime,
-} from "@payky/core/modules/eet/eet-utils"
 import {
   dismissQerkoTerminalRefundAttempt,
   syncQerkoTerminalRefund,
@@ -24,6 +13,7 @@ import {
 import type {
   cardSwitchioRefundAttemptsByPaymentIdQuery,
   qerkoTerminalRefundAttemptsByPaymentIdQuery,
+  refundsByPaymentIdQuery,
 } from "@payky/core/modules/refund/refund-queries"
 import {
   dismissCardSwitchioRefundAttempt,
@@ -35,9 +25,8 @@ import {
   sumGoodsRefundAmounts,
   sumRefundAmounts,
 } from "@payky/core/modules/refund/refund-utils"
-import { Integer, NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { useQuery } from "@tanstack/react-query"
-import { parseISO } from "date-fns"
 import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
@@ -54,6 +43,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card.tsx"
+import { VerticalNavRow } from "../../components/vertical-nav.tsx"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
@@ -62,13 +52,10 @@ import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { isSwitchioRefundInFlight } from "../../platform/switchio.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
-import {
-  EetSaleStatusLabel,
-  useEetRecordingDeviceWait,
-  useEetSaleStatus,
-} from "../shared/eet-sale-status.tsx"
+import { fontSize, fontWeight } from "../../theme/tokens.ts"
+import { EetSaleStatusLabel } from "../shared/eet-sale-status.tsx"
 import { RefundBadge } from "../shared/refund-badge.tsx"
+import type { RefundEetReversalRow } from "./refund-eet-reversal.tsx"
 import {
   type RefundablePayment,
   usePaymentRefundState,
@@ -76,10 +63,11 @@ import {
 
 /**
  * Native counterpart of web's `PaymentDetailRefunds`: the refunds already
- * recorded (refund/0001), the refunds to the card a terminal has not settled,
- * and one button that opens the refund screen (`RefundPage`) whenever
- * anything is left to refund and no refund to the card is running. What is
- * left comes from `usePaymentRefundState` (refund/0002, 0004, 0005).
+ * recorded (refund/0001), each a link to its detail, the refunds to the card
+ * a terminal has not settled, and one button that opens the refund screen
+ * (`RefundPage`) whenever anything is left to refund and no refund to the
+ * card is running. What is left comes from `usePaymentRefundState`
+ * (refund/0002, 0004, 0005).
  */
 export function PaymentRefunds({
   payment,
@@ -97,7 +85,6 @@ export function PaymentRefunds({
   const locale = useLocale()
   const {
     refunds,
-    refundLines,
     availability,
     qerkoAttempts,
     switchioAttempts,
@@ -173,55 +160,78 @@ export function PaymentRefunds({
       </CardHeader>
       <CardContent gap={12}>
         <YStack>
-          {refunds.map((refund, index) => (
-            <YStack
+          {refunds.map((refund) => (
+            <RefundRow
               key={refund.id}
-              testID="payment-detail-refund"
-              gap={4}
-              py={8}
-              pt={index === 0 ? 0 : 8}
-            >
+              refund={refund}
+              reversal={reversals.find(
+                (reversal) => reversal.refundId === refund.id
+              )}
+            />
+          ))}
+        </YStack>
+        {refundActions}
+      </CardContent>
+    </Card>
+  )
+}
+
+type PaymentRefundRow = InferRow<ReturnType<typeof refundsByPaymentIdQuery>>
+
+/**
+ * One recorded refund, a link to its detail (`RefundDetailPage`): the amount,
+ * "Tip ·", the method and the time, and only the status of its EET reversal,
+ * so one pending, refused or overdue shows without opening it. The items and
+ * the reversal's POK, errors and resend live on the detail.
+ */
+function RefundRow({
+  refund,
+  reversal,
+}: {
+  readonly refund: PaymentRefundRow
+  readonly reversal: RefundEetReversalRow | undefined
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const amount = formatMoney(
+    { value: refund.amount, currency: refund.currency },
+    locale
+  )
+  const details = `${isTipRefund(refund) ? `${t("paymentDetail.refunds.tip")} · ` : ""}${t(refundMethodLabelKey[refund.method])} · ${formatDateTime(new Date(refund.refundedAt), locale)}`
+  return (
+    <YStack testID="payment-detail-refund" mx={-12}>
+      <VerticalNavRow
+        item={{
+          kind: "link",
+          href: {
+            pathname: "/activity/[paymentId]/refunds/[refundId]",
+            params: { paymentId: refund.paymentId, refundId: refund.id },
+          },
+          accessibilityLabel: `${amount}, ${details}`,
+          label: (
+            <YStack gap={4} items="flex-start">
               <Text
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
                 fontWeight={fontWeight.semibold}
               >
-                {money(refund.amount)}
+                {amount}
               </Text>
               <Text
                 fontSize={fontSize.xs}
                 lineHeight={fontSize.xs}
                 color="muted-foreground"
               >
-                {isTipRefund(refund)
-                  ? `${t("paymentDetail.refunds.tip")} · `
-                  : ""}
-                {t(refundMethodLabelKey[refund.method])} ·{" "}
-                {formatDateTime(new Date(refund.refundedAt), locale)}
+                {details}
               </Text>
-              {refundLines
-                .filter((line) => line.refundId === refund.id)
-                .map((line) => (
-                  <Text
-                    key={line.id}
-                    fontSize={fontSize.xs}
-                    lineHeight={fontSize.xs}
-                    color="muted-foreground"
-                  >
-                    {line.quantity} × {line.name}
-                  </Text>
-                ))}
-              {reversals
-                .filter((reversal) => reversal.refundId === refund.id)
-                .map((reversal) => (
-                  <RefundEetReversal key={reversal.id} reversal={reversal} />
-                ))}
+              {reversal === undefined ? null : (
+                <EetSaleStatusLabel sale={reversal} />
+              )}
             </YStack>
-          ))}
-        </YStack>
-        {refundActions}
-      </CardContent>
-    </Card>
+          ),
+        }}
+      />
+    </YStack>
   )
 }
 
@@ -533,180 +543,6 @@ function SwitchioRefundAttempt({
             onPress={() => void dismiss()}
           />
         </>
-      ) : null}
-    </YStack>
-  )
-}
-
-type RefundEetReversalRow = InferRow<
-  ReturnType<typeof eetReversalsByPaymentIdQuery>
->
-
-const reversalRetryErrorKeys = {
-  EetSaleNotFoundError: "paymentDetail.eet.retry.failed",
-  EetSaleAlreadyConfirmedError: "paymentDetail.eet.retry.alreadyConfirmed",
-  EetSaleUnsupportedError: "paymentDetail.eet.retry.unsupported",
-  EetSaleBusyError: "paymentDetail.eet.retry.busy",
-  EetSigningCertificateMissingError: "paymentDetail.eet.retry.noCertificate",
-  EetReversalWaitingForSaleError: "paymentDetail.eet.reversal.waiting",
-} satisfies Record<DeliverEetReversalError["type"], TranslationKey>
-
-const reversalRetryOutcomeKeys = {
-  accepted: "paymentDetail.eet.reversal.retry.confirmed",
-  verified: "paymentDetail.eet.reversal.retry.confirmed",
-  retry: "paymentDetail.eet.retry.pending",
-  rejected: "paymentDetail.eet.reversal.retry.rejected",
-} satisfies Record<EetDeliveryOutcome["type"], TranslationKey>
-
-const reversalUnsupportedKeys = {
-  currency: "paymentDetail.eet.unsupported",
-  amount: "paymentDetail.eet.unsupported",
-  disabled: "paymentDetail.eet.reversal.unsupported.disabled",
-  environment: "paymentDetail.eet.reversal.unsupported.environment",
-  taxpayer: "paymentDetail.eet.reversal.unsupported.taxpayer",
-} satisfies Record<EetUnsupportedReason, TranslationKey>
-
-/**
- * Web's `RefundEetReversal`: the EET reversal a refund sends (eet/0007), its
- * status, POK and last error, with a manual resend once the sale it negates
- * is confirmed and no other device holds its priority.
- */
-function RefundEetReversal({
-  reversal,
-}: {
-  readonly reversal: RefundEetReversalRow
-}) {
-  const { t } = useTranslation()
-  const locale = useLocale()
-  const toast = useToast()
-  const runToast = useRunToast()
-  const [retrying, setRetrying] = useState(false)
-  const deviceId = useAtomValue(accountAtom).device.id
-  const { status, isOverdue } = useEetSaleStatus(reversal)
-  const isWaitingForSale =
-    status === "pending" && reversal.saleConfirmedAt === null
-  const waitEndsAt = useEetRecordingDeviceWait({
-    attempts: reversal,
-    recordingDeviceId: reversal.deviceId,
-    deviceId,
-    startsAt:
-      reversal.saleConfirmedAt === null
-        ? null
-        : getEetReversalStartsAt({
-            refundedAt: parseEetDateTime(reversal.saleAt),
-            saleConfirmedAt: reversal.saleConfirmedAt,
-          }),
-  })
-  const canRetry =
-    !isWaitingForSale &&
-    waitEndsAt === null &&
-    (status === "pending" || status === "rejected")
-  const lastError =
-    reversal.pok !== null || reversal.lastErrorMessage === null
-      ? null
-      : reversal.lastErrorCode === null
-        ? reversal.lastErrorMessage
-        : t("paymentDetail.eet.errorCode", {
-            code: String(reversal.lastErrorCode),
-            message: reversal.lastErrorMessage,
-          })
-
-  const retry = async () => {
-    setRetrying(true)
-    await runToast(async (run) => {
-      const result = await run(
-        deliverEetReversal({ id: reversal.id, deviceId })
-      )
-      if (!result.ok) return reversalRetryErrorKeys[result.error.type]
-      const outcomeKey = reversalRetryOutcomeKeys[result.value.type]
-      if (result.value.type === "rejected") return outcomeKey
-      toast.success(t(outcomeKey))
-      return undefined
-    })
-    setRetrying(false)
-  }
-
-  const note = (text: string, color: "muted-foreground" | "destructive") => (
-    <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} color={color}>
-      {text}
-    </Text>
-  )
-
-  return (
-    <YStack
-      testID="payment-detail-eet-reversal"
-      mt={4}
-      gap={6}
-      p={12}
-      rounded={radius.lg}
-      bg="muted-20"
-    >
-      <XStack items="center" justify="space-between" gap={8}>
-        <Text
-          flex={1}
-          fontSize={fontSize.xs}
-          lineHeight={fontSize.xs}
-          fontWeight={fontWeight.medium}
-        >
-          {t("paymentDetail.eet.reversal.title", {
-            amount: formatMoney(
-              { value: Integer(-reversal.amount), currency: reversal.currency },
-              locale
-            ),
-          })}
-        </Text>
-        <EetSaleStatusLabel sale={reversal} />
-      </XStack>
-      {isWaitingForSale
-        ? note(t("paymentDetail.eet.reversal.waiting"), "muted-foreground")
-        : null}
-      {waitEndsAt === null
-        ? null
-        : note(
-            t("paymentDetail.eet.reversal.waitingForDevice", {
-              time: formatTime(new Date(waitEndsAt), locale),
-            }),
-            "muted-foreground"
-          )}
-      {isOverdue ? note(t("paymentDetail.eet.overdue"), "destructive") : null}
-      {reversal.unsupportedReason === null
-        ? null
-        : note(
-            t(reversalUnsupportedKeys[reversal.unsupportedReason]),
-            "destructive"
-          )}
-      {reversal.pok === null
-        ? null
-        : note(
-            `${t("paymentDetail.eet.pok")}: ${reversal.pok}`,
-            "muted-foreground"
-          )}
-      {reversal.receivedAt === null
-        ? null
-        : note(
-            `${t("paymentDetail.eet.receivedAt")}: ${formatDateTime(
-              parseISO(reversal.receivedAt),
-              locale
-            )}`,
-            "muted-foreground"
-          )}
-      {lastError === null
-        ? null
-        : note(
-            `${t("paymentDetail.eet.lastError")}: ${lastError}`,
-            "muted-foreground"
-          )}
-      {canRetry ? (
-        <XStack>
-          <Button
-            variant="outline"
-            size="sm"
-            iconStart={RotateCw}
-            label={t("paymentDetail.eet.retry")}
-            pending={retrying}
-            onPress={() => void retry()}
-          />
-        </XStack>
       ) : null}
     </YStack>
   )

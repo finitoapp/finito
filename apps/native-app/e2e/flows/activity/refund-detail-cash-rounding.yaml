@@ -1,0 +1,76 @@
+# docs/plans/refund-detail.md: a bank transfer refunded in cash hands out
+# whole crowns (refund/0012), and the refund's detail shows the cash handed
+# out beside the rounding. Finito-only until web's refund detail (its Phase 3).
+appId: ${APP_ID}
+tags: [activity]
+---
+- runFlow:
+    file: ../../subflows/seed-onboarding.yaml
+    env:
+      QUERY: fiatCurrency=CZK
+- runFlow:
+    file: ../../subflows/enter-amount.yaml
+    env:
+      AMOUNT: "63.7"
+- tapOn: ${output.t["home.pay"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["paymentTip.none"])}
+    timeout: 15000
+- tapOn: ${output.re(output.t["paymentTip.none"])}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentWait.method.iban"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["paymentWait.copyQr"]}
+- runFlow: ../../subflows/read-ids.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: markIbanPaid
+      QUERY: paymentId=${output.paymentId}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/${output.paymentId}
+      TEXT: ${output.t["paymentDetail.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["refund.dialog.method.label"]}
+    timeout: 15000
+- tapOn: ${output.t["refund.dialog.method.cashRegister"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.+" })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.+" })}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.created"]}
+    timeout: 15000
+# The row opens the refund's detail: 63.70 recorded, 64 handed out.
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.refunds.title"]}
+    timeout: 15000
+- tapOn: '${output.re(output.t["paymentDetail.refunds.method.cashRegister"])} · .*'
+- extendedWaitUntil:
+    visible: ${output.t["refundDetail.title"]}
+    timeout: 15000
+- assertVisible: ${output.t["refundDetail.what.goods"]}
+- assertVisible:
+    text: CZK.64
+    rightOf: ${output.t["refundDetail.cash.handed"]}
+- assertVisible:
+    text: \+CZK.0\.30
+    rightOf: ${output.t["refundDetail.cash.rounding"]}

@@ -19,6 +19,7 @@ export type NativeRoutePath =
   | "/activity/bills/:billId"
   | "/activity/:paymentId"
   | "/activity/:paymentId/refund"
+  | "/activity/:paymentId/refunds/:refundId"
   | "/withdraw"
   | "/withdraw/new"
   | "/withdraw/:withdrawalId"
@@ -105,6 +106,9 @@ export const routeAccess = {
   // on this screen, so its route asks for `refund` (access/0002, 0003).
   // `/activity/bills/:billId` stays above it: a bill's static segment wins.
   "/activity/:paymentId/refund": "refund",
+  // A recorded refund's detail is history, as its payment's (refund-detail);
+  // its EET resend is gated as on the payment detail.
+  "/activity/:paymentId/refunds/:refundId": "activity",
   // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
   "/activity/stats": "stats",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).

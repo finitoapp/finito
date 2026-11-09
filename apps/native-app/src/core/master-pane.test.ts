@@ -32,5 +32,12 @@ describe("master pane (navigation/0002)", () => {
         params: { paymentId: "abc" },
       })
     ).toBe(true)
+    // And while a refund's detail is (refund-detail).
+    expect(
+      isDetailOf("/activity/abc/refunds/def", {
+        pathname: "/activity/[paymentId]",
+        params: { paymentId: "abc" },
+      })
+    ).toBe(true)
   })
 })

@@ -48,3 +48,12 @@ tags: [activity]
 - assertVisible: '${output.re(output.t["paymentDetail.refunds.tip"])} · .*'
 - assertVisible: '${output.re(output.t["refund.state.full"].split("{amount}")[0])}.+'
 - assertNotVisible: ${output.t["paymentDetail.refunds.action"]}
+# The goods refund's detail: what went back and the cash handed out, a
+# dollar amount needing no rounding (docs/plans/refund-detail.md).
+- tapOn: '${output.re(output.t["paymentDetail.refunds.method.cashRegister"])} · .*'
+- extendedWaitUntil:
+    visible: ${output.t["refundDetail.title"]}
+    timeout: 15000
+- assertVisible: ${output.t["refundDetail.what.goods"]}
+- assertVisible: ${output.t["refundDetail.cash.handed"]}
+- assertNotVisible: ${output.t["refundDetail.cash.rounding"]}

@@ -1,7 +1,7 @@
 # web eet.spec.ts: "refunds of a paid bill reach EET as negative sales". The
-# reversals are read off the mock, then both reversal cards must show
-# Confirmed (Maestro has no "within": each status is the badge right of its
-# card's title).
+# reversals are read off the mock, then both reversals must show Confirmed
+# on their refund's detail (Maestro has no "within": the status is the badge
+# right of the reversal's title).
 appId: ${APP_ID}
 tags: [eet]
 ---
@@ -112,11 +112,27 @@ tags: [eet]
     env:
       PATH: /__mock/eet/expect?amounts=250.00,-50.00,-200.00
 - assertNotVisible: ${output.t["paymentDetail.refunds.action"]}
+# Each reversal is read on its refund's detail (docs/plans/refund-detail.md).
+- tapOn: CZK.50
+- extendedWaitUntil:
+    visible: ${output.t["refundDetail.title"]}
+    timeout: 15000
 - extendedWaitUntil:
     visible:
       text: ${output.t["eet.status.confirmed"]}
       rightOf: '${output.tv("paymentDetail.eet.reversal.title", { amount: ".CZK.50" })}'
     timeout: 20000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.refunds.title"]}
+    timeout: 15000
+- tapOn: CZK.200
+- extendedWaitUntil:
+    visible: ${output.t["refundDetail.title"]}
+    timeout: 15000
 - extendedWaitUntil:
     visible:
       text: ${output.t["eet.status.confirmed"]}

@@ -16,6 +16,14 @@ export interface UiParityEntry {
   readonly allowedDifferences?: Readonly<Record<string, string>>
 }
 
+/** Temporary: web's refund detail follows in the next commit (refund-detail, Phase 3). */
+const refundDetailWebFollows =
+  "web draws a recorded refund inline on the payment detail until its refund-detail-page.tsx follows in the next commit (docs/plans/refund-detail.md, Phase 3)"
+
+/** Temporary, as `refundDetailWebFollows`. */
+const refundEetReversalWebFollows =
+  "moved out of payment-refunds.tsx for the refund detail; web keeps RefundEetReversal in payment-refunds.tsx until its refund-eet-reversal.tsx follows in the next commit (docs/plans/refund-detail.md, Phase 3)"
+
 export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/components/app/access-gate.tsx",
@@ -359,6 +367,36 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/activity/payment-refunds.tsx",
     web: ["apps/web-app/src/features/activity/payment-refunds.tsx"],
     status: "matched",
+    allowedDifferences: {
+      VerticalNavRow:
+        "each recorded refund is a link to its detail; web's row follows in the next commit (docs/plans/refund-detail.md, Phase 3)",
+    },
+  },
+  {
+    native: "src/features/activity/refund-detail-page.tsx",
+    // TODO(refund-detail Phase 3): repoint to web's refund-detail-page.tsx.
+    web: ["apps/web-app/src/features/activity/payment-refunds.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Badge: refundDetailWebFollows,
+      CardDescription: refundDetailWebFollows,
+      DetailRow: refundDetailWebFollows,
+      NotFoundCard: refundDetailWebFollows,
+      Separator: refundDetailWebFollows,
+    },
+  },
+  {
+    native: "src/features/activity/refund-eet-reversal.tsx",
+    // TODO(refund-detail Phase 3): repoint to web's refund-eet-reversal.tsx.
+    web: ["apps/web-app/src/features/activity/payment-refunds.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Card: refundEetReversalWebFollows,
+      CardAction: refundEetReversalWebFollows,
+      CardContent: refundEetReversalWebFollows,
+      CardHeader: refundEetReversalWebFollows,
+      CardTitle: refundEetReversalWebFollows,
+    },
   },
   {
     native: "src/features/activity/refund-page.tsx",
