@@ -442,6 +442,8 @@ export const settleQerkoPayment =
         deviceId,
         ...(chargedAmount === undefined ? {} : { chargedAmount }),
         accountKind: "qerkoPayment",
+        // Qerko said paid, not staff (payment/0010).
+        source: "auto",
         accountQuery: qerkoPaymentAccountByIdQuery,
         notFoundError: createQerkoPaymentAccountNotFoundError({
           id: method.accountId,

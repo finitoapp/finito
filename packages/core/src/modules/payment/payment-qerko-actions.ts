@@ -178,6 +178,8 @@ const applyQerkoPayment =
         deviceId,
         chargedAmount: NonNegativeInteger(operation.chargedAmount),
         accountKind: "qerkoTerminal",
+        // The terminal approved the card, not staff (payment/0010).
+        source: "auto",
         accountQuery: qerkoTerminalAccountByIdQuery,
         notFoundError: createQerkoTerminalAccountNotFoundError({
           id: accountId,

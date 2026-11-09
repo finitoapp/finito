@@ -89,6 +89,7 @@ import {
   paymentsWithClaimsByBillIdQuery,
 } from "./payment-queries.ts"
 import {
+  accountTransactionSourcesByPaymentIdQuery,
   accountTransactionsByPaymentIdQuery,
   createPaymentAccounts,
   paymentWithDetailsByIdQuery,
@@ -466,6 +467,10 @@ describe("payment actions", () => {
           source: "manual",
         },
       ])
+    // Staff took the cash: a manual confirmation (payment/0010).
+    await expect(
+      evolu.loadQuery(accountTransactionSourcesByPaymentIdQuery(id))
+    ).resolves.toEqual([{ source: "manual" }])
   }, 15_000)
 
   test("marking a payment paid in cash twice to the same account does not duplicate the transaction or claim", async () => {
@@ -3148,6 +3153,20 @@ describe("payment actions", () => {
           evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
         )
         .toMatchObject([{ deviceId }])
+    }, 15_000)
+
+    test("records a card payment the terminal approved as automatic, not by hand", async () => {
+      await using ctx = await setUp(async () => approved)
+      const { evolu, run, accountId, paymentId } = ctx
+
+      await run.orThrow(payPaymentWithSwitchioCard({ paymentId, accountId }))
+
+      await expect(
+        evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
+      ).resolves.toMatchObject([{ source: "auto" }])
+      await expect(
+        evolu.loadQuery(accountTransactionSourcesByPaymentIdQuery(paymentId))
+      ).resolves.toEqual([{ source: "auto" }])
     }, 15_000)
 
     test("keeps what a refund to the card needs: the terminal's refund id, the phone that charged the card and when", async () => {

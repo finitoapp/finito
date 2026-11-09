@@ -306,7 +306,8 @@ describe("settleQerkoPayment", () => {
     expect(await test.transactions()).toMatchObject([
       { kind: "qerkoPayment", amount: 12_950, currency: "CZK" },
     ])
-    expect(await test.claims()).toHaveLength(1)
+    // Qerko said paid, not staff (payment/0010).
+    expect(await test.claims()).toMatchObject([{ source: "auto" }])
     expect(await test.attempts()).toMatchObject([
       {
         outcome: "paid",

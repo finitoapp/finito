@@ -84,6 +84,20 @@ export const reconciliationClaimsByPaymentIdQuery = (id: PaymentId) =>
     db.selectFrom("reconciliationClaim").selectAll().where("paymentId", "=", id)
   )
 
+/** Who recorded each account transaction a payment's claims point at. */
+export const accountTransactionSourcesByPaymentIdQuery = (id: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("reconciliationClaim")
+      .innerJoin(
+        "accountTransactionSource",
+        "accountTransactionSource.accountTransactionId",
+        "reconciliationClaim.accountTransactionId"
+      )
+      .select(["accountTransactionSource.source"])
+      .where("reconciliationClaim.paymentId", "=", id)
+  )
+
 export const accountTransactionsByPaymentIdQuery = (id: PaymentId) =>
   createQuery((db) =>
     db
