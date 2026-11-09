@@ -12,7 +12,8 @@ result carried (section 5.17, SwitchioPay 3.1.2 and later), and a reversal,
 which only the phone whose SwitchioPay took the payment can make, and only
 until that batch is closed (section 5.13). The result documents `refundId`
 as a `long`, and a referral refund wants it 18 digits long, which a
-JavaScript number cannot hold exactly. A payment's `deviceId` is the device
+JavaScript number cannot hold exactly. Tried on a terminal, it came as a
+quoted string of 19 digits. A payment's `deviceId` is the device
 that created it, but a pending payment can be reopened from its detail and
 paid by card on any device. A payment that does not keep these when it is
 paid can never be refunded to the card: the terminal gives them out only
