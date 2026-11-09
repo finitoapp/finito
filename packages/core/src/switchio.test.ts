@@ -516,3 +516,46 @@ describe("interpretSwitchioTransactionLookup", () => {
     }
   })
 })
+
+describe("every SwitchioPay answer (payment/0006)", () => {
+  const readers = {
+    payment: interpretSwitchioPaymentResult,
+    closure: interpretSwitchioClosureResult,
+    refund: interpretSwitchioRefundResult,
+  }
+  const kindOf = (result: {
+    readonly ok: boolean
+    readonly error?: { readonly type: string }
+  }) =>
+    result.ok
+      ? "approved"
+      : result.error?.type === "SwitchioResultUnreadable"
+        ? "unreadable"
+        : "failed"
+
+  test.each([
+    ["the failure code with no answer", 0, null, "unreadable"],
+    ["the failure code with an unreadable answer", 0, "not json", "unreadable"],
+    [
+      "the failure code with the terminal's own answer",
+      0,
+      JSON.stringify({ responseCode: "DECLINED" }),
+      "failed",
+    ],
+    ["another code with no answer", 5, null, "failed"],
+    ["success with no answer", -1, null, "unreadable"],
+    [
+      "success with a response code that is not OK",
+      -1,
+      JSON.stringify({ responseCode: "DECLINED" }),
+      "failed",
+    ],
+  ] as const)(
+    "reads %s the same for a payment, a closure and a refund",
+    (_, resultCode, transactionResult, kind) => {
+      for (const read of Object.values(readers)) {
+        expect(kindOf(read({ resultCode, transactionResult }))).toBe(kind)
+      }
+    }
+  )
+})
