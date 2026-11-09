@@ -18,8 +18,8 @@ only said "coming soon" in Finito. Plan: `docs/plans/refund-flow.md`.
 
 The payment detail has one "Refund money" action. It opens a screen of its
 own (`/activity/:paymentId/refund` in both apps) that asks what, how and how
-much, says in one sentence what confirming does (`describeRefundOutcome`) and
-names the exact amount on its confirm button. Payky and Finito draw the same
+much, says in one sentence on each method's choice what confirming it does
+(`describeRefundOutcome`) and names the exact amount on its confirm button. Payky and Finito draw the same
 screen from the same rules (`deriveRefundOptions`,
 `packages/app-shared/src/refund-form.ts`); they differ only in the methods
 the app can make.

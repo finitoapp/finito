@@ -83,6 +83,12 @@ where it is specified; the specification wins over this page.
     the whole crown, the goods and tip of a whole refund rounded once
     (refund/0012). The `refund.amount` stays exact; the cash register's
     transaction and the storno carry the cash handed out.
+  - **Card refund detail** (`refundCardSwitchio`, `refundQerkoTerminal`) —
+    what the terminal answered for an approved refund to the card, beside
+    the refund under its id, as `refundCashRegister` keeps the cash handed
+    out: the terminal's transaction, SwitchioPay's kind, auth code and
+    sequence number, Qerko's TID (refund/0013). Not the **refund attempt**,
+    which is soft deleted once the refund is written.
   - **Tip refund** — the refund of a payment's whole tip, a record of its own
     under the tip's one id per payment (`isTip`, refund/0011). Every other
     refund returns goods only.
@@ -90,6 +96,12 @@ where it is specified; the specification wins over this page.
     where every refund starts: what, how, how much (refund/0010). Not a
     dialog; the payment detail only lists refunds and card attempts and
     opens it.
+  - **Refund detail** (`/activity/:paymentId/refunds/:refundId`,
+    `refund-detail-page.tsx`) — one refund already recorded, read only:
+    its amount, method, cash handed out, what the card terminal answered,
+    lines and EET reversal, with the reversal's resend. Opened only from a
+    refund row of the payment detail. Not the **refund screen**, where a
+    refund starts.
   - **Whole payment** vs **part** vs **only the tip** — the refund screen's
     three choices. The whole payment returns every goods amount left and the
     tip in one step, still written as two refunds (goods and tip). Not a
