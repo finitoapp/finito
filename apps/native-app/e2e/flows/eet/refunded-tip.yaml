@@ -17,7 +17,7 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/eet-mock.yaml
     env:
-      PATH: /__mock/eet/expect?amounts=6.49
+      PATH: /__mock/eet/expect?amounts=7.00
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
@@ -33,20 +33,20 @@ tags: [eet]
     timeout: 10000
 - tapOn: ${output.t["refund.page.choice.part"]}
 - extendedWaitUntil:
-    visible: '${output.tv("refund.dialog.tipHint", { amount: "CZK.0.49" })}'
+    visible: '${output.tv("refund.dialog.tipHint", { amount: "CZK.1" })}'
     timeout: 10000
 - tapOn: ${output.t["refund.page.choice.tip"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.0.49" })}'
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.1" })}'
 - extendedWaitUntil:
     visible: ${output.t["refund.tipCreated"]}
     timeout: 15000
 - runFlow:
     file: ../../subflows/eet-mock.yaml
     env:
-      PATH: /__mock/eet/expect?amounts=6.49,-0.49
+      PATH: /__mock/eet/expect?amounts=7.00,-1.00
 - assertVisible: '${output.re(output.t["paymentDetail.refunds.tip"])} · .*'
 # The tip is refunded once: the screen no longer offers it.
 - runFlow:
@@ -79,7 +79,7 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/eet-mock.yaml
     env:
-      PATH: /__mock/eet/expect?amounts=6.49,-0.49,6.00
+      PATH: /__mock/eet/expect?amounts=7.00,-1.00,6.00
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
@@ -96,7 +96,7 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.0.49" })}'
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.1" })}'
 - extendedWaitUntil:
     visible: ${output.t["refund.tipCreated"]}
     timeout: 15000
@@ -119,4 +119,4 @@ tags: [eet]
 - runFlow:
     file: ../../subflows/eet-mock.yaml
     env:
-      PATH: /__mock/eet/expect?amounts=6.49,-0.49,6.00,-6.00
+      PATH: /__mock/eet/expect?amounts=7.00,-1.00,6.00,-6.00

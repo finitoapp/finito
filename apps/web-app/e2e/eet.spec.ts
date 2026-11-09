@@ -576,7 +576,8 @@ test("tips that belong to employees are left out of the reported sale", async ({
     await page
       .getByRole("tab", { name: translate("en", "paymentWait.method.cash") })
       .click()
-    await enterCashReceived(page, "en", "6.49")
+    // A whole-crown tip: cash hands out only whole crowns (refund/0012).
+    await enterCashReceived(page, "en", "7")
     await markCashPaidAndSettle(page, "en")
 
     await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("6.00")
@@ -609,7 +610,8 @@ test("a refunded tip reaches EET only while tips belong to the business", async 
       })
       .waitFor()
     const paymentId = getPaymentIdFromUrl(page)
-    await enterCashReceived(page, "en", "6.49")
+    // A whole-crown tip: cash hands out only whole crowns (refund/0012).
+    await enterCashReceived(page, "en", "7")
     await markCashPaidAndSettle(page, "en")
     return paymentId
   }
@@ -618,18 +620,18 @@ test("a refunded tip reaches EET only while tips belong to the business", async 
 
   await test.step("a tip that belongs to the business is reversed", async () => {
     const paymentId = await payWithTip()
-    await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("6.49")
+    await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("7.00")
     await openPaymentDetail(page, paymentId)
     await openRefundScreen(page, "en")
     await pickRefundChoice(page, "en", "part")
     await expect(
       page.getByText(
-        translate("en", "refund.dialog.tipHint").replace("{amount}", "CZK 0.49")
+        translate("en", "refund.dialog.tipHint").replace("{amount}", "CZK 1.00")
       )
     ).toBeVisible()
     await page.goBack()
     await refundTipFromPaymentDetail(page, "en")
-    await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("-0.49")
+    await expect.poll(lastReportedAmount, eetDeliveryTimeout).toBe("-1.00")
     await expect(page.getByTestId("payment-detail-refund")).toContainText(
       translate("en", "paymentDetail.refunds.tip")
     )

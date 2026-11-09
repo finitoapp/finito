@@ -37,13 +37,13 @@ the app can make.
   refunded (qerko/0010). The screen starts on the method the payment came in
   by, else outside the app, and keeps the chosen method when the choice
   changes while the new choice allows it.
-- **How much.** Only for part: the prefilled amount (refund/0005, 0006) or the
+- **How much.** Only for part: the prefilled amount (refund/0005, 0012) or the
   items.
 - **The whole payment is one step for every method**, and its data stays two
   records, the goods' refund and the tip's under its one id per payment
   (refund/0011), written in one batch (`refundWholePayment` for cash and
-  outside the app). Cash hands back exactly the goods left and the tip; the
-  whole-crown prefill of refund/0006 governs only a typed amount.
+  outside the app). Cash records exactly the goods left and the tip; the
+  cash handed out is rounded to whole crowns once for both (refund/0012).
 - **A refund to the card shows its progress on the screen** until the
   terminal answers; an unknown answer returns to the payment detail, where
   the attempt stays with its own actions.

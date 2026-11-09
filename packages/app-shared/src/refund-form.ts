@@ -13,6 +13,7 @@ import type { RefundQerkoPaymentError } from "@payky/core/modules/refund/refund-
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import {
   calculateRefundLineAmount,
+  deriveCashRefundHandedAmounts,
   deriveRefundableAmount,
   deriveRefundableLines,
   deriveRefundableTipAmount,
@@ -204,7 +205,7 @@ export const deriveRefundAvailability = ({
   }
 }
 
-/** The amount field's text: what staff typed, else the prefill for the method (refund/0005, 0006). */
+/** The amount field's text: what staff typed, else the prefill for the method (refund/0005, 0012). */
 export const deriveRefundAmountText = ({
   typedAmountText,
   remainingAmount,
@@ -514,30 +515,56 @@ const refundOutcomeKeys = {
  * The one sentence under the refund form that says what confirming does.
  * A whole payment SwitchioPay can take back (`chooseSwitchioRefundKind`
  * says `reversal`, refund/0008) needs no card; any other card refund goes
- * back to the card that paid; cash names what to hand over; outside the app
- * is only recorded.
+ * back to the card that paid; cash names what to hand over, which is the
+ * amount refunded rounded to what the register can hand out
+ * (`deriveCashRefundHandedAmounts`, refund/0012) and says so when that
+ * differs; outside the app is only recorded.
  */
 export const describeRefundOutcome = ({
   choice,
   method,
   switchioRefundKind,
   amount,
+  tipAmount,
+  currency,
+  formatAmount,
 }: {
   readonly choice: RefundChoice
   readonly method: RefundMethod
   /** What `chooseSwitchioRefundKind` chose, `null` when not asked. */
   readonly switchioRefundKind: "reversal" | "referralRefund" | null
-  /** The amount refunded, formatted, which cash from the register names. */
-  readonly amount: string
+  /** The amount refunded, which the confirm button names. */
+  readonly amount: NonNegativeInteger
+  /** The tip among `amount`: all of it for `tip`, the tip left for `whole`. */
+  readonly tipAmount: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly formatAmount: (value: NonNegativeInteger) => string
 }): {
   readonly key: TranslationKey
   readonly params: { readonly amount: string }
-} => ({
-  key:
-    method === "cardSwitchio" &&
-    choice === "whole" &&
-    switchioRefundKind === "reversal"
-      ? "refund.outcome.reversal"
-      : refundOutcomeKeys[method],
-  params: { amount },
-})
+} => {
+  if (method === "cashRegister") {
+    const handed = deriveCashRefundHandedAmounts({
+      goodsAmount: NonNegativeInteger(Math.max(0, amount - tipAmount)),
+      tipAmount: NonNegativeInteger(Math.min(amount, tipAmount)),
+      currency,
+    })
+    const handedAmount = NonNegativeInteger(handed.goods + handed.tip)
+    return {
+      key:
+        handedAmount === amount
+          ? "refund.outcome.cashRegister"
+          : "refund.outcome.cashRegisterRounded",
+      params: { amount: formatAmount(handedAmount) },
+    }
+  }
+  return {
+    key:
+      method === "cardSwitchio" &&
+      choice === "whole" &&
+      switchioRefundKind === "reversal"
+        ? "refund.outcome.reversal"
+        : refundOutcomeKeys[method],
+    params: { amount: formatAmount(amount) },
+  }
+}

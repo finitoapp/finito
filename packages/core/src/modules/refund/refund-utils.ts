@@ -104,6 +104,40 @@ export const deriveRefundPrefillAmount = ({
     : rounded
 }
 
+/**
+ * The cash a refund from the cash register hands out (refund/0012): what it
+ * gives back rounded as a cash total is (`roundCashAmount`, whole crowns for
+ * CZK, other currencies exact), split over the goods' and the tip's records.
+ * Given back together, the customer is handed the rounded sum once: the tip
+ * keeps its exact amount and the goods take the rounding, as the goods are
+ * what the EET storno reverses whoever the tip belongs to (eet/0011). Only
+ * when the goods are too few to absorb a rounding down does the tip take
+ * the rest. Either may exceed what it returns by less than half a crown,
+ * which is the business's, as a payment's rounding is (payment/0002).
+ */
+export const deriveCashRefundHandedAmounts = ({
+  goodsAmount,
+  tipAmount,
+  currency,
+}: {
+  readonly goodsAmount: NonNegativeInteger
+  readonly tipAmount: NonNegativeInteger
+  readonly currency: FiatCurrency
+}): {
+  readonly goods: NonNegativeInteger
+  readonly tip: NonNegativeInteger
+} => {
+  const handed = roundCashAmount({
+    amount: NonNegativeInteger(goodsAmount + tipAmount),
+    currency,
+  })
+  const goods = goodsAmount === 0 ? 0 : Math.max(0, handed - tipAmount)
+  return {
+    goods: NonNegativeInteger(goods),
+    tip: NonNegativeInteger(handed - goods),
+  }
+}
+
 export const sumRefundAmounts = (
   refunds: ReadonlyArray<{ readonly amount: NonNegativeInteger }>
 ): NonNegativeInteger =>

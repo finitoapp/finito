@@ -113,7 +113,7 @@ describe("refund form", () => {
     expect(stepRefundQuantity({}, refundable, 1)[lineId]).toBe(1)
   })
 
-  test("prefills whole crowns from the cash register, the exact amount outside (refund/0006)", () => {
+  test("prefills whole crowns from the cash register, the exact amount outside (refund/0012)", () => {
     const text = (method: "cashRegister" | "outside", left = 7940) =>
       deriveRefundAmountText({
         typedAmountText: null,
@@ -363,7 +363,10 @@ describe("describeRefundOutcome", () => {
       choice: "whole",
       method: "cardSwitchio",
       switchioRefundKind: null,
-      amount: "63.80 CZK",
+      amount: n(6_380),
+      tipAmount: n(0),
+      currency: "CZK",
+      formatAmount: (value) => `${value / 100} CZK`,
       ...input,
     })
 
@@ -384,13 +387,64 @@ describe("describeRefundOutcome", () => {
   })
 
   test("cash names what to hand over, outside is only recorded", () => {
-    expect(outcome({ method: "cashRegister", choice: "part" })).toEqual({
+    expect(
+      outcome({ method: "cashRegister", choice: "part", amount: n(6_400) })
+    ).toEqual({
       key: "refund.outcome.cashRegister",
-      params: { amount: "63.80 CZK" },
+      params: { amount: "64 CZK" },
     })
     expect(outcome({ method: "outside" }).key).toBe("refund.outcome.outside")
     expect(outcome({ method: "qerkoPayment" }).key).toBe(
       "refund.outcome.qerkoPayment"
     )
   })
+
+  test.each([
+    {
+      choice: "whole",
+      amount: 6_370,
+      tip: 580,
+      currency: "CZK",
+      key: "refund.outcome.cashRegisterRounded",
+      handed: "64 CZK",
+    },
+    {
+      choice: "tip",
+      amount: 580,
+      tip: 580,
+      currency: "CZK",
+      key: "refund.outcome.cashRegisterRounded",
+      handed: "6 CZK",
+    },
+    {
+      choice: "part",
+      amount: 1_249,
+      tip: 0,
+      currency: "CZK",
+      key: "refund.outcome.cashRegisterRounded",
+      handed: "12 CZK",
+    },
+    {
+      choice: "whole",
+      amount: 6_370,
+      tip: 580,
+      currency: "EUR",
+      key: "refund.outcome.cashRegister",
+      handed: "63.7 EUR",
+    },
+  ] as const)(
+    "cash names the $handed handed out for $choice of $amount $currency (refund/0012)",
+    ({ choice, amount, tip, currency, key, handed }) => {
+      expect(
+        outcome({
+          method: "cashRegister",
+          choice,
+          amount: n(amount),
+          tipAmount: n(tip),
+          currency,
+          formatAmount: (value) => `${value / 100} ${currency}`,
+        })
+      ).toEqual({ key, params: { amount: handed } })
+    }
+  )
 })

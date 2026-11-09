@@ -42,7 +42,10 @@ import {
 } from "../../modules/payment/payment-queries.ts"
 import { derivePaymentStatus } from "../../modules/payment/payment-status-utils.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
-import { refundPayment } from "../../modules/refund/refund-actions.ts"
+import {
+  refundPayment,
+  refundWholePayment,
+} from "../../modules/refund/refund-actions.ts"
 import {
   createRowId,
   runMutationWithCompletion,
@@ -732,6 +735,42 @@ describe("eet reporting job: reversals", () => {
       .poll(() => reversalsOf(context, paymentId))
       .toMatchObject([{ amount: 5_000, pok: expect.stringMatching(/-ff$/u) }])
     expect(context.responder.requests.at(-1)?.data.celk_trzba).toBe("-50.00")
+    expect(job.errors).toEqual([])
+  })
+
+  test("reverses the whole crowns a cash refund of a transfer handed out", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    await using job = await startJob(context)
+    const paymentId = await createTestPayment(context, {
+      amount: 6_330,
+      tipAmount: 580,
+    })
+    await settleByTransfer(context, paymentId, {
+      amount: 6_330,
+      deviceId: context.deviceId,
+    })
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ pok: expect.stringMatching(/-ff$/u) }])
+
+    await using run = testCreateRun(context.deps)
+    await run.orThrow(
+      refundWholePayment({
+        paymentId,
+        method: "cashRegister",
+        deviceId: context.deviceId,
+      })
+    )
+
+    await expect
+      .poll(async () =>
+        (await reversalsOf(context, paymentId))
+          .filter(({ pok }) => pok !== null)
+          .map(({ amount }) => amount)
+          .sort((a, b) => b - a)
+      )
+      .toEqual([5_720, 580])
     expect(job.errors).toEqual([])
   })
 

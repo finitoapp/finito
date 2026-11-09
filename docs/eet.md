@@ -261,7 +261,7 @@ sales when that came after the refund. `createEetReversal` freezes:
 
 | Field | Value |
 |---|---|
-| `amount` | for a refund of goods the refund amount, for a tip refund (`refund.isTip`) the tip refunded, at most the `reportedTipAmount` of the payment's sale (of one of them when two devices each created one), both capped at what the payment's supported sales and extra money sales report together minus the payment's earlier supported reversals. A tip refund of a sale that reports no tip gets no reversal. Stored positive, sent negated (`-250.00`) |
+| `amount` | the money the refund handed back: for a refund from the cash register the cash handed out (`refundCashRegister.handedAmount`, rounded to whole crowns, refund/0012), else, or for a cash refund an older version wrote without it, the refund amount (`deriveEetReversibleRefundAmount`). For a refund of goods all of it; for a tip refund (`refund.isTip`) all of it when the `reportedTipAmount` of the payment's sale (of one of them when two devices each created one) covers the tip refunded, else at most that reported tip. Both capped at what the payment's supported sales and extra money sales report together minus the payment's earlier supported reversals. A tip refund of a sale that reports no tip gets no reversal. Stored positive, sent negated (`-250.00`) |
 | `saleAt` (`dat_trzby`) | the refund's `refundedAt` |
 | `sequenceNumber` (`porad_cis`) | the refund id |
 | `cashRegisterId` (`id_pokl`) | the device that recorded the refund |
@@ -289,6 +289,7 @@ EET lists unconfirmed reversals next to unconfirmed sales.
 | Refund of a payment with no sale or an unsupported sale | No reversal |
 | Refund of a payment with a tip | A refund by amount or by items returns goods only, so its limit leaves the tip out; the tip has its own refund, which is reversed only when the sale reported the tip (tips belonged to the business) |
 | Tip refund of a sale created before `reportedTipAmount` existed | No reversal; if the sale did report the tip, EET keeps it, which errs toward reporting more than was sold |
+| Refund from the cash register of an amount with haléře | The refund records the exact amount; the storno carries the cash handed out, rounded to whole crowns, and of a whole refund the goods' storno takes the rounding of goods and tip together, so it is right whoever the tip belongs to. A rounding up past what the sales reported is cut by the cap |
 | Tip entered as an amount while goods remain | Accepted and reversed as goods; the separate tip action and the dialog's note are what steer staff to the tip refund |
 | Sale or extra money sale pending or rejected | The payment's reversals wait, for good if it is never confirmed |
 | EET disabled, or environment or EIC changed, when the reversal is created | Reversal `unsupported`, never sent |

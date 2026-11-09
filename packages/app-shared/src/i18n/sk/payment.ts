@@ -384,6 +384,8 @@ export const skPayment = {
   "refund.outcome.card": "Peniaze sa vrátia na kartu, ktorou zákazník platil.",
   "refund.outcome.qerkoPayment": "Qerko vráti zákazníkovi celú platbu.",
   "refund.outcome.cashRegister": "Vydajte zákazníkovi {amount} z pokladne.",
+  "refund.outcome.cashRegisterRounded":
+    "Vydajte zákazníkovi {amount} z pokladne, zaokrúhlené na celé koruny.",
   "refund.outcome.outside": "Vrátenie len zaznamenáme, peniaze vraciate inde.",
   "refund.page.title": "Vrátiť peniaze",
   "refund.page.empty": "Z tejto platby sa už nedá nič vrátiť.",

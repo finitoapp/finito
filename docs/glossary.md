@@ -78,6 +78,11 @@ where it is specified; the specification wins over this page.
   by comparing its claimed money with its total. A payment has no coverage.
 - **Refund** (`refund`) — its own record against one payment, never an edit of
   it (`docs/decisions/refund/0001`); its `refund-line`s point at payment lines.
+  - **Cash handed out** (`refundCashRegister.handedAmount`) — the cash a
+    refund from the cash register hands the customer: its amount rounded to
+    the whole crown, the goods and tip of a whole refund rounded once
+    (refund/0012). The `refund.amount` stays exact; the cash register's
+    transaction and the storno carry the cash handed out.
   - **Tip refund** — the refund of a payment's whole tip, a record of its own
     under the tip's one id per payment (`isTip`, refund/0011). Every other
     refund returns goods only.

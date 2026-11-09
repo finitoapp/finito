@@ -13,6 +13,7 @@ import type { RequireExactlyOne } from "type-fest"
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import { cashRegisterAccountByIdQuery } from "../account/account-queries.ts"
+import type { AccountId } from "../account/account-types.ts"
 import { createCashRegisterAccountId } from "../account/account-utils.ts"
 import {
   computeAccountTransactionRows,
@@ -55,6 +56,7 @@ import {
 import type { RefundId, RefundMethod } from "./refund-types.ts"
 import {
   calculateRefundLineAmount,
+  deriveCashRefundHandedAmounts,
   deriveRefundableAmount,
   deriveRefundableLines,
   deriveRefundableTipAmount,
@@ -205,23 +207,31 @@ interface RecordedRefund {
   readonly refundedAt: TimestampMs
   readonly isTip: boolean
   readonly lines: ReadonlyArray<RefundLineValues>
-  /** The cash leaving the register, for a refund from it. */
-  readonly cashTransaction: ReturnType<
-    typeof computeAccountTransactionRows
-  > | null
+  /** The cash handed out of the register, for a refund from it (refund/0012). */
+  readonly cash: {
+    readonly accountId: AccountId
+    readonly handedAmount: NonNegativeInteger
+    readonly transaction: ReturnType<typeof computeAccountTransactionRows>
+  } | null
 }
 
 const prepareRecordedRefund =
   ({
     now,
+    cashHandedAmount,
     ...refund
-  }: Omit<RecordedRefund, "refundedAt" | "cashTransaction"> & {
+  }: Omit<RecordedRefund, "refundedAt" | "cash"> & {
     readonly now: Date
+    /**
+     * What the cash register hands out for this refund
+     * (`deriveCashRefundHandedAmounts`); read only for a refund from it.
+     */
+    readonly cashHandedAmount: NonNegativeInteger
   }): Task<RecordedRefund, CashRegisterAccountNotFoundError, EvoluDep> =>
   async (run) => {
     const refundedAt = TimestampMs(now.getTime())
     if (refund.method !== "cashRegister") {
-      return ok({ ...refund, refundedAt, cashTransaction: null })
+      return ok({ ...refund, refundedAt, cash: null })
     }
     const accountId = createCashRegisterAccountId(refund.currency)
     const account = getFirstOr(
@@ -232,19 +242,23 @@ const prepareRecordedRefund =
     return ok({
       ...refund,
       refundedAt,
-      cashTransaction: computeAccountTransactionRows(
-        {
-          id: deriveCashRefundAccountTransactionId(refund.id),
-          accountId,
-          amount: Integer(-refund.amount),
-          currency: refund.currency,
-          occurredAt: refundedAt,
-          note: null,
-          internalTransferGroupId: null,
-          source: { deviceId: refund.deviceId, source: "manual" },
-        },
-        now
-      ),
+      cash: {
+        accountId,
+        handedAmount: cashHandedAmount,
+        transaction: computeAccountTransactionRows(
+          {
+            id: deriveCashRefundAccountTransactionId(refund.id),
+            accountId,
+            amount: Integer(-cashHandedAmount),
+            currency: refund.currency,
+            occurredAt: refundedAt,
+            note: null,
+            internalTransferGroupId: null,
+            source: { deviceId: refund.deviceId, source: "manual" },
+          },
+          now
+        ),
+      },
     })
   }
 
@@ -283,8 +297,17 @@ const upsertRecordedRefundRows = (
       options
     )
   }
-  if (refund.cashTransaction !== null) {
-    upsertAccountTransactionRows(evolu, refund.cashTransaction, options)
+  if (refund.cash !== null) {
+    evolu.upsert(
+      "refundCashRegister",
+      {
+        id: refund.id,
+        accountId: refund.cash.accountId,
+        handedAmount: refund.cash.handedAmount,
+      },
+      options
+    )
+    upsertAccountTransactionRows(evolu, refund.cash.transaction, options)
   }
 }
 
@@ -434,8 +457,9 @@ export interface WholeRefundPlan {
 
 /**
  * Everything a payment may still give back: the goods left and the tip, each
- * exactly, with no cash rounding (refund/0006 only shapes a typed amount's
- * prefill). `RefundAmountInvalid` with nothing remaining when both are gone.
+ * exactly, with no cash rounding: the records keep the exact amounts, and
+ * only the cash the register hands out is rounded (refund/0012).
+ * `RefundAmountInvalid` with nothing remaining when both are gone.
  */
 export const loadWholeRefundPlan =
   (
@@ -507,6 +531,11 @@ export const refundPayment =
         method,
         isTip: false,
         lines: refundLines,
+        cashHandedAmount: deriveCashRefundHandedAmounts({
+          goodsAmount: refundAmount,
+          tipAmount: NonNegativeInteger(0),
+          currency: payment.currency,
+        }).goods,
         now: run.deps.date.now(),
       })
     )
@@ -558,6 +587,11 @@ export const refundPaymentTip =
         method,
         isTip: true,
         lines: [],
+        cashHandedAmount: deriveCashRefundHandedAmounts({
+          goodsAmount: NonNegativeInteger(0),
+          tipAmount,
+          currency: payment.currency,
+        }).tip,
         now: run.deps.date.now(),
       })
     )
@@ -584,7 +618,9 @@ export type RefundWholePaymentError =
  * register or outside the app: the goods left as one refund and the tip, if
  * any is left, as its own (refund/0011), written in one batch. Each is the
  * refund `refundPayment` and `refundPaymentTip` would record, cash movement
- * included, the tip under its one id per payment. Once nothing is left,
+ * included, the tip under its one id per payment, except that from the cash
+ * register the customer is handed the rounded sum once, not each part
+ * rounded (refund/0012). Once nothing is left,
  * another run is refused with `RefundAmountInvalid`, so it never doubles.
  */
 export const refundWholePayment =
@@ -614,13 +650,33 @@ export const refundWholePayment =
     if (!plan.ok) return plan
     const { payment, goodsAmount, tipAmount } = plan.value
 
+    // The customer is handed the rounded sum once (refund/0012).
+    const handed = deriveCashRefundHandedAmounts({
+      goodsAmount,
+      tipAmount,
+      currency: payment.currency,
+    })
     const parts = [
       ...(goodsAmount === 0
         ? []
-        : [{ id: createRowId<"Refund">(), amount: goodsAmount, isTip: false }]),
+        : [
+            {
+              id: createRowId<"Refund">(),
+              amount: goodsAmount,
+              cashHandedAmount: handed.goods,
+              isTip: false,
+            },
+          ]),
       ...(tipAmount === 0
         ? []
-        : [{ id: tipRefundId(paymentId), amount: tipAmount, isTip: true }]),
+        : [
+            {
+              id: tipRefundId(paymentId),
+              amount: tipAmount,
+              cashHandedAmount: handed.tip,
+              isTip: true,
+            },
+          ]),
     ]
     const refunds: RecordedRefund[] = []
     for (const part of parts) {

@@ -38,7 +38,10 @@ import { refundQerkoPayment } from "@payky/core/modules/refund/refund-qerko-paym
 import type { qerkoTerminalRefundAttemptsByPaymentIdQuery } from "@payky/core/modules/refund/refund-queries"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import type {
+  FiatCurrency,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { useNavigate, useRouter } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import { LoaderCircleIcon, MinusIcon, PlusIcon } from "lucide-react"
@@ -595,7 +598,10 @@ function RefundForm({
           <RefundOutcome
             choice={choice}
             method={method}
-            amount={money(refundAmount ?? choiceOption.amount)}
+            amount={refundAmount ?? choiceOption.amount}
+            tipAmount={choiceOption.tipAmount}
+            currency={payment.currency}
+            formatAmount={money}
           />
         </CardContent>
       </Card>
@@ -723,10 +729,16 @@ function RefundOutcome({
   choice,
   method,
   amount,
+  tipAmount,
+  currency,
+  formatAmount,
 }: {
   readonly choice: RefundChoice
   readonly method: RefundMethod
-  readonly amount: string
+  readonly amount: NonNegativeInteger
+  readonly tipAmount: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly formatAmount: (value: NonNegativeInteger) => string
 }) {
   const { t } = useTranslation()
   const outcome = describeRefundOutcome({
@@ -734,6 +746,9 @@ function RefundOutcome({
     method,
     switchioRefundKind: null,
     amount,
+    tipAmount,
+    currency,
+    formatAmount,
   })
   return (
     <p className="text-sm text-muted-foreground" data-testid="refund-outcome">
