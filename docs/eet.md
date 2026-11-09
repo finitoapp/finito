@@ -78,8 +78,8 @@ Every sale and reversal has a **recording device**, stored as its `deviceId`:
 
 | Record | Recording device |
 |---|---|
-| Sale | the first claim's `deviceId`: the device where staff confirmed cash or card, or matched a transfer by hand |
-| Sale with an automatic claim (FIO, Spark) | `payment.deviceId`, the device that showed the QR code or invoice |
+| Sale | the first claim's `deviceId`: the device where staff confirmed cash or matched a transfer by hand, or whose card terminal approved the card |
+| Sale whose claim names no device (FIO, Spark matched it) | `payment.deviceId`, the device that showed the QR code or invoice |
 | Extra money sale | the same rule, applied to the payment's latest claim |
 | Reversal | `refund.deviceId` |
 

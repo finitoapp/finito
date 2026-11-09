@@ -211,13 +211,14 @@ describe("qerko terminal payment", () => {
       .toMatchObject([
         { accountId, kind: "qerkoTerminal", amount: 13_900, currency: "CZK" },
       ])
+    // The terminal approved it, not staff (payment/0010).
     await expect
       .poll(() =>
         test.evolu.loadQuery(
           reconciliationClaimsByPaymentIdQuery(test.paymentId)
         )
       )
-      .toHaveLength(1)
+      .toMatchObject([{ source: "auto" }])
     await expect
       .poll(() => test.evolu.loadQuery(rowQuery(test.paymentId)))
       .toMatchObject([

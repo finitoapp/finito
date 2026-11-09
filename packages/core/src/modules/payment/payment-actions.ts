@@ -62,6 +62,7 @@ import {
   NonEmptyString255,
   NonEmptyString255Schema,
   type NonNegativeInteger,
+  type SyncSource,
   TimestampMs,
   TimestampMsSchema,
 } from "../shared/schema.ts"
@@ -425,8 +426,14 @@ interface MarkPaymentPaidInput {
 }
 
 /**
- * Records staff confirming that money for a payment arrived on one of their
- * own accounts, as an `accountTransaction` claimed against that payment.
+ * Records that money for a payment arrived on one of the business's own
+ * accounts, as an `accountTransaction` claimed against that payment.
+ *
+ * `source` says who confirmed it (payment/0010): `manual` when staff did —
+ * cash taken, a transfer checked by hand — and `auto` when the app's own
+ * logic did on an outside system's answer — a card terminal that approved,
+ * Qerko saying paid. The ids stay content-derived either way, so the same
+ * confirmation recorded twice is one transaction and one claim.
  *
  * The account kind is the only thing that varies: which query finds it, which
  * not-found error it reports, and the prefix of the transaction's id. That id
@@ -446,8 +453,10 @@ export const markPaymentPaid =
     deviceId,
     occurredAt,
     note,
+    source,
   }: MarkPaymentPaidInput & {
     readonly accountKind: PaymentAccountKind
+    readonly source: SyncSource
     readonly accountQuery: (accountId: AccountId) => Query<EvoluSchema, TRow>
     readonly notFoundError: TNotFoundError
     readonly receivedCashAmount?: NonNegativeInteger
@@ -503,10 +512,7 @@ export const markPaymentPaid =
           occurredAt ?? TimestampMsSchema.decode(run.deps.date.now().getTime()),
         note: note ?? null,
         internalTransferGroupId: null,
-        source: {
-          deviceId: deviceId ?? null,
-          source: "manual",
-        },
+        source: { deviceId: deviceId ?? null, source },
       },
       run.deps.date.now()
     )
@@ -515,7 +521,7 @@ export const markPaymentPaid =
       deviceId: deviceId ?? null,
       paymentId,
       accountTransactionId: accountTransaction.id,
-      source: "manual" as const,
+      source,
       claimedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
     }
     const billClosing = await run.ok(
@@ -599,6 +605,7 @@ export const markPaymentPaidCash =
       markPaymentPaid({
         ...input,
         accountKind: "cashRegister",
+        source: "manual",
         accountQuery: cashRegisterAccountByIdQuery,
         notFoundError: createCashRegisterAccountNotFoundError({
           id: input.accountId,
@@ -629,6 +636,7 @@ export const markPaymentPaidIban =
       markPaymentPaid({
         ...input,
         accountKind: "iban",
+        source: "manual",
         accountQuery: ibanAccountByIdQuery,
         notFoundError: createIbanAccountNotFoundError({ id: input.accountId }),
       })
@@ -716,6 +724,8 @@ const recordSwitchioTerminalOutcome =
         accountId,
         deviceId,
         accountKind: "cardSwitchio",
+        // The terminal approved the card, not staff (payment/0010).
+        source: "auto",
         accountQuery: cardSwitchioAccountByIdQuery,
         notFoundError: createCardSwitchioAccountNotFoundError({
           id: accountId,
