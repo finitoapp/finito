@@ -230,6 +230,7 @@ export const skBill = {
   "selfPay.noMethod.description":
     "Platenie pri stole teraz nie je k dispozícii.",
   "selfPay.order.back": "Späť do menu",
+  "selfPay.order.hide": "Skryť",
   "selfPay.order.items": "{summary} · {total}",
   "selfPay.order.left":
     "Objednávka {number} je potvrdená. Zostáva zaplatiť {amount}.",
@@ -245,6 +246,7 @@ export const skBill = {
     "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} bola odmietnutá. Peniaze vám vráti obsluha.",
+  "selfPay.order.remove": "Nezaplatené, odstrániť",
   "selfPay.order.served": "Objednávka {number} je vydaná.",
   "selfPay.order.served.left":
     "Objednávka {number} je vydaná. Zostáva zaplatiť {amount}.",

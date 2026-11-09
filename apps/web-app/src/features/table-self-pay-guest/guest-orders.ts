@@ -3,7 +3,10 @@ import {
   FiatCurrencySchema,
   HexSchema,
 } from "@payky/core/modules/shared/schema"
-import { SelfPayPointerSchema } from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
+import {
+  type SelfPayPointer,
+  SelfPayPointerSchema,
+} from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
 import { jsonCodec } from "@payky/core/zod-utils"
 import { z } from "zod"
 
@@ -56,6 +59,12 @@ export const rememberGuestOrder = (
       -MAX_REMEMBERED_ORDERS
     )
   )
+
+export const forgetGuestOrder = (
+  orders: ReadonlyArray<GuestOrder>,
+  pointer: SelfPayPointer
+): ReadonlyArray<GuestOrder> =>
+  storeGuestOrders(orders.filter((order) => order.pointer !== pointer))
 
 export const ordersAtTable = (
   orders: ReadonlyArray<GuestOrder>,

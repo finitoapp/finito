@@ -224,6 +224,7 @@ export const enBill = {
   "selfPay.noMethod.description":
     "Paying at the table is not available right now.",
   "selfPay.order.back": "Back to the menu",
+  "selfPay.order.hide": "Hide",
   "selfPay.order.items": "{summary} · {total}",
   "selfPay.order.left": "Order {number} is confirmed. {amount} is left to pay.",
   "selfPay.order.list.title": "Your orders",
@@ -238,6 +239,7 @@ export const enBill = {
     "Ordering is not available right now. Please order with the staff.",
   "selfPay.order.rejected":
     "Order {number} was rejected. The staff will return your money.",
+  "selfPay.order.remove": "Not paid, remove",
   "selfPay.order.served": "Order {number} has been served.",
   "selfPay.order.served.left":
     "Order {number} has been served. {amount} is left to pay.",

@@ -102,12 +102,14 @@ const guestOrderTones = {
 
 function GuestOrderCard({
   shown,
-  canPay,
+  canAct,
   onPayRest,
+  onForget,
 }: {
   readonly shown: ShownGuestOrder
-  readonly canPay: boolean
+  readonly canAct: boolean
   readonly onPayRest: (shown: ShownGuestOrder) => void
+  readonly onForget: (shown: ShownGuestOrder) => void
 }) {
   const { t, locale } = useGuestTranslation()
   const { order, confirmation } = shown
@@ -124,7 +126,7 @@ function GuestOrderCard({
           ? "waiting"
           : "attention"
   const { card, Icon, icon } = guestOrderTones[tone]
-  const payLabel = !canPay
+  const payLabel = !canAct
     ? null
     : confirmation === null
       ? t("selfPay.pay.total", {
@@ -134,6 +136,13 @@ function GuestOrderCard({
         ? t("selfPay.order.payRest", {
             amount: formatGuestAmount(left, order, locale),
           })
+        : null
+  const forgetLabel = !canAct
+    ? null
+    : confirmation === null
+      ? t("selfPay.order.remove")
+      : confirmation.served !== undefined && left <= 0
+        ? t("selfPay.order.hide")
         : null
 
   return (
@@ -163,20 +172,36 @@ function GuestOrderCard({
               })}
             </p>
           </>
-        ) : confirmation === null && canPay ? (
+        ) : confirmation === null && canAct ? (
           <p>{t("selfPay.order.waiting.description")}</p>
         ) : null}
-        {payLabel === null ? null : (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-2 h-11 self-start"
-            onClick={() => {
-              onPayRest(shown)
-            }}
-          >
-            {payLabel}
-          </Button>
+        {payLabel === null && forgetLabel === null ? null : (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {payLabel === null ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                onClick={() => {
+                  onPayRest(shown)
+                }}
+              >
+                {payLabel}
+              </Button>
+            )}
+            {forgetLabel === null ? null : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11"
+                onClick={() => {
+                  onForget(shown)
+                }}
+              >
+                {forgetLabel}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </li>
@@ -186,13 +211,15 @@ function GuestOrderCard({
 export function GuestOrderList({
   ref,
   orders,
-  canPay,
+  canAct,
   onPayRest,
+  onForget,
 }: {
   readonly ref: Ref<HTMLElement>
   readonly orders: ReadonlyArray<ShownGuestOrder>
-  readonly canPay: (shown: ShownGuestOrder) => boolean
+  readonly canAct: (shown: ShownGuestOrder) => boolean
   readonly onPayRest: (shown: ShownGuestOrder) => void
+  readonly onForget: (shown: ShownGuestOrder) => void
 }) {
   const { t } = useGuestTranslation()
   return (
@@ -210,8 +237,9 @@ export function GuestOrderList({
           <GuestOrderCard
             key={shown.order.pointer}
             shown={shown}
-            canPay={canPay(shown)}
+            canAct={canAct(shown)}
             onPayRest={onPayRest}
+            onForget={onForget}
           />
         ))}
       </ul>

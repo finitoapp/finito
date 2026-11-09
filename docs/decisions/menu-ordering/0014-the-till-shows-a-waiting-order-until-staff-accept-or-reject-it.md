@@ -45,4 +45,4 @@ acceptance reaches it. An accepted order waits for "Served" with no notice.
 - `packages/app-shared/src/menu-order-announcement.test.ts > waitingMenuOrdersNotice > names the one order waiting for the staff by number and table`
 - `packages/app-shared/src/menu-order-announcement.test.ts > waitingMenuOrdersNotice > counts the orders when more wait for the staff`
 - `apps/web-app/e2e/menu-orders.spec.ts > a paid order is announced, listed to serve and served`
-- `apps/web-app/e2e/written-orders.spec.ts > staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it served, and the guest sees both`
+- `apps/web-app/e2e/written-orders.spec.ts > staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it served, and the guest sees both and hides it`

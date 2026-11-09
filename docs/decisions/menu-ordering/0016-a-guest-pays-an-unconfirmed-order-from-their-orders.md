@@ -1,6 +1,6 @@
 # 0016 A guest pays an unconfirmed order from their orders
 
-Status: accepted
+Status: superseded by menu-ordering/0017
 Date: 2026-11-09
 
 ## Context

@@ -225,6 +225,7 @@ export const csBill = {
   "selfPay.method.lightning": "Lightning",
   "selfPay.noMethod.description": "Placení u stolu teď není k dispozici.",
   "selfPay.order.back": "Zpět do menu",
+  "selfPay.order.hide": "Skrýt",
   "selfPay.order.items": "{summary} · {total}",
   "selfPay.order.left":
     "Objednávka {number} je potvrzená. Zbývá zaplatit {amount}.",
@@ -240,6 +241,7 @@ export const csBill = {
     "Objednávat teď nejde. Objednejte si prosím u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} byla odmítnuta. Peníze vám vrátí obsluha.",
+  "selfPay.order.remove": "Nezaplaceno, odebrat",
   "selfPay.order.served": "Objednávka {number} je vydaná.",
   "selfPay.order.served.left":
     "Objednávka {number} je vydaná. Zbývá zaplatit {amount}.",

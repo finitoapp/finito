@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test"
 import { addCatalogItem, addTable } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
+import { gotoPage } from "./support/navigation.ts"
 import {
   enableTableSelfPay,
   openTableBill,
@@ -76,7 +77,11 @@ const bankField = async (
 
 const orderStatus = (
   guest: Page,
-  key: "selfPay.order.paid" | "selfPay.order.left",
+  key:
+    | "selfPay.order.paid"
+    | "selfPay.order.left"
+    | "selfPay.order.served"
+    | "selfPay.order.served.left",
   params: Readonly<Record<string, string | number>>
 ) => guest.getByRole("main").getByText(translateParams("en", key, params))
 
@@ -236,7 +241,7 @@ test("a guest sees their order confirmed as order 1 once the money arrives, and 
   })
 })
 
-test("a guest who paid an order short sees what is left, also after reopening the page, pays the rest and sees it paid", async ({
+test("a guest who paid an order short sees what is left, also after reopening the page and once it is served, pays the rest and may hide it", async ({
   seededPage: page,
   context,
 }) => {
@@ -249,6 +254,9 @@ test("a guest who paid an order short sees what is left, also after reopening th
   const left = orderStatus(guest, "selfPay.order.left", {
     number: 1,
     amount: "$19.00",
+  })
+  const hide = guest.getByRole("button", {
+    name: translate("en", "selfPay.order.hide"),
   })
 
   await test.step("the guest orders for 219.00 and 200.00 arrives", async () => {
@@ -267,7 +275,26 @@ test("a guest who paid an order short sees what is left, also after reopening th
     await expect(left).toBeVisible({ timeout: 45_000 })
   })
 
-  await test.step("the guest pays the rest and sees the order paid", async () => {
+  await test.step("staff serve it with 19.00 left, and the order offers paying the rest but not hiding it", async () => {
+    await gotoPage(page, "/orders", "en", "orders.title")
+    const orderCard = page.getByTestId("order-to-serve")
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.served") })
+      .click()
+    await expect(orderCard).toHaveCount(0)
+    await expect(
+      orderStatus(guest, "selfPay.order.served.left", {
+        number: 1,
+        amount: "$19.00",
+      })
+    ).toBeVisible({ timeout: 45_000 })
+    await expect(hide).toHaveCount(0)
+  })
+
+  await test.step("the guest pays the rest, sees the order served and may hide it", async () => {
     await guest
       .getByRole("button", {
         name: translateParams("en", "selfPay.order.payRest", {
@@ -283,8 +310,9 @@ test("a guest who paid an order short sees what is left, also after reopening th
       currency: "USD",
     })
     await expect(
-      orderStatus(guest, "selfPay.order.paid", { number: 1 })
+      orderStatus(guest, "selfPay.order.served", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+    await expect(hide).toBeVisible()
   })
 })
 
@@ -346,6 +374,50 @@ test("a guest who leaves an order's payment is offered to pay it from the order 
     await expect(
       orderStatus(guest, "selfPay.order.paid", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+  })
+})
+
+test("a guest who leaves an order's payment removes the order at once, and it stays gone after reopening the page", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress =
+    await test.step("seed a table with coffee and cake in the menu", () =>
+      seedCafe(page, "Table 7"))
+  const guest = await context.newPage()
+  const orders = guest.getByRole("region", {
+    name: translate("en", "selfPay.order.list.title"),
+  })
+  const removeOrder = orders.getByRole("button", {
+    name: translate("en", "selfPay.order.remove"),
+  })
+
+  await test.step("while the guest pays, the order offers no removing", async () => {
+    await orderCoffeesAndCake(guest, guestAddress)
+    await expect(orders).toBeVisible()
+    await expect(removeOrder).toHaveCount(0)
+  })
+
+  await test.step("leaving the payment, the order offers paying 219.00 and removing it", async () => {
+    await guest
+      .getByRole("button", { name: translate("en", "selfPay.order.back") })
+      .click()
+    await expect(
+      orders.getByRole("button", {
+        name: translateParams("en", "selfPay.pay.total", { amount: "$219.00" }),
+      })
+    ).toBeVisible()
+    await expect(removeOrder).toBeVisible()
+  })
+
+  await test.step("the guest removes it, and it stays gone after a reload", async () => {
+    await removeOrder.click()
+    await expect(orders).toHaveCount(0)
+    await guest.reload()
+    await expect(oneMore(guest, "Coffee")).toBeVisible({ timeout: 45_000 })
+    await expect(orders).toHaveCount(0)
   })
 })
 

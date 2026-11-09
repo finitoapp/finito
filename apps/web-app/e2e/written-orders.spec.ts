@@ -550,7 +550,7 @@ test("the device that takes orders records it and the guest sees order 1, 2x piv
   })
 })
 
-test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it served, and the guest sees both", async ({
+test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it served, and the guest sees both and hides it", async ({
   seededPage: page,
   context,
 }) => {
@@ -617,6 +617,19 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
     await expect(
       orderStatus(guest, "selfPay.order.served", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+  })
+
+  await test.step("the guest hides the served order, and it stays gone after a reload", async () => {
+    const orders = guest.getByRole("region", {
+      name: translate("en", "selfPay.order.list.title"),
+    })
+    await orders
+      .getByRole("button", { name: translate("en", "selfPay.order.hide") })
+      .click()
+    await expect(orders).toHaveCount(0)
+    await guest.reload()
+    await expect(textField(guest)).toBeVisible({ timeout: 45_000 })
+    await expect(orders).toHaveCount(0)
   })
 })
 
