@@ -25,8 +25,8 @@ loses the sale on the day EET is switched on.
 
 ## Consequences
 
-A bank transfer's claim time is the one value of a self-pay match that is
-not derived from the money, its message and the bill
+A bank transfer's claim time is one of the two values of a self-pay match
+that are not derived from the money, its message and the bill
 (`table-self-pay/0005`): two devices that match the same transfer each
 claim it when they matched it. A transfer matched before EET was enabled is
 never reported.

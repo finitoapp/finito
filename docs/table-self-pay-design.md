@@ -81,7 +81,7 @@ device carries its own proof, and anything without one is ignored:
 | Input | Proof | Who can produce it |
 |---|---|---|
 | The view a guest reads | a signature by the table's key | only the merchant's devices |
-| The money | it arrived on the merchant's own account, seen by the merchant device's FIO or Spark sync | anyone, at the price of the money |
+| The money | it arrived on the merchant's own account, seen by the merchant device's FIO, MONETA or Spark sync | anyone, at the price of the money |
 | The selection a payment points to | its content hashes to the pointer, and it is signed and encrypted under keys derived from the pointer and the account's selection key | only someone holding both the pointer and a sticker of the merchant, which is the payer |
 | The Lightning rate | an 80-bit MAC under a key derived from the merchant's master key | only the merchant's devices |
 
@@ -97,7 +97,7 @@ sequenceDiagram
   G->>G: choose lines, price the share, derive the pointer
   G->>R: the selection, signed and encrypted under keys of the pointer
   G->>P: pay, with the bill's reference and PK1 and the pointer
-  P-->>T: the transaction arrives through FIO or Spark sync
+  P-->>T: the transaction arrives through FIO, MONETA or Spark sync
   T->>R: read the event whose author derives from the pointer
   Note right of T: verify the hash, price against the stored version or the open bill, credit, allocate, keep the tip
   T->>R: next view shows the lines as paid
@@ -116,8 +116,8 @@ decisions below keep it true.
 | posts junk events for the table | none, guests filter by author and the merchant device reads no guest events | nothing, and nobody sees them |
 | publishes selections without paying | none, a selection is looked up only for money that names it | nothing, and the relays carry it |
 | floods a relay after seeing a guest's selection | none, the merchant device asks only for the pointer's own author, which nobody else can sign as | nothing gained |
-| pays with a garbage or foreign pointer | one parse of at most 140 characters and one relay query, repeated for 10 minutes | the money, which the merchant keeps |
-| sends a thousand payments of one satoshi | one parse each, no payment because each credit is below the self-pay minimum and short of what the bill still owes | a thousand Lightning payments |
+| pays with a garbage or foreign pointer | one parse of at most 140 characters and one relay query, repeated for 10 minutes, then hourly for 7 days while the money stays unmatched | the money, which the merchant keeps |
+| sends a thousand payments of one satoshi | one parse and the relay queries of the row above each, no payment because each credit is below the self-pay minimum and short of what the bill still owes | a thousand Lightning payments |
 | shows staff a faked success screen | none, staff sees only arrived money | nothing gained |
 
 Every row that costs a merchant device work also costs the stranger a real

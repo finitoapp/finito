@@ -37,7 +37,7 @@ The pointer:
 
 The event:
 - It is a kind 30078 event signed by a key derived from the pointer and from
-  the account's selection key, which every table's view carries.
+  the account's selection key, which every enabled table's view carries.
 - Its content is encrypted under another key derived from both
   (`deriveSelfPayPointerKeys`).
 - A bank or Lightning operator that sees the pointer can therefore neither

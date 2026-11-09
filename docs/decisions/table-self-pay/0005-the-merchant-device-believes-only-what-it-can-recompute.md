@@ -8,7 +8,7 @@ Date: 2026-10-14
 Anyone with the sticker can pay with any message, so everything a payment
 claims besides the money is a stranger's text. The money itself is the
 only input a stranger cannot fake: it arrived on the merchant's own
-account, seen by the merchant device's FIO or Spark sync
+account, seen by the merchant device's bank or Spark sync
 (docs/table-self-pay-design.md, "Proof instead of permission").
 
 ## Decision

@@ -26,8 +26,8 @@ None recorded.
 
 ## Consequences
 
-Any job but the Cashu job can derive the table keys and the rate key, and
-no key outside them.
+Any job but the Cashu job can derive the table keys, the menu keys, the
+selection key and the rate key, and no key outside them.
 Jobs still hold `evolu`, whose owner secret derives from the master key,
 and through it every secret the account stores in its database, the Spark
 wallet secrets included. What stays out of their reach is the master key
