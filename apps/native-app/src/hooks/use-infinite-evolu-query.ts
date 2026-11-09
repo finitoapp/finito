@@ -10,5 +10,6 @@ import { evoluAtom } from "../atoms/evolu.ts"
  */
 export const useInfiniteEvoluQuery = <R extends Row>(
   deps: readonly unknown[],
-  createPageQuery: (limit: number) => Query<EvoluSchema, R>
-) => useInfinitePages(useAtomValue(evoluAtom), deps, createPageQuery)
+  createPageQuery: (limit: number) => Query<EvoluSchema, R>,
+  options: { readonly pageSize?: number } = {}
+) => useInfinitePages(useAtomValue(evoluAtom), deps, createPageQuery, options)
