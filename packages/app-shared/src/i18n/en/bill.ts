@@ -194,7 +194,7 @@ export const enBill = {
   "selfPay.lightning.qr": "Lightning invoice QR code",
   "selfPay.lightning.restart": "Create a new invoice",
   "selfPay.lightning.unavailable":
-    "Lightning is available again once the restaurant confirms the bill.",
+    "Lightning payments are down right now. Pay another way or with the staff.",
   "selfPay.line.fullyPaid": "Paid",
   "selfPay.line.paid": "{paid} of {total} paid",
   "selfPay.line.people": "shared by",

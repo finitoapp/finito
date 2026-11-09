@@ -196,7 +196,7 @@ export const csBill = {
   "selfPay.lightning.qr": "QR kód Lightning faktury",
   "selfPay.lightning.restart": "Vytvořit novou fakturu",
   "selfPay.lightning.unavailable":
-    "Lightning bude opět k dispozici, jakmile restaurace účet znovu potvrdí.",
+    "Platby přes Lightning mají právě výpadek. Zaplaťte jinak nebo u obsluhy.",
   "selfPay.line.fullyPaid": "Zaplaceno",
   "selfPay.line.paid": "Zaplaceno {paid} z {total}",
   "selfPay.line.people": "nás bylo",

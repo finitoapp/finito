@@ -20,8 +20,8 @@ Lightning (`LIVENESS_INTERVAL_MS`). Each rate stays valid for
 one hour from its start (`RATE_WINDOW_SECONDS`), and the money
 must arrive at most 10 minutes after that hour, the life of the page's
 invoice. The page uses a rate only while more than a minute of it is left.
-Without one it mints no invoice and says Lightning is available again once
-the restaurant confirms the bill.
+Without one it mints no invoice and tells the guest that Lightning payments
+are down.
 
 ## Alternatives considered
 

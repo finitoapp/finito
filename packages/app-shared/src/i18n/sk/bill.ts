@@ -199,7 +199,7 @@ export const skBill = {
   "selfPay.lightning.qr": "QR kód Lightning faktúry",
   "selfPay.lightning.restart": "Vytvoriť novú faktúru",
   "selfPay.lightning.unavailable":
-    "Lightning bude opäť dostupný, keď reštaurácia účet znova potvrdí.",
+    "Platby cez Lightning majú práve výpadok. Zaplaťte inak alebo u obsluhy.",
   "selfPay.line.fullyPaid": "Zaplatené",
   "selfPay.line.paid": "Zaplatené {paid} z {total}",
   "selfPay.line.people": "bolo nás",
