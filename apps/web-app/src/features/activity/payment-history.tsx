@@ -88,6 +88,7 @@ export const PaymentHistory = () => {
           date: group.date,
           now,
           locale,
+          format: (money) => formatMoney(money, locale),
           amounts: group.items
             .filter((item) => stateOf(item).status === "paid")
             .map((item) => ({ value: item.amount, currency: item.currency })),
