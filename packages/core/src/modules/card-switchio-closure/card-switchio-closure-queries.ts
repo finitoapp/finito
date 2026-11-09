@@ -23,19 +23,19 @@ const closureColumns = [
   "device.name as deviceName",
 ] as const
 
-type ClosureNotNull = {
-  accountId: KyselyNotNull
-  deviceId: KyselyNotNull
-  currency: KyselyNotNull
-  batchNumber: KyselyNotNull
-  shiftNumber: KyselyNotNull
-  debitsCount: KyselyNotNull
-  debitsAmount: KyselyNotNull
-  creditsCount: KyselyNotNull
-  creditsAmount: KyselyNotNull
-  adjsCount: KyselyNotNull
-  adjsAmount: KyselyNotNull
-  closedAt: KyselyNotNull
+interface ClosureNotNull {
+  readonly accountId: KyselyNotNull
+  readonly deviceId: KyselyNotNull
+  readonly currency: KyselyNotNull
+  readonly batchNumber: KyselyNotNull
+  readonly shiftNumber: KyselyNotNull
+  readonly debitsCount: KyselyNotNull
+  readonly debitsAmount: KyselyNotNull
+  readonly creditsCount: KyselyNotNull
+  readonly creditsAmount: KyselyNotNull
+  readonly adjsCount: KyselyNotNull
+  readonly adjsAmount: KyselyNotNull
+  readonly closedAt: KyselyNotNull
 }
 
 /** Every closure of every device, the newest first. */
