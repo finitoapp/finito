@@ -204,7 +204,7 @@ type AttemptRow = Pick<
  * what the terminal did is recorded even if another device refunded part of
  * the payment meanwhile. An attempt that returned the tip with the goods (a
  * reversal, or a referral refund of the whole payment) writes it as the
- * tip's own refund beside the goods' (refund/0004).
+ * tip's own refund beside the goods' (refund/0011).
  */
 const settleApprovedAttempt =
   (attempt: AttemptRow): Task<CardSwitchioRefundProgress, never, SettleDeps> =>

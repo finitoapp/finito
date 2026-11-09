@@ -1185,7 +1185,6 @@ export const enSettings = {
   "access.action.enable": "Turn access control on with the current PIN",
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
-  "access.action.refund": "Refund",
   "access.action.removeAccount": "Remove the account from this device",
   "access.action.removeLines": "Remove items from the bill",
   "access.action.switchAccount": "Switch account",

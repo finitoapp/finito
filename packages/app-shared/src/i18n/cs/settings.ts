@@ -1184,7 +1184,6 @@ export const csSettings = {
   "access.action.enable": "Zapnout řízení přístupu se současným PINem",
   "access.action.markCashPaid": "Potvrdit přijetí hotovosti",
   "access.action.markIbanPaid": "Potvrdit příchod převodu",
-  "access.action.refund": "Vrátit peníze",
   "access.action.removeAccount": "Odebrat účet z tohoto zařízení",
   "access.action.removeLines": "Odebrat položky z účtu",
   "access.action.switchAccount": "Přepnout účet",
