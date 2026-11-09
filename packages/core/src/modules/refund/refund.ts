@@ -54,7 +54,7 @@ export const refundLine = {
  * the refund when it is approved.
  *
  * `tipAmount` is the tip a refund of the whole payment returns beside the
- * goods, written as the tip's own refund (refund/0004). The column came
+ * goods, written as the tip's own refund (refund/0011). The column came
  * later: an older version settling such an attempt writes only the goods
  * and takes the attempt away, so the settled row keeps `tipAmount` and
  * `repairQerkoTerminalTipRefunds` writes the tip it left out.

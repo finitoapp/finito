@@ -59,12 +59,6 @@ export const skPayment = {
   "paymentDetail.refunds.method.cashRegister": "Z pokladne",
   "paymentDetail.refunds.method.outside": "Mimo {appNameGen}",
   "paymentDetail.refunds.method.qerkoPayment": "V Qerku",
-  "paymentDetail.refunds.qerkoPaymentAction": "Vrátiť v Qerku ({amount})",
-  "refund.qerkoPayment.confirm.title": "Vrátiť platbu v Qerku?",
-  "refund.qerkoPayment.confirm.description":
-    "Qerko vráti celú platbu, {amount}, tak, ako zákazník platil. Nedá sa to vziať späť.",
-  "refund.qerkoPayment.confirm.confirm": "Vrátiť",
-  "refund.qerkoPayment.confirm.cancel": "Zrušiť",
   "refund.qerkoPayment.done": "Qerko platbu vrátilo.",
   "refund.qerkoPayment.error.notAvailable":
     "Túto platbu nejde vrátiť v Qerku: nebola v ňom zaplatená, alebo je už časť vrátená.",
@@ -75,7 +69,6 @@ export const skPayment = {
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
   "paymentDetail.refunds.method.cardSwitchio": "Na kartu",
   "paymentDetail.refunds.title": "Vrátenia",
-  "paymentDetail.refunds.tipAction": "Vrátiť sprepitné ({amount})",
   "paymentDetail.refunds.tip": "Sprepitné",
   "paymentDetail.tipIncluded": "Z toho tringelt {amount}",
   "paymentDetail.canceledAtValue": "Zrušené {date}",
@@ -119,8 +112,6 @@ export const skPayment = {
   "paymentDetail.collision.markPaid.error":
     "Platbu sa nepodarilo označiť ako zaplatenú. Skúste to znova.",
   "paymentDetail.collision.refund": "Vrátiť platbu",
-  "paymentDetail.collision.refund.comingSoon":
-    "Vracanie platieb zatiaľ nie je podporované.",
   "paymentDetail.collision.title": "Zrušené, ale peniaze dorazili",
   "paymentDetail.deviceId": "Zariadenie",
   "paymentDetail.emptyValue": "—",
@@ -388,7 +379,6 @@ export const skPayment = {
   "refund.dialog.method.qerkoTerminal": "Späť na kartu cez terminál",
   "refund.dialog.method.qerkoTerminalTid": "Späť na kartu na terminále {tid}",
   "refund.dialog.method.cardSwitchio": "Späť na kartu cez SwitchioPay",
-  "refund.switchio.hint": "Peniaze sa vrátia na kartu, ktorou zákazník platil.",
   "refund.outcome.reversal":
     "Terminál vezme platbu späť celú, karta nie je potrebná.",
   "refund.outcome.card": "Peniaze sa vrátia na kartu, ktorou zákazník platil.",
@@ -429,12 +419,6 @@ export const skPayment = {
     "Stav v SwitchioPay môže zistiť len telefón, ktorý vrátenie spustil.",
   "refund.switchio.restored.unusable":
     "Výsledok vrátenia na kartu z doby pred reštartom aplikácie sa nepodarilo spracovať. Skontrolujte vrátenie v SwitchioPay.",
-  "paymentDetail.refunds.wholeAction": "Vrátiť celú platbu ({amount})",
-  "refund.switchio.whole.title": "Vrátiť celú platbu?",
-  "refund.switchio.whole.description":
-    "{amount} vrátane prepitného sa vráti na kartu, ktorou zákazník platil. Kým sa to dá, terminál platbu vezme späť, inak peniaze na kartu vráti.",
-  "refund.switchio.whole.confirm": "Vrátiť",
-  "refund.switchio.whole.cancel": "Späť",
   "refund.switchio.reversalDeclined.title":
     "Terminál už platbu nemôže vziať späť",
   "refund.switchio.reversalDeclined.description":
@@ -457,26 +441,18 @@ export const skPayment = {
     "Vrátenie na kartu bolo zrušené na termináli.",
   "refund.qerko.failed.declined": "Terminál vrátenie na kartu zamietol.",
   "refund.qerko.pending": "Vraciam na kartu",
-  "refund.qerko.started": "Vrátenie bolo odoslané na terminál.",
   "refund.qerko.unresolved":
     "Výsledok vrátenia na kartu nie je známy, karta teda mohla byť vrátená. Pred ďalším vrátením skontrolujte terminál a Qerko.",
-  "refund.tipDialog.title": "Vrátiť sprepitné",
-  "refund.tipDialog.description":
-    "Vráti celé sprepitné {amount}. Vrátenie tovaru ho nikdy nezahŕňa.",
   "refund.tipCreated": "Sprepitné vrátené.",
   "refund.error.tip": "Sprepitné tejto platby je už vrátené.",
   "refund.dialog.tipHint": "Bez sprepitného {amount}, to sa vracia zvlášť.",
   "refund.dialog.amount.invalid": "Zadajte sumu najviac {amount}.",
   "refund.dialog.amount.label": "Vrátená suma",
-  "refund.dialog.cancel": "Zrušiť",
   "refund.dialog.confirm": "Vrátiť {amount}",
   "refund.dialog.confirmEmpty": "Vrátiť",
-  "refund.dialog.description":
-    "Vrátenie sa nedá vziať späť. Platba zostane zaplatená a účet uzavretý.",
   "refund.dialog.items.available": "Najviac {quantity}",
   "refund.dialog.items.decrease": "Menej: {name}",
   "refund.dialog.items.increase": "Viac: {name}",
-  "refund.dialog.items.label": "Vrátené položky",
   "refund.dialog.method.cashRegister": "V hotovosti z pokladne",
   "refund.dialog.method.label": "Ako peniaze vraciate",
   "refund.dialog.method.outside":
@@ -484,7 +460,6 @@ export const skPayment = {
   "refund.dialog.mode.amount": "Suma",
   "refund.dialog.mode.items": "Položky",
   "refund.dialog.mode.label": "Čo vraciate",
-  "refund.dialog.title": "Vrátiť peniaze",
   "refund.error.amount": "Suma je vyššia, než koľko zostáva vrátiť.",
   "refund.error.cashRegister": "Pre túto menu tu nie je pokladňa.",
   "refund.error.items": "Tieto položky sa už nedajú vrátiť.",

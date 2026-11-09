@@ -58,12 +58,6 @@ export const csPayment = {
   "paymentDetail.refunds.method.cashRegister": "Z pokladny",
   "paymentDetail.refunds.method.outside": "Mimo {appName}",
   "paymentDetail.refunds.method.qerkoPayment": "V Qerku",
-  "paymentDetail.refunds.qerkoPaymentAction": "Vrátit v Qerku ({amount})",
-  "refund.qerkoPayment.confirm.title": "Vrátit platbu v Qerku?",
-  "refund.qerkoPayment.confirm.description":
-    "Qerko vrátí celou platbu, {amount}, tak, jak zákazník platil. Nejde to vzít zpět.",
-  "refund.qerkoPayment.confirm.confirm": "Vrátit",
-  "refund.qerkoPayment.confirm.cancel": "Zrušit",
   "refund.qerkoPayment.done": "Qerko platbu vrátilo.",
   "refund.qerkoPayment.error.notAvailable":
     "Tuto platbu nejde vrátit v Qerku: nebyla v něm zaplacena, nebo už je část vrácená.",
@@ -74,7 +68,6 @@ export const csPayment = {
   "paymentDetail.refunds.method.qerkoTerminal": "Na kartu",
   "paymentDetail.refunds.method.cardSwitchio": "Na kartu",
   "paymentDetail.refunds.title": "Vratky",
-  "paymentDetail.refunds.tipAction": "Vrátit spropitné ({amount})",
   "paymentDetail.refunds.tip": "Spropitné",
   "paymentDetail.tipIncluded": "Z toho spropitné {amount}",
   "paymentDetail.canceledAtValue": "Zrušeno {date}",
@@ -118,8 +111,6 @@ export const csPayment = {
   "paymentDetail.collision.markPaid.error":
     "Platbu se nepodařilo označit jako zaplacenou. Zkuste to znovu.",
   "paymentDetail.collision.refund": "Vrátit platbu",
-  "paymentDetail.collision.refund.comingSoon":
-    "Vracení plateb zatím není podporováno.",
   "paymentDetail.collision.title": "Zrušeno, ale peníze dorazily",
   "paymentDetail.deviceId": "Zařízení",
   "paymentDetail.emptyValue": "—",
@@ -385,7 +376,6 @@ export const csPayment = {
   "refund.dialog.method.qerkoTerminal": "Zpět na kartu přes terminál",
   "refund.dialog.method.qerkoTerminalTid": "Zpět na kartu na terminálu {tid}",
   "refund.dialog.method.cardSwitchio": "Zpět na kartu přes SwitchioPay",
-  "refund.switchio.hint": "Peníze se vrátí na kartu, kterou zákazník platil.",
   "refund.outcome.reversal":
     "Terminál platbu vezme zpět celou, karta není potřeba.",
   "refund.outcome.card": "Peníze se vrátí na kartu, kterou zákazník platil.",
@@ -426,12 +416,6 @@ export const csPayment = {
     "Stav v SwitchioPay může zjistit jen telefon, který vrácení spustil.",
   "refund.switchio.restored.unusable":
     "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení v SwitchioPay.",
-  "paymentDetail.refunds.wholeAction": "Vrátit celou platbu ({amount})",
-  "refund.switchio.whole.title": "Vrátit celou platbu?",
-  "refund.switchio.whole.description":
-    "{amount} včetně spropitného se vrátí na kartu, kterou zákazník platil. Dokud to jde, terminál platbu vezme zpět, jinak peníze na kartu vrátí.",
-  "refund.switchio.whole.confirm": "Vrátit",
-  "refund.switchio.whole.cancel": "Zpět",
   "refund.switchio.reversalDeclined.title":
     "Terminál už platbu nemůže vzít zpět",
   "refund.switchio.reversalDeclined.description":
@@ -454,26 +438,18 @@ export const csPayment = {
     "Vrácení na kartu bylo zrušeno na terminálu.",
   "refund.qerko.failed.declined": "Terminál vrácení na kartu zamítl.",
   "refund.qerko.pending": "Vracím na kartu",
-  "refund.qerko.started": "Vrácení bylo odesláno na terminál.",
   "refund.qerko.unresolved":
     "Výsledek vrácení na kartu není znám, karta tedy mohla být vrácená. Před dalším vrácením zkontrolujte terminál a Qerko.",
-  "refund.tipDialog.title": "Vrátit spropitné",
-  "refund.tipDialog.description":
-    "Vrátí celé spropitné {amount}. Vrácení zboží ho nikdy nezahrnuje.",
   "refund.tipCreated": "Spropitné vráceno.",
   "refund.error.tip": "Spropitné této platby už je vrácené.",
   "refund.dialog.tipHint": "Bez spropitného {amount}, to se vrací zvlášť.",
   "refund.dialog.amount.invalid": "Zadejte částku nejvýš {amount}.",
   "refund.dialog.amount.label": "Vracená částka",
-  "refund.dialog.cancel": "Zrušit",
   "refund.dialog.confirm": "Vrátit {amount}",
   "refund.dialog.confirmEmpty": "Vrátit",
-  "refund.dialog.description":
-    "Vratku nejde vzít zpět. Platba zůstane zaplacená a účet uzavřený.",
   "refund.dialog.items.available": "Nejvýš {quantity}",
   "refund.dialog.items.decrease": "Méně: {name}",
   "refund.dialog.items.increase": "Více: {name}",
-  "refund.dialog.items.label": "Vracené položky",
   "refund.dialog.method.cashRegister": "Hotově z pokladny",
   "refund.dialog.method.label": "Jak peníze vracíte",
   "refund.dialog.method.outside":
@@ -481,7 +457,6 @@ export const csPayment = {
   "refund.dialog.mode.amount": "Částka",
   "refund.dialog.mode.items": "Položky",
   "refund.dialog.mode.label": "Co vracíte",
-  "refund.dialog.title": "Vrátit peníze",
   "refund.error.amount": "Částka je vyšší, než kolik zbývá vrátit.",
   "refund.error.cashRegister": "Pro tuto měnu tu není pokladna.",
   "refund.error.items": "Tyto položky už vrátit nejde.",

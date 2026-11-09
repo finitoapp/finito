@@ -78,6 +78,22 @@ where it is specified; the specification wins over this page.
   by comparing its claimed money with its total. A payment has no coverage.
 - **Refund** (`refund`) — its own record against one payment, never an edit of
   it (`docs/decisions/refund/0001`); its `refund-line`s point at payment lines.
+  - **Tip refund** — the refund of a payment's whole tip, a record of its own
+    under the tip's one id per payment (`isTip`, refund/0011). Every other
+    refund returns goods only.
+  - **Refund screen** (`/activity/:paymentId/refund`, `refund-page.tsx`) —
+    where every refund starts: what, how, how much (refund/0010). Not a
+    dialog; the payment detail only lists refunds and card attempts and
+    opens it.
+  - **Whole payment** vs **part** vs **only the tip** — the refund screen's
+    three choices. The whole payment returns every goods amount left and the
+    tip in one step, still written as two refunds (goods and tip). Not a
+    **reversal**, which is how SwitchioPay may make such a refund to the
+    card (refund/0008); by any other method it is a refund like any other.
+  - **Refund attempt** (`qerkoTerminalRefundAttempt`,
+    `cardSwitchioRefundAttempt`) — a refund to the card waiting on the
+    terminal; the `refund` is written only once it approves (qerko/0004,
+    refund/0007).
 - **Withdrawal** (`withdraw`) — money sent out of a Spark wallet. Its record is
   written before money leaves and its state is derived
   (`docs/decisions/withdraw/`).

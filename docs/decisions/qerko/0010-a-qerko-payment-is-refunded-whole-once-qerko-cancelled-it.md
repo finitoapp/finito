@@ -25,8 +25,8 @@ typed.
 
 ## Consequences
 
-The refund dialog does not offer the method; a Qerko payment has a button of
-its own that names the whole amount.
+The refund screen offers the method only for the whole payment, and not once
+part of it was refunded another way (refund/0010).
 
 ## Enforced by
 

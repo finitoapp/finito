@@ -53,17 +53,6 @@ export const refundMethodLabelKey = {
   outside: "paymentDetail.refunds.method.outside",
 } satisfies Record<RefundMethod, TranslationKey>
 
-/**
- * The methods the refund dialog offers. A Qerko payment is not one of them:
- * Qerko refunds all of it or nothing, so it has a button of its own
- * (`deriveQerkoPaymentRefund`, qerko/0010). Nor, yet, is the refund to the
- * card through SwitchioPay, which only Finito will offer (refund/0007).
- */
-export type RefundDialogMethod = Exclude<
-  RefundMethod,
-  "qerkoPayment" | "cardSwitchio"
->
-
 export const refundErrorKeys = {
   PaymentNotFound: "paymentDetail.notFound",
   RefundPaymentNotPaid: "refund.error.notPaid",
@@ -79,21 +68,6 @@ export const tipRefundErrorKeys = {
   RefundTipUnavailable: "refund.error.tip",
   CashRegisterAccountNotFound: "refund.error.cashRegister",
 } satisfies Record<RefundPaymentTipError["type"], TranslationKey>
-
-/**
- * The method a refund starts on: the cash register when the payment took
- * cash, the terminal when it took the card there and the card can be
- * refunded from this device (qerko/0004).
- */
-export const defaultRefundMethod = (
-  paymentMethodKinds: ReadonlyArray<string>,
-  { qerkoRefundable = false }: { readonly qerkoRefundable?: boolean } = {}
-): RefundDialogMethod =>
-  paymentMethodKinds.includes("cashRegister")
-    ? "cashRegister"
-    : qerkoRefundable && paymentMethodKinds.includes("qerkoTerminal")
-      ? "qerkoTerminal"
-      : "outside"
 
 export const wholeRefundErrorKeys = {
   PaymentNotFound: "paymentDetail.notFound",
@@ -333,7 +307,7 @@ export const stepRefundQuantity = (
 
 /**
  * What the refund screen gives back: everything left, goods and tip (`whole`);
- * goods only, by amount or items (`part`, refund/0004, 0005); or the whole tip
+ * goods only, by amount or items (`part`, refund/0011, 0005); or the whole tip
  * alone (`tip`).
  */
 export type RefundChoice = "whole" | "part" | "tip"
@@ -404,7 +378,7 @@ const arrivalRefundMethods = [
  *
  * - `whole` while goods are left (or Qerko can still cancel the whole
  *   payment), with the tip if it was not refunded; `part` while goods are
- *   left; `tip` while the tip is (refund/0004). With only the tip left, only
+ *   left; `tip` while the tip is (refund/0011). With only the tip left, only
  *   `tip` is offered.
  * - The cash register and outside the app suit every choice. A refund to the
  *   card through SwitchioPay (refund/0007, 0008) or the Qerko terminal

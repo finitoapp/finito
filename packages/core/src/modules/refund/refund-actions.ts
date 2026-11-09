@@ -288,7 +288,7 @@ const upsertRecordedRefundRows = (
   }
 }
 
-/** The tip is refunded once per payment, whichever way (refund/0004). */
+/** The tip is refunded once per payment, whichever way (refund/0011). */
 export const tipRefundId = (paymentId: PaymentId): RefundId =>
   createIdFromString<"Refund">(`refund:tip:${paymentId}`)
 
@@ -428,7 +428,7 @@ export interface WholeRefundPlan {
   readonly payment: InferRow<ReturnType<typeof paymentDetailQuery>>
   /** Every goods amount still refundable, 0 once the goods are all back. */
   readonly goodsAmount: NonNegativeInteger
-  /** The tip, 0 when there is none or it was refunded (refund/0004). */
+  /** The tip, 0 when there is none or it was refunded (refund/0011). */
   readonly tipAmount: NonNegativeInteger
 }
 
@@ -582,7 +582,7 @@ export type RefundWholePaymentError =
 /**
  * Gives back everything a payment still may in one step, from the cash
  * register or outside the app: the goods left as one refund and the tip, if
- * any is left, as its own (refund/0004), written in one batch. Each is the
+ * any is left, as its own (refund/0011), written in one batch. Each is the
  * refund `refundPayment` and `refundPaymentTip` would record, cash movement
  * included, the tip under its one id per payment. Once nothing is left,
  * another run is refused with `RefundAmountInvalid`, so it never doubles.

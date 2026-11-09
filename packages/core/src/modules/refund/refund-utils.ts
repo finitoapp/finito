@@ -121,7 +121,7 @@ export const deriveRefundState = ({
 }
 
 export interface PaymentRefundSummary {
-  /** The goods refunded: what the refunded state is measured by (refund/0004). */
+  /** The goods refunded: what the refunded state is measured by (refund/0011). */
   readonly refundedAmount: NonNegativeInteger
   readonly refundableAmount: NonNegativeInteger
   /** Every amount given back, the tip included: what the badge shows (refund/0009). */

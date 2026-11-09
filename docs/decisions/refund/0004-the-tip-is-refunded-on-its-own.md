@@ -1,6 +1,6 @@
 # 0004 The tip is refunded on its own
 
-Status: accepted
+Status: superseded by refund/0011
 Date: 2026-10-01
 
 ## Context

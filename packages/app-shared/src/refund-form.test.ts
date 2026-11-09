@@ -2,7 +2,6 @@ import type { PaymentLineId } from "@payky/core/modules/payment-line/payment-lin
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { describe, expect, test } from "vitest"
 import {
-  defaultRefundMethod,
   deriveRefundAmountText,
   deriveRefundAvailability,
   deriveRefundForm,
@@ -136,19 +135,6 @@ describe("refund form", () => {
         currency: "CZK",
       })
     ).toBe("12")
-  })
-
-  test("starts on the cash register when the payment took cash", () => {
-    expect(defaultRefundMethod(["cashRegister"])).toBe("cashRegister")
-    expect(defaultRefundMethod(["bank"])).toBe("outside")
-    // The card goes back to the card only when this device can ask the terminal.
-    expect(defaultRefundMethod(["qerkoTerminal"])).toBe("outside")
-    expect(
-      defaultRefundMethod(["qerkoTerminal"], { qerkoRefundable: true })
-    ).toBe("qerkoTerminal")
-    expect(
-      defaultRefundMethod(["cashRegister"], { qerkoRefundable: true })
-    ).toBe("cashRegister")
   })
 })
 

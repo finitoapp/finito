@@ -1187,7 +1187,6 @@ export const skSettings = {
   "access.action.enable": "Zapnúť riadenie prístupu so súčasným PINom",
   "access.action.markCashPaid": "Potvrdiť prijatie hotovosti",
   "access.action.markIbanPaid": "Potvrdiť príchod prevodu",
-  "access.action.refund": "Vrátiť peniaze",
   "access.action.removeAccount": "Odobrať účet z tohto zariadenia",
   "access.action.removeLines": "Odobrať položky z účtu",
   "access.action.switchAccount": "Prepnúť účet",

@@ -196,7 +196,7 @@ const settleQerkoTerminalRefund =
         now
       )
     // A refund of the whole payment returned the tip with the goods: it is
-    // written as the tip's own refund (refund/0004).
+    // written as the tip's own refund (refund/0011).
     const rows = [
       refundRows({ ...attempt, refundId }),
       ...(attempt.isTip === sqliteTrue ||
@@ -273,7 +273,7 @@ const applyQerkoRefund =
  * for an amount (or goods lines), the payment's tip, or the `whole` payment —
  * every goods amount still refundable and the tip, which the terminal returns
  * in one go and which is written as two refunds once it approved, the goods'
- * and the tip's (refund/0004). The same checks as any refund decide what may
+ * and the tip's (refund/0011). The same checks as any refund decide what may
  * be asked for; on top, the payment must have been taken through Qerko,
  * which hands out the id its refund needs.
  *
@@ -511,7 +511,7 @@ export const dismissQerkoTerminalRefundAttempt =
  * were written without it. An older version settles such an attempt knowing
  * nothing of its `tipAmount`, and the attempt may be settled on any device
  * (qerko/0005), so the tip the terminal returned would go unrecorded. The
- * tip's refund has its one id per payment (refund/0004) and its money
+ * tip's refund has its one id per payment (refund/0011) and its money
  * movement derives from it, so a repair that runs twice, or beside a newer
  * settlement, writes the same rows. It is dated as the goods were.
  */

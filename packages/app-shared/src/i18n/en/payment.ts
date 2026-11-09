@@ -59,12 +59,6 @@ export const enPayment = {
   "paymentDetail.refunds.method.cashRegister": "From the cash register",
   "paymentDetail.refunds.method.outside": "Outside {appName}",
   "paymentDetail.refunds.method.qerkoPayment": "In Qerko",
-  "paymentDetail.refunds.qerkoPaymentAction": "Refund in Qerko ({amount})",
-  "refund.qerkoPayment.confirm.title": "Refund the payment in Qerko?",
-  "refund.qerkoPayment.confirm.description":
-    "Qerko returns the whole payment, {amount}, to how the customer paid. This cannot be undone.",
-  "refund.qerkoPayment.confirm.confirm": "Refund",
-  "refund.qerkoPayment.confirm.cancel": "Cancel",
   "refund.qerkoPayment.done": "Qerko refunded the payment.",
   "refund.qerkoPayment.error.notAvailable":
     "This payment cannot be refunded in Qerko: it was not paid there, or part of it is refunded already.",
@@ -75,7 +69,6 @@ export const enPayment = {
   "paymentDetail.refunds.method.qerkoTerminal": "To the card",
   "paymentDetail.refunds.method.cardSwitchio": "To the card",
   "paymentDetail.refunds.title": "Refunds",
-  "paymentDetail.refunds.tipAction": "Refund the tip ({amount})",
   "paymentDetail.refunds.tip": "Tip",
   "paymentDetail.tipIncluded": "Includes {amount} tip",
   "paymentDetail.canceledAtValue": "Canceled {date}",
@@ -119,7 +112,6 @@ export const enPayment = {
   "paymentDetail.collision.markPaid.error":
     "Couldn't mark the payment as paid. Try again.",
   "paymentDetail.collision.refund": "Refund",
-  "paymentDetail.collision.refund.comingSoon": "Refunds aren't supported yet.",
   "paymentDetail.collision.title": "Canceled, but money arrived",
   "paymentDetail.deviceId": "Device",
   "paymentDetail.emptyValue": "—",
@@ -392,7 +384,6 @@ export const enPayment = {
   "refund.dialog.method.qerkoTerminal": "Back to the card on the terminal",
   "refund.dialog.method.qerkoTerminalTid": "Back to the card on terminal {tid}",
   "refund.dialog.method.cardSwitchio": "Back to the card in SwitchioPay",
-  "refund.switchio.hint": "The money goes back to the card that paid.",
   "refund.outcome.reversal":
     "The terminal takes the whole payment back; the card is not needed.",
   "refund.outcome.card":
@@ -437,12 +428,6 @@ export const enPayment = {
     "Only the phone that started this refund can ask its SwitchioPay.",
   "refund.switchio.restored.unusable":
     "A refund result from before the app restarted could not be processed. Check the refund in SwitchioPay.",
-  "paymentDetail.refunds.wholeAction": "Refund the whole payment ({amount})",
-  "refund.switchio.whole.title": "Refund the whole payment?",
-  "refund.switchio.whole.description":
-    "{amount}, the tip included, goes back to the card that paid. The terminal takes the payment back while it still can; otherwise the money is refunded to the card.",
-  "refund.switchio.whole.confirm": "Refund",
-  "refund.switchio.whole.cancel": "Back",
   "refund.switchio.reversalDeclined.title":
     "The terminal can no longer take the payment back",
   "refund.switchio.reversalDeclined.description":
@@ -466,27 +451,19 @@ export const enPayment = {
   "refund.qerko.failed.declined":
     "The terminal declined the refund to the card.",
   "refund.qerko.pending": "Refunding to the card",
-  "refund.qerko.started": "The refund was sent to the terminal.",
   "refund.qerko.unresolved":
     "The result of the refund to the card is unknown, so the card may have been refunded. Check the terminal and Qerko before refunding again.",
-  "refund.tipDialog.title": "Refund the tip",
-  "refund.tipDialog.description":
-    "Returns the whole tip of {amount}. A refund of goods never includes it.",
   "refund.tipCreated": "Tip refunded.",
   "refund.error.tip": "The tip of this payment is already refunded.",
   "refund.dialog.tipHint":
     "Leaves out the {amount} tip, which has its own refund.",
   "refund.dialog.amount.invalid": "Enter an amount up to {amount}.",
   "refund.dialog.amount.label": "Amount to refund",
-  "refund.dialog.cancel": "Cancel",
   "refund.dialog.confirm": "Refund {amount}",
   "refund.dialog.confirmEmpty": "Refund",
-  "refund.dialog.description":
-    "A refund cannot be undone. The payment stays paid and its bill stays closed.",
   "refund.dialog.items.available": "Up to {quantity}",
   "refund.dialog.items.decrease": "Fewer {name}",
   "refund.dialog.items.increase": "More {name}",
-  "refund.dialog.items.label": "Items to refund",
   "refund.dialog.method.cashRegister": "Cash from the register",
   "refund.dialog.method.label": "How the money goes back",
   "refund.dialog.method.outside":
@@ -494,7 +471,6 @@ export const enPayment = {
   "refund.dialog.mode.amount": "Amount",
   "refund.dialog.mode.items": "Items",
   "refund.dialog.mode.label": "What to refund",
-  "refund.dialog.title": "Refund money",
   "refund.error.amount": "The amount is more than what is left to refund.",
   "refund.error.cashRegister": "There is no cash register for this currency.",
   "refund.error.items": "These items can no longer be refunded.",
