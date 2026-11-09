@@ -315,3 +315,43 @@ describe("a stored SwitchioPay result belongs to the account it was launched in"
     })
   })
 })
+
+describe("a closure SwitchioPay never answered (payment/0008)", () => {
+  const unanswered = { unanswered: true, closureId: "c1", accountId: "a1" }
+
+  it("comes back as unanswered once no promise waits for it", () => {
+    native.stored.closure = unanswered
+
+    expect(takeRestoredSwitchioClosureResult(owner)).toBe("unanswered")
+    expect(native.acknowledgeClosureResult).toHaveBeenCalledTimes(1)
+  })
+
+  it("is left to the promise of a closure still in flight", async () => {
+    const launch = returnedButUnresolved<unknown>()
+    native.close.mockReturnValueOnce(launch.promise)
+
+    const closing = createSwitchioClosureDep({
+      demo: false,
+      accountId: "a1",
+    }).switchioClosure.close({ closureId: "c1" })
+    native.stored.closure = unanswered
+
+    expect(takeRestoredSwitchioClosureResult(owner)).toBeNull()
+    expect(native.acknowledgeClosureResult).not.toHaveBeenCalled()
+
+    launch.resolve(closureResult)
+    await closing
+  })
+
+  it("waits for the account it was begun in", () => {
+    native.stored.closure = { ...unanswered, accountId: "a" }
+
+    expect(
+      takeRestoredSwitchioClosureResult({
+        activeAccountId: "b",
+        deviceAccountIds: new Set(["a", "b"]),
+      })
+    ).toBeNull()
+    expect(native.acknowledgeClosureResult).not.toHaveBeenCalled()
+  })
+})

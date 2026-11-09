@@ -27,8 +27,10 @@ const restoredClosureErrorKeys = {
  * while SwitchioPay was in the foreground: SwitchioPay closes the batch
  * anyway, and `MainActivity` stored its result before any JS ran
  * (payment/0008). Runs at start-up and whenever the app comes back to the
- * foreground, as `SwitchioRestoredResult` does for payments; the closure's
- * derived id makes a repeated result one row.
+ * foreground, as `SwitchioRestoredResult` does for payments; the closure id
+ * stored with the result makes a repeated result one row. A closure begun
+ * and never answered is a warning to check SwitchioPay, with nothing to
+ * record.
  */
 export function SwitchioRestoredClosure() {
   const appRun = useAppRun()
@@ -40,6 +42,12 @@ export function SwitchioRestoredClosure() {
   const record = useCallback(async (): Promise<void> => {
     const restored = takeRestoredSwitchioClosureResult(await loadOwner())
     if (restored === null) return
+
+    if (restored === "unanswered") {
+      nativeConsole.warn("[switchio] Closure begun without an answer")
+      toast.error(t("settings.cardClosure.restored.unanswered"))
+      return
+    }
 
     if (restored === "unusable") {
       nativeConsole.warn("[switchio] Unusable restored closure result")

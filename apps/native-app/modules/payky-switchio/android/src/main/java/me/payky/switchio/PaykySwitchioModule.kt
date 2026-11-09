@@ -198,12 +198,17 @@ class PaykySwitchioModule : Module() {
     /** The result of a closure whose promise was lost with the process, or null. */
     Function("peekStoredClosureResult") {
       val stored = SwitchioClosureStore.peek(context)
-      if (stored == null) null else mapOf(
+      val unanswered = SwitchioClosureStore.peekUnanswered(context)
+      if (stored != null) mapOf(
         "closureId" to stored.closureId,
         "resultCode" to stored.resultCode,
         "transactionResult" to stored.transactionResult,
         "accountId" to stored.accountId
-      )
+      ) else if (unanswered != null) mapOf(
+        "unanswered" to true,
+        "closureId" to unanswered.closureId,
+        "accountId" to unanswered.accountId
+      ) else null
     }
 
     Function("acknowledgeClosureResult") {

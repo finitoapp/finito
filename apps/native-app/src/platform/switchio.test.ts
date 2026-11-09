@@ -225,3 +225,23 @@ it("keeps the account each launch was made in with its stored result", () => {
     expect(peek).toContain('"accountId" to stored.accountId')
   }
 })
+
+it("hands JS a closure begun but never answered, and only while no result is stored", () => {
+  const start = closureStore.indexOf("fun peekUnanswered(")
+  const peekUnanswered = closureStore.slice(
+    start,
+    closureStore.indexOf("\n  }", start)
+  )
+  expect(peekUnanswered).toContain(
+    "if (p.getBoolean(HAS_RESULT, false) || !p.getBoolean(PENDING, false)) return null"
+  )
+  const peek = module.slice(
+    module.indexOf('Function("peekStoredClosureResult")'),
+    module.indexOf('Function("acknowledgeClosureResult")')
+  )
+  expect(peek).toContain("SwitchioClosureStore.peekUnanswered(context)")
+  expect(peek).toContain('"unanswered" to true')
+  // A result SwitchioPay returned replaces the begun marker.
+  const save = closureStore.slice(closureStore.indexOf("fun save("))
+  expect(save.slice(0, save.indexOf("\n  }"))).toContain(".remove(PENDING)")
+})
