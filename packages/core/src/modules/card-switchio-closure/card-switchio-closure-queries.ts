@@ -91,6 +91,10 @@ export const lastCardSwitchioClosurePerDeviceQuery = createQuery((db) =>
     .where("cardSwitchioClosure.isDeleted", "is not", sqliteTrue)
     .where("cardSwitchioClosure.closedAt", "is not", null)
     .where("cardSwitchioClosure.deviceId", "is not", null)
+    // A removed device is no terminal to close any more; one that registers
+    // again comes back. A closure by a device whose row has not synced yet
+    // is still shown, as an unknown device.
+    .where("device.isDeleted", "is not", sqliteTrue)
     .where((eb) =>
       eb.not(
         eb.exists(

@@ -34,7 +34,10 @@ reconciliation with Finito's own card payments has a window to count in.
   forgets it.
 - The terminal's identity is the device: the result carries no terminal id,
   and one closure closes exactly the SwitchioPay of that phone. A business
-  with several terminals closes each on its own phone.
+  with several terminals closes each on its own phone. A device removed
+  from the business is no terminal to close any more, so the overview of
+  terminals leaves it out until it registers again; its closures stay in
+  the history.
 - Each closure gets its row's id before the terminal is launched, and the
   native store keeps it with the result, so the same closure recorded twice
   — through its promise and again from the copy `MainActivity` stores when
@@ -92,3 +95,4 @@ but does not close batches.
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > closeCardSwitchioBatch > records a batch the terminal closed even when card payments were switched off meanwhile`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a closure SwitchioPay never answered (payment/0008) > comes back as unanswered once no promise waits for it`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a closure SwitchioPay never answered (payment/0008) > is left to the promise of a closure still in flight`
+- `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > lastCardSwitchioClosurePerDeviceQuery > leaves out a removed device until it registers again`
