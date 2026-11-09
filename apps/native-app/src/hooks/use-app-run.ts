@@ -35,6 +35,9 @@ function useAppRunDeps() {
   const evolu = useAtomValue(evoluAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const account = useAtomValue(accountAtom)
+  // A boolean, not the demo state: seeding a demo account turns `pending`
+  // into `seeded`, which must not mint a new run for every consumer.
+  const demo = account.demo !== null
 
   return useCallback(() => {
     const dateDep = createDateDep()
@@ -56,15 +59,15 @@ function useAppRunDeps() {
       }),
       uuid: { create: () => Crypto.randomUUID() },
       ...createSwitchioTerminalDep({
-        demo: account.demo !== null,
+        demo,
         accountId: account.id,
       }),
       ...createSwitchioClosureDep({
-        demo: account.demo !== null,
+        demo,
         accountId: account.id,
       }),
       ...createSwitchioRefundDep({
-        demo: account.demo !== null,
+        demo,
         accountId: account.id,
       }),
       ...createEetApiDep(
@@ -77,7 +80,7 @@ function useAppRunDeps() {
       ),
       ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
     }
-  }, [account.demo, account.id, account.masterKey, deviceEvolu, evolu])
+  }, [account.id, account.masterKey, demo, deviceEvolu, evolu])
 }
 
 export function useAppRun() {
