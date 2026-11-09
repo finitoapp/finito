@@ -48,10 +48,16 @@ export interface RecordedCardSwitchioClosure extends SwitchioClosure {
   readonly closedAt: TimestampMs
 }
 
+/** The card account a closure is recorded under, in its currency. */
+interface CardSwitchioClosureAccount {
+  readonly id: AccountId
+  readonly currency: FiatCurrency
+}
+
 /** Reads the card account at closing time: its currency is the closure's. */
 const loadCardSwitchioAccount =
   (): Task<
-    { readonly id: AccountId; readonly currency: FiatCurrency },
+    CardSwitchioClosureAccount,
     CardSwitchioClosureAccountNotFoundError,
     EvoluDep
   > =>
@@ -69,16 +75,25 @@ const loadCardSwitchioAccount =
  * leaves one row (payment/0008); the second time returns the first record
  * untouched, keeping its `closedAt`, which orders the history and bounds a
  * closure's window.
+ *
+ * `account` is the card account as it was read before the terminal was
+ * launched, never read again here: the batch is closed at the bank by now,
+ * so a card account switched off meanwhile must not lose the record.
  */
 const recordCardSwitchioClosure =
   ({
     id,
     closure,
     deviceId,
+    account,
   }: {
     readonly id: CardSwitchioClosureId
     readonly closure: SwitchioClosure
     readonly deviceId: DeviceId
+    readonly account: Result<
+      CardSwitchioClosureAccount,
+      CardSwitchioClosureAccountNotFoundError
+    >
   }): Task<
     RecordedCardSwitchioClosure,
     CardSwitchioClosureAccountNotFoundError,
@@ -99,7 +114,6 @@ const recordCardSwitchioClosure =
       })
     }
 
-    const account = await run(loadCardSwitchioAccount())
     if (!account.ok) return account
 
     const recorded: RecordedCardSwitchioClosure = {
@@ -145,11 +159,16 @@ const recordClosureResult =
     id,
     result,
     deviceId,
+    account,
   }: {
     /** The closure's id; derived from its totals when none was stored. */
     readonly id: CardSwitchioClosureId | null
     readonly result: Result<SwitchioClosure, SwitchioClosureError>
     readonly deviceId: DeviceId
+    readonly account: Result<
+      CardSwitchioClosureAccount,
+      CardSwitchioClosureAccountNotFoundError
+    >
   }): Task<
     RecordedCardSwitchioClosure,
     CloseCardSwitchioBatchError,
@@ -167,6 +186,7 @@ const recordClosureResult =
           createCardSwitchioClosureId({ deviceId, closure: result.value }),
         closure: result.value,
         deviceId,
+        account,
       })
     )
   }
@@ -192,15 +212,9 @@ export const closeCardSwitchioBatch =
 
     const id = createRowId<"CardSwitchioClosure">()
     const result = await run.deps.switchioClosure.close({ closureId: id })
-    return await run(recordClosureResult({ id, result, deviceId }))
+    return await run(recordClosureResult({ id, result, deviceId, account }))
   }
 
-/**
- * Records a closure result whose promise was lost when Android killed the
- * app while SwitchioPay was in the foreground, as the row of the closure id
- * stored with it. A result stored by a build that minted no closure id is
- * recorded under one derived from its totals, as that build did.
- */
 const parseStoredClosureId = (
   closureId: string | null
 ): CardSwitchioClosureId | null => {
@@ -209,6 +223,14 @@ const parseStoredClosureId = (
   return parsed.success ? parsed.data : null
 }
 
+/**
+ * Records a closure result whose promise was lost when Android killed the
+ * app while SwitchioPay was in the foreground, as the row of the closure id
+ * stored with it. A result stored by a build that minted no closure id is
+ * recorded under one derived from its totals, as that build did. Nothing
+ * read the card account before this closure in this process, so it is read
+ * now.
+ */
 export const recordRestoredCardSwitchioClosure =
   ({
     restored,
@@ -227,5 +249,6 @@ export const recordRestoredCardSwitchioClosure =
         id: parseStoredClosureId(restored.closureId),
         result: interpretSwitchioClosureResult(restored),
         deviceId,
+        account: await run(loadCardSwitchioAccount()),
       })
     )

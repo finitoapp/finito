@@ -44,6 +44,10 @@ reconciliation with Finito's own card payments has a window to count in.
   path leaves the stored copy alone while a closure is in flight in this JS
   runtime: each result is recorded by one path, never by both at once.
 - The currency is the card account's at closing time; the result names none.
+  The card account is read once, before the terminal is launched, and that
+  reading is what the closure is recorded under: by the time the result
+  comes back the batch is closed at the bank, so card payments switched off
+  meanwhile on another device must not lose the record.
 
 ## Alternatives considered
 
@@ -81,3 +85,4 @@ but does not close batches.
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > a closure's id > keeps two closures apart when the terminal repeats the batch number and sends no time`
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > a closure's id > is derived from the result for a closure stored by a build that minted none`
 - `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure with the closure id it was launched as`
+- `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > closeCardSwitchioBatch > records a batch the terminal closed even when card payments were switched off meanwhile`
