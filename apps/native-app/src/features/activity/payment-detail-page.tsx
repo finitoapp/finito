@@ -107,7 +107,7 @@ import {
   Technical,
 } from "./detail-parts.tsx"
 import { PaymentQerkoAttempts } from "./payment-qerko-attempts.tsx"
-import { PaymentRefunds, paymentRefundsQueries } from "./payment-refunds.tsx"
+import { PaymentRefunds } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
 import {
   billLineSummaryDiffQueries,
@@ -115,6 +115,7 @@ import {
   useBillLineSummaryDiff,
 } from "./use-bill-detail-data.ts"
 import { usePaymentCollisionActions } from "./use-payment-collision-actions.ts"
+import { paymentRefundsQueries } from "./use-payment-refund-state.ts"
 
 const claimSourceLabelKey = {
   auto: "paymentDetail.reconciliation.source.auto",

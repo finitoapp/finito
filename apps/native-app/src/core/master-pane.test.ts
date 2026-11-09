@@ -25,5 +25,12 @@ describe("master pane (navigation/0002)", () => {
       false
     )
     expect(isDetailOf("/settings/items/abc", "/settings/items/abd")).toBe(false)
+    // The payment list keeps the payment marked while its refund screen is open.
+    expect(
+      isDetailOf("/activity/abc/refund", {
+        pathname: "/activity/[paymentId]",
+        params: { paymentId: "abc" },
+      })
+    ).toBe(true)
   })
 })

@@ -1,0 +1,50 @@
+# The refund screen (docs/plans/refund-flow.md): a cash payment with a tip
+# goes back whole, goods and tip, in one confirmation from the cash register,
+# recorded as two refunds. Finito-only until web's refund screen (its Phase 3).
+appId: ${APP_ID}
+tags: [activity]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/to-tip-step.yaml
+# 5.90 and a 10 % tip of 0.59.
+- tapOn: '${output.re(output.tv("settings.tips.percentages.value", { value: 10 }))}'
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- tapOn: ${output.t["paymentWait.detail"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.title"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["refund.dialog.method.label"]}
+    timeout: 15000
+# The whole payment is offered first, the tip included, back from the cash
+# register the money came into.
+- assertVisible: ${output.t["refund.page.choice.whole"]}
+- assertVisible: ${output.t["refund.page.choice.part"]}
+- assertVisible: ${output.t["refund.page.choice.tip"]}
+# Maestro reads a dollar sign as its own, so amounts match it with a
+# wildcard.
+- assertVisible: '${output.re(output.t["refund.page.choice.whole.tipIncluded"]).replace("\\{amount\\}", ".0\\.59")}'
+- tapOn: ${output.t["refund.dialog.method.cashRegister"]}
+- assertVisible: '${output.re(output.t["refund.outcome.cashRegister"]).replace("\\{amount\\}", ".6\\.49")}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      PATTERN: '${output.re(output.t["refund.dialog.confirm"]).replace("\\{amount\\}", ".6\\.49")}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.created"]}
+    timeout: 15000
+# Back on the payment: the goods and the tip are two refunds, nothing is left.
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.refunds.title"]}
+    timeout: 15000
+- assertVisible: '${output.re(output.t["paymentDetail.refunds.tip"])} · .*'
+- assertVisible: '${output.re(output.t["refund.state.full"].split("{amount}")[0])}.+'
+- assertNotVisible: ${output.t["paymentDetail.refunds.action"]}

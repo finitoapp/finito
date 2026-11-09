@@ -3,22 +3,21 @@ import {
   confirmPaymentPaidDespiteCancellation,
 } from "@payky/core/modules/payment/payment-actions"
 import type { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { router } from "expo-router"
 import { useState } from "react"
 import { useRequirePermission } from "../../core/use-access.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
-import { useToast } from "../../hooks/use-toast.ts"
-import { useTranslation } from "../../hooks/use-translation.ts"
 
 /**
  * The actions that resolve a payment's two collisions, as web's
  * `payment-detail.tsx` does: marking a canceled-but-funded payment paid is
  * `sell`, acknowledging an excess settlement is `refund` (access/0002).
- * `refund` is web's stub, as in `useBillCancellationCollisionActions`.
+ * `refund` opens the refund screen on a part of the payment, which starts
+ * on the money that came in on top (refund/0005); its route asks for
+ * `refund`.
  */
 export function usePaymentCollisionActions(paymentId: PaymentId) {
-  const { t } = useTranslation()
   const runToast = useRunToast()
-  const toast = useToast()
   const { require } = useRequirePermission()
   const [resolvePending, setResolvePending] = useState(false)
   const [excessResolvePending, setExcessResolvePending] = useState(false)
@@ -47,7 +46,10 @@ export function usePaymentCollisionActions(paymentId: PaymentId) {
   }
 
   const refund = () =>
-    toast.error(t("paymentDetail.collision.refund.comingSoon"))
+    router.push({
+      pathname: "/activity/[paymentId]/refund",
+      params: { paymentId, choice: "part" },
+    })
 
   return {
     resolvePending,

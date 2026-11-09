@@ -18,6 +18,7 @@ export type NativeRoutePath =
   | "/activity/stats"
   | "/activity/bills/:billId"
   | "/activity/:paymentId"
+  | "/activity/:paymentId/refund"
   | "/withdraw"
   | "/withdraw/new"
   | "/withdraw/:withdrawalId"
@@ -100,6 +101,10 @@ export const routeAccess = {
   "/activity/bills": "activity",
   "/activity/bills/:billId": "activity",
   "/activity/:paymentId": "activity",
+  // Like web's `_terminal/activity_/$paymentId_/refund`: every refund starts
+  // on this screen, so its route asks for `refund` (access/0002, 0003).
+  // `/activity/bills/:billId` stays above it: a bill's static segment wins.
+  "/activity/:paymentId/refund": "refund",
   // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
   "/activity/stats": "stats",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).

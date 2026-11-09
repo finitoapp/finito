@@ -67,11 +67,19 @@ tags: [eet]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["refund.page.choice.part"]}
+    timeout: 10000
+- tapOn: ${output.t["refund.page.choice.part"]}
 - tapOn: ${output.t["refund.dialog.mode.items"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: '${output.tv("refund.dialog.items.increase", { name: "Beer" })}'
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.50" })}'
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
@@ -83,14 +91,15 @@ tags: [eet]
     file: ../../subflows/eet-mock.yaml
     env:
       PATH: /__mock/eet/expect?amounts=250.00,-50.00
-# The rest is refunded and reversed.
-- extendedWaitUntil:
-    notVisible: ${output.re(output.t["refund.dialog.description"])}
-    timeout: 10000
+# The rest is refunded and reversed, the whole payment the screen starts on.
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      PATTERN: '${output.tv("refund.dialog.confirm", { amount: "CZK.200" })}'
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
@@ -102,9 +111,6 @@ tags: [eet]
     file: ../../subflows/eet-mock.yaml
     env:
       PATH: /__mock/eet/expect?amounts=250.00,-50.00,-200.00
-- extendedWaitUntil:
-    notVisible: ${output.re(output.t["refund.dialog.description"])}
-    timeout: 10000
 - assertNotVisible: ${output.t["paymentDetail.refunds.action"]}
 - extendedWaitUntil:
     visible:
