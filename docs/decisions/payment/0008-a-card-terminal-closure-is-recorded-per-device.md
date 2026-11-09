@@ -68,5 +68,5 @@ but does not close batches.
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > recordRestoredCardSwitchioClosure > records the same result once, whether it came back through the promise or after a restart`
 - `packages/core/src/modules/card-switchio-closure/card-switchio-closure-actions.test.ts > lastCardSwitchioClosurePerDeviceQuery > lists each device's latest closure with the device's name`
 - `apps/native-app/src/platform/switchio.test.ts > never hands a closure result to the payment's store or recovery`
-- `apps/native-app/src/platform/switchio-in-flight.test.ts > a SwitchioPay result is settled by one path (payment/0008) > leaves a closure's stored result to its promise while the closure is in flight`
-- `apps/native-app/src/platform/switchio-in-flight.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure result no promise in this runtime is waiting for`
+- `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > leaves a closure's stored result to its promise while the closure is in flight`
+- `apps/native-app/src/platform/switchio-restore.test.ts > a SwitchioPay result is settled by one path (payment/0008) > takes a stored closure result no promise in this runtime is waiting for`

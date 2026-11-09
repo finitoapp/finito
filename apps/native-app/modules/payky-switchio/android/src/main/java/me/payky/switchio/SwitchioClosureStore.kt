@@ -18,45 +18,53 @@ object SwitchioClosureStore {
 
   private const val PREFS = "payky_switchio_closure"
   private const val PENDING = "pending"
+  /** The account the closure was started in; null for one stored before it was kept. */
+  private const val ACCOUNT_ID = "accountId"
   private const val HAS_RESULT = "hasResult"
   private const val RESULT_CODE = "resultCode"
   private const val RESULT_JSON = "transactionResult"
 
-  class Result(val resultCode: Int, val transactionResult: String?)
+  class Result(val resultCode: Int, val transactionResult: String?, val accountId: String?)
 
   private fun prefs(context: Context) =
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
   /** Called before the terminal is launched. Replaces any earlier result. */
-  fun begin(context: Context) {
+  fun begin(context: Context, accountId: String) {
     prefs(context).edit()
       .putBoolean(PENDING, true)
+      .putString(ACCOUNT_ID, accountId)
       .remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
 
   /** Called with every closure activity result; synchronous on purpose. */
   fun save(context: Context, resultCode: Int, transactionResult: String?): Result {
-    prefs(context).edit()
+    val p = prefs(context)
+    p.edit()
       .remove(PENDING)
       .putBoolean(HAS_RESULT, true)
       .putInt(RESULT_CODE, resultCode)
       .putString(RESULT_JSON, transactionResult)
       .commit()
-    return Result(resultCode, transactionResult)
+    return Result(resultCode, transactionResult, p.getString(ACCOUNT_ID, null))
   }
 
   /** The stored result, or null when none is waiting. Does not clear it. */
   fun peek(context: Context): Result? {
     val p = prefs(context)
     if (!p.getBoolean(HAS_RESULT, false)) return null
-    return Result(p.getInt(RESULT_CODE, 0), p.getString(RESULT_JSON, null))
+    return Result(
+      p.getInt(RESULT_CODE, 0),
+      p.getString(RESULT_JSON, null),
+      p.getString(ACCOUNT_ID, null)
+    )
   }
 
   /** Forgets the stored result, or an attempt that never reached the terminal. */
   fun clear(context: Context) {
     prefs(context).edit()
-      .remove(PENDING).remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
+      .remove(PENDING).remove(ACCOUNT_ID).remove(HAS_RESULT).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
 }

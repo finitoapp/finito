@@ -18,6 +18,7 @@ import {
   type SwitchioTerminalDep,
 } from "@payky/core/switchio"
 import { NativeModule, requireOptionalNativeModule } from "expo"
+import { z } from "zod"
 
 /**
  * `modules/payky-switchio`: the SwitchioPay ECR API (v8) is driven entirely
@@ -31,22 +32,25 @@ declare class PaykySwitchioNativeModule extends NativeModule {
     amount: number,
     tipAmount: number,
     currencyCode: number,
-    invoiceNumber: string | null
+    invoiceNumber: string | null,
+    accountId: string
   ): Promise<unknown>
   peekStoredResult(): unknown
   acknowledgeResult(transactionId: string | null): void
-  close(): Promise<unknown>
+  close(accountId: string): Promise<unknown>
   peekStoredClosureResult(): unknown
   acknowledgeClosureResult(): void
   reversal(
     transactionId: string,
-    originalTransactionId: string
+    originalTransactionId: string,
+    accountId: string
   ): Promise<unknown>
   referralRefund(
     transactionId: string,
     amount: number,
     currencyCode: number,
-    refundId: string
+    refundId: string,
+    accountId: string
   ): Promise<unknown>
   lookupTransaction(transactionId: string): Promise<unknown>
   peekStoredRefundResult(): unknown
@@ -72,6 +76,38 @@ const isNotInstalledRejection = (error: unknown): boolean =>
   error !== null &&
   "code" in error &&
   error.code === SWITCHIO_NOT_INSTALLED_CODE
+
+/**
+ * The device's accounts as the restore path sees them. Each launch stores the
+ * account it was made in beside its result, because the result is
+ * device-wide and outlives a switch of the active account.
+ */
+export interface SwitchioResultOwner {
+  readonly activeAccountId: string
+  readonly deviceAccountIds: ReadonlySet<string>
+}
+
+/** Null for a result stored by a build that did not keep the account. */
+const StoredResultAccountSchema = z.object({
+  accountId: z.string().nullable().default(null),
+})
+
+/**
+ * What the restore path does with a stored result: take it in the active
+ * account it was launched in, leave it for its own account to take once that
+ * one is active again, or drop it when its account is gone from this device,
+ * since there is nowhere to record it. A result with no account came from an
+ * earlier build and is taken, as it was then.
+ */
+const claimStoredResult = (
+  stored: unknown,
+  owner: SwitchioResultOwner
+): "take" | "wait" | "orphaned" => {
+  const parsed = StoredResultAccountSchema.safeParse(stored)
+  const accountId = parsed.success ? parsed.data.accountId : null
+  if (accountId === null || accountId === owner.activeAccountId) return "take"
+  return owner.deviceAccountIds.has(accountId) ? "wait" : "orphaned"
+}
 
 const unreadable = () =>
   err(
@@ -115,8 +151,11 @@ const whileInFlight = async <T>(
  */
 export const createSwitchioTerminalDep = ({
   demo,
+  accountId,
 }: {
   readonly demo: boolean
+  /** The account a launch is made in, kept with its stored result. */
+  readonly accountId: string
 }): SwitchioTerminalDep => ({
   switchioTerminal: {
     pay: async (request) => {
@@ -140,7 +179,8 @@ export const createSwitchioTerminalDep = ({
             request.amount,
             request.tipAmount,
             request.currencyCode,
-            request.invoiceNumber ?? null
+            request.invoiceNumber ?? null,
+            accountId
           )
           // The attempt's marker (`unresolvedTransactionId`) was stored before
           // the terminal was launched, so acknowledging here cannot lose
@@ -173,18 +213,22 @@ export const createSwitchioTerminalDep = ({
  * app, if one is waiting. Clears it first, so a result is settled at most
  * once by this path, and leaves it to the promise of a payment still in
  * flight; `settleRestoredSwitchioCardPayment` is idempotent too.
+ * Only the active account takes it (`claimStoredResult`): one launched in
+ * another account of this device waits for that account, and one whose
+ * account is gone is cleared as unusable.
  */
-export const takeRestoredSwitchioResult = ():
-  | SwitchioNativePayResult
-  | "unusable"
-  | null => {
+export const takeRestoredSwitchioResult = (
+  owner: SwitchioResultOwner
+): SwitchioNativePayResult | "unusable" | null => {
   if (switchio === null || inFlight.payment) return null
   const stored = switchio.peekStoredResult()
   if (stored === null || stored === undefined) return null
+  const claim = claimStoredResult(stored, owner)
+  if (claim === "wait") return null
 
   const parsed = SwitchioNativePayResultSchema.safeParse(stored)
   switchio.acknowledgeResult(parsed.success ? parsed.data.transactionId : null)
-  return parsed.success ? parsed.data : "unusable"
+  return parsed.success && claim === "take" ? parsed.data : "unusable"
 }
 
 /**
@@ -195,8 +239,11 @@ export const takeRestoredSwitchioResult = ():
  */
 export const createSwitchioClosureDep = ({
   demo,
+  accountId,
 }: {
   readonly demo: boolean
+  /** The account a launch is made in, kept with its stored result. */
+  readonly accountId: string
 }): SwitchioClosureDep => ({
   switchioClosure: {
     close: async () => {
@@ -218,7 +265,7 @@ export const createSwitchioClosureDep = ({
       const module = switchio
       return whileInFlight("closure", async () => {
         try {
-          const raw = await module.close()
+          const raw = await module.close(accountId)
           // Recorded by the caller from this promise; the stored copy is only
           // for a promise lost with the process.
           module.acknowledgeClosureResult()
@@ -245,18 +292,22 @@ export const createSwitchioClosureDep = ({
  * The result of a closure whose promise was lost when Android killed the
  * app, if one is waiting. Clears it as it is taken, and leaves it to the
  * promise of a closure still in flight, so one result is recorded once.
+ * Only the active account takes it (`claimStoredResult`): one launched in
+ * another account of this device waits for that account, and one whose
+ * account is gone is cleared as unusable.
  */
-export const takeRestoredSwitchioClosureResult = ():
-  | SwitchioNativeClosureResult
-  | "unusable"
-  | null => {
+export const takeRestoredSwitchioClosureResult = (
+  owner: SwitchioResultOwner
+): SwitchioNativeClosureResult | "unusable" | null => {
   if (switchio === null || inFlight.closure) return null
   const stored = switchio.peekStoredClosureResult()
   if (stored === null || stored === undefined) return null
+  const claim = claimStoredResult(stored, owner)
+  if (claim === "wait") return null
 
   switchio.acknowledgeClosureResult()
   const parsed = SwitchioNativeClosureResultSchema.safeParse(stored)
-  return parsed.success ? parsed.data : "unusable"
+  return parsed.success && claim === "take" ? parsed.data : "unusable"
 }
 
 /**
@@ -328,8 +379,11 @@ const launchRefund = async ({
  */
 export const createSwitchioRefundDep = ({
   demo,
+  accountId,
 }: {
   readonly demo: boolean
+  /** The account a launch is made in, kept with its stored result. */
+  readonly accountId: string
 }): SwitchioRefundDep => ({
   switchioRefund: {
     reverse: (request) =>
@@ -337,7 +391,11 @@ export const createSwitchioRefundDep = ({
         demo,
         transactionId: request.transactionId,
         launch: (module) =>
-          module.reversal(request.transactionId, request.originalTransactionId),
+          module.reversal(
+            request.transactionId,
+            request.originalTransactionId,
+            accountId
+          ),
         interpret: interpretSwitchioReversalResult,
       }),
     referralRefund: (request) =>
@@ -349,7 +407,8 @@ export const createSwitchioRefundDep = ({
             request.transactionId,
             request.amount,
             request.currencyCode,
-            request.refundId
+            request.refundId,
+            accountId
           ),
         interpret: interpretSwitchioRefundResult,
       }),
@@ -380,18 +439,22 @@ export const createSwitchioRefundDep = ({
  * app, if one is waiting. Clears it as it is taken, and leaves it to the
  * promise of a refund still in flight; `settleRestoredCardSwitchioRefund` is
  * idempotent too.
+ * Only the active account takes it (`claimStoredResult`): one launched in
+ * another account of this device waits for that account, and one whose
+ * account is gone is cleared as unusable.
  */
-export const takeRestoredSwitchioRefundResult = ():
-  | SwitchioNativePayResult
-  | "unusable"
-  | null => {
+export const takeRestoredSwitchioRefundResult = (
+  owner: SwitchioResultOwner
+): SwitchioNativePayResult | "unusable" | null => {
   if (switchio === null || inFlight.refund) return null
   const stored = switchio.peekStoredRefundResult()
   if (stored === null || stored === undefined) return null
+  const claim = claimStoredResult(stored, owner)
+  if (claim === "wait") return null
 
   const parsed = SwitchioNativePayResultSchema.safeParse(stored)
   switchio.acknowledgeRefundResult(
     parsed.success ? parsed.data.transactionId : null
   )
-  return parsed.success ? parsed.data : "unusable"
+  return parsed.success && claim === "take" ? parsed.data : "unusable"
 }

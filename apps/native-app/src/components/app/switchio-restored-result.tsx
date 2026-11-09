@@ -10,6 +10,7 @@ import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { takeRestoredSwitchioResult } from "../../platform/switchio.ts"
+import { useLoadSwitchioResultOwner } from "./use-switchio-result-owner.ts"
 
 const restoredErrorKeys = {
   SwitchioPaymentFailed: "paymentWait.cardPaid.error.declined",
@@ -35,11 +36,12 @@ const restoredErrorKeys = {
 export function useSettleStoredSwitchioResult() {
   const appRun = useAppRun()
   const deviceId = useAtomValue(accountAtom).device.id
+  const loadOwner = useLoadSwitchioResultOwner()
   const toast = useToast()
   const { t } = useTranslation()
 
   return useCallback(async (): Promise<void> => {
-    const restored = takeRestoredSwitchioResult()
+    const restored = takeRestoredSwitchioResult(await loadOwner())
     if (restored === null) return
 
     if (restored === "unusable") {
@@ -58,7 +60,7 @@ export function useSettleStoredSwitchioResult() {
       nativeConsole.warn("[payment] Restored Switchio result", result.error)
       toast.error(t(restoredErrorKeys[result.error.type]))
     }
-  }, [appRun, deviceId, toast, t])
+  }, [appRun, deviceId, loadOwner, toast, t])
 }
 
 /**

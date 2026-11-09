@@ -80,9 +80,9 @@ class PaykySwitchioModule : Module() {
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
 
   /** Launches a reversal or a referral refund, its id stored before the terminal can act. */
-  private fun launchRefund(intent: Intent, transactionId: String, promise: Promise) {
+  private fun launchRefund(intent: Intent, transactionId: String, accountId: String, promise: Promise) {
     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-    SwitchioRefundStore.begin(context, transactionId)
+    SwitchioRefundStore.begin(context, transactionId, accountId)
     pendingRefundPromise = promise
     try {
       appContext.throwingActivity.startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)
@@ -100,7 +100,7 @@ class PaykySwitchioModule : Module() {
       paymentIntent("{}").resolveActivity(context.packageManager) != null
     }
 
-    AsyncFunction("pay") { transactionId: String, amount: Int, tipAmount: Int, currencyCode: Int, invoiceNumber: String?, promise: Promise ->
+    AsyncFunction("pay") { transactionId: String, amount: Int, tipAmount: Int, currencyCode: Int, invoiceNumber: String?, accountId: String, promise: Promise ->
       val data = JSONObject()
       data.put("transactionId", transactionId)
       data.put("amount", amount)
@@ -113,7 +113,7 @@ class PaykySwitchioModule : Module() {
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
       // Durable before the terminal can take the card.
-      SwitchioResultStore.begin(context, transactionId)
+      SwitchioResultStore.begin(context, transactionId, accountId)
       pendingPromise = promise
       try {
         appContext.throwingActivity.startActivityForResult(intent, SwitchioResultStore.REQUEST_CODE)
@@ -124,11 +124,11 @@ class PaykySwitchioModule : Module() {
       }
     }
 
-    AsyncFunction("close") { promise: Promise ->
+    AsyncFunction("close") { accountId: String, promise: Promise ->
       val intent = closureIntent()
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
-      SwitchioClosureStore.begin(context)
+      SwitchioClosureStore.begin(context, accountId)
       pendingClosurePromise = promise
       try {
         appContext.throwingActivity.startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)
@@ -139,7 +139,7 @@ class PaykySwitchioModule : Module() {
       }
     }
 
-    AsyncFunction("reversal") { transactionId: String, originalTransactionId: String, promise: Promise ->
+    AsyncFunction("reversal") { transactionId: String, originalTransactionId: String, accountId: String, promise: Promise ->
       // Never without the original: a reversal without it takes back the
       // terminal's last transaction, whatever that is (ECR 5.13).
       if (originalTransactionId.isEmpty()) {
@@ -148,11 +148,11 @@ class PaykySwitchioModule : Module() {
         val data = JSONObject()
         data.put("transactionId", transactionId)
         data.put("originalTransactionId", originalTransactionId)
-        launchRefund(dataIntent(URI_PATH_REVERSAL, data.toString()), transactionId, promise)
+        launchRefund(dataIntent(URI_PATH_REVERSAL, data.toString()), transactionId, accountId, promise)
       }
     }
 
-    AsyncFunction("referralRefund") { transactionId: String, amount: Int, currencyCode: Int, refundId: String, promise: Promise ->
+    AsyncFunction("referralRefund") { transactionId: String, amount: Int, currencyCode: Int, refundId: String, accountId: String, promise: Promise ->
       val data = JSONObject()
       data.put("transactionId", transactionId)
       data.put("amount", amount)
@@ -161,7 +161,7 @@ class PaykySwitchioModule : Module() {
       // not fit a JavaScript number, and never went through one.
       data.put("refundId", refundId)
 
-      launchRefund(dataIntent(URI_PATH_REFERRAL_REFUND, data.toString()), transactionId, promise)
+      launchRefund(dataIntent(URI_PATH_REFERRAL_REFUND, data.toString()), transactionId, accountId, promise)
     }
 
     AsyncFunction("lookupTransaction") { transactionId: String, promise: Promise ->
@@ -186,7 +186,8 @@ class PaykySwitchioModule : Module() {
       if (stored == null) null else mapOf(
         "transactionId" to stored.transactionId,
         "resultCode" to stored.resultCode,
-        "transactionResult" to stored.transactionResult
+        "transactionResult" to stored.transactionResult,
+        "accountId" to stored.accountId
       )
     }
 
@@ -199,7 +200,8 @@ class PaykySwitchioModule : Module() {
       val stored = SwitchioClosureStore.peek(context)
       if (stored == null) null else mapOf(
         "resultCode" to stored.resultCode,
-        "transactionResult" to stored.transactionResult
+        "transactionResult" to stored.transactionResult,
+        "accountId" to stored.accountId
       )
     }
 
@@ -213,7 +215,8 @@ class PaykySwitchioModule : Module() {
       if (stored == null) null else mapOf(
         "transactionId" to stored.transactionId,
         "resultCode" to stored.resultCode,
-        "transactionResult" to stored.transactionResult
+        "transactionResult" to stored.transactionResult,
+        "accountId" to stored.accountId
       )
     }
 

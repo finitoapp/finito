@@ -51,7 +51,7 @@ it("names the closure functions the same in JS and Kotlin", () => {
     expect(js).toContain(`${fn}()`)
     expect(module).toContain(`Function("${fn}")`)
   }
-  expect(js).toContain("close(): Promise<unknown>")
+  expect(js).toContain("close(accountId: string): Promise<unknown>")
   expect(module).toContain('AsyncFunction("close")')
 })
 
@@ -190,4 +190,24 @@ it("never hands a closure result to the payment's store or recovery", () => {
     js.indexOf("export const createSwitchioClosureDep")
   )
   expect(takeRestored).not.toContain("Closure")
+})
+
+it("keeps the account each launch was made in with its stored result", () => {
+  // The restore path takes a result only in that account (payment/0008).
+  for (const source of [store, closureStore, refundStore]) {
+    expect(source).toMatch(
+      /fun begin\(context: Context, [^)]*accountId: String\)/u
+    )
+    expect(source).toContain(".putString(ACCOUNT_ID, accountId)")
+    expect(source).toContain("p.getString(ACCOUNT_ID, null)")
+  }
+  for (const fn of [
+    "peekStoredResult",
+    "peekStoredClosureResult",
+    "peekStoredRefundResult",
+  ]) {
+    const start = module.indexOf(`Function("${fn}")`)
+    const peek = module.slice(start, module.indexOf("\n    }", start))
+    expect(peek).toContain('"accountId" to stored.accountId')
+  }
 })

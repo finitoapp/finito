@@ -21,20 +21,28 @@ object SwitchioRefundStore {
 
   private const val PREFS = "payky_switchio_refund"
   private const val PENDING_ID = "pendingTransactionId"
+  /** The account the attempt was made in; null for one stored before it was kept. */
+  private const val ACCOUNT_ID = "accountId"
   private const val RESULT_ID = "resultTransactionId"
   private const val RESULT_CODE = "resultCode"
   private const val RESULT_JSON = "transactionResult"
   private const val HAS_RESULT = "hasResult"
 
-  class Result(val transactionId: String?, val resultCode: Int, val transactionResult: String?)
+  class Result(
+    val transactionId: String?,
+    val resultCode: Int,
+    val transactionResult: String?,
+    val accountId: String?
+  )
 
   private fun prefs(context: Context) =
     context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
   /** Called before the terminal is launched. Replaces any earlier attempt. */
-  fun begin(context: Context, transactionId: String) {
+  fun begin(context: Context, transactionId: String, accountId: String) {
     prefs(context).edit()
       .putString(PENDING_ID, transactionId)
+      .putString(ACCOUNT_ID, accountId)
       .remove(HAS_RESULT).remove(RESULT_ID).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
@@ -49,7 +57,7 @@ object SwitchioRefundStore {
       .putInt(RESULT_CODE, resultCode)
       .putString(RESULT_JSON, transactionResult)
       .commit()
-    return Result(transactionId, resultCode, transactionResult)
+    return Result(transactionId, resultCode, transactionResult, p.getString(ACCOUNT_ID, null))
   }
 
   /** The stored result, or null when none is waiting. Does not clear it. */
@@ -59,14 +67,15 @@ object SwitchioRefundStore {
     return Result(
       p.getString(RESULT_ID, null),
       p.getInt(RESULT_CODE, 0),
-      p.getString(RESULT_JSON, null)
+      p.getString(RESULT_JSON, null),
+      p.getString(ACCOUNT_ID, null)
     )
   }
 
   /** Forgets a refund that never reached the terminal. */
   fun clearAttempt(context: Context) {
     prefs(context).edit()
-      .remove(PENDING_ID).remove(HAS_RESULT).remove(RESULT_ID).remove(RESULT_CODE).remove(RESULT_JSON)
+      .remove(PENDING_ID).remove(ACCOUNT_ID).remove(HAS_RESULT).remove(RESULT_ID).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
 
@@ -75,7 +84,7 @@ object SwitchioRefundStore {
     val stored = peek(context) ?: return
     if (stored.transactionId != transactionId) return
     prefs(context).edit()
-      .remove(PENDING_ID).remove(HAS_RESULT).remove(RESULT_ID).remove(RESULT_CODE).remove(RESULT_JSON)
+      .remove(PENDING_ID).remove(ACCOUNT_ID).remove(HAS_RESULT).remove(RESULT_ID).remove(RESULT_CODE).remove(RESULT_JSON)
       .commit()
   }
 }
