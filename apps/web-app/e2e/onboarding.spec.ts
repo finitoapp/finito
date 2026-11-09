@@ -1,3 +1,4 @@
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { expect, test } from "@playwright/test"
 import { verifyEvent } from "nostr-tools/pure"
 import { openRecoveryWords, readShownRecoveryWords } from "./support/access.ts"
@@ -604,6 +605,17 @@ for (const bankTransferEnabled of [false, true]) {
         "lightningAddress",
         "cashRegister",
       ] as const
+      // The settings list names Cashu by its wallet, Linky's.
+      const methodTitleKeys = {
+        iban: "settings.paymentAccounts.method.iban",
+        cardSwitchio: "settings.paymentAccounts.method.cardSwitchio",
+        qerkoTerminal: "settings.paymentAccounts.method.qerkoTerminal",
+        qerkoPayment: "settings.paymentAccounts.method.qerkoPayment",
+        spark: "settings.paymentAccounts.method.spark",
+        cashu: "settings.bitcoin.wallet.linky",
+        lightningAddress: "settings.paymentAccounts.method.lightningAddress",
+        cashRegister: "settings.paymentAccounts.method.cashRegister",
+      } as const satisfies Record<(typeof order)[number], TranslationKey>
       const defaultMethodRow = page.getByRole("listitem").filter({
         has: page.getByRole("switch", {
           name: translate(
@@ -618,15 +630,11 @@ for (const bankTransferEnabled of [false, true]) {
         translate("en", "settings.paymentAccounts.default")
       )
       await expect(page.getByRole("listitem")).toContainText(
-        order.map((method) =>
-          translate("en", `settings.paymentAccounts.method.${method}`)
-        )
+        order.map((method) => translate("en", methodTitleKeys[method]))
       )
       await reloadPage(page, "en", "settings.paymentAccounts.title")
       await expect(page.getByRole("listitem")).toContainText(
-        order.map((method) =>
-          translate("en", `settings.paymentAccounts.method.${method}`)
-        )
+        order.map((method) => translate("en", methodTitleKeys[method]))
       )
     })
   })
