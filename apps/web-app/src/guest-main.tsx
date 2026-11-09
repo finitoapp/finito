@@ -1,3 +1,5 @@
+import "@/guest-polyfills.ts"
+
 import { brandName, brandOfSelfPayHost } from "@payky/app-shared/brand"
 import { QueryClientProvider } from "@tanstack/react-query"
 import { StrictMode } from "react"
