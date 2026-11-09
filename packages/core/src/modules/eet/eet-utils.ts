@@ -62,6 +62,34 @@ export const createEetExtraSaleId = ({
 }): EetSaleId =>
   createIdFromString<"EetSale">(`eetSale:${paymentId}:extra:${extraFrom}`)
 
+/**
+ * What a refund's storno may reverse before the cap of what the payment's
+ * sales reported (eet/0011): the money the refund handed back. From the cash
+ * register that is the cash handed out (refund/0012), else the refund's
+ * amount, also for a cash refund an older version wrote without it. A tip
+ * refund reverses only a tip the sale reported: all it handed back when the
+ * sale reported the whole tip, nothing above the reported tip otherwise.
+ */
+export const deriveEetReversibleRefundAmount = ({
+  amount,
+  cashHandedAmount,
+  isTip,
+  reportedTipAmount,
+}: {
+  readonly amount: NonNegativeInteger
+  readonly cashHandedAmount: NonNegativeInteger | null
+  readonly isTip: boolean
+  /** The tip the refunded payment's sale reports, `null` if it never recorded one. */
+  readonly reportedTipAmount: NonNegativeInteger | null
+}): NonNegativeInteger => {
+  const handed = cashHandedAmount ?? amount
+  if (!isTip) return handed
+  const reportedTip = reportedTipAmount ?? 0
+  return NonNegativeInteger(
+    reportedTip >= amount ? handed : Math.min(handed, reportedTip)
+  )
+}
+
 export const createEetReversalId = (refundId: RefundId): EetReversalId =>
   createIdFromString<"EetReversal">(`eetReversal:${refundId}`)
 

@@ -102,6 +102,7 @@ import {
   cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,
   refund,
+  refundCashRegister,
   refundIndexes,
   refundLine,
 } from "../modules/refund/refund.ts"
@@ -177,6 +178,7 @@ export const AppSchema = {
   eetReversal,
   eetReversalConfirmation,
   refund,
+  refundCashRegister,
   refundLine,
   cardSwitchioRefundAttempt,
   qerkoTerminalRefundAttempt,

@@ -1,6 +1,7 @@
 import type { IndexesConfig } from "@evolu/common/local-first"
 
 import { z } from "zod"
+import { AccountId } from "../account/account-types.ts"
 import { DeviceId } from "../device/device-types.ts"
 import { PaymentId } from "../payment/payment-types.ts"
 import { PaymentLineId } from "../payment-line/payment-line-types.ts"
@@ -30,6 +31,21 @@ export const refund = {
   method: RefundMethodSchema,
   refundedAt: TimestampMsSchema,
   isTip: SqliteTrueSchema.nullable(),
+} as const
+
+/**
+ * The cash a refund from the cash register handed out of `accountId`
+ * (refund/0012), beside the `refund` row under its id. The refund keeps the
+ * exact amount it gives back, so a whole refund refunds the whole payment;
+ * this is that amount rounded to what the register can hand out, whole
+ * crowns for CZK, and what its account transaction and EET storno carry.
+ * Like `paymentCashRegister.receivedAmount` for a payment. A cash refund
+ * written by an older version has no row: it handed out its `amount`.
+ */
+export const refundCashRegister = {
+  id: RefundId,
+  accountId: AccountId,
+  handedAmount: NonNegativeIntegerSchema,
 } as const
 
 export const refundLine = {
@@ -146,6 +162,7 @@ export const refundIndexes = ((create) => [
 ]) satisfies IndexesConfig
 
 export type RefundRow = InferTable<typeof refund>
+export type RefundCashRegisterRow = InferTable<typeof refundCashRegister>
 export type RefundLineRow = InferTable<typeof refundLine>
 export type QerkoTerminalRefundAttemptRow = InferTable<
   typeof qerkoTerminalRefundAttempt

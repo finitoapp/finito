@@ -68,6 +68,7 @@ import {
   createEetExtraSaleId,
   createEetReversalId,
   createEetSaleId,
+  deriveEetReversibleRefundAmount,
   type EetExtraSaleDue,
   EetWarningsJson,
   eetBase64ToBytes,
@@ -737,6 +738,8 @@ export const createEetReversal =
       readonly id: RefundId
       readonly paymentId: PaymentId
       readonly amount: NonNegativeInteger
+      /** The cash handed out of the register, `null` for any other refund. */
+      readonly cashHandedAmount: NonNegativeInteger | null
       readonly isTip: typeof sqliteTrue | null
       readonly refundedAt: TimestampMs
       readonly saleId: EetSaleId
@@ -763,9 +766,12 @@ export const createEetReversal =
     const reportedAmount = sales
       .filter(({ unsupportedReason }) => unsupportedReason === null)
       .reduce((sum, paymentSale) => sum + paymentSale.amount, 0)
-    const reversibleAmount = isTipRefund(refund)
-      ? Math.min(refund.amount, sale.reportedTipAmount ?? 0)
-      : refund.amount
+    const reversibleAmount = deriveEetReversibleRefundAmount({
+      amount: refund.amount,
+      cashHandedAmount: refund.cashHandedAmount,
+      isTip: isTipRefund(refund),
+      reportedTipAmount: sale.reportedTipAmount,
+    })
     const amount = Math.min(reversibleAmount, reportedAmount - reversedAmount)
     if (amount <= 0) return ok(null)
 

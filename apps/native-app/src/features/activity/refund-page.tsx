@@ -46,7 +46,10 @@ import {
 import { chooseSwitchioRefundKind } from "@payky/core/modules/refund/refund-switchio-utils"
 import type { RefundMethod } from "@payky/core/modules/refund/refund-types"
 import type { RefundableLine } from "@payky/core/modules/refund/refund-utils"
-import type { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import type {
+  FiatCurrency,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue } from "jotai"
 import Minus from "lucide-react-native/icons/minus"
@@ -660,7 +663,10 @@ function RefundForm({
           <RefundOutcome
             choice={choice}
             method={method}
-            amount={money(refundAmount ?? choiceOption.amount)}
+            amount={refundAmount ?? choiceOption.amount}
+            tipAmount={choiceOption.tipAmount}
+            currency={payment.currency}
+            formatAmount={money}
             switchio={
               method === "cardSwitchio" &&
               choice === "whole" &&
@@ -849,11 +855,17 @@ function RefundOutcome({
   choice,
   method,
   amount,
+  tipAmount,
+  currency,
+  formatAmount,
   switchio,
 }: {
   readonly choice: RefundChoice
   readonly method: RefundMethod
-  readonly amount: string
+  readonly amount: NonNegativeInteger
+  readonly tipAmount: NonNegativeInteger
+  readonly currency: FiatCurrency
+  readonly formatAmount: (value: NonNegativeInteger) => string
   readonly switchio: {
     readonly deviceId: DeviceId
     readonly charged: NonNegativeInteger
@@ -894,6 +906,9 @@ function RefundOutcome({
     method,
     switchioRefundKind,
     amount,
+    tipAmount,
+    currency,
+    formatAmount,
   })
   return (
     <Text

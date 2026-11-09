@@ -905,6 +905,7 @@ const reverseRefund = async (
     paymentId,
     saleId,
     amount,
+    cashHandedAmount = null,
     isTip = null,
     refundId = createRowId<"Refund">(),
     deviceId = context.deviceId,
@@ -912,6 +913,7 @@ const reverseRefund = async (
     readonly paymentId: PaymentId
     readonly saleId: EetSaleId
     readonly amount: number
+    readonly cashHandedAmount?: number | null
     readonly isTip?: typeof sqliteTrue | null
     readonly refundId?: RefundId
     readonly deviceId?: DeviceId
@@ -924,6 +926,10 @@ const reverseRefund = async (
         id: refundId,
         paymentId,
         amount: NonNegativeInteger(amount),
+        cashHandedAmount:
+          cashHandedAmount === null
+            ? null
+            : NonNegativeInteger(cashHandedAmount),
         isTip,
         refundedAt: TimestampMs(context.clock.date.now().getTime()),
         saleId,
@@ -1107,6 +1113,92 @@ describe("createEetReversal", () => {
         isTip: sqliteTrue,
       })
     ).resolves.toBeNull()
+  })
+
+  test.each([
+    {
+      name: "rounded down, the goods carrying the rounding",
+      payment: { amount: 6_330, tipAmount: 580 },
+      goods: { amount: 5_750, handed: 5_720 },
+      reversed: [5_720, 580],
+    },
+    {
+      name: "rounded up, capped at what the sale reported",
+      payment: { amount: 6_370, tipAmount: 580 },
+      goods: { amount: 5_790, handed: 5_820 },
+      reversed: [5_820, 550],
+    },
+  ])(
+    "reverses the cash a whole refund from the cash register handed out, $name",
+    async ({ payment, goods, reversed }) => {
+      await using context = await createEetTestContext()
+      await configureEet(context)
+      const { paymentId, saleId } = await createSaleToReverse(context, {
+        amount: NonNegativeInteger(payment.amount),
+        tipAmount: NonNegativeInteger(payment.tipAmount),
+      })
+
+      await reverseRefund(context, {
+        paymentId,
+        saleId,
+        amount: goods.amount,
+        cashHandedAmount: goods.handed,
+      })
+      await reverseRefund(context, {
+        paymentId,
+        saleId,
+        amount: payment.tipAmount,
+        cashHandedAmount: payment.tipAmount,
+        isTip: sqliteTrue,
+      })
+
+      expect(
+        (await context.deps.evolu.loadQuery(allEetReversalsQuery))
+          .map(({ amount }) => amount ?? 0)
+          .sort((a, b) => b - a)
+      ).toEqual(reversed)
+    }
+  )
+
+  test("reverses the whole crowns a tip refund from the cash register handed out", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    const { paymentId, saleId } = await createSaleToReverse(context, {
+      tipAmount: NonNegativeInteger(580),
+    })
+
+    const reversalId = await reverseRefund(context, {
+      paymentId,
+      saleId,
+      amount: 580,
+      cashHandedAmount: 600,
+      isTip: sqliteTrue,
+    })
+
+    if (reversalId === null) throw new Error("Expected a reversal.")
+    await expect(
+      context.deps.evolu.loadQuery(eetReversalByIdQuery(reversalId))
+    ).resolves.toMatchObject([{ amount: 600 }])
+  })
+
+  test("reverses the amount of a cash refund recorded without the cash handed out", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    const { paymentId, saleId } = await createSaleToReverse(context, {
+      amount: NonNegativeInteger(5_790),
+    })
+
+    const reversalId = await reverseRefund(context, {
+      paymentId,
+      saleId,
+      amount: 5_790,
+      cashHandedAmount: null,
+    })
+
+    if (reversalId === null) throw new Error("Expected a reversal.")
+    await expect(
+      context.deps.evolu.loadQuery(eetReversalByIdQuery(reversalId))
+    ).resolves.toMatchObject([{ amount: 5_790 }])
   })
 
   test("caps later refunds at what the sale has left", async () => {

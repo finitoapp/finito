@@ -115,7 +115,7 @@ assertions.
   `select-eet-sandbox` (`CONFIRM`) is `selectEetSandbox`;
   `take-cash-payment` (`AMOUNT`) is `takeCashPayment`, leaving
   `output.paymentId`; `eet-pay-with-tip` is the refund tests' `payWithTip`
-  (5.90 + 10 %, 6.49 cash).
+  (5.90 + 10 %, 7 cash).
 - Optional env: `fill-input`/`fill-inline`/`clear-input` take `PLACEHOLDER`
   (an emptied input with one shows it as its text), `fill-input`/
   `fill-inline`/`tap-input` take `BUTTONS: "true"` for an inline field that

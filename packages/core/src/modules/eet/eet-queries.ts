@@ -483,11 +483,18 @@ export const eetRefundsToReverseQuery = createQuery((db) =>
     .leftJoin(paymentSalesConfirmation(db), (join) =>
       join.onRef("paymentSales.paymentId", "=", "refund.paymentId")
     )
+    // The cash a refund from the register handed out (refund/0012).
+    .leftJoin("refundCashRegister", (join) =>
+      join
+        .onRef("refundCashRegister.id", "=", "refund.id")
+        .on("refundCashRegister.isDeleted", "is not", sqliteTrue)
+    )
     .select([
       "refund.id",
       "refund.paymentId",
       "refund.deviceId",
       "refund.amount",
+      "refundCashRegister.handedAmount as cashHandedAmount",
       "refund.isTip",
       "refund.refundedAt",
       "eetSale.id as saleId",

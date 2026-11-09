@@ -381,6 +381,8 @@ export const csPayment = {
   "refund.outcome.card": "Peníze se vrátí na kartu, kterou zákazník platil.",
   "refund.outcome.qerkoPayment": "Qerko vrátí zákazníkovi celou platbu.",
   "refund.outcome.cashRegister": "Vydejte zákazníkovi {amount} z pokladny.",
+  "refund.outcome.cashRegisterRounded":
+    "Vydejte zákazníkovi {amount} z pokladny, zaokrouhleno na celé koruny.",
   "refund.outcome.outside": "Vrácení jen zaznamenáme, peníze vracíte jinde.",
   "refund.page.title": "Vrátit peníze",
   "refund.page.empty": "Z této platby už nejde nic vrátit.",

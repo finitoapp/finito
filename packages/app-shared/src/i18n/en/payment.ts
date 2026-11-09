@@ -392,6 +392,8 @@ export const enPayment = {
     "Qerko returns the whole payment to the customer.",
   "refund.outcome.cashRegister":
     "Hand the customer {amount} from the cash register.",
+  "refund.outcome.cashRegisterRounded":
+    "Hand the customer {amount} from the cash register, rounded to whole crowns.",
   "refund.outcome.outside":
     "We only record the refund; you give the money back elsewhere.",
   "refund.page.title": "Refund money",

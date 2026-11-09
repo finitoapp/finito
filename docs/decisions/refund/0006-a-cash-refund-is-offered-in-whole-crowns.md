@@ -1,6 +1,6 @@
 # 0006 A refund from the cash register is offered in whole crowns
 
-Status: accepted
+Status: superseded by refund/0012
 Date: 2026-10-02
 
 ## Context

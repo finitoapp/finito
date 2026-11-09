@@ -6,6 +6,7 @@ import { createQuery } from "../../evolu/schema.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
+import { createAccount } from "../account/account-actions.ts"
 import type { AccountId } from "../account/account-types.ts"
 import {
   addCatalogItemToBill,
@@ -25,6 +26,7 @@ import { createPaymentAccounts } from "../payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
+  type FiatCurrency,
   NonEmptyString255,
   NonNegativeInteger,
   PositiveInteger,
@@ -61,6 +63,22 @@ const accountTransactionsQuery = (accountId: AccountId) =>
       .orderBy("accountTransaction.createdAt")
   )
 
+/** The cash each refund of a payment handed out of the register (refund/0012). */
+const cashHandedQuery = (paymentId: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("refundCashRegister")
+      .innerJoin("refund", "refund.id", "refundCashRegister.id")
+      .select([
+        "refund.amount",
+        "refund.isTip",
+        "refundCashRegister.accountId",
+        "refundCashRegister.handedAmount",
+      ])
+      .where("refund.paymentId", "=", paymentId)
+      .orderBy("refund.isTip")
+  )
+
 const createRefundContext = async () => {
   const testEvolu = await createEvoluTest()
   const { evolu } = testEvolu
@@ -75,10 +93,12 @@ const createRefundContext = async () => {
     amount,
     billId = null,
     tipAmount = 0,
+    currency = "CZK",
   }: {
     readonly amount: number
     readonly billId?: BillId | null
     readonly tipAmount?: number
+    readonly currency?: FiatCurrency
   }): Promise<PaymentId> => {
     await using run = testCreateRun(deps)
     return await run.orThrow(
@@ -87,7 +107,7 @@ const createRefundContext = async () => {
         billId,
         tableId: null,
         amount: NonNegativeInteger(amount),
-        currency: "CZK",
+        currency,
         tipAmount: NonNegativeInteger(tipAmount),
         canceledAt: null,
         expiresAt: null,
@@ -96,13 +116,28 @@ const createRefundContext = async () => {
     )
   }
 
-  const settleInCash = async (paymentId: PaymentId, receivedAmount: number) => {
+  const settleInCash = async (
+    paymentId: PaymentId,
+    receivedAmount: number,
+    accountId: AccountId = accounts.cashRegisterAccountId
+  ) => {
     await using run = testCreateRun(deps)
     await run.orThrow(
       markPaymentPaidCash({
         paymentId,
-        accountId: accounts.cashRegisterAccountId,
+        accountId,
         receivedAmount: NonNegativeInteger(receivedAmount),
+      })
+    )
+  }
+
+  const createCashRegister = async (currency: FiatCurrency) => {
+    await using run = testCreateRun(deps)
+    return await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255(`Cash register ${currency}`),
+        cashRegister: { currency },
       })
     )
   }
@@ -164,6 +199,7 @@ const createRefundContext = async () => {
     createTestPayment,
     settleInCash,
     settleByTransfer,
+    createCashRegister,
     createBillOf,
     [Symbol.asyncDispose]: () => testEvolu[Symbol.asyncDispose](),
   }
@@ -263,6 +299,44 @@ describe("refundPayment", () => {
       error: { type: "RefundAmountInvalid", amount: 100, remainingAmount: 0 },
     })
   })
+
+  test.each([
+    { currency: "CZK", amount: 1_250, handed: 1_300 },
+    { currency: "CZK", amount: 1_249, handed: 1_200 },
+    { currency: "EUR", amount: 1_249, handed: 1_249 },
+  ] as const)(
+    "hands out $handed for a part of $amount $currency from the cash register",
+    async ({ currency, amount, handed }) => {
+      await using context = await createRefundContext()
+      const accountId =
+        currency === "CZK"
+          ? context.cashRegisterAccountId
+          : await context.createCashRegister(currency)
+      const paymentId = await context.createTestPayment({
+        amount: 6_300,
+        currency,
+      })
+      await context.settleInCash(paymentId, 6_300, accountId)
+
+      await expect(
+        refundOf(context, {
+          paymentId,
+          method: "cashRegister",
+          deviceId: null,
+          amount: NonNegativeInteger(amount),
+        })
+      ).resolves.toMatchObject({ ok: true })
+
+      await expect(
+        context.evolu.loadQuery(cashHandedQuery(paymentId))
+      ).resolves.toEqual([
+        { amount, isTip: null, accountId, handedAmount: handed },
+      ])
+      await expect(
+        context.evolu.loadQuery(accountTransactionsQuery(accountId))
+      ).resolves.toMatchObject([{ amount: 6_300 }, { amount: -handed }])
+    }
+  )
 
   test("returns a payment in parts outside Payky without moving any account", async () => {
     await using context = await createRefundContext()
@@ -645,6 +719,40 @@ describe("refunds of a payment with a tip", () => {
     ])
   })
 
+  test("hand out a tip refund from the cash register in whole crowns", async () => {
+    await using context = await createRefundContext()
+    const paymentId = await context.createTestPayment({
+      amount: 6_370,
+      tipAmount: 580,
+    })
+    await context.settleByTransfer(paymentId)
+
+    await expect(
+      refundTipOf(context, {
+        paymentId,
+        method: "cashRegister",
+        deviceId: null,
+      })
+    ).resolves.toMatchObject({ ok: true })
+
+    // The tip refund records the exact tip and hands out whole crowns.
+    await expect(
+      context.evolu.loadQuery(cashHandedQuery(paymentId))
+    ).resolves.toEqual([
+      {
+        amount: 580,
+        isTip: sqliteTrue,
+        accountId: context.cashRegisterAccountId,
+        handedAmount: 600,
+      },
+    ])
+    await expect(
+      context.evolu.loadQuery(
+        accountTransactionsQuery(context.cashRegisterAccountId)
+      )
+    ).resolves.toMatchObject([{ amount: -600 }])
+  })
+
   test("return the tip after all the goods", async () => {
     await using context = await createRefundContext()
     const paymentId = await context.createTestPayment({
@@ -750,6 +858,52 @@ describe("refundWholePayment", () => {
     )
     expect(transactions).toHaveLength(3)
   })
+
+  test.each([
+    { currency: "CZK", goods: 5_820, tip: 580 },
+    { currency: "EUR", goods: 5_790, tip: 580 },
+  ] as const)(
+    "hands a whole $currency payment out of the cash register, the sum rounded once",
+    async ({ currency, goods, tip }) => {
+      await using context = await createRefundContext()
+      const accountId =
+        currency === "CZK"
+          ? context.cashRegisterAccountId
+          : await context.createCashRegister(currency)
+      const paymentId = await context.createTestPayment({
+        amount: 6_370,
+        tipAmount: 580,
+        currency,
+      })
+      // EUR has no bank account here; its cash is exact, so it works the same.
+      if (currency === "CZK") await context.settleByTransfer(paymentId)
+      else await context.settleInCash(paymentId, 6_370, accountId)
+
+      await expect(
+        refundWholeOf(context, {
+          paymentId,
+          method: "cashRegister",
+          deviceId: null,
+        })
+      ).resolves.toMatchObject({ result: { ok: true }, batches: 1 })
+
+      // The records keep the exact goods and tip, so the whole payment is
+      // refunded; the customer is handed the sum rounded once.
+      await expect(
+        context.evolu.loadQuery(cashHandedQuery(paymentId))
+      ).resolves.toEqual([
+        { amount: 5_790, isTip: null, accountId, handedAmount: goods },
+        { amount: 580, isTip: sqliteTrue, accountId, handedAmount: tip },
+      ])
+      const refundTransactions = (
+        await context.evolu.loadQuery(accountTransactionsQuery(accountId))
+      ).filter(({ amount }) => amount !== null && amount < 0)
+      expect(refundTransactions.map(({ amount }) => amount)).toEqual(
+        expect.arrayContaining([-goods, -tip])
+      )
+      expect(refundTransactions).toHaveLength(2)
+    }
+  )
 
   test("a second run records nothing twice", async () => {
     await using context = await createRefundContext()

@@ -214,8 +214,13 @@ In cash with a received amount, the tip is what the cash brought above the
 goods rounded to whole crowns (see
 [`payment/0003`](decisions/payment/0003-a-cash-tip-is-what-the-goods-leave.md)). When there is such an excess, the refund dialog prefills it, capped
 at what is left. A refund of a CZK payment from the cash register is
-prefilled in whole crowns, never above what is left (see
-[`refund/0006`](decisions/refund/0006-a-cash-refund-is-offered-in-whole-crowns.md)).
+prefilled in whole crowns, never above what is left. The refund keeps the
+exact amount it returns, and a refund from the cash register records beside
+it the cash it hands out (`refundCashRegister.handedAmount`): that amount
+rounded to the whole crown, the goods and the tip of a whole refund rounded
+once as one sum. The cash register's transaction and the EET storno carry
+the cash handed out (see
+[`refund/0012`](decisions/refund/0012-a-cash-refund-hands-out-whole-crowns.md)).
 
 The tip is refunded on its own: `refundPaymentTip` returns the whole tip as
 a refund with `isTip` set, once per payment (its id is

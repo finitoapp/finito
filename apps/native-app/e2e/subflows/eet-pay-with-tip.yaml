@@ -1,4 +1,5 @@
-# eet.spec.ts's payWithTip: 5.90 with a 10% tip, paid with 6.49 in cash.
+# eet.spec.ts's payWithTip: 5.90 with a 10% tip, paid with 7 in cash: a whole-crown tip,
+# as cash hands out only whole crowns (refund/0012).
 # Leaves the payment's id in output.paymentId (read-ids; on the bridge page).
 appId: ${APP_ID}
 ---
@@ -17,7 +18,7 @@ appId: ${APP_ID}
     file: fill-input.yaml
     env:
       LABEL: ${output.t["paymentWait.cashPaid.received"]}
-      VALUE: "6.49"
+      VALUE: "7"
 - runFlow:
     when:
       platform: Android

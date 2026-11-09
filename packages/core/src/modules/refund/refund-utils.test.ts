@@ -7,6 +7,7 @@ import type { PaymentLineId } from "../payment-line/payment-line-types.ts"
 import { NonNegativeInteger, PositiveNumber } from "../shared/schema.ts"
 import {
   calculateRefundLineAmount,
+  deriveCashRefundHandedAmounts,
   deriveRefundableAmount,
   deriveRefundableLines,
   deriveRefundableTipAmount,
@@ -118,6 +119,29 @@ describe("deriveRefundableTipAmount", () => {
       })
     ).toBe(200)
   })
+})
+
+describe("deriveCashRefundHandedAmounts", () => {
+  test.each([
+    { goods: 5_790, tip: 580, currency: "CZK", handed: [5_820, 580] },
+    { goods: 5_750, tip: 580, currency: "CZK", handed: [5_720, 580] },
+    { goods: 5_790, tip: 0, currency: "CZK", handed: [5_800, 0] },
+    { goods: 5_749, tip: 0, currency: "CZK", handed: [5_700, 0] },
+    { goods: 0, tip: 580, currency: "CZK", handed: [0, 600] },
+    { goods: 7_900, tip: 2_000, currency: "CZK", handed: [7_900, 2_000] },
+    { goods: 10, tip: 520, currency: "CZK", handed: [0, 500] },
+    { goods: 5_790, tip: 580, currency: "EUR", handed: [5_790, 580] },
+  ] as const)(
+    "hands out $handed for $goods goods and a $tip tip in $currency",
+    ({ goods, tip, currency, handed }) => {
+      const result = deriveCashRefundHandedAmounts({
+        goodsAmount: NonNegativeInteger(goods),
+        tipAmount: NonNegativeInteger(tip),
+        currency,
+      })
+      expect([result.goods, result.tip]).toEqual(handed)
+    }
+  )
 })
 
 describe("deriveRefundPrefillAmount", () => {

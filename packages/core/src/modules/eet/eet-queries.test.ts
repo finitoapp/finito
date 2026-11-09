@@ -186,6 +186,7 @@ describe("unconfirmedEetReversalsQuery", () => {
             id: createRowId<"Refund">(),
             paymentId: sale.paymentId,
             amount: NonNegativeInteger(5_000),
+            cashHandedAmount: null,
             isTip: null,
             refundedAt: TimestampMs(context.clock.date.now().getTime()),
             saleId,
