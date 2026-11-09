@@ -45,6 +45,7 @@ const useAppRunDeps = () => {
   const evolu = useEvolu()
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  const demo = account.demo !== null
 
   return useCallback(() => {
     const dateDep = createDateDep()
@@ -63,14 +64,14 @@ const useAppRunDeps = () => {
       ...createYadioApiDep(),
       ...createQerkoApiDep({ posId: appEnv.VITE_PAYKY_QERKO_POS_ID }),
       uuid: { create: () => crypto.randomUUID() },
-      ...createSwitchioTerminalDep(),
+      ...createSwitchioTerminalDep({ demo }),
       ...createEetApiDep(
         { ...dateDep, ...fetchDep },
         { productionUrl: appEnv.VITE_PAYKY_EET_PRODUCTION_URL }
       ),
       ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS),
     }
-  }, [account.masterKey, console, deviceEvolu, evolu])
+  }, [account.masterKey, console, demo, deviceEvolu, evolu])
 }
 
 export const useAppRun = () => {

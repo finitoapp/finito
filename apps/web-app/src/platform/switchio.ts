@@ -42,9 +42,18 @@ const isNotInstalledRejection = (error: unknown): boolean =>
   "code" in error &&
   error.code === SWITCHIO_NOT_INSTALLED_CODE
 
-export const createSwitchioTerminalDep = (): SwitchioTerminalDep => ({
+/**
+ * Takes card payments through SwitchioPay. A demo account calls no outside
+ * service (demo-data/0001), so it never reaches the terminal, as in Finito.
+ */
+export const createSwitchioTerminalDep = ({
+  demo,
+}: {
+  readonly demo: boolean
+}): SwitchioTerminalDep => ({
   switchioTerminal: {
     pay: async (request) => {
+      if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
       if (!Capacitor.isNativePlatform()) {
         return err(
           createSwitchioUnavailableError({ reason: "notNativeRuntime" })
