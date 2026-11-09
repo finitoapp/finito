@@ -17,10 +17,11 @@ on owing 99 coffees nobody would serve.
 When staff reject an order whose bill is still open, its bill is discarded
 with it, and the table owes nothing for the order. The money that did arrive
 stays on the canceled bill, where staff return it. An order paid in full keeps
-its closed bill when rejected, as before. Rejecting an order not paid in full
-asks for `discard` besides `refund`, as discarding any bill does
-(`access/0010`). The bill is canceled before the order is marked rejected, so
-an app stopped in between leaves the order to reject again.
+its closed bill when rejected, as before, and so does a written order paid
+short, whose bill closes at what arrived (`menu-ordering/0004`). Rejecting an
+order not paid in full asks for `discard` besides `refund`, as discarding any
+bill does (`access/0010`). The bill is canceled before the order is marked
+rejected, so an app stopped in between leaves the order to reject again.
 
 ## Alternatives considered
 

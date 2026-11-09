@@ -10,7 +10,7 @@ was gone in 4 seconds. "Served" was the only thing staff could say about it,
 and it means handed over. The guest's page said "confirmed and paid" as soon as
 the money was matched, before anyone had seen the order. Staff had no way to
 turn an order down: the money was already paid, and Payky cannot send it back
-by itself (`payment-refund`).
+by itself (`refund/0001`).
 
 ## Decision
 
@@ -46,13 +46,13 @@ The till announces a new order for 30 seconds, or until staff open it.
 
 ## Consequences
 
-Relays see up to three versions of an order's confirmation and when each was
-published, so they can tell how long a kitchen takes. They still learn nothing
-about the table, the items or the staff (`menu-ordering/0003`). While the device
-that takes orders is offline, the guest sees an acceptance made on another
-device only once it is back. Staff who reject an order and skip the refund
-leave the guest's money with the business; the guest's page tells the guest to
-ask for it.
+Relays see a new version of an order's confirmation each time staff accept,
+serve or reject it, and when each was published, so they can tell how long a
+kitchen takes. They still learn nothing about the table, the items or the
+staff (`menu-ordering/0003`). While the device that takes orders is offline,
+the guest sees an acceptance made on another device only once it is back.
+Staff who reject an order and skip the refund leave the guest's money with the
+business; the guest's page tells the guest to ask for it.
 A rejected order not paid in full also discards its bill
 (`menu-ordering/0009`).
 Money that arrives for an order after it is rejected waits unmatched

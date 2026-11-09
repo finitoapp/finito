@@ -17,9 +17,9 @@ being prepared, as before. "Served" lists the orders served since the owner's
 hour, 4:00 unless the owner picks another one (`menu-ordering/0018`), the last
 served first. A served order shows its number, table, time, items and note,
 and whether it was paid in full, with no button to change it. Each item of a
-written order shows its tax rate and, while guests both order from the menu and
-write their orders, offers to remember it for the day or add it to the menu
-for good, as under "To serve" (`menu-ordering/0018`).
+written order shows its tax rate to a VAT payer and, while guests both order
+from the menu and write their orders, offers to remember it for the day or add
+it to the menu for good, as under "To serve" (`menu-ordering/0018`).
 
 ## Alternatives considered
 

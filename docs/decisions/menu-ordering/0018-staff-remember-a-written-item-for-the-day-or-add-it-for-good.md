@@ -59,8 +59,8 @@ lists an item remembered for the day, and an order from it is priced from that
 version, as `menu-ordering/0001` says. The same dish remembered from two orders
 is two catalog items. An item the owner deleted stays deleted when staff
 remember it again from the same order. A new hour applies to the items
-remembered after the owner picks it. Items added for good stay in the catalog
-until staff delete them or take them out of the menu.
+remembered after the owner picks it. Items added for good stay in the menu
+until staff delete them or take them out of it.
 
 ## Enforced by
 

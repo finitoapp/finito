@@ -46,11 +46,11 @@ unmatched for staff, and the device keeps looking for 7 days.
 
 ## Consequences
 
-An order shows in Activity like any bill and is reported to EET like any
-closed bill. Staff resolve a doubly paid order as any overpaid bill.
-Money for an order arriving while ordering is off waits unmatched
-(`menu-ordering/0008`), and so does money for an order staff rejected
-(`menu-ordering/0010`).
+An order shows in Activity like any bill, and its payments are reported to
+EET like any self-pay payment. Staff resolve a doubly paid order as any
+overpaid bill. Money for an order arriving while ordering is off waits
+unmatched (`menu-ordering/0008`), and so does money for an order staff
+rejected (`menu-ordering/0010`).
 
 ## Enforced by
 

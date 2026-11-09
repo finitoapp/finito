@@ -65,16 +65,18 @@ where it is specified; the specification wins over this page.
 - **Table** (`table`) — a table in the venue, with a seat count; a bill can be
   assigned to one, and the pos grid shows them.
 - **Menu** — the catalog items guests can order at the table: those put in
-  the menu (`catalogItem.inMenu`) and not sold out (`catalogItem.soldOut`),
+  the menu (`catalogItem.inMenu`, until `catalogItem.inMenuUntil` when set)
+  and not sold out (`catalogItem.soldOut`),
   by their public name. The device that takes orders publishes it
   (`docs/decisions/menu-ordering/0001`). Not the catalog, which staff sell
   from.
 - **Order** (`menu-order`) — what a guest ordered from the menu and paid. Once
   paid it is a bill of its own with a number of the day; staff mark it served.
   Not a bill line and not a payment.
-- **Written order** (`menuOrder.writtenAmount`) — an order whose one line is the
-  guest's own text, at the money that arrived, up to the amount the guest named
-  (`docs/decisions/menu-ordering/0004`). Stored like a manual amount, but not
+- **Written order** (`menuOrder.writtenAmount`) — an order of items in the
+  guest's own text, which the money that arrived fills in order, each up to the
+  amount the guest named (`docs/decisions/menu-ordering/0004`,
+  `docs/decisions/menu-ordering/0011`). Stored like a manual amount, but not
   one: a guest wrote it, not staff.
 
 ## Collecting money
