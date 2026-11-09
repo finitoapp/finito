@@ -50,6 +50,9 @@ reversal of a payment already taken back — by an attempt whose result was
 lost — is declined the same way, so before offering the refund Finito asks
 the terminal about the payment: when it reads as reversed (`isReversed`),
 its money is back, and the reversal is recorded instead of refunding twice.
+Tried on a terminal, a second reversal of a reversed payment was approved
+again without giving the money back twice (SwitchioPay lists one reversal),
+so either way the customer is paid once.
 
 ## Alternatives considered
 
