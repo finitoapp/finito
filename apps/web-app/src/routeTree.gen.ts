@@ -78,6 +78,7 @@ import { Route as TerminalSettingsPaymentAccountsQerkoPaymentRouteImport } from 
 import { Route as TerminalSettingsPaymentAccountsQerkoTerminalRouteImport } from './routes/_terminal.settings.payment-accounts.qerko-terminal'
 import { Route as TerminalSettingsPaymentAccountsSparkRouteImport } from './routes/_terminal.settings.payment-accounts.spark'
 import { Route as TerminalSettingsSecurityBackupRouteImport } from './routes/_terminal.settings.security_.backup'
+import { Route as TerminalActivityPaymentIdRefundsRefundIdRouteImport } from './routes/_terminal.activity_.$paymentId_.refunds.$refundId'
 import { Route as TerminalSettingsPaymentAccountsCashuIndexRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.index'
 import { Route as TerminalSettingsPaymentAccountsCashuMintsRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.mints'
 import { Route as TerminalSettingsPaymentAccountsCashuWithdrawalsRouteImport } from './routes/_terminal.settings.payment-accounts.cashu.withdrawals'
@@ -484,6 +485,12 @@ const TerminalSettingsSecurityBackupRoute =
     path: '/security/backup',
     getParentRoute: () => TerminalSettingsRoute,
   } as any)
+const TerminalActivityPaymentIdRefundsRefundIdRoute =
+  TerminalActivityPaymentIdRefundsRefundIdRouteImport.update({
+    id: '/activity_/$paymentId_/refunds/$refundId',
+    path: '/activity/$paymentId/refunds/$refundId',
+    getParentRoute: () => TerminalRoute,
+  } as any)
 const TerminalSettingsPaymentAccountsCashuIndexRoute =
   TerminalSettingsPaymentAccountsCashuIndexRouteImport.update({
     id: '/',
@@ -668,6 +675,7 @@ export interface FileRoutesByFullPath {
   '/settings/about/': typeof TerminalSettingsAboutIndexRoute
   '/settings/accounts/': typeof TerminalSettingsAccountsIndexRoute
   '/settings/payment-accounts/': typeof TerminalSettingsPaymentAccountsIndexRoute
+  '/activity/$paymentId/refunds/$refundId': typeof TerminalActivityPaymentIdRefundsRefundIdRoute
   '/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
@@ -744,6 +752,7 @@ export interface FileRoutesByTo {
   '/settings/about': typeof TerminalSettingsAboutIndexRoute
   '/settings/accounts': typeof TerminalSettingsAccountsIndexRoute
   '/settings/payment-accounts': typeof TerminalSettingsPaymentAccountsIndexRoute
+  '/activity/$paymentId/refunds/$refundId': typeof TerminalActivityPaymentIdRefundsRefundIdRoute
   '/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
   '/settings/payment-accounts/iban/moneta-plugin': typeof TerminalSettingsPaymentAccountsIbanMonetaPluginRoute
   '/settings/payment-accounts/spark/transactions': typeof TerminalSettingsPaymentAccountsSparkTransactionsRoute
@@ -831,6 +840,7 @@ export interface FileRoutesById {
   '/_terminal/settings/about/': typeof TerminalSettingsAboutIndexRoute
   '/_terminal/settings/accounts/': typeof TerminalSettingsAccountsIndexRoute
   '/_terminal/settings/payment-accounts/': typeof TerminalSettingsPaymentAccountsIndexRoute
+  '/_terminal/activity_/$paymentId_/refunds/$refundId': typeof TerminalActivityPaymentIdRefundsRefundIdRoute
   '/_terminal/settings/payment-accounts/cashu/mints': typeof TerminalSettingsPaymentAccountsCashuMintsRouteWithChildren
   '/_terminal/settings/payment-accounts/cashu/withdrawals': typeof TerminalSettingsPaymentAccountsCashuWithdrawalsRouteWithChildren
   '/_terminal/settings/payment-accounts/iban/fio-plugin': typeof TerminalSettingsPaymentAccountsIbanFioPluginRoute
@@ -921,6 +931,7 @@ export interface FileRouteTypes {
     | '/settings/about/'
     | '/settings/accounts/'
     | '/settings/payment-accounts/'
+    | '/activity/$paymentId/refunds/$refundId'
     | '/settings/payment-accounts/cashu/mints'
     | '/settings/payment-accounts/cashu/withdrawals'
     | '/settings/payment-accounts/iban/fio-plugin'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '/settings/about'
     | '/settings/accounts'
     | '/settings/payment-accounts'
+    | '/activity/$paymentId/refunds/$refundId'
     | '/settings/payment-accounts/iban/fio-plugin'
     | '/settings/payment-accounts/iban/moneta-plugin'
     | '/settings/payment-accounts/spark/transactions'
@@ -1083,6 +1095,7 @@ export interface FileRouteTypes {
     | '/_terminal/settings/about/'
     | '/_terminal/settings/accounts/'
     | '/_terminal/settings/payment-accounts/'
+    | '/_terminal/activity_/$paymentId_/refunds/$refundId'
     | '/_terminal/settings/payment-accounts/cashu/mints'
     | '/_terminal/settings/payment-accounts/cashu/withdrawals'
     | '/_terminal/settings/payment-accounts/iban/fio-plugin'
@@ -1595,6 +1608,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminalSettingsSecurityBackupRouteImport
       parentRoute: typeof TerminalSettingsRoute
     }
+    '/_terminal/activity_/$paymentId_/refunds/$refundId': {
+      id: '/_terminal/activity_/$paymentId_/refunds/$refundId'
+      path: '/activity/$paymentId/refunds/$refundId'
+      fullPath: '/activity/$paymentId/refunds/$refundId'
+      preLoaderRoute: typeof TerminalActivityPaymentIdRefundsRefundIdRouteImport
+      parentRoute: typeof TerminalRoute
+    }
     '/_terminal/settings/payment-accounts/cashu/': {
       id: '/_terminal/settings/payment-accounts/cashu/'
       path: '/'
@@ -2077,6 +2097,7 @@ interface TerminalRouteChildren {
   TerminalPaymentPaymentIdRoute: typeof TerminalPaymentPaymentIdRoute
   TerminalActivityPaymentIdRefundRoute: typeof TerminalActivityPaymentIdRefundRoute
   TerminalActivityBillsBillIdRoute: typeof TerminalActivityBillsBillIdRoute
+  TerminalActivityPaymentIdRefundsRefundIdRoute: typeof TerminalActivityPaymentIdRefundsRefundIdRoute
 }
 
 const TerminalRouteChildren: TerminalRouteChildren = {
@@ -2091,6 +2112,8 @@ const TerminalRouteChildren: TerminalRouteChildren = {
   TerminalPaymentPaymentIdRoute: TerminalPaymentPaymentIdRoute,
   TerminalActivityPaymentIdRefundRoute: TerminalActivityPaymentIdRefundRoute,
   TerminalActivityBillsBillIdRoute: TerminalActivityBillsBillIdRoute,
+  TerminalActivityPaymentIdRefundsRefundIdRoute:
+    TerminalActivityPaymentIdRefundsRefundIdRoute,
 }
 
 const TerminalRouteWithChildren = TerminalRoute._addFileChildren(
