@@ -38,3 +38,4 @@ drives the terminal, web in the Android app and the native app alike.
 
 - `packages/core/src/switchio.test.ts > interpretSwitchioPaymentResult > reports a failure result code with no payload as an unknown outcome, not a decline`
 - `packages/core/src/switchio.test.ts > interpretSwitchioPaymentResult > still reports a failure result code with the terminal's own answer as declined`
+- `packages/core/src/switchio.test.ts > every SwitchioPay answer (payment/0006) > reads %s the same for a payment, a closure and a refund`

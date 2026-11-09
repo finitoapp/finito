@@ -132,6 +132,62 @@ const optionalString = (value: string | null | undefined): string | null =>
   value === null || value === undefined || value === "" ? null : value
 
 /**
+ * What one SwitchioPay answer amounts to, whatever was asked: a payment, a
+ * closure or a refund. Each request turns it into its own error or value.
+ */
+type SwitchioOutcome<Parsed> =
+  | { readonly type: "unreadable" }
+  | {
+      readonly type: "failed"
+      readonly responseCode: string | null
+      readonly responseMessage: string | null
+    }
+  | { readonly type: "approved"; readonly parsed: Parsed }
+
+/**
+ * The rules every SwitchioPay answer is read by, kept in one place because
+ * the first and third are what payment/0006 rests on — an answer that does
+ * not say what the terminal did is never a failure, since staff would then
+ * charge the card again:
+ *
+ * 1. The failure code with no readable answer is unreadable. Android
+ *    answers 0 (RESULT_CANCELED) with no data when the terminal app
+ *    crashes, is killed, or, with the reorder-to-front flag, was already
+ *    running and takes the card after the result has come back.
+ * 2. Any other code but success is a failure.
+ * 3. Success with no readable answer is unreadable.
+ * 4. A `responseCode` other than `"OK"` is a failure, even on success.
+ * 5. Anything else is approved.
+ */
+const classifySwitchioOutcome = <
+  Parsed extends {
+    readonly responseCode?: string | null | undefined
+    readonly responseMessage?: string | null | undefined
+  },
+>(
+  resultCode: number,
+  parsed: Parsed | null
+): SwitchioOutcome<Parsed> => {
+  if (resultCode === switchioResultCode.failure && parsed === null) {
+    return { type: "unreadable" }
+  }
+  const failed = {
+    type: "failed",
+    responseCode: optionalString(parsed?.responseCode),
+    responseMessage: optionalString(parsed?.responseMessage),
+  } as const
+  if (resultCode !== switchioResultCode.success) return failed
+  if (parsed === null) return { type: "unreadable" }
+  if (failed.responseCode !== null && failed.responseCode !== "OK") {
+    return failed
+  }
+  return { type: "approved", parsed }
+}
+
+const unreadableResult = (resultCode: number, rawResult: string | null) =>
+  err(createSwitchioResultUnreadableError({ resultCode, rawResult }))
+
+/**
  * Turns one intent result into a domain Result.
  *
  * Success requires the documented success result code *and* a
@@ -159,57 +215,30 @@ export const interpretSwitchioPaymentResult = ({
     return result.success ? result.data : null
   })()
 
-  // Android answers 0 (RESULT_CANCELED) with no data when the terminal app
-  // crashes, is killed, or, with the reorder-to-front flag, was already
-  // running and takes the card after the result has come back. Without the
-  // terminal's own words that is not a decline: the card may be charged.
-  if (resultCode === switchioResultCode.failure && parsed === null) {
-    return err(
-      createSwitchioResultUnreadableError({
-        resultCode,
-        rawResult: transactionResult,
-      })
-    )
+  const outcome = classifySwitchioOutcome(resultCode, parsed)
+  if (outcome.type === "unreadable") {
+    return unreadableResult(resultCode, transactionResult)
   }
-
-  if (resultCode !== switchioResultCode.success) {
+  if (outcome.type === "failed") {
     return err(
       createSwitchioPaymentFailedError({
         resultCode,
-        responseCode: optionalString(parsed?.responseCode),
-        responseMessage: optionalString(parsed?.responseMessage),
+        responseCode: outcome.responseCode,
+        responseMessage: outcome.responseMessage,
       })
     )
   }
 
-  if (parsed === null) {
-    return err(
-      createSwitchioResultUnreadableError({
-        resultCode,
-        rawResult: transactionResult,
-      })
-    )
-  }
-
-  const responseCode = optionalString(parsed.responseCode)
-  if (responseCode !== null && responseCode !== "OK") {
-    return err(
-      createSwitchioPaymentFailedError({
-        resultCode,
-        responseCode,
-        responseMessage: optionalString(parsed.responseMessage),
-      })
-    )
-  }
-
+  const approved = outcome.parsed
   return ok({
-    responseCode,
-    authCode: optionalString(parsed.authCode),
-    sequenceNumber: optionalString(parsed.sequenceNumber),
-    maskedPan: optionalString(parsed.pan),
-    cardLabel: optionalString(parsed.appLabel) ?? optionalString(parsed.brand),
-    terminalId: optionalString(parsed.terminalIdAcquirer),
-    terminalDateTime: optionalString(parsed.dateTimeTerminal),
+    responseCode: optionalString(approved.responseCode),
+    authCode: optionalString(approved.authCode),
+    sequenceNumber: optionalString(approved.sequenceNumber),
+    maskedPan: optionalString(approved.pan),
+    cardLabel:
+      optionalString(approved.appLabel) ?? optionalString(approved.brand),
+    terminalId: optionalString(approved.terminalIdAcquirer),
+    terminalDateTime: optionalString(approved.dateTimeTerminal),
     refundId: readRawRefundId(transactionResult),
   })
 }
@@ -346,49 +375,32 @@ export const interpretSwitchioClosureResult = ({
     return result.success ? result.data : null
   })()
 
-  const unreadable = err(
-    createSwitchioResultUnreadableError({
-      resultCode,
-      rawResult: transactionResult,
-    })
-  )
-
-  if (resultCode === switchioResultCode.failure && parsed === null) {
-    return unreadable
+  const outcome = classifySwitchioOutcome(resultCode, parsed)
+  if (outcome.type === "unreadable") {
+    return unreadableResult(resultCode, transactionResult)
   }
-
-  if (resultCode !== switchioResultCode.success) {
+  if (outcome.type === "failed") {
     return err(
       createSwitchioClosureFailedError({
         resultCode,
-        responseCode: optionalString(parsed?.responseCode),
-        responseMessage: optionalString(parsed?.responseMessage),
+        responseCode: outcome.responseCode,
+        responseMessage: outcome.responseMessage,
         busy: resultCode === switchioResultCode.terminalBusy,
       })
     )
   }
 
-  if (parsed === null) return unreadable
-
-  const responseCode = optionalString(parsed.responseCode)
-  if (responseCode !== null && responseCode !== "OK") {
-    return err(
-      createSwitchioClosureFailedError({
-        resultCode,
-        responseCode,
-        responseMessage: optionalString(parsed.responseMessage),
-        busy: false,
-      })
-    )
+  // The batch may well be closed, but without its totals there is nothing
+  // to keep.
+  const totals = outcome.parsed.batchTotals
+  if (totals === null || totals === undefined) {
+    return unreadableResult(resultCode, transactionResult)
   }
-
-  const totals = parsed.batchTotals
-  if (totals === null || totals === undefined) return unreadable
 
   return ok({
     ...totals,
-    terminalDateTime: optionalString(parsed.dateTimeTerminal),
-    responseMessage: optionalString(parsed.responseMessage),
+    terminalDateTime: optionalString(outcome.parsed.dateTimeTerminal),
+    responseMessage: optionalString(outcome.parsed.responseMessage),
   })
 }
 
@@ -507,12 +519,6 @@ export const interpretSwitchioRefundResult = ({
   readonly transactionResult: string | null
 }): Result<SwitchioCardRefundResult, SwitchioRefundError> => {
   const parsed = parseRefundResult(transactionResult)
-  const unreadable = err(
-    createSwitchioResultUnreadableError({
-      resultCode,
-      rawResult: transactionResult,
-    })
-  )
 
   if (
     resultCode === switchioResultCode.terminalBusy ||
@@ -520,31 +526,21 @@ export const interpretSwitchioRefundResult = ({
   ) {
     return err(createSwitchioRefundNotStartedError({ resultCode }))
   }
-  if (resultCode === switchioResultCode.failure && parsed === null) {
-    return unreadable
-  }
-  if (resultCode !== switchioResultCode.success) {
-    return err(
-      createSwitchioRefundFailedError({
-        resultCode,
-        responseCode: optionalString(parsed?.responseCode),
-        responseMessage: optionalString(parsed?.responseMessage),
-      })
-    )
-  }
-  if (parsed === null) return unreadable
 
-  const responseCode = optionalString(parsed.responseCode)
-  if (responseCode !== null && responseCode !== "OK") {
+  const outcome = classifySwitchioOutcome(resultCode, parsed)
+  if (outcome.type === "unreadable") {
+    return unreadableResult(resultCode, transactionResult)
+  }
+  if (outcome.type === "failed") {
     return err(
       createSwitchioRefundFailedError({
         resultCode,
-        responseCode,
-        responseMessage: optionalString(parsed.responseMessage),
+        responseCode: outcome.responseCode,
+        responseMessage: outcome.responseMessage,
       })
     )
   }
-  return ok(toCardRefundResult(parsed))
+  return ok(toCardRefundResult(outcome.parsed))
 }
 
 /**
