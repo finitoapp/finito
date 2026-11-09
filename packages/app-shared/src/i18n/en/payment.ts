@@ -393,6 +393,27 @@ export const enPayment = {
   "refund.dialog.method.qerkoTerminalTid": "Back to the card on terminal {tid}",
   "refund.dialog.method.cardSwitchio": "Back to the card in SwitchioPay",
   "refund.switchio.hint": "The money goes back to the card that paid.",
+  "refund.outcome.reversal":
+    "The terminal takes the whole payment back; the card is not needed.",
+  "refund.outcome.card":
+    "The money goes back to the card the customer paid with.",
+  "refund.outcome.qerkoPayment":
+    "Qerko returns the whole payment to the customer.",
+  "refund.outcome.cashRegister":
+    "Hand the customer {amount} from the cash register.",
+  "refund.outcome.outside":
+    "We only record the refund; you give the money back elsewhere.",
+  "refund.page.title": "Refund money",
+  "refund.page.empty": "Nothing of this payment can be refunded.",
+  "refund.page.choice.whole": "The whole payment",
+  "refund.page.choice.whole.tipIncluded": "{amount} tip included",
+  "refund.page.choice.part": "Part",
+  "refund.page.choice.part.left": "{amount} left",
+  "refund.page.choice.tip": "Only the tip",
+  "refund.page.amount.label": "How much",
+  "refund.page.method.qerkoPayment": "Back through Qerko",
+  "refund.page.qerko.done": "The money went back to the card.",
+  "refund.page.switchio.waiting": "Finish the refund in SwitchioPay.",
   "refund.switchio.done": "The money went back to the card.",
   "refund.switchio.pending": "Refunding to the card in SwitchioPay",
   "refund.switchio.pendingElsewhere":

@@ -52,6 +52,12 @@ export const refundLine = {
  * checking; `failed` is a definite no, kept so the screen can say so. The
  * goods lines of the refund wait here as `linesJson`, to be written beside
  * the refund when it is approved.
+ *
+ * `tipAmount` is the tip a refund of the whole payment returns beside the
+ * goods, written as the tip's own refund (refund/0004). The column came
+ * later: an older version settling such an attempt writes only the goods
+ * and takes the attempt away, so the settled row keeps `tipAmount` and
+ * `repairQerkoTerminalTipRefunds` writes the tip it left out.
  */
 export const qerkoTerminalRefundAttempt = {
   id: RefundId,
@@ -60,7 +66,10 @@ export const qerkoTerminalRefundAttempt = {
   /** Qerko's UUID for this attempt, stored before the request leaves. */
   transactionId: NonEmptyString255Schema,
   terminalId: NonEmptyString255Schema,
+  /** The goods, or the tip when `isTip`. */
   amount: NonNegativeIntegerSchema,
+  /** The tip a refund of the whole payment returns with the goods. */
+  tipAmount: NonNegativeIntegerSchema.nullable(),
   isTip: SqliteTrueSchema.nullable(),
   linesJson: NonEmptyStringSchema.nullable(),
   status: z.enum(["pending", "failed", "unknown"]),

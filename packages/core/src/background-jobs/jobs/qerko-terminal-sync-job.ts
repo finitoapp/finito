@@ -2,8 +2,14 @@ import { ok, type Run } from "@evolu/common"
 import { syncQerkoTerminalPayment } from "../../modules/payment/payment-qerko-actions.ts"
 import { pendingQerkoTerminalPaymentsQuery } from "../../modules/payment/payment-queries.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
-import { syncQerkoTerminalRefund } from "../../modules/refund/refund-qerko-actions.ts"
-import { pendingQerkoTerminalRefundAttemptsQuery } from "../../modules/refund/refund-queries.ts"
+import {
+  repairQerkoTerminalTipRefunds,
+  syncQerkoTerminalRefund,
+} from "../../modules/refund/refund-qerko-actions.ts"
+import {
+  pendingQerkoTerminalRefundAttemptsQuery,
+  qerkoTerminalRefundsMissingTipQuery,
+} from "../../modules/refund/refund-queries.ts"
 import type { RefundId } from "../../modules/refund/refund-types.ts"
 import type {
   AppBackgroundJob,
@@ -42,6 +48,10 @@ interface TrackedAttempt {
  * every write `syncQerkoTerminalPayment` makes is idempotent, which is what
  * lets this run beside the payment screen's own polling and on several
  * devices at once.
+ *
+ * It also writes the tip an older version left out when it settled a refund
+ * of a whole payment (`repairQerkoTerminalTipRefunds`), whenever one shows
+ * up, since that settlement may happen on any device.
  */
 export const createQerkoTerminalSyncJob =
   ({
@@ -87,6 +97,9 @@ class QerkoTerminalSync {
       evolu.subscribeQuery(pendingQerkoTerminalRefundAttemptsQuery)(() => {
         this.queueReconcile()
       }),
+      evolu.subscribeQuery(qerkoTerminalRefundsMissingTipQuery)(() => {
+        this.queueTipRepair()
+      }),
       connectivity.onOnline(() => {
         this.pollAllNow()
       }),
@@ -95,6 +108,7 @@ class QerkoTerminalSync {
 
   start(): void {
     this.queueReconcile()
+    this.queueTipRepair()
   }
 
   async dispose(): Promise<void> {
@@ -110,6 +124,17 @@ class QerkoTerminalSync {
 
   private queueReconcile(): void {
     this.queue.enqueue("reconcile", () => this.reconcile())
+  }
+
+  private queueTipRepair(): void {
+    this.queue.enqueue("tipRepair", async () => {
+      const repaired = await this.run.ok(repairQerkoTerminalTipRefunds())
+      if (repaired > 0) {
+        this.run.deps.console.info("Wrote the tip of a whole Qerko refund.", {
+          repaired,
+        })
+      }
+    })
   }
 
   /** Starts watching new pending attempts and forgets the ones that ended. */
