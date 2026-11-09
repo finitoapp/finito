@@ -126,12 +126,10 @@ it("is told by useAppRun whether the active account is a demo", () => {
     new URL("../hooks/use-app-run.ts", import.meta.url),
     "utf8"
   )
+  expect(useAppRun).toContain("const demo = account.demo !== null")
   for (const dep of ["Terminal", "Closure", "Refund"]) {
     expect(useAppRun).toMatch(
-      new RegExp(
-        `createSwitchio${dep}Dep\\(\\{\\s*demo: account\\.demo !== null`,
-        "u"
-      )
+      new RegExp(`createSwitchio${dep}Dep\\(\\{\\s*demo,`, "u")
     )
   }
 })
