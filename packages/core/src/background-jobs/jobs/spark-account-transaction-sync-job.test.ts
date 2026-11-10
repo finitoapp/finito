@@ -323,6 +323,7 @@ describe("spark account transaction sync job", () => {
     ])
     const upsertSpy = vi.spyOn(evolu, "upsert")
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -393,6 +394,7 @@ describe("spark account transaction sync job", () => {
     const wallet = new FakeSparkWallet([])
     const clock = createTestDateDep(testFixedDate)
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...clock,
@@ -455,6 +457,7 @@ describe("spark account transaction sync job", () => {
     )
     const wallet = new FakeSparkWallet([])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(testFixedDate),
@@ -514,6 +517,7 @@ describe("spark account transaction sync job", () => {
     const transferLocks: string[] = []
     const console = testCreateConsole()
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console,
       ...evoluTestDeps(evolu),
       ...createTestDateDep(testFixedDate),
@@ -598,6 +602,7 @@ describe("spark account transaction sync job", () => {
       )
       const upsertSpy = vi.spyOn(evolu, "upsert")
       await using jobRun = testCreateRun({
+        deviceId: createRowId<"Device">(),
         console,
         ...evoluTestDeps(evolu),
         ...createTestDateDep(testFixedDate),
@@ -714,6 +719,7 @@ describe("spark account transaction sync job", () => {
       }),
     ])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -771,6 +777,7 @@ describe("spark account transaction sync job", () => {
     ])
     {
       await using jobRun = testCreateRun({
+        deviceId: createRowId<"Device">(),
         console: testCreateConsole(),
         ...evoluTestDeps(evolu),
         ...createTestDateDep(),
@@ -838,6 +845,7 @@ describe("spark account transaction sync job", () => {
       }),
     ])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -898,6 +906,7 @@ describe("spark account transaction sync job", () => {
     ])
     let initializationAttempts = 0
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -948,6 +957,7 @@ describe("spark account transaction sync job", () => {
     )
     let initializationAttempts = 0
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -994,6 +1004,7 @@ describe("spark account transaction sync job", () => {
     )
     let initializationAttempts = 0
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -1044,6 +1055,7 @@ describe("spark account transaction sync job", () => {
       }),
     ])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -1105,6 +1117,7 @@ describe("spark account transaction sync job", () => {
       }),
     ])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       console: testCreateConsole(),
       ...evoluTestDeps(evolu),
       ...createTestDateDep(),
@@ -1160,6 +1173,7 @@ describe("spark account transaction sync job", () => {
       createSelfPayTransfer(invoice, context.clock.date.now()),
     ])
     await using jobRun = testCreateRun({
+      deviceId: createRowId<"Device">(),
       ...context.deps,
       fetch: unimplementedFetch,
       onError: (error: unknown) => {
@@ -1206,6 +1220,7 @@ describe("spark account transaction sync job", () => {
     await using run = testCreateRun(context.deps)
     {
       await using jobRun = testCreateRun({
+        deviceId: createRowId<"Device">(),
         ...context.deps,
         fetch: unimplementedFetch,
         onError: (error: unknown) => {
@@ -1318,6 +1333,7 @@ describe("spark account transaction sync job, withdrawals", () => {
     const wallet = new FakeSparkWallet(transfers)
     const start = async () => {
       const jobRun = testCreateRun({
+        deviceId: createRowId<"Device">(),
         console: testCreateConsole(),
         ...evoluTestDeps(evolu),
         ...createTestDateDep(),

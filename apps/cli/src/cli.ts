@@ -13,7 +13,9 @@ import {
   type DateDep,
   type EvoluOwnerDep,
   type FetchDep,
+  type TableSelfPayRootDep,
 } from "@payky/core/deps"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import {
   createYadioApiDep,
   type YadioApiDep,
@@ -32,7 +34,7 @@ import { registerBackgroundJobsCommand } from "./cli-background-jobs.ts"
 import { registerBillsCommand } from "./cli-bills.ts"
 import { registerCatalogItemsCommand } from "./cli-catalog-items.ts"
 import { cliEnv } from "./cli-env.ts"
-import { createCliEvolu } from "./cli-evolu.ts"
+import { type CliDataDirDep, createCliEvoluFromEnv } from "./cli-evolu.ts"
 import { registerFioPluginsCommand } from "./cli-fio-plugins.ts"
 import { registerMonetaPluginsCommand } from "./cli-moneta-plugins.ts"
 import { registerPaymentNumberSeriesCommand } from "./cli-payment-number-series.ts"
@@ -56,6 +58,8 @@ const commands: ((
     AiModelDep &
     FetchDep &
     SparkWalletDep &
+    CliDataDirDep &
+    Partial<TableSelfPayRootDep> &
     YadioApiDep &
     LockManagerDep
 >)[] = [
@@ -85,8 +89,8 @@ const main = async () => {
   }
   navigatorWithLocks.locks ??= createInProcessLockManager()
 
-  await using evoluCli = await createCliEvolu()
-  const { evolu } = evoluCli
+  await using evoluCli = await createCliEvoluFromEnv()
+  const { evolu, tableSelfPayRoot, dataDir } = evoluCli
   const evoluOwner = evolu.appOwner
   const console = createConsole({
     level: "debug",
@@ -101,6 +105,10 @@ const main = async () => {
     ...createFetchDep(),
     ...createSparkWalletDep(),
     ...createYadioApiDep(),
+    tableSelfPayRoot,
+    selfPayDefaultRelays: cliEnv.PAYKY_SELF_PAY_RELAYS,
+    nostrRelayClient: createNostrRelayClient(),
+    dataDir,
     ...createAiModelDep({
       baseURL: cliEnv.PAYKY_AI_BASE_URL,
       ownerId: evoluOwner.id,

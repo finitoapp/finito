@@ -58,12 +58,15 @@ describe("background job groups", () => {
     expect(cliBackgroundJobs).toContain(startMonetaAccountTransactionSyncJob)
   })
 
-  test("keeps EET reporting out of the CLI, which has no terminal device", () => {
-    expect(cliBackgroundJobs).not.toContain(startEetReportingJob)
-  })
-
-  test("keeps the Qerko job out of the CLI, which has no terminal device", () => {
-    expect(cliBackgroundJobs).not.toContain(startQerkoTerminalSyncJob)
+  test("runs every other job of a native device in the CLI, EET reporting and Qerko's terminal included", () => {
+    expect(new Set([...bankBackgroundJobs, ...appBackgroundJobs])).toEqual(
+      new Set([
+        ...cliBackgroundJobs,
+        startRecoveryBackupReminderJob,
+        startQerkoPaymentConnectionJob,
+        startQerkoPaymentSyncJob,
+      ])
+    )
   })
 
   test("keeps the backup reminder out of the CLI, which has no device database or screen", () => {

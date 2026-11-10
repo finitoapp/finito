@@ -1,5 +1,6 @@
 import type {
   AppBackgroundJob,
+  AppDeviceBackgroundJob,
   BackgroundJob,
   CashuBackgroundJob,
 } from "./background-job-types.ts"
@@ -35,7 +36,12 @@ export const bankBackgroundJobs = [
 export const cliBackgroundJobs = [
   ...bankBackgroundJobs,
   startSparkAccountTransactionSyncJob,
-] satisfies ReadonlyArray<BackgroundJob>
+  startEetReportingJob,
+  startQerkoTerminalSyncJob,
+  startLightningAddressVerifyJob,
+  startTableSelfPayPublishingJob,
+  startSelfPayPointerJob,
+] satisfies ReadonlyArray<AppBackgroundJob>
 
 /**
  * The app's jobs, the same in a native runtime and in a browser or PWA. The
@@ -44,7 +50,7 @@ export const cliBackgroundJobs = [
  * both, Qerko payments' connection and sync included, and so do the wallets
  * behind Lightning addresses.
  */
-export const appBackgroundJobs = [
+export const appBackgroundJobs: ReadonlyArray<AppDeviceBackgroundJob> = [
   startSparkAccountTransactionSyncJob,
   startEetReportingJob,
   startQerkoTerminalSyncJob,
@@ -54,7 +60,7 @@ export const appBackgroundJobs = [
   startRecoveryBackupReminderJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
-] satisfies ReadonlyArray<AppBackgroundJob>
+]
 
 /**
  * The shared Cashu wallet's job, on native and browser alike. It runs apart
