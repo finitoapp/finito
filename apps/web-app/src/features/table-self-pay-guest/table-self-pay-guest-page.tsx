@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx"
+import { appEnv } from "@/core/app-env.ts"
 import { createE2eGuestInvoiceWallet } from "@/platform/e2e-guest-invoice-wallet.ts"
 import { GuestBankPayment } from "./guest-bank-payment.tsx"
 import { GuestBillSummary } from "./guest-bill-summary.tsx"
@@ -88,6 +89,7 @@ import {
   guestTabListClassName,
 } from "./guest-pick-styles.ts"
 import { GuestStatusRegion, useGuestStatus } from "./guest-status.tsx"
+import { GuestTestTransfer } from "./guest-test-transfer.tsx"
 import { GuestWrittenOrder } from "./guest-written-order.tsx"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 import {
@@ -98,7 +100,7 @@ import {
   useSelfPayView,
 } from "./use-self-pay-view.ts"
 
-type PaymentMethod = "bank" | "lightning"
+type PaymentMethod = "bank" | "lightning" | "test"
 
 type GuestSection = "bill" | "menu"
 
@@ -198,11 +200,13 @@ function GuestPaymentWait({
 }
 
 function GuestPayment({
+  address,
   view,
   liveness,
   session,
   children,
 }: {
+  readonly address: TableSelfPayAddress
   readonly view: SelfPayView
   readonly liveness: SelfPayLiveness | null
   readonly session: PaymentSession
@@ -211,10 +215,16 @@ function GuestPayment({
   const { t, locale } = useGuestTranslation()
   const { lightning } = view
   const bank = findSelfPayBank(view, session.bill)
+  const testSelectionKey = appEnv.VITE_PAYKY_SELF_PAY_TEST_TRANSFERS
+    ? view.selectionKey
+    : null
+  const methods = [
+    ...(bank === null ? [] : ["bank" as const]),
+    ...(lightning === null ? [] : ["lightning" as const]),
+    ...(testSelectionKey === null ? [] : ["test" as const]),
+  ]
   const amountHeading = useRef<HTMLHeadingElement>(null)
-  const [method, setMethod] = useState<PaymentMethod>(
-    bank === null ? "lightning" : "bank"
-  )
+  const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? "lightning")
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
   const now = useNow(
     selfPayRateChangesAt(liveness, session.bill.currency).map((moment) =>
@@ -251,20 +261,30 @@ function GuestPayment({
           {t("selfPay.pay.unseen")}
         </p>
       )}
-      {bank !== null && lightning !== null ? (
+      {methods.length > 1 ? (
         <Tabs
           value={method}
           onValueChange={(value) => {
-            if (value === "bank" || value === "lightning") setMethod(value)
+            const next = methods.find((candidate) => candidate === value)
+            if (next !== undefined) setMethod(next)
           }}
         >
           <TabsList className={guestTabListClassName}>
-            <TabsTrigger value="bank" className={guestTabClassName}>
-              {t("selfPay.method.bank")}
-            </TabsTrigger>
-            <TabsTrigger value="lightning" className={guestTabClassName}>
-              {t("selfPay.method.lightning")}
-            </TabsTrigger>
+            {bank === null ? null : (
+              <TabsTrigger value="bank" className={guestTabClassName}>
+                {t("selfPay.method.bank")}
+              </TabsTrigger>
+            )}
+            {lightning === null ? null : (
+              <TabsTrigger value="lightning" className={guestTabClassName}>
+                {t("selfPay.method.lightning")}
+              </TabsTrigger>
+            )}
+            {testSelectionKey === null ? null : (
+              <TabsTrigger value="test" className={guestTabClassName}>
+                {t("selfPay.method.test")}
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
       ) : null}
@@ -290,9 +310,20 @@ function GuestPayment({
           />
         </div>
       )}
+      {testSelectionKey === null ? null : (
+        <div hidden={method !== "test"}>
+          <GuestTestTransfer
+            address={address}
+            selectionKey={testSelectionKey}
+            bill={session.bill}
+            amount={session.amount}
+            pointer={session.pointer}
+          />
+        </div>
+      )}
       <GuestPaymentWait
         session={session}
-        isWatching={method === "bank" || isInvoiceOpen}
+        isWatching={method !== "lightning" || isInvoiceOpen}
       />
     </section>
   )
@@ -507,6 +538,7 @@ function GuestOrdering({
         <>
           <GuestPayment
             key={`${session.pointer}:${session.startedAt}`}
+            address={address}
             view={view}
             liveness={liveness}
             session={session}
@@ -940,6 +972,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
           {pendingSession === null ? null : (
             <>
               <GuestPayment
+                address={address}
                 view={view}
                 liveness={liveness}
                 session={pendingSession}

@@ -289,6 +289,19 @@ Lightning, valid for one hour from its start. Guests ask relays only for events 
 publishes a view telling guests to pay with staff, and regenerating the QR
 publishes that view under every earlier key of the table.
 
+### Test transfers
+
+A test deployment sets `VITE_PAYKY_SELF_PAY_TEST_TRANSFERS` (the web app and
+its guest page) or `EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS` (the native
+app) to `true` (table-self-pay/0025). The guest page then offers a Test tab
+that publishes what the bank QR asks for, the bill's reference and the
+`PK1` message included, signed by a key every guest of the account derives
+from the selection key. `self-pay-test-transfer-job.ts` reads those events
+every 10 seconds and hands them, as bank transactions of the account's bank
+account, to the same `recordBankTransactions` the FIO and MONETA syncs call,
+so everything from the match on is the real path. The bank account needs no
+FIO or MONETA connection.
+
 ## Known limitations
 
 | # | Issue | Status |

@@ -227,6 +227,7 @@ export const skBill = {
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankový prevod",
   "selfPay.method.lightning": "Lightning",
+  "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Platenie pri stole teraz nie je k dispozícii.",
   "selfPay.order.back": "Späť do menu",
@@ -286,6 +287,12 @@ export const skBill = {
   "selfPay.summary.nothing": "Zatiaľ nič nevybrané",
   "selfPay.summary.share": "Vaša časť {amount}",
   "selfPay.summary.tip": "+ prepitné {amount}",
+  "selfPay.test.failed":
+    "Testovací prevod sa do reštaurácie nedostal. Skúste to znova.",
+  "selfPay.test.hint":
+    "Toto je testovacie nasadenie. Namiesto platby pošlite testovací prevod a reštaurácia ho uvidí ako peniaze z banky.",
+  "selfPay.test.send": "Poslať testovací prevod",
+  "selfPay.test.sent": "Testovací prevod odoslaný",
   "selfPay.tip.custom": "Vlastné",
   "selfPay.tip.custom.label": "Vlastné prepitné",
   "selfPay.tip.custom.unit": "% alebo suma",

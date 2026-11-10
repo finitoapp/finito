@@ -223,6 +223,7 @@ export const csBill = {
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankovní převod",
   "selfPay.method.lightning": "Lightning",
+  "selfPay.method.test": "Test",
   "selfPay.noMethod.description": "Placení u stolu teď není k dispozici.",
   "selfPay.order.back": "Zpět do menu",
   "selfPay.order.hide": "Skrýt",
@@ -281,6 +282,12 @@ export const csBill = {
   "selfPay.summary.nothing": "Zatím nic nevybráno",
   "selfPay.summary.share": "Vaše část {amount}",
   "selfPay.summary.tip": "+ spropitné {amount}",
+  "selfPay.test.failed":
+    "Testovací převod se do restaurace nedostal. Zkuste to znovu.",
+  "selfPay.test.hint":
+    "Tohle je testovací nasazení. Místo placení pošlete testovací převod a restaurace ho uvidí jako peníze z banky.",
+  "selfPay.test.send": "Poslat testovací převod",
+  "selfPay.test.sent": "Testovací převod odeslán",
   "selfPay.tip.custom": "Vlastní",
   "selfPay.tip.custom.label": "Vlastní spropitné",
   "selfPay.tip.custom.unit": "% nebo částka",

@@ -14,6 +14,7 @@ import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
+import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
 
@@ -60,10 +61,20 @@ const browserBackgroundJobs = [
   startSelfPayPointerJob,
   startBillClosingJob,
 ] satisfies ReadonlyArray<AppDeviceBackgroundJob>
+
+/**
+ * `selfPayTestTransfers` is set only by a test deployment's configuration
+ * (table-self-pay/0025): any guest of the account can then mark money as
+ * arrived.
+ */
 export function getBackgroundJobsForRuntime(
-  isNativePlatform: boolean
+  isNativePlatform: boolean,
+  {
+    selfPayTestTransfers = false,
+  }: { readonly selfPayTestTransfers?: boolean } = {}
 ): ReadonlyArray<AppDeviceBackgroundJob> {
-  return isNativePlatform ? nativeBackgroundJobs : browserBackgroundJobs
+  const jobs = isNativePlatform ? nativeBackgroundJobs : browserBackgroundJobs
+  return selfPayTestTransfers ? [...jobs, startSelfPayTestTransferJob] : jobs
 }
 
 /**

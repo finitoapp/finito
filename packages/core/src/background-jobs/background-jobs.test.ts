@@ -21,6 +21,7 @@ import { startQerkoPaymentSyncJob } from "./jobs/qerko-payment-sync-job.ts"
 import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
+import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
 
@@ -85,6 +86,23 @@ describe("getBackgroundJobsForRuntime", () => {
 
   test("keeps the Cashu job out of the CLI, which has no Linky owners", () => {
     expect(cliBackgroundJobs).not.toContain(startCashuAccountSyncJob)
+  })
+
+  test("runs the self-pay test transfer job only where a test deployment asks for it", () => {
+    for (const isNativePlatform of [false, true]) {
+      expect(getBackgroundJobsForRuntime(isNativePlatform)).not.toContain(
+        startSelfPayTestTransferJob
+      )
+      expect(
+        getBackgroundJobsForRuntime(isNativePlatform, {
+          selfPayTestTransfers: true,
+        })
+      ).toEqual([
+        ...getBackgroundJobsForRuntime(isNativePlatform),
+        startSelfPayTestTransferJob,
+      ])
+    }
+    expect(cliBackgroundJobs).not.toContain(startSelfPayTestTransferJob)
   })
 
   test("keeps the Cashu job apart, so a Cashu wallet that fails to start stops no other job", () => {

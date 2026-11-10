@@ -188,7 +188,9 @@ export function AppBackgroundJobs() {
       run,
       jobs: run.ok(
         runBackgroundJobs(
-          getBackgroundJobsForRuntime(Capacitor.isNativePlatform())
+          getBackgroundJobsForRuntime(Capacitor.isNativePlatform(), {
+            selfPayTestTransfers: appEnv.VITE_PAYKY_SELF_PAY_TEST_TRANSFERS,
+          })
         )
       ),
     }

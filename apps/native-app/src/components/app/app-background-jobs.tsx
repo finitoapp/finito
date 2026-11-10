@@ -199,7 +199,12 @@ function AppBackgroundJobs() {
     return {
       run,
       jobs: run.ok(
-        runBackgroundJobs(getBackgroundJobsForRuntime(Platform.OS !== "web"))
+        runBackgroundJobs(
+          getBackgroundJobsForRuntime(Platform.OS !== "web", {
+            selfPayTestTransfers:
+              nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS,
+          })
+        )
       ),
     }
   }, [

@@ -221,6 +221,7 @@ export const enBill = {
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bank transfer",
   "selfPay.method.lightning": "Lightning",
+  "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Paying at the table is not available right now.",
   "selfPay.order.back": "Back to the menu",
@@ -279,6 +280,12 @@ export const enBill = {
   "selfPay.summary.nothing": "Nothing picked yet",
   "selfPay.summary.share": "Your share {amount}",
   "selfPay.summary.tip": "+ tip {amount}",
+  "selfPay.test.failed":
+    "The test transfer did not reach the restaurant. Try again.",
+  "selfPay.test.hint":
+    "This is a test deployment. Send a test transfer instead of paying, and the restaurant sees it as money from the bank.",
+  "selfPay.test.send": "Send test transfer",
+  "selfPay.test.sent": "Test transfer sent",
   "selfPay.tip.custom": "Custom",
   "selfPay.tip.custom.label": "Custom tip",
   "selfPay.tip.custom.unit": "% or amount",

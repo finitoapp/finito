@@ -46,6 +46,9 @@ export const appEnv = createEnv({
     VITE_SENTRY_DSN: z.string().optional(),
     VITE_PAYKY_SELF_PAY_ORIGIN: z.url().default(appBrand.selfPayOrigin),
     VITE_PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
+    // Test deployments only (table-self-pay/0025): the guest page offers a
+    // test transfer and the till books it as money from the bank.
+    VITE_PAYKY_SELF_PAY_TEST_TRANSFERS: z.stringbool().default(false),
   },
   runtimeEnv: import.meta.env,
   emptyStringAsUndefined: true,
