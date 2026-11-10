@@ -101,7 +101,7 @@ tags: [activity-bills]
 - runFlow:
     file: ../../subflows/assert-checked.yaml
     env:
-      LABEL: ${output.t["refund.page.choice.overpayment"]}
+      LABEL: '${output.t["refund.page.choice.overpayment"] + ", \u00244"}'
       BY_TEXT: "true"
 - runFlow:
     file: ../../subflows/tap-label.yaml
