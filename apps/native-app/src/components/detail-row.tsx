@@ -14,7 +14,7 @@ import { CopyLink } from "./copy-link.tsx"
  * `max-w-56 text-right font-medium` (`emphasize`: `font-semibold`).
  *
  * Native addition: `mono` is web's payment-detail copy row folded in, an
- * identifier drawn small, selectable and one line, with a Copy link.
+ * identifier drawn small and one line, with a Copy link.
  */
 export function DetailRow({
   label,
@@ -28,7 +28,7 @@ export function DetailRow({
   readonly value?: string
   readonly stacked?: boolean
   readonly emphasize?: boolean
-  /** Identifiers: selectable, with a Copy link. */
+  /** Identifiers, with a Copy link. */
   readonly mono?: boolean
   readonly children?: ReactNode
 }) {
@@ -37,34 +37,53 @@ export function DetailRow({
   const weight = emphasize ? fontWeight.semibold : fontWeight.medium
 
   if (mono && value !== undefined) {
-    return (
+    const labelText = (
+      <Text
+        shrink={1}
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        color="muted-foreground"
+      >
+        {label}
+      </Text>
+    )
+    const identifier = (
+      <RNText
+        numberOfLines={1}
+        ellipsizeMode="middle"
+        style={{
+          flex: 1,
+          minWidth: 72,
+          textAlign: stacked ? "left" : "right",
+          fontSize: 12,
+          lineHeight: 16,
+          color: theme.color.val,
+        }}
+      >
+        {value}
+      </RNText>
+    )
+    const copy = (
+      <CopyLink
+        value={value}
+        aria-label={t("paymentDetail.copy", { label })}
+        copied={t("paymentDetail.copied")}
+        failed={t("paymentDetail.copyError")}
+      />
+    )
+    return stacked ? (
+      <View gap={4}>
+        {labelText}
+        <XStack items="center" gap={16}>
+          {identifier}
+          {copy}
+        </XStack>
+      </View>
+    ) : (
       <XStack justify="space-between" items="center" gap={16}>
-        <Text
-          fontSize={fontSize.sm}
-          lineHeight={fontSize.sm}
-          color="muted-foreground"
-        >
-          {label}
-        </Text>
-        <RNText
-          selectable
-          numberOfLines={1}
-          style={{
-            flex: 1,
-            textAlign: "right",
-            fontSize: 12,
-            lineHeight: 16,
-            color: theme.color.val,
-          }}
-        >
-          {value}
-        </RNText>
-        <CopyLink
-          value={value}
-          aria-label={t("paymentDetail.copy", { label })}
-          copied={t("paymentDetail.copied")}
-          failed={t("paymentDetail.copyError")}
-        />
+        {labelText}
+        {identifier}
+        {copy}
       </XStack>
     )
   }

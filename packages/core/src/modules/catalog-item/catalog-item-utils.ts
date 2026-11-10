@@ -34,3 +34,10 @@ export const findCatalogItemsByScanCode = (
 
   return items.filter((item) => item.scanCode === trimmed)
 }
+
+export const isInMenu = (
+  item: Pick<CatalogItemRow, "inMenu" | "inMenuUntil">,
+  now: Date
+): boolean =>
+  item.inMenu !== null &&
+  (item.inMenuUntil === null || item.inMenuUntil > now.getTime())

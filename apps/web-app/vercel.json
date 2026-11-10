@@ -1,6 +1,37 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "t\\.finito\\.fit" }],
+      "destination": "https://finito.fit",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/t(\\.html)?",
+      "headers": [
+        { "key": "Content-Security-Policy", "value": "frame-ancestors 'none'" }
+      ]
+    },
+    {
+      "source": "/t(\\.html)?",
+      "missing": [{ "type": "host", "value": "t\\..*" }],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "sandbox; default-src 'none'; frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/((?!t$|t\\.html$).*)",
+      "has": [{ "type": "host", "value": "t\\..*" }],
+      "headers": [{ "key": "Content-Security-Policy", "value": "sandbox" }]
+    }
+  ],
   "rewrites": [
     {
       "source": "/.well-known/lnurlp/donate",
@@ -47,6 +78,11 @@
     {
       "source": "/sitemap.xml",
       "destination": "https://payky-landing.vercel.app/sitemap.xml"
+    },
+    {
+      "source": "/t",
+      "has": [{ "type": "host", "value": "t\\..*" }],
+      "destination": "/t.html"
     },
     {
       "source": "/((?!.*\\.).*)",

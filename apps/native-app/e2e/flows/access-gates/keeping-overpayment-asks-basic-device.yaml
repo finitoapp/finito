@@ -1,0 +1,54 @@
+# web access-gates.spec.ts: "keeping money paid above a bill asks a Basic device for the PIN".
+appId: ${APP_ID}
+tags: [access-gates]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateBillModifiedDuringPayment
+      QUERY: billId=${output.billId}&mode=removeAll
+- runFlow: ../../subflows/reopen-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow: ../../subflows/turn-on-access.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.keep"]}
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["overpayment.dialog.amount"]}
+      VALUE: "3"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.confirm.keep", { amount: "\u00243" })}'
+- runFlow:
+    file: ../../subflows/assert-prompt.yaml
+    env:
+      ACTION: ${output.t["access.action.resolveOverpayment"]}
+- assertVisible:
+    id: pin-prompt-detail
+    text: '${output.re(output.tv("overpayment.pinDetail", { action: output.tv("overpayment.dialog.confirm.keep", { amount: "\u00243" }), bill: output.tv("bill.list.label", { number: 1 }) }))}'
+- runFlow:
+    file: ../../subflows/type-pin.yaml
+    env:
+      PIN: "4821"
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00242" }))}'
+    timeout: 15000

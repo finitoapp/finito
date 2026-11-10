@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core"
+import type { SyncStateDep } from "@evolu/common/local-first"
 import { createRun } from "@evolu/web"
 import {
   cashuBackgroundJobs,
@@ -7,6 +8,7 @@ import {
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
 import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
+import { createAppOwnerSync } from "@payky/core/evolu/app-owner-sync"
 import type {
   DeviceAccountId,
   DeviceEvolu,
@@ -14,10 +16,17 @@ import type {
 import type { Evolu } from "@payky/core/evolu/schema"
 import { createEetApiDep } from "@payky/core/integrations/eet/eet-client"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import { createQerkoApiDep } from "@payky/core/integrations/qerko/qerko-client"
 import { createQerkoConnectionStatusDep } from "@payky/core/integrations/qerko/qerko-connection-status"
 import { createQerkoSocketDep } from "@payky/core/integrations/qerko/qerko-socket"
+import { createYadioApiDep } from "@payky/core/integrations/yadio/yadio-client"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
+import {
+  deriveTableSelfPayRoot,
+  type MasterKey,
+} from "@payky/core/modules/shared/key-derivation"
+import { createSparkWalletDep } from "@payky/core/spark/spark-wallet"
 import { useAtomValue } from "jotai"
 import { useCallback, useEffect } from "react"
 import { accountAtom } from "@/atoms/account.ts"
@@ -29,8 +38,10 @@ import {
 } from "@/atoms/evolu.ts"
 import { notificationStoreAtom } from "@/atoms/notifications.ts"
 import { qerkoConnectionStatusStore } from "@/atoms/qerko-connection-status.ts"
+import { runAtom } from "@/atoms/run.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConsole } from "@/hooks/use-console.ts"
+import { createE2eSparkWalletDep } from "@/platform/e2e-spark-wallet.ts"
 import {
   createConnectivityDep,
   createFetchDep,
@@ -41,17 +52,21 @@ type Console = ReturnType<typeof useConsole>
 /** The app's own job context, without the Cashu wallet. */
 const createAppJobDeps = ({
   evolu,
+  syncState,
   deviceEvolu,
   deviceAccountId,
   deviceId,
   notificationStore,
+  masterKey,
   console,
 }: {
   readonly evolu: Evolu
+  readonly syncState: SyncStateDep["syncState"]
   readonly deviceEvolu: DeviceEvolu
   readonly deviceAccountId: DeviceAccountId
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
+  readonly masterKey: MasterKey
   readonly console: Console
 }) => {
   const dateDep = createDateDep()
@@ -59,6 +74,7 @@ const createAppJobDeps = ({
   return {
     evolu,
     evoluOwner: evolu.appOwner,
+    appOwnerSync: createAppOwnerSync(syncState, evolu),
     deviceEvolu,
     deviceAccountId,
     deviceId,
@@ -73,6 +89,11 @@ const createAppJobDeps = ({
     ...createQerkoApiDep({ posId: appEnv.VITE_PAYKY_QERKO_POS_ID }),
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(qerkoConnectionStatusStore),
+    ...(createE2eSparkWalletDep() ?? createSparkWalletDep()),
+    ...createYadioApiDep(),
+    tableSelfPayRoot: deriveTableSelfPayRoot(masterKey),
+    selfPayDefaultRelays: appEnv.VITE_PAYKY_SELF_PAY_RELAYS,
+    nostrRelayClient: createNostrRelayClient(),
     lockManager: navigator.locks,
     console,
     onError: (error: unknown) => {
@@ -148,14 +169,18 @@ export function AppBackgroundJobs() {
   const console = useConsole()
   const deviceId = account.device.id
   const deviceAccountId = account.id
+  const { masterKey } = account
+  const { syncState } = useAtomValue(runAtom).deps
   const start = useCallback(() => {
     const run = createRun(
       createAppJobDeps({
         evolu,
+        syncState,
         deviceEvolu,
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
         console,
       })
     )
@@ -163,7 +188,9 @@ export function AppBackgroundJobs() {
       run,
       jobs: run.ok(
         runBackgroundJobs(
-          getBackgroundJobsForRuntime(Capacitor.isNativePlatform())
+          getBackgroundJobsForRuntime(Capacitor.isNativePlatform(), {
+            selfPayTestTransfers: appEnv.VITE_PAYKY_SELF_PAY_TEST_TRANSFERS,
+          })
         )
       ),
     }
@@ -173,7 +200,9 @@ export function AppBackgroundJobs() {
     deviceEvolu,
     deviceId,
     evolu,
+    masterKey,
     notificationStore,
+    syncState,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })
@@ -197,14 +226,17 @@ export function CashuBackgroundJobs() {
   const deviceId = account.device.id
   const deviceAccountId = account.id
   const { masterKey } = account
+  const { syncState } = useAtomValue(runAtom).deps
   const start = useCallback(() => {
     const run = createRun({
       ...createAppJobDeps({
         evolu,
+        syncState,
         deviceEvolu,
         deviceAccountId,
         deviceId,
         notificationStore,
+        masterKey,
         console,
       }),
       masterKey,
@@ -223,6 +255,7 @@ export function CashuBackgroundJobs() {
     evolu,
     masterKey,
     notificationStore,
+    syncState,
   ])
 
   useBackgroundJobs({ isDemo: account.demo !== null, console, start })

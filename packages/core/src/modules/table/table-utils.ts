@@ -5,9 +5,7 @@ const TABLE_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 const TABLE_CODE_LENGTH = 8
 
 /**
- * Generates a table's `code`. Not consumed by any feature yet — reserved for
- * a future QR code sticker that will let a scan resolve straight to this
- * table.
+ * Generates a table's `code`.
  */
 export function generateTableCode(): NonEmptyString255 {
   let code = ""

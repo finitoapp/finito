@@ -1,17 +1,40 @@
-import { type MutationOptions, ok, type Task } from "@evolu/common"
+import {
+  type LockManagerDep,
+  type MutationOptions,
+  ok,
+  type Task,
+} from "@evolu/common"
 
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import type { CreateAccountTransactionInput } from "../account-transaction/account-transaction-actions.ts"
-import { accountTransactionAmountByIdQuery } from "../account-transaction/account-transaction-queries.ts"
+import {
+  accountTransactionAmountByIdQuery,
+  selfPayTransactionByIdQuery,
+} from "../account-transaction/account-transaction-queries.ts"
+
 import type {
   AccountTransactionId,
   AccountTransactionKind,
 } from "../account-transaction/account-transaction-types.ts"
-import { upsertBillClosedAt } from "../bill/bill-actions.ts"
+import {
+  upsertBillClosedAt,
+  upsertMenuOrderBillRows,
+} from "../bill/bill-actions.ts"
+
 import { loadBillClosedAtIfCovered } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import { updateBillLineTotal } from "../bill-line/bill-line-actions.ts"
 import type { DeviceId } from "../device/device-types.ts"
+import {
+  type MenuOrderArrivalRows,
+  upsertMenuOrderRows,
+  type WrittenOrderRest,
+} from "../menu-order/menu-order-actions.ts"
 import { paymentBillCoverageByIdQuery } from "../payment/payment-queries.ts"
+import {
+  type SelfPayPaymentRows,
+  upsertSelfPayPaymentRows,
+} from "../payment/payment-row-actions.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
@@ -24,6 +47,14 @@ import {
   type TimestampMs,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import {
+  loadSelfPayArrival,
+  type SelfPayAllocationWrite,
+  type SelfPayArrivalDeps,
+  type SelfPayTransaction,
+  upsertBillSelfPayReferences,
+  upsertSelfPayAllocations,
+} from "../table-self-pay/table-self-pay-actions.ts"
 import {
   activeReconciliationClaimByAccountTransactionIdQuery,
   cashRegisterReconciliationCandidateByAccountTransactionIdQuery,
@@ -85,16 +116,10 @@ export const loadBillClosedAtForPayment =
     )
   }
 
-/**
- * Finds the automatic claim a newly discovered FIO or Spark transaction
- * should receive before the transaction exists in Evolu, so the caller can
- * write both rows in one mutation batch.
- */
-export const loadAutomaticReconciliationClaimForNewAccountTransaction =
+const loadPaymentCandidateForNewAccountTransaction =
   (
-    accountTransaction: CreateAccountTransactionInput,
-    accountTransactionId: AccountTransactionId
-  ): Task<ReconciliationClaimWrite | null, never, EvoluDep & DateDep> =>
+    accountTransaction: CreateAccountTransactionInput
+  ): Task<PaymentId | null, never, EvoluDep> =>
   async (run) => {
     const { iban, spark, cashu } = accountTransaction
     let paymentId: PaymentId | undefined
@@ -150,15 +175,134 @@ export const loadAutomaticReconciliationClaimForNewAccountTransaction =
       paymentId = candidates[0]?.paymentId
     }
 
-    return ok(
-      paymentId === undefined
-        ? null
-        : createAutomaticReconciliationClaim(
-            paymentId,
-            accountTransactionId,
-            run.deps.date.now()
+    return ok(paymentId ?? null)
+  }
+
+export interface AutomaticReconciliation {
+  readonly claim: ReconciliationClaimWrite
+  readonly billClosing: {
+    readonly billId: BillId
+    readonly closedAt: TimestampMs
+  } | null
+  readonly selfPayPayment: SelfPayPaymentRows | null
+  readonly selfPayAllocations: ReadonlyArray<SelfPayAllocationWrite>
+  readonly menuOrder: MenuOrderArrivalRows | null
+  readonly writtenOrderRest: ReadonlyArray<WrittenOrderRest> | null
+}
+
+const loadSelfPayReconciliation =
+  (
+    transaction: SelfPayTransaction
+  ): Task<AutomaticReconciliation | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    const arrival = await run.ok(loadSelfPayArrival(transaction))
+    if (arrival === null) return ok(null)
+
+    const {
+      rows: selfPayPayment,
+      allocations,
+      order,
+      writtenOrderRest,
+    } = arrival
+    const { payment } = selfPayPayment
+    const billClosing =
+      order !== null && payment.amount >= order.total
+        ? {
+            billId: order.bill.bill.id,
+            closedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          }
+        : await run.ok(
+            loadBillClosedAtIfCovered(
+              {
+                id: payment.id,
+                billId: payment.billId ?? null,
+                amount: payment.amount,
+                currency: payment.currency,
+                tipAmount: payment.tipAmount,
+                btcAmountSats: selfPayPayment.spark?.amountSats ?? null,
+                cashuAmountSats: null,
+                lightningAddressAmountSats: null,
+              },
+              transaction
+            )
           )
+
+    return ok({
+      claim: createAutomaticReconciliationClaim(
+        payment.id,
+        transaction.id,
+        selfPayPayment.iban === null
+          ? new Date(transaction.occurredAt)
+          : run.deps.date.now()
+      ),
+      billClosing,
+      selfPayPayment,
+      selfPayAllocations: allocations,
+      menuOrder: order,
+      writtenOrderRest,
+    })
+  }
+
+export const SELF_PAY_ARRIVAL_LOCK = "self-pay-arrival"
+
+/**
+ * Finds the automatic claim a newly discovered FIO or Spark transaction
+ * should receive before the transaction exists in Evolu, so the caller can
+ * write them in one mutation batch.
+ */
+export const loadAutomaticReconciliation =
+  (
+    accountTransaction: CreateAccountTransactionInput,
+    {
+      id: accountTransactionId,
+      kind,
+    }: {
+      readonly id: AccountTransactionId
+      readonly kind: AccountTransactionKind
+    }
+  ): Task<AutomaticReconciliation | null, never, SelfPayArrivalDeps> =>
+  async (run) => {
+    const paymentId = await run.ok(
+      loadPaymentCandidateForNewAccountTransaction(accountTransaction)
     )
+    if (paymentId === null) {
+      const { iban, spark } = accountTransaction
+      return run(
+        loadSelfPayReconciliation({
+          id: accountTransactionId,
+          kind,
+          accountId: accountTransaction.accountId,
+          amount: accountTransaction.amount,
+          currency: accountTransaction.currency,
+          occurredAt: accountTransaction.occurredAt,
+          variableSymbol: iban?.variableSymbol ?? null,
+          recipientMessage: iban?.recipientMessage ?? null,
+          lnInvoice: spark?.lightning?.lnInvoice ?? null,
+          paymentHash: spark?.lightning?.paymentHash ?? null,
+          firstSeenAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+        })
+      )
+    }
+
+    return ok({
+      claim: createAutomaticReconciliationClaim(
+        paymentId,
+        accountTransactionId,
+        run.deps.date.now()
+      ),
+      billClosing: await run.ok(
+        loadBillClosedAtForPayment(paymentId, {
+          id: accountTransactionId,
+          kind,
+          amount: accountTransaction.amount,
+          currency: accountTransaction.currency,
+        })
+      ),
+      selfPayPayment: null,
+      selfPayAllocations: [],
+      menuOrder: null,
+      writtenOrderRest: null,
+    })
   }
 
 /**
@@ -182,6 +326,37 @@ export const upsertReconciliationClaimRows = (
   if (billClosing !== null) {
     upsertBillClosedAt(evolu, billClosing.billId, billClosing.closedAt, options)
   }
+}
+
+export const upsertAutomaticReconciliationRows = (
+  evolu: EvoluDep["evolu"],
+  {
+    claim,
+    billClosing,
+    selfPayPayment,
+    selfPayAllocations,
+    menuOrder,
+    writtenOrderRest,
+  }: AutomaticReconciliation,
+  options: MutationOptions
+): void => {
+  if (menuOrder !== null) {
+    upsertMenuOrderBillRows(evolu, menuOrder.bill, options)
+    upsertBillSelfPayReferences(
+      evolu,
+      [{ billId: menuOrder.bill.bill.id, reference: menuOrder.reference }],
+      options
+    )
+    upsertMenuOrderRows(evolu, menuOrder.menuOrder, options)
+  }
+  for (const { lineId, totalAmount } of writtenOrderRest ?? []) {
+    updateBillLineTotal(evolu, lineId, totalAmount, options)
+  }
+  if (selfPayPayment !== null) {
+    upsertSelfPayPaymentRows(evolu, selfPayPayment, options)
+  }
+  upsertSelfPayAllocations(evolu, selfPayAllocations, options)
+  upsertReconciliationClaimRows(evolu, claim, billClosing, options)
 }
 
 /**
@@ -266,7 +441,11 @@ export const claimManualReconciliation =
 export const reconcileAccountTransaction =
   (
     accountTransactionId: AccountTransactionId
-  ): Task<PaymentId | null, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  ): Task<
+    PaymentId | null,
+    never,
+    EvoluOwnerDep & LockManagerDep & SelfPayArrivalDeps
+  > =>
   async (run) => {
     const existingClaims = await run.deps.evolu.loadQuery(
       activeReconciliationClaimByAccountTransactionIdQuery(accountTransactionId)
@@ -312,7 +491,43 @@ export const reconcileAccountTransaction =
       sparkCandidates[0] ??
       cashRegisterCandidates[0] ??
       cashuCandidates[0]
-    if (!candidate) return ok(null)
+    if (!candidate) {
+      const [transaction] = await run.deps.evolu.loadQuery(
+        selfPayTransactionByIdQuery(accountTransactionId)
+      )
+      if (transaction === undefined) return ok(null)
+
+      return await run.deps.lockManager.request(
+        SELF_PAY_ARRIVAL_LOCK,
+        async () => {
+          const [claimed] = await run.deps.evolu.loadQuery(
+            activeReconciliationClaimByAccountTransactionIdQuery(
+              accountTransactionId
+            )
+          )
+          if (claimed?.paymentId !== null && claimed?.paymentId !== undefined) {
+            return ok(claimed.paymentId)
+          }
+          const reconciliation = await run.ok(
+            loadSelfPayReconciliation({
+              ...transaction,
+              firstSeenAt: TimestampMsSchema.decode(
+                Date.parse(transaction.createdAt)
+              ),
+            })
+          )
+          if (reconciliation === null) return ok(null)
+
+          await runMutationWithCompletion((options) =>
+            upsertAutomaticReconciliationRows(run.deps.evolu, reconciliation, {
+              ...options,
+              owner: run.deps.evoluOwner,
+            })
+          )
+          return ok(reconciliation.claim.paymentId)
+        }
+      )
+    }
 
     await run.ok(
       writeClaimAndCloseBillIfCovered({

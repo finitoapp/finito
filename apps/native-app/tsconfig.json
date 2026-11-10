@@ -6,7 +6,12 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
     "types": ["react", "react-native"],
-    "customConditions": ["react-native"]
+    "customConditions": ["react-native"],
+    "paths": {
+      "react-native-view-shot": [
+        "./node_modules/react-native-view-shot/lib/index.d.ts"
+      ]
+    }
   },
   "include": ["app", "src", "entry.ts", "tamagui.config.ts", "app.config.ts"]
 }

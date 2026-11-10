@@ -1,15 +1,17 @@
-import { sqliteFalse } from "@evolu/common"
+import { bytesToHex, sqliteFalse, sqliteTrue } from "@evolu/common"
 import { accessLastActivityAtom } from "@payky/app-shared/access-state"
 import {
   accountListQuery,
   updateDeviceSettings,
 } from "@payky/core/evolu/device-account"
 import { getDeviceLocaleForLanguage } from "@payky/core/evolu/device-client"
+import { createNostrRelayClient } from "@payky/core/integrations/nostr/nostr-relay-client"
 import {
   saveCashRegisterAccount,
   saveFiatBankAccount,
   saveSparkAccount,
 } from "@payky/core/modules/account/account-actions"
+import { fiatBankAccountQuery } from "@payky/core/modules/account/account-queries"
 import {
   createCashRegisterAccountId,
   legacyFiatBankAccountId,
@@ -18,8 +20,15 @@ import { createAccountTransaction } from "@payky/core/modules/account-transactio
 import {
   completeOnboarding,
   markRecoveryPhraseVerified,
+  setMenuOrdering,
+  setSelfPayBillsHidden,
+  setWrittenOrderTaxRate,
 } from "@payky/core/modules/app-settings/app-settings-actions"
-import { PaymentMethodOrderJson } from "@payky/core/modules/app-settings/app-settings-utils"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import {
+  getFiatCurrency,
+  PaymentMethodOrderJson,
+} from "@payky/core/modules/app-settings/app-settings-utils"
 import { cancelBill } from "@payky/core/modules/bill/bill-actions"
 import {
   billByIdQuery,
@@ -32,6 +41,10 @@ import {
 } from "@payky/core/modules/bill-line/bill-line-actions"
 import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
 import {
+  createCatalogItemAtEnd,
+  setCatalogItemInMenu,
+} from "@payky/core/modules/catalog-item/catalog-item-actions"
+import {
   registerDevice,
   setDevicePinBlocked,
   unblockDevice,
@@ -40,8 +53,18 @@ import { deviceByIdQuery } from "@payky/core/modules/device/device-queries"
 import { DeviceId } from "@payky/core/modules/device/device-types"
 import { createEetSale } from "@payky/core/modules/eet/eet-actions"
 import { toEetCashRegisterId } from "@payky/core/modules/eet/eet-utils"
+import { saveFioPlugin } from "@payky/core/modules/fio-plugin/fio-plugin-actions"
 import { upsertItemSnapshot } from "@payky/core/modules/item/item-actions"
 import { createStandaloneItemSnapshot } from "@payky/core/modules/item/item-utils"
+import { setLegalEntity } from "@payky/core/modules/legal-entity/legal-entity-actions"
+import {
+  loadSelfPayMenu,
+  saveSelfPayMenuVersion,
+} from "@payky/core/modules/menu-order/menu-order-actions"
+import {
+  createSelfPayOrderSelectionText,
+  createSelfPayWrittenSelectionText,
+} from "@payky/core/modules/menu-order/menu-order-utils"
 import {
   createPayment,
   markPaymentPaidCash,
@@ -63,12 +86,16 @@ import {
 } from "@payky/core/modules/shared/evolu-utils"
 import {
   createMasterKey,
+  deriveSelfPaySelectionKey,
+  deriveTableSelfPayKeys,
+  deriveTableSelfPayRoot,
   masterKeyToMnemonic,
 } from "@payky/core/modules/shared/key-derivation"
 import { createTestInvoice } from "@payky/core/modules/shared/lightning-invoice-test-fixtures"
 import {
   BankAccountInputIbanSchema,
   FiatCurrency,
+  Integer,
   NonEmptyString255,
   NonEmptyString255Schema,
   NonEmptyStringSchema,
@@ -76,11 +103,21 @@ import {
   PositiveInteger,
   PositiveNumber,
   TimestampMsSchema,
+  VariableSymbol,
 } from "@payky/core/modules/shared/schema"
+import { createSelfPaySelectionEvent } from "@payky/core/modules/table-self-pay/table-self-pay-pointer-utils"
+import { selfPayTablesQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
+import {
+  deriveOrderSelfPayReference,
+  formatSelfPayBankMessage,
+} from "@payky/core/modules/table-self-pay/table-self-pay-reference-utils"
+import { createTaxRate } from "@payky/core/modules/tax-rate/tax-rate-actions"
+import { TaxRatePercentage } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router } from "expo-router"
 import type { createStore } from "jotai"
 import type { SetStateAction } from "react"
 import { z } from "zod"
+import { nativeEnv } from "../core/native-env.ts"
 import type { NativeAppRun } from "../hooks/use-app-run.ts"
 import { payE2eCashuQuotes, setE2eCashu } from "./e2e-cashu-mint.ts"
 import {
@@ -88,6 +125,7 @@ import {
   releaseE2eMigrations,
 } from "./e2e-hold-migration.ts"
 import { setE2eOffline } from "./e2e-network.ts"
+import { selectSelfPayShare } from "./e2e-self-pay-guest.ts"
 import { e2eSparkPresetNames, setE2eSparkPreset } from "./e2e-spark-presets.ts"
 
 /**
@@ -117,6 +155,79 @@ const SeedOnboardingParams = z.object({
 const FakeParams = z.object({
   spark: z.enum(e2eSparkPresetNames).optional(),
   cashu: z.enum(["manual", "autopay", "off"]).optional(),
+})
+
+const PositiveIntegerParam = z
+  .string()
+  .regex(/^[1-9]\d*$/u)
+  .transform(Number)
+
+const GuestLineShareParam = z
+  .string()
+  .transform((share) => share.split(/[:/]/u))
+  .pipe(
+    z.tuple([z.string().min(1), PositiveIntegerParam, PositiveIntegerParam])
+  )
+  .transform(([name, numerator, denominator]) => ({
+    name,
+    numerator,
+    denominator,
+  }))
+
+const GuestBankTransferParams = z.object({
+  billId: BillId,
+  lines: z
+    .string()
+    .transform((lines) => lines.split(","))
+    .pipe(z.array(GuestLineShareParam))
+    .optional(),
+  people: z.coerce.number().int().min(2).optional(),
+  amount: z.coerce.number().int().positive().optional(),
+  message: z.string().min(1).optional(),
+})
+
+const NonNegativeIntegerParam = z.string().regex(/^\d+$/u).transform(Number)
+
+const MenuItemParam = z
+  .string()
+  .transform((item) => item.split(":"))
+  .pipe(
+    z.union([
+      z.tuple([z.string().min(1), NonNegativeIntegerParam]),
+      z.tuple([z.string().min(1), NonNegativeIntegerParam, z.string().min(1)]),
+    ])
+  )
+
+const SeedMenuParams = z.object({
+  items: z
+    .string()
+    .transform((items) => items.split(","))
+    .pipe(z.array(MenuItemParam)),
+  billsHidden: z.stringbool().default(false),
+})
+
+const OrderedItemParam = z
+  .string()
+  .transform((item) => item.split(":"))
+  .pipe(z.tuple([z.string().min(1), PositiveIntegerParam]))
+
+const ReceiveMenuOrderParams = z.object({
+  table: z.string().min(1),
+  items: z
+    .string()
+    .transform((items) => items.split(","))
+    .pipe(z.array(OrderedItemParam)),
+  note: z.string().optional(),
+  amount: z.coerce.number().int().positive(),
+})
+
+const ReceiveWrittenOrderParams = z.object({
+  table: z.string().min(1),
+  text: z.string().min(1),
+  named: z.coerce.number().int().positive(),
+  also: z.string().min(1).optional(),
+  alsoNamed: z.coerce.number().int().positive().optional(),
+  amount: z.coerce.number().int().positive(),
 })
 
 export const e2eActions: Readonly<Record<string, E2eAction>> = {
@@ -215,6 +326,19 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
         mutationOptions
       )
     })
+    return undefined
+  },
+
+  seedActiveFioPlugin: async (run) => {
+    const [bankAccount] = await run.deps.evolu.loadQuery(fiatBankAccountQuery)
+    if (bankAccount === undefined) throw new Error("No bank account seeded.")
+    await run.ok(
+      saveFioPlugin({
+        accountId: bankAccount.id,
+        numberOfSecondsBetweenChecks: PositiveInteger(300),
+        isActive: sqliteTrue,
+      })
+    )
     return undefined
   },
 
@@ -365,6 +489,20 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
       `e2e:${paymentId}`
     )
     await run.ok(reconcileAccountTransaction(accountTransactionId))
+    return undefined
+  },
+
+  receiveGuestBankTransfer: async (run, params, { deviceId }) => {
+    const { billId, amount, message, ...pick } =
+      GuestBankTransferParams.parse(params)
+    const selection = await selectSelfPayShare(run, billId, pick)
+    await receiveBankTransfer(run, deviceId, {
+      amount: amount ?? selection.amount,
+      currency: selection.bill.currency,
+      variableSymbol: selection.bill.reference,
+      recipientMessage:
+        message ?? formatSelfPayBankMessage({ pointer: selection.pointer }),
+    })
     return undefined
   },
 
@@ -629,6 +767,154 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
       throw new Error("EET is not set up, so no sale was created.")
     return `pokl=${toEetCashRegisterId(otherDeviceId)}`
   },
+
+  /**
+   * `__e2eSeedMenu`: ordering on with this device taking the orders, and
+   * `items` (`name:amount[:internalName]`, comma-separated) in the menu.
+   */
+  seedMenu: async (run, params, { deviceId }) => {
+    const { items, billsHidden } = SeedMenuParams.parse(params)
+    const [settings] = await run.deps.evolu.loadQuery(settingsQuery)
+    await run.ok(setMenuOrdering({ on: true, deviceId }))
+    await run.ok(setSelfPayBillsHidden(billsHidden))
+    for (const [name, amount, internalName] of items) {
+      const id = await run.ok(
+        createCatalogItemAtEnd({
+          deviceId: null,
+          categoryId: null,
+          name: NonEmptyString255(name),
+          description: null,
+          internalName:
+            internalName === undefined ? null : NonEmptyString255(internalName),
+          internalDescription: null,
+          sku: null,
+          currency: getFiatCurrency(settings),
+          unitAmount: NonNegativeInteger(amount),
+          scanCode: null,
+          taxRateId: null,
+        })
+      )
+      await run.ok(setCatalogItemInMenu({ id, inMenu: true }))
+    }
+    return undefined
+  },
+
+  /**
+   * `__e2eReceiveMenuOrder`: a guest orders `items` (`name:quantity`,
+   * comma-separated) at `table`, publishes the order to the self-pay relays
+   * and pays `amount` by bank transfer, recorded as the order device's FIO
+   * sync would.
+   */
+  receiveMenuOrder: async (run, params, { deviceId }) => {
+    const { table, items, note, amount } = ReceiveMenuOrderParams.parse(params)
+    const root = deriveTableSelfPayRoot(run.deps.masterKey)
+    const [{ menu }, tables] = await Promise.all([
+      run.ok(loadSelfPayMenu()),
+      run.deps.evolu.loadQuery(selfPayTablesQuery),
+    ])
+    await run.ok(saveSelfPayMenuVersion(menu))
+    const tableRow = tables.find(({ name }) => name === table)
+    if (tableRow === undefined) throw new Error(`Table ${table} not found.`)
+    const menuItems = menu.categories.flatMap((category) => category.items)
+    const { pointer, event } = createSelfPaySelectionEvent({
+      selectionText: createSelfPayOrderSelectionText({
+        tablePublicKey: bytesToHex(
+          deriveTableSelfPayKeys(root, tableRow.id, tableRow.selfPayEpoch ?? 0)
+            .publicKey
+        ),
+        menu,
+        items: items.map(([name, quantity]) => {
+          const item = menuItems.find((candidate) => candidate.name === name)
+          if (item === undefined) throw new Error(`${name} is not in the menu.`)
+          return { key: item.key, quantity }
+        }),
+        note: note ?? null,
+      }),
+      selectionKey: deriveSelfPaySelectionKey(root),
+      createdAt: Math.floor(run.deps.date.now().getTime() / 1000),
+    })
+    await createNostrRelayClient().publish(
+      nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+      event
+    )
+    await receiveBankTransfer(run, deviceId, {
+      amount,
+      currency: menu.currency,
+      variableSymbol: deriveOrderSelfPayReference(pointer),
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    return undefined
+  },
+
+  /**
+   * `__e2eSeedWrittenOrderTaxRates`: a Czech VAT payer with a Standard (21%)
+   * and a Food (12%) rate, Standard taken by written lines.
+   */
+  seedWrittenOrderTaxRates: async (run) => {
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+    const standard = await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Standard"),
+        rate: TaxRatePercentage(2100),
+        isDefault: false,
+      })
+    )
+    await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Food"),
+        rate: TaxRatePercentage(1200),
+        isDefault: false,
+      })
+    )
+    await run.ok(setWrittenOrderTaxRate(standard))
+    return undefined
+  },
+
+  /**
+   * `__e2eReceiveWrittenOrder`: a guest writes `text` for `named` at `table`,
+   * and `also` for `alsoNamed` when given, publishes it and pays `amount` by
+   * bank transfer.
+   */
+  receiveWrittenOrder: async (run, params, { deviceId }) => {
+    const { table, text, named, also, alsoNamed, amount } =
+      ReceiveWrittenOrderParams.parse(params)
+    const root = deriveTableSelfPayRoot(run.deps.masterKey)
+    const [{ menu }, tables] = await Promise.all([
+      run.ok(loadSelfPayMenu()),
+      run.deps.evolu.loadQuery(selfPayTablesQuery),
+    ])
+    await run.ok(saveSelfPayMenuVersion(menu))
+    const tableRow = tables.find(({ name }) => name === table)
+    if (tableRow === undefined) throw new Error(`Table ${table} not found.`)
+    const { pointer, event } = createSelfPaySelectionEvent({
+      selectionText: createSelfPayWrittenSelectionText({
+        tablePublicKey: bytesToHex(
+          deriveTableSelfPayKeys(root, tableRow.id, tableRow.selfPayEpoch ?? 0)
+            .publicKey
+        ),
+        menu,
+        lines: [
+          { text, amount: named },
+          ...(also === undefined || alsoNamed === undefined
+            ? []
+            : [{ text: also, amount: alsoNamed }]),
+        ],
+      }),
+      selectionKey: deriveSelfPaySelectionKey(root),
+      createdAt: Math.floor(run.deps.date.now().getTime() / 1000),
+    })
+    await createNostrRelayClient().publish(
+      nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+      event
+    )
+    await receiveBankTransfer(run, deviceId, {
+      amount,
+      currency: menu.currency,
+      variableSymbol: deriveOrderSelfPayReference(pointer),
+      recipientMessage: formatSelfPayBankMessage({ pointer }),
+    })
+    return undefined
+  },
 }
 
 /** An IBAN account transaction matching `paymentId`'s prepared details. */
@@ -660,4 +946,48 @@ async function createIbanTransaction(
       },
     })
   )
+}
+
+async function receiveBankTransfer(
+  run: NativeAppRun,
+  deviceId: DeviceId,
+  transfer: {
+    readonly amount: number
+    readonly currency: FiatCurrency
+    readonly variableSymbol: string
+    readonly recipientMessage: string
+  }
+) {
+  const [bankAccount] = await run.deps.evolu.loadQuery(fiatBankAccountQuery)
+  if (bankAccount === undefined) throw new Error("No bank account seeded.")
+  const accountTransactionId = await run.ok(
+    createAccountTransaction({
+      accountId: bankAccount.id,
+      amount: Integer(transfer.amount),
+      currency: transfer.currency,
+      occurredAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+      note: null,
+      internalTransferGroupId: null,
+      source: { deviceId: null, source: "auto" },
+      iban: {
+        variableSymbol: VariableSymbol(transfer.variableSymbol),
+        constantSymbol: null,
+        specificSymbol: null,
+        bankReference: NonEmptyString255Schema.decode(
+          `e2e:${createRowId<"Transfer">()}`
+        ),
+        recipientMessage: NonEmptyStringSchema.decode(
+          transfer.recipientMessage
+        ),
+      },
+    })
+  )
+  await using selfPayRun = run.create({
+    ...run.deps,
+    deviceId,
+    tableSelfPayRoot: deriveTableSelfPayRoot(run.deps.masterKey),
+    nostrRelayClient: createNostrRelayClient(),
+    selfPayDefaultRelays: nativeEnv.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+  })
+  await selfPayRun.ok(reconcileAccountTransaction(accountTransactionId))
 }

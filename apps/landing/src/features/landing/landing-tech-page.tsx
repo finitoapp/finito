@@ -271,6 +271,7 @@ type ServiceId =
   | "web"
   | "relay"
   | "linky"
+  | "agora"
   | "cashuMints"
   | "linkyWallet"
   | "bank"
@@ -324,7 +325,7 @@ const serviceGroups: ReadonlyArray<{
 }> = [
   {
     title: "landing.tech.services.group.always",
-    ids: ["web", "relay", "linky"],
+    ids: ["web", "relay", "linky", "agora"],
   },
   {
     title: "landing.tech.services.group.enabled",

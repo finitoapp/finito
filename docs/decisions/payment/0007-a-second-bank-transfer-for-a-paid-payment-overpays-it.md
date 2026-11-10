@@ -34,8 +34,8 @@ income list.
 
 ## Consequences
 
-Paying twice is surfaced to staff as an overpaid payment, resolved with
-`acknowledgePaymentExcessSettlement` or a refund. A Fio transfer recorded
+Paying twice is surfaced to staff as an overpaid payment, resolved as
+payment/0013 says. A Fio transfer recorded
 before this change without a claim, because its payment was already paid,
 claims that payment the next time a sync re-checks it, while it is still in
 the window the sync reads.

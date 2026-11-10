@@ -57,9 +57,8 @@ tags: [eet]
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
 - extendedWaitUntil:
-    visible: ${output.t["refund.page.choice.part"]}
+    visible: ${output.t["refund.page.choice.overpayment"]}
     timeout: 10000
-- tapOn: ${output.t["refund.page.choice.part"]}
 - extendedWaitUntil:
     visible:
       id: ${output.re(output.t["refund.dialog.amount.label"])}
@@ -86,10 +85,10 @@ tags: [eet]
     file: ../../subflows/assert-label.yaml
     env:
       LABEL: ${output.t["paymentDetail.refunds.action"]}
-# The history shows the payment partly refunded.
+# The history shows the overpayment returned.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: activity
       TEXT: ${output.t["activity.title"]}
-- assertVisible: '${output.re(output.t["refund.state.partial"].split("{amount}")[0])}.+'
+- assertVisible: '${output.re(output.t["refund.state.overpayment"].split("{amount}")[0])}.+'

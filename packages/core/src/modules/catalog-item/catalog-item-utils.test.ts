@@ -23,6 +23,9 @@ const makeItem = (
   sortOrder: NonNegativeInteger(0),
   scanCode: null,
   taxRateId: null,
+  inMenu: null,
+  soldOut: null,
+  inMenuUntil: null,
   ...overrides,
 })
 

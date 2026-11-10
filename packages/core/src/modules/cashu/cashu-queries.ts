@@ -192,17 +192,6 @@ export const cashuBookingCursorQuery = createQuery((db) =>
     .where("id", "=", cashuBookingCursorId)
 )
 
-/** The newest change this database holds, whatever it changed. */
-export const evoluHistoryMaxRowidQuery = createQuery((db) =>
-  db
-    .selectFrom(
-      kyselySql<{
-        maxRowid: number | null
-      }>`(select max("rowid") as "maxRowid" from "evolu_history")`.as("history")
-    )
-    .select("history.maxRowid")
-)
-
 /**
  * The operations whose `status` changed on this device after `afterRowid`,
  * in arrival order, under the given shard owners: what the booking job reads

@@ -7,7 +7,7 @@ import {
   type UpdateValues,
 } from "@evolu/common"
 
-import type { EvoluOwnerDep } from "../../deps.ts"
+import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import { openBillsByTableIdQuery } from "../bill/bill-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
@@ -16,6 +16,7 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
+import { NonNegativeInteger, TimestampMs } from "../shared/schema.ts"
 import type { Table, TableRow } from "./table.ts"
 import { lastTableSortOrderQuery, tablesQuery } from "./table-queries.ts"
 import type { TableId } from "./table-types.ts"
@@ -74,6 +75,40 @@ export const updateTable =
       })
     )
     return ok(input.id)
+  }
+
+export const regenerateTableSelfPayQr =
+  (
+    table: Pick<TableRow, "id" | "selfPayEpoch">
+  ): Task<TableId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { id } = table
+    const selfPayEpoch = NonNegativeInteger((table.selfPayEpoch ?? 0) + 1)
+
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "table",
+        { id, selfPayEpoch },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok(id)
+  }
+
+export const requestTableSelfPayPublish =
+  (id: TableId): Task<TableId, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "table",
+        {
+          id,
+          selfPayPublishRequestedAt: TimestampMs(run.deps.date.now().getTime()),
+        },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok(id)
   }
 
 const createTableHasOpenBillsError = defineError("TableHasOpenBills")<{

@@ -1,25 +1,33 @@
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
+  type BillPaymentState,
   type BillWithStats,
   billPaymentState,
   buildBillRows,
   elapsedSeverity,
+  formatRowsSum,
   groupBillRowsByTableId,
   matchesTableFilter,
-  sumBillRows,
   type TableFilter,
   TableFilterSchema,
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import { openBillsQuery } from "@payky/core/modules/bill/bill-queries"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { router, useFocusEffect } from "expo-router"
 import { useAtom } from "jotai"
+import type { LucideIcon } from "lucide-react-native"
+import ChartPie from "lucide-react-native/icons/chart-pie"
+import ChevronRight from "lucide-react-native/icons/chevron-right"
+import Hourglass from "lucide-react-native/icons/hourglass"
 import Plus from "lucide-react-native/icons/plus"
 import Users from "lucide-react-native/icons/users"
 import { useCallback, useEffect, useMemo, useState } from "react"
@@ -51,6 +59,11 @@ const elapsedColors = {
   long: "warning",
   veryLong: "destructive",
 } as const satisfies Record<ReturnType<typeof elapsedSeverity>, string>
+
+const billPaymentStateIcons = {
+  paymentPending: Hourglass,
+  partiallyPaid: ChartPie,
+} satisfies Record<BillPaymentState, LucideIcon>
 
 type TFn = ReturnType<typeof useTranslation>["t"]
 
@@ -107,7 +120,10 @@ export function PosOverviewPage() {
   }, [])
 
   const rows = useMemo(() => buildBillRows(openBills), [openBills])
-  const rowsByTableId = useMemo(() => groupBillRowsByTableId(rows), [rows])
+  const rowsByTableId = useMemo(
+    () => groupBillRowsByTableId(rows, new Set(tables.map(({ id }) => id))),
+    [rows, tables]
+  )
   const tiles = tables.map((table) => ({
     table,
     rows: rowsByTableId.get(table.id) ?? [],
@@ -116,7 +132,9 @@ export function PosOverviewPage() {
   const visibleTiles = tiles.filter((tile) =>
     matchesTableFilter(tableFilter, tile.rows.length > 0)
   )
-  const floorTotal = sumBillRows(rows)
+  const floorTotal = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
 
   return (
     <FlatList
@@ -148,7 +166,7 @@ export function PosOverviewPage() {
               {floorTotal !== undefined && (
                 <FloorStat
                   label={t("home.pos.stats.total")}
-                  value={formatMoney(floorTotal, locale)}
+                  value={floorTotal}
                 />
               )}
             </XStack>
@@ -166,6 +184,7 @@ export function PosOverviewPage() {
               </ToggleGroup>
             )}
           </XStack>
+          <ToServeStrip />
           <NoTableStrip rows={rowsByTableId.get(null) ?? []} now={now} />
         </YStack>
       }
@@ -241,6 +260,47 @@ function FloorStat({
         {value}
       </Text>
     </YStack>
+  )
+}
+
+function ToServeStrip() {
+  const { t } = useTranslation()
+  const [settings] = useEvoluQuery(selfPaySettingsQuery).data
+  const orders = useEvoluQuery(menuOrdersToServeQuery).data
+
+  if (!offersOrders(settings) && orders.length === 0) return null
+
+  return (
+    <Pressable role="link" onPress={() => router.push("/orders")}>
+      <XStack
+        items="center"
+        gap={12}
+        p={12}
+        pl={16}
+        rounded={radius.xl}
+        borderWidth={1}
+        borderColor="card-ring"
+        bg="card"
+      >
+        <Text
+          flex={1}
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+        >
+          {t("nav.orders")}
+        </Text>
+        <Text
+          fontSize={fontSize.lg}
+          lineHeight={fontSize.lg}
+          fontWeight={fontWeight.semibold}
+          fontVariant={["tabular-nums"]}
+        >
+          {orders.length}
+        </Text>
+        <Icon icon={ChevronRight} size={16} color="muted-foreground" />
+      </XStack>
+    </Pressable>
   )
 }
 
@@ -326,7 +386,13 @@ function TableTile({
   const newBill = useNewBill(table.id)
   const occupied = rows.length > 0
   const onlyBill = rows.length === 1 ? rows[0]?.bill : undefined
-  const total = sumBillRows(rows)
+  const left = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
+  const isPartlyPaid = rows.some(({ paid }) => paid > 0)
+  const paid = isPartlyPaid
+    ? formatRowsSum(rows, "paid", (money) => formatMoney(money, locale))
+    : undefined
   const elapsedMs =
     now -
     Math.min(...rows.map(({ bill }) => new Date(bill.createdAt).getTime()))
@@ -344,18 +410,7 @@ function TableTile({
       justify="space-between"
       gap={8}
       icon={
-        occupied ? (
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            m={-6}
-            rounded={radius.full}
-            bg="background-60 press:background"
-            iconStart={Plus}
-            aria-label={t("tables.tile.newBill")}
-            onPress={newBill}
-          />
-        ) : (
+        occupied ? null : (
           <Icon icon={Plus} size={20} color="muted-foreground" />
         )
       }
@@ -381,46 +436,51 @@ function TableTile({
         </ScrollView>
       )}
       <YStack gap={2}>
-        {total !== undefined && (
+        {left !== undefined && (
           <Text
             fontSize={fontSize.xl}
             lineHeight={fontSize.xl}
             fontWeight={fontWeight.bold}
             fontVariant={["tabular-nums"]}
-            numberOfLines={1}
+            numberOfLines={isPartlyPaid ? 2 : 1}
           >
-            {formatMoney(total, locale)}
+            {isPartlyPaid ? t("tables.tile.left", { amount: left }) : left}
           </Text>
         )}
         {occupied ? (
-          <XStack gap={6} flexWrap="wrap" items="center">
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color={elapsedColors[elapsedSeverity(elapsedMs)]}
-            >
-              {formatElapsed(elapsedMs, locale)}
-            </Text>
-            <Text
-              fontSize={fontSize.sm}
-              lineHeight={fontSize.sm}
-              color="muted-foreground"
-            >
-              {t("tables.tile.itemCount", { value: itemCount })}
-            </Text>
-            {paymentState !== undefined && (
+          <XStack items="center" gap={8}>
+            <XStack flex={1} minW={0} gap={6} flexWrap="wrap" items="center">
               <Text
-                rounded={radius.sm}
-                bg="info-15"
-                px={4}
-                fontSize={fontSize.xs}
-                lineHeight={fontSize.xs}
-                fontWeight={fontWeight.semibold}
-                color="info"
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color={elapsedColors[elapsedSeverity(elapsedMs)]}
               >
-                {t(`tables.tile.${paymentState}`)}
+                {formatElapsed(elapsedMs, locale)}
               </Text>
-            )}
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {t("tables.tile.itemCount", { value: itemCount })}
+              </Text>
+              {paymentState !== undefined && (
+                <BillPaymentStateBadge
+                  paymentState={paymentState}
+                  paid={paymentState === "partiallyPaid" ? paid : undefined}
+                />
+              )}
+            </XStack>
+            <Button
+              variant="ghost"
+              size="icon"
+              m={-6}
+              rounded={radius.full}
+              bg="background-60 press:background"
+              iconStart={Plus}
+              aria-label={t("tables.tile.newBill")}
+              onPress={newBill}
+            />
           </XStack>
         ) : (
           <XStack gap={6} items="center">
@@ -483,13 +543,42 @@ function TableTile({
   )
 }
 
+function BillPaymentStateBadge({
+  paymentState,
+  paid,
+}: {
+  readonly paymentState: BillPaymentState
+  readonly paid?: string | undefined
+}) {
+  const { t } = useTranslation()
+  return (
+    <XStack items="center" gap={4} rounded={radius.sm} bg="info-15" px={4}>
+      <Icon
+        icon={billPaymentStateIcons[paymentState]}
+        size={14}
+        color="info-foreground"
+      />
+      <Text
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        fontWeight={fontWeight.semibold}
+        color="info-foreground"
+      >
+        {paid === undefined
+          ? t(`tables.tile.${paymentState}`)
+          : t("tables.tile.partiallyPaidAmount", { amount: paid })}
+      </Text>
+    </XStack>
+  )
+}
+
 /**
- * One open bill as a chip: its total and, off a table, how long it has been
- * open, a dot while its payment is under way, and its label when it has one.
+ * One open bill as a chip: what is left to pay on it and, off a table, how
+ * long it has been open, and its label when it has one.
  */
 function BillChip({
   bill,
-  stats,
+  left,
   now,
   showElapsed = true,
 }: BillWithStats & {
@@ -504,7 +593,14 @@ function BillChip({
   return (
     <Pressable
       role="button"
-      aria-label={billLabel(bill, t)}
+      aria-label={
+        paymentState === undefined
+          ? billLabel(bill, t)
+          : t("tables.tile.billWithState", {
+              label: billLabel(bill, t),
+              state: t(`tables.tile.${paymentState}`),
+            })
+      }
       onPress={() => openBill(bill.id)}
       style={{ minHeight: 44, justifyContent: "center" }}
     >
@@ -517,7 +613,7 @@ function BillChip({
         bg="background-70"
       >
         {paymentState !== undefined && (
-          <YStack w={8} h={8} rounded={radius.full} bg="info" />
+          <Icon icon={billPaymentStateIcons[paymentState]} color="info" />
         )}
         {bill.label !== null && (
           <Text
@@ -536,10 +632,7 @@ function BillChip({
           fontWeight={fontWeight.semibold}
           fontVariant={["tabular-nums"]}
         >
-          {formatMoney(
-            { value: stats.totalAmount, currency: bill.currency },
-            locale
-          )}
+          {formatMoney({ value: left, currency: bill.currency }, locale)}
         </Text>
         {showElapsed && (
           <Text

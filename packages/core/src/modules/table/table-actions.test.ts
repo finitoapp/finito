@@ -19,8 +19,10 @@ import {
   createTableAtEnd,
   deleteTable,
   listTables,
+  regenerateTableSelfPayQr,
   updateTable,
 } from "./table-actions.ts"
+import { tableByIdQuery } from "./table-queries.ts"
 import type { TableId } from "./table-types.ts"
 
 const tableRecordByIdQuery = (id: TableId) =>
@@ -252,4 +254,34 @@ describe("table actions", () => {
     expect(second?.code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/)
     expect(first?.code).not.toBe(second?.code)
   }, 15_000)
+
+  test("moves a table's self-pay QR to the next epoch on every regeneration", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun({ evolu, evoluOwner: evolu.appOwner })
+    const id = await run.ok(
+      createTableAtEnd({
+        deviceId: null,
+        name: NonEmptyString255("Terrace"),
+        seatCount: PositiveInteger(2),
+        selfPayEnabled: 1,
+      })
+    )
+
+    await run.ok(regenerateTableSelfPayQr({ id, selfPayEpoch: null }))
+    await expect
+      .poll(
+        async () => (await evolu.loadQuery(tableByIdQuery(id)))[0]?.selfPayEpoch
+      )
+      .toBe(1)
+    await run.ok(
+      regenerateTableSelfPayQr({ id, selfPayEpoch: NonNegativeInteger(1) })
+    )
+
+    await expect
+      .poll(
+        async () => (await evolu.loadQuery(tableByIdQuery(id)))[0]?.selfPayEpoch
+      )
+      .toBe(2)
+  })
 })

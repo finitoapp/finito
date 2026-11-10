@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core"
+import { SelfPayRelaysSchema } from "@payky/core/integrations/nostr/nostr-default-relays"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { appBrand } from "./app-brand.ts"
@@ -43,6 +44,11 @@ export const appEnv = createEnv({
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
     // Unset leaves error reporting unavailable, whatever the device opted.
     VITE_SENTRY_DSN: z.string().optional(),
+    VITE_PAYKY_SELF_PAY_ORIGIN: z.url().default(appBrand.selfPayOrigin),
+    VITE_PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
+    // Test deployments only (table-self-pay/0025): the guest page offers a
+    // test transfer and the till books it as money from the bank.
+    VITE_PAYKY_SELF_PAY_TEST_TRANSFERS: z.stringbool().default(false),
   },
   runtimeEnv: import.meta.env,
   emptyStringAsUndefined: true,

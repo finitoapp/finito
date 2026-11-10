@@ -1,5 +1,8 @@
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
-import { splitTransportUrl } from "@payky/app-shared/evolu-transports"
+import {
+  orderDefaultTransportsFirst,
+  splitTransportUrl,
+} from "@payky/app-shared/evolu-transports"
 import {
   accountTransportsQuery,
   setAccountEvoluTransportActive,
@@ -10,6 +13,7 @@ import { useAtomValue } from "jotai"
 import { useState } from "react"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { Switch } from "@/components/ui/switch.tsx"
+import { appDefaultTransports } from "@/core/app-brand.ts"
 import { TransportSyncStatus } from "@/features/shared/evolu-transports/transport-sync-status.tsx"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
@@ -33,6 +37,10 @@ export function TransportToggleList({
   const { data: transports } = useDeviceEvoluQuery(
     accountTransportsQuery(accountId)
   )
+  const orderedTransports = orderDefaultTransportsFirst(
+    transports,
+    appDefaultTransports
+  )
   const [pendingTransportId, setPendingTransportId] = useState<string | null>(
     null
   )
@@ -47,7 +55,7 @@ export function TransportToggleList({
 
   return (
     <ul className="divide-y rounded-lg border">
-      {transports.map((transport) => (
+      {orderedTransports.map((transport) => (
         <TransportListItem
           key={transport.id}
           isActive={transport.isActive}

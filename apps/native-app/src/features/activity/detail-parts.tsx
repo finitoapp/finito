@@ -1,10 +1,14 @@
-import type { BillCoverageMismatchReason } from "@payky/app-shared/activity-detail"
+import type {
+  BillCoverageMismatchReason,
+  BillCoverageWarningCoverage,
+} from "@payky/app-shared/activity-detail"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill-line-utils"
 import {
   type Currency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
+import { projectSelfPayViewLine } from "@payky/core/modules/table-self-pay/table-self-pay-projection-utils"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import type { ReactNode } from "react"
 import { Text, XStack, YStack } from "tamagui"
@@ -49,13 +53,22 @@ export function OptionalRow({
   label,
   value,
   mono,
+  stacked,
 }: {
   readonly label: string
   readonly value: string | null
   readonly mono?: boolean
+  readonly stacked?: boolean
 }) {
   if (value === null) return null
-  return <DetailRow label={label} value={value} mono={mono === true} />
+  return (
+    <DetailRow
+      label={label}
+      value={value}
+      mono={mono === true}
+      stacked={stacked === true}
+    />
+  )
 }
 
 /**
@@ -95,9 +108,11 @@ function TechnicalTriggerLabel({ label }: { readonly label: string }) {
 export function BillLines({
   summaries,
   emptyMessage,
+  selfPayAllocated,
 }: {
   readonly summaries: ReadonlyArray<BillLineSummary>
   readonly emptyMessage: string
+  readonly selfPayAllocated?: ReadonlyMap<string, number>
 }) {
   const locale = useLocale()
 
@@ -144,6 +159,16 @@ export function BillLines({
                 locale
               )}`}
             </Text>
+            {selfPayAllocated === undefined ? null : (
+              <SelfPayLinePaid
+                paid={
+                  projectSelfPayViewLine(summary, selfPayAllocated)
+                    .allocatedAmount
+                }
+                total={summary.totalAmount}
+                currency={summary.currency}
+              />
+            )}
           </YStack>
           <Text
             fontSize={fontSize.sm}
@@ -161,6 +186,33 @@ export function BillLines({
   )
 }
 
+/** As web's `SelfPayLinePaid`: what guests paid of a line. */
+function SelfPayLinePaid({
+  paid,
+  total,
+  currency,
+}: {
+  readonly paid: number
+  readonly total: NonNegativeInteger
+  readonly currency: Currency
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  if (paid === 0) return null
+
+  return (
+    <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} color="primary">
+      {t("billDetail.selfPay.linePaid", {
+        paid: formatMoney(
+          { value: NonNegativeInteger(paid), currency },
+          locale
+        ),
+        total: formatMoney({ value: total, currency }, locale),
+      })}
+    </Text>
+  )
+}
+
 /** "This bill's claimed total doesn't match its line total": expected vs. paid. */
 export function BillCoverageWarning({
   coverage,
@@ -170,7 +222,7 @@ export function BillCoverageWarning({
   reason = null,
   children,
 }: {
-  readonly coverage: "underpaid" | "overpaid"
+  readonly coverage: BillCoverageWarningCoverage
   readonly expectedAmount: NonNegativeInteger
   readonly claimedSum: NonNegativeInteger
   readonly currency: Currency
@@ -179,27 +231,29 @@ export function BillCoverageWarning({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const isUnderpaid = coverage === "underpaid"
+  const isUnderpaid = coverage.type === "underpaid"
   const delta = NonNegativeInteger(Math.abs(expectedAmount - claimedSum))
 
   return (
     <Alert variant="warning" icon={TriangleAlert}>
       <AlertTitle>
-        {t(
-          isUnderpaid
-            ? "paymentDetail.bill.coverage.underpaid.title"
-            : "paymentDetail.bill.coverage.overpaid.title"
-        )}
+        {coverage.type === "underpaid"
+          ? t("paymentDetail.bill.coverage.underpaid.title")
+          : t("overpayment.title", {
+              amount: formatMoney(
+                { value: coverage.unresolved, currency },
+                locale
+              ),
+            })}
       </AlertTitle>
       <AlertDescription>
-        <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-          {t(
-            isUnderpaid
-              ? "paymentDetail.bill.coverage.delta.underpaid"
-              : "paymentDetail.bill.coverage.delta.overpaid",
-            { amount: formatMoney({ value: delta, currency }, locale) }
-          )}
-        </Text>
+        {isUnderpaid ? (
+          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+            {t("paymentDetail.bill.coverage.delta.underpaid", {
+              amount: formatMoney({ value: delta, currency }, locale),
+            })}
+          </Text>
+        ) : null}
         {reason === null
           ? t(
               isUnderpaid

@@ -94,6 +94,7 @@ tags: [catalog]
 - assertVisible:
     id: ${output.re(output.t["catalog.items.form.name.label"])}
     text: Espresso
+- assertVisible: EUR
 - scrollUntilVisible:
     element:
       id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
@@ -101,7 +102,6 @@ tags: [catalog]
 - assertNotVisible:
     id: ${output.re(output.t["catalog.items.form.sku.label"])}
     text: COF-001
-- assertVisible: EUR
 - assertVisible:
     id: ${output.re(output.t["catalog.items.form.scanCode.label"])}
     text: "8594001234567"

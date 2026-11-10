@@ -1,4 +1,7 @@
-import { deriveBillSummaryTotal } from "../bill-line/bill-line-utils.ts"
+import {
+  deriveBillSummaryTotal,
+  deriveBillTotalAfterLines,
+} from "../bill-line/bill-line-utils.ts"
 /**
  * The read-and-validate half of the bill module: everything that answers "what
  * state is this bill in, and may the caller do X to it" without writing
@@ -22,6 +25,7 @@ import type {
   AccountTransactionId,
   AccountTransactionKind,
 } from "../account-transaction/account-transaction-types.ts"
+import type { BillLineRow } from "../bill-line/bill-line.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
@@ -250,7 +254,7 @@ const requireBillInStatus =
     billId: BillId,
     allowedStatuses: ReadonlySet<BillStatus>
   ): Task<
-    BillWithItems,
+    BillStatusSnapshot,
     BillNotFoundError | BillStatusNotAllowedError,
     EvoluDep
   > =>
@@ -258,7 +262,7 @@ const requireBillInStatus =
     const snapshotResult = await run(loadBillStatusSnapshot(billId))
     if (!snapshotResult.ok) return snapshotResult
 
-    const { bill: billRow, items, status } = snapshotResult.value
+    const { status } = snapshotResult.value
     if (!allowedStatuses.has(status)) {
       return err(
         createBillStatusNotAllowedError({
@@ -269,7 +273,7 @@ const requireBillInStatus =
       )
     }
 
-    return ok({ bill: billRow, items })
+    return snapshotResult
   }
 const openBillStatuses: ReadonlySet<BillStatus> = new Set(["open"])
 /**
@@ -308,7 +312,7 @@ export const requireEditableBill =
   (
     billId: BillId
   ): Task<
-    BillWithItems,
+    BillStatusSnapshot,
     BillNotFoundError | BillStatusNotAllowedError | BillLockedError,
     EvoluDep & DateDep
   > =>
@@ -520,4 +524,34 @@ export const requireSelectionOnSourceBill = (
   }
 
   return ok(selectedById)
+}
+
+const createBillSplitLeavesOverpaymentError = defineError(
+  "BillSplitLeavesOverpayment"
+)<{
+  readonly billId: BillId
+  readonly claimedSum: NonNegativeInteger
+  readonly totalAfterSplit: NonNegativeInteger
+}>()
+export type BillSplitLeavesOverpaymentError = ReturnType<
+  typeof createBillSplitLeavesOverpaymentError
+>
+
+export const requireSplitLeavingNoOverpayment = (
+  source: BillStatusSnapshot,
+  lines: ReadonlyArray<Omit<BillLineRow, "id">>
+): Result<undefined, BillSplitLeavesOverpaymentError> => {
+  const totalAfterSplit = deriveBillTotalAfterLines(
+    source.items,
+    lines.filter((line) => line.billId === source.bill.id)
+  )
+  return source.claimedSum > totalAfterSplit
+    ? err(
+        createBillSplitLeavesOverpaymentError({
+          billId: source.bill.id,
+          claimedSum: source.claimedSum,
+          totalAfterSplit,
+        })
+      )
+    : ok(undefined)
 }

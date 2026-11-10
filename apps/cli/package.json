@@ -10,6 +10,7 @@
   "dependencies": {
     "@evolu/common": "8.27.2",
     "@evolu/nodejs": "4.6.0",
+    "@payky/app-shared": "workspace:*",
     "@payky/core": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
     "commander": "15.0.0",

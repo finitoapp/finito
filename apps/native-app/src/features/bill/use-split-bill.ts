@@ -19,6 +19,7 @@ import { nativeConsole } from "../../core/native-runtime.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { useCoveringEditQuestion } from "./use-covering-edit-question.ts"
 
 const splitBillErrorKeys = {
   BillNotFound: "bill.split.error",
@@ -26,6 +27,7 @@ const splitBillErrorKeys = {
   BillLocked: "bill.locked",
   // The selection no longer matches the bill: retrying the same one cannot work.
   BillSplitSelectionStale: "bill.split.staleSelection",
+  BillSplitLeavesOverpayment: "bill.split.leavesOverpayment",
 } satisfies Record<SplitBillError["type"], TranslationKey>
 
 /**
@@ -55,6 +57,7 @@ export function useSplitBill({
   // otherwise run the split twice.
   const pendingRef = useRef(false)
   const [pending, setPending] = useState(false)
+  const coveringEdit = useCoveringEditQuestion(currency)
 
   const fail = (error: SplitBillError) => {
     nativeConsole.error("Failed to split bill", error)
@@ -66,6 +69,21 @@ export function useSplitBill({
     pendingRef.current = true
     setPending(true)
     try {
+      const outcome = await coveringEdit.ask(
+        billId,
+        input.items.map((item) => ({
+          billId,
+          deviceId: null,
+          catalogItemId: item.catalogItemId,
+          itemId: item.itemId,
+          type: item.type,
+          kind: "remove",
+          quantity: item.quantity,
+          totalAmount: item.totalAmount,
+        })),
+        "split"
+      )
+      if (outcome === null) return
       await using run = appRun()
 
       if (input.destination === "new") {

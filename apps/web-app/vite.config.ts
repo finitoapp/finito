@@ -1,4 +1,5 @@
 import path from "node:path"
+
 import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { createEnv } from "@t3-oss/env-core"
 import tailwindcss from "@tailwindcss/vite"
@@ -12,6 +13,7 @@ import { defaultExclude } from "vitest/config"
 import { z } from "zod"
 
 import { getAppVersion, readRepoSnapshot } from "../../bin/app-build.ts"
+import { guestSparkEndpoints } from "../../packages/core/src/spark/spark-guest-endpoints.ts"
 import { isAndroidWebView } from "./src/platform/runtime.ts"
 import { installOneTabLocks } from "./src/polyfills/one-tab-locks.ts"
 
@@ -94,6 +96,59 @@ function repoSnapshotPlugin(): PluginOption {
   }
 }
 
+const createGuestContentSecurityPolicy = (): string =>
+  [
+    "default-src 'none'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self' wss: ${guestSparkEndpoints.join(" ")}`,
+    "base-uri 'none'",
+    "form-action 'none'",
+  ].join("; ")
+
+const rewriteGuestPath = (
+  request: { url?: string },
+  _response: unknown,
+  next: () => void
+) => {
+  if (request.url === "/t" || request.url?.startsWith("/t?")) {
+    request.url = request.url.replace(/^\/t/u, "/t.html")
+  }
+  next()
+}
+
+function guestPagePlugin(): PluginOption {
+  return {
+    name: "payky-table-self-pay-guest-page",
+    configureServer(server) {
+      server.middlewares.use(rewriteGuestPath)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(rewriteGuestPath)
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler(html, context) {
+        if (context.server !== undefined || !context.path.endsWith("/t.html")) {
+          return html
+        }
+        return [
+          {
+            tag: "meta",
+            attrs: {
+              "http-equiv": "Content-Security-Policy",
+              content: createGuestContentSecurityPolicy(),
+            },
+            injectTo: "head-prepend",
+          },
+        ]
+      },
+    },
+  }
+}
+
 function isNativeAndroidWebViewBuild(
   command: string,
   enabled: boolean
@@ -139,6 +194,16 @@ export default (({ command, isSsrBuild, mode }: ConfigEnv) => {
     },
     build: {
       sourcemap: useSentryVitePlugin,
+      ...(isCapacitorBuild
+        ? {}
+        : {
+            rolldownOptions: {
+              input: {
+                main: path.resolve(import.meta.dirname, "index.html"),
+                guest: path.resolve(import.meta.dirname, "t.html"),
+              },
+            },
+          }),
     },
     plugins: [
       ...(useBasicSsl ? [basicSsl()] : []),
@@ -151,6 +216,7 @@ export default (({ command, isSsrBuild, mode }: ConfigEnv) => {
       }),
       react(),
       tailwindcss(),
+      guestPagePlugin(),
       // The native app reads payky.me's snapshot instead of carrying one.
       ...(isCapacitorBuild ? [] : [repoSnapshotPlugin()]),
       VitePWA({
@@ -178,8 +244,14 @@ export default (({ command, isSsrBuild, mode }: ConfigEnv) => {
             /^\/landing(?:\/|$)/u,
             /^\/(?:api|\.well-known)\//u,
             /\/[^/]+\.[^/]+$/u,
+            /^\/t$/u,
           ],
-          globIgnores: ["landing*.html", "landing/og-*.png"],
+          globIgnores: [
+            "landing*.html",
+            "landing/og-*.png",
+            "t.html",
+            "assets/guest-*.js",
+          ],
         },
       }),
       ...(useSentryVitePlugin

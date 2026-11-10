@@ -29,7 +29,7 @@ tags: [bill-split]
 - extendedWaitUntil:
     visible: '${output.tv("bill.itemsCount", { value: 3 })}'
     timeout: 15000
-- assertVisible: '${output.tv("bill.list.label", { number: 1 })}'
+- assertVisible: '.*${output.re(output.tv("bill.list.label", { number: 1 }))}.*'
 # The emptied source bill was canceled: its link opens its detail, also on
 # Android, where it reuses the bill screen showing the target bill.
 - runFlow:

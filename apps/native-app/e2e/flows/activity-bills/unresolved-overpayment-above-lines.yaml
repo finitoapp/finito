@@ -1,0 +1,36 @@
+# web activity-bills.spec.ts: "an unresolved overpayment is shown above the bill's lines".
+appId: ${APP_ID}
+tags: [activity-bills]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow: ../../subflows/prepare-iban-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: simulateDuplicateSettlement
+      QUERY: paymentId=${output.paymentId}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    timeout: 15000
+- assertVisible:
+    text: '${output.re(output.tv("overpayment.title", { amount: "\u00245" }))}'
+    above: Coffee
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.return"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.tip"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.keep"]}

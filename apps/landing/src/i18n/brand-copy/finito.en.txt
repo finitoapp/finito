@@ -139,7 +139,7 @@ landing.tech.backup.diagram.caption
 With a cloud app, the provider holds the key to your data. So they can read it, and so can anyone who gets to the server: support, engineers, sales, or an attacker in a breach. With Finito, the relay sees only encrypted noise, and only you have the key. Not even our support can see your data — they only know what you tell them.
 
 landing.tech.backup.where.body
-The backup goes to Finito's relay (live-relay.finito.fit) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles. If one goes down, the other keeps going. In the settings you can turn them off or add your own, for example on your own server.
+The backup goes to Finito's relay (live-relay.finito.fit) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles, and to the relay of one of Finito's developers (evolu.agora.gripe). If one goes down, the others keep going. In the settings you can turn them off or add your own, for example on your own server.
 
 landing.tech.compare.payky
 Finito
@@ -208,7 +208,10 @@ landing.tech.services.body
 Every service Finito talks to: what it sends, when, and for our own servers, why. Sorted by when the connection happens.
 
 landing.tech.services.highlight
-Until you turn something on or use it, the app talks at most to the app.finito.fit website and two relays — and it sends the relays only encrypted data.
+Until you turn something on or use it, the app talks at most to the app.finito.fit website and three relays — and it sends the relays only encrypted data.
+
+landing.tech.services.agora.name
+The relay of one of Finito's developers (evolu.agora.gripe)
 
 landing.tech.services.owner.payky
 Finito server

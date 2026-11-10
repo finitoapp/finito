@@ -1,12 +1,15 @@
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import {
+  calculateClaimedSum,
   claimedPaymentIdSet,
+  deriveOpenBillTableId,
   derivePendingPaymentIds,
 } from "@payky/core/modules/bill/bill-utils"
 import {
   calculateBillLineSummaries,
   deriveBillSummaryStats,
 } from "@payky/core/modules/bill-line/bill-line-utils"
+import type { Money } from "@payky/core/modules/shared/money"
 import {
   type Currency,
   NonNegativeInteger,
@@ -19,6 +22,8 @@ import { z } from "zod"
 export interface BillWithStats {
   readonly bill: OpenBillRow
   readonly stats: ReturnType<typeof deriveBillSummaryStats>
+  readonly paid: NonNegativeInteger
+  readonly left: NonNegativeInteger
 }
 
 export const TableFilterSchema = z.enum(["all", "occupied", "free"])
@@ -45,30 +50,40 @@ export const buildBillRows = (
   openBills: ReadonlyArray<OpenBillRow>
 ): ReadonlyArray<BillWithStats> =>
   openBills
-    .map((bill) => ({
-      bill,
-      stats: deriveBillSummaryStats(
+    .map((bill) => {
+      const stats = deriveBillSummaryStats(
         calculateBillLineSummaries(bill.lines, bill.items)
-      ),
-    }))
+      )
+      const paid = calculateClaimedSum(bill.claims)
+      return {
+        bill,
+        stats,
+        paid,
+        left: NonNegativeInteger(Math.max(0, stats.totalAmount - paid)),
+      }
+    })
     .sort((a, b) => b.bill.displayNumber - a.bill.displayNumber)
 
 export const groupBillRowsByTableId = (
-  rows: ReadonlyArray<BillWithStats>
+  rows: ReadonlyArray<BillWithStats>,
+  liveTableIds: ReadonlySet<TableId>
 ): ReadonlyMap<TableId | null, ReadonlyArray<BillWithStats>> => {
   const map = new Map<TableId | null, ReadonlyArray<BillWithStats>>()
   for (const row of rows) {
-    map.set(row.bill.tableId, [...(map.get(row.bill.tableId) ?? []), row])
+    const tableId = deriveOpenBillTableId(row.bill.tableId, liveTableIds)
+    map.set(tableId, [...(map.get(tableId) ?? []), row])
   }
   return map
 }
 
 /**
- * The summed total of `rows` — or `undefined` when there are none or they are
- * in more than one currency, which have no meaningful sum.
+ * The summed total of `rows`, or the `amount` of each — or `undefined` when
+ * there are none or they are in more than one currency, which have no
+ * meaningful sum.
  */
 export const sumBillRows = (
-  rows: ReadonlyArray<BillWithStats>
+  rows: ReadonlyArray<BillWithStats>,
+  amount: (row: BillWithStats) => number = ({ stats }) => stats.totalAmount
 ):
   | { readonly value: NonNegativeInteger; readonly currency: Currency }
   | undefined => {
@@ -81,18 +96,31 @@ export const sumBillRows = (
   }
 
   return {
-    value: NonNegativeInteger(
-      rows.reduce((sum, { stats }) => sum + stats.totalAmount, 0)
-    ),
+    value: NonNegativeInteger(rows.reduce((sum, row) => sum + amount(row), 0)),
     currency: first.bill.currency,
   }
 }
+
+/**
+ * What is left to pay on `rows`, or what guests paid on them, summed and
+ * formatted — `undefined` when it has no sum.
+ */
+export const formatRowsSum = (
+  rows: ReadonlyArray<BillWithStats>,
+  amount: "left" | "paid",
+  formatAmount: (money: Money) => string
+): string | undefined => {
+  const sum = sumBillRows(rows, (row) => row[amount])
+  return sum === undefined ? undefined : formatAmount(sum)
+}
+
+export type BillPaymentState = "paymentPending" | "partiallyPaid"
 
 /** Where a bill's payment stands, when it is anywhere at all. */
 export const billPaymentState = (
   bill: OpenBillRow,
   now: number
-): "paymentPending" | "partiallyPaid" | undefined => {
+): BillPaymentState | undefined => {
   if (
     derivePendingPaymentIds(
       bill.payments,
@@ -110,7 +138,7 @@ export const billPaymentState = (
 export const tablePaymentState = (
   rows: ReadonlyArray<BillWithStats>,
   now: number
-): "paymentPending" | "partiallyPaid" | undefined => {
+): BillPaymentState | undefined => {
   const states = rows.map(({ bill }) => billPaymentState(bill, now))
   return states.includes("paymentPending")
     ? "paymentPending"

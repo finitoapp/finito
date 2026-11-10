@@ -14,10 +14,10 @@ import {
 } from "../../modules/account-transaction/account-transaction-actions.ts"
 import { accountTransactionSparkByTransferIdQuery } from "../../modules/account-transaction/account-transaction-queries.ts"
 import {
-  loadAutomaticReconciliationClaimForNewAccountTransaction,
-  loadBillClosedAtForPayment,
+  loadAutomaticReconciliation,
   reconcileAccountTransaction,
-  upsertReconciliationClaimRows,
+  SELF_PAY_ARRIVAL_LOCK,
+  upsertAutomaticReconciliationRows,
 } from "../../modules/reconciliation-claim/reconciliation-claim-actions.ts"
 import {
   removeUndefinedValues,
@@ -111,11 +111,7 @@ type SparkTransactionInputError =
   | "missing-spark-identifier"
   | "missing-preimage"
 
-/**
- * The CLI runs this job too, and has no device: `deviceId` is there only in
- * the app. Without it every withdrawal counts as another device's.
- */
-type SparkSyncJobContext = BackgroundJobContext & Partial<DeviceIdDep>
+type SparkSyncJobContext = BackgroundJobContext & DeviceIdDep
 
 interface RecordTransferOptions {
   /**
@@ -381,38 +377,29 @@ const createSparkAccountSyncSession = ({
           input.value,
           run.deps.date.now()
         )
-        const claim = await run.ok(
-          loadAutomaticReconciliationClaimForNewAccountTransaction(
-            input.value,
-            accountTransaction.id
-          )
-        )
-        const billClosing =
-          claim === null
-            ? null
-            : await run.ok(
-                loadBillClosedAtForPayment(claim.paymentId, {
-                  id: accountTransaction.id,
-                  kind: accountTransaction.kind,
-                  amount: accountTransaction.input.amount,
-                  currency: accountTransaction.input.currency,
+        const reconciliation = await run.deps.lockManager.request(
+          SELF_PAY_ARRIVAL_LOCK,
+          async () => {
+            const loaded = await run.ok(
+              loadAutomaticReconciliation(input.value, accountTransaction)
+            )
+            await runMutationWithCompletion((options) => {
+              upsertAccountTransactionRows(run.deps.evolu, accountTransaction, {
+                ...options,
+                owner: run.deps.evoluOwner,
+              })
+              if (loaded !== null) {
+                upsertAutomaticReconciliationRows(run.deps.evolu, loaded, {
+                  ...options,
+                  owner: run.deps.evoluOwner,
                 })
-              )
-
-        await runMutationWithCompletion((options) => {
-          upsertAccountTransactionRows(run.deps.evolu, accountTransaction, {
-            ...options,
-            owner: run.deps.evoluOwner,
-          })
-          if (claim !== null) {
-            upsertReconciliationClaimRows(run.deps.evolu, claim, billClosing, {
-              ...options,
-              owner: run.deps.evoluOwner,
+              }
             })
+            return loaded
           }
-        })
+        )
         const accountTransactionId = accountTransaction.id
-        const paymentId = claim?.paymentId ?? null
+        const paymentId = reconciliation?.claim.paymentId ?? null
         run.deps.console.info("Created Spark account transaction.", {
           accountId: account.id,
           accountTransactionId,
@@ -435,7 +422,7 @@ const createSparkAccountSyncSession = ({
     const toRecord = await run.ok(
       checkPendingWithdrawals({
         accountId: account.id,
-        deviceId: run.deps.deviceId ?? null,
+        deviceId: run.deps.deviceId,
         getTransfer: (id) => currentWallet.getTransfer(id),
       })
     )
@@ -803,13 +790,14 @@ const getSparkTransactionPayload = (
   if (!result.success) return null
 
   const { paymentPreimage, invoice } = result.data
+  const parsed = parseLightningInvoice(invoice.encodedInvoice)
   return {
     details: {
       lnInvoice: invoice.encodedInvoice,
       preImage: paymentPreimage,
       paymentHash: invoice.paymentHash,
     },
-    memo: invoice.memo ?? "",
+    memo: (parsed.ok ? parsed.value.description : null) ?? invoice.memo ?? "",
   }
 }
 

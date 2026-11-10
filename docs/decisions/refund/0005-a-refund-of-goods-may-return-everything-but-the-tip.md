@@ -1,6 +1,6 @@
 # 0005 A refund of goods may return everything the payment received but its tip
 
-Status: accepted
+Status: superseded by refund/0014
 Date: 2026-10-01
 
 ## Context
@@ -41,6 +41,6 @@ extra money already returned, so it offers it again, capped at what is left.
 - `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundableAmount > adds what the payment received beyond its amount`
 - `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundableAmount > leaves the tip out`
 - `packages/core/src/modules/refund/refund-utils.test.ts > summarizeRefundsByPayment > measures a returned duplicate against everything the payment received`
-- `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundPrefillAmount > prefills $prefill of $remaining left with $excess excess`
+- `packages/core/src/modules/refund/refund-utils.test.ts > deriveRefundPrefillAmount > prefills $prefill of $remaining left with $returnable of overpayment to return`
 - `packages/core/src/background-jobs/jobs/eet-reporting-job.test.ts > eet reporting job: reversals of extra money > returning everything reverses the sale and the extra money`
 - `apps/web-app/e2e/eet.spec.ts > a payment settled twice reports the extra money, and refunding it reverses only that`

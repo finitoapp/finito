@@ -3,7 +3,7 @@ import { sqliteTrue } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
-import type { BillId } from "./bill-types.ts"
+import type { BillId, OverpaymentScopes } from "./bill-types.ts"
 
 /**
  * Every payment for a bill that has an active reconciliation claim — money
@@ -45,8 +45,7 @@ export const claimedPaymentsByBillIdQuery = (billId: BillId) =>
  * payment). Unlike `claimedPaymentsByBillIdQuery`, this carries the real
  * transaction `amount` rather than the payment's nominal one, so it stays
  * correct when a payment ends up claimed for more (or, mid-split, less)
- * than its own amount — see `calculatePaymentClaimedSum`'s doc comment in
- * `payment-status-utils.ts`.
+ * than its own amount.
  *
  * `accountTransaction.amount` is in the transaction's own currency, which
  * for a Lightning/Spark settlement is satoshis against a fiat payment, so
@@ -130,4 +129,114 @@ export const paymentsByBillIdQuery = (billId: BillId) =>
       .select(["payment.id", "payment.canceledAt", "payment.expiresAt"])
       .where("payment.billId", "=", billId)
       .where("payment.isDeleted", "is not", sqliteTrue)
+  )
+
+export const overpaymentPaymentsQuery = (scopes: OverpaymentScopes) =>
+  createQuery((db) =>
+    db
+      .selectFrom("payment")
+      .leftJoin("paymentCashRegister", (join) =>
+        join
+          .onRef("paymentCashRegister.id", "=", "payment.id")
+          .on("paymentCashRegister.isDeleted", "is not", sqliteTrue)
+      )
+      .select([
+        "payment.id",
+        "payment.billId",
+        "payment.amount",
+        "payment.tipAmount",
+        "payment.currency",
+        "payment.excessAcknowledgedAt",
+        "paymentCashRegister.receivedAmount as cashReceivedAmount",
+      ])
+      .where((eb) =>
+        eb.or([
+          ...(scopes.billIds.length === 0
+            ? []
+            : [eb("payment.billId", "in", scopes.billIds)]),
+          ...(scopes.paymentIds.length === 0
+            ? []
+            : [eb("payment.id", "in", scopes.paymentIds)]),
+        ])
+      )
+      .where("payment.isDeleted", "is not", sqliteTrue)
+      .where("payment.amount", "is not", null)
+      .where("payment.tipAmount", "is not", null)
+      .where("payment.currency", "is not", null)
+      .$narrowType<{
+        amount: KyselyNotNull
+        tipAmount: KyselyNotNull
+        currency: KyselyNotNull
+      }>()
+  )
+
+export const overpaymentTransactionsQuery = (scopes: OverpaymentScopes) =>
+  createQuery((db) =>
+    db
+      .selectFrom("payment")
+      .innerJoin("reconciliationClaim", (join) =>
+        join
+          .onRef("reconciliationClaim.paymentId", "=", "payment.id")
+          .on("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+      )
+      .innerJoin(
+        "accountTransaction",
+        "accountTransaction.id",
+        "reconciliationClaim.accountTransactionId"
+      )
+      .leftJoin("paymentBtc", (join) =>
+        join
+          .onRef("paymentBtc.id", "=", "payment.id")
+          .on("paymentBtc.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("paymentCashu", (join) =>
+        join
+          .onRef("paymentCashu.id", "=", "payment.id")
+          .on("paymentCashu.isDeleted", "is not", sqliteTrue)
+      )
+      .leftJoin("paymentLightningAddress", (join) =>
+        join
+          .onRef("paymentLightningAddress.id", "=", "payment.id")
+          .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
+      )
+      .select([
+        "reconciliationClaim.id as claimId",
+        "payment.id as paymentId",
+        "payment.billId as billId",
+        "payment.amount as paymentAmount",
+        "payment.currency as paymentCurrency",
+        quotedAmountSatsSql({
+          kind: "accountTransaction.kind",
+          btc: "paymentBtc.amountSats",
+          cashu: "paymentCashu.amountSats",
+          lightningAddress: "paymentLightningAddress.amountSats",
+        }).as("paymentAmountSats"),
+        "reconciliationClaim.accountTransactionId",
+        "accountTransaction.amount",
+        "accountTransaction.currency",
+      ])
+      .where((eb) =>
+        eb.or([
+          ...(scopes.billIds.length === 0
+            ? []
+            : [eb("payment.billId", "in", scopes.billIds)]),
+          ...(scopes.paymentIds.length === 0
+            ? []
+            : [eb("payment.id", "in", scopes.paymentIds)]),
+        ])
+      )
+      .where("payment.isDeleted", "is not", sqliteTrue)
+      .where("payment.amount", "is not", null)
+      .where("payment.currency", "is not", null)
+      .where("reconciliationClaim.accountTransactionId", "is not", null)
+      .where("accountTransaction.isDeleted", "is not", sqliteTrue)
+      .where("accountTransaction.amount", "is not", null)
+      .where("accountTransaction.currency", "is not", null)
+      .$narrowType<{
+        paymentAmount: KyselyNotNull
+        paymentCurrency: KyselyNotNull
+        accountTransactionId: KyselyNotNull
+        amount: KyselyNotNull
+        currency: KyselyNotNull
+      }>()
   )

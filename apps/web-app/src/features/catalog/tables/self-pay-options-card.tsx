@@ -1,0 +1,296 @@
+import { sqliteTrue } from "@evolu/common"
+import {
+  NO_OPTION,
+  nonNegativeIntegerCodec,
+  optionalIdCodec,
+} from "@payky/app-shared/inline-edit-codecs"
+import {
+  setMenuDayEndHour,
+  setMenuOrdering,
+  setOrderDevice,
+  setSelfPayBillsHidden,
+  setWrittenOrders,
+  setWrittenOrderTaxRate,
+} from "@payky/core/modules/app-settings/app-settings-actions"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
+import { devicesQuery } from "@payky/core/modules/device/device-queries"
+import type { DeviceId } from "@payky/core/modules/device/device-types"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
+import { loadSelfPayMenu } from "@payky/core/modules/menu-order/menu-order-actions"
+import {
+  countSelfPayMenuItems,
+  menuDayEndHourOf,
+} from "@payky/core/modules/menu-order/menu-order-utils"
+import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
+import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { set } from "date-fns"
+import { useAtomValue } from "jotai"
+import { TriangleAlertIcon } from "lucide-react"
+import { accountAtom } from "@/atoms/account.ts"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/reui/alert.tsx"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx"
+import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
+import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
+import { useAppRun } from "@/hooks/use-app-run.ts"
+import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import { useLocale } from "@/hooks/use-locale.ts"
+import { useTranslation } from "@/hooks/use-translation.ts"
+import { formatTime } from "@/lib/format-utils.ts"
+
+const deviceCodec = optionalIdCodec<DeviceId>()
+const taxRateCodec = optionalIdCodec<TaxRateId>()
+
+export function SelfPayOptionsCard() {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const thisDeviceId = useAtomValue(accountAtom).device.id
+  const {
+    data: [settings],
+  } = useEvoluQuery(selfPaySettingsQuery)
+  const menuOrdering = settings?.menuOrdering === sqliteTrue
+  const writtenOrders = settings?.writtenOrders === sqliteTrue
+
+  const saveBillsShown = async (shown: boolean) => {
+    await using run = appRun()
+    await run.ok(setSelfPayBillsHidden(!shown))
+  }
+
+  const saveMenuOrdering = async (on: boolean) => {
+    await using run = appRun()
+    await run.ok(setMenuOrdering({ on, deviceId: thisDeviceId }))
+  }
+
+  const saveWrittenOrders = async (on: boolean) => {
+    await using run = appRun()
+    await run.ok(setWrittenOrders({ on, deviceId: thisDeviceId }))
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <InlineEditSwitch
+          label={t("catalog.tables.selfPayOptions.payBill")}
+          defaultValue={settings?.selfPayBillsHidden !== sqliteTrue}
+          onSave={saveBillsShown}
+        />
+        <InlineEditSwitch
+          label={t("catalog.tables.selfPayOptions.order")}
+          description={t("catalog.tables.selfPayOptions.order.description")}
+          defaultValue={menuOrdering}
+          onSave={saveMenuOrdering}
+        />
+        {menuOrdering && <MenuStatus />}
+        <InlineEditSwitch
+          label={t("catalog.tables.selfPayOptions.written")}
+          description={t("catalog.tables.selfPayOptions.written.description")}
+          defaultValue={writtenOrders}
+          onSave={saveWrittenOrders}
+        />
+        {writtenOrders && (
+          <WrittenOrderTaxRateSelect
+            taxRateId={settings?.writtenOrderTaxRateId ?? null}
+          />
+        )}
+        {remembersWrittenItems(settings) && (
+          <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
+        )}
+        {(menuOrdering || writtenOrders) && (
+          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function WrittenOrderTaxRateSelect({
+  taxRateId,
+}: {
+  readonly taxRateId: TaxRateId | null
+}) {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const {
+    data: [legalEntity],
+  } = useEvoluQuery(legalEntityQuery)
+
+  const save = async (id: TaxRateId | null) => {
+    await using run = appRun()
+    await run.ok(setWrittenOrderTaxRate(id))
+  }
+
+  return (
+    <>
+      <InlineEditSelect
+        label={t("catalog.tables.selfPayOptions.written.taxRate.label")}
+        defaultValue={taxRateId}
+        codec={taxRateCodec}
+        options={[
+          { value: NO_OPTION, label: t("catalog.items.form.taxRate.none") },
+          ...filterSelectableTaxRates(taxRates, taxRateId).map((rate) => ({
+            value: rate.id,
+            label: `${formatTaxRateLabel(rate)}${
+              rate.deactivatedAt !== null
+                ? ` — ${t("settings.taxRates.archived.title")}`
+                : ""
+            }`,
+          })),
+        ]}
+        onSave={save}
+      />
+      {taxRateId === null && isVatPayer(legalEntity) && (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertTitle className="line-clamp-none">
+            {t("catalog.tables.selfPayOptions.written.taxRate.missing.title")}
+          </AlertTitle>
+          <AlertDescription>
+            {t(
+              "catalog.tables.selfPayOptions.written.taxRate.missing.description"
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+    </>
+  )
+}
+
+function MenuDayEndSelect({ hour }: { readonly hour: number }) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const appRun = useAppRun()
+  const today = new Date()
+
+  const save = async (next: NonNegativeInteger) => {
+    await using run = appRun()
+    await run.ok(setMenuDayEndHour(next))
+  }
+
+  return (
+    <InlineEditSelect
+      label={t("catalog.tables.selfPayOptions.written.dayEnd.label")}
+      description={t(
+        "catalog.tables.selfPayOptions.written.dayEnd.description"
+      )}
+      defaultValue={NonNegativeInteger(hour)}
+      codec={nonNegativeIntegerCodec}
+      options={Array.from({ length: 24 }, (_, option) => ({
+        value: String(option),
+        label: formatTime(
+          set(today, { hours: option, minutes: 0, seconds: 0 }),
+          locale
+        ),
+      }))}
+      onSave={save}
+    />
+  )
+}
+
+function OrderDeviceSelect({
+  orderDeviceId,
+}: {
+  readonly orderDeviceId: DeviceId | null
+}) {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const thisDeviceId = useAtomValue(accountAtom).device.id
+  const { data: devices } = useEvoluQuery(devicesQuery)
+  const listed = devices.some(({ id }) => id === orderDeviceId)
+
+  const save = async (deviceId: DeviceId | null) => {
+    if (deviceId === null) return
+    await using run = appRun()
+    await run.ok(setOrderDevice(deviceId))
+  }
+
+  return (
+    <InlineEditSelect
+      label={t("catalog.tables.selfPayOptions.orderDevice.label")}
+      description={t("catalog.tables.selfPayOptions.orderDevice.description")}
+      placeholder={t("catalog.tables.selfPayOptions.orderDevice.placeholder")}
+      defaultValue={listed ? orderDeviceId : undefined}
+      codec={deviceCodec}
+      options={devices.map(({ id, name }) => ({
+        value: id,
+        label:
+          id === thisDeviceId
+            ? t("catalog.tables.selfPayOptions.orderDevice.this", { name })
+            : name,
+      }))}
+      onSave={save}
+    />
+  )
+}
+
+function MenuStatus() {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const {
+    data: [history],
+  } = useEvoluQuery(evoluHistoryMaxRowidQuery)
+  const { data: snapshot } = useQuery({
+    queryKey: ["selfPayMenu", history?.maxRowid ?? null],
+    queryFn: async () => {
+      await using run = appRun()
+      return await run.ok(loadSelfPayMenu())
+    },
+    placeholderData: keepPreviousData,
+  })
+
+  if (snapshot === undefined) return null
+  const count = countSelfPayMenuItems(snapshot.menu)
+
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      {count === 0 ? (
+        <Alert variant="warning">
+          <TriangleAlertIcon />
+          <AlertTitle className="line-clamp-none">
+            {t("catalog.tables.selfPayOptions.menu.empty.title")}
+          </AlertTitle>
+          <AlertDescription>
+            {t("catalog.tables.selfPayOptions.menu.empty.description")}
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <p>{t("catalog.tables.selfPayOptions.menu.visible", { count })}</p>
+      )}
+      {snapshot.leftOut > 0 && (
+        <p className="text-warning">
+          {t("catalog.tables.selfPayOptions.menu.leftOut", {
+            count: snapshot.leftOut,
+          })}
+        </p>
+      )}
+      {snapshot.otherCurrency > 0 && (
+        <p className="text-warning">
+          {t("catalog.tables.selfPayOptions.menu.otherCurrency", {
+            count: snapshot.otherCurrency,
+            currency: snapshot.menu.currency,
+          })}
+        </p>
+      )}
+    </div>
+  )
+}

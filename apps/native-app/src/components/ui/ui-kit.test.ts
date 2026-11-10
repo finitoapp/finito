@@ -27,7 +27,12 @@ const importSpecifiers = (source: string): ReadonlyArray<string> =>
 
 const relativeToSrc = (file: string) => path.relative(srcDir, file)
 
-const uiPackages = new Set(["react", "react-native", "react-native-svg"])
+const uiPackages = new Set([
+  "react",
+  "react-native",
+  "react-native-safe-area-context",
+  "react-native-svg",
+])
 
 const allowedInUi = (file: string, specifier: string): boolean => {
   if (specifier.startsWith(".")) {

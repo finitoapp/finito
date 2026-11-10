@@ -1,10 +1,9 @@
 import { describe, expect, test } from "vitest"
-import { NonNegativeInteger, TimestampMs } from "../shared/schema.ts"
+import { TimestampMs } from "../shared/schema.ts"
 import {
   computePaymentExpiresAt,
   DEFAULT_LIGHTNING_INVOICE_EXPIRY_SECONDS,
   derivePaymentHasCancellationCollision,
-  derivePaymentHasExcessSettlement,
   derivePaymentStatus,
 } from "./payment-status-utils.ts"
 
@@ -169,37 +168,5 @@ describe("computePaymentExpiresAt", () => {
     expect(
       computePaymentExpiresAt(now, DEFAULT_LIGHTNING_INVOICE_EXPIRY_SECONDS)
     ).toBe(now.getTime() + DEFAULT_LIGHTNING_INVOICE_EXPIRY_SECONDS * 1000)
-  })
-})
-
-describe("derivePaymentHasExcessSettlement", () => {
-  test("false when the claimed sum matches the payment's amount exactly", () => {
-    expect(
-      derivePaymentHasExcessSettlement({
-        amount: NonNegativeInteger(1_000),
-        excessAcknowledgedAt: null,
-        claimedSum: NonNegativeInteger(1_000),
-      })
-    ).toBe(false)
-  })
-
-  test("true when the claimed sum exceeds the payment's amount — two distinct settlements", () => {
-    expect(
-      derivePaymentHasExcessSettlement({
-        amount: NonNegativeInteger(1_000),
-        excessAcknowledgedAt: null,
-        claimedSum: NonNegativeInteger(2_000),
-      })
-    ).toBe(true)
-  })
-
-  test("false once staff has acknowledged the excess, even though it's still overpaid", () => {
-    expect(
-      derivePaymentHasExcessSettlement({
-        amount: NonNegativeInteger(1_000),
-        excessAcknowledgedAt: TimestampMs(now.getTime()),
-        claimedSum: NonNegativeInteger(2_000),
-      })
-    ).toBe(false)
   })
 })

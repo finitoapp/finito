@@ -5,8 +5,9 @@ import {
 } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import type { FioPluginId } from "./fio-plugin-types.ts"
-import { fioPluginId } from "./fio-plugin-utils.ts"
+import { fioPluginId, fioSyncDeviceUptimeId } from "./fio-plugin-utils.ts"
 
 export const fioPluginByIdQuery = (idValue: FioPluginId) =>
   createQuery((db) =>
@@ -72,6 +73,36 @@ export const fioPluginSyncPointerByPluginIdQuery = (fioPluginId: FioPluginId) =>
       .where("isDeleted", "is not", sqliteTrue)
       .$narrowType<{
         lastSyncedDate: KyselyNotNull
+      }>()
+  )
+
+export const fioPluginSyncLeaseByPluginIdQuery = (fioPluginId: FioPluginId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("fioPluginSyncLease")
+      .select(["deviceId", "expiresAt"])
+      .where("id", "=", fioPluginId)
+      .where("deviceId", "is not", null)
+      .where("expiresAt", "is not", null)
+      .where("isDeleted", "is not", sqliteTrue)
+      .$narrowType<{
+        deviceId: KyselyNotNull
+        expiresAt: KyselyNotNull
+      }>()
+  )
+
+export const fioSyncDeviceUptimeByDeviceIdQuery = (deviceId: DeviceId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("fioSyncDeviceUptime")
+      .select(["uptimePerMille", "measuredAt"])
+      .where("id", "=", fioSyncDeviceUptimeId(deviceId))
+      .where("uptimePerMille", "is not", null)
+      .where("measuredAt", "is not", null)
+      .where("isDeleted", "is not", sqliteTrue)
+      .$narrowType<{
+        uptimePerMille: KyselyNotNull
+        measuredAt: KyselyNotNull
       }>()
   )
 

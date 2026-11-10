@@ -64,6 +64,20 @@ where it is specified; the specification wins over this page.
   edited in place.
 - **Table** (`table`) — a table in the venue, with a seat count; a bill can be
   assigned to one, and the pos grid shows them.
+- **Menu** — the catalog items guests can order at the table: those put in
+  the menu (`catalogItem.inMenu`, until `catalogItem.inMenuUntil` when set)
+  and not sold out (`catalogItem.soldOut`),
+  by their public name. The device that takes orders publishes it
+  (`docs/decisions/menu-ordering/0001`). Not the catalog, which staff sell
+  from.
+- **Order** (`menu-order`) — what a guest ordered from the menu and paid. Once
+  paid it is a bill of its own with a number of the day; staff mark it served.
+  Not a bill line and not a payment.
+- **Written order** (`menuOrder.writtenAmount`) — an order of items in the
+  guest's own text, which the money that arrived fills in order, each up to the
+  amount the guest named (`docs/decisions/menu-ordering/0004`,
+  `docs/decisions/menu-ordering/0011`). Stored like a manual amount, but not
+  one: a guest wrote it, not staff.
 
 ## Collecting money
 
@@ -78,12 +92,23 @@ where it is specified; the specification wins over this page.
 - **Account transaction** (`account-transaction`) — money that actually moved
   on an account: a bank transfer from FIO, a Spark transfer, cash taken, a
   withdrawal. A payment says money is expected; a transaction says it came.
+- **Pointer** — the 32 characters after `PK1` in a self-pay payment's
+  message or memo, naming the selection or order the guest published
+  (`docs/decisions/table-self-pay/0020`). Not the variable symbol, which is
+  the bill's or order's **reference**.
 - **Reconciliation claim** (`reconciliation-claim`) — the link that says this
   transaction pays that payment, written by the sync jobs (`source: "auto"`)
   or by hand (`"manual"`). A payment is paid because a claim exists
   (`docs/payment-sync.md`).
 - **Coverage** — `paid`/`underpaid`/`overpaid`, derived for a **bill** only
   by comparing its claimed money with its total. A payment has no coverage.
+- **Unresolved overpayment** — the money a bill's payments brought above its
+  total that no return, tip or kept amount answers yet. Derived, never
+  stored. A payment without a bill counts as its own bill.
+- **Overpayment resolution** (`overpayment-resolution`) — staff saying where
+  money above a bill's total went: a `tip` the guest left, money the business
+  `kept`, or a `withdrawal` of a mistaken one. Returning the money is a
+  refund whose `purpose` is `overpayment`.
 - **Refund** (`refund`) — its own record against one payment, never an edit of
   it (`docs/decisions/refund/0001`); its `refund-line`s point at payment lines.
   - **Cash handed out** (`refundCashRegister.handedAmount`) — the cash a

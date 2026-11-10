@@ -49,6 +49,9 @@ An id lost anyway (cleared site data, Safari's storage eviction) makes a
 new device with no permissions; the old row stays until the owner removes
 it.
 
+The CLI keeps its device id in a file beside its database instead
+(account/0010).
+
 ## Enforced by
 
 - `packages/core/src/modules/device/device-actions.test.ts > device rows > registering again keeps the name and permissions the owner set`

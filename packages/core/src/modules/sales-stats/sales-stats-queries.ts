@@ -1,4 +1,9 @@
-import { type InferRow, kyselySql, sqliteTrue } from "@evolu/common"
+import {
+  type InferRow,
+  type KyselyNotNull,
+  kyselySql,
+  sqliteTrue,
+} from "@evolu/common"
 import type { SqlBool } from "kysely"
 
 import { createQuery } from "../../evolu/schema.ts"
@@ -246,7 +251,9 @@ export const refundsQuery = (range: StatsRange) =>
         >`case when "refund"."isTip" = ${sqliteTrue} then 1 else 0 end`.as(
           "isTip"
         ),
-        kyselySql<number>`count(*)`.as("count"),
+        kyselySql<number>`sum(case when "refund"."mainRefundId" is null then 1 else 0 end)`.as(
+          "count"
+        ),
         kyselySql<number>`sum("refund"."amount")`.as("amount"),
       ])
       .where("refund.refundedAt", ">=", fromMs)
@@ -258,6 +265,27 @@ export const refundsQuery = (range: StatsRange) =>
       .groupBy(["currency", "method", "isTip"])
   })
 export type RefundsRow = InferRow<ReturnType<typeof refundsQuery>>
+
+export const overpaymentTipsQuery = ({ fromIso, toIso }: StatsRange) =>
+  createQuery((db) =>
+    db
+      .selectFrom("overpaymentResolution")
+      .innerJoin("payment", "payment.id", "overpaymentResolution.paymentId")
+      .select([
+        "overpaymentResolution.id",
+        "overpaymentResolution.paymentId",
+        "payment.billId as billId",
+        "overpaymentResolution.currency",
+      ])
+      .where("overpaymentResolution.kind", "=", "tip")
+      .where("overpaymentResolution.createdAt", ">=", fromIso)
+      .where("overpaymentResolution.createdAt", "<", toIso)
+      .where("overpaymentResolution.isDeleted", "is not", sqliteTrue)
+      .where("payment.isDeleted", "is not", sqliteTrue)
+      .where("overpaymentResolution.paymentId", "is not", null)
+      .where("overpaymentResolution.currency", "is not", null)
+      .$narrowType<{ paymentId: KyselyNotNull; currency: KyselyNotNull }>()
+  )
 
 /**
  * Paid sales per `payment.deviceId`, named by `device.name` — a removed
@@ -366,6 +394,12 @@ const nettedBillLines = (
       kyselySql<string>`"item"."name"`.as("name"),
       kyselySql<string>`"item"."createdAt"`.as("itemCreatedAt"),
       "item.taxRateId",
+      kyselySql<number>`exists (
+        select 1 from "menuOrder"
+        where "menuOrder"."billId" = "bill"."id"
+          and "menuOrder"."writtenAmount" is not null
+          and "menuOrder"."isDeleted" is not ${sqliteTrue}
+      )`.as("written"),
       kyselySql<number>`sum(case when "billLine"."kind" = 'add'
         then "billLine"."quantity" else -"billLine"."quantity" end)`.as(
         "quantity"
@@ -391,9 +425,9 @@ const nettedBillLines = (
 /**
  * What closed bills sold, by `closedAt`, per product: grouped by
  * `catalogItemId` when the line has one (one product across price changes),
- * else by its frozen `itemId`. `name`/`itemId` are the newest `item`
- * snapshot's. Does not add up to net revenue (keypad sales, tips, partial
- * and over/under payments).
+ * else by its frozen `itemId`, and written orders as one row. `name`/`itemId`
+ * are the newest `item` snapshot's. Does not add up to net revenue (keypad
+ * sales, tips, partial and over/under payments).
  */
 export const itemSalesQuery = (range: StatsRange) =>
   createQuery((db) =>
@@ -408,11 +442,13 @@ export const itemSalesQuery = (range: StatsRange) =>
         "line.itemId",
         "line.name",
         "line.currency",
+        "line.written",
         kyselySql<number>`sum("line"."quantity")`.as("quantity"),
         kyselySql<number>`sum("line"."totalAmount")`.as("amount"),
       ])
       .groupBy([
-        kyselySql`coalesce("line"."catalogItemId", "line"."itemId")`,
+        kyselySql`case when "line"."written" then 'written'
+          else coalesce("line"."catalogItemId", "line"."itemId") end`,
         "line.currency",
       ])
       .orderBy("amount", "desc")

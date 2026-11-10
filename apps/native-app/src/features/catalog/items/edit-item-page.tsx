@@ -1,5 +1,6 @@
 import { createPriceCodec } from "@payky/app-shared/catalog-item-form-schema"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
+import { formatTime } from "@payky/app-shared/format-date"
 import {
   optionalIdCodec,
   optionalTextCodec,
@@ -10,6 +11,8 @@ import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/cat
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   deleteCatalogItem,
+  setCatalogItemInMenu,
+  setCatalogItemSoldOut,
   updateCatalogItem,
 } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import {
@@ -20,6 +23,7 @@ import { CatalogItemId } from "@payky/core/modules/catalog-item/catalog-item-typ
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
+  isInMenu,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { NonEmptyString255Schema } from "@payky/core/modules/shared/schema"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
@@ -42,6 +46,7 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
@@ -54,13 +59,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select.tsx"
+import { Switch } from "../../../components/ui/switch.tsx"
 import { useConfirmedRun } from "../../../hooks/use-confirmed-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
-import { useTranslation } from "../../../hooks/use-translation.ts"
+import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
 import { CatalogFormEmptyState } from "../catalog-form-empty-state.tsx"
 import { CategoryField } from "./category-field.tsx"
@@ -339,6 +345,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
             </FieldGroup>
           </CardContent>
         </Card>
+        <CatalogItemMenuCard item={item} />
         <Button
           label={t("catalog.items.delete")}
           iconStart={Trash}
@@ -364,5 +371,72 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
         />
       </YStack>
     </Screen>
+  )
+}
+
+function CatalogItemMenuCard({ item }: { readonly item: CatalogItemRow }) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+  const locale = useLocale()
+  const inMenu = useInlineChoice(isInMenu(item, new Date()), (checked) =>
+    runToast(async (run) => {
+      await run.ok(setCatalogItemInMenu({ id: item.id, inMenu: checked }))
+    })
+  )
+  const soldOut = useInlineChoice(item.soldOut !== null, (checked) =>
+    runToast(async (run) => {
+      await run.ok(setCatalogItemSoldOut({ id: item.id, soldOut: checked }))
+    })
+  )
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.items.form.menu.title")}</CardTitle>
+        <CardDescription>
+          {t("catalog.items.form.menu.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent gap={16}>
+        <Field orientation="horizontal">
+          <Switch
+            aria-label={t("catalog.items.form.inMenu.label")}
+            checked={inMenu.value}
+            disabled={inMenu.saving}
+            onCheckedChange={(checked) => {
+              void inMenu.choose(checked)
+            }}
+          />
+          <FieldContent>
+            <FieldLabel>{t("catalog.items.form.inMenu.label")}</FieldLabel>
+            {inMenu.value && item.inMenuUntil !== null && (
+              <FieldDescription>
+                {t("catalog.items.form.inMenu.until", {
+                  time: formatTime(new Date(item.inMenuUntil), locale),
+                })}
+              </FieldDescription>
+            )}
+          </FieldContent>
+        </Field>
+        {isInMenu(item, new Date()) && (
+          <Field orientation="horizontal">
+            <Switch
+              aria-label={t("catalog.items.form.soldOut.label")}
+              checked={soldOut.value}
+              disabled={soldOut.saving}
+              onCheckedChange={(checked) => {
+                void soldOut.choose(checked)
+              }}
+            />
+            <FieldContent>
+              <FieldLabel>{t("catalog.items.form.soldOut.label")}</FieldLabel>
+              <FieldDescription>
+                {t("catalog.items.form.soldOut.description")}
+              </FieldDescription>
+            </FieldContent>
+          </Field>
+        )}
+      </CardContent>
+    </Card>
   )
 }

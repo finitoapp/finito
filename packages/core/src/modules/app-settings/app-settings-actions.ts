@@ -6,6 +6,7 @@ import {
   type Task,
   type UpdateValues,
 } from "@evolu/common"
+import type { RequireExactlyOne } from "type-fest"
 import { z } from "zod"
 import type { DateDep, EvoluOwnerDep, MasterKeyDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
@@ -14,6 +15,7 @@ import {
   saveFiatBankAccount,
   saveSparkAccount,
 } from "../account/account-actions.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { CountryCode } from "../legal-entity/legal-entity-types.ts"
@@ -22,11 +24,17 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
-import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
+import {
+  type FiatCurrency,
+  type Iban,
+  type NonNegativeInteger,
+  TimestampMs,
+} from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import type { appSettings } from "./app-settings.ts"
-import { settingsQuery } from "./app-settings-queries.ts"
+import { selfPaySettingsQuery, settingsQuery } from "./app-settings-queries.ts"
 import {
   stringifyTipFixedAmounts,
   stringifyTipPercentages,
@@ -39,6 +47,7 @@ import type {
 import {
   createDefaultSettings,
   EnabledHomeModesJson,
+  offersOrders,
   PaymentMethodOrderJson,
   settingsId,
   terminalHomeModes,
@@ -274,3 +283,65 @@ export const finishOnboarding =
     if (!completed.ok) return completed
     return ok()
   }
+
+export const setSelfPayBillsHidden = (
+  hidden: boolean
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ selfPayBillsHidden: hidden ? sqliteTrue : null })
+
+const switchOrdersOn =
+  (
+    switched: RequireExactlyOne<{
+      readonly menuOrdering: typeof sqliteTrue
+      readonly writtenOrders: typeof sqliteTrue
+    }>,
+    deviceId: DeviceId
+  ): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const [settings] = await run.deps.evolu.loadQuery(selfPaySettingsQuery)
+    return run(
+      updateSettings({
+        ...switched,
+        orderDeviceId: offersOrders(settings)
+          ? (settings?.orderDeviceId ?? deviceId)
+          : deviceId,
+      })
+    )
+  }
+
+export const setMenuOrdering = ({
+  on,
+  deviceId,
+}: {
+  readonly on: boolean
+  readonly deviceId: DeviceId
+}): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  on
+    ? switchOrdersOn({ menuOrdering: sqliteTrue }, deviceId)
+    : updateSettings({ menuOrdering: null })
+
+export const setWrittenOrders = ({
+  on,
+  deviceId,
+}: {
+  readonly on: boolean
+  readonly deviceId: DeviceId
+}): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  on
+    ? switchOrdersOn({ writtenOrders: sqliteTrue }, deviceId)
+    : updateSettings({ writtenOrders: null })
+
+export const setWrittenOrderTaxRate = (
+  taxRateId: TaxRateId | null
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ writtenOrderTaxRateId: taxRateId })
+
+export const setMenuDayEndHour = (
+  hour: NonNegativeInteger | null
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ menuDayEndHour: hour })
+
+export const setOrderDevice = (
+  deviceId: DeviceId
+): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  updateSettings({ orderDeviceId: deviceId })

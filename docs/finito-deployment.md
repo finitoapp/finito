@@ -67,6 +67,10 @@ forwards `/.well-known/lnurlp/donate` to the matching app, which answers
 
 ## Outside Vercel
 
+- `t.finito.fit`: DNS to Vercel and a domain of the Payky web project, which
+  serves the table guest page on every host that starts with `t.` and names
+  the brand whose host it runs on (table-self-pay/0024). Finito prints its
+  stickers for it.
 - `live-relay.finito.fit`: DNS and TLS to the live relay's server, which
   routes by path, not host. New Finito accounts start on it (brand/0003).
 - Android: the Play listing for `fit.finito.app`, its upload keystore and the

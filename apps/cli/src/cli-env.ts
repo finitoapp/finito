@@ -1,3 +1,5 @@
+import { SelfPayRelaysSchema } from "@payky/core/integrations/nostr/nostr-default-relays"
+import { RecoveryMnemonicSchema } from "@payky/core/modules/shared/key-derivation"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { resolveDataDir } from "./paths.ts"
@@ -17,6 +19,10 @@ export const cliEnv = createEnv({
     PAYKY_AI_MODEL: z.string().trim().min(1).optional(),
     // Runs the one Cashu test against the public test mint (cashu.md, phase 2).
     CASHU_LIVE: z.stringbool().default(false),
+    PAYKY_RECOVERY_MNEMONIC: RecoveryMnemonicSchema.optional(),
+    PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
+    PAYKY_QERKO_POS_ID: z.string().default("payky"),
+    PAYKY_EET_PRODUCTION_URL: z.url().optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

@@ -1,6 +1,7 @@
 import {
   type ConsoleDep,
   err,
+  type LockManagerDep,
   type MutationOptions,
   ok,
   sqliteFalse,
@@ -8,7 +9,7 @@ import {
   type Task,
 } from "@evolu/common"
 
-import type { DateDep, EvoluOwnerDep, FetchDep } from "../../deps.ts"
+import type { EvoluOwnerDep, FetchDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import {
   createMonetaApiDep,
@@ -40,6 +41,7 @@ import {
   PositiveInteger,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import type { SelfPayArrivalDeps } from "../table-self-pay/table-self-pay-actions.ts"
 import {
   activeMonetaPluginsQuery,
   monetaPluginByIdQuery,
@@ -272,7 +274,11 @@ export interface MonetaSyncResult {
   readonly callCount: number
 }
 
-type MonetaSyncDeps = EvoluDep & EvoluOwnerDep & FetchDep & DateDep & ConsoleDep
+type MonetaSyncDeps = EvoluOwnerDep &
+  FetchDep &
+  ConsoleDep &
+  LockManagerDep &
+  SelfPayArrivalDeps
 
 /**
  * Downloads the account's transactions booked from `fromDate` to `toDate`,
@@ -411,6 +417,11 @@ const toMonetaBankTransaction = (
     transaction.note === null
       ? null
       : (NonEmptyStringSchema.safeParse(transaction.note).data ?? null),
+  recipientMessage:
+    transaction.recipientMessage === null
+      ? null
+      : (NonEmptyStringSchema.safeParse(transaction.recipientMessage).data ??
+        null),
   variableSymbol: transaction.variableSymbol,
   constantSymbol: transaction.constantSymbol,
   specificSymbol: transaction.specificSymbol,

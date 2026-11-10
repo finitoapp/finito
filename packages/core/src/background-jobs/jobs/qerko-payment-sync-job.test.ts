@@ -2,6 +2,7 @@ import { testCreateConsole, testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import type { ConnectivityDep } from "../../deps.ts"
 import { createEetApiDep } from "../../integrations/eet/eet-client.ts"
+import { createNostrRelayClient } from "../../integrations/nostr/nostr-relay-client.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
 import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
@@ -22,6 +23,7 @@ import {
 } from "../../modules/shared/schema.ts"
 import { createInProcessLockManager } from "../../runtime/in-process-lock-manager.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
+import { testSyncedAppOwner } from "../../testing/app-owner-sync.ts"
 import {
   createTestDeviceAccountDep,
   testNotificationsDep,
@@ -135,6 +137,10 @@ const setup = async () => {
       deviceId: createRowId<"Device">(),
       lockManager: createInProcessLockManager(),
       ...testNotificationsDep(),
+      ...testSyncedAppOwner,
+      tableSelfPayRoot: new Uint8Array(32),
+      selfPayDefaultRelays: [],
+      nostrRelayClient: createNostrRelayClient(),
       console: testCreateConsole(),
       onError: () => {},
     }

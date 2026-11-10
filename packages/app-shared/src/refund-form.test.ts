@@ -1,15 +1,22 @@
+import { createOverpaymentSimulation } from "@payky/core/modules/bill/bill-overpayment-test-fixtures"
+import type { PaymentId } from "@payky/core/modules/payment/payment-types"
 import type { PaymentLineId } from "@payky/core/modules/payment-line/payment-line-types"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
 import { describe, expect, test } from "vitest"
+import { paykyBrand } from "./brand.ts"
+import { createTranslate } from "./i18n/translate.ts"
 import {
+  deriveGoodsPartOfReturn,
   deriveRefundAmountText,
   deriveRefundAvailability,
   deriveRefundForm,
   deriveRefundOptions,
+  deriveRefundOverpayment,
   describeQerkoRefundError,
   describeRefundOutcome,
   type RefundablePaymentLine,
   type RefundChoice,
+  returnedOverpaymentLabel,
   selectRefundMethod,
   stepRefundQuantity,
 } from "./refund-form.ts"
@@ -118,7 +125,7 @@ describe("refund form", () => {
       deriveRefundAmountText({
         typedAmountText: null,
         remainingAmount: n(left),
-        excess: n(0),
+        returnableOverpayment: n(0),
         method,
         currency: "CZK",
       })
@@ -130,7 +137,7 @@ describe("refund form", () => {
       deriveRefundAmountText({
         typedAmountText: "12",
         remainingAmount: n(7890),
-        excess: n(0),
+        returnableOverpayment: n(0),
         method: "cashRegister",
         currency: "CZK",
       })
@@ -236,10 +243,37 @@ describe("deriveRefundOptions", () => {
       switchioRefundable: false,
     })
     expect(methods).toEqual({
+      overpayment: [],
       whole: ["cashRegister", "outside"],
       part: ["cashRegister", "outside"],
       tip: ["cashRegister", "outside"],
     })
+  })
+
+  test("offers the overpayment first and starts on it while the payment can return some (refund/0014)", () => {
+    const options = deriveRefundOptions({
+      ...everything,
+      returnableOverpayment: n(30000),
+    })
+    expect(options.choices[0]).toEqual({
+      choice: "overpayment",
+      amount: 23000,
+      tipAmount: 0,
+    })
+    expect(options.defaultChoice).toBe("overpayment")
+    expect(options.methods.overpayment).toEqual(options.methods.part)
+    expect(
+      deriveRefundOptions({
+        ...everything,
+        qerkoPaymentRefundable: false,
+        returnableOverpayment: n(500),
+        availability: {
+          ...availability,
+          remainingAmount: n(0),
+          canRefund: false,
+        },
+      }).choices.map(({ choice }) => choice)
+    ).toEqual(["tip"])
   })
 
   test("offers the whole payment with its tip, the goods alone, and the tip alone", () => {
@@ -347,7 +381,7 @@ describe("deriveRefundOptions", () => {
     ).toBe("outside")
     expect(
       selectRefundMethod({
-        options: { methods: { whole: [], part: [], tip: [] } },
+        options: { methods: { overpayment: [], whole: [], part: [], tip: [] } },
         choice: "tip",
         method: "outside",
       })
@@ -447,4 +481,88 @@ describe("describeRefundOutcome", () => {
       ).toEqual({ key, params: { amount: handed } })
     }
   )
+})
+
+describe("refund of an overpaid bill (refund/0015)", () => {
+  const settledTwice = () => {
+    const bill = createOverpaymentSimulation(500)
+    const coffee = bill.addPayment("coffee", 500)
+    bill.pay(coffee, 500)
+    bill.pay(coffee, 500)
+    return { bill, coffee }
+  }
+
+  test("names nothing above the bill without an overpayment", () => {
+    expect(deriveRefundOverpayment(undefined, "payment" as PaymentId)).toEqual({
+      returnableOverpayment: 0,
+      overpaidBy: 0,
+    })
+  })
+
+  test("names what is still above the bill once part of it was returned", () => {
+    const { bill, coffee } = settledTwice()
+    expect(deriveRefundOverpayment(bill.input(), coffee)).toEqual({
+      returnableOverpayment: 500,
+      overpaidBy: 500,
+    })
+    bill.recordRefund(coffee, 400, { type: "return" })
+    expect(deriveRefundOverpayment(bill.input(), coffee).overpaidBy).toBe(100)
+  })
+
+  test("names nothing above a bill still short, while its payment may return what it paid above its share", () => {
+    const bill = createOverpaymentSimulation(1000)
+    const coffee = bill.addPayment("coffee", 500)
+    bill.addPayment("guest", 500)
+    bill.pay(coffee, 700)
+    expect(deriveRefundOverpayment(bill.input(), coffee)).toEqual({
+      returnableOverpayment: 200,
+      overpaidBy: 0,
+    })
+  })
+
+  test("refunds as goods only what a return takes above the overpayment", () => {
+    const { bill, coffee } = settledTwice()
+    const goodsPart = (amount: number | null) =>
+      deriveGoodsPartOfReturn({
+        overpaymentInput: bill.input(),
+        paymentId: coffee,
+        amount: amount === null ? null : n(amount),
+      })
+    expect(goodsPart(700)).toBe(200)
+    expect(goodsPart(400)).toBe(0)
+    expect(goodsPart(null)).toBe(0)
+    bill.recordRefund(coffee, 400, { type: "return" })
+    expect(goodsPart(300)).toBe(200)
+  })
+
+  test("refunds nothing as goods without an overpayment", () => {
+    expect(
+      deriveGoodsPartOfReturn({
+        overpaymentInput: undefined,
+        paymentId: "payment" as PaymentId,
+        amount: n(700),
+      })
+    ).toBe(0)
+  })
+})
+
+describe("refund row of a returned overpayment (refund/0015)", () => {
+  const label = (amount: number, overpaymentAmount: number) =>
+    returnedOverpaymentLabel({
+      refund: {
+        amount: n(amount),
+        isTip: null,
+        overpaymentAmount: n(overpaymentAmount),
+      },
+      t: createTranslate("en", paykyBrand),
+      format: (value) => `$${value / 100}`,
+    })
+
+  test("reads as a returned overpayment when it returned only that", () => {
+    expect(label(400, 400)).toBe("Returned overpayment")
+  })
+
+  test("names the overpayment part of a refund that also gave goods back", () => {
+    expect(label(300, 100)).toBe("Includes $1 returned overpayment")
+  })
 })

@@ -2,6 +2,7 @@ import {
   deriveQerkoPaymentRefund,
   deriveRefundAvailability,
   deriveRefundOptions,
+  deriveRefundOverpayment,
 } from "@payky/app-shared/refund-form"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
 import { eetReversalsByPaymentIdQuery } from "@payky/core/modules/eet/eet-queries"
@@ -21,6 +22,7 @@ import type {
   FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
+import { useOverpaymentInput } from "@/features/shared/use-overpayment-input.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 
 /**
@@ -50,8 +52,9 @@ export interface RefundablePayment {
 /**
  * What a payment allows refunding, read once for the payment detail's refund
  * panel and the refund screen: the refunds and attempts so far, what is left
- * (`deriveRefundAvailability`, refund/0002, 0004, 0005), and the choices and
- * methods the refund screen offers (`deriveRefundOptions`). Web never refunds
+ * (`deriveRefundAvailability`, refund/0002, 0004, 0005), what it can return
+ * of its bill's overpayment (refund/0014), and the choices and methods the
+ * refund screen offers (`deriveRefundOptions`). Web never refunds
  * to the card through SwitchioPay, which only Finito offers (refund/0007).
  */
 export function usePaymentRefundState({
@@ -84,6 +87,15 @@ export function usePaymentRefundState({
   const qerkoPaymentAttempts = useEvoluQuery(
     qerkoPaymentAttemptsByPaymentIdQuery(payment.id)
   ).data
+  const overpaymentInput = useOverpaymentInput(
+    payment.billId === null
+      ? { paymentId: payment.id }
+      : { billId: payment.billId }
+  )
+  const { returnableOverpayment, overpaidBy } = deriveRefundOverpayment(
+    overpaymentInput,
+    payment.id
+  )
 
   // A refund to the card needs the id Qerko's receipt handed out and the
   // terminal the payment was taken on, whichever terminal this device uses
@@ -117,6 +129,7 @@ export function usePaymentRefundState({
     qerkoPaymentRefundable: qerkoPaymentRefundAmount !== null,
     qerkoTerminalRefundable,
     switchioRefundable: false,
+    returnableOverpayment,
   })
   // A refund to the card the terminal has not settled: another one could
   // refund the card twice, so the actions refuse it (qerko/0004).
@@ -132,5 +145,8 @@ export function usePaymentRefundState({
     qerkoAttempts,
     options,
     cardAttemptRunning,
+    overpaymentInput,
+    returnableOverpayment,
+    overpaidBy,
   }
 }

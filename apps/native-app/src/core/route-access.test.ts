@@ -63,6 +63,10 @@ describe("native route access", () => {
     )
   })
 
+  it("asks for sell before the orders to serve, whose accept and served sync", () => {
+    expect(requiredPermission("/orders")).toBe("sell")
+  })
+
   it("matches a dynamic segment and prefers the static sibling", () => {
     expect(requiredPermission("/payment/tip")).toBe("sell")
     expect(requiredPermission("/payment/abc123")).toBe("sell")

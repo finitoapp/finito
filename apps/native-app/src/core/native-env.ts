@@ -1,3 +1,4 @@
+import { SelfPayRelaysSchema } from "@payky/core/integrations/nostr/nostr-default-relays"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
 import { appBrand } from "./app-brand.ts"
@@ -43,6 +44,10 @@ export const nativeEnv = createEnv({
       .transform((value) => value.split(",").map((url) => url.trim()))
       .pipe(z.array(z.url({ protocol: /^wss$/u })).min(1))
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
+    EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN: z.url().default(appBrand.selfPayOrigin),
+    EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS: SelfPayRelaysSchema,
+    // See web's `VITE_PAYKY_SELF_PAY_TEST_TRANSFERS`.
+    EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS: z.stringbool().default(false),
     EXPO_PUBLIC_SENTRY_DSN: z.string().optional(),
     // Set only by the e2e builds (e2e/scripts); turns on the e2e bridge route.
     EXPO_PUBLIC_PAYKY_E2E: z.stringbool().default(false),
@@ -62,6 +67,12 @@ export const nativeEnv = createEnv({
     EXPO_PUBLIC_PAYKY_NOSTR_RELAYS: process.env.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS,
     EXPO_PUBLIC_LINKY_RELAYS_URL: process.env.EXPO_PUBLIC_LINKY_RELAYS_URL,
     EXPO_PUBLIC_LINKY_EVOLU_RELAYS: process.env.EXPO_PUBLIC_LINKY_EVOLU_RELAYS,
+    EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN:
+      process.env.EXPO_PUBLIC_PAYKY_SELF_PAY_ORIGIN,
+    EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS:
+      process.env.EXPO_PUBLIC_PAYKY_SELF_PAY_RELAYS,
+    EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS:
+      process.env.EXPO_PUBLIC_PAYKY_SELF_PAY_TEST_TRANSFERS,
     EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     EXPO_PUBLIC_PAYKY_E2E: process.env.EXPO_PUBLIC_PAYKY_E2E,
   },

@@ -3,6 +3,7 @@ import {
   type InsertValues,
   type MutationOptions,
   ok,
+  sqliteFalse,
   type Task,
   type UpdateValues,
   type UpsertValues,
@@ -12,14 +13,15 @@ import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import type { BillLineRow, billLine } from "../bill-line/bill-line.ts"
 import {
-  appendBillLines,
   insertBillLineRows,
   loadCalculatedBillLineSummaries,
+  upsertBillLineRows,
 } from "../bill-line/bill-line-actions.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import {
   calculateBillLineSummaries,
   createBillLineSummaryId,
+  deriveBillTotalAfterLines,
 } from "../bill-line/bill-line-utils.ts"
 import {
   type CatalogItemNotFoundError,
@@ -47,12 +49,17 @@ import {
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import type { BillRow, bill } from "./bill.ts"
+import { loadBillCoveredSince } from "./bill-closing-guards.ts"
+import { billClosingCursorId } from "./bill-closing-queries.ts"
+import { deriveClosedAtCorrection } from "./bill-closing-utils.ts"
 import {
   type BillLockedError,
   type BillNotCanceledError,
   type BillNotFoundError,
+  type BillSplitLeavesOverpaymentError,
   type BillSplitSelectionStaleError,
   type BillStatusNotAllowedError,
+  type BillStatusSnapshot,
   type BillUnderpaidError,
   type BillWithItems,
   createBillNotCanceledError,
@@ -62,10 +69,16 @@ import {
   requireCancelableBill,
   requireEditableBill,
   requireSelectionOnSourceBill,
+  requireSplitLeavingNoOverpayment,
   type SelectedLineTotals,
 } from "./bill-guards.ts"
-import { lastBillDisplayNumberQuery, openBillsQuery } from "./bill-queries.ts"
+import {
+  billByIdQuery,
+  lastBillDisplayNumberQuery,
+  openBillsQuery,
+} from "./bill-queries.ts"
 import type { BillId } from "./bill-types.ts"
+import { deriveBillCoverage } from "./bill-utils.ts"
 
 const createBillLineSummaryMissingError = defineError(
   "BillLineSummaryMissing"
@@ -88,6 +101,7 @@ export type SplitBillError =
   | BillStatusNotAllowedError
   | BillLockedError
   | BillSplitSelectionStaleError
+  | BillSplitLeavesOverpaymentError
 export const createBill =
   (
     input: Pick<
@@ -114,7 +128,7 @@ export const createBill =
  * `splitBillIntoNewBill`) can reuse this instead of duplicating it — mirrors
  * `payment-number-actions.ts`'s `loadNextPaymentNumber`.
  */
-const loadNextBillDisplayNumber =
+export const loadNextBillDisplayNumber =
   (): Task<PositiveInteger, never, EvoluDep> => async (run) => {
     const [last] = await run.deps.evolu.loadQuery(lastBillDisplayNumberQuery)
     const lastDisplayNumber = last?.displayNumber ?? 0
@@ -149,6 +163,22 @@ export const createBillAtEnd =
 
     return ok(input.id)
   }
+export interface MenuOrderBillRows {
+  readonly bill: UpsertValues<typeof bill>
+  readonly items: ReadonlyArray<ItemRow>
+  readonly lines: ReadonlyArray<BillLineRow>
+}
+
+export const upsertMenuOrderBillRows = (
+  evolu: EvoluDep["evolu"],
+  { bill: billRow, items, lines }: MenuOrderBillRows,
+  options: MutationOptions
+): void => {
+  evolu.upsert("bill", removeUndefinedValues(billRow), options)
+  for (const snapshot of items) upsertItemSnapshot(evolu, snapshot, options)
+  upsertBillLineRows(evolu, lines, options)
+}
+
 export const assignBillToTable =
   (
     input: Pick<UpdateValues<typeof bill>, "id" | "tableId">
@@ -371,6 +401,56 @@ export const addTipToBill =
       })
     )
   }
+const closedAtOnceClaimsCoverLines = (
+  snapshot: BillStatusSnapshot,
+  lines: ReadonlyArray<Omit<BillLineRow, "id">>,
+  now: TimestampMs
+): TimestampMs | null => {
+  const billTotal = deriveBillTotalAfterLines(
+    snapshot.items,
+    lines.filter((line) => line.billId === snapshot.bill.id)
+  )
+  return snapshot.bill.closedAt === null &&
+    snapshot.hasActiveClaim &&
+    deriveBillCoverage(billTotal, snapshot.claimedSum) !== "underpaid"
+    ? now
+    : null
+}
+
+const appendLinesToEditableBill =
+  (
+    snapshot: BillStatusSnapshot,
+    lines: ReadonlyArray<Omit<BillLineRow, "id">>
+  ): Task<
+    ReadonlyArray<BillLineSummary>,
+    never,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const { evoluOwner } = run.deps
+    const closedAt = closedAtOnceClaimsCoverLines(
+      snapshot,
+      lines,
+      TimestampMsSchema.decode(run.deps.date.now().getTime())
+    )
+
+    if (lines.length > 0) {
+      await runMutationWithCompletion((options) => {
+        insertBillLineRows(run.deps.evolu, lines, {
+          ...options,
+          owner: evoluOwner,
+        })
+        if (closedAt !== null) {
+          upsertBillClosedAt(run.deps.evolu, snapshot.bill.id, closedAt, {
+            ...options,
+            owner: evoluOwner,
+          })
+        }
+      })
+    }
+
+    return run(loadCalculatedBillLineSummaries(snapshot.bill.id))
+  }
 export const appendRemoveBillLine =
   (
     input: Pick<
@@ -389,7 +469,7 @@ export const appendRemoveBillLine =
     if (!billResult.ok) return billResult
 
     const projected = await run.ok(
-      appendBillLines([
+      appendLinesToEditableBill(billResult.value, [
         {
           billId: input.billId,
           deviceId: input.deviceId ?? null,
@@ -535,7 +615,17 @@ export const splitBill =
       input.targetBillId,
       input.items
     )
+    const keepsMoneyWithLines = requireSplitLeavingNoOverpayment(
+      sourceBillResult.value,
+      lines
+    )
+    if (!keepsMoneyWithLines.ok) return keepsMoneyWithLines
     const { evoluOwner } = run.deps
+    const sourceClosedAt = closedAtOnceClaimsCoverLines(
+      sourceBillResult.value,
+      lines,
+      TimestampMsSchema.decode(run.deps.date.now().getTime())
+    )
 
     // An empty selection has nothing to write, and an empty batch would
     // never resolve — see `runMutationWithCompletion`. `appendBillLines`
@@ -549,6 +639,14 @@ export const splitBill =
               ...options,
               owner: evoluOwner,
             })
+            if (sourceClosedAt !== null) {
+              upsertBillClosedAt(
+                run.deps.evolu,
+                input.sourceBillId,
+                sourceClosedAt,
+                { ...options, owner: evoluOwner }
+              )
+            }
             return cancelSourceBillIfEmptied(
               run.deps.evolu,
               input.sourceBillId,
@@ -624,6 +722,16 @@ export const splitBillIntoNewBill =
       input.targetBillId,
       input.items
     )
+    const keepsMoneyWithLines = requireSplitLeavingNoOverpayment(
+      sourceBillResult.value,
+      lines
+    )
+    if (!keepsMoneyWithLines.ok) return keepsMoneyWithLines
+    const sourceClosedAt = closedAtOnceClaimsCoverLines(
+      sourceBillResult.value,
+      lines,
+      TimestampMsSchema.decode(run.deps.date.now().getTime())
+    )
 
     await runMutationWithCompletion((options) => {
       run.deps.evolu.upsert(
@@ -642,6 +750,12 @@ export const splitBillIntoNewBill =
         ...options,
         owner: evoluOwner,
       })
+      if (sourceClosedAt !== null) {
+        upsertBillClosedAt(run.deps.evolu, input.sourceBillId, sourceClosedAt, {
+          ...options,
+          owner: evoluOwner,
+        })
+      }
       cancelSourceBillIfEmptied(
         run.deps.evolu,
         input.sourceBillId,
@@ -844,5 +958,57 @@ export const appendGuardedBillLines =
     const billResult = await run(requireEditableBill(billId))
     if (!billResult.ok) return billResult
 
-    return run(appendBillLines(lines, billId))
+    return run(appendLinesToEditableBill(billResult.value, lines))
+  }
+
+export const reconcileBillsClosedAt =
+  (
+    billIds: ReadonlyArray<BillId>
+  ): Task<ReadonlyArray<BillId>, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const { evolu, evoluOwner } = run.deps
+    const corrections: Array<{
+      readonly billId: BillId
+      readonly closedAt: TimestampMs | null
+    }> = []
+    for (const billId of new Set(billIds)) {
+      const [bill] = await evolu.loadQuery(billByIdQuery(billId))
+      if (bill === undefined || bill.canceledAt !== null) continue
+      const correction = deriveClosedAtCorrection({
+        closedAt: bill.closedAt,
+        coveredSince: await run.ok(loadBillCoveredSince(billId)),
+      })
+      if (correction !== null) {
+        corrections.push({ billId, closedAt: correction.closedAt })
+      }
+    }
+
+    if (corrections.length > 0) {
+      await runMutationWithCompletion((options) => {
+        for (const { billId, closedAt } of corrections) {
+          upsertBillClosedAt(evolu, billId, closedAt, {
+            ...options,
+            owner: evoluOwner,
+          })
+        }
+      })
+    }
+    return ok(corrections.map(({ billId }) => billId))
+  }
+
+export const saveBillClosingCursor =
+  (historyRowid: number): Task<undefined, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.upsert(
+        "_billClosingCursor",
+        {
+          id: billClosingCursorId,
+          historyRowid: NonNegativeInteger(historyRowid),
+          isDeleted: sqliteFalse,
+        },
+        { ...options, owner: run.deps.evoluOwner }
+      )
+    )
+    return ok(undefined)
   }

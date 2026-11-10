@@ -12,6 +12,7 @@ import { z } from "zod"
 import { defineError } from "./error.ts"
 import type { DeviceId } from "./modules/device/device-types.ts"
 import type { MasterKey } from "./modules/shared/key-derivation.ts"
+import type { WssUrl } from "./modules/shared/schema.ts"
 import { jsonCodec } from "./zod-utils.ts"
 
 export interface FetchDep {
@@ -212,11 +213,26 @@ export type EvoluOwnerDep = { readonly evoluOwner: AppOwner }
 
 export type MasterKeyDep = { readonly masterKey: MasterKey }
 
+export interface TableSelfPayRootDep {
+  readonly tableSelfPayRoot: Uint8Array
+}
+
+export interface SelfPayDefaultRelaysDep {
+  readonly selfPayDefaultRelays: ReadonlyArray<WssUrl>
+}
+
 export type DeviceIdDep = { readonly deviceId: DeviceId }
 
 /** The browser's `localStorage`, for the one migration that still reads it. */
 export type LocalStorageDep = {
   readonly localStorage: Pick<Storage, "getItem" | "removeItem">
+}
+
+export type AppOwnerSyncDep = {
+  readonly appOwnerSync: {
+    readonly isSynced: () => boolean
+    readonly subscribe: (listener: () => void) => () => void
+  }
 }
 
 export type ConnectivityDep = {

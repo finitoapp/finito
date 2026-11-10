@@ -17,7 +17,7 @@ creating device's clock, and an app frozen mid-call still holds its send.
   `not-created`: on the creating device after 10 minutes and only while it
   does not hold the withdrawal's `withdrawal-<id>` lock (held from the
   first write through sending); on any other device, and in the CLI, which
-  has no device, after 24 hours.
+  is a device too, after 24 hours.
 - "New withdrawal" is offered only after a failure confirmed by something
   other than time: `rejected`, `returned` and `manual`. A
   `not-created` one explains how to check the balance instead: a new

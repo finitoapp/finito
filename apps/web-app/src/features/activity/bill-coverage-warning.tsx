@@ -1,4 +1,7 @@
-import type { BillCoverageMismatchReason } from "@payky/app-shared/activity-detail"
+import type {
+  BillCoverageMismatchReason,
+  BillCoverageWarningCoverage,
+} from "@payky/app-shared/activity-detail"
 import {
   type Currency,
   NonNegativeInteger,
@@ -33,7 +36,7 @@ export function BillCoverageWarning({
   reason = null,
   children,
 }: {
-  readonly coverage: "underpaid" | "overpaid"
+  readonly coverage: BillCoverageWarningCoverage
   readonly expectedAmount: NonNegativeInteger
   readonly claimedSum: NonNegativeInteger
   readonly currency: Currency
@@ -42,28 +45,30 @@ export function BillCoverageWarning({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
-  const isUnderpaid = coverage === "underpaid"
+  const isUnderpaid = coverage.type === "underpaid"
   const delta = NonNegativeInteger(Math.abs(expectedAmount - claimedSum))
 
   return (
     <Alert variant="warning">
       <AlertTriangleIcon />
       <AlertTitle>
-        {t(
-          isUnderpaid
-            ? "paymentDetail.bill.coverage.underpaid.title"
-            : "paymentDetail.bill.coverage.overpaid.title"
-        )}
+        {coverage.type === "underpaid"
+          ? t("paymentDetail.bill.coverage.underpaid.title")
+          : t("overpayment.title", {
+              amount: formatMoney(
+                { value: coverage.unresolved, currency },
+                locale
+              ),
+            })}
       </AlertTitle>
       <AlertDescription>
-        <p className="text-sm font-semibold text-foreground">
-          {t(
-            isUnderpaid
-              ? "paymentDetail.bill.coverage.delta.underpaid"
-              : "paymentDetail.bill.coverage.delta.overpaid",
-            { amount: formatMoney({ value: delta, currency }, locale) }
-          )}
-        </p>
+        {isUnderpaid ? (
+          <p className="text-sm font-semibold text-foreground">
+            {t("paymentDetail.bill.coverage.delta.underpaid", {
+              amount: formatMoney({ value: delta, currency }, locale),
+            })}
+          </p>
+        ) : null}
         <p>
           {reason === null
             ? t(

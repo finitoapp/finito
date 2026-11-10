@@ -76,6 +76,7 @@ export interface CatalogListRowData {
   readonly title: string
   readonly subtitle?: string | undefined
   readonly trailing?: string | undefined
+  readonly badge?: ReactNode
   /** The edit screen the row opens. */
   readonly href?: Href | undefined
 }
@@ -84,6 +85,11 @@ function toVerticalNavItem(
   row: CatalogListRowData,
   icon: LucideIcon
 ): VerticalNavItem {
+  const titleText = (
+    <Text fontWeight="600" numberOfLines={1}>
+      {row.title}
+    </Text>
+  )
   const label = (
     // No flex={1}: it would grow to the row's height and, wrapping, pack
     // a one-line label at the top instead of the row's center.
@@ -95,9 +101,14 @@ function toVerticalNavItem(
       gap={8}
     >
       <YStack flex={1} minW={0} gap={4}>
-        <Text fontWeight="600" numberOfLines={1}>
-          {row.title}
-        </Text>
+        {row.badge === undefined ? (
+          titleText
+        ) : (
+          <XStack flexWrap="wrap" items="center" columnGap={8} rowGap={4}>
+            {titleText}
+            {row.badge}
+          </XStack>
+        )}
         {row.subtitle === undefined ? null : (
           <Text fontSize={13} color="muted-foreground" numberOfLines={1}>
             {row.subtitle}
@@ -134,6 +145,7 @@ export function CatalogEntityList<R extends Row>({
   emptyTitle,
   emptyDescription,
   emptySearchLabel,
+  scrollEnabled,
 }: {
   readonly deps: readonly unknown[]
   readonly createPageQuery: (limit: number) => Query<EvoluSchema, R>
@@ -145,6 +157,7 @@ export function CatalogEntityList<R extends Row>({
   readonly emptyTitle: string
   readonly emptyDescription: string
   readonly emptySearchLabel: string
+  readonly scrollEnabled?: boolean
 }) {
   const { rows, hasMore, isPending, loadMore } = useInfiniteEvoluQuery(
     deps,
@@ -156,6 +169,7 @@ export function CatalogEntityList<R extends Row>({
       <FlatList
         // RN's ScrollView grows by default; the card ends with the last row.
         style={{ flexGrow: 0 }}
+        scrollEnabled={scrollEnabled}
         keyboardShouldPersistTaps="handled"
         data={rows.map(renderRow)}
         keyExtractor={(row) => row.id}

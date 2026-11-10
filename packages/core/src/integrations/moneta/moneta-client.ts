@@ -276,6 +276,8 @@ const MonetaTransactionSchema = z
         SpecificSymbolSchema
       ),
       note: noteParts.length > 0 ? noteParts.join(" | ") : null,
+      recipientMessage:
+        details?.remittanceInformation?.unstructured?.trim() || null,
     }
   })
 
@@ -310,6 +312,7 @@ export interface MonetaTransaction {
   readonly specificSymbol: SpecificSymbol | null
   /** The counterparty and the free-text message, for people to read. */
   readonly note: string | null
+  readonly recipientMessage: string | null
   /** The entry exactly as the bank sent it. */
   readonly raw: unknown
 }

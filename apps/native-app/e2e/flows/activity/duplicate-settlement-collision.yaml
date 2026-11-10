@@ -17,13 +17,27 @@ tags: [activity]
     file: ../../subflows/reopen-payment.yaml
     env:
       TEXT: ${output.t["paymentDetail.title"]}
-# A paid payment's own page hands it to its activity detail.
-- assertVisible: ${output.t["paymentDetail.excessCollision.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("overpayment.title", { amount: "\u00245.90" }))}'
+    timeout: 15000
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
-      LABEL: ${output.t["paymentDetail.excessCollision.acknowledge"]}
+      LABEL: ${output.t["overpayment.action.keep"]}
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["overpayment.dialog.amount"]}
+      VALUE: "5.9"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.confirm.keep", { amount: "\u00245.90" })}'
 - extendedWaitUntil:
-    notVisible: ${output.t["paymentDetail.excessCollision.title"]}
+    visible: ${output.t["overpayment.resolved.title"]}
     timeout: 15000
-- assertVisible: ${output.t["payment.status.paid"]}

@@ -393,8 +393,8 @@ export const skLanding = {
   "landing.tech.backup.restore.title": "Obnova",
   "landing.tech.backup.title": "Záloha, ktorú neprečíta nikto okrem vás",
   "landing.tech.backup.where.body":
-    "Záloha ide na relay {appNameGen} ({liveRelayHost}) a zároveň na relay spriateleného projektu Linky (evolu.linky.fit), ktorý stojí na rovnakých princípoch. Keď jeden vypadne, druhý ide ďalej. V nastaveniach ich môžete vypnúť alebo pridať vlastný, napríklad na svojom serveri.",
-  "landing.tech.backup.where.title": "Dva relaye naraz",
+    "Záloha ide na relay {appNameGen} ({liveRelayHost}), zároveň na relay spriateleného projektu Linky (evolu.linky.fit), ktorý stojí na rovnakých princípoch, a na relay jedného z vývojárov {appNameGen} (evolu.agora.gripe). Keď jeden vypadne, ostatné idú ďalej. V nastaveniach ich môžete vypnúť alebo pridať vlastný, napríklad na svojom serveri.",
+  "landing.tech.backup.where.title": "Tri relaye naraz",
   "landing.tech.compare.cloud": "Bežná cloudová aplikácia",
   "landing.tech.compare.cloudFlow.caption":
     "Aplikácia posiela všetko na server prevádzkovateľa a až ten hovorí s vašou bankou. Pritom drží dáta všetkých obchodníkov.",
@@ -660,11 +660,15 @@ export const skLanding = {
   "landing.tech.services.group.always": "Zakaždým, keď aplikáciu používate",
   "landing.tech.services.group.enabled": "Len keď si to zapnete",
   "landing.tech.services.highlight":
-    "Kým nič nezapnete ani nepoužijete, hovorí aplikácia nanajvýš s webom {appHost} a s dvoma relaymi. A tým posiela len zašifrované dáta.",
+    "Kým nič nezapnete ani nepoužijete, hovorí aplikácia nanajvýš s webom {appHost} a s tromi relaymi. A tým posiela len zašifrované dáta.",
   "landing.tech.services.lightningAddress.name": "Lightning adresa príjemcu",
   "landing.tech.services.lightningAddress.sent": "Žiadosť o faktúru.",
   "landing.tech.services.lightningAddress.when":
     "Keď vyberáte na Lightning adresu.",
+  "landing.tech.services.agora.name":
+    "Relay jedného z vývojárov {appNameGen} (evolu.agora.gripe)",
+  "landing.tech.services.agora.sent": "Zašifrované dáta účtu.",
+  "landing.tech.services.agora.when": "Stále, ale dá sa vypnúť.",
   "landing.tech.services.linky.name":
     "Relay spriateleného projektu Linky (evolu.linky.fit)",
   "landing.tech.services.linky.sent": "Zašifrované dáta účtu.",

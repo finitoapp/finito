@@ -79,7 +79,7 @@ Every sale and reversal has a **recording device**, stored as its `deviceId`:
 | Record | Recording device |
 |---|---|
 | Sale | the first claim's `deviceId`: the device where staff confirmed cash or matched a transfer by hand, or whose card terminal approved the card |
-| Sale whose claim names no device (FIO, Spark matched it) | `payment.deviceId`, the device that showed the QR code or invoice |
+| Sale whose claim names no device (FIO, Spark matched it) | `payment.deviceId`, the device that showed the QR code or invoice, or for a self-pay payment the device that opened its bill |
 | Extra money sale | the same rule, applied to the payment's latest claim |
 | Reversal | `refund.deviceId` |
 
@@ -252,6 +252,27 @@ and its bill stays closed (see `bill-payment-states.md`). EET 2.0 has no
 storno message: a reversal is a new sale with a negative amount and no link
 to the original.
 
+A refund other than a tip refund is split when it is written by the money
+EET never received, as the recording device sees it: each payment's money
+above what its supported sales report less the tips they report, less what
+earlier refunds already returned that way (`deriveUnreportedMoney`). Up to
+that amount it is a refund without a device: a second row naming the main
+one by `mainRefundId`, with its method, currency and `refundedAt`, or the
+only row when all of it is unreported. A refund without a device gets no
+reversal on any app version (see eet/0009). The main row keeps the device,
+the refund lines and the cash register movement. The payment detail and the
+sales statistics show and count both rows as one refund. An app version from
+before the split records a refund as one row and reverses it as before, and
+shows a refund in two rows as two, until it is updated. See
+[`eet/0013`](decisions/eet/0013-money-eet-never-received-goes-back-without-a-reversal.md).
+
+A tip or kept amount from an overpayment, or the withdrawal of either, sends
+nothing to EET and changes no sale or reversal, whoever tips belong to. Kept
+money is business income, reported when it arrived while EET was on. A tip
+of employees from an overpayment can thus stay in EET while their checkout
+tips are left out, lawful as a voluntary record (see `bill-payment-states.md`,
+"Overpayment").
+
 `eetRefundsToReverseQuery` selects a refund of any device when its payment
 has a supported sale and no reversal exists for it yet. The job skips it
 while the payment has extra money no extra money sale reports yet. The
@@ -285,7 +306,7 @@ EET lists unconfirmed reversals next to unconfirmed sales.
 | Disable → re-enable | `enabledAt` moves forward; payments claimed before the new `enabledAt` whose sale was not created yet (device was offline/closed) are **never reported** |
 | Disable with pending sales | Delivery continues; disabling only stops new sales |
 | Claim removed after the sale was created | Sale still reported; no correction/storno is sent |
-| Refund before the sale was created | The reversal is created once the sale exists |
+| Refund before the sale was created | The refund's device sees the money as never received, so it is written without a device and never reversed; EET keeps the sale (see "Known gaps") |
 | Refund of a payment with no sale or an unsupported sale | No reversal |
 | Refund of a payment with a tip | A refund by amount or by items returns goods only, so its limit leaves the tip out; the tip has its own refund, which is reversed only when the sale reported the tip (tips belonged to the business) |
 | Tip refund of a sale created before `reportedTipAmount` existed | No reversal; if the sale did report the tip, EET keeps it, which errs toward reporting more than was sold |
@@ -296,7 +317,10 @@ EET lists unconfirmed reversals next to unconfirmed sales.
 | Claim removed before creation | Not reported (query needs an active claim) |
 | Overpaid / multiple claims | One sale for the first claim, capped at `payment.amount`, and an extra money sale for the rest; a refund of the extra money reverses only that |
 | Two devices settle one payment while cut off from sync | One sale per settlement, each from its own device and cash register, and no extra money sale for either. A device that receives the other's settlement before that device's sale over-reports (see "Known gaps") |
-| Refund before the extra money sale exists | The reversal waits for it, then covers the refund in full |
+| Refund before the extra money sale exists | The extra money is written as a refund without a device; the reversal waits for the extra money sale, then covers only what EET had received, and EET keeps the extra money reported |
+| Refund of money EET never received (claimed while EET was off, or extra money of a reported payment) | Written as a refund without a device, never reversed |
+| Tip or kept amount from an overpayment, or its withdrawal | Nothing is sent; no sale or reversal changes |
+| Refund recorded by an app version from before the split | One row, reversed as before, so it can reverse money EET never received |
 | Cash rounded or change left | The sale reports the cash received (78.90 charged, 79 or 80 received); the payment, its claim and the cash register keep 78.90 |
 | Cash payment settled before the received amount was recorded | Reports `payment.amount` |
 | First claim short of the amount | The sale reports what the claim brought; the rest becomes an extra money sale when it arrives, and is never reported if it never does |
@@ -340,3 +364,12 @@ EET lists unconfirmed reversals next to unconfirmed sales.
     receives the other device's settlement before that device's sale
     reports the settlement as extra money, and the other device's sale
     reports it too.
+11. **A sale that appears after its refund stays reported.** A device that
+    does not see a sale yet treats that money as never received, so a
+    refund recorded before its sale exists reverses nothing and EET keeps
+    that money reported, the over-report eet/0011 and eet/0012 already
+    accept.
+12. **Older app versions until every device is updated.** A device on an
+    app version from before eet/0013 records a refund as one row and
+    reverses all of it, including money EET never received, which can take
+    EET below the goods sold.

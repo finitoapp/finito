@@ -2,7 +2,6 @@ import type { Query } from "@evolu/common"
 import {
   err,
   type InsertValues,
-  type MutationOptions,
   ok,
   type Result,
   sqliteTrue,
@@ -44,9 +43,7 @@ import {
   loadBillClosedAtForPayment,
   upsertReconciliationClaimRows,
 } from "../reconciliation-claim/reconciliation-claim-actions.ts"
-import { activeClaimedTransactionsByPaymentIdQuery } from "../reconciliation-claim/reconciliation-claim-queries.ts"
 import { deriveManualReconciliationClaimId } from "../reconciliation-claim/reconciliation-claim-utils.ts"
-import { sumDistinctClaimedAmounts } from "../shared/claimed-amount.ts"
 import { dateToDateString } from "../shared/date-string-utils.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
@@ -94,7 +91,6 @@ import {
   createPaymentNotCanceledError,
   createPaymentNotClaimedError,
   createPaymentNotFoundError,
-  createPaymentNotOverpaidError,
   createSwitchioAttemptUnresolvedError,
   createSwitchioRestoredResultUnmatchedError,
   type MarkPaymentPaidCashError,
@@ -104,7 +100,6 @@ import {
   type PaymentNotCanceledError,
   type PaymentNotClaimedError,
   type PaymentNotFoundError,
-  type PaymentNotOverpaidError,
   type PayPaymentWithBoltCardError,
   type PayPaymentWithSwitchioCardError,
   type SettleRestoredSwitchioCardPaymentError,
@@ -121,6 +116,10 @@ import {
   paymentLightningAddressByIdQuery,
   paymentSparkDetailsByIdQuery,
 } from "./payment-queries.ts"
+import {
+  type PaymentBtcInput,
+  upsertPaymentSparkDetails,
+} from "./payment-row-actions.ts"
 import { createVariableSymbolFromSerialNumber } from "./payment-symbol-utils.ts"
 import { calculatePaymentBaseAmount } from "./payment-tip-utils.ts"
 import type { PaymentAccountKind, PaymentId } from "./payment-types.ts"
@@ -140,64 +139,11 @@ export const optionalNonEmptyString255 = (
   return parsed.success ? parsed.data : null
 }
 
-export type PaymentBtcInput = WithSparkDetails<
-  Omit<InsertValues<typeof paymentBtc>, "id">,
-  Omit<InsertValues<typeof paymentBtcLightning>, "id">,
-  Omit<InsertValues<typeof paymentBtcSpark>, "id">
->
-
 type PaymentBtcUpdateInput = WithSparkDetails<
   Omit<UpdateValues<typeof paymentBtc>, "id">,
   Omit<UpdateValues<typeof paymentBtcLightning>, "id">,
   Omit<UpdateValues<typeof paymentBtcSpark>, "id">
 >
-
-/**
- * Writes a payment's Spark detail rows: the `paymentBtc` base row plus
- * whichever of `paymentBtcLightning`/`paymentBtcSpark` the quote produced.
- * Shared by `createPayment` and `preparePaymentMethod`, which must agree on
- * exactly this field set — a payment prepared through one path would
- * otherwise carry different Spark details than through the other.
- *
- * Upsert only. `updatePayment` writes the same three tables with `update`,
- * whose values are all-optional where `UpsertValues` requires every
- * non-nullable column, so folding both modes in here would mean widening this
- * to accept a partial `paymentBtc` — losing the guarantee that a created
- * payment has a complete Spark row.
- */
-export const upsertPaymentSparkDetails = (
-  evolu: EvoluDep["evolu"],
-  id: PaymentId,
-  spark: PaymentBtcInput,
-  options: MutationOptions
-): void => {
-  evolu.upsert(
-    "paymentBtc",
-    removeUndefinedValues({
-      accountId: spark.accountId,
-      amountSats: spark.amountSats,
-      exchangeRate: spark.exchangeRate,
-      exchangeRateSource: spark.exchangeRateSource,
-      exchangeRateFetchedAt: spark.exchangeRateFetchedAt,
-      id,
-    }),
-    options
-  )
-  if (spark.lightning) {
-    evolu.upsert(
-      "paymentBtcLightning",
-      removeUndefinedValues({ ...spark.lightning, id }),
-      options
-    )
-  }
-  if (spark.sparkInvoice) {
-    evolu.upsert(
-      "paymentBtcSpark",
-      removeUndefinedValues({ ...spark.sparkInvoice, id }),
-      options
-    )
-  }
-}
 
 export const loadPayment =
   (idValue: PaymentId): Task<PaymentRow, PaymentNotFoundError, EvoluDep> =>
@@ -1068,63 +1014,6 @@ export const confirmPaymentPaidDespiteCancellation =
         {
           id: paymentId,
           confirmedPaidAt: TimestampMsSchema.decode(
-            run.deps.date.now().getTime()
-          ),
-        },
-        { ...options, owner: evoluOwner }
-      )
-    )
-
-    return ok(paymentId)
-  }
-
-export type AcknowledgePaymentExcessSettlementError =
-  | PaymentNotFoundError
-  | PaymentNotOverpaidError
-
-/**
- * Resolves the duplicate-settlement collision described in
- * docs/bill-payment-states.md and `payment.ts`'s `excessAcknowledgedAt` doc
- * comment: two offline devices can each independently claim the same
- * payment through a different method (e.g. one settles it in cash while
- * another reconciles a matching incoming bank transfer), and since each
- * claim is real money, neither is discarded on merge — the payment simply
- * ends up claimed for more than its own `amount`.
- *
- * This lets staff explicitly acknowledge that (e.g. once they've refunded
- * the excess, or decided to keep it) via `excessAcknowledgedAt`, set once
- * and never cleared. Requires the payment to actually be claimed for more
- * than its `amount` — this resolves an existing collision, it does not
- * silence a warning that isn't there.
- */
-export const acknowledgePaymentExcessSettlement =
-  (
-    paymentId: PaymentId
-  ): Task<
-    PaymentId,
-    AcknowledgePaymentExcessSettlementError,
-    EvoluDep & EvoluOwnerDep & DateDep
-  > =>
-  async (run) => {
-    const paymentResult = await run(loadPayment(paymentId))
-    if (!paymentResult.ok) return paymentResult
-
-    const claimedTransactions = await run.deps.evolu.loadQuery(
-      activeClaimedTransactionsByPaymentIdQuery(paymentId)
-    )
-    const claimedSum = sumDistinctClaimedAmounts(claimedTransactions)
-    if (claimedSum <= paymentResult.value.amount) {
-      return err(createPaymentNotOverpaidError({ id: paymentId }))
-    }
-
-    const { evoluOwner } = run.deps
-
-    await runMutationWithCompletion((options) =>
-      run.deps.evolu.update(
-        "payment",
-        {
-          id: paymentId,
-          excessAcknowledgedAt: TimestampMsSchema.decode(
             run.deps.date.now().getTime()
           ),
         },

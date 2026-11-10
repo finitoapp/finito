@@ -520,10 +520,10 @@ export const enSettings = {
     "The plugin currently uses the deterministic fiat bank account.",
   "settings.fioPlugin.form.title": "Basic settings",
   "settings.fioPlugin.interval.description":
-    "How often the plugin should check for new transactions.",
+    "Fio answers one token at most once every 30 seconds. The plugin uses the tokens in turn, so it checks this often divided by the number of tokens.",
   "settings.fioPlugin.interval.invalid":
     "Enter a whole number greater than zero.",
-  "settings.fioPlugin.interval.label": "Seconds between checks",
+  "settings.fioPlugin.interval.label": "Seconds between uses of one token",
   "settings.fioPlugin.lastSyncedDate.description":
     "Local sync pointer. If no pointer exists yet, yesterday is used.",
   "settings.fioPlugin.lastSyncedDate.invalid": "Enter a valid date.",
@@ -647,6 +647,8 @@ export const enSettings = {
     "Description is too long (255 characters max).",
   "catalog.items.form.description.label": "Description",
   "catalog.items.form.description.placeholder": "Optional",
+  "catalog.items.form.inMenu.label": "In the menu",
+  "catalog.items.form.inMenu.until": "Leaves the menu at {time}",
   "catalog.items.form.internalDescription.invalid":
     "Internal description is too long (255 characters max).",
   "catalog.items.form.internalDescription.label": "Internal description",
@@ -660,6 +662,9 @@ export const enSettings = {
   "catalog.items.form.internalName.placeholder":
     "Optional — shown to staff instead of the public name",
   "catalog.items.form.invalidId": "Invalid item id.",
+  "catalog.items.form.menu.description":
+    "Guests ordering at the table see the items in the menu, with their public name, description and price.",
+  "catalog.items.form.menu.title": "Menu",
   "catalog.items.form.name.invalid": "Enter a name.",
   "catalog.items.form.name.label": "Name",
   "catalog.items.form.name.placeholder": "e.g. Coffee",
@@ -676,14 +681,19 @@ export const enSettings = {
   "catalog.items.form.sku.invalid": "SKU is too long (255 characters max).",
   "catalog.items.form.sku.label": "SKU",
   "catalog.items.form.sku.placeholder": "Optional",
+  "catalog.items.form.soldOut.description":
+    "Guests do not see it until it is available again. It stays in the menu.",
+  "catalog.items.form.soldOut.label": "Sold out",
   "catalog.items.form.taxRate.description":
     "Applies to bills and payments once this item is used. Manage rates in Settings › Tax rates.",
   "catalog.items.form.taxRate.label": "Tax rate",
   "catalog.items.form.taxRate.none": "No tax rate",
   "catalog.items.form.title.create": "Add item",
   "catalog.items.form.title.edit": "Edit item",
+  "catalog.items.inMenu": "In the menu",
   "catalog.items.search": "Search items...",
   "catalog.items.search.clear.aria": "Clear search",
+  "catalog.items.soldOut": "Sold out",
   "catalog.items.title": "Items",
   "settings.language.locale.czech.title": "Czechia",
   "settings.language.locale.description":
@@ -915,6 +925,21 @@ export const enSettings = {
   "settings.security.backup.start": "Show recovery phrase",
   "settings.security.backup.continue": "I wrote it down — verify",
   "settings.security.verify.skip": "Skip verification",
+  "settings.security.selfPayRelays.add": "Add relay",
+  "settings.security.selfPayRelays.default": "Default",
+  "settings.security.selfPayRelays.description":
+    "Tables publish their open bills to these Nostr relays, and guests read them from there.",
+  "settings.security.selfPayRelays.footer":
+    "A table sticker names the relays it reads from. After changing them, print the stickers again: an older sticker reads only the relays it names.",
+  "settings.security.selfPayRelays.lastActive":
+    "Keep at least one relay on, or guests cannot see their bill.",
+  "settings.security.selfPayRelays.refused": "Refused the last publish",
+  "settings.security.selfPayRelays.title": "Pay-at-the-table relays",
+  "settings.security.selfPayRelays.toggle": "Publish through {url}",
+  "settings.security.selfPayRelays.url.description":
+    "Only secure WebSocket URLs starting with wss: are allowed.",
+  "settings.security.selfPayRelays.url.invalid": "Enter a valid wss URL.",
+  "settings.security.selfPayRelays.url.label": "Relay URL",
   "settings.security.title": "Security & Sync",
   "settings.security.transports.add": "Add transport",
   "settings.security.transports.demo":
@@ -1063,7 +1088,7 @@ export const enSettings = {
     "Name and seat count shown when assigning this table to a bill.",
   "catalog.tables.form.card.title": "Details",
   "catalog.tables.form.code.description":
-    "Not used yet — reserved for a future QR code that will identify this table.",
+    "Printed next to the table's QR code so staff can tell which table a sticker belongs to.",
   "catalog.tables.form.code.label": "Code",
   "catalog.tables.form.invalidId": "Invalid table id.",
   "catalog.tables.form.name.invalid": "Enter a name.",
@@ -1080,6 +1105,82 @@ export const enSettings = {
   "catalog.tables.search": "Search tables...",
   "catalog.tables.search.clear.aria": "Clear search",
   "catalog.tables.seatCount": "{value} seats",
+  "catalog.tables.selfPay.bankNote":
+    "Bank transfers are matched only while a device syncs the bank account: the Android app or the CLI.",
+  "catalog.tables.selfPay.description":
+    "Guests scan the table's QR code, see its open bill and pay all or part of it themselves, without waiting for staff.",
+  "catalog.tables.selfPay.enabled": "Let guests pay at this table",
+  "catalog.tables.selfPay.noPaymentMethod.description":
+    "No payment method reaches them. Turn on bank sync with the Fio or MONETA plugin for the bank account, or add a Lightning wallet.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Open payment accounts",
+  "catalog.tables.selfPay.noPaymentMethod.title":
+    "Guests cannot pay at this table yet",
+  "catalog.tables.selfPay.noRelayAccepted.description":
+    "No relay accepted its last publish.",
+  "catalog.tables.selfPay.noRelayAccepted.retry": "Try again",
+  "catalog.tables.selfPay.noRelayAccepted.title":
+    "Guests cannot see this table's bill",
+  "catalog.tables.selfPay.open": "Open as a guest",
+  "catalog.tables.selfPay.print": "Print sticker",
+  "catalog.tables.selfPay.print.failed":
+    "Couldn't prepare the sticker. Try again.",
+  "catalog.tables.selfPay.qr": "QR code for paying at {name}",
+  "catalog.tables.selfPay.regenerate": "Regenerate QR code",
+  "catalog.tables.selfPay.regenerate.confirm.cancel": "Cancel",
+  "catalog.tables.selfPay.regenerate.confirm.confirm": "Regenerate",
+  "catalog.tables.selfPay.regenerate.confirm.description":
+    "Stickers printed so far stop showing this table's bills. Print the new one and replace them.",
+  "catalog.tables.selfPay.regenerate.confirm.title":
+    "Regenerate the QR code of {name}?",
+  "catalog.tables.selfPay.title": "Pay at the table",
+  "catalog.tables.selfPayGuestName.description":
+    "Guests paying at the table see it as who they pay, on the page and in the payment QR. Leave it empty and they see no name.",
+  "catalog.tables.selfPayGuestName.error": "Use at most 255 characters.",
+  "catalog.tables.selfPayGuestName.label": "Name guests see",
+  "catalog.tables.selfPayGuestName.placeholder": "Café on the Corner",
+  "catalog.tables.selfPayOptions.menu.empty.description":
+    "No item in the menu is available. Put items in the menu on their detail, or mark them available again.",
+  "catalog.tables.selfPayOptions.menu.empty.title": "Guests cannot order",
+  "catalog.tables.selfPayOptions.menu.leftOut":
+    "Items that do not fit the menu: {count}. Guests do not see them.",
+  "catalog.tables.selfPayOptions.menu.otherCurrency":
+    "Items not priced in {currency}: {count}. Guests do not see them.",
+  "catalog.tables.selfPayOptions.menu.visible":
+    "Items guests can order: {count}",
+  "catalog.tables.selfPayOptions.order": "Guests order from the menu",
+  "catalog.tables.selfPayOptions.order.description":
+    "Guests order the items in the menu and pay for them. Staff see the paid orders under To serve.",
+  "catalog.tables.selfPayOptions.orderDevice.description":
+    "It publishes the menu and records the paid orders, so keep it online.",
+  "catalog.tables.selfPayOptions.orderDevice.label": "Device that takes orders",
+  "catalog.tables.selfPayOptions.orderDevice.placeholder": "Choose a device",
+  "catalog.tables.selfPayOptions.orderDevice.this": "{name} (this device)",
+  "catalog.tables.selfPayOptions.payBill": "Guests pay the table's bill",
+  "catalog.tables.selfPayOptions.written": "Guests write what they pay for",
+  "catalog.tables.selfPayOptions.written.dayEnd.description":
+    "Staff can put a guest's written item in the menu for the day. It leaves the menu at this hour.",
+  "catalog.tables.selfPayOptions.written.dayEnd.label":
+    "Items remembered for the day leave the menu at",
+  "catalog.tables.selfPayOptions.written.description":
+    "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line takes the tax rate below.",
+  "catalog.tables.selfPayOptions.written.taxRate.label":
+    "Tax rate of a written line",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.description":
+    "As a VAT payer, pick the tax rate a written line takes. Until then, guests can't write.",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.title":
+    "Guests can't write yet",
+  "catalog.tables.selfPayOptions.title": "What guests can do",
+  "catalog.tables.sticker.check": "Check a sticker",
+  "catalog.tables.sticker.current": "This sticker belongs to {name}.",
+  "catalog.tables.sticker.dismiss": "Dismiss",
+  "catalog.tables.sticker.earlier":
+    "This is an earlier QR code of {name}. It no longer shows the table's bills, so replace it.",
+  "catalog.tables.sticker.foreign":
+    "This sticker belongs to none of your tables. Remove it.",
+  "catalog.tables.sticker.next": "Scan the next sticker",
+  "catalog.tables.sticker.notTableCode": "This is not a table QR code.",
+  "catalog.tables.sticker.relaysChanged":
+    "This sticker belongs to {name}, but it names other relays than the tables publish to. Print it again.",
   "catalog.tables.title": "Tables",
   "settings.taxRates.activate": "Reactivate {name}",
   "settings.taxRates.activate.confirm.cancel": "Cancel",
@@ -1162,7 +1263,6 @@ export const enSettings = {
   "settings.tips.nav.off": "Off",
   "settings.paymentAccounts.nav.none": "None",
   "settings.taxRates.nav.description": "VAT rates for your items",
-  "access.action.acknowledgeExcess": "Acknowledge the excess payment",
   "access.action.aiAccess": "Change AI data access",
   "access.action.cashuMints": "Change the Cashu mints",
   "access.action.moveCashuFunds": "Move funds between mints",
@@ -1173,6 +1273,7 @@ export const enSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Mark the canceled payment as paid",
   "access.action.createItem": "Create a catalog item",
+  "access.action.rememberItem": "Put a guest's item in the menu",
   "access.action.disable": "Turn access control off",
   "access.action.exportDatabase": "Export the app database",
   "access.action.revealRecoveryPhrase": "Reveal the recovery phrase",
@@ -1180,6 +1281,8 @@ export const enSettings = {
   "access.action.enable": "Turn access control on with the current PIN",
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
+  "access.action.resolveOverpayment": "Resolve an overpayment",
+  "access.action.rejectOrder": "Reject an order",
   "access.action.removeAccount": "Remove the account from this device",
   "access.action.removeLines": "Remove items from the bill",
   "access.action.switchAccount": "Switch account",
@@ -1235,7 +1338,7 @@ export const enSettings = {
     "Discard a bill, remove items from it, cancel a payment",
   "access.permission.refund": "Refunds",
   "access.permission.refund.description":
-    "Refunds and acknowledging an excess payment",
+    "Refunds and resolving an overpayment",
   "access.permission.sell": "Sell",
   "access.permission.sell.description":
     "Home screen, bills, splitting a bill, payments and tips",

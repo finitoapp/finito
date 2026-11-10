@@ -47,7 +47,9 @@ assertions.
 - Copy comes from the translations: `${output.t["pay.request"]}`, templated
   strings `'${output.tv("bill.itemsCount", { value: 3 })}'` (quote it for
   YAML). `src/e2e/e2e-strings.test.ts` fails on a key `en` does not have.
-  Text selectors are regexes that also match literally.
+  Text selectors are regexes that also match literally. Maestro leaves a
+  `${}` holding a literal `$` unevaluated, so an amount spells it `\u0024`
+  in single quotes: `'${output.tv("overpayment.title", { amount: "\u00245.00" })}'`.
 - Subflows (env in brackets) replace web's `support/` helpers:
   `goto` (`ROUTE`, `TEXT`) is `gotoPage`; `e2e-action` (`ACTION`, `QUERY`)
   runs a bridge action and waits for `E2E OK`; `complete-onboarding` is
@@ -64,7 +66,11 @@ assertions.
   `assert-checked` (`LABEL`, `CHECKED`) checks a switch, on Android only;
   `add-catalog-item`, `add-table` are web's `addCatalogItem`, `addTable`
   (there is no `add-category`: a category is typed on the item,
-  navigation/0003); `start-new-bill` is `startNewBill`,
+  navigation/0003); `enable-table-self-pay` (`TABLE`) is
+  `enableTableSelfPay` and waits for the table's QR; `open-table-bill`
+  (`TABLE`) is `openTableBill` up to its items; `pizza-and-beer-bill`
+  (`TABLE`) is table-self-pay's `seedPizzaAndBeerBill`, keeping the bill's id
+  as `output.billId`; `start-new-bill` is `startNewBill`,
   `new-bill` the same from the tables home; `charge-cash` pays the open bill
   in cash and returns home; `read-ids` is web's `new URL(page.url())` for
   ids: the newest bill's and payment's ids as `output.billId` and
@@ -134,7 +140,10 @@ assertions.
   strings, parsed with zod. Opening the same action URL twice in a row is
   not guaranteed to rerun it — navigate elsewhere in between. `next=<path>`
   moves on to that screen in-app after a successful action (web reloads on
-  every link, losing in-memory state).
+  every link, losing in-memory state). `during=<path>` moves on to it as the
+  action starts, which then finishes behind that screen and prints nothing:
+  the flow waits for what the screen shows of it (guest money arriving on
+  the open bill).
 - `fake` swaps in outside services until the app restarts, so run it after
   `seed-onboarding` and, on web, move on with `next=`: `spark=funded`
   (`e2e-spark-presets.ts`), `cashu=manual|autopay` (`e2e-cashu-mint.ts`, web's
@@ -170,6 +179,10 @@ assertions.
   `mocks/nostr.ts` is the only nostr relay of an e2e build (`/nostr`,
   websocket) and decides by the business name: "Café Skip" is refused,
   "Café Retry" refused once, a profile that is not the trimmed name refused.
+  It keeps every event it accepts and answers a `REQ` by its `kinds`,
+  `authors` and `#d`. The build's default self-pay relays lead to it too
+  (`src/e2e/e2e-self-pay-relays.ts`, web's `routeFakeNostrRelays`), so table
+  views and guest selections never leave the machine.
 - `mocks/open-facts.ts` answers every Open Food Facts lookup with web's
   Coca-Cola product and counts them: `open-facts-mock` (`PATH`) calls
   `/__mock/open-facts/reset` or `.../expect?count=N` (web's `lookedUpUrls`)
@@ -191,6 +204,22 @@ assertions.
 - `seedEetSaleFromAnotherDevice` (`paymentId`, `minutes`) records the
   payment's EET sale as another device's, `minutes` ago, printing
   `pokl=<cash register id>`.
+- Self-pay (web's `support/self-pay.ts`): `seedActiveFioPlugin` is web's.
+  `receiveGuestBankTransfer` (`billId`) is `receiveShownBankTransfer` with
+  the guest page's part done in-app (`src/e2e/e2e-self-pay-guest.ts`): it
+  reads the table's view from the relays until it shows the bill as the till
+  has it, picks a share, publishes that selection, then receives the
+  transfer naming its pointer and reconciles it. The share is
+  `lines=Beer:1/1,Pizza:1/5` (a fraction of each line, by name),
+  `people=<n>` (an equal share) or, with neither, the rest of the bill;
+  `amount` (minor units) and `message` replace what the transfer carries.
+- Menu (web's `__e2eSeedMenu`): `seedMenu` (`items=name:amount[:internalName],...`,
+  `billsHidden`) switches ordering on with this device taking orders and
+  puts the items in the menu.
+  `receiveMenuOrder` (`table`, `items=name:quantity,...`, `note`, `amount`)
+  is web's `__e2eReceiveMenuOrder`: it publishes the order to the self-pay
+  relays (the mock relay) and receives the bank transfer naming it, as the
+  order device's FIO sync would.
 
 ## Selectors
 
@@ -203,6 +232,8 @@ assertions.
    is already mirrored (native-e2e.md, 3.3). On web `id:` reads an element's
    aria-label before its testID, so a testID only works there on an element
    without a label (`table-tile` sits on the unlabeled wrapper, as on web).
+   A kit component's Tamagui `name` (Card, Badge) hides its testID the same
+   way, so `order-to-serve` sits on an unnamed wrapper.
 
 4. Inputs: `tap-input`/`fill-input`. A kit input's field label is also its
    aria-label and testID, so `id: <label>` finds it on both platforms (a text

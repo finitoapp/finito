@@ -2,28 +2,39 @@ import { useTimestamp } from "@dedalik/use-react"
 import { formatElapsed } from "@payky/app-shared/format-elapsed"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
+  type BillPaymentState,
   type BillWithStats,
   billPaymentState,
   buildBillRows,
   elapsedSeverity,
+  formatRowsSum,
   groupBillRowsByTableId,
   matchesTableFilter,
-  sumBillRows,
   type TableFilter,
   TableFilterSchema,
   tablePaymentState,
 } from "@payky/app-shared/pos-overview"
+import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { offersOrders } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
   type OpenBillRow,
   openBillsQuery,
 } from "@payky/core/modules/bill/bill-queries"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { useLocalStorageState } from "@payky/web-shared/use-local-storage-state"
 import { Link } from "@tanstack/react-router"
-import { PlusIcon, UsersIcon } from "lucide-react"
+import {
+  ChartPieIcon,
+  ChevronRightIcon,
+  HourglassIcon,
+  type LucideIcon,
+  PlusIcon,
+  UsersIcon,
+} from "lucide-react"
 import { type ReactNode, useMemo, useState } from "react"
 import { buttonVariants } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
@@ -75,7 +86,10 @@ export function PosOverviewPage() {
   // a query per bill meant the floor view opened two more for every bill on
   // screen. Newest first, in every tile.
   const rows = useMemo(() => buildBillRows(openBills), [openBills])
-  const rowsByTableId = useMemo(() => groupBillRowsByTableId(rows), [rows])
+  const rowsByTableId = useMemo(
+    () => groupBillRowsByTableId(rows, new Set(tables.map(({ id }) => id))),
+    [rows, tables]
+  )
 
   const tableTiles = tables.map((table) => ({
     table,
@@ -85,7 +99,9 @@ export function PosOverviewPage() {
   const visibleTiles = tableTiles.filter((tile) =>
     matchesTableFilter(tableFilter, tile.rows.length > 0)
   )
-  const floorTotal = formatRowsTotal(rows, locale)
+  const floorTotal = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
 
   return (
     <div className="mt-4 flex flex-col gap-3 pb-4">
@@ -123,6 +139,7 @@ export function PosOverviewPage() {
           </ToggleGroup>
         )}
       </div>
+      <ToServeStrip />
       <NoTableStrip rows={rowsByTableId.get(null) ?? []} now={now} />
       {visibleTiles.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))]">
@@ -176,18 +193,37 @@ function FloorStat({
   )
 }
 
-/** The summed total of `rows`, formatted — `undefined` when it has no sum. */
-const formatRowsTotal = (
-  rows: ReadonlyArray<BillWithStats>,
-  locale: string
-): string | undefined => {
-  const total = sumBillRows(rows)
-  return total === undefined ? undefined : formatMoney(total, locale)
-}
+const billPaymentStateIcons = {
+  paymentPending: HourglassIcon,
+  partiallyPaid: ChartPieIcon,
+} satisfies Record<BillPaymentState, LucideIcon>
 
 /** Covers the whole tile, so its most likely next step needs no aiming. */
 const stretchedLinkClassName =
   "absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
+function ToServeStrip() {
+  const { t } = useTranslation()
+  const {
+    data: [settings],
+  } = useEvoluQuery(selfPaySettingsQuery)
+  const { data: orders } = useEvoluQuery(menuOrdersToServeQuery)
+
+  if (!offersOrders(settings) && orders.length === 0) return null
+
+  return (
+    <Link
+      to="/orders"
+      className="flex items-center gap-3 rounded-xl bg-card p-3 pl-4 ring-1 ring-foreground/10 ring-inset"
+    >
+      <span className="flex-1 text-sm font-semibold">{t("nav.orders")}</span>
+      <span className="text-lg font-semibold tabular-nums">
+        {orders.length}
+      </span>
+      <ChevronRightIcon className="size-4 text-muted-foreground" />
+    </Link>
+  )
+}
 
 /**
  * The open bills on no table and the quick bill that starts another. Always
@@ -253,7 +289,13 @@ function TableTile({
   const locale = useLocale()
   const occupied = rows.length > 0
   const onlyBill = rows.length === 1 ? rows[0]?.bill : undefined
-  const total = formatRowsTotal(rows, locale)
+  const left = formatRowsSum(rows, "left", (money) =>
+    formatMoney(money, locale)
+  )
+  const isPartlyPaid = rows.some(({ paid }) => paid > 0)
+  const paid = isPartlyPaid
+    ? formatRowsSum(rows, "paid", (money) => formatMoney(money, locale))
+    : undefined
   const openedAt = Math.min(
     ...rows.map(({ bill }) => new Date(bill.createdAt).getTime())
   )
@@ -270,15 +312,7 @@ function TableTile({
         // row stretches its tiles, when one of them lists several bills.
         className="min-h-36 justify-between gap-2"
         icon={
-          occupied ? (
-            <NewBillLink
-              tableId={table.id}
-              aria-label={t("tables.tile.newBill")}
-              className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
-            >
-              <PlusIcon className="size-4" />
-            </NewBillLink>
-          ) : (
+          occupied ? null : (
             <PlusIcon className="size-5 shrink-0 text-muted-foreground" />
           )
         }
@@ -296,33 +330,54 @@ function TableTile({
           </div>
         )}
         <div className="flex min-w-0 flex-col gap-0.5">
-          {total !== undefined && (
-            <p className="truncate text-xl font-bold tabular-nums">{total}</p>
+          {left !== undefined && (
+            <p
+              className={cn(
+                "text-xl font-bold tabular-nums",
+                isPartlyPaid ? "line-clamp-2" : "truncate"
+              )}
+            >
+              {isPartlyPaid ? t("tables.tile.left", { amount: left }) : left}
+            </p>
           )}
-          <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
-            {occupied ? (
-              <>
-                <span className={elapsedClassName(now - openedAt)}>
-                  {formatElapsed(now - openedAt, locale)}
-                </span>
-                <span>{t("tables.tile.itemCount", { value: itemCount })}</span>
-                {paymentState !== undefined && (
-                  <span className="rounded-sm bg-info/15 px-1 text-xs font-semibold text-info">
-                    {t(`tables.tile.${paymentState}`)}
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm tabular-nums text-muted-foreground">
+              {occupied ? (
+                <>
+                  <span className={elapsedClassName(now - openedAt)}>
+                    {formatElapsed(now - openedAt, locale)}
                   </span>
-                )}
-              </>
-            ) : (
-              <>
-                <span>{t("tables.tile.free")}</span>
-                <span className="flex items-center gap-0.5">
-                  <UsersIcon aria-hidden className="size-3.5" />
-                  <span aria-hidden>{table.seatCount}</span>
-                  <span className="sr-only">
-                    {t("tables.seatCount", { value: table.seatCount })}
+                  <span>
+                    {t("tables.tile.itemCount", { value: itemCount })}
                   </span>
-                </span>
-              </>
+                  {paymentState !== undefined && (
+                    <BillPaymentStateBadge
+                      paymentState={paymentState}
+                      paid={paymentState === "partiallyPaid" ? paid : undefined}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <span>{t("tables.tile.free")}</span>
+                  <span className="flex items-center gap-0.5">
+                    <UsersIcon aria-hidden className="size-3.5" />
+                    <span aria-hidden>{table.seatCount}</span>
+                    <span className="sr-only">
+                      {t("tables.seatCount", { value: table.seatCount })}
+                    </span>
+                  </span>
+                </>
+              )}
+            </div>
+            {occupied && (
+              <NewBillLink
+                tableId={table.id}
+                aria-label={t("tables.tile.newBill")}
+                className="relative z-10 -m-1.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-background/60 transition-colors hover:bg-background"
+              >
+                <PlusIcon className="size-4" />
+              </NewBillLink>
             )}
           </div>
         </div>
@@ -343,6 +398,26 @@ function TableTile({
         />
       )}
     </div>
+  )
+}
+
+function BillPaymentStateBadge({
+  paymentState,
+  paid,
+}: {
+  readonly paymentState: BillPaymentState
+  readonly paid?: string | undefined
+}) {
+  const { t } = useTranslation()
+  const Icon = billPaymentStateIcons[paymentState]
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-sm bg-info/15 px-1 text-xs font-semibold text-info-foreground">
+      <Icon aria-hidden className="size-3.5 shrink-0" />
+      {paid === undefined
+        ? t(`tables.tile.${paymentState}`)
+        : t("tables.tile.partiallyPaidAmount", { amount: paid })}
+    </span>
   )
 }
 
@@ -381,12 +456,11 @@ const billLabel = (
 
 /**
  * One open bill as a chip, where a table holds several or the bill is on
- * no table: its total and, off a table, how long it has been open, a dot while its
- * payment is under way, and its label when it has one.
+ * no table: what is left to pay on it and, off a table, how long it has been open, and its label when it has one.
  */
 function BillChip({
   bill,
-  stats,
+  left,
   now,
   showElapsed = true,
 }: BillWithStats & {
@@ -398,20 +472,25 @@ function BillChip({
   const locale = useLocale()
   const elapsedMs = now - new Date(bill.createdAt).getTime()
   const paymentState = billPaymentState(bill, now)
+  const PaymentStateIcon =
+    paymentState === undefined ? undefined : billPaymentStateIcons[paymentState]
 
   return (
     <Link
       to="/bill"
       search={{ billId: bill.id }}
-      aria-label={billLabel(bill, t)}
+      aria-label={
+        paymentState === undefined
+          ? billLabel(bill, t)
+          : t("tables.tile.billWithState", {
+              label: billLabel(bill, t),
+              state: t(`tables.tile.${paymentState}`),
+            })
+      }
       className="relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-background/70 px-2.5 text-sm ring-1 ring-foreground/10 ring-inset transition-colors hover:bg-background"
     >
-      {paymentState !== undefined && (
-        <span
-          aria-hidden
-          title={t(`tables.tile.${paymentState}`)}
-          className="size-2 rounded-full bg-info"
-        />
+      {PaymentStateIcon !== undefined && (
+        <PaymentStateIcon aria-hidden className="size-4 shrink-0 text-info" />
       )}
       {bill.label !== null && (
         <span className="max-w-24 truncate text-muted-foreground">
@@ -419,10 +498,7 @@ function BillChip({
         </span>
       )}
       <span className="font-semibold tabular-nums">
-        {formatMoney(
-          { value: stats.totalAmount, currency: bill.currency },
-          locale
-        )}
+        {formatMoney({ value: left, currency: bill.currency }, locale)}
       </span>
       {showElapsed && (
         <span

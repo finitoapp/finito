@@ -1,0 +1,57 @@
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Bar
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- extendedWaitUntil:
+    visible: '.*${output.re(output.tv("catalog.tables.selfPayOptions.orderDevice.this", { name: "" }).trim())}'
+    timeout: 10000
+- assertNotVisible: ${output.re(output.t["catalog.tables.selfPayOptions.menu.empty.title"])}
+- runFlow:
+    file: ../../subflows/reopen.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.orderDevice.label"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}

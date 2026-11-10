@@ -1,0 +1,65 @@
+# web tables-overview.spec.ts: "a partly paid table states it in text at AA
+# contrast, and its bill's chip is read with it". The contrast is the
+# palette's (palette.test.ts), which Maestro cannot measure.
+appId: ${APP_ID}
+tags: [tables-overview]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/pizza-and-beer-bill.yaml
+    env:
+      TABLE: Table 13
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveGuestBankTransfer
+      QUERY: billId=${output.billId}&lines=Beer:1/1
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.re(output.t["home.pay"])}|${output.re(output.t["bill.table.dialog.none"])}
+- runFlow: ../../subflows/open-sales.yaml
+- runFlow: ../../subflows/new-bill.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["bill.table.aria"]}
+- extendedWaitUntil:
+    visible: ${output.t["bill.table.dialog.title"]}
+    timeout: 10000
+- tapOn: Table 13
+- extendedWaitUntil:
+    notVisible: ${output.t["bill.table.dialog.title"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("bill.brick.add.aria", { name: "Pizza" })}'
+- extendedWaitUntil:
+    visible: '${output.tv("bill.itemsCount", { value: 1 })}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- extendedWaitUntil:
+    visible:
+      id: no-table-tile
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("tables.tile.billWithState", { label: output.tv("bill.list.label", { number: 1 }), state: output.t["tables.tile.partiallyPaid"] })}'
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("bill.list.label", { number: 2 })}'
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("bill.list.label", { number: 1 })}'
+      HIDDEN: "true"
+- assertVisible:
+    text: '${output.re(output.tv("tables.tile.partiallyPaidAmount", { amount: "\u002445" }))}'
+    below: Table 13

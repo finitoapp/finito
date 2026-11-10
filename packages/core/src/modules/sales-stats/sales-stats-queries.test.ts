@@ -1,4 +1,5 @@
 import {
+  createIdFromString,
   sqliteQueryStringToSqliteQuery,
   sqliteTrue,
   testCreateRun,
@@ -24,6 +25,7 @@ import {
   confirmBillClosedDespiteCancellation,
   createBill,
 } from "../bill/bill-actions.ts"
+import { loadAnsweredOverpaymentTips } from "../bill/bill-overpayment-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
 import { calculateTaxRecap } from "../bill-line/bill-line-tax-utils.ts"
@@ -37,6 +39,10 @@ import {
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { registerDevice } from "../device/device-actions.ts"
 import type { DeviceId } from "../device/device-types.ts"
+import {
+  recordOverpaymentResolution,
+  withdrawOverpaymentResolution,
+} from "../overpayment-resolution/overpayment-resolution-actions.ts"
 import {
   cancelPayment,
   confirmPaymentPaidDespiteCancellation,
@@ -61,6 +67,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
+  DateStringSchema,
   type FiatCurrency,
   NonEmptyString255,
   NonEmptyStringSchema,
@@ -69,6 +76,7 @@ import {
   PositiveNumber,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import { deriveSelfPayPointer } from "../table-self-pay/table-self-pay-pointer-utils.ts"
 import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
@@ -77,6 +85,7 @@ import {
   categorySalesQuery,
   itemSalesQuery,
   keypadSalesQuery,
+  overpaymentTipsQuery,
   refundsQuery,
   salesByDeviceQuery,
   salesByHourQuery,
@@ -484,6 +493,7 @@ describe("refunds", () => {
       salesKpis({
         hourRows: await context.load(salesByHourQuery(range)),
         refundRows: await context.load(refundsQuery(range)),
+        overpaymentTips: [],
         accountCurrency: "CZK",
       })
 
@@ -536,6 +546,60 @@ describe("refunds", () => {
         saleRefundAmount: 3_000,
         tipRefundAmount: 1_000,
       },
+    ])
+  })
+})
+
+describe("tips from an overpayment", () => {
+  test("Tips of the day", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await context.pay({ amount: 14_000, tipAmount: 4_000 })
+    const overpaid = await context.pay({ amount: 10_000 })
+    await context.claimExtra({
+      paymentId: overpaid,
+      accountId: context.ibanAccountId,
+      amount: 3_000,
+    })
+    await using r = context.run()
+    await r.orThrow(
+      recordOverpaymentResolution({
+        paymentId: overpaid,
+        kind: "tip",
+        amount: PositiveInteger(2_000),
+        deviceId: null,
+      })
+    )
+    context.at("2026-06-06T10:00:00.000Z")
+    const withdrawn = await r.orThrow(
+      recordOverpaymentResolution({
+        paymentId: overpaid,
+        kind: "tip",
+        amount: PositiveInteger(1_000),
+        deviceId: null,
+      })
+    )
+    await r.orThrow(
+      withdrawOverpaymentResolution({ resolutionId: withdrawn, deviceId: null })
+    )
+
+    const tipsOf = async (range: StatsRange) =>
+      salesKpis({
+        hourRows: await context.load(salesByHourQuery(range)),
+        refundRows: await context.load(refundsQuery(range)),
+        overpaymentTips: await r.ok(
+          loadAnsweredOverpaymentTips(
+            await context.load(overpaymentTipsQuery(range))
+          )
+        ),
+        accountCurrency: "CZK",
+      }).map(({ currency, tips }) => ({ currency, tips }))
+
+    await expect(tipsOf(june5)).resolves.toEqual([
+      { currency: "CZK", tips: 6_000 },
+    ])
+    await expect(tipsOf(days("2026-06-06"))).resolves.toEqual([
+      { currency: "CZK", tips: 0 },
     ])
   })
 })
@@ -743,6 +807,68 @@ describe("items and categories", () => {
       "Coffee",
       "Corkage",
       "Juice",
+    ])
+  })
+
+  test("counts 30 written orders with different texts as one row of written orders", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    for (const index of Array.from({ length: 30 }, (_, i) => i)) {
+      const billId = await context.createTestBill()
+      await r.orThrow(
+        addManualAmountToBill({
+          billId,
+          deviceId: null,
+          totalAmount: NonNegativeInteger(100),
+          name: NonEmptyString255(`${index}x pivo`),
+          currency: "CZK",
+        })
+      )
+      context.evolu.upsert(
+        "menuOrder",
+        {
+          id: createIdFromString<"MenuOrder">(`written-${index}`),
+          billId,
+          pointer: deriveSelfPayPointer(`written-${index}`),
+          day: DateStringSchema.decode("2026-06-05"),
+          number: PositiveInteger(index + 1),
+          note: null,
+          writtenAmount: PositiveInteger(100),
+        },
+        { owner: context.evolu.appOwner }
+      )
+      await context.payBill(billId)
+    }
+
+    const rows = await context.load(itemSalesQuery(june5))
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      written: 1,
+      quantity: 30,
+      amount: 3000,
+    })
+  })
+
+  test("keeps a keypad amount in its own row", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const billId = await context.createTestBill()
+    await r.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        totalAmount: NonNegativeInteger(700),
+        name: NonEmptyString255("Corkage"),
+        currency: "CZK",
+      })
+    )
+    await context.payBill(billId)
+
+    expect(await context.load(itemSalesQuery(june5))).toEqual([
+      expect.objectContaining({ name: "Corkage", written: 0, amount: 700 }),
     ])
   })
 
@@ -1036,9 +1162,16 @@ describe("currencies", () => {
     const hourRows = await context.load(salesByHourQuery(june5))
     const refundRows = await context.load(refundsQuery(june5))
     expect(
-      salesKpis({ hourRows, refundRows, accountCurrency: "EUR" }).map(
-        ({ currency, netRevenue, tips }) => ({ currency, netRevenue, tips })
-      )
+      salesKpis({
+        hourRows,
+        refundRows,
+        overpaymentTips: [],
+        accountCurrency: "EUR",
+      }).map(({ currency, netRevenue, tips }) => ({
+        currency,
+        netRevenue,
+        tips,
+      }))
     ).toEqual([
       { currency: "EUR", netRevenue: 1_000, tips: 200 },
       { currency: "CZK", netRevenue: 30_000, tips: 0 },

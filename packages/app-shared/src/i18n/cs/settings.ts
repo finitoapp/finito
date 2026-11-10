@@ -520,9 +520,9 @@ export const csSettings = {
     "Plugin teď používá deterministický fiat bankovní účet.",
   "settings.fioPlugin.form.title": "Základní nastavení",
   "settings.fioPlugin.interval.description":
-    "Jak často má plugin kontrolovat nové transakce.",
+    "Fio odpoví na jeden token nejvýš jednou za 30 sekund. Plugin tokeny střídá postupně, takže kontroluje tak často, jak je tu nastaveno, děleno počtem tokenů.",
   "settings.fioPlugin.interval.invalid": "Zadejte celé číslo větší než nula.",
-  "settings.fioPlugin.interval.label": "Sekund mezi kontrolami",
+  "settings.fioPlugin.interval.label": "Sekund mezi použitími jednoho tokenu",
   "settings.fioPlugin.lastSyncedDate.description":
     "Lokální zarážka synchronizace. Pokud ještě neexistuje, použije se včerejší datum.",
   "settings.fioPlugin.lastSyncedDate.invalid": "Zadejte platné datum.",
@@ -645,6 +645,8 @@ export const csSettings = {
     "Popis je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.description.label": "Popis",
   "catalog.items.form.description.placeholder": "Nepovinné",
+  "catalog.items.form.inMenu.label": "V menu",
+  "catalog.items.form.inMenu.until": "Z menu zmizí v {time}",
   "catalog.items.form.internalDescription.invalid":
     "Interní popis je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalDescription.label": "Interní popis",
@@ -658,6 +660,9 @@ export const csSettings = {
   "catalog.items.form.internalName.placeholder":
     "Nepovinné – zobrazí se personálu místo veřejného názvu",
   "catalog.items.form.invalidId": "Neplatné ID položky.",
+  "catalog.items.form.menu.description":
+    "Hosté, kteří objednávají u stolu, vidí položky z menu s jejich veřejným názvem, popisem a cenou.",
+  "catalog.items.form.menu.title": "Menu",
   "catalog.items.form.name.invalid": "Zadejte název.",
   "catalog.items.form.name.label": "Název",
   "catalog.items.form.name.placeholder": "např. Káva",
@@ -674,14 +679,19 @@ export const csSettings = {
   "catalog.items.form.sku.invalid": "SKU je příliš dlouhé (max. 255 znaků).",
   "catalog.items.form.sku.label": "SKU",
   "catalog.items.form.sku.placeholder": "Nepovinné",
+  "catalog.items.form.soldOut.description":
+    "Hosté ji neuvidí, dokud nebude znovu k dispozici. V menu zůstane.",
+  "catalog.items.form.soldOut.label": "Vyprodáno",
   "catalog.items.form.taxRate.description":
     "Uplatní se na účtech a platbách po použití této položky. Sazby správte v Nastavení › Daňové sazby.",
   "catalog.items.form.taxRate.label": "Daňová sazba",
   "catalog.items.form.taxRate.none": "Bez daňové sazby",
   "catalog.items.form.title.create": "Přidat položku",
   "catalog.items.form.title.edit": "Upravit položku",
+  "catalog.items.inMenu": "V menu",
   "catalog.items.search": "Hledat položky...",
   "catalog.items.search.clear.aria": "Vymazat hledání",
+  "catalog.items.soldOut": "Vyprodáno",
   "catalog.items.title": "Položky",
   "settings.language.locale.czech.title": "Česko",
   "settings.language.locale.description":
@@ -914,6 +924,21 @@ export const csSettings = {
   "settings.security.backup.start": "Zobrazit recovery phrase",
   "settings.security.backup.continue": "Mám zapsáno — ověřit",
   "settings.security.verify.skip": "Přeskočit ověření",
+  "settings.security.selfPayRelays.add": "Přidat relay",
+  "settings.security.selfPayRelays.default": "Výchozí",
+  "settings.security.selfPayRelays.description":
+    "Stoly na tyto Nostr relaye publikují otevřené účty a hosté si je odtud čtou.",
+  "settings.security.selfPayRelays.footer":
+    "Nálepka stolu nese relaye, ze kterých čte. Po jejich změně nálepky vytiskněte znovu: starší nálepka čte jen relaye, které nese.",
+  "settings.security.selfPayRelays.lastActive":
+    "Aspoň jeden relay musí zůstat zapnutý, jinak hosté svůj účet neuvidí.",
+  "settings.security.selfPayRelays.refused": "Odmítl poslední publikaci",
+  "settings.security.selfPayRelays.title": "Relaye pro placení u stolu",
+  "settings.security.selfPayRelays.toggle": "Publikovat přes {url}",
+  "settings.security.selfPayRelays.url.description":
+    "Povolené jsou jen zabezpečené WebSocket URL začínající na wss:.",
+  "settings.security.selfPayRelays.url.invalid": "Zadejte platnou wss URL.",
+  "settings.security.selfPayRelays.url.label": "URL relaye",
   "settings.security.title": "Bezpečnost a synchronizace",
   "settings.security.transports.add": "Přidat transport",
   "settings.security.transports.demo":
@@ -1063,7 +1088,7 @@ export const csSettings = {
     "Název a počet míst zobrazené při přiřazování stolu k účtu.",
   "catalog.tables.form.card.title": "Detaily",
   "catalog.tables.form.code.description":
-    "Zatím se nepoužívá - rezervováno pro budoucí QR kód, který bude tento stůl identifikovat.",
+    "Tiskne se vedle QR kódu stolu, aby obsluha poznala, ke kterému stolu nálepka patří.",
   "catalog.tables.form.code.label": "Kód",
   "catalog.tables.form.invalidId": "Neplatné ID stolu.",
   "catalog.tables.form.name.invalid": "Zadejte název.",
@@ -1080,6 +1105,83 @@ export const csSettings = {
   "catalog.tables.search": "Hledat stoly...",
   "catalog.tables.search.clear.aria": "Vymazat hledání",
   "catalog.tables.seatCount": "{value} míst",
+  "catalog.tables.selfPay.bankNote":
+    "Bankovní převody se párují jen tehdy, když některé zařízení synchronizuje bankovní účet: aplikace pro Android nebo CLI.",
+  "catalog.tables.selfPay.description":
+    "Hosté naskenují QR kód stolu, uvidí otevřený účet a zaplatí ho celý nebo jeho část sami, bez čekání na obsluhu.",
+  "catalog.tables.selfPay.enabled": "Povolit hostům platit u tohoto stolu",
+  "catalog.tables.selfPay.noPaymentMethod.description":
+    "Žádnou platební metodou zaplatit nemohou. Zapněte u bankovního účtu synchronizaci přes Fio nebo MONETA plugin, nebo přidejte Lightning peněženku.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Otevřít platební účty",
+  "catalog.tables.selfPay.noPaymentMethod.title":
+    "Hosté u tohoto stolu zatím nemohou platit",
+  "catalog.tables.selfPay.noRelayAccepted.description":
+    "Poslední publikaci nepřijal žádný relay.",
+  "catalog.tables.selfPay.noRelayAccepted.retry": "Zkusit znovu",
+  "catalog.tables.selfPay.noRelayAccepted.title":
+    "Hosté nevidí účet tohoto stolu",
+  "catalog.tables.selfPay.open": "Otevřít jako host",
+  "catalog.tables.selfPay.print": "Vytisknout nálepku",
+  "catalog.tables.selfPay.print.failed":
+    "Nálepku se nepodařilo připravit. Zkuste to znovu.",
+  "catalog.tables.selfPay.qr": "QR kód pro placení u stolu {name}",
+  "catalog.tables.selfPay.regenerate": "Vytvořit nový QR kód",
+  "catalog.tables.selfPay.regenerate.confirm.cancel": "Zrušit",
+  "catalog.tables.selfPay.regenerate.confirm.confirm": "Vytvořit nový",
+  "catalog.tables.selfPay.regenerate.confirm.description":
+    "Dosud vytištěné nálepky přestanou zobrazovat účty tohoto stolu. Vytiskněte novou a nahraďte je.",
+  "catalog.tables.selfPay.regenerate.confirm.title":
+    "Vytvořit nový QR kód pro {name}?",
+  "catalog.tables.selfPay.title": "Placení u stolu",
+  "catalog.tables.selfPayGuestName.description":
+    "Host, který platí u stolu, ho uvidí jako příjemce platby na stránce i v QR kódu. Když pole necháte prázdné, žádné jméno neuvidí.",
+  "catalog.tables.selfPayGuestName.error": "Zadejte nejvýše 255 znaků.",
+  "catalog.tables.selfPayGuestName.label": "Jméno pro hosty",
+  "catalog.tables.selfPayGuestName.placeholder": "Kavárna U Lípy",
+  "catalog.tables.selfPayOptions.menu.empty.description":
+    "V menu není žádná dostupná položka. Přidejte položky do menu v jejich detailu, nebo je označte jako znovu dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.title": "Hosté si nemohou objednat",
+  "catalog.tables.selfPayOptions.menu.leftOut":
+    "Položek, které se do menu nevejdou: {count}. Hosté je nevidí.",
+  "catalog.tables.selfPayOptions.menu.otherCurrency":
+    "Položek s cenou mimo {currency}: {count}. Hosté je nevidí.",
+  "catalog.tables.selfPayOptions.menu.visible":
+    "Položek, které si hosté mohou objednat: {count}",
+  "catalog.tables.selfPayOptions.order": "Hosté objednávají z menu",
+  "catalog.tables.selfPayOptions.order.description":
+    "Hosté si objednají položky z menu a zaplatí je. Zaplacené objednávky obsluha uvidí v sekci K vydání.",
+  "catalog.tables.selfPayOptions.orderDevice.description":
+    "Zveřejňuje menu a zapisuje zaplacené objednávky, proto ho nechte online.",
+  "catalog.tables.selfPayOptions.orderDevice.label":
+    "Zařízení, které přijímá objednávky",
+  "catalog.tables.selfPayOptions.orderDevice.placeholder": "Vyberte zařízení",
+  "catalog.tables.selfPayOptions.orderDevice.this": "{name} (toto zařízení)",
+  "catalog.tables.selfPayOptions.payBill": "Hosté platí účet stolu",
+  "catalog.tables.selfPayOptions.written": "Hosté píšou, co platí",
+  "catalog.tables.selfPayOptions.written.dayEnd.description":
+    "Obsluha může napsanou položku hosta dát na dnešek do menu. V tuto hodinu z menu zmizí.",
+  "catalog.tables.selfPayOptions.written.dayEnd.label":
+    "Položky zapamatované na dnešek zmizí z menu v",
+  "catalog.tables.selfPayOptions.written.description":
+    "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek dostane sazbu daně vybranou níže.",
+  "catalog.tables.selfPayOptions.written.taxRate.label":
+    "Sazba daně psaného řádku",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.description":
+    "Jako plátce DPH vyberte sazbu, kterou psaný řádek dostane. Do té doby hosté psát nemohou.",
+  "catalog.tables.selfPayOptions.written.taxRate.missing.title":
+    "Hosté zatím psát nemohou",
+  "catalog.tables.selfPayOptions.title": "Co mohou hosté",
+  "catalog.tables.sticker.check": "Zkontrolovat nálepku",
+  "catalog.tables.sticker.current": "Tato nálepka patří ke stolu {name}.",
+  "catalog.tables.sticker.dismiss": "Zavřít",
+  "catalog.tables.sticker.earlier":
+    "Toto je starší QR kód stolu {name}. Už nezobrazuje účty stolu, proto ho vyměňte.",
+  "catalog.tables.sticker.foreign":
+    "Tato nálepka nepatří k žádnému z vašich stolů. Odstraňte ji.",
+  "catalog.tables.sticker.next": "Naskenovat další nálepku",
+  "catalog.tables.sticker.notTableCode": "Toto není QR kód stolu.",
+  "catalog.tables.sticker.relaysChanged":
+    "Tato nálepka patří ke stolu {name}, ale nese jiné relaye, než na které stoly publikují. Vytiskněte ji znovu.",
   "catalog.tables.title": "Stoly",
   "settings.taxRates.activate": "Znovu aktivovat {name}",
   "settings.taxRates.activate.confirm.cancel": "Zrušit",
@@ -1161,7 +1263,6 @@ export const csSettings = {
   "settings.tips.nav.off": "Vypnuto",
   "settings.paymentAccounts.nav.none": "Žádné",
   "settings.taxRates.nav.description": "Sazby DPH pro vaše položky",
-  "access.action.acknowledgeExcess": "Potvrdit přeplatek",
   "access.action.aiAccess": "Změnit přístup AI k datům",
   "access.action.cashuMints": "Změnit minty Cashu",
   "access.action.moveCashuFunds": "Přesunout prostředky mezi minty",
@@ -1172,6 +1273,7 @@ export const csSettings = {
   "access.action.confirmPaidDespiteCancellation":
     "Označit zrušenou platbu jako zaplacenou",
   "access.action.createItem": "Vytvořit položku katalogu",
+  "access.action.rememberItem": "Dát položku hosta do menu",
   "access.action.disable": "Vypnout řízení přístupu",
   "access.action.exportDatabase": "Exportovat databázi aplikace",
   "access.action.revealRecoveryPhrase": "Zobrazit obnovovací frázi",
@@ -1179,6 +1281,8 @@ export const csSettings = {
   "access.action.enable": "Zapnout řízení přístupu se současným PINem",
   "access.action.markCashPaid": "Potvrdit přijetí hotovosti",
   "access.action.markIbanPaid": "Potvrdit příchod převodu",
+  "access.action.resolveOverpayment": "Vyřešit přeplatek",
+  "access.action.rejectOrder": "Odmítnout objednávku",
   "access.action.removeAccount": "Odebrat účet z tohoto zařízení",
   "access.action.removeLines": "Odebrat položky z účtu",
   "access.action.switchAccount": "Přepnout účet",
@@ -1233,7 +1337,7 @@ export const csSettings = {
   "access.permission.discard.description":
     "Zahodit účet, odebrat z něj položky, zrušit platbu",
   "access.permission.refund": "Vratky",
-  "access.permission.refund.description": "Vratky a potvrzení přeplatku",
+  "access.permission.refund.description": "Vratky a vyřešení přeplatku",
   "access.permission.sell": "Prodej",
   "access.permission.sell.description":
     "Domovská obrazovka, účty, rozdělení účtu, platby a spropitné",

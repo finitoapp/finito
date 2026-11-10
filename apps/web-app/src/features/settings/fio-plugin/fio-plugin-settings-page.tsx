@@ -159,7 +159,10 @@ function FioPluginForm({ plugin, isNativeRuntime }: FioPluginFormProps) {
         numberOfSecondsBetweenChecks:
           changed.numberOfSecondsBetweenChecks ?? numberOfSecondsBetweenChecks,
         syncLookbackDays: changed.syncLookbackDays ?? syncLookbackDays,
-        isActive: (changed.isActive ?? isActive) ? sqliteTrue : sqliteFalse,
+        isActive:
+          (changed.isActive ?? plugin?.isActive === sqliteTrue)
+            ? sqliteTrue
+            : sqliteFalse,
       })
     )
   }

@@ -41,3 +41,14 @@ export function translateValue(
 ): string {
   return translate(language, key).replace("{value}", String(value))
 }
+
+export function translateParams(
+  language: Language,
+  key: TranslationKey,
+  params: Readonly<Record<string, string | number>>
+): string {
+  return Object.entries(params).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    translate(language, key)
+  )
+}

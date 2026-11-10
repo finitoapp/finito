@@ -1,6 +1,7 @@
 import { sqliteTrue } from "@evolu/common"
 
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
+import type { BillLineSummaryId } from "../bill-line/bill-line-types.ts"
 import type { ItemLineType } from "../item/item-types.ts"
 import {
   deriveReceivedTipAmount,
@@ -51,6 +52,22 @@ export const isTipRefund = ({
   readonly isTip: typeof sqliteTrue | null
 }): boolean => isTip === sqliteTrue
 
+export const returnedOverpaymentOf = (refund: {
+  readonly isTip: typeof sqliteTrue | null
+  readonly overpaymentAmount: NonNegativeInteger | null
+}): NonNegativeInteger =>
+  NonNegativeInteger(isTipRefund(refund) ? 0 : (refund.overpaymentAmount ?? 0))
+
+export const sumReturnedOverpayment = (
+  refunds: ReadonlyArray<{
+    readonly isTip: typeof sqliteTrue | null
+    readonly overpaymentAmount: NonNegativeInteger | null
+  }>
+): NonNegativeInteger =>
+  NonNegativeInteger(
+    refunds.reduce((sum, refund) => sum + returnedOverpaymentOf(refund), 0)
+  )
+
 export const sumGoodsRefundAmounts = (
   refunds: ReadonlyArray<{
     readonly amount: NonNegativeInteger
@@ -83,18 +100,18 @@ export const deriveRefundableTipAmount = ({
 
 export const deriveRefundPrefillAmount = ({
   remainingAmount,
-  excess,
+  returnableOverpayment,
   method,
   currency,
 }: {
   readonly remainingAmount: NonNegativeInteger
-  readonly excess: NonNegativeInteger
+  readonly returnableOverpayment: NonNegativeInteger
   readonly method: RefundMethod
   readonly currency: FiatCurrency
 }): NonNegativeInteger => {
   const amount =
-    excess > 0
-      ? NonNegativeInteger(Math.min(excess, remainingAmount))
+    returnableOverpayment > 0
+      ? NonNegativeInteger(Math.min(returnableOverpayment, remainingAmount))
       : remainingAmount
   if (method !== "cashRegister") return amount
 
@@ -157,6 +174,7 @@ export const deriveRefundState = ({
 export interface PaymentRefundSummary {
   /** The goods refunded: what the refunded state is measured by (refund/0011). */
   readonly refundedAmount: NonNegativeInteger
+  readonly returnedOverpaymentAmount: NonNegativeInteger
   readonly refundableAmount: NonNegativeInteger
   /** Every amount given back, the tip included: what the badge shows (refund/0009). */
   readonly returnedAmount: NonNegativeInteger
@@ -169,6 +187,7 @@ export const summarizeRefundsByPayment = (
     readonly amount: NonNegativeInteger
     readonly currency: FiatCurrency
     readonly isTip: typeof sqliteTrue | null
+    readonly overpaymentAmount: NonNegativeInteger | null
     readonly paymentAmount: NonNegativeInteger
     readonly paymentTipAmount: NonNegativeInteger
     readonly paymentCurrency: FiatCurrency
@@ -200,6 +219,10 @@ export const summarizeRefundsByPayment = (
       ),
       returnedAmount: NonNegativeInteger(
         (previous?.returnedAmount ?? 0) + refund.amount
+      ),
+      returnedOverpaymentAmount: NonNegativeInteger(
+        (previous?.returnedOverpaymentAmount ?? 0) +
+          returnedOverpaymentOf(refund)
       ),
       refundableAmount: deriveRefundableAmount({
         amount: refund.paymentAmount,
@@ -278,3 +301,43 @@ export const calculateRefundLineAmount = (
           Math.round((line.totalAmount * quantity) / line.quantity)
         )
       )
+
+export const deriveRemovedLinesAmount = ({
+  paymentLines,
+  heldBySummaryId,
+  refundedLines,
+  chosenLines,
+}: {
+  readonly paymentLines: ReadonlyArray<{
+    readonly id: PaymentLineId
+    readonly summaryId: BillLineSummaryId
+    readonly totalAmount: NonNegativeInteger
+  }>
+  readonly heldBySummaryId: ReadonlyMap<BillLineSummaryId, NonNegativeInteger>
+  readonly refundedLines: ReadonlyArray<{
+    readonly paymentLineId: PaymentLineId
+    readonly amount: NonNegativeInteger
+  }>
+  readonly chosenLines: ReadonlyArray<{
+    readonly paymentLineId: PaymentLineId
+    readonly amount: NonNegativeInteger
+  }>
+}): NonNegativeInteger =>
+  NonNegativeInteger(
+    chosenLines.reduce((sum, chosen) => {
+      const line = paymentLines.find(({ id }) => id === chosen.paymentLineId)
+      if (line === undefined) return sum
+      const notHeld = Math.max(
+        0,
+        line.totalAmount - (heldBySummaryId.get(line.summaryId) ?? 0)
+      )
+      const refundedBefore = sumRefundAmounts(
+        refundedLines.filter(
+          ({ paymentLineId }) => paymentLineId === chosen.paymentLineId
+        )
+      )
+      return (
+        sum + Math.min(chosen.amount, Math.max(0, notHeld - refundedBefore))
+      )
+    }, 0)
+  )

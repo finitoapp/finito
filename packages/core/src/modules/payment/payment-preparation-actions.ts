@@ -72,12 +72,7 @@ import type {
   paymentQerkoPayment,
   paymentQerkoTerminal,
 } from "./payment.ts"
-import {
-  createPayment,
-  loadPayment,
-  type PaymentBtcInput,
-  upsertPaymentSparkDetails,
-} from "./payment-actions.ts"
+import { createPayment, loadPayment } from "./payment-actions.ts"
 import {
   type AccountCurrencyMismatchError,
   type AccountSparkNotFoundError,
@@ -111,6 +106,10 @@ import {
 } from "./payment-errors.ts"
 import { loadAccountWithCurrencyCheck } from "./payment-guards.ts"
 import { paymentNonExpiringMethodsByIdQuery } from "./payment-queries.ts"
+import {
+  type PaymentBtcInput,
+  upsertPaymentSparkDetails,
+} from "./payment-row-actions.ts"
 import {
   computePaymentExpiresAt,
   DEFAULT_LIGHTNING_INVOICE_EXPIRY_SECONDS,

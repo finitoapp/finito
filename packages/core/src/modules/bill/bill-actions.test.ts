@@ -35,6 +35,7 @@ import {
   addCatalogItemToBill,
   addManualAmountToBill,
   addTipToBill,
+  appendGuardedBillLines,
   appendRemoveBillLine,
   assignBillToTable,
   cancelBill,
@@ -48,7 +49,7 @@ import {
   splitBillIntoNewBill,
 } from "./bill-actions.ts"
 import { loadBill, loadBillCoverage, loadBillStatus } from "./bill-guards.ts"
-import { billByIdQuery } from "./bill-queries.ts"
+import { billByIdQuery, openBillsQuery } from "./bill-queries.ts"
 import { type BillId, createRandomBillId } from "./bill-types.ts"
 
 const billLinesByBillIdQuery = (billId: BillId) =>
@@ -1863,4 +1864,338 @@ describe("bill actions", () => {
       error: { type: "BillUnderpaid", id: billId },
     })
   }, 15_000)
+})
+
+const openBillPaidInPart = async (deps: EvoluDep & EvoluOwnerDep & DateDep) => {
+  await using run = testCreateRun(deps)
+  const billId = await createOpenBill(deps)
+  const accountId = await run.ok(
+    createAccount({
+      deviceId: null,
+      name: NonEmptyString255("Cash register"),
+      cashRegister: { currency: "CZK" },
+    })
+  )
+  for (const [name, amount] of [
+    ["Dinner", 1_000],
+    ["Wine", 600],
+  ] as const) {
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255(name),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(amount),
+      })
+    )
+  }
+  const paymentId = await run.orThrow(
+    createPayment({
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(1_000),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+      cashRegister: { accountId },
+    })
+  )
+  await run.orThrow(markPaymentPaidCash({ paymentId, accountId }))
+  const summaries = await run.ok(loadCalculatedBillLineSummaries(billId))
+  const wine = summaries.find(({ name }) => name === "Wine")
+  if (wine === undefined) throw new Error("Expected the wine line.")
+  return { billId, wine }
+}
+
+describe("a bill paid in part, once its unpaid line leaves", () => {
+  test.each([
+    {
+      how: "removing it",
+      leave: async (
+        deps: EvoluDep & EvoluOwnerDep & DateDep,
+        billId: BillId,
+        wine: Awaited<ReturnType<typeof openBillPaidInPart>>["wine"]
+      ) => {
+        await using run = testCreateRun(deps)
+        await run.orThrow(
+          appendRemoveBillLine({
+            billId,
+            deviceId: null,
+            lineSummary: wine,
+            quantity: wine.quantity,
+            totalAmount: wine.totalAmount,
+          })
+        )
+      },
+    },
+    {
+      how: "undoing it",
+      leave: async (
+        deps: EvoluDep & EvoluOwnerDep & DateDep,
+        billId: BillId,
+        wine: Awaited<ReturnType<typeof openBillPaidInPart>>["wine"]
+      ) => {
+        await using run = testCreateRun(deps)
+        await run.orThrow(
+          appendGuardedBillLines(billId, [
+            {
+              billId,
+              deviceId: null,
+              catalogItemId: wine.catalogItemId,
+              itemId: wine.itemId,
+              type: wine.type,
+              kind: "remove",
+              quantity: wine.quantity,
+              totalAmount: wine.totalAmount,
+            },
+          ])
+        )
+      },
+    },
+    {
+      how: "moving it to another bill",
+      leave: async (
+        deps: EvoluDep & EvoluOwnerDep & DateDep,
+        billId: BillId,
+        wine: Awaited<ReturnType<typeof openBillPaidInPart>>["wine"]
+      ) => {
+        const targetBillId = await createOpenBill(deps, { displayNumber: 2 })
+        await using run = testCreateRun(deps)
+        await run.orThrow(
+          splitBill({ sourceBillId: billId, targetBillId, items: [wine] })
+        )
+      },
+    },
+    {
+      how: "splitting it off",
+      leave: async (
+        deps: EvoluDep & EvoluOwnerDep & DateDep,
+        billId: BillId,
+        wine: Awaited<ReturnType<typeof openBillPaidInPart>>["wine"]
+      ) => {
+        await using run = testCreateRun(deps)
+        await run.orThrow(
+          splitBillIntoNewBill({
+            deviceId: null,
+            tableId: null,
+            currency: "CZK",
+            sourceBillId: billId,
+            targetBillId: createRandomBillId(),
+            items: [wine],
+          })
+        )
+      },
+    },
+  ])(
+    "closes on the floor view too after $how",
+    async ({ leave }) => {
+      await using testEvolu = await createEvoluTest()
+      const { evolu } = testEvolu
+      const deps = {
+        ...evoluTestDeps(evolu),
+        ...createTestDateDep(),
+      } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      const { billId, wine } = await openBillPaidInPart(deps)
+
+      await leave(deps, billId, wine)
+
+      await using run = testCreateRun(deps)
+      await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+      await expect(
+        evolu.loadQuery(billByIdQuery(billId))
+      ).resolves.toMatchObject([{ closedAt: testFixedDate.getTime() }])
+      expect(
+        (await evolu.loadQuery(openBillsQuery)).map(({ id }) => id)
+      ).not.toContain(billId)
+    },
+    15_000
+  )
+})
+
+const openBillWithClaimedShare = async (
+  deps: EvoluDep & EvoluOwnerDep & DateDep,
+  lines: ReadonlyArray<readonly [string, number]>,
+  claimed: number
+) => {
+  await using run = testCreateRun(deps)
+  const billId = await createOpenBill(deps)
+  const accountId = await run.ok(
+    createAccount({
+      deviceId: null,
+      name: NonEmptyString255("Cash register"),
+      cashRegister: { currency: "CZK" },
+    })
+  )
+  for (const [name, amount] of lines) {
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255(name),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(amount),
+      })
+    )
+  }
+  const paymentId = await run.orThrow(
+    createPayment({
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(claimed),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+      cashRegister: { accountId },
+    })
+  )
+  await run.orThrow(markPaymentPaidCash({ paymentId, accountId }))
+  return {
+    billId,
+    summaries: await run.ok(loadCalculatedBillLineSummaries(billId)),
+  }
+}
+
+const createClaimedShareContext = async () => {
+  const testEvolu = await createEvoluTest()
+  return {
+    evolu: testEvolu.evolu,
+    deps: {
+      ...evoluTestDeps(testEvolu.evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep,
+    [Symbol.asyncDispose]: () => testEvolu[Symbol.asyncDispose](),
+  }
+}
+
+describe("An edit that closes a bill writes its close", () => {
+  test("Removal that leaves the bill paid exactly", async () => {
+    await using context = await createClaimedShareContext()
+    const { deps } = context
+    const { billId, summaries } = await openBillWithClaimedShare(
+      deps,
+      [
+        ["Soup", 5_000],
+        ["Steak", 5_000],
+      ],
+      5_000
+    )
+    const steak = summaries.find(({ name }) => name === "Steak")
+    if (steak === undefined) throw new Error("Expected the steak line.")
+    await using run = testCreateRun(deps)
+
+    await run.orThrow(
+      appendRemoveBillLine({
+        billId,
+        deviceId: null,
+        lineSummary: steak,
+        quantity: steak.quantity,
+        totalAmount: steak.totalAmount,
+      })
+    )
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect(
+      context.evolu.loadQuery(billByIdQuery(billId))
+    ).resolves.toMatchObject([{ closedAt: testFixedDate.getTime() }])
+  })
+})
+
+describe("A split keeps money with its lines", () => {
+  test("Every line split off a paid share", async () => {
+    await using context = await createClaimedShareContext()
+    const { deps } = context
+    const { billId, summaries } = await openBillWithClaimedShare(
+      deps,
+      [
+        ["Soup", 250],
+        ["Tea", 250],
+      ],
+      250
+    )
+    const otherBillId = await createOpenBill(deps, { displayNumber: 2 })
+    const newBillId = createRandomBillId()
+    await using run = testCreateRun(deps)
+
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          sourceBillId: billId,
+          targetBillId: newBillId,
+          items: summaries,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        type: "BillSplitLeavesOverpayment",
+        claimedSum: 250,
+        totalAfterSplit: 0,
+      },
+    })
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: otherBillId,
+          items: summaries,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillSplitLeavesOverpayment" },
+    })
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(billId))
+    ).resolves.toEqual(summaries)
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+    await expect(
+      context.evolu.loadQuery(billByIdQuery(newBillId))
+    ).resolves.toEqual([])
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(otherBillId))
+    ).resolves.toEqual([])
+  })
+
+  test("refuses a split that leaves more money than the lines that stay", async () => {
+    await using context = await createClaimedShareContext()
+    const { deps } = context
+    const { billId, summaries } = await openBillWithClaimedShare(
+      deps,
+      [
+        ["Dinner", 1_000],
+        ["Wine", 600],
+      ],
+      1_000
+    )
+    const dinner = summaries.filter(({ name }) => name === "Dinner")
+    await using run = testCreateRun(deps)
+
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          sourceBillId: billId,
+          targetBillId: createRandomBillId(),
+          items: dinner,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        type: "BillSplitLeavesOverpayment",
+        claimedSum: 1_000,
+        totalAfterSplit: 600,
+      },
+    })
+  })
 })

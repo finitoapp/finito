@@ -1,0 +1,55 @@
+# web activity-bills.spec.ts: "two payments of the same share are told apart by number, method and what can be resolved from each".
+appId: ${APP_ID}
+tags: [activity-bills]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/begin-coffee-payment.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: createAndPaySecondPayment
+      QUERY: billId=${output.billId}
+- runFlow: ../../subflows/reopen-payment.yaml
+- runFlow: ../../subflows/mark-cash-paid.yaml
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: activity/bills/${output.billId}
+      TEXT: ${output.t["billDetail.title"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("billDetail.payments.numberedAmount", { number: 1, amount: "\u00245" }))}'
+    timeout: 15000
+- assertVisible: '${output.re(output.tv("billDetail.payments.numberedAmount", { number: 2, amount: "\u00245" }))}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.return"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.paymentOption", { number: 1, method: output.t["paymentDetail.paymentMethod.cash"], amount: "\u00245" })}'
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.paymentOption", { number: 2, method: output.t["paymentDetail.paymentMethod.cash"], amount: "\u00245" })}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["dialog.close"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.paymentOption", { number: 1, method: output.t["paymentDetail.paymentMethod.cash"], amount: "\u00245" })}'
+      HIDDEN: "true"
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["overpayment.action.keep"]}
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.paymentOption", { number: 1, method: output.t["paymentDetail.paymentMethod.cash"], amount: "\u00245" })}'
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: '${output.tv("overpayment.dialog.paymentOption", { number: 2, method: output.t["paymentDetail.paymentMethod.cash"], amount: "\u00245" })}'

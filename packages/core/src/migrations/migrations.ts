@@ -3,6 +3,7 @@ import { ok, type Task } from "@evolu/common"
 import type { EvoluOwnerDep, LocalStorageDep } from "../deps.ts"
 import type { DeviceEvoluDep, EvoluDep } from "../modules/shared/evolu-deps.ts"
 import { accountDerivedIdMigration } from "./account-derived-id-migration.ts"
+import { agoraEvoluRelayMigration } from "./agora-evolu-relay-migration.ts"
 import { deviceAccountDerivedIdMigration } from "./device-account-derived-id-migration.ts"
 import { deviceIdMigration } from "./device-id-migration.ts"
 import { fioPluginFixedIdMigration } from "./fio-plugin-fixed-id-migration.ts"
@@ -67,6 +68,7 @@ export const appMigrations: ReadonlyArray<AppMigration> = [
 export const deviceMigrations: ReadonlyArray<DeviceMigration> = [
   deviceAccountDerivedIdMigration,
   deviceIdMigration,
+  agoraEvoluRelayMigration,
 ]
 
 /**

@@ -4,11 +4,12 @@ import {
   FiatCurrencySchema,
   type InferTable,
   NonEmptyString255Schema,
+  NonNegativeIntegerSchema,
   PositiveIntegerSchema,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import { TableId } from "../table/table-types.ts"
-import { BillId } from "./bill-types.ts"
+import { BillClosingCursorId, BillId } from "./bill-types.ts"
 
 /**
  * No `status` column — `open`/`closed`/`canceled` is derived at read time
@@ -45,6 +46,11 @@ export const bill = {
   closedAt: TimestampMsSchema.nullable(),
   canceledAt: TimestampMsSchema.nullable(),
   confirmedClosedAt: TimestampMsSchema.nullable(),
+} as const
+
+export const _billClosingCursor = {
+  id: BillClosingCursorId,
+  historyRowid: NonNegativeIntegerSchema,
 } as const
 
 export const billIndexes = ((create) => [

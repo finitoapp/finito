@@ -207,6 +207,14 @@ client. The Cashu seed and the Linky owner are Linky's own derivations
 between the two apps opens the same Cashu wallet; the cross-app vectors in
 `key-derivation-cross-app.test.ts` pin them.
 
+Table self-pay keys come from `S` outside BIP-85, through HKDF-SHA256 with a
+label as `info` (`packages/core/src/modules/shared/key-derivation.ts`). The self-pay
+root uses `payky/table-self-pay/v1`. From the root, each table's secret uses
+`table:<tableId>:<epoch>` and the Lightning rate key `rate`. From a table's
+secret, its signing and view keys use `sign` and `view`. Background jobs hold
+only the root (`docs/decisions/table-self-pay/0009`). The labels must never
+change, since printed stickers carry keys derived from them.
+
 `S` itself is backed up as a single [SLIP-39](https://github.com/satoshilabs/slips/blob/master/slip-0039.md)
 20-word recovery mnemonic (`packages/core/src/modules/shared/key-derivation.ts`, via
 the `slip39-ts` library), encoded as one group with a 1-of-1 threshold — there
@@ -231,7 +239,8 @@ bun --env-file=.env.cli apps/cli/src/cli.ts accounts list
 Supported variables:
 
 - `PAYKY_DATA_DIR`: the directory of the CLI's database, `payky.db`, on Evolu's own SQLite
-  (`@evolu/nodejs`, prebuilt for macOS and Linux). Defaults to `.data` at the repository root.
+  (`@evolu/nodejs`, prebuilt for macOS and Linux). Defaults to `.data` at the repository root,
+  or `.data/<ownerId>` there with `PAYKY_RECOVERY_MNEMONIC`.
   An explicit relative path is resolved against the caller's working directory.
 - `PAYKY_AI_BASE_URL`: OpenAI-compatible endpoint. Defaults to Payky's AI
   proxy, `https://payky.me/api/ai/v1`, which holds the provider and its key
@@ -240,6 +249,15 @@ Supported variables:
   without it.
 - `PAYKY_AI_MODEL`: model name for an endpoint other than the proxy, which
   picks its own; it must support tool calling.
+- `PAYKY_RECOVERY_MNEMONIC`: an account's 20-word recovery phrase. The CLI then
+  opens that account and runs as a device of it
+  ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_SELF_PAY_RELAYS`: the relays the account's self-pay relay list starts
+  from ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_QERKO_POS_ID`: the `Pos-Id` header of the Qerko card terminal API
+  ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_EET_PRODUCTION_URL`: EET's production endpoint, without which the CLI
+  reports nothing to EET ([`docs/cli.md`](docs/cli.md)).
 
 `bun run cli` replaces `bun bin/cli.ts`. The launcher preserves the caller's
 working directory. `payky ai` is a prototype assistant: it reads

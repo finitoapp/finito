@@ -9,7 +9,7 @@ import {
   type Task,
 } from "@evolu/common"
 import type { RequireExactlyOne } from "type-fest"
-
+import { z } from "zod"
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import { cashRegisterAccountByIdQuery } from "../account/account-queries.ts"
@@ -19,9 +19,25 @@ import {
   computeAccountTransactionRows,
   upsertAccountTransactionRows,
 } from "../account-transaction/account-transaction-actions.ts"
-import { deriveCashRefundAccountTransactionId } from "../account-transaction/account-transaction-utils.ts"
-import type { BillId } from "../bill/bill-types.ts"
+import {
+  AccountTransactionIdsJson,
+  deriveCashRefundAccountTransactionId,
+} from "../account-transaction/account-transaction-utils.ts"
+import type { BillNotFoundError } from "../bill/bill-guards.ts"
+import {
+  loadOverpaymentInput,
+  loadReportedGoodsByPayment,
+} from "../bill/bill-overpayment-guards.ts"
+import type { BillId, OverpaymentScope } from "../bill/bill-types.ts"
+import {
+  deriveRefundOverpaymentAmount,
+  deriveUnreportedMoney,
+  type OverpaymentRefundKind,
+} from "../bill/bill-utils.ts"
+import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
+import { createBillLineSummaryId } from "../bill-line/bill-line-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
+import { eetSettingsQuery } from "../eet/eet-queries.ts"
 import {
   type CashRegisterAccountNotFoundError,
   createCashRegisterAccountNotFoundError,
@@ -53,13 +69,14 @@ import {
   refundLinesByPaymentIdQuery,
   refundsByPaymentIdQuery,
 } from "./refund-queries.ts"
-import type { RefundId, RefundMethod } from "./refund-types.ts"
+import type { RefundId, RefundMethod, RefundPurpose } from "./refund-types.ts"
 import {
   calculateRefundLineAmount,
   deriveCashRefundHandedAmounts,
   deriveRefundableAmount,
   deriveRefundableLines,
   deriveRefundableTipAmount,
+  deriveRemovedLinesAmount,
   sumGoodsRefundAmounts,
   sumRefundAmounts,
 } from "./refund-utils.ts"
@@ -103,6 +120,7 @@ export type RefundTipUnavailableError = ReturnType<
 
 export type RefundPaymentError =
   | PaymentNotFoundError
+  | BillNotFoundError
   | RefundPaymentNotPaidError
   | RefundAmountInvalidError
   | RefundItemsUnavailableError
@@ -128,7 +146,10 @@ const loadRefundLines =
     readonly billId: BillId | null
     readonly lines: ReadonlyArray<RefundLineInput>
   }): Task<
-    ReadonlyArray<RefundLineValues>,
+    {
+      readonly values: ReadonlyArray<RefundLineValues>
+      readonly removedLinesAmount: NonNegativeInteger
+    },
     RefundItemsUnavailableError | RefundLineUnavailableError,
     EvoluDep
   > =>
@@ -141,9 +162,10 @@ const loadRefundLines =
       return err(createRefundItemsUnavailableError({ paymentId }))
     }
 
-    const [paymentLines, refundedLines] = await Promise.all([
+    const [paymentLines, refundedLines, summaries] = await Promise.all([
       evolu.loadQuery(refundablePaymentLinesQuery(paymentId)),
       evolu.loadQuery(refundLinesByPaymentIdQuery(paymentId)),
+      run.ok(loadCalculatedBillLineSummaries(billId)),
     ])
     const refundableLines = deriveRefundableLines(paymentLines, refundedLines)
     const values: RefundLineValues[] = []
@@ -167,7 +189,32 @@ const loadRefundLines =
         amount: calculateRefundLineAmount(refundable, quantity),
       })
     }
-    return ok(values)
+    return ok({
+      values,
+      removedLinesAmount: deriveRemovedLinesAmount({
+        paymentLines: paymentLines.flatMap((line) =>
+          line.billId === null || line.itemId === null
+            ? []
+            : [
+                {
+                  id: line.id,
+                  summaryId: createBillLineSummaryId({
+                    billId: line.billId,
+                    catalogItemId: line.catalogItemId,
+                    itemId: line.itemId,
+                    type: line.type,
+                  }),
+                  totalAmount: line.totalAmount,
+                },
+              ]
+        ),
+        heldBySummaryId: new Map(
+          summaries.map((summary) => [summary.id, summary.totalAmount])
+        ),
+        refundedLines,
+        chosenLines: values,
+      }),
+    })
   }
 
 const loadPaidPayment =
@@ -207,10 +254,20 @@ interface RecordedRefund {
   readonly refundedAt: TimestampMs
   readonly isTip: boolean
   readonly lines: ReadonlyArray<RefundLineValues>
+  /** What a refund of goods records of the bill's overpayment (refund/0014). */
+  readonly overpayment?: {
+    readonly purpose: RefundPurpose
+    readonly amount: NonNegativeInteger
+    readonly knownTransactionIdsJson: string
+  }
   /** The cash handed out of the register, for a refund from it (refund/0012). */
   readonly cash: {
     readonly accountId: AccountId
-    readonly handedAmount: NonNegativeInteger
+    /**
+     * `null` for a refund split by eet/0013: its EET storno then reverses
+     * the main row's amount, not all the cash handed out.
+     */
+    readonly handedAmount: NonNegativeInteger | null
     readonly transaction: ReturnType<typeof computeAccountTransactionRows>
   } | null
 }
@@ -278,6 +335,13 @@ const upsertRecordedRefundRows = (
       method: refund.method,
       refundedAt: refund.refundedAt,
       ...(refund.isTip ? { isTip: sqliteTrue } : {}),
+      ...(refund.overpayment === undefined
+        ? {}
+        : {
+            purpose: refund.overpayment.purpose,
+            overpaymentAmount: refund.overpayment.amount,
+            knownTransactionIdsJson: refund.overpayment.knownTransactionIdsJson,
+          }),
       isDeleted: sqliteFalse,
     },
     options
@@ -298,15 +362,17 @@ const upsertRecordedRefundRows = (
     )
   }
   if (refund.cash !== null) {
-    evolu.upsert(
-      "refundCashRegister",
-      {
-        id: refund.id,
-        accountId: refund.cash.accountId,
-        handedAmount: refund.cash.handedAmount,
-      },
-      options
-    )
+    if (refund.cash.handedAmount !== null) {
+      evolu.upsert(
+        "refundCashRegister",
+        {
+          id: refund.id,
+          accountId: refund.cash.accountId,
+          handedAmount: refund.cash.handedAmount,
+        },
+        options
+      )
+    }
     upsertAccountTransactionRows(evolu, refund.cash.transaction, options)
   }
 }
@@ -351,6 +417,7 @@ export interface GoodsRefundPlan {
   readonly payment: InferRow<ReturnType<typeof paymentDetailQuery>>
   readonly refundLines: ReadonlyArray<RefundLineValues>
   readonly refundAmount: NonNegativeInteger
+  readonly removedLinesAmount: NonNegativeInteger
 }
 
 /**
@@ -387,6 +454,7 @@ export const loadGoodsRefundPlan =
     const payment = paymentResult.value
 
     let refundLines: ReadonlyArray<RefundLineValues> = []
+    let removedLinesAmount = NonNegativeInteger(0)
     if (lines !== undefined) {
       const linesResult = await run(
         loadRefundLines({
@@ -396,7 +464,8 @@ export const loadGoodsRefundPlan =
         })
       )
       if (!linesResult.ok) return linesResult
-      refundLines = linesResult.value
+      refundLines = linesResult.value.values
+      removedLinesAmount = linesResult.value.removedLinesAmount
     }
 
     const { remainingAmount } = await run.ok(loadRemainingGoodsAmount(payment))
@@ -413,7 +482,7 @@ export const loadGoodsRefundPlan =
       )
     }
 
-    return ok({ payment, refundLines, refundAmount })
+    return ok({ payment, refundLines, refundAmount, removedLinesAmount })
   }
 
 export type TipRefundPlan = {
@@ -505,12 +574,14 @@ export const refundPayment =
     paymentId,
     method,
     deviceId,
+    purpose = "goods",
     amount,
     lines,
   }: {
     readonly paymentId: PaymentId
     readonly method: RecordedRefundMethod
     readonly deviceId: DeviceId | null
+    readonly purpose?: RefundPurpose
   } & RequireExactlyOne<{
     readonly amount: NonNegativeInteger
     readonly lines: ReadonlyArray<RefundLineInput>
@@ -519,7 +590,27 @@ export const refundPayment =
     const { evolu, evoluOwner } = run.deps
     const plan = await run(loadGoodsRefundPlan({ paymentId, amount, lines }))
     if (!plan.ok) return plan
-    const { payment, refundLines, refundAmount } = plan.value
+    const { payment, refundLines, refundAmount, removedLinesAmount } =
+      plan.value
+    const kind: OverpaymentRefundKind =
+      lines === undefined
+        ? { type: purpose === "overpayment" ? "return" : "goods" }
+        : { type: "items", removedLinesAmount }
+
+    const scope: OverpaymentScope =
+      payment.billId === null ? { paymentId } : { billId: payment.billId }
+    const inputResult = await run(loadOverpaymentInput(scope))
+    if (!inputResult.ok) return inputResult
+    const input = inputResult.value
+    const reportedGoods = await run.ok(loadReportedGoodsByPayment(scope))
+    const [eetSettings] = await evolu.loadQuery(eetSettingsQuery)
+    const eetMayReverse =
+      (eetSettings?.enabledAt ?? null) !== null || reportedGoods.size > 0
+    const withoutDeviceAmount = eetMayReverse
+      ? Math.min(refundAmount, deriveUnreportedMoney(input, reportedGoods))
+      : 0
+    const reportedAmount = refundAmount - withoutDeviceAmount
+    const isSplit = reportedAmount > 0 && withoutDeviceAmount > 0
 
     const refund = await run(
       prepareRecordedRefund({
@@ -536,16 +627,60 @@ export const refundPayment =
           tipAmount: NonNegativeInteger(0),
           currency: payment.currency,
         }).goods,
+        overpayment: {
+          purpose: kind.type === "return" ? "overpayment" : "goods",
+          amount: deriveRefundOverpaymentAmount(input, {
+            paymentId,
+            amount: refundAmount,
+            kind,
+          }),
+          knownTransactionIdsJson: z.encode(AccountTransactionIdsJson, [
+            ...new Set(
+              input.transactions.map(
+                ({ accountTransactionId }) => accountTransactionId
+              )
+            ),
+          ]),
+        },
         now: run.deps.date.now(),
       })
     )
     if (!refund.ok) return refund
 
     await runMutationWithCompletion((options) => {
-      upsertRecordedRefundRows(evolu, refund.value, {
-        ...options,
-        owner: evoluOwner,
-      })
+      const mutationOptions = { ...options, owner: evoluOwner }
+      upsertRecordedRefundRows(
+        evolu,
+        {
+          ...refund.value,
+          deviceId: reportedAmount === 0 ? null : deviceId,
+          amount: NonNegativeInteger(
+            reportedAmount === 0 ? refundAmount : reportedAmount
+          ),
+          cash:
+            isSplit && refund.value.cash !== null
+              ? { ...refund.value.cash, handedAmount: null }
+              : refund.value.cash,
+        },
+        mutationOptions
+      )
+      if (isSplit) {
+        evolu.upsert(
+          "refund",
+          {
+            id: createRowId<"Refund">(),
+            paymentId,
+            deviceId: null,
+            amount: NonNegativeInteger(withoutDeviceAmount),
+            currency: payment.currency,
+            method,
+            refundedAt: refund.value.refundedAt,
+            mainRefundId: refund.value.id,
+            isDeleted: sqliteFalse,
+          },
+          mutationOptions
+        )
+      }
     })
 
     return ok(refund.value.id)

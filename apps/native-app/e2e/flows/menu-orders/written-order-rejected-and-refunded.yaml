@@ -1,0 +1,102 @@
+appId: ${APP_ID}
+tags: [menu-orders]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: seedActiveFioPlugin
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/enable-table-self-pay.yaml
+    env:
+      TABLE: Bar
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.selfPayOptions.title"]}
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.selfPayOptions.written"]}
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: ""
+      TEXT: ${output.t["home.pay"]}
+- runFlow: ../../subflows/open-sales.yaml
+- tapOn: ${output.re(output.t["nav.orders"])}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/e2e-action.yaml
+    env:
+      ACTION: receiveWrittenOrder
+      QUERY: table=Bar&text=2x%20pivo&named=9000&amount=9000
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("orders.announced.written", { number: 1, table: "Bar", amount: "\u002490", text: "2x pivo" }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible:
+      id: order-to-serve
+    timeout: 10000
+- assertVisible: '${output.re(output.tv("orders.written", { text: "2x pivo" }))}'
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.reject"]}
+- extendedWaitUntil:
+    visible: '${output.re(output.tv("orders.reject.title", { number: 1 }))}'
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.reject.cancel"]}
+- extendedWaitUntil:
+    notVisible: '${output.re(output.tv("orders.reject.title", { number: 1 }))}'
+    timeout: 10000
+- assertVisible:
+    id: order-to-serve
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.reject"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["orders.reject.confirm"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- tapOn: '${output.re(output.tv("refund.dialog.confirm", { amount: "\u002490" }))}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.created"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: orders
+      TEXT: ${output.t["orders.title"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["orders.empty"])}
+    timeout: 10000

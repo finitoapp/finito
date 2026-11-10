@@ -31,6 +31,7 @@ import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { useCoveringEditQuestion } from "./use-covering-edit-question.ts"
 
 type CartHistoryEntry = ReadonlyArray<CartLine>
 
@@ -67,10 +68,13 @@ export function useCartBill({
   const { t } = useTranslation()
   const { require } = useRequirePermission()
   const [pending, setPending] = useState(false)
+  const coveringEdit = useCoveringEditQuestion(currency)
   /** The one place the cart checks `discard`, on the lines about to be written. */
-  const mayWrite = async (lines: ReadonlyArray<Pick<CartLine, "kind">>) =>
-    !linesNeedDiscard(lines) ||
-    (await require("discard", "access.action.removeLines"))
+  const mayWrite = async (lines: ReadonlyArray<CartLine>) => {
+    if (!linesNeedDiscard(lines)) return { type: "staysOpen" } as const
+    if (!(await require("discard", "access.action.removeLines"))) return null
+    return coveringEdit.ask(billId, lines, "edit")
+  }
   // Refs, as web: an undo toast's action runs long after the render that
   // raised it, and a state snapshot there would pop the wrong entry. Every
   // write runs inside `runQueued`, so they change one operation at a time.
@@ -202,7 +206,18 @@ export function useCartBill({
     totalAmount: NonNegativeInteger
   ) =>
     runQueued(async () => {
-      if (!(await mayWrite([{ kind: "remove" }]))) return false
+      const line: CartLine = {
+        billId,
+        deviceId: device.id,
+        catalogItemId: summary.catalogItemId,
+        itemId: summary.itemId,
+        type: summary.type,
+        kind: "remove",
+        quantity,
+        totalAmount,
+      }
+      const outcome = await mayWrite([line])
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(
         appendRemoveBillLine({
@@ -217,18 +232,11 @@ export function useCartBill({
         reportFailure("Failed to remove from cart", result.error)
         return false
       }
-      record([
-        {
-          billId,
-          deviceId: device.id,
-          catalogItemId: summary.catalogItemId,
-          itemId: summary.itemId,
-          type: summary.type,
-          kind: "remove",
-          quantity,
-          totalAmount,
-        },
-      ])
+      if (outcome.type !== "staysOpen") {
+        coveringEdit.followUp(billId, outcome)
+        return false
+      }
+      record([line])
       return true
     })
 
@@ -255,11 +263,16 @@ export function useCartBill({
         quantity: summary.quantity,
         totalAmount: summary.totalAmount,
       }))
-      if (!(await mayWrite(lines))) return false
+      const outcome = await mayWrite(lines)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
         reportFailure("Failed to clear cart", result.error)
+        return false
+      }
+      if (outcome.type !== "staysOpen") {
+        coveringEdit.followUp(billId, outcome)
         return false
       }
       record(lines)
@@ -274,7 +287,8 @@ export function useCartBill({
       const entry = undoStackRef.current.at(-1)
       if (entry === undefined) return false
       const lines = entry.map(invertLine)
-      if (!(await mayWrite(lines))) return false
+      const outcome = await mayWrite(lines)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, lines))
       if (!result.ok) {
@@ -285,6 +299,7 @@ export function useCartBill({
         ...redoStackRef.current,
         entry,
       ])
+      coveringEdit.followUp(billId, outcome)
       return true
     })
 
@@ -292,7 +307,8 @@ export function useCartBill({
     runQueued(async () => {
       const entry = redoStackRef.current.at(-1)
       if (entry === undefined) return false
-      if (!(await mayWrite(entry))) return false
+      const outcome = await mayWrite(entry)
+      if (outcome === null) return false
       await using run = appRun()
       const result = await run(appendGuardedBillLines(billId, entry))
       if (!result.ok) {
@@ -303,6 +319,7 @@ export function useCartBill({
         [...undoStackRef.current, entry],
         redoStackRef.current.slice(0, -1)
       )
+      coveringEdit.followUp(billId, outcome)
       return true
     })
 

@@ -397,8 +397,8 @@ export const enLanding = {
   "landing.tech.backup.restore.title": "Restoring",
   "landing.tech.backup.title": "A backup nobody but you can read",
   "landing.tech.backup.where.body":
-    "The backup goes to {appName}'s relay ({liveRelayHost}) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles. If one goes down, the other keeps going. In the settings you can turn them off or add your own, for example on your own server.",
-  "landing.tech.backup.where.title": "Two relays at once",
+    "The backup goes to {appName}'s relay ({liveRelayHost}) and, at the same time, to the relay of Linky (evolu.linky.fit), a friendly project built on the same principles, and to the relay of one of {appName}'s developers (evolu.agora.gripe). If one goes down, the others keep going. In the settings you can turn them off or add your own, for example on your own server.",
+  "landing.tech.backup.where.title": "Three relays at once",
   "landing.tech.compare.cloud": "A typical cloud app",
   "landing.tech.compare.cloudFlow.caption":
     "The app sends everything to the provider's server, and only that server talks to your bank. Meanwhile it holds every merchant's data.",
@@ -669,12 +669,16 @@ export const enLanding = {
   "landing.tech.services.group.always": "Whenever you use the app",
   "landing.tech.services.group.enabled": "Only when you turn it on",
   "landing.tech.services.highlight":
-    "Until you turn something on or use it, the app talks at most to the {appHost} website and two relays — and it sends the relays only encrypted data.",
+    "Until you turn something on or use it, the app talks at most to the {appHost} website and three relays — and it sends the relays only encrypted data.",
   "landing.tech.services.lightningAddress.name":
     "The recipient's Lightning address",
   "landing.tech.services.lightningAddress.sent": "A request for an invoice.",
   "landing.tech.services.lightningAddress.when":
     "When you withdraw to a Lightning address.",
+  "landing.tech.services.agora.name":
+    "The relay of one of {appName}'s developers (evolu.agora.gripe)",
+  "landing.tech.services.agora.sent": "The account's encrypted data.",
+  "landing.tech.services.agora.when": "Always, but you can turn it off.",
   "landing.tech.services.linky.name":
     "The relay of Linky, a friendly project (evolu.linky.fit)",
   "landing.tech.services.linky.sent": "The account's encrypted data.",
