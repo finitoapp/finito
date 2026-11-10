@@ -145,8 +145,8 @@ the operation id.
 `background-jobs/jobs/lightning-address-verify-job.ts` settles payments
 taken into the merchant's own wallet through a Lightning address (the
 `lightning-address/` decisions). Nothing arrives from the wallet: Payky
-asks. It runs on native and browser (the wallets answer cross-origin), not
-in the CLI.
+asks. It runs on native, browser (the wallets answer cross-origin) and the
+CLI.
 
 | Part | What it does |
 |---|---|
@@ -191,8 +191,8 @@ must reach the self-pay minimum, 1.00 CZK, 0.05 EUR or 0.05 USD, or cover
 everything the bill still owes (table-self-pay/0011). Anything else stays
 unclaimed for staff.
 The rate's MAC needs the table self-pay key, derived from the master key and
-handed only to the app's background jobs, so the CLI leaves Lightning
-self-pay to the app devices.
+handed to the background jobs of every device, the CLI with a recovery phrase
+included (`docs/decisions/account/0010`).
 
 A match writes, in the transaction's own batch on the sync path: the
 `payment` (the bill's device, the credited amount, the tip), its
@@ -244,7 +244,8 @@ allocation. A pointer cut short does not parse and counts at once.
 
 ### Publishing the view
 
-`table-self-pay-publishing-job.ts` runs on native and browser runtimes.
+`table-self-pay-publishing-job.ts` runs on native and browser runtimes and in
+the CLI with a recovery phrase.
 Two seconds after anything at a self-pay table changes, it projects the
 table's open bills into a view, stores each bill of it as a
 `selfPayViewVersion` whose id comes from its content, then encrypts the

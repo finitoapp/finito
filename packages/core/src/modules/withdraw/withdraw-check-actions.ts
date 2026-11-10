@@ -34,8 +34,7 @@ export const checkPendingWithdrawals =
     getTransfer,
   }: {
     readonly accountId: AccountId
-    /** This device, or `null` where there is none (the CLI): every withdrawal then counts as another device's. */
-    readonly deviceId: DeviceId | null
+    readonly deviceId: DeviceId
     readonly getTransfer: (
       sparkTransferId: string
     ) => Promise<TTransfer | undefined>
@@ -57,8 +56,7 @@ export const checkPendingWithdrawals =
 
       try {
         const transfer = await getTransfer(withdrawal.sparkTransferId)
-        const createdOnThisDevice =
-          deviceId !== null && withdrawal.deviceId === deviceId
+        const createdOnThisDevice = withdrawal.deviceId === deviceId
         const isSending =
           transfer === undefined &&
           createdOnThisDevice &&

@@ -41,7 +41,6 @@ export type BackgroundJob = Task<AsyncDisposable, never, BackgroundJobContext>
 
 export type AppBackgroundJobContext = BackgroundJobContext &
   DeviceIdDep &
-  DeviceAccountDep &
   ConnectivityDep &
   EetApiDep &
   NostrRelayDep &
@@ -55,6 +54,7 @@ export type AppBackgroundJobContext = BackgroundJobContext &
 
 /** What the app's own runs add for the shared Cashu wallet. */
 export type CashuBackgroundJobContext = AppBackgroundJobContext &
+  DeviceAccountDep &
   CashuTopupDeps &
   CashuBookingDeps &
   CashuTokenListenerDeps
@@ -69,4 +69,14 @@ export type AppBackgroundJob = Task<
   AsyncDisposable,
   never,
   AppBackgroundJobContext
+>
+
+/**
+ * A job of the apps, which also hand over this device's own database. The
+ * CLI has none (account/0010), so the jobs it runs never ask for it.
+ */
+export type AppDeviceBackgroundJob = Task<
+  AsyncDisposable,
+  never,
+  AppBackgroundJobContext & DeviceAccountDep
 >

@@ -239,7 +239,8 @@ bun --env-file=.env.cli apps/cli/src/cli.ts accounts list
 Supported variables:
 
 - `PAYKY_DATA_DIR`: the directory of the CLI's database, `payky.db`, on Evolu's own SQLite
-  (`@evolu/nodejs`, prebuilt for macOS and Linux). Defaults to `.data` at the repository root.
+  (`@evolu/nodejs`, prebuilt for macOS and Linux). Defaults to `.data` at the repository root,
+  or `.data/<ownerId>` there with `PAYKY_RECOVERY_MNEMONIC`.
   An explicit relative path is resolved against the caller's working directory.
 - `PAYKY_AI_BASE_URL`: OpenAI-compatible endpoint. Defaults to Payky's AI
   proxy, `https://payky.me/api/ai/v1`, which holds the provider and its key
@@ -248,6 +249,16 @@ Supported variables:
   without it.
 - `PAYKY_AI_MODEL`: model name for an endpoint other than the proxy, which
   picks its own; it must support tool calling.
+- `PAYKY_RECOVERY_MNEMONIC`: an account's 20-word recovery phrase. The CLI then
+  opens that account and runs as a device of it
+  ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_SELF_PAY_RELAYS`: the relays the account's self-pay relay list starts
+  from ([`docs/cli.md`](docs/cli.md)).
+- `PAYKY_EET_PRODUCTION_URL`: EET's production endpoint, without which the CLI
+  reports nothing to EET ([`docs/cli.md`](docs/cli.md)).
+
+Under Bun the CLI stores data through `bun:sqlite`, because Bun cannot load the
+native addon of `better-sqlite3`, which Node and Vitest keep using.
 
 `bun run cli` replaces `bun bin/cli.ts`. The launcher preserves the caller's
 working directory. `payky ai` is a prototype assistant: it reads

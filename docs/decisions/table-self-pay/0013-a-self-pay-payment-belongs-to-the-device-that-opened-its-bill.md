@@ -5,9 +5,9 @@ Date: 2026-10-15
 
 ## Context
 
-A guest's money reaches the account through whichever device syncs it, and
-every merchant device that sees the arrival records the same payment
-(`table-self-pay/0005`). EET reports each sale from one
+A guest's money reaches the account through whichever device syncs it, the
+CLI included, and every merchant device that sees the arrival records the
+same payment (`table-self-pay/0005`). EET reports each sale from one
 recording device, under that device's cash register identifier (eet/0009).
 
 ## Decision
@@ -23,7 +23,8 @@ None recorded.
 ## Consequences
 
 The sale is reported from the till the bill was opened on, whichever device
-matched the money.
+matched the money. The CLI never records a self-pay settlement as its own
+(account/0010).
 
 ## Enforced by
 

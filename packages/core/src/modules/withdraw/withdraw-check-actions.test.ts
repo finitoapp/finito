@@ -29,6 +29,7 @@ import type { PendingWithdrawalTransfer } from "./withdraw-utils.ts"
 
 const thisDevice = createIdFromString<"Device">("this-device")
 const otherDevice = createIdFromString<"Device">("other-device")
+const cliDevice = createIdFromString<"Device">("cli-device")
 const minute = 60_000
 const hour = 60 * minute
 const day = 24 * hour
@@ -130,7 +131,7 @@ const check = async ({
 }: {
   readonly evolu: EvoluDep["evolu"]
   readonly accountId: AccountId
-  readonly deviceId: DeviceId | null
+  readonly deviceId: DeviceId
   readonly at: number
   readonly transfers?: Readonly<
     Record<string, PendingWithdrawalTransfer | Error>
@@ -215,7 +216,7 @@ describe("checkPendingWithdrawals", () => {
 
   test.each([
     ["another device", otherDevice],
-    ["no device (the CLI)", null],
+    ["the CLI's own device", cliDevice],
   ])(
     "seen from %s, marks a missing transfer not-created only after 24 hours",
     async (_label, deviceId) => {

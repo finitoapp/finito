@@ -111,11 +111,7 @@ type SparkTransactionInputError =
   | "missing-spark-identifier"
   | "missing-preimage"
 
-/**
- * The CLI runs this job too, and has no device: `deviceId` is there only in
- * the app. Without it every withdrawal counts as another device's.
- */
-type SparkSyncJobContext = BackgroundJobContext & Partial<DeviceIdDep>
+type SparkSyncJobContext = BackgroundJobContext & DeviceIdDep
 
 interface RecordTransferOptions {
   /**
@@ -426,7 +422,7 @@ const createSparkAccountSyncSession = ({
     const toRecord = await run.ok(
       checkPendingWithdrawals({
         accountId: account.id,
-        deviceId: run.deps.deviceId ?? null,
+        deviceId: run.deps.deviceId,
         getTransfer: (id) => currentWallet.getTransfer(id),
       })
     )

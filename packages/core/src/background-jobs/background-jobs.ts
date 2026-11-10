@@ -1,6 +1,6 @@
 import type {
   AppBackgroundJob,
-  BackgroundJob,
+  AppDeviceBackgroundJob,
   CashuBackgroundJob,
 } from "./background-job-types.ts"
 import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
@@ -23,19 +23,19 @@ export const cliBackgroundJobs = [
   startFioAccountTransactionSyncJob,
   startMonetaAccountTransactionSyncJob,
   startSparkAccountTransactionSyncJob,
-] satisfies ReadonlyArray<BackgroundJob>
-
-const nativeBackgroundJobs = [
-  ...cliBackgroundJobs,
   startEetReportingJob,
   startQerkoTerminalSyncJob,
-  startQerkoPaymentConnectionJob,
-  startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
-  startRecoveryBackupReminderJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
+
+export const nativeBackgroundJobs = [
+  ...cliBackgroundJobs,
+  startRecoveryBackupReminderJob,
+  startQerkoPaymentConnectionJob,
+  startQerkoPaymentSyncJob,
+] satisfies ReadonlyArray<AppDeviceBackgroundJob>
 
 /**
  * A browser or PWA can't reach the FIO or MONETA APIs directly — neither
@@ -56,11 +56,11 @@ const browserBackgroundJobs = [
   startRecoveryBackupReminderJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
-] satisfies ReadonlyArray<AppBackgroundJob>
+] satisfies ReadonlyArray<AppDeviceBackgroundJob>
 
 export function getBackgroundJobsForRuntime(
   isNativePlatform: boolean
-): ReadonlyArray<AppBackgroundJob> {
+): ReadonlyArray<AppDeviceBackgroundJob> {
   return isNativePlatform ? nativeBackgroundJobs : browserBackgroundJobs
 }
 
