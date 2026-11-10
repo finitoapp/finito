@@ -30,18 +30,18 @@ const createAppEvoluWithOwner = (appOwner: AppOwner, config: AppEvoluConfig) =>
     indexes: createAppIndexes,
   })
 
+export const deriveAppOwner = (masterKey: MasterKey): AppOwner =>
+  createAppOwner(deriveEvoluOwnerSecret(masterKey))
+
 export const createAppEvolu = ({
   masterKey,
   ...config
 }: AppEvoluAccountConfig) =>
-  createAppEvoluWithOwner(
-    createAppOwner(deriveEvoluOwnerSecret(masterKey)),
-    config
-  )
+  createAppEvoluWithOwner(deriveAppOwner(masterKey), config)
 
 /**
  * App Evolu owned by the publicly known Evolu test owner. Only for tests and
- * the CLI, which has no owner identity yet — never for the app itself.
+ * a CLI started without a recovery phrase — never for the app itself.
  */
 export const createTestAppEvolu = (config: AppEvoluConfig = {}) =>
   createAppEvoluWithOwner(testAppOwner, { transports: [], ...config })

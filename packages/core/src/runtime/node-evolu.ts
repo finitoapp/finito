@@ -1,6 +1,7 @@
 import { rmSync } from "node:fs"
 import { resolve } from "node:path"
 import {
+  type CreateWebSocket,
   constVoid,
   createConsole,
   createConsoleStoreOutput,
@@ -8,7 +9,9 @@ import {
   createRun,
   createSharedWorker,
   createSqlite,
+  createWebSocket,
   createWorker,
+  type EvoluConfig,
   Name,
   ok,
   testCreateBroadcastChannel,
@@ -27,7 +30,11 @@ import {
   startDbWorker,
 } from "@evolu/common/local-first"
 import { createNodeJsSqliteDriver } from "@evolu/nodejs"
-import { createTestAppEvolu } from "../evolu/client.ts"
+import { createAppEvolu, createTestAppEvolu } from "../evolu/client.ts"
+import {
+  deriveTableSelfPayRoot,
+  type MasterKey,
+} from "../modules/shared/key-derivation.ts"
 
 /**
  * Where a Node Evolu keeps its database: in memory, for tests, or in the file
@@ -49,7 +56,12 @@ const deleteDatabaseFiles: DeleteDatabaseFiles = (name) => () => {
   return ok()
 }
 
-export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
+export const setupRunWithEvoluDeps = async (
+  mode: NodeEvoluMode,
+  createWebSocket: CreateWebSocket = testCreateWebSocket({
+    throwOnCreate: true,
+  })
+) => {
   await using disposer = new AsyncDisposableStack()
 
   const consoleStoreOutput = createConsoleStoreOutput()
@@ -66,7 +78,7 @@ export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
       createBroadcastChannel: testCreateBroadcastChannel,
       createMessageChannel: testCreateMessageChannel,
       createMessagePort: createMessagePort,
-      createWebSocket: testCreateWebSocket({ throwOnCreate: true }),
+      createWebSocket,
       lockManager,
       // What the shared worker may promise about stored databases: a file
       // persists, memory does not.
@@ -137,20 +149,40 @@ export const setupRunWithEvoluDeps = async (mode: NodeEvoluMode) => {
   } as const
 }
 
+export interface NodeEvoluAccount {
+  readonly masterKey: MasterKey
+  readonly transports: NonNullable<EvoluConfig["transports"]>
+}
+
 /** App Evolu on Node, in memory for tests or in `payky.db` for the CLI. */
-export const createNodeEvolu = async (mode: NodeEvoluMode) => {
+export const createNodeEvolu = async (
+  mode: NodeEvoluMode,
+  account?: NodeEvoluAccount
+) => {
   await using disposer = new AsyncDisposableStack()
 
-  const { run } = disposer.use(await setupRunWithEvoluDeps(mode))
+  const { run } = disposer.use(
+    account === undefined
+      ? await setupRunWithEvoluDeps(mode)
+      : await setupRunWithEvoluDeps(mode, createWebSocket)
+  )
 
-  // The CLI database is owned by the shared Evolu test owner until the CLI
-  // gets a real owner identity.
-  const evolu = disposer.use(await run.ok(createTestAppEvolu()))
+  // Without an account, the database is owned by the shared Evolu test
+  // owner.
+  const evolu = disposer.use(
+    await run.ok(
+      account === undefined ? createTestAppEvolu() : createAppEvolu(account)
+    )
+  )
 
   const disposables = disposer.move()
 
   return {
     evolu,
+    tableSelfPayRoot:
+      account === undefined
+        ? undefined
+        : deriveTableSelfPayRoot(account.masterKey),
     [Symbol.asyncDispose]: () => disposables.disposeAsync(),
   } as const
 }

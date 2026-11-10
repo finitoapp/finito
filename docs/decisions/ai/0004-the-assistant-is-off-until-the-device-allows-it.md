@@ -49,8 +49,9 @@ still coming and forgets the conversation.
 Replies are plain text: the system prompt asks for it and the page shows
 the text as it is, without a Markdown renderer.
 
-The CLI asks for no setting and always has the data tools: it runs on the
-developer's own checkout and data.
+The CLI asks for no setting and always has the data tools: it runs on a git
+checkout, with the data of the account its recovery phrase opens, or of the
+local test owner without one (account/0012).
 
 ## Alternatives considered
 
