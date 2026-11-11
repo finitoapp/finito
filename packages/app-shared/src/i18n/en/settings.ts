@@ -1162,11 +1162,11 @@ export const enSettings = {
   "catalog.tables.selfPayOptions.written.dayEnd.label":
     "Items remembered for the day leave the menu at",
   "catalog.tables.selfPayOptions.written.description":
-    "A guest at a table writes one line and names the amount. {appName} checks only that the money arrived, and the line takes the tax rate below.",
+    "A guest at a table writes what they pay for item by item, each with its own amount. {appName} checks only that the money arrived. Each written item gets the tax rate below. If you pay VAT, staff can change it until they accept the order.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
-    "Tax rate of a written line",
+    "Default tax rate of a written item",
   "catalog.tables.selfPayOptions.written.taxRate.missing.description":
-    "As a VAT payer, pick the tax rate a written line takes. Until then, guests can't write.",
+    "As a VAT payer, pick the default tax rate of a written item. Until then, guests can't write.",
   "catalog.tables.selfPayOptions.written.taxRate.missing.title":
     "Guests can't write yet",
   "catalog.tables.selfPayOptions.title": "What guests can do",

@@ -1163,11 +1163,11 @@ export const csSettings = {
   "catalog.tables.selfPayOptions.written.dayEnd.label":
     "Položky zapamatované na dnešek zmizí z menu v",
   "catalog.tables.selfPayOptions.written.description":
-    "Host u stolu napíše jeden řádek a částku. {appName} kontroluje jen to, že peníze přišly, a řádek dostane sazbu daně vybranou níže.",
+    "Host u stolu napíše, co platí, položku po položce, každou s vlastní částkou. {appName} kontroluje jen to, že peníze přišly. Každá psaná položka dostane sazbu daně vybranou níže. Jste-li plátce DPH, obsluha ji může změnit, dokud objednávku nepřijme.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
-    "Sazba daně psaného řádku",
+    "Výchozí sazba daně psané položky",
   "catalog.tables.selfPayOptions.written.taxRate.missing.description":
-    "Jako plátce DPH vyberte sazbu, kterou psaný řádek dostane. Do té doby hosté psát nemohou.",
+    "Jako plátce DPH vyberte výchozí sazbu daně psané položky. Do té doby hosté psát nemohou.",
   "catalog.tables.selfPayOptions.written.taxRate.missing.title":
     "Hosté zatím psát nemohou",
   "catalog.tables.selfPayOptions.title": "Co mohou hosté",

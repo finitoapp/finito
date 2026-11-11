@@ -1165,11 +1165,11 @@ export const skSettings = {
   "catalog.tables.selfPayOptions.written.dayEnd.label":
     "Položky zapamätané na dnešok zmiznú z menu o",
   "catalog.tables.selfPayOptions.written.description":
-    "Hosť pri stole napíše jeden riadok a sumu. {appName} kontroluje len to, či peniaze prišli, a riadok dostane sadzbu dane vybranú nižšie.",
+    "Hosť pri stole napíše, čo platí, položku po položke, každú s vlastnou sumou. {appName} kontroluje len to, či peniaze prišli. Každá písaná položka dostane sadzbu dane vybranú nižšie. Ak ste platiteľ DPH, obsluha ju môže zmeniť, kým objednávku neprijme.",
   "catalog.tables.selfPayOptions.written.taxRate.label":
-    "Sadzba dane písaného riadku",
+    "Predvolená sadzba dane písanej položky",
   "catalog.tables.selfPayOptions.written.taxRate.missing.description":
-    "Ako platiteľ DPH vyberte sadzbu, ktorú písaný riadok dostane. Dovtedy hostia písať nemôžu.",
+    "Ako platiteľ DPH vyberte predvolenú sadzbu dane písanej položky. Dovtedy hostia písať nemôžu.",
   "catalog.tables.selfPayOptions.written.taxRate.missing.title":
     "Hostia zatiaľ písať nemôžu",
   "catalog.tables.selfPayOptions.title": "Čo môžu hostia",
