@@ -6,6 +6,7 @@ import type { DeviceEvolu } from "@payky/core/evolu/device-client"
 import { createTestDeviceEvolu } from "@payky/core/testing/device-evolu"
 import { createStore } from "jotai"
 import { describe, expect, test, vi } from "vitest"
+import { consoleOutputHistoryAtom } from "@/atoms/console.ts"
 import { serviceProxyConsentAtom } from "@/atoms/service-proxy.ts"
 
 const device = vi.hoisted(() => ({
@@ -43,5 +44,27 @@ describe("serviceProxyConsentAtom", () => {
     const isEnabled = await createStore().get(serviceProxyConsentAtom)
 
     expect(isEnabled()).toBe(true)
+  })
+
+  test("reads the proxy as off when the first load fails, then follows the consent", async () => {
+    await using test = await createTestDeviceEvolu()
+    device.evolu = test.deviceEvolu
+    vi.spyOn(test.deviceEvolu, "loadQuery").mockRejectedValueOnce(
+      new Error("device database unavailable")
+    )
+    const store = createStore()
+
+    const isEnabled = await store.get(serviceProxyConsentAtom)
+
+    expect(isEnabled()).toBe(false)
+    expect(
+      store
+        .get(consoleOutputHistoryAtom)
+        .getEntries()
+        .some((entry) => entry.method === "error")
+    ).toBe(true)
+
+    setServiceProxyEnabled(test.deviceEvolu, true)
+    await expect.poll(isEnabled).toBe(true)
   })
 })
