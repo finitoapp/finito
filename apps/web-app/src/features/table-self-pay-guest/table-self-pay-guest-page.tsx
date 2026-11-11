@@ -455,6 +455,7 @@ function GuestOrdering({
   mode,
   session,
   onSessionChange,
+  onBillOpen,
   onOrderPlaced,
 }: {
   readonly address: TableSelfPayAddress
@@ -465,6 +466,7 @@ function GuestOrdering({
   readonly mode: Exclude<GuestSection, "bill">
   readonly session: OrderPaymentSession | null
   readonly onSessionChange: (session: OrderPaymentSession | null) => void
+  readonly onBillOpen: (() => void) | null
   readonly onOrderPlaced: () => void
 }) {
   const { t, locale } = useGuestTranslation()
@@ -685,6 +687,7 @@ function GuestOrdering({
               menu={writable}
               hidden={hidden || !isWriting}
               isPreparing={isPreparing}
+              onBillOpen={onBillOpen}
               onOrder={({ lines, named, amount }) => {
                 void placeOrder(
                   writable,
@@ -992,6 +995,13 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
               mode={section === "write" ? "write" : "menu"}
               session={orderSession}
               onSessionChange={setOrderSession}
+              onBillOpen={
+                offersBillAndMenu
+                  ? () => {
+                      setSection("bill")
+                    }
+                  : null
+              }
               onOrderPlaced={() => {
                 setSection((current) => (current === "bill" ? "menu" : current))
               }}

@@ -320,6 +320,8 @@ export const skBill = {
   "selfPay.written.add": "Pridať ďalšiu položku",
   "selfPay.written.back": "Späť k písaniu",
   "selfPay.written.nothing": "Napíšte, čo platíte, a sumu",
+  "selfPay.written.onBill": "Platíte niečo, čo už je na účte stola?",
+  "selfPay.written.onBill.open": "Zaplaťte to v Účte",
   "selfPay.written.remove": "Odobrať položku {number}",
   "selfPay.written.summary": "Platíte {amount}",
   "selfPay.written.tab": "Napísať",

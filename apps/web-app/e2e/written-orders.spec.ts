@@ -1,7 +1,7 @@
 import { defaultSelfPayRelays } from "@payky/core/integrations/nostr/nostr-default-relays"
 import type { BrowserContext, Page } from "@playwright/test"
 
-import { addTable, addTaxRate } from "./support/bill.ts"
+import { addCatalogItem, addTable, addTaxRate } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
@@ -15,6 +15,7 @@ import { openRefundScreen, refundConfirmButton } from "./support/payment.ts"
 import {
   enableTableSelfPay,
   fakeSelfPayLightning,
+  openTableBill,
   receiveBankTransfer,
   receiveShownBankTransfer,
   routeFakeNostrRelays,
@@ -460,6 +461,54 @@ test("staff add a written item to the menu for good as Řízek for 199.00 from T
 
   await test.step("the next guest finds Řízek in the menu", async () => {
     await nextGuestFindsInMenu(context, guestAddress, "Řízek")
+  })
+})
+
+test("with an open bill the written form points to the bill and opens it, and without one it does not", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { billTable, emptyTable } =
+    await test.step("seed a table with a pizza bill and one without, writing on", async () => {
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Bar", seatCount: "4" })
+      await addTable(page, "en", { name: "Terrace", seatCount: "4" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+      const withBill = await enableTableSelfPay(page, "en", "Bar")
+      const withoutBill = await enableTableSelfPay(page, "en", "Terrace")
+      await switchWriting(page)
+      await openTableBill(page, "en", { table: "Bar", items: ["Pizza"] })
+      return { billTable: withBill, emptyTable: withoutBill }
+    })
+  const guest = await context.newPage()
+  const tab = (key: "selfPay.menu.tab.bill" | "selfPay.written.tab") =>
+    guest.getByRole("tab", { name: translate("en", key) })
+  const openBill = (on: Page) =>
+    on.getByRole("button", {
+      name: translate("en", "selfPay.written.onBill.open"),
+    })
+
+  await test.step("at the table with the bill the written form points to it, and the link opens it", async () => {
+    await guest.goto(billTable)
+    await expect(tab("selfPay.written.tab")).toBeVisible({ timeout: 45_000 })
+    await tab("selfPay.written.tab").click()
+    await expect(
+      guest.getByText(translate("en", "selfPay.written.onBill"))
+    ).toBeVisible()
+    await openBill(guest).click()
+    await expect(tab("selfPay.menu.tab.bill")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    await expect(payButton(guest, "$101.00")).toBeVisible()
+  })
+
+  await test.step("at the table without a bill the written form does not", async () => {
+    const otherGuest = await context.newPage()
+    await openForm(otherGuest, emptyTable)
+    await expect(openBill(otherGuest)).toHaveCount(0)
   })
 })
 

@@ -54,11 +54,13 @@ export function GuestWrittenOrder({
   menu,
   hidden,
   isPreparing,
+  onBillOpen,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
   readonly hidden: boolean
   readonly isPreparing: boolean
+  readonly onBillOpen: (() => void) | null
   readonly onOrder: (order: GuestWrittenChoice) => void
 }) {
   const { t, locale } = useGuestTranslation()
@@ -117,6 +119,21 @@ export function GuestWrittenOrder({
 
   return (
     <div className="flex flex-1 flex-col gap-6" hidden={hidden}>
+      {onBillOpen === null ? null : (
+        <div className="flex flex-col items-start">
+          <p className="text-sm text-muted-foreground">
+            {t("selfPay.written.onBill")}
+          </p>
+          <Button
+            type="button"
+            variant="link"
+            className="h-11 px-0"
+            onClick={onBillOpen}
+          >
+            {t("selfPay.written.onBill.open")}
+          </Button>
+        </div>
+      )}
       <section className="flex flex-col gap-4">
         <ol className="flex flex-col gap-5">
           {typedLines.map((line, index) => (
