@@ -424,8 +424,7 @@ once it rounds them**
    offers are judged against the payment's own goods — its amount without
    its tip, which is what settling it in cash judges — and, for a bill, also
    against the bill's goods as above, by `isPayableThroughAnyMethod` in
-   `bill-utils.ts`, which asks `isBillPayable` of each method. Otherwise it
-   is refused with `NoPayableMethod`
+   `bill-utils.ts`. Otherwise it is refused with `NoPayableMethod`
    ([`payment/0017`](decisions/payment/0017-a-payment-offers-only-what-its-screen-can-settle.md)).
    - The apps create a payment before a method is picked, offering every
      payment method turned on at once; such a payment offers the accounts

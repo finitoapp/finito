@@ -39,12 +39,12 @@ Two rules, both held by the core.
     payment's currency where the kind has one
     (`derivePaymentMethodsOffered`, the accounts the payment screen offers a
     tab for); a payment created with one method's details, as the CLI's
-    `--cashRegisterAccountId` does, offers that one. Each is judged by
-    `isBillPayable`, and only cash rounds (`roundCashAmount`), so goods
-    above zero are refused, with `NoPayableMethod`, only where cash is the
-    one method on and rounds them to nothing (`isPayableThroughAnyMethod`).
-    With no method turned on nothing rounds, the goods are judged as they
-    stand, and the payment screen says what is missing.
+    `--cashRegisterAccountId` does, offers that one. Only cash rounds
+    (`roundCashAmount`), so goods above zero are refused, with
+    `NoPayableMethod`, only where cash is the one method on and rounds them
+    to nothing (`isPayableThroughAnyMethod`). With no method turned on
+    nothing rounds, the goods are judged as they stand, and the payment
+    screen says what is missing.
   - The card terminal, linked only into the native app, and Qerko payments,
     which need the restaurant their pairing names, are counted as offered
     only where the payment screen shows them, and the payment's own goods
@@ -95,8 +95,8 @@ rules. A cash-only shop cannot charge 0.01–0.49 CZK at all.
 
 ## Enforced by
 
-- `packages/core/src/modules/bill/bill-utils.test.ts > isBillPayable > a bill whose goods come to zero cannot be paid through any method`
-- `packages/core/src/modules/bill/bill-utils.test.ts > isBillPayable > a CZK bill of 0.40 cannot be paid in cash but can by card`
+- `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > a bill whose goods come to zero cannot be paid through any method`
+- `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > a CZK bill of 0.40 cannot be paid in cash but can by card`
 - `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > refuses goods cash rounds to nothing where cash is the only method on`
 - `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > takes goods cash rounds to nothing where a card or a QR method is on too`
 - `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > refuses goods of zero or less whatever is on, and judges goods as they stand with nothing on`

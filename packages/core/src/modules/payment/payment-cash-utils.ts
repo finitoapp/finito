@@ -21,7 +21,7 @@ export const roundCashAmount = ({
  * (payment/0012). A CZK payment of 0.01–0.49 rounds to no crowns at all
  * (payment/0002), and a tip does not lift goods that come to nothing.
  *
- * The one cash rule behind `isBillPayable` (whether a payment may be created
+ * The one cash rule behind `isPayableThroughAnyMethod` (whether a payment may be created
  * with cash as one of its methods), `markPaymentPaidCash` (which refuses to
  * settle such a payment in cash, `CashAmountRoundsToZero`) and both apps'
  * payment screens (which offer no cash for it), so none of them can
