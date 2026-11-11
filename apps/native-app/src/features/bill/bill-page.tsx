@@ -506,6 +506,8 @@ function BillCart({
     qerkoRestaurantPaired: (qerkoPaymentPlugin?.restaurantId ?? null) !== null,
   })
   const checkoutHintKey = billCheckoutHintKeys[checkout]
+  const finishing = checkout === "finish"
+  const mainActionKey = finishing ? "bill.finish" : "home.pay"
 
   // The payment's amounts and bill-line snapshot are core's
   // (`createPreparedPayment` with `billId`); this only picks the route.
@@ -1043,50 +1045,30 @@ function BillCart({
                 label={tableName ?? t("bill.table.assign")}
                 onPress={() => setTablePickerOpen(true)}
               />
-              {checkout === "finish" ? (
-                <Button
-                  flex={1}
-                  h={48}
-                  aria-label={t("bill.finish")}
-                  pending={finishPending}
-                  // A cart write still in flight may change the total.
-                  disabled={cart.pending}
-                  onPress={() => {
-                    hapticButtonPress()
-                    void onFinish()
-                  }}
+              {/* Finish closes a bill that comes to zero (payment/0013),
+                  Charge creates a payment for anything else. */}
+              <Button
+                flex={1}
+                h={48}
+                aria-label={t(mainActionKey)}
+                pending={finishing ? finishPending : chargePending}
+                // A cart write still in flight may change the total Finish
+                // closes.
+                disabled={finishing ? cart.pending : checkout !== "charge"}
+                onPress={() => {
+                  hapticButtonPress()
+                  void (finishing ? onFinish() : charge())
+                }}
+              >
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.bold}
+                  color="primary-foreground"
                 >
-                  <Text
-                    fontSize={fontSize.sm}
-                    lineHeight={fontSize.sm}
-                    fontWeight={fontWeight.bold}
-                    color="primary-foreground"
-                  >
-                    {t("bill.finish")}
-                  </Text>
-                </Button>
-              ) : (
-                <Button
-                  flex={1}
-                  h={48}
-                  aria-label={t("home.pay")}
-                  pending={chargePending}
-                  disabled={checkout !== "charge"}
-                  onPress={() => {
-                    hapticButtonPress()
-                    void charge()
-                  }}
-                >
-                  <Text
-                    fontSize={fontSize.sm}
-                    lineHeight={fontSize.sm}
-                    fontWeight={fontWeight.bold}
-                    color="primary-foreground"
-                  >
-                    {t("home.pay")}
-                  </Text>
-                </Button>
-              )}
+                  {t(mainActionKey)}
+                </Text>
+              </Button>
             </XStack>
             {checkoutHintKey === null ? null : (
               <Text
