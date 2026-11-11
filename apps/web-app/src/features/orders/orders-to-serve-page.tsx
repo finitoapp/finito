@@ -412,33 +412,43 @@ function WrittenLineTaxRate({
   }
 
   return (
-    <ToggleGroup
-      aria-label={t("orders.written.taxRate", { text: line.text })}
-      className="mt-1 grid w-full grid-cols-2"
-      variant="outline"
-      size="sm"
-      value={line.taxRateId === null ? [] : [line.taxRateId]}
-      onValueChange={(values) => {
-        const rate = rates.find(({ id }) => id === values[0])
-        if (rate === undefined) return
-        void runToast(async (run) => {
-          const result = await run(
-            setWrittenOrderLineTaxRate({
-              billId,
-              lineId: line.id,
-              taxRateId: rate.id,
-            })
-          )
-          if (!result.ok) return taxRateErrorKeys[result.error.type]
-        })
-      }}
-    >
-      {rates.map((rate) => (
-        <ToggleGroupItem key={rate.id} value={rate.id}>
-          {formatTaxRateLabel(rate)}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    <div className="mt-1 flex flex-col gap-1">
+      <span className="text-xs text-muted-foreground">
+        {t("catalog.items.form.taxRate.label")}
+      </span>
+      <ToggleGroup
+        aria-label={t("orders.written.taxRate", { text: line.text })}
+        className="w-full"
+        variant="outline"
+        size="sm"
+        spacing={0}
+        value={line.taxRateId === null ? [] : [line.taxRateId]}
+        onValueChange={(values) => {
+          const rate = rates.find(({ id }) => id === values[0])
+          if (rate === undefined) return
+          void runToast(async (run) => {
+            const result = await run(
+              setWrittenOrderLineTaxRate({
+                billId,
+                lineId: line.id,
+                taxRateId: rate.id,
+              })
+            )
+            if (!result.ok) return taxRateErrorKeys[result.error.type]
+          })
+        }}
+      >
+        {rates.map((rate) => (
+          <ToggleGroupItem
+            key={rate.id}
+            value={rate.id}
+            className="flex-1 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
+          >
+            {formatTaxRateLabel(rate)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
   )
 }
 

@@ -19,6 +19,7 @@ import {
   menuDayEndHourOf,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { minorUnitsToDecimalString } from "@payky/core/modules/shared/money"
+import { CalendarClock, ListPlus } from "lucide-react"
 import { useId, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import {
@@ -82,10 +83,11 @@ export function RememberWrittenItem({
         {inMenuUntil === null ? null : (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => void keepForGood()}
           >
+            <ListPlus data-icon="inline-start" />
             {t("orders.written.keepForGood")}
           </Button>
         )}
@@ -95,21 +97,23 @@ export function RememberWrittenItem({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
+      <div className="-ml-1.5 flex flex-wrap gap-1">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setDialogForGood(false)}
         >
+          <CalendarClock data-icon="inline-start" />
           {t("orders.written.remember")}
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setDialogForGood(true)}
         >
+          <ListPlus data-icon="inline-start" />
           {t("orders.written.addForGood")}
         </Button>
       </div>

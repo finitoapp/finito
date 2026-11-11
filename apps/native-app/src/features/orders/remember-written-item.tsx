@@ -23,6 +23,8 @@ import {
   menuDayEndHourOf,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import CalendarClock from "lucide-react-native/icons/calendar-clock"
+import ListPlus from "lucide-react-native/icons/list-plus"
 import { useState } from "react"
 import { Text, XStack } from "tamagui"
 import { z } from "zod"
@@ -92,8 +94,9 @@ export function RememberWrittenItem({
         </Text>
         {inMenuUntil === null ? null : (
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
+            iconStart={ListPlus}
             testID="keep-written-line-for-good"
             label={t("orders.written.keepForGood")}
             onPress={() => void keepForGood()}
@@ -105,18 +108,20 @@ export function RememberWrittenItem({
 
   return (
     <>
-      <XStack gap={8} flexWrap="wrap">
+      <XStack gap={4} flexWrap="wrap">
         <Button
-          variant="secondary"
+          variant="ghost"
           size="sm"
+          iconStart={CalendarClock}
           testID="remember-written-line"
           aria-label={t("orders.remember.title", { text: line.text })}
           label={t("orders.written.remember")}
           onPress={() => setDialogForGood(false)}
         />
         <Button
-          variant="secondary"
+          variant="ghost"
           size="sm"
+          iconStart={ListPlus}
           testID="add-written-line-for-good"
           aria-label={t("orders.remember.forGood.title", { text: line.text })}
           label={t("orders.written.addForGood")}

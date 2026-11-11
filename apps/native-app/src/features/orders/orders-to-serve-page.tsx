@@ -456,33 +456,42 @@ function WrittenLineTaxRate({
   }
 
   return (
-    <ToggleGroup
-      aria-label={t("orders.written.taxRate", { text: line.text })}
-      variant="outline"
-      size="sm"
-      orientation="vertical"
-      value={line.taxRateId}
-      onValueChange={(value) => {
-        const rate = rates.find(({ id }) => id === value)
-        if (rate === undefined) return
-        void runToast(async (run) => {
-          const result = await run(
-            setWrittenOrderLineTaxRate({
-              billId,
-              lineId: line.id,
-              taxRateId: rate.id,
-            })
-          )
-          if (!result.ok) return taxRateErrorKeys[result.error.type]
-        })
-      }}
-    >
-      {rates.map((rate) => (
-        <ToggleGroupItem key={rate.id} value={rate.id}>
-          {formatTaxRateLabel(rate)}
-        </ToggleGroupItem>
-      ))}
-    </ToggleGroup>
+    <YStack mt={4} gap={4}>
+      <Text
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        color="muted-foreground"
+      >
+        {t("catalog.items.form.taxRate.label")}
+      </Text>
+      <ToggleGroup
+        aria-label={t("orders.written.taxRate", { text: line.text })}
+        variant="outline"
+        size="sm"
+        spacing={0}
+        value={line.taxRateId}
+        onValueChange={(value) => {
+          const rate = rates.find(({ id }) => id === value)
+          if (rate === undefined) return
+          void runToast(async (run) => {
+            const result = await run(
+              setWrittenOrderLineTaxRate({
+                billId,
+                lineId: line.id,
+                taxRateId: rate.id,
+              })
+            )
+            if (!result.ok) return taxRateErrorKeys[result.error.type]
+          })
+        }}
+      >
+        {rates.map((rate) => (
+          <ToggleGroupItem key={rate.id} value={rate.id} flex={1}>
+            {formatTaxRateLabel(rate)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </YStack>
   )
 }
 
