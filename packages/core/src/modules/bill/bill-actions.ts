@@ -43,7 +43,7 @@ import { roundMinorUnits } from "../shared/money.ts"
 import { getFirstOr } from "../shared/result.ts"
 import {
   type Integer,
-  type NonNegativeInteger,
+  NonNegativeInteger,
   PositiveInteger,
   PositiveNumber,
   type TimestampMs,
@@ -63,6 +63,7 @@ import {
   type BillUnderpaidError,
   type BillWithItems,
   type CartWrite,
+  type CartWriteBill,
   createBillNotCanceledError,
   createBillStatusNotAllowedError,
   createBillUnderpaidError,
@@ -631,40 +632,39 @@ export const listOpenBills =
       )
     )
   }
+interface SplitLines {
+  readonly source: ReadonlyArray<Omit<BillLineRow, "id">>
+  readonly target: ReadonlyArray<Omit<BillLineRow, "id">>
+}
+
 /**
- * Pairs each item with a "remove" row on `sourceBillId` and an "add" row on
- * `targetBillId` — the move itself, shared by `splitBill` and
+ * The move itself: a "remove" row on `sourceBillId` and an "add" row on
+ * `targetBillId` for each item, shared by `splitBill` and
  * `splitBillIntoNewBill`, which differ only in how they guard/write it.
  */
 const buildSplitLines = (
   sourceBillId: BillId,
   targetBillId: BillId,
   items: ReadonlyArray<BillLineSummary>
-): Omit<BillLineRow, "id">[] => {
-  const lines: Omit<BillLineRow, "id">[] = []
-  for (const item of items) {
-    lines.push({
-      billId: sourceBillId,
-      deviceId: null,
-      catalogItemId: item.catalogItemId,
-      itemId: item.itemId,
-      type: item.type,
-      kind: "remove",
-      quantity: item.quantity,
-      totalAmount: item.totalAmount,
-    })
-    lines.push({
-      billId: targetBillId,
-      deviceId: null,
-      catalogItemId: item.catalogItemId,
-      itemId: item.itemId,
-      type: item.type,
-      kind: "add",
-      quantity: item.quantity,
-      totalAmount: item.totalAmount,
-    })
+): SplitLines => {
+  const lineOn = (
+    billId: BillId,
+    kind: BillLineRow["kind"],
+    item: BillLineSummary
+  ): Omit<BillLineRow, "id"> => ({
+    billId,
+    deviceId: null,
+    catalogItemId: item.catalogItemId,
+    itemId: item.itemId,
+    type: item.type,
+    kind,
+    quantity: item.quantity,
+    totalAmount: item.totalAmount,
+  })
+  return {
+    source: items.map((item) => lineOn(sourceBillId, "remove", item)),
+    target: items.map((item) => lineOn(targetBillId, "add", item)),
   }
-  return lines
 }
 /**
  * Checks whether moving the selection off `currentSummaries` would leave the
@@ -710,24 +710,22 @@ const cancelSourceBillIfEmptied = (
  * with lines and a total below zero (`requireSplitTotalNotNegative`,
  * payment/0015), nor below what its payments have paid
  * (`requireCartWriteNotBelowPaid`). Hands back each bill's lines with the
- * `closedAt` they bring, for `insertCartWrite`.
+ * `closedAt` they bring, for `insertCartWrite`. `target` is `newSplitBill` when
+ * the split creates it.
  */
 const judgeSplitWrites = (
-  source: BillStatusSnapshot,
-  target: BillStatusSnapshot,
-  lines: ReadonlyArray<Omit<BillLineRow, "id">>,
+  source: CartWriteBill,
+  target: CartWriteBill,
+  lines: SplitLines,
   now: TimestampMs
 ): Result<
   ReadonlyArray<JudgedCartWrite>,
   BillTotalBelowPaidError | BillSplitTotalNegativeError
 > => {
-  const sourceWrite: CartWrite = {
-    lines: lines.filter((line) => line.billId === source.bill.id),
-    itemRows: [],
-  }
+  const sourceWrite: CartWrite = { lines: lines.source, itemRows: [] }
   // The target's new lines refer to the source's item snapshots.
   const targetWrite: CartWrite = {
-    lines: lines.filter((line) => line.billId === target.bill.id),
+    lines: lines.target,
     itemRows: source.ledger.itemRows,
   }
 
@@ -748,22 +746,31 @@ const judgeSplitWrites = (
   if (!sourceClosedAt.ok) return sourceClosedAt
   const targetClosedAt = requireCartWriteNotBelowPaid(target, targetWrite, now)
   if (!targetClosedAt.ok) return targetClosedAt
-  const sourceLines = sourceWrite.lines
-  const targetLines = targetWrite.lines
 
   return ok([
     {
       billId: source.bill.id,
-      lines: sourceLines,
+      lines: sourceWrite.lines,
       closedAt: sourceClosedAt.value,
     },
     {
       billId: target.bill.id,
-      lines: targetLines,
+      lines: targetWrite.lines,
       closedAt: targetClosedAt.value,
     },
   ])
 }
+
+/**
+ * The bill `splitBillIntoNewBill` creates, as `judgeSplitWrites` reads it: no
+ * lines and no payment yet, so its write always keeps it open.
+ */
+const newSplitBill = (id: BillId): CartWriteBill => ({
+  bill: { id, closedAt: null },
+  ledger: { lineRows: [], itemRows: [] },
+  claimedSum: NonNegativeInteger(0),
+  hasActiveClaim: false,
+})
 export const splitBill =
   (input: {
     readonly sourceBillId: BillId
@@ -800,19 +807,15 @@ export const splitBill =
     )
     if (!selectionResult.ok) return selectionResult
 
-    const lines = buildSplitLines(
-      input.sourceBillId,
-      input.targetBillId,
-      input.items
-    )
+    const now = nowTimestamp(run)
     // Both bills are judged, the source first: taking lines off a partly paid
     // source may pay it off or take it below what was paid, and so may adding
     // them to a partly paid target once a line can be worth less than nothing.
     const writesResult = judgeSplitWrites(
       sourceBillResult.value,
       targetBillResult.value,
-      lines,
-      nowTimestamp(run)
+      buildSplitLines(input.sourceBillId, input.targetBillId, input.items),
+      now
     )
     if (!writesResult.ok) return writesResult
     const writes = writesResult.value
@@ -834,7 +837,7 @@ export const splitBill =
             input.sourceBillId,
             currentSourceSummaries,
             selectionResult.value,
-            TimestampMsSchema.decode(run.deps.date.now().getTime()),
+            now,
             { ...options, owner: evoluOwner }
           )
         })
@@ -899,54 +902,15 @@ export const splitBillIntoNewBill =
     if (!selectionResult.ok) return selectionResult
 
     const { evoluOwner } = run.deps
-    const lines = buildSplitLines(
-      input.sourceBillId,
-      input.targetBillId,
-      input.items
-    )
-    const sourceWrite: CartWrite = {
-      lines: lines.filter((line) => line.billId === input.sourceBillId),
-      itemRows: [],
-    }
-    const targetWrite: CartWrite = {
-      lines: lines.filter((line) => line.billId === input.targetBillId),
-      itemRows: sourceBillResult.value.ledger.itemRows,
-    }
-    // Neither bill may be left below zero with lines on it (payment/0015).
-    // The new bill starts with no ledger of its own.
-    const sourceNotNegative = requireSplitTotalNotNegative(
-      input.sourceBillId,
-      sourceBillResult.value.ledger,
-      sourceWrite
-    )
-    if (!sourceNotNegative.ok) return sourceNotNegative
-    const targetNotNegative = requireSplitTotalNotNegative(
-      input.targetBillId,
-      { lineRows: [], itemRows: [] },
-      targetWrite
-    )
-    if (!targetNotNegative.ok) return targetNotNegative
-
-    // Only the source is judged against what was paid: the new bill has no
-    // payment yet, so its write always keeps it open.
-    const sourceClosedAtResult = requireCartWriteNotBelowPaid(
+    const now = nowTimestamp(run)
+    const writesResult = judgeSplitWrites(
       sourceBillResult.value,
-      sourceWrite,
-      nowTimestamp(run)
+      newSplitBill(input.targetBillId),
+      buildSplitLines(input.sourceBillId, input.targetBillId, input.items),
+      now
     )
-    if (!sourceClosedAtResult.ok) return sourceClosedAtResult
-    const writes: ReadonlyArray<JudgedCartWrite> = [
-      {
-        billId: input.sourceBillId,
-        lines: sourceWrite.lines,
-        closedAt: sourceClosedAtResult.value,
-      },
-      {
-        billId: input.targetBillId,
-        lines: targetWrite.lines,
-        closedAt: null,
-      },
-    ]
+    if (!writesResult.ok) return writesResult
+    const writes = writesResult.value
 
     await runMutationWithCompletion((options) => {
       run.deps.evolu.upsert(
@@ -970,7 +934,7 @@ export const splitBillIntoNewBill =
         input.sourceBillId,
         currentSourceSummaries,
         selectionResult.value,
-        TimestampMsSchema.decode(run.deps.date.now().getTime()),
+        now,
         { ...options, owner: evoluOwner }
       )
     })
