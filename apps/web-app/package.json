@@ -80,6 +80,7 @@
     "@vitejs/plugin-basic-ssl": "2.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
+    "jsdom": "28.1.0",
     "remotion": "4.0.535",
     "shadcn": "4.21.5",
     "typescript": "6.0.3",

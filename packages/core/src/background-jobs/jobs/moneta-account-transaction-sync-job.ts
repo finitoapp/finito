@@ -48,7 +48,7 @@ const earlierDay = (a: DateString, b: DateString): DateString => (a < b ? a : b)
 type ActiveMonetaPlugin = Readonly<InferRow<typeof activeMonetaPluginsQuery>>
 
 /**
- * MONETA's slow speed (moneta/0002): every active plugin is synced on its
+ * MONETA's slow speed (moneta/0010): every active plugin is synced on its
  * interval, the sync pointer advancing as with Fio. The fast one is the
  * payment-wait screen, which runs the same `syncMonetaTransactions`.
  */

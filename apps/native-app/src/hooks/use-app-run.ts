@@ -41,7 +41,9 @@ function useAppRunDeps() {
 
   return useCallback(() => {
     const dateDep = createDateDep()
-    const fetchDep = createFetchDep()
+    // The bank calls of a run (connecting MONETA, the payment watch) go
+    // through the service proxy in the PWA, as the bank jobs' do.
+    const fetchDep = createFetchDep({ deviceEvolu })
     return {
       console: nativeConsole,
       evolu,

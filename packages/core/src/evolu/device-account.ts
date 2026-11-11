@@ -28,6 +28,7 @@ import {
   type DeviceAccountId,
   type DeviceEvolu,
   type DeviceSettings,
+  type DeviceSettingsRow,
   deviceSettingsId,
 } from "./device-client.ts"
 
@@ -489,6 +490,42 @@ export function updateDeviceSettings(
   deviceEvolu.update(
     "deviceSettings",
     { id: deviceSettingsId, ...patch },
+    options
+  )
+}
+
+/**
+ * The device's consent to the service proxy, as `isServiceProxyEnabled`
+ * reads it. Both apps read it through this query, so they agree on the row.
+ */
+export const serviceProxySettingQuery = createDeviceQuery((db) =>
+  db
+    .selectFrom("deviceSettings")
+    .select(["id", "serviceProxyEnabled"])
+    .where("id", "=", deviceSettingsId)
+)
+
+/**
+ * Whether this device lets a browser reach services without CORS through the
+ * app's proxy. The one place that reads a missing row, `null` or
+ * `sqliteFalse` as off.
+ */
+export const isServiceProxyEnabled = (
+  row: Pick<DeviceSettingsRow, "serviceProxyEnabled"> | null | undefined
+): boolean => row?.serviceProxyEnabled === sqliteTrue
+
+/** Turns the device's consent to the service proxy on or off. */
+export function setServiceProxyEnabled(
+  deviceEvolu: DeviceEvolu,
+  enabled: boolean,
+  options?: MutationOptions
+) {
+  deviceEvolu.update(
+    "deviceSettings",
+    {
+      id: deviceSettingsId,
+      serviceProxyEnabled: enabled ? sqliteTrue : sqliteFalse,
+    },
     options
   )
 }

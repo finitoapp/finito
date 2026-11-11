@@ -268,7 +268,7 @@ export interface MonetaSyncResult {
   readonly claimedPaymentIds: ReadonlyArray<PaymentId>
   /** The bank listed more pages than one sync reads; the rest were not read. */
   readonly isTruncated: boolean
-  /** Calls spent against the daily limit (moneta/0002). */
+  /** Calls spent against the daily limit (moneta/0010). */
   readonly callCount: number
 }
 

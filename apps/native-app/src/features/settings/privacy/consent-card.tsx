@@ -11,10 +11,14 @@ import {
   CardTitle,
 } from "../../../components/ui/card.tsx"
 
-/** An on/off consent: title, what it sends, its state and the button that flips it. */
+/**
+ * An on/off consent: title, what it sends, its state and the button that
+ * flips it, with an optional note under them.
+ */
 export function ConsentCard({
   title,
   description,
+  note,
   enabled,
   status,
   actionLabel,
@@ -23,6 +27,8 @@ export function ConsentCard({
   /** All already translated. */
   readonly title: string
   readonly description: string
+  /** What this runtime makes of the consent, when that needs saying. */
+  readonly note?: string | undefined
   readonly enabled: boolean
   readonly status: string
   readonly actionLabel: string
@@ -33,6 +39,7 @@ export function ConsentCard({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
+        {note === undefined ? null : <CardDescription>{note}</CardDescription>}
       </CardHeader>
       <CardContent>
         <XStack items="center" justify="space-between" gap="3">

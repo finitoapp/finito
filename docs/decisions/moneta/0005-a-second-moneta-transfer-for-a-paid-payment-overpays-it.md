@@ -10,7 +10,7 @@ and amount; a live MONETA account showed two such transfers on one day.
 The IBAN matcher skipped a payment that already had a claim, so the second
 transfer stayed unclaimed — but only when one sync recorded both, one after
 the other. The background job and the payment-wait screen sync without a
-lock (moneta/0002), and two syncs recording one transfer each at the same
+lock (moneta/0010), and two syncs recording one transfer each at the same
 moment both found the payment unpaid and both claimed it. The same
 transfers ended either as a paid payment with stray income or as an
 overpaid one, depending on timing.

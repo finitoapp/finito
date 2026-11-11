@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vitest"
 
 import {
+  appBackgroundJobs,
+  bankBackgroundJobs,
   cashuBackgroundJobs,
   cliBackgroundJobs,
-  getBackgroundJobsForRuntime,
 } from "./background-jobs.ts"
 import { startCashuAccountSyncJob } from "./jobs/cashu-account-sync-job.ts"
 import { startEetReportingJob } from "./jobs/eet-reporting-job.ts"
@@ -16,9 +17,16 @@ import { startQerkoTerminalSyncJob } from "./jobs/qerko-terminal-sync-job.ts"
 import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
-describe("getBackgroundJobsForRuntime", () => {
-  test("does not schedule the Fio or MONETA jobs in a regular web runtime", () => {
-    expect(getBackgroundJobsForRuntime(false)).toEqual([
+describe("background job groups", () => {
+  test("keeps the Fio and MONETA jobs out of the app jobs, in a group of their own", () => {
+    expect(bankBackgroundJobs).toEqual([
+      startFioAccountTransactionSyncJob,
+      startMonetaAccountTransactionSyncJob,
+    ])
+    for (const job of bankBackgroundJobs) {
+      expect(appBackgroundJobs).not.toContain(job)
+    }
+    expect(appBackgroundJobs).toEqual([
       startSparkAccountTransactionSyncJob,
       startEetReportingJob,
       startQerkoTerminalSyncJob,
@@ -36,20 +44,6 @@ describe("getBackgroundJobsForRuntime", () => {
     ]) {
       expect(cliBackgroundJobs).not.toContain(job)
     }
-  })
-
-  test("schedules the Fio and MONETA jobs in supported native runtimes", () => {
-    expect(getBackgroundJobsForRuntime(true)).toEqual([
-      startFioAccountTransactionSyncJob,
-      startMonetaAccountTransactionSyncJob,
-      startSparkAccountTransactionSyncJob,
-      startEetReportingJob,
-      startQerkoTerminalSyncJob,
-      startQerkoPaymentConnectionJob,
-      startQerkoPaymentSyncJob,
-      startLightningAddressVerifyJob,
-      startRecoveryBackupReminderJob,
-    ])
   })
 
   test("runs the MONETA job in the CLI, which reaches the bank as the native app does", () => {
@@ -73,12 +67,8 @@ describe("getBackgroundJobsForRuntime", () => {
   })
 
   test("keeps the Cashu job apart, so a Cashu wallet that fails to start stops no other job", () => {
-    expect(getBackgroundJobsForRuntime(false)).not.toContain(
-      startCashuAccountSyncJob
-    )
-    expect(getBackgroundJobsForRuntime(true)).not.toContain(
-      startCashuAccountSyncJob
-    )
+    expect(appBackgroundJobs).not.toContain(startCashuAccountSyncJob)
+    expect(bankBackgroundJobs).not.toContain(startCashuAccountSyncJob)
     expect(cashuBackgroundJobs).toEqual([startCashuAccountSyncJob])
   })
 })

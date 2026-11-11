@@ -34,17 +34,12 @@ import Plug from "lucide-react-native/icons/plug"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import Unplug from "lucide-react-native/icons/unplug"
 import { useState } from "react"
-import { Platform } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { PasswordTextarea } from "../../../components/password-textarea.tsx"
 import { Screen } from "../../../components/screen.tsx"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../../components/ui/alert.tsx"
+import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -68,15 +63,18 @@ import { useConfirmedRun } from "../../../hooks/use-confirmed-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
+import { useCanReachBanks } from "../../../hooks/use-service-proxy.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
+import { ServiceProxyRequiredAlert } from "../privacy/service-proxy-required-alert.tsx"
 
 /**
- * The MONETA plugin (moneta/0001), as web's `MonetaPluginSettingsPage`:
+ * The MONETA plugin (moneta/0009), as web's `MonetaPluginSettingsPage`:
  * connect a VIP API token to the fiat bank account, then tune how it syncs.
- * Only the app's web build cannot reach the bank, so it alone shows the
- * runtime warning and cannot connect.
+ * The app's web build reaches the bank only through the service proxy, so
+ * until the device allows it there it shows the runtime warning, which
+ * leads to the privacy settings, and cannot connect.
  */
 export function MonetaPluginSettingsPage() {
   const { accountId } = useAccess()
@@ -85,7 +83,7 @@ export function MonetaPluginSettingsPage() {
 
 function MonetaPluginSettings() {
   const { t } = useTranslation()
-  const canReachBank = Platform.OS !== "web"
+  const canReachBank = useCanReachBanks()
   const [plugin] = useEvoluQuery(fiatBankAccountMonetaPluginQuery).data
   const [account] = useEvoluQuery(fiatBankAccountQuery).data
   const accountIban =
@@ -97,14 +95,12 @@ function MonetaPluginSettings() {
     <Screen>
       <FadeHeader title={t("settings.monetaPlugin.title")} />
       {canReachBank ? null : (
-        <Alert variant="warning" icon={TriangleAlert}>
-          <AlertTitle>
-            {t("settings.monetaPlugin.nativeRuntimeWarning.title")}
-          </AlertTitle>
-          <AlertDescription>
-            {t("settings.monetaPlugin.nativeRuntimeWarning.description")}
-          </AlertDescription>
-        </Alert>
+        <ServiceProxyRequiredAlert
+          title={t("settings.monetaPlugin.nativeRuntimeWarning.title")}
+          description={t(
+            "settings.monetaPlugin.nativeRuntimeWarning.description"
+          )}
+        />
       )}
       {accountIban === null ? (
         <Alert variant="warning" icon={TriangleAlert}>

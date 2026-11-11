@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core"
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { dateCodec } from "@payky/app-shared/inline-edit-codecs"
@@ -34,11 +33,7 @@ import { Plug, TriangleAlert, Unplug } from "lucide-react"
 import { useId, useState } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { PasswordTextarea } from "@/components/password-textarea.tsx"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/reui/alert.tsx"
+import { Alert, AlertDescription } from "@/components/reui/alert.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
   Card,
@@ -54,6 +49,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field.tsx"
+import { ServiceProxyRequiredAlert } from "@/features/settings/privacy/service-proxy-required-alert.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
@@ -61,18 +57,20 @@ import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
+import { useCanReachBanks } from "@/hooks/use-service-proxy.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatAddressGroups } from "@/lib/format-utils.ts"
 
 /**
- * The MONETA plugin (moneta/0001): connect a VIP API token to the fiat bank
- * account, then tune how it syncs. Connecting asks the bank, which only the
- * native app can reach, so a browser shows the page but cannot connect.
+ * The MONETA plugin (moneta/0009): connect a VIP API token to the fiat bank
+ * account, then tune how it syncs. Connecting asks the bank, which a browser
+ * reaches only through the service proxy the device allowed
+ * (`useCanReachBanks`); without it the page shows but cannot connect.
  */
 export function MonetaPluginSettingsPage() {
   const { t } = useTranslation()
-  const isNativeRuntime = Capacitor.isNativePlatform()
+  const canReachBanks = useCanReachBanks()
   const [plugin] = useEvoluQuery(fiatBankAccountMonetaPluginQuery).data
   const [account] = useEvoluQuery(fiatBankAccountQuery).data
   const accountIban =
@@ -85,16 +83,13 @@ export function MonetaPluginSettingsPage() {
       <div className="h-6" />
       <FadeHeader title={t("settings.monetaPlugin.title")} />
       <div className="flex flex-col gap-5">
-        {!isNativeRuntime ? (
-          <Alert variant="warning">
-            <TriangleAlert />
-            <AlertTitle>
-              {t("settings.monetaPlugin.nativeRuntimeWarning.title")}
-            </AlertTitle>
-            <AlertDescription>
-              {t("settings.monetaPlugin.nativeRuntimeWarning.description")}
-            </AlertDescription>
-          </Alert>
+        {!canReachBanks ? (
+          <ServiceProxyRequiredAlert
+            title={t("settings.monetaPlugin.nativeRuntimeWarning.title")}
+            description={t(
+              "settings.monetaPlugin.nativeRuntimeWarning.description"
+            )}
+          />
         ) : null}
         {accountIban === null ? (
           <Alert variant="warning">
@@ -122,7 +117,7 @@ export function MonetaPluginSettingsPage() {
             accountId={account.id}
             iban={accountIban}
             isConnected={plugin !== undefined}
-            disabled={!isNativeRuntime}
+            disabled={!canReachBanks}
           />
         ) : null}
       </div>

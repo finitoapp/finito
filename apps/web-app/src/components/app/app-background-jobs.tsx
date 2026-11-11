@@ -1,11 +1,16 @@
 import { Capacitor } from "@capacitor/core"
 import { createRun } from "@evolu/web"
 import {
+  appBackgroundJobs,
+  bankBackgroundJobs,
+  bankBackgroundJobsLockName,
   cashuBackgroundJobs,
-  getBackgroundJobsForRuntime,
 } from "@payky/core/background-jobs/background-jobs"
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
-import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
+import {
+  runBackgroundJobs,
+  runBackgroundJobsHoldingLock,
+} from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
 import type {
   DeviceAccountId,
@@ -29,8 +34,10 @@ import {
 } from "@/atoms/evolu.ts"
 import { notificationStoreAtom } from "@/atoms/notifications.ts"
 import { qerkoConnectionStatusStore } from "@/atoms/qerko-connection-status.ts"
+import { serviceProxyConsentAtom } from "@/atoms/service-proxy.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConsole } from "@/hooks/use-console.ts"
+import { useCanReachBanks } from "@/hooks/use-service-proxy.ts"
 import {
   createConnectivityDep,
   createFetchDep,
@@ -38,7 +45,12 @@ import {
 
 type Console = ReturnType<typeof useConsole>
 
-/** The app's own job context, without the Cashu wallet. */
+/**
+ * The app's own job context, without the Cashu wallet. Only the bank jobs
+ * pass `isServiceProxyEnabled`: no other job calls a proxied service, and
+ * leaving the consent out of the others' context keeps them from depending
+ * on it in any way.
+ */
 const createAppJobDeps = ({
   evolu,
   deviceEvolu,
@@ -46,6 +58,7 @@ const createAppJobDeps = ({
   deviceId,
   notificationStore,
   console,
+  isServiceProxyEnabled,
 }: {
   readonly evolu: Evolu
   readonly deviceEvolu: DeviceEvolu
@@ -53,9 +66,10 @@ const createAppJobDeps = ({
   readonly deviceId: DeviceId
   readonly notificationStore: NotificationStore
   readonly console: Console
+  readonly isServiceProxyEnabled?: (() => boolean) | undefined
 }) => {
   const dateDep = createDateDep()
-  const fetchDep = createFetchDep()
+  const fetchDep = createFetchDep({ isServiceProxyEnabled })
   return {
     evolu,
     evoluOwner: evolu.appOwner,
@@ -139,7 +153,12 @@ const useBackgroundJobs = ({
   }, [console, isDemo, start])
 }
 
-/** The FIO, Spark and EET jobs: none of them reads the Cashu wallet. */
+/**
+ * The app's jobs (`appBackgroundJobs`: Spark, EET, Qerko, ...), the same in
+ * the native app and a browser. Neither the Cashu wallet nor the consent to
+ * the service proxy is read here, so turning that consent on or off never
+ * restarts them; the banks' jobs are `BankBackgroundJobs`.
+ */
 export function AppBackgroundJobs() {
   const evolu = useAtomValue(evoluAtom)
   const account = useAtomValue(accountAtom)
@@ -161,11 +180,7 @@ export function AppBackgroundJobs() {
     )
     return {
       run,
-      jobs: run.ok(
-        runBackgroundJobs(
-          getBackgroundJobsForRuntime(Capacitor.isNativePlatform())
-        )
-      ),
+      jobs: run.ok(runBackgroundJobs(appBackgroundJobs)),
     }
   }, [
     console,
@@ -222,6 +237,72 @@ export function CashuBackgroundJobs() {
     deviceId,
     evolu,
     masterKey,
+    notificationStore,
+  ])
+
+  useBackgroundJobs({ isDemo: account.demo !== null, console, start })
+
+  return null
+}
+
+/**
+ * The Fio and MONETA jobs (`bankBackgroundJobs`), apart from the others:
+ * mounted only while this device can reach the banks (`useCanReachBanks`) —
+ * natively, or in a browser through the service proxy it allowed — so turning
+ * that consent on or off starts or stops them alone. Under its own boundary
+ * in `App.tsx`, since it suspends on the consent.
+ */
+export function BankBackgroundJobs() {
+  const canReachBanks = useCanReachBanks()
+  return canReachBanks ? <RunningBankBackgroundJobs /> : null
+}
+
+/**
+ * In a browser every tab of the app would run the bank jobs again, spending
+ * MONETA's daily call limit and Fio's interval between calls once more, so
+ * they run in the one tab holding `bankBackgroundJobsLockName`. Not in the
+ * native app: Android WebView cannot grant `navigator.locks`
+ * (`polyfills/android-webview-locks.ts`), and it has a single page anyway.
+ */
+function RunningBankBackgroundJobs() {
+  const evolu = useAtomValue(evoluAtom)
+  const account = useAtomValue(accountAtom)
+  const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  const notificationStore = useAtomValue(notificationStoreAtom)
+  const isServiceProxyEnabled = useAtomValue(serviceProxyConsentAtom)
+  const console = useConsole()
+  const deviceId = account.device.id
+  const deviceAccountId = account.id
+  const start = useCallback(() => {
+    const run = createRun(
+      createAppJobDeps({
+        evolu,
+        deviceEvolu,
+        deviceAccountId,
+        deviceId,
+        notificationStore,
+        console,
+        isServiceProxyEnabled,
+      })
+    )
+    return {
+      run,
+      jobs: run.ok(
+        Capacitor.isNativePlatform()
+          ? runBackgroundJobs(bankBackgroundJobs)
+          : runBackgroundJobsHoldingLock(
+              bankBackgroundJobsLockName,
+              bankBackgroundJobs
+            )
+      ),
+    }
+  }, [
+    console,
+    deviceAccountId,
+    deviceEvolu,
+    deviceId,
+    evolu,
+    isServiceProxyEnabled,
     notificationStore,
   ])
 

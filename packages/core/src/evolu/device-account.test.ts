@@ -10,13 +10,17 @@ import {
   createOrSelectAccount,
   deriveDeviceAccountId,
   insertDemoAccount,
+  isServiceProxyEnabled,
   markDemoAccountSeeded,
   removeDeviceAccount,
   resolveTransportUrl,
+  serviceProxySettingQuery,
+  setServiceProxyEnabled,
   storableNostrPicture,
   updateDeviceSettings,
 } from "./device-account.ts"
 import {
+  createDefaultDeviceSettings,
   createDeviceQuery,
   type DeviceAccountId,
   type DeviceEvolu,
@@ -299,5 +303,53 @@ describe("updateDeviceSettings", () => {
     await expect
       .poll(loadRow)
       .toEqual([{ id: deviceSettingsId, language: "cs", theme: "dark" }])
+  })
+})
+
+describe("isServiceProxyEnabled", () => {
+  test("reads a missing row, null and sqliteFalse as off", () => {
+    expect(isServiceProxyEnabled(undefined)).toBe(false)
+    expect(isServiceProxyEnabled(null)).toBe(false)
+    expect(isServiceProxyEnabled({ serviceProxyEnabled: null })).toBe(false)
+    expect(isServiceProxyEnabled({ serviceProxyEnabled: sqliteFalse })).toBe(
+      false
+    )
+  })
+
+  test("reads sqliteTrue as on", () => {
+    expect(isServiceProxyEnabled({ serviceProxyEnabled: sqliteTrue })).toBe(
+      true
+    )
+  })
+
+  test("is left out of the defaults seeding and onboarding write", () => {
+    expect(createDefaultDeviceSettings()).not.toHaveProperty(
+      "serviceProxyEnabled"
+    )
+  })
+})
+
+describe("setServiceProxyEnabled", () => {
+  test("turns the consent on and off on the settings row", async () => {
+    await using test = await createTestDeviceEvolu()
+    const { deviceEvolu } = test
+    const isEnabled = async () =>
+      isServiceProxyEnabled(
+        (await deviceEvolu.loadQuery(serviceProxySettingQuery))[0]
+      )
+
+    updateDeviceSettings(deviceEvolu, { language: "cs" })
+    await expect
+      .poll(() => deviceEvolu.loadQuery(serviceProxySettingQuery))
+      .toEqual([{ id: deviceSettingsId, serviceProxyEnabled: null }])
+
+    setServiceProxyEnabled(deviceEvolu, true)
+    await expect.poll(isEnabled).toBe(true)
+
+    setServiceProxyEnabled(deviceEvolu, false)
+    await expect.poll(isEnabled).toBe(false)
+    await expect
+      .poll(() => deviceEvolu.loadQuery(serviceProxySettingQuery))
+      .toEqual([{ id: deviceSettingsId, serviceProxyEnabled: sqliteFalse }])
   })
 })

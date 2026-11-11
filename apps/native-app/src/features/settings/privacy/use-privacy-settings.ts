@@ -1,5 +1,9 @@
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
-import { updateDeviceSettings } from "@payky/core/evolu/device-account"
+import {
+  isServiceProxyEnabled,
+  setServiceProxyEnabled,
+  updateDeviceSettings,
+} from "@payky/core/evolu/device-account"
 import {
   type AiAssistantAccess,
   createDefaultDeviceSettings,
@@ -20,14 +24,16 @@ export const privacyQuery = createDeviceQuery((db) =>
       "errorReportingEnabled",
       "productLookupEnabled",
       "aiAssistantAccess",
+      "serviceProxyEnabled",
     ])
     .where("id", "=", deviceSettingsId)
 )
 
 /**
- * The three consents of this device (ai/0004): none of them syncs, and all
- * are off until turned on, as the defaults say. A missing row reads as the
- * defaults, as web's `useDeviceSettings`.
+ * The consents of this device (ai/0004): none of them syncs, and all are off
+ * until turned on, as the defaults say. A missing row reads as the defaults,
+ * as web's `useDeviceSettings`; the service proxy has no default and reads
+ * through `isServiceProxyEnabled` (service-proxy/0001).
  */
 export function usePrivacySettings() {
   const { language } = useTranslation()
@@ -43,6 +49,7 @@ export function usePrivacySettings() {
       (row?.productLookupEnabled ?? defaults.productLookupEnabled) ===
       sqliteTrue,
     aiAssistantAccess: row?.aiAssistantAccess ?? defaults.aiAssistantAccess,
+    serviceProxyEnabled: isServiceProxyEnabled(row),
     // The write is synchronous and local; the controllers react to the row.
     setErrorReportingEnabled: useCallback(
       (enabled: boolean) =>
@@ -56,6 +63,10 @@ export function usePrivacySettings() {
         updateDeviceSettings(deviceEvolu, {
           productLookupEnabled: enabled ? sqliteTrue : sqliteFalse,
         }),
+      [deviceEvolu]
+    ),
+    setServiceProxyEnabled: useCallback(
+      (enabled: boolean) => setServiceProxyEnabled(deviceEvolu, enabled),
       [deviceEvolu]
     ),
     setAiAssistantAccess: useCallback(

@@ -15,34 +15,38 @@ import { startRecoveryBackupReminderJob } from "./jobs/recovery-backup-reminder-
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 
 /**
- * Right for the CLI.
+ * The Fio and MONETA sync jobs. They run apart from the others
+ * (`BankBackgroundJobs` in the apps), started only where the device can reach
+ * the banks — natively, or in a browser through the service proxy it allowed —
+ * so turning that consent on or off starts or stops them alone. In a browser
+ * they run under `runBackgroundJobsHoldingLock` with
+ * `bankBackgroundJobsLockName`, in one tab only: every tab would otherwise
+ * spend MONETA's daily call limit and Fio's interval between calls again.
  */
-export const cliBackgroundJobs = [
+export const bankBackgroundJobs = [
   startFioAccountTransactionSyncJob,
   startMonetaAccountTransactionSyncJob,
+] satisfies ReadonlyArray<BackgroundJob>
+
+/** The lock a browser's bank jobs hold, per account, while they run. */
+export const bankBackgroundJobsLockName = "payky-bank-background-jobs"
+
+/**
+ * Right for the CLI, which reaches the banks directly.
+ */
+export const cliBackgroundJobs = [
+  ...bankBackgroundJobs,
   startSparkAccountTransactionSyncJob,
 ] satisfies ReadonlyArray<BackgroundJob>
 
-const nativeBackgroundJobs = [
-  ...cliBackgroundJobs,
-  startEetReportingJob,
-  startQerkoTerminalSyncJob,
-  startQerkoPaymentConnectionJob,
-  startQerkoPaymentSyncJob,
-  startLightningAddressVerifyJob,
-  startRecoveryBackupReminderJob,
-] satisfies ReadonlyArray<AppBackgroundJob>
-
 /**
- * A browser or PWA can't reach the FIO or MONETA APIs directly — neither
- * answers a CORS preflight — so their sync jobs are left out there, the same
- * limitation the settings screens warn about in
- * `settings.fioPlugin.nativeRuntimeWarning` and
- * `settings.monetaPlugin.nativeRuntimeWarning`. Qerko allows cross-origin calls,
- * so its jobs run in both, Qerko payments' connection and sync included, and
- * so do the wallets behind Lightning addresses.
+ * The app's jobs, the same in a native runtime and in a browser or PWA. The
+ * banks' jobs are left out (`bankBackgroundJobs`), and so is Cashu's
+ * (`cashuBackgroundJobs`). Qerko allows cross-origin calls, so its jobs run in
+ * both, Qerko payments' connection and sync included, and so do the wallets
+ * behind Lightning addresses.
  */
-const browserBackgroundJobs = [
+export const appBackgroundJobs = [
   startSparkAccountTransactionSyncJob,
   startEetReportingJob,
   startQerkoTerminalSyncJob,
@@ -51,12 +55,6 @@ const browserBackgroundJobs = [
   startLightningAddressVerifyJob,
   startRecoveryBackupReminderJob,
 ] satisfies ReadonlyArray<AppBackgroundJob>
-
-export function getBackgroundJobsForRuntime(
-  isNativePlatform: boolean
-): ReadonlyArray<AppBackgroundJob> {
-  return isNativePlatform ? nativeBackgroundJobs : browserBackgroundJobs
-}
 
 /**
  * The shared Cashu wallet's job, on native and browser alike. It runs apart

@@ -36,7 +36,7 @@ A fixed lookback of one day, as a margin against a bank backdating a
 booking into a day already read. It would cost no call, a day fits the same
 weekly window, but nothing observed calls for it. A per-plugin lookback, as
 Fio has: each week of it costs a call per sync, which the merchant does not
-see in the call estimate (moneta/0002).
+see in the call estimate (moneta/0010).
 
 ## Consequences
 

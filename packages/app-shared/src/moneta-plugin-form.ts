@@ -35,7 +35,7 @@ export const monetaConnectErrorKeys = {
   MonetaApiError: "settings.monetaPlugin.connect.error.unexpected",
 } satisfies Record<MonetaConnectError["type"], TranslationKey>
 
-/** The background interval, at least a minute (moneta/0002). */
+/** The background interval, at least a minute (moneta/0010). */
 export const monetaCheckIntervalCodec = z.codec(
   z.string(),
   PositiveIntegerSchema.min(minMonetaPluginCheckIntervalSeconds),

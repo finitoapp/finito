@@ -48,3 +48,25 @@ it("offers the three AI access values behind the owner gate", () => {
   )
   expect(page).toContain("<AiAssistantCard />")
 })
+
+it("flips serviceProxyEnabled through the core write, with the native note outside the PWA only", () => {
+  expect(hook).toContain('"serviceProxyEnabled"')
+  expect(hook).toContain("serviceProxyEnabled: isServiceProxyEnabled(row)")
+  expect(hook).toContain("setServiceProxyEnabled(deviceEvolu, enabled)")
+  expect(page).toContain("settings.setServiceProxyEnabled(!proxy)")
+  expect(page).toMatch(
+    /Platform\.OS === "web"\s*\?\s*undefined\s*:\s*t\("settings\.privacy\.serviceProxy\.nativeNote"\)/u
+  )
+  // After the AI assistant, as web's ServiceProxyCard.
+  expect(page.indexOf("<AiAssistantCard />")).toBeLessThan(
+    page.indexOf("settings.privacy.serviceProxy.title")
+  )
+})
+
+it("asks for the owner PIN before turning the service proxy on or off", () => {
+  expect(page).toContain('require("admin", "access.action.serviceProxy")')
+  expect(page.indexOf("access.action.serviceProxy")).toBeLessThan(
+    page.indexOf("settings.setServiceProxyEnabled(!proxy)")
+  )
+  expect(page).toContain('from "../../../core/use-access.ts"')
+})

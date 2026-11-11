@@ -8,7 +8,7 @@ import type { Iban } from "@payky/core/modules/shared/schema"
  * as long as a plugin of it is set up: one connected before the IBAN moved
  * to another bank must stay reachable, to switch it off or disconnect it.
  * The MONETA plugin is on only while it is active for the IBAN its token was
- * checked against (moneta/0001).
+ * checked against (moneta/0009).
  */
 export const bankSyncPluginLinks = ({
   iban,

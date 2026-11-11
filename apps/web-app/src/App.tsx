@@ -7,6 +7,7 @@ import { jotaiStore } from "@/atoms/store.ts"
 import { AccountShareRequestHost } from "@/components/app/account-share-request-host.tsx"
 import {
   AppBackgroundJobs,
+  BankBackgroundJobs,
   CashuBackgroundJobs,
 } from "@/components/app/app-background-jobs.tsx"
 import { AppLoaderCleanup } from "@/components/app/app-loader-cleanup.tsx"
@@ -115,6 +116,20 @@ export function App() {
                     >
                       <Suspense fallback={null}>
                         <CashuBackgroundJobs />
+                      </Suspense>
+                    </CatchBoundary>
+                    {/*
+                     * The Fio and MONETA jobs wait on the device's consent to
+                     * the service proxy and start and stop with it: under
+                     * their own boundary and Suspense, as the Cashu job, so
+                     * neither the wait nor that switch touches the others.
+                     */}
+                    <CatchBoundary
+                      getResetKey={() => "bank-background-jobs"}
+                      errorComponent={AppEvoluConsumersFailed}
+                    >
+                      <Suspense fallback={null}>
+                        <BankBackgroundJobs />
                       </Suspense>
                     </CatchBoundary>
                   </AppMigrations>

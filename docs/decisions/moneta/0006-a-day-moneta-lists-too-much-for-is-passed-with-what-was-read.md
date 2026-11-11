@@ -6,7 +6,7 @@ Date: 2026-11-01
 ## Context
 
 One call of the sync reads at most `MONETA_MAX_PAGES` (20) pages of a
-window, so the daily call limit a merchant's devices share (moneta/0002)
+window, so the daily call limit a merchant's devices share (moneta/0010)
 cannot be spent by one window. The background job read a window the bank
 listed more pages for again a day at a time, then an hour at a time, and
 kept its sync pointer when even an hour was too long, retrying the window

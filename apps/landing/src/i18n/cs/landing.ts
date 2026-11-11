@@ -458,7 +458,7 @@ export const csLanding = {
   "landing.tech.exit.outage.eet.state":
     "Funguje dál, tržby jdou rovnou finanční správě",
   "landing.tech.exit.outage.extras.label":
-    "AI asistent, podpora, kontaktní formulář a dary",
+    "AI asistent, podpora, kontaktní formulář, dary a párování plateb v prohlížeči",
   "landing.tech.exit.outage.extras.state":
     "Nefungují, dokud servery znovu nenaběhnou",
   "landing.tech.exit.outage.payments.label": "QR platby, bitcoin a karty",
@@ -571,7 +571,7 @@ export const csLanding = {
   "landing.tech.money.qr.create":
     "Telefon vytvoří QR kód s číslem vašeho účtu, částkou a variabilním symbolem. Žádný server se na tom nepodílí.",
   "landing.tech.money.qr.note":
-    "Automatické párování plateb funguje s Fio bankou a MONETA Money Bank, v mobilní aplikaci. U jiných bank zaplacení potvrdíte ručně.",
+    "Automatické párování plateb funguje s Fio bankou a MONETA Money Bank: v mobilní aplikaci napřímo, v prohlížeči přes naši proxy, když ji povolíte. U jiných bank zaplacení potvrdíte ručně.",
   "landing.tech.money.qr.scan":
     "Zákazník ho naskenuje v aplikaci své banky a platbu potvrdí.",
   "landing.tech.money.qr.title": "QR platba převodem",
@@ -622,7 +622,8 @@ export const csLanding = {
     "Náš server drží klíč k AI modelu a dotazy předává poskytovateli AI. Konverzace se nikam neukládá. Asistent si od nás navíc stahuje dokumentaci aplikace, aby věděl, jak funguje.",
   "landing.tech.services.bank.name": "Vaše banka (Fio API nebo MONETA API)",
   "landing.tech.services.bank.sent": "Váš token a dotaz na pohyby na účtu.",
-  "landing.tech.services.bank.when": "Když máte zapnuté párování plateb.",
+  "landing.tech.services.bank.when":
+    "Když máte zapnuté párování plateb. Mobilní aplikace se ptá banky napřímo, prohlížeč jen přes naši proxy, když ji povolíte.",
   "landing.tech.services.body":
     "Každá služba, se kterou {appName} mluví: co jí posílá, kdy a u našich serverů i proč. Seřazené podle toho, kdy ke spojení dochází.",
   "landing.tech.services.boltCard.name": "Vydavatel Bolt Card zákazníka",
@@ -657,7 +658,7 @@ export const csLanding = {
     "Vydává veřejné testovací certifikáty.",
   "landing.tech.services.eyebrow": "Úplný seznam",
   "landing.tech.services.footer":
-    "Žádná z těchto služeb nedostane do rukou vaše peníze ani čitelná data vašeho podniku. Výjimkou je jen to, co sami napíšete AI asistentovi nebo podpoře.",
+    "Žádná z těchto služeb nedostane do rukou vaše peníze ani čitelná data vašeho podniku. Výjimkou je jen to, co sami napíšete AI asistentovi nebo podpoře, a odpovědi banky, které projdou naší proxy, když ji povolíte.",
   "landing.tech.services.group.action": "Jen při konkrétní akci",
   "landing.tech.services.group.always": "Pokaždé, když aplikaci používáte",
   "landing.tech.services.group.enabled": "Jen když si to zapnete",
@@ -692,6 +693,14 @@ export const csLanding = {
   "landing.tech.services.sentry.sent":
     "Technický popis chyby bez fráze a čísel účtů.",
   "landing.tech.services.sentry.when": "Jen když hlášení chyb zapnete.",
+  "landing.tech.services.serviceProxy.name":
+    "Proxy pro připojené služby (Fio a MONETA)",
+  "landing.tech.services.serviceProxy.sent":
+    "Váš token k bance a dotaz na pohyby na účtu, zpátky odpověď banky: IBAN a pohyby včetně částek, protiúčtů, jmen plátců, symbolů a zpráv pro příjemce.",
+  "landing.tech.services.serviceProxy.when":
+    "Jen v prohlížeči se zapnutým párováním plateb, když proxy na daném zařízení povolíte. Mobilní aplikace ji nikdy nepoužívá.",
+  "landing.tech.services.serviceProxy.why":
+    "Fio banka a MONETA Money Bank nedovolí prohlížeči volat své API. Náš server v EU (Frankfurt) předá dotazy dál a odpovědi zpátky a nic z toho neukládá.",
   "landing.tech.services.spark.name": "Operátoři sítě Spark a Lightning brána",
   "landing.tech.services.spark.sent": "Bitcoinové transakce.",
   "landing.tech.services.spark.when": "Když máte zapnuté bitcoinové platby.",

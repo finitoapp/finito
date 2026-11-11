@@ -217,6 +217,14 @@ const deviceEvoluSchema = {
     errorReportingEnabled: SqliteBoolSchema.nullable(),
     productLookupEnabled: SqliteBoolSchema.nullable(),
     aiAssistantAccess: AiAssistantAccessSchema.nullable(),
+    /**
+     * Whether a browser on this device may call services that answer no CORS
+     * preflight (Fio, MONETA) through the app's own proxy. `null` — what
+     * every device has until the merchant chooses — means off, so it is left
+     * out of `DeviceSettings` and of the defaults seeding and onboarding
+     * write; read it through `isServiceProxyEnabled`.
+     */
+    serviceProxyEnabled: SqliteBoolSchema.nullable(),
   },
 } as const
 
