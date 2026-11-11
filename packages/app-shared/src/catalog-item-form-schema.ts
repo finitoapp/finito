@@ -60,16 +60,26 @@ export const updateCatalogItemErrorKeys = {
   TranslationKey
 >
 
-const isCatalogItemPricingErrorType = (
-  value: unknown
-): value is CatalogItemPricingError["type"] =>
-  typeof value === "string" && value in catalogItemPricingErrorKeys
-
 /**
- * A discount of nothing (catalog/0002). The core cannot refuse it, since zero
- * has no sign; only the form's Discount switch says a zero was meant as one.
+ * Why a typed price is refused: text that is no amount (`Malformed`), a
+ * discount of nothing (`DiscountZero`, catalog/0002 — the core cannot refuse
+ * it, since zero has no sign; only the form's Discount switch says a zero was
+ * meant as one), or a `validateCatalogItemPricing` refusal.
  */
-const discountZeroErrorKey = "catalog.items.form.price.discountZero"
+type PriceRefusal =
+  | "Malformed"
+  | "DiscountZero"
+  | CatalogItemPricingError["type"]
+
+/** The message each price refusal shows. */
+const priceRefusalKeys = {
+  ...catalogItemPricingErrorKeys,
+  Malformed: "catalog.items.form.price.invalid",
+  DiscountZero: "catalog.items.form.price.discountZero",
+} satisfies Record<PriceRefusal, TranslationKey>
+
+const isPriceRefusal = (value: unknown): value is PriceRefusal =>
+  typeof value === "string" && value in priceRefusalKeys
 
 /**
  * What the price is judged against besides itself: the currency it is typed
@@ -89,64 +99,64 @@ export interface CatalogItemFormContext {
   readonly discount: boolean
 }
 
-/** A typed amount, without a sign, as the price it means (catalog/0002). */
-const signedPrice = (magnitude: number, discount: boolean): Integer =>
-  Integer(discount ? -magnitude : magnitude)
+/** The VAT rate the item is saved with: none for a discount (catalog/0002). */
+const formTaxRateId = ({
+  discount,
+  taxRateId,
+}: CatalogItemFormContext): TaxRateId | null => (discount ? null : taxRateId)
 
 /**
- * The price as typed, judged together with the VAT rate — built per submit
- * rather than once at module load, since both depend on what is picked next
- * to it. `decimalPriceToMinorUnits` already trims, rejects a signed or
- * non-numeric amount, and rejects more fraction digits than the currency has,
- * returning `null` for all of them; zero is a price (catalog/0001), but not a
- * discount (catalog/0002). A refusal of `validateCatalogItemPricing` carries
- * its type in `params`, so `parseCatalogItemForm` shows its own message
- * rather than the generic one.
+ * The price an amount typed without a sign means (catalog/0002), the one
+ * reading the create form and the inline price field share.
+ * `decimalPriceToMinorUnits` already trims, rejects a signed or non-numeric
+ * amount, and rejects more fraction digits than the currency has; zero is a
+ * price (catalog/0001), but not a discount (catalog/0002).
  */
-const createPriceSchema = ({
-  currency,
-  taxRateId,
-  vatPayer,
-  discount,
-}: CatalogItemFormContext) =>
+const readTypedPrice = (
+  { currency, discount }: Pick<CatalogItemFormContext, "currency" | "discount">,
+  value: string
+): Result<Integer, "Malformed" | "DiscountZero"> => {
+  const minorUnits = decimalPriceToMinorUnits({ currency, value })
+  if (minorUnits === null) return err("Malformed")
+  if (discount && minorUnits === 0) return err("DiscountZero")
+  return ok(Integer(discount ? -minorUnits : minorUnits))
+}
+
+/** An issue that carries its refusal, for `issueErrorKey` to read back. */
+const priceIssue = (input: string, refusal: PriceRefusal) => ({
+  code: "custom" as const,
+  message: refusal,
+  input,
+  params: { priceRefusal: refusal },
+})
+
+/**
+ * The price as typed (`readTypedPrice`), judged together with the VAT rate —
+ * built per submit rather than once at module load, since both depend on what
+ * is picked next to it. Each refusal carries its `PriceRefusal` in `params`,
+ * so `parseCatalogItemForm` shows its own message rather than the generic
+ * one.
+ */
+const createPriceSchema = (context: CatalogItemFormContext) =>
   z.string().transform((value, ctx) => {
-    const minorUnits = decimalPriceToMinorUnits({ currency, value })
-    if (minorUnits === null) {
-      ctx.issues.push({
-        code: "custom",
-        message: "Invalid price",
-        input: value,
-      })
-      return z.NEVER
-    }
-    if (discount && minorUnits === 0) {
-      ctx.issues.push({
-        code: "custom",
-        message: "DiscountZero",
-        input: value,
-        params: { discountZero: true },
-      })
+    const price = readTypedPrice(context, value)
+    if (!price.ok) {
+      ctx.issues.push(priceIssue(value, price.error))
       return z.NEVER
     }
 
-    const unitAmount = signedPrice(minorUnits, discount)
     const pricing = validateCatalogItemPricing({
-      unitAmount,
-      taxRateId: discount ? null : taxRateId,
-      vatPayer,
+      unitAmount: price.value,
+      taxRateId: formTaxRateId(context),
+      vatPayer: context.vatPayer,
       originalUnitAmount: null,
     })
     if (!pricing.ok) {
-      ctx.issues.push({
-        code: "custom",
-        message: pricing.error.type,
-        input: value,
-        params: { pricingError: pricing.error.type },
-      })
+      ctx.issues.push(priceIssue(value, pricing.error.type))
       return z.NEVER
     }
 
-    return unitAmount
+    return price.value
   })
 
 /**
@@ -176,11 +186,8 @@ export const createPriceCodec = ({
 }) =>
   z.codec(z.string(), IntegerSchema, {
     decode: (value) => {
-      const minorUnits = decimalPriceToMinorUnits({ currency, value })
-      if (minorUnits === null || (discount && minorUnits === 0)) {
-        return Number.NaN
-      }
-      return signedPrice(minorUnits, discount)
+      const price = readTypedPrice({ currency, discount }, value)
+      return price.ok ? price.value : Number.NaN
     },
     encode: (value) =>
       minorUnitsToDecimalString({
@@ -191,22 +198,15 @@ export const createPriceCodec = ({
 
 /**
  * The message an inline price field shows for text `createPriceCodec`
- * refuses: a zero discount's own (catalog/0002) only where the text is a
- * well-formed zero, the price's for anything malformed, as the create form
- * tells them apart (`createPriceSchema`).
+ * refuses, told apart as the create form does (`readTypedPrice`): a zero
+ * discount's own (catalog/0002), the price's for anything malformed.
  */
 export const createPriceErrorKey =
-  ({
-    currency,
-    discount,
-  }: {
-    readonly currency: FiatCurrency
-    readonly discount: boolean
-  }) =>
-  (value: string): TranslationKey =>
-    discount && decimalPriceToMinorUnits({ currency, value }) === 0
-      ? discountZeroErrorKey
-      : catalogItemFieldErrorKeys.price
+  (context: { readonly currency: FiatCurrency; readonly discount: boolean }) =>
+  (value: string): TranslationKey => {
+    const price = readTypedPrice(context, value)
+    return priceRefusalKeys[price.ok ? "Malformed" : price.error]
+  }
 
 const createCatalogItemFormSchema = (context: CatalogItemFormContext) =>
   z.object({
@@ -258,19 +258,15 @@ const isCatalogItemFormField = (
 ): value is CatalogItemFormField =>
   typeof value === "string" && value in catalogItemFieldErrorKeys
 
-/**
- * The message one issue shows: a zero discount's or a pricing refusal's own,
- * or its field's.
- */
+/** The message one issue shows: a price refusal's own, or its field's. */
 const issueErrorKey = (
   field: CatalogItemFormField,
   issue: z.core.$ZodIssue
 ): TranslationKey => {
-  const params = issue.code === "custom" ? issue.params : undefined
-  if (params?.discountZero === true) return discountZeroErrorKey
-  const pricingError = params?.pricingError
-  return isCatalogItemPricingErrorType(pricingError)
-    ? catalogItemPricingErrorKeys[pricingError]
+  const refusal =
+    issue.code === "custom" ? issue.params?.priceRefusal : undefined
+  return isPriceRefusal(refusal)
+    ? priceRefusalKeys[refusal]
     : catalogItemFieldErrorKeys[field]
 }
 
@@ -289,10 +285,7 @@ export const parseCatalogItemForm = (
 ): Result<CatalogItemFormValues, CatalogItemFormErrors> => {
   const parsed = createCatalogItemFormSchema(context).safeParse(input)
   if (parsed.success) {
-    return ok({
-      ...parsed.data,
-      taxRateId: context.discount ? null : context.taxRateId,
-    })
+    return ok({ ...parsed.data, taxRateId: formTaxRateId(context) })
   }
 
   return err(
