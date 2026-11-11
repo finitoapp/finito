@@ -364,26 +364,12 @@ test("a discount created with the Discount switch has no VAT rate and takes its 
       })
       .click()
     await expect(taxRate).toHaveCount(0)
+  })
 
-    await page
-      .getByRole("textbox", {
-        name: translate("en", "catalog.items.form.name.label"),
-        exact: true,
-      })
-      .fill("Loyalty")
-    await page
-      .getByRole("textbox", {
-        name: translate("en", "catalog.items.form.price.label"),
-      })
-      .fill("1")
-    await page
-      .getByRole("button", {
-        name: translate("en", "catalog.items.form.save.create"),
-      })
-      .click()
-    await page
-      .getByRole("heading", { name: translate("en", "catalog.items.title") })
-      .waitFor()
+  await addCatalogItem(page, "en", {
+    name: "Loyalty",
+    price: "1",
+    discount: true,
   })
 
   await test.step("on a bill with goods it shows below zero and lowers the total", async () => {
