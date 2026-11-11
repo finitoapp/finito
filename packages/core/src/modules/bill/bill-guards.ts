@@ -303,7 +303,7 @@ export const loadBillStatusSnapshot =
  * `loadBillStatusSnapshot`: every guard in this file needs the rest of that
  * snapshot (coverage, totals, the summaries), so they take the whole thing,
  * and a caller that only wants to *ask* a bill's status should not have to
- * know which of its seven fields to reach for. That is the whole of its
+ * know which of its fields to reach for. That is the whole of its
  * current use — the tests, and any non-reactive caller outside React.
  */
 export const loadBillStatus =
