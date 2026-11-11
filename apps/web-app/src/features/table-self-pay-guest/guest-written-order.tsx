@@ -15,6 +15,7 @@ import { type FocusEvent, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
+import { Textarea } from "@/components/ui/textarea.tsx"
 import { usePayBarScrollPadding } from "./guest-checkout.tsx"
 import { formatGuestAmount, guestCurrencySymbol } from "./guest-format.ts"
 import { guestTipAmount } from "./guest-share-choice.ts"
@@ -40,6 +41,8 @@ interface TypedLine {
   readonly text: string
   readonly amount: string
 }
+
+const TEXT_LENGTH_SHOWN_FROM = 200
 
 const emptyLine = (id: number): TypedLine => ({ id, text: "", amount: "" })
 
@@ -233,7 +236,9 @@ function GuestWrittenLine({
 }) {
   const { t, locale } = useGuestTranslation()
   const [hasLeftAmount, setHasLeftAmount] = useState(false)
+  const amountField = useRef<HTMLInputElement>(null)
   const text = line.text.trim()
+  const isLengthShown = line.text.length >= TEXT_LENGTH_SHOWN_FROM
   const textId = `guest-written-text-${line.id}`
   const lengthId = `guest-written-text-length-${line.id}`
   const amountId = `guest-written-amount-${line.id}`
@@ -263,23 +268,37 @@ function GuestWrittenLine({
             </Button>
           )}
         </div>
-        <Input
+        <Textarea
           id={textId}
-          className="h-11"
+          rows={1}
+          className="field-sizing-content min-h-11 resize-none"
           maxLength={MAX_WRITTEN_TEXT_LENGTH}
           autoComplete="off"
-          aria-describedby={lengthId}
+          enterKeyHint="next"
+          aria-describedby={isLengthShown ? lengthId : undefined}
           value={line.text}
           onChange={(event) => {
-            onChange({ text: event.currentTarget.value })
+            onChange({
+              text: event.currentTarget.value.replace(/[\r\n]+/gu, " "),
+            })
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return
+            event.preventDefault()
+            amountField.current?.focus()
           }}
         />
-        <p id={lengthId} className="text-sm text-muted-foreground tabular-nums">
-          {t("selfPay.order.note.length", {
-            length: line.text.length,
-            max: MAX_WRITTEN_TEXT_LENGTH,
-          })}
-        </p>
+        {isLengthShown ? (
+          <p
+            id={lengthId}
+            className="text-sm text-muted-foreground tabular-nums"
+          >
+            {t("selfPay.order.note.length", {
+              length: line.text.length,
+              max: MAX_WRITTEN_TEXT_LENGTH,
+            })}
+          </p>
+        ) : null}
         {text !== "" && !WrittenOrderTextSchema.safeParse(text).success ? (
           <p className="text-sm text-destructive" role="alert">
             {t("selfPay.written.text.unreadable")}
@@ -290,6 +309,7 @@ function GuestWrittenLine({
         <Label htmlFor={amountId}>{t("selfPay.written.amount.label")}</Label>
         <div className="flex items-center gap-2">
           <Input
+            ref={amountField}
             id={amountId}
             className="h-11"
             inputMode="decimal"

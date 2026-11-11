@@ -672,6 +672,38 @@ test("an item with text and no amount, or one the form cannot read, says so at i
   })
 })
 
+test("a written item grows with its text, Enter moves to its amount, and the count shows only near 255", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+  const count = (length: number) =>
+    guest.getByText(
+      translateParams("en", "selfPay.order.note.length", { length, max: 255 })
+    )
+  await openForm(guest, guestAddress)
+
+  await test.step("a short text shows no count, and Enter moves to its amount without a line break", async () => {
+    await textField(guest).fill("2x pivo")
+    await textField(guest).press("Enter")
+    await expect(textField(guest)).toHaveValue("2x pivo")
+    await expect(amountField(guest)).toBeFocused()
+    await expect(count(7)).toHaveCount(0)
+  })
+
+  await test.step("a long text shows whole over several lines, with its count", async () => {
+    const height = (await textField(guest).boundingBox())?.height ?? 0
+    await textField(guest).fill("pivo a utopenec ".repeat(14))
+    await expect(count(224)).toBeVisible()
+    expect((await textField(guest).boundingBox())?.height ?? 0).toBeGreaterThan(
+      height * 3
+    )
+  })
+})
+
 test("when no relay takes the written order, the guest is asked to pay with the staff and offered no payment", async ({
   seededPage: page,
   context,
