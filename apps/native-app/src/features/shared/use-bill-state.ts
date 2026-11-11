@@ -37,21 +37,11 @@ export const billStateQueries = (billId: BillId) => [
   claimedTransactionsByBillIdQuery(billId),
 ]
 
-/**
- * The bill's netted lines. A `null` bill — a payment without one — has
- * nothing to subscribe to and yields none, as web's `undefined`.
- */
 export function useBillLineSummaries(
-  billId: BillId | null
+  billId: BillId
 ): ReadonlyArray<BillLineSummary> {
-  const lineQuery = useMemo(
-    () => (billId === null ? null : billLinesByBillIdQuery(billId)),
-    [billId]
-  )
-  const itemQuery = useMemo(
-    () => (billId === null ? null : itemsByBillIdQuery(billId)),
-    [billId]
-  )
+  const lineQuery = useMemo(() => billLinesByBillIdQuery(billId), [billId])
+  const itemQuery = useMemo(() => itemsByBillIdQuery(billId), [billId])
   const { data: lineRows } = useOptionalEvoluQuery(lineQuery)
   const { data: itemRows } = useOptionalEvoluQuery(itemQuery)
 
