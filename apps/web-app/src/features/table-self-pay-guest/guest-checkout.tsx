@@ -272,6 +272,7 @@ export const usePayBarScrollPadding = () => {
   const payBar = useRef<HTMLElement>(null)
   const { height } = useElementSize(payBar)
   useEffect(() => {
+    if (height === 0) return
     document.documentElement.style.scrollPaddingBottom = `${height}px`
     return () => {
       document.documentElement.style.scrollPaddingBottom = ""

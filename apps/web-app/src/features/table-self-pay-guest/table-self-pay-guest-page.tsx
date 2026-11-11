@@ -451,6 +451,7 @@ function GuestOrdering({
   view,
   menuKeys,
   selectionKey,
+  hidden,
   mode,
   session,
   onSessionChange,
@@ -460,6 +461,7 @@ function GuestOrdering({
   readonly view: SelfPayView
   readonly menuKeys: NonNullable<SelfPayView["menu"]>
   readonly selectionKey: string
+  readonly hidden: boolean
   readonly mode: Exclude<GuestSection, "bill">
   readonly session: OrderPaymentSession | null
   readonly onSessionChange: (session: OrderPaymentSession | null) => void
@@ -533,7 +535,7 @@ function GuestOrdering({
   }, [address, isEveryConfirmationRead, unsettledEvents])
 
   if (isPending) {
-    return (
+    return hidden ? null : (
       <GuestMessage
         icon={<LoaderCircleIcon className="animate-spin" />}
         title={t("selfPay.menu.loading")}
@@ -629,7 +631,7 @@ function GuestOrdering({
   )
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4" hidden={hidden}>
       {listedOrders.length === 0 ? null : (
         <GuestOrderList
           ref={ordersBlock}
@@ -678,9 +680,10 @@ function GuestOrdering({
               {t("selfPay.order.refused")}
             </p>
           ) : null}
-          {isWriting ? (
+          {writable === null ? null : (
             <GuestWrittenOrder
               menu={writable}
+              hidden={hidden || !isWriting}
               isPreparing={isPreparing}
               onOrder={({ lines, named, amount }) => {
                 void placeOrder(
@@ -698,9 +701,11 @@ function GuestOrdering({
                 )
               }}
             />
-          ) : orderable !== null ? (
+          )}
+          {orderable === null ? null : (
             <GuestMenu
               menu={orderable}
+              hidden={hidden || isWriting}
               isPreparing={isPreparing}
               onOrder={({ items, note, ...choice }) => {
                 void placeOrder(
@@ -715,7 +720,7 @@ function GuestOrdering({
                 )
               }}
             />
-          ) : null}
+          )}
         </>
       )}
     </div>
@@ -869,6 +874,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
       ? { menuKeys: view.menu, selectionKey: view.selectionKey }
       : null
   const offersBillAndMenu = menuAccess !== null && view.bills.length > 0
+  const hasBillPart = menuAccess === null || offersBillAndMenu
   const shownMenu =
     menuAccess !== null && (!offersBillAndMenu || section !== "bill")
       ? menuAccess
@@ -975,118 +981,135 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
           title={t("selfPay.disabled.title")}
           description={t("selfPay.disabled.description")}
         />
-      ) : shownMenu !== null ? (
-        <GuestOrdering
-          address={address}
-          view={view}
-          {...shownMenu}
-          mode={section === "write" ? "write" : "menu"}
-          session={orderSession}
-          onSessionChange={setOrderSession}
-          onOrderPlaced={() => {
-            setSection((current) => (current === "bill" ? "menu" : current))
-          }}
-        />
-      ) : !offersMethod ? (
-        <GuestMessage
-          title={t("selfPay.disabled.title")}
-          description={t("selfPay.noMethod.description")}
-        />
-      ) : bill === undefined ? (
-        <GuestMessage
-          title={t("selfPay.empty.title")}
-          description={t("selfPay.empty.description")}
-        />
       ) : (
         <>
-          {isStale ? (
-            <p
-              className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"
-              role="alert"
-            >
-              <TriangleAlertIcon className="size-5 shrink-0 text-amber-600" />
-              {confirmedAt === null
-                ? t("selfPay.stale.never")
-                : t("selfPay.stale", {
-                    time: formatGuestTime(confirmedAt, locale),
-                  })}
-            </p>
-          ) : null}
-          {view.bills.length > 1 && pendingSession === null ? (
-            <Tabs
-              value={bill.reference}
-              onValueChange={(value) => {
-                setSelectedReference(String(value))
-                leavePayment()
-              }}
-            >
-              <TabsList className={guestTabListClassName}>
-                {view.bills.map((candidate, index) => (
-                  <TabsTrigger
-                    key={candidate.reference}
-                    value={candidate.reference}
-                    className={`${guestTabClassName} flex-col gap-0`}
-                  >
-                    <span>
-                      {t("selfPay.bill.number", { number: index + 1 })}
-                    </span>
-                    <span className="text-xs tabular-nums">
-                      {t("selfPay.bill.left", {
-                        amount: formatGuestAmount(
-                          candidate.remainder,
-                          candidate,
-                          locale
-                        ),
-                      })}
-                    </span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          ) : null}
-          {pendingSession === null ? <GuestBillSummary bill={bill} /> : null}
-          {doneWith === null ? (
-            <GuestCheckout
-              key={bill.reference}
-              bill={bill}
-              initialMode={newestMineOnBill === null ? "remainder" : null}
-              hidden={pendingSession !== null}
-              isPreparing={isPreparing}
-              onContinue={(choice) => {
-                void startPayment(choice)
-              }}
-            />
-          ) : bill.remainder > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              onClick={() => {
-                setPayingMoreAfter(doneWith.pointerHash)
-              }}
-            >
-              {t("selfPay.payMore")}
-            </Button>
-          ) : null}
-          {pendingSession === null ? null : (
-            <GuestPayment
+          {menuAccess === null ? null : (
+            <GuestOrdering
               address={address}
               view={view}
-              liveness={liveness}
-              session={pendingSession}
-              backLabel={t("selfPay.back")}
-              onBack={leavePayment}
-              notice={
-                changedBill === null ? null : (
-                  <GuestBillChangedNotice bill={changedBill} />
-                )
-              }
+              {...menuAccess}
+              hidden={shownMenu === null}
+              mode={section === "write" ? "write" : "menu"}
+              session={orderSession}
+              onSessionChange={setOrderSession}
+              onOrderPlaced={() => {
+                setSection((current) => (current === "bill" ? "menu" : current))
+              }}
+            />
+          )}
+          {!hasBillPart ? null : (
+            <div
+              className="flex flex-1 flex-col gap-4"
+              hidden={shownMenu !== null}
             >
-              <GuestPaidFor
-                bill={pendingSession.bill}
-                choice={pendingSession.choice}
-              />
-            </GuestPayment>
+              {!offersMethod ? (
+                <GuestMessage
+                  title={t("selfPay.disabled.title")}
+                  description={t("selfPay.noMethod.description")}
+                />
+              ) : bill === undefined ? (
+                <GuestMessage
+                  title={t("selfPay.empty.title")}
+                  description={t("selfPay.empty.description")}
+                />
+              ) : (
+                <>
+                  {isStale ? (
+                    <p
+                      className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"
+                      role="alert"
+                    >
+                      <TriangleAlertIcon className="size-5 shrink-0 text-amber-600" />
+                      {confirmedAt === null
+                        ? t("selfPay.stale.never")
+                        : t("selfPay.stale", {
+                            time: formatGuestTime(confirmedAt, locale),
+                          })}
+                    </p>
+                  ) : null}
+                  {view.bills.length > 1 && pendingSession === null ? (
+                    <Tabs
+                      value={bill.reference}
+                      onValueChange={(value) => {
+                        setSelectedReference(String(value))
+                        leavePayment()
+                      }}
+                    >
+                      <TabsList className={guestTabListClassName}>
+                        {view.bills.map((candidate, index) => (
+                          <TabsTrigger
+                            key={candidate.reference}
+                            value={candidate.reference}
+                            className={`${guestTabClassName} flex-col gap-0`}
+                          >
+                            <span>
+                              {t("selfPay.bill.number", { number: index + 1 })}
+                            </span>
+                            <span className="text-xs tabular-nums">
+                              {t("selfPay.bill.left", {
+                                amount: formatGuestAmount(
+                                  candidate.remainder,
+                                  candidate,
+                                  locale
+                                ),
+                              })}
+                            </span>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  ) : null}
+                  {pendingSession === null ? (
+                    <GuestBillSummary bill={bill} />
+                  ) : null}
+                  {doneWith === null ? (
+                    <GuestCheckout
+                      key={bill.reference}
+                      bill={bill}
+                      initialMode={
+                        newestMineOnBill === null ? "remainder" : null
+                      }
+                      hidden={shownMenu !== null || pendingSession !== null}
+                      isPreparing={isPreparing}
+                      onContinue={(choice) => {
+                        void startPayment(choice)
+                      }}
+                    />
+                  ) : bill.remainder > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11"
+                      onClick={() => {
+                        setPayingMoreAfter(doneWith.pointerHash)
+                      }}
+                    >
+                      {t("selfPay.payMore")}
+                    </Button>
+                  ) : null}
+                  {pendingSession === null ? null : (
+                    <GuestPayment
+                      address={address}
+                      view={view}
+                      liveness={liveness}
+                      session={pendingSession}
+                      backLabel={t("selfPay.back")}
+                      onBack={leavePayment}
+                      notice={
+                        changedBill === null ? null : (
+                          <GuestBillChangedNotice bill={changedBill} />
+                        )
+                      }
+                    >
+                      <GuestPaidFor
+                        bill={pendingSession.bill}
+                        choice={pendingSession.choice}
+                      />
+                    </GuestPayment>
+                  )}
+                </>
+              )}
+            </div>
           )}
         </>
       )}

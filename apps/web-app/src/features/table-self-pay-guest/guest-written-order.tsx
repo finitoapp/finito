@@ -52,10 +52,12 @@ const needsAmount = (line: TypedLine, currency: SelfPayMenu["currency"]) =>
 
 export function GuestWrittenOrder({
   menu,
+  hidden,
   isPreparing,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
+  readonly hidden: boolean
   readonly isPreparing: boolean
   readonly onOrder: (order: GuestWrittenChoice) => void
 }) {
@@ -102,10 +104,10 @@ export function GuestWrittenOrder({
   const announced = useRef(payLabel)
 
   useEffect(() => {
-    if (announced.current === payLabel) return
+    if (hidden || announced.current === payLabel) return
     announced.current = payLabel
     announce(payLabel)
-  }, [announce, payLabel])
+  }, [announce, payLabel, hidden])
 
   const change = (id: number, typed: Partial<Omit<TypedLine, "id">>) => {
     setTypedLines((current) =>
@@ -114,7 +116,7 @@ export function GuestWrittenOrder({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6" hidden={hidden}>
       <section className="flex flex-col gap-4">
         <ol className="flex flex-col gap-5">
           {typedLines.map((line, index) => (

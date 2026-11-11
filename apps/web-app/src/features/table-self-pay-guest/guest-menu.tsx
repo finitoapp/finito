@@ -33,10 +33,12 @@ export interface GuestOrderChoice {
 
 export function GuestMenu({
   menu,
+  hidden,
   isPreparing,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
+  readonly hidden: boolean
   readonly isPreparing: boolean
   readonly onOrder: (order: GuestOrderChoice) => void
 }) {
@@ -70,10 +72,10 @@ export function GuestMenu({
   const announced = useRef(payLabel)
 
   useEffect(() => {
-    if (announced.current === payLabel) return
+    if (hidden || announced.current === payLabel) return
     announced.current = payLabel
     announce(payLabel)
-  }, [announce, payLabel])
+  }, [announce, payLabel, hidden])
 
   const order = () => {
     const trimmedNote = note.trim()
@@ -93,7 +95,7 @@ export function GuestMenu({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6" hidden={hidden}>
       {menu.categories.map((category, index) => (
         <section
           key={category.name ?? `uncategorized-${index}`}
