@@ -27,6 +27,7 @@ import {
 } from "../catalog-item/catalog-item-actions.ts"
 import { catalogItemByIdQuery } from "../catalog-item/catalog-item-queries.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
+import { isDiscountPrice } from "../catalog-item/catalog-item-utils.ts"
 import type { ItemRow, item } from "../item/item.ts"
 import { upsertItemSnapshot } from "../item/item-actions.ts"
 import type { ItemLineType } from "../item/item-types.ts"
@@ -451,7 +452,7 @@ export const addCatalogItemToBill =
       createCatalogItemNotFoundError({ id: input.catalogItemId })
     )
     if (!catalogItemResult.ok) return catalogItemResult
-    const isDiscount = catalogItemResult.value.unitAmount < 0
+    const isDiscount = isDiscountPrice(catalogItemResult.value.unitAmount)
     if (
       input.expectedDiscount !== null &&
       isDiscount !== input.expectedDiscount
