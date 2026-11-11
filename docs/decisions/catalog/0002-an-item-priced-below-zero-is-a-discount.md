@@ -42,9 +42,10 @@ minus key, so a form cannot ask for the sign to be typed.
   which the forms, the inline edits and the core actions call; on an update
   the core passes the stored price as `originalUnitAmount`.
 - A discount is never zero. Zero has no sign, so this is the form's rule:
-  with the Discount switch on, an amount of zero is refused at the price
-  (`catalog.items.form.price.discountZero`). With it off, zero is a free
-  item (catalog/0001).
+  with the Discount switch on, an amount of zero is refused at the price,
+  with the message that asks for the amount the discount takes off
+  (`catalog.items.form.price.discountInvalid`), which text that is no
+  amount gets too. With it off, zero is a free item (catalog/0001).
 - The forms take the amount without a sign. The create form of the catalog
   and the create-item dialog of a bill, in both apps, have a Discount switch
   that turns the amount below zero, hides the VAT rate picker and saves the

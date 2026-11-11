@@ -668,7 +668,7 @@ export const csSettings = {
   "catalog.items.form.name.placeholder": "např. Káva",
   "catalog.items.form.notFound": "Tato položka už neexistuje.",
   "catalog.items.form.price.discountWithTaxRate": "Sleva nemá sazbu DPH.",
-  "catalog.items.form.price.discountZero":
+  "catalog.items.form.price.discountInvalid":
     "Zadejte částku, kterou sleva odečte.",
   "catalog.items.form.price.invalid": "Zadejte platnou cenu.",
   "catalog.items.form.price.label": "Cena",

@@ -6,8 +6,8 @@ import { describe, expect, test } from "vitest"
 import {
   type CatalogItemFormContext,
   type CatalogItemFormInput,
-  createPriceErrorKey,
   parseCatalogItemForm,
+  priceErrorKey,
   updateCatalogItemErrorKeys,
 } from "./catalog-item-form-schema.ts"
 import { NO_OPTION } from "./inline-edit-codecs.ts"
@@ -133,17 +133,30 @@ describe("parseCatalogItemForm", () => {
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toEqual({
-      price: "catalog.items.form.price.discountZero",
+      price: "catalog.items.form.price.discountInvalid",
+    })
+  })
+
+  test("asks a discount for its amount when the text is no amount", () => {
+    const result = parse({ price: "abc" }, { discount: true })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toEqual({
+      price: "catalog.items.form.price.discountInvalid",
     })
   })
 
   test("still refuses a signed amount for a discount", () => {
-    // The switch carries the sign; the field takes the amount only.
+    // The switch carries the sign; the field takes the amount only, and
+    // asks for it.
     const result = parse({ price: "-5" }, { discount: true })
 
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toEqual({ price: "catalog.items.form.price.invalid" })
+    expect(result.error).toEqual({
+      price: "catalog.items.form.price.discountInvalid",
+    })
   })
 
   test("rejects optional text over 255 characters", () => {
@@ -171,25 +184,10 @@ describe("parseCatalogItemForm", () => {
   })
 })
 
-describe("createPriceErrorKey", () => {
-  test("says a discount cannot be zero only for a well-formed zero, and a malformed amount is an invalid price", () => {
-    const discountErrorKey = createPriceErrorKey({
-      currency: "CZK",
-      discount: true,
-    })
-    expect(discountErrorKey("0")).toBe("catalog.items.form.price.discountZero")
-    expect(discountErrorKey("0,00")).toBe(
-      "catalog.items.form.price.discountZero"
-    )
-    for (const malformed of ["abc", "1.234", "-5", ""]) {
-      expect(discountErrorKey(malformed)).toBe(
-        "catalog.items.form.price.invalid"
-      )
-    }
-    // A price that is not a discount may be zero; anything refused is invalid.
-    expect(
-      createPriceErrorKey({ currency: "CZK", discount: false })("abc")
-    ).toBe("catalog.items.form.price.invalid")
+describe("priceErrorKey", () => {
+  test("asks a discount for the amount it takes off, and any other price for a valid one", () => {
+    expect(priceErrorKey(true)).toBe("catalog.items.form.price.discountInvalid")
+    expect(priceErrorKey(false)).toBe("catalog.items.form.price.invalid")
   })
 })
 
