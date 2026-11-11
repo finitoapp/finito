@@ -1803,6 +1803,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/shared/discount-switch-field.tsx",
+    web: ["apps/web-app/src/features/shared/forms/discount-switch-field.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/shared/eet-sale-status.tsx",
     web: ["apps/web-app/src/features/shared/eet-sale-status.tsx"],
     status: "matched",

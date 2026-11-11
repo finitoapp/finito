@@ -65,7 +65,6 @@ import {
 } from "@/components/ui/card.tsx"
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -80,8 +79,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
-import { Switch } from "@/components/ui/switch.tsx"
 import { CatalogFormEmptyState } from "@/features/catalog/catalog-form-empty-state.tsx"
+import { DiscountSwitchField } from "@/features/shared/forms/discount-switch-field.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
@@ -445,26 +444,16 @@ function CreateCatalogItemForm({
             <FieldError>{errors.price ? t(errors.price) : null}</FieldError>
           </Field>
 
-          <Field orientation="horizontal">
-            <Switch
-              id={`${formId}-discount`}
-              checked={discount}
-              disabled={pending}
-              onCheckedChange={(checked) => {
-                setDiscount(checked)
-                clearError("price")
-                resetSaved()
-              }}
-            />
-            <FieldContent>
-              <FieldLabel htmlFor={`${formId}-discount`}>
-                {t("catalog.items.form.discount.label")}
-              </FieldLabel>
-              <FieldDescription>
-                {t("catalog.items.form.discount.description")}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
+          <DiscountSwitchField
+            id={`${formId}-discount`}
+            checked={discount}
+            disabled={pending}
+            onCheckedChange={(checked) => {
+              setDiscount(checked)
+              clearError("price")
+              resetSaved()
+            }}
+          />
 
           <Field data-invalid={errors.description !== undefined}>
             <FieldLabel htmlFor={`${formId}-description`}>

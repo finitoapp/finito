@@ -42,7 +42,6 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -57,7 +56,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import {
   useEvoluQuery,
   usePreloadEvoluQueries,
@@ -66,6 +64,7 @@ import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { DiscountSwitchField } from "../../shared/discount-switch-field.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
 import { CategoryField } from "./category-field.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
@@ -293,25 +292,14 @@ export function NewCatalogItemPage() {
               </XStack>
               <FieldError>{error("price")}</FieldError>
             </Field>
-            <Field orientation="horizontal">
-              <Switch
-                aria-label={t("catalog.items.form.discount.label")}
-                checked={discount}
-                disabled={pending}
-                onCheckedChange={(next) => {
-                  setDiscount(next)
-                  clearError("price")
-                }}
-              />
-              <FieldContent>
-                <FieldLabel>
-                  {t("catalog.items.form.discount.label")}
-                </FieldLabel>
-                <FieldDescription>
-                  {t("catalog.items.form.discount.description")}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+            <DiscountSwitchField
+              checked={discount}
+              disabled={pending}
+              onCheckedChange={(next) => {
+                setDiscount(next)
+                clearError("price")
+              }}
+            />
             <Field>
               <FieldLabel>
                 {t("catalog.items.form.description.label")}

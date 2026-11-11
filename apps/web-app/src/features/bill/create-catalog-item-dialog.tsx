@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/dialog.tsx"
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -45,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
-import { Switch } from "@/components/ui/switch.tsx"
+import { DiscountSwitchField } from "@/features/shared/forms/discount-switch-field.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useEvolu } from "@/hooks/use-evolu.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -290,25 +289,15 @@ export function CreateCatalogItemDialog({
               <FieldError>{priceError ? t(priceError) : null}</FieldError>
             </Field>
 
-            <Field orientation="horizontal">
-              <Switch
-                id={`${formId}-discount`}
-                checked={discount}
-                disabled={pending}
-                onCheckedChange={(checked) => {
-                  setDiscount(checked)
-                  setPriceError(null)
-                }}
-              />
-              <FieldContent>
-                <FieldLabel htmlFor={`${formId}-discount`}>
-                  {t("catalog.items.form.discount.label")}
-                </FieldLabel>
-                <FieldDescription>
-                  {t("catalog.items.form.discount.description")}
-                </FieldDescription>
-              </FieldContent>
-            </Field>
+            <DiscountSwitchField
+              id={`${formId}-discount`}
+              checked={discount}
+              disabled={pending}
+              onCheckedChange={(checked) => {
+                setDiscount(checked)
+                setPriceError(null)
+              }}
+            />
 
             <Field>
               <FieldLabel htmlFor={`${formId}-category`}>

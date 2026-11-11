@@ -29,7 +29,6 @@ import {
 } from "../../components/ui/dialog.tsx"
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -44,7 +43,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select.tsx"
-import { Switch } from "../../components/ui/switch.tsx"
 import { useRequirePermission } from "../../core/use-access.ts"
 import {
   useEvoluQuery,
@@ -54,6 +52,7 @@ import type { useProductLookup } from "../../hooks/use-product-lookup.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { DiscountSwitchField } from "../shared/discount-switch-field.tsx"
 import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
 
 /**
@@ -284,23 +283,14 @@ function CreateForm({
           />
           <FieldError>{error("price")}</FieldError>
         </Field>
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.items.form.discount.label")}
-            checked={discount}
-            disabled={pending}
-            onCheckedChange={(next) => {
-              setDiscount(next)
-              clear("price")
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>{t("catalog.items.form.discount.label")}</FieldLabel>
-            <FieldDescription>
-              {t("catalog.items.form.discount.description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+        <DiscountSwitchField
+          checked={discount}
+          disabled={pending}
+          onCheckedChange={(next) => {
+            setDiscount(next)
+            clear("price")
+          }}
+        />
         <Field>
           <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
           <Select
