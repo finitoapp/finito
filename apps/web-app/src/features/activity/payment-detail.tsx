@@ -20,6 +20,7 @@ import {
   hasTaxableLines,
 } from "@payky/core/modules/bill-line/bill-line-tax-utils"
 import {
+  deriveBillLineSummaryDiff,
   deriveBillSummaryTotal,
   getBillLineSummaryUnitAmount,
 } from "@payky/core/modules/bill-line/bill-line-utils"
@@ -59,7 +60,7 @@ import {
   CopyIcon,
   RotateCwIcon,
 } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { accountAtom } from "@/atoms/account.ts"
 import { CollisionAlert } from "@/components/collision-alert.tsx"
@@ -101,7 +102,6 @@ import { paymentStatusBadgeClassName } from "@/features/activity/payment-status-
 import { useBillCoverage } from "@/features/activity/use-bill-coverage.ts"
 import {
   billLineSummaryDiffQueries,
-  useBillLineSummaryDiff,
   usePaymentLineSummaries,
 } from "@/features/activity/use-bill-line-summary-diff.ts"
 import { paymentRefundsQueries } from "@/features/activity/use-payment-refund-state.ts"
@@ -572,8 +572,16 @@ function PaymentDetailBillCard({
   const summaries = useBillLineSummaries(billId)
   const billStatus = useBillStatus(billId)
   const { claimedSum, coverage } = useBillCoverage(billId)
-  const lineDiff = useBillLineSummaryDiff(paymentId, billId)
   const frozenLines = usePaymentLineSummaries(paymentId)
+  // `null` when the payment predates the frozen snapshot — see
+  // `paymentLinesByPaymentIdQuery`'s doc comment.
+  const lineDiff = useMemo(
+    () =>
+      frozenLines === null
+        ? null
+        : deriveBillLineSummaryDiff(frozenLines, summaries),
+    [frozenLines, summaries]
+  )
   const claimedPaymentsQuery = claimedPaymentsByBillIdQuery(billId)
   const { data: claimedPayments } = useEvoluQuery(claimedPaymentsQuery)
   const bill = bills[0]
