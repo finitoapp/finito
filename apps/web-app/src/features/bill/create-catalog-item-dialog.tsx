@@ -1,10 +1,13 @@
 import {
+  type CategoryChoice,
+  resolveCategoryChoice,
+} from "@payky/app-shared/catalog-category-choice"
+import {
   catalogItemPricingErrorKeys,
   parseCatalogItemForm,
 } from "@payky/app-shared/catalog-item-form-schema"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { CatalogCategoryRow } from "@payky/core/modules/catalog-category/catalog-category"
-import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
@@ -43,6 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
+import { CategoryCombobox } from "@/features/shared/category-combobox.tsx"
 import { DiscountSwitchField } from "@/features/shared/forms/discount-switch-field.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useEvolu } from "@/hooks/use-evolu.ts"
@@ -91,9 +95,8 @@ export function CreateCatalogItemDialog({
   const [price, setPrice] = useState("")
   // The sign of the price, as the catalog form's switch (catalog/0002).
   const [discount, setDiscount] = useState(false)
-  const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
-    "none"
-  )
+  // A typed name becomes its category with the item (catalog/0004).
+  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
   const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
     defaultTaxRate?.id ?? "none"
   )
@@ -123,7 +126,7 @@ export function CreateCatalogItemDialog({
     setDescription("")
     setPrice("")
     setDiscount(false)
-    setCategoryId("none")
+    setCategory({ kind: "none" })
     setTaxRateId(defaultTaxRate?.id ?? "none")
     setNameError(null)
     setDescriptionError(null)
@@ -188,10 +191,11 @@ export function CreateCatalogItemDialog({
               }
               setPending(true)
               await runToast(async (run) => {
+                const categoryId = await run.ok(resolveCategoryChoice(category))
                 const result = await run(
                   createCatalogItemAtEnd({
                     deviceId: null,
-                    categoryId: categoryId === "none" ? null : categoryId,
+                    categoryId,
                     name: values.name,
                     description: values.description,
                     currency,
@@ -302,35 +306,13 @@ export function CreateCatalogItemDialog({
               <FieldLabel htmlFor={`${formId}-category`}>
                 {t("catalog.items.form.category.label")}
               </FieldLabel>
-              <Select<CatalogCategoryId | "none">
-                items={{
-                  none: t("catalog.items.form.category.none"),
-                  ...Object.fromEntries(
-                    categories.map((category) => [category.id, category.name])
-                  ),
-                }}
-                value={categoryId}
-                onValueChange={(nextCategoryId) => {
-                  if (nextCategoryId === null) return
-                  setCategoryId(nextCategoryId)
-                }}
-              >
-                <SelectTrigger id={`${formId}-category`} disabled={pending}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="none">
-                      {t("catalog.items.form.category.none")}
-                    </SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <CategoryCombobox
+                id={`${formId}-category`}
+                categories={categories}
+                value={category}
+                onValueChange={setCategory}
+                disabled={pending}
+              />
             </Field>
 
             {/* A discount has no VAT rate (catalog/0002). */}

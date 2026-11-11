@@ -1,0 +1,122 @@
+# Native only (catalog/0004): Finito has no categories screen, so the item
+# form's category combobox adds a typed name and its rows open a category to
+# rename or delete it.
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Coffee
+      PRICE: "59"
+      CATEGORY: Drnks
+- runFlow:
+    file: ../../subflows/add-catalog-item.yaml
+    env:
+      NAME: Tea
+      PRICE: "49"
+      CATEGORY: Snacks
+# Rename the typo from the combobox on the item it is on.
+- tapOn: Coffee
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.form.title.edit"]}
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: ${output.re(output.t["catalog.items.form.category.label"])}
+    centerElement: true
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.label"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.items.form.category.edit.aria", { name: "Drnks" })}'
+- extendedWaitUntil:
+    visible: ${output.t["catalog.categories.form.title.edit"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.edit.name"]}
+      VALUE: Drinks
+      PLACEHOLDER: ${output.t["catalog.categories.form.name.placeholder"]}
+- tapOn: ${output.re(output.t["catalog.categories.form.save.edit"])}
+- extendedWaitUntil:
+    notVisible: ${output.t["catalog.categories.form.title.edit"]}
+    timeout: 10000
+- assertVisible: Drinks
+- assertNotVisible: Drnks
+# A name another category has is refused, and the dialog stays.
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.label"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.items.form.category.edit.aria", { name: "Drinks" })}'
+- runFlow:
+    file: ../../subflows/fill-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.edit.name"]}
+      VALUE: snacks
+      PLACEHOLDER: ${output.t["catalog.categories.form.name.placeholder"]}
+- tapOn: ${output.re(output.t["catalog.categories.form.save.edit"])}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["catalog.categories.form.name.taken"])}
+    timeout: 10000
+- assertVisible: ${output.t["catalog.categories.form.title.edit"]}
+- tapOn: ${output.re(output.t["catalog.categories.form.cancel"])}
+- extendedWaitUntil:
+    notVisible: ${output.t["catalog.categories.form.title.edit"]}
+    timeout: 10000
+# A name typed in the combobox becomes a category, saved on the item at once.
+- runFlow:
+    file: ../../subflows/pick-category.yaml
+    env:
+      CATEGORY: Desserts
+- extendedWaitUntil:
+    visible: Desserts
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/goto.yaml
+    env:
+      ROUTE: settings/items
+      TEXT: ${output.t["catalog.items.title"]}
+- extendedWaitUntil:
+    visible:
+      text: Desserts
+      below: Coffee
+    timeout: 10000
+# Delete Drinks, which nothing holds now: it leaves the combobox.
+- tapOn: Coffee
+- extendedWaitUntil:
+    visible: ${output.t["catalog.items.form.title.edit"]}
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: ${output.re(output.t["catalog.items.form.category.label"])}
+    centerElement: true
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.label"]}
+- assertVisible: Drinks
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: '${output.tv("catalog.items.form.category.edit.aria", { name: "Drinks" })}'
+- tapOn: ${output.re(output.t["catalog.categories.delete"])}
+- tapOn: ${output.re(output.t["catalog.categories.delete.confirm.confirm"])}
+- extendedWaitUntil:
+    notVisible: ${output.t["catalog.categories.delete.confirm.confirm"]}
+    timeout: 10000
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.label"]}
+- assertVisible: Snacks
+- assertNotVisible: Drinks

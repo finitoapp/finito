@@ -1,4 +1,9 @@
 import {
+  type CategoryChoice,
+  categoryChoiceOf,
+  resolveCategoryChoice,
+} from "@payky/app-shared/catalog-category-choice"
+import {
   createPriceCodec,
   priceErrorKey,
   updateCatalogItemErrorKeys,
@@ -9,8 +14,8 @@ import {
   optionalTextCodec,
   requiredTextCodec,
 } from "@payky/app-shared/inline-edit-codecs"
-import { findOrCreateCatalogCategory } from "@payky/core/modules/catalog-category/catalog-category-actions"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
+import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   deleteCatalogItem,
@@ -26,7 +31,7 @@ import {
   getStaffDisplayName,
   isDiscountPrice,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
-import { NonEmptyString255Schema } from "@payky/core/modules/shared/schema"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import Trash from "lucide-react-native/icons/trash"
@@ -60,15 +65,19 @@ import {
   SelectValue,
 } from "../../../components/ui/select.tsx"
 import { useConfirmedRun } from "../../../hooks/use-confirmed-run.ts"
-import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { CategoryCombobox } from "../../shared/category-combobox.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
 import { CatalogFormEmptyState } from "../catalog-form-empty-state.tsx"
-import { CategoryField } from "./category-field.tsx"
+import { CategoryEditDialog } from "./category-edit-dialog.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 const taxRateCodec = optionalIdCodec<TaxRateId>()
@@ -107,7 +116,18 @@ function EditCatalogItemLoader({ id }: { readonly id: CatalogItemId }) {
   return <EditCatalogItemForm item={item} />
 }
 
+/**
+ * What the form reads besides the item, its options' categories
+ * (catalog/0004) and VAT rates included, started together.
+ */
+const editItemFormQueries = [
+  catalogItemsQuery,
+  catalogCategoriesQuery,
+  taxRatesQuery,
+]
+
 function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
+  usePreloadEvoluQueries(editItemFormQueries)
   const { t } = useTranslation()
   const runToast = useRunToast()
   const confirmedRun = useConfirmedRun()
@@ -115,8 +135,11 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const { taxRateOptions } = useCatalogItemOptions(item.taxRateId)
   const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
-  // A category typed rather than picked, made on Save (navigation/0003).
-  const [newCategory, setNewCategory] = useState("")
+  // The category opened to rename or delete (catalog/0004).
+  const [editedCategory, setEditedCategory] = useState<{
+    readonly id: CatalogCategoryId
+    readonly name: string
+  } | null>(null)
 
   const discount = isDiscountPrice(item.unitAmount)
   // How many minor units the price means depends on the currency next to it.
@@ -139,21 +162,17 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const currency = useInlineChoice(item.currency, (next) =>
     saveItem({ currency: next })
   )
-  const category = useInlineChoice(item.categoryId, (next) =>
-    saveItem({ categoryId: next })
+  // Saved as soon as it is chosen; a typed name becomes its category first
+  // (catalog/0004).
+  const category = useInlineChoice<CategoryChoice>(
+    categoryChoiceOf(item.categoryId),
+    (next) =>
+      runToast(async (run) => {
+        const categoryId = await run.ok(resolveCategoryChoice(next))
+        const result = await run(updateCatalogItem({ id: item.id, categoryId }))
+        if (!result.ok) return updateCatalogItemErrorKeys[result.error.type]
+      })
   )
-  const [savingCategory, setSavingCategory] = useState(false)
-  const commitNewCategory = async () => {
-    const name = NonEmptyString255Schema.safeParse(newCategory.trim())
-    if (!name.success || savingCategory) return
-    setSavingCategory(true)
-    const saved = await runToast(async (run) => {
-      const categoryId = await run.ok(findOrCreateCatalogCategory(name.data))
-      await run.orThrow(updateCatalogItem({ id: item.id, categoryId }))
-    })
-    setSavingCategory(false)
-    if (saved) setNewCategory("")
-  }
   const taxRate = useInlineChoice(item.taxRateId, (next) =>
     saveItem({ taxRateId: next })
   )
@@ -283,17 +302,18 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
                 errorKey="catalog.items.form.sku.invalid"
                 onSave={(sku) => saveItem({ sku })}
               />
-              <CategoryField
-                categories={categories}
-                value={category.value}
-                onValueChange={(next) => void category.choose(next)}
-                draft={newCategory}
-                onDraftChange={setNewCategory}
-                onCommitDraft={() => {
-                  void commitNewCategory()
-                }}
-                saving={savingCategory || category.saving}
-              />
+              <Field>
+                <FieldLabel>
+                  {t("catalog.items.form.category.label")}
+                </FieldLabel>
+                <CategoryCombobox
+                  categories={categories}
+                  value={category.value}
+                  onValueChange={(next) => void category.choose(next)}
+                  onEdit={setEditedCategory}
+                  disabled={category.saving}
+                />
+              </Field>
               {discount ? null : (
                 <Field>
                   <FieldLabel>
@@ -394,6 +414,10 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
           }}
         />
       </YStack>
+      <CategoryEditDialog
+        category={editedCategory}
+        onClose={() => setEditedCategory(null)}
+      />
     </Screen>
   )
 }

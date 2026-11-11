@@ -1,0 +1,28 @@
+# web's pickCategory: in an item form, picks the category called CATEGORY
+# in the category combobox, or adds it there when none is called that
+# (catalog/0004). Opens the combobox, types the name into its search and
+# taps the row that is the category or adds it; the sheet then closes.
+appId: ${APP_ID}
+---
+- scrollUntilVisible:
+    element:
+      id: ${output.re(output.t["catalog.items.form.category.label"])}
+    centerElement: true
+- runFlow:
+    file: tap-id.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.label"]}
+- runFlow:
+    file: type-input.yaml
+    env:
+      LABEL: ${output.t["catalog.items.form.category.search"]}
+      VALUE: ${CATEGORY}
+# Below the search, which holds the same text on Android.
+- tapOn:
+    text: '${"(" + output.re(CATEGORY) + "|" + output.re(output.tv("catalog.items.form.category.add", { name: CATEGORY })) + ")"}'
+    below:
+      id: ${output.re(output.t["catalog.items.form.category.search"])}
+- extendedWaitUntil:
+    notVisible:
+      id: ${output.re(output.t["catalog.items.form.category.search"])}
+    timeout: 10000

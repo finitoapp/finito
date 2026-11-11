@@ -1,6 +1,7 @@
 # web's addCatalogItem: adds a catalog item through the settings form. NAME,
-# PRICE; optional INTERNAL_NAME, SKU, SCAN_CODE, CATEGORY (a name, typed:
-# the category is made on the item, or reused by name, navigation/0003),
+# PRICE; optional INTERNAL_NAME, SKU, SCAN_CODE, CATEGORY (a name, picked in
+# the category combobox, or added there when no category has it,
+# catalog/0004: pick-category),
 # TAX_RATE (option text, a regex). Ends on the items list. The form starts
 # empty, so it types without clearing (clear-input would read a placeholder
 # as text).
@@ -61,20 +62,10 @@ appId: ${APP_ID}
     when:
       true: ${typeof CATEGORY !== "undefined"}
     commands:
-      - scrollUntilVisible:
-          element:
-            id: ${output.re(output.t["catalog.items.form.category.new.placeholder"])}
-          centerElement: true
       - runFlow:
-          file: type-input.yaml
+          file: pick-category.yaml
           env:
-            LABEL: ${output.t["catalog.items.form.category.new.placeholder"]}
-            VALUE: '${typeof CATEGORY === "undefined" ? "" : CATEGORY}'
-      - runFlow:
-          when:
-            platform: Android
-          commands:
-            - hideKeyboard
+            CATEGORY: '${typeof CATEGORY === "undefined" ? "" : CATEGORY}'
 - runFlow:
     when:
       true: ${typeof SCAN_CODE !== "undefined"}
