@@ -460,6 +460,16 @@ export const requireSplitTotalNotNegative = (
 }
 
 /**
+ * What judging a cart write reads of a bill: a `BillStatusSnapshot`, or the
+ * empty bill a split is about to create (`splitBillIntoNewBill`), which has no
+ * ledger, no claim and no closing time yet.
+ */
+export interface CartWriteBill
+  extends Pick<BillStatusSnapshot, "ledger" | "claimedSum" | "hasActiveClaim"> {
+  readonly bill: Pick<BillRow, "id" | "closedAt">
+}
+
+/**
  * Judges a cart write on the open bill `snapshot` describes, before anything
  * is written (`deriveCartWriteClosing`, payment/0014). Returns the
  * `closedAt` the caller must write in the same batch as the lines
@@ -477,7 +487,7 @@ export const requireSplitTotalNotNegative = (
  * repair it. See docs/bill-payment-states.md.
  */
 export const requireCartWriteNotBelowPaid = (
-  snapshot: BillStatusSnapshot,
+  snapshot: CartWriteBill,
   write: CartWrite,
   now: TimestampMs
 ): Result<TimestampMs | null, BillTotalBelowPaidError> => {
