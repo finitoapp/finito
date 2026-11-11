@@ -278,8 +278,6 @@ function ToServeStrip() {
         p={12}
         pl={16}
         rounded={radius.xl}
-        borderWidth={1}
-        borderColor="card-ring"
         bg="card"
       >
         <Text

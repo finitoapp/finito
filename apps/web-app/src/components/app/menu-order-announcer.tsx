@@ -34,7 +34,7 @@ export function MenuOrderAnnouncer() {
       toast.dismiss(WAITING_ORDERS_TOAST_ID)
       return
     }
-    toast.success(notice, {
+    toast(notice, {
       id: WAITING_ORDERS_TOAST_ID,
       duration: Number.POSITIVE_INFINITY,
       dismissible: false,
