@@ -471,6 +471,45 @@ test("charges a cart and closes it once cash is paid", async ({
   })
 })
 
+test("finishes a bill of free items without a payment, and it leaves the floor", async ({
+  seededPage: page,
+}) => {
+  const finishButton = page.getByRole("button", {
+    name: translate("en", "bill.finish"),
+  })
+
+  await test.step("a bill of a free item offers Finish in Charge's place", async () => {
+    await addCatalogItem(page, "en", { name: "Water", price: "0" })
+    await page.goto("/", { waitUntil: "domcontentloaded" })
+    await startNewBill(page, "en")
+    await page
+      .getByRole("button", { name: nameParam("bill.brick.add.aria", "Water") })
+      .click()
+    await expect(page.getByTestId("bill-summary-trigger")).toContainText(
+      translateValue("en", "bill.itemsCount", 1)
+    )
+    await expect(finishButton).toBeVisible()
+    await expect(
+      page.getByRole("button", {
+        name: translate("en", "home.pay"),
+        exact: true,
+      })
+    ).toHaveCount(0)
+  })
+
+  await test.step("Finish closes the bill and goes home, where it is gone from the floor", async () => {
+    await finishButton.click()
+    await expect(
+      page.getByText(translate("en", "bill.finish.done"))
+    ).toBeVisible()
+    await page.waitForURL((url) => url.pathname === "/")
+    await gotoPosOverview(page, "en")
+    await expect(page.getByTestId("no-table-tile")).toContainText(
+      translate("en", "home.pos.noTable.empty")
+    )
+  })
+})
+
 test("the assign-table dialog shows a table as free again once its bill is settled", async ({
   seededPage: page,
 }) => {

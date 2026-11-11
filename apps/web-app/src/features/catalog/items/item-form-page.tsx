@@ -1,9 +1,13 @@
 import {
   type CatalogItemFormErrors,
+  catalogItemPricingErrorKeys,
   createPriceCodec,
+  createPriceErrorKey,
   parseCatalogItemForm,
+  updateCatalogItemErrorKeys,
 } from "@payky/app-shared/catalog-item-form-schema"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
+import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   NO_OPTION,
   optionalIdCodec,
@@ -31,7 +35,10 @@ import {
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
+  isDiscountPrice,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   FiatCurrencySchema,
   type FiatCurrency as FiatCurrencyType,
@@ -58,6 +65,7 @@ import {
 } from "@/components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -72,6 +80,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
+import { Switch } from "@/components/ui/switch.tsx"
 import { CatalogFormEmptyState } from "@/features/catalog/catalog-form-empty-state.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
@@ -79,7 +88,10 @@ import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useIsConfirmDialogOpen } from "@/hooks/use-confirm-dialog.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "@/hooks/use-hardware-scanner.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
@@ -89,12 +101,26 @@ const categoryCodec = optionalIdCodec<CatalogCategoryId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
 const currencyCodec = FiatCurrencySchema
 
+/**
+ * What the create screen and its form read: the form judges the price
+ * together with the VAT rate and whether the account is a VAT payer
+ * (catalog/0001).
+ */
+const newCatalogItemPageQueries = [
+  settingsQuery,
+  catalogItemsQuery,
+  catalogCategoriesQuery,
+  taxRatesQuery,
+  legalEntityQuery,
+]
+
 export function NewCatalogItemPage({
   initialScanCode,
 }: {
   /** Prefills the scan code, for an unknown code scanned on the items list. */
   readonly initialScanCode?: string
 }) {
+  usePreloadEvoluQueries(newCatalogItemPageQueries)
   const { t } = useTranslation()
   const { data } = useEvoluQuery(settingsQuery)
   const [settings] = data
@@ -215,6 +241,7 @@ function CreateCatalogItemForm({
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const { defaultTaxRate, categoryOptions, taxRateOptions } =
     useCatalogItemOptions()
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [internalName, setInternalName] = useState("")
@@ -228,6 +255,9 @@ function CreateCatalogItemForm({
   )
   const [currency, setCurrency] = useState<FiatCurrencyType>(defaultCurrency)
   const [price, setPrice] = useState("")
+  // The Discount switch carries the price's sign, which Android's decimal
+  // keyboard cannot type; it is set here, on create, only (catalog/0002).
+  const [discount, setDiscount] = useState(false)
   const [scanCode, setScanCode] = useState(initialScanCode)
   const [scannerDialogOpen, setScannerDialogOpen] = useState(false)
   const [errors, setErrors] = useState<CatalogItemFormErrors>({})
@@ -282,7 +312,12 @@ function CreateCatalogItemForm({
               sku,
               scanCode,
             },
-            currency
+            {
+              currency,
+              taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+              vatPayer: isVatPayer(legalEntity),
+              discount,
+            }
           )
           if (!parsed.ok) {
             setErrors(parsed.error)
@@ -292,7 +327,7 @@ function CreateCatalogItemForm({
 
           void submit(() =>
             runToast(async (run) => {
-              await run.ok(
+              const result = await run(
                 createCatalogItemAtEnd({
                   deviceId: null,
                   categoryId: categoryId === NO_OPTION ? null : categoryId,
@@ -304,9 +339,14 @@ function CreateCatalogItemForm({
                   currency,
                   unitAmount: values.price,
                   scanCode: values.scanCode,
-                  taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+                  taxRateId: values.taxRateId,
                 })
               )
+              // The core's own pricing rules, should the account have
+              // become a VAT payer since the form judged it.
+              if (!result.ok) {
+                return catalogItemPricingErrorKeys[result.error.type]
+              }
               router.history.back()
             })
           )
@@ -403,6 +443,27 @@ function CreateCatalogItemForm({
               </Select>
             </div>
             <FieldError>{errors.price ? t(errors.price) : null}</FieldError>
+          </Field>
+
+          <Field orientation="horizontal">
+            <Switch
+              id={`${formId}-discount`}
+              checked={discount}
+              disabled={pending}
+              onCheckedChange={(checked) => {
+                setDiscount(checked)
+                clearError("price")
+                resetSaved()
+              }}
+            />
+            <FieldContent>
+              <FieldLabel htmlFor={`${formId}-discount`}>
+                {t("catalog.items.form.discount.label")}
+              </FieldLabel>
+              <FieldDescription>
+                {t("catalog.items.form.discount.description")}
+              </FieldDescription>
+            </FieldContent>
           </Field>
 
           <Field data-invalid={errors.description !== undefined}>
@@ -503,38 +564,41 @@ function CreateCatalogItemForm({
             </Select>
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor={`${formId}-taxRate`}>
-              {t("catalog.items.form.taxRate.label")}
-            </FieldLabel>
-            <Select<TaxRateId | "none">
-              items={Object.fromEntries(
-                taxRateOptions.map((option) => [option.value, option.label])
-              )}
-              value={taxRateId}
-              onValueChange={(nextTaxRateId) => {
-                if (nextTaxRateId === null) return
-                setTaxRateId(nextTaxRateId)
-                resetSaved()
-              }}
-            >
-              <SelectTrigger id={`${formId}-taxRate`} disabled={pending}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {taxRateOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <FieldDescription>
-              {t("catalog.items.form.taxRate.description")}
-            </FieldDescription>
-          </Field>
+          {/* A discount has no VAT rate (catalog/0002). */}
+          {discount ? null : (
+            <Field>
+              <FieldLabel htmlFor={`${formId}-taxRate`}>
+                {t("catalog.items.form.taxRate.label")}
+              </FieldLabel>
+              <Select<TaxRateId | "none">
+                items={Object.fromEntries(
+                  taxRateOptions.map((option) => [option.value, option.label])
+                )}
+                value={taxRateId}
+                onValueChange={(nextTaxRateId) => {
+                  if (nextTaxRateId === null) return
+                  setTaxRateId(nextTaxRateId)
+                  resetSaved()
+                }}
+              >
+                <SelectTrigger id={`${formId}-taxRate`} disabled={pending}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {taxRateOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FieldDescription>
+                {t("catalog.items.form.taxRate.description")}
+              </FieldDescription>
+            </Field>
+          )}
 
           <Field data-invalid={errors.scanCode !== undefined}>
             <FieldLabel htmlFor={`${formId}-scanCode`}>
@@ -596,6 +660,10 @@ function CreateCatalogItemForm({
  * The edit form has no submit button: every field saves itself. The row
  * already exists, so each change is an independent update and there is
  * nothing to validate across fields.
+ *
+ * Whether the item is a discount was settled when it was created
+ * (catalog/0002): a discount's price field edits the amount and keeps the
+ * sign, and it has no VAT rate to pick.
  */
 function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const appRun = useAppRun()
@@ -608,23 +676,29 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   )
   const [scannerDialogOpen, setScannerDialogOpen] = useState(false)
   const isConfirmDialogOpen = useIsConfirmDialogOpen()
+  const discount = isDiscountPrice(item.unitAmount)
 
   // How many minor units the price means depends on the currency next to it,
   // so the codec is rebuilt whenever that changes.
   const priceCodec = useMemo(
-    () => createPriceCodec(item.currency),
-    [item.currency]
+    () => createPriceCodec({ currency: item.currency, discount }),
+    [item.currency, discount]
+  )
+  const priceErrorKey = useMemo(
+    () => createPriceErrorKey({ currency: item.currency, discount }),
+    [item.currency, discount]
   )
 
-  // `updateCatalogItem` is a `Task<_, never>`: its only realistic failure is
-  // unexpected infrastructure. `run.ok` throws on any non-ok result too (a
-  // disposed run), and the inline-edit controls turn the throw into the toast
-  // and withhold their saved tick.
+  // A refused price or VAT rate (`validateCatalogItemPricing`, catalog/0001)
+  // comes back as its own message, which the inline-edit controls toast
+  // instead of their saved tick; a throw (a disposed run) gets the generic
+  // one.
   const saveItem = async (
     values: Omit<Parameters<typeof updateCatalogItem>[0], "id">
-  ) => {
+  ): Promise<TranslationKey | undefined> => {
     await using run = appRun()
-    await run.ok(updateCatalogItem({ id: item.id, ...values }))
+    const result = await run(updateCatalogItem({ id: item.id, ...values }))
+    return result.ok ? undefined : updateCatalogItemErrorKeys[result.error.type]
   }
 
   const applyScanCode = (rawValue: string) => {
@@ -679,11 +753,18 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
             />
 
             <InlineEditField
-              label={t("catalog.items.form.price.label")}
+              label={t(
+                discount
+                  ? "catalog.items.form.discount.label"
+                  : "catalog.items.form.price.label"
+              )}
+              description={
+                discount ? t("catalog.items.form.discount.existing") : undefined
+              }
               inputMode="decimal"
               defaultValue={item.unitAmount}
               codec={priceCodec}
-              errorKey="catalog.items.form.price.invalid"
+              errorKey={priceErrorKey}
               onSave={(unitAmount) => saveItem({ unitAmount })}
             />
 
@@ -737,14 +818,16 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
               onSave={(categoryId) => saveItem({ categoryId })}
             />
 
-            <InlineEditSelect
-              label={t("catalog.items.form.taxRate.label")}
-              description={t("catalog.items.form.taxRate.description")}
-              defaultValue={item.taxRateId}
-              codec={taxRateCodec}
-              options={taxRateOptions}
-              onSave={(taxRateId) => saveItem({ taxRateId })}
-            />
+            {discount ? null : (
+              <InlineEditSelect
+                label={t("catalog.items.form.taxRate.label")}
+                description={t("catalog.items.form.taxRate.description")}
+                defaultValue={item.taxRateId}
+                codec={taxRateCodec}
+                options={taxRateOptions}
+                onSave={(taxRateId) => saveItem({ taxRateId })}
+              />
+            )}
 
             <InlineEditField
               label={t("catalog.items.form.scanCode.label")}

@@ -1,7 +1,11 @@
 import { turnOnAccessControl } from "./support/access.ts"
-import { addCatalogCategory, addCatalogItem } from "./support/bill.ts"
+import {
+  addCatalogCategory,
+  addCatalogItem,
+  startNewBill,
+} from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { nameParam, translate } from "./support/i18n.ts"
+import { nameParam, translate, translateValue } from "./support/i18n.ts"
 import { fillInlineField, pickInlineOption } from "./support/inline-edit.ts"
 import { gotoPage, reloadPage } from "./support/navigation.ts"
 
@@ -337,6 +341,71 @@ test("shows a non-blocking warning for a duplicate scan code but still saves", a
   await test.step("both items exist in the list", async () => {
     await expect(page.getByRole("link", { name: "Coffee" })).toBeVisible()
     await expect(page.getByRole("link", { name: "Cocoa" })).toBeVisible()
+  })
+})
+
+test("a discount created with the Discount switch has no VAT rate and takes its amount off a bill", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+
+  await test.step("the Discount switch hides the VAT rate picker", async () => {
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
+    await page
+      .getByRole("button", { name: translate("en", "catalog.items.add") })
+      .click()
+    const taxRate = page.getByRole("combobox", {
+      name: translate("en", "catalog.items.form.taxRate.label"),
+    })
+    await expect(taxRate).toBeVisible()
+    await page
+      .getByRole("switch", {
+        name: translate("en", "catalog.items.form.discount.label"),
+      })
+      .click()
+    await expect(taxRate).toHaveCount(0)
+
+    await page
+      .getByRole("textbox", {
+        name: translate("en", "catalog.items.form.name.label"),
+        exact: true,
+      })
+      .fill("Loyalty")
+    await page
+      .getByRole("textbox", {
+        name: translate("en", "catalog.items.form.price.label"),
+      })
+      .fill("1")
+    await page
+      .getByRole("button", {
+        name: translate("en", "catalog.items.form.save.create"),
+      })
+      .click()
+    await page
+      .getByRole("heading", { name: translate("en", "catalog.items.title") })
+      .waitFor()
+  })
+
+  await test.step("on a bill with goods it shows below zero and lowers the total", async () => {
+    await page.goto("/", { waitUntil: "domcontentloaded" })
+    await startNewBill(page, "en")
+    const summaryTrigger = page.getByTestId("bill-summary-trigger")
+    await page
+      .getByRole("button", { name: nameParam("bill.brick.add.aria", "Coffee") })
+      .click()
+    await expect(summaryTrigger).toContainText("$5.00")
+    await page
+      .getByRole("button", {
+        name: nameParam("bill.brick.add.aria", "Loyalty"),
+      })
+      .click()
+    await expect(summaryTrigger).toContainText(
+      translateValue("en", "bill.itemsCount", 2)
+    )
+    await expect(summaryTrigger).toContainText("$4.00")
+
+    await summaryTrigger.click()
+    await expect(page.getByTestId("bill-summary-panel")).toContainText("-$1.00")
   })
 })
 

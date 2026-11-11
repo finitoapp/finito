@@ -45,7 +45,8 @@ export function InlineEditField<T extends string | number | null>({
   readonly keyboardType?: ComponentProps<typeof Input>["keyboardType"]
   readonly defaultValue: T
   readonly codec: z.core.$ZodType<T, string>
-  readonly errorKey: TranslationKey
+  /** As web's: a function picks the message by the text refused. */
+  readonly errorKey: TranslationKey | ((draft: string) => TranslationKey)
   /** A control beside the label, hidden while editing with its space kept. */
   readonly labelAction?: ReactNode
   /** A control inside the input while idle, hidden during an edit. */
@@ -156,7 +157,11 @@ export function InlineEditField<T extends string | number | null>({
       {description === undefined ? null : (
         <FieldDescription>{description}</FieldDescription>
       )}
-      <FieldError>{invalid ? t(errorKey) : undefined}</FieldError>
+      <FieldError>
+        {invalid && draft !== null
+          ? t(typeof errorKey === "function" ? errorKey(draft) : errorKey)
+          : undefined}
+      </FieldError>
     </Field>
   )
 }

@@ -131,6 +131,51 @@ test("every cart write that takes items off the bill asks a Basic device for the
   })
 })
 
+test("tapping a discount on the bill asks a Basic device for the PIN", async ({
+  seededPage: page,
+}) => {
+  await addCatalogItem(page, "en", { name: "Coffee", price: "5" })
+  await addCatalogItem(page, "en", {
+    name: "Loyalty",
+    price: "1",
+    discount: true,
+  })
+  await test.step("turn access control on, this device set to Basic", () =>
+    turnOnAccessControl(page, "en"))
+
+  const summaryTrigger = page.getByTestId("bill-summary-trigger")
+  const addDiscountPrompt = pinPrompt(page, "en", "access.action.addDiscount")
+  const addLoyalty = page.getByRole("button", {
+    name: nameParam("bill.brick.add.aria", "Loyalty"),
+  })
+
+  await test.step("goods are added without the PIN", async () => {
+    await page.goto("/", { waitUntil: "domcontentloaded" })
+    await startNewBill(page, "en")
+    await page
+      .getByRole("button", { name: nameParam("bill.brick.add.aria", "Coffee") })
+      .click()
+    await expect(summaryTrigger).toContainText("$5.00")
+  })
+
+  await test.step("a discount lowers the total, so it asks; cancelling adds nothing", async () => {
+    await addLoyalty.click()
+    await expect(addDiscountPrompt).toBeVisible()
+    await cancelPrompt(addDiscountPrompt)
+    await expect(addDiscountPrompt).toBeHidden()
+    await expect(summaryTrigger).toContainText(
+      translateValue("en", "bill.itemsCount", 1)
+    )
+  })
+
+  await test.step("with the PIN it is added", async () => {
+    await addLoyalty.click()
+    await expect(addDiscountPrompt).toBeVisible()
+    await typePin(page, "en", ownerPin)
+    await expect(summaryTrigger).toContainText("$4.00")
+  })
+})
+
 test("cancelling a payment and confirming money by hand ask a Basic device for the PIN", async ({
   seededPage: page,
 }) => {

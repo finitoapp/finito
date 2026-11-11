@@ -20,6 +20,7 @@ import {
 } from "@/features/shared/forms/inline-edit-field-state.ts"
 import {
   InlineEditSavedTick,
+  type InlineSaveResult,
   useInlineSave,
 } from "@/features/shared/forms/inline-edit-save.tsx"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -68,8 +69,13 @@ interface InlineEditFieldProps<T extends string | number | null> {
    * infer `T` through, hence the looser annotation.)
    */
   readonly codec: z.core.$ZodType<T, string>
-  /** Shown when `decode` rejects; Zod's own messages are untranslated. */
-  readonly errorKey: TranslationKey
+  /**
+   * Shown when `decode` rejects; Zod's own messages are untranslated. A
+   * function picks the message by the text refused, for a field that can be
+   * wrong in more than one way (a discount of zero against a malformed
+   * amount).
+   */
+  readonly errorKey: TranslationKey | ((draft: string) => TranslationKey)
   /**
    * Control shown inside the input while it is idle, for a field with a
    * second way to fill it in (the catalog item's barcode scanner). It is
@@ -82,8 +88,12 @@ interface InlineEditFieldProps<T extends string | number | null> {
    * reserved so the input stays in place.
    */
   readonly labelAction?: (edit: { readonly draft: string }) => ReactNode
-  /** Rejects to report a failed save; the field toasts and shows no tick. */
-  readonly onSave: (value: T) => Promise<void>
+  /**
+   * Resolves a `TranslationKey` for a refusal it explains (the toast says
+   * it) or rejects for an unexpected failure (the generic toast); either
+   * way the field shows no tick.
+   */
+  readonly onSave: (value: T) => InlineSaveResult
   /**
    * Called once the field is back to idle, whether the edit was saved or
    * discarded. For a caller that mounts the field only while editing.
@@ -292,7 +302,11 @@ export function InlineEditField<T extends string | number | null>({
           {typeof description === "function" ? description(value) : description}
         </FieldDescription>
       )}
-      <FieldError>{editing && state.invalid ? t(errorKey) : null}</FieldError>
+      <FieldError>
+        {editing && state.invalid
+          ? t(typeof errorKey === "function" ? errorKey(state.draft) : errorKey)
+          : null}
+      </FieldError>
     </Field>
   )
 }

@@ -67,7 +67,7 @@ import {
  * a terminal has not settled, and one button that opens the refund screen
  * (`RefundPage`) whenever anything is left to refund and no refund to the
  * card is running. What is left comes from `usePaymentRefundState`
- * (refund/0002, 0004, 0005).
+ * (refund/0014, 0004, 0005).
  */
 export function PaymentRefunds({
   payment,

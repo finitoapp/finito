@@ -18,13 +18,25 @@ import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
 import { saveQerkoPaymentAccount } from "../account/account-actions.ts"
 import { createQerkoPaymentAccountId } from "../account/account-utils.ts"
+import { addCatalogItemToBill, createBill } from "../bill/bill-actions.ts"
+import type { BillId } from "../bill/bill-types.ts"
+import { createCatalogItem } from "../catalog-item/catalog-item-actions.ts"
+import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { saveQerkoPlugin } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
+  Integer,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
+  PositiveInteger,
+  PositiveNumber,
 } from "../shared/schema.ts"
+import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
+import {
+  type TaxRateId,
+  TaxRatePercentage,
+} from "../tax-rate/tax-rate-types.ts"
 import { cancelPayment, createPayment } from "./payment-actions.ts"
 import { preparePaymentMethod } from "./payment-preparation-actions.ts"
 import {
@@ -88,13 +100,21 @@ const setup = async ({
   )
   await run.ok(saveQerkoPaymentAccount({ enabled: true, currency: "CZK" }))
 
-  const createQerkoPayment = async ({ prepare = true } = {}) => {
+  const createQerkoPayment = async ({
+    prepare = true,
+    billId = null,
+    amount = 12_950,
+  }: {
+    readonly prepare?: boolean
+    readonly billId?: BillId | null
+    readonly amount?: number
+  } = {}) => {
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
-        billId: null,
+        billId,
         tableId: null,
-        amount: NonNegativeInteger(12_950),
+        amount: NonNegativeInteger(amount),
         currency: "CZK",
         tipAmount: NonNegativeInteger(0),
         canceledAt: null,
@@ -266,6 +286,92 @@ describe("processQerkoPayment", () => {
     ])
     // No money before PAID (qerko/0008).
     expect(await test.claims()).toEqual([])
+  })
+
+  test("answers a discounted bill's VAT from the net lines its payment froze, no rate below zero", async () => {
+    await using test = await setup()
+    await test.run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+    const rate = (percentage: number, isDefault: boolean) =>
+      test.run.ok(
+        createTaxRate({
+          name: NonEmptyString255(`${percentage / 100} %`),
+          rate: TaxRatePercentage(percentage),
+          isDefault,
+        })
+      )
+    const item = (
+      name: string,
+      unitAmount: number,
+      taxRateId: TaxRateId | null
+    ) =>
+      test.run.orThrow(
+        createCatalogItem({
+          deviceId: null,
+          categoryId: null,
+          name: NonEmptyString255(name),
+          description: null,
+          currency: "CZK",
+          unitAmount: Integer(unitAmount),
+          sortOrder: NonNegativeInteger(0),
+          scanCode: null,
+          taxRateId,
+        })
+      )
+    const billId = await test.run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    // A tenth off: 1 210 of the beer and 560 of the soup.
+    for (const catalogItemId of [
+      await item("Beer", 12_100, await rate(2100, true)),
+      await item("Soup", 5_600, await rate(1200, false)),
+      await item("Discount", -1_770, null),
+    ]) {
+      await test.run.orThrow(
+        addCatalogItemToBill({
+          billId,
+          deviceId: null,
+          catalogItemId,
+          quantity: PositiveNumber(1),
+          expectedDiscount: null,
+        })
+      )
+    }
+    const paymentId = await test.createQerkoPayment({
+      billId,
+      amount: 15_930,
+    })
+    await test.run.orThrow(
+      startQerkoPayment(
+        wire("qerko-2", paymentId, {
+          items: [{ name: "Platba #2", price: "159.3", quantity: "1" }],
+          parts: [
+            {
+              provider: { id: "qerko", name: "Card", type: "CARD" },
+              total: "159.3",
+            },
+          ],
+        })
+      )
+    )
+
+    const result = await test.run(processQerkoPayment("qerko-2"))
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        items: [{ quantity: "1", price: "159.3" }],
+        taxInfo: [
+          { rate: "21", base: "90", tax: "18.9" },
+          { rate: "12", base: "45", tax: "5.4" },
+        ],
+      },
+    })
   })
 
   test("refuses a Qerko payment that never started", async () => {

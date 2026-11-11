@@ -14,7 +14,7 @@ export type MenuTab = "terminal" | "activity" | "notifications" | "settings"
  * screen needs, in the order the bar and the sidebar draw them. Web routes
  * declare `staticData.menu`; Expo Router has no per-route data, so the tab
  * a path belongs to comes from `menuTabPrefixes`. Notifications protect
- * nothing yet (access/0010); items and tables are set up under Settings
+ * nothing yet (access/0012); items and tables are set up under Settings
  * (navigation/0004).
  */
 export const menuTabTargets = {

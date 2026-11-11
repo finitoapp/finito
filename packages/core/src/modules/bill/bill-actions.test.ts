@@ -11,7 +11,9 @@ import {
   appendBillLines,
   loadCalculatedBillLineSummaries,
 } from "../bill-line/bill-line-actions.ts"
+import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import { createCatalogItem } from "../catalog-item/catalog-item-actions.ts"
+import { catalogItemByIdQuery } from "../catalog-item/catalog-item-queries.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { createOrReuseItemSnapshot } from "../item/item-actions.ts"
 import { createStandaloneItemSnapshot } from "../item/item-utils.ts"
@@ -25,6 +27,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
+  Integer,
   NonEmptyString255,
   NonNegativeInteger,
   PositiveInteger,
@@ -35,10 +38,12 @@ import {
   addCatalogItemToBill,
   addManualAmountToBill,
   addTipToBill,
+  appendGuardedBillLines,
   appendRemoveBillLine,
   assignBillToTable,
   cancelBill,
   closeBill,
+  closeZeroBill,
   confirmBillClosedDespiteCancellation,
   createBill,
   createBillAtEnd,
@@ -81,6 +86,51 @@ const createOpenBill = async (
     })
   )
   return id
+}
+
+/**
+ * Puts `amount` on the bill as one manual line — something to charge, since
+ * a payment is refused on a bill whose goods come to nothing (payment/0012).
+ */
+const addChargeableLine = async (
+  deps: EvoluDep & EvoluOwnerDep & DateDep,
+  billId: BillId,
+  amount: number
+): Promise<void> => {
+  await using run = testCreateRun(deps)
+  await run.orThrow(
+    addManualAmountToBill({
+      billId,
+      deviceId: null,
+      name: NonEmptyString255("Dinner"),
+      currency: "CZK",
+      totalAmount: NonNegativeInteger(amount),
+    })
+  )
+}
+
+/**
+ * A catalog item priced below zero — a discount (catalog/0002) — written
+ * straight through the core, which takes a negative price as it stands.
+ */
+const createDiscountItem = async (
+  deps: EvoluDep & EvoluOwnerDep & DateDep,
+  unitAmount: number,
+  name = "Discount"
+): Promise<CatalogItemId> => {
+  await using run = testCreateRun(deps)
+  return await run.orThrow(
+    createCatalogItem({
+      deviceId: null,
+      categoryId: null,
+      name: NonEmptyString255(name),
+      description: null,
+      currency: "CZK",
+      unitAmount: Integer(unitAmount),
+      sortOrder: NonNegativeInteger(20),
+      scanCode: null,
+    })
+  )
 }
 
 /**
@@ -507,7 +557,7 @@ describe("bill actions", () => {
     } satisfies EvoluDep & EvoluOwnerDep & DateDep
     await using run = testCreateRun(deps)
     const billId = await createOpenBill(deps)
-    const catalogItemId = await run.ok(
+    const catalogItemId = await run.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId: null,
@@ -520,16 +570,25 @@ describe("bill actions", () => {
       })
     )
 
-    const summary = await run.orThrow(
+    const { line, summary } = await run.orThrow(
       addCatalogItemToBill({
         billId,
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(0.7),
+        expectedDiscount: null,
       })
     )
 
     expect(summary).toMatchObject({ quantity: 0.7, totalAmount: 1_399 })
+    // The line it wrote carries the same rounded amount, for undo to take off.
+    expect(line).toMatchObject({
+      kind: "add",
+      type: "catalogItem",
+      quantity: 0.7,
+      totalAmount: 1_399,
+      itemId: summary.itemId,
+    })
   }, 15_000)
 
   test("adds catalog, manual amount, and tip lines to a bill", async () => {
@@ -541,7 +600,7 @@ describe("bill actions", () => {
     } satisfies EvoluDep & EvoluOwnerDep & DateDep
     await using run = testCreateRun(deps)
     const billId = await createOpenBill(deps)
-    const catalogItemId = await run.ok(
+    const catalogItemId = await run.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId: null,
@@ -554,12 +613,13 @@ describe("bill actions", () => {
       })
     )
 
-    const catalogLineSummary = await run.orThrow(
+    const { summary: catalogLineSummary } = await run.orThrow(
       addCatalogItemToBill({
         billId,
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(2),
+        expectedDiscount: null,
       })
     )
     const manualLineSummary = await run.orThrow(
@@ -648,6 +708,7 @@ describe("bill actions", () => {
           deviceId: null,
           catalogItemId: "catalog-item-1" as CatalogItemId,
           quantity: PositiveNumber(1),
+          expectedDiscount: null,
         })
       )
     ).resolves.toMatchObject({
@@ -712,6 +773,100 @@ describe("bill actions", () => {
     await expect
       .poll(() => evolu.loadQuery(billLinesByBillIdQuery(billId)))
       .toHaveLength(3)
+  }, 15_000)
+
+  test("refuses a removal of another sign, or of more than the line holds, writing nothing", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps)
+    const lineSummary = await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Manual charge"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(5_000),
+      })
+    )
+    const remove = (quantity: number, totalAmount: number) =>
+      run(
+        appendRemoveBillLine({
+          billId,
+          deviceId: null,
+          lineSummary,
+          quantity: PositiveNumber(quantity),
+          totalAmount: Integer(totalAmount),
+        })
+      )
+
+    // A negative amount would raise the bill; more than the line would turn
+    // the goods into a discount nobody added.
+    for (const [quantity, totalAmount] of [
+      [1, -500],
+      [1, 6_000],
+      [2, 5_000],
+    ] as const) {
+      await expect(remove(quantity, totalAmount)).resolves.toMatchObject({
+        ok: false,
+        error: {
+          type: "BillLineRemovalOutOfRange",
+          availableQuantity: 1,
+          availableTotalAmount: 5_000,
+        },
+      })
+    }
+    await expect(
+      evolu.loadQuery(billLinesByBillIdQuery(billId))
+    ).resolves.toHaveLength(1)
+
+    // The whole line comes off, and then there is nothing left to take.
+    await expect(remove(1, 5_000)).resolves.toMatchObject({ ok: true })
+    await expect(remove(1, 5_000)).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillLineRemovalOutOfRange", availableQuantity: 0 },
+    })
+  }, 15_000)
+
+  test("refuses a split into the bill it splits, writing nothing", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps)
+    const lineSummary = await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Coffee"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(500),
+      })
+    )
+
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: billId,
+          items: [lineSummary],
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillSplitSameBill", id: billId },
+    })
+    await expect(
+      evolu.loadQuery(billLinesByBillIdQuery(billId))
+    ).resolves.toHaveLength(1)
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
   }, 15_000)
 
   test("splits selected items from a source bill into an existing target bill", async () => {
@@ -1063,6 +1218,7 @@ describe("bill actions", () => {
         cashRegister: { currency: "CZK" },
       })
     )
+    await addChargeableLine(deps, billId, 1_000)
     await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1208,7 +1364,7 @@ describe("bill actions", () => {
     await using run = testCreateRun(deps)
     const sourceBillId = await createOpenBill(deps, { displayNumber: 1 })
     const targetBillId = await createOpenBill(deps, { displayNumber: 2 })
-    const catalogItemId = await run.ok(
+    const catalogItemId = await run.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId: null,
@@ -1220,12 +1376,13 @@ describe("bill actions", () => {
         scanCode: null,
       })
     )
-    const lineSummary = await run.orThrow(
+    const { summary: lineSummary } = await run.orThrow(
       addCatalogItemToBill({
         billId: sourceBillId,
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(5),
+        expectedDiscount: null,
       })
     )
 
@@ -1251,12 +1408,13 @@ describe("bill actions", () => {
     // And the same two selections over-reaching by one are refused, rather
     // than passing because the last entry alone happened to fit.
     const overSourceBillId = await createOpenBill(deps, { displayNumber: 3 })
-    const overLine = await run.orThrow(
+    const { summary: overLine } = await run.orThrow(
       addCatalogItemToBill({
         billId: overSourceBillId,
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(4),
+        expectedDiscount: null,
       })
     )
     await expect(
@@ -1292,6 +1450,7 @@ describe("bill actions", () => {
         cashRegister: { currency: "CZK" },
       })
     )
+    await addChargeableLine(deps, billId, 1_000)
     await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1317,6 +1476,7 @@ describe("bill actions", () => {
           deviceId: null,
           catalogItemId: "catalog-missing" as CatalogItemId,
           quantity: PositiveNumber(1),
+          expectedDiscount: null,
         })
       )
     ).resolves.toMatchObject({ ok: false, error: { type: "BillLocked" } })
@@ -1339,6 +1499,7 @@ describe("bill actions", () => {
           deviceId: null,
           catalogItemId: "catalog-missing" as CatalogItemId,
           quantity: PositiveNumber(1),
+          expectedDiscount: null,
         })
       )
     ).resolves.toMatchObject({
@@ -1407,6 +1568,7 @@ describe("bill actions", () => {
         cashRegister: { currency: "CZK" },
       })
     )
+    await addChargeableLine(deps, sourceBillId, 1_000)
     await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1863,4 +2025,1010 @@ describe("bill actions", () => {
       error: { type: "BillUnderpaid", id: billId },
     })
   }, 15_000)
+})
+
+describe("closeZeroBill", () => {
+  /** A catalog item priced at `unitAmount`, from an account that is not a VAT payer. */
+  const createItem = async (
+    deps: EvoluDep & EvoluOwnerDep,
+    name: string,
+    unitAmount: number
+  ): Promise<CatalogItemId> => {
+    await using run = testCreateRun(deps)
+    return await run.orThrow(
+      createCatalogItem({
+        deviceId: null,
+        categoryId: null,
+        name: NonEmptyString255(name),
+        description: null,
+        currency: "CZK",
+        unitAmount: NonNegativeInteger(unitAmount),
+        sortOrder: NonNegativeInteger(0),
+        scanCode: null,
+      })
+    )
+  }
+
+  const addItem = async (
+    deps: EvoluDep & EvoluOwnerDep & DateDep,
+    billId: BillId,
+    catalogItemId: CatalogItemId
+  ) => {
+    await using run = testCreateRun(deps)
+    const { summary } = await run.orThrow(
+      addCatalogItemToBill({
+        billId,
+        deviceId: null,
+        catalogItemId,
+        quantity: PositiveNumber(1),
+        expectedDiscount: null,
+      })
+    )
+    return summary
+  }
+
+  test("closes a bill whose goods come to zero, final and off the floor view", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const water = await createItem(deps, "Tap water", 0)
+    const billId = await createOpenBill(deps)
+    await addItem(deps, billId, water)
+
+    await expect(run(closeZeroBill(billId))).resolves.toEqual({
+      ok: true,
+      value: billId,
+    })
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(billId)))
+      .toMatchObject([
+        {
+          id: billId,
+          closedAt: testFixedDate.getTime(),
+          confirmedClosedAt: testFixedDate.getTime(),
+          canceledAt: null,
+        },
+      ])
+    await expect.poll(() => run.ok(listOpenBills())).toEqual([])
+    // The cart is closed to edits and to payments.
+    await expect(
+      run(
+        createPayment({
+          deviceId: null,
+          billId,
+          tableId: null,
+          amount: NonNegativeInteger(0),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(0),
+          canceledAt: null,
+          expiresAt: null,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillStatusNotAllowed", status: "closed" },
+    })
+    await expect(
+      run(
+        addManualAmountToBill({
+          billId,
+          deviceId: null,
+          name: NonEmptyString255("Extra"),
+          currency: "CZK",
+          totalAmount: NonNegativeInteger(500),
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillStatusNotAllowed", status: "closed" },
+    })
+  }, 15_000)
+
+  test("refuses an empty bill, one whose total is not zero, one with a tip and one a payment locks", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const water = await createItem(deps, "Tap water", 0)
+    const coffee = await createItem(deps, "Coffee", 5_900)
+
+    const empty = await createOpenBill(deps, { displayNumber: 1 })
+    await expect(run(closeZeroBill(empty))).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "BillNotZero",
+        id: empty,
+        reason: "noLines",
+        billTotal: 0,
+      },
+    })
+
+    // Lines that net to nothing are no lines: added, then removed.
+    const emptied = await createOpenBill(deps, { displayNumber: 2 })
+    const coffeeLine = await addItem(deps, emptied, coffee)
+    await run.orThrow(
+      appendRemoveBillLine({
+        billId: emptied,
+        deviceId: null,
+        quantity: PositiveNumber(1),
+        totalAmount: NonNegativeInteger(5_900),
+        lineSummary: coffeeLine,
+      })
+    )
+    await expect(run(closeZeroBill(emptied))).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillNotZero", reason: "noLines" },
+    })
+
+    const priced = await createOpenBill(deps, { displayNumber: 3 })
+    await addItem(deps, priced, water)
+    await addItem(deps, priced, coffee)
+    await expect(run(closeZeroBill(priced))).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "BillNotZero",
+        id: priced,
+        reason: "totalNotZero",
+        billTotal: 5_900,
+      },
+    })
+
+    const tipped = await createOpenBill(deps, { displayNumber: 4 })
+    await addItem(deps, tipped, water)
+    await run.orThrow(
+      addTipToBill({
+        billId: tipped,
+        deviceId: null,
+        name: NonEmptyString255("Tip"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(1_000),
+      })
+    )
+    await expect(run(closeZeroBill(tipped))).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillNotZero", reason: "tipLine" },
+    })
+
+    // A payment is out for the coffee; another device, that had not seen it
+    // yet, took the coffee back off the bill.
+    const locked = await createOpenBill(deps, { displayNumber: 5 })
+    await addItem(deps, locked, water)
+    const lockedCoffee = await addItem(deps, locked, coffee)
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Cash register"),
+        cashRegister: { currency: "CZK" },
+      })
+    )
+    await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId: locked,
+        tableId: null,
+        amount: NonNegativeInteger(5_900),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        cashRegister: { accountId },
+      })
+    )
+    await run.ok(
+      appendBillLines([
+        {
+          billId: locked,
+          deviceId: null,
+          catalogItemId: coffee,
+          itemId: lockedCoffee.itemId,
+          type: "catalogItem",
+          kind: "remove",
+          quantity: PositiveNumber(1),
+          totalAmount: NonNegativeInteger(5_900),
+        },
+      ])
+    )
+    await expect(run(closeZeroBill(locked))).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillLocked" },
+    })
+
+    for (const billId of [empty, emptied, priced, tipped, locked]) {
+      await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+    }
+  }, 15_000)
+
+  test("a bill finished at zero stays closed and reads underpaid when another device adds a line", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const water = await createItem(deps, "Tap water", 0)
+    const billId = await createOpenBill(deps)
+    await addItem(deps, billId, water)
+    await run.orThrow(closeZeroBill(billId))
+
+    // A device that had not yet seen the bill closed adds a coffee to it.
+    const coffee = await run.ok(
+      createOrReuseItemSnapshot(
+        createStandaloneItemSnapshot({
+          catalogItemId: null,
+          name: NonEmptyString255("Coffee"),
+          description: null,
+          currency: "CZK",
+          unitAmount: NonNegativeInteger(5_900),
+          taxRateId: null,
+        })
+      )
+    )
+    await run.ok(
+      appendBillLines([
+        {
+          billId,
+          deviceId: null,
+          catalogItemId: null,
+          itemId: coffee.id,
+          type: "manualAmount",
+          kind: "add",
+          quantity: PositiveNumber(1),
+          totalAmount: NonNegativeInteger(5_900),
+        },
+      ])
+    )
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toEqual({
+      billTotal: 5_900,
+      claimedSum: 0,
+      coverage: "underpaid",
+    })
+    await expect.poll(() => run.ok(listOpenBills())).toEqual([])
+  }, 15_000)
+})
+
+describe("cart writes on a partly paid bill", () => {
+  /**
+   * A bill of a 2 000 dinner and a 1 000 dessert, `paid` of it settled in
+   * cash: open, partly paid, and editable again once the payment is in. Hands
+   * back the dessert's line, the one the tests take off.
+   */
+  const createPartlyPaidBill = async (
+    deps: EvoluDep & EvoluOwnerDep & DateDep,
+    paid: number
+  ) => {
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps)
+    await addChargeableLine(deps, billId, 2_000)
+    const dessert = await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dessert"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(1_000),
+      })
+    )
+    const accountId = await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Cash register"),
+        cashRegister: { currency: "CZK" },
+      })
+    )
+    const paymentId = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId,
+        tableId: null,
+        amount: NonNegativeInteger(paid),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        cashRegister: { accountId },
+      })
+    )
+    await run.orThrow(markPaymentPaidCash({ paymentId, accountId }))
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+
+    return { billId, dessert }
+  }
+
+  test("taking off the line a partly paid bill was waiting on closes it and takes it off the floor view", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, dessert } = await createPartlyPaidBill(deps, 2_000)
+
+    await expect(
+      run(
+        appendRemoveBillLine({
+          billId,
+          deviceId: null,
+          quantity: dessert.quantity,
+          totalAmount: dessert.totalAmount,
+          lineSummary: dessert,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: null })
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(billId)))
+      .toMatchObject([{ id: billId, closedAt: testFixedDate.getTime() }])
+    await expect.poll(() => run.ok(listOpenBills())).toEqual([])
+  }, 15_000)
+
+  test("a cart-level append (undo, redo, clear) closes a bill it pays off the same way", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, dessert } = await createPartlyPaidBill(deps, 2_000)
+
+    await expect(
+      run(
+        appendGuardedBillLines(billId, [
+          {
+            billId,
+            deviceId: null,
+            catalogItemId: dessert.catalogItemId,
+            itemId: dessert.itemId,
+            type: dessert.type,
+            kind: "remove",
+            quantity: dessert.quantity,
+            totalAmount: dessert.totalAmount,
+          },
+        ])
+      )
+    ).resolves.toMatchObject({ ok: true })
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(billId)))
+      .toMatchObject([{ id: billId, closedAt: testFixedDate.getTime() }])
+  }, 15_000)
+
+  test("refuses a write that would take a partly paid bill below what was paid", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, dessert } = await createPartlyPaidBill(deps, 2_500)
+    const before = await run.ok(loadCalculatedBillLineSummaries(billId))
+
+    const refused = {
+      ok: false,
+      error: {
+        type: "BillTotalBelowPaid",
+        id: billId,
+        billTotalAfter: 2_000,
+        claimedSum: 2_500,
+      },
+    }
+    await expect(
+      run(
+        appendRemoveBillLine({
+          billId,
+          deviceId: null,
+          quantity: dessert.quantity,
+          totalAmount: dessert.totalAmount,
+          lineSummary: dessert,
+        })
+      )
+    ).resolves.toMatchObject(refused)
+    // Clearing the cart takes every line off.
+    await expect(
+      run(
+        appendGuardedBillLines(
+          billId,
+          before.map((summary) => ({
+            billId,
+            deviceId: null,
+            catalogItemId: summary.catalogItemId,
+            itemId: summary.itemId,
+            type: summary.type,
+            kind: "remove" as const,
+            quantity: summary.quantity,
+            totalAmount: summary.totalAmount,
+          }))
+        )
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillTotalBelowPaid", billTotalAfter: 0 },
+    })
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(billId))
+    ).resolves.toEqual(before)
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(billId)))
+      .toMatchObject([{ id: billId, closedAt: null }])
+  }, 15_000)
+
+  test("refuses a split that would take a partly paid source below what was paid, and closes one it pays off", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const overpaid = await createPartlyPaidBill(deps, 2_500)
+    const target = await createOpenBill(deps, { displayNumber: 2 })
+    const newBillId = createRandomBillId()
+
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: overpaid.billId,
+          targetBillId: target,
+          items: [overpaid.dessert],
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillTotalBelowPaid", id: overpaid.billId },
+    })
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          sourceBillId: overpaid.billId,
+          targetBillId: newBillId,
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          items: [overpaid.dessert],
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillTotalBelowPaid", id: overpaid.billId },
+    })
+    // Nothing moved: the target is still empty and the new bill never written.
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(target))
+    ).resolves.toEqual([])
+    await expect(evolu.loadQuery(billByIdQuery(newBillId))).resolves.toEqual([])
+
+    const paidOff = await createPartlyPaidBill(deps, 2_000)
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          sourceBillId: paidOff.billId,
+          targetBillId: newBillId,
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          items: [paidOff.dessert],
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: newBillId })
+
+    await expect(run.orThrow(loadBillStatus(paidOff.billId))).resolves.toBe(
+      "closed"
+    )
+    await expect(run.orThrow(loadBillStatus(newBillId))).resolves.toBe("open")
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(paidOff.billId)))
+      .toMatchObject([
+        { id: paidOff.billId, closedAt: testFixedDate.getTime() },
+      ])
+  }, 20_000)
+
+  test("a discount that pays a partly paid bill off closes it; one below what was paid is refused", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const discount = await createDiscountItem(deps, -1_000)
+
+    // 3 000 of goods, 2 000 paid: a 1 000 discount brings it to exactly that.
+    const paidOff = await createPartlyPaidBill(deps, 2_000)
+    await expect(
+      run(
+        addCatalogItemToBill({
+          billId: paidOff.billId,
+          deviceId: null,
+          catalogItemId: discount,
+          quantity: PositiveNumber(1),
+          expectedDiscount: null,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { line: { totalAmount: -1_000 } },
+    })
+    await expect(run.orThrow(loadBillStatus(paidOff.billId))).resolves.toBe(
+      "closed"
+    )
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(paidOff.billId)))
+      .toMatchObject([
+        { id: paidOff.billId, closedAt: testFixedDate.getTime() },
+      ])
+
+    // 2 500 paid: the same discount would leave 2 000, below it.
+    const overpaid = await createPartlyPaidBill(deps, 2_500)
+    await expect(
+      run(
+        addCatalogItemToBill({
+          billId: overpaid.billId,
+          deviceId: null,
+          catalogItemId: discount,
+          quantity: PositiveNumber(1),
+          expectedDiscount: null,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        type: "BillTotalBelowPaid",
+        billTotalAfter: 2_000,
+        claimedSum: 2_500,
+      },
+    })
+    await expect(run.orThrow(loadBillStatus(overpaid.billId))).resolves.toBe(
+      "open"
+    )
+  }, 20_000)
+
+  test("a bill nobody has paid for keeps behaving as before", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps)
+    const dinner = await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(2_000),
+      })
+    )
+
+    // Taking off its only line leaves an empty bill, open and on the floor.
+    await expect(
+      run(
+        appendRemoveBillLine({
+          billId,
+          deviceId: null,
+          quantity: dinner.quantity,
+          totalAmount: dinner.totalAmount,
+          lineSummary: dinner,
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: null })
+
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+    await expect
+      .poll(() => evolu.loadQuery(billByIdQuery(billId)))
+      .toMatchObject([{ id: billId, closedAt: null }])
+    await expect
+      .poll(() => run.ok(listOpenBills()))
+      .toMatchObject([{ bill: { id: billId }, items: [] }])
+  }, 15_000)
+})
+
+describe("bills with a discount", () => {
+  /**
+   * A bill of the goods given, one catalog item each, and a discount line of
+   * `discount` x `discountQuantity`. Hands back every line by name.
+   */
+  const createDiscountedBill = async (
+    deps: EvoluDep & EvoluOwnerDep & DateDep,
+    {
+      goods,
+      discount,
+      discountQuantity = 1,
+      displayNumber = 1,
+    }: {
+      readonly goods: Readonly<Record<string, number>>
+      readonly discount: number
+      readonly discountQuantity?: number
+      readonly displayNumber?: number
+    }
+  ) => {
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps, { displayNumber })
+    const lines = new Map<string, BillLineSummary>()
+    for (const [name, unitAmount] of Object.entries(goods)) {
+      const itemId = await run.orThrow(
+        createCatalogItem({
+          deviceId: null,
+          categoryId: null,
+          name: NonEmptyString255(name),
+          description: null,
+          currency: "CZK",
+          unitAmount: Integer(unitAmount),
+          sortOrder: NonNegativeInteger(10),
+          scanCode: null,
+        })
+      )
+      const { summary } = await run.orThrow(
+        addCatalogItemToBill({
+          billId,
+          deviceId: null,
+          catalogItemId: itemId,
+          quantity: PositiveNumber(1),
+          expectedDiscount: null,
+        })
+      )
+      lines.set(name, summary)
+    }
+    const { summary: discountLine } = await run.orThrow(
+      addCatalogItemToBill({
+        billId,
+        deviceId: null,
+        catalogItemId: await createDiscountItem(deps, discount),
+        quantity: PositiveNumber(discountQuantity),
+        expectedDiscount: null,
+      })
+    )
+    lines.set("discount", discountLine)
+
+    const line = (name: string): BillLineSummary => {
+      const summary = lines.get(name)
+      if (summary === undefined) throw new Error(`No line ${name}.`)
+      return summary
+    }
+    return { billId, line }
+  }
+
+  test("nets below zero, reads paid rather than overpaid, and is taken off and added again", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, line } = await createDiscountedBill(deps, {
+      goods: { Coffee: 1_000 },
+      discount: -1_500,
+    })
+    const discount = line("discount")
+    expect(discount).toMatchObject({ quantity: 1, totalAmount: -1_500 })
+
+    // Below zero and nobody paid: owed nothing, so not overpaid, and open.
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toEqual({
+      billTotal: -500,
+      claimedSum: 0,
+      coverage: "paid",
+    })
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+
+    await run.orThrow(
+      appendRemoveBillLine({
+        billId,
+        deviceId: null,
+        quantity: discount.quantity,
+        totalAmount: discount.totalAmount,
+        lineSummary: discount,
+      })
+    )
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 1_000,
+    })
+
+    await run.orThrow(
+      appendGuardedBillLines(billId, [
+        {
+          billId,
+          deviceId: null,
+          catalogItemId: discount.catalogItemId,
+          itemId: discount.itemId,
+          type: discount.type,
+          kind: "add",
+          quantity: discount.quantity,
+          totalAmount: discount.totalAmount,
+        },
+      ])
+    )
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(billId))
+    ).resolves.toMatchObject([
+      { name: "Coffee", totalAmount: 1_000 },
+      { name: "Discount", quantity: 1, totalAmount: -1_500 },
+    ])
+
+    // It can only be discarded (payment/0015): not finished, but canceled.
+    await expect(run(closeZeroBill(billId))).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillNotZero", reason: "totalNotZero", billTotal: -500 },
+    })
+    await run.orThrow(cancelBill(billId))
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("canceled")
+  }, 20_000)
+
+  test("moves a discount with its goods, a part of a discount line included", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, line } = await createDiscountedBill(deps, {
+      goods: { Coffee: 1_000, Cake: 1_500 },
+      discount: -200,
+      discountQuantity: 2,
+    })
+    const target = await createOpenBill(deps, { displayNumber: 2 })
+
+    // One of the two discount units moves with the cake: −200 is less than
+    // the −400 the line holds, though it is the larger number.
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: target,
+          items: [
+            line("Cake"),
+            {
+              ...line("discount"),
+              quantity: PositiveNumber(1),
+              totalAmount: Integer(-200),
+            },
+          ],
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { sourceCanceled: false },
+    })
+
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 800,
+    })
+    await expect(run.ok(loadBillCoverage(target))).resolves.toMatchObject({
+      billTotal: 1_300,
+    })
+    // Both lines land in one batch, so their order is not fixed.
+    const targetLines = await run.ok(loadCalculatedBillLineSummaries(target))
+    expect(targetLines).toHaveLength(2)
+    expect(targetLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Cake", totalAmount: 1_500 }),
+        expect.objectContaining({
+          name: "Discount",
+          quantity: 1,
+          totalAmount: -200,
+        }),
+      ])
+    )
+  }, 20_000)
+
+  test("refuses a split that leaves a bill with lines below zero, and lets one left at exactly zero through", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, line } = await createDiscountedBill(deps, {
+      goods: { Coffee: 1_000, Tea: 500 },
+      discount: -500,
+    })
+    const target = await createOpenBill(deps, { displayNumber: 2 })
+    const newBillId = createRandomBillId()
+
+    // The goods leave, the discount stays behind: the source would be −500.
+    const goodsOnly = [line("Coffee"), line("Tea")]
+    const sourceRefused = {
+      ok: false,
+      error: {
+        type: "BillSplitTotalNegative",
+        id: billId,
+        billTotalAfter: -500,
+      },
+    }
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: target,
+          items: goodsOnly,
+        })
+      )
+    ).resolves.toEqual(sourceRefused)
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          sourceBillId: billId,
+          targetBillId: newBillId,
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          items: goodsOnly,
+        })
+      )
+    ).resolves.toEqual(sourceRefused)
+
+    // The discount alone leaves: the bill it lands on would be −500.
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: target,
+          items: [line("discount")],
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "BillSplitTotalNegative",
+        id: target,
+        billTotalAfter: -500,
+      },
+    })
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          sourceBillId: billId,
+          targetBillId: newBillId,
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          items: [line("discount")],
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "BillSplitTotalNegative",
+        id: newBillId,
+        billTotalAfter: -500,
+      },
+    })
+
+    // Nothing moved and the new bill was never written.
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 1_000,
+    })
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(target))
+    ).resolves.toEqual([])
+    await expect(evolu.loadQuery(billByIdQuery(newBillId))).resolves.toEqual([])
+
+    // The coffee leaves, the tea and its discount stay at exactly zero: fine,
+    // that bill can be finished.
+    await expect(
+      run(
+        splitBillIntoNewBill({
+          sourceBillId: billId,
+          targetBillId: newBillId,
+          deviceId: null,
+          tableId: null,
+          currency: "CZK",
+          items: [line("Coffee")],
+        })
+      )
+    ).resolves.toEqual({ ok: true, value: newBillId })
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 0,
+    })
+    await run.orThrow(closeZeroBill(billId))
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+  }, 20_000)
+
+  test("moving every line, the discount with them, empties and cancels the source", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { billId, line } = await createDiscountedBill(deps, {
+      goods: { Coffee: 1_000 },
+      discount: -300,
+    })
+    const target = await createOpenBill(deps, { displayNumber: 2 })
+
+    await expect(
+      run(
+        splitBill({
+          sourceBillId: billId,
+          targetBillId: target,
+          items: [line("Coffee"), line("discount")],
+        })
+      )
+    ).resolves.toMatchObject({ ok: true, value: { sourceCanceled: true } })
+    await expect(run.ok(loadBillCoverage(target))).resolves.toMatchObject({
+      billTotal: 700,
+    })
+  }, 20_000)
+
+  test("refuses adding an item whose price became a discount, or stopped being one, since the cart saw it (access/0012)", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const billId = await createOpenBill(deps)
+    const discountId = await createDiscountItem(deps, -500)
+    const add = (
+      catalogItemId: CatalogItemId,
+      expectedDiscount: boolean | null
+    ) =>
+      run(
+        addCatalogItemToBill({
+          billId,
+          deviceId: null,
+          catalogItemId,
+          quantity: PositiveNumber(1),
+          expectedDiscount,
+        })
+      )
+
+    // The cart saw a plain item, so it asked for no `discard`.
+    await expect(add(discountId, false)).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "CatalogItemPriceSignStale",
+        id: discountId,
+        expectedDiscount: false,
+      },
+    })
+
+    // A device that knows no sign rule turns the item positive meanwhile.
+    evolu.update("catalogItem", { id: discountId, unitAmount: Integer(500) })
+    await expect
+      .poll(() => evolu.loadQuery(catalogItemByIdQuery(discountId)))
+      .toMatchObject([{ unitAmount: 500 }])
+    await expect(add(discountId, true)).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "CatalogItemPriceSignStale",
+        id: discountId,
+        expectedDiscount: true,
+      },
+    })
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(billId))
+    ).resolves.toEqual([])
+
+    // Seen as it is, or by a caller that checks no permission, it is added.
+    await expect(add(discountId, false)).resolves.toMatchObject({ ok: true })
+    await expect(add(discountId, null)).resolves.toMatchObject({ ok: true })
+    await expect(
+      run.ok(loadCalculatedBillLineSummaries(billId))
+    ).resolves.toMatchObject([{ quantity: 2, totalAmount: 1_000 }])
+  }, 20_000)
 })

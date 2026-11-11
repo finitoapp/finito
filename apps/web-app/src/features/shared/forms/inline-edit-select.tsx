@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select.tsx"
 import {
   InlineEditSavedTick,
+  type InlineSaveResult,
   useInlineChoice,
 } from "@/features/shared/forms/inline-edit-save.tsx"
 
@@ -33,8 +34,8 @@ interface InlineEditSelectProps<T extends string | number | null> {
   /** See `InlineEditField`; the option values are this codec's input side. */
   readonly codec: z.core.$ZodType<T, string>
   readonly options: ReadonlyArray<InlineEditSelectOption>
-  /** Rejects to report a failed save; the field toasts and shows no tick. */
-  readonly onSave: (value: T) => Promise<void>
+  /** See `InlineEditField`'s: a `TranslationKey` or a rejection, no tick. */
+  readonly onSave: (value: T) => InlineSaveResult
 }
 
 /**
@@ -59,9 +60,8 @@ export function InlineEditSelect<T extends string | number | null>({
   // decoded option, so `undefined` never reaches `onSave`.
   const { value, saving, justSaved, choose } = useInlineChoice<T | undefined>(
     defaultValue,
-    async (next) => {
-      if (next !== undefined) await onSave(next)
-    }
+    // Handed back as it is, so a refusal's own message reaches the toast.
+    (next) => (next === undefined ? Promise.resolve(undefined) : onSave(next))
   )
 
   const handleValueChange = (next: string | null) => {

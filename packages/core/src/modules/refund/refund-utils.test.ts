@@ -4,7 +4,11 @@ import { describe, expect, test } from "vitest"
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { PaymentLineId } from "../payment-line/payment-line-types.ts"
-import { NonNegativeInteger, PositiveNumber } from "../shared/schema.ts"
+import {
+  Integer,
+  NonNegativeInteger,
+  PositiveNumber,
+} from "../shared/schema.ts"
 import {
   calculateRefundLineAmount,
   deriveCashRefundHandedAmounts,
@@ -23,6 +27,7 @@ const threeCoffees = {
   type: "catalogItem",
   quantity: PositiveNumber(3),
   totalAmount: NonNegativeInteger(10_000),
+  discountShare: null,
 } as const
 
 describe("deriveRefundableAmount", () => {
@@ -307,6 +312,7 @@ describe("deriveRefundableLines", () => {
       type: "tip",
       quantity: PositiveNumber(1),
       totalAmount: NonNegativeInteger(2_000),
+      discountShare: null,
     } as const
 
     expect(
@@ -322,6 +328,42 @@ describe("deriveRefundableLines", () => {
       )
     ).toEqual([
       { line: threeCoffees, remainingQuantity: 2, remainingAmount: 6_667 },
+    ])
+  })
+
+  test("does not offer a free line", () => {
+    const water = {
+      id: "water" as PaymentLineId,
+      type: "catalogItem",
+      quantity: PositiveNumber(2),
+      totalAmount: NonNegativeInteger(0),
+      discountShare: null,
+    } as const
+
+    expect(deriveRefundableLines([threeCoffees, water], [])).toEqual([
+      { line: threeCoffees, remainingQuantity: 3, remainingAmount: 10_000 },
+    ])
+  })
+
+  test("offers a discounted goods line at its net amount, and neither the discount line nor a line it took to zero", () => {
+    const coffees = { ...threeCoffees, discountShare: Integer(-1_000) }
+    const cake = {
+      id: "cake" as PaymentLineId,
+      type: "catalogItem",
+      quantity: PositiveNumber(1),
+      totalAmount: Integer(500),
+      discountShare: Integer(-500),
+    } as const
+    const discount = {
+      id: "discount" as PaymentLineId,
+      type: "catalogItem",
+      quantity: PositiveNumber(1),
+      totalAmount: Integer(-1_500),
+      discountShare: null,
+    } as const
+
+    expect(deriveRefundableLines([coffees, cake, discount], [])).toEqual([
+      { line: coffees, remainingQuantity: 3, remainingAmount: 9_000 },
     ])
   })
 })
@@ -344,5 +386,25 @@ describe("calculateRefundLineAmount", () => {
     )
     if (rest === undefined) throw new Error("Expected a refundable line.")
     expect(calculateRefundLineAmount(rest, 2)).toBe(6_667)
+  })
+
+  test("returns a discounted line's net amount, pro rata to the quantity returned", () => {
+    const coffees = { ...threeCoffees, discountShare: Integer(-1_000) }
+    const [first] = deriveRefundableLines([coffees], [])
+    if (first === undefined) throw new Error("Expected a refundable line.")
+    expect(calculateRefundLineAmount(first, 1)).toBe(3_000)
+
+    const [rest] = deriveRefundableLines(
+      [coffees],
+      [
+        {
+          paymentLineId: lineId,
+          quantity: PositiveNumber(1),
+          amount: NonNegativeInteger(3_000),
+        },
+      ]
+    )
+    if (rest === undefined) throw new Error("Expected a refundable line.")
+    expect(calculateRefundLineAmount(rest, 2)).toBe(6_000)
   })
 })

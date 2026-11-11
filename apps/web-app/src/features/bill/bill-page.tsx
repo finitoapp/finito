@@ -1,8 +1,16 @@
 import { useMediaQuery } from "@dedalik/use-react"
 import { sqliteTrue } from "@evolu/common"
+import {
+  billCheckoutHintKeys,
+  deriveBillCheckout,
+} from "@payky/app-shared/bill-checkout"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import type { SplitBillConfirmInput } from "@payky/app-shared/split-selection"
+import {
+  type SplitBillConfirmInput,
+  splitNeedsDiscard,
+} from "@payky/app-shared/split-selection"
 import { useRedirectIfClosedOnOpen } from "@payky/app-shared/use-redirect-if-closed-on-open"
+import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
@@ -32,7 +40,9 @@ import {
 } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import type { CategoryFilter } from "@payky/core/modules/catalog-item/catalog-item-types"
 import { getStaffDisplayName } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
 import type { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import {
   type FiatCurrency as FiatCurrencyType,
   NonNegativeInteger,
@@ -40,6 +50,7 @@ import {
 } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link, useNavigate, useRouter } from "@tanstack/react-router"
 import { isSameDay } from "date-fns"
 import { useStore } from "jotai"
@@ -99,6 +110,7 @@ import { useBillInsertMode } from "@/features/bill/use-bill-insert-mode.ts"
 import { useBillScanHandler } from "@/features/bill/use-bill-scan-handler.tsx"
 import { useCartBill } from "@/features/bill/use-cart-bill.ts"
 import { useChangePulse } from "@/features/bill/use-change-pulse.ts"
+import { useFinishBill } from "@/features/bill/use-finish-bill.ts"
 import { usePendingPayments } from "@/features/bill/use-pending-payments.ts"
 import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
 import { CategoryFilterBar } from "@/features/shared/category-filter-bar.tsx"
@@ -124,6 +136,7 @@ import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatDateTime, formatMoney, formatTime } from "@/lib/format-utils.ts"
 import { cn } from "@/lib/utils.ts"
 import { vibrateOnButtonPress } from "@/platform/haptics.ts"
+import { isCardTerminalLinked } from "@/platform/switchio.ts"
 
 /** The category filters, plus "on the bill": only what the bill holds. */
 type BillItemFilter = CategoryFilter | "inBill"
@@ -135,6 +148,13 @@ const splitBillErrorKeys = {
   // The selection no longer matches the bill, so retrying the same one
   // cannot work — say so, rather than the generic "try again".
   BillSplitSelectionStale: "bill.split.staleSelection",
+  // Moving lines off a partly paid bill cannot take it below what was paid
+  // (payment/0014); the money goes back through a refund instead.
+  BillTotalBelowPaid: "bill.totalBelowPaid",
+  // A bill left with lines below zero could only be discarded (payment/0015).
+  BillSplitTotalNegative: "bill.split.totalNegative",
+  // The screens never offer the bill itself as the target.
+  BillSplitSameBill: "bill.split.error",
 } satisfies Record<SplitBillError["type"], TranslationKey>
 
 /**
@@ -162,13 +182,20 @@ export function BillPage({
   /** A code scanned on the home screen, which opened this bill to add it. */
   readonly initialScanCode?: string
 }) {
-  // The cart's catalog too: `BillCartView` mounts below once these are in.
+  // The cart's catalog too: `BillCartView` mounts below once these are in,
+  // with the scan handler's always-mounted `CreateCatalogItemDialog`, which
+  // reads the VAT rates and whether the account is a VAT payer, and the
+  // payment methods Charge is judged against.
   usePreloadEvoluQueries([
     ...billStateQueries(billId),
     settingsQuery,
+    enabledPaymentMethodAccountsQuery,
+    qerkoPluginQuery("standard"),
     tablesQuery,
     catalogItemsQuery,
     catalogCategoriesQuery,
+    taxRatesQuery,
+    legalEntityQuery,
   ])
   useScreenWakeLock(true)
   const { t } = useTranslation()
@@ -230,10 +257,16 @@ export function BillPage({
   const subtitle =
     subtitleParts.length === 0 ? undefined : subtitleParts.join(" · ")
 
+  // Owned here rather than by the cart, which the closed bill unmounts.
+  const finishBill = useFinishBill(billId)
+
   let content: ReactNode
   // Only the cart has a side panel for the title to move into.
   let titleInPanel = false
   if (closedOnOpen) {
+    content = null
+  } else if (finishBill.closing && billStatus?.status === "closed") {
+    // Finished here: home is on its way, so no "bill closed" message first.
     content = null
   } else if (bill !== undefined && billStatus?.status !== "open") {
     content = billStatus?.hasCancellationCollision ? (
@@ -270,6 +303,8 @@ export function BillPage({
         scanMode={scanMode}
         onScanModeChange={setScanMode}
         initialScanCode={initialScanCode}
+        onFinish={finishBill.finish}
+        finishPending={finishBill.pending}
       />
     )
   }
@@ -511,6 +546,8 @@ function BillCartView({
   scanMode,
   onScanModeChange,
   initialScanCode,
+  onFinish,
+  finishPending,
 }: {
   /** The bill's heading, which the side panel shows on a large monitor. */
   readonly title: string
@@ -523,6 +560,9 @@ function BillCartView({
   readonly summaries: ReadonlyArray<BillLineSummary>
   readonly tableId: TableId | null
   readonly initialScanCode: string | undefined
+  /** `BillPage`'s `useFinishBill`, for Finish in Charge's place. */
+  readonly onFinish: () => Promise<void>
+  readonly finishPending: boolean
 } & SharedCartViewProps) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -540,6 +580,10 @@ function BillCartView({
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   const { data: tables } = useEvoluQuery(tablesQuery)
+  const { data: paymentAccounts } = useEvoluQuery(
+    enabledPaymentMethodAccountsQuery
+  )
+  const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
   // The `*Pending` state drives `disabled`, which only takes effect on the
   // next render, so two fast taps on a low-end terminal both enter the
   // handler. `createPayment` deliberately accepts a bill that already has a
@@ -712,9 +756,21 @@ function BillCartView({
     [summaries]
   )
   const totalAmountPulseControls = useChangePulse(totalAmount)
+  // Charge, or Finish in its place for a bill whose goods come to zero.
+  const checkout = deriveBillCheckout({
+    summaries,
+    currency,
+    paymentAccounts,
+    cardTerminalLinked: isCardTerminalLinked(),
+    qerkoRestaurantPaired: (qerkoPaymentPlugin?.restaurantId ?? null) !== null,
+  })
+  const checkoutHintKey = billCheckoutHintKeys[checkout]
 
   const handleCharge = async () => {
-    if (summaries.length === 0 || chargePendingRef.current) return
+    if (checkout !== "charge" || chargePendingRef.current) return
+    // Charge is offered only for goods above zero (`deriveBillCheckout`), so
+    // the bill's total is never negative here (payment/0015).
+    const amount = NonNegativeInteger(totalAmount)
 
     chargePendingRef.current = true
     setChargePending(true)
@@ -722,13 +778,13 @@ function BillCartView({
       if (settings?.tipsEnabled === sqliteTrue) {
         await navigate({
           to: "/payment/tip",
-          search: { amount: totalAmount, currency, billId },
+          search: { amount, currency, billId },
         })
         return
       }
 
       await createTerminalPayment({
-        amount: totalAmount,
+        amount,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
@@ -792,6 +848,14 @@ function BillCartView({
     splitPendingRef.current = true
     setSplitPending(true)
     try {
+      // Splitting is `sell`, which the page already holds; moving a discount
+      // lowers the target bill's total, which is `discard` (access/0012).
+      if (
+        splitNeedsDiscard(input.items) &&
+        !(await require("discard", "access.action.moveDiscount"))
+      ) {
+        return
+      }
       await using run = appRun()
 
       if (input.destination === "new") {
@@ -1226,24 +1290,44 @@ function BillCartView({
                 <Table2 data-icon="inline-start" />
                 {currentTable?.name ?? t("bill.table.assign")}
               </Button>
-              <Button
-                variant="default"
-                className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
-                disabled={summaries.length === 0 || chargePending}
-                onClick={() => {
-                  vibrateOnButtonPress()
-                  void handleCharge()
-                }}
-              >
-                <span>
-                  {t("home.pay")}
-                  <span className="hidden lg:inline">
-                    {" "}
-                    {formatMoney({ value: totalAmount, currency }, locale)}
+              {checkout === "finish" ? (
+                <Button
+                  variant="default"
+                  className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
+                  // A cart write still in flight may change the total.
+                  disabled={finishPending || cart.pending}
+                  onClick={() => {
+                    vibrateOnButtonPress()
+                    void onFinish()
+                  }}
+                >
+                  {t("bill.finish")}
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
+                  disabled={checkout !== "charge" || chargePending}
+                  onClick={() => {
+                    vibrateOnButtonPress()
+                    void handleCharge()
+                  }}
+                >
+                  <span>
+                    {t("home.pay")}
+                    <span className="hidden lg:inline">
+                      {" "}
+                      {formatMoney({ value: totalAmount, currency }, locale)}
+                    </span>
                   </span>
-                </span>
-              </Button>
+                </Button>
+              )}
             </div>
+            {checkoutHintKey === null ? null : (
+              <p className="pt-2 text-sm text-muted-foreground">
+                {t(checkoutHintKey)}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

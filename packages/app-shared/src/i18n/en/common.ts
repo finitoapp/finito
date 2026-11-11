@@ -144,6 +144,7 @@ export const enCommon = {
   "stats.heatmap.title": "Busy hours",
   "stats.items.byQuantity": "By quantity",
   "stats.items.byRevenue": "By revenue",
+  "stats.items.discounts": "Discounts",
   "stats.items.metric": "Rank items by",
   "stats.items.quantity": "{quantity} ×",
   "stats.items.showAll": "Show all",

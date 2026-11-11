@@ -1,6 +1,9 @@
 import { rowsByCurrency } from "@payky/app-shared/stats-sections"
 import { hasTaxableLines } from "@payky/core/modules/bill-line/bill-line-tax-utils"
-import { taxRecapQuery } from "@payky/core/modules/sales-stats/sales-stats-queries"
+import {
+  discountedBillLinesQuery,
+  taxRecapQuery,
+} from "@payky/core/modules/sales-stats/sales-stats-queries"
 import { salesTaxRecap } from "@payky/core/modules/sales-stats/sales-stats-utils"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { verticalNavShellClassName } from "@/components/vertical-nav.tsx"
@@ -25,13 +28,24 @@ export function VatRecap({ stats }: { readonly stats: SalesStats }) {
     stats.ranges.range,
     stats.live
   )
+  // Bills with a discount, whose VAT is counted from their net lines
+  // (catalog/0003).
+  const discountedLines = useStatsRows(
+    "discountedBillLines",
+    discountedBillLinesQuery,
+    stats.ranges.range,
+    stats.live
+  )
 
-  if (rows === undefined) return null
+  if (rows === undefined || discountedLines === undefined) return null
 
-  const groups = rowsByCurrency(rows, stats.accountCurrency)
+  const groups = rowsByCurrency(
+    [...rows, ...discountedLines],
+    stats.accountCurrency
+  )
     .map(({ currency }) => ({
       currency,
-      recap: salesTaxRecap({ rows, currency, rates }),
+      recap: salesTaxRecap({ rows, discountedLines, currency, rates }),
     }))
     .filter((group) => hasTaxableLines(group.recap))
 

@@ -289,6 +289,8 @@ export const createPreparedPayment =
       readonly includeSparkInvoice?: boolean
     }
     readonly iban?: Omit<InsertValues<typeof paymentIban>, "id">
+    /** As `createPayment`'s (payment/0017). */
+    readonly cardTerminalLinked?: boolean
   }): Task<
     PaymentId,
     CreatePreparedPaymentError,

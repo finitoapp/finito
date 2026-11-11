@@ -1,5 +1,8 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import type { SplitBillConfirmInput } from "@payky/app-shared/split-selection"
+import {
+  type SplitBillConfirmInput,
+  splitNeedsDiscard,
+} from "@payky/app-shared/split-selection"
 import {
   type SplitBillError,
   splitBill,
@@ -16,6 +19,7 @@ import { useAtomValue } from "jotai"
 import { useRef, useState } from "react"
 import { accountAtom } from "../../atoms/account.ts"
 import { nativeConsole } from "../../core/native-runtime.ts"
+import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -26,14 +30,20 @@ const splitBillErrorKeys = {
   BillLocked: "bill.locked",
   // The selection no longer matches the bill: retrying the same one cannot work.
   BillSplitSelectionStale: "bill.split.staleSelection",
+  // Moving lines off a partly paid bill cannot take it below what was paid.
+  BillTotalBelowPaid: "bill.totalBelowPaid",
+  // A bill left with lines below zero could only be discarded (payment/0015).
+  BillSplitTotalNegative: "bill.split.totalNegative",
+  // The screens never offer the bill itself as the target.
+  BillSplitSameBill: "bill.split.error",
 } satisfies Record<SplitBillError["type"], TranslationKey>
 
 /**
  * Runs a confirmed split, as web's `handleConfirmSplit`: a new bill is always
  * followed (it needs a table and a charge), an existing target only when the
  * source emptied out and was canceled. `replace` so Back reaches the floor
- * rather than a bill that may no longer be open. No permission: web gates
- * the split by the page's `sell` alone.
+ * rather than a bill that may no longer be open. The page's `sell` covers a
+ * split; moving a discount asks for `discard` too (access/0012), as on web.
  */
 export function useSplitBill({
   billId,
@@ -51,6 +61,7 @@ export function useSplitBill({
   const { device } = useAtomValue(accountAtom)
   const toast = useToast()
   const { t } = useTranslation()
+  const { require } = useRequirePermission()
   // The ref closes the window before `pending` re-renders: a double tap would
   // otherwise run the split twice.
   const pendingRef = useRef(false)
@@ -66,6 +77,12 @@ export function useSplitBill({
     pendingRef.current = true
     setPending(true)
     try {
+      if (
+        splitNeedsDiscard(input.items) &&
+        !(await require("discard", "access.action.moveDiscount"))
+      ) {
+        return
+      }
       await using run = appRun()
 
       if (input.destination === "new") {

@@ -28,7 +28,7 @@ numbers and the catalog went home and back each time.
 - **The statistics are Activity's third tab** (Payments, Bills,
   Statistics) at `/activity/stats`: both look back at what sold. The tab
   is always shown and needs `stats`, so the access gate asks for the PIN
-  there (access/0010).
+  there (access/0012).
 - **Notifications are a bell on home**, beside the hamburger, opening
   `/notifications` as a screen of its own with Back, outside the section:
   they are a state to check, not a place to work in. Nothing raises one
@@ -52,7 +52,7 @@ numbers and the catalog went home and back each time.
   tech; the sidebar spells the labels out. The active icon grows a little
   and rises over a small half-circle marker that slides between tabs.
 - **Every tab is always shown.** A gated tab asks for the PIN through the
-  access gate (access/0010).
+  access gate (access/0012).
 
 ## Alternatives considered
 

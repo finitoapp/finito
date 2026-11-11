@@ -5,6 +5,7 @@ import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import type { ItemRow } from "../item/item.ts"
 import type { ItemId } from "../item/item-types.ts"
 import {
+  Integer,
   NonEmptyString255,
   NonNegativeInteger,
   PositiveNumber,
@@ -15,7 +16,9 @@ import type { BillLineId, BillLineSummaryId } from "./bill-line-types.ts"
 import {
   calculateBillLineSummaries,
   createBillLineSummaryId,
+  deriveBillGoodsTotal,
   deriveBillLineSummaryDiff,
+  deriveBillSummaryTotal,
   getBillLineSummaryUnitAmount,
   getLatestCatalogItemSummary,
 } from "./bill-line-utils.ts"
@@ -83,6 +86,61 @@ describe("bill line summaries", () => {
         quantity: 1,
         totalAmount: 5900,
       },
+    ])
+  })
+
+  test("nets a discount below zero, taken off and added again, without clamping it", () => {
+    const coffee: ItemRow = {
+      id: "item-coffee" as ItemId,
+      catalogItemId: "catalog-coffee" as CatalogItemId,
+      name: NonEmptyString255("Coffee"),
+      description: null,
+      currency: "CZK",
+      unitAmount: Integer(1_000),
+      taxRateId: null,
+    }
+    const discount: ItemRow = {
+      id: "item-discount" as ItemId,
+      catalogItemId: "catalog-discount" as CatalogItemId,
+      name: NonEmptyString255("Loyalty discount"),
+      description: null,
+      currency: "CZK",
+      unitAmount: Integer(-1_500),
+      taxRateId: null,
+    }
+    const line = (
+      item: ItemRow,
+      kind: BillLineRow["kind"],
+      totalAmount: number
+    ): Omit<BillLineRow, "id"> => ({
+      billId,
+      deviceId: null,
+      catalogItemId: item.catalogItemId,
+      itemId: item.id,
+      type: "catalogItem",
+      kind,
+      quantity: PositiveNumber(1),
+      totalAmount: Integer(totalAmount),
+    })
+    const items = [coffee, discount]
+    const added = [line(coffee, "add", 1_000), line(discount, "add", -1_500)]
+
+    const withDiscount = calculateBillLineSummaries(added, items)
+    expect(withDiscount).toMatchObject([
+      { itemId: coffee.id, quantity: 1, totalAmount: 1_000 },
+      { itemId: discount.id, quantity: 1, totalAmount: -1_500 },
+    ])
+    expect(deriveBillSummaryTotal(withDiscount)).toBe(-500)
+
+    const removed = [...added, line(discount, "remove", -1_500)]
+    expect(
+      deriveBillSummaryTotal(calculateBillLineSummaries(removed, items))
+    ).toBe(1_000)
+
+    const addedAgain = [...removed, line(discount, "add", -1_500)]
+    expect(calculateBillLineSummaries(addedAgain, items)).toMatchObject([
+      { itemId: coffee.id, quantity: 1, totalAmount: 1_000 },
+      { itemId: discount.id, quantity: 1, totalAmount: -1_500 },
     ])
   })
 
@@ -310,7 +368,57 @@ describe("getLatestCatalogItemSummary", () => {
   })
 })
 
+describe("deriveBillGoodsTotal", () => {
+  test("adds up every line but the tips", () => {
+    expect(
+      deriveBillGoodsTotal([
+        makeSummary({
+          itemId: "water" as ItemId,
+          name: NonEmptyString255("Tap water"),
+          totalAmount: NonNegativeInteger(0),
+        }),
+        makeSummary({
+          itemId: "service" as ItemId,
+          name: NonEmptyString255("Service"),
+          type: "manualAmount",
+          totalAmount: NonNegativeInteger(300),
+        }),
+        makeSummary({
+          itemId: "tip" as ItemId,
+          name: NonEmptyString255("Tip"),
+          type: "tip",
+          totalAmount: NonNegativeInteger(1_000),
+        }),
+      ])
+    ).toBe(300)
+  })
+})
+
 describe("getBillLineSummaryUnitAmount", () => {
+  test("gives a discount line a negative unit amount, rounded away from zero", () => {
+    const discount = (quantity: number, totalAmount: number) =>
+      makeSummary({
+        itemId: "item-discount" as ItemId,
+        name: NonEmptyString255("Discount"),
+        quantity: PositiveNumber(quantity),
+        totalAmount: Integer(totalAmount),
+      })
+
+    expect(getBillLineSummaryUnitAmount(discount(2, -1_000))).toBe(-500)
+    // −5 / 2 is −2.5: the mirror of 5 / 2, which rounds to 3, not to −2.
+    expect(getBillLineSummaryUnitAmount(discount(2, -5))).toBe(-3)
+    expect(
+      getBillLineSummaryUnitAmount(
+        makeSummary({
+          itemId: "item-coffee" as ItemId,
+          name: NonEmptyString255("Coffee"),
+          quantity: PositiveNumber(2),
+          totalAmount: Integer(5),
+        })
+      )
+    ).toBe(3)
+  })
+
   test("divides the line total by its quantity", () => {
     expect(
       getBillLineSummaryUnitAmount(

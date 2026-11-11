@@ -32,6 +32,14 @@ const SWITCHIO_NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
 const SwitchioNative =
   registerPlugin<SwitchioNativePlugin>(SWITCHIO_PLUGIN_NAME)
 
+/**
+ * Whether this runtime can drive the card terminal at all: the native app,
+ * where the intents reach SwitchioPay. The payment screen shows the card tab
+ * by it, and Charge and `createPayment` judge the methods a payment offers by
+ * it too (payment/0017), so they offer exactly what the screen will show.
+ */
+export const isCardTerminalLinked = (): boolean => Capacitor.isNativePlatform()
+
 /** Whether this device can launch SwitchioPay; always `false` outside the native app. */
 export const isSwitchioInstalled = async (): Promise<boolean> =>
   Capacitor.isNativePlatform() && (await SwitchioNative.isInstalled()).installed

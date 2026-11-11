@@ -354,7 +354,8 @@ export const registerPaymentsCommand =
             deviceId: DeviceId.optional().describe(
               "Device id that updated the payment"
             ),
-            billId: BillId.optional().describe("Related bill id"),
+            // No --billId: `updatePayment` does not move a payment onto a
+            // bill (payment/0012).
             tableId: TableId.optional().describe("Related table id"),
             canceledAt: TimestampMsFromStringSchema.optional().describe(
               "Cancellation timestamp, as milliseconds or a date string"
@@ -416,7 +417,6 @@ export const registerPaymentsCommand =
               updatePayment({
                 id: options.id,
                 deviceId: options.deviceId,
-                billId: options.billId,
                 tableId: options.tableId,
                 amount: options.amount,
                 currency: options.currency,

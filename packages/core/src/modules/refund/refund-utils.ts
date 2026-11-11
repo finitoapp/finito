@@ -1,6 +1,10 @@
 import { sqliteTrue } from "@evolu/common"
 
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
+import {
+  type DiscountShareLine,
+  deriveLineNetAmount,
+} from "../bill-line/bill-line-discount-utils.ts"
 import type { ItemLineType } from "../item/item-types.ts"
 import {
   deriveReceivedTipAmount,
@@ -219,16 +223,23 @@ const roundQuantity = (quantity: number) => Math.round(quantity * 1e6) / 1e6
 export interface RefundableLine<TLine> {
   readonly line: TLine
   readonly remainingQuantity: number
+  /** What is left of the line's net amount (`deriveLineNetAmount`). */
   readonly remainingAmount: NonNegativeInteger
 }
 
+/**
+ * The goods lines of a payment that can still be refunded by items, each
+ * with what is left of it (refund/0014). A line is worth its net amount: its
+ * `totalAmount` less the share of the bill's discount it was paid with,
+ * frozen into `paymentLine.discountShare`, so a payment made before
+ * discounts existed (`null`) reads its lines as they were.
+ */
 export const deriveRefundableLines = <
   TLine extends {
     readonly id: PaymentLineId
     readonly type: ItemLineType
     readonly quantity: PositiveNumber
-    readonly totalAmount: NonNegativeInteger
-  },
+  } & DiscountShareLine,
 >(
   lines: ReadonlyArray<TLine>,
   refundLines: ReadonlyArray<{
@@ -238,7 +249,14 @@ export const deriveRefundableLines = <
   }>
 ): ReadonlyArray<RefundableLine<TLine>> =>
   lines.flatMap((line) => {
-    if (line.type === "tip") return []
+    // A tip is refunded on its own, and a line whose net amount is zero
+    // has nothing to give back: a refund of only such lines would come to
+    // zero, which `refundPayment` refuses (`RefundAmountInvalid`). That is a
+    // free line and a goods line the discount took to zero. A discount line
+    // itself, below zero, is never refunded on its own: its amount comes
+    // back as the smaller net amount of the goods it was spread over.
+    const netAmount = deriveLineNetAmount(line)
+    if (line.type === "tip" || netAmount <= 0) return []
 
     const refunded = refundLines.filter(
       ({ paymentLineId }) => paymentLineId === line.id
@@ -253,21 +271,28 @@ export const deriveRefundableLines = <
         line,
         remainingQuantity,
         remainingAmount: NonNegativeInteger(
-          Math.max(0, line.totalAmount - sumRefundAmounts(refunded))
+          Math.max(0, netAmount - sumRefundAmounts(refunded))
         ),
       },
     ]
   })
 
+/**
+ * What returning `quantity` of a refundable line gives back: its net amount
+ * (`deriveLineNetAmount`) pro rata to the quantity, and the whole rest of it
+ * when the rest of the line comes back, so rounding leaves nothing behind
+ * (refund/0014).
+ */
 export const calculateRefundLineAmount = (
   {
     line,
     remainingQuantity,
     remainingAmount,
-  }: RefundableLine<{
-    readonly quantity: PositiveNumber
-    readonly totalAmount: NonNegativeInteger
-  }>,
+  }: RefundableLine<
+    {
+      readonly quantity: PositiveNumber
+    } & DiscountShareLine
+  >,
   quantity: number
 ): NonNegativeInteger =>
   quantity >= remainingQuantity
@@ -275,6 +300,6 @@ export const calculateRefundLineAmount = (
     : NonNegativeInteger(
         Math.min(
           remainingAmount,
-          Math.round((line.totalAmount * quantity) / line.quantity)
+          Math.round((deriveLineNetAmount(line) * quantity) / line.quantity)
         )
       )

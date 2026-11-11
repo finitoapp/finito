@@ -13,12 +13,18 @@ import {
 } from "date-fns"
 
 import {
+  allocateDiscount,
+  isDiscountLine,
+} from "../bill-line/bill-line-discount-utils.ts"
+import {
   calculateTaxRecap,
   type TaxRecapRow,
 } from "../bill-line/bill-line-tax-utils.ts"
-import { type Currency, NonNegativeInteger } from "../shared/schema.ts"
+import { calculateBillLineSummaries } from "../bill-line/bill-line-utils.ts"
+import { type Currency, Integer } from "../shared/schema.ts"
 import type { TaxRateRow } from "../tax-rate/tax-rate.ts"
 import type {
+  DiscountedBillLineRow,
   RefundsRow,
   SalesByHourRow,
   SalesByMethodRow,
@@ -389,8 +395,40 @@ export const expectedCash = ({
 }
 
 /**
+ * The net goods lines of the closed bills with a discount: each bill folded
+ * as its detail folds it, its discount spread by `allocateDiscount` (the
+ * function a payment freezes its lines with, catalog/0003), and the discount
+ * lines themselves dropped, since their amount is in the goods lines' shares
+ * now. A bill whose discount found no goods to spread over has only goods at
+ * zero, so dropping its discount takes nothing off any rate.
+ */
+const discountedBillTaxLines = (
+  lines: ReadonlyArray<DiscountedBillLineRow>
+) => {
+  const linesByBillId = Map.groupBy(lines, (line) => line.billId)
+  return [...linesByBillId.values()].flatMap((billLines) =>
+    allocateDiscount(
+      calculateBillLineSummaries(
+        billLines,
+        billLines.map((line) => ({
+          id: line.itemId,
+          name: line.name,
+          description: line.description,
+          currency: line.itemCurrency,
+          taxRateId: line.taxRateId,
+        }))
+      )
+    ).filter((line) => !isDiscountLine(line))
+  )
+}
+
+/**
  * `TaxRecap`'s rows for one currency, through `calculateTaxRecap` itself so
- * VAT is rounded per line exactly as on a bill. `rates` is
+ * VAT is rounded per line exactly as on a bill. `rows` are the bills without
+ * a discount (`taxRecapQuery`), a group of them that nets below zero left
+ * out, `discountedLines` the bills with one
+ * (`discountedBillLinesQuery`), whose VAT is counted from their net lines, so
+ * an unchanged bill's VAT here is the VAT its payment froze. `rates` is
  * `taxRatesQuery`, archived rates included: old bills point at them.
  *
  * ponytail: expands the per-amount counts back into one entry per line —
@@ -399,21 +437,33 @@ export const expectedCash = ({
  */
 export const salesTaxRecap = ({
   rows,
+  discountedLines,
   currency,
   rates,
 }: {
   readonly rows: ReadonlyArray<TaxRecapQueryRow>
+  readonly discountedLines: ReadonlyArray<DiscountedBillLineRow>
   readonly currency: Currency
   readonly rates: ReadonlyArray<Pick<TaxRateRow, "id" | "name" | "rate">>
 }): ReadonlyArray<TaxRecapRow> =>
   calculateTaxRecap(
-    rows
-      .filter((row) => row.currency === currency)
-      .flatMap((row) =>
-        Array.from({ length: row.lineCount }, () => ({
-          taxRateId: row.taxRateId,
-          totalAmount: NonNegativeInteger(row.lineAmount),
-        }))
+    [
+      // These bills hold no discount, so a group below zero is drift — a
+      // removal written twice, the CLI taking off more than was added. It
+      // holds no VAT, and `calculateTaxRecap` would read it as a discount
+      // no line bears and void the whole currency's recap.
+      ...rows
+        .filter((row) => row.currency === currency && row.lineAmount >= 0)
+        .flatMap((row) =>
+          Array.from({ length: row.lineCount }, () => ({
+            taxRateId: row.taxRateId,
+            totalAmount: Integer(row.lineAmount),
+            discountShare: null,
+          }))
+        ),
+      ...discountedBillTaxLines(
+        discountedLines.filter((line) => line.currency === currency)
       ),
+    ],
     rates
   )

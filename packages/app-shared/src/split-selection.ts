@@ -1,10 +1,9 @@
 import type { BillId } from "@payky/core/modules/bill/bill-types"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill-line-utils"
-import {
-  NonNegativeInteger,
-  PositiveNumber,
-} from "@payky/core/modules/shared/schema"
+import { roundMinorUnits } from "@payky/core/modules/shared/money"
+import { PositiveNumber } from "@payky/core/modules/shared/schema"
+import { linesNeedDiscard } from "./cart-lines.ts"
 
 /** How many units of each line, keyed by `BillLineSummary["id"]`, are picked to move. */
 export type SplitSelection = Readonly<Record<string, number>>
@@ -39,7 +38,10 @@ export const selectAllForSplit = (
 
 /**
  * The picked lines with `quantity`/`totalAmount` reduced to the moved portion,
- * which is what `splitBill`/`splitBillIntoNewBill` take.
+ * which is what `splitBill`/`splitBillIntoNewBill` take. A whole line moves
+ * with its own total, so rounding a unit amount can never make the selection
+ * ask for more than the line holds; a part moves at the line's unit amount,
+ * a discount's below zero (catalog/0002).
  */
 export const deriveSplitItems = (
   summaries: ReadonlyArray<BillLineSummary>,
@@ -49,15 +51,30 @@ export const deriveSplitItems = (
     const quantity = selection[summary.id] ?? 0
     if (quantity <= 0) return []
 
-    const unitAmount = getBillLineSummaryUnitAmount(summary)
     return [
       {
         ...summary,
         quantity: PositiveNumber(quantity),
-        totalAmount: NonNegativeInteger(unitAmount * quantity),
+        totalAmount:
+          quantity >= summary.quantity
+            ? summary.totalAmount
+            : roundMinorUnits(getBillLineSummaryUnitAmount(summary) * quantity),
       },
     ]
   })
+
+/**
+ * Whether moving `items` takes `discard` (access/0012). Splitting is `sell`,
+ * but the target bill receives every moved line as an `add`, so a discount
+ * among them lowers its total like a discount added by a tap
+ * (`buildSplitLines`). `items` is what {@link deriveSplitItems} picked.
+ */
+export const splitNeedsDiscard = (
+  items: ReadonlyArray<Pick<BillLineSummary, "totalAmount">>
+): boolean =>
+  linesNeedDiscard(
+    items.map(({ totalAmount }) => ({ kind: "add", totalAmount }))
+  )
 
 export const canConfirmSplit = ({
   itemCount,

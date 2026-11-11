@@ -1,8 +1,14 @@
+import { createIdFromString } from "@evolu/common"
+import { createZeroPriceWithoutTaxRateError } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { FiatCurrency } from "@payky/core/modules/shared/schema"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { describe, expect, test } from "vitest"
 import {
+  type CatalogItemFormContext,
   type CatalogItemFormInput,
+  createPriceErrorKey,
   parseCatalogItemForm,
+  updateCatalogItemErrorKeys,
 } from "./catalog-item-form-schema.ts"
 
 const validInput: CatalogItemFormInput = {
@@ -15,8 +21,22 @@ const validInput: CatalogItemFormInput = {
   scanCode: "",
 }
 
-const parse = (overrides: Partial<CatalogItemFormInput> = {}) =>
-  parseCatalogItemForm({ ...validInput, ...overrides }, FiatCurrency.CZK)
+const taxRateId = createIdFromString<"TaxRate">("standard") as TaxRateId
+
+const parse = (
+  overrides: Partial<CatalogItemFormInput> = {},
+  context: Partial<CatalogItemFormContext> = {}
+) =>
+  parseCatalogItemForm(
+    { ...validInput, ...overrides },
+    {
+      currency: FiatCurrency.CZK,
+      taxRateId,
+      vatPayer: true,
+      discount: false,
+      ...context,
+    }
+  )
 
 describe("parseCatalogItemForm", () => {
   test("trims text and converts the price to minor units", () => {
@@ -49,11 +69,75 @@ describe("parseCatalogItemForm", () => {
 
   test.each([
     ["not a number", "abc"],
-    ["zero", "0"],
     ["negative", "-5"],
     ["more fraction digits than the currency has", "1.234"],
   ])("rejects a price that is %s", (_label, price) => {
     const result = parse({ price })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toEqual({ price: "catalog.items.form.price.invalid" })
+  })
+
+  test("takes a zero price", () => {
+    const result = parse({ price: "0" })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.price).toBe(0)
+  })
+
+  test("refuses a VAT payer's zero price without a VAT rate at the price", () => {
+    const result = parse({ price: "0" }, { taxRateId: null })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toEqual({
+      price: "catalog.items.form.price.zeroWithoutTaxRate",
+    })
+  })
+
+  test("takes a zero price without a VAT rate from an account that is not a VAT payer", () => {
+    expect(parse({ price: "0" }, { taxRateId: null, vatPayer: false }).ok).toBe(
+      true
+    )
+  })
+
+  test("takes a VAT payer's positive price without a VAT rate", () => {
+    expect(parse({ price: "59" }, { taxRateId: null }).ok).toBe(true)
+  })
+
+  test("hands back the VAT rate picked for an item", () => {
+    const result = parse()
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.taxRateId).toBe(taxRateId)
+  })
+
+  test("turns the amount of a discount below zero and drops its VAT rate", () => {
+    // The rate picked before the switch was turned on is not the discount's.
+    const result = parse({ price: "15.50" }, { discount: true })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.value.price).toBe(-1550)
+    expect(result.value.taxRateId).toBeNull()
+  })
+
+  test("refuses a discount of nothing at the price", () => {
+    const result = parse({ price: "0" }, { discount: true })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toEqual({
+      price: "catalog.items.form.price.discountZero",
+    })
+  })
+
+  test("still refuses a signed amount for a discount", () => {
+    // The switch carries the sign; the field takes the amount only.
+    const result = parse({ price: "-5" }, { discount: true })
 
     expect(result.ok).toBe(false)
     if (result.ok) return
@@ -82,5 +166,58 @@ describe("parseCatalogItemForm", () => {
       price: "catalog.items.form.price.invalid",
       sku: "catalog.items.form.sku.invalid",
     })
+  })
+})
+
+describe("createPriceErrorKey", () => {
+  test("says a discount cannot be zero only for a well-formed zero, and a malformed amount is an invalid price", () => {
+    const discountErrorKey = createPriceErrorKey({
+      currency: "CZK",
+      discount: true,
+    })
+    expect(discountErrorKey("0")).toBe("catalog.items.form.price.discountZero")
+    expect(discountErrorKey("0,00")).toBe(
+      "catalog.items.form.price.discountZero"
+    )
+    for (const malformed of ["abc", "1.234", "-5", ""]) {
+      expect(discountErrorKey(malformed)).toBe(
+        "catalog.items.form.price.invalid"
+      )
+    }
+    // A price that is not a discount may be zero; anything refused is invalid.
+    expect(
+      createPriceErrorKey({ currency: "CZK", discount: false })("abc")
+    ).toBe("catalog.items.form.price.invalid")
+  })
+})
+
+describe("updateCatalogItemErrorKeys", () => {
+  // `updateCatalogItem` refuses clearing a free item's VAT rate and making an
+  // item without one free alike (catalog-item-actions.test.ts); this is the
+  // message both apps' inline edits show for it.
+  test("an inline edit of the price or the VAT rate the core refuses shows the create form's own message", () => {
+    const formResult = parse({ price: "0" }, { taxRateId: null })
+    expect(formResult.ok).toBe(false)
+    if (formResult.ok) return
+
+    const refusal = createZeroPriceWithoutTaxRateError()
+    expect(updateCatalogItemErrorKeys[refusal.type]).toBe(
+      formResult.error.price
+    )
+  })
+
+  test("a discount given a VAT rate or an update across zero says which rule", () => {
+    expect(updateCatalogItemErrorKeys.DiscountWithTaxRate).toBe(
+      "catalog.items.form.price.discountWithTaxRate"
+    )
+    expect(updateCatalogItemErrorKeys.CatalogItemPriceSignChange).toBe(
+      "catalog.items.form.price.signChange"
+    )
+  })
+
+  test("an item deleted meanwhile gets the generic message", () => {
+    expect(updateCatalogItemErrorKeys.CatalogItemNotFound).toBe(
+      "app.saveFailed"
+    )
   })
 })

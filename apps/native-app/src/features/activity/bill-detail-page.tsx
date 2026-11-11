@@ -7,6 +7,7 @@ import { formatDateTime } from "@payky/app-shared/format-date"
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
+import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
   hasTaxableLines,
@@ -137,7 +138,9 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
     { value: totalAmount, currency: bill.currency },
     locale
   )
-  const taxRecapRows = calculateTaxRecap(summaries, taxRates)
+  // VAT of the net lines, the bill's discount spread over its goods
+  // (catalog/0003).
+  const taxRecapRows = calculateTaxRecap(allocateDiscount(summaries), taxRates)
   const closedOrCanceled =
     billStatus.status === "closed" && bill.closedAt !== null
       ? t("billDetail.closedAtValue", {

@@ -1,11 +1,18 @@
+import { createIdFromString } from "@evolu/common"
 import { describe, expect, test } from "vitest"
-import { NonEmptyString255, NonNegativeInteger } from "../shared/schema.ts"
+import {
+  Integer,
+  NonEmptyString255,
+  NonNegativeInteger,
+} from "../shared/schema.ts"
+import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import type { CatalogItemRow } from "./catalog-item.ts"
 import type { CatalogItemId } from "./catalog-item-types.ts"
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayDescription,
   getStaffDisplayName,
+  validateCatalogItemPricing,
 } from "./catalog-item-utils.ts"
 
 const makeItem = (
@@ -148,5 +155,107 @@ describe("findCatalogItemsByScanCode", () => {
     const coffee = makeItem({ id: "cat-1" as CatalogItemId, scanCode: null })
 
     expect(findCatalogItemsByScanCode([coffee], "")).toEqual([])
+  })
+})
+
+describe("validateCatalogItemPricing", () => {
+  const taxRateId = createIdFromString<"TaxRate">("standard") as TaxRateId
+  const pricing = (
+    overrides: Partial<Parameters<typeof validateCatalogItemPricing>[0]>
+  ) =>
+    validateCatalogItemPricing({
+      unitAmount: Integer(0),
+      taxRateId: null,
+      vatPayer: true,
+      originalUnitAmount: null,
+      ...overrides,
+    })
+
+  test("refuses a VAT payer's zero price without a VAT rate", () => {
+    expect(pricing({})).toEqual({
+      ok: false,
+      error: { type: "ZeroPriceWithoutTaxRate" },
+    })
+    expect(pricing({ originalUnitAmount: Integer(5_900) }).ok).toBe(false)
+  })
+
+  test("takes a VAT payer's zero price with a VAT rate", () => {
+    expect(pricing({ taxRateId }).ok).toBe(true)
+  })
+
+  test("takes a zero price without a VAT rate from an account that is not a VAT payer", () => {
+    expect(pricing({ vatPayer: false }).ok).toBe(true)
+  })
+
+  test("still takes a VAT payer's positive price without a VAT rate", () => {
+    expect(pricing({ unitAmount: Integer(5_900) }).ok).toBe(true)
+  })
+
+  test("takes a discount without a VAT rate", () => {
+    expect(pricing({ unitAmount: Integer(-500) }).ok).toBe(true)
+    expect(pricing({ unitAmount: Integer(-500), vatPayer: false }).ok).toBe(
+      true
+    )
+  })
+
+  test("refuses a discount with a VAT rate", () => {
+    expect(pricing({ unitAmount: Integer(-500), taxRateId })).toEqual({
+      ok: false,
+      error: { type: "DiscountWithTaxRate" },
+    })
+    expect(
+      pricing({
+        unitAmount: Integer(-500),
+        taxRateId,
+        vatPayer: false,
+        originalUnitAmount: Integer(-300),
+      })
+    ).toEqual({ ok: false, error: { type: "DiscountWithTaxRate" } })
+  })
+
+  test("refuses an update that moves the price across zero", () => {
+    const signChange = {
+      ok: false,
+      error: { type: "CatalogItemPriceSignChange" },
+    }
+    // An item into a discount.
+    expect(
+      pricing({
+        unitAmount: Integer(-500),
+        originalUnitAmount: Integer(5_900),
+      })
+    ).toEqual(signChange)
+    expect(
+      pricing({ unitAmount: Integer(-500), originalUnitAmount: Integer(0) })
+    ).toEqual(signChange)
+    // A discount into an item, a free one included: zero is no discount.
+    expect(
+      pricing({
+        unitAmount: Integer(5_900),
+        taxRateId,
+        originalUnitAmount: Integer(-500),
+      })
+    ).toEqual(signChange)
+    expect(
+      pricing({
+        unitAmount: Integer(0),
+        taxRateId,
+        originalUnitAmount: Integer(-500),
+      })
+    ).toEqual(signChange)
+  })
+
+  test("takes an update that keeps the sign", () => {
+    expect(
+      pricing({ unitAmount: Integer(-800), originalUnitAmount: Integer(-500) })
+        .ok
+    ).toBe(true)
+    expect(
+      pricing({
+        unitAmount: Integer(0),
+        taxRateId,
+        originalUnitAmount: Integer(5_900),
+      }).ok
+    ).toBe(true)
   })
 })

@@ -1,10 +1,12 @@
 import { describe, expect, test } from "vitest"
 import {
   decimalAmountToMinorUnits,
+  decimalPriceToMinorUnits,
   fiatMinorUnitsToSats,
   fiatToSats,
   minorUnitsToDecimalString,
   minorUnitsToFixedDecimalString,
+  roundMinorUnits,
   satsToFiat,
   signedDecimalAmountToMinorUnits,
 } from "./money.ts"
@@ -130,6 +132,35 @@ describe("decimalAmountToMinorUnits", () => {
   })
 })
 
+describe("decimalPriceToMinorUnits", () => {
+  test("takes a zero price, which an amount to charge refuses", () => {
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "0" })).toBe(0)
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "0,00" })).toBe(0)
+    expect(decimalAmountToMinorUnits({ currency: "CZK", value: "0" })).toBe(
+      null
+    )
+  })
+
+  test("reads a positive price the way an amount is read", () => {
+    expect(
+      decimalPriceToMinorUnits({ currency: "CZK", value: " 1.234,5 " })
+    ).toBe(123_450)
+  })
+
+  test("rejects a sign, invalid text and more fraction digits than the currency has", () => {
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "-5" })).toBe(
+      null
+    )
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "" })).toBe(null)
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "free" })).toBe(
+      null
+    )
+    expect(decimalPriceToMinorUnits({ currency: "CZK", value: "1.234" })).toBe(
+      null
+    )
+  })
+})
+
 describe("fiatToSats", () => {
   test("converts at the given rate", () => {
     // 1 BTC costs 2,000,000 CZK, so 20,000 CZK is 0.01 BTC.
@@ -214,5 +245,24 @@ describe("signedDecimalAmountToMinorUnits", () => {
         null
       )
     }
+  })
+})
+
+describe("roundMinorUnits", () => {
+  test("rounds a half away from zero, a negative amount the mirror of its positive twin", () => {
+    expect(roundMinorUnits(2.5)).toBe(3)
+    expect(roundMinorUnits(-2.5)).toBe(-3)
+    expect(roundMinorUnits(1_399.3)).toBe(1_399)
+    expect(roundMinorUnits(-1_399.3)).toBe(-1_399)
+    expect(roundMinorUnits(2_000.000_000_000_2)).toBe(2_000)
+  })
+
+  test("never hands back a negative zero", () => {
+    expect(Object.is(roundMinorUnits(-0.2), 0)).toBe(true)
+    expect(Object.is(roundMinorUnits(0), 0)).toBe(true)
+  })
+
+  test("still refuses an amount that is not a number", () => {
+    expect(() => roundMinorUnits(Number.NaN)).toThrow()
   })
 })

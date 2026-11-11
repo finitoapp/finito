@@ -488,7 +488,7 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
         deviceId,
         billId,
         tableId: null,
-        amount: deriveBillSummaryTotal(summaries),
+        amount: NonNegativeInteger(deriveBillSummaryTotal(summaries)),
         currency: billRow.currency,
         tipAmount: NonNegativeInteger(0),
         canceledAt: null,

@@ -146,6 +146,7 @@ export const skCommon = {
   "stats.heatmap.title": "Najrušnejšie hodiny",
   "stats.items.byQuantity": "Podľa množstva",
   "stats.items.byRevenue": "Podľa tržby",
+  "stats.items.discounts": "Zľavy",
   "stats.items.metric": "Zoradiť položky",
   "stats.items.quantity": "{quantity} ×",
   "stats.items.showAll": "Zobraziť všetko",

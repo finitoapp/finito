@@ -1,7 +1,11 @@
 import type { enPayment } from "../en/payment.ts"
 
 export const csPayment = {
+  "payment.create.billTotalNotPositive":
+    "Účet vychází na nulu nebo pod ni, není co zaplatit.",
   "payment.create.error": "Platbu se nepodařilo vytvořit.",
+  "payment.create.noPayableMethod":
+    "Tuto částku nepřijme žádná zapnutá platební metoda: hotovost ji zaokrouhlí na nulu.",
   "payment.status.canceled": "Zrušeno",
   "payment.status.expired": "Vypršelo",
   "payment.status.paid": "Zaplaceno",
@@ -236,6 +240,8 @@ export const csPayment = {
   "paymentWait.cashPaid.action": "Označit jako zaplaceno",
   "paymentWait.cashPaid.difference": "Rozdíl proti útratě: {amount}",
   "paymentWait.cashPaid.error": "Platbu se nepodařilo označit jako zaplacenou.",
+  "paymentWait.cashPaid.notPayable":
+    "Tuto platbu nejde zaplatit hotově: po zaokrouhlení pro hotovost vychází na nulu.",
   "paymentWait.cashPaid.pending": "Označuji jako zaplaceno...",
   "paymentWait.cashPaid.prompt": "Přijměte hotovostní platbu",
   "paymentWait.cashPaid.received": "Přijatá hotovost",

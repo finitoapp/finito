@@ -1,4 +1,8 @@
-import { createPriceCodec } from "@payky/app-shared/catalog-item-form-schema"
+import {
+  createPriceCodec,
+  createPriceErrorKey,
+  updateCatalogItemErrorKeys,
+} from "@payky/app-shared/catalog-item-form-schema"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
 import {
   optionalIdCodec,
@@ -20,6 +24,7 @@ import { CatalogItemId } from "@payky/core/modules/catalog-item/catalog-item-typ
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
+  isDiscountPrice,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { NonEmptyString255Schema } from "@payky/core/modules/shared/schema"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
@@ -68,7 +73,12 @@ import { ScanCodeButton } from "./scan-code-button.tsx"
 
 const taxRateCodec = optionalIdCodec<TaxRateId>()
 
-/** Edits one catalog item, as web's `EditCatalogItemPage`: every field saves itself. */
+/**
+ * Edits one catalog item, as web's `EditCatalogItemPage`: every field saves
+ * itself. Whether the item is a discount was settled when it was created
+ * (catalog/0002): a discount's price field edits the amount and keeps the
+ * sign, and it has no VAT rate to pick.
+ */
 export function EditCatalogItemPage() {
   const { catalogItemId } = useLocalSearchParams<{ catalogItemId: string }>()
   const parsedId = CatalogItemId.safeParse(catalogItemId)
@@ -108,19 +118,26 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   // A category typed rather than picked, made on Save (navigation/0003).
   const [newCategory, setNewCategory] = useState("")
 
+  const discount = isDiscountPrice(item.unitAmount)
   // How many minor units the price means depends on the currency next to it.
   const priceCodec = useMemo(
-    () => createPriceCodec(item.currency),
-    [item.currency]
+    () => createPriceCodec({ currency: item.currency, discount }),
+    [item.currency, discount]
+  )
+  const priceErrorKey = useMemo(
+    () => createPriceErrorKey({ currency: item.currency, discount }),
+    [item.currency, discount]
   )
 
-  // `updateCatalogItem` is a `Task<_, never>`: `run.ok` throws on an
-  // unexpected failure and `useRunToast` turns that into the toast.
+  // A refused price or VAT rate (`validateCatalogItemPricing`, catalog/0001)
+  // comes back as its own message, which `useRunToast` toasts; a throw gets
+  // the generic one. Either way the inline field keeps its draft.
   const saveItem = (
     values: Omit<Parameters<typeof updateCatalogItem>[0], "id">
   ) =>
     runToast(async (run) => {
-      await run.ok(updateCatalogItem({ id: item.id, ...values }))
+      const result = await run(updateCatalogItem({ id: item.id, ...values }))
+      if (!result.ok) return updateCatalogItemErrorKeys[result.error.type]
     })
 
   const currency = useInlineChoice(item.currency, (next) =>
@@ -136,7 +153,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
     setSavingCategory(true)
     const saved = await runToast(async (run) => {
       const categoryId = await run.ok(findOrCreateCatalogCategory(name.data))
-      await run.ok(updateCatalogItem({ id: item.id, categoryId }))
+      await run.orThrow(updateCatalogItem({ id: item.id, categoryId }))
     })
     setSavingCategory(false)
     if (saved) setNewCategory("")
@@ -195,11 +212,20 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
                 onSave={(internalName) => saveItem({ internalName })}
               />
               <InlineEditField
-                label={t("catalog.items.form.price.label")}
+                label={t(
+                  discount
+                    ? "catalog.items.form.discount.label"
+                    : "catalog.items.form.price.label"
+                )}
+                description={
+                  discount
+                    ? t("catalog.items.form.discount.existing")
+                    : undefined
+                }
                 keyboardType="decimal-pad"
                 defaultValue={item.unitAmount}
                 codec={priceCodec}
-                errorKey="catalog.items.form.price.invalid"
+                errorKey={priceErrorKey}
                 onSave={(unitAmount) => saveItem({ unitAmount })}
               />
               <Field>
@@ -272,39 +298,48 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
                 }}
                 saving={savingCategory || category.saving}
               />
-              <Field>
-                <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
-                <Select
-                  value={z.encode(taxRateCodec, taxRate.value)}
-                  onValueChange={(value) =>
-                    void taxRate.choose(
-                      z.safeDecode(taxRateCodec, value).data ?? null
-                    )
-                  }
-                  items={Object.fromEntries(
-                    taxRateOptions.map((option) => [option.value, option.title])
-                  )}
-                >
-                  <SelectTrigger
-                    fullWidth
-                    aria-label={t("catalog.items.form.taxRate.label")}
+              {discount ? null : (
+                <Field>
+                  <FieldLabel>
+                    {t("catalog.items.form.taxRate.label")}
+                  </FieldLabel>
+                  <Select
+                    value={z.encode(taxRateCodec, taxRate.value)}
+                    onValueChange={(value) =>
+                      void taxRate.choose(
+                        z.safeDecode(taxRateCodec, value).data ?? null
+                      )
+                    }
+                    items={Object.fromEntries(
+                      taxRateOptions.map((option) => [
+                        option.value,
+                        option.title,
+                      ])
+                    )}
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent title={t("catalog.items.form.taxRate.label")}>
-                    <SelectGroup>
-                      {taxRateOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.title}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  {t("catalog.items.form.taxRate.description")}
-                </FieldDescription>
-              </Field>
+                    <SelectTrigger
+                      fullWidth
+                      aria-label={t("catalog.items.form.taxRate.label")}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      title={t("catalog.items.form.taxRate.label")}
+                    >
+                      <SelectGroup>
+                        {taxRateOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.title}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    {t("catalog.items.form.taxRate.description")}
+                  </FieldDescription>
+                </Field>
+              )}
               <InlineEditField
                 label={t("catalog.items.form.scanCode.label")}
                 description={

@@ -22,16 +22,20 @@ import {
 import {
   cardSwitchioAccountByIdQuery,
   cashRegisterAccountByIdQuery,
+  enabledPaymentMethodAccountsQuery,
   ibanAccountByIdQuery,
 } from "../account/account-queries.ts"
-import type { AccountId } from "../account/account-types.ts"
+import type { AccountId, AccountKind } from "../account/account-types.ts"
+import { derivePaymentMethodsOffered } from "../account/account-utils.ts"
 import {
   computeAccountTransactionRows,
   upsertAccountTransactionRows,
 } from "../account-transaction/account-transaction-actions.ts"
 import { deriveManualPaymentAccountTransactionId } from "../account-transaction/account-transaction-utils.ts"
 import { requireBillAcceptingPayment } from "../bill/bill-guards.ts"
+import { isPayableThroughAnyMethod } from "../bill/bill-utils.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
+import { deriveBillGoodsTotal } from "../bill-line/bill-line-utils.ts"
 import type { CashuOperationId } from "../cashu/cashu-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { snapshotBillLinesForPayment } from "../payment-line/payment-line-actions.ts"
@@ -40,6 +44,7 @@ import {
   upsertPaymentNumberRows,
 } from "../payment-number/payment-number-actions.ts"
 import { paymentNumberByPaymentIdQuery } from "../payment-number/payment-number-queries.ts"
+import { qerkoPluginQuery } from "../qerko-plugin/qerko-plugin-queries.ts"
 import {
   loadBillClosedAtForPayment,
   upsertReconciliationClaimRows,
@@ -58,6 +63,7 @@ import { currencyNumericCodes } from "../shared/money.ts"
 import { getFirstOr } from "../shared/result.ts"
 import {
   type FiatCurrency,
+  Integer,
   type NonEmptyString,
   NonEmptyString255,
   NonEmptyString255Schema,
@@ -79,15 +85,17 @@ import type {
   paymentCashRegister,
   paymentIban,
 } from "./payment.ts"
-import { roundCashAmount } from "./payment-cash-utils.ts"
+import { isCashPayable, roundCashAmount } from "./payment-cash-utils.ts"
 import {
   type AccountCurrencyMismatchError,
   type CardSwitchioAccountNotFoundError,
   type CreatePaymentError,
   createCardSwitchioAccountNotFoundError,
+  createCashAmountRoundsToZeroError,
   createCashReceivedBelowChargeError,
   createCashRegisterAccountNotFoundError,
   createIbanAccountNotFoundError,
+  createNoPayableMethodError,
   createPaymentAlreadyPaidError,
   createPaymentCanceledError,
   createPaymentLightningInvoiceNotFoundError,
@@ -207,16 +215,67 @@ export const loadPayment =
       createPaymentNotFoundError({ id: idValue })
     )
 
+/**
+ * The payment methods a new payment will offer, for
+ * `isPayableThroughAnyMethod` (payment/0012). One created with a method's
+ * details (the CLI's `--cashRegisterAccountId`, a Lightning invoice) offers
+ * that one. One created without — how both apps create every payment, with
+ * its methods prepared on the next screen (`preparePaymentMethod`), several
+ * at once — offers every payment method turned on in its currency that the
+ * screen will show a tab for (`derivePaymentMethodsOffered`, payment/0017):
+ * the card terminal only where the creating device can drive it, Qerko
+ * payments only with a paired restaurant.
+ */
+const loadPaymentMethodsOffered =
+  ({
+    cashRegister,
+    spark,
+    iban,
+    currency,
+    cardTerminalLinked,
+  }: {
+    readonly cashRegister: object | undefined
+    readonly spark: object | undefined
+    readonly iban: object | undefined
+    readonly currency: FiatCurrency
+    readonly cardTerminalLinked: boolean
+  }): Task<ReadonlyArray<AccountKind>, never, EvoluDep> =>
+  async (run) => {
+    if (cashRegister !== undefined) return ok(["cashRegister"])
+    if (spark !== undefined) return ok(["spark"])
+    if (iban !== undefined) return ok(["iban"])
+    const [accounts, [qerkoPlugin]] = await Promise.all([
+      run.deps.evolu.loadQuery(enabledPaymentMethodAccountsQuery),
+      run.deps.evolu.loadQuery(qerkoPluginQuery("standard")),
+    ])
+    return ok(
+      derivePaymentMethodsOffered({
+        accounts,
+        currency,
+        cardTerminalLinked,
+        qerkoRestaurantPaired: (qerkoPlugin?.restaurantId ?? null) !== null,
+      })
+    )
+  }
+
 export const createPayment =
   ({
     cashRegister,
     spark,
     iban,
+    cardTerminalLinked = false,
     ...input
   }: InsertValues<typeof payment> & {
     readonly cashRegister?: Omit<InsertValues<typeof paymentCashRegister>, "id">
     readonly spark?: PaymentBtcInput
     readonly iban?: Omit<InsertValues<typeof paymentIban>, "id">
+    /**
+     * Whether the creating device can drive the card terminal, which is what
+     * the payment screen it opens next shows the card tab by (payment/0017):
+     * true in the native app where the terminal is linked, false in a
+     * browser, the PWA and the CLI.
+     */
+    readonly cardTerminalLinked?: boolean
   }): Task<PaymentId, CreatePaymentError, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
     assertHasSparkIdentifier(
@@ -224,10 +283,11 @@ export const createPayment =
       "Spark payment requires lnInvoice or sparkInvoice."
     )
 
-    // A new payment attempt requires the bill to still be `open` — but does
-    // not check for an already-pending payment on it: split payments mean
-    // more than one payment can legitimately be in flight for the same bill
-    // at once. See docs/bill-payment-states.md.
+    // A new payment attempt requires the bill to still be `open` with goods
+    // worth more than zero — judged from the bill's own lines, not from the
+    // `amount` the caller chose — but does not check for an already-pending
+    // payment on it: split payments mean more than one payment can
+    // legitimately be in flight for the same bill at once.
     // Frozen for `snapshotBillLinesForPayment` below — captured from this
     // device's own local view, before the mutation batch, since it can't be
     // reliably reconstructed later from `billLine.createdAt` (see that
@@ -236,11 +296,54 @@ export const createPayment =
     // this projection, so this both saves a second sequential round trip and
     // freezes the same read the guard just accepted.
     const billId = input.billId ?? null
-    let billLineSnapshot: ReadonlyArray<BillLineSummary> | null = null
-    if (billId !== null) {
-      const openResult = await run(requireBillAcceptingPayment(billId))
-      if (!openResult.ok) return openResult
-      billLineSnapshot = openResult.value.items
+    const [openResult, methodsResult] = await Promise.all([
+      billId === null ? null : run(requireBillAcceptingPayment(billId)),
+      run(
+        loadPaymentMethodsOffered({
+          cashRegister,
+          spark,
+          iban,
+          currency: input.currency,
+          cardTerminalLinked,
+        })
+      ),
+    ])
+    if (openResult !== null && !openResult.ok) return openResult
+    if (!methodsResult.ok) return methodsResult
+    const billLineSnapshot: ReadonlyArray<BillLineSummary> | null =
+      openResult === null ? null : openResult.value.items
+
+    // Then at least one of the methods the payment offers must collect its
+    // goods once it rounds them (payment/0012): the payment's own amount
+    // without its tip, which is what settling it in cash judges
+    // (`isCashPayable`, payment/0017), and for a bill also the bill's lines
+    // without its tip lines, so a tip line cannot lift goods that come to
+    // nothing. This is the one place a payment row is written, so the rule
+    // holds for every method and for the CLI; nothing after it judges the
+    // bill again. See docs/bill-payment-states.md.
+    const paymentGoodsTotal = Integer(calculatePaymentBaseAmount(input))
+    const methods = methodsResult.value
+    const unpayableGoodsTotal = [
+      paymentGoodsTotal,
+      ...(billLineSnapshot === null
+        ? []
+        : [deriveBillGoodsTotal(billLineSnapshot)]),
+    ].find(
+      (goodsTotal) =>
+        !isPayableThroughAnyMethod({
+          goodsTotal,
+          currency: input.currency,
+          methods,
+        })
+    )
+    if (unpayableGoodsTotal !== undefined) {
+      return err(
+        createNoPayableMethodError({
+          goodsTotal: unpayableGoodsTotal,
+          currency: input.currency,
+          methods,
+        })
+      )
     }
 
     const id = createRowId<"Payment">()
@@ -307,6 +410,12 @@ export const createPayment =
     return ok(id)
   }
 
+/**
+ * Changes a payment after it was created. Its bill is not among what it
+ * changes: a payment joins a bill only through `createPayment`, which judges
+ * the bill (`requireBillAcceptingPayment`, payment/0012) and freezes its
+ * lines, and attaching one afterwards would skip both.
+ */
 export const updatePayment =
   ({
     cashRegister,
@@ -317,7 +426,6 @@ export const updatePayment =
     UpdateValues<typeof payment>,
     | "id"
     | "deviceId"
-    | "billId"
     | "tableId"
     | "amount"
     | "currency"
@@ -574,6 +682,17 @@ const loadUncanceledPayment =
     return paymentResult
   }
 
+/**
+ * Staff confirming by hand that the payment was paid in cash; a canceled
+ * payment is refused (`loadUncanceledPayment`). So is a payment cash cannot
+ * take — goods, its amount without the tip, that round to nothing in cash
+ * (`isCashPayable`, payment/0012), a CZK payment of 0.01–0.49 — with
+ * `CashAmountRoundsToZero`: such a payment was created because another
+ * method could take it, and the payment screen offers no cash for it; this
+ * holds the rule for the CLI, an older app and the test bridges too.
+ * `receivedAmount`, when given, must cover the charge rounded to what cash
+ * can hand over (payment/0002).
+ */
 export const markPaymentPaidCash =
   ({
     receivedAmount,
@@ -588,6 +707,20 @@ export const markPaymentPaidCash =
   async (run) => {
     const paymentResult = await run(loadUncanceledPayment(input.paymentId))
     if (!paymentResult.ok) return paymentResult
+    // Goods cash rounds to nothing cannot be paid in cash (payment/0012):
+    // the payment screen offers no cash for them, and this refuses every
+    // other caller — the CLI, an older app, a test bridge — the same.
+    const { amount, tipAmount, currency } = paymentResult.value
+    if (!isCashPayable({ amount, tipAmount, currency })) {
+      return err(
+        createCashAmountRoundsToZeroError({
+          id: input.paymentId,
+          amount,
+          tipAmount,
+          currency,
+        })
+      )
+    }
 
     if (receivedAmount !== undefined) {
       const leastReceivedAmount = roundCashAmount(paymentResult.value)

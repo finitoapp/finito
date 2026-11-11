@@ -6,6 +6,7 @@ import {
 import { useNow } from "@payky/app-shared/use-now"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import { BillId } from "@payky/core/modules/bill/bill-types"
+import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
   hasTaxableLines,
@@ -115,7 +116,9 @@ function BillDetailContent({ billId }: { readonly billId: BillId }) {
 
   const table = tables.find((candidate) => candidate.id === bill.tableId)
   const totalAmount = deriveBillSummaryTotal(summaries)
-  const taxRecapRows = calculateTaxRecap(summaries, taxRates)
+  // VAT of the net lines, the bill's discount spread over its goods
+  // (catalog/0003).
+  const taxRecapRows = calculateTaxRecap(allocateDiscount(summaries), taxRates)
   const hasTaxRecap = hasTaxableLines(taxRecapRows)
 
   const closedOrCanceledLabel =

@@ -21,6 +21,30 @@ export const billLineSummaryDiffQueries = (paymentId: PaymentId) => [
 ]
 
 /**
+ * The bill lines frozen when `paymentId` was created (see
+ * `snapshotBillLinesForPayment`), each with its frozen `discountShare`;
+ * `null` when the payment predates the snapshot — see
+ * `paymentLinesByPaymentIdQuery`'s doc comment.
+ */
+export function usePaymentLineSummaries(paymentId: PaymentId) {
+  const paymentLineQuery = paymentLinesByPaymentIdQuery(paymentId)
+  const { data: paymentLineRows } = useEvoluQuery(paymentLineQuery)
+  // Scoped to the payment, not the bill: a frozen `paymentLine` can point at
+  // an item the bill no longer carries, which is exactly what the diff below
+  // is here to report.
+  const itemQuery = itemsByPaymentIdQuery(paymentId)
+  const { data: itemRows } = useEvoluQuery(itemQuery)
+
+  return useMemo(
+    () =>
+      paymentLineRows.length === 0
+        ? null
+        : paymentLinesToBillLineSummaries(paymentLineRows, itemRows),
+    [paymentLineRows, itemRows]
+  )
+}
+
+/**
  * Compares the bill-line snapshot frozen when `paymentId` was created (see
  * `snapshotBillLinesForPayment`) against the bill's current line-item
  * summaries. `null` when there is no snapshot to compare against — the
@@ -32,17 +56,11 @@ export function useBillLineSummaryDiff(
   billId: BillId
 ): BillLineSummaryDiff | null {
   const current = useBillLineSummaries(billId)
-  const paymentLineQuery = paymentLinesByPaymentIdQuery(paymentId)
-  const { data: paymentLineRows } = useEvoluQuery(paymentLineQuery)
-  // Scoped to the payment, not the bill: a frozen `paymentLine` can point at
-  // an item the bill no longer carries, which is exactly what this diff is
-  // here to report.
-  const itemQuery = itemsByPaymentIdQuery(paymentId)
-  const { data: itemRows } = useEvoluQuery(itemQuery)
+  const expected = usePaymentLineSummaries(paymentId)
 
-  return useMemo(() => {
-    if (paymentLineRows.length === 0) return null
-    const expected = paymentLinesToBillLineSummaries(paymentLineRows, itemRows)
-    return deriveBillLineSummaryDiff(expected, current)
-  }, [paymentLineRows, itemRows, current])
+  return useMemo(
+    () =>
+      expected === null ? null : deriveBillLineSummaryDiff(expected, current),
+    [expected, current]
+  )
 }

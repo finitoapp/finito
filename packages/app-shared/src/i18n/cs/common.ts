@@ -145,6 +145,7 @@ export const csCommon = {
   "stats.heatmap.title": "Nejrušnější hodiny",
   "stats.items.byQuantity": "Podle množství",
   "stats.items.byRevenue": "Podle tržby",
+  "stats.items.discounts": "Slevy",
   "stats.items.metric": "Řadit položky",
   "stats.items.quantity": "{quantity} ×",
   "stats.items.showAll": "Zobrazit vše",

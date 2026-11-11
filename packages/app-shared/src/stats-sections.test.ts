@@ -11,6 +11,7 @@ import {
   rankItems,
   rowsByCurrency,
   signalFigures,
+  splitItemSales,
 } from "./stats-sections.ts"
 
 test("rowsByCurrency splits rows per currency, the account currency first", () => {
@@ -41,6 +42,7 @@ const item = (name: string, quantity: number, amount: number) =>
     currency: "CZK",
     quantity,
     amount,
+    isDiscount: 0,
   }) as unknown as ItemSalesRow
 
 test("rankItems orders by the chosen metric, name breaking ties", () => {
@@ -59,6 +61,23 @@ test("rankItems orders by the chosen metric, name breaking ties", () => {
     "Beer",
     "Cake",
   ])
+})
+
+test("splitItemSales sums the discounts apart instead of ranking them", () => {
+  const discount = (name: string, quantity: number, amount: number) =>
+    ({ ...item(name, quantity, amount), isDiscount: 1 }) as ItemSalesRow
+  const tea = item("Tea", 10, 500)
+  const beer = item("Beer", 2, 500)
+
+  expect(
+    splitItemSales([
+      tea,
+      discount("Loyalty", 3, -300),
+      beer,
+      discount("Staff", 1, -50),
+    ])
+  ).toEqual({ items: [tea, beer], discounts: { quantity: 4, amount: -350 } })
+  expect(splitItemSales([tea])).toEqual({ items: [tea], discounts: null })
 })
 
 test("categoryShares adds the keypad row, keeps Uncategorized, sorts by amount", () => {
@@ -109,6 +128,29 @@ test("categoryShares adds the keypad row, keeps Uncategorized, sorts by amount",
       (row) => row.key
     )
   ).toEqual(["food"])
+})
+
+test("categoryShares keeps every share between none and the whole", () => {
+  // Discounts are left out of the categories (catalog/0003), but a group
+  // netting below zero must still draw no bar wider than the track.
+  const categoryRows = [
+    {
+      categoryId: "drinks",
+      categoryName: "Drinks",
+      currency: "CZK",
+      amount: 300,
+    },
+    { categoryId: null, categoryName: null, currency: "CZK", amount: -100 },
+  ] as unknown as ReadonlyArray<CategorySalesRow>
+
+  expect(
+    categoryShares({ categoryRows, keypadRows: [], currency: "CZK" }).map(
+      (row) => [row.key, row.share]
+    )
+  ).toEqual([
+    ["drinks", 1],
+    ["uncategorized", 0],
+  ])
 })
 
 test("signalFigures fills every signal with zeros, the account currency always present", () => {

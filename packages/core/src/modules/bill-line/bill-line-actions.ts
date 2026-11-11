@@ -2,6 +2,7 @@ import { type MutationOptions, ok, type Task } from "@evolu/common"
 
 import type { EvoluOwnerDep } from "../../deps.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import type { ItemRow } from "../item/item.ts"
 import { itemsByBillIdQuery } from "../item/item-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
@@ -28,13 +29,33 @@ export const insertBillLineRows = (
   }
 }
 
-export const loadCalculatedBillLineSummaries =
-  (billId: BillId): Task<ReadonlyArray<BillLineSummary>, never, EvoluDep> =>
+/**
+ * A bill's line ledger and the item snapshots it refers to — what
+ * `calculateBillLineSummaries` folds. Loaded raw, rather than only as the
+ * summaries, for a caller that has to project more lines onto the same
+ * ledger: a cart write judging the total it would leave
+ * (`requireCartWriteNotBelowPaid`).
+ */
+export interface BillLineLedger {
+  readonly lineRows: ReadonlyArray<BillLineRow>
+  readonly itemRows: ReadonlyArray<ItemRow>
+}
+
+export const loadBillLineLedger =
+  (billId: BillId): Task<BillLineLedger, never, EvoluDep> =>
   async (run) => {
     const [lineRows, itemRows] = await Promise.all([
       run.deps.evolu.loadQuery(billLinesByBillIdQuery(billId)),
       run.deps.evolu.loadQuery(itemsByBillIdQuery(billId)),
     ])
+
+    return ok({ lineRows, itemRows })
+  }
+
+export const loadCalculatedBillLineSummaries =
+  (billId: BillId): Task<ReadonlyArray<BillLineSummary>, never, EvoluDep> =>
+  async (run) => {
+    const { lineRows, itemRows } = await run.ok(loadBillLineLedger(billId))
 
     return ok(calculateBillLineSummaries(lineRows, itemRows))
   }

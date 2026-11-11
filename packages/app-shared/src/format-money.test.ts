@@ -40,6 +40,17 @@ describe("formatMoney", () => {
       )
     ).toBe("$5")
   })
+
+  test("writes a discount below zero with its sign", () => {
+    expect(
+      formatMoney({ value: Integer(-1_500), currency: "CZK" }, "cs-CZ")
+    ).toMatch(/^-15,00 Kč$/u)
+    expect(
+      formatMoney({ value: Integer(-1_500), currency: "CZK" }, "cs-CZ", {
+        fraction: "whenNonZero",
+      })
+    ).toMatch(/^-15 Kč$/u)
+  })
 })
 
 describe("formatMoneyParts", () => {

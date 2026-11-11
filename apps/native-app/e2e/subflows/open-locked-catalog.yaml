@@ -1,6 +1,6 @@
 # From the terminal home with access control on and no PIN session: the
 # menu's Settings tab, free to open, then its Items row, which lands on the
-# PIN screen for the catalog (access/0010, navigation/0003). In-app, for
+# PIN screen for the catalog (access/0012, navigation/0003). In-app, for
 # flows mirroring web's openMenuTabFromHome; a flow mirroring web's
 # page.goto links to the locked route instead (goto).
 appId: ${APP_ID}

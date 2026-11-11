@@ -6,7 +6,7 @@ import { DeviceId } from "../device/device-types.ts"
 import { ItemId, ItemLineTypeSchema } from "../item/item-types.ts"
 import {
   type InferTable,
-  NonNegativeIntegerSchema,
+  IntegerSchema,
   PositiveNumberSchema,
 } from "../shared/schema.ts"
 import { BillLineId, BillLineTagSchema } from "./bill-line-types.ts"
@@ -20,7 +20,7 @@ export const billLine = {
   type: ItemLineTypeSchema,
   kind: BillLineTagSchema,
   quantity: PositiveNumberSchema,
-  totalAmount: NonNegativeIntegerSchema,
+  totalAmount: IntegerSchema,
 } as const
 
 export const billLineIndexes = ((create) => [

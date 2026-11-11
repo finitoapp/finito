@@ -1,16 +1,35 @@
 import { describe, expect, test } from "vitest"
 import type { AccountTransactionId } from "../account-transaction/account-transaction-types.ts"
+import {
+  type DefaultPaymentMethod,
+  DefaultPaymentMethodSchema,
+} from "../app-settings/app-settings-types.ts"
+import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
+import type { BillLineSummaryId } from "../bill-line/bill-line-types.ts"
+import type { ItemId } from "../item/item-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
-import type { Currency } from "../shared/schema.ts"
-import { NonNegativeInteger, TimestampMs } from "../shared/schema.ts"
+import type { Currency, FiatCurrency } from "../shared/schema.ts"
+import {
+  Integer,
+  NonEmptyString255,
+  NonNegativeInteger,
+  PositiveNumber,
+  TimestampMs,
+} from "../shared/schema.ts"
+import type { BillId } from "./bill-types.ts"
 import {
   type ClaimedTransaction,
   calculateClaimedSum,
   claimedPaymentIdSet,
   deriveBillCoverage,
+  deriveBillCoverageDelta,
   deriveBillHistoryItemSummary,
   deriveBillStatus,
+  deriveCartWriteClosing,
+  deriveZeroBillRefusal,
   hasPendingPayment,
+  isBillPayable,
+  isPayableThroughAnyMethod,
 } from "./bill-utils.ts"
 
 const now = new Date("2026-06-05T12:00:00.000Z")
@@ -173,6 +192,32 @@ describe("deriveBillCoverage", () => {
     expect(
       deriveBillCoverage(NonNegativeInteger(1_000), NonNegativeInteger(1_500))
     ).toBe("overpaid")
+  })
+
+  test("measures a total below zero as nothing owed: paid with nothing claimed, overpaid by every claim", () => {
+    expect(deriveBillCoverage(Integer(-500), NonNegativeInteger(0))).toBe(
+      "paid"
+    )
+    expect(deriveBillCoverage(Integer(-500), NonNegativeInteger(300))).toBe(
+      "overpaid"
+    )
+    expect(
+      deriveBillCoverageDelta(Integer(-500), NonNegativeInteger(300))
+    ).toBe(300)
+    expect(
+      deriveBillCoverageDelta(Integer(1_000), NonNegativeInteger(400))
+    ).toBe(600)
+  })
+
+  test("a negative bill nobody paid stays open and reads paid, not overpaid, in its history", () => {
+    expect(
+      deriveBillHistoryItemSummary({
+        canceledAt: null,
+        confirmedClosedAt: null,
+        billTotal: Integer(-500),
+        claimedTransactions: [],
+      })
+    ).toMatchObject({ status: "open", coverage: "paid", billTotal: -500 })
   })
 })
 
@@ -487,6 +532,7 @@ describe("deriveBillHistoryItemSummary", () => {
     ).toEqual({
       status: "open",
       hasCancellationCollision: false,
+      closedWithoutPayment: false,
       billTotal: 1_000,
       claimedSum: 0,
       coverage: "underpaid",
@@ -510,6 +556,7 @@ describe("deriveBillHistoryItemSummary", () => {
     ).toEqual({
       status: "closed",
       hasCancellationCollision: false,
+      closedWithoutPayment: false,
       billTotal: 1_000,
       claimedSum: 1_000,
       coverage: "paid",
@@ -550,6 +597,133 @@ describe("deriveBillHistoryItemSummary", () => {
 
     expect(summary.status).toBe("closed")
     expect(summary.hasCancellationCollision).toBe(false)
+    expect(summary.closedWithoutPayment).toBe(false)
+  })
+
+  test("a bill staff closed at zero without a payment stays closed and underpaid once a line lands on it", () => {
+    const summary = deriveBillHistoryItemSummary({
+      canceledAt: null,
+      confirmedClosedAt: TimestampMs(now.getTime() - 1),
+      billTotal: NonNegativeInteger(5_900),
+      claimedTransactions: [],
+    })
+
+    expect(summary).toEqual({
+      status: "closed",
+      hasCancellationCollision: false,
+      closedWithoutPayment: true,
+      billTotal: 5_900,
+      claimedSum: 0,
+      coverage: "underpaid",
+    })
+  })
+})
+
+describe("isBillPayable", () => {
+  const payable = (
+    goodsTotal: number,
+    method: Parameters<typeof isBillPayable>[0]["method"],
+    currency: FiatCurrency = "CZK"
+  ) => isBillPayable({ goodsTotal: Integer(goodsTotal), currency, method })
+
+  test("a bill whose goods come to zero cannot be paid through any method", () => {
+    for (const method of [...DefaultPaymentMethodSchema.options, null]) {
+      expect(payable(0, method)).toBe(false)
+    }
+  })
+
+  test("a bill whose goods come to less than zero cannot be paid through any method", () => {
+    for (const method of [...DefaultPaymentMethodSchema.options, null]) {
+      expect(payable(-500, method)).toBe(false)
+      expect(payable(-1, method)).toBe(false)
+    }
+  })
+
+  test("a CZK bill of 0.40 cannot be paid in cash but can by card", () => {
+    expect(payable(40, "cashRegister")).toBe(false)
+    expect(payable(40, "cardSwitchio")).toBe(true)
+    expect(payable(40, null)).toBe(true)
+    // 0.50 rounds up to a whole crown.
+    expect(payable(50, "cashRegister")).toBe(true)
+    // Only CZK cash rounds.
+    expect(payable(40, "cashRegister", "EUR")).toBe(true)
+  })
+})
+
+describe("isPayableThroughAnyMethod", () => {
+  const payable = (
+    goodsTotal: number,
+    methods: ReadonlyArray<DefaultPaymentMethod>
+  ) =>
+    isPayableThroughAnyMethod({
+      goodsTotal: Integer(goodsTotal),
+      currency: "CZK",
+      methods,
+    })
+
+  test("refuses goods cash rounds to nothing where cash is the only method on", () => {
+    expect(payable(40, ["cashRegister"])).toBe(false)
+    expect(payable(50, ["cashRegister"])).toBe(true)
+  })
+
+  test("takes goods cash rounds to nothing where a card or a QR method is on too", () => {
+    expect(payable(40, ["cashRegister", "cardSwitchio"])).toBe(true)
+    expect(payable(40, ["cashRegister", "iban"])).toBe(true)
+  })
+
+  test("refuses goods of zero or less whatever is on, and judges goods as they stand with nothing on", () => {
+    expect(payable(0, ["cashRegister", "iban"])).toBe(false)
+    expect(payable(-500, ["iban"])).toBe(false)
+    expect(payable(0, [])).toBe(false)
+    expect(payable(40, [])).toBe(true)
+  })
+})
+
+describe("deriveZeroBillRefusal", () => {
+  const line = (
+    itemId: string,
+    totalAmount: number,
+    type: BillLineSummary["type"] = "catalogItem"
+  ): BillLineSummary => ({
+    id: `summary-${itemId}` as BillLineSummaryId,
+    billId: "bill-1" as BillId,
+    catalogItemId: null,
+    itemId: itemId as ItemId,
+    type,
+    name: NonEmptyString255(itemId),
+    description: null,
+    currency: "CZK",
+    quantity: PositiveNumber(1),
+    totalAmount: Integer(totalAmount),
+    taxRateId: null,
+  })
+
+  test("lets a bill of free lines alone be finished, which is when Finish stands in for Charge", () => {
+    expect(deriveZeroBillRefusal([line("water", 0), line("bread", 0)])).toBe(
+      null
+    )
+  })
+
+  test("refuses an empty bill, one with a tip line and one whose goods are worth something", () => {
+    expect(deriveZeroBillRefusal([])).toBe("noLines")
+    expect(
+      deriveZeroBillRefusal([line("water", 0), line("tip", 0, "tip")])
+    ).toBe("tipLine")
+    expect(
+      deriveZeroBillRefusal([line("water", 0), line("coffee", 5900)])
+    ).toBe("totalNotZero")
+  })
+
+  test("refuses a bill below zero, which can only be discarded (payment/0015)", () => {
+    expect(
+      deriveZeroBillRefusal([line("coffee", 1_000), line("discount", -1_500)])
+    ).toBe("totalNotZero")
+  })
+
+  test("lets a bill whose discount takes it to exactly zero be finished", () => {
+    expect(
+      deriveZeroBillRefusal([line("coffee", 1_000), line("discount", -1_000)])
+    ).toBe(null)
   })
 })
 
@@ -571,5 +745,53 @@ describe("claimedPaymentIdSet", () => {
 
   test("returns an empty set for no claimed payments", () => {
     expect(claimedPaymentIdSet([]).size).toBe(0)
+  })
+})
+
+describe("deriveCartWriteClosing", () => {
+  const paid = NonNegativeInteger(2_000)
+
+  test("keeps a bill nobody has paid for open, whatever total the write leaves", () => {
+    for (const total of [3_000, 0, -500]) {
+      expect(
+        deriveCartWriteClosing({
+          billTotalAfter: Integer(total),
+          claimedSum: NonNegativeInteger(0),
+          hasActiveClaim: false,
+        })
+      ).toBe("keep-open")
+    }
+  })
+
+  test("keeps a partly paid bill open while its total stays above what was paid", () => {
+    expect(
+      deriveCartWriteClosing({
+        billTotalAfter: Integer(2_001),
+        claimedSum: paid,
+        hasActiveClaim: true,
+      })
+    ).toBe("keep-open")
+  })
+
+  test("closes a partly paid bill the write brings down to exactly what was paid", () => {
+    expect(
+      deriveCartWriteClosing({
+        billTotalAfter: Integer(2_000),
+        claimedSum: paid,
+        hasActiveClaim: true,
+      })
+    ).toBe("close")
+  })
+
+  test("refuses a write that takes the total below what was paid, below zero included", () => {
+    for (const total of [1_999, 0, -500]) {
+      expect(
+        deriveCartWriteClosing({
+          billTotalAfter: Integer(total),
+          claimedSum: paid,
+          hasActiveClaim: true,
+        })
+      ).toBe("reject")
+    }
   })
 })

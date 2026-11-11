@@ -17,7 +17,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import { NonNegativeInteger, VariableSymbol } from "../shared/schema.ts"
-import { createPayment } from "./payment-actions.ts"
+import { createPayment, updatePayment } from "./payment-actions.ts"
 import {
   createPreparedPayment,
   preparePaymentMethod,
@@ -294,10 +294,15 @@ describe("payment preparation actions", () => {
         })
       )
 
-    // The keypad only checks that the entered amount parses, so "0" charges.
     // A zero-sat Lightning invoice is an *amountless* one — the payer picks
     // the sum — which on a terminal showing 0 is not something to hand out.
-    const zeroPaymentId = await paymentFor(0)
+    // `createPayment` creates no payment of nothing (payment/0012), so this
+    // is the second line of defence, for one changed afterwards
+    // (`updatePayment`) or written by an older app.
+    const zeroPaymentId = await paymentFor(100)
+    await run.ok(
+      updatePayment({ id: zeroPaymentId, amount: NonNegativeInteger(0) })
+    )
     await expect(
       run(
         preparePaymentMethod({

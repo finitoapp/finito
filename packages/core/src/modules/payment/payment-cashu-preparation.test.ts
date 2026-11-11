@@ -13,7 +13,7 @@ import {
 import { saveCashuAccount } from "../account/account-actions.ts"
 import { MintUrl } from "../cashu/cashu-types.ts"
 import { NonNegativeInteger } from "../shared/schema.ts"
-import { createPayment } from "./payment-actions.ts"
+import { createPayment, updatePayment } from "./payment-actions.ts"
 import {
   prepareCashuPaymentMethod,
   preparePaymentMethod,
@@ -157,18 +157,21 @@ describe("prepareCashuPaymentMethod", () => {
     const { t, deps, cashuAccountId } = await setup()
     await using _ = t
     await using run = testCreateRun(deps)
+    // `createPayment` creates no payment of nothing (payment/0012); one
+    // changed afterwards, or written by an older app, still reaches here.
     const zero = await run.orThrow(
       createPayment({
         deviceId: null,
         billId: null,
         tableId: null,
-        amount: NonNegativeInteger(0),
+        amount: NonNegativeInteger(100),
         currency: "CZK",
         tipAmount: NonNegativeInteger(0),
         canceledAt: null,
         expiresAt: null,
       })
     )
+    await run.ok(updatePayment({ id: zero, amount: NonNegativeInteger(0) }))
     const result = await run(
       prepareCashuPaymentMethod({ paymentId: zero, accountId: cashuAccountId })
     )

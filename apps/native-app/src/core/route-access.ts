@@ -109,7 +109,7 @@ export const routeAccess = {
   // A recorded refund's detail is history, as its payment's (refund-detail);
   // its EET resend is gated as on the payment detail.
   "/activity/:paymentId/refunds/:refundId": "activity",
-  // Like web's `_terminal/activity_/stats` (access/0010), Activity's third tab.
+  // Like web's `_terminal/activity_/stats` (access/0012), Activity's third tab.
   "/activity/stats": "stats",
   // Like web's Spark `withdrawals` routes (access/0002: owner-only).
   "/withdraw": "admin",
@@ -142,7 +142,7 @@ export const routeAccess = {
   "/settings/language": "free",
   // Like web's `_terminal/settings/theme`.
   "/settings/theme": "free",
-  // Web's `_terminal/notifications`, a tab on native (navigation/0004): nothing to protect yet (access/0010).
+  // Web's `_terminal/notifications`, a tab on native (navigation/0004): nothing to protect yet (access/0012).
   "/notifications": "free",
   // Web's `_terminal/settings/home-screen`, the modes home offers (navigation/0004; access/0002: `settings`).
   "/settings/home-screen": "settings",
@@ -154,11 +154,11 @@ export const routeAccess = {
   "/settings/tips": "settings",
   // Like web's `_terminal/settings/payment-number-series` (access/0002: `settings`).
   "/settings/payment-number-series": "settings",
-  // Web's `_terminal/catalog/items`, under Settings on native (navigation/0004; access/0010: `catalog`).
+  // Web's `_terminal/catalog/items`, under Settings on native (navigation/0004; access/0012: `catalog`).
   "/settings/items": "catalog",
   "/settings/items/new": "catalog",
   "/settings/items/:catalogItemId": "catalog",
-  // Web's `_terminal/catalog/tables`, under Settings on native (navigation/0004; access/0010: `catalog`).
+  // Web's `_terminal/catalog/tables`, under Settings on native (navigation/0004; access/0012: `catalog`).
   "/settings/tables": "catalog",
   "/settings/tables/new": "catalog",
   "/settings/tables/:tableId": "catalog",

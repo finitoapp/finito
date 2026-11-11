@@ -21,13 +21,22 @@ import {
   addTipToBill,
   appendRemoveBillLine,
   cancelBill,
+  closeZeroBill,
   confirmBillClosedDespiteCancellation,
   createBill,
 } from "../bill/bill-actions.ts"
 import type { BillId } from "../bill/bill-types.ts"
-import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
+import {
+  appendBillLines,
+  loadCalculatedBillLineSummaries,
+} from "../bill-line/bill-line-actions.ts"
+import { allocateDiscount } from "../bill-line/bill-line-discount-utils.ts"
+import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import { calculateTaxRecap } from "../bill-line/bill-line-tax-utils.ts"
-import { deriveBillSummaryTotal } from "../bill-line/bill-line-utils.ts"
+import {
+  deriveBillSummaryTotal,
+  getBillLineSummaryUnitAmount,
+} from "../bill-line/bill-line-utils.ts"
 import { createCatalogCategory } from "../catalog-category/catalog-category-actions.ts"
 import type { CatalogCategoryId } from "../catalog-category/catalog-category-types.ts"
 import {
@@ -37,6 +46,7 @@ import {
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { registerDevice } from "../device/device-actions.ts"
 import type { DeviceId } from "../device/device-types.ts"
+import { itemsByPaymentIdQuery } from "../item/item-queries.ts"
 import {
   cancelPayment,
   confirmPaymentPaidDespiteCancellation,
@@ -54,6 +64,8 @@ import {
   createPaymentAccounts,
 } from "../payment/payment-test-fixtures.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
+import { paymentLinesByPaymentIdQuery } from "../payment-line/payment-line-queries.ts"
+import { paymentLinesToBillLineSummaries } from "../payment-line/payment-line-utils.ts"
 import { claimManualReconciliation } from "../reconciliation-claim/reconciliation-claim-actions.ts"
 import { refundPayment, refundPaymentTip } from "../refund/refund-actions.ts"
 import {
@@ -62,6 +74,7 @@ import {
 } from "../shared/evolu-utils.ts"
 import {
   type FiatCurrency,
+  Integer,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
@@ -75,6 +88,7 @@ import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
 import {
   categorySalesQuery,
+  discountedBillLinesQuery,
   itemSalesQuery,
   keypadSalesQuery,
   refundsQuery,
@@ -277,14 +291,14 @@ const createStatsContext = async () => {
     readonly taxRateId?: TaxRateId | null
   }): Promise<CatalogItemId> => {
     await using r = run()
-    return await r.ok(
+    return await r.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId,
         name: NonEmptyString255(name),
         description: null,
         currency: "CZK",
-        unitAmount: NonNegativeInteger(unitAmount),
+        unitAmount: Integer(unitAmount),
         sortOrder: NonNegativeInteger(0),
         scanCode: null,
         taxRateId,
@@ -314,6 +328,7 @@ const createStatsContext = async () => {
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(n),
+        expectedDiscount: null,
       })
     )
   }
@@ -330,7 +345,7 @@ const createStatsContext = async () => {
         billId,
         deviceId: null,
         quantity: PositiveNumber(1),
-        totalAmount: NonNegativeInteger(summary.totalAmount / summary.quantity),
+        totalAmount: getBillLineSummaryUnitAmount(summary),
         lineSummary: summary,
       })
     )
@@ -353,6 +368,7 @@ const createStatsContext = async () => {
     evolu,
     deps,
     at,
+    tick,
     run,
     ...accounts,
     cancelAfterPaid,
@@ -746,6 +762,160 @@ describe("items and categories", () => {
     ])
   })
 
+  test("net a discount taken off and added again as calculateBillLineSummaries does", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    const coffee = await context.createCatalogEntry({
+      name: "Coffee",
+      unitAmount: 6_000,
+    })
+    const discount = await context.createCatalogEntry({
+      name: "Discount",
+      unitAmount: -1_000,
+    })
+    const billId = await context.createTestBill()
+    await context.add(billId, coffee, 2)
+    await context.add(billId, discount) // add, remove, add twice
+    await context.removeOne(billId, discount)
+    await context.add(billId, discount, 2)
+    await context.removeOne(billId, discount)
+    const summaries = await context.summariesOf(billId)
+    expect(deriveBillSummaryTotal(summaries)).toBe(11_000)
+    context.at("2026-06-05T11:00:00.000Z")
+    await context.payBill(billId)
+
+    // The fold drops a group whose quantity nets to zero and starts it
+    // afresh, and the SQL nets it the same way (payment/0016).
+    const rows = await context.load(itemSalesQuery(june5))
+    expect(
+      rows.map(({ itemId, quantity, amount }) => ({ itemId, quantity, amount }))
+    ).toEqual(
+      expect.arrayContaining(
+        summaries.map(({ itemId, quantity, totalAmount }) => ({
+          itemId,
+          quantity,
+          amount: totalAmount,
+        }))
+      )
+    )
+    expect(rows).toHaveLength(2)
+    // Marked, for the leaderboard to keep it apart (`splitItemSales`).
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Coffee", isDiscount: 0 }),
+        expect.objectContaining({
+          name: "Discount",
+          amount: -1_000,
+          isDiscount: 1,
+        }),
+      ])
+    )
+  })
+
+  test("net a removal of more than the line holds as calculateBillLineSummaries does", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    const billId = await context.createTestBill()
+
+    /** Adds the first line of a group through the cart, as staff would. */
+    const startGroup = async (name: string, unitAmount: number, n: number) => {
+      const catalogItemId = await context.createCatalogEntry({
+        name,
+        unitAmount,
+      })
+      await context.add(billId, catalogItemId, n)
+      const summary = (await context.summariesOf(billId)).find(
+        (line) => line.catalogItemId === catalogItemId
+      )
+      if (summary === undefined) throw new Error(`No ${name} on the bill.`)
+      return summary
+    }
+    /**
+     * A line no cart guard judged, as one merges from a device that wrote it
+     * against a bill it had not yet seen changed: an undo, a clear.
+     */
+    const merge = async (
+      group: BillLineSummary,
+      kind: "add" | "remove",
+      n: number
+    ) => {
+      context.tick()
+      await using r = context.run()
+      await r.ok(
+        appendBillLines([
+          {
+            billId,
+            deviceId: null,
+            catalogItemId: group.catalogItemId,
+            itemId: group.itemId,
+            type: group.type,
+            kind,
+            quantity: PositiveNumber(n),
+            totalAmount: Integer(n * getBillLineSummaryUnitAmount(group)),
+          },
+        ])
+      )
+    }
+
+    // Two devices take the same coffee off: 2 − 1 − 2 leaves none, and the
+    // coffee ordered again is one, not zero.
+    const coffee = await startGroup("Coffee", 1_000, 2)
+    await merge(coffee, "remove", 1)
+    await merge(coffee, "remove", 2)
+    await merge(coffee, "add", 1)
+    // Emptied twice over before three are added.
+    const cake = await startGroup("Cake", 2_000, 1)
+    await merge(cake, "remove", 1)
+    await merge(cake, "remove", 1)
+    await merge(cake, "add", 3)
+    await merge(cake, "remove", 1)
+    // Taken below zero midway, the sum of the group below zero at its end.
+    const juice = await startGroup("Juice", 500, 1)
+    await merge(juice, "remove", 3)
+    await merge(juice, "add", 2)
+    await merge(juice, "remove", 1)
+    // A discount group folds by its quantity just the same.
+    const discount = await startGroup("Discount", -300, 2)
+    await merge(discount, "remove", 3)
+    await merge(discount, "add", 1)
+    // Never emptied: the plain sum.
+    const water = await startGroup("Water", 100, 3)
+    await merge(water, "remove", 1)
+
+    const summaries = await context.summariesOf(billId)
+    expect(
+      summaries.map(({ name, quantity, totalAmount }) => ({
+        name,
+        quantity,
+        totalAmount,
+      }))
+    ).toEqual(
+      expect.arrayContaining([
+        { name: "Coffee", quantity: 1, totalAmount: 1_000 },
+        { name: "Cake", quantity: 2, totalAmount: 4_000 },
+        { name: "Juice", quantity: 1, totalAmount: 500 },
+        { name: "Discount", quantity: 1, totalAmount: -300 },
+        { name: "Water", quantity: 2, totalAmount: 200 },
+      ])
+    )
+    context.at("2026-06-05T11:00:00.000Z")
+    await context.payBill(billId)
+
+    const rows = await context.load(itemSalesQuery(june5))
+    expect(
+      rows.map(({ itemId, quantity, amount }) => ({ itemId, quantity, amount }))
+    ).toEqual(
+      expect.arrayContaining(
+        summaries.map(({ itemId, quantity, totalAmount }) => ({
+          itemId,
+          quantity,
+          amount: totalAmount,
+        }))
+      )
+    )
+    expect(rows).toHaveLength(summaries.length)
+  })
+
   test("group a product across price changes under its newest name", async () => {
     await using context = await createStatsContext()
     context.at("2026-06-05T10:00:00.000Z")
@@ -757,7 +927,7 @@ describe("items and categories", () => {
     await context.add(billId, coffee)
     context.at("2026-06-05T10:05:00.000Z")
     await using r = context.run()
-    await r.ok(
+    await r.orThrow(
       updateCatalogItem({
         id: coffee,
         name: NonEmptyString255("Espresso"),
@@ -813,6 +983,24 @@ describe("items and categories", () => {
 
     await expect(context.load(itemSalesQuery(june5))).resolves.toMatchObject([
       { name: "Coffee", quantity: 12, amount: 12_000 },
+    ])
+  })
+
+  test("count a bill finished at zero as sold, its free items included", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    const water = await context.createCatalogEntry({
+      name: "Tap water",
+      unitAmount: 0,
+    })
+    await using r = context.run()
+
+    const finished = await context.createTestBill()
+    await context.add(finished, water, 2)
+    await r.orThrow(closeZeroBill(finished))
+
+    await expect(context.load(itemSalesQuery(june5))).resolves.toMatchObject([
+      { name: "Tap water", quantity: 2, amount: 0 },
     ])
   })
 
@@ -919,10 +1107,181 @@ describe("items and categories", () => {
     expect(
       salesTaxRecap({
         rows: await context.load(taxRecapQuery(june5)),
+        discountedLines: await context.load(discountedBillLinesQuery(june5)),
         currency: "CZK",
         rates,
       })
-    ).toEqual(calculateTaxRecap(summaries, rates))
+    ).toEqual(calculateTaxRecap(allocateDiscount(summaries), rates))
+  })
+
+  test("recap a discounted bill's VAT as its payment froze it", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const standard = await r.ok(
+      createTaxRate({
+        name: NonEmptyString255("Standard"),
+        rate: TaxRatePercentage(2100),
+        isDefault: true,
+      })
+    )
+    const reduced = await r.ok(
+      createTaxRate({
+        name: NonEmptyString255("Reduced"),
+        rate: TaxRatePercentage(1200),
+        isDefault: false,
+      })
+    )
+    const beer = await context.createCatalogEntry({
+      name: "Beer",
+      unitAmount: 5_900,
+      taxRateId: standard,
+    })
+    const soup = await context.createCatalogEntry({
+      name: "Soup",
+      unitAmount: 8_900,
+      taxRateId: reduced,
+    })
+    const stamp = await context.createCatalogEntry({
+      name: "Stamp",
+      unitAmount: 2_300,
+    })
+    const discount = await context.createCatalogEntry({
+      name: "Loyalty",
+      unitAmount: -1_337,
+    })
+
+    const discounted = await context.createTestBill()
+    for (const item of [beer, beer, soup, stamp, discount]) {
+      await context.add(discounted, item)
+    }
+    // Taken off and added again, as an undo and a redo write it.
+    await context.removeOne(discounted, discount)
+    await context.add(discounted, discount)
+    const plain = await context.createTestBill()
+    for (const item of [beer, soup]) await context.add(plain, item)
+    const paymentIds = [
+      await context.payBill(discounted),
+      await context.payBill(plain),
+    ]
+
+    const frozenLines = []
+    for (const paymentId of paymentIds) {
+      frozenLines.push(
+        ...paymentLinesToBillLineSummaries(
+          await context.load(paymentLinesByPaymentIdQuery(paymentId)),
+          await context.load(itemsByPaymentIdQuery(paymentId))
+        )
+      )
+    }
+    const rates = await context.load(taxRatesQuery)
+    const recap = salesTaxRecap({
+      rows: await context.load(taxRecapQuery(june5)),
+      discountedLines: await context.load(discountedBillLinesQuery(june5)),
+      currency: "CZK",
+      rates,
+    })
+
+    expect(recap).toEqual(calculateTaxRecap(frozenLines, rates))
+    // 1 337 off 23 000 of goods: 686 of the beers, 517 of the soup and 134 of
+    // the stamp's "no rate" row, by the largest remainder. The discount is no
+    // row of its own.
+    expect(recap.map((row) => [row.taxRateId, row.grossAmount])).toEqual([
+      [standard, 5_900 * 3 - 686],
+      [reduced, 8_900 * 2 - 517],
+      [null, 2_300 - 134],
+    ])
+    expect(
+      recap.every((row) => row.baseAmount >= 0 && row.taxAmount >= 0)
+    ).toBe(true)
+  })
+
+  test("recap VAT without a goods group that nets below zero, rather than none at all", () => {
+    // A group of a bill without a discount line can only net below zero by
+    // drift (a removal written twice, the CLI taking off more than was
+    // added). It holds no VAT and must not void the whole currency's recap.
+    const standard = "rate-standard" as TaxRateId
+    const rates = [
+      {
+        id: standard,
+        name: NonEmptyString255("Standard"),
+        rate: TaxRatePercentage(2100),
+      },
+    ]
+    const row = (lineAmount: number) => ({
+      currency: "CZK" as const,
+      taxRateId: standard,
+      lineAmount,
+      lineCount: 1,
+    })
+
+    expect(
+      salesTaxRecap({
+        rows: [row(12_100), row(-500)],
+        discountedLines: [],
+        currency: "CZK",
+        rates,
+      })
+    ).toEqual(
+      salesTaxRecap({
+        rows: [row(12_100)],
+        discountedLines: [],
+        currency: "CZK",
+        rates,
+      })
+    )
+    expect(
+      salesTaxRecap({
+        rows: [row(12_100), row(-500)],
+        discountedLines: [],
+        currency: "CZK",
+        rates,
+      })
+    ).toMatchObject([{ taxRateId: standard, grossAmount: 12_100 }])
+  })
+
+  test("leave discounts out of the categories, which the leaderboard shows apart", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const drinks = await r.ok(
+      createCatalogCategory({
+        deviceId: null,
+        name: NonEmptyString255("Drinks"),
+        sortOrder: NonNegativeInteger(0),
+      })
+    )
+    const coffee = await context.createCatalogEntry({
+      name: "Coffee",
+      unitAmount: 1_000,
+      categoryId: drinks,
+    })
+    const drinksDiscount = await context.createCatalogEntry({
+      name: "Happy hour",
+      unitAmount: -300,
+      categoryId: drinks,
+    })
+    const loyalty = await context.createCatalogEntry({
+      name: "Loyalty",
+      unitAmount: -200,
+    })
+    const billId = await context.createTestBill()
+    await context.add(billId, coffee, 2)
+    await context.add(billId, drinksDiscount)
+    await context.add(billId, loyalty)
+    await context.payBill(billId)
+
+    // No "Uncategorized" row below zero, and no category lowered by its
+    // discount: discounts are `itemSalesQuery`'s, kept apart there.
+    await expect(context.load(categorySalesQuery(june5))).resolves.toEqual([
+      {
+        categoryId: drinks,
+        categoryName: "Drinks",
+        currency: "CZK",
+        quantity: 2,
+        amount: 2_000,
+      },
+    ])
   })
 })
 
@@ -1010,6 +1369,35 @@ describe("signals", () => {
       ])
     )
     expect(await context.load(signalsQuery(june5))).toHaveLength(3)
+  })
+})
+
+describe("the canceled-bill signal", () => {
+  test("counts the goods discarded, which a discount cannot zero", async () => {
+    await using context = await createStatsContext()
+    context.at("2026-06-05T10:00:00.000Z")
+    await using r = context.run()
+    const coffee = await context.createCatalogEntry({
+      name: "Coffee",
+      unitAmount: 1_000,
+    })
+    const discount = await context.createCatalogEntry({
+      name: "Discount",
+      unitAmount: -1_000,
+    })
+
+    const billId = await context.createTestBill()
+    await context.add(billId, coffee, 2)
+    await context.add(billId, discount, 2)
+    await r.orThrow(cancelBill(billId))
+    // Nothing but a discount on it: no goods were discarded.
+    const discountOnly = await context.createTestBill()
+    await context.add(discountOnly, discount)
+    await r.orThrow(cancelBill(discountOnly))
+
+    await expect(context.load(signalsQuery(june5))).resolves.toEqual([
+      { signal: "canceledBill", currency: "CZK", count: 1, amount: 2_000 },
+    ])
   })
 })
 
@@ -1123,6 +1511,7 @@ test("every query reads its range through an index", async () => {
     itemSalesQuery,
     categorySalesQuery,
     taxRecapQuery,
+    discountedBillLinesQuery,
     signalsQuery,
   })) {
     const query = sqliteQueryStringToSqliteQuery(factory(month))
@@ -1135,7 +1524,9 @@ test("every query reads its range through an index", async () => {
       (detail) =>
         detail.includes("AUTOMATIC") ||
         (detail.startsWith("SCAN") &&
-          !/^SCAN (line|settlement|\(subquery-\d+\))$/.test(detail))
+          !/^SCAN (line|ledgerLine|foldedLine|keptLine|settlement|\(subquery-\d+\))$/.test(
+            detail
+          ))
     )
     expect({ name, offending }).toEqual({ name, offending: [] })
   }

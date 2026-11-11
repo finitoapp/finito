@@ -3,8 +3,8 @@ import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import type { ItemId, ItemLineType } from "../item/item-types.ts"
 import type {
   FiatCurrency,
+  Integer,
   NonEmptyString,
-  NonNegativeInteger,
   PositiveNumber,
 } from "../shared/schema.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
@@ -20,7 +20,7 @@ export interface BillLineSummary {
   readonly description: NonEmptyString | null
   readonly currency: FiatCurrency
   readonly quantity: PositiveNumber
-  readonly totalAmount: NonNegativeInteger
+  readonly totalAmount: Integer
   /** Frozen at the moment the underlying `item` snapshot was created. */
   readonly taxRateId: TaxRateId | null
 }

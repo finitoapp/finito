@@ -3,6 +3,7 @@ import {
   type InsertValues,
   type MutationOptions,
   ok,
+  type Result,
   type Task,
   type UpdateValues,
   type UpsertValues,
@@ -12,7 +13,6 @@ import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import type { BillLineRow, billLine } from "../bill-line/bill-line.ts"
 import {
-  appendBillLines,
   insertBillLineRows,
   loadCalculatedBillLineSummaries,
 } from "../bill-line/bill-line-actions.ts"
@@ -26,6 +26,7 @@ import {
   createCatalogItemNotFoundError,
 } from "../catalog-item/catalog-item-actions.ts"
 import { catalogItemByIdQuery } from "../catalog-item/catalog-item-queries.ts"
+import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import type { ItemRow, item } from "../item/item.ts"
 import { upsertItemSnapshot } from "../item/item-actions.ts"
 import type { ItemLineType } from "../item/item-types.ts"
@@ -38,9 +39,11 @@ import {
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
+import { roundMinorUnits } from "../shared/money.ts"
 import { getFirstOr } from "../shared/result.ts"
 import {
-  NonNegativeInteger,
+  type Integer,
+  type NonNegativeInteger,
   PositiveInteger,
   PositiveNumber,
   type TimestampMs,
@@ -48,24 +51,33 @@ import {
 } from "../shared/schema.ts"
 import type { BillRow, bill } from "./bill.ts"
 import {
+  type BillLineRemovalOutOfRangeError,
   type BillLockedError,
   type BillNotCanceledError,
   type BillNotFoundError,
   type BillSplitSelectionStaleError,
+  type BillSplitTotalNegativeError,
   type BillStatusNotAllowedError,
+  type BillStatusSnapshot,
+  type BillTotalBelowPaidError,
   type BillUnderpaidError,
   type BillWithItems,
+  type CartWrite,
   createBillNotCanceledError,
   createBillStatusNotAllowedError,
   createBillUnderpaidError,
   loadBillStatusSnapshot,
   requireCancelableBill,
+  requireCartWriteNotBelowPaid,
   requireEditableBill,
+  requireRemovalWithinLine,
   requireSelectionOnSourceBill,
+  requireSplitTotalNotNegative,
   type SelectedLineTotals,
 } from "./bill-guards.ts"
 import { lastBillDisplayNumberQuery, openBillsQuery } from "./bill-queries.ts"
 import type { BillId } from "./bill-types.ts"
+import { deriveZeroBillRefusal, type ZeroBillRefusal } from "./bill-utils.ts"
 
 const createBillLineSummaryMissingError = defineError(
   "BillLineSummaryMissing"
@@ -77,17 +89,56 @@ const createBillLineSummaryMissingError = defineError(
 export type BillLineSummaryMissingError = ReturnType<
   typeof createBillLineSummaryMissingError
 >
+/**
+ * What every write to a bill's cart can be refused with: the editing guard's
+ * errors (`requireEditableBill`), and a total that would drop below what the
+ * bill's payments have paid (`requireCartWriteNotBelowPaid`, payment/0014).
+ */
+export type CartWriteError =
+  | BillNotFoundError
+  | BillStatusNotAllowedError
+  | BillLockedError
+  | BillTotalBelowPaidError
+const createCatalogItemPriceSignStaleError = defineError(
+  "CatalogItemPriceSignStale"
+)<{
+  readonly id: CatalogItemId
+  readonly expectedDiscount: boolean
+}>()
+/**
+ * The catalog item `addCatalogItemToBill` reloaded is a discount where the
+ * caller saw none, or the other way round: the cart judged `discard` on a
+ * row that is no longer what the core would write (access/0012).
+ */
+export type CatalogItemPriceSignStaleError = ReturnType<
+  typeof createCatalogItemPriceSignStaleError
+>
+/** `appendRemoveBillLine`'s refusals. */
+export type RemoveBillLineError =
+  | CartWriteError
+  | BillLineRemovalOutOfRangeError
+/** Every refusal a write from the cart can meet, the ones a toast maps. */
 export type AddBillLineError =
   | CatalogItemNotFoundError
+  | CatalogItemPriceSignStaleError
   | BillLineSummaryMissingError
-  | BillNotFoundError
-  | BillStatusNotAllowedError
-  | BillLockedError
+  | RemoveBillLineError
+const createBillSplitSameBillError = defineError("BillSplitSameBill")<{
+  readonly id: BillId
+}>()
+/**
+ * A split whose source and target are the same bill: it would write every
+ * line's removal and addition onto one bill, judged as two, and could cancel
+ * the bill as emptied.
+ */
+export type BillSplitSameBillError = ReturnType<
+  typeof createBillSplitSameBillError
+>
 export type SplitBillError =
-  | BillNotFoundError
-  | BillStatusNotAllowedError
-  | BillLockedError
+  | CartWriteError
+  | BillSplitSameBillError
   | BillSplitSelectionStaleError
+  | BillSplitTotalNegativeError
 export const createBill =
   (
     input: Pick<
@@ -185,13 +236,95 @@ export const removeTableFromBill =
     return ok(billId)
   }
 /**
+ * The current time as the `closedAt` a cart write closing a bill writes.
+ */
+const nowTimestamp = (run: { readonly deps: DateDep }): TimestampMs =>
+  TimestampMsSchema.decode(run.deps.date.now().getTime())
+
+/**
+ * One bill's part of a judged cart write: its lines, and the `closedAt`
+ * `requireCartWriteNotBelowPaid` asked for, `null` when the bill stays open.
+ */
+interface JudgedCartWrite {
+  readonly billId: BillId
+  readonly lines: ReadonlyArray<Omit<BillLineRow, "id">>
+  readonly closedAt: TimestampMs | null
+}
+
+/**
+ * Inserts judged cart writes into the caller's batch, each bill's `closedAt`
+ * beside its lines — so a write that pays a partly paid bill off never lands
+ * without the cache that takes it off the floor view (payment/0014).
+ */
+const insertCartWrite = (
+  evolu: EvoluDep["evolu"],
+  writes: ReadonlyArray<JudgedCartWrite>,
+  options: MutationOptions
+): void => {
+  for (const { billId, lines, closedAt } of writes) {
+    insertBillLineRows(evolu, lines, options)
+    if (closedAt !== null) upsertBillClosedAt(evolu, billId, closedAt, options)
+  }
+}
+
+/**
+ * Whether judged cart writes put anything in a batch at all: an empty batch
+ * would never resolve (`runMutationWithCompletion`).
+ */
+const hasCartWrite = (writes: ReadonlyArray<JudgedCartWrite>): boolean =>
+  writes.some(({ lines, closedAt }) => lines.length > 0 || closedAt !== null)
+
+/**
+ * The cart write behind `appendRemoveBillLine` and `appendGuardedBillLines`:
+ * judges `lines` against the bill `requireEditableBill` just approved, writes
+ * them together with any `closedAt` they bring, and reads back the bill's
+ * summaries.
+ */
+const appendCartLines =
+  (
+    bill: BillStatusSnapshot,
+    lines: ReadonlyArray<Omit<BillLineRow, "id">>
+  ): Task<
+    ReadonlyArray<BillLineSummary>,
+    BillTotalBelowPaidError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const billId = bill.bill.id
+    const closedAtResult = requireCartWriteNotBelowPaid(
+      bill,
+      { lines, itemRows: [] },
+      nowTimestamp(run)
+    )
+    if (!closedAtResult.ok) return closedAtResult
+
+    const writes: ReadonlyArray<JudgedCartWrite> = [
+      { billId, lines, closedAt: closedAtResult.value },
+    ]
+    if (hasCartWrite(writes)) {
+      const { evoluOwner } = run.deps
+      await runMutationWithCompletion((options) =>
+        insertCartWrite(run.deps.evolu, writes, {
+          ...options,
+          owner: evoluOwner,
+        })
+      )
+    }
+
+    return ok(await run.ok(loadCalculatedBillLineSummaries(billId)))
+  }
+
+/**
  * Shared "insert a snapshot + an `add` bill line for it, then read back the
  * resulting summary" step behind `addCatalogItemToBill`, `addManualAmountToBill`,
  * and `addTipToBill` — they differ only in the line's `type` and how its
- * snapshot/detail fields are produced.
+ * snapshot/detail fields are produced. Judges the line against `bill`, the
+ * snapshot the caller's `requireEditableBill` approved, like every cart write
+ * (`requireCartWriteNotBelowPaid`).
  */
 const addBillLine =
   <TType extends ItemLineType>(
+    bill: BillStatusSnapshot,
     type: TType,
     snapshot: ItemRow,
     line: Pick<
@@ -200,20 +333,36 @@ const addBillLine =
     >
   ): Task<
     BillLineSummary,
-    BillLineSummaryMissingError,
-    EvoluDep & EvoluOwnerDep
+    BillLineSummaryMissingError | BillTotalBelowPaidError,
+    EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
     const { evoluOwner } = run.deps
+    const write: CartWrite = {
+      lines: [{ ...line, itemId: snapshot.id, type, kind: "add" }],
+      itemRows: [snapshot],
+    }
+    const closedAtResult = requireCartWriteNotBelowPaid(
+      bill,
+      write,
+      nowTimestamp(run)
+    )
+    if (!closedAtResult.ok) return closedAtResult
 
     await runMutationWithCompletion((options) => {
       upsertItemSnapshot(run.deps.evolu, snapshot, {
         ...options,
         owner: evoluOwner,
       })
-      insertBillLineRows(
+      insertCartWrite(
         run.deps.evolu,
-        [{ ...line, itemId: snapshot.id, type, kind: "add" }],
+        [
+          {
+            billId: line.billId,
+            lines: write.lines,
+            closedAt: closedAtResult.value,
+          },
+        ],
         { ...options, owner: evoluOwner }
       )
     })
@@ -247,6 +396,19 @@ const addBillLine =
         )
       : ok(lineSummary)
   }
+/**
+ * What `addCatalogItemToBill` wrote: the `add` line itself, priced the way the
+ * core priced it, and the bill's net line it now belongs to.
+ *
+ * The line is handed back so a caller that can undo the add (`use-cart-bill.ts`)
+ * records the very amount that was written rather than recomputing it from
+ * the catalog row it rendered: the core reloads that row, which may carry a
+ * new price by then, and rounds a fractional quantity (`roundMinorUnits`).
+ */
+export interface AddedCatalogItem {
+  readonly line: Omit<BillLineRow, "id">
+  readonly summary: BillLineSummary
+}
 export const addCatalogItemToBill =
   (
     input: Pick<
@@ -256,9 +418,18 @@ export const addCatalogItemToBill =
       readonly catalogItemId: NonNullable<
         InsertValues<typeof billLine>["catalogItemId"]
       >
+      /**
+       * Whether the caller saw the item as a discount (priced below zero,
+       * catalog/0002) when it decided which permission the tap needs: a
+       * discount takes `discard` (access/0012). The core reloads the row, so
+       * a price whose sign changed since is refused rather than written past
+       * that check. `null` from a caller that checks no permission (the
+       * CLI, the demo data).
+       */
+      readonly expectedDiscount: boolean | null
     }
   ): Task<
-    BillLineSummary,
+    AddedCatalogItem,
     AddBillLineError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
@@ -279,35 +450,55 @@ export const addCatalogItemToBill =
       createCatalogItemNotFoundError({ id: input.catalogItemId })
     )
     if (!catalogItemResult.ok) return catalogItemResult
+    const isDiscount = catalogItemResult.value.unitAmount < 0
+    if (
+      input.expectedDiscount !== null &&
+      isDiscount !== input.expectedDiscount
+    ) {
+      return err(
+        createCatalogItemPriceSignStaleError({
+          id: input.catalogItemId,
+          expectedDiscount: input.expectedDiscount,
+        })
+      )
+    }
 
     const snapshot = createCatalogItemSnapshot(catalogItemResult.value)
+    const line = {
+      billId: input.billId,
+      deviceId: input.deviceId ?? null,
+      catalogItemId: catalogItemResult.value.id,
+      quantity: input.quantity,
+      // `quantity` may be fractional; money has no fractional minor unit. A
+      // discount's negative price rounds away from zero like a positive one.
+      totalAmount: roundMinorUnits(
+        catalogItemResult.value.unitAmount * input.quantity
+      ),
+    }
 
-    return run(
-      addBillLine("catalogItem", snapshot, {
-        billId: input.billId,
-        deviceId: input.deviceId ?? null,
-        catalogItemId: catalogItemResult.value.id,
-        quantity: input.quantity,
-        // `quantity` may be fractional; money has no fractional minor unit.
-        totalAmount: NonNegativeInteger(
-          Math.round(catalogItemResult.value.unitAmount * input.quantity)
-        ),
-      })
+    const summary = await run(
+      addBillLine(billResult.value, "catalogItem", snapshot, line)
     )
+    if (!summary.ok) return summary
+
+    return ok({
+      line: { ...line, itemId: snapshot.id, type: "catalogItem", kind: "add" },
+      summary: summary.value,
+    })
   }
 export const addManualAmountToBill =
   (
-    input: Pick<
-      InsertValues<typeof billLine>,
-      "billId" | "deviceId" | "totalAmount"
-    > &
-      Pick<InsertValues<typeof item>, "name" | "currency">
+    input: Pick<InsertValues<typeof billLine>, "billId" | "deviceId"> &
+      Pick<InsertValues<typeof item>, "name" | "currency"> & {
+        /**
+         * Never below zero, though a bill line's amount may be: only a
+         * catalog discount takes a bill down (catalog/0002).
+         */
+        readonly totalAmount: NonNegativeInteger
+      }
   ): Task<
     BillLineSummary,
-    | BillLineSummaryMissingError
-    | BillNotFoundError
-    | BillStatusNotAllowedError
-    | BillLockedError,
+    BillLineSummaryMissingError | CartWriteError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
@@ -324,7 +515,7 @@ export const addManualAmountToBill =
     })
 
     return run(
-      addBillLine("manualAmount", snapshot, {
+      addBillLine(billResult.value, "manualAmount", snapshot, {
         billId: input.billId,
         deviceId: input.deviceId ?? null,
         catalogItemId: null,
@@ -335,17 +526,17 @@ export const addManualAmountToBill =
   }
 export const addTipToBill =
   (
-    input: Pick<
-      InsertValues<typeof billLine>,
-      "billId" | "deviceId" | "totalAmount"
-    > &
-      Pick<InsertValues<typeof item>, "name" | "currency">
+    input: Pick<InsertValues<typeof billLine>, "billId" | "deviceId"> &
+      Pick<InsertValues<typeof item>, "name" | "currency"> & {
+        /**
+         * Never below zero, though a bill line's amount may be: only a
+         * catalog discount takes a bill down (catalog/0002).
+         */
+        readonly totalAmount: NonNegativeInteger
+      }
   ): Task<
     BillLineSummary,
-    | BillLineSummaryMissingError
-    | BillNotFoundError
-    | BillStatusNotAllowedError
-    | BillLockedError,
+    BillLineSummaryMissingError | CartWriteError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
@@ -362,7 +553,7 @@ export const addTipToBill =
     })
 
     return run(
-      addBillLine("tip", snapshot, {
+      addBillLine(billResult.value, "tip", snapshot, {
         billId: input.billId,
         deviceId: input.deviceId ?? null,
         catalogItemId: null,
@@ -381,15 +572,28 @@ export const appendRemoveBillLine =
     }
   ): Task<
     BillLineSummary | null,
-    BillNotFoundError | BillStatusNotAllowedError | BillLockedError,
+    RemoveBillLineError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
     const billResult = await run(requireEditableBill(input.billId))
     if (!billResult.ok) return billResult
 
-    const projected = await run.ok(
-      appendBillLines([
+    // Judged against the line as the bill holds it now, not the summary the
+    // caller read: the CLI takes any amount, and a screen may be stale.
+    const removalResult = requireRemovalWithinLine(
+      input.billId,
+      billResult.value.items,
+      {
+        summaryId: input.lineSummary.id,
+        quantity: input.quantity,
+        totalAmount: input.totalAmount,
+      }
+    )
+    if (!removalResult.ok) return removalResult
+
+    const projected = await run(
+      appendCartLines(billResult.value, [
         {
           billId: input.billId,
           deviceId: input.deviceId ?? null,
@@ -402,7 +606,10 @@ export const appendRemoveBillLine =
         },
       ])
     )
-    return ok(projected.find((row) => row.id === input.lineSummary.id) ?? null)
+    if (!projected.ok) return projected
+    return ok(
+      projected.value.find((row) => row.id === input.lineSummary.id) ?? null
+    )
   }
 /**
  * Every open bill with its calculated line items, in one query — `lines` and
@@ -498,6 +705,65 @@ const cancelSourceBillIfEmptied = (
   }
   return sourceCanceled
 }
+/**
+ * Judges a split's lines on both bills, the source first: neither may be left
+ * with lines and a total below zero (`requireSplitTotalNotNegative`,
+ * payment/0015), nor below what its payments have paid
+ * (`requireCartWriteNotBelowPaid`). Hands back each bill's lines with the
+ * `closedAt` they bring, for `insertCartWrite`.
+ */
+const judgeSplitWrites = (
+  source: BillStatusSnapshot,
+  target: BillStatusSnapshot,
+  lines: ReadonlyArray<Omit<BillLineRow, "id">>,
+  now: TimestampMs
+): Result<
+  ReadonlyArray<JudgedCartWrite>,
+  BillTotalBelowPaidError | BillSplitTotalNegativeError
+> => {
+  const sourceWrite: CartWrite = {
+    lines: lines.filter((line) => line.billId === source.bill.id),
+    itemRows: [],
+  }
+  // The target's new lines refer to the source's item snapshots.
+  const targetWrite: CartWrite = {
+    lines: lines.filter((line) => line.billId === target.bill.id),
+    itemRows: source.ledger.itemRows,
+  }
+
+  const sourceNotNegative = requireSplitTotalNotNegative(
+    source.bill.id,
+    source.ledger,
+    sourceWrite
+  )
+  if (!sourceNotNegative.ok) return sourceNotNegative
+  const targetNotNegative = requireSplitTotalNotNegative(
+    target.bill.id,
+    target.ledger,
+    targetWrite
+  )
+  if (!targetNotNegative.ok) return targetNotNegative
+
+  const sourceClosedAt = requireCartWriteNotBelowPaid(source, sourceWrite, now)
+  if (!sourceClosedAt.ok) return sourceClosedAt
+  const targetClosedAt = requireCartWriteNotBelowPaid(target, targetWrite, now)
+  if (!targetClosedAt.ok) return targetClosedAt
+  const sourceLines = sourceWrite.lines
+  const targetLines = targetWrite.lines
+
+  return ok([
+    {
+      billId: source.bill.id,
+      lines: sourceLines,
+      closedAt: sourceClosedAt.value,
+    },
+    {
+      billId: target.bill.id,
+      lines: targetLines,
+      closedAt: targetClosedAt.value,
+    },
+  ])
+}
 export const splitBill =
   (input: {
     readonly sourceBillId: BillId
@@ -509,6 +775,10 @@ export const splitBill =
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
+    if (input.sourceBillId === input.targetBillId) {
+      return err(createBillSplitSameBillError({ id: input.sourceBillId }))
+    }
+
     // Both guards run concurrently; neither depends on the other. The
     // source's current summaries are not loaded separately alongside them —
     // `requireEditableBill` derives the bill's status from that exact
@@ -535,29 +805,39 @@ export const splitBill =
       input.targetBillId,
       input.items
     )
+    // Both bills are judged, the source first: taking lines off a partly paid
+    // source may pay it off or take it below what was paid, and so may adding
+    // them to a partly paid target once a line can be worth less than nothing.
+    const writesResult = judgeSplitWrites(
+      sourceBillResult.value,
+      targetBillResult.value,
+      lines,
+      nowTimestamp(run)
+    )
+    if (!writesResult.ok) return writesResult
+    const writes = writesResult.value
     const { evoluOwner } = run.deps
 
     // An empty selection has nothing to write, and an empty batch would
     // never resolve — see `runMutationWithCompletion`. `appendBillLines`
     // guards its own batch the same way. With no line moved off the source,
     // `cancelSourceBillIfEmptied` could only ever answer `false` anyway.
-    const sourceCanceled =
-      lines.length === 0
-        ? false
-        : await runMutationWithCompletion((options) => {
-            insertBillLineRows(run.deps.evolu, lines, {
-              ...options,
-              owner: evoluOwner,
-            })
-            return cancelSourceBillIfEmptied(
-              run.deps.evolu,
-              input.sourceBillId,
-              currentSourceSummaries,
-              selectionResult.value,
-              TimestampMsSchema.decode(run.deps.date.now().getTime()),
-              { ...options, owner: evoluOwner }
-            )
+    const sourceCanceled = !hasCartWrite(writes)
+      ? false
+      : await runMutationWithCompletion((options) => {
+          insertCartWrite(run.deps.evolu, writes, {
+            ...options,
+            owner: evoluOwner,
           })
+          return cancelSourceBillIfEmptied(
+            run.deps.evolu,
+            input.sourceBillId,
+            currentSourceSummaries,
+            selectionResult.value,
+            TimestampMsSchema.decode(run.deps.date.now().getTime()),
+            { ...options, owner: evoluOwner }
+          )
+        })
 
     const targetItems = await run.ok(
       loadCalculatedBillLineSummaries(input.targetBillId)
@@ -624,6 +904,49 @@ export const splitBillIntoNewBill =
       input.targetBillId,
       input.items
     )
+    const sourceWrite: CartWrite = {
+      lines: lines.filter((line) => line.billId === input.sourceBillId),
+      itemRows: [],
+    }
+    const targetWrite: CartWrite = {
+      lines: lines.filter((line) => line.billId === input.targetBillId),
+      itemRows: sourceBillResult.value.ledger.itemRows,
+    }
+    // Neither bill may be left below zero with lines on it (payment/0015).
+    // The new bill starts with no ledger of its own.
+    const sourceNotNegative = requireSplitTotalNotNegative(
+      input.sourceBillId,
+      sourceBillResult.value.ledger,
+      sourceWrite
+    )
+    if (!sourceNotNegative.ok) return sourceNotNegative
+    const targetNotNegative = requireSplitTotalNotNegative(
+      input.targetBillId,
+      { lineRows: [], itemRows: [] },
+      targetWrite
+    )
+    if (!targetNotNegative.ok) return targetNotNegative
+
+    // Only the source is judged against what was paid: the new bill has no
+    // payment yet, so its write always keeps it open.
+    const sourceClosedAtResult = requireCartWriteNotBelowPaid(
+      sourceBillResult.value,
+      sourceWrite,
+      nowTimestamp(run)
+    )
+    if (!sourceClosedAtResult.ok) return sourceClosedAtResult
+    const writes: ReadonlyArray<JudgedCartWrite> = [
+      {
+        billId: input.sourceBillId,
+        lines: sourceWrite.lines,
+        closedAt: sourceClosedAtResult.value,
+      },
+      {
+        billId: input.targetBillId,
+        lines: targetWrite.lines,
+        closedAt: null,
+      },
+    ]
 
     await runMutationWithCompletion((options) => {
       run.deps.evolu.upsert(
@@ -638,7 +961,7 @@ export const splitBillIntoNewBill =
         }),
         { ...options, owner: evoluOwner }
       )
-      insertBillLineRows(run.deps.evolu, lines, {
+      insertCartWrite(run.deps.evolu, writes, {
         ...options,
         owner: evoluOwner,
       })
@@ -688,7 +1011,9 @@ export const cancelBill =
  * module's tables (AGENTS.md), and `reconciliation-claim-actions.ts` folds
  * this in via `loadBillClosedAtIfCovered` so the cache lands in the same batch
  * as the claim that closes the bill, rather than a second round trip that
- * could fail on its own. See docs/bill-payment-states.md.
+ * could fail on its own. The cart writes here fold it in the same way, beside
+ * the lines that pay a partly paid bill off (`insertCartWrite`,
+ * payment/0014). See docs/bill-payment-states.md.
  */
 export const upsertBillClosedAt = (
   evolu: EvoluDep["evolu"],
@@ -705,8 +1030,9 @@ export const upsertBillClosedAt = (
  * `bill.ts`'s doc comment), not a way to force a bill closed. Rejects a
  * `canceled` bill (use `confirmBillClosedDespiteCancellation` for that
  * collision) and one with no active claim yet or still `underpaid` —
- * `docs/bill-payment-states.md` states a `closed` bill is always `paid` or
- * `overpaid`, never `underpaid`.
+ * `docs/bill-payment-states.md` states a bill its payments closed is always
+ * `paid` or `overpaid`, never `underpaid`. A bill no payment can settle,
+ * its goods coming to zero, is closed with `closeZeroBill` instead.
  */
 export const closeBill =
   (
@@ -762,6 +1088,76 @@ export const closeBill =
 
     return ok(billId)
   }
+/**
+ * A bill `closeZeroBill` will not close: it has no lines, a tip line, or
+ * goods that do not come to exactly zero.
+ */
+export const createBillNotZeroError = defineError("BillNotZero")<{
+  readonly id: BillId
+  readonly reason: ZeroBillRefusal
+  readonly billTotal: Integer
+}>()
+export type BillNotZeroError = ReturnType<typeof createBillNotZeroError>
+
+export type CloseZeroBillError =
+  | BillNotFoundError
+  | BillStatusNotAllowedError
+  | BillLockedError
+  | BillNotZeroError
+
+/**
+ * Closes a bill whose goods come to exactly zero — free items, nothing to
+ * collect — without a payment ("Finish", payment/0013). No payment can settle
+ * it (`BillTotalNotPositive`, payment/0012), and closing by coverage
+ * needs a claim, so staff confirm the closing themselves.
+ *
+ * The bill must be editable (`requireEditableBill`: open, no payment in
+ * flight) and carry at least one line once adds and removes are netted — an
+ * empty cart is not a sale — with no tip line, since nobody can pay a tip on
+ * a bill that is never charged.
+ *
+ * One write sets both `closedAt`, which the floor view and the sales
+ * statistics filter on, and `confirmedClosedAt`, which `deriveBillStatus`
+ * reads first: the closing is final and the bill never reopens on its own. A
+ * device that has not yet seen the closing can still add a line to it; the
+ * bill then stays closed and reads underpaid, which the bill detail and the
+ * bill history show, and staff ring the item up on a new bill. Two devices
+ * finishing the same bill write the same fields; one finishing it while
+ * another discards it ends closed, `confirmedClosedAt` outranking
+ * `canceledAt`, which for a bill worth nothing is no loss.
+ */
+export const closeZeroBill =
+  (
+    billId: BillId
+  ): Task<BillId, CloseZeroBillError, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    const snapshotResult = await run(requireEditableBill(billId))
+    if (!snapshotResult.ok) return snapshotResult
+
+    const { items, billTotal } = snapshotResult.value
+    const reason = deriveZeroBillRefusal(items)
+    if (reason !== null) {
+      return err(createBillNotZeroError({ id: billId, reason, billTotal }))
+    }
+
+    const { evoluOwner } = run.deps
+    const now = TimestampMsSchema.decode(run.deps.date.now().getTime())
+
+    await runMutationWithCompletion((options) =>
+      run.deps.evolu.update(
+        "bill",
+        {
+          id: billId,
+          closedAt: snapshotResult.value.bill.closedAt ?? now,
+          confirmedClosedAt: now,
+        },
+        { ...options, owner: evoluOwner }
+      )
+    )
+
+    return ok(billId)
+  }
+
 export type ConfirmBillClosedDespiteCancellationError =
   | BillNotFoundError
   | BillNotCanceledError
@@ -837,12 +1233,12 @@ export const appendGuardedBillLines =
     lines: ReadonlyArray<Omit<BillLineRow, "id">>
   ): Task<
     ReadonlyArray<BillLineSummary>,
-    BillNotFoundError | BillStatusNotAllowedError | BillLockedError,
+    CartWriteError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
     const billResult = await run(requireEditableBill(billId))
     if (!billResult.ok) return billResult
 
-    return run(appendBillLines(lines, billId))
+    return run(appendCartLines(billResult.value, lines))
   }

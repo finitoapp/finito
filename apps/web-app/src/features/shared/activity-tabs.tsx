@@ -23,7 +23,7 @@ const triggerClassName =
 /**
  * Navigates between `/activity` (payments), `/activity/bills` and
  * `/activity/stats` (the sales statistics, behind `stats`: the access gate
- * asks for the PIN, access/0010) — each tab is its own route rather than
+ * asks for the PIN, access/0012) — each tab is its own route rather than
  * `TabsContent`, so the active tab follows the location and selecting a
  * trigger navigates instead of swapping local state. `ActivityLayout` draws
  * them once above all three, so Base UI's indicator, the active tab's fill,

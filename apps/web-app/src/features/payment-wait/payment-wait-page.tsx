@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core"
+import { markCashPaidErrorKeys } from "@payky/app-shared/bill-checkout"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   clearPaymentMethodPreparation,
@@ -22,6 +22,7 @@ import {
   markPaymentPaidIban,
   payPaymentWithSwitchioCard,
 } from "@payky/core/modules/payment/payment-actions"
+import { isCashPayable } from "@payky/core/modules/payment/payment-cash-utils"
 import type { PayPaymentWithSwitchioCardError } from "@payky/core/modules/payment/payment-errors"
 import {
   type BankQrPayload,
@@ -95,6 +96,7 @@ import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatMoney } from "@/lib/format-utils.ts"
 import { cn } from "@/lib/utils.ts"
 import { isNfcPlatform } from "@/platform/nfc.ts"
+import { isCardTerminalLinked } from "@/platform/switchio.ts"
 
 const preparingPaymentMethodKeys = {
   spark: "paymentWait.preparing.spark",
@@ -192,6 +194,18 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
   const payment = payments[0]
   const [settings] = settingsData
+  // Cash is not offered for a payment whose goods, rounded for cash, come to
+  // nothing (payment/0012): the core created it because another method
+  // could take it, and refuses to settle it in cash (`isCashPayable` again).
+  // The payment is judged as created, not the bill as it stands now: a bill
+  // lowered afterwards keeps its payment.
+  const cashPayable =
+    payment === undefined ||
+    isCashPayable({
+      amount: payment.amount,
+      tipAmount: payment.tipAmount,
+      currency: payment.currency,
+    })
   // The profile name is the recipient the bank QR names (payment/0005). It
   // comes from relays, so the QR shows at once and takes the name when it
   // lands rather than waiting on a relay that may be slow or down.
@@ -318,7 +332,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     // The SwitchioPay terminal is driven through Android intents, so the
     // method only exists inside the native app — offering it in a browser or
     // PWA would render a tab whose only button can never work.
-    const enabledCardAccount = Capacitor.isNativePlatform()
+    const enabledCardAccount = isCardTerminalLinked()
       ? enabledPaymentMethodAccounts.find(
           (account) =>
             account.kind === "cardSwitchio" &&
@@ -446,14 +460,26 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     settings,
     t,
   ])
+  // Every method stays on screen, a refused one disabled, so staff see why
+  // cash is missing; only the offered ones can be picked or prepared.
+  const isPaymentMethodOffered = useCallback(
+    (method: PaymentMethodOption) => method.id !== "cash" || cashPayable,
+    [cashPayable]
+  )
+  const offeredPaymentMethods = useMemo(
+    () => orderedPaymentMethods.filter(isPaymentMethodOffered),
+    [orderedPaymentMethods, isPaymentMethodOffered]
+  )
+  const cashRefused =
+    !cashPayable && orderedPaymentMethods.some((method) => method.id === "cash")
   const selectedPaymentMethodOption =
     selectedPaymentMethod === null
       ? null
-      : (orderedPaymentMethods.find(
+      : (offeredPaymentMethods.find(
           (method) => method.id === selectedPaymentMethod
         ) ?? null)
   const activePaymentMethod =
-    selectedPaymentMethodOption ?? orderedPaymentMethods[0] ?? null
+    selectedPaymentMethodOption ?? offeredPaymentMethods[0] ?? null
   const activePreparationKey =
     activePaymentMethod === null
       ? null
@@ -567,7 +593,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   useEffect(() => {
     if (
       selectedPaymentMethod === null ||
-      orderedPaymentMethods.some(
+      offeredPaymentMethods.some(
         (method) => method.id === selectedPaymentMethod
       )
     ) {
@@ -575,7 +601,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     }
 
     setSelectedPaymentMethod(null)
-  }, [orderedPaymentMethods, selectedPaymentMethod])
+  }, [offeredPaymentMethods, selectedPaymentMethod])
 
   useEffect(() => {
     if (
@@ -706,7 +732,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
 
       if (!result.ok) {
         console.error("Failed to mark cash payment paid", result.error)
-        setCashPaymentErrorKey("paymentWait.cashPaid.error")
+        setCashPaymentErrorKey(markCashPaidErrorKeys[result.error.type])
       }
     })
     setCashPaymentPending(false)
@@ -887,6 +913,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                         <TabsTrigger
                           key={method.id}
                           value={method.id}
+                          disabled={!isPaymentMethodOffered(method)}
                           aria-label={method.label}
                           render={
                             <motion.button
@@ -913,6 +940,12 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               </p>
             )}
           </div>
+
+          {cashRefused ? (
+            <p className="-mt-3 max-w-72 text-balance text-sm text-muted-foreground">
+              {t("paymentWait.cashPaid.notPayable")}
+            </p>
+          ) : null}
 
           {activePreparePaymentErrorKey ? (
             <div className="flex flex-col items-center gap-3">

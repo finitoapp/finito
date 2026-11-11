@@ -8,6 +8,7 @@ import {
   assignBillToTable,
   cancelBill,
   closeBill,
+  closeZeroBill,
   createBill,
   listOpenBills,
   removeTableFromBill,
@@ -23,6 +24,7 @@ import { DeviceId } from "@payky/core/modules/device/device-types"
 import type { EvoluDep } from "@payky/core/modules/shared/evolu-deps"
 import {
   FiatCurrencySchema,
+  IntegerFromStringSchema,
   NonEmptyString255Schema,
   NonNegativeIntegerFromStringSchema,
   PositiveIntegerFromStringSchema,
@@ -195,14 +197,16 @@ export const registerBillsCommand =
             ),
           },
           async action(_, options) {
-            const lineSummary = await run.orThrow(
+            const { summary } = await run.orThrow(
               addCatalogItemToBill({
                 ...options,
                 deviceId: options.deviceId ?? null,
+                // The CLI checks no permission, so it expects no sign.
+                expectedDiscount: null,
               })
             )
 
-            console.table([lineSummary])
+            console.table([summary])
           },
         })
       )
@@ -280,8 +284,9 @@ export const registerBillsCommand =
             quantity: PositiveNumberFromStringSchema.describe(
               "q;Quantity to remove"
             ),
-            totalAmount:
-              NonNegativeIntegerFromStringSchema.describe("a;Amount to remove"),
+            // The line's own sign: a discount line is removed at a negative
+            // amount.
+            totalAmount: IntegerFromStringSchema.describe("a;Amount to remove"),
             deviceId: DeviceId.optional().describe(
               "Device id that removed the item"
             ),
@@ -376,7 +381,8 @@ export const registerBillsCommand =
       .addCommand(
         zodCommand({
           name: "close",
-          description: "Close a bill (its line items become frozen).",
+          description:
+            "Repair a paid bill's closedAt cache. Refuses a bill no payment covers; finish a zero bill with close-zero.",
           args: {},
           opts: {
             id: BillId.describe("Bill id"),
@@ -384,6 +390,22 @@ export const registerBillsCommand =
           async action(_, options) {
             await run.orThrow(closeBill(options.id))
             run.deps.console.log(`Closed bill ${options.id}`)
+          },
+        })
+      )
+
+      .addCommand(
+        zodCommand({
+          name: "close-zero",
+          description:
+            "Finish a bill whose goods come to exactly zero, without a payment (payment/0013).",
+          args: {},
+          opts: {
+            id: BillId.describe("Bill id"),
+          },
+          async action(_, options) {
+            await run.orThrow(closeZeroBill(options.id))
+            run.deps.console.log(`Finished bill ${options.id}`)
           },
         })
       )

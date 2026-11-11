@@ -5,6 +5,7 @@ import { DeviceId } from "../device/device-types.ts"
 import {
   FiatCurrencySchema,
   type InferTable,
+  IntegerSchema,
   NonEmptyString255Schema,
   NonNegativeIntegerSchema,
 } from "../shared/schema.ts"
@@ -21,7 +22,7 @@ export const catalogItem = {
   internalDescription: NonEmptyString255Schema.nullable(),
   sku: NonEmptyString255Schema.nullable(),
   currency: FiatCurrencySchema,
-  unitAmount: NonNegativeIntegerSchema,
+  unitAmount: IntegerSchema,
   sortOrder: NonNegativeIntegerSchema,
   scanCode: NonEmptyString255Schema.nullable(),
   /** `null` supports non-VAT-payer tenants and items with no tax assigned yet. */

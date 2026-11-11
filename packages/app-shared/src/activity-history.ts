@@ -23,7 +23,7 @@ import {
 } from "@payky/core/modules/refund/refund-utils"
 import { sumDistinctClaimedAmounts } from "@payky/core/modules/shared/claimed-amount"
 import type { Money } from "@payky/core/modules/shared/money"
-import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { Integer } from "@payky/core/modules/shared/schema"
 import { refundStateLabelKey } from "./activity-labels.ts"
 import { formatRelativeDate } from "./format-date.ts"
 import type { createTranslate } from "./i18n/translate.ts"
@@ -48,7 +48,7 @@ const formatCurrencyTotals = (
   if (totals.size === 0) return null
 
   return Array.from(totals, ([currency, value]) =>
-    format({ value: NonNegativeInteger(value), currency })
+    format({ value: Integer(value), currency })
   ).join(" + ")
 }
 
@@ -267,7 +267,9 @@ export const summarizeBillHistoryRow = (
  * actually landed (`claimedSum > 0`) — an ordinary open cart with nothing
  * paid yet is also "underpaid" by definition, and flagging every one of
  * those would drown out the genuine signal (see the "reading the
- * combination" table in docs/bill-payment-states.md).
+ * combination" table in docs/bill-payment-states.md) — or once staff closed
+ * the bill without a payment: a zero bill that reads underpaid had a line
+ * added on a device that had not yet seen it closed (payment/0013).
  */
 export const billHistoryIssueLabels = (
   summary: BillHistoryItemSummary,
@@ -276,7 +278,8 @@ export const billHistoryIssueLabels = (
   [
     summary.hasCancellationCollision ? t("bill.collision.title") : null,
     summary.coverage === "overpaid" ? t("billHistory.overpaid") : null,
-    summary.coverage === "underpaid" && summary.claimedSum > 0
+    summary.coverage === "underpaid" &&
+    (summary.claimedSum > 0 || summary.closedWithoutPayment)
       ? t("billHistory.underpaid")
       : null,
   ].filter((issue): issue is string => issue !== null)

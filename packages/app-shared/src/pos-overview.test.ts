@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 import {
+  type BillWithStats,
   elapsedSeverity,
   matchesTableFilter,
   sumBillRows,
@@ -26,5 +27,18 @@ describe("matchesTableFilter", () => {
 describe("sumBillRows", () => {
   test("has no sum without rows", () => {
     expect(sumBillRows([])).toBeUndefined()
+  })
+
+  test("sums a bill a discount takes below zero as it stands", () => {
+    const row = (totalAmount: number) =>
+      ({
+        bill: { currency: "CZK" },
+        stats: { itemCount: 1, totalAmount },
+      }) as unknown as BillWithStats
+
+    expect(sumBillRows([row(1_000), row(-1_500)])).toEqual({
+      value: -500,
+      currency: "CZK",
+    })
   })
 })

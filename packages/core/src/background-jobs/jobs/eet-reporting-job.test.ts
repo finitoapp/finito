@@ -142,9 +142,16 @@ const saleOf = async (context: EetTestContext, paymentId: PaymentId) =>
 const settleLater = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds))
 
-const createTestBill = async (context: EetTestContext): Promise<BillId> => {
+/**
+ * A bill, with one line worth `goodsTotal` when given — a payment needs goods
+ * to charge (payment/0012).
+ */
+const createTestBill = async (
+  context: EetTestContext,
+  goodsTotal?: number
+): Promise<BillId> => {
   await using run = testCreateRun(context.deps)
-  return await run.ok(
+  const billId = await run.ok(
     createBill({
       deviceId: context.deviceId,
       displayNumber: PositiveInteger(1),
@@ -153,6 +160,18 @@ const createTestBill = async (context: EetTestContext): Promise<BillId> => {
       currency: "CZK",
     })
   )
+  if (goodsTotal !== undefined) {
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: context.deviceId,
+        totalAmount: NonNegativeInteger(goodsTotal),
+        name: NonEmptyString255("Lunch"),
+        currency: "CZK",
+      })
+    )
+  }
+  return billId
 }
 
 describe("getEetRetryDelayMs", () => {
@@ -168,7 +187,7 @@ describe("eet reporting job: sale records", () => {
     await using context = await createEetTestContext()
     await configureEet(context)
     await using job = await startJob(context)
-    const billId = await createTestBill(context)
+    const billId = await createTestBill(context, 25_000)
     const paymentId = await createTestPayment(context, { billId })
 
     await settleInCash(context, paymentId)
@@ -269,7 +288,7 @@ describe("eet reporting job: sale records", () => {
     await using context = await createEetTestContext()
     await configureEet(context)
     await using job = await startJob(context)
-    const billId = await createTestBill(context)
+    const billId = await createTestBill(context, 25_000)
     const first = await createTestPayment(context, { billId, amount: 10_000 })
     const second = await createTestPayment(context, { billId, amount: 15_000 })
 
@@ -1490,7 +1509,7 @@ describe("eet reporting job: reversals of extra money", () => {
     await using context = await createEetTestContext()
     await configureEet(context)
     await using job = await startJob(context)
-    const billId = await createTestBill(context)
+    const billId = await createTestBill(context, 25_000)
     const first = await createTestPayment(context, { billId })
     const second = await createTestPayment(context, { billId })
     await settleInCash(context, first)

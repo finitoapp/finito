@@ -258,17 +258,26 @@ keeps it out of every coverage sum.
 - `bill.canceledAt: timestamp | null` — set once, never cleared. An explicit
   human decision to discard the bill (the trash icon on the bill page, or
   `cancelBill`). Exactly the same shape and role as `payment.canceledAt`.
-- `bill.confirmedClosedAt: timestamp | null` — set once, never cleared, by
-  `confirmBillClosedDespiteCancellation`. Staff's explicit resolution of the
-  canceled+funded collision described in ["Reading the
-  combination"](#reading-the-combination) below: it acknowledges that the
-  bill's payments already cover its total despite the cancellation, and
-  flips the bill's *derived* status from `canceled` to `closed`. Exactly the
-  same shape and role as `payment.confirmedPaidAt`.
+- `bill.confirmedClosedAt: timestamp | null` — set once, never cleared.
+  Staff confirmed the bill closed, and its *derived* status is `closed`
+  whatever else is true of it. Exactly the same shape and role as
+  `payment.confirmedPaidAt`. It has two sources:
+  - `confirmBillClosedDespiteCancellation`, staff's explicit resolution of
+    the canceled+funded collision described in ["Reading the
+    combination"](#reading-the-combination) below: it acknowledges that the
+    bill's payments already cover its total despite the cancellation, and
+    flips the bill's derived status from `canceled` to `closed`;
+  - `closeZeroBill`, "Finish" on a bill whose goods come to exactly zero,
+    which no payment can settle — see ["Finishing a bill that comes to
+    zero"](#finishing-a-bill-that-comes-to-zero) below
+    ([`payment/0013`](decisions/payment/0013-a-bill-that-comes-to-zero-is-finished-without-a-payment.md)).
 - `bill.closedAt: timestamp | null` — **not** a source of truth for
   anything. A best-effort, self-healing *cache*: written (idempotently)
   whenever a claim brings the bill's coverage out of `underpaid`, regardless
-  of `canceledAt` — see ["`closedAt` is a cache, not a
+  of `canceledAt`; by a cart write that brings a partly paid bill's total
+  down to exactly what was paid (see ["Cart writes on a partly paid
+  bill"](#cart-writes-on-a-partly-paid-bill) below); and by `closeZeroBill`
+  together with `confirmedClosedAt` — see ["`closedAt` is a cache, not a
   status"](#closedat-is-a-cache-not-a-status) below for why it exists and
   what its one job is.
 
@@ -283,7 +292,7 @@ A bill's display status is computed at read time, in this precedence order
 
 | Priority | Status | Condition |
 |---|---|---|
-| 1 | **Closed** | `confirmedClosedAt !== null` — staff's explicit resolution, see below |
+| 1 | **Closed** | `confirmedClosedAt !== null` — staff confirmed the closing, see below |
 | 2 | **Canceled** | `canceledAt !== null` |
 | 3 | **Closed** | at least one of the bill's payments has an active claim, **and** coverage (see below) is not `underpaid` |
 | 4 | **Open** | none of the above |
@@ -299,20 +308,26 @@ the same way `payment.confirmedPaidAt` outranks `payment.canceledAt` — see
 underpaid".** `deriveBillCoverage` (see below) says a bill with `billTotal
 == 0` is trivially `paid` even with zero claimed payments — which is exactly
 true of a **brand-new, still-empty cart** the instant it's created (bill
-created lazily, no line items yet, `billTotal === claimedSum === 0`). If
-"closed" only checked coverage, a fresh empty bill would read as
-closed/uneditable before staff could add a single item. Requiring at least
-one active claim is what keeps that from happening: closing always requires
-an actual settling event (a real claim, even a $0 one for a fully-discounted
-bill — see [Bill payment coverage](#bill-payment-coverage)'s "paid" row), not
-merely the absence of anything owed.
+created lazily, no line items yet, `billTotal === claimedSum === 0`), and of
+a bill whose lines only add up to zero (free items) while staff are still
+ringing it up. If "closed" only checked coverage, either would read as
+closed/uneditable before staff were done with it. Requiring at least one
+active claim is what keeps that from happening: closing always requires an
+actual settling event — a real claim, or staff confirming the closing
+(`confirmedClosedAt`, priority 1) — not merely the absence of anything owed.
+A bill whose goods come to zero can never get a claim, since no payment can
+be created for it
+([`payment/0012`](decisions/payment/0012-a-payment-is-created-only-for-goods-worth-more-than-zero.md)),
+so it is closed the second way, with "Finish" (see ["Finishing a bill that
+comes to zero"](#finishing-a-bill-that-comes-to-zero)).
 
 ### Editing lock
 
 Editing the bill's line items — the guard behind `addCatalogItemToBill`,
-`addManualAmountToBill`, `addTipToBill`, `appendRemoveBillLine`, and
-`splitBill` — requires more than a derived status of `open`. A bill is also
-**locked** whenever it has a *live* payment attempt:
+`addManualAmountToBill`, `addTipToBill`, `appendRemoveBillLine`,
+`appendGuardedBillLines` (the cart's clear, undo and redo), `splitBill` and
+`splitBillIntoNewBill` — requires more than a derived status of `open`. A
+bill is also **locked** whenever it has a *live* payment attempt:
 
 ```
 editable = deriveBillStatus(...) === "open"
@@ -330,6 +345,8 @@ it in the first place.
 **Creating a new payment deliberately does not check this lock.** Since a
 bill can have more than one payment (split payments), starting a second
 payment attempt while another is still pending and unresolved is allowed.
+What it does check, besides the bill being `open`, is that there is
+something to charge — see ["Creating a payment"](#creating-a-payment).
 Like every guard in this document, this is best-effort for the common
 single-device path, not a proof — see `requireBillAcceptingPayment` vs.
 `requireEditableBill` in `bill-actions.ts`, and [Bill payment
@@ -352,6 +369,144 @@ payment is not yet paid or canceled: it is the manual escape hatch that
 makes the lock recoverable for every payment method, not only the ones with
 an expiry.
 
+### Cart writes on a partly paid bill
+
+A bill can be `open` and editable with money already claimed against it: a
+split payment covered part of it and nothing is pending. Every cart write
+above then judges the total the bill would come to after it, against what
+its payments have paid (`deriveCartWriteClosing` in `bill-utils.ts`,
+`requireCartWriteNotBelowPaid` in `bill-guards.ts`,
+[`payment/0014`](decisions/payment/0014-a-cart-write-that-pays-a-bill-off-closes-it.md)):
+
+| After the write | Outcome |
+|---|---|
+| no active claim on the bill | written, the bill stays open — as before |
+| total > what was paid | written, the bill stays open |
+| total = what was paid | written, and `closedAt` with the lines in one batch: the bill is now `closed` by coverage |
+| total < what was paid | refused with `BillTotalBelowPaid`, nothing written |
+
+- The total after the write is the same projection coverage reads: the
+  bill's line ledger with the new lines folded on after it, through
+  `calculateBillLineSummaries`, tip lines included as `deriveBillCoverage`
+  counts them.
+- A split judges both bills, the source first. Its new bill has no payment
+  and always stays open.
+- The refusal exists because a bill closed below what was paid is
+  `overpaid`: closing it would hand money back outside a refund. Staff
+  return money through a refund on the payment instead, and the apps say so.
+- Without the `close` row, taking an item off a partly paid bill — or, once
+  a line can be worth less than nothing, adding a discount to it — made its
+  derived status `closed` while `closedAt` stayed empty: the bill hung on
+  the floor view and could be neither edited, paid nor canceled, every guard
+  reading it closed. A bill left that way before this rule is not repaired
+  automatically; `cli bills close` writes its `closedAt`.
+- Like every guard here it is best-effort: two offline devices can each pass
+  it and together take a bill below what was paid, or pay it off without
+  either writing `closedAt`. `closedAt` stays a cache, and `closeBill`
+  repairs it.
+
+### Creating a payment
+
+`createPayment` is the only place a payment row is written, and it creates
+one only when the payment's **goods come to more than zero** and **at least
+one payment method the payment will offer can collect more than zero of them
+once it rounds them**
+([`payment/0012`](decisions/payment/0012-a-payment-is-created-only-for-goods-worth-more-than-zero.md)):
+
+1. A bill is accepted only through `requireBillAcceptingPayment`: the bill
+   must be `open`, and then its goods must come to more than zero; otherwise
+   it is refused with `BillTotalNotPositive`. The goods are the bill's lines
+   without its tip lines (`deriveBillGoodsTotal`): a tip added to the cart
+   cannot lift a bill whose goods come to nothing into one that can be
+   charged. The check reads the bill, not the `amount` the caller chose for
+   the payment.
+2. Then, for a bill or a keypad payment alike, the methods the payment
+   offers are judged against the payment's own goods — its amount without
+   its tip, which is what settling it in cash judges — and, for a bill, also
+   against the bill's goods as above, by `isPayableThroughAnyMethod` in
+   `bill-utils.ts`, which asks `isBillPayable` of each method. Otherwise it
+   is refused with `NoPayableMethod`
+   ([`payment/0017`](decisions/payment/0017-a-payment-offers-only-what-its-screen-can-settle.md)).
+   - The apps create a payment before a method is picked, offering every
+     payment method turned on at once; such a payment offers the accounts
+     turned on in its currency that the payment screen shows a tab for
+     (`derivePaymentMethodsOffered`). One created with a method's details
+     (the CLI's `--cashRegisterAccountId`) offers that one.
+   - Only cash rounds. A CZK charge of 0.40 rounds to no crowns in cash
+     ([`payment/0002`](decisions/payment/0002-czk-cash-rounds-to-whole-crowns.md)),
+     while a card or a bank QR takes the 0.40 as it is. So goods above zero
+     are refused only where cash is the one method on — a cash-only shop.
+     With no method turned on nothing rounds, and the payment screen says
+     what is missing.
+   - The card terminal counts as offered only where the creating device
+     can drive it (`cardTerminalLinked`, the native app), and Qerko payments
+     only with the pairing's restaurant: the checks the payment screen shows
+     their tabs by. Counting a method the screen leaves out created a
+     payment nothing on screen could settle.
+   - The cart keeps Charge disabled where the core would refuse
+     (`deriveBillCheckout`, over the same accounts, the same device checks
+     and the same function).
+
+Cash then refuses to **settle** a payment cash cannot take:
+`markPaymentPaidCash` refuses one whose goods — its amount without the tip —
+round to nothing in cash (`isCashPayable` in `payment-cash-utils.ts`) with
+`CashAmountRoundsToZero`. The payment screen offers no cash for it by the
+same function; the refusal holds the rule for the CLI, an older app and the
+test bridges. It judges the payment as created, not the bill as it stands
+later.
+
+- Both rules hold **when the payment is created** (and, for cash, when it is
+  settled), and nothing judges the bill again: not a Qerko `paymentStart`, a
+  terminal's result or a later claim. A bill whose total drops to zero after
+  its payment was created ends up closed and overpaid once that payment is
+  settled, like any bill whose lines were taken off after its payment was
+  created (see ["Bill payment coverage"](#bill-payment-coverage)).
+- `updatePayment` cannot move a payment onto a bill, so the check cannot be
+  skipped by attaching a payment afterwards (the CLI's `payments update` has
+  no `--billId`).
+
+A bill whose goods come to exactly zero is finished instead.
+
+### A bill below zero
+
+A bill whose discounts outweigh its goods
+([`payment/0015`](decisions/payment/0015-a-bill-below-zero-can-only-be-discarded.md))
+can only be discarded: `BillTotalNotPositive` refuses it for every method, a tip
+line included, `closeZeroBill` needs exactly zero, and both apps keep Charge
+disabled with a hint. Its coverage reads `paid` while nothing is claimed
+(above), and its status stays `open` until it is discarded. A split may not
+leave any bill that still has lines with a total below zero
+(`BillSplitTotalNegative`); a bill left at exactly zero is fine, being
+finished instead. A partly paid bill never gets there: a cart write may not
+take it below what was paid ([Cart writes on a partly paid
+bill](#cart-writes-on-a-partly-paid-bill)).
+
+### Finishing a bill that comes to zero
+
+`closeZeroBill` ("Finish" in the apps, `apps/cli/src/cli-bills.ts
+close-zero`) closes a bill whose goods come to exactly zero without any
+payment
+([`payment/0013`](decisions/payment/0013-a-bill-that-comes-to-zero-is-finished-without-a-payment.md)):
+
+- the bill must be editable (`requireEditableBill`: `open`, no payment in
+  flight), carry at least one line once adds and removes are netted — an
+  empty cart is not a sale — and have no tip line; anything else is refused
+  with `BillNotZero` (or the guard's own error);
+- one write sets both `closedAt` (the floor view and the sales statistics
+  filter on it) and `confirmedClosedAt`, so the bill's derived status is
+  `closed` at priority 1 and the closing is final. The statistics count it
+  as sold, its free items included. No payment, payment number, EET sale or
+  refund comes of it.
+
+The closing does not wait for every device to have seen it. A device that
+has not can still add a line to the bill; once synced, the bill stays
+`closed` with coverage `underpaid` (a positive total, nothing claimed). The
+bill detail shows that as an underpayment, the bill history flags it the
+same way, and staff ring the missing item up on a new bill — there is no
+"reopen". Two devices finishing the same bill write the same fields; one
+finishing it while another discards it ends `closed` without a reported
+collision, which for a bill worth nothing loses nothing.
+
 ### `closedAt` is a cache, not a status
 
 Nothing that decides money-correctness — the editing lock, `requireEditableBill`,
@@ -368,10 +523,15 @@ computing coverage (a bill-line-ledger sum vs. a claimed-payments sum) for
 every bill the account has ever had — a scan that only grows over the
 account's lifetime. `closedAt IS NULL AND canceledAt IS NULL` is a plain
 indexed filter that answers the same question in the overwhelming majority
-of cases, because `closedAt` is written (via `loadBillClosedAtIfCovered`,
-folded into the same mutation batch as the confirming claim — see
-`reconciliation-claim-actions.ts`) the moment a claim brings the bill out of
-`underpaid`, the same trigger `deriveBillStatus`'s priority 3 reacts to live.
+of cases, because `closedAt` is written the moment the bill stops being
+`underpaid` with a claim behind it, the same trigger `deriveBillStatus`'s
+priority 3 reacts to live. That happens in one of two writes: a claim that
+pays the bill off (via `loadBillClosedAtIfCovered`, folded into the same
+mutation batch as the confirming claim — see
+`reconciliation-claim-actions.ts`), or a cart write that brings a partly
+paid bill's total down to what was paid (via `requireCartWriteNotBelowPaid`,
+folded into the same batch as its lines — see ["Cart writes on a partly paid
+bill"](#cart-writes-on-a-partly-paid-bill)).
 
 The two can disagree, briefly: under CRDT/multi-device concurrency, two
 split payments on the same bill confirmed at nearly the same time can each
@@ -391,8 +551,8 @@ this bill was observed covered, i.e. roughly when the money arrived.
 
 ### `closeBill` and `confirmBillClosedDespiteCancellation`
 
-Two actions write the fields above outside the automatic claim path, both in
-`bill-actions.ts`:
+Besides `closeZeroBill` above, two actions write the fields above outside
+the automatic claim path, both in `bill-actions.ts`:
 
 - **`closeBill`** (`apps/cli/src/cli-bills.ts close`) manually refreshes the
   `closedAt` cache — a repair tool for the lag described above, not a way to
@@ -425,7 +585,14 @@ claimedSum = Σ over every payment with payment.billId = bill.id:
              — regardless of that payment's own canceled/expired display status
 
 billTotal = sum of the bill's line-item summaries (bill-line ledger, "add" − "remove")
+owed      = max(0, billTotal)
 ```
+
+`billTotal` keeps the sign of its lines: a discount line is below zero
+(catalog/0002), and a discount that outweighs the goods takes the total below
+zero. Nothing is clamped in the projection. Coverage measures a negative
+total as nothing owed, so a bill below zero with nothing claimed reads `paid`,
+not `overpaid`, and one with money claimed is `overpaid` by all of it.
 
 The inner sum is over *distinct claimed transactions*, deduplicated by
 transaction id rather than payment id — see ["Duplicate
@@ -440,15 +607,17 @@ line items are worth, and must not skew the comparison.
 
 | Coverage | Condition |
 |---|---|
-| **paid** | `claimedSum == billTotal` (a bill with `billTotal == 0`, e.g. fully discounted, is trivially `paid` — but see the derived-status section above for why that alone doesn't make it `closed`) |
-| **underpaid** | `claimedSum < billTotal` (includes the common case of no claimed payment at all, `claimedSum == 0`) |
-| **overpaid** | `claimedSum > billTotal` |
+| **paid** | `claimedSum == owed` (a bill with `billTotal <= 0` and nothing claimed is trivially `paid` — but see the derived-status section above for why that alone doesn't make it `closed`) |
+| **underpaid** | `claimedSum < owed` (includes the common case of no claimed payment at all, `claimedSum == 0`) |
+| **overpaid** | `claimedSum > owed` |
 
-This is computed purely from data, with no stored field. A bill's derived
-status is `closed` precisely when this stops being `underpaid` *and* at
-least one claim exists (see the bill vertical's ["Derived
-status"](#derived-status-1) above) — so a `closed` bill is always `paid` or
-`overpaid`, never `underpaid`, by construction.
+This is computed purely from data, with no stored field. Without
+`confirmedClosedAt`, a bill's derived status is `closed` precisely when this
+stops being `underpaid` *and* at least one claim exists (see the bill
+vertical's ["Derived status"](#derived-status-1) above) — so a bill its
+payments closed is always `paid` or `overpaid`, never `underpaid`, by
+construction. Only a bill staff finished at zero can read `underpaid`: one
+that a device which had not yet seen the closing added a line to.
 
 **Why coverage can diverge from `billTotal` at all.** A payment's `amount`
 is fixed the moment it's created and never renegotiated — nothing keeps it
@@ -487,6 +656,14 @@ payment created before this existed simply has no snapshot rows; the diff
 is skipped for it rather than shown as "everything was added" (see
 `paymentLinesByPaymentIdQuery`'s doc comment).
 
+A bill's discount is frozen with it (catalog/0003): each goods line carries
+its `discountShare`, its part of the discount lines that `allocateDiscount`
+spread over the goods, and the discount line is kept as it stands, below
+zero. The payment's VAT recap, its Qerko receipt and a refund of a line read
+the net amount (`deriveLineNetAmount`) from these rows, so they stay what
+the payment was made with. A row frozen before the column existed has no
+share and nets to its own amount.
+
 `deriveBillLineSummaryDiff` (`bill-line-utils.ts`) compares that frozen
 snapshot against the bill's live summaries. It matches lines primarily by
 `itemId` — content-addressed, so an exact match with an unchanged
@@ -507,12 +684,16 @@ genuine `added`/`removed`.
 | `open` | underpaid (>0) | yes | a split/partial payment was confirmed but didn't cover the total, and nothing is currently pending — bill stays open for the rest |
 | `closed` | paid | — (final) | fully settled — the expected happy path |
 | `closed` | overpaid | — (final) | more money confirmed than the bill is currently worth — see [why coverage can diverge](#bill-payment-coverage); needs a human to look at it |
+| `closed` | paid (0) | — (final) | finished at zero without a payment (`closeZeroBill`) |
+| `closed` | underpaid | — (final) | finished at zero, then given a line by a device that had not seen the closing — flagged as an underpayment, and the item goes on a new bill |
 | `canceled` | underpaid (0) | — (final) | ordinary discarded cart, no payment was ever involved |
 | `canceled` | paid or overpaid | — (final, until resolved) | a bill was discarded while a payment was still pending, and that payment was confirmed anyway — see below |
 
 There is no bill-level stored state for "awaiting payment" — it is exactly
 the `open` + locked row above, read from the two verticals together.
-`closed` + `underpaid` never occurs, by construction of `deriveBillStatus`.
+`closed` + `underpaid` never occurs for a bill its payments closed, by
+construction of `deriveBillStatus`; it occurs only for a bill finished at
+zero, as above.
 
 **`canceled` + `paid`/`overpaid` is reachable through ordinary, single-device
 use, not only a multi-device race.** `cancelBill` only checks the bill's

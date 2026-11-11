@@ -1,3 +1,4 @@
+import { createPaymentErrorKeys } from "@payky/app-shared/bill-checkout"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
 import { createPreparedPayment } from "@payky/core/modules/payment/payment-preparation-actions"
 import type {
@@ -11,6 +12,7 @@ import { accountAtom } from "@/atoms/account.ts"
 import { terminalAmountInputAtom } from "@/atoms/terminal-amount.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
+import { isCardTerminalLinked } from "@/platform/switchio.ts"
 
 /**
  * Prepares a payment and navigates to it. Failure is logged and toasted here
@@ -52,12 +54,13 @@ export function useCreateTerminalPayment() {
             currency,
             tipAmount,
             canceledAt: null,
+            cardTerminalLinked: isCardTerminalLinked(),
           })
         )
 
         if (!result.ok) {
           console.error("Failed to create prepared payment", result.error)
-          return "payment.create.error"
+          return createPaymentErrorKeys[result.error.type]
         }
 
         if (billId === null) jotaiStore.set(terminalAmountInputAtom, "")

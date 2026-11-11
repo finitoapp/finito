@@ -100,7 +100,7 @@ describe("device permissions", () => {
   })
 })
 
-describe("access presets (access/0010)", () => {
+describe("access presets (access/0012)", () => {
   test("the catalog is granted from Manager up, and to no lower preset", () => {
     expect(accessPresets.manager).toContain("catalog")
     expect(accessPresets.owner).toContain("catalog")

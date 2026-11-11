@@ -1,21 +1,166 @@
+import type { DefaultPaymentMethod } from "../app-settings/app-settings-types.ts"
+import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
+import { deriveBillSummaryTotal } from "../bill-line/bill-line-utils.ts"
+import { isCashPayable } from "../payment/payment-cash-utils.ts"
 import { derivePaymentStatus } from "../payment/payment-status-utils.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import {
   type ClaimedAmount,
   toPaymentCurrencyAmount,
 } from "../shared/claimed-amount.ts"
-import { NonNegativeInteger, type TimestampMs } from "../shared/schema.ts"
+import {
+  type FiatCurrency,
+  type Integer,
+  NonNegativeInteger,
+  type TimestampMs,
+} from "../shared/schema.ts"
 import type { BillCoverage, BillStatus } from "./bill-types.ts"
+
+/**
+ * Whether goods can be charged through `method`: what they come to, rounded
+ * the way that method hands money over, is more than zero (payment/0012).
+ * Only cash rounds — a CZK bill of 0.40 rounds to no crowns at all in cash
+ * (`isCashPayable`, payment/0002), and stays 0.40 on a card. `method` is
+ * `null` where no payment method is turned on at all: nothing rounds then,
+ * and the goods are judged as they stand.
+ *
+ * `goodsTotal` leaves the tip out — a bill's tip lines
+ * (`deriveBillGoodsTotal`), a keypad payment's `tipAmount`: a tip is not
+ * what the goods are worth, and must not lift goods that come to nothing
+ * into something that can be paid. A bill whose goods come to exactly zero
+ * is closed without payment instead (`closeZeroBill`, payment/0013).
+ *
+ * A payment offers several methods at once, so `createPayment` and both
+ * apps' checkout ask it of each method through `isPayableThroughAnyMethod`.
+ */
+export const isBillPayable = ({
+  goodsTotal,
+  currency,
+  method,
+}: {
+  readonly goodsTotal: Integer
+  readonly currency: FiatCurrency
+  readonly method: DefaultPaymentMethod | null
+}): boolean => {
+  if (goodsTotal <= 0) return false
+  if (method !== "cashRegister") return true
+
+  return isCashPayable({
+    amount: NonNegativeInteger(goodsTotal),
+    tipAmount: NonNegativeInteger(0),
+    currency,
+  })
+}
+
+/**
+ * Whether a payment can be created for goods of `goodsTotal`: at least one
+ * of the payment methods it will offer (`derivePaymentMethodsOffered`) can
+ * collect more than zero once it rounds them (`isBillPayable`, payment/0012).
+ * Only cash rounds, so this refuses goods above zero only where cash is the
+ * one method on and rounds them to nothing — a cash-only shop and a CZK
+ * charge of 0.01–0.49. With no method turned on at all nothing rounds, the
+ * goods are judged as they stand, and the payment screen says what is
+ * missing.
+ *
+ * The one rule `createPayment` enforces (`NoPayableMethod`) and both apps'
+ * cart checks before it offers Charge (`deriveBillCheckout`), so they cannot
+ * disagree.
+ */
+export const isPayableThroughAnyMethod = ({
+  goodsTotal,
+  currency,
+  methods,
+}: {
+  readonly goodsTotal: Integer
+  readonly currency: FiatCurrency
+  readonly methods: ReadonlyArray<DefaultPaymentMethod>
+}): boolean =>
+  methods.length === 0
+    ? isBillPayable({ goodsTotal, currency, method: null })
+    : methods.some((method) => isBillPayable({ goodsTotal, currency, method }))
+
+/** Why `deriveZeroBillRefusal` will not let a bill be finished at zero. */
+export type ZeroBillRefusal = "noLines" | "tipLine" | "totalNotZero"
+
+/**
+ * Why a bill's netted lines cannot be finished without a payment
+ * (`closeZeroBill`, payment/0013), or `null` when they can: at least one
+ * line once adds and removes are netted — an empty cart is not a sale — no
+ * tip line, since nobody pays a tip on a bill that is never charged, and
+ * goods that come to exactly zero.
+ *
+ * The one rule behind `closeZeroBill` and both apps' Finish button, which
+ * stands in for Charge exactly when this returns `null`.
+ */
+export const deriveZeroBillRefusal = (
+  items: ReadonlyArray<BillLineSummary>
+): ZeroBillRefusal | null => {
+  if (items.length === 0) return "noLines"
+  if (items.some((item) => item.type === "tip")) return "tipLine"
+  if (deriveBillSummaryTotal(items) !== 0) return "totalNotZero"
+  return null
+}
+
+/**
+ * What a cart write does to an open bill, judged on the total it leaves:
+ *
+ * - `keep-open`: write the lines, the bill stays open;
+ * - `close`: write the lines and, in the same batch, `closedAt` — the write
+ *   brings the bill's total down to exactly what its payments have paid, so
+ *   its derived status turns `closed` the moment the lines land;
+ * - `reject`: write nothing — the total would drop below what has been paid.
+ */
+export type CartWriteClosing = "keep-open" | "close" | "reject"
+
+/**
+ * Whether a write to an open bill's cart keeps it open, closes it or is
+ * refused (payment/0014), from the total the bill's lines would come to after
+ * the write and what its payments have paid:
+ *
+ * - no active claim: `keep-open`, whatever the total — closing by coverage
+ *   needs a claim (`deriveBillStatus`), so a bill nobody paid for, an empty
+ *   cart or one whose goods come to zero (`closeZeroBill`) included, is never
+ *   closed by a cart write;
+ * - a total above what was paid: `keep-open`, the rest is still owed;
+ * - a total equal to it: `close` — the write itself pays the bill off, as
+ *   taking an item off a partly paid bill does, and `closedAt` has to be
+ *   written with it or the bill hangs on the floor view while every guard
+ *   already reads it closed;
+ * - a total below it: `reject` — the bill would close overpaid and hand money
+ *   back outside a refund, which is where returning money belongs.
+ *
+ * Compares the numbers themselves rather than going through
+ * `deriveBillCoverage`, so it holds for any total, one a discount takes below
+ * zero included. `billTotalAfter` is the bill's whole total, tip lines
+ * included, the same total coverage compares against.
+ */
+export const deriveCartWriteClosing = ({
+  billTotalAfter,
+  claimedSum,
+  hasActiveClaim,
+}: {
+  readonly billTotalAfter: Integer
+  readonly claimedSum: NonNegativeInteger
+  readonly hasActiveClaim: boolean
+}): CartWriteClosing => {
+  if (!hasActiveClaim) return "keep-open"
+  if (billTotalAfter > claimedSum) return "keep-open"
+  return billTotalAfter === claimedSum ? "close" : "reject"
+}
 
 /**
  * Derives a bill's display status, in precedence order (first match wins):
  * `confirmedClosedAt` > `canceledAt` > coverage > `open`. Mirrors
  * `derivePaymentStatus`'s shape and reasoning:
  *
- * - `confirmedClosedAt` is staff's explicit resolution of the
- *   canceled+funded collision (see `confirmBillClosedDespiteCancellation`)
- *   and outranks `canceledAt` on purpose, the same way
- *   `payment.confirmedPaidAt` outranks `payment.canceledAt`.
+ * - `confirmedClosedAt` is staff confirming the bill closed, from either of
+ *   two places: the resolution of the canceled+funded collision (see
+ *   `confirmBillClosedDespiteCancellation`), or closing a bill whose goods
+ *   come to exactly zero, which no payment can settle (`closeZeroBill`,
+ *   payment/0013). It outranks `canceledAt` on purpose, the same way
+ *   `payment.confirmedPaidAt` outranks `payment.canceledAt`, and it makes the
+ *   closing final: a line another device adds afterwards leaves the bill
+ *   closed and underpaid rather than open again.
  * - `canceledAt` otherwise wins over coverage: an explicit discard is not
  *   silently undone just because a stray/late claim happens to cover the
  *   total (see docs/bill-payment-states.md).
@@ -24,7 +169,9 @@ import type { BillCoverage, BillStatus } from "./bill-types.ts"
  *   claimedSum` (trivially "paid" by `deriveBillCoverage`'s own definition),
  *   but must stay `open`/editable until an actual payment has been claimed
  *   for it. Requiring at least one claim is what keeps that fresh-empty-cart
- *   case from reading as instantly `closed`.
+ *   case from reading as instantly `closed`. A bill that totals zero with
+ *   lines on it is not closed by coverage either: staff close it explicitly,
+ *   through `confirmedClosedAt` above.
  */
 export const deriveBillStatus = ({
   canceledAt,
@@ -46,14 +193,40 @@ export const deriveBillStatus = ({
  * Compares what has actually been claimed as paid against a bill's
  * line-item total, independent of `bill.status`. See
  * docs/bill-payment-states.md.
+ *
+ * A total below zero — discounts outweighing the goods — is owed as nothing,
+ * so it compares as zero: a negative bill nobody paid reads `paid`, not
+ * `overpaid`, on every screen that shows coverage, and one with money claimed
+ * against it reads `overpaid` by all of that money. Its status does not move:
+ * closing by coverage still needs a claim (`deriveBillStatus`), and a cart
+ * write cannot take a paid bill below what was paid (`deriveCartWriteClosing`,
+ * payment/0014), so a negative bill stays open until it is discarded
+ * (payment/0015).
  */
 export const deriveBillCoverage = (
-  billTotal: NonNegativeInteger,
+  billTotal: Integer,
   claimedSum: NonNegativeInteger
 ): BillCoverage => {
-  if (claimedSum === billTotal) return "paid"
-  return claimedSum < billTotal ? "underpaid" : "overpaid"
+  const owed = deriveBillOwedAmount(billTotal)
+  if (claimedSum === owed) return "paid"
+  return claimedSum < owed ? "underpaid" : "overpaid"
 }
+
+/** What a bill's payments are measured against: its total, never below zero. */
+const deriveBillOwedAmount = (billTotal: Integer): NonNegativeInteger =>
+  NonNegativeInteger(Math.max(0, billTotal))
+
+/**
+ * How far what was claimed is from what a bill owes — the amount a coverage
+ * warning says is missing or paid over. Measured against the same owed amount
+ * `deriveBillCoverage` judged, so a negative bill with money on it is overpaid
+ * by all of that money, not by more.
+ */
+export const deriveBillCoverageDelta = (
+  billTotal: Integer,
+  claimedSum: NonNegativeInteger
+): NonNegativeInteger =>
+  NonNegativeInteger(Math.abs(deriveBillOwedAmount(billTotal) - claimedSum))
 
 /**
  * One claimed transaction as the bill-coverage queries return it: the
@@ -132,7 +305,15 @@ export interface BillHistoryItemSummary {
    * resolves it via `confirmBillClosedDespiteCancellation`.
    */
   readonly hasCancellationCollision: boolean
-  readonly billTotal: NonNegativeInteger
+  /**
+   * Staff closed the bill without a payment, its goods coming to exactly
+   * zero (`closeZeroBill`): `confirmedClosedAt` with no `canceledAt` beside
+   * it, which the collision resolution always has. Such a bill that reads
+   * `underpaid` had a line added by a device that had not yet seen it
+   * closed (payment/0013).
+   */
+  readonly closedWithoutPayment: boolean
+  readonly billTotal: Integer
   readonly claimedSum: NonNegativeInteger
   readonly coverage: BillCoverage
 }
@@ -152,7 +333,7 @@ export const deriveBillHistoryItemSummary = ({
 }: {
   readonly canceledAt: TimestampMs | null
   readonly confirmedClosedAt: TimestampMs | null
-  readonly billTotal: NonNegativeInteger
+  readonly billTotal: Integer
   readonly claimedTransactions: ReadonlyArray<ClaimedTransaction>
 }): BillHistoryItemSummary => {
   const claimedSum = calculateClaimedSum(claimedTransactions)
@@ -172,6 +353,7 @@ export const deriveBillHistoryItemSummary = ({
       confirmedClosedAt === null &&
       hasActiveClaim &&
       coverage !== "underpaid",
+    closedWithoutPayment: confirmedClosedAt !== null && canceledAt === null,
     billTotal,
     claimedSum,
     coverage,

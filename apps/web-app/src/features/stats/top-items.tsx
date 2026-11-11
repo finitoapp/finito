@@ -1,7 +1,9 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
+  type ItemSalesSplit,
   rankItems,
   rowsByCurrency,
+  splitItemSales,
   type TopItemsMetric,
 } from "@payky/app-shared/stats-sections"
 import type { ItemSalesRow } from "@payky/core/modules/sales-stats/sales-stats-queries"
@@ -32,8 +34,12 @@ export function TopItems({
   const [metric, setMetric] = useState<TopItemsMetric>("amount")
   const [showAll, setShowAll] = useState(false)
 
-  const groups = rowsByCurrency(rows, accountCurrency)
-  const hasMore = groups.some((group) => group.rows.length > topCount)
+  // Discounts stand apart, summed under the ranking (catalog/0003).
+  const groups = rowsByCurrency(rows, accountCurrency).map((group) => ({
+    currency: group.currency,
+    ...splitItemSales(group.rows),
+  }))
+  const hasMore = groups.some((group) => group.items.length > topCount)
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,13 +68,19 @@ export function TopItems({
           showCurrency={groups.length > 1}
         >
           <ItemList
-            rows={rankItems(group.rows, metric).slice(
+            rows={rankItems(group.items, metric).slice(
               0,
               showAll ? undefined : topCount
             )}
             metric={metric}
             currency={group.currency}
           />
+          {group.discounts === null ? null : (
+            <DiscountsRow
+              discounts={group.discounts}
+              currency={group.currency}
+            />
+          )}
         </CurrencyGroup>
       ))}
       {hasMore ? (
@@ -113,4 +125,30 @@ function ItemList({
       share={max === 0 ? 0 : row[metric] / max}
     />
   ))
+}
+
+/** The period's discounts as one row under the ranking, without a bar. */
+function DiscountsRow({
+  discounts,
+  currency,
+}: {
+  readonly discounts: NonNullable<ItemSalesSplit["discounts"]>
+  readonly currency: Currency
+}) {
+  const { t } = useTranslation()
+  const locale = useLocale()
+  const money = useStatsMoney()
+
+  return (
+    <StatsBarRow
+      label={t("stats.items.discounts")}
+      detail={t("stats.items.quantity", {
+        quantity: discounts.quantity.toLocaleString(locale, {
+          maximumFractionDigits: 3,
+        }),
+      })}
+      value={money(discounts.amount, currency)}
+      share={0}
+    />
+  )
 }

@@ -249,6 +249,7 @@ export const refundablePaymentLinesQuery = (paymentId: PaymentId) =>
         "paymentLine.type",
         "paymentLine.quantity",
         "paymentLine.totalAmount",
+        "paymentLine.discountShare",
         "item.name",
       ])
       .where("paymentLine.paymentId", "=", paymentId)
