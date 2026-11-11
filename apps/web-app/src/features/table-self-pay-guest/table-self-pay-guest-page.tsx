@@ -2,7 +2,6 @@ import { useEventListener } from "@dedalik/use-react"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
 import { useNow } from "@payky/app-shared/use-now"
 import {
-  countSelfPayMenuItems,
   createSelfPayOrderSelectionText,
   createSelfPayWrittenSelectionText,
   type SelfPayMenu,
@@ -41,6 +40,7 @@ import { prepareGuestInvoiceWallet } from "@payky/core/spark/spark-guest-invoice
 import type { Language } from "@payky/web-shared/landing-redirect"
 import { languageOptions } from "@payky/web-shared/language-options"
 import {
+  ArrowLeftIcon,
   CircleCheckIcon,
   LanguagesIcon,
   LoaderCircleIcon,
@@ -102,7 +102,7 @@ import {
 
 type PaymentMethod = "bank" | "lightning" | "test"
 
-type GuestSection = "bill" | "menu"
+type GuestSection = "bill" | "menu" | "write"
 
 interface PaymentSession {
   readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
@@ -204,12 +204,16 @@ function GuestPayment({
   view,
   liveness,
   session,
+  backLabel,
+  onBack,
   children,
 }: {
   readonly address: TableSelfPayAddress
   readonly view: SelfPayView
   readonly liveness: SelfPayLiveness | null
   readonly session: PaymentSession
+  readonly backLabel: string
+  readonly onBack: () => void
   readonly children?: ReactNode
 }) {
   const { t, locale } = useGuestTranslation()
@@ -223,6 +227,7 @@ function GuestPayment({
     ...(lightning === null ? [] : ["lightning" as const]),
     ...(testSelectionKey === null ? [] : ["test" as const]),
   ]
+  const paymentSection = useRef<HTMLElement>(null)
   const amountHeading = useRef<HTMLHeadingElement>(null)
   const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? "lightning")
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
@@ -238,12 +243,21 @@ function GuestPayment({
   )
 
   useEffect(() => {
-    amountHeading.current?.scrollIntoView({ block: "start" })
+    paymentSection.current?.scrollIntoView({ block: "start" })
     amountHeading.current?.focus({ preventScroll: true })
   }, [])
 
   return (
-    <section className="flex flex-col gap-4">
+    <section ref={paymentSection} className="flex flex-col gap-4">
+      <Button
+        type="button"
+        variant="ghost"
+        className="-ms-2 h-11 self-start"
+        onClick={onBack}
+      >
+        <ArrowLeftIcon data-icon="inline-start" aria-hidden="true" />
+        {backLabel}
+      </Button>
       <h2
         ref={amountHeading}
         tabIndex={-1}
@@ -338,18 +352,58 @@ const orderBill = (pointer: SelfPayPointer, currency: FiatCurrency) => ({
   currency,
 })
 
-function GuestMenuTabLabel({
+function GuestSectionTabs({
   address,
+  view,
   menuKeys,
+  section,
+  onSectionChange,
 }: {
   readonly address: TableSelfPayAddress
+  readonly view: SelfPayView
   readonly menuKeys: NonNullable<SelfPayView["menu"]>
+  readonly section: GuestSection
+  readonly onSectionChange: (section: GuestSection) => void
 }) {
   const { t } = useGuestTranslation()
   const menu = useSelfPayMenu(address, menuKeys).data?.menu?.value ?? null
-  return menu?.written === true && countSelfPayMenuItems(menu) === 0
-    ? t("selfPay.written.tab")
-    : t("selfPay.menu.tab.menu")
+  const { orderable, writable } = guestMenuOffer(view, menu)
+  const sections: ReadonlyArray<{
+    readonly value: GuestSection
+    readonly label: string
+  }> = [
+    ...(view.bills.length > 0
+      ? [{ value: "bill" as const, label: t("selfPay.menu.tab.bill") }]
+      : []),
+    ...(orderable !== null || writable === null
+      ? [{ value: "menu" as const, label: t("selfPay.menu.tab.menu") }]
+      : []),
+    ...(writable === null
+      ? []
+      : [{ value: "write" as const, label: t("selfPay.written.tab") }]),
+  ]
+  const shownSection =
+    sections.find(({ value }) => value === section) ??
+    sections.find(({ value }) => value !== "bill")
+  if (sections.length < 2 || shownSection === undefined) return null
+
+  return (
+    <Tabs
+      value={shownSection.value}
+      onValueChange={(value) => {
+        const next = sections.find((candidate) => candidate.value === value)
+        if (next !== undefined) onSectionChange(next.value)
+      }}
+    >
+      <TabsList className={guestTabListClassName}>
+        {sections.map(({ value, label }) => (
+          <TabsTrigger key={value} value={value} className={guestTabClassName}>
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  )
 }
 
 function GuestOrdering({
@@ -357,12 +411,18 @@ function GuestOrdering({
   view,
   menuKeys,
   selectionKey,
+  mode,
+  session,
+  onSessionChange,
   onOrderPlaced,
 }: {
   readonly address: TableSelfPayAddress
   readonly view: SelfPayView
   readonly menuKeys: NonNullable<SelfPayView["menu"]>
   readonly selectionKey: string
+  readonly mode: Exclude<GuestSection, "bill">
+  readonly session: OrderPaymentSession | null
+  readonly onSessionChange: (session: OrderPaymentSession | null) => void
   readonly onOrderPlaced: () => void
 }) {
   const { t, locale } = useGuestTranslation()
@@ -370,10 +430,8 @@ function GuestOrdering({
   const table = bytesToHex(address.publicKey)
   const { data, isPending } = useSelfPayMenu(address, menuKeys)
   const [orders, setOrders] = useState(readGuestOrders)
-  const [session, setSession] = useState<OrderPaymentSession | null>(null)
   const [isPreparing, setIsPreparing] = useState(false)
   const [isRefused, setIsRefused] = useState(false)
-  const [isWriting, setIsWriting] = useState(false)
   const ordersBlock = useRef<HTMLElement>(null)
   const tableOrders = ordersAtTable(orders, table)
   const confirmations = useGuestOrderConfirmations({
@@ -388,9 +446,6 @@ function GuestOrdering({
       confirmation: confirmations[index]?.data?.value ?? null,
     })
   )
-  useEventListener("popstate", () => {
-    setSession(null)
-  })
 
   const sessionOrder = shownOrders.find(
     ({ order }) => order.pointer === session?.pointer
@@ -406,11 +461,11 @@ function GuestOrdering({
 
   useEffect(() => {
     if (settledStatus === null) return
-    setSession(null)
+    onSessionChange(null)
     leavePaymentHistoryEntry()
     ordersBlock.current?.focus()
     announce(settledStatus)
-  }, [announce, settledStatus])
+  }, [announce, onSessionChange, settledStatus])
 
   const isEveryConfirmationRead = confirmations.every(
     (confirmation) => !confirmation.isPending
@@ -446,7 +501,7 @@ function GuestOrdering({
 
   const startPayment = (payment: OrderPaymentSession) => {
     history.pushState(PAYMENT_HISTORY_STATE, "")
-    setSession(payment)
+    onSessionChange(payment)
   }
 
   const placeOrder = async (
@@ -513,7 +568,7 @@ function GuestOrdering({
   }
 
   const leavePayment = () => {
-    setSession(null)
+    onSessionChange(null)
     leavePaymentHistoryEntry()
   }
 
@@ -535,23 +590,15 @@ function GuestOrdering({
         />
       )}
       {session !== null ? (
-        <>
-          <GuestPayment
-            key={`${session.pointer}:${session.startedAt}`}
-            address={address}
-            view={view}
-            liveness={liveness}
-            session={session}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-11"
-            onClick={leavePayment}
-          >
-            {t("selfPay.order.back")}
-          </Button>
-        </>
+        <GuestPayment
+          key={`${session.pointer}:${session.startedAt}`}
+          address={address}
+          view={view}
+          liveness={liveness}
+          session={session}
+          backLabel={t("selfPay.order.back")}
+          onBack={leavePayment}
+        />
       ) : orderable === null && writable === null ? (
         <GuestMessage
           title={t("selfPay.order.unavailable.title")}
@@ -571,24 +618,7 @@ function GuestOrdering({
               {t("selfPay.order.refused")}
             </p>
           ) : null}
-          {orderable !== null && writable !== null ? (
-            <Tabs
-              value={isWriting ? "write" : "menu"}
-              onValueChange={(value) => {
-                setIsWriting(value === "write")
-              }}
-            >
-              <TabsList className={guestTabListClassName}>
-                <TabsTrigger value="menu" className={guestTabClassName}>
-                  {t("selfPay.menu.tab.menu")}
-                </TabsTrigger>
-                <TabsTrigger value="write" className={guestTabClassName}>
-                  {t("selfPay.written.tab")}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          ) : null}
-          {writable !== null && (isWriting || orderable === null) ? (
+          {writable !== null && (mode === "write" || orderable === null) ? (
             <GuestWrittenOrder
               menu={writable}
               isPreparing={isPreparing}
@@ -636,6 +666,9 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   const { t, locale } = useGuestTranslation()
   const announce = useGuestStatus()
   const [session, setSession] = useState<BillPaymentSession | null>(null)
+  const [orderSession, setOrderSession] = useState<OrderPaymentSession | null>(
+    null
+  )
   const { data, isPending } = useSelfPayView(address, session)
   const offersLightning = (data?.view?.value.lightning ?? null) !== null
   useEffect(() => {
@@ -667,6 +700,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   ])
   useEventListener("popstate", () => {
     setSession(null)
+    setOrderSession(null)
   })
 
   const view = data?.view?.value ?? null
@@ -768,9 +802,11 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
       : null
   const offersBillAndMenu = menuAccess !== null && view.bills.length > 0
   const shownMenu =
-    menuAccess !== null && (!offersBillAndMenu || section === "menu")
+    menuAccess !== null && (!offersBillAndMenu || section !== "bill")
       ? menuAccess
       : null
+  const isPaying =
+    shownMenu === null ? pendingSession !== null : orderSession !== null
 
   const startPayment = async (choice: GuestPaymentChoice) => {
     if (bill === undefined || view.selectionKey === null) return
@@ -853,26 +889,18 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
         </div>
       )}
 
-      {offersBillAndMenu ? (
-        <Tabs
-          value={section}
-          onValueChange={(value) => {
-            if (value === "bill" || value === "menu") {
-              setSection(value)
-              leavePayment()
-            }
+      {menuAccess === null || isPaying ? null : (
+        <GuestSectionTabs
+          address={address}
+          view={view}
+          menuKeys={menuAccess.menuKeys}
+          section={section}
+          onSectionChange={(next) => {
+            setSection(next)
+            leavePayment()
           }}
-        >
-          <TabsList className={guestTabListClassName}>
-            <TabsTrigger value="bill" className={guestTabClassName}>
-              {t("selfPay.menu.tab.bill")}
-            </TabsTrigger>
-            <TabsTrigger value="menu" className={guestTabClassName}>
-              <GuestMenuTabLabel address={address} {...menuAccess} />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      ) : null}
+        />
+      )}
 
       {!view.enabled ? (
         <GuestMessage
@@ -884,8 +912,11 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
           address={address}
           view={view}
           {...shownMenu}
+          mode={section === "write" ? "write" : "menu"}
+          session={orderSession}
+          onSessionChange={setOrderSession}
           onOrderPlaced={() => {
-            setSection("menu")
+            setSection((current) => (current === "bill" ? "menu" : current))
           }}
         />
       ) : !offersMethod ? (
@@ -913,7 +944,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                   })}
             </p>
           ) : null}
-          {view.bills.length > 1 ? (
+          {view.bills.length > 1 && pendingSession === null ? (
             <Tabs
               value={bill.reference}
               onValueChange={(value) => {
@@ -970,27 +1001,19 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
             </Button>
           ) : null}
           {pendingSession === null ? null : (
-            <>
-              <GuestPayment
-                address={address}
-                view={view}
-                liveness={liveness}
-                session={pendingSession}
-              >
-                <GuestPaidFor
-                  bill={pendingSession.bill}
-                  choice={pendingSession.choice}
-                />
-              </GuestPayment>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-11"
-                onClick={leavePayment}
-              >
-                {t("selfPay.back")}
-              </Button>
-            </>
+            <GuestPayment
+              address={address}
+              view={view}
+              liveness={liveness}
+              session={pendingSession}
+              backLabel={t("selfPay.back")}
+              onBack={leavePayment}
+            >
+              <GuestPaidFor
+                bill={pendingSession.bill}
+                choice={pendingSession.choice}
+              />
+            </GuestPayment>
           )}
         </>
       )}
