@@ -1,3 +1,4 @@
+import { isDiscountPrice } from "../catalog-item/catalog-item-utils.ts"
 import type { ItemLineType } from "../item/item-types.ts"
 import { Integer } from "../shared/schema.ts"
 
@@ -30,7 +31,7 @@ export interface DiscountShareLine {
  */
 export const isDiscountLine = (
   line: Pick<DiscountShareLine, "totalAmount">
-): boolean => line.totalAmount < 0
+): boolean => isDiscountPrice(line.totalAmount)
 
 /**
  * What a line comes to once its share of the bill's discount is taken off:

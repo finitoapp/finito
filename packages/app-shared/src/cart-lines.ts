@@ -1,5 +1,6 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { BillLineRow } from "@payky/core/modules/bill-line/bill-line"
+import { isDiscountLine } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 
 export type CartLine = Omit<BillLineRow, "id">
 
@@ -26,7 +27,7 @@ export type DiscardCheckedLine = Pick<CartLine, "kind" | "totalAmount">
 export const linesNeedDiscard = (
   lines: ReadonlyArray<DiscardCheckedLine>
 ): boolean =>
-  lines.some((line) => line.kind === "remove" || line.totalAmount < 0)
+  lines.some((line) => line.kind === "remove" || isDiscountLine(line))
 
 /**
  * The action the PIN prompt names when `lines` take `discard`, `null` when

@@ -19,6 +19,7 @@ import type { BillId } from "@payky/core/modules/bill/bill-types"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill-line-utils"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
+import { isDiscountPrice } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import {
   type FiatCurrency,
   type Integer,
@@ -185,7 +186,7 @@ export function useCartBill({
           deviceId: device.id,
           catalogItemId: catalogItem.id,
           quantity,
-          expectedDiscount: catalogItem.unitAmount < 0,
+          expectedDiscount: isDiscountPrice(catalogItem.unitAmount),
         })
       )
       if (!result.ok) {
