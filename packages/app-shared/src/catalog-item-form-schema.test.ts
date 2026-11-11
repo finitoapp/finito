@@ -1,4 +1,4 @@
-import { createIdFromString } from "@evolu/common"
+import { createIdFromString, sqliteTrue } from "@evolu/common"
 import { createZeroPriceWithoutTaxRateError } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { FiatCurrency } from "@payky/core/modules/shared/schema"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
@@ -10,6 +10,7 @@ import {
   parseCatalogItemForm,
   updateCatalogItemErrorKeys,
 } from "./catalog-item-form-schema.ts"
+import { NO_OPTION } from "./inline-edit-codecs.ts"
 
 const validInput: CatalogItemFormInput = {
   name: "Coffee",
@@ -22,6 +23,7 @@ const validInput: CatalogItemFormInput = {
 }
 
 const taxRateId = createIdFromString<"TaxRate">("standard") as TaxRateId
+const vatPayer = { vatPayer: sqliteTrue } as const
 
 const parse = (
   overrides: Partial<CatalogItemFormInput> = {},
@@ -32,7 +34,7 @@ const parse = (
     {
       currency: FiatCurrency.CZK,
       taxRateId,
-      vatPayer: true,
+      legalEntity: vatPayer,
       discount: false,
       ...context,
     }
@@ -88,7 +90,7 @@ describe("parseCatalogItemForm", () => {
   })
 
   test("refuses a VAT payer's zero price without a VAT rate at the price", () => {
-    const result = parse({ price: "0" }, { taxRateId: null })
+    const result = parse({ price: "0" }, { taxRateId: NO_OPTION })
 
     expect(result.ok).toBe(false)
     if (result.ok) return
@@ -98,13 +100,13 @@ describe("parseCatalogItemForm", () => {
   })
 
   test("takes a zero price without a VAT rate from an account that is not a VAT payer", () => {
-    expect(parse({ price: "0" }, { taxRateId: null, vatPayer: false }).ok).toBe(
-      true
-    )
+    expect(
+      parse({ price: "0" }, { taxRateId: NO_OPTION, legalEntity: undefined }).ok
+    ).toBe(true)
   })
 
   test("takes a VAT payer's positive price without a VAT rate", () => {
-    expect(parse({ price: "59" }, { taxRateId: null }).ok).toBe(true)
+    expect(parse({ price: "59" }, { taxRateId: NO_OPTION }).ok).toBe(true)
   })
 
   test("hands back the VAT rate picked for an item", () => {
@@ -196,7 +198,7 @@ describe("updateCatalogItemErrorKeys", () => {
   // item without one free alike (catalog-item-actions.test.ts); this is the
   // message both apps' inline edits show for it.
   test("an inline edit of the price or the VAT rate the core refuses shows the create form's own message", () => {
-    const formResult = parse({ price: "0" }, { taxRateId: null })
+    const formResult = parse({ price: "0" }, { taxRateId: NO_OPTION })
     expect(formResult.ok).toBe(false)
     if (formResult.ok) return
 
