@@ -1176,7 +1176,7 @@ function GuestLanguageSelect() {
       <SelectTrigger
         aria-label={t("selfPay.language.label")}
         size="sm"
-        className="gap-1 self-end border-none bg-transparent px-2 text-muted-foreground text-sm shadow-none hover:bg-transparent hover:text-muted-foreground data-[popup-open]:text-muted-foreground data-[size=sm]:h-11 [&_svg]:text-current"
+        className="gap-1 self-end border-none bg-transparent px-2 text-muted-foreground text-sm shadow-none hover:bg-transparent hover:text-muted-foreground dark:bg-transparent dark:hover:bg-transparent data-[popup-open]:text-muted-foreground data-[size=sm]:h-11 [&_svg]:text-current"
       >
         <LanguagesIcon aria-hidden="true" className="size-3.5" />
         <SelectValue>

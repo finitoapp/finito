@@ -10,9 +10,12 @@ import { GuestLanguageProvider } from "@/features/table-self-pay-guest/guest-lan
 import { TableSelfPayGuestPage } from "@/features/table-self-pay-guest/table-self-pay-guest-page.tsx"
 import "@/index.css"
 
-if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-  document.documentElement.classList.add("dark")
+const darkScheme = window.matchMedia("(prefers-color-scheme: dark)")
+const followColorScheme = () => {
+  document.documentElement.classList.toggle("dark", darkScheme.matches)
 }
+followColorScheme()
+darkScheme.addEventListener("change", followColorScheme)
 history.scrollRestoration = "manual"
 document.title = brandName(brandOfSelfPayHost(window.location.host))
 

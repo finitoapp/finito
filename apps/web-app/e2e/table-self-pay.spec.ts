@@ -453,6 +453,41 @@ test("a guest switches the table page to Czech without losing the share they pic
   })
 })
 
+test("the table page turns dark when the phone does, and the language picker stays plain", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const { guestAddress } =
+    await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+      seedPizzaAndBeerBill(page, "Table 9"))
+  const guest = await context.newPage()
+  const languagePicker = guest.getByRole("combobox", {
+    name: translate("en", "selfPay.language.label"),
+  })
+
+  await test.step("a guest opens the page on a light phone", async () => {
+    await guest.emulateMedia({ colorScheme: "light" })
+    await guest.goto(guestAddress)
+    await expect(
+      guest.getByRole("button", {
+        name: guestText("selfPay.pay.total", "$146.00"),
+      })
+    ).toBeEnabled({ timeout: 45_000 })
+    await expect(guest.locator("html")).not.toHaveClass(/\bdark\b/u)
+  })
+
+  await test.step("the phone turns dark and the page follows without a reload", async () => {
+    await guest.emulateMedia({ colorScheme: "dark" })
+    await expect(guest.locator("html")).toHaveClass(/\bdark\b/u)
+    await expect(languagePicker).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    )
+  })
+})
+
 test("a guest who changes what they pay finds the share and tip they picked", async ({
   seededPage: page,
   context,
