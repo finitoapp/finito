@@ -320,7 +320,7 @@ const appendCartLines =
  * and `addTipToBill` — they differ only in the line's `type` and how its
  * snapshot/detail fields are produced. Judges the line against `bill`, the
  * snapshot the caller's `requireEditableBill` approved, like every cart write
- * (`requireCartWriteNotBelowPaid`).
+ * (`requireCartWriteNotBelowPaid`); the line goes on that bill.
  */
 const addBillLine =
   <TType extends ItemLineType>(
@@ -329,7 +329,7 @@ const addBillLine =
     snapshot: ItemRow,
     line: Pick<
       BillLineRow,
-      "billId" | "deviceId" | "catalogItemId" | "quantity" | "totalAmount"
+      "deviceId" | "catalogItemId" | "quantity" | "totalAmount"
     >
   ): Task<
     BillLineSummary,
@@ -338,8 +338,9 @@ const addBillLine =
   > =>
   async (run) => {
     const { evoluOwner } = run.deps
+    const billId = bill.bill.id
     const write: CartWrite = {
-      lines: [{ ...line, itemId: snapshot.id, type, kind: "add" }],
+      lines: [{ ...line, billId, itemId: snapshot.id, type, kind: "add" }],
       itemRows: [snapshot],
     }
     const closedAtResult = requireCartWriteNotBelowPaid(
@@ -358,7 +359,7 @@ const addBillLine =
         run.deps.evolu,
         [
           {
-            billId: line.billId,
+            billId,
             lines: write.lines,
             closedAt: closedAtResult.value,
           },
@@ -378,18 +379,18 @@ const addBillLine =
     // fold keys those summaries by, and what `appendRemoveBillLine` already
     // matches on.
     const summaryId = createBillLineSummaryId({
-      billId: line.billId,
+      billId,
       catalogItemId: line.catalogItemId,
       itemId: snapshot.id,
       type,
     })
-    const projected = await run.ok(loadCalculatedBillLineSummaries(line.billId))
+    const projected = await run.ok(loadCalculatedBillLineSummaries(billId))
     const lineSummary = projected.find((row) => row.id === summaryId)
 
     return lineSummary === undefined
       ? err(
           createBillLineSummaryMissingError({
-            billId: line.billId,
+            billId,
             itemId: snapshot.id,
             lineType: type,
           })
@@ -521,7 +522,6 @@ const addStandaloneAmountToBill =
 
     return run(
       addBillLine(billResult.value, type, snapshot, {
-        billId: input.billId,
         deviceId: input.deviceId ?? null,
         catalogItemId: null,
         quantity: PositiveNumber(1),
