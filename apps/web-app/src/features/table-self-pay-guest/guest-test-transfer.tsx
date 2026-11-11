@@ -30,12 +30,14 @@ export function GuestTestTransfer({
   bill,
   amount,
   pointer,
+  onSent,
 }: {
   readonly address: TableSelfPayAddress
   readonly selectionKey: string
   readonly bill: Pick<SelfPayViewBill, "reference" | "currency">
   readonly amount: number
   readonly pointer: SelfPayPointer
+  readonly onSent: () => void
 }) {
   const { t } = useGuestTranslation()
   const [state, setState] = useState<TestTransferState>("idle")
@@ -54,7 +56,9 @@ export function GuestTestTransfer({
       selectionKey: hexToBytes(selectionKey),
       createdAt: Math.floor(Date.now() / 1000),
     })
-    setState((await publishGuestSelection(address, event)) ? "sent" : "failed")
+    const isSent = await publishGuestSelection(address, event)
+    setState(isSent ? "sent" : "failed")
+    if (isSent) onSent()
   }
 
   return (

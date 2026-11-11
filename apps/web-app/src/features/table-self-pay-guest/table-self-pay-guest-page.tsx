@@ -264,6 +264,7 @@ function GuestPayment({
   const amountHeading = useRef<HTMLHeadingElement>(null)
   const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? "lightning")
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
+  const [isTestTransferSent, setIsTestTransferSent] = useState(false)
   const now = useNow(
     selfPayRateChangesAt(liveness, session.bill.currency).map((moment) =>
       TimestampMs(moment * 1000)
@@ -299,6 +300,12 @@ function GuestPayment({
         {formatGuestAmount(session.amount, session.bill, locale)}
       </h2>
       {notice}
+      {method === "test" && !isTestTransferSent ? null : (
+        <GuestPaymentWait
+          session={session}
+          isWatching={method !== "lightning" || isInvoiceOpen}
+        />
+      )}
       {children}
       {session.isSeenByRestaurant ? null : (
         <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">
@@ -366,13 +373,12 @@ function GuestPayment({
             bill={session.bill}
             amount={session.amount}
             pointer={session.pointer}
+            onSent={() => {
+              setIsTestTransferSent(true)
+            }}
           />
         </div>
       )}
-      <GuestPaymentWait
-        session={session}
-        isWatching={method !== "lightning" || isInvoiceOpen}
-      />
     </section>
   )
 }
