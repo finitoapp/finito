@@ -749,6 +749,7 @@ function BillCartView({
     qerkoRestaurantPaired: (qerkoPaymentPlugin?.restaurantId ?? null) !== null,
   })
   const checkoutHintKey = billCheckoutHintKeys[checkout]
+  const finishing = checkout === "finish"
 
   const handleCharge = async () => {
     if (checkout !== "charge" || chargePendingRef.current) return
@@ -1274,29 +1275,25 @@ function BillCartView({
                 <Table2 data-icon="inline-start" />
                 {currentTable?.name ?? t("bill.table.assign")}
               </Button>
-              {checkout === "finish" ? (
-                <Button
-                  variant="default"
-                  className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
-                  // A cart write still in flight may change the total.
-                  disabled={finishPending || cart.pending}
-                  onClick={() => {
-                    vibrateOnButtonPress()
-                    void onFinish()
-                  }}
-                >
-                  {t("bill.finish")}
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
-                  disabled={checkout !== "charge" || chargePending}
-                  onClick={() => {
-                    vibrateOnButtonPress()
-                    void handleCharge()
-                  }}
-                >
+              {/* Finish closes a bill that comes to zero (payment/0013),
+                  Charge creates a payment for anything else. */}
+              <Button
+                variant="default"
+                className="h-12 flex-1 text-sm font-bold lg:h-14 lg:basis-full lg:text-base"
+                disabled={
+                  finishing
+                    ? // A cart write still in flight may change the total.
+                      finishPending || cart.pending
+                    : checkout !== "charge" || chargePending
+                }
+                onClick={() => {
+                  vibrateOnButtonPress()
+                  void (finishing ? onFinish() : handleCharge())
+                }}
+              >
+                {finishing ? (
+                  t("bill.finish")
+                ) : (
                   <span>
                     {t("home.pay")}
                     <span className="hidden lg:inline">
@@ -1304,8 +1301,8 @@ function BillCartView({
                       {formatMoney({ value: totalAmount, currency }, locale)}
                     </span>
                   </span>
-                </Button>
-              )}
+                )}
+              </Button>
             </div>
             {checkoutHintKey === null ? null : (
               <p className="pt-2 text-sm text-muted-foreground">
