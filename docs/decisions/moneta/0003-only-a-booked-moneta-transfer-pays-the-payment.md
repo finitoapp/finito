@@ -1,6 +1,6 @@
 # 0003 Only a booked MONETA transfer pays the payment
 
-Status: accepted
+Status: superseded by moneta/0011
 Date: 2026-11-01
 
 ## Context
