@@ -1,4 +1,4 @@
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { splitBillErrorKeys } from "@payky/app-shared/bill-checkout"
 import {
   type SplitBillConfirmInput,
   splitNeedsDiscard,
@@ -23,20 +23,6 @@ import { useRequirePermission } from "../../core/use-access.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
-
-const splitBillErrorKeys = {
-  BillNotFound: "bill.split.error",
-  BillStatusNotAllowed: "bill.split.error",
-  BillLocked: "bill.locked",
-  // The selection no longer matches the bill: retrying the same one cannot work.
-  BillSplitSelectionStale: "bill.split.staleSelection",
-  // Moving lines off a partly paid bill cannot take it below what was paid.
-  BillTotalBelowPaid: "bill.totalBelowPaid",
-  // A bill left with lines below zero could only be discarded (payment/0015).
-  BillSplitTotalNegative: "bill.split.totalNegative",
-  // The screens never offer the bill itself as the target.
-  BillSplitSameBill: "bill.split.error",
-} satisfies Record<SplitBillError["type"], TranslationKey>
 
 /**
  * Runs a confirmed split, as web's `handleConfirmSplit`: a new bill is always
