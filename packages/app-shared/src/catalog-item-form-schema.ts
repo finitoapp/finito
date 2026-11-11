@@ -65,20 +65,21 @@ export const updateCatalogItemErrorKeys = {
 
 /**
  * Why a typed price is refused: text that is no amount (`Malformed`), a
- * discount of nothing (`DiscountZero`, catalog/0002 — the core cannot refuse
- * it, since zero has no sign; only the form's Discount switch says a zero was
- * meant as one), or a `validateCatalogItemPricing` refusal.
+ * discount's amount that is no amount or nothing (`DiscountAmount`,
+ * catalog/0002 — the core cannot refuse a zero, since zero has no sign; only
+ * the form's Discount switch says a zero was meant as one), or a
+ * `validateCatalogItemPricing` refusal.
  */
 type PriceRefusal =
   | "Malformed"
-  | "DiscountZero"
+  | "DiscountAmount"
   | CatalogItemPricingError["type"]
 
 /** The message each price refusal shows. */
 const priceRefusalKeys = {
   ...catalogItemPricingErrorKeys,
   Malformed: "catalog.items.form.price.invalid",
-  DiscountZero: "catalog.items.form.price.discountZero",
+  DiscountAmount: "catalog.items.form.price.discountInvalid",
 } satisfies Record<PriceRefusal, TranslationKey>
 
 const isPriceRefusal = (value: unknown): value is PriceRefusal =>
@@ -118,15 +119,18 @@ const formTaxRateId = ({
  * reading the create form and the inline price field share.
  * `decimalPriceToMinorUnits` already trims, rejects a signed or non-numeric
  * amount, and rejects more fraction digits than the currency has; zero is a
- * price (catalog/0001), but not a discount (catalog/0002).
+ * price (catalog/0001), but not a discount (catalog/0002). A discount's field
+ * asks for the amount it takes off, so it says that for either refusal.
  */
 const readTypedPrice = (
   { currency, discount }: Pick<CatalogItemFormContext, "currency" | "discount">,
   value: string
-): Result<Integer, "Malformed" | "DiscountZero"> => {
+): Result<Integer, "Malformed" | "DiscountAmount"> => {
   const minorUnits = decimalPriceToMinorUnits({ currency, value })
+  if (discount && (minorUnits === null || minorUnits === 0)) {
+    return err("DiscountAmount")
+  }
   if (minorUnits === null) return err("Malformed")
-  if (discount && minorUnits === 0) return err("DiscountZero")
   return ok(Integer(discount ? -minorUnits : minorUnits))
 }
 
@@ -206,15 +210,11 @@ export const createPriceCodec = ({
 
 /**
  * The message an inline price field shows for text `createPriceCodec`
- * refuses, told apart as the create form does (`readTypedPrice`): a zero
- * discount's own (catalog/0002), the price's for anything malformed.
+ * refuses, as the create form does (`readTypedPrice`): a discount's own
+ * (catalog/0002), else the price's.
  */
-export const createPriceErrorKey =
-  (context: { readonly currency: FiatCurrency; readonly discount: boolean }) =>
-  (value: string): TranslationKey => {
-    const price = readTypedPrice(context, value)
-    return priceRefusalKeys[price.ok ? "Malformed" : price.error]
-  }
+export const priceErrorKey = (discount: boolean): TranslationKey =>
+  priceRefusalKeys[discount ? "DiscountAmount" : "Malformed"]
 
 const createCatalogItemFormSchema = (context: CatalogItemFormContext) =>
   z.object({

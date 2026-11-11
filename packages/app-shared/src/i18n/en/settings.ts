@@ -670,7 +670,7 @@ export const enSettings = {
   "catalog.items.form.name.placeholder": "e.g. Coffee",
   "catalog.items.form.notFound": "This item no longer exists.",
   "catalog.items.form.price.discountWithTaxRate": "A discount has no VAT rate.",
-  "catalog.items.form.price.discountZero":
+  "catalog.items.form.price.discountInvalid":
     "Enter the amount the discount takes off.",
   "catalog.items.form.price.invalid": "Enter a valid price.",
   "catalog.items.form.price.label": "Price",

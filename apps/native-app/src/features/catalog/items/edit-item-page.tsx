@@ -1,6 +1,6 @@
 import {
   createPriceCodec,
-  createPriceErrorKey,
+  priceErrorKey,
   updateCatalogItemErrorKeys,
 } from "@payky/app-shared/catalog-item-form-schema"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
@@ -124,10 +124,6 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
     () => createPriceCodec({ currency: item.currency, discount }),
     [item.currency, discount]
   )
-  const priceErrorKey = useMemo(
-    () => createPriceErrorKey({ currency: item.currency, discount }),
-    [item.currency, discount]
-  )
 
   // A refused price or VAT rate (`validateCatalogItemPricing`, catalog/0001)
   // comes back as its own message, which `useRunToast` toasts; a throw gets
@@ -225,7 +221,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
                 keyboardType="decimal-pad"
                 defaultValue={item.unitAmount}
                 codec={priceCodec}
-                errorKey={priceErrorKey}
+                errorKey={priceErrorKey(discount)}
                 onSave={(unitAmount) => saveItem({ unitAmount })}
               />
               <Field>

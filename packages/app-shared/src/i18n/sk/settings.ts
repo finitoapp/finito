@@ -671,7 +671,7 @@ export const skSettings = {
   "catalog.items.form.name.placeholder": "napr. Káva",
   "catalog.items.form.notFound": "Táto položka už neexistuje.",
   "catalog.items.form.price.discountWithTaxRate": "Zľava nemá sadzbu DPH.",
-  "catalog.items.form.price.discountZero":
+  "catalog.items.form.price.discountInvalid":
     "Zadajte sumu, ktorú zľava odpočíta.",
   "catalog.items.form.price.invalid": "Zadajte platnú cenu.",
   "catalog.items.form.price.label": "Cena",
