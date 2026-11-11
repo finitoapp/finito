@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { expectInOrder } from "@payky/core/testing/source-order"
 import { expect, it } from "vitest"
 
 const read = (name: string) =>
@@ -11,17 +12,6 @@ const permissionReturn = (permission: string, action: string) =>
   new RegExp(
     `if\\s*\\(\\s*!\\s*\\(\\s*await\\s+require\\(\\s*"${permission}",\\s*"${escapeRegExp(action)}"\\s*\\)\\s*\\)\\s*\\)\\s*return`
   )
-
-const expectInOrder = (source: string, ...patterns: ReadonlyArray<RegExp>) => {
-  let remainder = source
-  for (const pattern of patterns) {
-    const match = remainder.match(pattern)
-    expect(match, `missing ${pattern}`).not.toBeNull()
-    if (match === null) return
-    if (match.index === undefined) throw new Error(`no index for ${pattern}`)
-    remainder = remainder.slice(match.index + match[0].length)
-  }
-}
 
 it("requires current-account admin before diagnostic account mutations", () => {
   const accounts = read("accounts-card")
