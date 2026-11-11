@@ -661,14 +661,24 @@ export const loadBillClosedAtIfCovered =
         TimestampMsSchema.decode(run.deps.date.now().getTime()),
     })
   }
+export interface SelectedLineTotals {
+  readonly quantity: number
+  readonly totalAmount: number
+}
+
 /**
- * Whether `selected` is part of `available`: the same sign, or zero, and no
- * larger in size — for a discount line as much as for goods.
+ * Whether `selected` is part of `line`: no more of its quantity, and an
+ * amount of the same sign, or zero, no larger in size — for a discount line
+ * as much as for goods. A removal and a split's selection are judged alike.
  */
-const isAmountWithin = (selected: number, available: number): boolean =>
-  available < 0
-    ? selected <= 0 && selected >= available
-    : selected >= 0 && selected <= available
+const isWithinLine = (
+  selected: SelectedLineTotals,
+  line: SelectedLineTotals
+): boolean =>
+  selected.quantity <= line.quantity &&
+  (line.totalAmount < 0
+    ? selected.totalAmount <= 0 && selected.totalAmount >= line.totalAmount
+    : selected.totalAmount >= 0 && selected.totalAmount <= line.totalAmount)
 
 const createBillLineRemovalOutOfRangeError = defineError(
   "BillLineRemovalOutOfRange"
@@ -695,8 +705,8 @@ export type BillLineRemovalOutOfRangeError = ReturnType<
  * Checks a removal from one line against the line as the bill holds it now
  * (`items` of the editing guard's snapshot): no more of its quantity than it
  * has, an amount of the same sign, or zero, and no larger in size
- * (`isAmountWithin`, as a split's selection is judged). Reads only; the
- * cart write itself is `appendRemoveBillLine`'s.
+ * (`isWithinLine`, as a split's selection is judged). Reads only; the cart
+ * write itself is `appendRemoveBillLine`'s.
  */
 export const requireRemovalWithinLine = (
   billId: BillId,
@@ -708,11 +718,7 @@ export const requireRemovalWithinLine = (
   }
 ): Result<BillLineSummary, BillLineRemovalOutOfRangeError> => {
   const line = items.find((item) => item.id === removal.summaryId)
-  if (
-    line === undefined ||
-    removal.quantity > line.quantity ||
-    !isAmountWithin(removal.totalAmount, line.totalAmount)
-  ) {
+  if (line === undefined || !isWithinLine(removal, line)) {
     return err(
       createBillLineRemovalOutOfRangeError({
         billId,
@@ -725,11 +731,6 @@ export const requireRemovalWithinLine = (
     )
   }
   return ok(line)
-}
-
-export interface SelectedLineTotals {
-  readonly quantity: number
-  readonly totalAmount: number
 }
 
 /**
@@ -791,11 +792,7 @@ export const requireSelectionOnSourceBill = (
     // from the bill too, so a selection belonging to another bill, or to a
     // since-repriced item snapshot, lands here as well.
     const available = availableById.get(summaryId)
-    if (
-      available === undefined ||
-      selected.quantity > available.quantity ||
-      !isAmountWithin(selected.totalAmount, available.totalAmount)
-    ) {
+    if (available === undefined || !isWithinLine(selected, available)) {
       return err(
         createBillSplitSelectionStaleError({
           billId: sourceBillId,
