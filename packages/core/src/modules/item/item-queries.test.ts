@@ -125,6 +125,7 @@ describe("scoped item queries", () => {
             type: "catalogItem",
             quantity: 1,
             totalAmount: 7500,
+            discountShare: null,
           } as Omit<Parameters<typeof insertPaymentLineRows>[1][number], never>,
         ],
         { ...options, owner: evolu.appOwner }

@@ -50,7 +50,7 @@ export interface RefundablePayment {
 /**
  * What a payment allows refunding, read once for the payment detail's refund
  * panel and the refund screen: the refunds and attempts so far, what is left
- * (`deriveRefundAvailability`, refund/0002, 0004, 0005), and the choices and
+ * (`deriveRefundAvailability`, refund/0014, 0004, 0005), and the choices and
  * methods the refund screen offers (`deriveRefundOptions`). Web never refunds
  * to the card through SwitchioPay, which only Finito offers (refund/0007).
  */

@@ -1,6 +1,6 @@
 # 0010 The permission map, with catalog
 
-Status: accepted
+Status: superseded by access/0012
 Date: 2026-11-03
 
 ## Context

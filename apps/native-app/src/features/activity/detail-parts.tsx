@@ -1,8 +1,10 @@
 import type { BillCoverageMismatchReason } from "@payky/app-shared/activity-detail"
+import { deriveBillCoverageDelta } from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummary } from "@payky/core/modules/bill-line/bill-line-summary"
 import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill-line-utils"
-import {
-  type Currency,
+import type {
+  Currency,
+  Integer,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
@@ -171,7 +173,7 @@ export function BillCoverageWarning({
   children,
 }: {
   readonly coverage: "underpaid" | "overpaid"
-  readonly expectedAmount: NonNegativeInteger
+  readonly expectedAmount: Integer
   readonly claimedSum: NonNegativeInteger
   readonly currency: Currency
   readonly reason?: BillCoverageMismatchReason | null
@@ -180,7 +182,7 @@ export function BillCoverageWarning({
   const { t } = useTranslation()
   const locale = useLocale()
   const isUnderpaid = coverage === "underpaid"
-  const delta = NonNegativeInteger(Math.abs(expectedAmount - claimedSum))
+  const delta = deriveBillCoverageDelta(expectedAmount, claimedSum)
 
   return (
     <Alert variant="warning" icon={TriangleAlert}>

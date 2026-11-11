@@ -4,8 +4,8 @@ import { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import {
   FiatCurrencySchema,
   type InferTable,
+  IntegerSchema,
   NonEmptyString255Schema,
-  NonNegativeIntegerSchema,
 } from "../shared/schema.ts"
 import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { ItemId } from "./item-types.ts"
@@ -16,7 +16,7 @@ export const item = {
   name: NonEmptyString255Schema,
   description: NonEmptyString255Schema.nullable(),
   currency: FiatCurrencySchema,
-  unitAmount: NonNegativeIntegerSchema,
+  unitAmount: IntegerSchema,
   /**
    * Frozen at snapshot time — see `createItemIdFromSnapshot` in
    * `item-utils.ts`, which includes this field in the content hash so a

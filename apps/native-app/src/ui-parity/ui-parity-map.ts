@@ -1152,12 +1152,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       FieldError:
         "native auto-saving InlineEditField components own the validation messages; the web source also includes create-form FieldError parts",
+      FieldContent:
+        "the web source also includes the create form, whose Discount switch's label sits in FieldContent; an existing item's sign is not edited (catalog/0002)",
       Input:
         "native auto-saving InlineEditField components own their inputs; the web source also includes create-form Input parts",
       ScanCodeScanner:
         "native renders the camera inline after the scan-code field instead of inside a modal",
       ScanCodeScannerDialog:
         "web wraps the scanner in a dialog; native renders it inline after the scan-code field",
+      Switch:
+        "the web source also includes the create form's Discount switch; an existing item's sign is not edited (catalog/0002)",
     },
   },
   {
@@ -1219,6 +1223,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       SelectTrigger:
         "The mapped web source is the full item form; this native row covers only its scan button.",
       SelectValue:
+        "The mapped web source is the full item form; this native row covers only its scan button.",
+      FieldContent:
+        "The mapped web source is the full item form; this native row covers only its scan button.",
+      Switch:
         "The mapped web source is the full item form; this native row covers only its scan button.",
     },
   },

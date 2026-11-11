@@ -1,5 +1,6 @@
 import type { MutationOptions } from "@evolu/common"
 
+import { allocateDiscount } from "../bill-line/bill-line-discount-utils.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
@@ -49,6 +50,12 @@ export const insertPaymentLineRows = (
  * ledger by "created before this payment" would include changes this device
  * never actually saw. Only capturing the actual computed summaries *at
  * write time* is reliable.
+ *
+ * Each goods line is frozen with its share of the bill's discount
+ * (`allocateDiscount`, catalog/0003), the discount line itself as it stands,
+ * below zero, so the payment detail can show it. What the payment's VAT
+ * recap, its Qerko receipt and a refund read is then fixed with the payment,
+ * whatever the allocation does later.
  */
 export const snapshotBillLinesForPayment = (
   evolu: EvoluDep["evolu"],
@@ -58,7 +65,7 @@ export const snapshotBillLinesForPayment = (
 ): void => {
   insertPaymentLineRows(
     evolu,
-    summaries.map((summary) => ({
+    allocateDiscount(summaries).map((summary) => ({
       paymentId,
       billId: summary.billId,
       catalogItemId: summary.catalogItemId,
@@ -66,6 +73,7 @@ export const snapshotBillLinesForPayment = (
       type: summary.type,
       quantity: summary.quantity,
       totalAmount: summary.totalAmount,
+      discountShare: summary.discountShare,
     })),
     options
   )

@@ -1,10 +1,15 @@
-import { parseCatalogItemForm } from "@payky/app-shared/catalog-item-form-schema"
+import {
+  catalogItemPricingErrorKeys,
+  parseCatalogItemForm,
+} from "@payky/app-shared/catalog-item-form-schema"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { CatalogCategoryRow } from "@payky/core/modules/catalog-category/catalog-category"
 import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import type { FiatCurrency as FiatCurrencyType } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
@@ -25,6 +30,7 @@ import {
 } from "@/components/ui/dialog.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -39,6 +45,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
+import { Switch } from "@/components/ui/switch.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useEvolu } from "@/hooks/use-evolu.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -49,8 +56,8 @@ import { useTranslation } from "@/hooks/use-translation.ts"
 /**
  * Lightweight create-item form opened from bill scan mode when a scanned
  * code matches no catalog item — just enough to add the item and keep
- * scanning (name, description, price, category). Anything else is left for
- * the full form under Settings. Name and description are prefilled from
+ * scanning (name, description, price and whether it is a discount, category,
+ * VAT rate). Anything else is left for the full form under Settings. Name and description are prefilled from
  * `productLookup` once it arrives, unless the user already typed into them.
  */
 export function CreateCatalogItemDialog({
@@ -76,6 +83,7 @@ export function CreateCatalogItemDialog({
   const { t } = useTranslation()
   const formId = useId()
   const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const defaultTaxRate = taxRates.find(
     (rate) => rate.isDefault === 1 && rate.deactivatedAt === null
   )
@@ -83,6 +91,8 @@ export function CreateCatalogItemDialog({
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [price, setPrice] = useState("")
+  // The sign of the price, as the catalog form's switch (catalog/0002).
+  const [discount, setDiscount] = useState(false)
   const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
     "none"
   )
@@ -114,6 +124,7 @@ export function CreateCatalogItemDialog({
     setName("")
     setDescription("")
     setPrice("")
+    setDiscount(false)
     setCategoryId("none")
     setTaxRateId(defaultTaxRate?.id ?? "none")
     setNameError(null)
@@ -153,7 +164,12 @@ export function CreateCatalogItemDialog({
                 sku: "",
                 scanCode,
               },
-              currency
+              {
+                currency,
+                taxRateId: taxRateId === "none" ? null : taxRateId,
+                vatPayer: isVatPayer(legalEntity),
+                discount,
+              }
             )
             if (!parsed.ok) {
               setNameError(parsed.error.name ?? null)
@@ -174,7 +190,7 @@ export function CreateCatalogItemDialog({
               }
               setPending(true)
               await runToast(async (run) => {
-                const id = await run.ok(
+                const result = await run(
                   createCatalogItemAtEnd({
                     deviceId: null,
                     categoryId: categoryId === "none" ? null : categoryId,
@@ -183,11 +199,16 @@ export function CreateCatalogItemDialog({
                     currency,
                     unitAmount: values.price,
                     scanCode: values.scanCode,
-                    taxRateId: taxRateId === "none" ? null : taxRateId,
+                    taxRateId: values.taxRateId,
                   })
                 )
+                // The core's own pricing rules, should the account have
+                // become a VAT payer since the form judged it.
+                if (!result.ok) {
+                  return catalogItemPricingErrorKeys[result.error.type]
+                }
                 const [created] = await evolu.loadQuery(
-                  catalogItemByIdQuery(id)
+                  catalogItemByIdQuery(result.value)
                 )
                 if (created === undefined) return "app.saveFailed"
 
@@ -269,6 +290,26 @@ export function CreateCatalogItemDialog({
               <FieldError>{priceError ? t(priceError) : null}</FieldError>
             </Field>
 
+            <Field orientation="horizontal">
+              <Switch
+                id={`${formId}-discount`}
+                checked={discount}
+                disabled={pending}
+                onCheckedChange={(checked) => {
+                  setDiscount(checked)
+                  setPriceError(null)
+                }}
+              />
+              <FieldContent>
+                <FieldLabel htmlFor={`${formId}-discount`}>
+                  {t("catalog.items.form.discount.label")}
+                </FieldLabel>
+                <FieldDescription>
+                  {t("catalog.items.form.discount.description")}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+
             <Field>
               <FieldLabel htmlFor={`${formId}-category`}>
                 {t("catalog.items.form.category.label")}
@@ -304,43 +345,46 @@ export function CreateCatalogItemDialog({
               </Select>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor={`${formId}-taxRate`}>
-                {t("catalog.items.form.taxRate.label")}
-              </FieldLabel>
-              <Select<TaxRateId | "none">
-                items={{
-                  none: t("catalog.items.form.taxRate.none"),
-                  ...Object.fromEntries(
-                    selectableTaxRates.map((taxRate) => [
-                      taxRate.id,
-                      formatTaxRateLabel(taxRate),
-                    ])
-                  ),
-                }}
-                value={taxRateId}
-                onValueChange={(nextTaxRateId) => {
-                  if (nextTaxRateId === null) return
-                  setTaxRateId(nextTaxRateId)
-                }}
-              >
-                <SelectTrigger id={`${formId}-taxRate`} disabled={pending}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem value="none">
-                      {t("catalog.items.form.taxRate.none")}
-                    </SelectItem>
-                    {selectableTaxRates.map((taxRate) => (
-                      <SelectItem key={taxRate.id} value={taxRate.id}>
-                        {formatTaxRateLabel(taxRate)}
+            {/* A discount has no VAT rate (catalog/0002). */}
+            {discount ? null : (
+              <Field>
+                <FieldLabel htmlFor={`${formId}-taxRate`}>
+                  {t("catalog.items.form.taxRate.label")}
+                </FieldLabel>
+                <Select<TaxRateId | "none">
+                  items={{
+                    none: t("catalog.items.form.taxRate.none"),
+                    ...Object.fromEntries(
+                      selectableTaxRates.map((taxRate) => [
+                        taxRate.id,
+                        formatTaxRateLabel(taxRate),
+                      ])
+                    ),
+                  }}
+                  value={taxRateId}
+                  onValueChange={(nextTaxRateId) => {
+                    if (nextTaxRateId === null) return
+                    setTaxRateId(nextTaxRateId)
+                  }}
+                >
+                  <SelectTrigger id={`${formId}-taxRate`} disabled={pending}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="none">
+                        {t("catalog.items.form.taxRate.none")}
                       </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </Field>
+                      {selectableTaxRates.map((taxRate) => (
+                        <SelectItem key={taxRate.id} value={taxRate.id}>
+                          {formatTaxRateLabel(taxRate)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
           </FieldGroup>
 
           <DialogFooter>

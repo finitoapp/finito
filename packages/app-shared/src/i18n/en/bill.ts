@@ -27,6 +27,19 @@ export const enBill = {
     "All items in this bill will be removed. This can't be undone.",
   "bill.discard.confirm.title": "Discard this bill?",
   "bill.emptySearch": "No items match your search.",
+  "bill.finish": "Finish",
+  "bill.finish.done": "Bill finished.",
+  "bill.finish.error": "Could not finish the bill.",
+  "bill.finish.notZero":
+    "The bill no longer comes to zero. Check it and try again.",
+  "bill.lineChanged":
+    "This line changed in the meantime. Check the bill and try again.",
+  "bill.noPayableMethod":
+    "None of the payment methods turned on can take this amount: cash rounds it to zero.",
+  "bill.notPayable":
+    "The goods come to zero, so the tip cannot be charged. Remove the tip to finish the bill.",
+  "bill.negativeTotal":
+    "This bill comes to less than zero and can only be discarded.",
   "bill.invalidId": "Invalid bill id.",
   "bill.itemsCount": "{value} pcs",
   "bill.openedAt": "Opened {time}",
@@ -72,6 +85,8 @@ export const enBill = {
   "bill.split.staleSelection":
     "The bill changed while you were choosing. Check your selection and split again.",
   "bill.split.title": "Split bill",
+  "bill.split.totalNegative":
+    "After this split a bill would come to less than zero. Move the discount together with the items it belongs to.",
   "bill.status.canceled": "Canceled",
   "bill.status.closed": "Closed",
   "bill.status.open": "Open",
@@ -90,6 +105,10 @@ export const enBill = {
   "bill.table.dialog.none": "No table",
   "bill.table.dialog.title": "Select table",
   "bill.title": "Bill",
+  "bill.itemPriceChanged":
+    "The item's price changed in the meantime. Try again.",
+  "bill.totalBelowPaid":
+    "This bill is partly paid, so its total can't drop below what has been paid. Give money back with Refund money on the payment.",
   "billDetail.noTable": "No table",
   "billDetail.table": "Table",
   "billDetail.closedAtValue": "Closed {date}",

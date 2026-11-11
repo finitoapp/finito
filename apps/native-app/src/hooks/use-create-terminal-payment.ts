@@ -1,3 +1,4 @@
+import { createPaymentErrorKeys } from "@payky/app-shared/bill-checkout"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
 import { createPreparedPayment } from "@payky/core/modules/payment/payment-preparation-actions"
 import type {
@@ -10,6 +11,7 @@ import { useCallback } from "react"
 import { accountAtom } from "../atoms/account.ts"
 import { terminalAmountInputAtom } from "../atoms/terminal-amount.ts"
 import { nativeConsole } from "../core/native-runtime.ts"
+import { isSwitchioSupported } from "../platform/switchio.ts"
 import { useRunToast } from "./use-run-toast.ts"
 
 /**
@@ -47,12 +49,13 @@ export function useCreateTerminalPayment() {
             currency,
             tipAmount,
             canceledAt: null,
+            cardTerminalLinked: isSwitchioSupported(),
           })
         )
 
         if (!result.ok) {
           nativeConsole.error("Failed to create prepared payment", result.error)
-          return "payment.create.error"
+          return createPaymentErrorKeys[result.error.type]
         }
 
         if (billId === null) setTerminalAmountInput("")

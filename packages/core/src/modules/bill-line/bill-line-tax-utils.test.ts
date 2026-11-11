@@ -1,8 +1,14 @@
 import { createIdFromString } from "@evolu/common"
 import { describe, expect, test } from "vitest"
-import { NonEmptyString255, NonNegativeInteger } from "../shared/schema.ts"
+import type { ItemLineType } from "../item/item-types.ts"
+import {
+  Integer,
+  NonEmptyString255,
+  NonNegativeInteger,
+} from "../shared/schema.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
+import { allocateDiscount } from "./bill-line-discount-utils.ts"
 import { calculateTaxRecap } from "./bill-line-tax-utils.ts"
 
 const standardRateId = createIdFromString<"TaxRate">("standard") as TaxRateId
@@ -26,8 +32,16 @@ describe("calculateTaxRecap", () => {
   test("splits and groups lines by tax rate", () => {
     const rows = calculateTaxRecap(
       [
-        { taxRateId: standardRateId, totalAmount: NonNegativeInteger(12_100) },
-        { taxRateId: reducedRateId, totalAmount: NonNegativeInteger(5_600) },
+        {
+          taxRateId: standardRateId,
+          totalAmount: NonNegativeInteger(12_100),
+          discountShare: null,
+        },
+        {
+          taxRateId: reducedRateId,
+          totalAmount: NonNegativeInteger(5_600),
+          discountShare: null,
+        },
       ],
       taxRates
     )
@@ -55,8 +69,16 @@ describe("calculateTaxRecap", () => {
   test("sums multiple lines with the same tax rate", () => {
     const rows = calculateTaxRecap(
       [
-        { taxRateId: standardRateId, totalAmount: NonNegativeInteger(12_100) },
-        { taxRateId: standardRateId, totalAmount: NonNegativeInteger(1_210) },
+        {
+          taxRateId: standardRateId,
+          totalAmount: NonNegativeInteger(12_100),
+          discountShare: null,
+        },
+        {
+          taxRateId: standardRateId,
+          totalAmount: NonNegativeInteger(1_210),
+          discountShare: null,
+        },
       ],
       taxRates
     )
@@ -79,6 +101,7 @@ describe("calculateTaxRecap", () => {
     const line = {
       taxRateId: standardRateId,
       totalAmount: NonNegativeInteger(1_000),
+      discountShare: null,
     }
     const rows = calculateTaxRecap([line, line, line], taxRates)
 
@@ -96,7 +119,13 @@ describe("calculateTaxRecap", () => {
 
   test("groups lines with no tax rate into a nameless row", () => {
     const rows = calculateTaxRecap(
-      [{ taxRateId: null, totalAmount: NonNegativeInteger(500) }],
+      [
+        {
+          taxRateId: null,
+          totalAmount: NonNegativeInteger(500),
+          discountShare: null,
+        },
+      ],
       taxRates
     )
 
@@ -115,9 +144,21 @@ describe("calculateTaxRecap", () => {
   test("orders rows by taxRates' own order, with the no-tax group last", () => {
     const rows = calculateTaxRecap(
       [
-        { taxRateId: null, totalAmount: NonNegativeInteger(100) },
-        { taxRateId: reducedRateId, totalAmount: NonNegativeInteger(1_120) },
-        { taxRateId: standardRateId, totalAmount: NonNegativeInteger(1_210) },
+        {
+          taxRateId: null,
+          totalAmount: NonNegativeInteger(100),
+          discountShare: null,
+        },
+        {
+          taxRateId: reducedRateId,
+          totalAmount: NonNegativeInteger(1_120),
+          discountShare: null,
+        },
+        {
+          taxRateId: standardRateId,
+          totalAmount: NonNegativeInteger(1_210),
+          discountShare: null,
+        },
       ],
       taxRates
     )
@@ -132,8 +173,16 @@ describe("calculateTaxRecap", () => {
   test("excludes lines whose tax rate isn't in taxRates (not yet synced)", () => {
     const rows = calculateTaxRecap(
       [
-        { taxRateId: unknownRateId, totalAmount: NonNegativeInteger(200) },
-        { taxRateId: standardRateId, totalAmount: NonNegativeInteger(1_210) },
+        {
+          taxRateId: unknownRateId,
+          totalAmount: NonNegativeInteger(200),
+          discountShare: null,
+        },
+        {
+          taxRateId: standardRateId,
+          totalAmount: NonNegativeInteger(1_210),
+          discountShare: null,
+        },
       ],
       taxRates
     )
@@ -152,5 +201,85 @@ describe("calculateTaxRecap", () => {
 
   test("returns nothing for an empty bill", () => {
     expect(calculateTaxRecap([], taxRates)).toEqual([])
+  })
+
+  describe("with a discount", () => {
+    const line = (
+      id: string,
+      taxRateId: TaxRateId | null,
+      totalAmount: number,
+      type: ItemLineType = "catalogItem"
+    ) => ({ id, type, taxRateId, totalAmount: Integer(totalAmount) })
+
+    test("counts VAT from the net lines, with no discount row and no rate below zero", () => {
+      // A tenth off: 1 210 of the beer, 560 of the soup, 100 of the corkage.
+      const rows = calculateTaxRecap(
+        allocateDiscount([
+          line("a", standardRateId, 12_100),
+          line("b", reducedRateId, 5_600),
+          line("c", null, 1_000, "manualAmount"),
+          line("d", null, -1_870),
+        ]),
+        taxRates
+      )
+
+      expect(rows).toEqual([
+        {
+          taxRateId: standardRateId,
+          name: "Standard rate",
+          ratePercentage: 2100,
+          baseAmount: 9_000,
+          taxAmount: 1_890,
+          grossAmount: 10_890,
+        },
+        {
+          taxRateId: reducedRateId,
+          name: "Reduced rate",
+          ratePercentage: 1200,
+          baseAmount: 4_500,
+          taxAmount: 540,
+          grossAmount: 5_040,
+        },
+        // The corkage's own share, not the discount itself.
+        {
+          taxRateId: null,
+          name: null,
+          ratePercentage: null,
+          baseAmount: 900,
+          taxAmount: 0,
+          grossAmount: 900,
+        },
+      ])
+    })
+
+    test("shows nothing for a discount no goods bear", () => {
+      expect(
+        calculateTaxRecap(
+          allocateDiscount([
+            line("a", standardRateId, 0),
+            line("b", null, -500),
+          ]),
+          taxRates
+        )
+      ).toEqual([])
+      // A payment frozen without shares, by an app that knew no discounts.
+      expect(
+        calculateTaxRecap(
+          [
+            {
+              taxRateId: standardRateId,
+              totalAmount: Integer(1_210),
+              discountShare: null,
+            },
+            {
+              taxRateId: null,
+              totalAmount: Integer(-210),
+              discountShare: null,
+            },
+          ],
+          taxRates
+        )
+      ).toEqual([])
+    })
   })
 })

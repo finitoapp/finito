@@ -5,7 +5,7 @@ import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import type { ItemRow } from "../item/item.ts"
 import type { ItemId, ItemLineType } from "../item/item-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
-import type { NonNegativeInteger, PositiveNumber } from "../shared/schema.ts"
+import type { Integer, PositiveNumber } from "../shared/schema.ts"
 import type { PaymentLineId } from "./payment-line-types.ts"
 
 /**
@@ -16,6 +16,10 @@ import type { PaymentLineId } from "./payment-line-types.ts"
  * line up. Unlike `calculateBillLineSummaries`, there is no add/remove to
  * net here: each `paymentLine` row already *is* one net line, frozen at
  * write time (see `snapshotBillLinesForPayment`).
+ *
+ * Each value keeps its frozen `discountShare`, which is what lets
+ * `calculateTaxRecap` count the payment's VAT from the net amounts it was
+ * paid at instead of allocating the discount again.
  *
  * Takes the shape `paymentLinesByPaymentIdQuery`'s `$narrowType` produces
  * (every field but `catalogItemId` guaranteed non-null), not the raw
@@ -28,7 +32,8 @@ export const paymentLinesToBillLineSummaries = (
     readonly itemId: ItemId
     readonly type: ItemLineType
     readonly quantity: PositiveNumber
-    readonly totalAmount: NonNegativeInteger
+    readonly totalAmount: Integer
+    readonly discountShare: Integer | null
   }>,
   itemRows: ReadonlyArray<ItemRow>
 ) => {
@@ -55,6 +60,7 @@ export const paymentLinesToBillLineSummaries = (
         currency: item.currency,
         quantity: line.quantity,
         totalAmount: line.totalAmount,
+        discountShare: line.discountShare,
         taxRateId: item.taxRateId,
       },
     ]

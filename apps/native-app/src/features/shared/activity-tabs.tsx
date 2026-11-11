@@ -15,7 +15,7 @@ const activityTabHrefs = {
  * payments, bills and statistics (navigation/0001), each its own route;
  * switching replaces rather than pushes, so Back and the menu's Home leave
  * Activity instead of rewinding through tabs. The statistics need `stats`,
- * so the access gate asks for the PIN there (access/0010). `onSelect`
+ * so the access gate asks for the PIN there (access/0012). `onSelect`
  * hears the tab as it is pressed, before the route follows, so the screen
  * can answer the press at once.
  */

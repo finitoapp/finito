@@ -28,19 +28,22 @@ import {
 } from "@payky/core/modules/shared/money"
 import {
   type FiatCurrency,
+  type Integer,
   NonNegativeInteger,
   PositiveNumber,
 } from "@payky/core/modules/shared/schema"
 import type { TranslationKey } from "./i18n/resources.ts"
 
-/** The refund form's two ways to say what comes back (refund/0002). */
+/** The refund form's two ways to say what comes back (refund/0014). */
 export type RefundMode = "amount" | "items"
 
 export interface RefundablePaymentLine {
   readonly id: PaymentLineId
   readonly type: ItemLineType
   readonly quantity: PositiveNumber
-  readonly totalAmount: NonNegativeInteger
+  readonly totalAmount: Integer
+  /** The line's frozen share of the bill's discount; its refund is net of it (refund/0014). */
+  readonly discountShare: Integer | null
   readonly name: string
 }
 
@@ -152,7 +155,7 @@ export const qerkoPaymentRefundErrorKeys = {
 } satisfies Record<RefundQerkoPaymentError["type"], TranslationKey>
 
 /**
- * What a payment's refund panel offers (refund/0002, 0004, 0005): the limit of
+ * What a payment's refund panel offers (refund/0014, 0004, 0005): the limit of
  * goods left, the tip left, and the lines that may be refunded one by one,
  * which is none unless the payment is its bill's only one.
  */
@@ -349,7 +352,7 @@ export interface RefundOptions {
   readonly choices: ReadonlyArray<RefundChoiceOption>
   /** The methods each choice allows; empty for a choice not offered. */
   readonly methods: Readonly<Record<RefundChoice, ReadonlyArray<RefundMethod>>>
-  /** How `part` may be given: items only from a bill's only payment (refund/0002). */
+  /** How `part` may be given: items only from a bill's only payment (refund/0014). */
   readonly partModes: ReadonlyArray<RefundMode>
   readonly defaultChoice: RefundChoice | null
   readonly defaultMethod: RefundMethod | null

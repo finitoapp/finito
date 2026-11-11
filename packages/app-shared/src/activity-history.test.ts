@@ -259,6 +259,47 @@ describe("bill history rows", () => {
     )
   })
 
+  test("a bill closed without payment that another device added a line to stays closed and is flagged underpaid", () => {
+    // Closed with "Finish" at zero, then a device that had not seen the
+    // closing added a coffee for 59.
+    const summary = summarizeBillHistoryRow(
+      bill({
+        confirmedClosedAt: 1,
+        lines: [
+          {
+            billId: "b1",
+            catalogItemId: null,
+            itemId: "coffee",
+            type: "catalogItem",
+            kind: "add",
+            quantity: 1,
+            totalAmount: 5_900,
+          },
+        ],
+        items: [
+          {
+            id: "coffee",
+            name: "Coffee",
+            description: null,
+            currency: "CZK",
+            taxRateId: null,
+          },
+        ],
+      })
+    )
+    expect(summary.status).toBe("closed")
+    expect(summary.coverage).toBe("underpaid")
+    expect(billHistoryIssueLabels(summary, t)).toEqual([
+      t("billHistory.underpaid"),
+    ])
+  })
+
+  test("a bill closed without payment at zero raises no issue", () => {
+    const summary = summarizeBillHistoryRow(bill({ confirmedClosedAt: 1 }))
+    expect(summary.status).toBe("closed")
+    expect(billHistoryIssueLabels(summary, t)).toEqual([])
+  })
+
   test("counts each payment's tip once however many transactions settled it", () => {
     const row = (paymentId: string, tipAmount: number, id: string) => ({
       ...claim(paymentId, 100, id),

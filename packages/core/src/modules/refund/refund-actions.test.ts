@@ -27,6 +27,7 @@ import type { PaymentId } from "../payment/payment-types.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
   type FiatCurrency,
+  Integer,
   NonEmptyString255,
   NonNegativeInteger,
   PositiveInteger,
@@ -167,14 +168,14 @@ const createRefundContext = async () => {
       })
     )
     for (const [index, line] of lines.entries()) {
-      const catalogItemId = await run.ok(
+      const catalogItemId = await run.orThrow(
         createCatalogItem({
           deviceId: null,
           categoryId: null,
           name: NonEmptyString255(line.name),
           description: null,
           currency: "CZK",
-          unitAmount: NonNegativeInteger(line.unitAmount),
+          unitAmount: Integer(line.unitAmount),
           sortOrder: NonNegativeInteger(index),
           scanCode: null,
         })
@@ -185,6 +186,7 @@ const createRefundContext = async () => {
           deviceId: null,
           catalogItemId,
           quantity: PositiveNumber(line.quantity),
+          expectedDiscount: null,
         })
       )
     }
@@ -504,6 +506,86 @@ describe("refundPayment", () => {
       error: { type: "RefundLineUnavailable", paymentLineId: beer.id },
     })
   })
+
+  test("returns a goods line of a discounted payment at its net amount, and never the discount line on its own", async () => {
+    await using context = await createRefundContext()
+    // 25 000 of goods less a discount of 2 500: each line bears 10 % of it,
+    // the beers −1 000, the goulash −1 500 (catalog/0003).
+    const billId = await context.createBillOf([
+      ...billWithBeersAndGoulash,
+      { name: "Discount", unitAmount: -2_500, quantity: 1 },
+    ])
+    const paymentId = await context.createTestPayment({
+      amount: 22_500,
+      billId,
+    })
+    await context.settleInCash(paymentId, 22_500)
+    const lines = await context.evolu.loadQuery(
+      refundablePaymentLinesQuery(paymentId)
+    )
+    const line = (name: string) => {
+      const found = lines.find((row) => row.name === name)
+      if (found === undefined) throw new Error(`Expected the ${name} line.`)
+      return found
+    }
+    expect(
+      deriveRefundableLines(lines, []).map(({ line, remainingAmount }) => [
+        line.name,
+        remainingAmount,
+      ])
+    ).toEqual([
+      ["Beer", 9_000],
+      ["Goulash", 13_500],
+    ])
+
+    await expect(
+      refundOf(context, {
+        paymentId,
+        method: "cashRegister",
+        deviceId: null,
+        lines: [
+          { paymentLineId: line("Discount").id, quantity: PositiveNumber(1) },
+        ],
+      })
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "RefundLineUnavailable",
+        paymentLineId: line("Discount").id,
+      },
+    })
+
+    await expect(
+      refundOf(context, {
+        paymentId,
+        method: "cashRegister",
+        deviceId: null,
+        lines: [
+          { paymentLineId: line("Beer").id, quantity: PositiveNumber(1) },
+        ],
+      })
+    ).resolves.toMatchObject({ ok: true })
+    await expect(
+      context.evolu.loadQuery(refundLinesByPaymentIdQuery(paymentId))
+    ).resolves.toMatchObject([{ name: "Beer", quantity: 1, amount: 4_500 }])
+
+    // The goods' net amounts add up to what the payment took: all of it
+    // comes back by items, and nothing is left for an amount.
+    await expect(
+      refundOf(context, {
+        paymentId,
+        method: "cashRegister",
+        deviceId: null,
+        lines: [
+          { paymentLineId: line("Beer").id, quantity: PositiveNumber(1) },
+          { paymentLineId: line("Goulash").id, quantity: PositiveNumber(1) },
+        ],
+      })
+    ).resolves.toMatchObject({ ok: true })
+    await expect(
+      context.evolu.loadQuery(refundsByPaymentIdQuery(paymentId))
+    ).resolves.toMatchObject([{ amount: 4_500 }, { amount: 18_000 }])
+  }, 20_000)
 
   test("offers only an amount for a bill paid by two payments", async () => {
     await using context = await createRefundContext()

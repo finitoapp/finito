@@ -647,6 +647,11 @@ export const enSettings = {
     "Description is too long (255 characters max).",
   "catalog.items.form.description.label": "Description",
   "catalog.items.form.description.placeholder": "Optional",
+  "catalog.items.form.discount.description":
+    "Taken off the bill. It has no VAT rate: it is spread over the bill's goods in proportion to their prices.",
+  "catalog.items.form.discount.existing":
+    "This item is a discount: the amount is taken off the bill. Whether an item is a discount is set only when it is added.",
+  "catalog.items.form.discount.label": "Discount",
   "catalog.items.form.internalDescription.invalid":
     "Internal description is too long (255 characters max).",
   "catalog.items.form.internalDescription.label": "Internal description",
@@ -664,8 +669,15 @@ export const enSettings = {
   "catalog.items.form.name.label": "Name",
   "catalog.items.form.name.placeholder": "e.g. Coffee",
   "catalog.items.form.notFound": "This item no longer exists.",
+  "catalog.items.form.price.discountWithTaxRate": "A discount has no VAT rate.",
+  "catalog.items.form.price.discountZero":
+    "Enter the amount the discount takes off.",
   "catalog.items.form.price.invalid": "Enter a valid price.",
   "catalog.items.form.price.label": "Price",
+  "catalog.items.form.price.signChange":
+    "A discount stays a discount and an item stays an item. Add a new item instead.",
+  "catalog.items.form.price.zeroWithoutTaxRate":
+    "A free item needs a VAT rate. Pick one, or set a price.",
   "catalog.items.form.save.create": "Add item",
   "catalog.items.form.saved.create": "Item added.",
   "catalog.items.form.scanCode.duplicate": "Already assigned to {name}.",
@@ -1163,6 +1175,8 @@ export const enSettings = {
   "settings.paymentAccounts.nav.none": "None",
   "settings.taxRates.nav.description": "VAT rates for your items",
   "access.action.acknowledgeExcess": "Acknowledge the excess payment",
+  "access.action.addDiscount": "Add a discount to the bill",
+  "access.action.moveDiscount": "Move a discount to another bill",
   "access.action.aiAccess": "Change AI data access",
   "access.action.cashuMints": "Change the Cashu mints",
   "access.action.moveCashuFunds": "Move funds between mints",
@@ -1178,6 +1192,7 @@ export const enSettings = {
   "access.action.revealRecoveryPhrase": "Reveal the recovery phrase",
   "access.action.discardBill": "Discard the bill",
   "access.action.enable": "Turn access control on with the current PIN",
+  "access.action.finishBill": "Finish the bill without a payment",
   "access.action.markCashPaid": "Confirm the cash was received",
   "access.action.markIbanPaid": "Confirm the transfer arrived",
   "access.action.removeAccount": "Remove the account from this device",

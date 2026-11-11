@@ -4,7 +4,8 @@ import type { BillId } from "../bill/bill-types.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import type { ItemRow } from "../item/item.ts"
 import type { ItemLineType } from "../item/item-types.ts"
-import { NonNegativeInteger, PositiveNumber } from "../shared/schema.ts"
+import { roundMinorUnits } from "../shared/money.ts"
+import { Integer, PositiveNumber } from "../shared/schema.ts"
 import type { BillLineRow } from "./bill-line.ts"
 import type { BillLineSummary } from "./bill-line-summary.ts"
 import type { BillLineSummaryId } from "./bill-line-types.ts"
@@ -38,9 +39,36 @@ export const createBillLineSummaryId = (
     })
   )
 
+/**
+ * Folds a bill's line ledger, in order, into its net lines. Takes only what it
+ * reads of a line and its item — no `id`, so a cart write can project the
+ * lines it is about to insert onto the ones already there before writing them
+ * (`requireCartWriteNotBelowPaid`), and the sales statistics can fold the
+ * lines a query joined with their item (`discountedBillLinesQuery`).
+ *
+ * A line's amount is summed as it stands, sign included: a discount line
+ * carries a negative `totalAmount` (catalog/0002) and nets to a negative
+ * summary. Nothing is clamped at zero, but the fold drops a line, amount and
+ * all, the moment its quantity nets to zero or below and starts it afresh
+ * after: a removal takes only what the line still holds (payment/0016). The
+ * sales statistics' SQL (`nettedBillLines`) nets a group the same way.
+ */
 export const calculateBillLineSummaries = (
-  lineRows: ReadonlyArray<BillLineRow>,
-  itemRows: ReadonlyArray<ItemRow>
+  lineRows: ReadonlyArray<
+    Pick<
+      BillLineRow,
+      | "billId"
+      | "catalogItemId"
+      | "itemId"
+      | "type"
+      | "kind"
+      | "quantity"
+      | "totalAmount"
+    >
+  >,
+  itemRows: ReadonlyArray<
+    Pick<ItemRow, "id" | "name" | "description" | "currency" | "taxRateId">
+  >
 ): ReadonlyArray<BillLineSummary> => {
   const itemsById = new Map(itemRows.map((item) => [item.id, item]))
   const projected = new Map<BillLineSummaryId, BillLineSummary>()
@@ -78,7 +106,7 @@ export const calculateBillLineSummaries = (
       description: item.description,
       currency: item.currency,
       quantity: PositiveNumber(nextQuantity),
-      totalAmount: NonNegativeInteger(Math.max(0, nextTotalAmount)),
+      totalAmount: Integer(nextTotalAmount),
       taxRateId: item.taxRateId,
     })
   }
@@ -96,7 +124,7 @@ export const deriveBillSummaryStats = (
   summaries: ReadonlyArray<BillLineSummary>
 ): {
   readonly itemCount: number
-  readonly totalAmount: NonNegativeInteger
+  readonly totalAmount: Integer
 } => ({
   itemCount: summaries.reduce((sum, summary) => sum + summary.quantity, 0),
   totalAmount: deriveBillSummaryTotal(summaries),
@@ -107,13 +135,25 @@ export const deriveBillSummaryStats = (
  * because most callers want only this half — a bill total feeds coverage
  * (`deriveBillCoverage`), the payment amount, and every "is this bill paid"
  * derivation, none of which care how many items produced it.
+ *
+ * Below zero when a bill's discounts outweigh its goods. Such a bill can only
+ * be discarded (payment/0015): it cannot be paid (`BillTotalNotPositive`) or
+ * finished (`deriveZeroBillRefusal`).
  */
 export const deriveBillSummaryTotal = (
   summaries: ReadonlyArray<BillLineSummary>
-): NonNegativeInteger =>
-  NonNegativeInteger(
-    summaries.reduce((sum, summary) => sum + summary.totalAmount, 0)
-  )
+): Integer =>
+  Integer(summaries.reduce((sum, summary) => sum + summary.totalAmount, 0))
+
+/**
+ * What a bill's goods add up to: its total without its tip lines. A tip is
+ * not what the bill is worth, so it cannot make a bill payable whose goods
+ * are not (`requireBillAcceptingPayment`, payment/0012).
+ */
+export const deriveBillGoodsTotal = (
+  summaries: ReadonlyArray<BillLineSummary>
+): Integer =>
+  deriveBillSummaryTotal(summaries.filter((summary) => summary.type !== "tip"))
 
 export interface BillLineSummaryChange {
   readonly before: BillLineSummary
@@ -255,7 +295,10 @@ export const getLatestCatalogItemSummary = (
  * more exotic than tapping "remove" on that line.
  *
  * For a total that genuinely does not divide, the nearest minor unit is the
- * only answer available — money has no fractional one.
+ * only answer available — money has no fractional one. A discount line's unit
+ * amount is negative and rounds away from zero like its positive twin
+ * (`roundMinorUnits`), the same rounding `addCatalogItemToBill` priced it with.
  */
-export const getBillLineSummaryUnitAmount = (summary: BillLineSummary) =>
-  NonNegativeInteger(Math.round(summary.totalAmount / summary.quantity))
+export const getBillLineSummaryUnitAmount = (
+  summary: Pick<BillLineSummary, "quantity" | "totalAmount">
+): Integer => roundMinorUnits(summary.totalAmount / summary.quantity)

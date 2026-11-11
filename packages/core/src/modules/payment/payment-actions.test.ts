@@ -20,7 +20,10 @@ import {
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
-import { saveCardSwitchioAccount } from "../account/account-actions.ts"
+import {
+  saveCardSwitchioAccount,
+  saveCashRegisterAccount,
+} from "../account/account-actions.ts"
 import { createCardSwitchioAccountId } from "../account/account-utils.ts"
 import {
   createAccountTransaction,
@@ -33,17 +36,21 @@ import {
   appendGuardedBillLines,
   appendRemoveBillLine,
   cancelBill,
+  closeZeroBill,
   confirmBillClosedDespiteCancellation,
   createBill,
   splitBill,
 } from "../bill/bill-actions.ts"
 import { loadBillCoverage, loadBillStatus } from "../bill/bill-guards.ts"
 import { billByIdQuery } from "../bill/bill-queries.ts"
+import type { BillId } from "../bill/bill-types.ts"
 import {
   insertBillLineRows,
   loadCalculatedBillLineSummaries,
 } from "../bill-line/bill-line-actions.ts"
+import { calculateTaxRecap } from "../bill-line/bill-line-tax-utils.ts"
 import { deriveBillLineSummaryDiff } from "../bill-line/bill-line-utils.ts"
+import { createCatalogItem } from "../catalog-item/catalog-item-actions.ts"
 import type { CatalogItemId } from "../catalog-item/catalog-item-types.ts"
 import { upsertItemSnapshot } from "../item/item-actions.ts"
 import { itemsByPaymentIdQuery } from "../item/item-queries.ts"
@@ -1205,7 +1212,6 @@ describe("payment actions", () => {
         updatePayment({
           id,
           deviceId: undefined,
-          billId: undefined,
           tableId: undefined,
           amount: NonNegativeInteger(15_000),
           currency: undefined,
@@ -1314,6 +1320,15 @@ describe("payment actions", () => {
       })
     )
 
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(12_900),
+      })
+    )
     const firstPaymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1365,6 +1380,15 @@ describe("payment actions", () => {
         label: null,
         tableId: null,
         currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(12_900),
       })
     )
     const paymentId = await run.orThrow(
@@ -1424,6 +1448,15 @@ describe("payment actions", () => {
         label: null,
         tableId: null,
         currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(12_900),
       })
     )
     await run.orThrow(
@@ -1604,6 +1637,15 @@ describe("payment actions", () => {
         label: null,
         tableId: null,
         currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(1_000),
       })
     )
     const paymentId = await run.orThrow(
@@ -2283,6 +2325,7 @@ describe("payment actions", () => {
           deviceId: null,
           catalogItemId: "catalog-item-1" as CatalogItemId,
           quantity: PositiveNumber(1),
+          expectedDiscount: null,
         })
       )
     ).resolves.toMatchObject({ ok: false, error: { type: "BillLocked" } })
@@ -2425,6 +2468,15 @@ describe("payment actions", () => {
         label: null,
         tableId: null,
         currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId: targetBillId,
+        deviceId: null,
+        name: NonEmptyString255("Dinner"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(1_000),
       })
     )
     await run.orThrow(
@@ -2828,7 +2880,7 @@ describe("payment actions", () => {
     })
   }, 15_000)
 
-  test("a bill with a zero line-item total is trivially paid once its zero-amount payment is confirmed", async () => {
+  test("a bill whose goods come to zero cannot be paid through any method, and is finished instead", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu
     const deps = {
@@ -2847,13 +2899,520 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    // No line items added — the bill's total stays 0 (e.g. fully discounted).
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Bread basket"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(0),
+      })
+    )
+    const zeroPayment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(0),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+    } as const
+
+    // Neither in cash nor before a method is picked, which is how a card,
+    // bank or bitcoin payment is created.
+    await expect(
+      run(
+        createPayment({
+          ...zeroPayment,
+          cashRegister: { accountId: cashRegisterAccountId },
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "BillTotalNotPositive", id: billId, goodsTotal: 0 },
+    })
+    await expect(run(createPayment(zeroPayment))).resolves.toEqual({
+      ok: false,
+      error: { type: "BillTotalNotPositive", id: billId, goodsTotal: 0 },
+    })
+    await expect
+      .poll(() => evolu.loadQuery(paymentsWithClaimsByBillIdQuery(billId)))
+      .toEqual([])
+
+    // "Finish" closes it without a payment (payment/0013).
+    await run.orThrow(closeZeroBill(billId))
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 0,
+      claimedSum: 0,
+      coverage: "paid",
+    })
+  }, 15_000)
+
+  test("a CZK bill of 0.40 cannot be paid in cash, but can by card", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Sugar"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(40),
+      })
+    )
+    const payment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(40),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+    } as const
+
+    // In cash it rounds to no crowns at all (payment/0002).
+    await expect(
+      run(
+        createPayment({
+          ...payment,
+          cashRegister: { accountId: cashRegisterAccountId },
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "NoPayableMethod",
+        goodsTotal: 40,
+        currency: "CZK",
+        methods: ["cashRegister"],
+      },
+    })
+    // Created without a method's details, as the apps create it, it offers
+    // every method turned on, and the bank QR and Lightning take 0.40.
+    await expect(run(createPayment(payment))).resolves.toMatchObject({
+      ok: true,
+    })
+  }, 15_000)
+
+  test("a payment cash rounds to nothing is not created where cash is the only method turned on, bill or keypad", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    await run.ok(saveCashRegisterAccount({ enabled: true, currency: "CZK" }))
+    // A card terminal in another currency is not offered for a CZK payment.
+    await run.ok(saveCardSwitchioAccount({ enabled: true, currency: "EUR" }))
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Sugar"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(40),
+      })
+    )
+    const payment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(40),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+    } as const
+    const refused = {
+      ok: false,
+      error: {
+        type: "NoPayableMethod",
+        goodsTotal: 40,
+        currency: "CZK",
+        methods: ["cashRegister"],
+      },
+    }
+
+    // Created as the apps create it, without a method's details.
+    await expect(run(createPayment(payment))).resolves.toEqual(refused)
+    // A keypad payment, which has no bill, is judged by its own amount.
+    await expect(
+      run(createPayment({ ...payment, billId: null }))
+    ).resolves.toEqual(refused)
+    // A tip does not lift the goods: 0.40 of goods and 50 of tip.
+    await expect(
+      run(
+        createPayment({
+          ...payment,
+          billId: null,
+          amount: NonNegativeInteger(5_040),
+          tipAmount: NonNegativeInteger(5_000),
+        })
+      )
+    ).resolves.toEqual(refused)
+    await expect
+      .poll(() => evolu.loadQuery(paymentsWithClaimsByBillIdQuery(billId)))
+      .toEqual([])
+
+    // 0.50 rounds up to a whole crown.
+    await expect(
+      run(
+        createPayment({
+          ...payment,
+          billId: null,
+          amount: NonNegativeInteger(50),
+        })
+      )
+    ).resolves.toMatchObject({ ok: true })
+  }, 15_000)
+
+  test("a payment cash rounds to nothing is created where a card or a QR method is turned on too, bill or keypad", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    await run.ok(saveCashRegisterAccount({ enabled: true, currency: "CZK" }))
+    await run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Sugar"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(40),
+      })
+    )
+    const payment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(40),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+      // The native app, which shows the card tab.
+      cardTerminalLinked: true,
+    } as const
+
+    await expect(run(createPayment(payment))).resolves.toMatchObject({
+      ok: true,
+    })
+    await expect(
+      run(createPayment({ ...payment, billId: null }))
+    ).resolves.toMatchObject({ ok: true })
+  }, 15_000)
+
+  test("a payment cash rounds to nothing is not created where the card terminal is turned on but this device cannot show it", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    await run.ok(saveCashRegisterAccount({ enabled: true, currency: "CZK" }))
+    await run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+
+    // A browser or the PWA: the payment screen offers no card tab there, and
+    // cash cannot settle 0.40, so nothing on screen could take the payment.
+    await expect(
+      run(
+        createPayment({
+          deviceId: null,
+          billId: null,
+          tableId: null,
+          amount: NonNegativeInteger(40),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(0),
+          canceledAt: null,
+          expiresAt: null,
+          cardTerminalLinked: false,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "NoPayableMethod", methods: ["cashRegister"] },
+    })
+  }, 15_000)
+
+  test("a bill payment is judged by its own amount, which is what settling it in cash judges", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    await run.ok(saveCashRegisterAccount({ enabled: true, currency: "CZK" }))
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Lunch"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(10_000),
+      })
+    )
+    const payment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+    } as const
+
+    // 0.40 of a 100 CZK bill: the bill's goods are payable in cash, the
+    // payment's are not, and cash is the only method on.
+    await expect(
+      run(createPayment({ ...payment, amount: NonNegativeInteger(40) }))
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "NoPayableMethod", goodsTotal: 40 },
+    })
+    await expect(
+      run(createPayment({ ...payment, amount: NonNegativeInteger(4_000) }))
+    ).resolves.toMatchObject({ ok: true })
+  }, 15_000)
+
+  test("a tip does not lift a bill whose goods come to zero into one that can be paid", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Bread basket"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(0),
+      })
+    )
+    await run.orThrow(
+      addTipToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Tip"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(5_000),
+      })
+    )
+
+    await expect(
+      run(
+        createPayment({
+          deviceId: null,
+          billId,
+          tableId: null,
+          amount: NonNegativeInteger(5_000),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(5_000),
+          canceledAt: null,
+          expiresAt: null,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillTotalNotPositive", goodsTotal: 0 },
+    })
+  }, 15_000)
+
+  /**
+   * A bill of a 1 000 coffee and a discount of `discount` (catalog/0002),
+   * written through the core, which takes a negative price as it stands.
+   */
+  const createDiscountedBill = async (
+    deps: EvoluDep & EvoluOwnerDep & DateDep,
+    discount: number
+  ): Promise<BillId> => {
+    await using run = testCreateRun(deps)
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    await run.orThrow(
+      addManualAmountToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Coffee"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(1_000),
+      })
+    )
+    const discountId = await run.orThrow(
+      createCatalogItem({
+        deviceId: null,
+        categoryId: null,
+        name: NonEmptyString255("Discount"),
+        description: null,
+        currency: "CZK",
+        unitAmount: Integer(discount),
+        sortOrder: NonNegativeInteger(0),
+        scanCode: null,
+      })
+    )
+    await run.orThrow(
+      addCatalogItemToBill({
+        billId,
+        deviceId: null,
+        catalogItemId: discountId,
+        quantity: PositiveNumber(1),
+        expectedDiscount: null,
+      })
+    )
+    return billId
+  }
+
+  test("a bill a discount takes below zero is not overpaid and cannot be paid through any method", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+    const billId = await createDiscountedBill(deps, -1_500)
+
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toEqual({
+      billTotal: -500,
+      claimedSum: 0,
+      coverage: "paid",
+    })
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("open")
+
+    const payment = {
+      deviceId: null,
+      billId,
+      tableId: null,
+      amount: NonNegativeInteger(0),
+      currency: "CZK",
+      tipAmount: NonNegativeInteger(0),
+      canceledAt: null,
+      expiresAt: null,
+    } as const
+    await expect(
+      run(
+        createPayment({
+          ...payment,
+          cashRegister: { accountId: cashRegisterAccountId },
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "BillTotalNotPositive", id: billId, goodsTotal: -500 },
+    })
+    // Without a method's details, as the apps create it.
+    await expect(
+      run(createPayment({ ...payment, amount: NonNegativeInteger(500) }))
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "BillTotalNotPositive", id: billId, goodsTotal: -500 },
+    })
+    await expect
+      .poll(() => evolu.loadQuery(paymentsWithClaimsByBillIdQuery(billId)))
+      .toEqual([])
+
+    // It can only be discarded (payment/0015).
+    await expect(run(closeZeroBill(billId))).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillNotZero", reason: "totalNotZero" },
+    })
+    await run.orThrow(cancelBill(billId))
+    await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("canceled")
+  }, 15_000)
+
+  test("freezes each goods line's share of the discount with the payment, which its VAT recap reads", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+    const billId = await createDiscountedBill(deps, -300)
+
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
         billId,
         tableId: null,
-        amount: NonNegativeInteger(0),
+        amount: NonNegativeInteger(700),
         currency: "CZK",
         tipAmount: NonNegativeInteger(0),
         canceledAt: null,
@@ -2862,16 +3421,133 @@ describe("payment actions", () => {
       })
     )
 
+    const loadFrozen = async () =>
+      paymentLinesToBillLineSummaries(
+        await evolu.loadQuery(paymentLinesByPaymentIdQuery(paymentId)),
+        await evolu.loadQuery(itemsByPaymentIdQuery(paymentId))
+      )
+    // The coffee bears the whole discount; the discount line is kept as it
+    // stands, for the payment detail to show, and bears no share itself.
+    await expect
+      .poll(async () =>
+        (await loadFrozen()).map(({ name, totalAmount, discountShare }) => ({
+          name,
+          totalAmount,
+          discountShare,
+        }))
+      )
+      .toEqual(
+        expect.arrayContaining([
+          { name: "Coffee", totalAmount: 1_000, discountShare: -300 },
+          { name: "Discount", totalAmount: -300, discountShare: null },
+        ])
+      )
+    // What the payment detail and the Qerko receipt count VAT from: the
+    // coffee at its net 700, and no row for the discount.
+    expect(calculateTaxRecap(await loadFrozen(), [])).toEqual([
+      {
+        taxRateId: null,
+        name: null,
+        ratePercentage: null,
+        baseAmount: 700,
+        taxAmount: 0,
+        grossAmount: 700,
+      },
+    ])
+  }, 15_000)
+
+  test("a tip does not lift a bill whose goods come to less than zero into one that can be paid", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const billId = await createDiscountedBill(deps, -1_500)
+    await run.orThrow(
+      addTipToBill({
+        billId,
+        deviceId: null,
+        name: NonEmptyString255("Tip"),
+        currency: "CZK",
+        totalAmount: NonNegativeInteger(5_000),
+      })
+    )
+    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
+      billTotal: 4_500,
+    })
+
     await expect(
-      run(markPaymentPaidCash({ paymentId, accountId: cashRegisterAccountId }))
-    ).resolves.toMatchObject({ ok: true })
+      run(
+        createPayment({
+          deviceId: null,
+          billId,
+          tableId: null,
+          amount: NonNegativeInteger(4_500),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(5_000),
+          canceledAt: null,
+          expiresAt: null,
+        })
+      )
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "BillTotalNotPositive", goodsTotal: -500 },
+    })
+  }, 15_000)
+
+  test("a bill with a free item and a positive total is paid as any other", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+
+    const billId = await run.ok(
+      createBill({
+        deviceId: null,
+        displayNumber: PositiveInteger(1),
+        label: null,
+        tableId: null,
+        currency: "CZK",
+      })
+    )
+    for (const [name, amount] of [
+      ["Bread basket", 0],
+      ["Soup", 8_900],
+    ] as const) {
+      await run.orThrow(
+        addManualAmountToBill({
+          billId,
+          deviceId: null,
+          name: NonEmptyString255(name),
+          currency: "CZK",
+          totalAmount: NonNegativeInteger(amount),
+        })
+      )
+    }
+    const paymentId = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId,
+        tableId: null,
+        amount: NonNegativeInteger(8_900),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        cashRegister: { accountId: cashRegisterAccountId },
+      })
+    )
+    await run.orThrow(
+      markPaymentPaidCash({ paymentId, accountId: cashRegisterAccountId })
+    )
 
     await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
-    await expect(run.ok(loadBillCoverage(billId))).resolves.toMatchObject({
-      billTotal: 0,
-      claimedSum: 0,
-      coverage: "paid",
-    })
   }, 15_000)
 
   test("takes a card payment on the terminal and settles it", async () => {
@@ -3597,6 +4273,100 @@ describe("payment actions", () => {
       await expect(
         ctx.evolu.loadQuery(cashReceivedByPaymentIdQuery(ctx.paymentId))
       ).resolves.toEqual([{ receivedAmount: null }])
+    }, 15_000)
+  })
+
+  describe("cash that rounds to nothing", () => {
+    // Created as the apps create it, without a method's details: the bank
+    // QR and Lightning, turned on beside cash, take 0.40.
+    const createKeypadPayment = async (
+      deps: EvoluDep & EvoluOwnerDep & DateDep,
+      amount: number,
+      tipAmount = 0
+    ): Promise<PaymentId> => {
+      await using run = testCreateRun(deps)
+      return await run.orThrow(
+        createPayment({
+          deviceId: null,
+          billId: null,
+          tableId: null,
+          amount: NonNegativeInteger(amount),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(tipAmount),
+          canceledAt: null,
+          expiresAt: null,
+        })
+      )
+    }
+
+    test("markPaymentPaidCash refuses a CZK payment of 0.40 and settles one of 0.50", async () => {
+      await using testEvolu = await createEvoluTest()
+      const { evolu } = testEvolu
+      const deps = {
+        ...evoluTestDeps(evolu),
+        ...createTestDateDep(),
+      } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      await using run = testCreateRun(deps)
+      const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+      const fortyId = await createKeypadPayment(deps, 40)
+      const fiftyId = await createKeypadPayment(deps, 50)
+
+      await expect(
+        run(
+          markPaymentPaidCash({
+            paymentId: fortyId,
+            accountId: cashRegisterAccountId,
+          })
+        )
+      ).resolves.toEqual({
+        ok: false,
+        error: {
+          type: "CashAmountRoundsToZero",
+          id: fortyId,
+          amount: 40,
+          tipAmount: 0,
+          currency: "CZK",
+        },
+      })
+      await expect(
+        evolu.loadQuery(activeReconciliationClaimsByPaymentIdQuery(fortyId))
+      ).resolves.toEqual([])
+
+      await expect(
+        run(
+          markPaymentPaidCash({
+            paymentId: fiftyId,
+            accountId: cashRegisterAccountId,
+            receivedAmount: NonNegativeInteger(100),
+          })
+        )
+      ).resolves.toEqual({ ok: true, value: fiftyId })
+    }, 15_000)
+
+    test("markPaymentPaidCash does not let a tip lift goods cash rounds to nothing", async () => {
+      await using testEvolu = await createEvoluTest()
+      const { evolu } = testEvolu
+      const deps = {
+        ...evoluTestDeps(evolu),
+        ...createTestDateDep(),
+      } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      await using run = testCreateRun(deps)
+      const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+      // 0.40 of goods and 50 of tip.
+      const paymentId = await createKeypadPayment(deps, 5_040, 5_000)
+
+      await expect(
+        run(
+          markPaymentPaidCash({
+            paymentId,
+            accountId: cashRegisterAccountId,
+            receivedAmount: NonNegativeInteger(5_100),
+          })
+        )
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { type: "CashAmountRoundsToZero", id: paymentId },
+      })
     }, 15_000)
   })
 })

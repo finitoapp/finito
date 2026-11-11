@@ -35,7 +35,7 @@ where it is specified; the specification wins over this page.
   Not the café's menu of dishes; that is the **catalog**.
 - **Catalog** (tab) — the menu tab holding the catalog items, categories
   and tables under `/catalog`, behind the `catalog` permission
-  (`docs/decisions/access/0010`). Finito has no catalog tab: its items and
+  (`docs/decisions/access/0012`). Finito has no catalog tab: its items and
   tables are set up under `/settings`, and Notifications take the tab's
   place (`docs/decisions/navigation/0004`).
 - **Notification** (`JobNotification`,
@@ -55,6 +55,13 @@ where it is specified; the specification wins over this page.
 - **Item** (`item`) — an immutable snapshot of what was sold (name, price,
   tax rate) that bill lines point at. Its `catalogItemId` is null for a
   manual amount or a tip.
+- **Discount** — a catalog item priced below zero, a fixed amount taken off
+  the bill and sold like any other item (`docs/decisions/catalog/0002`). It
+  has no VAT rate: before VAT is counted it is spread over the bill's goods
+  in proportion to their prices (`docs/decisions/catalog/0003`). There is no
+  separate "discount" type; the sign of `unitAmount` makes one, and it is set
+  only when the item is created. Not a percentage discount on a whole bill,
+  which the app does not have.
 - **Bill** (`bill`) — the tab: lines, an optional table, a total. Its status
   (`open`/`closed`/`canceled`) is derived, never stored
   (`docs/bill-payment-states.md`). In the UI a canceled bill is

@@ -26,7 +26,7 @@ the app can make.
 
 - **What.** Only what the payment still allows: **the whole payment**, every
   goods amount left and the tip if it was not refunded; **part**, goods only
-  by amount or, from a bill's only payment, by items (refund/0002, 0005),
+  by amount or, from a bill's only payment, by items (refund/0014, 0005),
   never the tip (refund/0011); **only the tip**, the whole tip once
   (refund/0011). The screen starts on the whole payment.
 - **How.** Every method suits every choice, where the payment and the device
@@ -84,7 +84,7 @@ runs.
 - `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > offers the whole payment with its tip, the goods alone, and the tip alone`
 - `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > offers only the tip once the goods are all back`
 - `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > offers nothing when nothing is left`
-- `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > offers items only beside an amount, from a bill's only payment (refund/0002)`
+- `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > offers items only beside an amount, from a bill's only payment (refund/0014)`
 - `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > starts a payment that came by $kinds on $method`
 - `packages/app-shared/src/refund-form.test.ts > deriveRefundOptions > keeps the method a new choice allows, else takes its first`
 - `packages/app-shared/src/refund-form.test.ts > describeRefundOutcome > a whole card payment taken back needs no card (refund/0008)`

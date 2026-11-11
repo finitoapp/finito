@@ -178,7 +178,7 @@ const setup = async ({
         currency: "CZK",
       })
     )
-    const catalogItemId = await run.ok(
+    const catalogItemId = await run.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId: null,
@@ -196,6 +196,7 @@ const setup = async ({
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(2),
+        expectedDiscount: null,
       })
     )
   }

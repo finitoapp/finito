@@ -1,9 +1,12 @@
+import { cartWriteErrorKeys } from "@payky/app-shared/bill-checkout"
 import {
   type CartLine,
+  cartWriteDiscardAction,
+  type DiscardCheckedLine,
   invertLine,
-  linesNeedDiscard,
 } from "@payky/app-shared/cart-lines"
 import {
+  type AddBillLineError,
   addCatalogItemToBill,
   appendGuardedBillLines,
   appendRemoveBillLine,
@@ -24,10 +27,7 @@ import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { itemsByBillIdQuery } from "@payky/core/modules/item/item-queries"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
-import {
-  NonNegativeInteger,
-  PositiveNumber,
-} from "@payky/core/modules/shared/schema"
+import { type Integer, PositiveNumber } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { useStore } from "jotai"
 import { useRef, useState } from "react"
@@ -40,19 +40,18 @@ import { useEvolu } from "@/hooks/use-evolu.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /**
- * Shows a toast for a failed cart mutation. `BillLocked` gets its own
- * message (reusing the same copy as the bill page's "locked" state) since
- * it is now a routine, expected outcome — a pending payment on the bill —
- * not a rare error; everything else falls back to the generic save-failed
+ * Shows a toast for a failed cart mutation, through `cartWriteErrorKeys`:
+ * `BillLocked` reuses the bill page's "locked" copy, being a routine outcome
+ * (a pending payment on the bill) rather than a rare error, and
+ * `BillTotalBelowPaid` says why a partly paid bill refused the write
+ * (payment/0014); everything else falls back to the generic save-failed
  * message. See docs/bill-payment-states.md.
  */
 const showCartMutationErrorToast = (
   t: ReturnType<typeof useTranslation>["t"],
-  error: { readonly type: string }
+  error: AddBillLineError
 ): void => {
-  toast.error(
-    error.type === "BillLocked" ? t("bill.locked") : t("app.saveFailed")
-  )
+  toast.error(t(cartWriteErrorKeys[error.type]))
 }
 
 type CartHistoryEntry = ReadonlyArray<CartLine>
@@ -98,10 +97,14 @@ export function useCartBill({
   const jotaiStore = useStore()
   const { t } = useTranslation()
   const { require } = useRequirePermission()
-  /** The one place the cart checks `discard`, on the lines about to be written. */
-  const mayWrite = async (lines: ReadonlyArray<Pick<CartLine, "kind">>) =>
-    !linesNeedDiscard(lines) ||
-    (await require("discard", "access.action.removeLines"))
+  /**
+   * The one place the cart checks `discard`, on the lines about to be written
+   * (access/0012): a `remove` line or a discount.
+   */
+  const mayWrite = async (lines: ReadonlyArray<DiscardCheckedLine>) => {
+    const action = cartWriteDiscardAction(lines)
+    return action === null || (await require("discard", action))
+  }
   // The stacks live in refs, with only the two derived booleans in state to
   // drive re-renders. They're read from callbacks that outlive the render
   // that created them — `bill-page.tsx`'s undo toast is clicked seconds
@@ -240,8 +243,22 @@ export function useCartBill({
     }
   }
 
+  /**
+   * A tap on an item, or a scan. A discount is checked before the bill row is
+   * created, so a refused one leaves no empty bill behind; the core refuses
+   * the add when the reloaded row's sign no longer matches this one
+   * (`expectedDiscount`), so a stale row cannot skip the check.
+   */
   const addQuantity = (catalogItem: CatalogItemRow, quantity: PositiveNumber) =>
     runQueued(async () => {
+      // The unit price carries the line's sign; `quantity` is positive.
+      if (
+        !(await mayWrite([
+          { kind: "add", totalAmount: catalogItem.unitAmount },
+        ]))
+      ) {
+        return false
+      }
       await ensureBillExists()
       const { device } = await jotaiStore.get(accountAtom)
       await using run = appRun()
@@ -252,6 +269,7 @@ export function useCartBill({
           deviceId: device.id,
           catalogItemId: catalogItem.id,
           quantity,
+          expectedDiscount: catalogItem.unitAmount < 0,
         })
       )
       if (!result.ok) {
@@ -261,18 +279,10 @@ export function useCartBill({
         return false
       }
 
-      record([
-        {
-          billId,
-          deviceId: device.id,
-          catalogItemId: catalogItem.id,
-          itemId: result.value.itemId,
-          type: "catalogItem",
-          kind: "add",
-          quantity,
-          totalAmount: NonNegativeInteger(catalogItem.unitAmount * quantity),
-        },
-      ])
+      // What the core wrote, not this render's catalog row times `quantity`:
+      // the core reloads the row, which may carry a new price by now, and
+      // rounds a fractional quantity. Undo then takes off exactly that.
+      record([result.value.line])
 
       return true
     })
@@ -289,10 +299,10 @@ export function useCartBill({
   const removeFromCart = (
     summary: BillLineSummary,
     quantity: PositiveNumber,
-    totalAmount: NonNegativeInteger
+    totalAmount: Integer
   ) =>
     runQueued(async () => {
-      if (!(await mayWrite([{ kind: "remove" }]))) return false
+      if (!(await mayWrite([{ kind: "remove", totalAmount }]))) return false
       const { device } = await jotaiStore.get(accountAtom)
       await using run = appRun()
       const result = await run(

@@ -6,6 +6,7 @@ import {
   deriveSplitItems,
   selectAllForSplit,
   setSplitQuantity,
+  splitNeedsDiscard,
 } from "./split-selection.ts"
 
 const beer = {
@@ -40,6 +41,46 @@ describe("split selection", () => {
       quantity: 2,
       totalAmount: 100,
     })
+  })
+
+  test("moves part of a discount line at its negative unit amount, and a whole line at its own total", () => {
+    const discount = {
+      id: "line-3",
+      quantity: 2,
+      totalAmount: -1_000,
+    } as unknown as BillLineSummary
+    const oddDiscount = {
+      id: "line-4",
+      quantity: 3,
+      totalAmount: -100,
+    } as unknown as BillLineSummary
+
+    expect(
+      deriveSplitItems([discount, oddDiscount], { "line-3": 1, "line-4": 3 })
+    ).toMatchObject([
+      { id: "line-3", quantity: 1, totalAmount: -500 },
+      // 3 x the rounded −33 would be −99, not the −100 the line holds.
+      { id: "line-4", quantity: 3, totalAmount: -100 },
+    ])
+  })
+
+  test("a selection with a discount line in it needs discard, goods alone do not (access/0012)", () => {
+    const discount = {
+      id: "line-3",
+      quantity: 2,
+      totalAmount: -1_000,
+    } as unknown as BillLineSummary
+
+    expect(
+      splitNeedsDiscard(
+        deriveSplitItems([beer, cake], { "line-1": 3, "line-2": 1 })
+      )
+    ).toBe(false)
+    expect(
+      splitNeedsDiscard(
+        deriveSplitItems([beer, discount], { "line-1": 1, "line-3": 1 })
+      )
+    ).toBe(true)
   })
 
   test("needs items, no pending split and a target for an existing bill", () => {

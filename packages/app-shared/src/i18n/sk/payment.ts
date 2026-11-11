@@ -1,7 +1,11 @@
 import type { enPayment } from "../en/payment.ts"
 
 export const skPayment = {
+  "payment.create.billTotalNotPositive":
+    "Účet vychádza na nulu alebo pod ňu, nie je čo zaplatiť.",
   "payment.create.error": "Platbu sa nepodarilo vytvoriť.",
+  "payment.create.noPayableMethod":
+    "Túto sumu neprijme žiadna zapnutá platobná metóda: hotovosť ju zaokrúhli na nulu.",
   "payment.status.canceled": "Zrušené",
   "payment.status.expired": "Vypršalo",
   "payment.status.paid": "Zaplatené",
@@ -238,6 +242,8 @@ export const skPayment = {
   "paymentWait.cashPaid.action": "Označiť ako zaplatené",
   "paymentWait.cashPaid.difference": "Rozdiel oproti útrate: {amount}",
   "paymentWait.cashPaid.error": "Platbu sa nepodarilo označiť ako zaplatenú.",
+  "paymentWait.cashPaid.notPayable":
+    "Túto platbu nie je možné zaplatiť v hotovosti: po zaokrúhlení pre hotovosť vychádza na nulu.",
   "paymentWait.cashPaid.pending": "Označujem ako zaplatené...",
   "paymentWait.cashPaid.prompt": "Prijmite hotovostnú platbu",
   "paymentWait.cashPaid.received": "Prijatá hotovosť",

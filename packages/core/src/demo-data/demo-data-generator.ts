@@ -518,7 +518,7 @@ export const generateDemoData =
           })
         )
         for (const entry of category.items) {
-          const id = await demoRun.ok(
+          const id = await demoRun.orThrow(
             createCatalogItemAtEnd({
               deviceId: counterDevice,
               categoryId,
@@ -577,6 +577,7 @@ export const generateDemoData =
               deviceId,
               catalogItemId: pickItem(minuteOfDay).id,
               quantity: PositiveNumber(random.chance(0.15) ? 2 : 1),
+              expectedDiscount: null,
             })
           )
           advance(random.int(3, 12) * second)

@@ -19,21 +19,30 @@ import { BillId } from "./bill-types.ts"
  *
  * - `canceledAt` — set once, never cleared. An explicit human decision to
  *   discard the bill.
- * - `confirmedClosedAt` — set once, never cleared, by
- *   `confirmBillClosedDespiteCancellation`. Staff's explicit resolution of
- *   the canceled+funded collision: acknowledges that the bill's payments
- *   already cover its total despite the cancellation, and flips the
- *   *derived* status from `canceled` to `closed`. Mirrors
- *   `payment.confirmedPaidAt`.
+ * - `confirmedClosedAt` — set once, never cleared. Staff confirmed the bill
+ *   closed, which makes the *derived* status `closed` whatever else is true
+ *   of it. Mirrors `payment.confirmedPaidAt`, and has two sources:
+ *   `confirmBillClosedDespiteCancellation`, the resolution of the
+ *   canceled+funded collision (the bill's payments already cover its total
+ *   despite the cancellation), and `closeZeroBill`, "Finish" on a bill whose
+ *   goods come to exactly zero, which no payment can settle (payment/0013).
+ *   A line a device adds after the closing, not having seen it yet, leaves
+ *   the bill closed and underpaid.
  * - `closedAt` — a best-effort, self-healing *cache*, not a source of
  *   truth: written (idempotently) whenever a claim brings the bill's
- *   coverage out of `underpaid`, regardless of `canceledAt`. Nothing that
- *   decides money-correctness (guards, derived status) reads it — it
- *   exists only so `openBillsQuery` can filter cheaply without scanning
- *   every bill's coverage. It can lag behind the true derived status after
- *   a rare multi-device race (two split payments confirmed nearly
- *   simultaneously offline); that only means a bill briefly lingers in the
- *   "open" list a bit longer, never a wrong guard decision.
+ *   coverage out of `underpaid`, regardless of `canceledAt`; by a cart write
+ *   that brings a partly paid bill's total down to exactly what was paid, in
+ *   the same batch as its lines (`requireCartWriteNotBelowPaid`,
+ *   payment/0014); and by `closeZeroBill` together with
+ *   `confirmedClosedAt`. Nothing that decides money-correctness (guards,
+ *   derived status) reads it — it exists only so `openBillsQuery` can
+ *   filter cheaply without scanning every bill's coverage. It can lag behind
+ *   the true derived status after a rare multi-device race (two split
+ *   payments confirmed nearly simultaneously offline, or a cart write on one
+ *   device racing a payment on another); that only means a bill briefly
+ *   lingers in the "open" list a bit longer, never a wrong guard decision.
+ *   Bills a cart write closed before payment/0014, with no `closedAt`, are
+ *   repaired by hand through `cli bills close`.
  */
 export const bill = {
   id: BillId,

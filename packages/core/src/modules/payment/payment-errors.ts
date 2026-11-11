@@ -16,14 +16,16 @@ import type {
   YadioHttpError,
 } from "../../integrations/yadio/yadio-client.ts"
 import type { SwitchioPaymentError } from "../../switchio.ts"
-import type { AccountId } from "../account/account-types.ts"
+import type { AccountId, AccountKind } from "../account/account-types.ts"
 import type {
   BillNotFoundError,
   BillStatusNotAllowedError,
+  BillTotalNotPositiveError,
 } from "../bill/bill-guards.ts"
 import type { QerkoPluginNotPairedError } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type {
   FiatCurrency,
+  Integer,
   NonEmptyString255,
   NonNegativeInteger,
 } from "../shared/schema.ts"
@@ -33,7 +35,27 @@ import type {
   PaymentStatus,
 } from "./payment-types.ts"
 
-export type CreatePaymentError = BillNotFoundError | BillStatusNotAllowedError
+/**
+ * A payment refused at creation because none of the payment methods it
+ * would offer can collect its goods once it rounds them
+ * (`isPayableThroughAnyMethod`, payment/0012). Only cash rounds, so this is
+ * a shop whose one method the payment screen shows is cash (payment/0017),
+ * and a CZK charge of 0.01–0.49. `goodsTotal` is the goods refused: the
+ * payment's amount without its tip, or a bill's lines without its tip
+ * lines; `methods` the methods judged.
+ */
+export const createNoPayableMethodError = defineError("NoPayableMethod")<{
+  readonly goodsTotal: Integer
+  readonly currency: FiatCurrency
+  readonly methods: ReadonlyArray<AccountKind>
+}>()
+export type NoPayableMethodError = ReturnType<typeof createNoPayableMethodError>
+
+export type CreatePaymentError =
+  | BillNotFoundError
+  | BillStatusNotAllowedError
+  | BillTotalNotPositiveError
+  | NoPayableMethodError
 
 export const createPaymentNotFoundError = defineError("PaymentNotFound")<{
   readonly id: PaymentId
@@ -191,9 +213,28 @@ export type CashReceivedBelowChargeError = ReturnType<
   typeof createCashReceivedBelowChargeError
 >
 
+/**
+ * Cash was asked to settle a payment it cannot take: its goods — its amount
+ * without the tip — round to nothing in cash (`isCashPayable`,
+ * payment/0012), a CZK payment of 0.01–0.49. The payment screen offers no
+ * cash for it; this holds the rule for every other caller.
+ */
+export const createCashAmountRoundsToZeroError = defineError(
+  "CashAmountRoundsToZero"
+)<{
+  readonly id: PaymentId
+  readonly amount: NonNegativeInteger
+  readonly tipAmount: NonNegativeInteger
+  readonly currency: FiatCurrency
+}>()
+export type CashAmountRoundsToZeroError = ReturnType<
+  typeof createCashAmountRoundsToZeroError
+>
+
 export type MarkPaymentPaidCashError =
   | PaymentNotFoundError
   | PaymentCanceledError
+  | CashAmountRoundsToZeroError
   | CashRegisterAccountNotFoundError
   | AccountCurrencyMismatchError
   | CashReceivedBelowChargeError

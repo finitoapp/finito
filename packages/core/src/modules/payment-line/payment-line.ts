@@ -6,7 +6,7 @@ import { ItemId, ItemLineTypeSchema } from "../item/item-types.ts"
 import { PaymentId } from "../payment/payment-types.ts"
 import {
   type InferTable,
-  NonNegativeIntegerSchema,
+  IntegerSchema,
   PositiveNumberSchema,
 } from "../shared/schema.ts"
 import { PaymentLineId } from "./payment-line-types.ts"
@@ -19,6 +19,14 @@ import { PaymentLineId } from "./payment-line-types.ts"
  * since this payment was made (see `deriveBillLineSummaryDiff` in
  * `bill-line-utils.ts`), not just that the amounts no longer match. See
  * docs/bill-payment-states.md's "Bill payment coverage" section.
+ *
+ * `discountShare` freezes the line's part of the bill's discount
+ * (`allocateDiscount`, catalog/0003), so the payment's VAT recap, its Qerko
+ * receipt and a refund of the line read the net amount it was paid at
+ * (`deriveLineNetAmount`) even if the allocation is ever changed. Zero or
+ * less on a goods line of a discounted bill; `null` on a discount line, a
+ * tip, every line of a bill without a discount, and every line frozen before
+ * the column existed, which all net to their own `totalAmount`.
  */
 export const paymentLine = {
   id: PaymentLineId,
@@ -28,7 +36,8 @@ export const paymentLine = {
   itemId: ItemId,
   type: ItemLineTypeSchema,
   quantity: PositiveNumberSchema,
-  totalAmount: NonNegativeIntegerSchema,
+  totalAmount: IntegerSchema,
+  discountShare: IntegerSchema.nonpositive().nullable(),
 } as const
 
 export const paymentLineIndexes = ((create) => [

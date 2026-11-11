@@ -648,6 +648,11 @@ export const skSettings = {
     "Popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.description.label": "Popis",
   "catalog.items.form.description.placeholder": "Nepovinné",
+  "catalog.items.form.discount.description":
+    "Odpočíta sa od účtu. Nemá sadzbu DPH: rozpočíta sa na tovar účtu pomerne k jeho cenám.",
+  "catalog.items.form.discount.existing":
+    "Táto položka je zľava: suma sa odpočíta od účtu. To, či je položka zľavou, sa dá nastaviť len pri jej pridaní.",
+  "catalog.items.form.discount.label": "Zľava",
   "catalog.items.form.internalDescription.invalid":
     "Interný popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalDescription.label": "Interný popis",
@@ -665,8 +670,15 @@ export const skSettings = {
   "catalog.items.form.name.label": "Názov",
   "catalog.items.form.name.placeholder": "napr. Káva",
   "catalog.items.form.notFound": "Táto položka už neexistuje.",
+  "catalog.items.form.price.discountWithTaxRate": "Zľava nemá sadzbu DPH.",
+  "catalog.items.form.price.discountZero":
+    "Zadajte sumu, ktorú zľava odpočíta.",
   "catalog.items.form.price.invalid": "Zadajte platnú cenu.",
   "catalog.items.form.price.label": "Cena",
+  "catalog.items.form.price.signChange":
+    "Zo zľavy sa nedá urobiť položka ani z položky zľava. Pridajte novú položku.",
+  "catalog.items.form.price.zeroWithoutTaxRate":
+    "Položka zadarmo potrebuje sadzbu DPH. Vyberte ju alebo zadajte cenu.",
   "catalog.items.form.save.create": "Pridať položku",
   "catalog.items.form.saved.create": "Položka bola pridaná.",
   "catalog.items.form.scanCode.duplicate": "Už je priradený položke {name}.",
@@ -1165,6 +1177,8 @@ export const skSettings = {
   "settings.paymentAccounts.nav.none": "Žiadne",
   "settings.taxRates.nav.description": "Sadzby DPH pre vaše položky",
   "access.action.acknowledgeExcess": "Potvrdiť preplatok",
+  "access.action.addDiscount": "Pridať zľavu na účet",
+  "access.action.moveDiscount": "Presunúť zľavu na iný účet",
   "access.action.aiAccess": "Zmeniť prístup AI k dátam",
   "access.action.cashuMints": "Zmeniť minty Cashu",
   "access.action.moveCashuFunds": "Presunúť prostriedky medzi mintami",
@@ -1180,6 +1194,7 @@ export const skSettings = {
   "access.action.revealRecoveryPhrase": "Zobraziť obnovovaciu frázu",
   "access.action.discardBill": "Zahodiť účet",
   "access.action.enable": "Zapnúť riadenie prístupu so súčasným PINom",
+  "access.action.finishBill": "Dokončiť účet bez platby",
   "access.action.markCashPaid": "Potvrdiť prijatie hotovosti",
   "access.action.markIbanPaid": "Potvrdiť príchod prevodu",
   "access.action.removeAccount": "Odobrať účet z tohto zariadenia",

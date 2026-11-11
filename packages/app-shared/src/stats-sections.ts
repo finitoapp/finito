@@ -46,6 +46,38 @@ export const rankItems = (
     (a, b) => b[metric] - a[metric] || a.name.localeCompare(b.name)
   )
 
+export interface ItemSalesSplit {
+  /** What was sold, to rank. */
+  readonly items: ReadonlyArray<ItemSalesRow>
+  /** The discounts given, as one figure; `null` when there were none. */
+  readonly discounts: {
+    readonly quantity: number
+    /** Below zero. */
+    readonly amount: number
+  } | null
+}
+
+/**
+ * One currency's item rows with the discounts (items priced below zero,
+ * catalog/0002) taken out of the ranking and summed into one group of their
+ * own, so a discount never ranks as an item that lost money.
+ */
+export const splitItemSales = (
+  rows: ReadonlyArray<ItemSalesRow>
+): ItemSalesSplit => {
+  const discountRows = rows.filter((row) => row.isDiscount === 1)
+  return {
+    items: rows.filter((row) => row.isDiscount !== 1),
+    discounts:
+      discountRows.length === 0
+        ? null
+        : {
+            quantity: discountRows.reduce((sum, row) => sum + row.quantity, 0),
+            amount: discountRows.reduce((sum, row) => sum + row.amount, 0),
+          },
+  }
+}
+
 export interface CategoryShare {
   readonly key: string
   /** `null` is "Uncategorized", unless `keypad`: the sales without items. */
@@ -88,8 +120,12 @@ export const categoryShares = ({
       })),
   ]
   const total = rows.reduce((sum, row) => sum + row.amount, 0)
+  // Kept to 0..1 even if a row nets below zero: a bar is drawn as this
+  // fraction of its track, and a negative width would fill the whole track.
+  const shareOf = (amount: number) =>
+    total <= 0 ? 0 : Math.min(1, Math.max(0, amount / total))
   return rows
-    .map((row) => ({ ...row, share: total === 0 ? 0 : row.amount / total }))
+    .map((row) => ({ ...row, share: shareOf(row.amount) }))
     .sort((a, b) => b.amount - a.amount)
 }
 

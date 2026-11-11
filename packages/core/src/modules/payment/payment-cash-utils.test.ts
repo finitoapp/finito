@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 import { NonNegativeInteger } from "../shared/schema.ts"
 import {
   deriveReceivedTipAmount,
+  isCashPayable,
   roundCashAmount,
 } from "./payment-cash-utils.ts"
 
@@ -48,4 +49,29 @@ describe("deriveReceivedTipAmount", () => {
       ).toBe(tipReceived)
     }
   )
+})
+
+describe("isCashPayable", () => {
+  const cashPayable = (
+    amount: number,
+    tipAmount = 0,
+    currency: "CZK" | "EUR" = "CZK"
+  ) =>
+    isCashPayable({
+      amount: NonNegativeInteger(amount),
+      tipAmount: NonNegativeInteger(tipAmount),
+      currency,
+    })
+
+  test("refuses cash for a CZK payment of 0.40, which cash rounds to nothing", () => {
+    expect(cashPayable(40)).toBe(false)
+    expect(cashPayable(50)).toBe(true)
+    // Only CZK cash rounds.
+    expect(cashPayable(40, 0, "EUR")).toBe(true)
+  })
+
+  test("does not let a tip make cash take a payment whose goods come to nothing", () => {
+    expect(cashPayable(540, 500)).toBe(false)
+    expect(cashPayable(600, 500)).toBe(true)
+  })
 })

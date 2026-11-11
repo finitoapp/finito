@@ -1,6 +1,11 @@
 import { sqliteTrue } from "@evolu/common"
+import {
+  billCheckoutHintKeys,
+  deriveBillCheckout,
+} from "@payky/app-shared/bill-checkout"
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
 import { useRedirectIfClosedOnOpen } from "@payky/app-shared/use-redirect-if-closed-on-open"
+import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { cancelBill } from "@payky/core/modules/bill/bill-actions"
@@ -26,6 +31,7 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import type { PaymentId } from "@payky/core/modules/payment/payment-types"
+import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import {
   type FiatCurrency,
   Integer,
@@ -102,6 +108,7 @@ import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
+import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { CategoryFilterBar } from "../shared/category-filter-bar.tsx"
@@ -119,6 +126,7 @@ import { ItemQuantityDialog } from "./item-quantity-controls.tsx"
 import { ScanCodeCollisionDialog } from "./scan-code-collision-dialog.tsx"
 import { SplitBillDialog } from "./split-bill-dialog.tsx"
 import { useCartBill } from "./use-cart-bill.ts"
+import { useFinishBill } from "./use-finish-bill.ts"
 import { useSplitBill } from "./use-split-bill.ts"
 
 /** The category filters, plus "on the bill": only what the bill holds. */
@@ -180,6 +188,8 @@ function BillPage({
         ...billStateQueries(billId),
         tablesQuery,
         settingsQuery,
+        enabledPaymentMethodAccountsQuery,
+        qerkoPluginQuery("standard"),
         catalogItemsQuery,
         catalogCategoriesQuery,
       ],
@@ -219,6 +229,8 @@ function BillPage({
   // Back onto the screen still mounted decides again. A cancellation
   // collision (canceled but funded) stays here: it is resolved from
   // activity/refund, which arrive later.
+  // Owned here rather than by the cart, which the closed bill unmounts.
+  const finishBill = useFinishBill(billId)
   const visit = useScreenVisit()
   const closedOnOpen = useRedirectIfClosedOnOpen(
     `${billId}@${visit}`,
@@ -231,7 +243,8 @@ function BillPage({
         params: { billId },
       })
   )
-  if (closedOnOpen)
+  // Finished here: home is on its way, so no "bill closed" message first.
+  if (closedOnOpen || (finishBill.closing && billStatus?.status === "closed"))
     return (
       <YStack flex={1} items="center" justify="center">
         <ActivityIndicator size="large" />
@@ -271,6 +284,8 @@ function BillPage({
       tipsEnabled={settings?.tipsEnabled === sqliteTrue}
       summaries={summaries}
       initialScanCode={initialScanCode}
+      onFinish={finishBill.finish}
+      finishPending={finishBill.pending}
     />
   )
 }
@@ -420,6 +435,8 @@ function BillCart({
   tipsEnabled,
   summaries,
   initialScanCode,
+  onFinish,
+  finishPending,
 }: {
   readonly billId: BillId
   /** Whether `billId`'s row is written yet; until then there is nothing to discard. */
@@ -435,6 +452,9 @@ function BillCart({
   readonly tipsEnabled: boolean
   readonly summaries: ReadonlyArray<BillLineSummary>
   readonly initialScanCode: string | undefined
+  /** `BillPage`'s `useFinishBill`, for Finish in Charge's place. */
+  readonly onFinish: () => Promise<void>
+  readonly finishPending: boolean
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -475,22 +495,37 @@ function BillCart({
   const chargePendingRef = useRef(false)
   const [chargePending, setChargePending] = useState(false)
 
+  // Charge, or Finish in its place for a bill whose goods come to zero.
+  const paymentAccounts = useEvoluQuery(enabledPaymentMethodAccountsQuery).data
+  const [qerkoPaymentPlugin] = useEvoluQuery(qerkoPluginQuery("standard")).data
+  const checkout = deriveBillCheckout({
+    summaries,
+    currency,
+    paymentAccounts,
+    cardTerminalLinked: isSwitchioSupported(),
+    qerkoRestaurantPaired: (qerkoPaymentPlugin?.restaurantId ?? null) !== null,
+  })
+  const checkoutHintKey = billCheckoutHintKeys[checkout]
+
   // The payment's amounts and bill-line snapshot are core's
   // (`createPreparedPayment` with `billId`); this only picks the route.
   const charge = async () => {
-    if (summaries.length === 0 || chargePendingRef.current) return
+    if (checkout !== "charge" || chargePendingRef.current) return
+    // Charge is offered only for goods above zero (`deriveBillCheckout`), so
+    // the bill's total is never negative here (payment/0015).
+    const amount = NonNegativeInteger(totalAmount)
     chargePendingRef.current = true
     setChargePending(true)
     try {
       if (tipsEnabled) {
         router.push({
           pathname: "/payment/tip",
-          params: { amount: String(totalAmount), currency, billId },
+          params: { amount: String(amount), currency, billId },
         })
         return
       }
       await createTerminalPayment({
-        amount: totalAmount,
+        amount,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
@@ -1008,27 +1043,61 @@ function BillCart({
                 label={tableName ?? t("bill.table.assign")}
                 onPress={() => setTablePickerOpen(true)}
               />
-              <Button
-                flex={1}
-                h={48}
-                aria-label={t("home.pay")}
-                pending={chargePending}
-                disabled={summaries.length === 0}
-                onPress={() => {
-                  hapticButtonPress()
-                  void charge()
-                }}
-              >
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  fontWeight={fontWeight.bold}
-                  color="primary-foreground"
+              {checkout === "finish" ? (
+                <Button
+                  flex={1}
+                  h={48}
+                  aria-label={t("bill.finish")}
+                  pending={finishPending}
+                  // A cart write still in flight may change the total.
+                  disabled={cart.pending}
+                  onPress={() => {
+                    hapticButtonPress()
+                    void onFinish()
+                  }}
                 >
-                  {t("home.pay")}
-                </Text>
-              </Button>
+                  <Text
+                    fontSize={fontSize.sm}
+                    lineHeight={fontSize.sm}
+                    fontWeight={fontWeight.bold}
+                    color="primary-foreground"
+                  >
+                    {t("bill.finish")}
+                  </Text>
+                </Button>
+              ) : (
+                <Button
+                  flex={1}
+                  h={48}
+                  aria-label={t("home.pay")}
+                  pending={chargePending}
+                  disabled={checkout !== "charge"}
+                  onPress={() => {
+                    hapticButtonPress()
+                    void charge()
+                  }}
+                >
+                  <Text
+                    fontSize={fontSize.sm}
+                    lineHeight={fontSize.sm}
+                    fontWeight={fontWeight.bold}
+                    color="primary-foreground"
+                  >
+                    {t("home.pay")}
+                  </Text>
+                </Button>
+              )}
             </XStack>
+            {checkoutHintKey === null ? null : (
+              <Text
+                pt={8}
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
+                {t(checkoutHintKey)}
+              </Text>
+            )}
           </CardContent>
         </SafeAreaView>
       </Card>

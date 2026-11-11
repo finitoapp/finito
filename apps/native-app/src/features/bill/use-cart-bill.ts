@@ -1,9 +1,12 @@
+import { cartWriteErrorKeys } from "@payky/app-shared/bill-checkout"
 import {
   type CartLine,
+  cartWriteDiscardAction,
+  type DiscardCheckedLine,
   invertLine,
-  linesNeedDiscard,
 } from "@payky/app-shared/cart-lines"
 import {
+  type AddBillLineError,
   addCatalogItemToBill,
   appendGuardedBillLines,
   appendRemoveBillLine,
@@ -18,7 +21,7 @@ import { getBillLineSummaryUnitAmount } from "@payky/core/modules/bill-line/bill
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   type FiatCurrency,
-  NonNegativeInteger,
+  type Integer,
   PositiveNumber,
 } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
@@ -67,10 +70,14 @@ export function useCartBill({
   const { t } = useTranslation()
   const { require } = useRequirePermission()
   const [pending, setPending] = useState(false)
-  /** The one place the cart checks `discard`, on the lines about to be written. */
-  const mayWrite = async (lines: ReadonlyArray<Pick<CartLine, "kind">>) =>
-    !linesNeedDiscard(lines) ||
-    (await require("discard", "access.action.removeLines"))
+  /**
+   * The one place the cart checks `discard`, on the lines about to be written
+   * (access/0012): a `remove` line or a discount.
+   */
+  const mayWrite = async (lines: ReadonlyArray<DiscardCheckedLine>) => {
+    const action = cartWriteDiscardAction(lines)
+    return action === null || (await require("discard", action))
+  }
   // Refs, as web: an undo toast's action runs long after the render that
   // raised it, and a state snapshot there would pop the wrong entry. Every
   // write runs inside `runQueued`, so they change one operation at a time.
@@ -89,11 +96,10 @@ export function useCartBill({
   }
   const record = (entry: CartHistoryEntry) =>
     setStacks([...undoStackRef.current, entry], [])
-  const reportFailure = (what: string, error: { readonly type: string }) => {
+  /** As web's `showCartMutationErrorToast`, through `cartWriteErrorKeys`. */
+  const reportFailure = (what: string, error: AddBillLineError) => {
     nativeConsole.error(what, error)
-    toast.error(
-      t(error.type === "BillLocked" ? "bill.locked" : "app.saveFailed")
-    )
+    toast.error(t(cartWriteErrorKeys[error.type]))
   }
   const queueRef = useRef<Promise<unknown>>(Promise.resolve())
   const pendingCountRef = useRef(0)
@@ -156,8 +162,21 @@ export function useCartBill({
     }
   }
 
+  /**
+   * A tap on an item, or a scan, as web: a discount is checked before the bill
+   * row is created, and the core refuses the add when the reloaded row's sign
+   * no longer matches this one (`expectedDiscount`).
+   */
   const addQuantity = (catalogItem: CatalogItemRow, quantity: PositiveNumber) =>
     runQueued(async () => {
+      // The unit price carries the line's sign; `quantity` is positive.
+      if (
+        !(await mayWrite([
+          { kind: "add", totalAmount: catalogItem.unitAmount },
+        ]))
+      ) {
+        return false
+      }
       await ensureBillExists()
       await using run = appRun()
       const result = await run(
@@ -166,24 +185,17 @@ export function useCartBill({
           deviceId: device.id,
           catalogItemId: catalogItem.id,
           quantity,
+          expectedDiscount: catalogItem.unitAmount < 0,
         })
       )
       if (!result.ok) {
         reportFailure("Failed to add catalog item to cart", result.error)
         return false
       }
-      record([
-        {
-          billId,
-          deviceId: device.id,
-          catalogItemId: catalogItem.id,
-          itemId: result.value.itemId,
-          type: "catalogItem",
-          kind: "add",
-          quantity,
-          totalAmount: NonNegativeInteger(catalogItem.unitAmount * quantity),
-        },
-      ])
+      // What the core wrote, not this render's catalog row times `quantity`:
+      // the core reloads the row, which may carry a new price by now, and
+      // rounds a fractional quantity. Undo then takes off exactly that.
+      record([result.value.line])
       return true
     })
 
@@ -192,17 +204,17 @@ export function useCartBill({
 
   /**
    * Appends a remove line covering part or all of `summary` (the ledger has no
-   * notion of "one" versus "all"). It takes `discard` (access/0002), checked
+   * notion of "one" versus "all"). It takes `discard` (access/0012), checked
    * on the lines about to be written, at action time: the prompt may be
    * dismissed, and the queue keeps later taps waiting behind it.
    */
   const removeFromCart = (
     summary: BillLineSummary,
     quantity: PositiveNumber,
-    totalAmount: NonNegativeInteger
+    totalAmount: Integer
   ) =>
     runQueued(async () => {
-      if (!(await mayWrite([{ kind: "remove" }]))) return false
+      if (!(await mayWrite([{ kind: "remove", totalAmount }]))) return false
       await using run = appRun()
       const result = await run(
         appendRemoveBillLine({

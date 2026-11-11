@@ -1,5 +1,6 @@
 import {
   type CatalogItemFormErrors,
+  catalogItemPricingErrorKeys,
   parseCatalogItemForm,
 } from "@payky/app-shared/catalog-item-form-schema"
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
@@ -16,10 +17,13 @@ import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   type FiatCurrency,
   NonEmptyString255Schema,
 } from "@payky/core/modules/shared/schema"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import { type ComponentProps, useMemo, useState } from "react"
@@ -38,6 +42,7 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -52,7 +57,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../../components/ui/select.tsx"
-import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import { Switch } from "../../../components/ui/switch.tsx"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
@@ -62,12 +71,26 @@ import { CategoryField } from "./category-field.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 /**
+ * What the screen reads, its options' VAT rates and the account's VAT payer
+ * flag (catalog/0001) included, started together.
+ */
+const newItemPageQueries = [
+  settingsQuery,
+  legalEntityQuery,
+  catalogItemsQuery,
+  catalogCategoriesQuery,
+  taxRatesQuery,
+]
+
+/**
  * Adds a catalog item, as web's `NewCatalogItemPage`: a submit-and-go-back
  * form that validates every field at once before it inserts.
  */
 export function NewCatalogItemPage() {
+  usePreloadEvoluQueries(newItemPageQueries)
   const { t } = useTranslation()
   const [settings] = useEvoluQuery(settingsQuery).data
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const runToast = useRunToast()
   const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
@@ -87,6 +110,9 @@ export function NewCatalogItemPage() {
     getFiatCurrency(settings)
   )
   const [price, setPrice] = useState("")
+  // The Discount switch carries the price's sign, which Android's decimal
+  // keyboard cannot type; it is set here, on create, only (catalog/0002).
+  const [discount, setDiscount] = useState(false)
   // A code scanned in the item list, which opened this form to carry it.
   const { scan } = useLocalSearchParams<{ scan?: string }>()
   const [scanCode, setScanCode] = useState(scan ?? "")
@@ -146,7 +172,12 @@ export function NewCatalogItemPage() {
         sku,
         scanCode,
       },
-      currency
+      {
+        currency,
+        taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+        vatPayer: isVatPayer(legalEntity),
+        discount,
+      }
     )
     if (!parsed.ok) {
       setErrors(parsed.error)
@@ -161,7 +192,7 @@ export function NewCatalogItemPage() {
       const category = newCategoryName.success
         ? await run.ok(findOrCreateCatalogCategory(newCategoryName.data))
         : categoryId
-      await run.ok(
+      const result = await run(
         createCatalogItemAtEnd({
           deviceId: null,
           categoryId: category,
@@ -173,9 +204,13 @@ export function NewCatalogItemPage() {
           currency,
           unitAmount: values.price,
           scanCode: values.scanCode,
-          taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+          taxRateId: values.taxRateId,
         })
       )
+      // The core's own pricing rules, should the account have become a VAT
+      // payer since the form judged it.
+      if (!result.ok) return catalogItemPricingErrorKeys[result.error.type]
+      return undefined
     })
     setPending(false)
     if (saved) router.back()
@@ -258,6 +293,25 @@ export function NewCatalogItemPage() {
               </XStack>
               <FieldError>{error("price")}</FieldError>
             </Field>
+            <Field orientation="horizontal">
+              <Switch
+                aria-label={t("catalog.items.form.discount.label")}
+                checked={discount}
+                disabled={pending}
+                onCheckedChange={(next) => {
+                  setDiscount(next)
+                  clearError("price")
+                }}
+              />
+              <FieldContent>
+                <FieldLabel>
+                  {t("catalog.items.form.discount.label")}
+                </FieldLabel>
+                <FieldDescription>
+                  {t("catalog.items.form.discount.description")}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
             <Field>
               <FieldLabel>
                 {t("catalog.items.form.description.label")}
@@ -303,35 +357,38 @@ export function NewCatalogItemPage() {
               onDraftChange={setNewCategory}
               disabled={pending}
             />
-            <Field>
-              <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
-              <Select
-                value={taxRateId}
-                onValueChange={setTaxRateId}
-                items={Object.fromEntries(
-                  taxRateOptions.map((option) => [option.value, option.title])
-                )}
-              >
-                <SelectTrigger
-                  fullWidth
-                  aria-label={t("catalog.items.form.taxRate.label")}
+            {/* A discount has no VAT rate (catalog/0002). */}
+            {discount ? null : (
+              <Field>
+                <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
+                <Select
+                  value={taxRateId}
+                  onValueChange={setTaxRateId}
+                  items={Object.fromEntries(
+                    taxRateOptions.map((option) => [option.value, option.title])
+                  )}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent title={t("catalog.items.form.taxRate.label")}>
-                  <SelectGroup>
-                    {taxRateOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.title}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                {t("catalog.items.form.taxRate.description")}
-              </FieldDescription>
-            </Field>
+                  <SelectTrigger
+                    fullWidth
+                    aria-label={t("catalog.items.form.taxRate.label")}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent title={t("catalog.items.form.taxRate.label")}>
+                    <SelectGroup>
+                      {taxRateOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.title}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  {t("catalog.items.form.taxRate.description")}
+                </FieldDescription>
+              </Field>
+            )}
             <Field>
               <FieldLabel>{t("catalog.items.form.scanCode.label")}</FieldLabel>
               <View position="relative">

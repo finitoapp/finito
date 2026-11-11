@@ -124,6 +124,8 @@ export async function addCatalogItem(
     readonly internalName?: string
     readonly sku?: string
     readonly taxRateName?: string
+    /** Turns the Discount switch on: `price` is then taken off a bill. */
+    readonly discount?: boolean
   }
 ): Promise<void> {
   await gotoPage(page, "/catalog/items", language, "catalog.items.title")
@@ -146,6 +148,13 @@ export async function addCatalogItem(
       name: translate(language, "catalog.items.form.price.label"),
     })
     .fill(input.price)
+  if (input.discount === true) {
+    await page
+      .getByRole("switch", {
+        name: translate(language, "catalog.items.form.discount.label"),
+      })
+      .click()
+  }
   if (input.internalName !== undefined) {
     await page
       .getByRole("textbox", {

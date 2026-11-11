@@ -1,5 +1,9 @@
 export const enPayment = {
+  "payment.create.billTotalNotPositive":
+    "This bill comes to zero or less, so there is nothing to charge.",
   "payment.create.error": "Could not create the payment.",
+  "payment.create.noPayableMethod":
+    "None of the payment methods turned on can take this amount: cash rounds it to zero.",
   "payment.status.canceled": "Canceled",
   "payment.status.expired": "Expired",
   "payment.status.paid": "Paid",
@@ -240,6 +244,8 @@ export const enPayment = {
   "paymentWait.cashPaid.action": "Mark as paid",
   "paymentWait.cashPaid.difference": "Difference from the charge: {amount}",
   "paymentWait.cashPaid.error": "Could not mark the payment as paid.",
+  "paymentWait.cashPaid.notPayable":
+    "Cash cannot take this payment: rounded for cash, it comes to zero.",
   "paymentWait.cashPaid.pending": "Marking paid...",
   "paymentWait.cashPaid.prompt": "Accept cash payment",
   "paymentWait.cashPaid.received": "Cash received",

@@ -61,7 +61,7 @@ const setup = async () => {
     { name: "Espresso", unitAmount: 4_500, quantity: 2 },
     { name: "Croissant", unitAmount: 6_970, quantity: 1 },
   ].entries()) {
-    const catalogItemId = await run.ok(
+    const catalogItemId = await run.orThrow(
       createCatalogItem({
         deviceId: null,
         categoryId: null,
@@ -79,6 +79,7 @@ const setup = async () => {
         deviceId: null,
         catalogItemId,
         quantity: PositiveNumber(item.quantity),
+        expectedDiscount: null,
       })
     )
   }

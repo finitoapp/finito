@@ -1,6 +1,6 @@
 # 0002 Items can be refunded only from a bill's only payment
 
-Status: accepted
+Status: superseded by refund/0014
 Date: 2026-09-29
 
 ## Context

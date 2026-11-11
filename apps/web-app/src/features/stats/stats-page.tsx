@@ -32,7 +32,7 @@ import {
 import { VatRecap } from "./vat-recap.tsx"
 
 /**
- * The sales statistics screen (access/0010), Activity's third tab
+ * The sales statistics screen (access/0012), Activity's third tab
  * (navigation/0001), under `ActivityLayout`'s header and tabs: the period
  * selector, then one section per block, top to bottom. A new section is one
  * more component in `PeriodStats`, fed by `useSalesStats` or its own

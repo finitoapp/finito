@@ -13,6 +13,7 @@ import type { EvoluDep } from "@payky/core/modules/shared/evolu-deps"
 import { removeUndefinedValues } from "@payky/core/modules/shared/evolu-utils"
 import {
   FiatCurrencySchema,
+  IntegerFromStringSchema,
   NonEmptyString255Schema,
   NonNegativeIntegerFromStringSchema,
 } from "@payky/core/modules/shared/schema"
@@ -46,13 +47,15 @@ export const registerCatalogItemsCommand =
       .addCommand(
         zodCommand({
           name: "create",
-          description: "Create a catalog item.",
+          description:
+            "Create a catalog item. A negative unit amount creates a discount, which takes no tax rate; whether an item is a discount cannot be changed later (catalog/0002).",
           args: {},
           opts: {
             name: NonEmptyString255Schema.describe("n;Item name"),
             currency: FiatCurrencySchema.describe("c;Item currency"),
-            unitAmount:
-              NonNegativeIntegerFromStringSchema.describe("a;Unit amount"),
+            unitAmount: IntegerFromStringSchema.describe(
+              "a;Unit amount in minor units; negative for a discount"
+            ),
             sortOrder: NonNegativeIntegerFromStringSchema.describe(
               "s;Sort order for menu display"
             ),
@@ -87,7 +90,7 @@ export const registerCatalogItemsCommand =
               sortOrder: options.sortOrder,
             }
 
-            const id = await run.ok(createCatalogItem(data))
+            const id = await run.orThrow(createCatalogItem(data))
             run.deps.console.log(
               `Inserted catalogItem ${id}: ${JSON.stringify({
                 id: id,
@@ -118,16 +121,16 @@ export const registerCatalogItemsCommand =
       .addCommand(
         zodCommand({
           name: "update",
-          description: "Update a catalog item.",
+          description:
+            "Update a catalog item. A new unit amount must keep the sign of the old one: a discount stays a discount (catalog/0002).",
           args: {},
           opts: {
             id: CatalogItemId.describe("Catalog item id"),
             name: NonEmptyString255Schema.optional().describe("n;Item name"),
             currency: FiatCurrencySchema.optional().describe("c;Item currency"),
-            unitAmount:
-              NonNegativeIntegerFromStringSchema.optional().describe(
-                "a;Unit amount"
-              ),
+            unitAmount: IntegerFromStringSchema.optional().describe(
+              "a;Unit amount in minor units; negative for a discount"
+            ),
             sortOrder: NonNegativeIntegerFromStringSchema.optional().describe(
               "s;Sort order for menu display"
             ),
@@ -146,7 +149,7 @@ export const registerCatalogItemsCommand =
           },
           async action(_, options) {
             run.deps.console.log("Updating catalogItem", options.id)
-            await run.ok(updateCatalogItem(removeUndefinedValues(options)))
+            await run.orThrow(updateCatalogItem(removeUndefinedValues(options)))
           },
         })
       )
@@ -161,7 +164,7 @@ export const registerCatalogItemsCommand =
           },
           async action(_, options) {
             run.deps.console.log("Deleting catalogItem", options.id)
-            await run.ok(
+            await run.orThrow(
               updateCatalogItem({
                 id: options.id,
                 isDeleted: sqliteTrue,

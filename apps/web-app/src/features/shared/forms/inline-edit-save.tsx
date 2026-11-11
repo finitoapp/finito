@@ -16,7 +16,14 @@ interface InlineSave<T> {
   readonly save: (value: T) => Promise<void>
 }
 
-type InlineSaveResult = Promise<void> | Promise<TranslationKey | undefined>
+/**
+ * What a control's `onSave` resolves to: nothing once saved, or a
+ * `TranslationKey` for a refusal it explains itself. A rejection is the
+ * unexpected failure, toasted generically.
+ */
+export type InlineSaveResult =
+  | Promise<void>
+  | Promise<TranslationKey | undefined>
 
 /**
  * The save half every inline-edit control shares: run `onSave`, toast when

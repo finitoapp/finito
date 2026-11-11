@@ -28,6 +28,18 @@ export const csBill = {
     "Všechny položky v tomto účtu budou odstraněny. Tuto akci nelze vrátit.",
   "bill.discard.confirm.title": "Zahodit tento účet?",
   "bill.emptySearch": "Hledání nenašlo žádné položky.",
+  "bill.finish": "Dokončit",
+  "bill.finish.done": "Účet je dokončený.",
+  "bill.finish.error": "Účet se nepodařilo dokončit.",
+  "bill.finish.notZero":
+    "Účet už nevychází na nulu. Zkontrolujte ho a zkuste to znovu.",
+  "bill.lineChanged":
+    "Řádek se mezitím změnil. Zkontrolujte účet a zkuste to znovu.",
+  "bill.noPayableMethod":
+    "Tuto částku nepřijme žádná zapnutá platební metoda: hotovost ji zaokrouhlí na nulu.",
+  "bill.notPayable":
+    "Zboží vychází na nulu, spropitné tak nejde zaplatit. Odeberte spropitné a účet dokončete.",
+  "bill.negativeTotal": "Účet vychází pod nulu a jde jen zahodit.",
   "bill.invalidId": "Neplatné id účtu.",
   "bill.itemsCount": "{value} ks",
   "bill.openedAt": "Otevřen {time}",
@@ -73,6 +85,8 @@ export const csBill = {
   "bill.split.staleSelection":
     "Účet se během výběru změnil. Zkontroluj výběr a rozděl ho znovu.",
   "bill.split.title": "Rozdělit účet",
+  "bill.split.totalNegative":
+    "Po rozdělení by účet vyšel pod nulu. Přesuňte slevu spolu s položkami, ke kterým patří.",
   "bill.status.canceled": "Zrušeno",
   "bill.status.closed": "Uzavřeno",
   "bill.status.open": "Otevřeno",
@@ -91,6 +105,9 @@ export const csBill = {
   "bill.table.dialog.none": "Bez stolu",
   "bill.table.dialog.title": "Vybrat stůl",
   "bill.title": "Účet",
+  "bill.itemPriceChanged": "Cena položky se mezitím změnila. Zkuste to znovu.",
+  "bill.totalBelowPaid":
+    "Účet je částečně zaplacený, jeho součet nemůže klesnout pod zaplacenou částku. Peníze vrátíte tlačítkem Vrátit peníze u platby.",
   "billDetail.noTable": "Bez stolu",
   "billDetail.table": "Stůl",
   "billDetail.closedAtValue": "Uzavřeno {date}",

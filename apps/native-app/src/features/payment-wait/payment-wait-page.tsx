@@ -1,3 +1,4 @@
+import { markCashPaidErrorKeys } from "@payky/app-shared/bill-checkout"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   clearPaymentMethodPreparation,
@@ -32,6 +33,7 @@ import {
   markPaymentPaidIban,
   payPaymentWithSwitchioCard,
 } from "@payky/core/modules/payment/payment-actions"
+import { isCashPayable } from "@payky/core/modules/payment/payment-cash-utils"
 import type { PayPaymentWithSwitchioCardError } from "@payky/core/modules/payment/payment-errors"
 import {
   type BankQrPayload,
@@ -395,7 +397,24 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     qerkoPaymentAccount,
     lightningAddressAccount,
   ])
-  const active = methods.find(({ id }) => id === selected) ?? methods[0]
+  // Cash is not offered for a payment whose goods, rounded for cash, come to
+  // nothing (payment/0012): the core created it because another method
+  // could take it, and refuses to settle it in cash (`isCashPayable` again).
+  // The payment is judged as created, not the bill as it stands now: a bill
+  // lowered afterwards keeps its payment.
+  // Every method stays on screen, a refused one disabled, so staff see why
+  // cash is missing; only the offered ones can be picked or prepared.
+  const cashPayable =
+    payment === undefined ||
+    isCashPayable({
+      amount: payment.amount,
+      tipAmount: payment.tipAmount,
+      currency: payment.currency,
+    })
+  const isOffered = (id: MethodId) => id !== "cash" || cashPayable
+  const offered = methods.filter(({ id }) => isOffered(id))
+  const cashRefused = !cashPayable && methods.some(({ id }) => id === "cash")
+  const active = offered.find(({ id }) => id === selected) ?? offered[0]
   const preparationKey =
     active === undefined
       ? null
@@ -635,7 +654,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         )
         if (!result.ok) {
           nativeConsole.error("Failed to mark cash payment paid", result.error)
-          setErrorKey("paymentWait.cashPaid.error")
+          setErrorKey(markCashPaidErrorKeys[result.error.type])
         }
       })
     } finally {
@@ -855,6 +874,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                   <TabsTrigger
                     key={id}
                     value={id}
+                    disabled={!isOffered(id)}
                     aria-label={t(methodLabelKeys[id])}
                     grow={0}
                     shrink={isActive ? 1 : 0}
@@ -887,6 +907,19 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
             </TabsList>
           </Tabs>
         )}
+
+        {cashRefused ? (
+          <Text
+            mt={-12}
+            maxW={288}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            color="muted-foreground"
+            text="center"
+          >
+            {t("paymentWait.cashPaid.notPayable")}
+          </Text>
+        ) : null}
 
         {/* A tab reads its own data only once opened, and its first read
             suspends. This boundary keeps that to the tab, under a QR-sized

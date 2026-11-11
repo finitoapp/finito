@@ -21,6 +21,7 @@ const beer = {
   type: "catalogItem",
   quantity: 2,
   totalAmount: 9001,
+  discountShare: null,
   name: "Beer",
 } as unknown as RefundablePaymentLine
 const refundable = {
@@ -37,7 +38,7 @@ const payment = {
   cashReceivedAmount: null,
 }
 
-describe("refund availability (refund/0002, 0005)", () => {
+describe("refund availability (refund/0014, 0005)", () => {
   const base = {
     payment,
     excess: n(0),
@@ -60,6 +61,27 @@ describe("refund availability (refund/0002, 0005)", () => {
         payment: { ...payment, billId: null },
       }).refundableLines
     ).toEqual([])
+  })
+
+  test("offers a discounted line at its net amount, and never the discount line", () => {
+    const discounted = {
+      ...beer,
+      discountShare: -1001,
+    } as RefundablePaymentLine
+    const discount = {
+      ...beer,
+      id: "line-2" as unknown as PaymentLineId,
+      totalAmount: -1001,
+      name: "Discount",
+    } as RefundablePaymentLine
+    expect(
+      deriveRefundAvailability({
+        ...base,
+        paymentLines: [discounted, discount],
+      }).refundableLines
+    ).toEqual([
+      { line: discounted, remainingQuantity: 2, remainingAmount: 8000 },
+    ])
   })
 
   test("offers nothing on an unpaid payment and counts earlier refunds", () => {
@@ -104,6 +126,25 @@ describe("refund form", () => {
     expect(
       deriveRefundForm({ ...items, quantities: { [lineId]: 2 } }).refundAmount
     ).toBe(9001)
+  })
+
+  test("items of a discounted payment refund their net amount, pro rata", () => {
+    const discounted = {
+      line: { ...beer, discountShare: -1001 } as RefundablePaymentLine,
+      remainingQuantity: 2,
+      remainingAmount: n(8000),
+    }
+    const items = {
+      ...form,
+      mode: "items" as const,
+      refundableLines: [discounted],
+    }
+    expect(
+      deriveRefundForm({ ...items, quantities: { [lineId]: 1 } }).refundAmount
+    ).toBe(4000)
+    expect(
+      deriveRefundForm({ ...items, quantities: { [lineId]: 2 } }).refundAmount
+    ).toBe(8000)
   })
 
   test("steps a quantity within what is left", () => {
@@ -293,7 +334,7 @@ describe("deriveRefundOptions", () => {
     ).toMatchObject({ choices: [], defaultChoice: null, defaultMethod: null })
   })
 
-  test("offers items only beside an amount, from a bill's only payment (refund/0002)", () => {
+  test("offers items only beside an amount, from a bill's only payment (refund/0014)", () => {
     expect(deriveRefundOptions(everything).partModes).toEqual([
       "amount",
       "items",

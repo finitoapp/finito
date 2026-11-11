@@ -1,14 +1,19 @@
 import {
   type CatalogItemFormErrors,
+  catalogItemPricingErrorKeys,
   parseCatalogItemForm,
 } from "@payky/app-shared/catalog-item-form-schema"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
+import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
+import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { useAtomValue } from "jotai"
 import { useState } from "react"
@@ -24,6 +29,7 @@ import {
 } from "../../components/ui/dialog.tsx"
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -38,7 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select.tsx"
+import { Switch } from "../../components/ui/switch.tsx"
 import { useRequirePermission } from "../../core/use-access.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import type { useProductLookup } from "../../hooks/use-product-lookup.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
@@ -48,7 +59,8 @@ import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
 /**
  * Lightweight create-item form opened from bill scan mode when a scanned code
  * matches no catalog item, as web's `CreateCatalogItemDialog`: name,
- * description, price, category and tax rate; the rest is left for Settings.
+ * description, price and whether it is a discount, category and tax rate; the
+ * rest is left for Settings.
  * Name and description are prefilled from `productLookup` once it arrives,
  * unless the user already typed into them.
  */
@@ -85,6 +97,16 @@ export function CreateCatalogItemDialog({
   )
 }
 
+/**
+ * What the form reads, started together: the account's VAT payer flag
+ * (catalog/0001) and its options' categories and VAT rates.
+ */
+const createFormQueries = [
+  legalEntityQuery,
+  catalogCategoriesQuery,
+  taxRatesQuery,
+]
+
 function CreateForm({
   scanCode,
   productLookup,
@@ -96,11 +118,13 @@ function CreateForm({
   readonly currency: FiatCurrency
   readonly onCreated: (item: CatalogItemRow) => void
 }) {
+  usePreloadEvoluQueries(createFormQueries)
   const { t } = useTranslation()
   const toast = useToast()
   const runToast = useRunToast()
   const { require } = useRequirePermission()
   const evolu = useAtomValue(evoluAtom)
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const { defaultTaxRate, categoryOptions, taxRateOptions } =
     useCatalogItemOptions()
   // Unlike web's dialog, this form mounts only when it opens, by which time
@@ -111,6 +135,8 @@ function CreateForm({
     productLookup.product?.description ?? ""
   )
   const [price, setPrice] = useState("")
+  // The sign of the price, as the catalog form's switch (catalog/0002).
+  const [discount, setDiscount] = useState(false)
   const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
     NO_OPTION
   )
@@ -150,7 +176,12 @@ function CreateForm({
         sku: "",
         scanCode,
       },
-      currency
+      {
+        currency,
+        taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+        vatPayer: isVatPayer(legalEntity),
+        discount,
+      }
     )
     if (!parsed.ok) {
       setErrors(parsed.error)
@@ -164,7 +195,7 @@ function CreateForm({
     if (!(await require("catalog", "access.action.createItem"))) return
     setPending(true)
     await runToast(async (run) => {
-      const id = await run.ok(
+      const result = await run(
         createCatalogItemAtEnd({
           deviceId: null,
           categoryId: categoryId === NO_OPTION ? null : categoryId,
@@ -173,10 +204,15 @@ function CreateForm({
           currency,
           unitAmount: values.price,
           scanCode: values.scanCode,
-          taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
+          taxRateId: values.taxRateId,
         })
       )
-      const [created] = await evolu.loadQuery(catalogItemByIdQuery(id))
+      // The core's own pricing rules, should the account have become a VAT
+      // payer since the form judged it.
+      if (!result.ok) return catalogItemPricingErrorKeys[result.error.type]
+      const [created] = await evolu.loadQuery(
+        catalogItemByIdQuery(result.value)
+      )
       if (created === undefined) return "app.saveFailed"
       onCreated(created)
       return undefined
@@ -248,6 +284,23 @@ function CreateForm({
           />
           <FieldError>{error("price")}</FieldError>
         </Field>
+        <Field orientation="horizontal">
+          <Switch
+            aria-label={t("catalog.items.form.discount.label")}
+            checked={discount}
+            disabled={pending}
+            onCheckedChange={(next) => {
+              setDiscount(next)
+              clear("price")
+            }}
+          />
+          <FieldContent>
+            <FieldLabel>{t("catalog.items.form.discount.label")}</FieldLabel>
+            <FieldDescription>
+              {t("catalog.items.form.discount.description")}
+            </FieldDescription>
+          </FieldContent>
+        </Field>
         <Field>
           <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
           <Select
@@ -274,32 +327,35 @@ function CreateForm({
             </SelectContent>
           </Select>
         </Field>
-        <Field>
-          <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
-          <Select
-            value={taxRateId}
-            onValueChange={setTaxRateId}
-            items={Object.fromEntries(
-              taxRateOptions.map((option) => [option.value, option.title])
-            )}
-          >
-            <SelectTrigger
-              fullWidth
-              aria-label={t("catalog.items.form.taxRate.label")}
+        {/* A discount has no VAT rate (catalog/0002). */}
+        {discount ? null : (
+          <Field>
+            <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
+            <Select
+              value={taxRateId}
+              onValueChange={setTaxRateId}
+              items={Object.fromEntries(
+                taxRateOptions.map((option) => [option.value, option.title])
+              )}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent title={t("catalog.items.form.taxRate.label")}>
-              <SelectGroup>
-                {taxRateOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.title}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
+              <SelectTrigger
+                fullWidth
+                aria-label={t("catalog.items.form.taxRate.label")}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent title={t("catalog.items.form.taxRate.label")}>
+                <SelectGroup>
+                  {taxRateOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.title}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        )}
       </FieldGroup>
       <DialogFooter>
         <Button

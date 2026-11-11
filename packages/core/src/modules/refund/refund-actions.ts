@@ -404,7 +404,9 @@ export const loadGoodsRefundPlan =
       amount === "remaining"
         ? remainingAmount
         : (amount ?? sumRefundAmounts(refundLines))
-    if (refundAmount === 0 || refundAmount > remainingAmount) {
+    // Nothing to give back, a selection of lines worth nothing included
+    // (refund/0014); every card and Qerko refund is planned here too.
+    if (refundAmount <= 0 || refundAmount > remainingAmount) {
       return err(
         createRefundAmountInvalidError({
           amount: refundAmount,

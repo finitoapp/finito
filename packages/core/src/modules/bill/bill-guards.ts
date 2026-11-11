@@ -1,4 +1,8 @@
-import { deriveBillSummaryTotal } from "../bill-line/bill-line-utils.ts"
+import {
+  calculateBillLineSummaries,
+  deriveBillGoodsTotal,
+  deriveBillSummaryTotal,
+} from "../bill-line/bill-line-utils.ts"
 /**
  * The read-and-validate half of the bill module: everything that answers "what
  * state is this bill in, and may the caller do X to it" without writing
@@ -22,8 +26,13 @@ import type {
   AccountTransactionId,
   AccountTransactionKind,
 } from "../account-transaction/account-transaction-types.ts"
-import { loadCalculatedBillLineSummaries } from "../bill-line/bill-line-actions.ts"
+import type { BillLineRow } from "../bill-line/bill-line.ts"
+import {
+  type BillLineLedger,
+  loadBillLineLedger,
+} from "../bill-line/bill-line-actions.ts"
 import type { BillLineSummary } from "../bill-line/bill-line-summary.ts"
+import type { ItemRow } from "../item/item.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { quotedAmountSats } from "../shared/claimed-amount.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
@@ -31,6 +40,7 @@ import { getFirstOr } from "../shared/result.ts"
 import {
   type Currency,
   type FiatCurrency,
+  type Integer,
   type NonNegativeInteger,
   type TimestampMs,
   TimestampMsSchema,
@@ -48,6 +58,7 @@ import {
   claimedPaymentIdSet,
   deriveBillCoverage,
   deriveBillStatus,
+  deriveCartWriteClosing,
   hasPendingPayment,
 } from "./bill-utils.ts"
 
@@ -86,10 +97,58 @@ export const createBillLockedError = defineError("BillLocked")<{
 export type BillLockedError = ReturnType<typeof createBillLockedError>
 export const createBillUnderpaidError = defineError("BillUnderpaid")<{
   readonly id: BillId
-  readonly billTotal: NonNegativeInteger
+  readonly billTotal: Integer
   readonly claimedSum: NonNegativeInteger
 }>()
 export type BillUnderpaidError = ReturnType<typeof createBillUnderpaidError>
+/**
+ * A bill that cannot be charged at all: its goods — its lines without the
+ * tip lines — do not come to more than zero (payment/0012). A bill at
+ * exactly zero is closed with `closeZeroBill` instead (payment/0013), one
+ * below zero can only be discarded (payment/0015). Goods above zero that
+ * no payment method turned on can collect once it rounds them are refused
+ * by `createPayment` with `NoPayableMethod`.
+ */
+export const createBillTotalNotPositiveError = defineError(
+  "BillTotalNotPositive"
+)<{
+  readonly id: BillId
+  readonly goodsTotal: Integer
+}>()
+export type BillTotalNotPositiveError = ReturnType<
+  typeof createBillTotalNotPositiveError
+>
+/**
+ * A cart write refused because it would take a partly paid bill's total
+ * below what its payments have paid (`deriveCartWriteClosing`,
+ * payment/0014): the bill would close overpaid and hand money back outside a
+ * refund. Money goes back through a refund instead.
+ */
+export const createBillTotalBelowPaidError = defineError("BillTotalBelowPaid")<{
+  readonly id: BillId
+  readonly billTotalAfter: Integer
+  readonly claimedSum: NonNegativeInteger
+}>()
+export type BillTotalBelowPaidError = ReturnType<
+  typeof createBillTotalBelowPaidError
+>
+/**
+ * A split refused because it would leave a bill that still has lines on it
+ * with a total below zero (payment/0015) — a discount kept behind while the
+ * goods it came with move away, or moved onto a bill with too little to take
+ * it off. Such a bill can only be discarded, so staff would be left with a
+ * remainder nobody can pay. A bill left at exactly zero is fine: it can be
+ * finished (`closeZeroBill`, payment/0013).
+ */
+export const createBillSplitTotalNegativeError = defineError(
+  "BillSplitTotalNegative"
+)<{
+  readonly id: BillId
+  readonly billTotalAfter: Integer
+}>()
+export type BillSplitTotalNegativeError = ReturnType<
+  typeof createBillSplitTotalNegativeError
+>
 export const createBillNotCanceledError = defineError("BillNotCanceled")<{
   readonly id: BillId
 }>()
@@ -115,34 +174,42 @@ export const loadBill =
       createBillNotFoundError({ id: idValue })
     )
 export interface BillCoverageSummary {
-  readonly billTotal: NonNegativeInteger
+  readonly billTotal: Integer
   readonly claimedSum: NonNegativeInteger
   readonly coverage: BillCoverage
 }
 
 /**
  * Shared "bill's line-item total + its claimed transactions" load behind
- * `loadBillCoverage` and `loadBillClosedAtIfCovered`.
+ * `loadBillCoverage`, `loadBillStatusSnapshot` and `loadBillClosedAtIfCovered`.
+ * Hands back the raw ledger the summaries were folded from too, for the
+ * snapshot's cart-write projection.
  */
 const loadBillTotalAndClaimedSum =
   (
     billId: BillId
   ): Task<
     {
+      readonly ledger: BillLineLedger
       readonly summaries: ReadonlyArray<BillLineSummary>
-      readonly billTotal: NonNegativeInteger
+      readonly billTotal: Integer
       readonly claimedTransactions: ReadonlyArray<ClaimedTransaction>
     },
     never,
     EvoluDep
   > =>
   async (run) => {
-    const [summaries, claimedTransactions] = await Promise.all([
-      run.ok(loadCalculatedBillLineSummaries(billId)),
+    const [ledger, claimedTransactions] = await Promise.all([
+      run.ok(loadBillLineLedger(billId)),
       run.deps.evolu.loadQuery(claimedTransactionsByBillIdQuery(billId)),
     ])
+    const summaries = calculateBillLineSummaries(
+      ledger.lineRows,
+      ledger.itemRows
+    )
 
     return ok({
+      ledger,
       summaries,
       billTotal: deriveBillSummaryTotal(summaries),
       claimedTransactions,
@@ -176,9 +243,15 @@ export interface BillStatusSnapshot {
    * second, independent one alongside it.
    */
   readonly items: ReadonlyArray<BillLineSummary>
+  /**
+   * The ledger `items` were folded from, so a cart write can fold the lines it
+   * is about to insert onto the very same rows (`requireCartWriteNotBelowPaid`)
+   * instead of doing its own arithmetic on the summaries.
+   */
+  readonly ledger: BillLineLedger
   readonly status: BillStatus
   readonly coverage: BillCoverage
-  readonly billTotal: NonNegativeInteger
+  readonly billTotal: Integer
   readonly claimedSum: NonNegativeInteger
   /** Whether at least one payment on this bill has an active claim. */
   readonly hasActiveClaim: boolean
@@ -198,7 +271,7 @@ export const loadBillStatusSnapshot =
     const billResult = await run(loadBill(billId))
     if (!billResult.ok) return billResult
 
-    const { summaries, billTotal, claimedTransactions } = await run.ok(
+    const { ledger, summaries, billTotal, claimedTransactions } = await run.ok(
       loadBillTotalAndClaimedSum(billId)
     )
     const claimedSum = calculateClaimedSum(claimedTransactions)
@@ -214,6 +287,7 @@ export const loadBillStatusSnapshot =
     return ok({
       bill: billResult.value,
       items: summaries,
+      ledger,
       status,
       coverage,
       billTotal,
@@ -242,7 +316,9 @@ export const loadBillStatus =
 /**
  * Loads a bill and rejects it unless its *derived* status is one of
  * `allowedStatuses`. Used to guard domain invariants around the `open` ->
- * `closed`/`canceled` lifecycle before a mutation is applied. See
+ * `closed`/`canceled` lifecycle before a mutation is applied. Hands back the
+ * whole snapshot it judged, so a caller that also needs the bill's totals or
+ * coverage reads them off the same projection. See
  * `docs/bill-payment-states.md`.
  */
 const requireBillInStatus =
@@ -250,7 +326,7 @@ const requireBillInStatus =
     billId: BillId,
     allowedStatuses: ReadonlySet<BillStatus>
   ): Task<
-    BillWithItems,
+    BillStatusSnapshot,
     BillNotFoundError | BillStatusNotAllowedError,
     EvoluDep
   > =>
@@ -258,7 +334,7 @@ const requireBillInStatus =
     const snapshotResult = await run(loadBillStatusSnapshot(billId))
     if (!snapshotResult.ok) return snapshotResult
 
-    const { bill: billRow, items, status } = snapshotResult.value
+    const { status } = snapshotResult.value
     if (!allowedStatuses.has(status)) {
       return err(
         createBillStatusNotAllowedError({
@@ -269,7 +345,7 @@ const requireBillInStatus =
       )
     }
 
-    return ok({ bill: billRow, items })
+    return snapshotResult
   }
 const openBillStatuses: ReadonlySet<BillStatus> = new Set(["open"])
 /**
@@ -302,13 +378,16 @@ const isBillLocked =
  * A bill that currently accepts line/table edits: `open`, and not locked by
  * a live payment attempt. This is the guard behind every cart-editing
  * action (`addCatalogItemToBill`, `addManualAmountToBill`, `addTipToBill`,
- * `appendRemoveBillLine`, `splitBill`). See docs/bill-payment-states.md.
+ * `appendRemoveBillLine`, `appendGuardedBillLines`, `splitBill`,
+ * `splitBillIntoNewBill`), each of which then judges the lines it writes
+ * against the snapshot this hands back (`requireCartWriteNotBelowPaid`). See
+ * docs/bill-payment-states.md.
  */
 export const requireEditableBill =
   (
     billId: BillId
   ): Task<
-    BillWithItems,
+    BillStatusSnapshot,
     BillNotFoundError | BillStatusNotAllowedError | BillLockedError,
     EvoluDep & DateDep
   > =>
@@ -328,17 +407,141 @@ export const requireEditableBill =
 
     return billResult
   }
+
 /**
- * A bill that can accept a new payment attempt: still `open`. Unlike
- * `requireEditableBill`, this deliberately does **not** check for an
+ * Lines a cart write is about to insert on one bill, with the item snapshots
+ * they refer to that the bill's ledger may not hold yet — a new snapshot
+ * `addBillLine` writes in the same batch, or the source bill's items a split
+ * moves onto its target. Snapshots the ledger already holds may be repeated.
+ */
+export interface CartWrite {
+  readonly lines: ReadonlyArray<Omit<BillLineRow, "id">>
+  readonly itemRows: ReadonlyArray<ItemRow>
+}
+
+/**
+ * A bill's net lines once `write` lands on `ledger`: the ledger's own rows with
+ * the new ones folded on after them, through the same
+ * `calculateBillLineSummaries` coverage reads — not arithmetic on the
+ * summaries, which would drift from it the moment the fold drops a line whose
+ * quantity nets to zero.
+ */
+export const projectCartWrite = (
+  ledger: BillLineLedger,
+  write: CartWrite
+): ReadonlyArray<BillLineSummary> =>
+  calculateBillLineSummaries(
+    [...ledger.lineRows, ...write.lines],
+    [...ledger.itemRows, ...write.itemRows]
+  )
+
+/**
+ * Refuses a split's write to one bill when it would leave that bill with lines
+ * on it and a total below zero (payment/0015). Judged for the source and the
+ * target alike: moving the goods off a source leaves its discount behind, and
+ * moving a discount onto a target can take it below zero just as well. An
+ * emptied bill is fine — the source is discarded with it
+ * (`cancelSourceBillIfEmptied`) — and so is one left at exactly zero, which
+ * can be finished. `ledger` is empty for a bill the split creates.
+ */
+export const requireSplitTotalNotNegative = (
+  billId: BillId,
+  ledger: BillLineLedger,
+  write: CartWrite
+): Result<void, BillSplitTotalNegativeError> => {
+  const itemsAfter = projectCartWrite(ledger, write)
+  const billTotalAfter = deriveBillSummaryTotal(itemsAfter)
+  if (itemsAfter.length > 0 && billTotalAfter < 0) {
+    return err(
+      createBillSplitTotalNegativeError({ id: billId, billTotalAfter })
+    )
+  }
+  return ok()
+}
+
+/**
+ * Judges a cart write on the open bill `snapshot` describes, before anything
+ * is written (`deriveCartWriteClosing`, payment/0014). Returns the
+ * `closedAt` the caller must write in the same batch as the lines
+ * (`upsertBillClosedAt`) when the write pays a partly paid bill off, `null`
+ * when the bill stays open, and `BillTotalBelowPaid` when the write would take
+ * the total below what has been paid.
+ *
+ * The total after the write is the same projection coverage reads
+ * (`projectCartWrite`), tip lines included as `deriveBillCoverage` counts
+ * them.
+ *
+ * Best-effort like every guard here: two offline devices can each pass it and
+ * together take a bill below what was paid, or pay it off without either
+ * writing `closedAt`. `closedAt` stays a cache, and `closeBill` can still
+ * repair it. See docs/bill-payment-states.md.
+ */
+export const requireCartWriteNotBelowPaid = (
+  snapshot: BillStatusSnapshot,
+  write: CartWrite,
+  now: TimestampMs
+): Result<TimestampMs | null, BillTotalBelowPaidError> => {
+  const { bill: billRow, ledger, claimedSum, hasActiveClaim } = snapshot
+  const billTotalAfter = deriveBillSummaryTotal(projectCartWrite(ledger, write))
+  const closing = deriveCartWriteClosing({
+    billTotalAfter,
+    claimedSum,
+    hasActiveClaim,
+  })
+
+  if (closing === "reject") {
+    return err(
+      createBillTotalBelowPaidError({
+        id: billRow.id,
+        billTotalAfter,
+        claimedSum,
+      })
+    )
+  }
+  if (closing === "keep-open") return ok(null)
+  // As `loadBillClosedAtIfCovered`: a bill closed before keeps its first
+  // closing time.
+  return ok(billRow.closedAt ?? now)
+}
+/**
+ * A bill that can accept a new payment attempt: still `open`, and then with
+ * goods — its lines without the tip lines (`deriveBillGoodsTotal`) — worth
+ * more than zero (payment/0012); otherwise it is refused with
+ * `BillTotalNotPositive`. The status is checked first, so a closed bill
+ * reports that rather than its total. Whether a payment method the payment
+ * offers can collect those goods once it rounds them is `createPayment`'s
+ * second check (`isPayableThroughAnyMethod`), which a keypad payment without
+ * a bill goes through too. Returns the snapshot it judged, whose `items`
+ * `createPayment` freezes and judges the methods by.
+ *
+ * Unlike `requireEditableBill`, this deliberately does **not** check for an
  * existing pending payment — starting a second/split payment attempt while
  * another is still pending and unresolved is allowed. Guards here are
  * best-effort for the common single-device path, not a proof, under
  * CRDT/multi-device concurrency. Exported for `payment-actions.ts`'s
  * `createPayment`. See docs/bill-payment-states.md.
  */
-export const requireBillAcceptingPayment = (billId: BillId) =>
-  requireBillInStatus(billId, openBillStatuses)
+export const requireBillAcceptingPayment =
+  (
+    billId: BillId
+  ): Task<
+    BillStatusSnapshot,
+    BillNotFoundError | BillStatusNotAllowedError | BillTotalNotPositiveError,
+    EvoluDep
+  > =>
+  async (run) => {
+    const snapshotResult = await run(
+      requireBillInStatus(billId, openBillStatuses)
+    )
+    if (!snapshotResult.ok) return snapshotResult
+
+    const goodsTotal = deriveBillGoodsTotal(snapshotResult.value.items)
+    if (goodsTotal <= 0) {
+      return err(createBillTotalNotPositiveError({ id: billId, goodsTotal }))
+    }
+
+    return snapshotResult
+  }
 const cancelableBillStatuses: ReadonlySet<BillStatus> = new Set([
   "open",
   "canceled",
@@ -357,6 +560,12 @@ export const requireCancelableBill = (billId: BillId) =>
  * ready to fold into the caller's own mutation batch alongside the claim
  * insert — see `upsertBillClosedAt`. Returns `null` when the payment has no
  * bill or the bill isn't (yet) fully covered.
+ *
+ * One of the two places `closedAt` is written when a bill's coverage turns
+ * `paid`: here a claim pays the bill off, while a cart write that brings a
+ * partly paid bill's total down to what was paid closes it through
+ * `requireCartWriteNotBelowPaid` (payment/0014). Either half alone left a
+ * bill derived `closed` with no `closedAt`, hanging on the floor view.
  *
  * Unlike a `status` transition, this no longer excludes `canceled` bills:
  * `closedAt` is just a best-effort cache of "when did this bill's coverage
@@ -442,6 +651,72 @@ export const loadBillClosedAtIfCovered =
         TimestampMsSchema.decode(run.deps.date.now().getTime()),
     })
   }
+/**
+ * Whether `selected` is part of `available`: the same sign, or zero, and no
+ * larger in size — for a discount line as much as for goods.
+ */
+const isAmountWithin = (selected: number, available: number): boolean =>
+  available < 0
+    ? selected <= 0 && selected >= available
+    : selected >= 0 && selected <= available
+
+const createBillLineRemovalOutOfRangeError = defineError(
+  "BillLineRemovalOutOfRange"
+)<{
+  readonly billId: BillId
+  readonly summaryId: BillLineSummary["id"]
+  readonly quantity: number
+  readonly totalAmount: number
+  readonly availableQuantity: number
+  readonly availableTotalAmount: number
+}>()
+/**
+ * A removal that is not part of the line it takes from: the line is gone, or
+ * the removal takes more of it than the bill holds, or carries the other
+ * sign. A removal at a negative amount would raise the bill, and one larger
+ * than a goods line would leave the line below zero, read as a discount
+ * (catalog/0002) nobody added.
+ */
+export type BillLineRemovalOutOfRangeError = ReturnType<
+  typeof createBillLineRemovalOutOfRangeError
+>
+
+/**
+ * Checks a removal from one line against the line as the bill holds it now
+ * (`items` of the editing guard's snapshot): no more of its quantity than it
+ * has, an amount of the same sign, or zero, and no larger in size
+ * (`isAmountWithin`, as a split's selection is judged). Reads only; the
+ * cart write itself is `appendRemoveBillLine`'s.
+ */
+export const requireRemovalWithinLine = (
+  billId: BillId,
+  items: ReadonlyArray<BillLineSummary>,
+  removal: {
+    readonly summaryId: BillLineSummary["id"]
+    readonly quantity: number
+    readonly totalAmount: number
+  }
+): Result<BillLineSummary, BillLineRemovalOutOfRangeError> => {
+  const line = items.find((item) => item.id === removal.summaryId)
+  if (
+    line === undefined ||
+    removal.quantity > line.quantity ||
+    !isAmountWithin(removal.totalAmount, line.totalAmount)
+  ) {
+    return err(
+      createBillLineRemovalOutOfRangeError({
+        billId,
+        summaryId: removal.summaryId,
+        quantity: removal.quantity,
+        totalAmount: removal.totalAmount,
+        availableQuantity: line?.quantity ?? 0,
+        availableTotalAmount: line?.totalAmount ?? 0,
+      })
+    )
+  }
+  return ok(line)
+}
+
 export interface SelectedLineTotals {
   readonly quantity: number
   readonly totalAmount: number
@@ -457,11 +732,16 @@ export interface SelectedLineTotals {
  * `add` on the target for whatever the caller passed. A stale selection —
  * the split screen was opened, then the line was reduced or removed, here or
  * on another device — therefore *invented money*: the source's own summaries
- * clamp at zero (`calculateBillLineSummaries` drops a line once its running
- * quantity does, and floors its amount at 0), so the source looked fine while
- * the target gained an `add` for an amount the source never carried. Selecting
- * 3x1000 of a line the source had once over meant 1000 on one bill before the
- * split and 3000 across two bills after it, reported as success.
+ * drop a line once its running quantity nets to zero or below
+ * (`calculateBillLineSummaries`), so the source looked fine while the target
+ * gained an `add` for an amount the source never carried. Selecting 3x1000 of
+ * a line the source had once over meant 1000 on one bill before the split and
+ * 3000 across two bills after it, reported as success.
+ *
+ * The amount is compared by size, its sign held to the line's: a discount
+ * line's total is negative (catalog/0002), so moving one unit of a −200
+ * discount selects −100, which is less than the line holds although it is the
+ * larger number.
  *
  * Summing per id matters as much as the comparison: a caller may legitimately
  * pass the same line twice (two partial quantities of one line), and taking
@@ -504,7 +784,7 @@ export const requireSelectionOnSourceBill = (
     if (
       available === undefined ||
       selected.quantity > available.quantity ||
-      selected.totalAmount > available.totalAmount
+      !isAmountWithin(selected.totalAmount, available.totalAmount)
     ) {
       return err(
         createBillSplitSelectionStaleError({

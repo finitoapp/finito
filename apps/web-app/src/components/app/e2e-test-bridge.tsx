@@ -548,7 +548,7 @@ export function E2eTestBridge() {
           deviceId,
           billId: parsedBillId,
           tableId: null,
-          amount: totalAmount,
+          amount: NonNegativeInteger(totalAmount),
           currency: billRow.currency,
           tipAmount: NonNegativeInteger(0),
           canceledAt: null,

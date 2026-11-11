@@ -2,6 +2,7 @@ import {
   type Currency,
   type FiatCurrency,
   Integer,
+  NonNegativeInteger,
   NumberString,
 } from "./schema.ts"
 
@@ -97,6 +98,16 @@ const decimalToMinorUnits = (
   return Number.isSafeInteger(amount) ? amount : null
 }
 
+/** What a person typed, read the way both parsers below read it. */
+const typedDecimalToMinorUnits = (currency: Currency, value: string) =>
+  decimalToMinorUnits(currency, normalizeDecimalSeparators(value.trim()))
+
+/**
+ * An amount a person typed to charge, give or take — the terminal keypad, a
+ * tip, cash received, a withdrawal — to minor units, or `null` when it is not
+ * a positive amount the currency can hold. Zero is refused: there is nothing
+ * to charge. A catalog price reads through `decimalPriceToMinorUnits`.
+ */
 export const decimalAmountToMinorUnits = ({
   currency,
   value,
@@ -104,13 +115,30 @@ export const decimalAmountToMinorUnits = ({
   readonly currency: Currency
   readonly value: string
 }): Integer | null => {
-  const amount = decimalToMinorUnits(
-    currency,
-    normalizeDecimalSeparators(value.trim())
-  )
+  const amount = typedDecimalToMinorUnits(currency, value)
   if (amount === null || amount <= 0) return null
 
   return Integer(amount)
+}
+
+/**
+ * A catalog item's price as a person typed it to minor units, or `null` when
+ * it is not an amount the currency can hold. Unlike
+ * `decimalAmountToMinorUnits` it takes zero, since an item may be given away
+ * (catalog/0001). A sign is still refused: what the typed number means is the
+ * form's business, not the parser's.
+ */
+export const decimalPriceToMinorUnits = ({
+  currency,
+  value,
+}: {
+  readonly currency: Currency
+  readonly value: string
+}): NonNegativeInteger | null => {
+  const amount = typedDecimalToMinorUnits(currency, value)
+  if (amount === null) return null
+
+  return NonNegativeInteger(amount)
 }
 
 /**
@@ -141,6 +169,20 @@ export const signedDecimalAmountToMinorUnits = ({
 
   return Integer(isNegative && amount !== 0 ? -amount : amount)
 }
+
+/**
+ * A computed amount, such as a price times a fractional quantity or a line's
+ * total over its quantity, to the nearest minor unit, a half rounded away from
+ * zero. `Math.round` rounds a half towards positive infinity, so a discount of
+ * −2.5 would round to −2 where its positive twin 2.5 rounds to 3: adding and
+ * taking off the same line would then disagree by a minor unit. Rounding the
+ * magnitude and putting the sign back keeps a negative amount the mirror image
+ * of the positive one.
+ */
+export const roundMinorUnits = (amount: number): Integer =>
+  // `+ 0` turns the −0 a small negative amount rounds to into a plain 0,
+  // and leaves a NaN for `Integer` to refuse (`|| 0` would make it 0).
+  Integer(Math.sign(amount) * Math.round(Math.abs(amount)) + 0)
 
 export const SATS_PER_BTC = 100_000_000
 

@@ -24,7 +24,7 @@ describe("catalogItemsPageQuery", () => {
     } satisfies EvoluDep & EvoluOwnerDep
     await using run = testCreateRun(deps)
 
-    const beerId = await run.ok(
+    const beerId = await run.orThrow(
       createCatalogItemAtEnd({
         deviceId: null,
         categoryId: null,
@@ -35,7 +35,7 @@ describe("catalogItemsPageQuery", () => {
         scanCode: null,
       })
     )
-    await run.ok(
+    await run.orThrow(
       createCatalogItemAtEnd({
         deviceId: null,
         categoryId: null,
@@ -80,7 +80,7 @@ describe("catalogItemsPageQuery", () => {
     } satisfies EvoluDep & EvoluOwnerDep
     await using run = testCreateRun(deps)
 
-    const uncategorizedId = await run.ok(
+    const uncategorizedId = await run.orThrow(
       createCatalogItemAtEnd({
         deviceId: null,
         categoryId: null,
@@ -126,7 +126,7 @@ describe("catalogItemsPageQuery", () => {
     await using run = testCreateRun(deps)
 
     for (let index = 0; index < 5; index++) {
-      await run.ok(
+      await run.orThrow(
         createCatalogItemAtEnd({
           deviceId: null,
           categoryId: null,
@@ -201,7 +201,7 @@ describe("catalogItemsPageQuery", () => {
     await run.ok(deleteCatalogCategory(deletedId))
 
     const createItem = (name: string, categoryId: typeof drinksId | null) =>
-      run.ok(
+      run.orThrow(
         createCatalogItemAtEnd({
           deviceId: null,
           categoryId,
@@ -253,7 +253,7 @@ describe("catalogItemUsedCategoryIdsQuery", () => {
       .poll(() => evolu.loadQuery(catalogItemUsedCategoryIdsQuery))
       .toEqual([])
 
-    await run.ok(
+    await run.orThrow(
       createCatalogItemAtEnd({
         deviceId: null,
         categoryId: null,

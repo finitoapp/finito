@@ -7,10 +7,7 @@ import {
   calculateBillLineSummaries,
   deriveBillSummaryStats,
 } from "@payky/core/modules/bill-line/bill-line-utils"
-import {
-  type Currency,
-  NonNegativeInteger,
-} from "@payky/core/modules/shared/schema"
+import { type Currency, Integer } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { z } from "zod"
 
@@ -69,9 +66,7 @@ export const groupBillRowsByTableId = (
  */
 export const sumBillRows = (
   rows: ReadonlyArray<BillWithStats>
-):
-  | { readonly value: NonNegativeInteger; readonly currency: Currency }
-  | undefined => {
+): { readonly value: Integer; readonly currency: Currency } | undefined => {
   const [first] = rows
   if (
     first === undefined ||
@@ -81,9 +76,7 @@ export const sumBillRows = (
   }
 
   return {
-    value: NonNegativeInteger(
-      rows.reduce((sum, { stats }) => sum + stats.totalAmount, 0)
-    ),
+    value: Integer(rows.reduce((sum, { stats }) => sum + stats.totalAmount, 0)),
     currency: first.bill.currency,
   }
 }

@@ -14,6 +14,7 @@ import type { EetDeliveryOutcome } from "@payky/core/integrations/eet/eet-client
 import { claimedPaymentsByBillIdQuery } from "@payky/core/modules/bill/bill-coverage-queries"
 import { billByIdQuery } from "@payky/core/modules/bill/bill-queries"
 import type { BillId } from "@payky/core/modules/bill/bill-types"
+import { allocateDiscount } from "@payky/core/modules/bill-line/bill-line-discount-utils"
 import {
   calculateTaxRecap,
   hasTaxableLines,
@@ -43,7 +44,10 @@ import {
 } from "@payky/core/modules/payment/payment-queries"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-number/payment-number-queries"
-import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import {
+  Integer,
+  type NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import { Link, useNavigate } from "@tanstack/react-router"
@@ -98,6 +102,7 @@ import { useBillCoverage } from "@/features/activity/use-bill-coverage.ts"
 import {
   billLineSummaryDiffQueries,
   useBillLineSummaryDiff,
+  usePaymentLineSummaries,
 } from "@/features/activity/use-bill-line-summary-diff.ts"
 import { paymentRefundsQueries } from "@/features/activity/use-payment-refund-state.ts"
 import { billStateQueries } from "@/features/shared/bill-state-queries.ts"
@@ -568,6 +573,7 @@ function PaymentDetailBillCard({
   const billStatus = useBillStatus(billId)
   const { claimedSum, coverage } = useBillCoverage(billId)
   const lineDiff = useBillLineSummaryDiff(paymentId, billId)
+  const frozenLines = usePaymentLineSummaries(paymentId)
   const claimedPaymentsQuery = claimedPaymentsByBillIdQuery(billId)
   const { data: claimedPayments } = useEvoluQuery(claimedPaymentsQuery)
   const bill = bills[0]
@@ -582,7 +588,7 @@ function PaymentDetailBillCard({
   // reconciles with `payment.amount` (see `calculatePaymentAmounts`) — kept
   // separate from `totalAmount`, which the coverage math below compares
   // against `claimedSum` (also tip-excluded, see `calculateClaimedSum`).
-  const totalAmountWithTip = NonNegativeInteger(totalAmount + tipAmount)
+  const totalAmountWithTip = Integer(totalAmount + tipAmount)
 
   const otherClaimedPaymentIds = [
     ...new Set(claimedPayments.map((payment) => payment.id)),
@@ -597,7 +603,13 @@ function PaymentDetailBillCard({
     lineDiff,
     otherClaimedPaymentCount: otherClaimedPaymentIds.length,
   })
-  const taxRecapRows = calculateTaxRecap(summaries, taxRates)
+  // The VAT this payment was made with: its frozen lines and their frozen
+  // discount shares (catalog/0003). A payment from before the snapshot has
+  // none, and falls back to the bill's live lines.
+  const taxRecapRows = calculateTaxRecap(
+    frozenLines ?? allocateDiscount(summaries),
+    taxRates
+  )
   const hasTaxRecap = hasTaxableLines(taxRecapRows)
 
   return (

@@ -15,7 +15,7 @@ export const accessControlId = createIdFromString<"AccessControl">(
   "payky-access-control"
 )
 
-/** What a device's defaults are made of (access/0010). The PIN grants all. */
+/** What a device's defaults are made of (access/0012). The PIN grants all. */
 export const PermissionSchema = z.enum([
   "sell",
   "activity",
