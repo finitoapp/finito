@@ -544,6 +544,8 @@ function GuestOrdering({
   const menu = data?.menu?.value ?? null
   const liveness = data?.liveness?.value ?? null
   const { orderable, writable } = guestMenuOffer(view, menu)
+  const isWriting =
+    writable !== null && (mode === "write" || orderable === null)
 
   const startPayment = (payment: OrderPaymentSession) => {
     history.pushState(PAYMENT_HISTORY_STATE, "")
@@ -644,7 +646,9 @@ function GuestOrdering({
           view={view}
           liveness={liveness}
           session={session}
-          backLabel={t("selfPay.order.back")}
+          backLabel={t(
+            isWriting ? "selfPay.written.back" : "selfPay.order.back"
+          )}
           onBack={leavePayment}
         >
           {sessionOrder === undefined ? null : (
@@ -674,7 +678,7 @@ function GuestOrdering({
               {t("selfPay.order.refused")}
             </p>
           ) : null}
-          {writable !== null && (mode === "write" || orderable === null) ? (
+          {isWriting ? (
             <GuestWrittenOrder
               menu={writable}
               isPreparing={isPreparing}

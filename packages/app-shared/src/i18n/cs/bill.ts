@@ -313,6 +313,7 @@ export const csBill = {
   "selfPay.written.amount.tooHigh": "Největší částka je {amount}.",
   "selfPay.written.amount.tooLow": "Nejmenší částka je {amount}.",
   "selfPay.written.add": "Přidat další položku",
+  "selfPay.written.back": "Zpět k psaní",
   "selfPay.written.nothing": "Napište, co platíte, a částku",
   "selfPay.written.remove": "Odebrat položku {number}",
   "selfPay.written.summary": "Platíte {amount}",

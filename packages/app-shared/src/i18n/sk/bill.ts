@@ -318,6 +318,7 @@ export const skBill = {
   "selfPay.written.amount.tooHigh": "Najväčšia suma je {amount}.",
   "selfPay.written.amount.tooLow": "Najmenšia suma je {amount}.",
   "selfPay.written.add": "Pridať ďalšiu položku",
+  "selfPay.written.back": "Späť k písaniu",
   "selfPay.written.nothing": "Napíšte, čo platíte, a sumu",
   "selfPay.written.remove": "Odobrať položku {number}",
   "selfPay.written.summary": "Platíte {amount}",

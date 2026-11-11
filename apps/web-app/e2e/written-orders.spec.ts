@@ -486,6 +486,29 @@ test("a guest writes 2x pivo for 90.00 and the QR asks for 90.00 with a referenc
   })
 })
 
+test("the way back from a written order's payment reads Back to writing and returns to the form", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+
+  await test.step("the guest writes it and pays", () =>
+    writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" }))
+
+  await test.step("Back to writing returns to the form", async () => {
+    await expect(
+      guest.getByRole("button", { name: translate("en", "selfPay.order.back") })
+    ).toHaveCount(0)
+    await guest
+      .getByRole("button", { name: translate("en", "selfPay.written.back") })
+      .click()
+    await expect(textField(guest)).toBeVisible()
+  })
+})
+
 test("a guest writes two items, pays their total, and staff see each with its amount and the total", async ({
   seededPage: page,
   context,
@@ -898,7 +921,9 @@ test("a guest paying the rest of an order staff reject leaves the payment and is
       orderStatus(guest, "selfPay.order.rejected", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
     await expect(
-      guest.getByRole("button", { name: translate("en", "selfPay.order.back") })
+      guest.getByRole("button", {
+        name: translate("en", "selfPay.written.back"),
+      })
     ).toHaveCount(0)
   })
 })

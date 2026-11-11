@@ -312,6 +312,7 @@ export const enBill = {
   "selfPay.written.amount.tooHigh": "The largest amount is {amount}.",
   "selfPay.written.amount.tooLow": "The smallest amount is {amount}.",
   "selfPay.written.add": "Add another item",
+  "selfPay.written.back": "Back to writing",
   "selfPay.written.nothing": "Write what you pay for and the amount",
   "selfPay.written.remove": "Remove item {number}",
   "selfPay.written.summary": "You pay {amount}",
