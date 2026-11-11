@@ -1,9 +1,8 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   type ItemSalesSplit,
+  itemSalesByCurrency,
   rankItems,
-  rowsByCurrency,
-  splitItemSales,
   type TopItemsMetric,
 } from "@payky/app-shared/stats-sections"
 import type { ItemSalesRow } from "@payky/core/modules/sales-stats/sales-stats-queries"
@@ -35,10 +34,7 @@ export function TopItems({
   const [showAll, setShowAll] = useState(false)
 
   // Discounts stand apart, summed under the ranking (catalog/0003).
-  const groups = rowsByCurrency(rows, accountCurrency).map((group) => ({
-    currency: group.currency,
-    ...splitItemSales(group.rows),
-  }))
+  const groups = itemSalesByCurrency(rows, accountCurrency)
   const hasMore = groups.some((group) => group.items.length > topCount)
 
   return (

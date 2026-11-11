@@ -8,6 +8,7 @@ import { expect, test } from "vitest"
 import {
   categoryShares,
   heatmapOpacity,
+  itemSalesByCurrency,
   rankItems,
   rowsByCurrency,
   signalFigures,
@@ -78,6 +79,20 @@ test("splitItemSales sums the discounts apart instead of ranking them", () => {
     ])
   ).toEqual({ items: [tea, beer], discounts: { quantity: 4, amount: -350 } })
   expect(splitItemSales([tea])).toEqual({ items: [tea], discounts: null })
+})
+
+test("itemSalesByCurrency splits per currency, then the discounts apart", () => {
+  const tea = item("Tea", 10, 500)
+  const eurDiscount = {
+    ...item("Loyalty", 1, -100),
+    currency: "EUR",
+    isDiscount: 1,
+  } as ItemSalesRow
+
+  expect(itemSalesByCurrency([eurDiscount, tea], "CZK")).toEqual([
+    { currency: "CZK", items: [tea], discounts: null },
+    { currency: "EUR", items: [], discounts: { quantity: 1, amount: -100 } },
+  ])
 })
 
 test("categoryShares adds the keypad row, keeps Uncategorized, sorts by amount", () => {

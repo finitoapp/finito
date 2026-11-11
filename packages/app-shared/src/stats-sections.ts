@@ -78,6 +78,19 @@ export const splitItemSales = (
   }
 }
 
+/**
+ * The item ranking's sections: the rows per currency (`rowsByCurrency`),
+ * each with its discounts summed apart (`splitItemSales`, catalog/0003).
+ */
+export const itemSalesByCurrency = (
+  rows: ReadonlyArray<ItemSalesRow>,
+  accountCurrency: Currency
+): ReadonlyArray<ItemSalesSplit & { readonly currency: Currency }> =>
+  rowsByCurrency(rows, accountCurrency).map((group) => ({
+    currency: group.currency,
+    ...splitItemSales(group.rows),
+  }))
+
 export interface CategoryShare {
   readonly key: string
   /** `null` is "Uncategorized", unless `keypad`: the sales without items. */
