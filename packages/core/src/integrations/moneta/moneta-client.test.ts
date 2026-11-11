@@ -126,6 +126,68 @@ describe("fetchMonetaTransactions", () => {
     })
   })
 
+  test("keys a transfer by the last segment of its entry reference and keeps the whole reference", async () => {
+    const { deps } = createDeps(() =>
+      jsonResponse({
+        transactions: [
+          incoming({
+            entryReference: "2123456789:2026-11-12:0001:2610542566906527751",
+          }),
+          incoming({ entryReference: " 2610542566906527751 ", status: "PDNG" }),
+          incoming({ entryReference: "2123456789:2026-11-12:0001:" }),
+          incoming({ entryReference: "  " }),
+        ],
+      })
+    )
+    await using run = testCreateRun(deps)
+
+    await expect(run(fetchMonetaTransactions(range))).resolves.toMatchObject({
+      ok: true,
+      value: {
+        transactions: [
+          {
+            id: "2610542566906527751",
+            entryReference: "2123456789:2026-11-12:0001:2610542566906527751",
+            status: "booked",
+          },
+          {
+            id: "2610542566906527751",
+            entryReference: "2610542566906527751",
+            status: "pending",
+          },
+          {
+            id: "2123456789:2026-11-12:0001:",
+            entryReference: "2123456789:2026-11-12:0001:",
+          },
+          { id: null, entryReference: null },
+        ],
+      },
+    })
+  })
+
+  test("dates a pending transfer without a value or booking date by the day the bank entered it", async () => {
+    const { deps } = createDeps(() =>
+      jsonResponse({
+        transactions: [
+          incoming({
+            status: "PDNG",
+            bookingDate: { date: null },
+            valueDate: { date: null },
+            enteredDate: { date: "2026-11-11" },
+          }),
+        ],
+      })
+    )
+    await using run = testCreateRun(deps)
+
+    await expect(run(fetchMonetaTransactions(range))).resolves.toMatchObject({
+      ok: true,
+      value: {
+        transactions: [{ status: "pending", occurredOn: "2026-11-11" }],
+      },
+    })
+  })
+
   test("sends the bounds as bare booking days", async () => {
     const { deps, requests } = createDeps(() => jsonResponse({}))
     await using run = testCreateRun(deps)

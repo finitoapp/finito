@@ -35,6 +35,7 @@ import {
   type DateString,
   type Iban,
   type NonEmptyString,
+  type NonEmptyString255,
   NonEmptyString255Schema,
   NonEmptyStringSchema,
   PositiveInteger,
@@ -276,14 +277,20 @@ type MonetaSyncDeps = EvoluDep & EvoluOwnerDep & FetchDep & DateDep & ConsoleDep
 
 /**
  * Downloads the account's transactions booked from `fromDate` to `toDate`,
- * both bank days included (`monetaBankDay`), records the
- * incoming ones not recorded yet and pays the payments they match — the one
- * write path behind both the background job and the payment-wait screen.
+ * both bank days included (`monetaBankDay`), and the pending ones the bank
+ * lists with them, records the incoming ones not recorded yet — pending or
+ * booked, either pays (moneta/0011) — and pays the payments they match: the
+ * one write path behind both the background job and the payment-wait screen.
  * Recorded transactions no payment holds yet are re-checked in one query,
  * so a check every few seconds over a busy window stays cheap.
  *
+ * A transfer is recorded under its key, the `<id>` its pending and booked
+ * forms share (`MonetaTransaction.id`). Transfers recorded before that were
+ * recorded under their whole `entryReference`; one already held under it is
+ * not recorded again (`formerBankReferences`).
+ *
  * It takes no lock, unlike Fio's job: both ids it writes are deterministic,
- * the account transaction's from the account and the bank reference, the
+ * the account transaction's from the account and the transfer's key, the
  * claim's from the payment and that transaction, so two syncs running at once
  * (the job and an open payment-wait screen) write the same rows. A second
  * transfer quoting a paid payment's symbols claims it too, so the payment
@@ -398,8 +405,11 @@ export const syncMonetaTransactions =
 const toMonetaBankTransaction = (
   transaction: MonetaTransaction & { readonly id: string },
   now: Date
-): BankTransaction => ({
+): BankTransaction & {
+  readonly formerBankReferences: ReadonlyArray<NonEmptyString255>
+} => ({
   bankReference: NonEmptyString255Schema.decode(transaction.id),
+  formerBankReferences: formerMonetaBankReferences(transaction),
   amount: transaction.amountMinor,
   currency: transaction.currency,
   occurredAt: TimestampMsSchema.decode(
@@ -415,3 +425,18 @@ const toMonetaBankTransaction = (
   constantSymbol: transaction.constantSymbol,
   specificSymbol: transaction.specificSymbol,
 })
+
+/**
+ * A booked transfer recorded before moneta/0011 holds its whole
+ * `entryReference` as its bank reference, not its key.
+ */
+const formerMonetaBankReferences = ({
+  id,
+  entryReference,
+}: MonetaTransaction & {
+  readonly id: string
+}): ReadonlyArray<NonEmptyString255> => {
+  if (entryReference === id) return []
+  const parsed = NonEmptyString255Schema.safeParse(entryReference)
+  return parsed.success ? [parsed.data] : []
+}

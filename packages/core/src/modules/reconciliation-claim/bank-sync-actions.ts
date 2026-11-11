@@ -68,9 +68,18 @@ const loadRecordedBankTransactions =
  * bank reference the account does not hold yet, as a page boundary or a
  * statement may repeat one — and the recorded ones no payment holds yet,
  * for `reconcileUnclaimedBankTransactions` to re-check.
+ *
+ * A transaction that names `formerBankReferences` counts as recorded under
+ * any of them too, so a bank whose sync changed how it keys a transfer does
+ * not record one again that was recorded under the old key (moneta/0011).
+ * Its row is still re-checked while no payment holds it.
  */
 export const loadUnrecordedBankTransactions =
-  <TTransaction extends Pick<BankTransaction, "bankReference">>({
+  <
+    TTransaction extends Pick<BankTransaction, "bankReference"> & {
+      readonly formerBankReferences?: ReadonlyArray<NonEmptyString255>
+    },
+  >({
     accountId,
     transactions,
   }: {
@@ -85,18 +94,30 @@ export const loadUnrecordedBankTransactions =
     EvoluDep
   > =>
   async (run) => {
+    const referencesOf = ({
+      bankReference,
+      formerBankReferences = [],
+    }: TTransaction): ReadonlyArray<NonEmptyString255> => [
+      bankReference,
+      ...formerBankReferences,
+    ]
     const recorded = await run.ok(
       loadRecordedBankTransactions({
         accountId,
-        bankReferences: [
-          ...new Set(transactions.map(({ bankReference }) => bankReference)),
-        ],
+        bankReferences: [...new Set(transactions.flatMap(referencesOf))],
       })
     )
     const seen = new Set<NonEmptyString255>()
-    const unrecorded = transactions.filter(({ bankReference }) => {
-      if (recorded.has(bankReference) || seen.has(bankReference)) return false
-      seen.add(bankReference)
+    const unrecorded = transactions.filter((transaction) => {
+      const references = referencesOf(transaction)
+      if (
+        references.some(
+          (reference) => recorded.has(reference) || seen.has(reference)
+        )
+      ) {
+        return false
+      }
+      for (const reference of references) seen.add(reference)
       return true
     })
 
