@@ -14,16 +14,16 @@ tags: [settings]
 - tapOn:
     text: ${output.t["settings.privacy.errorReporting.enable"]}
     below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.productLookup.title"]}
+    above: ${output.t["settings.privacy.serviceProxy.title"]}
 - assertVisible:
     text: ${output.t["settings.privacy.errorReporting.enabled"]}
     below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.productLookup.title"]}
+    above: ${output.t["settings.privacy.serviceProxy.title"]}
 - tapOn:
     text: ${output.t["settings.privacy.errorReporting.disable"]}
     below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.productLookup.title"]}
+    above: ${output.t["settings.privacy.serviceProxy.title"]}
 - assertVisible:
     text: ${output.t["settings.privacy.errorReporting.disabled"]}
     below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.productLookup.title"]}
+    above: ${output.t["settings.privacy.serviceProxy.title"]}
