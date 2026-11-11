@@ -116,7 +116,8 @@ export const createPaymentErrorKeys = {
   BillNotFound: "payment.create.error",
   BillStatusNotAllowed: "payment.create.error",
   BillTotalNotPositive: "payment.create.billTotalNotPositive",
-  NoPayableMethod: "payment.create.noPayableMethod",
+  // The same rule the hint under Charge states (`billCheckoutHintKeys`).
+  NoPayableMethod: "bill.noPayableMethod",
 } satisfies Record<CreatePreparedPaymentError["type"], TranslationKey>
 
 /**

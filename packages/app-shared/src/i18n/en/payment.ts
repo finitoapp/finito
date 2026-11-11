@@ -2,8 +2,6 @@ export const enPayment = {
   "payment.create.billTotalNotPositive":
     "This bill comes to zero or less, so there is nothing to charge.",
   "payment.create.error": "Could not create the payment.",
-  "payment.create.noPayableMethod":
-    "None of the payment methods turned on can take this amount: cash rounds it to zero.",
   "payment.status.canceled": "Canceled",
   "payment.status.expired": "Expired",
   "payment.status.paid": "Paid",

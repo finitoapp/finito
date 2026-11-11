@@ -4,8 +4,6 @@ export const csPayment = {
   "payment.create.billTotalNotPositive":
     "Účet vychází na nulu nebo pod ni, není co zaplatit.",
   "payment.create.error": "Platbu se nepodařilo vytvořit.",
-  "payment.create.noPayableMethod":
-    "Tuto částku nepřijme žádná zapnutá platební metoda: hotovost ji zaokrouhlí na nulu.",
   "payment.status.canceled": "Zrušeno",
   "payment.status.expired": "Vypršelo",
   "payment.status.paid": "Zaplaceno",
