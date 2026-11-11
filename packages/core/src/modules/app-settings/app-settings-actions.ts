@@ -25,6 +25,7 @@ import {
 import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import type { appSettings } from "./app-settings.ts"
 import { settingsQuery } from "./app-settings-queries.ts"
 import {
@@ -166,6 +167,18 @@ export const setPaymentMethodOrder =
         defaultPaymentMethod: order[0],
       })
     )
+
+/**
+ * Saves the tax rate a VAT payer's keypad amount is sold at, or clears it
+ * with `null`. The rate is not checked here: one deleted later, or not yet
+ * synced to the device reading it, reads as no rate set anyway.
+ */
+export const setKeypadTaxRate =
+  (
+    taxRateId: TaxRateId | null
+  ): Task<AppSettingsId, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) =>
+    await run(updateSettings({ keypadTaxRateId: taxRateId }))
 
 const createNoHomeModeEnabledError = defineError("NoHomeModeEnabled")()
 export type NoHomeModeEnabledError = ReturnType<

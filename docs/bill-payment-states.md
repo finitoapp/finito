@@ -139,7 +139,7 @@ still counts as Paid.
 (the QR one) in the Qerko app, its `qerkoPaymentAttempt` is `started` or
 `processing` (derived from its write-once columns, `qerko/0013`), and the
 payment stays **Pending**: only Qerko's `PAID` records the money and its claim
-(`qerko/0008`). A failed attempt leaves the payment Pending too, so the
+(`qerko/0015`). A failed attempt leaves the payment Pending too, so the
 customer can try again; another attempt is refused only while one is still in
 progress.
 
@@ -618,9 +618,14 @@ payments closed is always `paid` or `overpaid`, never `underpaid`, by
 construction. Only a bill staff finished at zero can read `underpaid`: one
 that a device which had not yet seen the closing added a line to.
 
-**Why coverage can diverge from `billTotal` at all.** A payment's `amount`
-is fixed the moment it's created and never renegotiated — nothing keeps it
-in sync with the bill's line-item total afterward. On a single device this
+**Why coverage can diverge from `billTotal` at all.** A payment's goods —
+its `amount` less its `tipAmount` — are fixed the moment it's created and
+never renegotiated — nothing keeps them in sync with the bill's line-item
+total afterward. Only its tip may change, once, when it is paid: a tip an
+outside system charged replaces the payment's own, its amount moving with
+it, in the batch that records the money
+([`payment/0018`](decisions/payment/0018-a-tip-an-outside-system-charged-replaces-the-payments-own.md)),
+which leaves its goods and so its coverage as they were. On a single device this
 can't cause a mismatch: [the editing lock](#editing-lock) blocks line edits
 from the moment a payment exists for the bill, so the total a payment was
 created against can't change under it before that payment resolves. The

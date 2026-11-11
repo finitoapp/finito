@@ -1037,6 +1037,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
                 paymentId={paymentId}
                 paymentCreatedAt={payment.createdAt}
                 payable={paymentStatus === "pending"}
+                hasTip={payment.tipAmount > 0}
                 newCashuQuotePending={newCashuQuotePending}
                 onNewCashuQuote={() => void handleNewCashuQuote()}
               />

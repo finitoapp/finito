@@ -24,6 +24,7 @@ import {
   saveCardSwitchioAccount,
   saveCashRegisterAccount,
 } from "../account/account-actions.ts"
+import { cashRegisterAccountByIdQuery } from "../account/account-queries.ts"
 import { createCardSwitchioAccountId } from "../account/account-utils.ts"
 import {
   createAccountTransaction,
@@ -83,6 +84,7 @@ import {
   createPayment,
   deletePayment,
   loadPayment,
+  markPaymentPaid,
   markPaymentPaidCash,
   markPaymentPaidIban,
   payPaymentWithBoltCard,
@@ -90,6 +92,7 @@ import {
   settleRestoredSwitchioCardPayment,
   updatePayment,
 } from "./payment-actions.ts"
+import { createCashRegisterAccountNotFoundError } from "./payment-errors.ts"
 import { preparePaymentMethod } from "./payment-preparation-actions.ts"
 import {
   paymentByIdQuery,
@@ -1572,6 +1575,134 @@ describe("payment actions", () => {
 
     expect(writeCalls.length).toBeGreaterThanOrEqual(4)
     expect(completions.size).toBe(1)
+  }, 15_000)
+
+  test.each([
+    ["a larger tip", 1_500],
+    ["no tip", 0],
+  ])(
+    "a charged tip replaces the payment's own in the batch that records the money, and its bill closes paid: %s",
+    async (_case, chargedTip) => {
+      await using testEvolu = await createEvoluTest()
+      const { evolu } = testEvolu
+      const deps = {
+        ...evoluTestDeps(evolu),
+        ...createTestDateDep(),
+      } satisfies EvoluDep & EvoluOwnerDep & DateDep
+      await using run = testCreateRun(deps)
+      const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+
+      const billId = await run.ok(
+        createBill({
+          deviceId: null,
+          displayNumber: PositiveInteger(1),
+          label: null,
+          tableId: null,
+          currency: "CZK",
+        })
+      )
+      await run.orThrow(addDinner(billId, 10_000))
+      const paymentId = await run.orThrow(
+        createPayment({
+          deviceId: null,
+          billId,
+          tableId: null,
+          amount: NonNegativeInteger(11_000),
+          currency: "CZK",
+          tipAmount: NonNegativeInteger(1_000),
+          canceledAt: null,
+          expiresAt: null,
+        })
+      )
+      const upsertSpy = vi.spyOn(evolu, "upsert")
+      const updateSpy = vi.spyOn(evolu, "update")
+
+      await run.orThrow(
+        markPaymentPaid({
+          paymentId,
+          accountId: cashRegisterAccountId,
+          chargedAmount: NonNegativeInteger(10_000 + chargedTip),
+          chargedTipAmount: NonNegativeInteger(chargedTip),
+          accountKind: "cashRegister",
+          source: "auto",
+          accountQuery: cashRegisterAccountByIdQuery,
+          notFoundError: createCashRegisterAccountNotFoundError({
+            id: cashRegisterAccountId,
+          }),
+        })
+      )
+
+      const writeCalls = [...upsertSpy.mock.calls, ...updateSpy.mock.calls]
+      upsertSpy.mockRestore()
+      updateSpy.mockRestore()
+      // The payment's rewrite commits with the money and the bill's closing.
+      expect(new Set(writeCalls.map((call) => call[2]?.onComplete)).size).toBe(
+        1
+      )
+      expect(writeCalls.map((call) => call[0])).toContain("payment")
+
+      expect(await evolu.loadQuery(paymentByIdQuery(paymentId))).toMatchObject([
+        { amount: 10_000 + chargedTip, tipAmount: chargedTip },
+      ])
+      expect(
+        await evolu.loadQuery(accountTransactionsByPaymentIdQuery(paymentId))
+      ).toMatchObject([{ amount: 10_000 + chargedTip }])
+      await expect(run.ok(loadBillCoverage(billId))).resolves.toEqual({
+        billTotal: 10_000,
+        claimedSum: 10_000,
+        coverage: "paid",
+      })
+      await expect(run.orThrow(loadBillStatus(billId))).resolves.toBe("closed")
+      expect(
+        (await evolu.loadQuery(billByIdQuery(billId)))[0]?.closedAt
+      ).not.toBeNull()
+    },
+    15_000
+  )
+
+  test("a charged tip equal to the payment's own leaves the payment as it is", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+    } satisfies EvoluDep & EvoluOwnerDep & DateDep
+    await using run = testCreateRun(deps)
+    const { cashRegisterAccountId } = await createPaymentAccounts(deps)
+    const paymentId = await run.orThrow(
+      createPayment({
+        deviceId: null,
+        billId: null,
+        tableId: null,
+        amount: NonNegativeInteger(11_000),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(1_000),
+        canceledAt: null,
+        expiresAt: null,
+      })
+    )
+    const updateSpy = vi.spyOn(evolu, "update")
+
+    await run.orThrow(
+      markPaymentPaid({
+        paymentId,
+        accountId: cashRegisterAccountId,
+        chargedTipAmount: NonNegativeInteger(1_000),
+        accountKind: "cashRegister",
+        source: "auto",
+        accountQuery: cashRegisterAccountByIdQuery,
+        notFoundError: createCashRegisterAccountNotFoundError({
+          id: cashRegisterAccountId,
+        }),
+      })
+    )
+
+    const updatedTables = updateSpy.mock.calls.map((call) => call[0])
+    updateSpy.mockRestore()
+    expect(updatedTables).not.toContain("payment")
+    expect(
+      await evolu.loadQuery(accountTransactionsByPaymentIdQuery(paymentId))
+    ).toMatchObject([{ amount: 11_000 }])
   }, 15_000)
 
   test("stops counting a claim once the transaction behind it is deleted", async () => {

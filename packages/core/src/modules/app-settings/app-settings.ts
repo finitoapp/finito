@@ -5,6 +5,7 @@ import {
   type InferTable,
   TimestampMsSchema,
 } from "../shared/schema.ts"
+import { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import {
   AppSettingsId,
   DefaultPaymentMethodSchema,
@@ -33,6 +34,13 @@ export const appSettings = {
    * Carries a timestamp only, never the phrase or any word of it.
    */
   recoveryPhraseVerifiedAt: TimestampMsSchema.nullable(),
+  /**
+   * The tax rate a VAT payer's keypad amount is sold at, which the Qerko
+   * receipt of a payment without a bill reports (qerko/0014); `null` means
+   * none is set and such a receipt carries no VAT lines. Nullable and left
+   * out of `settingsQuery`'s filter like `enabledHomeModesJson`.
+   */
+  keypadTaxRateId: TaxRateId.nullable(),
 } as const
 
 export type AppSettingsRow = InferTable<typeof appSettings>

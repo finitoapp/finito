@@ -1113,6 +1113,10 @@ export const enSettings = {
   "settings.taxRates.description":
     "Rates cannot be edited or deleted once created — archive a rate instead of changing its percentage, and add a new one if the rate itself changes.",
   "settings.taxRates.empty": "No tax rates yet.",
+  "settings.taxRates.keypad.description":
+    "The VAT rate of an amount typed on the keypad, which a Qerko receipt reports. Without one, the receipt lists no VAT.",
+  "settings.taxRates.keypad.label": "Keypad amount VAT rate",
+  "settings.taxRates.keypad.none": "Not set",
   "settings.taxRates.name.invalid": "Enter a name.",
   "settings.taxRates.name.label": "Name",
   "settings.taxRates.name.placeholder": "e.g. Standard rate",

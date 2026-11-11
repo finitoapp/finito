@@ -1,6 +1,6 @@
 # 0008 A Qerko payment records money only when Qerko says PAID
 
-Status: accepted
+Status: superseded by qerko/0015
 Date: 2026-11-04
 
 ## Context

@@ -149,15 +149,19 @@ expects its answer within 5 s, and reconnects after 60 s without any message
 
 The QR code is `https://qerko.com/~qr/pos/<restaurant id>~<payment id>`, on
 production's host in the sandbox too. Qerko hands the part after `~` to
-`searchBills`; the bill is one line with the whole payment (`qerko/0009`).
+`searchBills`. Qerko is offered the payment's goods, its amount less its tip:
+a payment that covers its bill offers the bill's lines, any other one line
+with the goods (`qerko/0014`). The bill allows a tip, and the customer tips
+in Qerko; the tip set on Payky's tip screen never reaches Qerko
+(`qerko/0015`).
 
 | Qerko calls | Payky does |
 | --- | --- |
 | `searchBills(qr)`, `getBill(id)` | the payment's bill; `BILL_CLOSED` once it no longer waits; no bill (or `BILL_NOT_FOUND`) for a payment not offered through Qerko |
-| `paymentStart(Payment)` | checks it against the bill (`INVALID_DATA`), refuses while another attempt runs (`BILL_LOCKED`), records the attempt |
-| `paymentProcessed(id)` | marks the attempt processing, answers the receipt (Qerko cancels without one) |
-| `paymentClosed(id, PAID)` | reads the `Payment` with `get-payment`, records the money, closes the attempt as paid |
-| `paymentClosed(id, other)` | closes the attempt as failed, no money (`qerko/0008`) |
+| `paymentStart(Payment)` | checks its items against the goods (`INVALID_DATA`), refuses while another attempt runs (`BILL_LOCKED`), records the attempt with Qerko's tip: `tipBrutto` as `tipAmount`, `tipNetto` as `tipNetAmount` |
+| `paymentProcessed(id)` | marks the attempt processing, answers the receipt (Qerko cancels without one): the bill's items, no tip, and the VAT breakdown of the goods alone; a VAT payer's keypad payment at the rate set for keypad amounts (`qerko/0014`) |
+| `paymentClosed(id, PAID)` | reads the `Payment` with `get-payment`, records the money, closes the attempt as paid; when the parts are the goods and `tipBrutto`, that tip replaces the payment's own (`qerko/0015`, `payment/0018`) |
+| `paymentClosed(id, other)` | closes the attempt as failed, no money (`qerko/0015`) |
 | table and order calls | answered empty or `NO_SUCH_METHOD` |
 
 An attempt still open 30 s after it started is asked about with `get-payment`
@@ -167,8 +171,9 @@ not know yet (`qerko/0013`).
 
 ### A refund
 
-`cancel-payment` refunds all of the Qerko payment; it is recorded once Qerko
-says `CANCELLED` (`qerko/0010`).
+`cancel-payment` refunds all of the Qerko payment, the customer's tip
+included; it is recorded once Qerko says `CANCELLED`, the goods and the tip
+apart (`qerko/0010`).
 
 ### Running against the sandbox
 

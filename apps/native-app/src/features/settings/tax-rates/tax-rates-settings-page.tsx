@@ -1,6 +1,14 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { requiredTextCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  NO_OPTION,
+  optionalIdCodec,
+  requiredTextCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import { parseTaxRateForm } from "@payky/app-shared/tax-rate-form"
+import { setKeypadTaxRate } from "@payky/core/modules/app-settings/app-settings-actions"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import type { TaxRateRow } from "@payky/core/modules/tax-rate/tax-rate"
 import {
   activateTaxRate,
@@ -10,7 +18,12 @@ import {
   setDefaultTaxRate,
 } from "@payky/core/modules/tax-rate/tax-rate-actions"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
-import { taxRatePercentageToDecimalString } from "@payky/core/modules/tax-rate/tax-rate-utils"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+  taxRatePercentageToDecimalString,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import Archive from "lucide-react-native/icons/archive"
 import ArchiveRestore from "lucide-react-native/icons/archive-restore"
 import Pencil from "lucide-react-native/icons/pencil"
@@ -18,6 +31,7 @@ import Plus from "lucide-react-native/icons/plus"
 import Star from "lucide-react-native/icons/star"
 import { type ComponentProps, useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
+import { z } from "zod"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -37,15 +51,38 @@ import {
   FieldLabel,
 } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../components/ui/select.tsx"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
-import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
+import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 
+const keypadTaxRateCodec = optionalIdCodec<TaxRateId>()
+
+/** What the screen reads: the rates, and for a VAT payer the keypad's rate. */
+const taxRatesSettingsPageQueries = [
+  taxRatesQuery,
+  legalEntityQuery,
+  settingsQuery,
+]
+
 /** Tax rates, as web's `TaxRatesSettingsPage`; every change is written at once. */
 export function TaxRatesSettingsPage() {
+  usePreloadEvoluQueries(taxRatesSettingsPageQueries)
   const { t } = useTranslation()
   const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const activeTaxRates = taxRates.filter((rate) => rate.deactivatedAt === null)
   const archivedTaxRates = taxRates.filter(
     (rate) => rate.deactivatedAt !== null
@@ -75,6 +112,8 @@ export function TaxRatesSettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {isVatPayer(legalEntity) && <KeypadTaxRateCard taxRates={taxRates} />}
 
         <NewTaxRateForm />
 
@@ -243,6 +282,80 @@ function TaxRateRowItem({ taxRate }: { readonly taxRate: TaxRateRow }) {
         />
       )}
     </XStack>
+  )
+}
+
+/**
+ * The rate a VAT payer's keypad amount is sold at, as web's
+ * `KeypadTaxRateCard`. A rate that is gone, or not synced to this device
+ * yet, reads as not set, as it does for the Qerko receipt.
+ */
+function KeypadTaxRateCard({
+  taxRates,
+}: {
+  readonly taxRates: ReadonlyArray<TaxRateRow>
+}) {
+  const runToast = useRunToast()
+  const { t } = useTranslation()
+  const [settings] = useEvoluQuery(settingsQuery).data
+  const keypadTaxRateId =
+    taxRates.find((rate) => rate.id === settings?.keypadTaxRateId)?.id ?? null
+  const keypadTaxRate = useInlineChoice(keypadTaxRateId, (next) =>
+    runToast(async (run) => {
+      await run.ok(setKeypadTaxRate(next))
+    })
+  )
+  const options = [
+    { value: NO_OPTION, title: t("settings.taxRates.keypad.none") },
+    ...filterSelectableTaxRates(taxRates, keypadTaxRateId).map((rate) => ({
+      value: rate.id,
+      title: `${formatTaxRateLabel(rate)}${
+        rate.deactivatedAt === null
+          ? ""
+          : ` — ${t("settings.taxRates.archived.title")}`
+      }`,
+    })),
+  ]
+
+  return (
+    <Card>
+      <CardContent>
+        <Field>
+          <FieldLabel>{t("settings.taxRates.keypad.label")}</FieldLabel>
+          <Select
+            value={z.encode(keypadTaxRateCodec, keypadTaxRate.value)}
+            disabled={keypadTaxRate.saving}
+            onValueChange={(value) =>
+              void keypadTaxRate.choose(
+                z.safeDecode(keypadTaxRateCodec, value).data ?? null
+              )
+            }
+            items={Object.fromEntries(
+              options.map((option) => [option.value, option.title])
+            )}
+          >
+            <SelectTrigger
+              fullWidth
+              aria-label={t("settings.taxRates.keypad.label")}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent title={t("settings.taxRates.keypad.label")}>
+              <SelectGroup>
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.title}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            {t("settings.taxRates.keypad.description")}
+          </FieldDescription>
+        </Field>
+      </CardContent>
+    </Card>
   )
 }
 

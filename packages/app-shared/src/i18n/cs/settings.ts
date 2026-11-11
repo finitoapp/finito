@@ -1113,6 +1113,10 @@ export const csSettings = {
   "settings.taxRates.description":
     "Sazbu po vytvoření nelze upravit ani smazat — místo změny procenta ji archivujte a založte novou, pokud se sazba reálně změní.",
   "settings.taxRates.empty": "Zatím žádné daňové sazby.",
+  "settings.taxRates.keypad.description":
+    "Sazba DPH částky zadané na klávesnici, kterou uvádí účtenka z Qerka. Bez ní účtenka DPH neuvádí.",
+  "settings.taxRates.keypad.label": "Sazba DPH částky z klávesnice",
+  "settings.taxRates.keypad.none": "Nenastaveno",
   "settings.taxRates.name.invalid": "Zadejte název.",
   "settings.taxRates.name.label": "Název",
   "settings.taxRates.name.placeholder": "např. Základní sazba",

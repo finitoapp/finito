@@ -278,6 +278,8 @@ export const enPayment = {
   "paymentWait.preparing.qerkoPayment": "Preparing the Qerko payment…",
   "paymentWait.qerkoPayment.scan":
     "The customer scans the code in the Qerko app.",
+  "paymentWait.qerkoPayment.tipChosenInQerko":
+    "The customer chooses the tip in Qerko, and it replaces the tip entered here.",
   "paymentWait.qerkoPayment.started": "The customer is paying in Qerko…",
   "paymentWait.qerkoPayment.processing": "Qerko is confirming the payment…",
   "paymentWait.qerkoPayment.failed":

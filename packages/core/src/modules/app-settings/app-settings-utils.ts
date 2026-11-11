@@ -39,6 +39,7 @@ export const EnabledHomeModesJson = jsonCodec(
  * `enabledHomeModesJson` is left out: `null` already means every mode, which
  * also offers a mode added later to anyone who never narrowed the set.
  * `recoveryPhraseVerifiedAt` is left out: `null` means not verified yet.
+ * `keypadTaxRateId` is left out: `null` means no rate is set.
  */
 /** The fiat currency an account works in before its settings row exists. */
 export const defaultFiatCurrency = FiatCurrency.CZK
@@ -53,7 +54,7 @@ export const getFiatCurrency = (
 
 export const createDefaultSettings = (): Omit<
   AppSettingsRow,
-  "enabledHomeModesJson" | "recoveryPhraseVerifiedAt"
+  "enabledHomeModesJson" | "recoveryPhraseVerifiedAt" | "keypadTaxRateId"
 > => ({
   id: settingsId,
   onboardingCompleted: null,

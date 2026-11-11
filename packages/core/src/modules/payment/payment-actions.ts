@@ -67,7 +67,7 @@ import {
   type NonEmptyString,
   NonEmptyString255,
   NonEmptyString255Schema,
-  type NonNegativeInteger,
+  NonNegativeInteger,
   type SyncSource,
   TimestampMs,
   TimestampMsSchema,
@@ -555,6 +555,7 @@ export const markPaymentPaid =
     notFoundError,
     receivedCashAmount,
     chargedAmount,
+    chargedTipAmount,
     paymentId,
     accountId,
     deviceId,
@@ -574,6 +575,16 @@ export const markPaymentPaid =
      * through the ordinary coverage rule.
      */
     readonly chargedAmount?: NonNegativeInteger
+    /**
+     * The tip the outside system charged on top of the payment's goods, when
+     * it takes the place of the payment's own `tipAmount` (payment/0018): a
+     * Qerko payment whose customer tipped in Qerko (qerko/0015). Different
+     * from `tipAmount`, it rewrites the payment to that tip and its amount to
+     * the goods plus that tip, in the batch that records the money, and the
+     * bill's closing is judged on the payment as rewritten. The goods never
+     * change.
+     */
+    readonly chargedTipAmount?: NonNegativeInteger
   }): Task<
     PaymentId,
     PaymentNotFoundError | TNotFoundError | AccountCurrencyMismatchError,
@@ -592,6 +603,18 @@ export const markPaymentPaid =
       expectedCurrency: payment.currency,
     })
     if (!accountResult.ok) return accountResult
+
+    // The payment as this batch leaves it: its own tip replaced by the one
+    // charged, the goods kept (payment/0018).
+    const revision =
+      chargedTipAmount === undefined || chargedTipAmount === payment.tipAmount
+        ? null
+        : {
+            amount: NonNegativeInteger(
+              Math.max(0, payment.amount - payment.tipAmount) + chargedTipAmount
+            ),
+            tipAmount: chargedTipAmount,
+          }
 
     // Computed up front rather than written through `createAccountTransaction`
     // and `claimManualReconciliation` as two separate mutation batches: the
@@ -613,7 +636,7 @@ export const markPaymentPaid =
         // records the movement: there is no bank statement row behind a
         // hand-confirmed transfer, so no `iban` detail implies the kind.
         kind: accountKind,
-        amount: chargedAmount ?? payment.amount,
+        amount: chargedAmount ?? revision?.amount ?? payment.amount,
         currency: payment.currency,
         occurredAt:
           occurredAt ?? TimestampMsSchema.decode(run.deps.date.now().getTime()),
@@ -632,16 +655,27 @@ export const markPaymentPaid =
       claimedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
     }
     const billClosing = await run.ok(
-      loadBillClosedAtForPayment(paymentId, {
-        id: accountTransaction.id,
-        kind: accountTransaction.kind,
-        amount: accountTransaction.input.amount,
-        currency: accountTransaction.input.currency,
-      })
+      loadBillClosedAtForPayment(
+        paymentId,
+        {
+          id: accountTransaction.id,
+          kind: accountTransaction.kind,
+          amount: accountTransaction.input.amount,
+          currency: accountTransaction.input.currency,
+        },
+        revision ?? undefined
+      )
     )
 
     const { evoluOwner } = run.deps
     await runMutationWithCompletion((options) => {
+      if (revision !== null) {
+        run.deps.evolu.update(
+          "payment",
+          { id: paymentId, ...revision },
+          { ...options, owner: evoluOwner }
+        )
+      }
       upsertAccountTransactionRows(run.deps.evolu, accountTransaction, {
         ...options,
         owner: evoluOwner,
