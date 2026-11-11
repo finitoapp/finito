@@ -157,6 +157,15 @@ export const enBill = {
   "selfPay.bill.paid": "Paid",
   "selfPay.bill.remainder": "Left to pay",
   "selfPay.bill.total": "Total",
+  "selfPay.billChanged.announcement": "{title} {description}",
+  "selfPay.billChanged.description":
+    "If you have not sent the money yet, go back and choose again.",
+  "selfPay.billChanged.nothingLeft.description":
+    "If you have not sent the money yet, do not send it.",
+  "selfPay.billChanged.nothingLeft.title":
+    "The bill has changed in the meantime. Nothing is left to pay.",
+  "selfPay.billChanged.title":
+    "The bill has changed in the meantime. {amount} is left to pay.",
   "selfPay.choice.amount": "Enter another amount",
   "selfPay.choice.amount.hint":
     "From {minimum}. You cannot pay more than what is left.",

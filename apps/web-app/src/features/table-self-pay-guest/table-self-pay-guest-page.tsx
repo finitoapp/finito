@@ -199,6 +199,37 @@ function GuestPaymentWait({
   )
 }
 
+function GuestBillChangedNotice({ bill }: { readonly bill: SelfPayViewBill }) {
+  const { t, locale } = useGuestTranslation()
+  const announce = useGuestStatus()
+  const title =
+    bill.remainder === 0
+      ? t("selfPay.billChanged.nothingLeft.title")
+      : t("selfPay.billChanged.title", {
+          amount: formatGuestAmount(bill.remainder, bill, locale),
+        })
+  const description = t(
+    bill.remainder === 0
+      ? "selfPay.billChanged.nothingLeft.description"
+      : "selfPay.billChanged.description"
+  )
+  const announcement = t("selfPay.billChanged.announcement", {
+    title,
+    description,
+  })
+
+  useEffect(() => {
+    announce(announcement)
+  }, [announce, announcement])
+
+  return (
+    <div className="flex flex-col gap-1 rounded-xl bg-amber-500/10 p-3 text-sm">
+      <p className="font-semibold">{title}</p>
+      <p>{description}</p>
+    </div>
+  )
+}
+
 function GuestPayment({
   address,
   view,
@@ -206,6 +237,7 @@ function GuestPayment({
   session,
   backLabel,
   onBack,
+  notice,
   children,
 }: {
   readonly address: TableSelfPayAddress
@@ -214,6 +246,7 @@ function GuestPayment({
   readonly session: PaymentSession
   readonly backLabel: string
   readonly onBack: () => void
+  readonly notice?: ReactNode
   readonly children?: ReactNode
 }) {
   const { t, locale } = useGuestTranslation()
@@ -265,6 +298,7 @@ function GuestPayment({
       >
         {formatGuestAmount(session.amount, session.bill, locale)}
       </h2>
+      {notice}
       {children}
       {session.isSeenByRestaurant ? null : (
         <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">
@@ -790,6 +824,14 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   )
   const pendingSession =
     session !== null && !isSessionConfirmed ? session : null
+  const changedBill =
+    pendingSession === null
+      ? null
+      : (view.bills.find(
+          ({ reference, remainder }) =>
+            reference === pendingSession.bill.reference &&
+            remainder < pendingSession.choice.share.amount
+        ) ?? null)
   const isStale = isSelfPayViewStale(
     confirmedAt,
     Math.floor(now.getTime() / 1000)
@@ -1008,6 +1050,11 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
               session={pendingSession}
               backLabel={t("selfPay.back")}
               onBack={leavePayment}
+              notice={
+                changedBill === null ? null : (
+                  <GuestBillChangedNotice bill={changedBill} />
+                )
+              }
             >
               <GuestPaidFor
                 bill={pendingSession.bill}

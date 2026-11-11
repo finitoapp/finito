@@ -161,6 +161,15 @@ export const skBill = {
   "selfPay.bill.paid": "Zaplatené",
   "selfPay.bill.remainder": "Zostáva zaplatiť",
   "selfPay.bill.total": "Spolu",
+  "selfPay.billChanged.announcement": "{title} {description}",
+  "selfPay.billChanged.description":
+    "Ak ste peniaze ešte neposlali, vráťte sa a vyberte znova.",
+  "selfPay.billChanged.nothingLeft.description":
+    "Ak ste peniaze ešte neposlali, už ich neposielajte.",
+  "selfPay.billChanged.nothingLeft.title":
+    "Účet sa medzitým zmenil. Už nie je čo platiť.",
+  "selfPay.billChanged.title":
+    "Účet sa medzitým zmenil. Zostáva zaplatiť {amount}.",
   "selfPay.choice.amount": "Zadať inú sumu",
   "selfPay.choice.amount.hint":
     "Od {minimum}. Viac, ako zostáva, zaplatiť nejde.",

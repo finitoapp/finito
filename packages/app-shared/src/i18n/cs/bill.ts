@@ -159,6 +159,15 @@ export const csBill = {
   "selfPay.bill.paid": "Zaplaceno",
   "selfPay.bill.remainder": "Zbývá zaplatit",
   "selfPay.bill.total": "Celkem",
+  "selfPay.billChanged.announcement": "{title} {description}",
+  "selfPay.billChanged.description":
+    "Pokud jste peníze ještě neposlali, vraťte se a vyberte znovu.",
+  "selfPay.billChanged.nothingLeft.description":
+    "Pokud jste peníze ještě neposlali, už je neposílejte.",
+  "selfPay.billChanged.nothingLeft.title":
+    "Účet se mezitím změnil. Už není co platit.",
+  "selfPay.billChanged.title":
+    "Účet se mezitím změnil. Zbývá zaplatit {amount}.",
   "selfPay.choice.amount": "Zadat jinou částku",
   "selfPay.choice.amount.hint": "Od {minimum}. Víc, než zbývá, zaplatit nejde.",
   "selfPay.choice.amount.label": "Jiná částka",
