@@ -629,7 +629,7 @@ function GuestOrdering({
   )
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4">
       {listedOrders.length === 0 ? null : (
         <GuestOrderList
           ref={ordersBlock}
@@ -913,7 +913,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-1 flex-col gap-4">
       <header className="flex flex-col gap-1 text-center">
         <h1 className="text-2xl font-semibold">{view.table}</h1>
         {view.payee === null ? null : (

@@ -93,7 +93,7 @@ export function GuestMenu({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       {menu.categories.map((category, index) => (
         <section
           key={category.name ?? `uncategorized-${index}`}
@@ -208,7 +208,7 @@ export function GuestMenu({
 
       <footer
         ref={payBar}
-        className="sticky bottom-0 z-20 -mx-4 flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
       >
         <div className="flex justify-between gap-3 text-sm text-muted-foreground tabular-nums">
           <span>
