@@ -242,8 +242,7 @@ export const skBill = {
   "selfPay.order.back": "Späť do menu",
   "selfPay.order.hide": "Skryť",
   "selfPay.order.items": "{summary} · {total}",
-  "selfPay.order.left":
-    "Objednávka {number} je potvrdená. Zostáva zaplatiť {amount}.",
+  "selfPay.order.left": "Objednávka {number}: zostáva zaplatiť {amount}.",
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pre kuchyňu",
   "selfPay.order.note.length": "{length}/{max}",
@@ -267,7 +266,7 @@ export const skBill = {
   "selfPay.order.unseen": "Platbu sme zatiaľ nevideli.",
   "selfPay.order.unseen.description":
     "Ak ste zaplatili, ukážte túto obrazovku obsluhe.",
-  "selfPay.order.waiting": "Reštaurácia vašu objednávku zatiaľ nepotvrdila.",
+  "selfPay.order.waiting": "Platba za objednávku zatiaľ neprišla.",
   "selfPay.order.waiting.description":
     "Ak ste už zaplatili, čakáme na potvrdenie platby.",
   "selfPay.paidFor.equal": "1/{people} účtu",

@@ -236,7 +236,7 @@ export const enBill = {
   "selfPay.order.back": "Back to the menu",
   "selfPay.order.hide": "Hide",
   "selfPay.order.items": "{summary} · {total}",
-  "selfPay.order.left": "Order {number} is confirmed. {amount} is left to pay.",
+  "selfPay.order.left": "Order {number}: {amount} is left to pay.",
   "selfPay.order.list.title": "Your orders",
   "selfPay.order.note.label": "Note for the kitchen",
   "selfPay.order.note.length": "{length}/{max}",
@@ -260,7 +260,7 @@ export const enBill = {
   "selfPay.order.unseen": "We have not seen your payment yet.",
   "selfPay.order.unseen.description":
     "If you paid, show this screen to the staff.",
-  "selfPay.order.waiting": "The restaurant has not confirmed your order yet.",
+  "selfPay.order.waiting": "Payment for this order has not arrived yet.",
   "selfPay.order.waiting.description":
     "If you have paid already, the payment is waiting to be confirmed.",
   "selfPay.paidFor.equal": "1/{people} of the bill",

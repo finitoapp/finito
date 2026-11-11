@@ -33,11 +33,7 @@ const shown = (
 
 describe("where the guest's order stands", () => {
   test.each([
-    [
-      "not confirmed yet",
-      null,
-      "Restaurace vaši objednávku zatím nepotvrdila.",
-    ],
+    ["not confirmed yet", null, "Platba za objednávku zatím nedorazila."],
     [
       "paid and waiting for the staff",
       {},
