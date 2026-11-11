@@ -1,14 +1,10 @@
 import {
   appBackgroundJobs,
   bankBackgroundJobs,
-  bankBackgroundJobsLockName,
   cashuBackgroundJobs,
 } from "@payky/core/background-jobs/background-jobs"
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
-import {
-  runBackgroundJobs,
-  runBackgroundJobsHoldingLock,
-} from "@payky/core/background-jobs/run-background-jobs"
+import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
 import type {
   DeviceAccountId,
@@ -30,7 +26,6 @@ import {
   useEffect,
   useRef,
 } from "react"
-import { Platform } from "react-native"
 import { accountAtom } from "../../atoms/account.ts"
 import { appMigrationsAtom } from "../../atoms/app-migrations.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "../../atoms/cashu.ts"
@@ -195,7 +190,10 @@ function AppBackgroundJobs() {
  * The Fio and MONETA jobs, only while this device can reach the banks: the
  * APK always, the PWA once it allowed the service proxy
  * (service-proxy/0001). Turning the consent on or off mounts or unmounts
- * this alone, so no other job restarts.
+ * this alone, so no other job restarts. In a browser each open tab of the
+ * PWA runs them, as another device would: no lock elects one tab, since a
+ * backgrounded or frozen tab could keep holding it and starve the visible
+ * one.
  */
 function BankBackgroundJobs() {
   return useCanReachBanks() ? <RunningBankBackgroundJobs /> : null
@@ -220,21 +218,7 @@ function RunningBankBackgroundJobs() {
         notificationStore,
       })
     )
-    // In a browser every tab would spend MONETA's daily call limit and Fio's
-    // interval between calls again, so one tab holds them, under the
-    // browser's locks. The APK has one JS runtime, whose in-memory lock
-    // manager spans nothing more.
-    return {
-      run,
-      jobs: run.ok(
-        Platform.OS === "web"
-          ? runBackgroundJobsHoldingLock(
-              bankBackgroundJobsLockName,
-              bankBackgroundJobs
-            )
-          : runBackgroundJobs(bankBackgroundJobs)
-      ),
-    }
+    return { run, jobs: run.ok(runBackgroundJobs(bankBackgroundJobs)) }
   }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
 
   useBackgroundJobs({ isDemo: account.demo !== null, start })

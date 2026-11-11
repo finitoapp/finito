@@ -61,5 +61,5 @@ plugin idle until a token is connected for the new one.
 - `packages/core/src/background-jobs/background-jobs.test.ts > background job groups > runs the MONETA job in the CLI, which reaches the bank as the native app does`
 - `packages/core/src/integrations/service-proxy/service-proxy-services.test.ts > resolveServiceProxyUpstreamUrl > resolves every call the MONETA client makes`
 - `apps/web-app/src/platform/platform-deps.test.ts > createFetchDep in a browser > reads the consent at each call, not when the dep is created`
-- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone, in one tab`
+- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone`
 - `apps/native-app/src/components/app/app-background-jobs.test.ts > app background jobs and the service proxy consent > in the PWA, turning the consent on and off starts and stops the bank jobs alone`

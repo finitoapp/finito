@@ -1,16 +1,11 @@
-import { Capacitor } from "@capacitor/core"
 import { createRun } from "@evolu/web"
 import {
   appBackgroundJobs,
   bankBackgroundJobs,
-  bankBackgroundJobsLockName,
   cashuBackgroundJobs,
 } from "@payky/core/background-jobs/background-jobs"
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
-import {
-  runBackgroundJobs,
-  runBackgroundJobsHoldingLock,
-} from "@payky/core/background-jobs/run-background-jobs"
+import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
 import type {
   DeviceAccountId,
@@ -258,11 +253,10 @@ export function BankBackgroundJobs() {
 }
 
 /**
- * In a browser every tab of the app would run the bank jobs again, spending
- * MONETA's daily call limit and Fio's interval between calls once more, so
- * they run in the one tab holding `bankBackgroundJobsLockName`. Not in the
- * native app: Android WebView cannot grant `navigator.locks`
- * (`polyfills/android-webview-locks.ts`), and it has a single page anyway.
+ * Runs the bank jobs while mounted. In a browser every open tab with the
+ * consent on runs them, as another device would (service-proxy/0001): no
+ * lock elects one tab, since a backgrounded or frozen tab could keep holding
+ * it and starve the visible one.
  */
 function RunningBankBackgroundJobs() {
   const evolu = useAtomValue(evoluAtom)
@@ -287,14 +281,7 @@ function RunningBankBackgroundJobs() {
     )
     return {
       run,
-      jobs: run.ok(
-        Capacitor.isNativePlatform()
-          ? runBackgroundJobs(bankBackgroundJobs)
-          : runBackgroundJobsHoldingLock(
-              bankBackgroundJobsLockName,
-              bankBackgroundJobs
-            )
-      ),
+      jobs: run.ok(runBackgroundJobs(bankBackgroundJobs)),
     }
   }, [
     console,
