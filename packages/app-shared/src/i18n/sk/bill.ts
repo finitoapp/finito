@@ -143,7 +143,7 @@ export const skBill = {
   "billHistory.title": "História účtov",
   "billHistory.underpaid": "Nedoplatené",
   "selfPay.amount.unreadable": "Napíšte sumu, napríklad 150 alebo 150,50.",
-  "selfPay.back": "Zmeniť platbu",
+  "selfPay.back": "Späť k účtu",
   "selfPay.bank.account": "Číslo účtu",
   "selfPay.bank.amount": "Suma",
   "selfPay.bank.copy": "Kopírovať {field}",

@@ -139,7 +139,7 @@ export const enBill = {
   "billHistory.title": "Bill history",
   "billHistory.underpaid": "Underpaid",
   "selfPay.amount.unreadable": "Type an amount such as 150 or 150.50.",
-  "selfPay.back": "Change what I pay",
+  "selfPay.back": "Back to the bill",
   "selfPay.bank.account": "Account",
   "selfPay.bank.amount": "Amount",
   "selfPay.bank.copy": "Copy {field}",

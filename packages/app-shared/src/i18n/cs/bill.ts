@@ -141,7 +141,7 @@ export const csBill = {
   "billHistory.title": "Historie účtů",
   "billHistory.underpaid": "Nedoplaceno",
   "selfPay.amount.unreadable": "Napište částku, třeba 150 nebo 150,50.",
-  "selfPay.back": "Změnit platbu",
+  "selfPay.back": "Zpět k účtu",
   "selfPay.bank.account": "Číslo účtu",
   "selfPay.bank.amount": "Částka",
   "selfPay.bank.copy": "Kopírovat {field}",
