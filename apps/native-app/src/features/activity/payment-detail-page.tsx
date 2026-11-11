@@ -21,7 +21,10 @@ import {
   calculateTaxRecap,
   hasTaxableLines,
 } from "@payky/core/modules/bill-line/bill-line-tax-utils"
-import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
+import {
+  deriveBillLineSummaryDiff,
+  deriveBillSummaryTotal,
+} from "@payky/core/modules/bill-line/bill-line-utils"
 import {
   type DeliverEetSaleError,
   retryEetSale,
@@ -116,7 +119,6 @@ import { PaymentStatusBadge } from "./payment-status-display.tsx"
 import {
   billLineSummaryDiffQueries,
   useBillCoverage,
-  useBillLineSummaryDiff,
   usePaymentLineSummaries,
 } from "./use-bill-detail-data.ts"
 import { usePaymentCollisionActions } from "./use-payment-collision-actions.ts"
@@ -563,8 +565,15 @@ function PaymentBillCard({
   const summaries = useBillLineSummaries(billId)
   const billStatus = useBillStatus(billId)
   const { claimedSum, coverage } = useBillCoverage(billId)
-  const lineDiff = useBillLineSummaryDiff(paymentId, billId)
   const frozenLines = usePaymentLineSummaries(paymentId)
+  // `null` when the payment predates the frozen snapshot.
+  const lineDiff = useMemo(
+    () =>
+      frozenLines === null
+        ? null
+        : deriveBillLineSummaryDiff(frozenLines, summaries),
+    [frozenLines, summaries]
+  )
   const claimedPayments = useEvoluQuery(
     claimedPaymentsByBillIdQuery(billId)
   ).data

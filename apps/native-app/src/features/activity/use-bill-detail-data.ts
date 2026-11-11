@@ -5,11 +5,7 @@ import {
   calculateClaimedSum,
   deriveBillCoverage,
 } from "@payky/core/modules/bill/bill-utils"
-import {
-  type BillLineSummaryDiff,
-  deriveBillLineSummaryDiff,
-  deriveBillSummaryTotal,
-} from "@payky/core/modules/bill-line/bill-line-utils"
+import { deriveBillSummaryTotal } from "@payky/core/modules/bill-line/bill-line-utils"
 import { itemsByPaymentIdQuery } from "@payky/core/modules/item/item-queries"
 import type { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentLinesByPaymentIdQuery } from "@payky/core/modules/payment-line/payment-line-queries"
@@ -18,12 +14,12 @@ import { useMemo } from "react"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useBillLineSummaries } from "../shared/use-bill-state.ts"
 
-// Native counterparts of web's `useBillCoverage` and `useBillLineSummaryDiff`:
+// Native counterparts of web's `useBillCoverage` and `usePaymentLineSummaries`:
 // the derivations are core's, only the query hooks differ.
 
 /**
- * What `useBillLineSummaryDiff` reads beyond `billStateQueries`, for a
- * screen's `usePreloadEvoluQueries`.
+ * What `usePaymentLineSummaries` reads, for a screen's
+ * `usePreloadEvoluQueries`.
  */
 export const billLineSummaryDiffQueries = (paymentId: PaymentId) => [
   paymentLinesByPaymentIdQuery(paymentId),
@@ -61,7 +57,8 @@ export function usePaymentLineSummaries(paymentId: PaymentId) {
   )
   const { data: paymentLineRows } = useEvoluQuery(lineQuery)
   // Scoped to the payment, not the bill: a frozen `paymentLine` can point at
-  // an item the bill no longer carries, which is exactly what the diff reports.
+  // an item the bill no longer carries, which is exactly what comparing it
+  // with the bill (`deriveBillLineSummaryDiff`) reports.
   const itemQuery = useMemo(() => itemsByPaymentIdQuery(paymentId), [paymentId])
   const { data: itemRows } = useEvoluQuery(itemQuery)
 
@@ -71,23 +68,5 @@ export function usePaymentLineSummaries(paymentId: PaymentId) {
         ? null
         : paymentLinesToBillLineSummaries(paymentLineRows, itemRows),
     [paymentLineRows, itemRows]
-  )
-}
-
-/**
- * The bill-line snapshot frozen when `paymentId` was created against the
- * bill's current lines; `null` when the payment predates the snapshot.
- */
-export function useBillLineSummaryDiff(
-  paymentId: PaymentId,
-  billId: BillId
-): BillLineSummaryDiff | null {
-  const current = useBillLineSummaries(billId)
-  const expected = usePaymentLineSummaries(paymentId)
-
-  return useMemo(
-    () =>
-      expected === null ? null : deriveBillLineSummaryDiff(expected, current),
-    [expected, current]
   )
 }
