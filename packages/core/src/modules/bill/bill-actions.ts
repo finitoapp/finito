@@ -237,9 +237,7 @@ export const removeTableFromBill =
 
     return ok(billId)
   }
-/**
- * The current time as the `closedAt` a cart write closing a bill writes.
- */
+/** The current time as the timestamp a bill's actions write. */
 const nowTimestamp = (run: { readonly deps: DateDep }): TimestampMs =>
   TimestampMsSchema.decode(run.deps.date.now().getTime())
 
@@ -930,7 +928,7 @@ export const cancelBill =
         "bill",
         {
           id: billId,
-          canceledAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          canceledAt: nowTimestamp(run),
         },
         { ...options, owner: evoluOwner }
       )
@@ -1014,8 +1012,7 @@ export const closeBill =
       upsertBillClosedAt(
         run.deps.evolu,
         billId,
-        billRow.closedAt ??
-          TimestampMsSchema.decode(run.deps.date.now().getTime()),
+        billRow.closedAt ?? nowTimestamp(run),
         { ...options, owner: evoluOwner }
       )
     )
@@ -1075,7 +1072,7 @@ export const closeZeroBill =
     }
 
     const { evoluOwner } = run.deps
-    const now = TimestampMsSchema.decode(run.deps.date.now().getTime())
+    const now = nowTimestamp(run)
 
     await runMutationWithCompletion((options) =>
       run.deps.evolu.update(
@@ -1144,9 +1141,7 @@ export const confirmBillClosedDespiteCancellation =
         "bill",
         {
           id: billId,
-          confirmedClosedAt: TimestampMsSchema.decode(
-            run.deps.date.now().getTime()
-          ),
+          confirmedClosedAt: nowTimestamp(run),
         },
         { ...options, owner: evoluOwner }
       )
