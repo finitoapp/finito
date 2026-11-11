@@ -1,19 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs"
+import { expectInOrder } from "@payky/core/testing/source-order"
 import { expect, it } from "vitest"
 
 const read = (name: string) =>
   readFileSync(new URL(`./${name}`, import.meta.url), "utf8")
-
-const expectInOrder = (source: string, ...patterns: ReadonlyArray<RegExp>) => {
-  let remainder = source
-  for (const pattern of patterns) {
-    const match = remainder.match(pattern)
-    expect(match, `missing ${pattern}`).not.toBeNull()
-    if (match === null) return
-    if (match.index === undefined) throw new Error(`no index for ${pattern}`)
-    remainder = remainder.slice(match.index + match[0].length)
-  }
-}
 
 const page = read("cashu-withdraw-page.tsx")
 

@@ -1,27 +1,9 @@
 import { readFileSync } from "node:fs"
-import { expect, test } from "vitest"
+import { expectInOrder, hookFunction } from "@payky/core/testing/source-order"
+import { test } from "vitest"
 
 const read = (name: string) =>
   readFileSync(new URL(`./${name}`, import.meta.url), "utf8")
-
-const expectInOrder = (source: string, ...patterns: ReadonlyArray<RegExp>) => {
-  let remainder = source
-  for (const pattern of patterns) {
-    const match = remainder.match(pattern)
-    expect(match, `missing ${pattern}`).not.toBeNull()
-    if (match === null) return
-    if (match.index === undefined) throw new Error(`no index for ${pattern}`)
-    remainder = remainder.slice(match.index + match[0].length)
-  }
-}
-
-/** One of the hook's own functions, up to the next one it declares. */
-const hookFunction = (hook: string, name: string): string => {
-  const start = hook.indexOf(`\n  const ${name} = `)
-  expect(start, `missing ${name}`).toBeGreaterThan(-1)
-  const end = hook.indexOf("\n  const ", start + 1)
-  return hook.slice(start, end === -1 ? undefined : end)
-}
 
 // The rule itself is `linesNeedDiscard`'s (cart-lines.test.ts); these hold
 // the cart to asking it before every write that can carry a discount
