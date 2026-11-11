@@ -70,7 +70,7 @@ describes coverage of a total below zero.
 - `packages/core/src/modules/bill-line/bill-line-utils.test.ts > bill line summaries > nets a discount below zero, taken off and added again, without clamping it`
 - `packages/core/src/modules/bill/bill-utils.test.ts > deriveBillCoverage > measures a total below zero as nothing owed: paid with nothing claimed, overpaid by every claim`
 - `packages/core/src/modules/bill/bill-utils.test.ts > deriveBillCoverage > a negative bill nobody paid stays open and reads paid, not overpaid, in its history`
-- `packages/core/src/modules/bill/bill-utils.test.ts > isBillPayable > a bill whose goods come to less than zero cannot be paid through any method`
+- `packages/core/src/modules/bill/bill-utils.test.ts > isPayableThroughAnyMethod > a bill whose goods come to less than zero cannot be paid through any method`
 - `packages/core/src/modules/bill/bill-utils.test.ts > deriveZeroBillRefusal > refuses a bill below zero, which can only be discarded (payment/0015)`
 - `packages/core/src/modules/payment/payment-actions.test.ts > payment actions > a bill a discount takes below zero is not overpaid and cannot be paid through any method`
 - `packages/core/src/modules/payment/payment-actions.test.ts > payment actions > a tip does not lift a bill whose goods come to less than zero into one that can be paid`

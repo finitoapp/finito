@@ -28,7 +28,6 @@ import {
   deriveCartWriteClosing,
   deriveZeroBillRefusal,
   hasPendingPayment,
-  isBillPayable,
   isPayableThroughAnyMethod,
 } from "./bill-utils.ts"
 
@@ -619,47 +618,45 @@ describe("deriveBillHistoryItemSummary", () => {
   })
 })
 
-describe("isBillPayable", () => {
+describe("isPayableThroughAnyMethod", () => {
   const payable = (
     goodsTotal: number,
-    method: Parameters<typeof isBillPayable>[0]["method"],
+    methods: ReadonlyArray<DefaultPaymentMethod>,
     currency: FiatCurrency = "CZK"
-  ) => isBillPayable({ goodsTotal: Integer(goodsTotal), currency, method })
+  ) =>
+    isPayableThroughAnyMethod({
+      goodsTotal: Integer(goodsTotal),
+      currency,
+      methods,
+    })
+  /** Each method on its own, and none turned on at all. */
+  const eachMethodAlone: ReadonlyArray<ReadonlyArray<DefaultPaymentMethod>> = [
+    ...DefaultPaymentMethodSchema.options.map((method) => [method]),
+    [],
+  ]
 
   test("a bill whose goods come to zero cannot be paid through any method", () => {
-    for (const method of [...DefaultPaymentMethodSchema.options, null]) {
-      expect(payable(0, method)).toBe(false)
+    for (const methods of eachMethodAlone) {
+      expect(payable(0, methods)).toBe(false)
     }
   })
 
   test("a bill whose goods come to less than zero cannot be paid through any method", () => {
-    for (const method of [...DefaultPaymentMethodSchema.options, null]) {
-      expect(payable(-500, method)).toBe(false)
-      expect(payable(-1, method)).toBe(false)
+    for (const methods of eachMethodAlone) {
+      expect(payable(-500, methods)).toBe(false)
+      expect(payable(-1, methods)).toBe(false)
     }
   })
 
   test("a CZK bill of 0.40 cannot be paid in cash but can by card", () => {
-    expect(payable(40, "cashRegister")).toBe(false)
-    expect(payable(40, "cardSwitchio")).toBe(true)
-    expect(payable(40, null)).toBe(true)
+    expect(payable(40, ["cashRegister"])).toBe(false)
+    expect(payable(40, ["cardSwitchio"])).toBe(true)
+    expect(payable(40, [])).toBe(true)
     // 0.50 rounds up to a whole crown.
-    expect(payable(50, "cashRegister")).toBe(true)
+    expect(payable(50, ["cashRegister"])).toBe(true)
     // Only CZK cash rounds.
-    expect(payable(40, "cashRegister", "EUR")).toBe(true)
+    expect(payable(40, ["cashRegister"], "EUR")).toBe(true)
   })
-})
-
-describe("isPayableThroughAnyMethod", () => {
-  const payable = (
-    goodsTotal: number,
-    methods: ReadonlyArray<DefaultPaymentMethod>
-  ) =>
-    isPayableThroughAnyMethod({
-      goodsTotal: Integer(goodsTotal),
-      currency: "CZK",
-      methods,
-    })
 
   test("refuses goods cash rounds to nothing where cash is the only method on", () => {
     expect(payable(40, ["cashRegister"])).toBe(false)

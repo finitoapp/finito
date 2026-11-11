@@ -17,50 +17,23 @@ import {
 import type { BillCoverage, BillStatus } from "./bill-types.ts"
 
 /**
- * Whether goods can be charged through `method`: what they come to, rounded
- * the way that method hands money over, is more than zero (payment/0012).
+ * Whether a payment can be created for goods of `goodsTotal`: at least one
+ * of the payment methods it will offer (`derivePaymentMethodsOffered`) can
+ * collect more than zero once it rounds them the way it hands money over
+ * (payment/0012).
+ *
  * Only cash rounds — a CZK bill of 0.40 rounds to no crowns at all in cash
- * (`isCashPayable`, payment/0002), and stays 0.40 on a card. `method` is
- * `null` where no payment method is turned on at all: nothing rounds then,
- * and the goods are judged as they stand.
+ * (`isCashPayable`, payment/0002), and stays 0.40 on a card — so goods above
+ * zero are refused only where cash is the one method on and rounds them to
+ * nothing: a cash-only shop and a CZK charge of 0.01–0.49. With no method
+ * turned on at all nothing rounds, the goods are judged as they stand, and
+ * the payment screen says what is missing.
  *
  * `goodsTotal` leaves the tip out — a bill's tip lines
  * (`deriveBillGoodsTotal`), a keypad payment's `tipAmount`: a tip is not
  * what the goods are worth, and must not lift goods that come to nothing
  * into something that can be paid. A bill whose goods come to exactly zero
  * is closed without payment instead (`closeZeroBill`, payment/0013).
- *
- * A payment offers several methods at once, so `createPayment` and both
- * apps' checkout ask it of each method through `isPayableThroughAnyMethod`.
- */
-export const isBillPayable = ({
-  goodsTotal,
-  currency,
-  method,
-}: {
-  readonly goodsTotal: Integer
-  readonly currency: FiatCurrency
-  readonly method: DefaultPaymentMethod | null
-}): boolean => {
-  if (goodsTotal <= 0) return false
-  if (method !== "cashRegister") return true
-
-  return isCashPayable({
-    amount: NonNegativeInteger(goodsTotal),
-    tipAmount: NonNegativeInteger(0),
-    currency,
-  })
-}
-
-/**
- * Whether a payment can be created for goods of `goodsTotal`: at least one
- * of the payment methods it will offer (`derivePaymentMethodsOffered`) can
- * collect more than zero once it rounds them (`isBillPayable`, payment/0012).
- * Only cash rounds, so this refuses goods above zero only where cash is the
- * one method on and rounds them to nothing — a cash-only shop and a CZK
- * charge of 0.01–0.49. With no method turned on at all nothing rounds, the
- * goods are judged as they stand, and the payment screen says what is
- * missing.
  *
  * The one rule `createPayment` enforces (`NoPayableMethod`) and both apps'
  * cart checks before it offers Charge (`deriveBillCheckout`), so they cannot
@@ -74,10 +47,18 @@ export const isPayableThroughAnyMethod = ({
   readonly goodsTotal: Integer
   readonly currency: FiatCurrency
   readonly methods: ReadonlyArray<DefaultPaymentMethod>
-}): boolean =>
-  methods.length === 0
-    ? isBillPayable({ goodsTotal, currency, method: null })
-    : methods.some((method) => isBillPayable({ goodsTotal, currency, method }))
+}): boolean => {
+  if (goodsTotal <= 0) return false
+  const cashOnly =
+    methods.length > 0 && methods.every((method) => method === "cashRegister")
+  if (!cashOnly) return true
+
+  return isCashPayable({
+    amount: NonNegativeInteger(goodsTotal),
+    tipAmount: NonNegativeInteger(0),
+    currency,
+  })
+}
 
 /** Why `deriveZeroBillRefusal` will not let a bill be finished at zero. */
 export type ZeroBillRefusal = "noLines" | "tipLine" | "totalNotZero"
