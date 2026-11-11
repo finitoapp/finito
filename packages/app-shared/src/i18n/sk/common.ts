@@ -145,6 +145,7 @@ export const skCommon = {
   "orders.tabs.toServe": "Na výdaj",
   "orders.title": "Na výdaj",
   "orders.waiting": "Čakajúce objednávky: {count}",
+  "orders.waiting.badge": "Nové",
   "orders.written": "Text hosťa: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
   "orders.written.addForGood": "Pridať do menu natrvalo",

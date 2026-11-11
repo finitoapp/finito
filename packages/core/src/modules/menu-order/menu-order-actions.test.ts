@@ -1367,6 +1367,40 @@ describe("what staff serve", () => {
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([])
   })
 
+  test("lists the orders waiting for the staff first, each part oldest first", async () => {
+    await using context = await createSelfPayTestContext()
+    const menu = await openBar(context)
+    for (const text of ["pivo", "kofola", "rum", "voda"]) {
+      await pay(context, await writeOrder(context, menu, { text }), 9000)
+      context.clock.advance(60_000)
+    }
+    await using run = testCreateRun(context.deps)
+    const [pivo, kofola, rum, voda] = await run.ok(loadMenuOrdersToServe())
+    if (
+      pivo === undefined ||
+      kofola === undefined ||
+      rum === undefined ||
+      voda === undefined
+    ) {
+      throw new Error("Expected four orders to serve.")
+    }
+
+    await run.ok(acceptMenuOrder(rum.id))
+    await run.ok(acceptMenuOrder(pivo.id))
+
+    expect(
+      (await run.ok(loadMenuOrdersToServe())).map(({ id, isAccepted }) => ({
+        id,
+        isAccepted,
+      }))
+    ).toEqual([
+      { id: kofola.id, isAccepted: false },
+      { id: voda.id, isAccepted: false },
+      { id: pivo.id, isAccepted: true },
+      { id: rum.id, isAccepted: true },
+    ])
+  })
+
   test("lists the orders served since the owner's hour, the last served first", async () => {
     await using context = await createSelfPayTestContext()
     const menu = await openBar(context)

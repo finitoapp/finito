@@ -303,8 +303,11 @@ function OrderCard({
             ) : (
               <Badge variant="destructive" label={t("orders.notFullyPaid")} />
             )}
+            {!order.isAccepted && !order.isServed && (
+              <Badge label={t("orders.waiting.badge")} />
+            )}
             {order.isAccepted && !order.isServed && (
-              <Badge label={t("orders.preparing")} />
+              <Badge variant="outline" label={t("orders.preparing")} />
             )}
           </XStack>
         </CardHeader>

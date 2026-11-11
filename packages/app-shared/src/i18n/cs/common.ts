@@ -145,6 +145,7 @@ export const csCommon = {
   "orders.tabs.toServe": "K vydání",
   "orders.title": "K vydání",
   "orders.waiting": "Čekající objednávky: {count}",
+  "orders.waiting.badge": "Nové",
   "orders.written": "Text hosta: „{text}“",
   "orders.written.arrivedOf": "{arrived} z {named}",
   "orders.written.addForGood": "Přidat do menu natrvalo",

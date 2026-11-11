@@ -142,6 +142,7 @@ export const enCommon = {
   "orders.tabs.toServe": "To serve",
   "orders.title": "To serve",
   "orders.waiting": "Orders waiting: {count}",
+  "orders.waiting.badge": "New",
   "orders.written": "Guest's text: “{text}”",
   "orders.written.arrivedOf": "{arrived} of {named}",
   "orders.written.addForGood": "Add to the menu for good",

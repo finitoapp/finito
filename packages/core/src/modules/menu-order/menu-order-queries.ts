@@ -115,6 +115,7 @@ const selectListedMenuOrders = (db: QueryDb) =>
 export const menuOrdersToServeQuery = createQuery((db) =>
   selectListedMenuOrders(db)
     .where("menuOrder.servedAt", "is", null)
+    .orderBy(sql`"menuOrder"."acceptedAt" is not null`)
     .orderBy("menuOrder.createdAt", "asc")
 )
 

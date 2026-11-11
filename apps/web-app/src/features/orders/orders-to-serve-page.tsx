@@ -283,8 +283,11 @@ function OrderCard({
           ) : (
             <Badge variant="destructive">{t("orders.notFullyPaid")}</Badge>
           )}
+          {!order.isAccepted && !order.isServed && (
+            <Badge>{t("orders.waiting.badge")}</Badge>
+          )}
           {order.isAccepted && !order.isServed && (
-            <Badge>{t("orders.preparing")}</Badge>
+            <Badge variant="outline">{t("orders.preparing")}</Badge>
           )}
         </CardAction>
       </CardHeader>

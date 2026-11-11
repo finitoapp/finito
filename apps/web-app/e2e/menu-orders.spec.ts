@@ -238,11 +238,16 @@ test("a paid order is announced, listed to serve and served", async ({
     const served = orderCard.getByRole("button", {
       name: translate("en", "orders.served"),
     })
+    const isNew = orderCard.getByText(translate("en", "orders.waiting.badge"), {
+      exact: true,
+    })
     await expect(served).toHaveCount(0)
+    await expect(isNew).toBeVisible()
     await orderCard
       .getByRole("button", { name: translate("en", "orders.accept") })
       .click()
     await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await expect(isNew).toHaveCount(0)
     await expect(served).toBeVisible()
   })
 
@@ -278,6 +283,33 @@ test("a paid order is announced, listed to serve and served", async ({
     )
     await expect(orderCard).toContainText(
       translate("en", "orders.notFullyPaid")
+    )
+  })
+
+  await test.step("a new order lists before one being prepared, marked New", async () => {
+    await orderCard
+      .getByRole("button", { name: translate("en", "orders.accept") })
+      .click()
+    await expect(orderCard).toContainText(translate("en", "orders.preparing"))
+    await receiveMenuOrder(page, {
+      table: "Table 3",
+      items: [{ name: "Coffee", quantity: 1 }],
+      amount: 6500,
+    })
+    await expect(orderCard).toHaveCount(2)
+    await expect(orderCard.first()).toContainText(
+      translateParams("en", "orders.number", { number: 3 })
+    )
+    await expect(
+      orderCard
+        .first()
+        .getByText(translate("en", "orders.waiting.badge"), { exact: true })
+    ).toBeVisible()
+    await expect(orderCard.nth(1)).toContainText(
+      translateParams("en", "orders.number", { number: 2 })
+    )
+    await expect(orderCard.nth(1)).toContainText(
+      translate("en", "orders.preparing")
     )
   })
 })
