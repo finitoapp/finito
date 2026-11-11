@@ -22,8 +22,9 @@ import {
   SpecificSymbolSchema,
   VariableSymbolSchema,
 } from "../../modules/shared/schema.ts"
+import { proxiedServices } from "../service-proxy/service-proxy-services.ts"
 
-const FIO_BASE_URL = "https://fioapi.fio.cz"
+const FIO_BASE_URL = proxiedServices.fio.origin
 
 export interface FioApiOptions {
   readonly tokens: readonly [string, ...string[]]
