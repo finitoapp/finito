@@ -3,8 +3,8 @@ import { sqliteTrue } from "@evolu/common"
 import {
   billCheckoutHintKeys,
   deriveBillCheckout,
+  splitBillErrorKeys,
 } from "@payky/app-shared/bill-checkout"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   type SplitBillConfirmInput,
   splitNeedsDiscard,
@@ -140,22 +140,6 @@ import { isCardTerminalLinked } from "@/platform/switchio.ts"
 
 /** The category filters, plus "on the bill": only what the bill holds. */
 type BillItemFilter = CategoryFilter | "inBill"
-
-const splitBillErrorKeys = {
-  BillNotFound: "bill.split.error",
-  BillStatusNotAllowed: "bill.split.error",
-  BillLocked: "bill.locked",
-  // The selection no longer matches the bill, so retrying the same one
-  // cannot work — say so, rather than the generic "try again".
-  BillSplitSelectionStale: "bill.split.staleSelection",
-  // Moving lines off a partly paid bill cannot take it below what was paid
-  // (payment/0014); the money goes back through a refund instead.
-  BillTotalBelowPaid: "bill.totalBelowPaid",
-  // A bill left with lines below zero could only be discarded (payment/0015).
-  BillSplitTotalNegative: "bill.split.totalNegative",
-  // The screens never offer the bill itself as the target.
-  BillSplitSameBill: "bill.split.error",
-} satisfies Record<SplitBillError["type"], TranslationKey>
 
 /**
  * The whole bill screen — the cart before its bill row exists and the cart

@@ -6,6 +6,7 @@ import {
 import type {
   AddBillLineError,
   CloseZeroBillError,
+  SplitBillError,
 } from "@payky/core/modules/bill/bill-actions"
 import {
   deriveZeroBillRefusal,
@@ -163,3 +164,20 @@ export const cartWriteErrorKeys = {
   BillTotalBelowPaid: "bill.totalBelowPaid",
   BillLineRemovalOutOfRange: "bill.lineChanged",
 } satisfies Record<AddBillLineError["type"], TranslationKey>
+
+/** The toast each refusal of a split shows, on either split screen. */
+export const splitBillErrorKeys = {
+  BillNotFound: "bill.split.error",
+  BillStatusNotAllowed: "bill.split.error",
+  BillLocked: "bill.locked",
+  // The selection no longer matches the bill, so retrying the same one
+  // cannot work — say so, rather than the generic "try again".
+  BillSplitSelectionStale: "bill.split.staleSelection",
+  // Moving lines off a partly paid bill cannot take it below what was paid
+  // (payment/0014); the money goes back through a refund instead.
+  BillTotalBelowPaid: "bill.totalBelowPaid",
+  // A bill left with lines below zero could only be discarded (payment/0015).
+  BillSplitTotalNegative: "bill.split.totalNegative",
+  // The screens never offer the bill itself as the target.
+  BillSplitSameBill: "bill.split.error",
+} satisfies Record<SplitBillError["type"], TranslationKey>
