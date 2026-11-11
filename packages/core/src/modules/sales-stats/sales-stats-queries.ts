@@ -398,9 +398,11 @@ const ledgerGroupOf = (table: string) =>
  * The fold's running quantity is the plain running sum less its lowest point
  * so far, at most zero, so the group was last emptied at the last line whose
  * running sum is zero or below and the lowest of the group. Only the lines
- * after it count, amounts included. Three window passes, since a window
- * cannot read another in the same select: the running sum, the group's
- * lowest running sum, the last line that reaches it.
+ * after it count, amounts included: a line counts when every running sum from
+ * it on stays above that low point (the lowest of the group, or zero if that
+ * is higher). Two window passes, since a window cannot read another in the
+ * same select: the running sum, then the group's lowest running sum and the
+ * lowest from each line on.
  *
  * The amount keeps its sign: a discount group nets below zero (catalog/0002),
  * as the fold sums it. `isDiscount` is 1 for a group of an item priced below
@@ -411,6 +413,15 @@ const nettedBillLines = (
   range: StatsRange,
   bills: "closed" | "canceled"
 ) => {
+  /** A line's quantity or amount, signed by its kind: a removal subtracts. */
+  const signedLine = (column: "quantity" | "totalAmount") =>
+    kyselySql<number>`case when "billLine"."kind" = 'add'
+      then ${kyselySql.ref(`billLine.${column}`)}
+      else -${kyselySql.ref(`billLine.${column}`)} end`
+  /** A group's lines in ledger order, as `billLinesByBillIdQuery` reads them. */
+  const ledgerWindow = kyselySql`partition by ${ledgerGroupOf("billLine")}
+    order by "billLine"."createdAt", "billLine"."ownerId", "billLine"."id"`
+
   const ledgerLines = billLinesOf(db, range, bills)
     .select([
       kyselySql<BillId>`"bill"."id"`.as("billId"),
@@ -424,24 +435,11 @@ const nettedBillLines = (
       "item.taxRateId",
       // One `item` per group, so its price is every line's.
       kyselySql<0 | 1>`"item"."unitAmount" < 0`.as("isDiscount"),
-      kyselySql<number>`case when "billLine"."kind" = 'add'
-        then "billLine"."quantity" else -"billLine"."quantity" end`.as(
-        "quantity"
-      ),
-      kyselySql<number>`case when "billLine"."kind" = 'add'
-        then "billLine"."totalAmount" else -"billLine"."totalAmount" end`.as(
-        "totalAmount"
-      ),
-      kyselySql<number>`row_number() over (
-        partition by "bill"."id", "billLine"."catalogItemId",
-          "billLine"."itemId", "billLine"."type"
-        order by "billLine"."createdAt", "billLine"."ownerId", "billLine"."id"
-      )`.as("position"),
-      kyselySql<number>`sum(case when "billLine"."kind" = 'add'
-        then "billLine"."quantity" else -"billLine"."quantity" end) over (
-        partition by "bill"."id", "billLine"."catalogItemId",
-          "billLine"."itemId", "billLine"."type"
-        order by "billLine"."createdAt", "billLine"."ownerId", "billLine"."id"
+      signedLine("quantity").as("quantity"),
+      signedLine("totalAmount").as("totalAmount"),
+      kyselySql<number>`row_number() over (${ledgerWindow})`.as("position"),
+      kyselySql<number>`sum(${signedLine("quantity")}) over (
+        ${ledgerWindow}
         rows between unbounded preceding and current row
       )`.as("runningQuantity"),
     ])
@@ -450,55 +448,49 @@ const nettedBillLines = (
   const withLowest = db
     .selectFrom(ledgerLines)
     .selectAll("ledgerLine")
-    .select(
+    .select([
       kyselySql<number>`min("ledgerLine"."runningQuantity") over (
         partition by ${ledgerGroupOf("ledgerLine")}
-      )`.as("lowestRunningQuantity")
-    )
-    .as("foldedLine")
-
-  const withLastEmptied = db
-    .selectFrom(withLowest)
-    .selectAll("foldedLine")
-    .select(
-      kyselySql<number | null>`max(case
-        when "foldedLine"."runningQuantity" <= 0
-          and "foldedLine"."runningQuantity" = "foldedLine"."lowestRunningQuantity"
-        then "foldedLine"."position" end) over (
-        partition by ${ledgerGroupOf("foldedLine")}
-      )`.as("lastEmptiedAt")
-    )
+      )`.as("lowestRunningQuantity"),
+      kyselySql<number>`min("ledgerLine"."runningQuantity") over (
+        partition by ${ledgerGroupOf("ledgerLine")}
+        order by "ledgerLine"."position"
+        rows between current row and unbounded following
+      )`.as("lowestRunningQuantityFromHere"),
+    ])
     .as("keptLine")
 
-  return db
-    .selectFrom(withLastEmptied)
-    .where((eb) =>
-      eb.or([
-        eb("keptLine.lastEmptiedAt", "is", null),
-        eb("keptLine.position", ">", eb.ref("keptLine.lastEmptiedAt")),
+  return (
+    db
+      .selectFrom(withLowest)
+      // Kept when the group is never emptied from this line on: SQLite's
+      // two-argument `min` is the scalar one.
+      .where(
+        kyselySql<SqlBool>`"keptLine"."lowestRunningQuantityFromHere"
+        > min("keptLine"."lowestRunningQuantity", 0)`
+      )
+      .select([
+        "keptLine.billId",
+        "keptLine.ownerId",
+        "keptLine.currency",
+        "keptLine.catalogItemId",
+        "keptLine.itemId",
+        "keptLine.name",
+        "keptLine.itemCreatedAt",
+        "keptLine.taxRateId",
+        "keptLine.isDiscount",
+        kyselySql<number>`sum("keptLine"."quantity")`.as("quantity"),
+        kyselySql<number>`sum("keptLine"."totalAmount")`.as("totalAmount"),
       ])
-    )
-    .select([
-      "keptLine.billId",
-      "keptLine.ownerId",
-      "keptLine.currency",
-      "keptLine.catalogItemId",
-      "keptLine.itemId",
-      "keptLine.name",
-      "keptLine.itemCreatedAt",
-      "keptLine.taxRateId",
-      "keptLine.isDiscount",
-      kyselySql<number>`sum("keptLine"."quantity")`.as("quantity"),
-      kyselySql<number>`sum("keptLine"."totalAmount")`.as("totalAmount"),
-    ])
-    .groupBy([
-      "keptLine.billId",
-      "keptLine.catalogItemId",
-      "keptLine.itemId",
-      "keptLine.type",
-    ])
-    .having(kyselySql<SqlBool>`sum("keptLine"."quantity") > 0`)
-    .as("line")
+      .groupBy([
+        "keptLine.billId",
+        "keptLine.catalogItemId",
+        "keptLine.itemId",
+        "keptLine.type",
+      ])
+      .having(kyselySql<SqlBool>`sum("keptLine"."quantity") > 0`)
+      .as("line")
+  )
 }
 
 /**
