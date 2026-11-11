@@ -23,9 +23,9 @@ export function PrivacySettingsPage() {
       <div className="flex flex-col gap-5">
         {/* The consents come first; the policy below explains what they send. */}
         <ErrorReportingCard />
+        <ServiceProxyCard />
         <ProductLookupCard />
         <AiAssistantCard />
-        <ServiceProxyCard />
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.about.privacy.heading")}</CardTitle>

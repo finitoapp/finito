@@ -45,23 +45,6 @@ export function PrivacySettingsPage() {
           onPress={() => settings.setErrorReportingEnabled(!reporting)}
         />
         <ConsentCard
-          title={t("settings.privacy.productLookup.title")}
-          description={t("settings.privacy.productLookup.description")}
-          enabled={lookup}
-          status={t(
-            lookup
-              ? "settings.privacy.productLookup.enabled"
-              : "settings.privacy.productLookup.disabled"
-          )}
-          actionLabel={t(
-            lookup
-              ? "settings.privacy.productLookup.disable"
-              : "settings.privacy.productLookup.enable"
-          )}
-          onPress={() => settings.setProductLookupEnabled(!lookup)}
-        />
-        <AiAssistantCard />
-        <ConsentCard
           title={t("settings.privacy.serviceProxy.title")}
           description={t("settings.privacy.serviceProxy.description")}
           // The APK calls the banks directly; the PWA is what the proxy is for.
@@ -91,6 +74,23 @@ export function PrivacySettingsPage() {
             })()
           }}
         />
+        <ConsentCard
+          title={t("settings.privacy.productLookup.title")}
+          description={t("settings.privacy.productLookup.description")}
+          enabled={lookup}
+          status={t(
+            lookup
+              ? "settings.privacy.productLookup.enabled"
+              : "settings.privacy.productLookup.disabled"
+          )}
+          actionLabel={t(
+            lookup
+              ? "settings.privacy.productLookup.disable"
+              : "settings.privacy.productLookup.enable"
+          )}
+          onPress={() => settings.setProductLookupEnabled(!lookup)}
+        />
+        <AiAssistantCard />
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.about.privacy.heading")}</CardTitle>

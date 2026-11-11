@@ -57,9 +57,12 @@ it("flips serviceProxyEnabled through the core write, with the native note outsi
   expect(page).toMatch(
     /Platform\.OS === "web"\s*\?\s*undefined\s*:\s*t\("settings\.privacy\.serviceProxy\.nativeNote"\)/u
   )
-  // After the AI assistant, as web's ServiceProxyCard.
-  expect(page.indexOf("<AiAssistantCard />")).toBeLessThan(
+  // Second, right after error reporting, as web's ServiceProxyCard.
+  expect(page.indexOf("settings.privacy.errorReporting.title")).toBeLessThan(
     page.indexOf("settings.privacy.serviceProxy.title")
+  )
+  expect(page.indexOf("settings.privacy.serviceProxy.title")).toBeLessThan(
+    page.indexOf("settings.privacy.productLookup.title")
   )
 })
 
