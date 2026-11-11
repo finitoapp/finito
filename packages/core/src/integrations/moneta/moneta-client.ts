@@ -27,8 +27,9 @@ import {
   VariableSymbolSchema,
 } from "../../modules/shared/schema.ts"
 import { jsonCodec } from "../../zod-utils.ts"
+import { proxiedServices } from "../service-proxy/service-proxy-services.ts"
 
-const MONETA_BASE_URL = "https://api.moneta.cz"
+const MONETA_BASE_URL = proxiedServices.moneta.origin
 const MONETA_ACCOUNTS_PATH = "/api/v4/vip/aisp/my/accounts"
 /**
  * The bank's page. MONETA pages a listing in blocks of 100 whatever `size`

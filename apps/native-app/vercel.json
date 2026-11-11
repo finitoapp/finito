@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "trailingSlash": false,
+  "regions": ["fra1"],
   "rewrites": [
     {
       "source": "/.well-known/lnurlp/donate",
