@@ -64,8 +64,8 @@ export function OrdersToServePage() {
     <div className="flex flex-col gap-2">
       <div className="h-6" />
       <FadeHeader title={t("orders.title")} />
-      <Tabs defaultValue="toServe" className="gap-4">
-        <TabsList className="w-full">
+      <Tabs defaultValue="toServe" className="flex-col gap-4">
+        <TabsList className="h-8 w-full">
           <TabsTrigger value="toServe">{t("orders.tabs.toServe")}</TabsTrigger>
           <TabsTrigger value="served">{t("orders.tabs.served")}</TabsTrigger>
         </TabsList>

@@ -10,6 +10,7 @@ import {
   seedActiveFioPlugin,
   seedMenu,
 } from "./support/self-pay.ts"
+import { pageWidth } from "./support/viewport.ts"
 
 test("an item goes into the menu, sells out and comes back", async ({
   seededPage: page,
@@ -224,6 +225,13 @@ test("a paid order is announced, listed to serve and served", async ({
     await expect(orderCard).not.toContainText(
       translate("en", "orders.notFullyPaid")
     )
+  })
+
+  await test.step("To serve lays the order out across the screen, under its tabs", async () => {
+    const tabs = await page.getByRole("tablist").boundingBox()
+    const card = await orderCard.boundingBox()
+    expect(card?.width ?? 0).toBeGreaterThan(pageWidth / 2)
+    expect(card?.y ?? 0).toBeGreaterThan((tabs?.y ?? 0) + (tabs?.height ?? 0))
   })
 
   await test.step("Accept marks it as being prepared and only then offers Served", async () => {
