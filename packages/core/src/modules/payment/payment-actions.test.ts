@@ -104,6 +104,16 @@ import {
 } from "./payment-test-fixtures.ts"
 import type { PaymentId } from "./payment-types.ts"
 
+/** The manual-amount line most of these tests charge for. */
+const addDinner = (billId: BillId, amount: number) =>
+  addManualAmountToBill({
+    billId,
+    deviceId: null,
+    name: NonEmptyString255("Dinner"),
+    currency: "CZK",
+    totalAmount: NonNegativeInteger(amount),
+  })
+
 const paymentCardSwitchioByPaymentIdQuery = (id: PaymentId) =>
   createQuery((db) =>
     db.selectFrom("paymentCardSwitchio").selectAll().where("id", "=", id)
@@ -323,15 +333,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const expectedSummaries = await run.ok(
       loadCalculatedBillLineSummaries(billId)
     )
@@ -1101,15 +1103,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1320,15 +1314,7 @@ describe("payment actions", () => {
       })
     )
 
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(12_900),
-      })
-    )
+    await run.orThrow(addDinner(billId, 12_900))
     const firstPaymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1382,15 +1368,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(12_900),
-      })
-    )
+    await run.orThrow(addDinner(billId, 12_900))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1450,15 +1428,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(12_900),
-      })
-    )
+    await run.orThrow(addDinner(billId, 12_900))
     await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1525,15 +1495,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1574,15 +1536,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1639,15 +1593,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -1925,15 +1871,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2027,15 +1965,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2092,15 +2022,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2161,15 +2083,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2227,15 +2141,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2470,15 +2376,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId: targetBillId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(targetBillId, 1_000))
     await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2522,15 +2420,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2576,15 +2466,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const paymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2630,15 +2512,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const firstPaymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2720,15 +2594,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const firstPaymentId = await run.orThrow(
       createPayment({
         deviceId: null,
@@ -2811,15 +2677,7 @@ describe("payment actions", () => {
         currency: "CZK",
       })
     )
-    await run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Dinner"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(1_000),
-      })
-    )
+    await run.orThrow(addDinner(billId, 1_000))
     const firstPaymentId = await run.orThrow(
       createPayment({
         deviceId: null,
