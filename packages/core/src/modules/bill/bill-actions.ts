@@ -487,7 +487,12 @@ export const addCatalogItemToBill =
       summary: summary.value,
     })
   }
-export const addManualAmountToBill =
+/**
+ * A typed amount added as a line of its own, with no catalog item behind it:
+ * a manual amount or a tip. The two differ only in the line's type.
+ */
+const addStandaloneAmountToBill =
+  (type: Extract<ItemLineType, "manualAmount" | "tip">) =>
   (
     input: Pick<InsertValues<typeof billLine>, "billId" | "deviceId"> &
       Pick<InsertValues<typeof item>, "name" | "currency"> & {
@@ -516,7 +521,7 @@ export const addManualAmountToBill =
     })
 
     return run(
-      addBillLine(billResult.value, "manualAmount", snapshot, {
+      addBillLine(billResult.value, type, snapshot, {
         billId: input.billId,
         deviceId: input.deviceId ?? null,
         catalogItemId: null,
@@ -525,44 +530,8 @@ export const addManualAmountToBill =
       })
     )
   }
-export const addTipToBill =
-  (
-    input: Pick<InsertValues<typeof billLine>, "billId" | "deviceId"> &
-      Pick<InsertValues<typeof item>, "name" | "currency"> & {
-        /**
-         * Never below zero, though a bill line's amount may be: only a
-         * catalog discount takes a bill down (catalog/0002).
-         */
-        readonly totalAmount: NonNegativeInteger
-      }
-  ): Task<
-    BillLineSummary,
-    BillLineSummaryMissingError | CartWriteError,
-    EvoluDep & EvoluOwnerDep & DateDep
-  > =>
-  async (run) => {
-    const billResult = await run(requireEditableBill(input.billId))
-    if (!billResult.ok) return billResult
-
-    const snapshot = createStandaloneItemSnapshot({
-      catalogItemId: null,
-      name: input.name,
-      description: null,
-      currency: input.currency,
-      unitAmount: input.totalAmount,
-      taxRateId: null,
-    })
-
-    return run(
-      addBillLine(billResult.value, "tip", snapshot, {
-        billId: input.billId,
-        deviceId: input.deviceId ?? null,
-        catalogItemId: null,
-        quantity: PositiveNumber(1),
-        totalAmount: input.totalAmount,
-      })
-    )
-  }
+export const addManualAmountToBill = addStandaloneAmountToBill("manualAmount")
+export const addTipToBill = addStandaloneAmountToBill("tip")
 export const appendRemoveBillLine =
   (
     input: Pick<
