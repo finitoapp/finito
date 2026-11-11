@@ -75,6 +75,9 @@ const bankField = async (
     .locator("xpath=following-sibling::*[1]")
     .textContent()) ?? ""
 
+const paidFor = (guest: Page) =>
+  guest.getByRole("region", { name: translate("en", "selfPay.paidFor.title") })
+
 const orderStatus = (
   guest: Page,
   key:
@@ -335,7 +338,6 @@ test("a guest who leaves an order's payment is offered to pay it from the order 
   })
   const inOrders = (
     key:
-      | "selfPay.order.waiting"
       | "selfPay.order.waiting.description"
       | "selfPay.order.unseen"
       | "selfPay.order.unseen.description"
@@ -343,7 +345,13 @@ test("a guest who leaves an order's payment is offered to pay it from the order 
 
   await test.step("while the guest pays, the order offers no second payment", async () => {
     await orderCoffeesAndCake(guest, guestAddress)
-    await expect(inOrders("selfPay.order.waiting")).toBeVisible()
+    await expect(paidFor(guest)).toContainText(
+      translateParams("en", "selfPay.line.quantity", {
+        quantity: 2,
+        name: "Coffee",
+      })
+    )
+    await expect(orders).toHaveCount(0)
     await expect(payOrder).toHaveCount(0)
   })
 
@@ -396,7 +404,7 @@ test("a guest who leaves an order's payment removes the order at once, and it st
 
   await test.step("while the guest pays, the order offers no removing", async () => {
     await orderCoffeesAndCake(guest, guestAddress)
-    await expect(orders).toBeVisible()
+    await expect(paidFor(guest)).toContainText("Cake")
     await expect(removeOrder).toHaveCount(0)
   })
 

@@ -270,6 +270,7 @@ export const skBill = {
   "selfPay.order.waiting.description":
     "Ak ste už zaplatili, čakáme na potvrdenie platby.",
   "selfPay.paidFor.equal": "1/{people} účtu",
+  "selfPay.paidFor.paidBefore": "Už zaplatené",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "Platíte za",
   "selfPay.pay.announcement": "{pay}. {notice}",

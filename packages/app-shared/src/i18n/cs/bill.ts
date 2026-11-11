@@ -265,6 +265,7 @@ export const csBill = {
   "selfPay.order.waiting.description":
     "Pokud jste už zaplatili, čekáme na potvrzení platby.",
   "selfPay.paidFor.equal": "1/{people} účtu",
+  "selfPay.paidFor.paidBefore": "Už zaplaceno",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "Platíte za",
   "selfPay.pay.announcement": "{pay}. {notice}",

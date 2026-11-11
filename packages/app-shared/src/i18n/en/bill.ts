@@ -264,6 +264,7 @@ export const enBill = {
   "selfPay.order.waiting.description":
     "If you have paid already, the payment is waiting to be confirmed.",
   "selfPay.paidFor.equal": "1/{people} of the bill",
+  "selfPay.paidFor.paidBefore": "Paid already",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
   "selfPay.paidFor.title": "You pay for",
   "selfPay.pay.announcement": "{pay}. {notice}",

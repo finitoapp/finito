@@ -79,7 +79,7 @@ import {
   readGuestOrders,
   rememberGuestOrder,
 } from "./guest-orders.ts"
-import { GuestPaidFor } from "./guest-paid-for.tsx"
+import { GuestOrderPaidFor, GuestPaidFor } from "./guest-paid-for.tsx"
 import {
   readPayerPointers,
   rememberPayerPointer,
@@ -499,13 +499,19 @@ function GuestOrdering({
       ? guestOrderStatus(sessionOrder, t, locale)
       : null
 
+  const isFocusingOrders = useRef(false)
   useEffect(() => {
     if (settledStatus === null) return
+    isFocusingOrders.current = true
     onSessionChange(null)
     leavePaymentHistoryEntry()
-    ordersBlock.current?.focus()
     announce(settledStatus)
   }, [announce, onSessionChange, settledStatus])
+  useEffect(() => {
+    if (session !== null || !isFocusingOrders.current) return
+    isFocusingOrders.current = false
+    ordersBlock.current?.focus()
+  }, [session])
 
   const isEveryConfirmationRead = confirmations.every(
     (confirmation) => !confirmation.isPending
@@ -616,15 +622,17 @@ function GuestOrdering({
     setOrders((current) => forgetGuestOrder(current, order.pointer))
   }
 
+  const listedOrders = shownOrders.filter(
+    ({ order }) => order.pointer !== session?.pointer
+  )
+
   return (
     <div className="flex flex-col gap-4">
-      {shownOrders.length === 0 ? null : (
+      {listedOrders.length === 0 ? null : (
         <GuestOrderList
           ref={ordersBlock}
-          orders={shownOrders}
-          canAct={({ order }) =>
-            isEveryConfirmationRead && order.pointer !== session?.pointer
-          }
+          orders={listedOrders}
+          canAct={() => isEveryConfirmationRead}
           onPayRest={payRest}
           onForget={forgetOrder}
         />
@@ -638,7 +646,15 @@ function GuestOrdering({
           session={session}
           backLabel={t("selfPay.order.back")}
           onBack={leavePayment}
-        />
+        >
+          {sessionOrder === undefined ? null : (
+            <GuestOrderPaidFor
+              order={sessionOrder.order}
+              amount={session.amount}
+              coveredBefore={session.coveredBefore}
+            />
+          )}
+        </GuestPayment>
       ) : orderable === null && writable === null ? (
         <GuestMessage
           title={t("selfPay.order.unavailable.title")}
