@@ -68,6 +68,15 @@ export const loadBillClosedAtForPayment =
       readonly kind: AccountTransactionKind
       readonly amount: number
       readonly currency: Currency
+    },
+    /**
+     * The payment's amount and tip as the caller's batch rewrites them along
+     * with the claim (`markPaymentPaid`'s `chargedTipAmount`, payment/0018),
+     * so the bill is judged on the payment as it will be, not as it was.
+     */
+    revision?: {
+      readonly amount: NonNegativeInteger
+      readonly tipAmount: NonNegativeInteger
     }
   ): Task<
     { readonly billId: BillId; readonly closedAt: TimestampMs } | null,
@@ -81,7 +90,12 @@ export const loadBillClosedAtForPayment =
     if (paymentRow === undefined) return ok(null)
 
     return ok(
-      await run.ok(loadBillClosedAtIfCovered(paymentRow, claimedTransaction))
+      await run.ok(
+        loadBillClosedAtIfCovered(
+          { ...paymentRow, ...revision },
+          claimedTransaction
+        )
+      )
     )
   }
 

@@ -122,6 +122,66 @@ export const calculateTaxRecap = (
 }
 
 /**
+ * A recap scaled down to the part of its goods a payment covers: each rate's
+ * gross amount becomes `grossAmount × goodsAmount / Σ grossAmount`, so the
+ * rows keep the recap's proportions and add up to `goodsAmount` exactly.
+ *
+ * Every row first takes the whole minor units of its exact share; the units
+ * still left go one each to the rows with the largest fractional remainders,
+ * ties to the row earlier in the recap. Each row's gross is then split into
+ * base and tax again at its own rate (`splitInclusiveAmount`), so VAT is
+ * divided per rate here, not per line, and may differ by a unit from what
+ * splitting the covered lines one by one would give. Rows keep their
+ * `taxRateId`, `name` and `ratePercentage`.
+ *
+ * A recap with nothing to share (no gross amount at all) comes back as it is.
+ */
+export const prorateTaxRecap = (
+  recap: ReadonlyArray<TaxRecapRow>,
+  goodsAmount: NonNegativeInteger
+): ReadonlyArray<TaxRecapRow> => {
+  const recapGross = recap.reduce((sum, row) => sum + row.grossAmount, 0)
+  if (recapGross <= 0) return recap
+
+  // Exact in `bigint`, as `allocateDiscount` is: a large gross times a large
+  // payment can pass `Number.MAX_SAFE_INTEGER` before it is divided back down.
+  const total = BigInt(recapGross)
+  const quotas = recap.map((row) => {
+    const exact = BigInt(row.grossAmount) * BigInt(goodsAmount)
+    return { whole: Number(exact / total), remainder: exact % total }
+  })
+  const left = goodsAmount - quotas.reduce((sum, quota) => sum + quota.whole, 0)
+  // `sort` is stable, so equal remainders keep the recap's order.
+  const extraUnitIndexes = new Set(
+    quotas
+      .map((quota, index) => ({ remainder: quota.remainder, index }))
+      .sort((a, b) =>
+        a.remainder === b.remainder ? 0 : a.remainder > b.remainder ? -1 : 1
+      )
+      .slice(0, left)
+      .map(({ index }) => index)
+  )
+
+  return recap.map((row, index): TaxRecapRow => {
+    const gross = NonNegativeInteger(
+      (quotas[index]?.whole ?? 0) + (extraUnitIndexes.has(index) ? 1 : 0)
+    )
+    const split = splitInclusiveAmount(
+      gross,
+      row.ratePercentage ?? TaxRatePercentage(0)
+    )
+    return {
+      taxRateId: row.taxRateId,
+      name: row.name,
+      ratePercentage: row.ratePercentage,
+      baseAmount: split.base,
+      taxAmount: split.tax,
+      grossAmount: gross,
+    }
+  })
+}
+
+/**
  * Whether a tax recap has any taxed line to show. Shared by `TaxRecap`
  * itself and by pages that decide whether to render a separator/heading
  * around it.

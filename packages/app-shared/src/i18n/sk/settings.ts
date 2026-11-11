@@ -1115,6 +1115,10 @@ export const skSettings = {
   "settings.taxRates.description":
     "Sadzbu po vytvorení nemožno upraviť ani vymazať — namiesto zmeny percenta ju archivujte a založte novú, ak sa sadzba reálne zmení.",
   "settings.taxRates.empty": "Zatiaľ žiadne daňové sadzby.",
+  "settings.taxRates.keypad.description":
+    "Sadzba DPH sumy zadanej na klávesnici, ktorú uvádza účtenka z Qerka. Bez nej účtenka DPH neuvádza.",
+  "settings.taxRates.keypad.label": "Sadzba DPH sumy z klávesnice",
+  "settings.taxRates.keypad.none": "Nenastavené",
   "settings.taxRates.name.invalid": "Zadajte názov.",
   "settings.taxRates.name.label": "Názov",
   "settings.taxRates.name.placeholder": "napr. Základná sadzba",

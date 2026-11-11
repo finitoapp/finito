@@ -1,6 +1,14 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { requiredTextCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  NO_OPTION,
+  optionalIdCodec,
+  requiredTextCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import { parseTaxRateForm } from "@payky/app-shared/tax-rate-form"
+import { setKeypadTaxRate } from "@payky/core/modules/app-settings/app-settings-actions"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import type { TaxRateRow } from "@payky/core/modules/tax-rate/tax-rate"
 import {
   activateTaxRate,
@@ -10,7 +18,12 @@ import {
   setDefaultTaxRate,
 } from "@payky/core/modules/tax-rate/tax-rate-actions"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
-import { taxRatePercentageToDecimalString } from "@payky/core/modules/tax-rate/tax-rate-utils"
+import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
+import {
+  filterSelectableTaxRates,
+  formatTaxRateLabel,
+  taxRatePercentageToDecimalString,
+} from "@payky/core/modules/tax-rate/tax-rate-utils"
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -31,15 +44,30 @@ import {
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
+import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
-import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
+const keypadTaxRateCodec = optionalIdCodec<TaxRateId>()
+
+/** What the screen reads: the rates, and for a VAT payer the keypad's rate. */
+const taxRatesSettingsPageQueries = [
+  taxRatesQuery,
+  legalEntityQuery,
+  settingsQuery,
+]
+
 export function TaxRatesSettingsPage() {
+  usePreloadEvoluQueries(taxRatesSettingsPageQueries)
   const { t } = useTranslation()
   const { data: taxRates } = useEvoluQuery(taxRatesQuery)
+  const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const activeTaxRates = taxRates.filter((rate) => rate.deactivatedAt === null)
   const archivedTaxRates = taxRates.filter(
     (rate) => rate.deactivatedAt !== null
@@ -71,6 +99,8 @@ export function TaxRatesSettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        {isVatPayer(legalEntity) && <KeypadTaxRateCard taxRates={taxRates} />}
 
         <NewTaxRateCard />
 
@@ -253,6 +283,53 @@ function TaxRateRowItem({ taxRate }: { readonly taxRate: TaxRateRow }) {
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The rate a VAT payer's keypad amount is sold at, which a Qerko receipt of
+ * a payment without a bill reports. A rate that is gone, or not synced to
+ * this device yet, reads as not set, as it does for the receipt.
+ */
+function KeypadTaxRateCard({
+  taxRates,
+}: {
+  readonly taxRates: ReadonlyArray<TaxRateRow>
+}) {
+  const appRun = useAppRun()
+  const { t } = useTranslation()
+  const [settings] = useEvoluQuery(settingsQuery).data
+  const keypadTaxRateId =
+    taxRates.find((rate) => rate.id === settings?.keypadTaxRateId)?.id ?? null
+
+  return (
+    <Card>
+      <CardContent>
+        <InlineEditSelect
+          label={t("settings.taxRates.keypad.label")}
+          description={t("settings.taxRates.keypad.description")}
+          defaultValue={keypadTaxRateId}
+          codec={keypadTaxRateCodec}
+          options={[
+            { value: NO_OPTION, label: t("settings.taxRates.keypad.none") },
+            ...filterSelectableTaxRates(taxRates, keypadTaxRateId).map(
+              (rate) => ({
+                value: rate.id,
+                label: `${formatTaxRateLabel(rate)}${
+                  rate.deactivatedAt === null
+                    ? ""
+                    : ` — ${t("settings.taxRates.archived.title")}`
+                }`,
+              })
+            ),
+          ]}
+          onSave={async (taxRateId) => {
+            await using run = appRun()
+            await run.ok(setKeypadTaxRate(taxRateId))
+          }}
+        />
+      </CardContent>
+    </Card>
   )
 }
 

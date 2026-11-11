@@ -8,8 +8,13 @@ import {
 } from "../shared/schema.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
 import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
+import { splitInclusiveAmount } from "../tax-rate/tax-rate-utils.ts"
 import { allocateDiscount } from "./bill-line-discount-utils.ts"
-import { calculateTaxRecap } from "./bill-line-tax-utils.ts"
+import {
+  calculateTaxRecap,
+  prorateTaxRecap,
+  type TaxRecapRow,
+} from "./bill-line-tax-utils.ts"
 
 const standardRateId = createIdFromString<"TaxRate">("standard") as TaxRateId
 const reducedRateId = createIdFromString<"TaxRate">("reduced") as TaxRateId
@@ -281,5 +286,121 @@ describe("calculateTaxRecap", () => {
         )
       ).toEqual([])
     })
+  })
+})
+
+describe("prorateTaxRecap", () => {
+  const recapOf = (
+    lines: ReadonlyArray<readonly [TaxRateId | null, number]>
+  ): ReadonlyArray<TaxRecapRow> =>
+    calculateTaxRecap(
+      lines.map(([taxRateId, totalAmount]) => ({
+        taxRateId,
+        totalAmount: Integer(totalAmount),
+        discountShare: null,
+      })),
+      taxRates
+    )
+
+  test.each([
+    [
+      "two rates and lines without one",
+      [
+        [standardRateId, 10_890],
+        [reducedRateId, 5_040],
+        [null, 900],
+      ],
+      10_000,
+    ],
+    ["one rate", [[standardRateId, 12_100]], 3_333],
+    [
+      "rates of one size",
+      [
+        [standardRateId, 1_000],
+        [reducedRateId, 1_000],
+        [null, 1_000],
+      ],
+      1_001,
+    ],
+    [
+      "nothing of it",
+      [
+        [standardRateId, 1_210],
+        [reducedRateId, 560],
+      ],
+      0,
+    ],
+    [
+      "all of it",
+      [
+        [standardRateId, 1_210],
+        [reducedRateId, 560],
+      ],
+      1_770,
+    ],
+    [
+      "one unit of it",
+      [
+        [standardRateId, 99_999],
+        [reducedRateId, 1],
+      ],
+      1,
+    ],
+  ] satisfies ReadonlyArray<
+    readonly [
+      string,
+      ReadonlyArray<readonly [TaxRateId | null, number]>,
+      number,
+    ]
+  >)("adds up to the goods exactly", (_case, lines, goodsAmount) => {
+    const recap = recapOf(lines)
+
+    const rows = prorateTaxRecap(recap, NonNegativeInteger(goodsAmount))
+
+    expect(rows.reduce((sum, row) => sum + row.grossAmount, 0)).toBe(
+      goodsAmount
+    )
+    expect(rows).toHaveLength(recap.length)
+    rows.forEach((row, index) => {
+      const source = recap[index]
+      expect(row).toMatchObject({
+        taxRateId: source?.taxRateId,
+        name: source?.name,
+        ratePercentage: source?.ratePercentage,
+      })
+      expect(row.grossAmount).toBeGreaterThanOrEqual(0)
+      // Split again at its own rate, not scaled from the recap's split.
+      expect({ base: row.baseAmount, tax: row.taxAmount }).toEqual(
+        splitInclusiveAmount(
+          NonNegativeInteger(row.grossAmount),
+          row.ratePercentage ?? TaxRatePercentage(0)
+        )
+      )
+    })
+  })
+
+  test("gives the rounding to the largest remainder", () => {
+    // 10 000 of 15 930 is 6 836.16 of the beer and 3 163.84 of the soup: the
+    // unit the floors leave goes to the soup.
+    expect(
+      prorateTaxRecap(
+        recapOf([
+          [standardRateId, 10_890],
+          [reducedRateId, 5_040],
+        ]),
+        NonNegativeInteger(10_000)
+      ).map((row) => row.grossAmount)
+    ).toEqual([6_836, 3_164])
+    // Equal remainders: the row earlier in the recap takes it.
+    expect(
+      prorateTaxRecap(
+        recapOf([
+          [standardRateId, 100],
+          [reducedRateId, 100],
+          [null, 100],
+        ]),
+        NonNegativeInteger(100)
+      ).map((row) => row.grossAmount)
+    ).toEqual([34, 33, 33])
   })
 })

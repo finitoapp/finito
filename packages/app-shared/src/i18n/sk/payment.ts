@@ -276,6 +276,8 @@ export const skPayment = {
   "paymentWait.method.qerkoPayment": "Qerko",
   "paymentWait.preparing.qerkoPayment": "Pripravujem platbu cez Qerko…",
   "paymentWait.qerkoPayment.scan": "Zákazník naskenuje kód v aplikácii Qerko.",
+  "paymentWait.qerkoPayment.tipChosenInQerko":
+    "Prepitné vyberá zákazník v Qerku a nahradí to zadané tu.",
   "paymentWait.qerkoPayment.started": "Zákazník platí v Qerku…",
   "paymentWait.qerkoPayment.processing": "Qerko potvrdzuje platbu…",
   "paymentWait.qerkoPayment.failed":

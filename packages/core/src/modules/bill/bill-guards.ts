@@ -629,8 +629,20 @@ export const loadBillClosedAtIfCovered =
     // this cache decide `paid` on a number the live `deriveBillStatus` never
     // computes — a bill would vanish from the floor view while every guard
     // still read it as open.
+    //
+    // The payment's earlier claims, if any, are read with its amount and tip
+    // as `payment` gives them: the batch the new claim joins may rewrite
+    // both (payment/0018), and the live derivation reads them as rewritten.
     const claimedSum = calculateClaimedSum([
-      ...claimedTransactions,
+      ...claimedTransactions.map((transaction) =>
+        transaction.paymentId === payment.id
+          ? {
+              ...transaction,
+              tipAmount: payment.tipAmount,
+              paymentAmount: payment.amount,
+            }
+          : transaction
+      ),
       {
         paymentId: payment.id,
         accountTransactionId: claimedTransaction.id,

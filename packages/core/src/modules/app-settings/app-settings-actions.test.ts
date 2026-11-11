@@ -13,14 +13,20 @@ import {
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { MasterKey } from "../shared/key-derivation.ts"
-import { BankAccountInputIbanSchema } from "../shared/schema.ts"
+import {
+  BankAccountInputIbanSchema,
+  NonEmptyString255,
+} from "../shared/schema.ts"
+import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
 import {
   completeOnboarding,
   finishOnboarding,
   markRecoveryPhraseVerified,
   requireNotOnboarded,
   setEnabledHomeModes,
+  setKeypadTaxRate,
   updateTipSettings,
 } from "./app-settings-actions.ts"
 import { settingsQuery } from "./app-settings-queries.ts"
@@ -120,6 +126,51 @@ describe("setEnabledHomeModes", () => {
     await expect
       .poll(() => evolu.loadQuery(settingsQuery))
       .toEqual([expect.objectContaining({ enabledHomeModesJson: '["pos"]' })])
+  })
+})
+
+describe("setKeypadTaxRate", () => {
+  const onboard = completeOnboarding({
+    fiatCurrency: "CZK",
+    defaultPaymentMethod,
+    paymentMethodOrderJson: JSON.stringify(defaultPaymentMethodOrder),
+  })
+
+  test("a new account has no keypad tax rate", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+
+    await run.orThrow(onboard)
+
+    await expect
+      .poll(() => evolu.loadQuery(settingsQuery))
+      .toEqual([expect.objectContaining({ keypadTaxRateId: null })])
+  })
+
+  test("saves the rate and clears it again", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+
+    await run.orThrow(onboard)
+    const taxRateId = await run.ok(
+      createTaxRate({
+        name: NonEmptyString255("Standard"),
+        rate: TaxRatePercentage(2100),
+        isDefault: false,
+      })
+    )
+
+    await run.ok(setKeypadTaxRate(taxRateId))
+    await expect
+      .poll(() => evolu.loadQuery(settingsQuery))
+      .toEqual([expect.objectContaining({ keypadTaxRateId: taxRateId })])
+
+    await run.ok(setKeypadTaxRate(null))
+    await expect
+      .poll(() => evolu.loadQuery(settingsQuery))
+      .toEqual([expect.objectContaining({ keypadTaxRateId: null })])
   })
 })
 

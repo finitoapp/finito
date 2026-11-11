@@ -43,6 +43,7 @@ export function QerkoPaymentTab({
   qrPayload,
   payable,
   connectionDeviceId,
+  hasTip,
 }: {
   readonly paymentId: PaymentId
   readonly qrPayload: string | null
@@ -50,6 +51,11 @@ export function QerkoPaymentTab({
   readonly payable: boolean
   /** The device serving Qerko payments, `null` when none does. */
   readonly connectionDeviceId: string | null
+  /**
+   * The payment carries a tip entered here. Qerko's bill leaves it out and
+   * the customer picks the tip in Qerko, which replaces it once paid.
+   */
+  readonly hasTip: boolean
 }) {
   const { t } = useTranslation()
   const appRun = useAppRun()
@@ -160,6 +166,17 @@ export function QerkoPaymentTab({
           text="center"
         >
           {t("paymentWait.qerkoPayment.scan")}
+        </Text>
+      ) : null}
+      {payable && hasTip ? (
+        <Text
+          maxW={288}
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+          text="center"
+        >
+          {t("paymentWait.qerkoPayment.tipChosenInQerko")}
         </Text>
       ) : null}
     </YStack>

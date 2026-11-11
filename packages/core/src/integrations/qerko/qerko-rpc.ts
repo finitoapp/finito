@@ -64,7 +64,7 @@ export type QerkoReceipt = z.output<typeof QerkoReceiptSchema>
 /**
  * Qerko's `Payment`, as `paymentStart` sends it and REST `get-payment` and
  * `cancel-payment` return it. `state` stays a string: anything but `PAID` is
- * not a success (qerko/0008), including states Qerko adds later.
+ * not a success (qerko/0015), including states Qerko adds later.
  */
 export const QerkoWirePaymentSchema = z.object({
   id: z.string().min(1),
@@ -83,6 +83,14 @@ export const QerkoWirePaymentSchema = z.object({
     })
   ),
   discount: z.object({ value: DecimalSchema }).nullable().optional(),
+  /**
+   * The tip the customer chose in Qerko (qerko/0015), in the parts' totals
+   * but in no item; `"0"` without one. Optional so a `Payment` without it
+   * still parses, and read as zero then.
+   */
+  tipBrutto: DecimalSchema.optional(),
+  /** `tipBrutto` less Qerko's commission on it. */
+  tipNetto: DecimalSchema.optional(),
 })
 export type QerkoWirePayment = z.output<typeof QerkoWirePaymentSchema>
 

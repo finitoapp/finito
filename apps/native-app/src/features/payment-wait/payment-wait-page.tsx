@@ -1030,6 +1030,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               connectionDeviceId={
                 qerkoPaymentAccount?.qerkoPaymentConnectionDeviceId ?? null
               }
+              hasTip={payment.tipAmount > 0}
             />
           ) : active.id === "qerko" ? (
             <QerkoPaymentTab

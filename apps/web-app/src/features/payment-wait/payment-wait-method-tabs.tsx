@@ -51,6 +51,7 @@ export function PaymentMethodTabContent({
   paymentId,
   paymentCreatedAt,
   payable,
+  hasTip,
   newCashuQuotePending,
   onNewCashuQuote,
 }: {
@@ -62,6 +63,8 @@ export function PaymentMethodTabContent({
    * Lightning address tab polls its wallet, the IBAN tab may ask the bank.
    */
   readonly payable: boolean
+  /** The payment carries a tip entered here (`payment.tipAmount > 0`). */
+  readonly hasTip: boolean
   readonly newCashuQuotePending: boolean
   readonly onNewCashuQuote: () => void
   /** Set while a Bolt Card may pay this payment's Lightning invoice. */
@@ -159,6 +162,7 @@ export function PaymentMethodTabContent({
           payable={payable}
           connectionDeviceId={method.connectionDeviceId}
           preparingMessageKey={preparingMessageKey}
+          hasTip={hasTip}
         />
       )
     case "card":

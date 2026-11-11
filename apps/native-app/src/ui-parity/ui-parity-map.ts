@@ -1702,6 +1702,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/settings/tax-rates/tax-rates-settings-page.tsx",
     web: [
       "apps/web-app/src/features/settings/tax-rates/tax-rates-settings-page.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-select.tsx",
     ],
     status: "matched",
     allowedDifferences: {

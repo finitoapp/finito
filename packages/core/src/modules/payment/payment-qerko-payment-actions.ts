@@ -14,7 +14,12 @@ import type {
 } from "../../integrations/qerko/qerko-rpc.ts"
 import { qerkoPaymentAccountByIdQuery } from "../account/account-queries.ts"
 import type { AccountId } from "../account/account-types.ts"
-import { calculateTaxRecap } from "../bill-line/bill-line-tax-utils.ts"
+import { settingsQuery } from "../app-settings/app-settings-queries.ts"
+import { billLinesByBillIdQuery } from "../bill-line/bill-line-queries.ts"
+import {
+  calculateTaxRecap,
+  type TaxRecapRow,
+} from "../bill-line/bill-line-tax-utils.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { itemsByPaymentIdQuery } from "../item/item-queries.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
@@ -54,14 +59,20 @@ import {
 } from "./payment-errors.ts"
 import { loadPaymentStatus } from "./payment-guards.ts"
 import {
+  calculateQerkoKeypadTaxRecap,
   checkQerkoPaymentStart,
   classifyQerkoPaymentState,
   createQerkoBill,
   createQerkoPaymentAttemptId,
   createQerkoReceipt,
+  deriveQerkoChargedTip,
   deriveQerkoPaymentAttemptState,
+  deriveQerkoPaymentContent,
+  orderQerkoLines,
   type QerkoPaymentAttemptState,
+  type QerkoPaymentContent,
   QerkoProvidersJson,
+  readQerkoTip,
   summarizeQerkoPaymentParts,
 } from "./payment-qerko-payment-utils.ts"
 import {
@@ -73,10 +84,11 @@ import {
 import { PaymentId } from "./payment-types.ts"
 
 /**
- * The domain half of Qerko payments (qerko/0007..0009, qerko/0013): what Payky
- * answers Qerko's calls with, and how a Qerko payment's outcome is recorded.
- * The websocket session (`qerko-rpc.ts`) calls these through the connection
- * job; `settleQerkoPayment` is also what `get-payment` results go through.
+ * The domain half of Qerko payments (qerko/0007, qerko/0013, qerko/0014,
+ * qerko/0015): what Payky answers Qerko's calls with, and how a Qerko
+ * payment's outcome is recorded. The websocket session (`qerko-rpc.ts`) calls
+ * these through the connection job; `settleQerkoPayment` is also what
+ * `get-payment` results go through.
  */
 
 interface QerkoPayable {
@@ -117,9 +129,77 @@ const loadQerkoPayable =
     })
   }
 
+interface QerkoPaymentBasis {
+  readonly content: QerkoPaymentContent
+  /** The goods' VAT recap; `null` when the business pays no VAT. */
+  readonly taxRecap: ReadonlyArray<TaxRecapRow> | null
+}
+
+/**
+ * What a payment's Qerko bill and receipt are made of (qerko/0014): the lines
+ * it froze from its bill, in the order the bill's ledger first had them, and
+ * their VAT recap when the business pays VAT. Both read only what the
+ * payment froze, so `searchBills`, `getBill` and `paymentProcessed` agree
+ * however the bill changes after. A keypad payment's goods are taxed at the
+ * rate set for keypad amounts, read when the receipt is made: Qerko asks for
+ * it once and keeps it.
+ */
+const loadQerkoPaymentContent =
+  (
+    payment: Pick<PaymentRow, "id" | "billId" | "amount" | "tipAmount">
+  ): Task<QerkoPaymentBasis, never, EvoluDep> =>
+  async (run) => {
+    const { evolu } = run.deps
+    if (payment.billId === null) {
+      const [[legalEntity], [settings], taxRates] = await Promise.all([
+        evolu.loadQuery(legalEntityQuery),
+        evolu.loadQuery(settingsQuery),
+        evolu.loadQuery(taxRatesQuery),
+      ])
+      const content = deriveQerkoPaymentContent({
+        amount: payment.amount,
+        tipAmount: payment.tipAmount,
+        lines: [],
+      })
+      return ok({
+        content,
+        taxRecap: isVatPayer(legalEntity)
+          ? calculateQerkoKeypadTaxRecap({
+              goodsAmount: content.goodsAmount,
+              taxRateId: settings?.keypadTaxRateId ?? null,
+              taxRates,
+            })
+          : null,
+      })
+    }
+
+    const [paymentLines, items, ledger, [legalEntity], taxRates] =
+      await Promise.all([
+        evolu.loadQuery(paymentLinesByPaymentIdQuery(payment.id)),
+        evolu.loadQuery(itemsByPaymentIdQuery(payment.id)),
+        evolu.loadQuery(billLinesByBillIdQuery(payment.billId)),
+        evolu.loadQuery(legalEntityQuery),
+        evolu.loadQuery(taxRatesQuery),
+      ])
+    const lines = orderQerkoLines(
+      paymentLinesToBillLineSummaries(paymentLines, items),
+      ledger
+    )
+    return ok({
+      content: deriveQerkoPaymentContent({
+        amount: payment.amount,
+        tipAmount: payment.tipAmount,
+        lines,
+      }),
+      taxRecap: isVatPayer(legalEntity)
+        ? calculateTaxRecap(lines, taxRates)
+        : null,
+    })
+  }
+
 /**
  * `searchBills` (the QR code's identifier) and `getBill` (Qerko's bill id):
- * both are a payment's id, answered with its one-line bill.
+ * both are a payment's id, answered with its bill (qerko/0014).
  */
 export const resolveQerkoBill =
   (
@@ -129,12 +209,13 @@ export const resolveQerkoBill =
     const payable = await run(loadQerkoPayable(idBill))
     if (!payable.ok) return payable
     const { payment, serialNumber } = payable.value
+    const { content } = await run.ok(loadQerkoPaymentContent(payment))
     return ok(
       createQerkoBill({
         paymentId: payment.id,
         serialNumber,
-        amount: payment.amount,
         currency: payment.currency,
+        content,
       })
     )
   }
@@ -214,7 +295,9 @@ export const startQerkoPayment =
 
     const mismatch = checkQerkoPaymentStart({
       wire,
-      amount: payment.amount,
+      goodsAmount: NonNegativeInteger(
+        Math.max(0, payment.amount - payment.tipAmount)
+      ),
       currency: payment.currency,
     })
     if (mismatch !== null) {
@@ -236,6 +319,9 @@ export const startQerkoPayment =
       )
     }
 
+    // Qerko's tip is fixed once its payment exists, so it is written with the
+    // start, once (qerko/0013, qerko/0015).
+    const tip = readQerkoTip(wire, payment.currency)
     await runMutationWithCompletion((options) =>
       run.deps.evolu.upsert(
         "qerkoPaymentAttempt",
@@ -244,6 +330,8 @@ export const startQerkoPayment =
           paymentId: payment.id,
           qerkoPaymentId: NonEmptyString255(wire.id),
           startedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
+          tipAmount: tip.tipAmount,
+          tipNetAmount: tip.tipNetAmount,
         },
         { ...options, owner: run.deps.evoluOwner }
       )
@@ -264,29 +352,11 @@ const loadAttempt =
       : ok(attempt)
   }
 
-/** The VAT lines of the payment's bill, when the business pays VAT. */
-const loadQerkoTaxRecap =
-  (
-    paymentId: PaymentId
-  ): Task<ReturnType<typeof calculateTaxRecap>, never, EvoluDep> =>
-  async (run) => {
-    const [legalEntity] = await run.deps.evolu.loadQuery(legalEntityQuery)
-    if (!isVatPayer(legalEntity)) return ok([])
-
-    const [lines, items, taxRates] = await Promise.all([
-      run.deps.evolu.loadQuery(paymentLinesByPaymentIdQuery(paymentId)),
-      run.deps.evolu.loadQuery(itemsByPaymentIdQuery(paymentId)),
-      run.deps.evolu.loadQuery(taxRatesQuery),
-    ])
-    return ok(
-      calculateTaxRecap(paymentLinesToBillLineSummaries(lines, items), taxRates)
-    )
-  }
-
 /**
  * `paymentProcessed`: Qerko has the money's authorization and wants the
- * receipt, without which it cancels the payment. No money is recorded yet:
- * that waits for `PAID` (qerko/0008).
+ * receipt, without which it cancels the payment. It lists the tip the
+ * customer chose in Qerko, which `paymentStart` recorded on the attempt. No
+ * money is recorded yet: that waits for `PAID` (qerko/0015).
  */
 export const processQerkoPayment =
   (
@@ -309,22 +379,22 @@ export const processQerkoPayment =
       })
     )
 
-    const [[payment], [paymentNumber], taxRecap] = await Promise.all([
+    const [[payment], [paymentNumber]] = await Promise.all([
       run.deps.evolu.loadQuery(paymentByIdQuery(attempt.value.paymentId)),
       run.deps.evolu.loadQuery(
         paymentNumberByPaymentIdQuery(attempt.value.paymentId)
       ),
-      run.ok(loadQerkoTaxRecap(attempt.value.paymentId)),
     ])
     if (payment === undefined) {
       return err(createQerkoPaymentAttemptNotFoundError({ qerkoPaymentId }))
     }
 
+    const { content, taxRecap } = await run.ok(loadQerkoPaymentContent(payment))
     return ok(
       createQerkoReceipt({
         serialNumber: paymentNumber?.serialNumber ?? null,
-        amount: payment.amount,
         currency: payment.currency,
+        content,
         taxRecap,
       })
     )
@@ -333,7 +403,7 @@ export const processQerkoPayment =
 /**
  * Records what Qerko says a Qerko payment ended as — from `paymentClosed` on
  * the websocket or from `get-payment` — and is the one place either does
- * (qerko/0008, qerko/0013). Only `PAID` is money; any other final state is a
+ * (qerko/0013, qerko/0015). Only `PAID` is money; any other final state is a
  * failed payment; a state still in progress fills at most `processingAt`.
  * It touches only the attempt `qerkoPaymentId` names, and running it again,
  * from any device, writes nothing new.
@@ -428,19 +498,37 @@ export const settleQerkoPayment =
 
     // The money lands before the attempt is closed, as on the terminal: a
     // crash in between leaves a paid payment with a thinner trail, not money
-    // taken that still reads as unpaid. The bill allows no tip and no part
-    // payment, so a `Payment` whose parts do not say otherwise charged the
-    // payment's own amount. Neither tip nor Qerko's fee is recorded.
+    // taken that still reads as unpaid. The bill allows no part payment, so a
+    // `Payment` whose parts do not say otherwise charged the payment's own
+    // amount. Qerko offered only the goods and the customer tipped there
+    // (qerko/0015): when the parts are exactly the goods and that tip, the
+    // tip replaces the payment's own, zero included, so the payment is
+    // neither over- nor underpaid; otherwise the money is recorded as charged
+    // and the difference shows. `tipBrutto` comes from the `Payment`, or from
+    // the attempt when the `Payment` lacks it. Qerko's commission on the tip,
+    // like its other fees, is not recorded (qerko/0015).
     const chargedAmount =
       parts === null || parts.chargedAmount === 0
         ? undefined
         : NonNegativeInteger(parts.chargedAmount)
+    const chargedTipAmount =
+      chargedAmount === undefined || paymentRow === undefined
+        ? undefined
+        : deriveQerkoChargedTip({
+            chargedAmount,
+            tipAmount:
+              wire.tipBrutto === undefined
+                ? attempt.tipAmount
+                : readQerkoTip(wire, paymentRow.currency).tipAmount,
+            goodsAmount: paymentRow.amount - paymentRow.tipAmount,
+          })
     const settled = await run(
       markPaymentPaid({
         paymentId: attempt.paymentId,
         accountId: method.accountId,
         deviceId,
         ...(chargedAmount === undefined ? {} : { chargedAmount }),
+        ...(chargedTipAmount === undefined ? {} : { chargedTipAmount }),
         accountKind: "qerkoPayment",
         // Qerko said paid, not staff (payment/0010).
         source: "auto",

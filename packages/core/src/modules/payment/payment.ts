@@ -249,10 +249,11 @@ export const paymentQerkoPayment = {
  *
  * - its id derives from Qerko's payment id, so every writer reaches the same
  *   row and no attempt is recorded twice;
- * - `paymentId`, `qerkoPaymentId` and `startedAt` are written by `paymentStart`
- *   and the rest only ever go from null to a value (`fillQerkoPaymentAttempt`),
- *   never back or to another value. Qerko's final state does not change, so
- *   two devices writing it write the same values.
+ * - `paymentId`, `qerkoPaymentId`, `startedAt` and the tip columns are written
+ *   by `paymentStart` and the rest only ever go from null to a value
+ *   (`fillQerkoPaymentAttempt`), never back or to another value. Qerko's
+ *   final state does not change, so two devices writing it write the same
+ *   values.
  *
  * A late `PROCESSING` therefore cannot undo a `PAID`, and a late answer for
  * one attempt cannot touch another. An attempt is in progress while
@@ -272,6 +273,17 @@ export const qerkoPaymentAttempt = {
   chargedAmount: NonNegativeIntegerSchema.nullable(),
   /** The provider types that paid (`CARD`, `MEAL_TICKET`, ...), as JSON. */
   providers: NonEmptyStringSchema.nullable(),
+  /**
+   * Qerko's `tipBrutto` at `paymentStart`: the tip the customer chose in
+   * Qerko, which its receipt lists (qerko/0015). `null` on an attempt
+   * recorded before Payky read it, or when Qerko sent no amount Payky reads.
+   */
+  tipAmount: NonNegativeIntegerSchema.nullable(),
+  /**
+   * Qerko's `tipNetto`: the tip less Qerko's commission on it. Kept here
+   * only; like Qerko's other fees it is not recorded as money (qerko/0015).
+   */
+  tipNetAmount: NonNegativeIntegerSchema.nullable(),
 } as const
 
 export const paymentIndexes = ((create) => [

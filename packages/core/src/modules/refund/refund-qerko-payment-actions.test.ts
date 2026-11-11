@@ -59,14 +59,38 @@ const wire = (
   idBill,
   currency: "CZK",
   state,
-  items: [{ name: "Platba", price: "110", quantity: "1" }],
+  // Qerko is offered the goods; the customer's tip is only in the parts.
+  items: [{ name: "Platba", price: "100", quantity: "1" }],
   parts: [
     { provider: { id: "qerko", name: "Card", type: "CARD" }, total: "110" },
   ],
+  tipBrutto: "10",
+  tipNetto: "9.5",
   ...overrides,
 })
 
-const setup = async ({ paid = true }: { readonly paid?: boolean } = {}) => {
+/**
+ * A payment of 100 of goods and `tipAmount` from Payky's tip screen, paid
+ * through Qerko with the customer's tip `tipBrutto` (qerko/0015).
+ */
+const setup = async ({
+  paid = true,
+  tipAmount = 1_000,
+  tipBrutto = "10",
+}: {
+  readonly paid?: boolean
+  readonly tipAmount?: number
+  readonly tipBrutto?: string
+} = {}) => {
+  const charged = {
+    tipBrutto,
+    parts: [
+      {
+        provider: { id: "qerko", name: "Card", type: "CARD" },
+        total: String(100 + Number(tipBrutto)),
+      },
+    ],
+  }
   const testEvolu = await createEvoluTest()
   const { evolu } = testEvolu
   const qerko = { state: "CANCELLED", cancels: 0 }
@@ -111,9 +135,9 @@ const setup = async ({ paid = true }: { readonly paid?: boolean } = {}) => {
       deviceId: null,
       billId: null,
       tableId: null,
-      amount: NonNegativeInteger(11_000),
+      amount: NonNegativeInteger(10_000 + tipAmount),
       currency: "CZK",
-      tipAmount: NonNegativeInteger(1_000),
+      tipAmount: NonNegativeInteger(tipAmount),
       canceledAt: null,
       expiresAt: null,
     })
@@ -122,13 +146,13 @@ const setup = async ({ paid = true }: { readonly paid?: boolean } = {}) => {
   await run.orThrow(
     preparePaymentMethod({ paymentId: id, qerkoPayment: { accountId } })
   )
-  await run.orThrow(startQerkoPayment(wire(id, "STARTED")))
+  await run.orThrow(startQerkoPayment(wire(id, "STARTED", charged)))
   if (paid) {
     await run.orThrow(
       settleQerkoPayment({
         qerkoPaymentId: "qerko-1",
         state: "PAID",
-        payment: wire(id, "PAID"),
+        payment: wire(id, "PAID", charged),
       })
     )
   }
@@ -173,6 +197,26 @@ describe("refundQerkoPayment", () => {
       { amount: -10_000, kind: "qerkoPayment" },
       { amount: -1_000, kind: "qerkoPayment" },
       { amount: 11_000, kind: "qerkoPayment" },
+    ])
+  })
+
+  test("returns the tip the customer chose in Qerko as the tip, not the one Payky's screen set", async () => {
+    await using test = await setup({ tipAmount: 0, tipBrutto: "15" })
+
+    expect((await test.refund()).ok).toBe(true)
+
+    const refunds = await test.refunds()
+    expect(refunds).toHaveLength(2)
+    expect(refunds).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ amount: 10_000, isTip: null }),
+        expect.objectContaining({ amount: 1_500, isTip: 1 }),
+      ])
+    )
+    expect(await test.transactions()).toMatchObject([
+      { amount: -10_000 },
+      { amount: -1_500 },
+      { amount: 11_500 },
     ])
   })
 

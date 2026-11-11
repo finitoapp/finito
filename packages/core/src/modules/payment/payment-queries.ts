@@ -290,6 +290,8 @@ const qerkoPaymentAttemptColumns = [
   "failureReason",
   "chargedAmount",
   "providers",
+  "tipAmount",
+  "tipNetAmount",
 ] as const
 
 /** One Qerko attempt, by the id `createQerkoPaymentAttemptId` derives. */

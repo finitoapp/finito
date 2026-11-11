@@ -1,6 +1,6 @@
 # 0009 A Qerko bill is one line paid at once
 
-Status: accepted
+Status: superseded by qerko/0014
 Date: 2026-11-04
 
 ## Context

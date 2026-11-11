@@ -4,8 +4,14 @@ import type { ConnectivityDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import { createQerkoApiDep } from "../../integrations/qerko/qerko-client.ts"
 import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-connection-status.ts"
+import type { QerkoWirePayment } from "../../integrations/qerko/qerko-rpc.ts"
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
-import { createAccount } from "../../modules/account/account-actions.ts"
+import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
+import {
+  createAccount,
+  saveQerkoPaymentAccount,
+} from "../../modules/account/account-actions.ts"
+import { createQerkoPaymentAccountId } from "../../modules/account/account-utils.ts"
 import {
   addManualAmountToBill,
   createBill,
@@ -36,12 +42,18 @@ import {
 } from "../../modules/eet/eet-test-fixtures.ts"
 import { toEetCashRegisterId } from "../../modules/eet/eet-utils.ts"
 import { markPaymentPaidIban } from "../../modules/payment/payment-actions.ts"
+import { preparePaymentMethod } from "../../modules/payment/payment-preparation-actions.ts"
+import {
+  settleQerkoPayment,
+  startQerkoPayment,
+} from "../../modules/payment/payment-qerko-payment-actions.ts"
 import {
   paymentClaimsQuery,
   paymentDetailQuery,
 } from "../../modules/payment/payment-queries.ts"
 import { derivePaymentStatus } from "../../modules/payment/payment-status-utils.ts"
 import type { PaymentId } from "../../modules/payment/payment-types.ts"
+import { saveQerkoPlugin } from "../../modules/qerko-plugin/qerko-plugin-actions.ts"
 import {
   refundPayment,
   refundWholePayment,
@@ -53,10 +65,12 @@ import {
 import {
   IbanSchema,
   NonEmptyString255,
+  NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
   TimestampMs,
 } from "../../modules/shared/schema.ts"
+import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
 import {
   createTestDeviceAccountDep,
   testNotificationsDep,
@@ -1042,6 +1056,75 @@ describe("eet reporting job: takeover", () => {
 const salesOf = (context: EetTestContext, paymentId: PaymentId) =>
   context.deps.evolu.loadQuery(eetSalesByPaymentIdQuery(paymentId))
 
+/**
+ * Offers the payment through Qerko and settles it as Qerko reports a paid
+ * Qerko payment: `goods` offered, `tipBrutto` the customer's tip, `charged`
+ * what the parts add up to.
+ */
+const settleThroughQerko = async (
+  context: EetTestContext,
+  paymentId: PaymentId,
+  {
+    goods,
+    tipBrutto,
+    charged,
+  }: {
+    readonly goods: string
+    readonly tipBrutto: string
+    readonly charged: string
+  }
+): Promise<void> => {
+  await using run = testCreateRun({
+    ...context.deps,
+    ...createQerkoApiDep({ posId: "test" }),
+    // `preparePaymentMethod` declares the Spark and rate deps of its other
+    // branches; the Qerko branch never reaches them.
+    sparkWallet: { create: async () => createFakeSparkWallet({}) },
+    ...createYadioApiDep(),
+  })
+  await run.ok(
+    saveQerkoPlugin({
+      role: "standard",
+      environment: "sandbox",
+      apiKey: NonEmptyStringSchema.decode("secret"),
+      apiKeyName: NonEmptyString255("Payky"),
+      legalEntityName: NonEmptyString255("Cafe"),
+      identificationNumber: NonEmptyString255("12345678"),
+      country: "CZ",
+      restaurantId: NonEmptyString255("restaurant-1"),
+    })
+  )
+  await run.ok(saveQerkoPaymentAccount({ enabled: true, currency: "CZK" }))
+  await run.orThrow(
+    preparePaymentMethod({
+      paymentId,
+      qerkoPayment: { accountId: createQerkoPaymentAccountId("CZK") },
+    })
+  )
+  const qerkoPayment = (state: string): QerkoWirePayment => ({
+    id: "qerko-1",
+    idBill: paymentId,
+    currency: "CZK",
+    state,
+    items: [{ name: "Platba", price: goods, quantity: "1" }],
+    parts: [
+      { provider: { id: "qerko", name: "Card", type: "CARD" }, total: charged },
+    ],
+    discount: null,
+    tipBrutto,
+    tipNetto: tipBrutto,
+  })
+  await run.orThrow(startQerkoPayment(qerkoPayment("STARTED")))
+  await run.orThrow(
+    settleQerkoPayment({
+      qerkoPaymentId: "qerko-1",
+      state: "PAID",
+      payment: qerkoPayment("PAID"),
+      deviceId: context.deviceId,
+    })
+  )
+}
+
 const settleTwice = async (context: EetTestContext, paymentId: PaymentId) => {
   await settleInCash(context, paymentId)
   context.clock.advance(1_000)
@@ -1242,6 +1325,43 @@ describe("eet reporting job: extra money", () => {
         { extraFrom: null, amount: 0, pok: expect.any(String) },
         { extraFrom: 0, amount: 15_000, pok: expect.any(String) },
       ])
+    expect(job.errors).toEqual([])
+  })
+
+  test("reports a payment the customer tipped in Qerko without the tip or extra money while tips belong to employees", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    {
+      await using run = testCreateRun(context.deps)
+      await run.ok(saveEetTipOwner("employees"))
+    }
+    await using job = await startJob(context)
+    // 100 of goods and a 10 tip from Payky's tip screen; the customer tips 15
+    // in Qerko instead (qerko/0015).
+    const paymentId = await createTestPayment(context, {
+      amount: 11_000,
+      tipAmount: 1_000,
+    })
+
+    await settleThroughQerko(context, paymentId, {
+      goods: "100",
+      tipBrutto: "15",
+      charged: "115",
+    })
+
+    await expect
+      .poll(() => salesOf(context, paymentId))
+      .toMatchObject([
+        {
+          extraFrom: null,
+          amount: 10_000,
+          reportedTipAmount: 0,
+          pok: expect.any(String),
+        },
+      ])
+    expect(
+      context.responder.requests.map(({ data }) => data.celk_trzba)
+    ).toEqual(["100.00"])
     expect(job.errors).toEqual([])
   })
 
