@@ -64,6 +64,8 @@ Settings; a category is made on the item; a settings row is one line.
 - navigation/0003 is superseded by this record.
 - An active notification lights a dot on home's hamburger and on the
   Notifications tab and rail entry (navigation/0005).
+- The item form picks or adds a category in a combobox, whose rows open a
+  category to rename or delete it (catalog/0004).
 
 ## Enforced by
 

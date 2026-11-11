@@ -112,6 +112,42 @@ export async function startBillWithCoffee(
   return billId
 }
 
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/**
+ * Picks the category called `name` in an item form's category combobox, or
+ * adds it there when none is called that (catalog/0004): opens the
+ * combobox, types the name into its search and takes the row that is the
+ * category or adds it.
+ */
+export async function pickCategory(
+  page: Page,
+  language: Language,
+  name: string
+): Promise<void> {
+  await page
+    .getByRole("combobox", {
+      name: translate(language, "catalog.items.form.category.label"),
+      exact: true,
+    })
+    .click()
+  await page
+    .getByRole("combobox", {
+      name: translate(language, "catalog.items.form.category.search"),
+    })
+    .fill(name)
+  const add = translate(language, "catalog.items.form.category.add").replace(
+    "{name}",
+    name
+  )
+  await page
+    .getByRole("option", {
+      name: new RegExp(`^(${escapeRegExp(name)}|${escapeRegExp(add)})$`),
+    })
+    .click()
+}
+
 /** Adds a catalog item through the real settings UI (used to seed items for cart specs). */
 export async function addCatalogItem(
   page: Page,
@@ -170,12 +206,7 @@ export async function addCatalogItem(
       .fill(input.sku)
   }
   if (input.categoryName !== undefined) {
-    await page
-      .getByRole("combobox", {
-        name: translate(language, "catalog.items.form.category.label"),
-      })
-      .click()
-    await page.getByRole("option", { name: input.categoryName }).click()
+    await pickCategory(page, language, input.categoryName)
   }
   if (input.scanCode !== undefined) {
     await page

@@ -10,6 +10,7 @@ import {
   createCatalogCategoryAtEnd,
   deleteCatalogCategory,
   findOrCreateCatalogCategory,
+  renameCatalogCategory,
   updateCatalogCategory,
 } from "./catalog-category-actions.ts"
 import {
@@ -151,5 +152,95 @@ describe("a category is made on the item (navigation/0003)", () => {
         { id, name: "Drinks" },
         { id: other, name: "Snacks", sortOrder: 1 },
       ])
+  }, 15_000)
+})
+
+describe("a category is renamed from the item (catalog/0004)", () => {
+  test("renames it, its own name in another case included", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+    } satisfies EvoluDep & EvoluOwnerDep
+    await using run = testCreateRun(deps)
+
+    const id = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Drnks"))
+    )
+
+    expect(
+      await run(
+        renameCatalogCategory({ id, name: NonEmptyString255("Drinks") })
+      )
+    ).toEqual({ ok: true, value: id })
+    await expect
+      .poll(() => evolu.loadQuery(catalogCategoryByIdQuery(id)))
+      .toMatchObject([{ id, name: "Drinks" }])
+
+    expect(
+      await run(
+        renameCatalogCategory({ id, name: NonEmptyString255("DRINKS") })
+      )
+    ).toEqual({ ok: true, value: id })
+    await expect
+      .poll(() => evolu.loadQuery(catalogCategoryByIdQuery(id)))
+      .toMatchObject([{ id, name: "DRINKS" }])
+  }, 15_000)
+
+  test("refuses a name another category spells, writing nothing", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+    } satisfies EvoluDep & EvoluOwnerDep
+    await using run = testCreateRun(deps)
+
+    const drinks = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Drinks"))
+    )
+    const snacks = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Snacks"))
+    )
+
+    expect(
+      await run(
+        renameCatalogCategory({
+          id: snacks,
+          name: NonEmptyString255(" drinks "),
+        })
+      )
+    ).toEqual({
+      ok: false,
+      error: { type: "CatalogCategoryNameTaken", id: drinks },
+    })
+    await expect
+      .poll(() => evolu.loadQuery(catalogCategoriesQuery))
+      .toMatchObject([
+        { id: drinks, name: "Drinks" },
+        { id: snacks, name: "Snacks" },
+      ])
+  }, 15_000)
+
+  test("takes the name of a deleted category", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+    } satisfies EvoluDep & EvoluOwnerDep
+    await using run = testCreateRun(deps)
+
+    const gone = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Drinks"))
+    )
+    await run.ok(deleteCatalogCategory(gone))
+    const id = await run.ok(
+      findOrCreateCatalogCategory(NonEmptyString255("Beverages"))
+    )
+
+    expect(
+      await run(
+        renameCatalogCategory({ id, name: NonEmptyString255("Drinks") })
+      )
+    ).toEqual({ ok: true, value: id })
   }, 15_000)
 })

@@ -1,4 +1,8 @@
 import {
+  type CategoryChoice,
+  resolveCategoryChoice,
+} from "@payky/app-shared/catalog-category-choice"
+import {
   type CatalogItemFormErrors,
   catalogItemPricingErrorKeys,
   parseCatalogItemForm,
@@ -6,7 +10,6 @@ import {
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
-import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
@@ -51,6 +54,7 @@ import type { useProductLookup } from "../../hooks/use-product-lookup.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
+import { CategoryCombobox } from "../shared/category-combobox.tsx"
 import { DiscountSwitchField } from "../shared/discount-switch-field.tsx"
 import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
 
@@ -97,7 +101,7 @@ export function CreateCatalogItemDialog({
 
 /**
  * What the form reads, started together: the account's VAT payer flag
- * (catalog/0001) and its options' categories and VAT rates.
+ * (catalog/0001) and its options' categories (catalog/0004) and VAT rates.
  */
 const createFormQueries = [
   legalEntityQuery,
@@ -123,8 +127,8 @@ function CreateForm({
   const { require } = useRequirePermission()
   const evolu = useAtomValue(evoluAtom)
   const [legalEntity] = useEvoluQuery(legalEntityQuery).data
-  const { defaultTaxRate, categoryOptions, taxRateOptions } =
-    useCatalogItemOptions()
+  const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   // Unlike web's dialog, this form mounts only when it opens, by which time
   // the lookup (started with the unknown-code confirmation) usually answered:
   // start from that product, then follow it below.
@@ -135,9 +139,8 @@ function CreateForm({
   const [price, setPrice] = useState("")
   // The sign of the price, as the catalog form's switch (catalog/0002).
   const [discount, setDiscount] = useState(false)
-  const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
-    NO_OPTION
-  )
+  // A typed name becomes its category with the item (catalog/0004).
+  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
   const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
     defaultTaxRate?.id ?? NO_OPTION
   )
@@ -193,10 +196,11 @@ function CreateForm({
     if (!(await require("catalog", "access.action.createItem"))) return
     setPending(true)
     await runToast(async (run) => {
+      const categoryId = await run.ok(resolveCategoryChoice(category))
       const result = await run(
         createCatalogItemAtEnd({
           deviceId: null,
-          categoryId: categoryId === NO_OPTION ? null : categoryId,
+          categoryId,
           name: values.name,
           description: values.description,
           currency,
@@ -292,29 +296,12 @@ function CreateForm({
         />
         <Field>
           <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
-          <Select
-            value={categoryId}
-            onValueChange={setCategoryId}
-            items={Object.fromEntries(
-              categoryOptions.map((option) => [option.value, option.title])
-            )}
-          >
-            <SelectTrigger
-              fullWidth
-              aria-label={t("catalog.items.form.category.label")}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent title={t("catalog.items.form.category.label")}>
-              <SelectGroup>
-                {categoryOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.title}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <CategoryCombobox
+            categories={categories}
+            value={category}
+            onValueChange={setCategory}
+            disabled={pending}
+          />
         </Field>
         {/* A discount has no VAT rate (catalog/0002). */}
         {discount ? null : (

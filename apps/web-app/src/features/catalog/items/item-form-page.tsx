@@ -1,4 +1,10 @@
 import {
+  type CategoryChoice,
+  categoryChoiceKey,
+  categoryChoiceOf,
+  resolveCategoryChoice,
+} from "@payky/app-shared/catalog-category-choice"
+import {
   type CatalogItemFormErrors,
   catalogItemPricingErrorKeys,
   createPriceCodec,
@@ -17,7 +23,6 @@ import {
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
-import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import {
   createCatalogItemAtEnd,
@@ -79,9 +84,14 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx"
 import { CatalogFormEmptyState } from "@/features/catalog/catalog-form-empty-state.tsx"
+import { CategoryCombobox } from "@/features/shared/category-combobox.tsx"
 import { DiscountSwitchField } from "@/features/shared/forms/discount-switch-field.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
+import {
+  InlineEditSavedTick,
+  useInlineChoice,
+} from "@/features/shared/forms/inline-edit-save.tsx"
 import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useIsConfirmDialogOpen } from "@/hooks/use-confirm-dialog.ts"
@@ -95,7 +105,6 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
-const categoryCodec = optionalIdCodec<CatalogCategoryId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
 const currencyCodec = FiatCurrencySchema
 
@@ -182,12 +191,12 @@ function EditCatalogItemPageContent({
 }
 
 /**
- * The category and tax-rate option lists, which both forms build the same
- * way: the "not set" entry, then the rows that are still selectable.
+ * The tax-rate option list, which both forms build the same way: the "not
+ * set" entry, then the rates that are still selectable. A category is
+ * picked from `CategoryCombobox` instead (catalog/0004).
  */
 const useCatalogItemOptions = (currentTaxRateId?: TaxRateId | null) => {
   const { t } = useTranslation()
-  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   const { data: taxRates } = useEvoluQuery(taxRatesQuery)
 
   const defaultTaxRate = taxRates.find(
@@ -200,13 +209,6 @@ const useCatalogItemOptions = (currentTaxRateId?: TaxRateId | null) => {
 
   return {
     defaultTaxRate,
-    categoryOptions: [
-      { value: NO_OPTION, label: t("catalog.items.form.category.none") },
-      ...categories.map((category) => ({
-        value: category.id,
-        label: category.name,
-      })),
-    ],
     taxRateOptions: [
       { value: NO_OPTION, label: t("catalog.items.form.taxRate.none") },
       ...selectableTaxRates.map((taxRate) => ({
@@ -237,17 +239,16 @@ function CreateCatalogItemForm({
   const { t } = useTranslation()
   const formId = useId()
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
-  const { defaultTaxRate, categoryOptions, taxRateOptions } =
-    useCatalogItemOptions()
+  const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   const [legalEntity] = useEvoluQuery(legalEntityQuery).data
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [internalName, setInternalName] = useState("")
   const [internalDescription, setInternalDescription] = useState("")
   const [sku, setSku] = useState("")
-  const [categoryId, setCategoryId] = useState<CatalogCategoryId | "none">(
-    NO_OPTION
-  )
+  // A typed name stays a name until the item is saved (catalog/0004).
+  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
   const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
     defaultTaxRate?.id ?? NO_OPTION
   )
@@ -325,10 +326,11 @@ function CreateCatalogItemForm({
 
           void submit(() =>
             runToast(async (run) => {
+              const categoryId = await run.ok(resolveCategoryChoice(category))
               const result = await run(
                 createCatalogItemAtEnd({
                   deviceId: null,
-                  categoryId: categoryId === NO_OPTION ? null : categoryId,
+                  categoryId,
                   name: values.name,
                   description: values.description,
                   internalName: values.internalName,
@@ -526,30 +528,16 @@ function CreateCatalogItemForm({
             <FieldLabel htmlFor={`${formId}-category`}>
               {t("catalog.items.form.category.label")}
             </FieldLabel>
-            <Select<CatalogCategoryId | "none">
-              items={Object.fromEntries(
-                categoryOptions.map((option) => [option.value, option.label])
-              )}
-              value={categoryId}
-              onValueChange={(nextCategoryId) => {
-                if (nextCategoryId === null) return
-                setCategoryId(nextCategoryId)
+            <CategoryCombobox
+              id={`${formId}-category`}
+              categories={categories}
+              value={category}
+              onValueChange={(next) => {
+                setCategory(next)
                 resetSaved()
               }}
-            >
-              <SelectTrigger id={`${formId}-category`} disabled={pending}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {categoryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              disabled={pending}
+            />
           </Field>
 
           {/* A discount has no VAT rate (catalog/0002). */}
@@ -659,9 +647,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   const router = useRouter()
   const { t } = useTranslation()
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
-  const { categoryOptions, taxRateOptions } = useCatalogItemOptions(
-    item.taxRateId
-  )
+  const { taxRateOptions } = useCatalogItemOptions(item.taxRateId)
   const [scannerDialogOpen, setScannerDialogOpen] = useState(false)
   const isConfirmDialogOpen = useIsConfirmDialogOpen()
   const discount = isDiscountPrice(item.unitAmount)
@@ -794,11 +780,8 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
               onSave={(sku) => saveItem({ sku })}
             />
 
-            <InlineEditSelect
-              label={t("catalog.items.form.category.label")}
-              defaultValue={item.categoryId}
-              codec={categoryCodec}
-              options={categoryOptions}
+            <InlineEditCategory
+              categoryId={item.categoryId}
               onSave={(categoryId) => saveItem({ categoryId })}
             />
 
@@ -880,5 +863,55 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
         {t("catalog.items.delete")}
       </Button>
     </div>
+  )
+}
+
+/**
+ * The edit form's category, saved the moment one is chosen, as the other
+ * selects there are; a typed name becomes its category first
+ * (catalog/0004).
+ */
+function InlineEditCategory({
+  categoryId,
+  onSave,
+}: {
+  readonly categoryId: CatalogItemRow["categoryId"]
+  readonly onSave: (
+    categoryId: CatalogItemRow["categoryId"]
+  ) => Promise<TranslationKey | undefined>
+}) {
+  const { t } = useTranslation()
+  const appRun = useAppRun()
+  const id = useId()
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
+  const stored = categoryChoiceOf(categoryId)
+  const { value, saving, justSaved, choose } = useInlineChoice<CategoryChoice>(
+    stored,
+    async (choice) => {
+      await using run = appRun()
+      return await onSave(await run.ok(resolveCategoryChoice(choice)))
+    }
+  )
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>
+        {t("catalog.items.form.category.label")}
+      </FieldLabel>
+      <div className="relative">
+        <CategoryCombobox
+          id={id}
+          categories={categories}
+          value={value}
+          onValueChange={(next) => {
+            if (categoryChoiceKey(next) !== categoryChoiceKey(stored))
+              void choose(next)
+          }}
+          disabled={saving}
+          className={justSaved ? "pr-9" : undefined}
+        />
+        {justSaved && <InlineEditSavedTick className="right-3" />}
+      </div>
+    </Field>
   )
 }

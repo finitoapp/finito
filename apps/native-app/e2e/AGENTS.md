@@ -63,8 +63,10 @@ assertions.
   `turn-on-access` (`PIN`, `PRESET`, `KEEP`, `IN_APP`) is `turnOnAccessControl` (it restarts the app to end the PIN session unless `KEEP: "true"`), `type-pin` (`PIN`, 4 digits) is `typePin`, `wrong-pins` five wrong ones, `open-settings-entry` (`TITLE`, `FROM_HOME`) is `openSettingsEntry`, `assert-prompt` (`ACTION`) waits for the one-shot PIN prompt, `open-menu-tab` (`TAB`) is `openMenuTabFromHome` (Home → hamburger → the menu tab), `open-sales` opens the Sales tab in-app (Home → hamburger → Sales), `open-locked-catalog` reaches the PIN screen for the catalog in-app (Settings → Items), `read-phrase` keeps the recovery phrase as `output.phrase`; `enter-amount` (`AMOUNT`, `<` = backspace) is `enterAmount`;
   `assert-checked` (`LABEL`, `CHECKED`) checks a switch, on Android only;
   `add-catalog-item`, `add-table` are web's `addCatalogItem`, `addTable`
-  (there is no `add-category`: a category is typed on the item,
-  navigation/0003); `start-new-bill` is `startNewBill`,
+  (there is no `add-category`: a category is added on the item,
+  navigation/0003); `pick-category` (`CATEGORY`) is web's `pickCategory`,
+  picking or adding a category in an item form's combobox (catalog/0004);
+  `start-new-bill` is `startNewBill`,
   `new-bill` the same from the tables home; `charge-cash` pays the open bill
   in cash and returns home; `read-ids` is web's `new URL(page.url())` for
   ids: the newest bill's and payment's ids as `output.billId` and

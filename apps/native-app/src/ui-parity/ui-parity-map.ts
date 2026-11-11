@@ -2068,19 +2068,41 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
-    native: "src/features/catalog/items/category-field.tsx",
-    web: [],
+    native: "src/features/shared/category-combobox.tsx",
+    web: ["apps/web-app/src/features/shared/category-combobox.tsx"],
     status: "matched",
-    note: "Finito makes a category on the item (navigation/0003): chips of the existing ones and a field for a new name, where web's item form picks from a Select and categories have screens of their own.",
+    note: "Both apps pick an item's category from a combobox that adds a typed name (catalog/0004); Finito's rows also open a category to rename or delete it, having no categories screen.",
     allowedDifferences: {
-      Field:
-        "the category field's anatomy, as web's item form draws it around its Select",
-      FieldLabel: "the category field's label",
-      ToggleGroup: "the existing categories as chips, one selected",
-      ToggleGroupItem: "one category chip",
-      Input: "the new category's name",
       Button:
-        "Save and Discard inside the field while a name is typed, as InlineEditField",
+        "web's trigger is a Button; here the kit's ComboboxTrigger is the filled field, and Button is each row's pencil (catalog/0004)",
+    },
+  },
+  {
+    native: "src/features/catalog/items/category-edit-dialog.tsx",
+    web: [
+      "apps/web-app/src/features/catalog/categories/category-form-page.tsx",
+    ],
+    status: "matched",
+    note: "Finito renames or deletes a category from the item it is chosen on (catalog/0004), in a dialog, where web's category screen edits it inline and deletes it below.",
+    allowedDifferences: {
+      Card: "web's details card around the name, which the dialog is here",
+      CardHeader:
+        "web's details card around the name, which the dialog is here",
+      CardTitle: "web's details card around the name, which the dialog is here",
+      CardDescription:
+        "web's details card around the name, which the dialog is here",
+      CardContent:
+        "web's details card around the name, which the dialog is here",
+      FadeHeader: "web's screen title, the dialog's title here",
+      FieldGroup:
+        "web's form groups its one name field; the dialog has only it",
+      Dialog: "the category opened from the item's form rather than a screen",
+      DialogContent:
+        "the category opened from the item's form rather than a screen",
+      DialogHeader: "the dialog's title, web's screen title",
+      DialogTitle: "the dialog's title, web's screen title",
+      DialogFooter:
+        "Save and Cancel, where web's inline field saves itself and Back leaves",
     },
   },
   {

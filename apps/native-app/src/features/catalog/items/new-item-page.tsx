@@ -1,4 +1,8 @@
 import {
+  type CategoryChoice,
+  resolveCategoryChoice,
+} from "@payky/app-shared/catalog-category-choice"
+import {
   type CatalogItemFormErrors,
   catalogItemPricingErrorKeys,
   parseCatalogItemForm,
@@ -8,9 +12,7 @@ import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
-import { findOrCreateCatalogCategory } from "@payky/core/modules/catalog-category/catalog-category-actions"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
-import type { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemsQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import {
@@ -18,10 +20,7 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import {
-  type FiatCurrency,
-  NonEmptyString255Schema,
-} from "@payky/core/modules/shared/schema"
+import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
@@ -63,9 +62,9 @@ import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { CategoryCombobox } from "../../shared/category-combobox.tsx"
 import { DiscountSwitchField } from "../../shared/discount-switch-field.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
-import { CategoryField } from "./category-field.tsx"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 /**
@@ -92,15 +91,14 @@ export function NewCatalogItemPage() {
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const runToast = useRunToast()
   const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
-  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [internalName, setInternalName] = useState("")
   const [internalDescription, setInternalDescription] = useState("")
   const [sku, setSku] = useState("")
-  const [categoryId, setCategoryId] = useState<CatalogCategoryId | null>(null)
-  // A category typed rather than picked, made on save (navigation/0003).
-  const [newCategory, setNewCategory] = useState("")
+  const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
+  // A typed name stays a name until the item is saved (catalog/0004).
+  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
   const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
     defaultTaxRate?.id ?? NO_OPTION
   )
@@ -182,18 +180,13 @@ export function NewCatalogItemPage() {
       return
     }
     const values = parsed.value
-    const newCategoryName = NonEmptyString255Schema.safeParse(
-      newCategory.trim()
-    )
     setPending(true)
     const saved = await runToast(async (run) => {
-      const category = newCategoryName.success
-        ? await run.ok(findOrCreateCatalogCategory(newCategoryName.data))
-        : categoryId
+      const categoryId = await run.ok(resolveCategoryChoice(category))
       const result = await run(
         createCatalogItemAtEnd({
           deviceId: null,
-          categoryId: category,
+          categoryId,
           name: values.name,
           description: values.description,
           internalName: values.internalName,
@@ -336,14 +329,15 @@ export function NewCatalogItemPage() {
               />
               <FieldError>{error("sku")}</FieldError>
             </Field>
-            <CategoryField
-              categories={categories}
-              value={categoryId}
-              onValueChange={setCategoryId}
-              draft={newCategory}
-              onDraftChange={setNewCategory}
-              disabled={pending}
-            />
+            <Field>
+              <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
+              <CategoryCombobox
+                categories={categories}
+                value={category}
+                onValueChange={setCategory}
+                disabled={pending}
+              />
+            </Field>
             {/* A discount has no VAT rate (catalog/0002). */}
             {discount ? null : (
               <Field>

@@ -1,4 +1,5 @@
 import {
+  err,
   type InsertValues,
   ok,
   sqliteTrue,
@@ -7,6 +8,7 @@ import {
 } from "@evolu/common"
 
 import type { EvoluOwnerDep } from "../../deps.ts"
+import { defineError } from "../../error.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
   getNextSortOrder,
@@ -20,6 +22,7 @@ import {
   lastCatalogCategorySortOrderQuery,
 } from "./catalog-category-queries.ts"
 import type { CatalogCategoryId } from "./catalog-category-types.ts"
+import { sameCategoryName } from "./catalog-category-utils.ts"
 
 export const createCatalogCategory =
   (
@@ -102,10 +105,6 @@ export const deleteCatalogCategory =
     return ok(id)
   }
 
-/** Two names spell the same category when they differ only in case or spacing. */
-const sameCategoryName = (a: string, b: string): boolean =>
-  a.trim().localeCompare(b.trim(), undefined, { sensitivity: "accent" }) === 0
-
 /**
  * The category called `name`, created at the end when there is none yet,
  * as Linky makes a contact group from the name typed on the contact
@@ -128,4 +127,42 @@ export const findOrCreateCatalogCategory =
     return ok(
       await run.ok(createCatalogCategoryAtEnd({ deviceId: null, name }))
     )
+  }
+
+const createCatalogCategoryNameTakenError = defineError(
+  "CatalogCategoryNameTaken"
+)<{ readonly id: CatalogCategoryId }>()
+export type CatalogCategoryNameTakenError = ReturnType<
+  typeof createCatalogCategoryNameTakenError
+>
+
+/**
+ * Renames a category from the item it is chosen on (catalog/0004). A name
+ * another category already spells, case and spaces aside, is refused with
+ * that category's id rather than merged: two categories with one name
+ * would be two chips nobody can tell apart, and merging them would move
+ * items the merchant did not touch. Renaming to its own name in another
+ * case is a rename.
+ */
+export const renameCatalogCategory =
+  ({
+    id,
+    name,
+  }: {
+    readonly id: CatalogCategoryId
+    readonly name: NonEmptyString255
+  }): Task<
+    CatalogCategoryId,
+    CatalogCategoryNameTakenError,
+    EvoluDep & EvoluOwnerDep
+  > =>
+  async (run) => {
+    const categories = await run.deps.evolu.loadQuery(catalogCategoriesQuery)
+    const taken = categories.find(
+      (category) => category.id !== id && sameCategoryName(category.name, name)
+    )
+    if (taken !== undefined)
+      return err(createCatalogCategoryNameTakenError({ id: taken.id }))
+
+    return ok(await run.ok(updateCatalogCategory({ id, name })))
   }
