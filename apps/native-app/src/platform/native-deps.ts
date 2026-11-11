@@ -50,9 +50,28 @@ export const serviceProxyConsent = (
 }
 
 /**
+ * Where the PWA finds the service proxy. The proxy answers only its own
+ * origin (service-proxy/0001), and a deployed PWA is always served by the
+ * Vercel project whose `/api` holds it, so a deployed build calls the page's
+ * own origin: `app.finito.fit`, `edge.app.finito.fit` and every `*.vercel.app`
+ * alias of either alike. `EXPO_PUBLIC_PAYKY_API_BASE_URL` cannot decide this,
+ * as web's `VITE_PAYKY_API_BASE_URL` does for Payky: it defaults to the
+ * brand's API, so unset and set look the same, and the edge project sets it,
+ * which would send its aliases to `edge.app.finito.fit` and its 421. Only a
+ * build served without `/api` calls the configured API instead: Expo's dev
+ * server (`__DEV__`, `localhost:8081`, which an edge deployment allows through
+ * `PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS`) and the e2e builds, whose API is the
+ * mock server.
+ */
+const serviceProxyBaseUrl = (): string =>
+  __DEV__ || nativeEnv.EXPO_PUBLIC_PAYKY_E2E
+    ? nativeEnv.EXPO_PUBLIC_PAYKY_API_BASE_URL
+    : window.location.origin
+
+/**
  * The app's fetch. Given the device database, the web build (the PWA) sends
  * the calls to services that answer no CORS preflight (Fio, MONETA) through
- * the service proxy on the brand's API once the device allowed it
+ * the service proxy (`serviceProxyBaseUrl`) once the device allowed it
  * (service-proxy/0001); the APK has no CORS limit and always calls them
  * directly. A dep made without it (Cashu's, the previews') never reaches
  * those services.
@@ -66,7 +85,7 @@ export const createFetchDep = ({
     Platform.OS === "web" && deviceEvolu !== undefined
       ? createServiceProxyFetch({
           fetch: nativeFetch,
-          apiBaseUrl: nativeEnv.EXPO_PUBLIC_PAYKY_API_BASE_URL,
+          apiBaseUrl: serviceProxyBaseUrl(),
           isEnabled: serviceProxyConsent(deviceEvolu),
         })
       : nativeFetch,

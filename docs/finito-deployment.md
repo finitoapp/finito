@@ -39,7 +39,9 @@ handler without its twin. A deployment names its brand through `PAYKY_BRAND`
 Among them are the service proxies `/api/proxy/fio` and `/api/proxy/moneta`,
 through which the PWA reaches the banks once a device allows it
 (service-proxy/0001). They answer only their own origin, so the PWA calls
-them on `app.finito.fit`, resp. `edge.app.finito.fit`. `vercel.json` sets
+them on the origin it was served from, a `*.vercel.app` alias included; only
+Expo's dev server, which has no `/api`, calls `EXPO_PUBLIC_PAYKY_API_BASE_URL`
+and needs its origin in `PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS`. `vercel.json` sets
 `"regions": ["fra1"]` at the top level, as `apps/web-app/vercel.json` does for
 Payky: it keeps the bank data in the EU and moves every function of the
 project, not just the proxies, to Frankfurt.

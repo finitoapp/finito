@@ -38,7 +38,16 @@ reads the consent at each call, so turning it on or off reaches every fetch
 already handed out. The upstream path and query travel in the `x-proxy-path`
 header, never in the URL, since a Fio token is part of Fio's path. A failure
 of the proxy itself carries `x-service-proxy-error` and becomes a network
-failure (`FetchError`), never a bank's refusal of the token.
+failure (`FetchError`), never a bank's refusal of the token. Only a response
+the proxy marks as relayed from the bank (`x-service-proxy: upstream`) is
+taken as the bank's answer; anything else, such as the hosting platform's own
+401, 403, 429 or error page, is a proxy failure too.
+
+Payky's web app calls the proxy on the origin it was served from. So does
+Finito's PWA, because every deployment and `*.vercel.app` alias of `finito`
+and `finito-edge` serves its own `/api/proxy`; only Expo's dev server and the
+e2e builds, which have no `/api`, call the configured
+`EXPO_PUBLIC_PAYKY_API_BASE_URL`.
 
 The proxy (`/api/proxy/fio`, `/api/proxy/moneta`, served by both brands)
 passes on only what the registry names: a bodiless `GET`, to the service's
@@ -117,6 +126,9 @@ call limit (moneta/0010), however many tabs it opens.
 - `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > keeps the Fio token out of the URL, sending it in x-proxy-path`
 - `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > refuses to proxy anything but a GET`
 - `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > turns a proxy failure into a FetchError, never MonetaUnauthorizedError`
+- `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > turns an unmarked %s into a FetchError, never a MONETA answer`
+- `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > turns an unmarked %i into a FetchError, never a Fio HTTP error`
+- `packages/core/src/integrations/service-proxy/service-proxy-fetch.test.ts > createServiceProxyFetch > returns the service's own failures as they are`
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest origin checks > passes a same-origin request without an Origin header and sends no CORS headers`
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest origin checks > refuses a foreign Origin with 421 without calling upstream`
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest origin checks > refuses Sec-Fetch-Site %s without an allowed Origin`
@@ -128,11 +140,17 @@ call limit (moneta/0010), however many tabs it opens.
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest upstream checks > forwards only accept to Fio, never an authorization or a cookie`
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest upstream checks > streams upstream's %i back with its body and content-type, uncached`
 - `apps/web-app/src/server/service-proxy.test.ts > handleServiceProxyRequest upstream checks > answers 502 instead of following an upstream redirect`
+- `apps/web-app/src/server/service-proxy.test.ts > createServiceProxyFetch against handleServiceProxyRequest > passes MONETA's own 401 back as the service's answer`
+- `apps/web-app/src/server/service-proxy-clients.test.ts > the bank clients through the service proxy > $name reaches the bank through the proxy exactly as it does directly`
+- `apps/web-app/src/server/service-proxy-clients.test.ts > the bank clients through the service proxy > sends the Fio token to Fio in its path, never in a URL to the proxy`
+- `apps/web-app/src/server/service-proxy-clients.test.ts > the bank clients through the service proxy > pages MONETA through the proxy with the bearer token and the account id encoded`
 - `apps/web-app/src/platform/platform-deps.test.ts > createFetchDep on a native platform with the service proxy allowed > calls the bank directly, whatever the consent says`
 - `apps/web-app/src/platform/platform-deps.test.ts > createFetchDep in a browser > reads the consent at each call, not when the dep is created`
 - `apps/web-app/src/atoms/service-proxy.test.ts > serviceProxyConsentAtom > hands out one reader that reads the stored consent at each call`
 - `apps/native-app/src/platform/native-deps.test.ts > createFetchDep and the service proxy > calls the banks directly in the APK, whatever the consent`
 - `apps/native-app/src/platform/native-deps.test.ts > createFetchDep and the service proxy > reads the consent at each call in the web build, so a fetch handed out earlier follows it`
+- `apps/native-app/src/platform/native-deps.test.ts > createFetchDep and the service proxy > proxies through the page's own origin in a deployed PWA, an alias whose origin is not the configured API included`
+- `apps/native-app/src/platform/native-deps.test.ts > createFetchDep and the service proxy > proxies through the configured API from Expo's dev server, which has no /api of its own`
 - `packages/core/src/background-jobs/background-jobs.test.ts > background job groups > keeps the Fio and MONETA jobs out of the app jobs, in a group of their own`
 - `packages/core/src/background-jobs/background-jobs.test.ts > background job groups > runs the MONETA job in the CLI, which reaches the bank as the native app does`
 - `packages/core/src/background-jobs/run-background-jobs.test.ts > runBackgroundJobsHoldingLock over $name > lets a second holder wait until the first is disposed`
