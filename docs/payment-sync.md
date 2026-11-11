@@ -27,7 +27,7 @@ repair rows created before this batching existed.
 |---|---|
 | `background-jobs/background-job-types.ts` | `BackgroundJob`/`BackgroundJobContext` shape. |
 | `background-jobs/background-jobs.ts` | The job groups: the app's, the banks' (`bankBackgroundJobs`), Cashu's and the CLI's. |
-| `background-jobs/run-background-jobs.ts` | Starts jobs, composes disposables; `runBackgroundJobsHoldingLock` runs them in one browser tab per account. |
+| `background-jobs/run-background-jobs.ts` | Starts jobs, composes disposables. |
 | `background-jobs/keyed-task-queue.ts` | Per-key sequential queue, used by every session below. |
 | `background-jobs/reconcile-account-sync-sessions.ts` | Diffs active accounts/plugins against running sessions. |
 | `background-jobs/jobs/fio-account-transaction-sync-job.ts` | The FIO job. |
@@ -83,10 +83,10 @@ Finito's PWA) only once the device allowed the service proxy: the browser's
 `FetchDep` then sends their calls through `/api/proxy/fio` and
 `/api/proxy/moneta` (`service-proxy/0001`, `moneta/0009`). The apps run them
 apart from the other jobs (`BankBackgroundJobs`), so turning the consent on
-or off starts or stops them alone, and in a browser only in the one tab per
-account owner that holds `bankBackgroundJobsLockName`
-(`runBackgroundJobsHoldingLock`), so tabs do not spend MONETA's daily limit
-or Fio's interval between calls again (`moneta/0010`). Spark runs
+or off starts or stops them alone. In a browser every open tab with the
+consent on runs them, as another device would, and spends MONETA's daily
+limit again (`moneta/0010`): no lock elects one tab, since a backgrounded or
+frozen tab could keep holding it and starve the visible one. Spark runs
 everywhere. A MONETA token the bank refuses stops
 the job's calls until the plugin changes, and an exceeded daily limit
 (5000 calls a token) backs it off; both stop the payment-wait screen's
@@ -95,9 +95,9 @@ check for the rest of the wait.
 ## Multi-device & idempotency
 
 A FIO or MONETA plugin / Spark account is normal synced Evolu data — every device
-independently runs its own sync job for it, with no leader election (a
-browser's tabs share one bank job through a Web Lock, above, but browsers
-and devices do not). Safety comes from convergence, not coordination:
+independently runs its own sync job for it, with no leader election — nor
+do a browser's tabs, each of which runs the bank jobs as one more device
+would (`service-proxy/0001`). Safety comes from convergence, not coordination:
 
 - `accountTransaction.id` derives from `accountId` + bank reference (FIO,
   MONETA's `entryReference`) or

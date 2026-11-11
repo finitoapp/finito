@@ -37,7 +37,6 @@ vi.mock("@payky/core/background-jobs/background-jobs", () => ({
   appBackgroundJobs: [{ group: "app" }],
   bankBackgroundJobs: [{ group: "bank" }],
   cashuBackgroundJobs: [{ group: "cashu" }],
-  bankBackgroundJobsLockName: "bank-lock",
 }))
 
 vi.mock("@payky/core/background-jobs/run-background-jobs", () => {
@@ -45,11 +44,10 @@ vi.mock("@payky/core/background-jobs/run-background-jobs", () => {
     group?: string
   }
   const start =
-    (jobs: ReadonlyArray<{ readonly group: string }>, how: string) =>
-    (run: FakeRun) => {
+    (jobs: ReadonlyArray<{ readonly group: string }>) => (run: FakeRun) => {
       const group = jobs.map((job) => job.group).join()
       run.group = group
-      fake.events.push(`start ${group}${how}`)
+      fake.events.push(`start ${group}`)
       return ok({
         [Symbol.asyncDispose]: async () => {
           fake.events.push(`stop ${group}`)
@@ -58,11 +56,7 @@ vi.mock("@payky/core/background-jobs/run-background-jobs", () => {
     }
   return {
     runBackgroundJobs: (jobs: ReadonlyArray<{ readonly group: string }>) =>
-      start(jobs, ""),
-    runBackgroundJobsHoldingLock: (
-      lockName: string,
-      jobs: ReadonlyArray<{ readonly group: string }>
-    ) => start(jobs, ` holding ${lockName}`),
+      start(jobs),
   }
 })
 
@@ -272,7 +266,7 @@ describe("app background jobs and the service proxy consent", () => {
 
     await setConsent(sqliteTrue)
     await vi.waitFor(() => {
-      expect(fake.events.slice(2)).toEqual(["start bank holding bank-lock"])
+      expect(fake.events.slice(2)).toEqual(["start bank"])
     })
 
     await setConsent(sqliteFalse)
@@ -282,7 +276,7 @@ describe("app background jobs and the service proxy consent", () => {
 
     await setConsent(sqliteTrue)
     await vi.waitFor(() => {
-      expect(fake.events.slice(5)).toEqual(["start bank holding bank-lock"])
+      expect(fake.events.slice(5)).toEqual(["start bank"])
     })
 
     // The app and Cashu jobs started once and were never stopped.

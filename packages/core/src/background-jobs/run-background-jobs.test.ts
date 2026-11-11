@@ -2,10 +2,9 @@ import {
   type AppOwner,
   ok,
   testCreateConsole,
-  testCreateLockManager,
   testCreateRun,
 } from "@evolu/common"
-import { describe, expect, test, vi } from "vitest"
+import { describe, expect, test } from "vitest"
 import type { FetchDep } from "../deps.ts"
 import type { Evolu } from "../evolu/schema.ts"
 import { createInProcessLockManager } from "../runtime/in-process-lock-manager.ts"
@@ -14,29 +13,19 @@ import type {
   BackgroundJob,
   BackgroundJobContext,
 } from "./background-job-types.ts"
-import {
-  runBackgroundJobs,
-  runBackgroundJobsHoldingLock,
-} from "./run-background-jobs.ts"
+import { runBackgroundJobs } from "./run-background-jobs.ts"
 
 const createBackgroundJobContext = (
-  errors: unknown[] = [],
-  {
-    lockManager = createInProcessLockManager(),
-    ownerId = "owner-1",
-  }: {
-    readonly lockManager?: BackgroundJobContext["lockManager"]
-    readonly ownerId?: string
-  } = {}
+  errors: unknown[] = []
 ): BackgroundJobContext => ({
   console: testCreateConsole(),
   evolu: {} as Evolu,
-  evoluOwner: { id: ownerId } as unknown as AppOwner,
+  evoluOwner: {} as AppOwner,
   date: { now: () => new Date() },
   fetch: (() => {
     throw new Error("fetch is not implemented in this test.")
   }) as unknown as FetchDep["fetch"],
-  lockManager,
+  lockManager: createInProcessLockManager(),
   ...testNotificationsDep(),
   onError: (error) => {
     errors.push(error)
@@ -160,141 +149,6 @@ describe("runBackgroundJobs", () => {
       reason: { type: "PanicAbortReason", defect: startError },
     })
     expect(disposedJobs).toEqual(["first"])
-    expect(errors).toEqual([])
-  })
-})
-
-/** A job that records when it starts and stops under `name`. */
-const createTrackedJob = (name: string, events: string[]): BackgroundJob => {
-  return () => {
-    events.push(`${name} started`)
-    return ok(createDisposable(() => void events.push(`${name} stopped`)))
-  }
-}
-
-describe.each([
-  { name: "the in-process lock manager", create: createInProcessLockManager },
-  { name: "Web Locks", create: testCreateLockManager },
-])("runBackgroundJobsHoldingLock over $name", ({ create }) => {
-  test("starts the jobs once it holds the lock and stops them when disposed", async () => {
-    const events: string[] = []
-    await using run = testCreateRun(
-      createBackgroundJobContext([], { lockManager: create() })
-    )
-
-    const holder = await run.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("first", events),
-        createTrackedJob("second", events),
-      ])
-    )
-    await vi.waitFor(() => {
-      expect(events).toEqual(["first started", "second started"])
-    })
-
-    await holder[Symbol.asyncDispose]()
-
-    expect(events).toEqual([
-      "first started",
-      "second started",
-      "second stopped",
-      "first stopped",
-    ])
-  })
-
-  test("lets a second holder wait until the first is disposed", async () => {
-    const events: string[] = []
-    const lockManager = create()
-    await using firstRun = testCreateRun(
-      createBackgroundJobContext([], { lockManager })
-    )
-    await using secondRun = testCreateRun(
-      createBackgroundJobContext([], { lockManager })
-    )
-
-    const first = await firstRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("first tab", events),
-      ])
-    )
-    await vi.waitFor(() => {
-      expect(events).toEqual(["first tab started"])
-    })
-    await using _second = await secondRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("second tab", events),
-      ])
-    )
-    await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(events).toEqual(["first tab started"])
-
-    await first[Symbol.asyncDispose]()
-
-    await vi.waitFor(() => {
-      expect(events).toEqual([
-        "first tab started",
-        "first tab stopped",
-        "second tab started",
-      ])
-    })
-  })
-
-  test("holds a lock of its own per account owner", async () => {
-    const events: string[] = []
-    const lockManager = create()
-    await using firstRun = testCreateRun(
-      createBackgroundJobContext([], { lockManager, ownerId: "owner-1" })
-    )
-    await using secondRun = testCreateRun(
-      createBackgroundJobContext([], { lockManager, ownerId: "owner-2" })
-    )
-
-    await using _first = await firstRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("owner-1", events),
-      ])
-    )
-    await using _second = await secondRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("owner-2", events),
-      ])
-    )
-
-    await vi.waitFor(() => {
-      expect(events).toEqual(["owner-1 started", "owner-2 started"])
-    })
-  })
-
-  test("gives up waiting when disposed before the lock is granted", async () => {
-    const events: string[] = []
-    const errors: unknown[] = []
-    const lockManager = create()
-    await using firstRun = testCreateRun(
-      createBackgroundJobContext(errors, { lockManager })
-    )
-    await using secondRun = testCreateRun(
-      createBackgroundJobContext(errors, { lockManager })
-    )
-
-    const first = await firstRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("first tab", events),
-      ])
-    )
-    await vi.waitFor(() => {
-      expect(events).toEqual(["first tab started"])
-    })
-    const second = await secondRun.ok(
-      runBackgroundJobsHoldingLock("bank-jobs", [
-        createTrackedJob("second tab", events),
-      ])
-    )
-
-    await second[Symbol.asyncDispose]()
-    await first[Symbol.asyncDispose]()
-    await new Promise((resolve) => setTimeout(resolve, 10))
-
-    expect(events).toEqual(["first tab started", "first tab stopped"])
     expect(errors).toEqual([])
   })
 })

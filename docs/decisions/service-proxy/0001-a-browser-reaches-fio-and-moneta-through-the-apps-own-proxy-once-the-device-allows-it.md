@@ -68,9 +68,9 @@ in `fra1` (Frankfurt), so the bank data stays in the EU.
 The Fio and MONETA jobs (`bankBackgroundJobs`) run apart from the app's other
 jobs (`BankBackgroundJobs` in both apps), only while the device can reach the
 banks: natively, or in a browser with the consent on. Turning the consent on
-or off starts or stops them alone. In a browser they run in one tab per
-account owner, which holds a Web Lock (`runBackgroundJobsHoldingLock`); the
-next tab takes over when it closes.
+or off starts or stops them alone. In a browser every open tab with the
+consent on runs them, as another device would: nothing elects one tab among
+them.
 
 ## Alternatives considered
 
@@ -83,6 +83,14 @@ rewrite, and a path in the URL would write a Fio token into access logs.
 
 A consent per bank: one consent, named generally, covers the services that
 need the proxy now and later, and says which they are.
+
+Running the bank jobs in one tab per account owner, which holds a Web Lock
+the next tab takes over when it closes: a backgrounded or frozen tab (iPad
+Safari, Chrome's tab freezing) could keep holding the lock and starve the
+visible tab of bank matching. An installed PWA runs as one window anyway,
+and every device already syncs on its own with writes that converge
+(`docs/payment-sync.md`, "Multi-device & idempotency"), so a tab syncing as
+one more device is acceptable for now; a proper solution will come later.
 
 Authenticating the caller (an owner id, as `ai/0001` does) and a rate limit,
 postponed: the fixed origins, the path allowlist and `GET` alone keep the
@@ -113,8 +121,10 @@ Local development (`bun run dev`, Expo web on `localhost:8081`) calls the
 proxy cross-origin, so it needs an edge deployment that lists its origin in
 `PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS`; production sets none.
 
-Each browser with the consent on is one more device spending MONETA's daily
-call limit (moneta/0010), however many tabs it opens.
+Each open browser tab with the consent on syncs like one more device: it
+spends MONETA's daily call limit again (moneta/0010) and calls Fio again.
+Its writes converge with every other tab's and device's, as two devices'
+do.
 
 ## Enforced by
 
@@ -153,10 +163,8 @@ call limit (moneta/0010), however many tabs it opens.
 - `apps/native-app/src/platform/native-deps.test.ts > createFetchDep and the service proxy > proxies through the configured API from Expo's dev server, which has no /api of its own`
 - `packages/core/src/background-jobs/background-jobs.test.ts > background job groups > keeps the Fio and MONETA jobs out of the app jobs, in a group of their own`
 - `packages/core/src/background-jobs/background-jobs.test.ts > background job groups > runs the MONETA job in the CLI, which reaches the bank as the native app does`
-- `packages/core/src/background-jobs/run-background-jobs.test.ts > runBackgroundJobsHoldingLock over $name > lets a second holder wait until the first is disposed`
-- `packages/core/src/background-jobs/run-background-jobs.test.ts > runBackgroundJobsHoldingLock over $name > holds a lock of its own per account owner`
-- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone, in one tab`
-- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in the native app, the bank jobs run without the lock and toggling the service proxy changes nothing`
+- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone`
+- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in the native app, the bank jobs run and toggling the service proxy changes nothing`
 - `apps/native-app/src/components/app/app-background-jobs.test.ts > app background jobs and the service proxy consent > in the PWA, turning the consent on and off starts and stops the bank jobs alone`
 - `apps/native-app/src/components/app/app-background-jobs.test.ts > app background jobs and the service proxy consent > in the APK, the bank jobs run from the start and the consent changes nothing`
 - `apps/web-app/e2e/settings-service-proxy.spec.ts > allowing the service proxy in privacy settings hides the Fio browser warning`

@@ -3,7 +3,6 @@ import { sqliteFalse, sqliteTrue } from "@evolu/common"
 import {
   appBackgroundJobs,
   bankBackgroundJobs,
-  bankBackgroundJobsLockName,
   cashuBackgroundJobs,
 } from "@payky/core/background-jobs/background-jobs"
 import { createStore, Provider } from "jotai"
@@ -18,8 +17,7 @@ import {
 
 /**
  * What the components started and stopped, in order: `<group> started`
- * (`runBackgroundJobs`, or `runBackgroundJobsHoldingLock` for `<group> started
- * holding <lock>`), `<group> stopped` when its jobs are disposed and
+ * (`runBackgroundJobs`), `<group> stopped` when its jobs are disposed and
  * `<group> run disposed` when its run is.
  */
 const state = vi.hoisted(() => ({
@@ -33,11 +31,7 @@ vi.mock("@capacitor/core", () => ({
 }))
 
 vi.mock("@payky/core/background-jobs/run-background-jobs", () => ({
-  runBackgroundJobs: (jobs: ReadonlyArray<unknown>) => ({ jobs, lock: null }),
-  runBackgroundJobsHoldingLock: (
-    lock: string,
-    jobs: ReadonlyArray<unknown>
-  ) => ({ jobs, lock }),
+  runBackgroundJobs: (jobs: ReadonlyArray<unknown>) => ({ jobs }),
 }))
 
 const groupOf = (jobs: ReadonlyArray<unknown>): string =>
@@ -54,16 +48,9 @@ vi.mock("@evolu/web", () => ({
   createRun: () => {
     let group = "unknown"
     return {
-      ok: async (task: {
-        readonly jobs: ReadonlyArray<unknown>
-        readonly lock: string | null
-      }) => {
+      ok: async (task: { readonly jobs: ReadonlyArray<unknown> }) => {
         group = groupOf(task.jobs)
-        state.events.push(
-          task.lock === null
-            ? `${group} started`
-            : `${group} started holding ${task.lock}`
-        )
+        state.events.push(`${group} started`)
         return {
           [Symbol.asyncDispose]: async () => {
             state.events.push(`${group} stopped`)
@@ -172,7 +159,7 @@ describe("AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs", () => 
     await settle()
   }
 
-  test("in a browser, toggling the service proxy starts and stops the bank jobs alone, in one tab", async () => {
+  test("in a browser, toggling the service proxy starts and stops the bank jobs alone", async () => {
     state.native = false
     const store = createStore()
     await renderJobs(store)
@@ -185,7 +172,7 @@ describe("AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs", () => 
     expect(state.events).toEqual([
       "app started",
       "cashu started",
-      `bank started holding ${bankBackgroundJobsLockName}`,
+      "bank started",
     ])
 
     await act(async () => {
@@ -195,13 +182,13 @@ describe("AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs", () => 
     expect(state.events).toEqual([
       "app started",
       "cashu started",
-      `bank started holding ${bankBackgroundJobsLockName}`,
+      "bank started",
       "bank stopped",
       "bank run disposed",
     ])
   })
 
-  test("in the native app, the bank jobs run without the lock and toggling the service proxy changes nothing", async () => {
+  test("in the native app, the bank jobs run and toggling the service proxy changes nothing", async () => {
     state.native = true
     const store = createStore()
     await renderJobs(store)

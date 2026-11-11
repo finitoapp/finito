@@ -19,17 +19,13 @@ import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transa
  * (`BankBackgroundJobs` in the apps), started only where the device can reach
  * the banks — natively, or in a browser through the service proxy it allowed —
  * so turning that consent on or off starts or stops them alone. In a browser
- * they run under `runBackgroundJobsHoldingLock` with
- * `bankBackgroundJobsLockName`, in one tab only: every tab would otherwise
- * spend MONETA's daily call limit and Fio's interval between calls again.
+ * every open tab with the consent on runs them, as another device would
+ * (service-proxy/0001).
  */
 export const bankBackgroundJobs = [
   startFioAccountTransactionSyncJob,
   startMonetaAccountTransactionSyncJob,
 ] satisfies ReadonlyArray<BackgroundJob>
-
-/** The lock a browser's bank jobs hold, per account, while they run. */
-export const bankBackgroundJobsLockName = "payky-bank-background-jobs"
 
 /**
  * Right for the CLI, which reaches the banks directly.

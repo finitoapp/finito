@@ -23,9 +23,9 @@ can reach the bank: a native device, the CLI, and a browser whose device
 allowed the service proxy. A background job syncs every 300 s by default
 from its sync pointer; it keeps 60 s between syncs whatever interval the row
 holds, so a value written by the CLI or another device cannot spend the
-limit faster. In a browser the job runs in one tab per account owner, the
-one holding the bank jobs' Web Lock, so a browser counts as one device
-however many tabs it opens. While the payment-wait screen shows a payable
+limit faster. In a browser every open tab whose device allowed the proxy
+runs the job, as another device would, each keeping its own 60 s between
+syncs. While the payment-wait screen shows a payable
 bank transfer to a connected account, it asks the bank every 4 s for at most
 10 minutes from the payment's creation, and only there. A refused token
 stops both: the job stops calling until the plugin changes, the screen for
@@ -37,16 +37,23 @@ and stops the screen.
 Rotating several tokens, as Fio does: the limit is per day, so a second
 token only splits the same budget. Checking only from the payment-wait
 screen: payments nobody watches — a closed screen, a customer who paid
-later — would stay unpaid. Running the job in every tab of a browser: each
-tab would spend the limit again, and Fio's interval between calls too.
+later — would stay unpaid. Running the job in one tab per account owner,
+under a Web Lock the next tab takes over: a backgrounded or frozen tab (iPad
+Safari, Chrome's tab freezing) could keep holding the lock and starve the
+visible tab of matching. An installed PWA runs as one window anyway, and
+every device already syncs on its own with writes that converge
+(`docs/payment-sync.md`, "Multi-device & idempotency"), so several tabs
+syncing is acceptable for now; a proper solution will come later.
 
 ## Consequences
 
 Three devices in the background spend 864 calls a day; a payment nobody pays
 spends 150 more, one that is paid within a minute about 15. The rest covers
-more than 25 full waits a day. Each browser, or browser profile, with the
-consent on is one more device; its tabs are not. Two tabs showing the same
-payment-wait screen each check it, which only the waits themselves cost.
+more than 25 full waits a day. Each open browser tab with the consent on
+is one more device: every tab spends calls, 288 a day at the default 300 s
+and at most 1440 at the 60 s the job keeps between its syncs. Two tabs
+showing the same payment-wait screen each check it, which only the waits
+themselves cost.
 Each transaction page is a call, so the screen waits one 4 s interval per
 page its last check read: a busy account is checked less often, but a wait
 never spends more than 150 calls. A background interval under 300 s shows
@@ -65,6 +72,4 @@ against the limit is not yet confirmed by MONETA.
 - `packages/core/src/background-jobs/jobs/moneta-account-transaction-sync-job.test.ts > moneta account transaction sync job > stops asking the bank once it refuses the token, until a new one is connected`
 - `packages/core/src/background-jobs/jobs/moneta-account-transaction-sync-job.test.ts > moneta account transaction sync job > logs an exceeded daily limit without reporting a job error`
 - `packages/core/src/integrations/moneta/moneta-client.test.ts > fetchMonetaTransactions > stops at MONETA_MAX_PAGES so a runaway page count cannot spend the daily limit`
-- `packages/core/src/background-jobs/run-background-jobs.test.ts > runBackgroundJobsHoldingLock over $name > lets a second holder wait until the first is disposed`
-- `packages/core/src/background-jobs/run-background-jobs.test.ts > runBackgroundJobsHoldingLock over $name > holds a lock of its own per account owner`
-- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone, in one tab`
+- `apps/web-app/src/components/app/app-background-jobs.test.tsx > AppBackgroundJobs, CashuBackgroundJobs and BankBackgroundJobs > in a browser, toggling the service proxy starts and stops the bank jobs alone`
