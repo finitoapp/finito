@@ -26,8 +26,8 @@ repair rows created before this batching existed.
 | File | Role |
 |---|---|
 | `background-jobs/background-job-types.ts` | `BackgroundJob`/`BackgroundJobContext` shape. |
-| `background-jobs/background-jobs.ts` | Which jobs run on which runtime. |
-| `background-jobs/run-background-jobs.ts` | Starts jobs, composes disposables. |
+| `background-jobs/background-jobs.ts` | The job groups: the app's, the banks' (`bankBackgroundJobs`), Cashu's and the CLI's. |
+| `background-jobs/run-background-jobs.ts` | Starts jobs, composes disposables; `runBackgroundJobsHoldingLock` runs them in one browser tab per account. |
 | `background-jobs/keyed-task-queue.ts` | Per-key sequential queue, used by every session below. |
 | `background-jobs/reconcile-account-sync-sessions.ts` | Diffs active accounts/plugins against running sessions. |
 | `background-jobs/jobs/fio-account-transaction-sync-job.ts` | The FIO job. |
@@ -38,17 +38,18 @@ repair rows created before this batching existed.
 | `reconciliation-claim/reconciliation-claim-actions.ts` | `reconcileAccountTransaction` — the reconcile step. |
 | `integrations/fio/fio-client.ts` | FIO HTTP client. |
 | `integrations/moneta/moneta-client.ts` | MONETA VIP API client (ČOBS v7). |
+| `integrations/service-proxy/` | The registry of proxied services and the browser's fetch that sends their calls through `/api/proxy/<service>`. |
 | `features/payment-wait/use-moneta-payment-watch.ts` (web, native) | MONETA's fast speed on the payment-wait screen. |
 | `spark/spark-wallet.ts` | Pooled, ref-counted Spark SDK wrapper. |
 | `account/account.ts`, `account-spark-queries.ts` | `sparkAccountSyncPointer` table + query. |
-| `components/app/app-background-jobs.tsx` | Starts/stops jobs once per app mount. |
+| `components/app/app-background-jobs.tsx` | Starts/stops jobs once per app mount; `BankBackgroundJobs` while the device can reach the banks. |
 
 ## Parameters
 
 | | FIO | MONETA | Spark |
 |---|---|---|---|
 | Trigger | per-plugin timer | per-plugin timer + the payment-wait screen | account-wide timer + wallet events (`transfer:claimed`, `balance:update`, `deposit:confirmed`) |
-| Default interval | 30s (`numberOfSecondsBetweenChecks`) | 300s (`numberOfSecondsBetweenChecks`, at least 60s); 4s per page read on the payment-wait screen for its first 10 minutes (`moneta/0002`) | 60s (`DEFAULT_RECHECK_INTERVAL_MS`) |
+| Default interval | 30s (`numberOfSecondsBetweenChecks`) | 300s (`numberOfSecondsBetweenChecks`, at least 60s); 4s per page read on the payment-wait screen for its first 10 minutes (`moneta/0010`) | 60s (`DEFAULT_RECHECK_INTERVAL_MS`) |
 | Sync pointer | `fioPluginSyncPointer.lastSyncedDate` | `monetaPluginSyncPointer.lastSyncedDate` (the job only) | `sparkAccountSyncPointer.lastSyncedAt` |
 | Lookback overlap | `syncLookbackDays`, default **1 day**, per-plugin | none — the job reads from the pointer's day, the screen from the payment's day; the bank filters by `bookingDate`, whole days in Prague's time zone sent as bare dates (`moneta/0004`, `moneta/0008`) | `SPARK_SYNC_LOOKBACK_HOURS` = **72h**, fixed |
 | Cold-start scan | 2 months back (`FIO_FIRST_SYNC_LOOKBACK_MONTHS`) | 2 months back (`monetaFirstSyncStartDate`), read a week per call, narrowed to a day when the bank lists more (`MONETA_SYNC_WINDOWS`), a day still too long passed and logged (`moneta/0006`), never past the two years a token reads (`earliestMonetaReadableDay`) | unbounded (full history) |
@@ -76,8 +77,17 @@ date alone, so no narrower request reads more of a day: one still too long
 is passed with what was read of it and logged, rather than retried against
 the daily limit (`moneta/0006`).
 
-FIO and MONETA only run native/CLI (no CORS/proxy for browser,
-`moneta/0001`); Spark runs everywhere. A MONETA token the bank refuses stops
+Neither bank answers a browser's CORS preflight, so FIO and MONETA
+(`bankBackgroundJobs`) run natively and in the CLI, and in a browser (web,
+Finito's PWA) only once the device allowed the service proxy: the browser's
+`FetchDep` then sends their calls through `/api/proxy/fio` and
+`/api/proxy/moneta` (`service-proxy/0001`, `moneta/0009`). The apps run them
+apart from the other jobs (`BankBackgroundJobs`), so turning the consent on
+or off starts or stops them alone, and in a browser only in the one tab per
+account owner that holds `bankBackgroundJobsLockName`
+(`runBackgroundJobsHoldingLock`), so tabs do not spend MONETA's daily limit
+or Fio's interval between calls again (`moneta/0010`). Spark runs
+everywhere. A MONETA token the bank refuses stops
 the job's calls until the plugin changes, and an exceeded daily limit
 (5000 calls a token) backs it off; both stop the payment-wait screen's
 check for the rest of the wait.
@@ -85,8 +95,9 @@ check for the rest of the wait.
 ## Multi-device & idempotency
 
 A FIO or MONETA plugin / Spark account is normal synced Evolu data — every device
-independently runs its own sync job for it, with no leader election. Safety
-comes from convergence, not coordination:
+independently runs its own sync job for it, with no leader election (a
+browser's tabs share one bank job through a Web Lock, above, but browsers
+and devices do not). Safety comes from convergence, not coordination:
 
 - `accountTransaction.id` derives from `accountId` + bank reference (FIO,
   MONETA's `entryReference`) or

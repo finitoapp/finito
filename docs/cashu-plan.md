@@ -323,8 +323,8 @@ row-state table, `payment-method-display.tsx`, stats `methodColors` (new
 
 ### 3.7 `cashu-account-sync` job
 
-- `cashu-account-sync-job.ts`, added to `nativeBackgroundJobs` and
-  `browserBackgroundJobs` explicitly (not the CLI list).
+- `cashu-account-sync-job.ts`, in its own group `cashuBackgroundJobs`
+  (not the CLI list).
 - Lightning settlement (§5): per pending `topup` of an open payment, NUT-17
   subscription raced with Linky's poll schedule; claim steps 1–6; reclaim
   through NUT-09 when Payky's own attempt lost its response.
