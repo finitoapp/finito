@@ -43,6 +43,10 @@ interface TypedLine {
 
 const emptyLine = (id: number): TypedLine => ({ id, text: "", amount: "" })
 
+const needsAmount = (line: TypedLine, currency: SelfPayMenu["currency"]) =>
+  line.text.trim() !== "" &&
+  decimalAmountToMinorUnits({ currency, value: line.amount }) === null
+
 export function GuestWrittenOrder({
   menu,
   isPreparing,
@@ -82,9 +86,16 @@ export function GuestWrittenOrder({
     isWrittenAmountInRange(named, currency) &&
     !isAmountTooHigh &&
     !isCustomTipUnreadable(tipChoice, currency)
+  const unfilledIndex = typedLines.findIndex((line) =>
+    needsAmount(line, currency)
+  )
+  const hint =
+    unfilledIndex === -1
+      ? t("selfPay.written.nothing")
+      : t("selfPay.written.amount.missing.item", { number: unfilledIndex + 1 })
   const payLabel = canPay
     ? t("selfPay.pay.total", { amount: format(amount) })
-    : t("selfPay.written.nothing")
+    : hint
   const announced = useRef(payLabel)
 
   useEffect(() => {
@@ -174,7 +185,7 @@ export function GuestWrittenOrder({
           <span>
             {canPay
               ? t("selfPay.written.summary", { amount: format(named) })
-              : t("selfPay.written.nothing")}
+              : hint}
           </span>
           {canPay ? (
             <span>
@@ -221,10 +232,18 @@ function GuestWrittenLine({
   readonly onAmountBlur: (event: FocusEvent) => void
 }) {
   const { t, locale } = useGuestTranslation()
+  const [hasLeftAmount, setHasLeftAmount] = useState(false)
   const text = line.text.trim()
   const textId = `guest-written-text-${line.id}`
   const lengthId = `guest-written-text-length-${line.id}`
   const amountId = `guest-written-amount-${line.id}`
+  const amountErrorId = `guest-written-amount-error-${line.id}`
+  const amountError =
+    !hasLeftAmount || !needsAmount(line, currency)
+      ? null
+      : line.amount.trim() === ""
+        ? t("selfPay.written.amount.missing")
+        : t("selfPay.amount.unreadable")
 
   return (
     <li className="flex flex-col gap-3">
@@ -276,6 +295,8 @@ function GuestWrittenLine({
             inputMode="decimal"
             enterKeyHint="done"
             autoComplete="off"
+            aria-invalid={amountError !== null}
+            aria-describedby={amountError === null ? undefined : amountErrorId}
             value={line.amount}
             onChange={(event) => {
               onChange({ amount: event.currentTarget.value })
@@ -283,12 +304,20 @@ function GuestWrittenLine({
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur()
             }}
-            onBlur={onAmountBlur}
+            onBlur={(event) => {
+              setHasLeftAmount(true)
+              onAmountBlur(event)
+            }}
           />
           <span className="text-muted-foreground">
             {guestCurrencySymbol(currency, locale)}
           </span>
         </div>
+        {amountError === null ? null : (
+          <p id={amountErrorId} className="text-sm text-destructive">
+            {amountError}
+          </p>
+        )}
       </div>
     </li>
   )

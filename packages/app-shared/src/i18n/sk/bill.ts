@@ -313,6 +313,8 @@ export const skBill = {
     "Skúste to o chvíľu znova alebo zaplaťte u obsluhy.",
   "selfPay.unavailable.title": "Účet teraz nie je dostupný",
   "selfPay.written.amount.label": "Suma",
+  "selfPay.written.amount.missing": "Doplňte sumu.",
+  "selfPay.written.amount.missing.item": "Doplňte sumu pri položke {number}",
   "selfPay.written.amount.tooHigh": "Najväčšia suma je {amount}.",
   "selfPay.written.amount.tooLow": "Najmenšia suma je {amount}.",
   "selfPay.written.add": "Pridať ďalšiu položku",

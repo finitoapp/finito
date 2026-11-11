@@ -585,6 +585,70 @@ test("the form refuses only spaces, too little and too much, takes 90,50 and no 
   })
 })
 
+test("an item with text and no amount, or one the form cannot read, says so at its amount once left, and the bar names the item", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed the bar", () => seedBar(page))
+  const guest = await context.newPage()
+  const secondAmount = amountField(guest).nth(1)
+  const bar = guest.locator("footer")
+  await openForm(guest, guestAddress)
+
+  await test.step("the bar names the second item while it has text and no amount", async () => {
+    await textField(guest).fill("2x pivo")
+    await amountField(guest).fill("90.00")
+    await guest
+      .getByRole("button", { name: translate("en", "selfPay.written.add") })
+      .click()
+    await textField(guest).nth(1).fill("utopenec")
+    await expect(
+      bar.getByText(
+        translateParams("en", "selfPay.written.amount.missing.item", {
+          number: 2,
+        })
+      )
+    ).toBeVisible()
+    await expect(secondAmount).toHaveAttribute("aria-invalid", "false")
+    await expect(anyPayButton(guest)).toHaveCount(0)
+  })
+
+  await test.step("leaving its amount empty says to fill it in, there", async () => {
+    await secondAmount.focus()
+    await secondAmount.blur()
+    await expect(secondAmount).toHaveAttribute("aria-invalid", "true")
+    await expect(secondAmount).toHaveAccessibleDescription(
+      translate("en", "selfPay.written.amount.missing")
+    )
+    await expect(amountField(guest).first()).toHaveAttribute(
+      "aria-invalid",
+      "false"
+    )
+  })
+
+  await test.step("an amount it cannot read says how to type one", async () => {
+    await secondAmount.fill("abc")
+    await expect(secondAmount).toHaveAccessibleDescription(
+      translate("en", "selfPay.amount.unreadable")
+    )
+    await expect(
+      bar.getByText(
+        translateParams("en", "selfPay.written.amount.missing.item", {
+          number: 2,
+        })
+      )
+    ).toBeVisible()
+  })
+
+  await test.step("a readable amount clears it and offers paying both", async () => {
+    await secondAmount.fill("60")
+    await expect(secondAmount).toHaveAttribute("aria-invalid", "false")
+    await expect(payButton(guest, "$150.00")).toBeVisible()
+  })
+})
+
 test("when no relay takes the written order, the guest is asked to pay with the staff and offered no payment", async ({
   seededPage: page,
   context,

@@ -308,6 +308,8 @@ export const csBill = {
     "Zkuste to za chvíli znovu, nebo zaplaťte u obsluhy.",
   "selfPay.unavailable.title": "Účet teď není dostupný",
   "selfPay.written.amount.label": "Částka",
+  "selfPay.written.amount.missing": "Doplňte částku.",
+  "selfPay.written.amount.missing.item": "Doplňte částku u položky {number}",
   "selfPay.written.amount.tooHigh": "Největší částka je {amount}.",
   "selfPay.written.amount.tooLow": "Nejmenší částka je {amount}.",
   "selfPay.written.add": "Přidat další položku",

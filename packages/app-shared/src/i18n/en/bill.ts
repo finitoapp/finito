@@ -307,6 +307,8 @@ export const enBill = {
     "Try again in a moment, or pay with the staff.",
   "selfPay.unavailable.title": "The bill is not available right now",
   "selfPay.written.amount.label": "Amount",
+  "selfPay.written.amount.missing": "Fill in the amount.",
+  "selfPay.written.amount.missing.item": "Fill in the amount for item {number}",
   "selfPay.written.amount.tooHigh": "The largest amount is {amount}.",
   "selfPay.written.amount.tooLow": "The smallest amount is {amount}.",
   "selfPay.written.add": "Add another item",
