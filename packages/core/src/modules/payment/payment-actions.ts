@@ -323,12 +323,11 @@ export const createPayment =
     // bill again. See docs/bill-payment-states.md.
     const paymentGoodsTotal = Integer(calculatePaymentBaseAmount(input))
     const methods = methodsResult.value
-    const unpayableGoodsTotal = [
-      paymentGoodsTotal,
-      ...(billLineSnapshot === null
-        ? []
-        : [deriveBillGoodsTotal(billLineSnapshot)]),
-    ].find(
+    const goodsTotals =
+      billLineSnapshot === null
+        ? [paymentGoodsTotal]
+        : [paymentGoodsTotal, deriveBillGoodsTotal(billLineSnapshot)]
+    const unpayableGoodsTotal = goodsTotals.find(
       (goodsTotal) =>
         !isPayableThroughAnyMethod({
           goodsTotal,
