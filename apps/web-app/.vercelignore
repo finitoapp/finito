@@ -1,0 +1,4 @@
+# Vercel turns every file under api/ into a function, tests included, and the
+# Hobby plan allows 12 per deployment. The tests stay beside their handlers
+# but out of the deployment (api/_function-count.test.ts).
+api/**/*.test.ts
