@@ -18,7 +18,6 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   type FiatCurrency,
   NonEmptyString255Schema,
@@ -173,8 +172,8 @@ export function NewCatalogItemPage() {
       },
       {
         currency,
-        taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
-        vatPayer: isVatPayer(legalEntity),
+        taxRateId,
+        legalEntity,
         discount,
       }
     )

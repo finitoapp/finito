@@ -1,10 +1,13 @@
 import { err, ok, type Result } from "@evolu/common"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
 import type { CatalogItemNotFoundError } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import {
   type CatalogItemPricingError,
   validateCatalogItemPricing,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
+import type { LegalEntityRow } from "@payky/core/modules/legal-entity/legal-entity"
+import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   decimalPriceToMinorUnits,
   minorUnitsToDecimalString,
@@ -84,8 +87,9 @@ const isPriceRefusal = (value: unknown): value is PriceRefusal =>
 /**
  * What the price is judged against besides itself: the currency it is typed
  * in, which decides how many minor units it means, and the VAT rate picked
- * next to it together with whether the account is a VAT payer, which
- * `validateCatalogItemPricing` needs (catalog/0001).
+ * next to it (`NO_OPTION` for none, as the select holds it) together with the
+ * account's legal entity, whose VAT payer flag `validateCatalogItemPricing`
+ * needs (catalog/0001).
  *
  * `discount` is the create form's Discount switch (catalog/0002): the amount
  * is typed without a sign, because Android's decimal keyboard has none, and
@@ -94,16 +98,20 @@ const isPriceRefusal = (value: unknown): value is PriceRefusal =>
  */
 export interface CatalogItemFormContext {
   readonly currency: FiatCurrency
-  readonly taxRateId: TaxRateId | null
-  readonly vatPayer: boolean
+  readonly taxRateId: TaxRateId | typeof NO_OPTION
+  readonly legalEntity: Pick<LegalEntityRow, "vatPayer"> | undefined
   readonly discount: boolean
 }
 
-/** The VAT rate the item is saved with: none for a discount (catalog/0002). */
+/**
+ * The VAT rate the item is saved with: the one picked, and none for a
+ * discount (catalog/0002).
+ */
 const formTaxRateId = ({
   discount,
   taxRateId,
-}: CatalogItemFormContext): TaxRateId | null => (discount ? null : taxRateId)
+}: CatalogItemFormContext): TaxRateId | null =>
+  discount || taxRateId === NO_OPTION ? null : taxRateId
 
 /**
  * The price an amount typed without a sign means (catalog/0002), the one
@@ -148,7 +156,7 @@ const createPriceSchema = (context: CatalogItemFormContext) =>
     const pricing = validateCatalogItemPricing({
       unitAmount: price.value,
       taxRateId: formTaxRateId(context),
-      vatPayer: context.vatPayer,
+      vatPayer: isVatPayer(context.legalEntity),
       originalUnitAmount: null,
     })
     if (!pricing.ok) {

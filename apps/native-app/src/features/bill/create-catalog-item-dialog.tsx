@@ -11,7 +11,6 @@ import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-it
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
@@ -177,8 +176,8 @@ function CreateForm({
       },
       {
         currency,
-        taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
-        vatPayer: isVatPayer(legalEntity),
+        taxRateId,
+        legalEntity,
         discount,
       }
     )

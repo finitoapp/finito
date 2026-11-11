@@ -38,7 +38,6 @@ import {
   isDiscountPrice,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import { isVatPayer } from "@payky/core/modules/legal-entity/legal-entity-utils"
 import {
   FiatCurrencySchema,
   type FiatCurrency as FiatCurrencyType,
@@ -313,8 +312,8 @@ function CreateCatalogItemForm({
             },
             {
               currency,
-              taxRateId: taxRateId === NO_OPTION ? null : taxRateId,
-              vatPayer: isVatPayer(legalEntity),
+              taxRateId,
+              legalEntity,
               discount,
             }
           )
