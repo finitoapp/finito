@@ -10,6 +10,7 @@ import { useCallback, useMemo } from "react"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
 import { cashuShardStoreAtom, cashuWalletDepAtom } from "@/atoms/evolu.ts"
+import { serviceProxyConsentAtom } from "@/atoms/service-proxy.ts"
 import { appEnv } from "@/core/app-env.ts"
 import { useConsole } from "@/hooks/use-console.ts"
 import { useEvolu } from "@/hooks/use-evolu.ts"
@@ -45,11 +46,14 @@ const useAppRunDeps = () => {
   const evolu = useEvolu()
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  // Stable for the session: the fetch asks it at each call, so turning the
+  // consent on or off recreates nothing here.
+  const isServiceProxyEnabled = useAtomValue(serviceProxyConsentAtom)
   const demo = account.demo !== null
 
   return useCallback(() => {
     const dateDep = createDateDep()
-    const fetchDep = createFetchDep()
+    const fetchDep = createFetchDep({ isServiceProxyEnabled })
 
     return {
       console,
@@ -71,7 +75,14 @@ const useAppRunDeps = () => {
       ),
       ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS),
     }
-  }, [account.masterKey, console, demo, deviceEvolu, evolu])
+  }, [
+    account.masterKey,
+    console,
+    demo,
+    deviceEvolu,
+    evolu,
+    isServiceProxyEnabled,
+  ])
 }
 
 export const useAppRun = () => {

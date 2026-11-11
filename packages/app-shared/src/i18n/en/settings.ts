@@ -5,7 +5,7 @@ export const enSettings = {
     "Join the development and follow the project",
   "settings.about.github.title": "Source code on GitHub",
   "settings.about.privacy.body":
-    "{appName} - PRIVACY POLICY\n\n1. DATA COLLECTION\n{appName} does not sell personal data and is designed to keep application data local to your device. The app stores terminal settings, catalog data, payment records, and related operational data locally and synchronizes application data through Evolu.\n\n2. PAYMENT DATA\nPayment and terminal data may include amounts, timestamps, item names, payment status, Spark wallet information, device identifiers, and other records needed to operate a Bitcoin payment terminal. Keep your device, credentials, backups, and wallet access data, especially your recovery phrase, secure.\n\n3. NETWORK COMMUNICATIONS\nThe app may communicate with:\n- Evolu synchronization infrastructure to sync local-first application data\n- Spark operators and Spark service providers to run the Spark wallet and send or receive Bitcoin payments\n- Lightning or wallet services used to create or settle payments\n- Price or exchange-rate APIs when fiat conversion is enabled\n- Open Food Facts and Open Beauty Facts to look up scanned barcodes, if product lookup is enabled\n- {appName}'s server and its AI provider to answer the AI assistant, if it is enabled: your questions, the assistant's replies and, if you allowed it, the bills and payments it reads\n\nThese services may have their own privacy policies, logs, and retention rules.\n\n4. ANALYTICS AND ERROR REPORTING\n{appName} does not use analytics or tracking services. Optional error reporting through Sentry is available to help diagnose crashes and bugs. It is off by default and only activates if you turn it on in Settings > About > Data and privacy. When enabled, error reports may include device and app information, and error messages and stack traces; recovery phrases and bank account numbers are automatically redacted before being sent.\n\n5. SPARK NETWORK\nPayments through the Spark wallet are processed by Spark operators and Spark service providers, which may see transaction amounts, timing, wallet identifiers, and related metadata.\n\n6. BACKUPS AND SYNC\nIf synchronization or backup features are enabled, application data may be transmitted to synchronization infrastructure. Treat synced data as operational business data and protect every device that can access it.\n\n7. CONTACT\nPrivacy contact details will be published with the project documentation.\n\nLast updated: October 2026",
+    "{appName} - PRIVACY POLICY\n\n1. DATA COLLECTION\n{appName} does not sell personal data and is designed to keep application data local to your device. The app stores terminal settings, catalog data, payment records, and related operational data locally and synchronizes application data through Evolu.\n\n2. PAYMENT DATA\nPayment and terminal data may include amounts, timestamps, item names, payment status, Spark wallet information, device identifiers, and other records needed to operate a Bitcoin payment terminal. Keep your device, credentials, backups, and wallet access data, especially your recovery phrase, secure.\n\n3. NETWORK COMMUNICATIONS\nThe app may communicate with:\n- Evolu synchronization infrastructure to sync local-first application data\n- Spark operators and Spark service providers to run the Spark wallet and send or receive Bitcoin payments\n- Lightning or wallet services used to create or settle payments\n- Price or exchange-rate APIs when fiat conversion is enabled\n- Open Food Facts and Open Beauty Facts to look up scanned barcodes, if product lookup is enabled\n- {appName}'s server and its AI provider to answer the AI assistant, if it is enabled: your questions, the assistant's replies and, if you allowed it, the bills and payments it reads\n- Your bank (Fio banka or MONETA Money Bank) to check for incoming payments, if payment matching is set up: your bank access token and requests for the account's transactions\n- {appName}'s server in the EU (Frankfurt) as the proxy for connected services, if you allow it on a device: the web version sends its requests to Fio banka and MONETA Money Bank through it, so it sees your bank access token and the bank's responses (the IBAN and the account's transactions, including amounts, counter-accounts, payer names, symbols and messages for the recipient). It stores none of it and only passes it on. The mobile app calls the banks directly\n\nThese services may have their own privacy policies, logs, and retention rules.\n\n4. ANALYTICS AND ERROR REPORTING\n{appName} does not use analytics or tracking services. Optional error reporting through Sentry is available to help diagnose crashes and bugs. It is off by default and only activates if you turn it on in Settings > About > Data and privacy. When enabled, error reports may include device and app information, and error messages and stack traces; recovery phrases and bank account numbers are automatically redacted before being sent.\n\n5. SPARK NETWORK\nPayments through the Spark wallet are processed by Spark operators and Spark service providers, which may see transaction amounts, timing, wallet identifiers, and related metadata.\n\n6. BACKUPS AND SYNC\nIf synchronization or backup features are enabled, application data may be transmitted to synchronization infrastructure. Treat synced data as operational business data and protect every device that can access it.\n\n7. CONTACT\nPrivacy contact details will be published with the project documentation.\n\nLast updated: November 2026",
   "settings.about.privacy.description":
     "Application data is stored locally and synchronized through Evolu.",
   "settings.about.privacy.heading": "{appName} Privacy Policy",
@@ -529,9 +529,8 @@ export const enSettings = {
   "settings.fioPlugin.lastSyncedDate.invalid": "Enter a valid date.",
   "settings.fioPlugin.lastSyncedDate.label": "Last synced date",
   "settings.fioPlugin.nativeRuntimeWarning.description":
-    "This app is currently running in a regular browser/PWA environment, so automatic Fio payment checks will not run here.",
-  "settings.fioPlugin.nativeRuntimeWarning.title":
-    "Fio plugin is available only in the native app.",
+    "Fio banka doesn't let a browser call its API, so automatic Fio payment checks don't run here. Allow the proxy for connected services in the privacy settings, or use the {appName} mobile app.",
+  "settings.fioPlugin.nativeRuntimeWarning.title": "Fio needs the proxy here",
   "settings.fioPlugin.syncLookbackDays.description":
     "How many days before the last local sync pointer should be checked again.",
   "settings.fioPlugin.syncLookbackDays.invalid":
@@ -564,9 +563,9 @@ export const enSettings = {
   "settings.monetaPlugin.status.on": "On",
   "settings.monetaPlugin.status.off": "Off",
   "settings.monetaPlugin.nativeRuntimeWarning.title":
-    "The MONETA plugin works only in the mobile app.",
+    "MONETA needs the proxy here",
   "settings.monetaPlugin.nativeRuntimeWarning.description":
-    "MONETA does not let a browser reach its API. Connect the token in the {appName} mobile app; this terminal then sees the confirmed payments as well.",
+    "MONETA doesn't let a browser call its API. Allow the proxy for connected services in the privacy settings, or connect the token in the {appName} mobile app; this terminal then sees the confirmed payments as well.",
   "settings.monetaPlugin.notMonetaIbanWarning":
     "The fiat bank account is not a MONETA Money Bank account (bank code 0600), so there is nothing to connect.",
   "settings.monetaPlugin.connect.title": "Connect a token",
@@ -805,6 +804,16 @@ export const enSettings = {
   "settings.privacy.productLookup.enable": "Enable",
   "settings.privacy.productLookup.enabled": "Enabled",
   "settings.privacy.productLookup.title": "Product lookup",
+  "settings.privacy.serviceProxy.title": "Proxy for connected services",
+  "settings.privacy.serviceProxy.description":
+    "Some services (for now Fio banka and MONETA Money Bank) don't let a browser call their API directly. Once you allow it, the web version sends these requests through {appName}'s server in the EU (Frankfurt). The proxy sees your bank access token and the bank's responses: the IBAN and the account's transactions, including amounts, counter-accounts, payer names, symbols and messages for the recipient. It stores none of it, it only passes it on. Applies to this device only. Off by default.",
+  "settings.privacy.serviceProxy.nativeNote":
+    "The mobile app calls the banks directly and doesn't use the proxy, so this setting changes nothing here.",
+  "settings.privacy.serviceProxy.disable": "Disable",
+  "settings.privacy.serviceProxy.disabled": "Disabled",
+  "settings.privacy.serviceProxy.enable": "Enable",
+  "settings.privacy.serviceProxy.enabled": "Enabled",
+  "settings.privacy.serviceProxy.openPrivacySettings": "Open privacy settings",
   "settings.privacy.aiAssistant.title": "AI assistant",
   "settings.privacy.aiAssistant.description":
     "The assistant answers through {appName}'s server and an AI provider, so what you ask and what it reads leaves this device. Off by default.",
@@ -1182,6 +1191,7 @@ export const enSettings = {
   "access.action.addDiscount": "Add a discount to the bill",
   "access.action.moveDiscount": "Move a discount to another bill",
   "access.action.aiAccess": "Change AI data access",
+  "access.action.serviceProxy": "Change the proxy for connected services",
   "access.action.cashuMints": "Change the Cashu mints",
   "access.action.moveCashuFunds": "Move funds between mints",
   "access.action.cancelPayment": "Cancel the payment",

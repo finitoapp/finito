@@ -1083,10 +1083,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Alert: "web-only browser runtime warning, omitted in the native app",
-      AlertDescription:
-        "web-only browser runtime warning, omitted in the native app",
-      AlertTitle: "web-only browser runtime warning, omitted in the native app",
       Badge: "rendered by the sibling fio-token-list.tsx",
       Button:
         "rendered by the sibling fio-token-form.tsx and fio-token-list.tsx",
@@ -1117,10 +1113,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Alert: "web-only browser runtime warning, omitted in the native app",
-      AlertDescription:
-        "web-only browser runtime warning, omitted in the native app",
-      AlertTitle: "web-only browser runtime warning, omitted in the native app",
       Badge: "rendered by the sibling fio-token-list.tsx",
       FadeHeader: "rendered by the parent fio-plugin-settings-page.tsx",
     },
@@ -1132,10 +1124,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Alert: "web-only browser runtime warning, omitted in the native app",
-      AlertDescription:
-        "web-only browser runtime warning, omitted in the native app",
-      AlertTitle: "web-only browser runtime warning, omitted in the native app",
       FadeHeader: "rendered by the parent fio-plugin-settings-page.tsx",
       Field: "rendered by the sibling fio-token-form.tsx",
       FieldDescription: "rendered by the sibling fio-token-form.tsx",
@@ -1507,6 +1495,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     web: [
       "apps/web-app/src/features/settings/privacy/error-reporting-card.tsx",
       "apps/web-app/src/features/settings/privacy/product-lookup-card.tsx",
+      "apps/web-app/src/features/settings/privacy/service-proxy-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
+    native: "src/features/settings/privacy/service-proxy-required-alert.tsx",
+    web: [
+      "apps/web-app/src/features/settings/privacy/service-proxy-required-alert.tsx",
     ],
     status: "matched",
   },

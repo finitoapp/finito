@@ -9,6 +9,7 @@ import {
 import { AiAssistantCard } from "@/features/settings/privacy/ai-assistant-card.tsx"
 import { ErrorReportingCard } from "@/features/settings/privacy/error-reporting-card.tsx"
 import { ProductLookupCard } from "@/features/settings/privacy/product-lookup-card.tsx"
+import { ServiceProxyCard } from "@/features/settings/privacy/service-proxy-card.tsx"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 export function PrivacySettingsPage() {
@@ -24,6 +25,7 @@ export function PrivacySettingsPage() {
         <ErrorReportingCard />
         <ProductLookupCard />
         <AiAssistantCard />
+        <ServiceProxyCard />
         <Card>
           <CardHeader>
             <CardTitle>{t("settings.about.privacy.heading")}</CardTitle>

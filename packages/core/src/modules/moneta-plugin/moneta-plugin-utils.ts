@@ -71,13 +71,13 @@ export const minMonetaPluginCheckIntervalSeconds = 60
 /**
  * The interval the job keeps: a row may hold less — written by the CLI, an
  * older build or another device — and the job is what spends the daily
- * limit, so it holds the minute itself (moneta/0002).
+ * limit, so it holds the minute itself (moneta/0010).
  */
 export const monetaPluginCheckIntervalSeconds = (seconds: number): number =>
   Math.max(seconds, minMonetaPluginCheckIntervalSeconds)
 
 /**
- * The call budget (moneta/0002). A token may make 5000 calls a day, shared by
+ * The call budget (moneta/0010). A token may make 5000 calls a day, shared by
  * every device of the merchant. The background job at the default 300 s makes
  * 288 a day per device, so three devices spend 864. The payment-wait screen
  * asks every `MONETA_FAST_WATCH_INTERVAL_MS` for at most
@@ -96,27 +96,29 @@ export const estimateMonetaDailyCalls = (intervalSeconds: number): number =>
 
 /**
  * Whether the payment-wait screen should still ask the bank itself: the
- * payment is payable, the device can reach the bank, an active plugin covers
- * the account the payment asks to be paid to, the bank has not refused the
- * token or the daily limit, and the wait is still within the window.
+ * payment is payable, the device can reach the bank (`canReachBank`: a native
+ * runtime calls it directly, a browser only through the service proxy its
+ * device allowed), an active plugin covers the account the payment asks to
+ * be paid to, the bank has not refused the token or the daily limit, and the
+ * wait is still within the window.
  */
 export const isMonetaFastWatchActive = ({
   payable,
-  isNativeRuntime,
+  canReachBank,
   hasActivePlugin,
   isStopped,
   createdAt,
   now,
 }: {
   readonly payable: boolean
-  readonly isNativeRuntime: boolean
+  readonly canReachBank: boolean
   readonly hasActivePlugin: boolean
   readonly isStopped: boolean
   readonly createdAt: Date
   readonly now: Date
 }): boolean =>
   payable &&
-  isNativeRuntime &&
+  canReachBank &&
   hasActivePlugin &&
   !isStopped &&
   now.getTime() - createdAt.getTime() < MONETA_FAST_WATCH_WINDOW_MS

@@ -42,7 +42,9 @@ import { useAccess } from "../../../core/use-access.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
+import { useCanReachBanks } from "../../../hooks/use-service-proxy.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { ServiceProxyRequiredAlert } from "../privacy/service-proxy-required-alert.tsx"
 import { FioTokenForm } from "./fio-token-form.tsx"
 import { FioTokenList } from "./fio-token-list.tsx"
 
@@ -52,10 +54,12 @@ const getDefaultLastSyncedDate = (): DateString =>
   DateStringSchema.decode(format(subDays(new Date(), 1), "yyyy-MM-dd"))
 
 /**
- * The FIO bank plugin, as web's `FioPluginSettingsPage` (without its browser
- * warning: the sync job runs in this app). Each setting writes on its own;
- * tokens are a separate form and list, reachable whether or not the plugin
- * row exists.
+ * The FIO bank plugin, as web's `FioPluginSettingsPage`. Each setting writes
+ * on its own; tokens are a separate form and list, reachable whether or not
+ * the plugin row exists. The app's web build reaches the bank only through
+ * the service proxy, so until the device allows it there it shows the
+ * runtime warning, which leads to the privacy settings, and cannot turn the
+ * sync on.
  */
 export function FioPluginSettingsPage() {
   const { accountId } = useAccess()
@@ -64,18 +68,30 @@ export function FioPluginSettingsPage() {
 
 function FioPluginSettings() {
   const { t } = useTranslation()
+  const canReachBank = useCanReachBanks()
 
   return (
     <Screen>
       <FadeHeader title={t("settings.fioPlugin.title")} />
-      <FioPluginForm />
+      {canReachBank ? null : (
+        <ServiceProxyRequiredAlert
+          title={t("settings.fioPlugin.nativeRuntimeWarning.title")}
+          description={t("settings.fioPlugin.nativeRuntimeWarning.description")}
+        />
+      )}
+      <FioPluginForm canReachBank={canReachBank} />
       <FioTokenForm />
       <FioTokenList />
     </Screen>
   )
 }
 
-function FioPluginForm() {
+function FioPluginForm({
+  canReachBank,
+}: {
+  /** Without it the sync cannot run here, so it cannot be turned on. */
+  readonly canReachBank: boolean
+}) {
   const runToast = useRunToast()
   const { t } = useTranslation()
   const [plugin] = useEvoluQuery(fiatBankAccountFioPluginQuery).data
@@ -137,7 +153,7 @@ function FioPluginForm() {
               <Switch
                 aria-label={t("settings.fioPlugin.active.label")}
                 checked={activeChoice.value}
-                disabled={activeChoice.saving}
+                disabled={activeChoice.saving || !canReachBank}
                 onCheckedChange={(next) => {
                   void activeChoice.choose(next)
                 }}

@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core"
 import { sqliteFalse, sqliteTrue } from "@evolu/common"
 import { maskFioToken, parseFioToken } from "@payky/app-shared/fio-token"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
@@ -27,15 +26,10 @@ import {
   PositiveInteger,
 } from "@payky/core/modules/shared/schema"
 import { format, subDays } from "date-fns"
-import { Plus, Trash2, TriangleAlert } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { useId, useState } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { PasswordTextarea } from "@/components/password-textarea.tsx"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/reui/alert.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
@@ -52,12 +46,14 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field.tsx"
+import { ServiceProxyRequiredAlert } from "@/features/settings/privacy/service-proxy-required-alert.tsx"
 import { FormCard } from "@/features/shared/forms/form-card.tsx"
 import { InlineEditCheckbox } from "@/features/shared/forms/inline-edit-checkbox.tsx"
 import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
+import { useCanReachBanks } from "@/hooks/use-service-proxy.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 
@@ -68,7 +64,7 @@ const getDefaultLastSyncedDate = (): DateString =>
 
 export function FioPluginSettingsPage() {
   const { t } = useTranslation()
-  const isNativeRuntime = Capacitor.isNativePlatform()
+  const canReachBanks = useCanReachBanks()
   const { data } = useEvoluQuery(fiatBankAccountFioPluginQuery)
   const [plugin] = data
 
@@ -77,8 +73,15 @@ export function FioPluginSettingsPage() {
       <div className="h-6" />
       <FadeHeader title={t("settings.fioPlugin.title")} />
       <div className="flex flex-col gap-5">
-        {!isNativeRuntime ? <FioPluginNativeRuntimeAlert /> : null}
-        <FioPluginForm plugin={plugin} isNativeRuntime={isNativeRuntime} />
+        {!canReachBanks ? (
+          <ServiceProxyRequiredAlert
+            title={t("settings.fioPlugin.nativeRuntimeWarning.title")}
+            description={t(
+              "settings.fioPlugin.nativeRuntimeWarning.description"
+            )}
+          />
+        ) : null}
+        <FioPluginForm plugin={plugin} canReachBanks={canReachBanks} />
         {/*
          * Tokens are reachable whether or not the `fioPlugin` row exists —
          * they hang off the fixed `fioPluginId`, and `activeFioPluginsQuery`
@@ -95,7 +98,8 @@ export function FioPluginSettingsPage() {
 }
 
 interface FioPluginFormProps {
-  readonly isNativeRuntime: boolean
+  /** Whether this device can call Fio: natively, or through the service proxy. */
+  readonly canReachBanks: boolean
   readonly plugin:
     | {
         readonly id: FioPluginId
@@ -106,23 +110,7 @@ interface FioPluginFormProps {
     | undefined
 }
 
-function FioPluginNativeRuntimeAlert() {
-  const { t } = useTranslation()
-
-  return (
-    <Alert variant="warning">
-      <TriangleAlert />
-      <AlertTitle>
-        {t("settings.fioPlugin.nativeRuntimeWarning.title")}
-      </AlertTitle>
-      <AlertDescription>
-        {t("settings.fioPlugin.nativeRuntimeWarning.description")}
-      </AlertDescription>
-    </Alert>
-  )
-}
-
-function FioPluginForm({ plugin, isNativeRuntime }: FioPluginFormProps) {
+function FioPluginForm({ plugin, canReachBanks }: FioPluginFormProps) {
   const appRun = useAppRun()
   const { t } = useTranslation()
   const pointerQuery = fioPluginSyncPointerByPluginIdQuery(fioPluginId)
@@ -132,7 +120,10 @@ function FioPluginForm({ plugin, isNativeRuntime }: FioPluginFormProps) {
   const [pointer] = pointers
   const lastSyncedDate = pointer?.lastSyncedDate ?? getDefaultLastSyncedDate()
 
-  const isActive = isNativeRuntime && plugin?.isActive === sqliteTrue
+  const storedIsActive = plugin?.isActive === sqliteTrue
+  // Shown off where the bank is out of reach, but saved as stored: the row
+  // syncs, so writing the masked value would stop the plugin on every device.
+  const isActive = canReachBanks && storedIsActive
   const numberOfSecondsBetweenChecks = PositiveInteger(
     plugin?.numberOfSecondsBetweenChecks ?? defaultNumberOfSecondsBetweenChecks
   )
@@ -159,7 +150,8 @@ function FioPluginForm({ plugin, isNativeRuntime }: FioPluginFormProps) {
         numberOfSecondsBetweenChecks:
           changed.numberOfSecondsBetweenChecks ?? numberOfSecondsBetweenChecks,
         syncLookbackDays: changed.syncLookbackDays ?? syncLookbackDays,
-        isActive: (changed.isActive ?? isActive) ? sqliteTrue : sqliteFalse,
+        isActive:
+          (changed.isActive ?? storedIsActive) ? sqliteTrue : sqliteFalse,
       })
     )
   }
@@ -178,7 +170,7 @@ function FioPluginForm({ plugin, isNativeRuntime }: FioPluginFormProps) {
             label={t("settings.fioPlugin.active.label")}
             description={t("settings.fioPlugin.active.description")}
             defaultValue={isActive}
-            disabled={!isNativeRuntime}
+            disabled={!canReachBanks}
             onSave={(nextIsActive) => savePlugin({ isActive: nextIsActive })}
           />
 

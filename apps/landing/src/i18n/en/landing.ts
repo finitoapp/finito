@@ -461,7 +461,7 @@ export const enLanding = {
   "landing.tech.exit.outage.eet.state":
     "Keeps working; sales go straight to the Financial Administration",
   "landing.tech.exit.outage.extras.label":
-    "AI assistant, support, contact form and donations",
+    "AI assistant, support, contact form, donations and payment matching in the browser",
   "landing.tech.exit.outage.extras.state":
     "Don't work until the servers are back",
   "landing.tech.exit.outage.payments.label": "QR payments, bitcoin and cards",
@@ -573,7 +573,7 @@ export const enLanding = {
   "landing.tech.money.qr.create":
     "The phone creates a QR code with your account number, the amount and a variable symbol. No server takes part.",
   "landing.tech.money.qr.note":
-    "Automatic payment matching works with Fio banka and MONETA Money Bank, in the mobile app. With other banks, you confirm the payment by hand.",
+    "Automatic payment matching works with Fio banka and MONETA Money Bank: in the mobile app directly, in the browser through our proxy once you allow it. With other banks, you confirm the payment by hand.",
   "landing.tech.money.qr.scan":
     "The customer scans it in their banking app and confirms the payment.",
   "landing.tech.money.qr.title": "QR bank transfer",
@@ -625,7 +625,8 @@ export const enLanding = {
   "landing.tech.services.bank.name": "Your bank (Fio API or MONETA API)",
   "landing.tech.services.bank.sent":
     "Your token and a request for the account's transactions.",
-  "landing.tech.services.bank.when": "When payment matching is on.",
+  "landing.tech.services.bank.when":
+    "When payment matching is on. The mobile app asks the bank directly; the browser only through our proxy, once you allow it.",
   "landing.tech.services.body":
     "Every service {appName} talks to: what it sends, when, and for our own servers, why. Sorted by when the connection happens.",
   "landing.tech.services.boltCard.name":
@@ -664,7 +665,7 @@ export const enLanding = {
     "Hands out public test certificates.",
   "landing.tech.services.eyebrow": "The full list",
   "landing.tech.services.footer":
-    "None of these services ever gets hold of your money or readable data about your business. The only exception is what you yourself write to the AI assistant or to support.",
+    "None of these services ever gets hold of your money or readable data about your business. The only exceptions are what you yourself write to the AI assistant or to support, and the bank's replies passing through our proxy once you allow it.",
   "landing.tech.services.group.action": "Only for a specific action",
   "landing.tech.services.group.always": "Whenever you use the app",
   "landing.tech.services.group.enabled": "Only when you turn it on",
@@ -700,6 +701,14 @@ export const enLanding = {
   "landing.tech.services.sentry.sent":
     "A technical description of the error, without the phrase or account numbers.",
   "landing.tech.services.sentry.when": "Only when you turn error reporting on.",
+  "landing.tech.services.serviceProxy.name":
+    "Proxy for connected services (Fio and MONETA)",
+  "landing.tech.services.serviceProxy.sent":
+    "Your bank token and the request for the account's transactions, and back the bank's reply: the IBAN and the transactions, including amounts, counter-accounts, payer names, symbols and messages for the recipient.",
+  "landing.tech.services.serviceProxy.when":
+    "Only in the browser with payment matching on, once you allow the proxy on that device. The mobile app never uses it.",
+  "landing.tech.services.serviceProxy.why":
+    "Fio banka and MONETA Money Bank don't let a browser call their API. Our server in the EU (Frankfurt) passes the requests on and the replies back, and stores none of it.",
   "landing.tech.services.spark.name":
     "Spark network operators and a Lightning gateway",
   "landing.tech.services.spark.sent": "Bitcoin transactions.",

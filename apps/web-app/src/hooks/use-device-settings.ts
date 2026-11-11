@@ -34,8 +34,13 @@ const deviceSettingsQuery = createDeviceQuery((db) =>
     .where("id", "=", deviceSettingsId)
 )
 
+/**
+ * The consent to the service proxy is not one of the `DeviceSettings`: it is
+ * read through `useServiceProxyEnabled`, so it is neither selected here nor
+ * defaulted.
+ */
 function withDeviceSettingsDefaults(
-  row: DeviceSettingsRow | undefined
+  row: Omit<DeviceSettingsRow, "serviceProxyEnabled"> | undefined
 ): DeviceSettings {
   const defaults = getDefaultDeviceSettings()
   const language = row?.language ?? defaults.language

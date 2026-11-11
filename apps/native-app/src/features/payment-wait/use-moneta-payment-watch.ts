@@ -3,15 +3,16 @@ import type { AccountId } from "@payky/core/modules/account/account-types"
 import { syncMonetaTransactions } from "@payky/core/modules/moneta-plugin/moneta-plugin-actions"
 import { activeMonetaPluginsQuery } from "@payky/core/modules/moneta-plugin/moneta-plugin-queries"
 import type { PaymentId } from "@payky/core/modules/payment/payment-types"
-import { Platform } from "react-native"
 import { nativeConsole } from "../../core/native-runtime.ts"
 import { useAppRun } from "../../hooks/use-app-run.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import { useCanReachBanks } from "../../hooks/use-service-proxy.ts"
 
 /**
- * MONETA's fast speed (moneta/0002), as web's `useMonetaPaymentWatch`; the
- * watch itself is `useMonetaPaymentWatchFor`. The app's web build cannot
- * reach the bank, so it never asks.
+ * MONETA's fast speed (moneta/0010), as web's `useMonetaPaymentWatch`; the
+ * watch itself is `useMonetaPaymentWatchFor`. The app's web build reaches
+ * the bank only through the service proxy, so without that consent it never
+ * asks.
  */
 export function useMonetaPaymentWatch({
   paymentId,
@@ -25,6 +26,7 @@ export function useMonetaPaymentWatch({
   readonly payable: boolean
 }) {
   const appRun = useAppRun()
+  const canReachBank = useCanReachBanks()
   const plugins = useEvoluQuery(activeMonetaPluginsQuery).data
   const plugin = plugins.find((plugin) => plugin.accountId === accountId)
 
@@ -32,7 +34,7 @@ export function useMonetaPaymentWatch({
     paymentId,
     createdAt,
     payable,
-    isNativeRuntime: Platform.OS !== "web",
+    canReachBank,
     pluginToken: plugin?.token ?? null,
     sync: async (range) => {
       await using run = appRun()

@@ -5,6 +5,8 @@ import {
   type HttpOptions,
 } from "@capacitor/core"
 import type { ConnectivityDep, FetchDep } from "@payky/core/deps"
+import { createServiceProxyFetch } from "@payky/core/integrations/service-proxy/service-proxy-fetch"
+import { apiUrl } from "@/core/app-env.ts"
 
 const getRequestHeaders = (request: Request): HttpHeaders => {
   const headers: HttpHeaders = {}
@@ -101,15 +103,36 @@ const capacitorFetch: typeof globalThis.fetch = async (input, init) => {
   })
 }
 
-export const createFetchDep = (): FetchDep => ({
-  fetch: async (...args) => {
-    if (Capacitor.isNativePlatform()) {
-      return capacitorFetch(...args)
-    }
+/**
+ * The app's fetch. The native app calls through `CapacitorHttp`, which knows
+ * no CORS, so it reaches every service directly. A browser sends the calls
+ * to services that answer no CORS preflight (Fio, MONETA) through the app's
+ * own proxy while `isServiceProxyEnabled()` says this device allowed it —
+ * asked at each request, so pass a stable reader (`serviceProxyConsentAtom`),
+ * never a captured value. Left out, the proxy stays off: right only where no
+ * call reaches a proxied service.
+ */
+export const createFetchDep = ({
+  isServiceProxyEnabled = () => false,
+}: {
+  readonly isServiceProxyEnabled?: (() => boolean) | undefined
+} = {}): FetchDep => {
+  const browserFetch = createServiceProxyFetch({
+    fetch: (...args) => globalThis.fetch(...args),
+    apiBaseUrl: apiUrl("/"),
+    isEnabled: isServiceProxyEnabled,
+  })
 
-    return globalThis.fetch(...args)
-  },
-})
+  return {
+    fetch: async (...args) => {
+      if (Capacitor.isNativePlatform()) {
+        return capacitorFetch(...args)
+      }
+
+      return await browserFetch(...args)
+    },
+  }
+}
 
 export const createConnectivityDep = (): ConnectivityDep => ({
   connectivity: {

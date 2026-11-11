@@ -1,11 +1,13 @@
 import type { HttpOptions, HttpResponse } from "@capacitor/core"
-import { beforeEach, describe, expect, test, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import { apiUrl } from "@/core/app-env.ts"
 import { createFetchDep } from "@/platform/platform-deps.ts"
 
 const request = vi.fn<(options: HttpOptions) => Promise<HttpResponse>>()
+const platform = vi.hoisted(() => ({ native: true }))
 
 vi.mock("@capacitor/core", () => ({
-  Capacitor: { isNativePlatform: () => true },
+  Capacitor: { isNativePlatform: () => platform.native },
   CapacitorHttp: { request: (options: HttpOptions) => request(options) },
 }))
 
@@ -18,6 +20,7 @@ const okResponse = (data: unknown): HttpResponse => ({
 
 describe("createFetchDep on a native platform", () => {
   beforeEach(() => {
+    platform.native = true
     request.mockReset()
   })
 
@@ -77,5 +80,76 @@ describe("createFetchDep on a native platform", () => {
     controller.abort(new DOMException("Timed out", "TimeoutError"))
 
     await expect(pending).rejects.toMatchObject({ name: "TimeoutError" })
+  })
+})
+
+const fioUrl =
+  "https://fioapi.fio.cz/v1/rest/periods/secret-token/2026-11-01/2026-11-10/transactions.json"
+
+describe("createFetchDep on a native platform with the service proxy allowed", () => {
+  beforeEach(() => {
+    platform.native = true
+    request.mockReset()
+  })
+
+  test("calls the bank directly, whatever the consent says", async () => {
+    request.mockResolvedValue(okResponse("{}"))
+
+    await createFetchDep({ isServiceProxyEnabled: () => true }).fetch(fioUrl)
+
+    expect(request.mock.calls[0]?.[0]).toMatchObject({ url: fioUrl })
+  })
+})
+
+describe("createFetchDep in a browser", () => {
+  const globalFetch = vi.fn<typeof globalThis.fetch>()
+
+  beforeEach(() => {
+    platform.native = false
+    globalFetch.mockReset()
+    globalFetch.mockResolvedValue(new Response("{}"))
+    vi.stubGlobal("fetch", globalFetch)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const requestedUrl = (call: number): string => {
+    const input = globalFetch.mock.calls[call]?.[0]
+    return input instanceof Request ? input.url : String(input)
+  }
+
+  test("reads the consent at each call, not when the dep is created", async () => {
+    let consent = false
+    const { fetch } = createFetchDep({ isServiceProxyEnabled: () => consent })
+
+    await fetch(fioUrl)
+    consent = true
+    await fetch(fioUrl)
+    consent = false
+    await fetch(fioUrl)
+
+    expect(requestedUrl(0)).toBe(fioUrl)
+    expect(requestedUrl(1)).toBe(apiUrl("/api/proxy/fio"))
+    expect(
+      new Headers(globalFetch.mock.calls[1]?.[1]?.headers).get("x-proxy-path")
+    ).toBe(new URL(fioUrl).pathname)
+    expect(requestedUrl(2)).toBe(fioUrl)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  test("passes a service the proxy does not cover through unchanged", async () => {
+    const { fetch } = createFetchDep({ isServiceProxyEnabled: () => true })
+
+    await fetch("https://example.test/rates")
+
+    expect(requestedUrl(0)).toBe("https://example.test/rates")
+  })
+
+  test("leaves the proxy off when no consent reader is given", async () => {
+    await createFetchDep().fetch(fioUrl)
+
+    expect(requestedUrl(0)).toBe(fioUrl)
   })
 })

@@ -17,7 +17,7 @@ import { type DateString, TimestampMs } from "@payky/core/modules/shared/schema"
 import { useQuery } from "@tanstack/react-query"
 
 /**
- * How the payment-wait screen's own MONETA check went (moneta/0002): the
+ * How the payment-wait screen's own MONETA check went (moneta/0010): the
  * bank answered, did not, or refused — the token, or the daily limit — which
  * stops the check for the rest of the wait.
  */
@@ -78,7 +78,7 @@ export interface MonetaPaymentWatchRange {
  * The gap before the next check. A check reads every page of the window, so
  * the screen waits one interval per page it read: however busy the account,
  * a wait spends at most `MONETA_FAST_WATCH_WINDOW_MS /
- * MONETA_FAST_WATCH_INTERVAL_MS` calls, the budget moneta/0002 counts.
+ * MONETA_FAST_WATCH_INTERVAL_MS` calls, the budget moneta/0010 counts.
  */
 export const monetaPaymentWatchIntervalMs = (callCount: number): number =>
   MONETA_FAST_WATCH_INTERVAL_MS * Math.max(1, callCount)
@@ -145,7 +145,7 @@ export const checkMonetaPaymentWatch = async ({
 }
 
 /**
- * MONETA's fast speed (moneta/0002), the one body behind web's and native's
+ * MONETA's fast speed (moneta/0010), the one body behind web's and native's
  * `useMonetaPaymentWatch`: while a payable bank transfer to an account with
  * a connected MONETA token waits, ask the bank every few seconds for the
  * first ten minutes. The payment turns paid through the claim the sync
@@ -153,15 +153,16 @@ export const checkMonetaPaymentWatch = async ({
  * doing. A refused token or an exceeded limit stops it for the rest of the
  * wait; the background job carries on.
  *
- * The apps pass what differs between them: whether this runtime can reach
- * the bank, the active plugin of the payment's account, and how to run the
- * sync.
+ * The apps pass what differs between them: whether this device can reach
+ * the bank (`canReachBank`: natively, or in a browser through the service
+ * proxy it allowed), the active plugin of the payment's account, and how to
+ * run the sync.
  */
 export function useMonetaPaymentWatchFor({
   paymentId,
   createdAt,
   payable,
-  isNativeRuntime,
+  canReachBank,
   pluginToken,
   sync,
   onFailure,
@@ -169,7 +170,7 @@ export function useMonetaPaymentWatchFor({
   readonly paymentId: PaymentId
   readonly createdAt: string | null
   readonly payable: boolean
-  readonly isNativeRuntime: boolean
+  readonly canReachBank: boolean
   /** The token of the active plugin of the payment's account, if any. */
   readonly pluginToken: string | null
   readonly sync: (
@@ -194,7 +195,7 @@ export function useMonetaPaymentWatchFor({
     createdAtDate !== null &&
     isMonetaFastWatchActive({
       payable,
-      isNativeRuntime,
+      canReachBank,
       hasActivePlugin: pluginToken !== null,
       isStopped: isMonetaPaymentWatchStopped(resultFor(check)),
       createdAt: createdAtDate,

@@ -1,6 +1,6 @@
 # 0002 MONETA syncs at two speeds within the daily limit
 
-Status: accepted
+Status: superseded by moneta/0010
 Date: 2026-11-01
 
 ## Context

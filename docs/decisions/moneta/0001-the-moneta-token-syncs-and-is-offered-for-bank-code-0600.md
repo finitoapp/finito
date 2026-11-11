@@ -1,6 +1,6 @@
 # 0001 The MONETA token syncs and is offered for bank code 0600
 
-Status: accepted
+Status: superseded by moneta/0009
 Date: 2026-11-01
 
 ## Context

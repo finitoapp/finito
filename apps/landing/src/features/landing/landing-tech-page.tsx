@@ -277,6 +277,7 @@ type ServiceId =
   | "eet"
   | "spark"
   | "ai"
+  | "serviceProxy"
   | "sentry"
   | "openFacts"
   | "yadio"
@@ -294,6 +295,7 @@ type PaykyServiceId = Extract<
   | "web"
   | "relay"
   | "ai"
+  | "serviceProxy"
   | "support"
   | "contact"
   | "donations"
@@ -305,6 +307,7 @@ const paykyServiceIds: ReadonlySet<ServiceId> = new Set<PaykyServiceId>([
   "web",
   "relay",
   "ai",
+  "serviceProxy",
   "support",
   "contact",
   "donations",
@@ -330,6 +333,7 @@ const serviceGroups: ReadonlyArray<{
     title: "landing.tech.services.group.enabled",
     ids: [
       "ai",
+      "serviceProxy",
       "bank",
       "eet",
       "spark",

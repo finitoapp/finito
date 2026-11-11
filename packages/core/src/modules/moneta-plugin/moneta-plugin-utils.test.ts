@@ -53,18 +53,18 @@ describe("isMonetaFastWatchActive", () => {
   const createdAt = new Date("2026-05-26T10:00:00.000Z")
   const active = {
     payable: true,
-    isNativeRuntime: true,
+    canReachBank: true,
     hasActivePlugin: true,
     isStopped: false,
     createdAt,
     now: new Date(createdAt.getTime() + 60_000),
   }
 
-  test("asks the bank while a payable payment waits on a native device", () => {
+  test("asks the bank while a payable payment waits on a device that can reach the bank", () => {
     expect(isMonetaFastWatchActive(active)).toBe(true)
   })
 
-  test("stops outside the window, on the web, without a plugin, or once the bank refused", () => {
+  test("stops outside the window, where the bank is out of reach, without a plugin, or once the bank refused", () => {
     expect(
       isMonetaFastWatchActive({
         ...active,
@@ -72,7 +72,7 @@ describe("isMonetaFastWatchActive", () => {
       })
     ).toBe(false)
     expect(isMonetaFastWatchActive({ ...active, payable: false })).toBe(false)
-    expect(isMonetaFastWatchActive({ ...active, isNativeRuntime: false })).toBe(
+    expect(isMonetaFastWatchActive({ ...active, canReachBank: false })).toBe(
       false
     )
     expect(isMonetaFastWatchActive({ ...active, hasActivePlugin: false })).toBe(

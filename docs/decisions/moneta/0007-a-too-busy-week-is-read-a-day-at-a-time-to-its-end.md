@@ -12,7 +12,7 @@ later: a week that overlaps the one just found too busy, so it was usually
 too busy as well. Each such week cost a full `MONETA_MAX_PAGES` (20) calls
 before the job narrowed it again, about 20 calls more for every day of a
 busy catch-up, all from the daily limit the merchant's devices share
-(moneta/0002).
+(moneta/0010).
 
 ## Decision
 

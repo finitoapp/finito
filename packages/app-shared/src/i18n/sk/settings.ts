@@ -6,7 +6,7 @@ export const skSettings = {
   "settings.about.github.description": "Zapojte sa do vývoja aplikácie",
   "settings.about.github.title": "Zdrojový kód na GitHube",
   "settings.about.privacy.body":
-    "{appName} - ZÁSADY OCHRANY SÚKROMIA\n\n1. ZBER DÁT\n{appName} nepredáva osobné údaje a je navrhnuté tak, aby aplikačné dáta zostávali lokálne vo vašom zariadení. Aplikácia ukladá nastavenia terminálu, katalógové dáta, záznamy platieb a súvisiace prevádzkové dáta lokálne a synchronizuje aplikačné dáta cez Evolu.\n\n2. PLATOBNÉ DÁTA\nPlatobné a terminálové dáta môžu obsahovať sumy, časové údaje, názvy položiek, stav platby, informácie o Spark peňaženke, identifikátory zariadení a ďalšie záznamy potrebné na prevádzku bitcoinového platobného terminálu. Chráňte svoje zariadenie, prihlasovacie údaje, zálohy a prístupové dáta k peňaženke, najmä obnovovaciu frázu.\n\n3. SIEŤOVÁ KOMUNIKÁCIA\nAplikácia môže komunikovať s:\n- infraštruktúrou Evolu na synchronizáciu lokálnych aplikačných dát\n- Spark operátormi a poskytovateľmi služieb Spark na prevádzku Spark peňaženky a odosielanie či prijímanie bitcoinových platieb\n- Lightning alebo peňaženkovými službami používanými na vytvorenie alebo vyrovnanie platieb\n- cenovými alebo kurzovými API, ak je zapnutý fiat prepočet\n- Open Food Facts a Open Beauty Facts na dohľadanie naskenovaných čiarových kódov, ak je zapnuté dohľadanie produktov\n- Server {appNameGen} a jeho poskytovateľa AI na odpovede AI asistenta, ak je zapnutý: vaše otázky, odpovede asistenta a, ak to povolíte, účty a platby, ktoré asistent číta\n\nTieto služby môžu mať vlastné zásady ochrany súkromia, logy a pravidlá uchovávania dát.\n\n4. ANALYTIKA A HLÁSENIE CHÝB\n{appName} nepoužíva analytické ani sledovacie služby. K dispozícii je voliteľné hlásenie chýb cez Sentry, ktoré pomáha diagnostikovať pády a chyby aplikácie. Je vo východiskovom stave vypnuté a aktivuje sa len vtedy, keď ho zapnete v Nastavenia > O aplikácii > Dáta a súkromie. Po zapnutí môžu hlásenia chýb obsahovať informácie o zariadení a aplikácii a chybové správy a stack trace; obnovovacie frázy a čísla bankových účtov sú pred odoslaním automaticky redigované.\n\n5. SIEŤ SPARK\nPlatby cez Spark peňaženku spracúvajú Spark operátori a poskytovatelia služieb Spark, ktorí môžu vidieť sumy transakcií, časovanie, identifikátory peňaženky a súvisiace metadáta.\n\n6. ZÁLOHY A SYNCHRONIZÁCIA\nAk sú zapnuté synchronizačné alebo zálohovacie funkcie, aplikačné dáta môžu byť prenášané do synchronizačnej infraštruktúry. So synchronizovanými dátami zaobchádzajte ako s prevádzkovými obchodnými dátami a chráňte každé zariadenie, ktoré k nim má prístup.\n\n7. KONTAKT\nKontaktné údaje pre otázky súkromia budú zverejnené v dokumentácii projektu.\n\nPosledná aktualizácia: október 2026",
+    "{appName} - ZÁSADY OCHRANY SÚKROMIA\n\n1. ZBER DÁT\n{appName} nepredáva osobné údaje a je navrhnuté tak, aby aplikačné dáta zostávali lokálne vo vašom zariadení. Aplikácia ukladá nastavenia terminálu, katalógové dáta, záznamy platieb a súvisiace prevádzkové dáta lokálne a synchronizuje aplikačné dáta cez Evolu.\n\n2. PLATOBNÉ DÁTA\nPlatobné a terminálové dáta môžu obsahovať sumy, časové údaje, názvy položiek, stav platby, informácie o Spark peňaženke, identifikátory zariadení a ďalšie záznamy potrebné na prevádzku bitcoinového platobného terminálu. Chráňte svoje zariadenie, prihlasovacie údaje, zálohy a prístupové dáta k peňaženke, najmä obnovovaciu frázu.\n\n3. SIEŤOVÁ KOMUNIKÁCIA\nAplikácia môže komunikovať s:\n- infraštruktúrou Evolu na synchronizáciu lokálnych aplikačných dát\n- Spark operátormi a poskytovateľmi služieb Spark na prevádzku Spark peňaženky a odosielanie či prijímanie bitcoinových platieb\n- Lightning alebo peňaženkovými službami používanými na vytvorenie alebo vyrovnanie platieb\n- cenovými alebo kurzovými API, ak je zapnutý fiat prepočet\n- Open Food Facts a Open Beauty Facts na dohľadanie naskenovaných čiarových kódov, ak je zapnuté dohľadanie produktov\n- Server {appNameGen} a jeho poskytovateľa AI na odpovede AI asistenta, ak je zapnutý: vaše otázky, odpovede asistenta a, ak to povolíte, účty a platby, ktoré asistent číta\n- vašou bankou (Fio banka alebo MONETA Money Bank) na kontrolu prichádzajúcich platieb, ak je nastavené párovanie platieb: prístupový token k banke a dopyty na pohyby na účte\n- serverom {appNameGen} v EÚ (Frankfurt) ako proxy pre pripojené služby, ak ju na zariadení povolíte: webová verzia cez neho posiela požiadavky na Fio banku a MONETA Money Bank, takže vidí prístupový token k banke a odpovede banky (IBAN a pohyby na účte vrátane súm, protiúčtov, mien platiteľov, symbolov a správ pre príjemcu). Nič z toho neukladá, len to prepošle. Mobilná aplikácia volá banky priamo\n\nTieto služby môžu mať vlastné zásady ochrany súkromia, logy a pravidlá uchovávania dát.\n\n4. ANALYTIKA A HLÁSENIE CHÝB\n{appName} nepoužíva analytické ani sledovacie služby. K dispozícii je voliteľné hlásenie chýb cez Sentry, ktoré pomáha diagnostikovať pády a chyby aplikácie. Je vo východiskovom stave vypnuté a aktivuje sa len vtedy, keď ho zapnete v Nastavenia > O aplikácii > Dáta a súkromie. Po zapnutí môžu hlásenia chýb obsahovať informácie o zariadení a aplikácii a chybové správy a stack trace; obnovovacie frázy a čísla bankových účtov sú pred odoslaním automaticky redigované.\n\n5. SIEŤ SPARK\nPlatby cez Spark peňaženku spracúvajú Spark operátori a poskytovatelia služieb Spark, ktorí môžu vidieť sumy transakcií, časovanie, identifikátory peňaženky a súvisiace metadáta.\n\n6. ZÁLOHY A SYNCHRONIZÁCIA\nAk sú zapnuté synchronizačné alebo zálohovacie funkcie, aplikačné dáta môžu byť prenášané do synchronizačnej infraštruktúry. So synchronizovanými dátami zaobchádzajte ako s prevádzkovými obchodnými dátami a chráňte každé zariadenie, ktoré k nim má prístup.\n\n7. KONTAKT\nKontaktné údaje pre otázky súkromia budú zverejnené v dokumentácii projektu.\n\nPosledná aktualizácia: november 2026",
   "settings.about.privacy.description":
     "Dáta aplikácie sa ukladajú lokálne a synchronizujú cez Evolu.",
   "settings.about.privacy.heading": "Zásady ochrany súkromia {appNameGen}",
@@ -530,9 +530,8 @@ export const skSettings = {
   "settings.fioPlugin.lastSyncedDate.invalid": "Zadajte platný dátum.",
   "settings.fioPlugin.lastSyncedDate.label": "Posledný synchronizovaný dátum",
   "settings.fioPlugin.nativeRuntimeWarning.description":
-    "Táto aplikácia teraz beží v bežnom prehliadači/PWA prostredí, takže automatické kontroly platieb Fio sa tu nespustia.",
-  "settings.fioPlugin.nativeRuntimeWarning.title":
-    "Fio plugin je dostupný iba v natívnej aplikácii.",
+    "Fio banka nedovolí prehliadaču volať svoje API, takže sa tu automatické kontroly platieb Fio nespustia. Povoľte proxy pre pripojené služby v nastaveniach súkromia, alebo použite mobilnú aplikáciu {appName}.",
+  "settings.fioPlugin.nativeRuntimeWarning.title": "Fio tu potrebuje proxy",
   "settings.fioPlugin.syncLookbackDays.description":
     "Koľko dní pred poslednou lokálnou zarážkou sa má znovu kontrolovať.",
   "settings.fioPlugin.syncLookbackDays.invalid":
@@ -566,9 +565,9 @@ export const skSettings = {
   "settings.monetaPlugin.status.on": "Zapnuté",
   "settings.monetaPlugin.status.off": "Vypnuté",
   "settings.monetaPlugin.nativeRuntimeWarning.title":
-    "MONETA plugin funguje iba v mobilnej aplikácii.",
+    "MONETA tu potrebuje proxy",
   "settings.monetaPlugin.nativeRuntimeWarning.description":
-    "MONETA nepustí prehliadač k svojmu API. Pripojte token v mobilnej aplikácii {appName}, potvrdené platby potom uvidí aj tento terminál.",
+    "MONETA nepustí prehliadač k svojmu API. Povoľte proxy pre pripojené služby v nastaveniach súkromia, alebo pripojte token v mobilnej aplikácii {appName}, potvrdené platby potom uvidí aj tento terminál.",
   "settings.monetaPlugin.notMonetaIbanWarning":
     "Bankový účet nie je v MONETA Money Bank (kód banky 0600), takže nie je čo pripojiť.",
   "settings.monetaPlugin.connect.title": "Pripojiť token",
@@ -807,6 +806,17 @@ export const skSettings = {
   "settings.privacy.productLookup.enable": "Zapnúť",
   "settings.privacy.productLookup.enabled": "Zapnuté",
   "settings.privacy.productLookup.title": "Dohľadanie produktov",
+  "settings.privacy.serviceProxy.title": "Proxy pre pripojené služby",
+  "settings.privacy.serviceProxy.description":
+    "Niektoré služby (zatiaľ Fio banka a MONETA Money Bank) nedovolia prehliadaču volať svoje API priamo. Po povolení posiela webová verzia tieto požiadavky cez server {appNameGen} v EÚ (Frankfurt). Proxy vidí prístupový token k banke a odpovede banky: IBAN a pohyby na účte vrátane súm, protiúčtov, mien platiteľov, symbolov a správ pre príjemcu. Nič z toho neukladá, len to prepošle. Platí len pre toto zariadenie. Vo východiskovom stave vypnuté.",
+  "settings.privacy.serviceProxy.nativeNote":
+    "Mobilná aplikácia volá banky priamo a proxy nepoužíva, takže tu toto nastavenie nič nemení.",
+  "settings.privacy.serviceProxy.disable": "Vypnúť",
+  "settings.privacy.serviceProxy.disabled": "Vypnuté",
+  "settings.privacy.serviceProxy.enable": "Zapnúť",
+  "settings.privacy.serviceProxy.enabled": "Zapnuté",
+  "settings.privacy.serviceProxy.openPrivacySettings":
+    "Otvoriť nastavenia súkromia",
   "settings.privacy.aiAssistant.title": "AI asistent",
   "settings.privacy.aiAssistant.description":
     "Asistent odpovedá cez server {appNameGen} a poskytovateľa AI, takže vaše otázky a to, čo asistent číta, opúšťa toto zariadenie. Vo východiskovom stave vypnuté.",
@@ -1184,6 +1194,7 @@ export const skSettings = {
   "access.action.addDiscount": "Pridať zľavu na účet",
   "access.action.moveDiscount": "Presunúť zľavu na iný účet",
   "access.action.aiAccess": "Zmeniť prístup AI k dátam",
+  "access.action.serviceProxy": "Zmeniť proxy pre pripojené služby",
   "access.action.cashuMints": "Zmeniť minty Cashu",
   "access.action.moveCashuFunds": "Presunúť prostriedky medzi mintami",
   "access.action.cancelPayment": "Zrušiť platbu",

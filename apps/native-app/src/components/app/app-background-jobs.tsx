@@ -1,9 +1,14 @@
 import {
+  appBackgroundJobs,
+  bankBackgroundJobs,
+  bankBackgroundJobsLockName,
   cashuBackgroundJobs,
-  getBackgroundJobsForRuntime,
 } from "@payky/core/background-jobs/background-jobs"
 import type { NotificationStore } from "@payky/core/background-jobs/notifications"
-import { runBackgroundJobs } from "@payky/core/background-jobs/run-background-jobs"
+import {
+  runBackgroundJobs,
+  runBackgroundJobsHoldingLock,
+} from "@payky/core/background-jobs/run-background-jobs"
 import { createDateDep } from "@payky/core/deps"
 import type {
   DeviceAccountId,
@@ -36,6 +41,7 @@ import { qerkoConnectionStatusStore } from "../../atoms/qerko-connection-status.
 import { captureReportedError } from "../../core/error-reporting.ts"
 import { nativeEnv } from "../../core/native-env.ts"
 import { nativeConsole, nativeRun } from "../../core/native-runtime.ts"
+import { useCanReachBanks } from "../../hooks/use-service-proxy.ts"
 import { eetNativeCrypto } from "../../platform/eet-crypto"
 import { lockManager } from "../../platform/evolu-runtime"
 import {
@@ -43,7 +49,11 @@ import {
   createFetchDep,
 } from "../../platform/native-deps.ts"
 
-/** The job context: the same effects web's `AppBackgroundJobs` passes. */
+/**
+ * The job context: the same effects web's `AppBackgroundJobs` passes. The
+ * fetch asks for the service proxy consent at each call, so the consent is
+ * no input here and turning it on or off restarts no job.
+ */
 const createJobDeps = ({
   evolu,
   deviceEvolu,
@@ -58,7 +68,7 @@ const createJobDeps = ({
   readonly notificationStore: NotificationStore
 }) => {
   const dateDep = createDateDep()
-  const fetchDep = createFetchDep()
+  const fetchDep = createFetchDep({ deviceEvolu })
   return {
     evolu,
     evoluOwner: evolu.appOwner,
@@ -150,8 +160,8 @@ function useBackgroundJobs({
 }
 
 /**
- * The FIO, MONETA, Spark, EET, Qerko and Lightning address jobs (the banks
- * only in the APK): none of them reads the Cashu wallet.
+ * The Spark, EET, Qerko and Lightning address jobs, the same in the APK and
+ * the PWA: none of them reads the Cashu wallet or a bank.
  */
 function AppBackgroundJobs() {
   const evolu = useAtomValue(evoluAtom)
@@ -174,13 +184,55 @@ function AppBackgroundJobs() {
         notificationStore,
       })
     )
-    // The APK takes web's Capacitor branch, where FIO and MONETA have no
-    // CORS limit; the PWA takes the browser's, which leaves both banks out,
-    // as their settings screens already do there.
+    return { run, jobs: run.ok(runBackgroundJobs(appBackgroundJobs)) }
+  }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
+
+  useBackgroundJobs({ isDemo: account.demo !== null, start })
+  return null
+}
+
+/**
+ * The Fio and MONETA jobs, only while this device can reach the banks: the
+ * APK always, the PWA once it allowed the service proxy
+ * (service-proxy/0001). Turning the consent on or off mounts or unmounts
+ * this alone, so no other job restarts.
+ */
+function BankBackgroundJobs() {
+  return useCanReachBanks() ? <RunningBankBackgroundJobs /> : null
+}
+
+function RunningBankBackgroundJobs() {
+  const evolu = useAtomValue(evoluAtom)
+  const account = useAtomValue(accountAtom)
+  const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  const notificationStore = useAtomValue(notificationStoreAtom)
+  useAtomValue(appMigrationsAtom)
+
+  const deviceId = account.device.id
+  const deviceAccountId = account.id
+  const start = useCallback(() => {
+    const run = nativeRun.create(
+      createJobDeps({
+        evolu,
+        deviceEvolu,
+        deviceAccountId,
+        deviceId,
+        notificationStore,
+      })
+    )
+    // In a browser every tab would spend MONETA's daily call limit and Fio's
+    // interval between calls again, so one tab holds them, under the
+    // browser's locks. The APK has one JS runtime, whose in-memory lock
+    // manager spans nothing more.
     return {
       run,
       jobs: run.ok(
-        runBackgroundJobs(getBackgroundJobsForRuntime(Platform.OS !== "web"))
+        Platform.OS === "web"
+          ? runBackgroundJobsHoldingLock(
+              bankBackgroundJobsLockName,
+              bankBackgroundJobs
+            )
+          : runBackgroundJobs(bankBackgroundJobs)
       ),
     }
   }, [evolu, deviceEvolu, deviceAccountId, deviceId, notificationStore])
@@ -262,14 +314,26 @@ class AppEvoluConsumersBoundary extends Component<
   }
 }
 
-/** Isolated and suspended apart from the screens: losing it costs sync, not the UI. */
+/**
+ * Isolated and suspended apart from the screens: losing it costs sync, not
+ * the UI. The bank jobs sit under a boundary and Suspense of their own, as
+ * Cashu's do, so the consent they wait on suspends and fails apart from the
+ * other jobs.
+ */
 export function AppEvoluConsumers() {
   return (
-    <AppEvoluConsumersBoundary>
-      <Suspense fallback={null}>
-        <AppBackgroundJobs />
-      </Suspense>
-    </AppEvoluConsumersBoundary>
+    <>
+      <AppEvoluConsumersBoundary>
+        <Suspense fallback={null}>
+          <AppBackgroundJobs />
+        </Suspense>
+      </AppEvoluConsumersBoundary>
+      <AppEvoluConsumersBoundary>
+        <Suspense fallback={null}>
+          <BankBackgroundJobs />
+        </Suspense>
+      </AppEvoluConsumersBoundary>
+    </>
   )
 }
 
