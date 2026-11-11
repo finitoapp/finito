@@ -36,6 +36,14 @@ handler of `apps/web-app/api`; `src/core/api-reexports.test.ts` fails on a
 handler without its twin. A deployment names its brand through `PAYKY_BRAND`
 (brand/0003).
 
+Among them are the service proxies `/api/proxy/fio` and `/api/proxy/moneta`,
+through which the PWA reaches the banks once a device allows it
+(service-proxy/0001). They answer only their own origin, so the PWA calls
+them on `app.finito.fit`, resp. `edge.app.finito.fit`. `vercel.json` sets
+`"regions": ["fra1"]` at the top level, as `apps/web-app/vercel.json` does for
+Payky: it keeps the bank data in the EU and moves every function of the
+project, not just the proxies, to Frankfurt.
+
 ## Environment
 
 | Variable | `finito` | `finito-edge` |
@@ -47,12 +55,20 @@ handler without its twin. A deployment names its brand through `PAYKY_BRAND`
 | `PAYKY_DONATE_SPARK_MNEMONIC` | Payky's | Payky's |
 | `PAYKY_AI_UPSTREAM_API_KEY` | Payky's | Payky's |
 | `PAYKY_AI_UPSTREAM_URL`, `_MODEL`, `PAYKY_AI_MAX_TOKENS` | Payky's | unset |
+| `PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS` | unset | local dev origins, such as `http://localhost:8081` |
 
 The secrets are Payky's own values (one donation wallet, one AI key, one Sentry
 project); Vercel does not reveal sensitive values, so they are entered by hand.
 `PAYKY_DONATE_IDENTIFIER` is needed because the Lightning address
 `donate@finito.fit` is answered through the landing on `finito.fit`, while the
 function sees its own host, `app.finito.fit`.
+
+`PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS` lists, comma-separated, the foreign
+origins the service proxies answer with CORS besides their own: Expo web on
+`localhost:8081` (and Payky's `bun run dev` on `payky-edge`) point their API at
+an edge deployment and call it cross-origin. It is set on the edge projects
+only; production answers its own origin alone. Unset or invalid, it allows
+none.
 
 ## The landing projects
 

@@ -445,8 +445,9 @@ Phase 1 has to prove all of this with real sync before anything is built on it.
 ### 5. Settlement — background job `cashu-account-sync`
 
 The job runs on native and browser, not in the CLI for now. In
-`background-jobs.ts` the native list spreads the CLI list, so the job is added
-to `nativeBackgroundJobs` and `browserBackgroundJobs` explicitly.
+`background-jobs.ts` it is a group of its own, `cashuBackgroundJobs`, apart
+from `appBackgroundJobs` and `bankBackgroundJobs` and from the CLI's list,
+which `CashuBackgroundJobs` runs under its own boundary.
 
 **Lightning**
 - For each pending `topup` operation that belongs to an open payment, race a
