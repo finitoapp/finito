@@ -137,6 +137,16 @@ const cardPaymentErrorKeyOf = (
     ? "paymentWait.cardPaid.error.demo"
     : cardPaymentErrorKeys[error.type]
 
+/**
+ * Whether a method can be picked or prepared: every one but cash, and cash
+ * where the payment's goods do not round to nothing (`isCashPayable`,
+ * payment/0012).
+ */
+const isOfferedPaymentMethod = (
+  method: PaymentMethodOption,
+  cashPayable: boolean
+): boolean => method.id !== "cash" || cashPayable
+
 export function PaymentWaitPage({ paymentId }: { readonly paymentId: string }) {
   const { t } = useTranslation()
   const parsedPaymentId = PaymentId.safeParse(paymentId)
@@ -462,13 +472,14 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   ])
   // Every method stays on screen, a refused one disabled, so staff see why
   // cash is missing; only the offered ones can be picked or prepared.
-  const isPaymentMethodOffered = useCallback(
-    (method: PaymentMethodOption) => method.id !== "cash" || cashPayable,
-    [cashPayable]
-  )
+  const isPaymentMethodOffered = (method: PaymentMethodOption) =>
+    isOfferedPaymentMethod(method, cashPayable)
   const offeredPaymentMethods = useMemo(
-    () => orderedPaymentMethods.filter(isPaymentMethodOffered),
-    [orderedPaymentMethods, isPaymentMethodOffered]
+    () =>
+      orderedPaymentMethods.filter((method) =>
+        isOfferedPaymentMethod(method, cashPayable)
+      ),
+    [orderedPaymentMethods, cashPayable]
   )
   const cashRefused =
     !cashPayable && orderedPaymentMethods.some((method) => method.id === "cash")
