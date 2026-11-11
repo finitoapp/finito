@@ -1,4 +1,8 @@
 import type { HttpOptions, HttpResponse } from "@capacitor/core"
+import {
+  SERVICE_PROXY_RELAYED,
+  SERVICE_PROXY_RELAYED_HEADER,
+} from "@payky/core/integrations/service-proxy/service-proxy-services"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import { apiUrl } from "@/core/app-env.ts"
 import { createFetchDep } from "@/platform/platform-deps.ts"
@@ -107,7 +111,13 @@ describe("createFetchDep in a browser", () => {
   beforeEach(() => {
     platform.native = false
     globalFetch.mockReset()
-    globalFetch.mockResolvedValue(new Response("{}"))
+    // Marked as the proxy marks the bank's answer it relays.
+    globalFetch.mockImplementation(
+      async () =>
+        new Response("{}", {
+          headers: { [SERVICE_PROXY_RELAYED_HEADER]: SERVICE_PROXY_RELAYED },
+        })
+    )
     vi.stubGlobal("fetch", globalFetch)
   })
 

@@ -4,6 +4,8 @@ import {
   resolveServiceProxyUpstreamUrl,
   SERVICE_PROXY_ERROR_HEADER,
   SERVICE_PROXY_PATH_HEADER,
+  SERVICE_PROXY_RELAYED,
+  SERVICE_PROXY_RELAYED_HEADER,
 } from "@payky/core/integrations/service-proxy/service-proxy-services"
 import { createEnv } from "@t3-oss/env-core"
 import { z } from "zod"
@@ -104,8 +106,9 @@ const corsHeaders = (requestOrigin: RequestOrigin): Record<string, string> =>
   requestOrigin.type === "allowed"
     ? {
         "access-control-allow-origin": requestOrigin.origin,
-        // Without it a foreign page could not tell the proxy's failure apart.
-        "access-control-expose-headers": SERVICE_PROXY_ERROR_HEADER,
+        // Without them a foreign page could not tell the proxy's failure, or
+        // the platform's, from the service's answer.
+        "access-control-expose-headers": `${SERVICE_PROXY_ERROR_HEADER}, ${SERVICE_PROXY_RELAYED_HEADER}`,
         vary: "origin",
       }
     : {}
@@ -132,7 +135,9 @@ const errorResponse = (
  * (`docs/decisions/service-proxy/0001`): a GET to the service's origin and one of
  * its client's paths, both taken from `proxiedServices`, the path and query
  * read from `x-proxy-path`. Only the service's own request headers go on, and
- * the answer streams back with its status and `content-type`.
+ * the answer streams back with its status and `content-type`, marked
+ * `x-service-proxy: upstream` so the browser can tell it from an answer of
+ * the platform in front of the proxy.
  *
  * It logs nothing: the path carries a Fio token and the answer an account's
  * history. Only the app's own frontend, and the origins
@@ -213,6 +218,7 @@ export const handleServiceProxyRequest = async (
       ...corsHeaders(requestOrigin),
       "cache-control": "no-store",
       ...(contentType === null ? {} : { "content-type": contentType }),
+      [SERVICE_PROXY_RELAYED_HEADER]: SERVICE_PROXY_RELAYED,
     },
   })
 }

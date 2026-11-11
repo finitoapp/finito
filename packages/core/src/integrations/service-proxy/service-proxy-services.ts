@@ -64,6 +64,18 @@ export const SERVICE_PROXY_PATH_HEADER = "x-proxy-path"
  */
 export const SERVICE_PROXY_ERROR_HEADER = "x-service-proxy-error"
 
+/**
+ * Marks a response the proxy relayed from the service, set to
+ * `SERVICE_PROXY_RELAYED`. Only a response carrying it is the service's
+ * answer: one without it comes from somewhere in front of the proxy — the
+ * hosting platform's firewall, deployment protection, rate limit or error
+ * page — and a 401 from there is not the bank refusing the token.
+ */
+export const SERVICE_PROXY_RELAYED_HEADER = "x-service-proxy"
+
+/** The value of `SERVICE_PROXY_RELAYED_HEADER` on a relayed answer. */
+export const SERVICE_PROXY_RELAYED = "upstream"
+
 /** The proxy endpoint of a service, under the app's `/api`. */
 export const serviceProxyEndpointPath = (service: ProxiedService): string =>
   `/api/proxy/${service}`

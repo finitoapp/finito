@@ -7,6 +7,8 @@ import {
   type ProxiedService,
   SERVICE_PROXY_ERROR_HEADER,
   SERVICE_PROXY_PATH_HEADER,
+  SERVICE_PROXY_RELAYED,
+  SERVICE_PROXY_RELAYED_HEADER,
 } from "@payky/core/integrations/service-proxy/service-proxy-services"
 import { describe, expect, test, vi } from "vitest"
 import { handleServiceProxyRequest } from "./service-proxy.ts"
@@ -54,8 +56,11 @@ const corsHeaderNames = (response: Response) =>
 
 const expectProxyError = (response: Response, reason: string) => {
   expect(response.headers.get(SERVICE_PROXY_ERROR_HEADER)).toBe(reason)
+  expect(response.headers.get(SERVICE_PROXY_RELAYED_HEADER)).toBeNull()
   expect([401, 403]).not.toContain(response.status)
 }
+
+const exposedHeaders = `${SERVICE_PROXY_ERROR_HEADER}, ${SERVICE_PROXY_RELAYED_HEADER}`
 
 const allowedEnv = {
   PAYKY_SERVICE_PROXY_ALLOWED_ORIGINS:
@@ -140,7 +145,7 @@ describe("handleServiceProxyRequest origin checks", () => {
     )
     expect(response.headers.get("vary")).toBe("origin")
     expect(response.headers.get("access-control-expose-headers")).toBe(
-      SERVICE_PROXY_ERROR_HEADER
+      exposedHeaders
     )
   })
 
@@ -387,6 +392,7 @@ describe("handleServiceProxyRequest upstream checks", () => {
       expect(Object.fromEntries(response.headers.entries())).toEqual({
         "cache-control": "no-store",
         "content-type": "application/json;charset=UTF-8",
+        [SERVICE_PROXY_RELAYED_HEADER]: SERVICE_PROXY_RELAYED,
       })
     }
   )
@@ -468,7 +474,7 @@ describe("handleServiceProxyRequest upstream checks", () => {
       "http://localhost:8081"
     )
     expect(response.headers.get("access-control-expose-headers")).toBe(
-      SERVICE_PROXY_ERROR_HEADER
+      exposedHeaders
     )
   })
 })
@@ -539,6 +545,9 @@ describe("createServiceProxyFetch against handleServiceProxyRequest", () => {
     const response = await fetch(`https://api.moneta.cz${monetaPath}`)
 
     expect(response.status).toBe(401)
+    expect(response.headers.get(SERVICE_PROXY_RELAYED_HEADER)).toBe(
+      SERVICE_PROXY_RELAYED
+    )
   })
 
   test("turns a refused path into a ServiceProxyError, not the service's answer", async () => {

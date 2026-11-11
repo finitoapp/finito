@@ -10,6 +10,8 @@ import { createServiceProxyFetch } from "./service-proxy-fetch.ts"
 import {
   SERVICE_PROXY_ERROR_HEADER,
   SERVICE_PROXY_PATH_HEADER,
+  SERVICE_PROXY_RELAYED,
+  SERVICE_PROXY_RELAYED_HEADER,
 } from "./service-proxy-services.ts"
 
 interface RecordedRequest {
@@ -19,9 +21,16 @@ interface RecordedRequest {
 
 const apiBaseUrl = "https://app.example"
 
+/** An answer the proxy relayed from the service, marked as such. */
+const relayedResponse = (body: string, status = 200) =>
+  new Response(body, {
+    status,
+    headers: { [SERVICE_PROXY_RELAYED_HEADER]: SERVICE_PROXY_RELAYED },
+  })
+
 const createProxyFetch = ({
   enabled,
-  respond = () => new Response("{}", { status: 200 }),
+  respond = () => relayedResponse("{}"),
 }: {
   readonly enabled: () => boolean
   readonly respond?: (url: string) => Response | Promise<Response>
@@ -96,14 +105,13 @@ describe("createServiceProxyFetch", () => {
     const { fetch, requests } = createProxyFetch({
       enabled: () => true,
       respond: () =>
-        new Response(
+        relayedResponse(
           JSON.stringify({
             accountStatement: {
               info: { iban: "CZ6508000000192000145399", currency: "CZK" },
               transactionList: { transaction: [] },
             },
-          }),
-          { status: 200 }
+          })
         ),
     })
     const token = "fio-secret-token"
@@ -212,9 +220,7 @@ describe("createServiceProxyFetch", () => {
     const { fetch } = createProxyFetch({
       enabled: () => true,
       respond: () =>
-        new Response(JSON.stringify({ errors: [{ error: "NARR" }] }), {
-          status: 401,
-        }),
+        relayedResponse(JSON.stringify({ errors: [{ error: "NARR" }] }), 401),
     })
     await using run = testCreateRun({
       ...createMonetaApiDep({ token: "secret" }),
@@ -227,6 +233,109 @@ describe("createServiceProxyFetch", () => {
       ok: false,
       error: { type: "MonetaUnauthorizedError", status: 401, code: "NARR" },
     })
+  })
+
+  test.each([
+    ["401 from deployment protection", 401, "text/html", "<html>Login</html>"],
+    ["403 from the firewall's challenge", 403, "text/html", "<html>Bot</html>"],
+    ["429 from the platform's rate limit", 429, "text/plain", "Too Many"],
+    ["404 from the platform", 404, "text/plain", "NOT_FOUND"],
+    ["500 HTML error page", 500, "text/html", "<html>Error</html>"],
+    ["200 the proxy never marked", 200, "application/json", '{"accounts":[]}'],
+  ])(
+    "turns an unmarked %s into a FetchError, never a MONETA answer",
+    async (_, status, contentType, body) => {
+      const { fetch } = createProxyFetch({
+        enabled: () => true,
+        respond: () =>
+          new Response(body, {
+            status,
+            headers: { "content-type": contentType },
+          }),
+      })
+      await using run = testCreateRun({
+        ...createMonetaApiDep({ token: "secret" }),
+        fetch,
+      })
+
+      const result = await run(fetchMonetaAccounts())
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          type: "FetchError",
+          error: {
+            name: "ServiceProxyError",
+            service: "moneta",
+            status,
+            reason: "not-relayed",
+          },
+        },
+      })
+    }
+  )
+
+  test.each([401, 403, 409, 429, 500])(
+    "turns an unmarked %i into a FetchError, never a Fio HTTP error",
+    async (status) => {
+      const { fetch } = createProxyFetch({
+        enabled: () => true,
+        respond: () => new Response("<html>Error</html>", { status }),
+      })
+      await using run = testCreateRun({
+        ...createFioApiDep({ tokens: ["token"] }),
+        fetch,
+      })
+
+      const result = await run(fetchFioLastTransactions())
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          type: "FetchError",
+          error: { name: "ServiceProxyError", service: "fio", status },
+        },
+      })
+    }
+  )
+
+  test("takes a response carrying the proxy's error header for a proxy failure, marked or not", async () => {
+    const { fetch } = createProxyFetch({
+      enabled: () => true,
+      respond: () =>
+        new Response(null, {
+          status: 401,
+          headers: {
+            [SERVICE_PROXY_RELAYED_HEADER]: SERVICE_PROXY_RELAYED,
+            [SERVICE_PROXY_ERROR_HEADER]: "foreign-origin",
+          },
+        }),
+    })
+
+    await expect(
+      fetch("https://api.moneta.cz/api/v4/vip/aisp/my/accounts")
+    ).rejects.toMatchObject({
+      name: "ServiceProxyError",
+      reason: "foreign-origin",
+    })
+  })
+
+  test("rethrows an abort that lands on an unmarked answer as it came", async () => {
+    const abortReason = new Error("aborted")
+    const controller = new AbortController()
+    const { fetch } = createProxyFetch({
+      enabled: () => true,
+      respond: () => {
+        controller.abort(abortReason)
+        return new Response("<html>Error</html>", { status: 500 })
+      },
+    })
+
+    await expect(
+      fetch("https://fioapi.fio.cz/v1/rest/last/T/transactions.json", {
+        signal: controller.signal,
+      })
+    ).rejects.toBe(abortReason)
   })
 
   test("hands the caller's signal on and rethrows an abort as it came", async () => {
