@@ -36,6 +36,18 @@ describe("serviceProxyConsentAtom", () => {
     await expect.poll(isEnabled).toBe(false)
   })
 
+  test("subscribes once per device client however often the atom is evaluated", async () => {
+    await using test = await createTestDeviceEvolu()
+    device.evolu = test.deviceEvolu
+    const subscribeQuery = vi.spyOn(test.deviceEvolu, "subscribeQuery")
+
+    const first = await createStore().get(serviceProxyConsentAtom)
+    const second = await createStore().get(serviceProxyConsentAtom)
+
+    expect(second).toBe(first)
+    expect(subscribeQuery).toHaveBeenCalledTimes(1)
+  })
+
   test("reads a consent stored before it was first asked", async () => {
     await using test = await createTestDeviceEvolu()
     device.evolu = test.deviceEvolu
