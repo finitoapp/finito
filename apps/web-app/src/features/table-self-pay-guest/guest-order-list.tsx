@@ -5,6 +5,7 @@ import {
   CircleCheckIcon,
   CircleXIcon,
   ClockIcon,
+  CookingPotIcon,
   TriangleAlertIcon,
 } from "lucide-react"
 import type { Ref } from "react"
@@ -45,6 +46,15 @@ const guestOrderStatusKeys = {
   }
 >
 
+const guestOrderStep = (
+  confirmation: SelfPayOrderConfirmation
+): GuestOrderStep =>
+  confirmation.served !== undefined
+    ? "served"
+    : confirmation.accepted !== undefined
+      ? "preparing"
+      : "paid"
+
 export const guestOrderStatus = (
   shown: ShownGuestOrder,
   t: GuestTranslate,
@@ -55,14 +65,7 @@ export const guestOrderStatus = (
   const { number } = confirmation
   if (confirmation.rejected !== undefined)
     return t("selfPay.order.rejected", { number })
-  const keys =
-    guestOrderStatusKeys[
-      confirmation.served !== undefined
-        ? "served"
-        : confirmation.accepted !== undefined
-          ? "preparing"
-          : "paid"
-    ]
+  const keys = guestOrderStatusKeys[guestOrderStep(confirmation)]
   const left = guestOrderLeft(shown)
   return left > 0
     ? t(keys.owing, {
@@ -72,24 +75,44 @@ export const guestOrderStatus = (
     : t(keys.paid, { number })
 }
 
-type GuestOrderTone = "rejected" | "paid" | "waiting" | "attention"
+type GuestOrderTone = GuestOrderStep | "rejected" | "waiting" | "attention"
 
 const guestOrderTones = {
   rejected: {
-    card: "bg-destructive/10",
+    card: "bg-destructive/10 ring-1 ring-destructive/40",
     Icon: CircleXIcon,
     icon: "text-destructive",
+    title: "text-destructive",
   },
-  paid: { card: "bg-primary/10", Icon: CircleCheckIcon, icon: "text-primary" },
+  paid: {
+    card: "bg-muted",
+    Icon: ClockIcon,
+    icon: "text-muted-foreground",
+    title: "",
+  },
+  preparing: {
+    card: "bg-primary/10",
+    Icon: CookingPotIcon,
+    icon: "text-primary",
+    title: "",
+  },
+  served: {
+    card: "bg-muted",
+    Icon: CircleCheckIcon,
+    icon: "text-muted-foreground",
+    title: "",
+  },
   waiting: {
     card: "bg-amber-500/10",
     Icon: ClockIcon,
     icon: "text-muted-foreground",
+    title: "",
   },
   attention: {
     card: "bg-amber-500/10",
     Icon: TriangleAlertIcon,
     icon: "text-amber-600",
+    title: "",
   },
 } satisfies Record<
   GuestOrderTone,
@@ -97,6 +120,7 @@ const guestOrderTones = {
     readonly card: string
     readonly Icon: typeof CircleCheckIcon
     readonly icon: string
+    readonly title: string
   }
 >
 
@@ -121,11 +145,11 @@ function GuestOrderCard({
     confirmation?.rejected !== undefined
       ? "rejected"
       : confirmation !== null && left <= 0
-        ? "paid"
+        ? guestOrderStep(confirmation)
         : confirmation === null && !isWaitOver
           ? "waiting"
           : "attention"
-  const { card, Icon, icon } = guestOrderTones[tone]
+  const { card, Icon, icon, title } = guestOrderTones[tone]
   const payLabel = !canAct
     ? null
     : confirmation === null
@@ -149,7 +173,7 @@ function GuestOrderCard({
     <li className={cn("flex items-start gap-2 rounded-xl p-3 text-sm", card)}>
       <Icon aria-hidden="true" className={cn("size-5 shrink-0", icon)} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="font-semibold">
+        <p className={cn("font-semibold", title)}>
           {isWaitOver
             ? t("selfPay.order.unseen")
             : guestOrderStatus(shown, t, locale)}
