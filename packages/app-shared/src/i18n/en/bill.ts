@@ -200,7 +200,7 @@ export const enBill = {
   "selfPay.footer": "The restaurant sees your payment once the money arrives.",
   "selfPay.invalid.description": "Ask the staff to help you pay.",
   "selfPay.invalid.title": "This QR code cannot be read",
-  "selfPay.lightning.copy": "Copy payment code",
+  "selfPay.lightning.copy": "Copy Lightning invoice",
   "selfPay.lightning.create": "Show QR code to pay",
   "selfPay.lightning.creating": "Preparing the QR code…",
   "selfPay.lightning.error": "The QR code could not be prepared. Try again.",

@@ -205,7 +205,7 @@ export const skBill = {
   "selfPay.footer": "Reštaurácia vašu platbu uvidí, keď peniaze dorazia.",
   "selfPay.invalid.description": "Požiadajte obsluhu o pomoc s platením.",
   "selfPay.invalid.title": "Tento QR kód sa nedá prečítať",
-  "selfPay.lightning.copy": "Kopírovať kód platby",
+  "selfPay.lightning.copy": "Kopírovať LN faktúru",
   "selfPay.lightning.create": "Zobraziť QR kód na zaplatenie",
   "selfPay.lightning.creating": "Pripravuje sa QR kód…",
   "selfPay.lightning.error": "QR kód sa nepodarilo pripraviť. Skúste to znova.",

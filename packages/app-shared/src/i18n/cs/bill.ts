@@ -202,7 +202,7 @@ export const csBill = {
   "selfPay.footer": "Restaurace vaši platbu uvidí, jakmile peníze dorazí.",
   "selfPay.invalid.description": "Požádejte obsluhu o pomoc s placením.",
   "selfPay.invalid.title": "Tento QR kód nelze přečíst",
-  "selfPay.lightning.copy": "Kopírovat kód platby",
+  "selfPay.lightning.copy": "Kopírovat LN fakturu",
   "selfPay.lightning.create": "Zobrazit QR kód k zaplacení",
   "selfPay.lightning.creating": "Připravuje se QR kód…",
   "selfPay.lightning.error": "QR kód se nepodařilo připravit. Zkuste to znovu.",
