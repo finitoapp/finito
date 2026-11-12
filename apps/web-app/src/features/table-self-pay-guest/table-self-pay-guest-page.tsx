@@ -1,4 +1,4 @@
-import { useEventListener } from "@dedalik/use-react"
+import { useEventListener, useOnline } from "@dedalik/use-react"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
 import { useNow } from "@payky/app-shared/use-now"
 import {
@@ -43,6 +43,7 @@ import {
   LanguagesIcon,
   LoaderCircleIcon,
   TriangleAlertIcon,
+  WifiOffIcon,
 } from "lucide-react"
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
@@ -1254,6 +1255,28 @@ function GuestLanguageSelect() {
   )
 }
 
+function GuestOfflineNotice() {
+  const { t } = useGuestTranslation()
+  const announce = useGuestStatus()
+  const isOnline = useOnline()
+  const offlineText = t("selfPay.offline")
+
+  useEffect(() => {
+    if (!isOnline) announce(offlineText)
+  }, [announce, isOnline, offlineText])
+
+  if (isOnline) return null
+  return (
+    <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">
+      <WifiOffIcon
+        aria-hidden="true"
+        className="size-5 shrink-0 text-amber-600"
+      />
+      {offlineText}
+    </p>
+  )
+}
+
 export function TableSelfPayGuestPage({
   address,
 }: {
@@ -1269,6 +1292,7 @@ export function TableSelfPayGuestPage({
     <GuestStatusRegion>
       <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 px-4 py-6">
         <GuestLanguageSelect />
+        <GuestOfflineNotice />
         {tableAddress === null ? (
           <GuestMessage
             icon={<TriangleAlertIcon />}

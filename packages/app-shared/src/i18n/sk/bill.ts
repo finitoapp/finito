@@ -243,6 +243,7 @@ export const skBill = {
   "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Platenie pri stole teraz nie je k dispozícii.",
+  "selfPay.offline": "Ste offline. Stránka sa obnoví, keď budete znova online.",
   "selfPay.order.back": "Späť do menu",
   "selfPay.order.hide": "Skryť",
   "selfPay.order.items": "{summary} · {total}",

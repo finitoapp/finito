@@ -237,6 +237,8 @@ export const enBill = {
   "selfPay.method.test": "Test",
   "selfPay.noMethod.description":
     "Paying at the table is not available right now.",
+  "selfPay.offline":
+    "You are offline. This page updates once you are back online.",
   "selfPay.order.back": "Back to the menu",
   "selfPay.order.hide": "Hide",
   "selfPay.order.items": "{summary} · {total}",

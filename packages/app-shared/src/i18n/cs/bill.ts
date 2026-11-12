@@ -238,6 +238,7 @@ export const csBill = {
   "selfPay.method.lightning": "Bitcoin",
   "selfPay.method.test": "Test",
   "selfPay.noMethod.description": "Placení u stolu teď není k dispozici.",
+  "selfPay.offline": "Jste offline. Stránka se obnoví, až budete zase online.",
   "selfPay.order.back": "Zpět do menu",
   "selfPay.order.hide": "Skrýt",
   "selfPay.order.items": "{summary} · {total}",

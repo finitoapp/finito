@@ -1400,6 +1400,56 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
+  test("an offline guest is told so, and a Bitcoin QR code is prepared without waiting for the network", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    let guestAddress = ""
+
+    await test.step("seed a Lightning account and a table with a pizza", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await addTable(page, "en", { name: "Table 33", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 33")
+      await openTableBill(page, "en", { table: "Table 33", items: ["Pizza"] })
+    })
+
+    await using phone = await newGuestContext(browser, relays)
+    await fakeSelfPayLightning(phone, 100_000)
+    const guest = await phone.newPage()
+    const offline = guest
+      .getByRole("main")
+      .getByText(translate("en", "selfPay.offline"))
+
+    await test.step("the guest opens the payment and the phone goes offline", async () => {
+      await openGuestPage(guest, guestAddress, "$101.00")
+      await expect(offline).toHaveCount(0)
+      await payTotal(guest, "$101.00").click()
+      await phone.setOffline(true)
+      await expect(offline).toBeVisible()
+    })
+
+    await test.step("preparing the QR code runs at once instead of waiting for the network", async () => {
+      await guestButton(guest, "selfPay.lightning.create").click({
+        timeout: 45_000,
+      })
+      await expect(
+        guest
+          .getByText(/^lnbc\d+n1/u)
+          .or(guest.getByText(translate("en", "selfPay.lightning.error")))
+      ).toBeVisible()
+    })
+
+    await test.step("back online, the notice goes away", async () => {
+      await phone.setOffline(false)
+      await expect(offline).toHaveCount(0)
+    })
+  })
+
   test("what a guest picks stands out, and every text reads, in light and dark", async ({
     page,
     context,

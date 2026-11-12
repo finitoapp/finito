@@ -55,6 +55,7 @@ export function GuestLightningPayment({
   const announce = useGuestStatus()
   const clipboard = useGuestClipboard()
   const invoice = useMutation({
+    networkMode: "always",
     mutationFn: (usableRate: SelfPaySignedRate) =>
       createGuestLightningInvoice({
         ...createSelfPayLightningRequest({
