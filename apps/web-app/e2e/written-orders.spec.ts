@@ -16,6 +16,7 @@ import {
   enableTableSelfPay,
   fakeSelfPayLightning,
   openTableBill,
+  readShownLightningInvoice,
   receiveBankTransfer,
   receiveShownBankTransfer,
   routeFakeNostrRelays,
@@ -1172,24 +1173,16 @@ test("a guest paying the rest of one order, then of another, starts the second w
   await test.step("the guest creates a Lightning invoice for the rest of the first", async () => {
     await payRest("$10.00").click()
     await payByLightning()
-    await guest
-      .getByRole("button", {
-        name: translate("en", "selfPay.lightning.create"),
-      })
-      .click({ timeout: 45_000 })
-    firstInvoice = (await guest.getByText(/^lnbc\d+n1/u).textContent()) ?? ""
+    firstInvoice = await readShownLightningInvoice(guest, "en")
     expect(firstInvoice).toMatch(/^lnbc\d+n1/u)
   })
 
   await test.step("paying the rest of the second offers a new invoice, not the first's", async () => {
     await payRest("$20.00").click()
     await payByLightning()
-    await expect(
-      guest.getByRole("button", {
-        name: translate("en", "selfPay.lightning.create"),
-      })
-    ).toBeVisible()
-    await expect(guest.getByText(firstInvoice, { exact: true })).toBeHidden()
+    const secondInvoice = await readShownLightningInvoice(guest, "en")
+    expect(secondInvoice).toMatch(/^lnbc\d+n1/u)
+    expect(secondInvoice).not.toBe(firstInvoice)
   })
 })
 

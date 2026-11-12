@@ -375,6 +375,7 @@ function GuestPayment({
             rate={rate}
             amount={session.amount}
             pointer={session.pointer}
+            isShown={method === "lightning"}
             onInvoiceOpenChange={setIsInvoiceOpen}
           />
         </div>

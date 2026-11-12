@@ -23,7 +23,7 @@ import {
   ZapIcon,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { createE2eGuestInvoiceWallet } from "@/platform/e2e-guest-invoice-wallet.ts"
 import { useGuestStatus } from "./guest-status.tsx"
@@ -42,6 +42,7 @@ export function GuestLightningPayment({
   rate,
   amount,
   pointer,
+  isShown,
   onInvoiceOpenChange,
 }: {
   readonly lightning: NonNullable<SelfPayView["lightning"]>
@@ -49,6 +50,7 @@ export function GuestLightningPayment({
   readonly rate: SelfPaySignedRate | null
   readonly amount: number
   readonly pointer: SelfPayPointer
+  readonly isShown: boolean
   readonly onInvoiceOpenChange: (isOpen: boolean) => void
 }) {
   const { t } = useGuestTranslation()
@@ -68,6 +70,8 @@ export function GuestLightningPayment({
         wallet: prepareGuestInvoiceWallet(createE2eGuestInvoiceWallet()),
       }),
   })
+  const createInvoice = invoice.mutate
+  const hasCreatedOnShow = useRef(false)
   const expiresAt = invoiceExpiresAt(invoice.data)
   const now = useNow([expiresAt])
   const isExpired = expiresAt !== null && now.getTime() > expiresAt
@@ -81,6 +85,12 @@ export function GuestLightningPayment({
   useEffect(() => {
     onInvoiceOpenChange(isInvoiceOpen)
   }, [isInvoiceOpen, onInvoiceOpenChange])
+
+  useEffect(() => {
+    if (!isShown || rate === null || hasCreatedOnShow.current) return
+    hasCreatedOnShow.current = true
+    createInvoice(rate)
+  }, [createInvoice, isShown, rate])
 
   if (isExpired) {
     return (
@@ -99,9 +109,10 @@ export function GuestLightningPayment({
           className="h-11"
           onClick={() => {
             if (rate === null) {
+              hasCreatedOnShow.current = false
               invoice.reset()
             } else {
-              invoice.mutate(rate)
+              createInvoice(rate)
             }
           }}
         >
@@ -115,6 +126,15 @@ export function GuestLightningPayment({
   if (invoice.data !== undefined) {
     return (
       <div className="flex flex-col items-center gap-3">
+        <Button
+          nativeButton={false}
+          render={<a href={`lightning:${invoice.data}`} />}
+          size="lg"
+          className="h-12 w-full max-w-64 text-base"
+        >
+          <ZapIcon />
+          {t("selfPay.lightning.open")}
+        </Button>
         <div className="w-full max-w-64 rounded-xl bg-white p-4 ring-1 ring-foreground/10">
           <QRCodeSVG
             value={`lightning:${invoice.data}`}
@@ -123,15 +143,6 @@ export function GuestLightningPayment({
             role="img"
           />
         </div>
-        <Button
-          nativeButton={false}
-          render={<a href={`lightning:${invoice.data}`} />}
-          size="lg"
-          className="h-11"
-        >
-          <ZapIcon />
-          {t("selfPay.lightning.open")}
-        </Button>
         <Button
           type="button"
           variant="outline"
@@ -142,13 +153,15 @@ export function GuestLightningPayment({
           {t("selfPay.lightning.copy")}
         </Button>
         {clipboard.state === "failed" ? (
-          <p className="text-center text-sm text-destructive">
-            {t("selfPay.copy.failed")}
-          </p>
+          <>
+            <p className="text-center text-sm text-destructive">
+              {t("selfPay.copy.failed")}
+            </p>
+            <p className="w-full break-all rounded-lg bg-muted p-2 font-mono text-xs select-all">
+              {invoice.data}
+            </p>
+          </>
         ) : null}
-        <p className="w-full break-all rounded-lg bg-muted p-2 font-mono text-xs select-all">
-          {invoice.data}
-        </p>
       </div>
     )
   }
@@ -161,31 +174,31 @@ export function GuestLightningPayment({
     )
   }
 
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <Button
-        type="button"
-        size="lg"
-        className="h-11"
-        disabled={invoice.isPending}
-        onClick={() => {
-          invoice.mutate(rate)
-        }}
-      >
-        {invoice.isPending ? (
-          <LoaderCircleIcon className="animate-spin" />
-        ) : (
-          <ZapIcon />
-        )}
-        {invoice.isPending
-          ? t("selfPay.lightning.creating")
-          : t("selfPay.lightning.create")}
-      </Button>
-      {invoice.isError ? (
+  if (invoice.isError) {
+    return (
+      <div className="flex flex-col items-center gap-3">
         <p className="text-center text-sm text-destructive">
           {t("selfPay.lightning.error")}
         </p>
-      ) : null}
-    </div>
+        <Button
+          type="button"
+          size="lg"
+          className="h-11"
+          onClick={() => {
+            createInvoice(rate)
+          }}
+        >
+          <ZapIcon />
+          {t("selfPay.lightning.create")}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+      <LoaderCircleIcon aria-hidden="true" className="size-4 animate-spin" />
+      {t("selfPay.lightning.creating")}
+    </p>
   )
 }

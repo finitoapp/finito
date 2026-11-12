@@ -262,6 +262,19 @@ export async function receiveShownBankTransfer(
   })
 }
 
+export async function readShownLightningInvoice(
+  payer: Page,
+  language: Language
+): Promise<string> {
+  const openInWallet = payer.getByRole("button", {
+    name: translate(language, "selfPay.lightning.open"),
+  })
+  await openInWallet.waitFor({ timeout: 45_000 })
+  return (
+    (await openInWallet.getAttribute("href"))?.replace(/^lightning:/u, "") ?? ""
+  )
+}
+
 export async function receiveLightningPayment(
   page: Page,
   payment: { readonly lnInvoice: string; readonly amountSats: number }

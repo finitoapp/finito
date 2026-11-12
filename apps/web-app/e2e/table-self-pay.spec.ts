@@ -26,6 +26,7 @@ import {
   pickLineUnits,
   pickShareChoice,
   publishedSelectionIds,
+  readShownLightningInvoice,
   receiveBankTransfer,
   receiveLightningPayment,
   receiveShownBankTransfer,
@@ -1418,13 +1419,14 @@ test.describe("a guest paying at the table", () => {
     await phone.clock.install()
     const guest = await phone.newPage()
 
-    await test.step("the guest creates a Lightning invoice", async () => {
+    const lightningQr = guest.getByRole("img", {
+      name: translate("en", "selfPay.lightning.qr"),
+    })
+
+    await test.step("the guest is shown a Lightning invoice", async () => {
       await openGuestPage(guest, guestAddress, "$101.00")
       await payTotal(guest, "$101.00").click()
-      await guestButton(guest, "selfPay.lightning.create").click({
-        timeout: 45_000,
-      })
-      await expect(guest.getByText(/^lnbc\d+n1/u)).toBeVisible()
+      await expect(lightningQr).toBeVisible({ timeout: 45_000 })
     })
 
     await test.step("once the invoice expires the guest is told not to pay it again and offered a new one", async () => {
@@ -1437,7 +1439,71 @@ test.describe("a guest paying at the table", () => {
       await expect(
         guestButton(guest, "selfPay.lightning.restart")
       ).toBeVisible()
-      await expect(guest.getByText(/^lnbc\d+n1/u)).toHaveCount(0)
+      await expect(lightningQr).toHaveCount(0)
+    })
+  })
+
+  test("the Bitcoin QR code shows without a tap, opens in the wallet from above it, and spells its code only when copying fails", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    let guestAddress = ""
+
+    await test.step("seed a table that takes bank transfers and Lightning, with a pizza", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Table 43", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 43")
+      await openTableBill(page, "en", { table: "Table 43", items: ["Pizza"] })
+    })
+
+    await using phone = await newGuestContext(browser, relays)
+    await fakeSelfPayLightning(phone, 100_000)
+    await phone.addInitScript(() => {
+      document.execCommand = () => false
+      Object.defineProperty(navigator, "clipboard", {
+        value: {
+          writeText: () => Promise.reject(new Error("NotAllowedError")),
+        },
+      })
+    })
+    const guest = await phone.newPage()
+    const invoiceText = guest.getByText(/^lnbc\d+n1/u)
+
+    await test.step("opening Bitcoin shows the QR code with Open in wallet above it and no code as text", async () => {
+      await openGuestPage(guest, guestAddress, "$101.00")
+      await payTotal(guest, "$101.00").click()
+      await guest
+        .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
+        .click()
+      const invoice = await readShownLightningInvoice(guest, "en")
+      expect(invoice).toMatch(/^lnbc\d+n1/u)
+      const [openBox, qrBox] = await Promise.all([
+        guestButton(guest, "selfPay.lightning.open").boundingBox(),
+        guest
+          .getByRole("img", { name: translate("en", "selfPay.lightning.qr") })
+          .boundingBox(),
+      ])
+      expect(openBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(qrBox?.y ?? 0)
+      await expect(guestButton(guest, "selfPay.lightning.create")).toHaveCount(
+        0
+      )
+      await expect(invoiceText).toHaveCount(0)
+    })
+
+    await test.step("a copy that fails tells the guest to hold the code, and shows it", async () => {
+      await guestButton(guest, "selfPay.lightning.copy").click()
+      await expect(
+        guest
+          .getByRole("main")
+          .getByText(translate("en", "selfPay.copy.failed"))
+      ).toBeVisible()
+      await expect(invoiceText).toBeVisible()
     })
   })
 
@@ -1451,8 +1517,9 @@ test.describe("a guest paying at the table", () => {
     await fakeSelfPayLightning(context, 100_000)
     let guestAddress = ""
 
-    await test.step("seed a Lightning account and a table with a pizza", async () => {
+    await test.step("seed a table that takes bank transfers and Lightning, with a pizza", async () => {
       await seedOnboarding(page, "en", { spark: true })
+      await seedActiveFioPlugin(page)
       await addTable(page, "en", { name: "Table 33", seatCount: "2" })
       await addCatalogItem(page, "en", { name: "Pizza", price: "101" })
       guestAddress = await enableTableSelfPay(page, "en", "Table 33")
@@ -1474,13 +1541,13 @@ test.describe("a guest paying at the table", () => {
       await expect(offline).toBeVisible()
     })
 
-    await test.step("preparing the QR code runs at once instead of waiting for the network", async () => {
-      await guestButton(guest, "selfPay.lightning.create").click({
-        timeout: 45_000,
-      })
+    await test.step("opening Bitcoin prepares the QR code at once instead of waiting for the network", async () => {
+      await guest
+        .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
+        .click()
       await expect(
         guest
-          .getByText(/^lnbc\d+n1/u)
+          .getByRole("img", { name: translate("en", "selfPay.lightning.qr") })
           .or(guest.getByText(translate("en", "selfPay.lightning.error")))
       ).toBeVisible()
     })
@@ -2146,12 +2213,7 @@ test("a guest pays a third of a bill too long to list by Lightning and sees it c
     await guest
       .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
       .click()
-    await guest
-      .getByRole("button", {
-        name: translate("en", "selfPay.lightning.create"),
-      })
-      .click({ timeout: 45_000 })
-    lnInvoice = (await guest.getByText(/^lnbc\d+n1/u).textContent()) ?? ""
+    lnInvoice = await readShownLightningInvoice(guest, "en")
     expect(lnInvoice).toMatch(/^lnbc\d+n1/u)
   })
 
@@ -2162,7 +2224,7 @@ test("a guest pays a third of a bill too long to list by Lightning and sees it c
     await guest
       .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
       .click()
-    await expect(guest.getByText(lnInvoice, { exact: true })).toBeVisible()
+    expect(await readShownLightningInvoice(guest, "en")).toBe(lnInvoice)
     await expect(
       guest.getByRole("button", {
         name: translate("en", "selfPay.lightning.create"),
