@@ -149,8 +149,10 @@ export const skBill = {
   "selfPay.bank.copy": "Kopírovať {field}",
   "selfPay.bank.format.payBySquare": "Pay by Square",
   "selfPay.bank.format.spayd": "QR Platba",
-  "selfPay.bank.hint":
-    "Naskenujte kód v bankovej aplikácii alebo ho uložte a otvorte z galérie. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
+  "selfPay.bank.hint.open":
+    "Na tomto telefóne platbu otvorte v aplikácii banky. Z iného telefónu stačí naskenovať QR kód. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
+  "selfPay.bank.hint.save":
+    "Na tomto telefóne QR kód uložte a v aplikácii banky ho načítajte z galérie. Z iného telefónu ho stačí naskenovať. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
   "selfPay.bank.message": "Správa",
   "selfPay.bank.openInApp": "Otvoriť v aplikácii banky",
   "selfPay.bank.qr": "QR kód na platbu prevodom",

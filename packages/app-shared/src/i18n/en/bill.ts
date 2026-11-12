@@ -145,8 +145,10 @@ export const enBill = {
   "selfPay.bank.copy": "Copy {field}",
   "selfPay.bank.format.payBySquare": "Pay by Square",
   "selfPay.bank.format.spayd": "QR Platba",
-  "selfPay.bank.hint":
-    "Scan the code in your banking app, or save it and open it from your gallery. An instant payment reaches the restaurant within seconds.",
+  "selfPay.bank.hint.open":
+    "On this phone, open the payment in your banking app. From another phone, just scan the QR code. An instant payment reaches the restaurant within seconds.",
+  "selfPay.bank.hint.save":
+    "On this phone, save the QR code and load it from your photos in your banking app. From another phone, just scan it. An instant payment reaches the restaurant within seconds.",
   "selfPay.bank.message": "Message",
   "selfPay.bank.openInApp": "Open in bank app",
   "selfPay.bank.qr": "Bank payment QR code",

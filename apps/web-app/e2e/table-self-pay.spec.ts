@@ -1713,7 +1713,7 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
-  test("saving the payment QR hands a PNG to the share sheet, and a QR Platba opens in the bank app as a .spayd file", async ({
+  test("a phone that shares a .spayd opens the QR Platba in the bank app, and saving the QR hands a PNG to the share sheet", async ({
     seededPage: page,
     context,
     browser,
@@ -1754,6 +1754,9 @@ test.describe("a guest paying at the table", () => {
       await expect(
         guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
       ).toHaveJSProperty("tagName", "IMG")
+      await expect(
+        guest.getByText(translate("en", "selfPay.bank.hint.open"))
+      ).toBeVisible()
     })
 
     await test.step("saving it shares the PNG file", async () => {
@@ -1803,6 +1806,61 @@ test.describe("a guest paying at the table", () => {
         guestButton(guest, "selfPay.bank.format.payBySquare")
       ).toHaveAttribute("aria-pressed", "true")
       await expect(guestButton(guest, "selfPay.bank.openInApp")).toHaveCount(0)
+    })
+  })
+
+  test("a phone that cannot share a .spayd saves the QR as the main step and offers no bank app", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 41"))
+    await using phone = await newGuestContext(browser, relays)
+    await phone.addInitScript(() => {
+      const shared: Array<string> = []
+      Object.assign(window, { __e2eSharedFiles: shared })
+      Object.defineProperty(navigator, "canShare", {
+        value: ({ files = [] }: ShareData) =>
+          files.every((file) => file.type === "image/png"),
+      })
+      Object.defineProperty(navigator, "share", {
+        value: async ({ files = [] }: ShareData) => {
+          shared.push(...files.map((file) => file.name))
+        },
+      })
+    })
+    const guest = await phone.newPage()
+    const saveQr = guestButton(guest, "selfPay.bank.saveQr")
+    const qr = guest.getByRole("img", {
+      name: translate("en", "selfPay.bank.qr"),
+    })
+
+    await test.step("the guest is told to save the QR, above it, with no bank-app button", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+      await expect(qr).toBeVisible()
+      await expect(
+        guest.getByText(translate("en", "selfPay.bank.hint.save"))
+      ).toBeVisible()
+      await expect(guestButton(guest, "selfPay.bank.openInApp")).toHaveCount(0)
+      const [saveBox, qrBox] = await Promise.all([
+        saveQr.boundingBox(),
+        qr.boundingBox(),
+      ])
+      expect(saveBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(qrBox?.y ?? 0)
+    })
+
+    await test.step("saving it shares only the PNG", async () => {
+      await saveQr.click()
+      await expect
+        .poll(() =>
+          guest.evaluate(() => Reflect.get(window, "__e2eSharedFiles"))
+        )
+        .toEqual([expect.stringMatching(/^payment-\d{10}\.png$/u)])
     })
   })
 

@@ -73,25 +73,26 @@ const downloadDataUrl = (dataUrl: string, name: string) => {
   link.click()
 }
 
-const shareOrDownload = async (file: File, dataUrl: string) => {
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] })
-      return
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return
-    }
+const canShareFile = (file: File): boolean =>
+  navigator.canShare?.({ files: [file] }) === true
+
+const offerToShare = async (file: File): Promise<boolean> => {
+  try {
+    await navigator.share({ files: [file] })
+    return true
+  } catch (error) {
+    return error instanceof DOMException && error.name === "AbortError"
   }
+}
+
+const shareOrDownload = async (file: File, dataUrl: string) => {
+  if (canShareFile(file) && (await offerToShare(file))) return
   downloadDataUrl(dataUrl, file.name)
 }
 
 const spaydType = "application/x-shortpaymentdescriptor"
 
-const openInBankApp = (spayd: string, name: string) =>
-  shareOrDownload(
-    new File([spayd], name, { type: spaydType }),
-    `data:${spaydType};charset=utf-8,${encodeURIComponent(spayd)}`
-  )
+const mainButtonClassName = "h-12 w-full max-w-64 text-base"
 
 export function GuestBankPayment({
   bank,
@@ -117,7 +118,30 @@ export function GuestBankPayment({
     staleTime: Number.POSITIVE_INFINITY,
   })
   const qrFileName = `payment-${bill.reference}.png`
-  const spayd = format === "spayd" ? payload.data : undefined
+  const spaydFile =
+    format === "spayd" && payload.data !== undefined
+      ? new File([payload.data], `payment-${bill.reference}.spayd`, {
+          type: spaydType,
+        })
+      : null
+  const bankAppFile =
+    spaydFile !== null && canShareFile(spaydFile) ? spaydFile : null
+  const saveQrButton = (
+    <Button
+      type="button"
+      variant={bankAppFile === null ? "default" : "outline"}
+      size="lg"
+      className={bankAppFile === null ? mainButtonClassName : "h-11"}
+      disabled={qrImage === null}
+      onClick={() => {
+        if (qrImage !== null)
+          void shareOrDownload(pngFileFromDataUrl(qrImage, qrFileName), qrImage)
+      }}
+    >
+      <DownloadIcon />
+      {t("selfPay.bank.saveQr")}
+    </Button>
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -152,13 +176,22 @@ export function GuestBankPayment({
           {t("selfPay.bank.format.payBySquare")}
         </ToggleGroupItem>
       </ToggleGroup>
-      {spayd === undefined ? null : (
+      <p className="text-center text-sm text-muted-foreground">
+        {t(
+          bankAppFile === null
+            ? "selfPay.bank.hint.save"
+            : "selfPay.bank.hint.open"
+        )}
+      </p>
+      {bankAppFile === null ? (
+        saveQrButton
+      ) : (
         <Button
           type="button"
           size="lg"
-          className="h-12 w-full max-w-64 text-base"
+          className={mainButtonClassName}
           onClick={() => {
-            void openInBankApp(spayd, `payment-${bill.reference}.spayd`)
+            void offerToShare(bankAppFile)
           }}
         >
           <LandmarkIcon />
@@ -178,25 +211,7 @@ export function GuestBankPayment({
           <img src={qrImage} alt={t("selfPay.bank.qr")} className="size-full" />
         )}
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="h-11"
-        disabled={qrImage === null}
-        onClick={() => {
-          if (qrImage !== null)
-            void shareOrDownload(
-              pngFileFromDataUrl(qrImage, qrFileName),
-              qrImage
-            )
-        }}
-      >
-        <DownloadIcon />
-        {t("selfPay.bank.saveQr")}
-      </Button>
-      <p className="text-center text-sm text-muted-foreground">
-        {t("selfPay.bank.hint")}
-      </p>
+      {bankAppFile === null ? null : saveQrButton}
       <div className="flex w-full flex-col divide-y divide-foreground/10">
         <CopyRow label={t("selfPay.bank.account")} value={bank.iban} />
         <CopyRow
