@@ -1386,7 +1386,7 @@ function SummaryRow({
         items="center"
         gap={2}
         rounded={radius.md}
-        bg="muted"
+        bg="surface-raised"
         p={2}
       >
         <Button
@@ -1536,7 +1536,7 @@ function ItemBrick({
   return (
     // grow, not flex: flex 1 is a zero basis, which collapses the tile on
     // web, where views also have no minimum height.
-    <Card grow={1} p={12} gap={4} bg={inCart ? "primary-15" : "card"}>
+    <Card grow={1} p={12} gap={4} bg={inCart ? "tile-primary-15" : "card"}>
       {/*
        * A tap anywhere on the tile adds one, as on a till; the corner
        * controls above it are kept in the layout but invisible until the

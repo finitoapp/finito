@@ -97,5 +97,5 @@ export function StepperIndicator({
 }
 
 export function StepperSeparator() {
-  return <View flex={1} h={2} m={2} rounded={radius.sm} bg="muted" />
+  return <View flex={1} h={2} m={2} rounded={radius.sm} bg="track" />
 }

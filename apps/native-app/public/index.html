@@ -12,8 +12,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- The system bar in the palette's background (src/theme/palette.ts) until
          the app sets the chosen theme's (src/platform/browser-theme-color.web.ts). -->
-    <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#101214" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#eff0f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Finito" />
@@ -48,17 +48,18 @@
       }
     </style>
     <style>
-      /* The palette's background before the app paints, so a dark device
-         does not flash white while the bundle loads. */
+      /* The theme's background (src/theme/themes.ts) before the app
+         paints, so a dark device does not flash white while the bundle
+         loads. */
       html,
       body {
         margin: 0;
-        background: #fbfaf7;
+        background: #eff0f1;
       }
       @media (prefers-color-scheme: dark) {
         html,
         body {
-          background: #101214;
+          background: #0a0b0d;
         }
       }
     </style>

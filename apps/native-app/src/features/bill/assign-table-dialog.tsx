@@ -170,6 +170,7 @@ function TableAssignmentTile({
       style={{ flex: 1 }}
     >
       <TableTileShell
+        inDialog
         name={table.name}
         subtitle={t("tables.seatCount", { value: table.seatCount })}
         occupied={bills.length > 0}

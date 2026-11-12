@@ -12,7 +12,7 @@ import type { ThemeColor } from "../../theme/themes.ts"
 import { radius } from "../../theme/tokens.ts"
 
 type Tone = {
-  readonly bg: "destructive-10" | "success-10" | "muted" | "warning-10"
+  readonly bg: "destructive-10" | "success-10" | "neutral-soft" | "warning-10"
   readonly color: "destructive" | "success" | "muted-foreground" | "warning"
   readonly icon: LucideIcon
 }
@@ -20,7 +20,7 @@ type Tone = {
 const statusIcons = {
   canceled: { bg: "destructive-10", color: "destructive", icon: X },
   paid: { bg: "success-10", color: "success", icon: Check },
-  expired: { bg: "muted", color: "muted-foreground", icon: Clock },
+  expired: { bg: "neutral-soft", color: "muted-foreground", icon: Clock },
   pending: { bg: "warning-10", color: "warning", icon: RotateCw },
 } as const satisfies Record<PaymentStatus, Tone>
 
@@ -67,7 +67,7 @@ export function PaymentStatusIcon({
 const paymentBadgeTints = {
   canceled: null,
   paid: { bg: "success-10", color: "success" },
-  expired: { bg: "muted", color: "muted-foreground" },
+  expired: { bg: "neutral-soft", color: "muted-foreground" },
   pending: { bg: "warning-10", color: "warning" },
 } as const satisfies Record<
   PaymentStatus,

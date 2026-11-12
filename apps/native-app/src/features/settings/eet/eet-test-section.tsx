@@ -181,7 +181,7 @@ function RawMessage({
         maxH={256}
         overflow="scroll"
         rounded="md"
-        bg="muted"
+        bg="surface-raised"
         p="2"
       >
         <Text fontSize={11} userSelect="text">

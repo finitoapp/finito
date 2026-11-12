@@ -834,7 +834,7 @@ function CardProgress({
     <YStack
       testID="refund-card-progress"
       gap={8}
-      bg="neutral-soft"
+      bg="tile"
       rounded={12}
       px={12}
       py={12}

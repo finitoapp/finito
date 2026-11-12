@@ -49,7 +49,7 @@ export function OpenBillsSummary({
       gap="3"
       p="3"
       rounded="lg"
-      bg="neutral-soft"
+      bg="tile"
     >
       <Text flex={1} fontWeight="600">
         {t("stats.openBills.title")}

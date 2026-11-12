@@ -21,7 +21,10 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  *
  * Native differences: single selection only, as every web use is, with a
  * plain `value`/`onValueChange` instead of web's one-element arrays; a
- * selected item stays selected when pressed again. `columns` stands in for
+ * selected item stays selected when pressed again. A selected item takes
+ * the pressed fill (`button-outline-pressed`) instead of web's `bg-muted`,
+ * which is lighter than the outline fill on a light page and outshouts a
+ * card on a dark one. `columns` stands in for
  * the `grid grid-cols-N` class web pages put on the group. Items reach 48
  * through `hitSlop`. Base: a controlled Tamagui `View`, not Tamagui
  * `ToggleGroup`, which has not been tried on the device.
@@ -68,7 +71,7 @@ const ItemFrame = styled(View, {
       sm: { h: 28, minW: 28, px: 10, rounded: shape.pill },
       lg: { h: 36, minW: 36, px: 10 },
     },
-    selected: { true: { bg: "muted" } },
+    selected: { true: { bg: "button-outline-pressed" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })

@@ -317,7 +317,7 @@ function SupportAvatar({
       shrink={0}
       rounded={radius.full}
       overflow="hidden"
-      bg="muted"
+      bg="surface-raised"
     >
       <Image
         source={

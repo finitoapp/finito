@@ -97,7 +97,7 @@ export function SalesHeatmap({
                 height={22}
                 rounded={2}
                 overflow="hidden"
-                bg="muted"
+                bg="track"
                 role="button"
                 aria-label={cellDescription(cell, dayIndex, hour)}
                 cursor="web:pointer"
