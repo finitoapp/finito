@@ -95,6 +95,14 @@ const orderStatus = (
   params: Readonly<Record<string, string | number>>
 ) => guest.getByRole("main").getByText(translateParams("en", key, params))
 
+const orderPaid = (guest: Page, amount: string) =>
+  guest.getByRole("main").getByText(
+    translateParams("en", "selfPay.order.items.paid", {
+      summary: "2x pivo",
+      amount,
+    })
+  )
+
 const gotoOrders = (page: Page) =>
   gotoPage(page, "/orders", "en", "orders.title")
 
@@ -852,10 +860,11 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
     await expect(orderCard).toContainText(translate("en", "orders.paid"))
   })
 
-  await test.step("the guest sees it paid and waiting for the staff", async () => {
+  await test.step("the guest sees it paid and waiting for the staff, with the money it paid", async () => {
     await expect(
       orderStatus(guest, "selfPay.order.paid", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+    await expect(orderPaid(guest, "$90.00")).toBeVisible()
   })
 
   await test.step("Accept tells the guest it is being prepared", async () => {
@@ -866,6 +875,9 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
     await expect(
       orderStatus(guest, "selfPay.order.preparing", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+    await expect(guest.getByRole("status")).toHaveText(
+      translateParams("en", "selfPay.order.preparing", { number: 1 })
+    )
   })
 
   await test.step("Served takes it off the list and tells the guest", async () => {
@@ -876,6 +888,9 @@ test("staff see New order 1 · Bar · $90.00 · 2x pivo, accept it and mark it s
     await expect(
       orderStatus(guest, "selfPay.order.served", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+    await expect(guest.getByRole("status")).toHaveText(
+      translateParams("en", "selfPay.order.served", { number: 1 })
+    )
   })
 
   await test.step("the guest hides the served order, and it stays gone after a reload", async () => {
@@ -949,10 +964,11 @@ test("staff reject a written order, refund it from its payment, and the guest is
     ).toBeVisible()
   })
 
-  await test.step("the guest sees it rejected", async () => {
+  await test.step("the guest sees it rejected with the money it paid", async () => {
     await expect(
       orderStatus(guest, "selfPay.order.rejected", { number: 1 })
     ).toBeVisible({ timeout: 45_000 })
+    await expect(orderPaid(guest, "$90.00")).toBeVisible()
   })
 
   await test.step("To serve no longer lists it", async () => {

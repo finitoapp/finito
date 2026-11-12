@@ -238,6 +238,7 @@ export const csBill = {
   "selfPay.order.back": "Zpět do menu",
   "selfPay.order.hide": "Skrýt",
   "selfPay.order.items": "{summary} · {total}",
+  "selfPay.order.items.paid": "{summary} · zaplaceno {amount}",
   "selfPay.order.left": "Objednávka {number}: zbývá zaplatit {amount}.",
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pro kuchyni",

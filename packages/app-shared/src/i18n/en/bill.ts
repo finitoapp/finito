@@ -237,6 +237,7 @@ export const enBill = {
   "selfPay.order.back": "Back to the menu",
   "selfPay.order.hide": "Hide",
   "selfPay.order.items": "{summary} · {total}",
+  "selfPay.order.items.paid": "{summary} · {amount} paid",
   "selfPay.order.left": "Order {number}: {amount} is left to pay.",
   "selfPay.order.list.title": "Your orders",
   "selfPay.order.note.label": "Note for the kitchen",

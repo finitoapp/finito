@@ -243,6 +243,7 @@ export const skBill = {
   "selfPay.order.back": "Späť do menu",
   "selfPay.order.hide": "Skryť",
   "selfPay.order.items": "{summary} · {total}",
+  "selfPay.order.items.paid": "{summary} · zaplatené {amount}",
   "selfPay.order.left": "Objednávka {number}: zostáva zaplatiť {amount}.",
   "selfPay.order.list.title": "Vaše objednávky",
   "selfPay.order.note.label": "Poznámka pre kuchyňu",

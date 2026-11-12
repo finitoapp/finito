@@ -8,11 +8,12 @@ import {
   CookingPotIcon,
   TriangleAlertIcon,
 } from "lucide-react"
-import type { Ref } from "react"
+import { type Ref, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { cn } from "@/lib/utils.ts"
 import { formatGuestAmount, formatGuestTime } from "./guest-format.ts"
 import type { GuestOrder } from "./guest-orders.ts"
+import { useGuestStatus } from "./guest-status.tsx"
 import {
   type GuestTranslate,
   useGuestTranslation,
@@ -91,15 +92,15 @@ const guestOrderTones = {
     title: "",
   },
   preparing: {
-    card: "bg-primary/10",
+    card: "bg-muted",
     Icon: CookingPotIcon,
-    icon: "text-primary",
+    icon: "text-muted-foreground",
     title: "",
   },
   served: {
-    card: "bg-muted",
+    card: "bg-primary/10",
     Icon: CircleCheckIcon,
-    icon: "text-muted-foreground",
+    icon: "text-primary",
     title: "",
   },
   waiting: {
@@ -136,7 +137,21 @@ function GuestOrderCard({
   readonly onForget: (shown: ShownGuestOrder) => void
 }) {
   const { t, locale } = useGuestTranslation()
+  const announce = useGuestStatus()
   const { order, confirmation } = shown
+  const status = guestOrderStatus(shown, t, locale)
+  const step =
+    confirmation === null
+      ? null
+      : confirmation.rejected !== undefined
+        ? "rejected"
+        : guestOrderStep(confirmation)
+  const shownStep = useRef(step)
+  useEffect(() => {
+    if (step === shownStep.current) return
+    if (shownStep.current !== null) announce(status)
+    shownStep.current = step
+  }, [announce, status, step])
   const waitEndsAt = paymentWaitEndsAt(order.startedAt)
   const now = useNow([TimestampMs(waitEndsAt)])
   const left = guestOrderLeft(shown)
@@ -174,15 +189,18 @@ function GuestOrderCard({
       <Icon aria-hidden="true" className={cn("size-5 shrink-0", icon)} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <p className={cn("font-semibold", title)}>
-          {isWaitOver
-            ? t("selfPay.order.unseen")
-            : guestOrderStatus(shown, t, locale)}
+          {isWaitOver ? t("selfPay.order.unseen") : status}
         </p>
         <p className="text-muted-foreground">
-          {t("selfPay.order.items", {
-            summary: order.summary,
-            total: formatGuestAmount(order.total, order, locale),
-          })}
+          {confirmation === null
+            ? t("selfPay.order.items", {
+                summary: order.summary,
+                total: formatGuestAmount(order.total, order, locale),
+              })
+            : t("selfPay.order.items.paid", {
+                summary: order.summary,
+                amount: formatGuestAmount(confirmation.covered, order, locale),
+              })}
         </p>
         {isWaitOver ? (
           <>
