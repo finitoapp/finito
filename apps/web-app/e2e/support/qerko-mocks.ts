@@ -11,6 +11,8 @@ import { gotoPage, waitForLocalWriteToSettle } from "./navigation.ts"
  *
  * The fake terminal keeps each payment and refund it was asked for. A payment
  * stays pending while `holdPayment` is set, then answers `paymentOutcome`.
+ * For Qerko payments (the `standard` key) it lists the company's one location
+ * and remembers the one the key was paired with.
  */
 
 const corsHeaders = {
@@ -22,6 +24,7 @@ const corsHeaders = {
 export const qerkoPairingCode = "1234"
 export const qerkoLegalEntityName = "E2E Cafe s.r.o."
 export const qerkoTerminalTid = "TID-0001"
+export const qerkoLocationName = "Main street"
 
 export interface FakeQerko {
   /** Every request answered, in order. */
@@ -43,11 +46,20 @@ export interface FakeQerko {
   holdRefund: boolean
   /** While set, Qerko refuses the API key on every call but the pairing (401). */
   rejectKey: boolean
+  /** The location the `standard` key is paired with, none until `pair-location`. */
+  pairedLocationId: string | null
 }
 
 interface Operation {
   readonly amount: string
   cancelled: boolean
+}
+
+const legalEntity = {
+  id: "le-1",
+  name: qerkoLegalEntityName,
+  identificationNumber: "12345678",
+  country: "CZ",
 }
 
 const paymentOf = (
@@ -103,6 +115,7 @@ export async function routeFakeQerko(page: Page): Promise<FakeQerko> {
     refundNotStarted: null,
     holdRefund: false,
     rejectKey: false,
+    pairedLocationId: null,
   }
 
   const answer = (path: string, body: Record<string, unknown>): unknown => {
@@ -114,20 +127,36 @@ export async function routeFakeQerko(page: Page): Promise<FakeQerko> {
         return body.code === qerkoPairingCode
           ? { type: "ok", apiKey: { token: "e2e-token", name: "Payky" } }
           : { type: "invalidCode", remainingAttempts: 2 }
+      case "get-locations":
+        return {
+          legalEntity,
+          locations: [
+            {
+              id: "loc-1",
+              name: qerkoLocationName,
+              address: {
+                street: "Long street",
+                descriptiveNumber: "1",
+                city: "Prague",
+                zipCode: "11000",
+                country: "CZ",
+              },
+            },
+          ],
+          pairedLocationId: fake.pairedLocationId,
+        }
+      case "pair-location":
+        fake.pairedLocationId = String(body.locationId)
+        return { status: "Accepted" }
       case "get-terminals":
         return {
-          legalEntity: {
-            id: "le-1",
-            name: qerkoLegalEntityName,
-            identificationNumber: "12345678",
-            country: "CZ",
-          },
+          legalEntity,
           locations: fake.noTerminals
             ? []
             : [
                 {
                   id: "loc-1",
-                  name: "Main street",
+                  name: qerkoLocationName,
                   terminals: [
                     {
                       id: "terminal-1",

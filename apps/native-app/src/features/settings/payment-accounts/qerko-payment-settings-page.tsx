@@ -87,7 +87,8 @@ export function QerkoPaymentSettingsPage() {
   const { t } = useTranslation()
   const plugin = useEvoluQuery(qerkoPluginQuery("standard")).data[0]
   // Pairing saves the key, which would swap the wizard for the paired view
-  // before the device is chosen.
+  // before the device is chosen; the wizard raises this before it confirms
+  // the code.
   const [finishingPairing, setFinishingPairing] = useState(false)
   const [justPaired, setJustPaired] = useState(false)
 
@@ -97,7 +98,7 @@ export function QerkoPaymentSettingsPage() {
       {plugin === undefined || finishingPairing ? (
         <QerkoPairingWizard
           qerkoRole="standard"
-          onPaired={() => {
+          onPairing={() => {
             setFinishingPairing(true)
           }}
           lastStep={
