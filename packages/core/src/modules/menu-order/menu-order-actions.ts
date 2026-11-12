@@ -32,8 +32,12 @@ import {
   loadBillCoverage,
   loadBillStatus,
 } from "../bill/bill-guards.ts"
+import { loadOverpaymentInput } from "../bill/bill-overpayment-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
-import { claimedPaymentIdSet } from "../bill/bill-utils.ts"
+import {
+  claimedPaymentIdSet,
+  deriveBillOverpayment,
+} from "../bill/bill-utils.ts"
 import type { BillLineRow } from "../bill-line/bill-line.ts"
 import {
   loadCalculatedBillLineSummaries,
@@ -97,6 +101,7 @@ import {
   menuVersionByIdQuery,
   menuVersionsNewestFirstQuery,
   rejectedMenuOrdersByPointerQuery,
+  rejectedMenuOrdersQuery,
 } from "./menu-order-queries.ts"
 import type { MenuOrderId } from "./menu-order-types.ts"
 import {
@@ -303,6 +308,12 @@ export const rejectMenuOrder =
         { ...options, owner: run.deps.evoluOwner }
       )
     )
+    return ok(await run.ok(loadRejectedMenuOrderRefund(billId)))
+  }
+
+const loadRejectedMenuOrderRefund =
+  (billId: BillId): Task<RejectedMenuOrderRefund, never, EvoluDep> =>
+  async (run) => {
     const [paymentId, ...otherPayments] = claimedPaymentIdSet(
       await run.deps.evolu.loadQuery(claimedTransactionsByBillIdQuery(billId))
     )
@@ -311,6 +322,39 @@ export const rejectMenuOrder =
         ? { type: "payment", paymentId }
         : { type: "bill", billId }
     )
+  }
+
+export interface MenuOrderToReturn {
+  readonly id: MenuOrderId
+  readonly number: number
+  readonly amount: Money
+  readonly refund: RejectedMenuOrderRefund
+}
+
+export const loadMenuOrdersToReturn =
+  (): Task<ReadonlyArray<MenuOrderToReturn>, never, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    const orders = await run.deps.evolu.loadQuery(rejectedMenuOrdersQuery)
+    const toReturn = await Promise.all(
+      orders.map(async (order): Promise<ReadonlyArray<MenuOrderToReturn>> => {
+        const input = await run(loadOverpaymentInput({ billId: order.billId }))
+        if (!input.ok) return []
+        const { unresolved } = deriveBillOverpayment({
+          ...input.value,
+          isCanceled: true,
+        })
+        if (unresolved === 0) return []
+        return [
+          {
+            id: order.id,
+            number: order.number,
+            amount: { value: unresolved, currency: order.currency },
+            refund: await run.ok(loadRejectedMenuOrderRefund(order.billId)),
+          },
+        ]
+      })
+    )
+    return ok(toReturn.flat())
   }
 
 export interface MenuOrderArrivalRows {

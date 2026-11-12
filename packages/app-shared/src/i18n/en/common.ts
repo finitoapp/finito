@@ -119,9 +119,10 @@ export const enCommon = {
   "orders.paid": "Paid",
   "orders.paidAfterRejection.description":
     "This money is for an order the staff rejected, so it stays off the order's bill. Return it to the guest by hand.",
-  "orders.paidAfterRejection.entry": "#{number} · {amount}",
-  "orders.paidAfterRejection.title": "Paid after the order was rejected",
   "orders.paidOf": "{paid} of {total} paid",
+  "orders.toReturn.entry": "Order #{number} · {amount}",
+  "orders.toReturn.record": "Record refund",
+  "orders.toReturn.title": "Money to return",
   "orders.preparing": "Being prepared",
   "orders.reject": "Reject",
   "orders.reject.cancel": "Keep order",

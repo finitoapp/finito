@@ -64,6 +64,28 @@ export const rejectedMenuOrdersByPointerQuery = (
       .$narrowType<{ pointer: KyselyNotNull; number: KyselyNotNull }>()
   )
 
+export const rejectedMenuOrdersQuery = createQuery((db) =>
+  db
+    .selectFrom("menuOrder")
+    .innerJoin("bill", "bill.id", "menuOrder.billId")
+    .select([
+      "menuOrder.id",
+      "menuOrder.billId",
+      "menuOrder.number",
+      "bill.currency",
+    ])
+    .where("menuOrder.isDeleted", "is not", sqliteTrue)
+    .where("menuOrder.rejectedAt", "is not", null)
+    .where("menuOrder.number", "is not", null)
+    .where("bill.currency", "is not", null)
+    .orderBy("menuOrder.rejectedAt", "asc")
+    .$narrowType<{
+      billId: KyselyNotNull
+      number: KyselyNotNull
+      currency: KyselyNotNull
+    }>()
+)
+
 type QueryDb = Parameters<Parameters<typeof createQuery>[0]>[0]
 
 const selectListedMenuOrders = (db: QueryDb) =>

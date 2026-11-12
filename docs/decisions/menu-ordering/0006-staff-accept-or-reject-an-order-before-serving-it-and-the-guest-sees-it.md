@@ -52,7 +52,8 @@ kitchen takes. They still learn nothing about the table, the items or the
 staff (`menu-ordering/0003`). While the device that takes orders is offline,
 the guest sees an acceptance made on another device only once it is back.
 Staff who reject an order and skip the refund leave the guest's money with the
-business; the guest's page tells the guest to ask for it.
+business; the guest's page tells the guest to ask for it. The till lists that
+money to return until staff answer it (`menu-ordering/0019`).
 A rejected order not paid in full also discards its bill
 (`menu-ordering/0009`).
 Money that arrives for an order after it is rejected waits unmatched

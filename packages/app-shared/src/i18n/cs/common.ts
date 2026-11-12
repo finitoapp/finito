@@ -122,9 +122,10 @@ export const csCommon = {
   "orders.paid": "Zaplaceno",
   "orders.paidAfterRejection.description":
     "Tyto peníze patří k objednávce, kterou obsluha odmítla, takže na její účet nepřijdou. Vraťte je hostovi ručně.",
-  "orders.paidAfterRejection.entry": "#{number} · {amount}",
-  "orders.paidAfterRejection.title": "Zaplaceno po odmítnutí objednávky",
   "orders.paidOf": "zaplaceno {paid} z {total}",
+  "orders.toReturn.entry": "Objednávka č. {number} · {amount}",
+  "orders.toReturn.record": "Zapsat vrácení",
+  "orders.toReturn.title": "Peníze k vrácení",
   "orders.preparing": "Připravuje se",
   "orders.reject": "Odmítnout",
   "orders.reject.cancel": "Ponechat objednávku",

@@ -122,9 +122,10 @@ export const skCommon = {
   "orders.paid": "Zaplatené",
   "orders.paidAfterRejection.description":
     "Tieto peniaze patria k objednávke, ktorú obsluha odmietla, takže na jej účet neprídu. Vráťte ich hosťovi ručne.",
-  "orders.paidAfterRejection.entry": "#{number} · {amount}",
-  "orders.paidAfterRejection.title": "Zaplatené po odmietnutí objednávky",
   "orders.paidOf": "zaplatené {paid} z {total}",
+  "orders.toReturn.entry": "Objednávka č. {number} · {amount}",
+  "orders.toReturn.record": "Zapísať vrátenie",
+  "orders.toReturn.title": "Peniaze na vrátenie",
   "orders.preparing": "Pripravuje sa",
   "orders.reject": "Odmietnuť",
   "orders.reject.cancel": "Ponechať objednávku",

@@ -1072,18 +1072,50 @@ test("money a guest sends after staff reject the order stays off its bill, liste
     await gotoOrders(page)
   })
 
+  const moneyToReturn = page.getByTestId("money-to-return")
+
+  await test.step("the money the guest paid is listed to return, with a way to record the refund", async () => {
+    await expect(moneyToReturn).toContainText(
+      translate("en", "orders.toReturn.title")
+    )
+    await expect(moneyToReturn).toContainText(
+      translateParams("en", "orders.toReturn.entry", {
+        number: 1,
+        amount: "$80.00",
+      })
+    )
+    await expect(
+      moneyToReturn.getByRole("button", {
+        name: translate("en", "orders.toReturn.record"),
+      })
+    ).toBeVisible()
+  })
+
   await test.step("the rest the guest sends anyway is listed apart, by the order's number", async () => {
     await receiveBankTransfer(page, { amount: 1000, currency: "USD", ...rest })
     await expect(
-      page.getByText(translate("en", "orders.paidAfterRejection.title"))
+      moneyToReturn.getByText(
+        translate("en", "orders.paidAfterRejection.description")
+      )
     ).toBeVisible({ timeout: 45_000 })
     await expect(
-      page.getByText(
-        translateParams("en", "orders.paidAfterRejection.entry", {
+      moneyToReturn.getByText(
+        translateParams("en", "orders.toReturn.entry", {
           number: 1,
           amount: "$10.00",
         })
       )
+    ).toBeVisible()
+  })
+
+  await test.step("Record refund opens the payment the refund is recorded on", async () => {
+    await moneyToReturn
+      .getByRole("button", { name: translate("en", "orders.toReturn.record") })
+      .click()
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "paymentDetail.title"),
+      })
     ).toBeVisible()
   })
 })
