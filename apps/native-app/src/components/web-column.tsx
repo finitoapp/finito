@@ -5,7 +5,27 @@ import { View } from "tamagui"
 import { maxWidth } from "../theme/tokens.ts"
 
 /** Web's `lg` breakpoint, from which home and the bill use the window's width. */
-const WIDE_WINDOW_PX = 1024
+export const WIDE_WINDOW_PX = 1024
+
+/** Web's `2xl` breakpoint, from which the bill's summary panel widens. */
+const EXTRA_WIDE_WINDOW_PX = 1536
+
+/**
+ * Whether the window is at least web's `lg` wide. From this width the bill
+ * draws web's large-monitor layout (the summary in a side panel), on the web
+ * and on a wide Android tablet alike.
+ */
+export function useWideWindow(): boolean {
+  return useWindowDimensions().width >= WIDE_WINDOW_PX
+}
+
+/**
+ * The width of the bill's summary panel on a wide window, as web's
+ * `lg:w-100 2xl:w-120`: 400, or 480 from web's `2xl`.
+ */
+export function useBillSummaryPanelWidth(): number {
+  return useWindowDimensions().width >= EXTRA_WIDE_WINDOW_PX ? 480 : 400
+}
 
 /** The empty width on each side of the column; 0 on native and at full width. */
 const GutterContext = createContext(0)

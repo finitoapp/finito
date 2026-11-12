@@ -9,8 +9,12 @@ import { ScreenGapContext, screenPadding, useScreenScroll } from "./screen.tsx"
 import { Button } from "./ui/button.tsx"
 import { Icon } from "./ui/icon.tsx"
 
-/** Back to the previous screen, or home when this one was opened cold. */
-const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"))
+/**
+ * Back to the previous screen, or home when this one was opened cold: the
+ * header's back button, and any screen's own back button drawn without it.
+ */
+export const goBack = () =>
+  router.canGoBack() ? router.back() : router.replace("/")
 
 /**
  * Web `apps/web-app/src/components/fade-header.tsx`: a centered title between

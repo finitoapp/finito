@@ -91,6 +91,7 @@ export function CollapsibleTrigger({
 
 const styles = StyleSheet.create({
   measure: { position: "absolute", top: 0, left: 0, right: 0 },
+  fill: { flexGrow: 1, flexShrink: 1, minHeight: 0 },
 })
 
 /**
@@ -101,11 +102,20 @@ const styles = StyleSheet.create({
  * at its own height in an absolute box the panel clips; settled open, it
  * lays out normally, so a panel whose content grows follows it. The tree
  * stays the same either way, so the content keeps its state.
+ *
+ * `fillHeight`, settled, has the panel take the rest of its parent column,
+ * as the bill's side panel does on a large monitor (web's `lg:flex
+ * lg:min-h-0 lg:flex-1`): a content view with `flex={1}` then has a height
+ * to fill, and a list inside it scrolls.
  */
 export function CollapsibleContent({
   children,
+  fillHeight = false,
   ...viewProps
-}: GetProps<typeof View> & { readonly children: ReactNode }) {
+}: GetProps<typeof View> & {
+  readonly children: ReactNode
+  readonly fillHeight?: boolean
+}) {
   const { open } = useCollapsible()
   const [progress] = useState(() => new Animated.Value(open ? 1 : 0))
   const [contentHeight] = useState(() => new Animated.Value(0))
@@ -147,10 +157,18 @@ export function CollapsibleContent({
   if (!mounted) return null
   return (
     <Animated.View
-      style={animating ? { height, overflow: "hidden" } : undefined}
+      style={
+        animating
+          ? { height, overflow: "hidden" }
+          : fillHeight
+            ? styles.fill
+            : undefined
+      }
     >
       <NativeView
-        style={animating ? styles.measure : undefined}
+        style={
+          animating ? styles.measure : fillHeight ? styles.fill : undefined
+        }
         onLayout={(event) =>
           contentHeight.setValue(event.nativeEvent.layout.height)
         }
