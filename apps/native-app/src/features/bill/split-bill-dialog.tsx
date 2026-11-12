@@ -227,17 +227,28 @@ function SplitBillBody({
 
       <DialogFooter flexDirection="column">
         <XStack justify="space-between">
-          {/* One text with the label, as the e2e flow reads it, so the
-              whole label pulses where web pulses only the count. */}
-          <Animated.View style={itemCountPulse}>
+          {/* Only the count pulses, as web's; the e2e flow reads it by its
+              testID. */}
+          <XStack items="center" gap={4}>
             <Text
               fontSize={fontSize.sm}
               lineHeight={fontSize.sm}
               fontWeight={fontWeight.medium}
             >
-              {`${t("bill.split.selectedCount")} ${itemCount}`}
+              {t("bill.split.selectedCount")}
             </Text>
-          </Animated.View>
+            <Animated.View style={itemCountPulse}>
+              <Text
+                testID="bill-split-selected-count"
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.medium}
+                fontVariant={["tabular-nums"]}
+              >
+                {itemCount}
+              </Text>
+            </Animated.View>
+          </XStack>
           <Animated.View style={totalAmountPulse}>
             <Text
               fontSize={fontSize.sm}

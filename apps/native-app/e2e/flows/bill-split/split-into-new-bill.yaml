@@ -49,7 +49,9 @@ tags: [bill-split]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: '${output.tv("bill.split.increase.aria", { name: "Coffee" })}'
-- assertVisible: ${output.re(output.t["bill.split.selectedCount"])} 2.*
+- assertVisible:
+    id: bill-split-selected-count
+    text: "2"
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
