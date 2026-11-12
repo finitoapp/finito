@@ -184,6 +184,7 @@ export const csBill = {
   "selfPay.choice.title": "Kolik zaplatíte?",
   "selfPay.confirmation.mine": "Zaplaceno {amount}, máte hotovo.",
   "selfPay.confirmation.mine.detail": "Restaurace vaši platbu potvrdila.",
+  "selfPay.confirmation.mine.past": "Zaplatili jste {amount} v {time}",
   "selfPay.confirmation.other": "{amount} zaplaceno v {time}",
   "selfPay.confirmations.title": "Poslední platby",
   "selfPay.copied": "Zkopírováno",

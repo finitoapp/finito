@@ -183,6 +183,7 @@ export const enBill = {
   "selfPay.choice.title": "How much do you pay?",
   "selfPay.confirmation.mine": "Paid {amount}, you are done.",
   "selfPay.confirmation.mine.detail": "The restaurant confirmed your payment.",
+  "selfPay.confirmation.mine.past": "You paid {amount} at {time}",
   "selfPay.confirmation.other": "{amount} paid at {time}",
   "selfPay.confirmations.title": "Recent payments",
   "selfPay.copied": "Copied",

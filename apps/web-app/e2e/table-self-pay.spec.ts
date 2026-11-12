@@ -1018,6 +1018,63 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
+  test("a guest who pays again is done only with the new payment, and the first reads as paid at its time", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 35"))
+    await using phone = await newGuestContext(browser, relays)
+    const guest = await phone.newPage()
+    const main = guest.getByRole("main")
+    const firstDone = guestText("selfPay.confirmation.mine", "$73.00")
+    const firstPaid = translateParams("en", "selfPay.confirmation.mine.past", {
+      amount: "$73.00",
+      time: "",
+    }).trim()
+
+    await test.step("the guest pays half of the bill and is done with it", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await pickEqualShares(guest, 2)
+      await payTotal(guest, "$73.00").click()
+      await receiveShownBankTransfer(page, {
+        payer: guest,
+        language: "en",
+        amount: 7300,
+        currency: "USD",
+      })
+      await expect(main.getByText(firstDone)).toBeVisible({ timeout: 45_000 })
+    })
+
+    await test.step("paying more no longer says done and names the first payment's time", async () => {
+      await guestButton(guest, "selfPay.payMore").click()
+      await expect(main.getByText(firstDone)).toHaveCount(0)
+      await expect(main.getByText(firstPaid)).toBeVisible()
+    })
+
+    await test.step("the second payment is the one that says done", async () => {
+      await pickEqualShares(guest, 4)
+      await payTotal(guest, "$36.50").click()
+      await receiveShownBankTransfer(page, {
+        payer: guest,
+        language: "en",
+        amount: 3650,
+        currency: "USD",
+      })
+      const secondDone = guestText("selfPay.confirmation.mine", "$36.50")
+      await expect(guest.locator(":focus")).toContainText(secondDone, {
+        timeout: 45_000,
+      })
+      await expect(main.getByText(secondDone)).toHaveCount(1)
+      await expect(main.getByText(firstDone)).toHaveCount(0)
+      await expect(main.getByText(firstPaid)).toBeVisible()
+    })
+  })
+
   test("a guest paying is told what is left once another guest paid meanwhile", async ({
     seededPage: page,
     context,

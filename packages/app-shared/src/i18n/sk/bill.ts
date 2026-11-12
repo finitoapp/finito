@@ -187,6 +187,7 @@ export const skBill = {
   "selfPay.choice.title": "Koľko zaplatíte?",
   "selfPay.confirmation.mine": "Zaplatené {amount}, máte hotovo.",
   "selfPay.confirmation.mine.detail": "Reštaurácia vašu platbu potvrdila.",
+  "selfPay.confirmation.mine.past": "Zaplatili ste {amount} o {time}",
   "selfPay.confirmation.other": "{amount} zaplatené o {time}",
   "selfPay.confirmations.title": "Posledné platby",
   "selfPay.copied": "Skopírované",

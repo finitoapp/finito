@@ -941,33 +941,36 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
         <div
           ref={myConfirmationsBlock}
           tabIndex={-1}
-          className="flex flex-col gap-2 outline-none"
+          className="flex items-start gap-2 rounded-xl bg-primary/10 p-3 text-sm outline-none"
         >
-          {myConfirmations.map((confirmation) => (
-            <div
-              key={confirmation.pointerHash}
-              className="flex items-start gap-2 rounded-xl bg-primary/10 p-3 text-sm"
-            >
-              <CircleCheckIcon
-                aria-hidden="true"
-                className="size-5 shrink-0 text-primary"
-              />
-              <div className="flex flex-col gap-0.5">
-                <p className="font-semibold">
-                  {t("selfPay.confirmation.mine", {
+          <CircleCheckIcon
+            aria-hidden="true"
+            className="size-5 shrink-0 text-primary"
+          />
+          <div className="flex flex-col gap-0.5">
+            {doneAnnouncement === null ? null : (
+              <>
+                <p className="font-semibold">{doneAnnouncement}</p>
+                <p className="text-muted-foreground">
+                  {t("selfPay.confirmation.mine.detail")}
+                </p>
+              </>
+            )}
+            {myConfirmations.map((confirmation) =>
+              confirmation.pointerHash === donePointerHash ? null : (
+                <p key={confirmation.pointerHash}>
+                  {t("selfPay.confirmation.mine.past", {
                     amount: formatGuestAmount(
                       confirmation.amount,
                       confirmation,
                       locale
                     ),
+                    time: formatGuestTime(confirmation.at, locale),
                   })}
                 </p>
-                <p className="text-muted-foreground">
-                  {t("selfPay.confirmation.mine.detail")}
-                </p>
-              </div>
-            </div>
-          ))}
+              )
+            )}
+          </div>
         </div>
       )}
 
@@ -1077,7 +1080,10 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                     </Tabs>
                   ) : null}
                   {bill !== undefined && pendingSession === null ? (
-                    <GuestBillSummary bill={bill} />
+                    <GuestBillSummary
+                      bill={bill}
+                      emphasizeRemainder={doneWith === null}
+                    />
                   ) : null}
                   {bill === undefined ? null : doneWith === null ? (
                     <GuestCheckout
