@@ -16,8 +16,7 @@ import { Icon } from "./icon.tsx"
  * plain `toast()`. An action is sonner's action button: 24 high, 8 px side
  * padding, 12 px medium text in `--normal-bg` on `--normal-text`, radius 4.
  * The queue and the timing stay in `components/app/toast-host.tsx`.
- * Sonner's shadow is left out; the border separates the toast from the
- * screen.
+ * Sonner's border and shadow are left out.
  */
 
 type ToastVariant = "default" | "success" | "error" | "info" | "warning"
@@ -37,9 +36,9 @@ const ToastFrame = styled(View, {
   gap: 6,
   minH: 48,
   p: 16,
-  // fazole.fit's toast: a 12-round raised surface, no border.
+  // fazole.fit's toast: 12-round, no border.
   rounded: shape.control,
-  bg: "popover",
+  bg: "invert",
 })
 
 export function Toast({
@@ -62,8 +61,8 @@ export function Toast({
       role="alert"
       aria-live="assertive"
     >
-      {icon === null ? null : <Icon icon={icon} color="popover-foreground" />}
-      <Text flex={1} fontSize={13} color="popover-foreground">
+      {icon === null ? null : <Icon icon={icon} color="invert-foreground" />}
+      <Text flex={1} fontSize={13} color="invert-foreground">
         {message}
       </Text>
       {action === undefined ? null : (
@@ -72,7 +71,7 @@ export function Toast({
           px={8}
           rounded={4}
           justify="center"
-          bg="popover-foreground"
+          bg="invert-foreground"
           role="button"
           hitSlop={12}
           cursor="web:pointer"
@@ -82,7 +81,7 @@ export function Toast({
             fontSize="xs"
             lineHeight="xs"
             fontWeight={fontWeight.medium}
-            color="popover"
+            color="invert"
           >
             {action.label}
           </Text>
