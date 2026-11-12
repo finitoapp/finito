@@ -1343,7 +1343,7 @@ test.describe("a guest paying at the table", () => {
     const guest = await phone.newPage()
     const waitingIndicator = guest.getByTestId("self-pay-waiting-indicator")
 
-    await test.step("the instructions say from the start, under the amount, that the restaurant confirms the money", async () => {
+    await test.step("the instructions say from the start, under the amount, that the restaurant confirms the money, and what it pays for follows the QR", async () => {
       await openGuestPage(guest, guestAddress, "$146.00")
       await payTotal(guest, "$146.00").click()
       await expect(guest.getByRole("status")).toHaveText(
@@ -1355,6 +1355,17 @@ test.describe("a guest paying at the table", () => {
       expect(
         await top(
           guest.getByRole("main").getByText(translate("en", "selfPay.waiting"))
+        )
+      ).toBeLessThan(
+        await top(
+          guest.getByRole("region", {
+            name: translate("en", "selfPay.paidFor.title"),
+          })
+        )
+      )
+      expect(
+        await top(
+          guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
         )
       ).toBeLessThan(
         await top(

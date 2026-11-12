@@ -321,7 +321,6 @@ function GuestPayment({
           isWatching={method !== "lightning" || isInvoiceOpen}
         />
       )}
-      {children}
       {session.isSeenByRestaurant ? null : (
         <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm">
           <TriangleAlertIcon
@@ -394,6 +393,7 @@ function GuestPayment({
           />
         </div>
       )}
+      {children}
     </section>
   )
 }
