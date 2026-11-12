@@ -42,7 +42,7 @@ import {
 import { appEnv } from "@/core/app-env.ts"
 import { ORDER_SHOWN_FOR_MS } from "./guest-orders.ts"
 
-const REFRESH_INTERVAL_MS = 15_000
+const REFRESH_INTERVAL_MS = 5000
 const PAYMENT_REFRESH_INTERVAL_MS = 5000
 const PAYMENT_WAIT_MS = 10 * 60 * 1000
 

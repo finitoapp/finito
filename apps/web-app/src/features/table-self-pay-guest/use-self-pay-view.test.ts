@@ -110,12 +110,12 @@ test("stops polling the relays while the page is hidden and refreshes on return"
   await vi.advanceTimersByTimeAsync(0)
   page.stop()
 
-  expect(whileVisible).toBe(3)
+  expect(whileVisible).toBe(7)
   expect(whileHidden).toBe(0)
-  expect(page.queries()).toBe(4)
+  expect(page.queries()).toBe(8)
 })
 
-test("asks every 5 s while a started payment waits, and every 15 s once it is confirmed", async () => {
+test("asks every 5 s while a started payment waits and after it is confirmed", async () => {
   let confirmed = false
   const page = await observeSelfPayView(
     () => (confirmed ? [viewConfirming(pointer)] : []),
@@ -132,10 +132,10 @@ test("asks every 5 s while a started payment waits, and every 15 s once it is co
 
   expect(whileWaiting).toBe(7)
   expect(untilConfirmed).toBe(8)
-  expect(page.queries() - untilConfirmed).toBe(4)
+  expect(page.queries() - untilConfirmed).toBe(12)
 })
 
-test("asks every 15 s again once a payment waited 10 minutes", async () => {
+test("asks every 5 s once a payment waited 10 minutes", async () => {
   const page = await observeSelfPayView(() => [], {
     pointer,
     startedAt: Date.now(),
@@ -146,7 +146,7 @@ test("asks every 15 s again once a payment waited 10 minutes", async () => {
   await vi.advanceTimersByTimeAsync(60_000)
   page.stop()
 
-  expect(page.queries() - afterWaiting).toBe(4)
+  expect(page.queries() - afterWaiting).toBe(12)
 })
 
 test("asks the relays once more before it shows a view older than the one confirmed", async () => {
