@@ -203,10 +203,9 @@ function OverpaymentAlert({
           ) : null}
           {overpayment.answers.length > 0 ? (
             <YStack w="100%" mt={8}>
-              {overpayment.answers.map((answer, index) => (
+              {overpayment.answers.map((answer) => (
                 <OverpaymentAnswerRow
                   key={`${answer.source.type}:${"id" in answer.source ? answer.source.id : answer.paymentId}`}
-                  first={index === 0}
                   answer={answer}
                   billLabel={billLabel}
                   format={format}
@@ -290,12 +289,10 @@ function CollisionStep({
 }
 
 function OverpaymentAnswerRow({
-  first,
   answer,
   billLabel,
   format,
 }: {
-  readonly first: boolean
   readonly answer: OverpaymentAnswer
   readonly billLabel: string
   readonly format: (value: number) => string
@@ -344,13 +341,7 @@ function OverpaymentAnswerRow({
   }
 
   return (
-    <YStack
-      testID="overpayment-answer"
-      gap={4}
-      py={8}
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
-    >
+    <YStack testID="overpayment-answer" gap={4} py={8}>
       <XStack items="center" justify="space-between" gap={12}>
         <YStack flex={1} minW={0} gap={2}>
           <XStack items="center" gap={8}>

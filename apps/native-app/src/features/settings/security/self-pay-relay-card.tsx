@@ -58,17 +58,11 @@ export function SelfPayRelayCard() {
       </CardHeader>
       <CardContent>
         <YStack gap="5">
-          <YStack
-            rounded="lg"
-            borderWidth={1}
-            borderColor="border-color"
-            overflow="hidden"
-          >
-            {relays.map((relay, index) => (
+          <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+            {relays.map((relay) => (
               <SelfPayRelayItem
                 key={relay.url}
                 relay={relay}
-                first={index === 0}
                 isLastActive={relay.isActive && activeCount === 1}
                 refusedLastPublish={refusedRelays.has(relay.url)}
               />
@@ -98,12 +92,10 @@ export function SelfPayRelayCard() {
 
 function SelfPayRelayItem({
   relay,
-  first,
   isLastActive,
   refusedLastPublish,
 }: {
   readonly relay: SelfPayRelaySetting
-  readonly first: boolean
   readonly isLastActive: boolean
   readonly refusedLastPublish: boolean
 }) {
@@ -126,8 +118,6 @@ function SelfPayRelayItem({
       justify="space-between"
       gap="3"
       p="3"
-      borderTopWidth={first ? 0 : 1}
-      borderColor="border-color"
     >
       <XStack flex={1} minW={0} flexWrap="wrap" items="center" gap="2">
         <Text

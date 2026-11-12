@@ -22,7 +22,6 @@ export function ChoiceToggleItem({
       minH={44}
       py={8}
       justify="flex-start"
-      {...(selected ? { borderColor: "primary" } : {})}
     >
       <View opacity={selected ? 1 : 0}>
         <Icon icon={Check} color="primary" />
