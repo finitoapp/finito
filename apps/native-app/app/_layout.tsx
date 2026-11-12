@@ -8,10 +8,11 @@ import {
 } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
-import { createStore, Provider } from "jotai"
+import { createStore, Provider, useAtomValue } from "jotai"
 import { type ComponentType, Suspense, useEffect, useState } from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
+import { waitingOrdersNoticeRoomAtom } from "../src/atoms/toast.ts"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
 import {
   AppEvoluConsumers,
@@ -37,6 +38,7 @@ import {
   MenuNav,
   menuSidebarMinWidth,
   menuSidebarWidth,
+  useMenuBarTab,
 } from "../src/components/menu-nav.tsx"
 import { paneGap, WebColumn } from "../src/components/web-column.tsx"
 import {
@@ -211,7 +213,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const menu = menuPositionOf(pathname)
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   const sidebar = menu !== undefined && wide
-  const bar = menu?.root === true && menu.tab !== "terminal" && !wide
+  const menuBarTab = useMenuBarTab()
   // A detail screen on a wide window sits right of the root it was opened
   // from, as Linky's desktop split view. The stack keeps its place in the
   // tree either way, so navigation state survives the window resizing.
@@ -219,6 +221,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   const MasterPage =
     masterPath === undefined ? undefined : masterPages[masterPath]
   const panes = MasterPage !== undefined
+  const waitingOrdersNoticeRoom = useAtomValue(waitingOrdersNoticeRoomAtom)
   return (
     <ThemeProvider
       value={{
@@ -227,7 +230,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
       }}
     >
       <View flex={1} bg="background">
-        <XStack flex={1}>
+        <XStack flex={1} pb={waitingOrdersNoticeRoom}>
           {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
           <View flex={1}>
             <WebColumn
@@ -258,7 +261,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
             </WebColumn>
           </View>
         </XStack>
-        {wide ? null : <MenuBar tab={bar ? menu.tab : undefined} />}
+        {wide ? null : <MenuBar tab={menuBarTab} />}
       </View>
     </ThemeProvider>
   )

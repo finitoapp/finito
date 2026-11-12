@@ -1,3 +1,4 @@
+import type { Locator } from "@playwright/test"
 import { addCatalogItem, addTable } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
 import { translate, translateParams } from "./support/i18n.ts"
@@ -191,6 +192,46 @@ test("a paid order is announced, listed to serve and served", async ({
       note: "bez cukru",
       amount: 35000,
     })
+  })
+
+  await test.step("the notice covers neither the menu bar nor the end of a screen", async () => {
+    const notice = page.getByRole("listitem").filter({
+      hasText: translateParams("en", "orders.announced", {
+        number: 1,
+        table: "Table 3",
+      }),
+    })
+    const top = async (locator: Locator) =>
+      (await locator.boundingBox())?.y ?? 0
+    const bottom = async (locator: Locator) => {
+      const box = await locator.boundingBox()
+      return (box?.y ?? 0) + (box?.height ?? 0)
+    }
+
+    await gotoPage(page, "/activity", "en", "activity.title")
+    const menuBar = page.getByRole("navigation", {
+      name: translate("en", "nav.menu"),
+    })
+    await expect(notice).toBeVisible()
+    await expect(menuBar).toBeVisible()
+    await expect
+      .poll(async () => (await bottom(notice)) <= (await top(menuBar)))
+      .toBe(true)
+
+    await menuBar
+      .getByRole("button", { name: translate("en", "nav.home") })
+      .click()
+    await page
+      .getByRole("button", { name: translate("en", "nav.numpad") })
+      .click()
+    const charge = page.getByRole("button", {
+      name: translate("en", "home.pay"),
+    })
+    await expect(charge).toBeVisible()
+    await expect(notice).toBeVisible()
+    await expect
+      .poll(async () => (await bottom(charge)) <= (await top(notice)))
+      .toBe(true)
   })
 
   await test.step("the till announces it until staff open it", async () => {

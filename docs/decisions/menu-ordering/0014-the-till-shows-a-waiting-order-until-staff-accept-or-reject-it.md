@@ -35,8 +35,8 @@ An order already waiting when the till starts is shown too.
 
 ## Consequences
 
-While an order waits, the notice covers the bottom of every other screen,
-whatever staff do there. A device that is offline keeps showing it until the
+While an order waits, the notice takes the bottom of every other screen,
+which leaves room for it under its content (`menu-ordering/0020`). A device that is offline keeps showing it until the
 acceptance reaches it. An accepted order waits for "Served" with no notice.
 
 ## Enforced by

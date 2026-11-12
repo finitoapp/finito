@@ -48,7 +48,7 @@ export const Route = createFileRoute("/_terminal/bill")({
     access: "sell",
     terminalLayout: {
       viewportClassName:
-        "h-[calc(100svh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-var(--terminal-banner-height,0px))] px-3 py-6 lg:max-w-none lg:px-6",
+        "h-[calc(100svh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-var(--terminal-banner-height,0px)-var(--waiting-orders-notice-height,0px))] px-3 py-6 lg:max-w-none lg:px-6",
     },
   },
 })

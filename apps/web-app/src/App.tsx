@@ -27,6 +27,11 @@ import { queryClient } from "@/core/query-client.ts"
 import { captureReportedError } from "@/core/sentry.ts"
 import { router } from "@/router.tsx"
 
+const toastsAboveMenuBar = {
+  bottom:
+    "calc(env(safe-area-inset-bottom, 0px) + var(--menu-nav-height, 0px) + 1rem)",
+}
+
 /**
  * Renders before `ThemeProvider` has mounted (it's suspended in the same
  * boundary). The `dark` class it would normally apply is already set by
@@ -123,7 +128,10 @@ export function App() {
               </CatchBoundary>
               <RouterProvider router={router} />
               <PwaUpdateToast />
-              <Toaster />
+              <Toaster
+                offset={toastsAboveMenuBar}
+                mobileOffset={toastsAboveMenuBar}
+              />
               <ConfirmDialogHost />
               <PinPromptHost />
             </ThemeProvider>

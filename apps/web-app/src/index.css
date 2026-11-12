@@ -254,10 +254,6 @@
     background: var(--background);
   }
 
-  :root:has(.waiting-orders-notice) {
-    --waiting-orders-notice-height: 5rem;
-  }
-
   ::selection {
     background: color-mix(in oklab, var(--primary) 26%, transparent);
     color: var(--foreground);

@@ -11,7 +11,14 @@ export interface Toast {
 
 export const toastsAtom = atom<ReadonlyArray<Toast>>([])
 
-export const waitingOrdersNoticeShownAtom = atom(false)
+export const toastOffset = 24
+
+export const waitingOrdersNoticeHeightAtom = atom(0)
+
+export const waitingOrdersNoticeRoomAtom = atom((get) => {
+  const height = get(waitingOrdersNoticeHeightAtom)
+  return height === 0 ? 0 : height + toastOffset
+})
 
 let nextToastId = 0
 

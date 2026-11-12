@@ -1,6 +1,13 @@
 import { createStore } from "jotai"
 import { describe, expect, test } from "vitest"
-import { dismissToastAtom, showToastAtom, toastsAtom } from "./toast.ts"
+import {
+  dismissToastAtom,
+  showToastAtom,
+  toastOffset,
+  toastsAtom,
+  waitingOrdersNoticeHeightAtom,
+  waitingOrdersNoticeRoomAtom,
+} from "./toast.ts"
 
 describe("toast queue", () => {
   test("enqueues with distinct ids and dismisses by id", () => {
@@ -14,5 +21,16 @@ describe("toast queue", () => {
     ])
     store.set(dismissToastAtom, a)
     expect(store.get(toastsAtom).map((toast) => toast.message)).toEqual(["b"])
+  })
+})
+
+describe("the waiting-orders notice's room", () => {
+  test("is the notice and the gap under it while it shows, and nothing once it leaves", () => {
+    const store = createStore()
+    expect(store.get(waitingOrdersNoticeRoomAtom)).toBe(0)
+    store.set(waitingOrdersNoticeHeightAtom, 64)
+    expect(store.get(waitingOrdersNoticeRoomAtom)).toBe(64 + toastOffset)
+    store.set(waitingOrdersNoticeHeightAtom, 0)
+    expect(store.get(waitingOrdersNoticeRoomAtom)).toBe(0)
   })
 })

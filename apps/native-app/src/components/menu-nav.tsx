@@ -168,6 +168,14 @@ export function MenuBarSpacer() {
   return wide ? null : <View h={menuBarHeight} shrink={0} />
 }
 
+export function useMenuBarTab(): MenuTab | undefined {
+  const menu = menuPositionOf(usePathname())
+  const wide = useWindowDimensions().width >= menuSidebarMinWidth
+  return menu?.root === true && menu.tab !== "terminal" && !wide
+    ? menu.tab
+    : undefined
+}
+
 /** Linky's rail entries: `$row` (64) high, `gap-2` apart, `px-1 py-2`. */
 const railEntryHeight = 64
 const railGap = 4

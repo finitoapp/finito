@@ -5,7 +5,8 @@ import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { router, usePathname } from "expo-router"
 import { useSetAtom } from "jotai"
 import { useEffect } from "react"
-import { waitingOrdersNoticeShownAtom } from "../../atoms/toast.ts"
+import { View } from "tamagui"
+import { waitingOrdersNoticeHeightAtom } from "../../atoms/toast.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
@@ -33,21 +34,25 @@ function WaitingOrdersToast() {
   })
 
   const shown = !onOrders && notice !== null
-  const setNoticeShown = useSetAtom(waitingOrdersNoticeShownAtom)
+  const setNoticeHeight = useSetAtom(waitingOrdersNoticeHeightAtom)
   useEffect(() => {
-    setNoticeShown(shown)
-    return () => setNoticeShown(false)
-  }, [shown, setNoticeShown])
+    if (!shown) return
+    return () => setNoticeHeight(0)
+  }, [shown, setNoticeHeight])
 
   if (!shown) return null
   return (
-    <Toast
-      variant="default"
-      message={notice}
-      action={{
-        label: t("orders.announced.open"),
-        onPress: () => router.push("/orders"),
-      }}
-    />
+    <View
+      onLayout={(event) => setNoticeHeight(event.nativeEvent.layout.height)}
+    >
+      <Toast
+        variant="default"
+        message={notice}
+        action={{
+          label: t("orders.announced.open"),
+          onPress: () => router.push("/orders"),
+        }}
+      />
+    </View>
   )
 }
