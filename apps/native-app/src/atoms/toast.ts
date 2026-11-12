@@ -11,6 +11,8 @@ export interface Toast {
 
 export const toastsAtom = atom<ReadonlyArray<Toast>>([])
 
+export const waitingOrdersNoticeShownAtom = atom(false)
+
 let nextToastId = 0
 
 /** Write-only: appends a toast and returns its id. */

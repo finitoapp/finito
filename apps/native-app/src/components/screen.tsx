@@ -1,3 +1,4 @@
+import { useAtomValue } from "jotai"
 import ArrowDown from "lucide-react-native/icons/arrow-down"
 import {
   type ComponentRef,
@@ -16,6 +17,7 @@ import {
   type ScrollView,
 } from "react-native"
 import { useTheme, View } from "tamagui"
+import { waitingOrdersNoticeShownAtom } from "../atoms/toast.ts"
 import { useTranslation } from "../hooks/use-translation.ts"
 import { radius } from "../theme/tokens.ts"
 import { SafeAreaView } from "./safe-area-view.tsx"
@@ -66,6 +68,8 @@ interface ScrollEvent {
 /** How close to the bottom still counts as reading the newest messages. */
 const STICK_TO_BOTTOM_PX = 80
 
+const WAITING_ORDERS_NOTICE_HEIGHT = 80
+
 /**
  * Keyboard-safe, scrollable, themed screen; taps outside fields reach
  * buttons. `footer` stays fixed under the scrolling content, for a bottom
@@ -100,6 +104,9 @@ export function Screen({
     headerInset !== null && headerScroll !== null ? headerScroll : ownScrollY
   const SafeArea = headerInset === null ? SafeAreaView : RNView
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null)
+  const waitingOrdersNoticeRoom = useAtomValue(waitingOrdersNoticeShownAtom)
+    ? WAITING_ORDERS_NOTICE_HEIGHT
+    : 0
   const chat = followKey !== undefined
   // A ref for following, state only for the button.
   const stickToBottom = useRef(true)
@@ -128,6 +135,7 @@ export function Screen({
                 flexGrow: 1,
                 padding: screenPadding,
                 paddingTop: headerInset ?? screenPadding,
+                paddingBottom: screenPadding + waitingOrdersNoticeRoom,
                 paddingHorizontal: screenPaddingX + column.padding,
                 gap: screenGap,
               }}

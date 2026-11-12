@@ -3,6 +3,9 @@ import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-que
 import { menuOrdersToServeQuery } from "@payky/core/modules/menu-order/menu-order-queries"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { router, usePathname } from "expo-router"
+import { useSetAtom } from "jotai"
+import { useEffect } from "react"
+import { waitingOrdersNoticeShownAtom } from "../../atoms/toast.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
@@ -29,7 +32,14 @@ function WaitingOrdersToast() {
     formatMoney: (money) => formatMoney(money, locale),
   })
 
-  if (onOrders || notice === null) return null
+  const shown = !onOrders && notice !== null
+  const setNoticeShown = useSetAtom(waitingOrdersNoticeShownAtom)
+  useEffect(() => {
+    setNoticeShown(shown)
+    return () => setNoticeShown(false)
+  }, [shown, setNoticeShown])
+
+  if (!shown) return null
   return (
     <Toast
       variant="default"

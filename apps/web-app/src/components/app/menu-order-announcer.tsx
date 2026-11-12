@@ -36,6 +36,7 @@ export function MenuOrderAnnouncer() {
     }
     toast(notice, {
       id: WAITING_ORDERS_TOAST_ID,
+      className: "waiting-orders-notice",
       duration: Number.POSITIVE_INFINITY,
       dismissible: false,
       action: {
