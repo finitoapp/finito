@@ -103,8 +103,9 @@ const lightTones = (colors: Palette): Tones => ({
   "neutral-soft": lightVeil(0.06),
   // A sheet above the grey page.
   card: white,
-  // The gold as text or an icon on a light page: the landing's `--landing-ink`.
-  "accent-text": oklchToHex({ l: 0.6, c: 0.13, h: 72, alpha: 1 }),
+  // The gold as text or an icon on a light page: the landing's
+  // `--landing-ink` and the flyer's gold text.
+  "accent-text": oklchToHex(lightInk),
   // ui/button outline: fazole has no outline; it is the neutral fill.
   "button-outline": lightVeil(0.06),
   "button-outline-pressed": lightVeil(0.105),
@@ -198,23 +199,23 @@ const darkTones = (colors: Palette): Tones => ({
 
 /**
  * Finito's accent: the gold of the logo's rim, as finito.fit's landing
- * (`apps/landing/src/features/landing/landing.css`, `.landing`) draws its
- * buttons, the same oklch values, on the dark page. It replaces web's orange
- * `primary` and everything derived from it; `palette.ts` keeps web's palette
- * for the `palette.test.ts` derivation, and the override is applied here.
+ * (`apps/landing/src/features/landing/landing.css`, `.landing`) and the
+ * printed flyer draw their buttons, the same oklch values. It replaces web's
+ * orange `primary` and everything derived from it; `palette.ts` keeps web's
+ * palette for the `palette.test.ts` derivation, and the override is applied
+ * here.
  *
- * The light page takes a deep amber gold under a white label, as Linky
- * deepens its accent on a light page: the rim's gold, light as it is,
- * washes out on white and a near-white grey, where the deeper one holds its
- * weight as a button or the active tab. A gold dark enough for white text
- * at 4.5:1 turns brown (L 0.57), so this one stops at 3.5:1 — enough for
- * the semibold labels and icons it carries, not for running text.
+ * Both pages take the same yellow under the same dark ink (10:1), as the
+ * landing does: a gold deep enough to carry a white label turns brown. Where
+ * the gold itself is the text or an icon on a light page it deepens to
+ * `lightInk`, a mustard that holds its hue (3.1:1 on white, the flyer's gold
+ * text) — for large or bold type and icons, never for running text.
  */
 const gold = { l: 0.83, c: 0.16, h: 88, alpha: 1 } as const
-const lightGold = { l: 0.64, c: 0.14, h: 72, alpha: 1 } as const
+const lightInk = { l: 0.66, c: 0.14, h: 88, alpha: 1 } as const
 
 const brandAccent = (
-  tone: typeof gold | typeof lightGold,
+  tone: typeof gold,
   foreground: { l: number; c: number; h: number }
 ) =>
   ({
@@ -231,23 +232,25 @@ const brandAccent = (
     "primary-foreground-70": oklchToHex({ ...foreground, alpha: 0.7 }),
   }) as const satisfies Partial<Record<keyof Palette, string>>
 
-const lightAccent = brandAccent(lightGold, { l: 1, c: 0, h: 0 })
-const darkAccent = brandAccent(gold, { l: 0.22, c: 0.02, h: 80 })
+const goldInk = { l: 0.22, c: 0.02, h: 80 } as const
+const lightAccent = brandAccent(gold, goldInk)
+const darkAccent = brandAccent(gold, goldInk)
 
 /**
  * Finito's statistics read in the gold alone: one ramp of it for every
  * series, from the full accent to its palest tint, so a chart carries no
- * second hue. Light pages take the deeper golds (the accent itself is too
- * pale on them), dark pages run down from the accent.
+ * second hue. Light pages lead a step deeper than the accent, which is a
+ * little pale to lead on white, and dark pages run down from it; both keep
+ * the accent's hue, so no series turns brown.
  */
 const goldRamp = (mode: "light" | "dark") => {
   const lightness =
     mode === "light"
-      ? [0.58, 0.66, 0.74, 0.81, 0.87, 0.92]
+      ? [0.72, 0.79, 0.85, 0.89, 0.92, 0.95]
       : [0.83, 0.74, 0.65, 0.56, 0.47, 0.39]
   const chroma =
     mode === "light"
-      ? [0.14, 0.14, 0.14, 0.13, 0.1, 0.07]
+      ? [0.15, 0.16, 0.15, 0.12, 0.09, 0.06]
       : [0.16, 0.15, 0.14, 0.12, 0.1, 0.08]
   return Object.fromEntries(
     lightness.map((l, index) => [
