@@ -353,6 +353,21 @@ test("a self-pay table no payment method reaches says so and links to the paymen
     ).toHaveCount(0)
   })
 
+  await test.step("the till's notifications say guests at the tables cannot pay and open the payment methods", async () => {
+    await gotoPage(page, "/notifications", "en", "notifications.title")
+    const notification = page.getByTestId("notification-guestsCannotPay")
+    await expect(notification).toContainText(
+      translate("en", "notifications.guestsCannotPay.title")
+    )
+    await notification
+      .getByRole("button", {
+        name: translate("en", "catalog.tables.selfPay.noPaymentMethod.link"),
+      })
+      .click()
+    await expect(page).toHaveURL(/\/settings\/payment-accounts$/u)
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+  })
+
   await test.step("turning bank sync on clears both warnings and says the Android app matches the transfers", async () => {
     await seedActiveFioPlugin(page)
     await expect(cannotPayAnywhere).toBeHidden()

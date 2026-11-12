@@ -192,6 +192,24 @@ test("a publish every relay refused is marked on both cards, and a retry clears 
     ).toHaveAttribute("href", "/settings/security")
   })
 
+  await test.step("the till's notifications say guests cannot see the tables' bills and open the tables", async () => {
+    await gotoPage(page, "/notifications", "en", "notifications.title")
+    const notification = page.getByTestId("notification-tableBillsUnseen")
+    await expect(notification).toContainText(
+      translate("en", "notifications.tableBillsUnseen.title")
+    )
+    await notification
+      .getByRole("button", {
+        name: translate("en", "notifications.tableBillsUnseen.action"),
+      })
+      .click()
+    await expect(
+      page.getByRole("heading", {
+        name: translate("en", "catalog.tables.title"),
+      })
+    ).toBeVisible()
+  })
+
   await test.step("the relay card marks each refusing relay", async () => {
     await gotoPage(page, "/settings/security", "en", "settings.security.title")
     for (const url of defaultSelfPayRelays) {

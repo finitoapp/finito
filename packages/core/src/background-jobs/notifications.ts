@@ -4,7 +4,10 @@
  * permission that may see it), so nothing here names a translation key or a
  * screen. A plugin raising several of one type tells them apart by a `key`.
  */
-export type JobNotification = { readonly type: "recoveryPhraseBackup" }
+export type JobNotification =
+  | { readonly type: "recoveryPhraseBackup" }
+  | { readonly type: "guestsCannotPay" }
+  | { readonly type: "tableBillsUnseen" }
 
 export type JobNotificationType = JobNotification["type"]
 

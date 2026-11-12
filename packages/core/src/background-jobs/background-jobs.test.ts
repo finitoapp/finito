@@ -24,6 +24,7 @@ import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
 import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
+import { startTableSelfPayReachJob } from "./jobs/table-self-pay-reach-job.ts"
 
 describe("getBackgroundJobsForRuntime", () => {
   test("does not schedule the Fio or MONETA jobs in a regular web runtime", () => {
@@ -35,6 +36,7 @@ describe("getBackgroundJobsForRuntime", () => {
       startQerkoPaymentSyncJob,
       startLightningAddressVerifyJob,
       startRecoveryBackupReminderJob,
+      startTableSelfPayReachJob,
       startTableSelfPayPublishingJob,
       startSelfPayPointerJob,
       startBillClosingJob,
@@ -62,6 +64,7 @@ describe("getBackgroundJobsForRuntime", () => {
       startSelfPayPointerJob,
       startBillClosingJob,
       startRecoveryBackupReminderJob,
+      startTableSelfPayReachJob,
       startQerkoPaymentConnectionJob,
       startQerkoPaymentSyncJob,
     ])
@@ -75,6 +78,7 @@ describe("getBackgroundJobsForRuntime", () => {
     expect(nativeBackgroundJobs).toEqual([
       ...cliBackgroundJobs,
       startRecoveryBackupReminderJob,
+      startTableSelfPayReachJob,
       startQerkoPaymentConnectionJob,
       startQerkoPaymentSyncJob,
     ])
@@ -82,6 +86,10 @@ describe("getBackgroundJobsForRuntime", () => {
 
   test("keeps the backup reminder out of the CLI, which has no device database or screen", () => {
     expect(cliBackgroundJobs).not.toContain(startRecoveryBackupReminderJob)
+  })
+
+  test("keeps the tables' notifications out of the CLI, which shows none", () => {
+    expect(cliBackgroundJobs).not.toContain(startTableSelfPayReachJob)
   })
 
   test("keeps the Cashu job out of the CLI, which has no Linky owners", () => {

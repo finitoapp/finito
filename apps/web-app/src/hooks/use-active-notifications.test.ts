@@ -45,4 +45,17 @@ describe("useActiveNotifications", () => {
     mocks.effective = new Set<Permission>(["admin"])
     expect(useActiveNotifications()).toEqual([{ type: "recoveryPhraseBackup" }])
   })
+
+  test("shows the tables' notifications only to a device with catalog", () => {
+    mocks.store?.notifications
+      .open("table-self-pay-reach")
+      .set([{ type: "guestsCannotPay" }, { type: "tableBillsUnseen" }])
+    mocks.effective = new Set<Permission>(["admin"])
+    expect(useActiveNotifications()).toEqual([{ type: "recoveryPhraseBackup" }])
+    mocks.effective = new Set<Permission>(["catalog"])
+    expect(useActiveNotifications()).toEqual([
+      { type: "guestsCannotPay" },
+      { type: "tableBillsUnseen" },
+    ])
+  })
 })

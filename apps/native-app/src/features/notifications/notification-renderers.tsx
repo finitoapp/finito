@@ -5,6 +5,7 @@ import { snoozeBackupReminder } from "@payky/core/evolu/device-account"
 import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import type { LucideIcon } from "lucide-react-native"
+import QrCode from "lucide-react-native/icons/qr-code"
 import ShieldCheck from "lucide-react-native/icons/shield-check"
 import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
@@ -71,5 +72,33 @@ export const notificationRenderers = {
         },
       ]
     },
+  },
+  guestsCannotPay: {
+    icon: QrCode,
+    title: "notifications.guestsCannotPay.title",
+    description: "catalog.tables.selfPay.noPaymentMethod.description",
+    useActions: () => [
+      {
+        label: "catalog.tables.selfPay.noPaymentMethod.link",
+        variant: "default",
+        run: () => {
+          router.push("/settings/payment-accounts")
+        },
+      },
+    ],
+  },
+  tableBillsUnseen: {
+    icon: QrCode,
+    title: "notifications.tableBillsUnseen.title",
+    description: "notifications.tableBillsUnseen.description",
+    useActions: () => [
+      {
+        label: "notifications.tableBillsUnseen.action",
+        variant: "default",
+        run: () => {
+          router.push("/settings/tables")
+        },
+      },
+    ],
   },
 } satisfies Record<JobNotificationType, NotificationRenderer>

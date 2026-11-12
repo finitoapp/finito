@@ -96,11 +96,16 @@ export const csCommon = {
   "notifications.empty.description":
     "Cokoli, co bude vyžadovat vaši pozornost, se objeví tady.",
   "notifications.empty.title": "Žádná oznámení",
+  "notifications.guestsCannotPay.title": "Hosté u stolů nemohou platit",
   "notifications.recoveryBackup.action": "Zálohovat",
   "notifications.recoveryBackup.description":
     "Když přijdete o telefon, bez zálohy se do svého účtu nedostanete. Zabere to asi minutu.",
   "notifications.recoveryBackup.later": "Později",
   "notifications.recoveryBackup.title": "Zazálohujte si účet",
+  "notifications.tableBillsUnseen.action": "Otevřít stoly",
+  "notifications.tableBillsUnseen.description":
+    "Žádný z relayů, přes které se stůl dostává k hostům, nepřijal jeho poslední změnu. Zkuste to znovu v detailu stolu.",
+  "notifications.tableBillsUnseen.title": "Hosté nevidí účty stolů",
   "notifications.title": "Oznámení",
   "orders.accept": "Přijmout",
   "orders.announced": "Nová objednávka {number} · {table}",

@@ -17,6 +17,7 @@ import { startSelfPayPointerJob } from "./jobs/self-pay-pointer-job.ts"
 import { startSelfPayTestTransferJob } from "./jobs/self-pay-test-transfer-job.ts"
 import { startSparkAccountTransactionSyncJob } from "./jobs/spark-account-transaction-sync-job.ts"
 import { startTableSelfPayPublishingJob } from "./jobs/table-self-pay-publishing-job.ts"
+import { startTableSelfPayReachJob } from "./jobs/table-self-pay-reach-job.ts"
 
 /**
  * Right for the CLI.
@@ -36,6 +37,7 @@ export const cliBackgroundJobs = [
 export const nativeBackgroundJobs = [
   ...cliBackgroundJobs,
   startRecoveryBackupReminderJob,
+  startTableSelfPayReachJob,
   startQerkoPaymentConnectionJob,
   startQerkoPaymentSyncJob,
 ] satisfies ReadonlyArray<AppDeviceBackgroundJob>
@@ -57,6 +59,7 @@ const browserBackgroundJobs = [
   startQerkoPaymentSyncJob,
   startLightningAddressVerifyJob,
   startRecoveryBackupReminderJob,
+  startTableSelfPayReachJob,
   startTableSelfPayPublishingJob,
   startSelfPayPointerJob,
   startBillClosingJob,

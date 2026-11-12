@@ -96,11 +96,16 @@ export const skCommon = {
   "notifications.empty.description":
     "Čokoľvek, čo bude vyžadovať vašu pozornosť, sa objaví tu.",
   "notifications.empty.title": "Žiadne oznámenia",
+  "notifications.guestsCannotPay.title": "Hostia pri stoloch nemôžu platiť",
   "notifications.recoveryBackup.action": "Zálohovať",
   "notifications.recoveryBackup.description":
     "Keď prídete o telefón, bez zálohy sa do svojho účtu nedostanete. Zaberie to asi minútu.",
   "notifications.recoveryBackup.later": "Neskôr",
   "notifications.recoveryBackup.title": "Zálohujte si účet",
+  "notifications.tableBillsUnseen.action": "Otvoriť stoly",
+  "notifications.tableBillsUnseen.description":
+    "Žiadny z relayov, cez ktoré sa stôl dostáva k hosťom, neprijal jeho poslednú zmenu. Skúste to znova v detaile stola.",
+  "notifications.tableBillsUnseen.title": "Hostia nevidia účty stolov",
   "notifications.title": "Oznámenia",
   "orders.accept": "Prijať",
   "orders.announced": "Nová objednávka {number} · {table}",

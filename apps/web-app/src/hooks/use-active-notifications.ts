@@ -17,6 +17,8 @@ import { useAccess } from "@/hooks/use-access.ts"
  */
 export const notificationPermissions = {
   recoveryPhraseBackup: "admin",
+  guestsCannotPay: "catalog",
+  tableBillsUnseen: "catalog",
 } as const satisfies Record<JobNotificationType, Permission>
 
 /**

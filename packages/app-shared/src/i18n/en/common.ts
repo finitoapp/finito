@@ -94,11 +94,16 @@ export const enCommon = {
   "notifications.empty.description":
     "Anything that needs your attention will show up here.",
   "notifications.empty.title": "No notifications",
+  "notifications.guestsCannotPay.title": "Guests at the tables cannot pay",
   "notifications.recoveryBackup.action": "Back up",
   "notifications.recoveryBackup.description":
     "If you lose this phone, you won't be able to get back into your account without a backup. It takes about a minute.",
   "notifications.recoveryBackup.later": "Later",
   "notifications.recoveryBackup.title": "Back up your account",
+  "notifications.tableBillsUnseen.action": "Open tables",
+  "notifications.tableBillsUnseen.description":
+    "None of the relays that carry a table to guests took its last update. Try again from the table's detail.",
+  "notifications.tableBillsUnseen.title": "Guests cannot see the tables' bills",
   "notifications.title": "Notifications",
   "orders.accept": "Accept",
   "orders.announced": "New order {number} · {table}",
