@@ -1140,6 +1140,7 @@ export const enSettings = {
   "catalog.tables.selfPayGuestName.placeholder": "Café on the Corner",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "No item in the menu is available. Put items in the menu on their detail, or mark them available again.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Open items",
   "catalog.tables.selfPayOptions.menu.empty.title": "Guests cannot order",
   "catalog.tables.selfPayOptions.menu.leftOut":
     "Items that do not fit the menu: {count}. Guests do not see them.",

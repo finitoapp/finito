@@ -1142,6 +1142,7 @@ export const skSettings = {
   "catalog.tables.selfPayGuestName.placeholder": "Kaviareň Pod Lipou",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "V menu nie je žiadna dostupná položka. Pridajte položky do menu v ich detaile alebo ich označte ako znova dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Otvoriť položky",
   "catalog.tables.selfPayOptions.menu.empty.title": "Hostia si nemôžu objednať",
   "catalog.tables.selfPayOptions.menu.leftOut":
     "Položiek, ktoré sa do menu nezmestia: {count}. Hostia ich nevidia.",

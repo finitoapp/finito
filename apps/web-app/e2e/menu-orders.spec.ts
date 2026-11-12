@@ -103,12 +103,17 @@ test("ordering is switched on with nothing in the menu, on this device", async (
   await test.step("switch ordering on", () =>
     toggleInlineSwitch(page, "catalog.tables.selfPayOptions.order"))
 
-  await test.step("the card says guests cannot order from an empty menu", async () => {
+  await test.step("the card says guests cannot order from an empty menu and links to the items", async () => {
     await expect(
       page.getByText(
         translate("en", "catalog.tables.selfPayOptions.menu.empty.title")
       )
     ).toBeVisible()
+    await expect(
+      page.getByRole("link", {
+        name: translate("en", "catalog.tables.selfPayOptions.menu.empty.link"),
+      })
+    ).toHaveAttribute("href", "/catalog/items")
   })
 
   await test.step("this device takes the orders", async () => {

@@ -32,6 +32,7 @@ import {
   formatTaxRateLabel,
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Text, YStack } from "tamagui"
@@ -42,6 +43,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "../../../components/ui/alert.tsx"
+import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
@@ -417,6 +419,11 @@ function MenuStatus() {
           </AlertTitle>
           <AlertDescription>
             {t("catalog.tables.selfPayOptions.menu.empty.description")}
+            <Button
+              variant="link"
+              label={t("catalog.tables.selfPayOptions.menu.empty.link")}
+              onPress={() => router.push("/settings/items")}
+            />
           </AlertDescription>
         </Alert>
       ) : (

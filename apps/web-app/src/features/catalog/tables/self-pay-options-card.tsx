@@ -32,6 +32,7 @@ import {
   formatTaxRateLabel,
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { set } from "date-fns"
 import { useAtomValue } from "jotai"
 import { TriangleAlertIcon } from "lucide-react"
@@ -278,7 +279,13 @@ function MenuStatus() {
             {t("catalog.tables.selfPayOptions.menu.empty.title")}
           </AlertTitle>
           <AlertDescription>
-            {t("catalog.tables.selfPayOptions.menu.empty.description")}
+            <p>{t("catalog.tables.selfPayOptions.menu.empty.description")}</p>
+            <Link
+              to="/catalog/items"
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              {t("catalog.tables.selfPayOptions.menu.empty.link")}
+            </Link>
           </AlertDescription>
         </Alert>
       ) : (

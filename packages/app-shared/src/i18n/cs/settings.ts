@@ -1140,6 +1140,7 @@ export const csSettings = {
   "catalog.tables.selfPayGuestName.placeholder": "Kavárna U Lípy",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "V menu není žádná dostupná položka. Přidejte položky do menu v jejich detailu, nebo je označte jako znovu dostupné.",
+  "catalog.tables.selfPayOptions.menu.empty.link": "Otevřít položky",
   "catalog.tables.selfPayOptions.menu.empty.title": "Hosté si nemohou objednat",
   "catalog.tables.selfPayOptions.menu.leftOut":
     "Položek, které se do menu nevejdou: {count}. Hosté je nevidí.",
