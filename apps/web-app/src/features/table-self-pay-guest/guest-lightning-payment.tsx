@@ -84,7 +84,7 @@ export function GuestLightningPayment({
   if (isExpired) {
     return (
       <div className="flex flex-col items-center gap-3">
-        <p className="flex items-center gap-2 text-sm">
+        <p className="flex items-start gap-2 text-sm">
           <TriangleAlertIcon
             aria-hidden="true"
             className="size-5 shrink-0 text-destructive"
@@ -93,6 +93,7 @@ export function GuestLightningPayment({
         </p>
         <Button
           type="button"
+          variant="outline"
           size="lg"
           className="h-11"
           onClick={() => {

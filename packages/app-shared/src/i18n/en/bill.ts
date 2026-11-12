@@ -199,7 +199,8 @@ export const enBill = {
   "selfPay.lightning.create": "Show QR code to pay",
   "selfPay.lightning.creating": "Preparing the QR code…",
   "selfPay.lightning.error": "The QR code could not be prepared. Try again.",
-  "selfPay.lightning.expired": "The QR code expired.",
+  "selfPay.lightning.expired":
+    "The QR code expired. If you already paid it, do not pay again: the restaurant confirms it once the money arrives.",
   "selfPay.lightning.open": "Open in wallet",
   "selfPay.lightning.qr": "Bitcoin payment QR code",
   "selfPay.lightning.restart": "Show a new QR code",

@@ -204,7 +204,8 @@ export const skBill = {
   "selfPay.lightning.create": "Zobraziť QR kód na zaplatenie",
   "selfPay.lightning.creating": "Pripravuje sa QR kód…",
   "selfPay.lightning.error": "QR kód sa nepodarilo pripraviť. Skúste to znova.",
-  "selfPay.lightning.expired": "Platnosť QR kódu vypršala.",
+  "selfPay.lightning.expired":
+    "Platnosť QR kódu vypršala. Ak ste ho už zaplatili, neplaťte znova: reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.lightning.open": "Otvoriť v peňaženke",
   "selfPay.lightning.qr": "QR kód na platbu bitcoinom",
   "selfPay.lightning.restart": "Zobraziť nový QR kód",

@@ -1386,7 +1386,7 @@ test.describe("a guest paying at the table", () => {
       await expect(guest.getByText(/^lnbc\d+n1/u)).toBeVisible()
     })
 
-    await test.step("once the invoice expires the guest is told and offered a new one", async () => {
+    await test.step("once the invoice expires the guest is told not to pay it again and offered a new one", async () => {
       await phone.clock.fastForward("01:00:01")
       await expect(
         guest
