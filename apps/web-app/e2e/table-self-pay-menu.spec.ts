@@ -198,6 +198,82 @@ test("a table with an open bill offers paying the bill and ordering from the men
   })
 })
 
+test("a guest who pays the rest of the bill is thanked with focus, keeps the bill and the menu, and sees both payments", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(150_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress =
+    await test.step("seed a table with a pizza bill and coffee and cake in the menu", async () => {
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Table 8", seatCount: "4" })
+      await addCatalogItem(page, "en", { name: "Pizza", price: "100" })
+      const address = await enableTableSelfPay(page, "en", "Table 8")
+      await seedMenu(page, { items: coffeeAndCake })
+      await openTableBill(page, "en", { table: "Table 8", items: ["Pizza"] })
+      return address
+    })
+  const guest = await context.newPage()
+  const guestButton = (key: Parameters<typeof translate>[1]) =>
+    guest.getByRole("button", { name: translate("en", key) })
+  const payHalf = async () => {
+    await payButton(guest, "$50.00").click()
+    await receiveShownBankTransfer(page, {
+      payer: guest,
+      language: "en",
+      amount: 5000,
+      currency: "USD",
+    })
+  }
+
+  await test.step("the guest pays half of the bill", async () => {
+    await guest.goto(guestAddress)
+    await expect(payButton(guest, "$100.00")).toBeVisible({ timeout: 45_000 })
+    await guestButton("selfPay.choice.equal").click()
+    await payHalf()
+    await expect(guestButton("selfPay.payMore")).toBeVisible({
+      timeout: 45_000,
+    })
+  })
+
+  await test.step("and then the rest", async () => {
+    await guestButton("selfPay.payMore").click()
+    await guestButton("selfPay.choice.remainder").click()
+    await payHalf()
+  })
+
+  await test.step("the page thanks the guest with focus, keeps both tabs and lists both payments", async () => {
+    const title = translate("en", "selfPay.settled.title")
+    await expect(guest.locator(":focus")).toContainText(title, {
+      timeout: 45_000,
+    })
+    await expect(guest.getByRole("status")).toHaveText(
+      translateParams("en", "selfPay.settled.announcement", {
+        title,
+        description: translate("en", "selfPay.settled.description"),
+      })
+    )
+    await expect(
+      guest.getByRole("tab", { name: translate("en", "selfPay.menu.tab.bill") })
+    ).toHaveAttribute("aria-selected", "true")
+    await expect(
+      guest.getByRole("tab", { name: translate("en", "selfPay.menu.tab.menu") })
+    ).toBeVisible()
+    await expect(
+      guest.getByRole("main").getByText(
+        translateParams("en", "selfPay.confirmation.mine.past", {
+          amount: "$50.00",
+          time: "",
+        }).trim()
+      )
+    ).toHaveCount(2)
+    await expect(
+      guest.getByText(translate("en", "selfPay.empty.title"))
+    ).toHaveCount(0)
+  })
+})
+
 test("a guest who looks at the bill comes back to their basket and their written item", async ({
   seededPage: page,
   context,

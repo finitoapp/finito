@@ -230,6 +230,30 @@ function GuestBillChangedNotice({ bill }: { readonly bill: SelfPayViewBill }) {
   )
 }
 
+function GuestBillSettled() {
+  const { t } = useGuestTranslation()
+  const announce = useGuestStatus()
+  const block = useRef<HTMLDivElement>(null)
+  const title = t("selfPay.settled.title")
+  const description = t("selfPay.settled.description")
+  const announcement = t("selfPay.settled.announcement", { title, description })
+
+  useEffect(() => {
+    block.current?.focus()
+    announce(announcement)
+  }, [announce, announcement])
+
+  return (
+    <div ref={block} tabIndex={-1} className="outline-none">
+      <GuestMessage
+        icon={<CircleCheckIcon aria-hidden="true" className="text-primary" />}
+        title={title}
+        description={description}
+      />
+    </div>
+  )
+}
+
 function GuestPayment({
   address,
   view,
@@ -396,12 +420,14 @@ function GuestSectionTabs({
   address,
   view,
   menuKeys,
+  offersBill,
   section,
   onSectionChange,
 }: {
   readonly address: TableSelfPayAddress
   readonly view: SelfPayView
   readonly menuKeys: NonNullable<SelfPayView["menu"]>
+  readonly offersBill: boolean
   readonly section: GuestSection
   readonly onSectionChange: (section: GuestSection) => void
 }) {
@@ -412,7 +438,7 @@ function GuestSectionTabs({
     readonly value: GuestSection
     readonly label: string
   }> = [
-    ...(view.bills.length > 0
+    ...(offersBill
       ? [{ value: "bill" as const, label: t("selfPay.menu.tab.bill") }]
       : []),
     ...(orderable !== null || writable === null
@@ -880,8 +906,11 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
     view.enabled && view.menu !== null && view.selectionKey !== null
       ? { menuKeys: view.menu, selectionKey: view.selectionKey }
       : null
-  const offersBillAndMenu =
-    menuAccess !== null && (view.bills.length > 0 || pendingSession !== null)
+  const offersBill =
+    view.bills.length > 0 ||
+    pendingSession !== null ||
+    myConfirmations.length > 0
+  const offersBillAndMenu = menuAccess !== null && offersBill
   const hasBillPart = menuAccess === null || offersBillAndMenu
   const shownMenu =
     menuAccess !== null && (!offersBillAndMenu || section !== "bill")
@@ -979,6 +1008,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
           address={address}
           view={view}
           menuKeys={menuAccess.menuKeys}
+          offersBill={offersBill}
           section={section}
           onSectionChange={(next) => {
             setSection(next)
@@ -1026,10 +1056,14 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                   description={t("selfPay.noMethod.description")}
                 />
               ) : bill === undefined && pendingSession === null ? (
-                <GuestMessage
-                  title={t("selfPay.empty.title")}
-                  description={t("selfPay.empty.description")}
-                />
+                myConfirmations.length === 0 ? (
+                  <GuestMessage
+                    title={t("selfPay.empty.title")}
+                    description={t("selfPay.empty.description")}
+                  />
+                ) : (
+                  <GuestBillSettled />
+                )
               ) : (
                 <>
                   {isStale ? (

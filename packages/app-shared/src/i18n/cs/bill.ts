@@ -285,6 +285,9 @@ export const csBill = {
   "selfPay.people.decrease": "Ubrat člověka",
   "selfPay.people.increase": "Přidat člověka",
   "selfPay.percent.unreadable": "Napište procenta, třeba 10 nebo 7,5.",
+  "selfPay.settled.announcement": "{title} {description}",
+  "selfPay.settled.description": "Účet je uzavřený. Děkujeme!",
+  "selfPay.settled.title": "Už nic neplatíte",
   "selfPay.stale":
     "Před placením si účet ověřte u obsluhy. Restaurace ho naposledy potvrdila v {time}.",
   "selfPay.stale.never":

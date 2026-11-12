@@ -290,6 +290,9 @@ export const skBill = {
   "selfPay.people.decrease": "Ubrať človeka",
   "selfPay.people.increase": "Pridať človeka",
   "selfPay.percent.unreadable": "Napíšte percentá, napríklad 10 alebo 7,5.",
+  "selfPay.settled.announcement": "{title} {description}",
+  "selfPay.settled.description": "Účet je uzavretý. Ďakujeme!",
+  "selfPay.settled.title": "Už nič neplatíte",
   "selfPay.stale":
     "Pred platbou si účet overte u obsluhy. Reštaurácia ho naposledy potvrdila o {time}.",
   "selfPay.stale.never":

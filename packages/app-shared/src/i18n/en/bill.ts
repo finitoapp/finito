@@ -284,6 +284,9 @@ export const enBill = {
   "selfPay.people.decrease": "One person fewer",
   "selfPay.people.increase": "One person more",
   "selfPay.percent.unreadable": "Type a percent such as 10 or 7.5.",
+  "selfPay.settled.announcement": "{title} {description}",
+  "selfPay.settled.description": "The bill is closed. Thank you!",
+  "selfPay.settled.title": "Nothing more to pay",
   "selfPay.stale":
     "Check the bill with the staff before you pay. The restaurant last confirmed it at {time}.",
   "selfPay.stale.never":
