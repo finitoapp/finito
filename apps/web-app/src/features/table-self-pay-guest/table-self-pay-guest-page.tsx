@@ -858,14 +858,18 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   )
   const pendingSession =
     session !== null && !isSessionConfirmed ? session : null
-  const changedBill =
+  const pendingBill =
     pendingSession === null
       ? null
       : (view.bills.find(
-          ({ reference, remainder }) =>
-            reference === pendingSession.bill.reference &&
-            remainder < pendingSession.choice.share.amount
-        ) ?? null)
+          ({ reference }) => reference === pendingSession.bill.reference
+        ) ?? { ...pendingSession.bill, remainder: 0 })
+  const changedBill =
+    pendingSession !== null &&
+    pendingBill !== null &&
+    pendingBill.remainder < pendingSession.choice.share.amount
+      ? pendingBill
+      : null
   const isStale = isSelfPayViewStale(
     confirmedAt,
     Math.floor(now.getTime() / 1000)
@@ -876,7 +880,8 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
     view.enabled && view.menu !== null && view.selectionKey !== null
       ? { menuKeys: view.menu, selectionKey: view.selectionKey }
       : null
-  const offersBillAndMenu = menuAccess !== null && view.bills.length > 0
+  const offersBillAndMenu =
+    menuAccess !== null && (view.bills.length > 0 || pendingSession !== null)
   const hasBillPart = menuAccess === null || offersBillAndMenu
   const shownMenu =
     menuAccess !== null && (!offersBillAndMenu || section !== "bill")
@@ -1017,7 +1022,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                   title={t("selfPay.disabled.title")}
                   description={t("selfPay.noMethod.description")}
                 />
-              ) : bill === undefined ? (
+              ) : bill === undefined && pendingSession === null ? (
                 <GuestMessage
                   title={t("selfPay.empty.title")}
                   description={t("selfPay.empty.description")}
@@ -1037,7 +1042,9 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                           })}
                     </p>
                   ) : null}
-                  {view.bills.length > 1 && pendingSession === null ? (
+                  {bill !== undefined &&
+                  view.bills.length > 1 &&
+                  pendingSession === null ? (
                     <Tabs
                       value={bill.reference}
                       onValueChange={(value) => {
@@ -1069,10 +1076,10 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
                       </TabsList>
                     </Tabs>
                   ) : null}
-                  {pendingSession === null ? (
+                  {bill !== undefined && pendingSession === null ? (
                     <GuestBillSummary bill={bill} />
                   ) : null}
-                  {doneWith === null ? (
+                  {bill === undefined ? null : doneWith === null ? (
                     <GuestCheckout
                       key={bill.reference}
                       bill={bill}

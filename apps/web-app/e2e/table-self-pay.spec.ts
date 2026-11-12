@@ -1131,6 +1131,63 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
+  test("a guest paying keeps the amount and variable symbol and is told nothing is left once staff close the bill", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress, billId } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 34"))
+    await using phone = await newGuestContext(browser, relays)
+    const guest = await phone.newPage()
+    const variableSymbol = guest
+      .getByText(translate("en", "selfPay.bank.variableSymbol"), {
+        exact: true,
+      })
+      .locator("xpath=following-sibling::*[1]")
+    const nothingLeft = translate("en", "selfPay.billChanged.nothingLeft.title")
+    const doNotSend = translate(
+      "en",
+      "selfPay.billChanged.nothingLeft.description"
+    )
+    let shownSymbol = ""
+
+    await test.step("the guest opens the bank payment for the whole bill", async () => {
+      await openGuestPage(guest, guestAddress, "$146.00")
+      await payTotal(guest, "$146.00").click()
+      shownSymbol = (await variableSymbol.textContent()) ?? ""
+      expect(shownSymbol).toMatch(/^\d{10}$/u)
+    })
+
+    await test.step("staff close the bill, and the payment stays and says nothing is left", async () => {
+      await cancelBillDirectly(page, billId)
+      await expect(guest.getByRole("main").getByText(nothingLeft)).toBeVisible({
+        timeout: 45_000,
+      })
+      await expect(guest.getByRole("status")).toHaveText(
+        translateParams("en", "selfPay.billChanged.announcement", {
+          title: nothingLeft,
+          description: doNotSend,
+        })
+      )
+      await expect(
+        guest.getByRole("heading", { name: "$146.00" })
+      ).toBeVisible()
+      await expect(variableSymbol).toHaveText(shownSymbol)
+      await expect(
+        guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
+      ).toBeVisible()
+      await expect(
+        guest.getByRole("heading", {
+          name: translate("en", "selfPay.empty.title"),
+        })
+      ).toHaveCount(0)
+    })
+  })
+
   test("a guest who presses Back on the bank screen keeps the share and tip, and a new tab knows the payment", async ({
     seededPage: page,
     context,

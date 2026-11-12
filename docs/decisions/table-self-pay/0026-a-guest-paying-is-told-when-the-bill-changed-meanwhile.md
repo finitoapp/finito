@@ -38,8 +38,8 @@ Reserving the share when a payment opens: rejected by `table-self-pay/0007`.
 A guest who already sent the money reads a notice that is not meant for
 them, and its wording says so. Two guests who both send the money before
 either view updates still overpay the bill, as `table-self-pay/0007`
-accepts. A bill that others pay in full closes and leaves the view, so the
-page says there is nothing to pay instead of showing this notice.
+accepts. A bill that closes while a guest pays keeps the payment step,
+which says that nothing is left (`table-self-pay/0027`).
 
 ## Enforced by
 
