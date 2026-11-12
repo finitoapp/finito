@@ -90,16 +90,17 @@ interface PairingRequest {
  * company, the code Qerko e-mails to it, and a last step that depends on what
  * `qerkoRole` is paired for (qerko/0007) — the terminal this device pays on,
  * or which device serves Qerko payments. Pairing saves the key, which turns
- * the screen behind this one into the paired view; `onPaired` lets that
- * screen keep this wizard up through the last step.
+ * the screen behind this one into the paired view; `onPairing` runs as the
+ * code is sent, before that write, so that screen keeps this wizard up through
+ * the last step.
  */
 export function QerkoPairingWizard({
   qerkoRole: role,
-  onPaired,
+  onPairing,
   lastStep,
 }: {
   readonly qerkoRole: QerkoRole
-  readonly onPaired: () => void
+  readonly onPairing: () => void
   readonly lastStep: ReactNode
 }) {
   const { t } = useTranslation()
@@ -161,6 +162,9 @@ export function QerkoPairingWizard({
     if (request === null) return
     setPending(true)
     setMessage(null)
+    // Before the key is saved, not after: the saved key reaches the screen's
+    // query, and re-renders it, before this confirmation returns.
+    onPairing()
     await using run = appRun()
     const result = await run(
       completeQerkoPairing({
@@ -174,7 +178,6 @@ export function QerkoPairingWizard({
     )
     setPending(false)
     if (result.ok) {
-      onPaired()
       setPhase("last")
       return
     }

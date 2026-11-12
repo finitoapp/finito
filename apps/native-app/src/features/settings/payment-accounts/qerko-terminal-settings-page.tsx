@@ -57,7 +57,8 @@ export function QerkoTerminalSettingsPage() {
   const { t } = useTranslation()
   const plugin = useEvoluQuery(qerkoPluginQuery("terminalPayments")).data[0]
   // Pairing saves the key, which would swap the wizard for the paired view
-  // before the terminal is chosen.
+  // before the terminal is chosen; the wizard raises this before it confirms
+  // the code.
   const [finishingPairing, setFinishingPairing] = useState(false)
   // The terminal the wizard ended on, which the paired view tests on arrival.
   const [chosenTerminalId, setChosenTerminalId] = useState<string>()
@@ -68,7 +69,7 @@ export function QerkoTerminalSettingsPage() {
       {plugin === undefined || finishingPairing ? (
         <QerkoPairingWizard
           qerkoRole="terminalPayments"
-          onPaired={() => {
+          onPairing={() => {
             setFinishingPairing(true)
           }}
           lastStep={
