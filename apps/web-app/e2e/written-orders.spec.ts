@@ -761,7 +761,7 @@ test("a written item grows with its text, Enter moves to its amount, and the cou
   })
 })
 
-test("when no relay takes the written order, the guest is asked to pay with the staff and offered no payment", async ({
+test("when no relay takes the written order, the pay bar says nothing was paid and the page offers no payment", async ({
   seededPage: page,
   context,
 }) => {
@@ -780,10 +780,14 @@ test("when no relay takes the written order, the guest is asked to pay with the 
     await payButton(guest, "$90.00").click()
   })
 
-  await test.step("the page says so and shows no QR", async () => {
-    await expect(guest.getByRole("alert")).toHaveText(
+  await test.step("the pay bar says so beside Pay, and the page shows no QR", async () => {
+    const bar = guest
+      .locator("footer")
+      .filter({ has: payButton(guest, "$90.00") })
+    await expect(bar.getByRole("alert")).toHaveText(
       translate("en", "selfPay.order.refused")
     )
+    await expect(bar.getByRole("alert")).toBeInViewport()
     await expect(
       guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
     ).toHaveCount(0)

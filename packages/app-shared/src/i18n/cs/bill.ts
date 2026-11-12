@@ -249,7 +249,7 @@ export const csBill = {
   "selfPay.order.preparing.left":
     "Objednávka {number} se připravuje. Zbývá zaplatit {amount}.",
   "selfPay.order.refused":
-    "Objednávat teď nejde. Objednejte si prosím u obsluhy.",
+    "Objednávka se do restaurace nedostala a nic jste nezaplatili. Zkuste to znovu, nebo si objednejte u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} byla odmítnuta. Požádejte obsluhu o vrácení peněz.",
   "selfPay.order.remove": "Nezaplaceno, odebrat",

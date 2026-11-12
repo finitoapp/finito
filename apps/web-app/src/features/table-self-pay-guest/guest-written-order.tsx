@@ -11,7 +11,13 @@ import {
 import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import { selfPayMinimum } from "@payky/core/modules/table-self-pay/table-self-pay-share-utils"
 import { LoaderCircleIcon, PlusIcon, XIcon } from "lucide-react"
-import { type FocusEvent, useEffect, useRef, useState } from "react"
+import {
+  type FocusEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import { Label } from "@/components/ui/label.tsx"
@@ -54,12 +60,14 @@ export function GuestWrittenOrder({
   menu,
   hidden,
   isPreparing,
+  notice,
   onBillOpen,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
   readonly hidden: boolean
   readonly isPreparing: boolean
+  readonly notice: ReactNode
   readonly onBillOpen: (() => void) | null
   readonly onOrder: (order: GuestWrittenChoice) => void
 }) {
@@ -203,6 +211,7 @@ export function GuestWrittenOrder({
         ref={payBar}
         className="sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
       >
+        {notice}
         <div className="flex justify-between gap-3 text-sm text-muted-foreground tabular-nums">
           <span>
             {canPay

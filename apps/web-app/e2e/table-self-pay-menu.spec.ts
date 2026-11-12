@@ -568,7 +568,7 @@ test("a guest who leaves an order's payment removes the order at once, and it st
   })
 })
 
-test("when no relay takes the order, the guest is asked to order with the staff and offered no payment", async ({
+test("when no relay takes the order, the pay bar says nothing was paid and the page offers no payment", async ({
   seededPage: page,
   context,
 }) => {
@@ -588,10 +588,14 @@ test("when no relay takes the order, the guest is asked to order with the staff 
     await payButton(guest, "$65.00").click()
   })
 
-  await test.step("the page asks to order with the staff and shows no payment", async () => {
-    await expect(guest.getByRole("alert")).toHaveText(
+  await test.step("the pay bar says so beside Pay, and the page shows no payment", async () => {
+    const bar = guest
+      .locator("footer")
+      .filter({ has: payButton(guest, "$65.00") })
+    await expect(bar.getByRole("alert")).toHaveText(
       translate("en", "selfPay.order.refused")
     )
+    await expect(bar.getByRole("alert")).toBeInViewport()
     await expect(
       guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
     ).toHaveCount(0)

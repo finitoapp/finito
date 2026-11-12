@@ -6,7 +6,7 @@ import {
   type SelfPayOrderSelection,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { LoaderCircleIcon } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { Label } from "@/components/ui/label.tsx"
 import { Textarea } from "@/components/ui/textarea.tsx"
@@ -35,11 +35,13 @@ export function GuestMenu({
   menu,
   hidden,
   isPreparing,
+  notice,
   onOrder,
 }: {
   readonly menu: SelfPayMenu
   readonly hidden: boolean
   readonly isPreparing: boolean
+  readonly notice: ReactNode
   readonly onOrder: (order: GuestOrderChoice) => void
 }) {
   const { t, locale } = useGuestTranslation()
@@ -212,6 +214,7 @@ export function GuestMenu({
         ref={payBar}
         className="sticky bottom-0 z-20 -mx-4 mt-auto flex flex-col gap-2 border-t bg-background px-4 pt-3 pb-4"
       >
+        {notice}
         <div className="flex justify-between gap-3 text-sm text-muted-foreground tabular-nums">
           <span>
             {total > 0

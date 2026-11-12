@@ -657,6 +657,18 @@ function GuestOrdering({
   const listedOrders = shownOrders.filter(
     ({ order }) => order.pointer !== session?.pointer
   )
+  const refusal = isRefused ? (
+    <p
+      className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"
+      role="alert"
+    >
+      <TriangleAlertIcon
+        aria-hidden="true"
+        className="size-5 shrink-0 text-amber-600"
+      />
+      {t("selfPay.order.refused")}
+    </p>
+  ) : null
 
   return (
     <div className="flex flex-1 flex-col gap-4" hidden={hidden}>
@@ -696,23 +708,12 @@ function GuestOrdering({
         />
       ) : (
         <>
-          {isRefused ? (
-            <p
-              className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-sm"
-              role="alert"
-            >
-              <TriangleAlertIcon
-                aria-hidden="true"
-                className="size-5 shrink-0 text-amber-600"
-              />
-              {t("selfPay.order.refused")}
-            </p>
-          ) : null}
           {writable === null ? null : (
             <GuestWrittenOrder
               menu={writable}
               hidden={hidden || !isWriting}
               isPreparing={isPreparing}
+              notice={refusal}
               onBillOpen={onBillOpen}
               onOrder={({ lines, named, amount }) => {
                 void placeOrder(
@@ -736,6 +737,7 @@ function GuestOrdering({
               menu={orderable}
               hidden={hidden || isWriting}
               isPreparing={isPreparing}
+              notice={refusal}
               onOrder={({ items, note, ...choice }) => {
                 void placeOrder(
                   orderable,

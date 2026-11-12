@@ -248,7 +248,7 @@ export const enBill = {
   "selfPay.order.preparing.left":
     "Order {number} is being prepared. {amount} is left to pay.",
   "selfPay.order.refused":
-    "Ordering is not available right now. Please order with the staff.",
+    "Your order did not reach the restaurant, and nothing was paid. Try again, or order with the staff.",
   "selfPay.order.rejected":
     "Order {number} was rejected. Ask the staff to return your money.",
   "selfPay.order.remove": "Not paid, remove",

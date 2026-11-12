@@ -254,7 +254,7 @@ export const skBill = {
   "selfPay.order.preparing.left":
     "Objednávka {number} sa pripravuje. Zostáva zaplatiť {amount}.",
   "selfPay.order.refused":
-    "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
+    "Objednávka sa do reštaurácie nedostala a nič ste nezaplatili. Skúste to znova, alebo si objednajte u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} bola odmietnutá. Požiadajte obsluhu o vrátenie peňazí.",
   "selfPay.order.remove": "Nezaplatené, odobrať",
