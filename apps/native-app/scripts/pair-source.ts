@@ -19,10 +19,9 @@ import { NonEmptyString255, WssUrl } from "@payky/core/modules/shared/schema"
 
 // Same defaults as VITE_PAYKY_NOSTR_RELAYS.
 const relays = [
+  "wss://nostr.linky.fit",
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://relay.0xchat.com",
-  "wss://nostr.linky.fit",
 ]
 
 const masterKey = createAccountMasterKey()

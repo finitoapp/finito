@@ -30,10 +30,9 @@ export const nativeEnv = createEnv({
       .transform((value) => value.split(",").map((url) => url.trim()))
       .pipe(z.array(z.url({ protocol: /^wss?$/u })).min(1))
       .default([
+        "wss://nostr.linky.fit",
         "wss://relay.damus.io",
         "wss://nos.lol",
-        "wss://relay.0xchat.com",
-        "wss://nostr.linky.fit",
       ]),
     EXPO_PUBLIC_LINKY_RELAYS_URL: z
       .url()
