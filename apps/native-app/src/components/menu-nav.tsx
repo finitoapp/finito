@@ -137,6 +137,13 @@ export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
         left: 0,
         right: 0,
         bottom: 0,
+        // Gone once it is all the way down: should a page ever end above
+        // the screen's bottom edge, the bar slid below it must not show
+        // there as a strip of tabs that take no presses.
+        opacity: hidden.interpolate({
+          inputRange: [0, 0.99, 1],
+          outputRange: [1, 1, 0],
+        }),
         transform: [
           {
             translateY: hidden.interpolate({
