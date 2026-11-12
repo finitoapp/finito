@@ -137,7 +137,7 @@ function TransportUrl({
               fontSize="xs"
               lineHeight="xs"
               color="muted-foreground"
-              bg="muted"
+              bg="neutral-soft"
               rounded="sm"
               px="1"
             >

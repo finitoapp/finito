@@ -326,7 +326,7 @@ function QerkoRefundAttempt({
     <YStack
       testID="payment-detail-qerko-refund"
       gap={8}
-      bg="neutral-soft"
+      bg="tile"
       rounded={8}
       px={12}
       py={8}
@@ -468,7 +468,7 @@ function SwitchioRefundAttempt({
     <YStack
       testID="payment-detail-switchio-refund"
       gap={8}
-      bg="neutral-soft"
+      bg="tile"
       rounded={8}
       px={12}
       py={8}

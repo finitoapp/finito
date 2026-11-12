@@ -257,7 +257,7 @@ function TipPresetField({
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
-      <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+      <YStack rounded="lg" bg="tile" overflow="hidden">
         {presets.map((value) => {
           const text = renderPreset(value)
           return (

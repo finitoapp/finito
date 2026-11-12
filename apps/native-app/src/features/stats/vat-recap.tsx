@@ -49,7 +49,7 @@ export function VatRecap({ stats }: { readonly stats: SalesStats }) {
   if (groups.length === 0) return null
 
   return (
-    <YStack gap="4" p="3" rounded="lg" bg="neutral-soft">
+    <YStack gap="4" p="3" rounded="lg" bg="tile">
       {groups.map((group) => (
         <CurrencyGroup
           key={group.currency}

@@ -18,6 +18,10 @@ import { Icon } from "./ui/icon.tsx"
  * `bg-transparent`; selected `ring-2 ring-primary`; the name `truncate
  * text-base font-semibold`, the subtitle `text-sm text-muted-foreground`,
  * the icon a muted `size-5` `Table2` at the top right.
+ *
+ * A tile on the page is a block (the `tile*` keys: white on a light page);
+ * one in a dialog (`inDialog`) sits in a white sheet, so it takes the neutral
+ * fill and the plain tints instead.
  */
 export function TableTileShell({
   name,
@@ -25,6 +29,7 @@ export function TableTileShell({
   occupied,
   attention = false,
   selected = false,
+  inDialog = false,
   icon = <Icon icon={Table2} size={20} color="muted-foreground" />,
   children,
   ...cardProps
@@ -35,6 +40,8 @@ export function TableTileShell({
   readonly occupied: boolean
   readonly attention?: boolean
   readonly selected?: boolean
+  /** In a dialog's sheet rather than on the page. */
+  readonly inDialog?: boolean
   /** Replaces the table icon; `null` hides it. */
   readonly icon?: ReactNode
   readonly children: ReactNode
@@ -49,12 +56,20 @@ export function TableTileShell({
       // one its tint, a free one the neutral fill.
       bg={
         selected
-          ? "accent"
+          ? inDialog
+            ? "accent"
+            : "tile-accent"
           : occupied
             ? attention
-              ? "info-10"
-              : "primary-10"
-            : "neutral-soft"
+              ? inDialog
+                ? "info-10"
+                : "tile-info-10"
+              : inDialog
+                ? "primary-10"
+                : "tile-primary-10"
+            : inDialog
+              ? "neutral-soft"
+              : "tile"
       }
       {...cardProps}
     >

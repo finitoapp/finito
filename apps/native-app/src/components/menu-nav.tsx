@@ -236,7 +236,7 @@ export function MenuNav({
     <View
       role="navigation"
       aria-label={t("nav.menu")}
-      bg="surface-raised"
+      bg="nav-bar"
       px={8}
       py={4}
       pb={4 + insets.bottom}

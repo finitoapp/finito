@@ -284,7 +284,7 @@ function AccountAvatar({
       rounded="full"
       items="center"
       justify="center"
-      bg={active ? "primary" : "muted"}
+      bg={active ? "primary" : "neutral-soft"}
       aria-hidden
     >
       <Text

@@ -388,7 +388,13 @@ function SplitBillRow({
           {t("bill.split.availableCount", { value: summary.quantity })}
         </Text>
       </YStack>
-      <XStack items="center" gap={4} rounded={radius.md} bg="muted" p={4}>
+      <XStack
+        items="center"
+        gap={4}
+        rounded={radius.md}
+        bg="surface-raised"
+        p={4}
+      >
         <Button
           variant="ghost"
           size="icon"

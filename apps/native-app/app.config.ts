@@ -97,13 +97,13 @@ export default {
     [
       "expo-splash-screen",
       {
-        // The app icon on the palette's `background` (src/theme/palette.ts),
+        // The app icon on the theme's `background` (src/theme/themes.ts),
         // as AppLoader draws it. The app holds this splash until its first
         // screen is ready (app/_layout.tsx).
         image: "./assets/app-icon.png",
         imageWidth: 140,
-        backgroundColor: "#fbfaf7",
-        dark: { image: "./assets/app-icon.png", backgroundColor: "#101214" },
+        backgroundColor: "#eff0f1",
+        dark: { image: "./assets/app-icon.png", backgroundColor: "#0a0b0d" },
       },
     ],
     "./plugins/with-no-data-extraction.cjs",

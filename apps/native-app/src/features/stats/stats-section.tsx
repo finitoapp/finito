@@ -108,7 +108,7 @@ export function StatsBar({
   readonly tipsShare?: number
 }) {
   return (
-    <YStack height={10} rounded={5} overflow="hidden" bg="muted">
+    <YStack height={10} rounded={5} overflow="hidden" bg="track">
       <XStack
         height={10}
         rounded={5}

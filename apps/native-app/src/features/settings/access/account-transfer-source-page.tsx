@@ -191,7 +191,7 @@ export function AccountTransferSourcePage() {
                     items="center"
                     justify="center"
                     rounded="full"
-                    bg="muted"
+                    bg="neutral-soft"
                   >
                     <Text fontWeight="600">{index + 1}</Text>
                   </YStack>
