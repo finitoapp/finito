@@ -255,7 +255,7 @@ export const skBill = {
     "Objednávať teraz nejde. Objednajte si, prosím, u obsluhy.",
   "selfPay.order.rejected":
     "Objednávka {number} bola odmietnutá. Požiadajte obsluhu o vrátenie peňazí.",
-  "selfPay.order.remove": "Nezaplatené, odstrániť",
+  "selfPay.order.remove": "Nezaplatené, odobrať",
   "selfPay.order.served": "Objednávka {number} je vydaná.",
   "selfPay.order.served.left":
     "Objednávka {number} je vydaná. Zostáva zaplatiť {amount}.",
@@ -321,13 +321,13 @@ export const skBill = {
   "selfPay.written.back": "Späť k písaniu",
   "selfPay.written.nothing": "Napíšte, čo platíte, a sumu",
   "selfPay.written.onBill": "Platíte niečo, čo už je na účte stola?",
-  "selfPay.written.onBill.open": "Zaplaťte to v Účte",
+  "selfPay.written.onBill.open": "Zaplatiť v Účte",
   "selfPay.written.remove": "Odobrať položku {number}",
   "selfPay.written.summary": "Platíte {amount}",
   "selfPay.written.tab": "Napísať",
   "selfPay.written.text.label": "Čo platíte?",
   "selfPay.written.text.unreadable":
-    "Text obsahuje znak, ktorý sa nedá zobraziť. Napíšte ho prosím znova.",
+    "Text obsahuje znak, ktorý sa nedá zobraziť. Napíšte ho, prosím, znova.",
   "selfPay.waiting": "Reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.waiting.over.announcement": "{title}. {description}",
   "selfPay.waiting.over.description":

@@ -314,7 +314,7 @@ export const enBill = {
   "selfPay.written.back": "Back to writing",
   "selfPay.written.nothing": "Write what you pay for and the amount",
   "selfPay.written.onBill": "Paying for something already on the table's bill?",
-  "selfPay.written.onBill.open": "Pay it from the bill",
+  "selfPay.written.onBill.open": "Pay in Bill",
   "selfPay.written.remove": "Remove item {number}",
   "selfPay.written.summary": "You pay {amount}",
   "selfPay.written.tab": "Write",

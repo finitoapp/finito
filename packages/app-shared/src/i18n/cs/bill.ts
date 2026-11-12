@@ -316,7 +316,7 @@ export const csBill = {
   "selfPay.written.back": "Zpět k psaní",
   "selfPay.written.nothing": "Napište, co platíte, a částku",
   "selfPay.written.onBill": "Platíte něco, co už je na účtu stolu?",
-  "selfPay.written.onBill.open": "Zaplaťte to v Účtu",
+  "selfPay.written.onBill.open": "Zaplatit v Účtu",
   "selfPay.written.remove": "Odebrat položku {number}",
   "selfPay.written.summary": "Platíte {amount}",
   "selfPay.written.tab": "Napsat",

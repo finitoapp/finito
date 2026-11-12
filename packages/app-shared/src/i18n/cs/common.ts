@@ -132,9 +132,9 @@ export const csCommon = {
     "Peníze se hostovi samy nevrátí. Po odmítnutí pokladna otevře, co host zaplatil, a vrácení tam zaznamenáte.",
   "orders.reject.title": "Odmítnout objednávku {number}?",
   "orders.remember.description":
-    "Hosté si ji můžou objednat z menu do {time}. Název i cenu můžete změnit.",
+    "Hosté si ji mohou objednat z menu do {time}. Název i cenu můžete změnit.",
   "orders.remember.forGood.description":
-    "Hosté si ji od teď můžou objednat z menu každý den. Název i cenu můžete změnit.",
+    "Hosté si ji od teď mohou objednat z menu každý den. Název i cenu můžete změnit.",
   "orders.remember.forGood.title": "Přidat „{text}“ do menu natrvalo",
   "orders.remember.save": "Dát do menu",
   "orders.remember.title": "Zapamatovat „{text}“ na dnešek",
