@@ -829,15 +829,21 @@ export interface WrittenOrderToServe {
 const toServePayment = (
   order: WrittenOrderColumns,
   writtenLines: ReadonlyArray<WrittenOrderLineRow>,
-  { claimedSum, coverage }: BillCoverageSummary
-): Pick<MenuOrderToServe, "written" | "isFullyPaid"> => {
+  { billTotal, claimedSum, coverage }: BillCoverageSummary
+): Pick<MenuOrderToServe, "written" | "isFullyPaid" | "paid" | "total"> => {
   const written = writtenOrderOf(order)
   const money = (value: number): Money => ({
     value: Integer(value),
     currency: order.currency,
   })
+  const paid = money(claimedSum)
   return written === null
-    ? { written: null, isFullyPaid: coverage !== "underpaid" }
+    ? {
+        written: null,
+        isFullyPaid: coverage !== "underpaid",
+        paid,
+        total: money(billTotal),
+      }
     : {
         written: {
           lines: writtenLines.map(({ named, arrived, currency, ...line }) => ({
@@ -849,6 +855,8 @@ const toServePayment = (
           named: written.named,
         },
         isFullyPaid: claimedSum >= written.named.value,
+        paid,
+        total: written.named,
       }
 }
 
@@ -861,6 +869,8 @@ export interface MenuOrderToServe {
   readonly note: string | null
   readonly written: WrittenOrderToServe | null
   readonly isFullyPaid: boolean
+  readonly paid: Money
+  readonly total: Money
   readonly isAccepted: boolean
   readonly isServed: boolean
   readonly lines: ReadonlyArray<{

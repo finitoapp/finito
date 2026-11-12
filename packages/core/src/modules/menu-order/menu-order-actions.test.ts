@@ -1334,6 +1334,8 @@ describe("what staff serve", () => {
       tableName: "Table 3",
       note: "bez cukru",
       isFullyPaid: false,
+      paid: { value: 20_000, currency: "CZK" },
+      total: { value: 21_900, currency: "CZK" },
     })
     expect(toServe.lines).toEqual(
       expect.arrayContaining([
@@ -1564,6 +1566,8 @@ describe("what staff serve", () => {
     expect(await run.ok(loadMenuOrdersToServe())).toEqual([
       expect.objectContaining({
         isFullyPaid: false,
+        paid: czk(8000),
+        total: czk(11_000),
         written: {
           lines: [
             expect.objectContaining({

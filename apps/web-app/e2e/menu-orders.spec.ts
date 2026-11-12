@@ -227,6 +227,7 @@ test("a paid order is announced, listed to serve and served", async ({
       translateParams("en", "orders.note", { note: "bez cukru" })
     )
     await expect(orderCard).toContainText(translate("en", "orders.paid"))
+    await expect(orderCard).toContainText("$349.00")
     await expect(orderCard).not.toContainText(
       translate("en", "orders.notFullyPaid")
     )
@@ -288,6 +289,12 @@ test("a paid order is announced, listed to serve and served", async ({
     )
     await expect(orderCard).toContainText(
       translate("en", "orders.notFullyPaid")
+    )
+    await expect(orderCard).toContainText(
+      translateParams("en", "orders.paidOf", {
+        paid: "$30.00",
+        total: "$65.00",
+      })
     )
   })
 

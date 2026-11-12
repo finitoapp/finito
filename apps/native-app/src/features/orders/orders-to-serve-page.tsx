@@ -1,6 +1,9 @@
 import { formatDateTime, formatTime } from "@payky/app-shared/format-date"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { writtenOrderAmount } from "@payky/app-shared/menu-order-announcement"
+import {
+  toServeOrderMoney,
+  writtenOrderAmount,
+} from "@payky/app-shared/menu-order-announcement"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
@@ -295,7 +298,11 @@ function OrderCard({
             </Text>
           </CardTitle>
           <CardDescription>
-            {formatTime(new Date(order.createdAt), locale)}
+            {`${formatTime(new Date(order.createdAt), locale)} · ${toServeOrderMoney(
+              order,
+              t,
+              (money) => formatMoney(money, locale)
+            )}`}
           </CardDescription>
           <XStack gap={4} flexWrap="wrap">
             {order.isFullyPaid ? (

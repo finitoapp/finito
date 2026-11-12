@@ -32,6 +32,26 @@ export const writtenOrderAmount = (
       })
     : formatMoney(arrived)
 
+export const toServeOrderMoney = (
+  {
+    isFullyPaid,
+    paid,
+    total,
+  }: {
+    readonly isFullyPaid: boolean
+    readonly paid: Money
+    readonly total: Money
+  },
+  t: Translate,
+  formatMoney: FormatMoney
+): string =>
+  isFullyPaid
+    ? formatMoney(total)
+    : t("orders.paidOf", {
+        paid: formatMoney(paid),
+        total: formatMoney(total),
+      })
+
 export const waitingMenuOrdersNotice = ({
   orders,
   tables,
