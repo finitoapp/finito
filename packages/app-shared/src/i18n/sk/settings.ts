@@ -935,7 +935,7 @@ export const skSettings = {
   "settings.security.selfPayRelays.lastActive":
     "Aspoň jeden relay musí zostať zapnutý, inak hostia svoj účet neuvidia.",
   "settings.security.selfPayRelays.refused": "Odmietol posledné zverejnenie",
-  "settings.security.selfPayRelays.title": "Relaye pre platenie pri stole",
+  "settings.security.selfPayRelays.title": "Relaye pre QR kódy na stoloch",
   "settings.security.selfPayRelays.toggle": "Zverejňovať cez {url}",
   "settings.security.selfPayRelays.url.description":
     "Povolené sú len zabezpečené WebSocket URL začínajúce na wss:.",
@@ -1108,19 +1108,24 @@ export const skSettings = {
   "catalog.tables.search.clear.aria": "Vymazať hľadanie",
   "catalog.tables.seatCount": "{value} miest",
   "catalog.tables.selfPay.bankNote":
-    "Bankové prevody sa párujú len vtedy, keď niektoré zariadenie synchronizuje bankový účet: aplikácia pre Android alebo CLI.",
+    "Bankové prevody hostí sa párujú len vtedy, keď bankový účet synchronizuje aplikácia pre Android.",
   "catalog.tables.selfPay.description":
-    "Hostia naskenujú QR kód stola, uvidia otvorený účet a zaplatia ho celý alebo jeho časť sami, bez čakania na obsluhu.",
-  "catalog.tables.selfPay.enabled": "Povoliť hosťom platiť pri tomto stole",
+    "Hostia naskenujú QR kód stola a zaplatia alebo objednajú bez čakania na obsluhu. Zapnete ho v detaile stola.",
+  "catalog.tables.selfPay.enabled": "QR kód na tomto stole",
+  "catalog.tables.selfPay.enabled.description":
+    "Čo s ním hostia môžu robiť, nastavíte pre všetky stoly na obrazovke Stoly.",
+  "catalog.tables.selfPay.noPaymentMethod.bankLink": "Otvoriť bankový prevod",
+  "catalog.tables.selfPay.noPaymentMethod.bitcoinLink": "Otvoriť Bitcoin",
   "catalog.tables.selfPay.noPaymentMethod.description":
     "Nemôžu zaplatiť žiadnou platobnou metódou. Zapnite Bitcoin alebo synchronizáciu bankového účtu cez Fio či MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.link": "Otvoriť platobné metódy",
+  "catalog.tables.selfPay.noPaymentMethod.spark":
+    "Hostia platia bitcoinom len cez peňaženku Spark. Nastavte Spark ako hlavnú bitcoinovú peňaženku, alebo synchronizujte bankový účet cez Fio alebo MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hostia pri tomto stole zatiaľ nemôžu platiť",
   "catalog.tables.selfPay.noRelayAccepted.description":
     "Žiadny z relayov, cez ktoré sa stôl dostáva k hosťom, neprijal jeho poslednú zmenu.",
-  "catalog.tables.selfPay.noRelayAccepted.link":
-    "Otvoriť relaye pre platenie pri stole",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Otvoriť relaye",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Skúsiť znova",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Hostia nevidia účet tohto stola",
@@ -1136,7 +1141,7 @@ export const skSettings = {
     "Doteraz vytlačené nálepky prestanú zobrazovať účty tohto stola. Vytlačte novú a nahraďte ich.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Vytvoriť nový QR kód pre {name}?",
-  "catalog.tables.selfPay.title": "Platenie pri stole",
+  "catalog.tables.selfPay.title": "QR kód",
   "catalog.tables.selfPayGuestName.description":
     "Hosť, ktorý platí pri stole, ho uvidí ako príjemcu platby na stránke aj v QR kóde. Keď pole necháte prázdne, žiadne meno neuvidí.",
   "catalog.tables.selfPayGuestName.error": "Zadajte najviac 255 znakov.",
@@ -1177,7 +1182,9 @@ export const skSettings = {
     "Ako platiteľ DPH vyberte predvolenú sadzbu dane napísanej položky. Dovtedy hostia písať nemôžu.",
   "catalog.tables.selfPayOptions.written.taxRate.missing.title":
     "Hostia zatiaľ písať nemôžu",
-  "catalog.tables.selfPayOptions.title": "Čo môžu hostia",
+  "catalog.tables.selfPayOptions.title": "QR kódy na stoloch",
+  "catalog.tables.selfPayOptions.withQrCode":
+    "Stolov s QR kódom: {count} z {total}",
   "catalog.tables.sticker.check": "Skontrolovať nálepku",
   "catalog.tables.sticker.current": "Táto nálepka patrí k stolu {name}.",
   "catalog.tables.sticker.dismiss": "Zavrieť",

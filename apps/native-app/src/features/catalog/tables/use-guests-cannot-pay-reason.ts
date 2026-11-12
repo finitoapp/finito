@@ -1,5 +1,8 @@
+import { sqliteTrue } from "@evolu/common"
 import {
+  cashuAccountQuery,
   fiatBankAccountQuery,
+  lightningAddressAccountQuery,
   sparkAccountQuery,
 } from "@payky/core/modules/account/account-queries"
 import { activeFioPluginsQuery } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
@@ -35,6 +38,29 @@ export function useGuestsHaveNoPaymentMethod(): boolean {
       accounts: useSelfPayAccounts(),
       lastPublish: null,
     }) === "noPaymentMethod"
+  )
+}
+
+export function useBankReachesGuests(): boolean {
+  return useSelfPayAccounts().bank !== null
+}
+
+export function useBankAccountIsOn(): boolean {
+  const {
+    data: [bankAccount],
+  } = useEvoluQuery(fiatBankAccountQuery)
+  return bankAccount !== undefined && bankAccount.isDeleted !== sqliteTrue
+}
+
+export function useMainBitcoinWalletIsNotSpark(): boolean {
+  const {
+    data: [cashu],
+  } = useEvoluQuery(cashuAccountQuery)
+  const {
+    data: [lightningAddress],
+  } = useEvoluQuery(lightningAddressAccountQuery)
+  return [cashu, lightningAddress].some(
+    (wallet) => wallet !== undefined && wallet.isDeleted !== sqliteTrue
   )
 }
 

@@ -3,7 +3,6 @@ import {
   tablesExistQuery,
   tablesPageQuery,
 } from "@payky/core/modules/table/table-queries"
-import { selfPayTablesQuery } from "@payky/core/modules/table-self-pay/table-self-pay-queries"
 import QrCode from "lucide-react-native/icons/qr-code"
 import Table2 from "lucide-react-native/icons/table-2"
 import { Suspense, useCallback, useState } from "react"
@@ -16,9 +15,7 @@ import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
-import { SelfPayGuestNameCard } from "./self-pay-guest-name-card.tsx"
 import { SelfPayOptionsCard } from "./self-pay-options-card.tsx"
-import { TableStickerCheck } from "./table-sticker-check.tsx"
 
 /** Tables, as web's `TablesPage`, under Settings (navigation/0003). */
 export function TablesPage() {
@@ -39,13 +36,11 @@ function TablesSettingsBody() {
   const [search, setSearch] = useState("")
   const debouncedSearch = useDebouncedValue(search, 250)
   const hasAny = useEvoluQuery(tablesExistQuery).data.length > 0
-  const takesSelfPay = useEvoluQuery(selfPayTablesQuery).data.some(
-    ({ selfPayEnabled }) => selfPayEnabled === sqliteTrue
-  )
 
   return (
     <ScrollView keyboardShouldPersistTaps="handled">
       <YStack gap="3">
+        {hasAny && <SelfPayOptionsCard />}
         {hasAny && (
           <SearchInput
             value={search}
@@ -54,12 +49,9 @@ function TablesSettingsBody() {
             clearAriaLabel={t("catalog.tables.search.clear.aria")}
           />
         )}
-        {takesSelfPay && <TableStickerCheck />}
         <Suspense fallback={<ListSkeleton />}>
           <TablesList search={debouncedSearch} hasAny={hasAny} />
         </Suspense>
-        {takesSelfPay && <SelfPayGuestNameCard />}
-        {takesSelfPay && <SelfPayOptionsCard />}
       </YStack>
     </ScrollView>
   )

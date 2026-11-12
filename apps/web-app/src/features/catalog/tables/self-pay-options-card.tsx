@@ -3,6 +3,7 @@ import {
   NO_OPTION,
   nonNegativeIntegerCodec,
   optionalIdCodec,
+  optionalTextCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import {
   setMenuDayEndHour,
@@ -11,6 +12,7 @@ import {
   setSelfPayBillsHidden,
   setWrittenOrders,
   setWrittenOrderTaxRate,
+  updateSettings,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -24,7 +26,11 @@ import {
   menuDayEndHourOf,
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
-import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import {
+  type NonEmptyString255,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
+import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import {
@@ -45,11 +51,17 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { NoPaymentMethodAlert } from "@/features/catalog/tables/table-self-pay-card.tsx"
-import { useGuestsHaveNoPaymentMethod } from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
+import { TableStickerCheck } from "@/features/catalog/tables/table-sticker-check.tsx"
+import {
+  useBankReachesGuests,
+  useGuestsHaveNoPaymentMethod,
+} from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
+import { InlineEditField } from "@/features/shared/forms/inline-edit-field.tsx"
 import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
@@ -63,6 +75,31 @@ const taxRateCodec = optionalIdCodec<TaxRateId>()
 
 export function SelfPayOptionsCard() {
   const { t } = useTranslation()
+  const { data: tables } = useEvoluQuery(tablesQuery)
+  const withQrCode = tables.filter(
+    ({ selfPayEnabled }) => selfPayEnabled === sqliteTrue
+  ).length
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
+        <CardDescription>
+          {withQrCode === 0
+            ? t("catalog.tables.selfPay.description")
+            : t("catalog.tables.selfPayOptions.withQrCode", {
+                count: withQrCode,
+                total: tables.length,
+              })}
+        </CardDescription>
+      </CardHeader>
+      {withQrCode > 0 && <SelfPayOptions />}
+    </Card>
+  )
+}
+
+function SelfPayOptions() {
+  const { t } = useTranslation()
   const appRun = useAppRun()
   const thisDeviceId = useAtomValue(accountAtom).device.id
   const {
@@ -71,6 +108,12 @@ export function SelfPayOptionsCard() {
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
   const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
+  const bankReachesGuests = useBankReachesGuests()
+
+  const saveGuestName = async (selfPayGuestName: NonEmptyString255 | null) => {
+    await using run = appRun()
+    await run.ok(updateSettings({ selfPayGuestName }))
+  }
 
   const saveBillsShown = async (shown: boolean) => {
     await using run = appRun()
@@ -88,47 +131,57 @@ export function SelfPayOptionsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {guestsHaveNoPaymentMethod && (
-          <NoPaymentMethodAlert
-            title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
-          />
-        )}
-        <InlineEditSwitch
-          label={t("catalog.tables.selfPayOptions.payBill")}
-          defaultValue={settings?.selfPayBillsHidden !== sqliteTrue}
-          onSave={saveBillsShown}
+    <CardContent className="flex flex-col gap-4">
+      {guestsHaveNoPaymentMethod && (
+        <NoPaymentMethodAlert
+          title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
         />
-        <InlineEditSwitch
-          label={t("catalog.tables.selfPayOptions.order")}
-          description={t("catalog.tables.selfPayOptions.order.description")}
-          defaultValue={menuOrdering}
-          onSave={saveMenuOrdering}
+      )}
+      <InlineEditField
+        label={t("catalog.tables.selfPayGuestName.label")}
+        description={t("catalog.tables.selfPayGuestName.description")}
+        placeholder={t("catalog.tables.selfPayGuestName.placeholder")}
+        defaultValue={settings?.selfPayGuestName ?? null}
+        codec={optionalTextCodec}
+        errorKey="catalog.tables.selfPayGuestName.error"
+        onSave={saveGuestName}
+      />
+      <InlineEditSwitch
+        label={t("catalog.tables.selfPayOptions.payBill")}
+        defaultValue={settings?.selfPayBillsHidden !== sqliteTrue}
+        onSave={saveBillsShown}
+      />
+      <InlineEditSwitch
+        label={t("catalog.tables.selfPayOptions.order")}
+        description={t("catalog.tables.selfPayOptions.order.description")}
+        defaultValue={menuOrdering}
+        onSave={saveMenuOrdering}
+      />
+      {menuOrdering && <MenuStatus />}
+      <InlineEditSwitch
+        label={t("catalog.tables.selfPayOptions.written")}
+        description={t("catalog.tables.selfPayOptions.written.description")}
+        defaultValue={writtenOrders}
+        onSave={saveWrittenOrders}
+      />
+      {writtenOrders && (
+        <WrittenOrderTaxRateSelect
+          taxRateId={settings?.writtenOrderTaxRateId ?? null}
         />
-        {menuOrdering && <MenuStatus />}
-        <InlineEditSwitch
-          label={t("catalog.tables.selfPayOptions.written")}
-          description={t("catalog.tables.selfPayOptions.written.description")}
-          defaultValue={writtenOrders}
-          onSave={saveWrittenOrders}
-        />
-        {writtenOrders && (
-          <WrittenOrderTaxRateSelect
-            taxRateId={settings?.writtenOrderTaxRateId ?? null}
-          />
-        )}
-        {remembersWrittenItems(settings) && (
-          <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
-        )}
-        {(menuOrdering || writtenOrders) && (
-          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
-        )}
-      </CardContent>
-    </Card>
+      )}
+      {remembersWrittenItems(settings) && (
+        <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
+      )}
+      {(menuOrdering || writtenOrders) && (
+        <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
+      )}
+      {bankReachesGuests && (
+        <p className="text-xs text-muted-foreground">
+          {t("catalog.tables.selfPay.bankNote")}
+        </p>
+      )}
+      <TableStickerCheck />
+    </CardContent>
   )
 }
 

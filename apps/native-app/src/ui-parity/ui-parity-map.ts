@@ -1732,13 +1732,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/catalog/tables/self-pay-guest-name-card.tsx",
-    web: [
-      "apps/web-app/src/features/catalog/tables/self-pay-guest-name-card.tsx",
-    ],
-    status: "matched",
-  },
-  {
     native: "src/features/catalog/tables/self-pay-options-card.tsx",
     web: [
       "apps/web-app/src/features/catalog/tables/self-pay-options-card.tsx",

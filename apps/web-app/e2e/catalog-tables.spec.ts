@@ -1,6 +1,6 @@
 import { addTable, injectScanCode } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { nameParam, translate } from "./support/i18n.ts"
+import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import { gotoPage, reloadPage } from "./support/navigation.ts"
 import {
   checkTableSticker,
@@ -210,11 +210,14 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
     }),
   })
 
-  await test.step("no sticker is checked before a table takes self-pay", async () => {
+  await test.step("before a table takes self-pay, the QR card says where to turn it on and checks no sticker", async () => {
     await addTable(page, "en", { name: "Table 7", seatCount: "4" })
     await addTable(page, "en", { name: "Table 8", seatCount: "2" })
     await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
     await expect(page.getByRole("link", { name: /Table 8/u })).toBeVisible()
+    await expect(
+      page.getByText(translate("en", "catalog.tables.selfPay.description"))
+    ).toBeVisible()
     await expect(
       page.getByRole("button", {
         name: translate("en", "catalog.tables.sticker.check"),
@@ -226,8 +229,16 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
     guestAddress = await enableTableSelfPay(page, "en", "Table 7")
   })
 
-  await test.step("the list marks only the self-pay table", async () => {
+  await test.step("the QR card counts it and the list marks only the self-pay table", async () => {
     await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await expect(
+      page.getByText(
+        translateParams("en", "catalog.tables.selfPayOptions.withQrCode", {
+          count: 1,
+          total: 2,
+        })
+      )
+    ).toBeVisible()
     await expect(page.getByRole("link", { name: /Table 7/u })).toContainText(
       selfPayMark
     )
@@ -278,7 +289,7 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
   })
 })
 
-test("a self-pay table no payment method reaches says so and links to the payment methods", async ({
+test("a self-pay table no payment method reaches says so and links to the payment methods and the bank account", async ({
   seededPage: page,
   context,
 }) => {
@@ -309,6 +320,14 @@ test("a self-pay table no payment method reaches says so and links to the paymen
         name: translate("en", "catalog.tables.selfPay.noPaymentMethod.link"),
       })
     ).toHaveAttribute("href", "/settings/payment-accounts")
+    await expect(
+      cannotPay.getByRole("link", {
+        name: translate(
+          "en",
+          "catalog.tables.selfPay.noPaymentMethod.bankLink"
+        ),
+      })
+    ).toHaveAttribute("href", "/settings/payment-accounts/iban")
   })
 
   await test.step("the tables list says guests cannot pay yet and links to fix it", async () => {
@@ -321,11 +340,25 @@ test("a self-pay table no payment method reaches says so and links to the paymen
         name: translate("en", "catalog.tables.selfPay.noPaymentMethod.link"),
       })
     ).toHaveAttribute("href", "/settings/payment-accounts")
+    await expect(
+      cannotPayAnywhere.getByRole("link", {
+        name: translate(
+          "en",
+          "catalog.tables.selfPay.noPaymentMethod.bankLink"
+        ),
+      })
+    ).toHaveAttribute("href", "/settings/payment-accounts/iban")
+    await expect(
+      page.getByText(translate("en", "catalog.tables.selfPay.bankNote"))
+    ).toHaveCount(0)
   })
 
-  await test.step("turning bank sync on clears both warnings", async () => {
+  await test.step("turning bank sync on clears both warnings and says the Android app matches the transfers", async () => {
     await seedActiveFioPlugin(page)
     await expect(cannotPayAnywhere).toBeHidden()
+    await expect(
+      page.getByText(translate("en", "catalog.tables.selfPay.bankNote"))
+    ).toBeVisible()
     await page.getByRole("link", { name: /Table 4/u }).click()
     await page
       .getByRole("heading", {

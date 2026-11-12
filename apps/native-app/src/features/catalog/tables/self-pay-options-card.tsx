@@ -3,6 +3,7 @@ import { formatTime } from "@payky/app-shared/format-date"
 import {
   NO_OPTION,
   optionalIdCodec,
+  optionalTextCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import {
   setMenuDayEndHour,
@@ -11,6 +12,7 @@ import {
   setSelfPayBillsHidden,
   setWrittenOrders,
   setWrittenOrderTaxRate,
+  updateSettings,
 } from "@payky/core/modules/app-settings/app-settings-actions"
 import { selfPaySettingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { remembersWrittenItems } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -25,6 +27,7 @@ import {
 } from "@payky/core/modules/menu-order/menu-order-utils"
 import { evoluHistoryMaxRowidQuery } from "@payky/core/modules/shared/evolu-history-queries"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
+import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import {
@@ -38,6 +41,7 @@ import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Text, YStack } from "tamagui"
 import { z } from "zod"
 import { accountAtom } from "../../../atoms/account.ts"
+import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import {
   Alert,
   AlertDescription,
@@ -46,6 +50,7 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -71,13 +76,42 @@ import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
 import { AlertLink, NoPaymentMethodAlert } from "./table-self-pay-card.tsx"
-import { useGuestsHaveNoPaymentMethod } from "./use-guests-cannot-pay-reason.ts"
+import { TableStickerCheck } from "./table-sticker-check.tsx"
+import {
+  useBankReachesGuests,
+  useGuestsHaveNoPaymentMethod,
+} from "./use-guests-cannot-pay-reason.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
 
 /** Self-pay options of the account, as web's `SelfPayOptionsCard`. */
 export function SelfPayOptionsCard() {
+  const { t } = useTranslation()
+  const { data: tables } = useEvoluQuery(tablesQuery)
+  const withQrCode = tables.filter(
+    ({ selfPayEnabled }) => selfPayEnabled === sqliteTrue
+  ).length
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
+        <CardDescription>
+          {withQrCode === 0
+            ? t("catalog.tables.selfPay.description")
+            : t("catalog.tables.selfPayOptions.withQrCode", {
+                count: withQrCode,
+                total: tables.length,
+              })}
+        </CardDescription>
+      </CardHeader>
+      {withQrCode > 0 && <SelfPayOptions />}
+    </Card>
+  )
+}
+
+function SelfPayOptions() {
   const { t } = useTranslation()
   const runToast = useRunToast()
   const thisDeviceId = useAtomValue(accountAtom).device.id
@@ -87,6 +121,7 @@ export function SelfPayOptionsCard() {
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
   const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
+  const bankReachesGuests = useBankReachesGuests()
 
   const billsShown = useInlineChoice(
     settings?.selfPayBillsHidden !== sqliteTrue,
@@ -107,79 +142,89 @@ export function SelfPayOptionsCard() {
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
-      </CardHeader>
-      <CardContent gap={16}>
-        {guestsHaveNoPaymentMethod && (
-          <NoPaymentMethodAlert
-            title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
-          />
-        )}
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.tables.selfPayOptions.payBill")}
-            checked={billsShown.value}
-            disabled={billsShown.saving}
-            onCheckedChange={(checked) => {
-              void billsShown.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>
-              {t("catalog.tables.selfPayOptions.payBill")}
-            </FieldLabel>
-          </FieldContent>
-        </Field>
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.tables.selfPayOptions.order")}
-            checked={ordering.value}
-            disabled={ordering.saving}
-            onCheckedChange={(checked) => {
-              void ordering.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>{t("catalog.tables.selfPayOptions.order")}</FieldLabel>
-            <FieldDescription>
-              {t("catalog.tables.selfPayOptions.order.description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-        {menuOrdering && <MenuStatus />}
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("catalog.tables.selfPayOptions.written")}
-            checked={writing.value}
-            disabled={writing.saving}
-            onCheckedChange={(checked) => {
-              void writing.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>
-              {t("catalog.tables.selfPayOptions.written")}
-            </FieldLabel>
-            <FieldDescription>
-              {t("catalog.tables.selfPayOptions.written.description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
-        {writtenOrders && (
-          <WrittenOrderTaxRateSelect
-            taxRateId={settings?.writtenOrderTaxRateId ?? null}
-          />
-        )}
-        {remembersWrittenItems(settings) && (
-          <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
-        )}
-        {(menuOrdering || writtenOrders) && (
-          <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
-        )}
-      </CardContent>
-    </Card>
+    <CardContent gap={16}>
+      {guestsHaveNoPaymentMethod && (
+        <NoPaymentMethodAlert
+          title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
+        />
+      )}
+      <InlineEditField
+        label={t("catalog.tables.selfPayGuestName.label")}
+        description={t("catalog.tables.selfPayGuestName.description")}
+        placeholder={t("catalog.tables.selfPayGuestName.placeholder")}
+        defaultValue={settings?.selfPayGuestName ?? null}
+        codec={optionalTextCodec}
+        errorKey="catalog.tables.selfPayGuestName.error"
+        onSave={(selfPayGuestName) =>
+          runToast(async (run) => {
+            await run.ok(updateSettings({ selfPayGuestName }))
+          })
+        }
+      />
+      <Field orientation="horizontal">
+        <Switch
+          aria-label={t("catalog.tables.selfPayOptions.payBill")}
+          checked={billsShown.value}
+          disabled={billsShown.saving}
+          onCheckedChange={(checked) => {
+            void billsShown.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel>{t("catalog.tables.selfPayOptions.payBill")}</FieldLabel>
+        </FieldContent>
+      </Field>
+      <Field orientation="horizontal">
+        <Switch
+          aria-label={t("catalog.tables.selfPayOptions.order")}
+          checked={ordering.value}
+          disabled={ordering.saving}
+          onCheckedChange={(checked) => {
+            void ordering.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel>{t("catalog.tables.selfPayOptions.order")}</FieldLabel>
+          <FieldDescription>
+            {t("catalog.tables.selfPayOptions.order.description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      {menuOrdering && <MenuStatus />}
+      <Field orientation="horizontal">
+        <Switch
+          aria-label={t("catalog.tables.selfPayOptions.written")}
+          checked={writing.value}
+          disabled={writing.saving}
+          onCheckedChange={(checked) => {
+            void writing.choose(checked)
+          }}
+        />
+        <FieldContent>
+          <FieldLabel>{t("catalog.tables.selfPayOptions.written")}</FieldLabel>
+          <FieldDescription>
+            {t("catalog.tables.selfPayOptions.written.description")}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+      {writtenOrders && (
+        <WrittenOrderTaxRateSelect
+          taxRateId={settings?.writtenOrderTaxRateId ?? null}
+        />
+      )}
+      {remembersWrittenItems(settings) && (
+        <MenuDayEndSelect hour={menuDayEndHourOf(settings)} />
+      )}
+      {(menuOrdering || writtenOrders) && (
+        <OrderDeviceSelect orderDeviceId={settings?.orderDeviceId ?? null} />
+      )}
+      {bankReachesGuests && (
+        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+          {t("catalog.tables.selfPay.bankNote")}
+        </Text>
+      )}
+      <TableStickerCheck />
+    </CardContent>
   )
 }
 

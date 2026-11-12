@@ -934,7 +934,7 @@ export const enSettings = {
   "settings.security.selfPayRelays.lastActive":
     "Keep at least one relay on, or guests cannot see their bill.",
   "settings.security.selfPayRelays.refused": "Refused the last publish",
-  "settings.security.selfPayRelays.title": "Pay-at-the-table relays",
+  "settings.security.selfPayRelays.title": "Relays for QR codes on tables",
   "settings.security.selfPayRelays.toggle": "Publish through {url}",
   "settings.security.selfPayRelays.url.description":
     "Only secure WebSocket URLs starting with wss: are allowed.",
@@ -1106,18 +1106,24 @@ export const enSettings = {
   "catalog.tables.search.clear.aria": "Clear search",
   "catalog.tables.seatCount": "{value} seats",
   "catalog.tables.selfPay.bankNote":
-    "Bank transfers are matched only while a device syncs the bank account: the Android app or the CLI.",
+    "Guests' bank transfers are matched only while the Android app syncs the bank account.",
   "catalog.tables.selfPay.description":
-    "Guests scan the table's QR code, see its open bill and pay all or part of it themselves, without waiting for staff.",
-  "catalog.tables.selfPay.enabled": "Let guests pay at this table",
+    "Guests scan a table's QR code to pay or order without waiting for staff. Turn it on in a table's detail.",
+  "catalog.tables.selfPay.enabled": "QR code on this table",
+  "catalog.tables.selfPay.enabled.description":
+    "What guests can do with it is set for all tables on the Tables screen.",
+  "catalog.tables.selfPay.noPaymentMethod.bankLink": "Open bank transfer",
+  "catalog.tables.selfPay.noPaymentMethod.bitcoinLink": "Open Bitcoin",
   "catalog.tables.selfPay.noPaymentMethod.description":
     "No payment method reaches them. Turn on Bitcoin, or sync the bank account with the Fio or MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.link": "Open payment methods",
+  "catalog.tables.selfPay.noPaymentMethod.spark":
+    "Guests pay by Bitcoin only with the Spark wallet. Make Spark the main Bitcoin wallet, or sync the bank account with the Fio or MONETA plugin.",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Guests cannot pay at this table yet",
   "catalog.tables.selfPay.noRelayAccepted.description":
     "None of the relays that carry this table to guests took its last update.",
-  "catalog.tables.selfPay.noRelayAccepted.link": "Open pay-at-the-table relays",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Open relays",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Try again",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Guests cannot see this table's bill",
@@ -1133,7 +1139,7 @@ export const enSettings = {
     "Stickers printed so far stop showing this table's bills. Print the new one and replace them.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Regenerate the QR code of {name}?",
-  "catalog.tables.selfPay.title": "Pay at the table",
+  "catalog.tables.selfPay.title": "QR code",
   "catalog.tables.selfPayGuestName.description":
     "Guests paying at the table see it as who they pay, on the page and in the payment QR. Leave it empty and they see no name.",
   "catalog.tables.selfPayGuestName.error": "Use at most 255 characters.",
@@ -1173,7 +1179,9 @@ export const enSettings = {
     "As a VAT payer, pick the default tax rate of a written item. Until then, guests can't write.",
   "catalog.tables.selfPayOptions.written.taxRate.missing.title":
     "Guests can't write yet",
-  "catalog.tables.selfPayOptions.title": "What guests can do",
+  "catalog.tables.selfPayOptions.title": "QR codes on tables",
+  "catalog.tables.selfPayOptions.withQrCode":
+    "Tables with a QR code: {count} of {total}",
   "catalog.tables.sticker.check": "Check a sticker",
   "catalog.tables.sticker.current": "This sticker belongs to {name}.",
   "catalog.tables.sticker.dismiss": "Dismiss",

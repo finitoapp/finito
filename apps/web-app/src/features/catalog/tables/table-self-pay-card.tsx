@@ -31,13 +31,15 @@ import { Button, buttonVariants } from "@/components/ui/button.tsx"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
 import { appEnv } from "@/core/app-env.ts"
 import { renderTableStickerPng } from "@/features/catalog/tables/table-sticker-png.ts"
-import { useGuestsCannotPayReason } from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
+import {
+  useBankAccountIsOn,
+  useGuestsCannotPayReason,
+} from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
 import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useSelfPayRelays } from "@/features/shared/use-self-pay-relays.ts"
 import { useConfirmedRun } from "@/hooks/use-confirmed-run.ts"
@@ -99,14 +101,11 @@ export function TableSelfPayCard({
     <Card>
       <CardHeader>
         <CardTitle>{t("catalog.tables.selfPay.title")}</CardTitle>
-        <CardDescription>
-          {t("catalog.tables.selfPay.description")}
-        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <InlineEditSwitch
           label={t("catalog.tables.selfPay.enabled")}
-          description={t("catalog.tables.selfPay.bankNote")}
+          description={t("catalog.tables.selfPay.enabled.description")}
           defaultValue={table.selfPayEnabled === 1}
           onSave={(checked) => onSave(checked ? 1 : 0)}
         />
@@ -194,6 +193,7 @@ export function TableSelfPayCard({
 
 export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
+  const bankAccountIsOn = useBankAccountIsOn()
 
   return (
     <Alert variant="warning">
@@ -201,12 +201,22 @@ export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
       <AlertTitle className="line-clamp-none">{title}</AlertTitle>
       <AlertDescription>
         <p>{t("catalog.tables.selfPay.noPaymentMethod.description")}</p>
-        <Link
-          to="/settings/payment-accounts"
-          className="font-medium text-foreground underline underline-offset-4"
-        >
-          {t("catalog.tables.selfPay.noPaymentMethod.link")}
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link
+            to="/settings/payment-accounts"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            {t("catalog.tables.selfPay.noPaymentMethod.link")}
+          </Link>
+          {bankAccountIsOn && (
+            <Link
+              to="/settings/payment-accounts/iban"
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              {t("catalog.tables.selfPay.noPaymentMethod.bankLink")}
+            </Link>
+          )}
+        </div>
       </AlertDescription>
     </Alert>
   )

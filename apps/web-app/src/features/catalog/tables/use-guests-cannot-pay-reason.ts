@@ -1,3 +1,4 @@
+import { sqliteTrue } from "@evolu/common"
 import {
   fiatBankAccountQuery,
   sparkAccountQuery,
@@ -36,6 +37,17 @@ export function useGuestsHaveNoPaymentMethod(): boolean {
       lastPublish: null,
     }) === "noPaymentMethod"
   )
+}
+
+export function useBankReachesGuests(): boolean {
+  return useSelfPayAccounts().bank !== null
+}
+
+export function useBankAccountIsOn(): boolean {
+  const {
+    data: [bankAccount],
+  } = useEvoluQuery(fiatBankAccountQuery)
+  return bankAccount !== undefined && bankAccount.isDeleted !== sqliteTrue
 }
 
 export function useGuestsCannotPayReason(

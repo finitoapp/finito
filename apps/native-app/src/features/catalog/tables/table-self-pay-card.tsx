@@ -29,7 +29,6 @@ import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -50,7 +49,11 @@ import { useTranslation } from "../../../hooks/use-translation.ts"
 import { printSticker } from "../../../platform/print-sticker"
 import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
 import { useSelfPayRelays } from "../../shared/use-self-pay-relays.ts"
-import { useGuestsCannotPayReason } from "./use-guests-cannot-pay-reason.ts"
+import {
+  useBankAccountIsOn,
+  useGuestsCannotPayReason,
+  useMainBitcoinWalletIsNotSpark,
+} from "./use-guests-cannot-pay-reason.ts"
 
 /** Native counterpart of web's `TableSelfPayCard`. */
 export function TableSelfPayCard({
@@ -93,9 +96,6 @@ export function TableSelfPayCard({
     <Card>
       <CardHeader>
         <CardTitle>{t("catalog.tables.selfPay.title")}</CardTitle>
-        <CardDescription>
-          {t("catalog.tables.selfPay.description")}
-        </CardDescription>
       </CardHeader>
       <CardContent gap={16}>
         <Field orientation="horizontal">
@@ -110,7 +110,7 @@ export function TableSelfPayCard({
           <FieldContent>
             <FieldLabel>{t("catalog.tables.selfPay.enabled")}</FieldLabel>
             <FieldDescription>
-              {t("catalog.tables.selfPay.bankNote")}
+              {t("catalog.tables.selfPay.enabled.description")}
             </FieldDescription>
           </FieldContent>
         </Field>
@@ -247,16 +247,37 @@ export function AlertLink({
 
 export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
+  const bankAccountIsOn = useBankAccountIsOn()
+  const mainBitcoinWalletIsNotSpark = useMainBitcoinWalletIsNotSpark()
 
   return (
     <Alert variant="warning" icon={TriangleAlert}>
       <AlertTitle numberOfLines={0}>{title}</AlertTitle>
       <AlertDescription>
-        {t("catalog.tables.selfPay.noPaymentMethod.description")}
-        <AlertLink
-          label={t("catalog.tables.selfPay.noPaymentMethod.link")}
-          onPress={() => router.push("/settings/payment-accounts")}
-        />
+        {t(
+          mainBitcoinWalletIsNotSpark
+            ? "catalog.tables.selfPay.noPaymentMethod.spark"
+            : "catalog.tables.selfPay.noPaymentMethod.description"
+        )}
+        <XStack flexWrap="wrap" items="center" gap={16}>
+          {mainBitcoinWalletIsNotSpark ? (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.bitcoinLink")}
+              onPress={() => router.push("/settings/payment-accounts/bitcoin")}
+            />
+          ) : (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.link")}
+              onPress={() => router.push("/settings/payment-accounts")}
+            />
+          )}
+          {bankAccountIsOn && (
+            <AlertLink
+              label={t("catalog.tables.selfPay.noPaymentMethod.bankLink")}
+              onPress={() => router.push("/settings/payment-accounts/iban")}
+            />
+          )}
+        </XStack>
       </AlertDescription>
     </Alert>
   )
