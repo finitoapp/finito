@@ -55,7 +55,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select.tsx"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs.tsx"
 import { appEnv } from "@/core/app-env.ts"
 import { createE2eGuestInvoiceWallet } from "@/platform/e2e-guest-invoice-wallet.ts"
 import { GuestBankPayment } from "./guest-bank-payment.tsx"
@@ -86,6 +91,7 @@ import {
 import {
   guestTabClassName,
   guestTabListClassName,
+  guestTabPanelClassName,
 } from "./guest-pick-styles.ts"
 import { GuestStatusRegion, useGuestStatus } from "./guest-status.tsx"
 import { GuestTestTransfer } from "./guest-test-transfer.tsx"
@@ -296,6 +302,43 @@ function GuestPayment({
     amountHeading.current?.focus({ preventScroll: true })
   }, [])
 
+  const methodContent = {
+    bank:
+      bank === null ? null : (
+        <GuestBankPayment
+          bank={bank}
+          bill={session.bill}
+          amount={session.amount}
+          pointer={session.pointer}
+        />
+      ),
+    lightning:
+      lightning === null ? null : (
+        <GuestLightningPayment
+          lightning={lightning}
+          bill={session.bill}
+          rate={rate}
+          amount={session.amount}
+          pointer={session.pointer}
+          isShown={method === "lightning"}
+          onInvoiceOpenChange={setIsInvoiceOpen}
+        />
+      ),
+    test:
+      testSelectionKey === null ? null : (
+        <GuestTestTransfer
+          address={address}
+          selectionKey={testSelectionKey}
+          bill={session.bill}
+          amount={session.amount}
+          pointer={session.pointer}
+          onSent={() => {
+            setIsTestTransferSent(true)
+          }}
+        />
+      ),
+  } satisfies Record<PaymentMethod, ReactNode>
+
   return (
     <section ref={paymentSection} className="flex flex-col gap-4">
       <Button
@@ -337,6 +380,7 @@ function GuestPayment({
             const next = methods.find((candidate) => candidate === value)
             if (next !== undefined) setMethod(next)
           }}
+          className="flex-col gap-4"
         >
           <TabsList className={guestTabListClassName}>
             {bank === null ? null : (
@@ -355,44 +399,19 @@ function GuestPayment({
               </TabsTrigger>
             )}
           </TabsList>
+          {methods.map((value) => (
+            <TabsContent
+              key={value}
+              value={value}
+              keepMounted
+              className={guestTabPanelClassName}
+            >
+              {methodContent[value]}
+            </TabsContent>
+          ))}
         </Tabs>
-      ) : null}
-      {bank === null ? null : (
-        <div hidden={method !== "bank"}>
-          <GuestBankPayment
-            bank={bank}
-            bill={session.bill}
-            amount={session.amount}
-            pointer={session.pointer}
-          />
-        </div>
-      )}
-      {lightning === null ? null : (
-        <div hidden={method !== "lightning"}>
-          <GuestLightningPayment
-            lightning={lightning}
-            bill={session.bill}
-            rate={rate}
-            amount={session.amount}
-            pointer={session.pointer}
-            isShown={method === "lightning"}
-            onInvoiceOpenChange={setIsInvoiceOpen}
-          />
-        </div>
-      )}
-      {testSelectionKey === null ? null : (
-        <div hidden={method !== "test"}>
-          <GuestTestTransfer
-            address={address}
-            selectionKey={testSelectionKey}
-            bill={session.bill}
-            amount={session.amount}
-            pointer={session.pointer}
-            onSent={() => {
-              setIsTestTransferSent(true)
-            }}
-          />
-        </div>
+      ) : (
+        methodContent[method]
       )}
       {children}
     </section>

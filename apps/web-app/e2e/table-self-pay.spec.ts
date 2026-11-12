@@ -1443,7 +1443,7 @@ test.describe("a guest paying at the table", () => {
     })
   })
 
-  test("the Bitcoin QR code shows without a tap, opens in the wallet from above it, and spells its code only when copying fails", async ({
+  test("the Bitcoin tab controls a QR code that shows without a tap, opens in the wallet from above it, and spells its code only when copying fails", async ({
     page,
     context,
     browser,
@@ -1475,12 +1475,30 @@ test.describe("a guest paying at the table", () => {
     const guest = await phone.newPage()
     const invoiceText = guest.getByText(/^lnbc\d+n1/u)
 
-    await test.step("opening Bitcoin shows the QR code with Open in wallet above it and no code as text", async () => {
+    await test.step("the Bitcoin tab controls the Bitcoin part, which shows the QR code with Open in wallet above it and no code as text", async () => {
       await openGuestPage(guest, guestAddress, "$101.00")
       await payTotal(guest, "$101.00").click()
-      await guest
-        .getByRole("tab", { name: translate("en", "selfPay.method.lightning") })
-        .click()
+      const bitcoinTab = guest.getByRole("tab", {
+        name: translate("en", "selfPay.method.lightning"),
+      })
+      await bitcoinTab.click()
+      const panel = guest.getByRole("tabpanel")
+      await expect(panel).toHaveAttribute(
+        "id",
+        (await bitcoinTab.getAttribute("aria-controls")) ?? "no panel"
+      )
+      const [tabBox, panelBox] = await Promise.all([
+        bitcoinTab.boundingBox(),
+        panel.boundingBox(),
+      ])
+      expect(panelBox?.y ?? 0).toBeGreaterThanOrEqual(
+        (tabBox?.y ?? Number.POSITIVE_INFINITY) + (tabBox?.height ?? 0)
+      )
+      await expect(
+        panel.getByRole("img", {
+          name: translate("en", "selfPay.lightning.qr"),
+        })
+      ).toBeVisible({ timeout: 45_000 })
       const invoice = await readShownLightningInvoice(guest, "en")
       expect(invoice).toMatch(/^lnbc\d+n1/u)
       const [openBox, qrBox] = await Promise.all([
