@@ -1,15 +1,18 @@
 const qrSize = 896
 const padding = 64
+const headingFontSize = 64
 const captionHeight = 96
 const captionFontSize = 56
 const pngDataUrlPrefix = "data:image/png;base64,"
 
 export async function renderTableStickerPng({
   qr,
+  heading,
   name,
   code,
 }: {
   readonly qr: SVGSVGElement
+  readonly heading: string
   readonly name: string
   readonly code: string
 }): Promise<string> {
@@ -24,8 +27,9 @@ export async function renderTableStickerPng({
     await qrImage.decode()
 
     const canvas = document.createElement("canvas")
+    const qrTop = padding + headingFontSize + padding
     canvas.width = qrSize + 2 * padding
-    canvas.height = qrSize + 2 * padding + captionHeight
+    canvas.height = qrTop + qrSize + padding + captionHeight
     const context = canvas.getContext("2d")
     if (context === null) {
       throw new Error("The sticker needs a 2D canvas.")
@@ -33,12 +37,21 @@ export async function renderTableStickerPng({
 
     context.fillStyle = "#ffffff"
     context.fillRect(0, 0, canvas.width, canvas.height)
-    context.drawImage(qrImage, padding, padding, qrSize, qrSize)
+    context.drawImage(qrImage, padding, qrTop, qrSize, qrSize)
 
-    const captionY = padding + qrSize + captionHeight / 2
-    const captionWidth = qrSize / 2 - padding / 2
     context.fillStyle = "#000000"
     context.textBaseline = "middle"
+    context.font = `700 ${headingFontSize}px system-ui, sans-serif`
+    context.textAlign = "center"
+    context.fillText(
+      heading,
+      canvas.width / 2,
+      padding + headingFontSize / 2,
+      qrSize
+    )
+
+    const captionY = qrTop + qrSize + captionHeight / 2
+    const captionWidth = qrSize / 2 - padding / 2
     context.font = `600 ${captionFontSize}px system-ui, sans-serif`
     context.textAlign = "left"
     context.fillText(name, padding, captionY, captionWidth)

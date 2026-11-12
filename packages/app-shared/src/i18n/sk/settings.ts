@@ -1141,6 +1141,7 @@ export const skSettings = {
     "Doteraz vytlačené nálepky prestanú zobrazovať účty tohto stola. Vytlačte novú a nahraďte ich.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Vytvoriť nový QR kód pre {name}?",
+  "catalog.tables.selfPay.scanToPay": "Naskenujte a zaplaťte",
   "catalog.tables.selfPay.title": "QR kód",
   "catalog.tables.selfPayGuestName.description":
     "Hosť, ktorý platí pri stole, ho uvidí ako príjemcu platby na stránke aj v QR kóde. Keď pole necháte prázdne, žiadne meno neuvidí.",

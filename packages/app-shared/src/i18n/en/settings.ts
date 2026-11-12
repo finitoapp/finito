@@ -1139,6 +1139,7 @@ export const enSettings = {
     "Stickers printed so far stop showing this table's bills. Print the new one and replace them.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Regenerate the QR code of {name}?",
+  "catalog.tables.selfPay.scanToPay": "Scan to pay",
   "catalog.tables.selfPay.title": "QR code",
   "catalog.tables.selfPayGuestName.description":
     "Guests paying at the table see it as who they pay, on the page and in the payment QR. Leave it empty and they see no name.",

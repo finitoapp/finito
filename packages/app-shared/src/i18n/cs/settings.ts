@@ -1139,6 +1139,7 @@ export const csSettings = {
     "Dosud vytištěné nálepky přestanou zobrazovat účty tohoto stolu. Vytiskněte novou a nahraďte je.",
   "catalog.tables.selfPay.regenerate.confirm.title":
     "Vytvořit nový QR kód pro {name}?",
+  "catalog.tables.selfPay.scanToPay": "Naskenujte a zaplaťte",
   "catalog.tables.selfPay.title": "QR kód",
   "catalog.tables.selfPayGuestName.description":
     "Host, který platí u stolu, ho uvidí jako příjemce platby na stránce i v QR kódu. Když pole necháte prázdné, žádné jméno neuvidí.",

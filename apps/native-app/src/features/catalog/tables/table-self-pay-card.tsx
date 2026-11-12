@@ -139,6 +139,14 @@ export function TableSelfPayCard({
                 borderColor="card-ring"
                 style={{ backgroundColor: "#fff" }}
               >
+                <Text
+                  fontSize={fontSize.base}
+                  lineHeight={fontSize.base}
+                  fontWeight={fontWeight.semibold}
+                  style={{ color: "#000" }}
+                >
+                  {t("catalog.tables.selfPay.scanToPay")}
+                </Text>
                 <View
                   w="100%"
                   aspectRatio={1}

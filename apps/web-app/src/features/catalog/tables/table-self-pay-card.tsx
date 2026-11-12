@@ -87,6 +87,7 @@ export function TableSelfPayCard({
         filename: `${table.code}.png`,
         base64Png: await renderTableStickerPng({
           qr,
+          heading: t("catalog.tables.selfPay.scanToPay"),
           name: table.name,
           code: table.code,
         }),
@@ -120,6 +121,9 @@ export function TableSelfPayCard({
               <NoRelayAcceptedAlert tableId={table.id} />
             ) : null}
             <figure className="self-pay-sticker mx-auto flex w-56 flex-col items-center gap-2 rounded-xl bg-white p-4 text-black ring-1 ring-foreground/10">
+              <p className="text-base font-semibold">
+                {t("catalog.tables.selfPay.scanToPay")}
+              </p>
               <QRCodeSVG
                 ref={qrRef}
                 value={address}
