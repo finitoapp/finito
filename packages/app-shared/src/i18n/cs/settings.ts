@@ -1111,8 +1111,8 @@ export const csSettings = {
     "Hosté naskenují QR kód stolu, uvidí otevřený účet a zaplatí ho celý nebo jeho část sami, bez čekání na obsluhu.",
   "catalog.tables.selfPay.enabled": "Povolit hostům platit u tohoto stolu",
   "catalog.tables.selfPay.noPaymentMethod.description":
-    "Žádnou platební metodou zaplatit nemohou. Zapněte u bankovního účtu synchronizaci přes Fio nebo MONETA plugin, nebo přidejte Lightning peněženku.",
-  "catalog.tables.selfPay.noPaymentMethod.link": "Otevřít platební účty",
+    "Žádnou platební metodou zaplatit nemohou. Zapněte Bitcoin nebo synchronizaci bankovního účtu přes Fio či MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Otevřít platební metody",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hosté u tohoto stolu zatím nemohou platit",
   "catalog.tables.selfPay.noRelayAccepted.description":

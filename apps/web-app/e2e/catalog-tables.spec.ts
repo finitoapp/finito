@@ -264,7 +264,7 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
   })
 })
 
-test("a self-pay table no payment method reaches says so and links to the payment accounts", async ({
+test("a self-pay table no payment method reaches says so and links to the payment methods", async ({
   seededPage: page,
   context,
 }) => {

@@ -1111,8 +1111,8 @@ export const enSettings = {
     "Guests scan the table's QR code, see its open bill and pay all or part of it themselves, without waiting for staff.",
   "catalog.tables.selfPay.enabled": "Let guests pay at this table",
   "catalog.tables.selfPay.noPaymentMethod.description":
-    "No payment method reaches them. Turn on bank sync with the Fio or MONETA plugin for the bank account, or add a Lightning wallet.",
-  "catalog.tables.selfPay.noPaymentMethod.link": "Open payment accounts",
+    "No payment method reaches them. Turn on Bitcoin, or sync the bank account with the Fio or MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Open payment methods",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Guests cannot pay at this table yet",
   "catalog.tables.selfPay.noRelayAccepted.description":

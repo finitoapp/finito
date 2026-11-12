@@ -1113,8 +1113,8 @@ export const skSettings = {
     "Hostia naskenujú QR kód stola, uvidia otvorený účet a zaplatia ho celý alebo jeho časť sami, bez čakania na obsluhu.",
   "catalog.tables.selfPay.enabled": "Povoliť hosťom platiť pri tomto stole",
   "catalog.tables.selfPay.noPaymentMethod.description":
-    "Nemôžu zaplatiť žiadnou platobnou metódou. Zapnite pri bankovom účte synchronizáciu cez Fio alebo MONETA plugin, alebo pridajte Lightning peňaženku.",
-  "catalog.tables.selfPay.noPaymentMethod.link": "Otvoriť platobné účty",
+    "Nemôžu zaplatiť žiadnou platobnou metódou. Zapnite Bitcoin alebo synchronizáciu bankového účtu cez Fio či MONETA plugin.",
+  "catalog.tables.selfPay.noPaymentMethod.link": "Otvoriť platobné metódy",
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hostia pri tomto stole zatiaľ nemôžu platiť",
   "catalog.tables.selfPay.noRelayAccepted.description":
