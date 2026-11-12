@@ -25,10 +25,9 @@ export const appEnv = createEnv({
       .transform((value) => value.split(",").map((url) => url.trim()))
       .pipe(z.array(z.url({ protocol: /^wss?$/u })).min(1))
       .default([
+        "wss://nostr.linky.fit",
         "wss://relay.damus.io",
         "wss://nos.lol",
-        "wss://relay.0xchat.com",
-        "wss://nostr.linky.fit",
       ]),
     // Where Linky publishes the Evolu relays its Cashu wallet syncs through;
     // Payky syncs the shared wallet over the same ones (cashu.md §2).
