@@ -44,7 +44,7 @@ describe("where the guest's order stands", () => {
     [
       "rejected, though staff had accepted it",
       { accepted: 2, rejected: 3 },
-      "Objednávka 4 byla odmítnuta. Peníze vám vrátí obsluha.",
+      "Objednávka 4 byla odmítnuta. Požádejte obsluhu o vrácení peněz.",
     ],
   ] as const)("says %s", (_name, confirmation, status) => {
     expect(guestOrderStatus(shown(confirmation), t, "cs")).toBe(status)
