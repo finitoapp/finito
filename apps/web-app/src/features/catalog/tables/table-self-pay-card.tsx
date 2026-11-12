@@ -224,19 +224,27 @@ function NoRelayAcceptedAlert({ tableId }: { readonly tableId: TableId }) {
       </AlertTitle>
       <AlertDescription>
         <p>{t("catalog.tables.selfPay.noRelayAccepted.description")}</p>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11"
-          onClick={() => {
-            void runToast(async (run) => {
-              await run.ok(requestTableSelfPayPublish(tableId))
-            })
-          }}
-        >
-          <RefreshCwIcon data-icon="inline-start" />
-          {t("catalog.tables.selfPay.noRelayAccepted.retry")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11"
+            onClick={() => {
+              void runToast(async (run) => {
+                await run.ok(requestTableSelfPayPublish(tableId))
+              })
+            }}
+          >
+            <RefreshCwIcon data-icon="inline-start" />
+            {t("catalog.tables.selfPay.noRelayAccepted.retry")}
+          </Button>
+          <Link
+            to="/settings/security"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            {t("catalog.tables.selfPay.noRelayAccepted.link")}
+          </Link>
+        </div>
       </AlertDescription>
     </Alert>
   )

@@ -1116,7 +1116,8 @@ export const enSettings = {
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Guests cannot pay at this table yet",
   "catalog.tables.selfPay.noRelayAccepted.description":
-    "No relay accepted its last publish.",
+    "None of the relays that carry this table to guests took its last update.",
+  "catalog.tables.selfPay.noRelayAccepted.link": "Open pay-at-the-table relays",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Try again",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Guests cannot see this table's bill",

@@ -1116,7 +1116,9 @@ export const csSettings = {
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hosté u tohoto stolu zatím nemohou platit",
   "catalog.tables.selfPay.noRelayAccepted.description":
-    "Poslední publikaci nepřijal žádný relay.",
+    "Žádný z relayů, přes které se stůl dostává k hostům, nepřijal jeho poslední změnu.",
+  "catalog.tables.selfPay.noRelayAccepted.link":
+    "Otevřít relaye pro placení u stolu",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Zkusit znovu",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Hosté nevidí účet tohoto stolu",

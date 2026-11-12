@@ -1118,7 +1118,9 @@ export const skSettings = {
   "catalog.tables.selfPay.noPaymentMethod.title":
     "Hostia pri tomto stole zatiaľ nemôžu platiť",
   "catalog.tables.selfPay.noRelayAccepted.description":
-    "Posledné zverejnenie neprijal žiadny relay.",
+    "Žiadny z relayov, cez ktoré sa stôl dostáva k hosťom, neprijal jeho poslednú zmenu.",
+  "catalog.tables.selfPay.noRelayAccepted.link":
+    "Otvoriť relaye pre platenie pri stole",
   "catalog.tables.selfPay.noRelayAccepted.retry": "Skúsiť znova",
   "catalog.tables.selfPay.noRelayAccepted.title":
     "Hostia nevidia účet tohto stola",

@@ -177,7 +177,7 @@ test("a publish every relay refused is marked on both cards, and a retry clears 
     await enableTableSelfPay(page, "en", "Table 5")
   })
 
-  await test.step("the table's card says guests cannot see its bill", async () => {
+  await test.step("the table's card says guests cannot see its bill and links to the relays", async () => {
     await expect(cannotSee).toBeVisible({ timeout: 45_000 })
     await expect(
       cannotSee.getByText(
@@ -185,6 +185,11 @@ test("a publish every relay refused is marked on both cards, and a retry clears 
       )
     ).toBeVisible()
     expect((await retry.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    await expect(
+      cannotSee.getByRole("link", {
+        name: translate("en", "catalog.tables.selfPay.noRelayAccepted.link"),
+      })
+    ).toHaveAttribute("href", "/settings/security")
   })
 
   await test.step("the relay card marks each refusing relay", async () => {
