@@ -1149,6 +1149,8 @@ export const skSettings = {
     "Položiek s cenou mimo {currency}: {count}. Hostia ich nevidia.",
   "catalog.tables.selfPayOptions.menu.visible":
     "Položiek, ktoré si hostia môžu objednať: {count}",
+  "catalog.tables.selfPayOptions.noPaymentMethod.title":
+    "Hostia zatiaľ nemôžu platiť",
   "catalog.tables.selfPayOptions.order": "Hostia objednávajú z menu",
   "catalog.tables.selfPayOptions.order.description":
     "Hostia si objednajú položky z menu a zaplatia ich. Zaplatené objednávky obsluha uvidí v sekcii Na výdaj.",

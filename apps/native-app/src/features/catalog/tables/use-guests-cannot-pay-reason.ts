@@ -16,14 +16,33 @@ import {
 import { deriveSelfPayViewTag } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 
-/** Native counterpart of web's `useGuestsCannotPayReason`. */
-export function useGuestsCannotPayReason(
-  viewKey: Uint8Array
-): GuestsCannotPayReason | null {
+function useSelfPayAccounts() {
   const { data: bankAccounts } = useEvoluQuery(fiatBankAccountQuery)
   const { data: sparkAccounts } = useEvoluQuery(sparkAccountQuery)
   const { data: activeFioPlugins } = useEvoluQuery(activeFioPluginsQuery)
   const { data: activeMonetaPlugins } = useEvoluQuery(activeMonetaPluginsQuery)
+
+  return pickSelfPayAccounts({
+    bankAccount: bankAccounts[0],
+    sparkAccount: sparkAccounts[0],
+    activeBankPlugins: [...activeFioPlugins, ...activeMonetaPlugins],
+  })
+}
+
+export function useGuestsHaveNoPaymentMethod(): boolean {
+  return (
+    deriveGuestsCannotPayReason({
+      accounts: useSelfPayAccounts(),
+      lastPublish: null,
+    }) === "noPaymentMethod"
+  )
+}
+
+/** Native counterpart of web's `useGuestsCannotPayReason`. */
+export function useGuestsCannotPayReason(
+  viewKey: Uint8Array
+): GuestsCannotPayReason | null {
+  const accounts = useSelfPayAccounts()
   const { data: publishResults } = useEvoluQuery(
     selfPayPublishResultsByTagQuery(
       NonEmptyString255(deriveSelfPayViewTag(viewKey))
@@ -31,11 +50,7 @@ export function useGuestsCannotPayReason(
   )
 
   return deriveGuestsCannotPayReason({
-    accounts: pickSelfPayAccounts({
-      bankAccount: bankAccounts[0],
-      sparkAccount: sparkAccounts[0],
-      activeBankPlugins: [...activeFioPlugins, ...activeMonetaPlugins],
-    }),
+    accounts,
     lastPublish: findNewestViewPublish(
       parseSelfPayPublishResults(publishResults)
     ),

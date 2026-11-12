@@ -1,5 +1,4 @@
 import { Capacitor } from "@capacitor/core"
-import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import {
   deriveTableSelfPayKeys,
   deriveTableSelfPayRoot,
@@ -11,7 +10,6 @@ import {
 } from "@payky/core/modules/table/table-actions"
 import type { TableId } from "@payky/core/modules/table/table-types"
 import { createTableSelfPayAddress } from "@payky/core/modules/table-self-pay/table-self-pay-address-utils"
-import type { GuestsCannotPayReason } from "@payky/core/modules/table-self-pay/table-self-pay-reach-utils"
 import { Link } from "@tanstack/react-router"
 import { useAtomValue } from "jotai"
 import {
@@ -114,12 +112,14 @@ export function TableSelfPayCard({
         />
         {table.selfPayEnabled === 1 ? (
           <>
-            {guestsCannotPayReason === null ? null : (
-              <GuestsCannotPayAlert
-                reason={guestsCannotPayReason}
-                tableId={table.id}
+            {guestsCannotPayReason === "noPaymentMethod" ? (
+              <NoPaymentMethodAlert
+                title={t("catalog.tables.selfPay.noPaymentMethod.title")}
               />
-            )}
+            ) : null}
+            {guestsCannotPayReason === "noRelayAccepted" ? (
+              <NoRelayAcceptedAlert tableId={table.id} />
+            ) : null}
             <figure className="self-pay-sticker mx-auto flex w-56 flex-col items-center gap-2 rounded-xl bg-white p-4 text-black ring-1 ring-foreground/10">
               <QRCodeSVG
                 ref={qrRef}
@@ -192,59 +192,51 @@ export function TableSelfPayCard({
   )
 }
 
-const guestsCannotPayKeys = {
-  noPaymentMethod: {
-    title: "catalog.tables.selfPay.noPaymentMethod.title",
-    description: "catalog.tables.selfPay.noPaymentMethod.description",
-  },
-  noRelayAccepted: {
-    title: "catalog.tables.selfPay.noRelayAccepted.title",
-    description: "catalog.tables.selfPay.noRelayAccepted.description",
-  },
-} satisfies Record<
-  GuestsCannotPayReason,
-  { readonly title: TranslationKey; readonly description: TranslationKey }
->
-
-function GuestsCannotPayAlert({
-  reason,
-  tableId,
-}: {
-  readonly reason: GuestsCannotPayReason
-  readonly tableId: TableId
-}) {
+export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
-  const runToast = useRunToast()
-  const keys = guestsCannotPayKeys[reason]
 
   return (
     <Alert variant="warning">
       <TriangleAlertIcon />
-      <AlertTitle className="line-clamp-none">{t(keys.title)}</AlertTitle>
+      <AlertTitle className="line-clamp-none">{title}</AlertTitle>
       <AlertDescription>
-        <p>{t(keys.description)}</p>
-        {reason === "noPaymentMethod" ? (
-          <Link
-            to="/settings/payment-accounts"
-            className="font-medium text-foreground underline underline-offset-4"
-          >
-            {t("catalog.tables.selfPay.noPaymentMethod.link")}
-          </Link>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11"
-            onClick={() => {
-              void runToast(async (run) => {
-                await run.ok(requestTableSelfPayPublish(tableId))
-              })
-            }}
-          >
-            <RefreshCwIcon data-icon="inline-start" />
-            {t("catalog.tables.selfPay.noRelayAccepted.retry")}
-          </Button>
-        )}
+        <p>{t("catalog.tables.selfPay.noPaymentMethod.description")}</p>
+        <Link
+          to="/settings/payment-accounts"
+          className="font-medium text-foreground underline underline-offset-4"
+        >
+          {t("catalog.tables.selfPay.noPaymentMethod.link")}
+        </Link>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+function NoRelayAcceptedAlert({ tableId }: { readonly tableId: TableId }) {
+  const { t } = useTranslation()
+  const runToast = useRunToast()
+
+  return (
+    <Alert variant="warning">
+      <TriangleAlertIcon />
+      <AlertTitle className="line-clamp-none">
+        {t("catalog.tables.selfPay.noRelayAccepted.title")}
+      </AlertTitle>
+      <AlertDescription>
+        <p>{t("catalog.tables.selfPay.noRelayAccepted.description")}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11"
+          onClick={() => {
+            void runToast(async (run) => {
+              await run.ok(requestTableSelfPayPublish(tableId))
+            })
+          }}
+        >
+          <RefreshCwIcon data-icon="inline-start" />
+          {t("catalog.tables.selfPay.noRelayAccepted.retry")}
+        </Button>
       </AlertDescription>
     </Alert>
   )

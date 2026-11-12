@@ -1147,6 +1147,8 @@ export const enSettings = {
     "Items not priced in {currency}: {count}. Guests do not see them.",
   "catalog.tables.selfPayOptions.menu.visible":
     "Items guests can order: {count}",
+  "catalog.tables.selfPayOptions.noPaymentMethod.title":
+    "Guests cannot pay yet",
   "catalog.tables.selfPayOptions.order": "Guests order from the menu",
   "catalog.tables.selfPayOptions.order.description":
     "Guests order the items in the menu and pay for them. Staff see the paid orders under To serve.",

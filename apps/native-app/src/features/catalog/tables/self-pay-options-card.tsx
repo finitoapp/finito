@@ -69,6 +69,8 @@ import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
+import { NoPaymentMethodAlert } from "./table-self-pay-card.tsx"
+import { useGuestsHaveNoPaymentMethod } from "./use-guests-cannot-pay-reason.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
 const taxRateCodec = optionalIdCodec<TaxRateId>()
@@ -83,6 +85,7 @@ export function SelfPayOptionsCard() {
   } = useEvoluQuery(selfPaySettingsQuery)
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
+  const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
 
   const billsShown = useInlineChoice(
     settings?.selfPayBillsHidden !== sqliteTrue,
@@ -108,6 +111,11 @@ export function SelfPayOptionsCard() {
         <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
       </CardHeader>
       <CardContent gap={16}>
+        {guestsHaveNoPaymentMethod && (
+          <NoPaymentMethodAlert
+            title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
+          />
+        )}
         <Field orientation="horizontal">
           <Switch
             aria-label={t("catalog.tables.selfPayOptions.payBill")}

@@ -204,7 +204,11 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
   await routeFakeNostrRelays(context)
   let guestAddress = ""
   const selfPayMark = translate("en", "catalog.tables.selfPay.title")
-  const verdict = page.getByRole("alert")
+  const verdict = page.getByRole("alert").filter({
+    has: page.getByRole("button", {
+      name: translate("en", "catalog.tables.sticker.dismiss"),
+    }),
+  })
 
   await test.step("add two tables and switch self-pay on for one", async () => {
     await addTable(page, "en", { name: "Table 7", seatCount: "4" })
@@ -273,6 +277,12 @@ test("a self-pay table no payment method reaches says so and links to the paymen
   const cannotPay = page.getByRole("alert").filter({
     hasText: translate("en", "catalog.tables.selfPay.noPaymentMethod.title"),
   })
+  const cannotPayAnywhere = page.getByRole("alert").filter({
+    hasText: translate(
+      "en",
+      "catalog.tables.selfPayOptions.noPaymentMethod.title"
+    ),
+  })
 
   await test.step("switch self-pay on with cash and a bank account without bank sync", async () => {
     await addTable(page, "en", { name: "Table 4", seatCount: "4" })
@@ -291,8 +301,27 @@ test("a self-pay table no payment method reaches says so and links to the paymen
     ).toHaveAttribute("href", "/settings/payment-accounts")
   })
 
-  await test.step("turning bank sync on clears the warning", async () => {
+  await test.step("the tables list says guests cannot pay yet and links to fix it", async () => {
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await expect(cannotPayAnywhere).toContainText(
+      translate("en", "catalog.tables.selfPay.noPaymentMethod.description")
+    )
+    await expect(
+      cannotPayAnywhere.getByRole("link", {
+        name: translate("en", "catalog.tables.selfPay.noPaymentMethod.link"),
+      })
+    ).toHaveAttribute("href", "/settings/payment-accounts")
+  })
+
+  await test.step("turning bank sync on clears both warnings", async () => {
     await seedActiveFioPlugin(page)
+    await expect(cannotPayAnywhere).toBeHidden()
+    await page.getByRole("link", { name: /Table 4/u }).click()
+    await page
+      .getByRole("heading", {
+        name: translate("en", "catalog.tables.form.title.edit"),
+      })
+      .waitFor()
     await expect(cannotPay).toBeHidden()
   })
 })

@@ -47,6 +47,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import { NoPaymentMethodAlert } from "@/features/catalog/tables/table-self-pay-card.tsx"
+import { useGuestsHaveNoPaymentMethod } from "@/features/catalog/tables/use-guests-cannot-pay-reason.ts"
 import { InlineEditSelect } from "@/features/shared/forms/inline-edit-select.tsx"
 import { InlineEditSwitch } from "@/features/shared/forms/inline-edit-switch.tsx"
 import { useAppRun } from "@/hooks/use-app-run.ts"
@@ -67,6 +69,7 @@ export function SelfPayOptionsCard() {
   } = useEvoluQuery(selfPaySettingsQuery)
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
+  const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
 
   const saveBillsShown = async (shown: boolean) => {
     await using run = appRun()
@@ -89,6 +92,11 @@ export function SelfPayOptionsCard() {
         <CardTitle>{t("catalog.tables.selfPayOptions.title")}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {guestsHaveNoPaymentMethod && (
+          <NoPaymentMethodAlert
+            title={t("catalog.tables.selfPayOptions.noPaymentMethod.title")}
+          />
+        )}
         <InlineEditSwitch
           label={t("catalog.tables.selfPayOptions.payBill")}
           defaultValue={settings?.selfPayBillsHidden !== sqliteTrue}
