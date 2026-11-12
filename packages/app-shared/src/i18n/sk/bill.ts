@@ -263,12 +263,12 @@ export const skBill = {
   "selfPay.order.title": "Vaša objednávka",
   "selfPay.order.unavailable.description": "Objednajte si, prosím, u obsluhy.",
   "selfPay.order.unavailable.title": "Objednávať teraz nejde",
-  "selfPay.order.unseen": "Platbu sme zatiaľ nevideli.",
+  "selfPay.order.unseen": "Peniaze sú možno ešte na ceste.",
   "selfPay.order.unseen.description":
     "Ak ste zaplatili, ukážte túto obrazovku obsluhe.",
   "selfPay.order.waiting": "Platba za objednávku zatiaľ neprišla.",
   "selfPay.order.waiting.description":
-    "Ak ste už zaplatili, čakáme na potvrdenie platby.",
+    "Ak ste už zaplatili, reštaurácia platbu potvrdí, keď peniaze dorazia.",
   "selfPay.paidFor.equal": "1/{people} účtu",
   "selfPay.paidFor.paidBefore": "Už zaplatené",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",
@@ -278,7 +278,7 @@ export const skBill = {
     "Tu sa dá zaplatiť od {amount}. Vyberte viac alebo zaplaťte u obsluhy.",
   "selfPay.pay.capped":
     "Viac, ako zostáva, zaplatiť nejde. Platíte zvyšok {amount}.",
-  "selfPay.pay.preparing": "Pripravujem platbu…",
+  "selfPay.pay.preparing": "Pripravuje sa platba…",
   "selfPay.pay.restAdded": "Vrátane zvyšných {amount} z účtu.",
   "selfPay.pay.total": "Zaplatiť {amount}",
   "selfPay.pay.unseen":

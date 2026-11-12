@@ -257,12 +257,12 @@ export const enBill = {
   "selfPay.order.title": "Your order",
   "selfPay.order.unavailable.description": "Please order with the staff.",
   "selfPay.order.unavailable.title": "Ordering is not available right now",
-  "selfPay.order.unseen": "We have not seen your payment yet.",
+  "selfPay.order.unseen": "The money may still be on its way.",
   "selfPay.order.unseen.description":
     "If you paid, show this screen to the staff.",
   "selfPay.order.waiting": "Payment for this order has not arrived yet.",
   "selfPay.order.waiting.description":
-    "If you have paid already, the payment is waiting to be confirmed.",
+    "If you have paid already, the restaurant confirms it once the money arrives.",
   "selfPay.paidFor.equal": "1/{people} of the bill",
   "selfPay.paidFor.paidBefore": "Paid already",
   "selfPay.paidFor.part": "{name} · {numerator}/{denominator}",

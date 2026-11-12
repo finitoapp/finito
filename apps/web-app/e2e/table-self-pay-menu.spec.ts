@@ -426,7 +426,7 @@ test("a guest who leaves an order's payment is offered to pay it from the order 
     await expect(payOrder).toBeVisible()
   })
 
-  await test.step("past the wait, the order says the payment was not seen and still offers paying", async () => {
+  await test.step("past the wait, the order says the money may still be on its way and still offers paying", async () => {
     await guest.clock.fastForward("10:10")
     await expect(inOrders("selfPay.order.unseen")).toBeVisible()
     await expect(inOrders("selfPay.order.unseen.description")).toBeVisible()
