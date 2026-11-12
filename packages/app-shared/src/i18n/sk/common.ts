@@ -111,7 +111,7 @@ export const skCommon = {
     "Nová objednávka {number} · {amount} · {text}",
   "orders.announced.open": "Otvoriť",
   "orders.empty": "Nie je čo vydať.",
-  "orders.line": "{name} × {quantity}",
+  "orders.line": "{quantity}× {name}",
   "orders.noTable": "Bez stola",
   "orders.note": "Poznámka hosťa: „{note}“",
   "orders.notFoundYet.description":

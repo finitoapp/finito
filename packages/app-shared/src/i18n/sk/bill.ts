@@ -121,7 +121,7 @@ export const skBill = {
   "bill.table.dialog.title": "Vybrať stôl",
   "bill.title": "Účet",
   "billDetail.noTable": "Bez stola",
-  "billDetail.selfPay": "Platba hosťom",
+  "billDetail.selfPay": "Pri stole",
   "billDetail.selfPay.linePaid": "Hostia zaplatili {paid} z {total}",
   "billDetail.table": "Stôl",
   "billDetail.closedAtValue": "Uzavreté {date}",

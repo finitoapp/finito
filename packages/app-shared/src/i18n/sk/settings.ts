@@ -654,9 +654,9 @@ export const skSettings = {
     "Interný popis je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalDescription.label": "Interný popis",
   "catalog.items.form.internalDescription.placeholder":
-    "Nepovinné – viditeľné iba pre personál",
+    "Nepovinné – viditeľné iba pre obsluhu",
   "catalog.items.form.internalName.hint":
-    "Zobrazí sa personálu namiesto verejného názvu. Zákazníci na účte stále vidia verejný názov a popis.",
+    "Zobrazí sa obsluhe namiesto verejného názvu. Zákazníci na účte stále vidia verejný názov a popis.",
   "catalog.items.form.internalName.invalid":
     "Interný názov je príliš dlhý (max. 255 znakov).",
   "catalog.items.form.internalName.label": "Interný názov",

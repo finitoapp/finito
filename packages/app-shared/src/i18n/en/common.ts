@@ -108,7 +108,7 @@ export const enCommon = {
   "orders.announced.written.noTable": "New order {number} · {amount} · {text}",
   "orders.announced.open": "Open",
   "orders.empty": "Nothing to serve.",
-  "orders.line": "{name} × {quantity}",
+  "orders.line": "{quantity}× {name}",
   "orders.noTable": "No table",
   "orders.note": "Guest's note: “{note}”",
   "orders.notFoundYet.description":

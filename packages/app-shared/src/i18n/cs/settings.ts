@@ -651,9 +651,9 @@ export const csSettings = {
     "Interní popis je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalDescription.label": "Interní popis",
   "catalog.items.form.internalDescription.placeholder":
-    "Nepovinné – viditelné pouze pro personál",
+    "Nepovinné – viditelné pouze pro obsluhu",
   "catalog.items.form.internalName.hint":
-    "Zobrazí se personálu místo veřejného názvu. Zákazníci na účtu stále vidí veřejný název a popis.",
+    "Zobrazí se obsluze místo veřejného názvu. Zákazníci na účtu stále vidí veřejný název a popis.",
   "catalog.items.form.internalName.invalid":
     "Interní název je příliš dlouhý (max. 255 znaků).",
   "catalog.items.form.internalName.label": "Interní název",

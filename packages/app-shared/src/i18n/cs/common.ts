@@ -111,7 +111,7 @@ export const csCommon = {
     "Nová objednávka {number} · {amount} · {text}",
   "orders.announced.open": "Otevřít",
   "orders.empty": "Není co vydat.",
-  "orders.line": "{name} × {quantity}",
+  "orders.line": "{quantity}× {name}",
   "orders.noTable": "Bez stolu",
   "orders.note": "Poznámka hosta: „{note}“",
   "orders.notFoundYet.description":

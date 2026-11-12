@@ -119,7 +119,7 @@ export const csBill = {
   "bill.table.dialog.title": "Vybrat stůl",
   "bill.title": "Účet",
   "billDetail.noTable": "Bez stolu",
-  "billDetail.selfPay": "Platba hostem",
+  "billDetail.selfPay": "U stolu",
   "billDetail.selfPay.linePaid": "Hosté zaplatili {paid} z {total}",
   "billDetail.table": "Stůl",
   "billDetail.closedAtValue": "Uzavřeno {date}",

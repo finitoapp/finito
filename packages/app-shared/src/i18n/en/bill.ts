@@ -117,7 +117,7 @@ export const enBill = {
   "bill.table.dialog.title": "Select table",
   "bill.title": "Bill",
   "billDetail.noTable": "No table",
-  "billDetail.selfPay": "Self-pay",
+  "billDetail.selfPay": "At the table",
   "billDetail.selfPay.linePaid": "Guests paid {paid} of {total}",
   "billDetail.table": "Table",
   "billDetail.closedAtValue": "Closed {date}",
