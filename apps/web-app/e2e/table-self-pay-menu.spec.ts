@@ -605,6 +605,61 @@ test("when no relay takes the order, the pay bar says nothing was paid and the p
   })
 })
 
+test("a picked item that sells out leaves the basket with a notice, and does not come back by itself", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(150_000)
+  await routeFakeNostrRelays(context)
+  const guestAddress = await test.step("seed a cafe", () =>
+    seedCafe(page, "Table 10"))
+  const guest = await context.newPage()
+  const toggleCakeSoldOut = async () => {
+    await gotoPage(page, "/catalog/items", "en", "catalog.items.title")
+    await page.getByRole("link", { name: /Cake/ }).click()
+    await toggleInlineSwitch(page, "catalog.items.form.soldOut.label")
+  }
+
+  await test.step("the guest picks a coffee and two cakes", async () => {
+    await openMenu(guest, guestAddress)
+    await pickItems(guest, [
+      ["Coffee", 1],
+      ["Cake", 2],
+    ])
+    await expect(payButton(guest, "$243.00")).toBeVisible()
+  })
+
+  await test.step("staff mark the cake sold out", toggleCakeSoldOut)
+
+  await test.step("the pay bar names the cake as removed, and the total drops to the coffee", async () => {
+    await expect(oneMore(guest, "Cake")).toHaveCount(0, { timeout: 60_000 })
+    const bar = guest
+      .locator("footer")
+      .filter({ has: payButton(guest, "$65.00") })
+    await expect(
+      bar.getByText(
+        translateParams("en", "selfPay.menu.removed", { names: "Cake" })
+      )
+    ).toBeVisible()
+  })
+
+  await test.step("the cake comes back to the menu but not into the basket", async () => {
+    await toggleCakeSoldOut()
+    await expect(oneMore(guest, "Cake")).toBeVisible({ timeout: 60_000 })
+    await expect(payButton(guest, "$65.00")).toBeVisible()
+  })
+
+  await test.step("changing the basket clears the notice", async () => {
+    await oneMore(guest, "Coffee").click()
+    await expect(payButton(guest, "$130.00")).toBeVisible()
+    await expect(
+      guest.getByText(
+        translateParams("en", "selfPay.menu.removed", { names: "Cake" })
+      )
+    ).toHaveCount(0)
+  })
+})
+
 test("with nothing in the menu, the guest page says ordering is not available right now", async ({
   seededPage: page,
   context,

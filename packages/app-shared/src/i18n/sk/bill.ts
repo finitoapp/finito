@@ -234,6 +234,8 @@ export const skBill = {
   "selfPay.menu.quantity.decrease": "Ubrať kus: {name}",
   "selfPay.menu.quantity.increase": "Pridať kus: {name}",
   "selfPay.menu.quantity.label": "Koľko kusov: {name}",
+  "selfPay.menu.removed":
+    "Už nie je k dispozícii a z objednávky bolo odobraté: {names}.",
   "selfPay.menu.tab.bill": "Účet",
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankový prevod",

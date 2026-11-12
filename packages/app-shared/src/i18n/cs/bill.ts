@@ -230,6 +230,8 @@ export const csBill = {
   "selfPay.menu.quantity.decrease": "Ubrat kus: {name}",
   "selfPay.menu.quantity.increase": "Přidat kus: {name}",
   "selfPay.menu.quantity.label": "Kolik kusů: {name}",
+  "selfPay.menu.removed":
+    "Už není k dispozici a z objednávky bylo odebráno: {names}.",
   "selfPay.menu.tab.bill": "Účet",
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bankovní převod",

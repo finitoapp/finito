@@ -228,6 +228,8 @@ export const enBill = {
   "selfPay.menu.quantity.decrease": "One fewer: {name}",
   "selfPay.menu.quantity.increase": "One more: {name}",
   "selfPay.menu.quantity.label": "How many: {name}",
+  "selfPay.menu.removed":
+    "No longer available and removed from your order: {names}.",
   "selfPay.menu.tab.bill": "Bill",
   "selfPay.menu.tab.menu": "Menu",
   "selfPay.method.bank": "Bank transfer",
