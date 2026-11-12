@@ -317,6 +317,7 @@ test("a VAT payer's staff switch a written item to another tax rate before accep
   await test.step("staff switch the meal to the food rate, then accept the order", async () => {
     const food = mealRates.getByRole("button", { name: /^Food/ })
     await expect(food).toBeVisible({ timeout: 45_000 })
+    await expect(food).toHaveText("12%")
     await food.click()
     await expect(food).toHaveAttribute("aria-pressed", "true")
     await orderCard

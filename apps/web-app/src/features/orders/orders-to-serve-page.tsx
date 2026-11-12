@@ -30,6 +30,7 @@ import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import {
   filterSelectableTaxRates,
   formatTaxRateLabel,
+  taxRatePercentageToDecimalString,
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
@@ -446,9 +447,10 @@ function WrittenLineTaxRate({
           <ToggleGroupItem
             key={rate.id}
             value={rate.id}
+            aria-label={formatTaxRateLabel(rate)}
             className="flex-1 aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
           >
-            {formatTaxRateLabel(rate)}
+            {`${taxRatePercentageToDecimalString(rate.rate)}%`}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>

@@ -31,6 +31,7 @@ import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import {
   filterSelectableTaxRates,
   formatTaxRateLabel,
+  taxRatePercentageToDecimalString,
 } from "@payky/core/modules/tax-rate/tax-rate-utils"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { router } from "expo-router"
@@ -488,8 +489,13 @@ function WrittenLineTaxRate({
         }}
       >
         {rates.map((rate) => (
-          <ToggleGroupItem key={rate.id} value={rate.id} flex={1}>
-            {formatTaxRateLabel(rate)}
+          <ToggleGroupItem
+            key={rate.id}
+            value={rate.id}
+            aria-label={formatTaxRateLabel(rate)}
+            flex={1}
+          >
+            {`${taxRatePercentageToDecimalString(rate.rate)}%`}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
