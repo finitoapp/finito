@@ -43,7 +43,6 @@ import {
   AlertDescription,
   AlertTitle,
 } from "../../../components/ui/alert.tsx"
-import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
@@ -71,7 +70,7 @@ import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
-import { NoPaymentMethodAlert } from "./table-self-pay-card.tsx"
+import { AlertLink, NoPaymentMethodAlert } from "./table-self-pay-card.tsx"
 import { useGuestsHaveNoPaymentMethod } from "./use-guests-cannot-pay-reason.ts"
 
 const deviceCodec = optionalIdCodec<DeviceId>()
@@ -419,8 +418,7 @@ function MenuStatus() {
           </AlertTitle>
           <AlertDescription>
             {t("catalog.tables.selfPayOptions.menu.empty.description")}
-            <Button
-              variant="link"
+            <AlertLink
               label={t("catalog.tables.selfPayOptions.menu.empty.link")}
               onPress={() => router.push("/settings/items")}
             />

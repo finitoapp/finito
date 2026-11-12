@@ -221,6 +221,30 @@ export function TableSelfPayCard({
   )
 }
 
+export function AlertLink({
+  label,
+  onPress,
+}: {
+  readonly label: string
+  readonly onPress: () => void
+}) {
+  return (
+    <Text
+      fontSize={fontSize.xs}
+      lineHeight={fontSize.xs}
+      fontWeight={fontWeight.medium}
+      color="foreground"
+      textDecorationLine="underline"
+      role="link"
+      hitSlop={12}
+      cursor="web:pointer"
+      onPress={onPress}
+    >
+      {label}
+    </Text>
+  )
+}
+
 export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
   const { t } = useTranslation()
 
@@ -229,8 +253,7 @@ export function NoPaymentMethodAlert({ title }: { readonly title: string }) {
       <AlertTitle numberOfLines={0}>{title}</AlertTitle>
       <AlertDescription>
         {t("catalog.tables.selfPay.noPaymentMethod.description")}
-        <Button
-          variant="link"
+        <AlertLink
           label={t("catalog.tables.selfPay.noPaymentMethod.link")}
           onPress={() => router.push("/settings/payment-accounts")}
         />
@@ -262,8 +285,7 @@ function NoRelayAcceptedAlert({ tableId }: { readonly tableId: TableId }) {
               })
             }}
           />
-          <Button
-            variant="link"
+          <AlertLink
             label={t("catalog.tables.selfPay.noRelayAccepted.link")}
             onPress={() => router.push("/settings/security")}
           />
