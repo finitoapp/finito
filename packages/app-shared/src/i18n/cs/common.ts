@@ -138,7 +138,7 @@ export const csCommon = {
   "orders.remember.forGood.title": "Přidat „{text}“ do menu natrvalo",
   "orders.remember.save": "Dát do menu",
   "orders.remember.title": "Zapamatovat „{text}“ na dnešek",
-  "orders.served": "Vydáno",
+  "orders.served": "Vydat",
   "orders.served.empty": "Dnes zatím nic vydáno.",
   "orders.soldOut": "Vyprodáno",
   "orders.tabs.served": "Vydané",
