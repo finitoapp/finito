@@ -324,6 +324,7 @@ function OrderCard({
               {order.lines.map((line) => (
                 <XStack key={line.id} items="center" gap={8}>
                   <Text
+                    flexShrink={1}
                     fontSize={fontSize.lg}
                     lineHeight={fontSize.lg}
                     fontWeight={fontWeight.medium}
@@ -539,6 +540,7 @@ function MoneyToReturn({
               gap={12}
             >
               <Text
+                flexShrink={1}
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
                 fontWeight={fontWeight.medium}
@@ -566,6 +568,7 @@ function MoneyToReturn({
           {paidAfterRejection.map((money) => (
             <XStack key={money.id} justify="space-between" gap={12}>
               <Text
+                flexShrink={1}
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
                 fontWeight={fontWeight.medium}
