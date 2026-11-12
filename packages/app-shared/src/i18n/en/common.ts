@@ -112,13 +112,13 @@ export const enCommon = {
   "orders.noTable": "No table",
   "orders.note": "Guest's note: “{note}”",
   "orders.notFoundYet.description":
-    "This money names an order {appName} cannot read yet. It keeps looking for 7 days.",
+    "This money is for an order {appName} cannot read yet. It keeps looking for 7 days.",
   "orders.notFoundYet.title": "Paid, order not found yet",
   "orders.notFullyPaid": "Not fully paid",
   "orders.number": "#{number}",
   "orders.paid": "Paid",
   "orders.paidAfterRejection.description":
-    "This money names an order the staff rejected, so it stays off the order's bill. Return it to the guest by hand.",
+    "This money is for an order the staff rejected, so it stays off the order's bill. Return it to the guest by hand.",
   "orders.paidAfterRejection.entry": "#{number} · {amount}",
   "orders.paidAfterRejection.title": "Paid after the order was rejected",
   "orders.preparing": "Being prepared",
@@ -152,7 +152,7 @@ export const enCommon = {
   "orders.written.taxRate": "Tax rate of “{text}”",
   "orders.written.taxRate.locked":
     "The order is accepted, so its tax rates no longer change.",
-  "orders.written.total": "Together {amount}",
+  "orders.written.total": "Total {amount}",
   "passwordTextarea.hide": "Hide content",
   "passwordTextarea.show": "Show content",
   "scanner.dialog.title": "Scan code",
