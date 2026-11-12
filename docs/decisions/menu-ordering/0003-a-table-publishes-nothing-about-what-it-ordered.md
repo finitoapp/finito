@@ -30,6 +30,9 @@ Relays see one event per order and its confirmation, so they can count
 orders and their times, but not which table ordered or what. The confirmation
 changes as staff accept, serve or reject the order (`menu-ordering/0006`).
 
+The owner switches bill paying off only while guests order from the menu or
+write what they pay for (`menu-ordering/0021`).
+
 ## Enforced by
 
 - `packages/core/src/background-jobs/jobs/table-self-pay-menu-publishing.test.ts > the view while guests order from the menu > names the menu and lists no bill while bill paying is off`

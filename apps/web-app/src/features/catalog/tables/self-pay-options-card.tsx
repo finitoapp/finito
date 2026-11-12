@@ -105,8 +105,13 @@ function SelfPayOptions() {
   const {
     data: [settings],
   } = useEvoluQuery(selfPaySettingsQuery)
+  const billPaying = settings?.selfPayBillsHidden !== sqliteTrue
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
+  const optionsOn = [billPaying, menuOrdering, writtenOrders].filter(
+    (on) => on
+  ).length
+  const isLastOn = (on: boolean) => on && optionsOn === 1
   const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
   const bankReachesGuests = useBankReachesGuests()
 
@@ -148,22 +153,28 @@ function SelfPayOptions() {
       />
       <InlineEditSwitch
         label={t("catalog.tables.selfPayOptions.payBill")}
-        defaultValue={settings?.selfPayBillsHidden !== sqliteTrue}
+        defaultValue={billPaying}
+        disabled={isLastOn(billPaying)}
         onSave={saveBillsShown}
       />
+      {isLastOn(billPaying) && <LastGuestOptionNote />}
       <InlineEditSwitch
         label={t("catalog.tables.selfPayOptions.order")}
         description={t("catalog.tables.selfPayOptions.order.description")}
         defaultValue={menuOrdering}
+        disabled={isLastOn(menuOrdering)}
         onSave={saveMenuOrdering}
       />
+      {isLastOn(menuOrdering) && <LastGuestOptionNote />}
       {menuOrdering && <MenuStatus />}
       <InlineEditSwitch
         label={t("catalog.tables.selfPayOptions.written")}
         description={t("catalog.tables.selfPayOptions.written.description")}
         defaultValue={writtenOrders}
+        disabled={isLastOn(writtenOrders)}
         onSave={saveWrittenOrders}
       />
+      {isLastOn(writtenOrders) && <LastGuestOptionNote />}
       {writtenOrders && (
         <WrittenOrderTaxRateSelect
           taxRateId={settings?.writtenOrderTaxRateId ?? null}
@@ -182,6 +193,16 @@ function SelfPayOptions() {
       )}
       <TableStickerCheck />
     </CardContent>
+  )
+}
+
+function LastGuestOptionNote() {
+  const { t } = useTranslation()
+
+  return (
+    <p className="-mt-2 text-xs text-muted-foreground">
+      {t("catalog.tables.selfPayOptions.lastOn")}
+    </p>
   )
 }
 

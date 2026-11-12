@@ -149,6 +149,44 @@ test("ordering is switched on with nothing in the menu, on this device", async (
   })
 })
 
+test("one way for guests to use the QR code stays on", async ({
+  seededPage: page,
+  context,
+}) => {
+  await routeFakeNostrRelays(context)
+  const payBill = page.getByRole("switch", {
+    name: translate("en", "catalog.tables.selfPayOptions.payBill"),
+  })
+  const written = page.getByRole("switch", {
+    name: translate("en", "catalog.tables.selfPayOptions.written"),
+  })
+  const lastOn = page.getByText(
+    translate("en", "catalog.tables.selfPayOptions.lastOn")
+  )
+
+  await test.step("switch self-pay on for a table", async () => {
+    await addTable(page, "en", { name: "Table 3", seatCount: "4" })
+    await enableTableSelfPay(page, "en", "Table 3")
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+  })
+
+  await test.step("paying the bill, the only way on, stays on and says how to stop guests", async () => {
+    await expect(payBill).toBeChecked()
+    await expect(payBill).toBeDisabled()
+    await expect(lastOn).toBeVisible()
+  })
+
+  await test.step("with writing on, paying the bill switches off and writing stays on", async () => {
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.written")
+    await expect(payBill).toBeEnabled()
+    await expect(lastOn).toBeHidden()
+    await toggleInlineSwitch(page, "catalog.tables.selfPayOptions.payBill")
+    await expect(written).toBeChecked()
+    await expect(written).toBeDisabled()
+    await expect(lastOn).toBeVisible()
+  })
+})
+
 test("a paid order is announced, listed to serve and served", async ({
   seededPage: page,
   context,

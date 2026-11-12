@@ -118,17 +118,20 @@ function SelfPayOptions() {
   const {
     data: [settings],
   } = useEvoluQuery(selfPaySettingsQuery)
+  const billPaying = settings?.selfPayBillsHidden !== sqliteTrue
   const menuOrdering = settings?.menuOrdering === sqliteTrue
   const writtenOrders = settings?.writtenOrders === sqliteTrue
+  const optionsOn = [billPaying, menuOrdering, writtenOrders].filter(
+    (on) => on
+  ).length
+  const isLastOn = (on: boolean) => on && optionsOn === 1
   const guestsHaveNoPaymentMethod = useGuestsHaveNoPaymentMethod()
   const bankReachesGuests = useBankReachesGuests()
 
-  const billsShown = useInlineChoice(
-    settings?.selfPayBillsHidden !== sqliteTrue,
-    (shown) =>
-      runToast(async (run) => {
-        await run.ok(setSelfPayBillsHidden(!shown))
-      })
+  const billsShown = useInlineChoice(billPaying, (shown) =>
+    runToast(async (run) => {
+      await run.ok(setSelfPayBillsHidden(!shown))
+    })
   )
   const ordering = useInlineChoice(menuOrdering, (on) =>
     runToast(async (run) => {
@@ -165,7 +168,7 @@ function SelfPayOptions() {
         <Switch
           aria-label={t("catalog.tables.selfPayOptions.payBill")}
           checked={billsShown.value}
-          disabled={billsShown.saving}
+          disabled={billsShown.saving || isLastOn(billPaying)}
           onCheckedChange={(checked) => {
             void billsShown.choose(checked)
           }}
@@ -174,11 +177,12 @@ function SelfPayOptions() {
           <FieldLabel>{t("catalog.tables.selfPayOptions.payBill")}</FieldLabel>
         </FieldContent>
       </Field>
+      {isLastOn(billPaying) && <LastGuestOptionNote />}
       <Field orientation="horizontal">
         <Switch
           aria-label={t("catalog.tables.selfPayOptions.order")}
           checked={ordering.value}
-          disabled={ordering.saving}
+          disabled={ordering.saving || isLastOn(menuOrdering)}
           onCheckedChange={(checked) => {
             void ordering.choose(checked)
           }}
@@ -190,12 +194,13 @@ function SelfPayOptions() {
           </FieldDescription>
         </FieldContent>
       </Field>
+      {isLastOn(menuOrdering) && <LastGuestOptionNote />}
       {menuOrdering && <MenuStatus />}
       <Field orientation="horizontal">
         <Switch
           aria-label={t("catalog.tables.selfPayOptions.written")}
           checked={writing.value}
-          disabled={writing.saving}
+          disabled={writing.saving || isLastOn(writtenOrders)}
           onCheckedChange={(checked) => {
             void writing.choose(checked)
           }}
@@ -207,6 +212,7 @@ function SelfPayOptions() {
           </FieldDescription>
         </FieldContent>
       </Field>
+      {isLastOn(writtenOrders) && <LastGuestOptionNote />}
       {writtenOrders && (
         <WrittenOrderTaxRateSelect
           taxRateId={settings?.writtenOrderTaxRateId ?? null}
@@ -225,6 +231,16 @@ function SelfPayOptions() {
       )}
       <TableStickerCheck />
     </CardContent>
+  )
+}
+
+function LastGuestOptionNote() {
+  const { t } = useTranslation()
+
+  return (
+    <Text mt={-8} fontSize="xs" lineHeight="xs" color="muted-foreground">
+      {t("catalog.tables.selfPayOptions.lastOn")}
+    </Text>
   )
 }
 

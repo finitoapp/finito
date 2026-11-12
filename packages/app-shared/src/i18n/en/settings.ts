@@ -1145,6 +1145,8 @@ export const enSettings = {
   "catalog.tables.selfPayGuestName.error": "Use at most 255 characters.",
   "catalog.tables.selfPayGuestName.label": "Name guests see",
   "catalog.tables.selfPayGuestName.placeholder": "Café on the Corner",
+  "catalog.tables.selfPayOptions.lastOn":
+    "One stays on. To stop guests at a table, turn off its QR code.",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "No item in the menu is available. Put items in the menu on their detail, or mark them available again.",
   "catalog.tables.selfPayOptions.menu.empty.link": "Open items",

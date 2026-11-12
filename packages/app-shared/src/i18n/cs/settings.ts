@@ -1145,6 +1145,8 @@ export const csSettings = {
   "catalog.tables.selfPayGuestName.error": "Zadejte nejvýše 255 znaků.",
   "catalog.tables.selfPayGuestName.label": "Jméno pro hosty",
   "catalog.tables.selfPayGuestName.placeholder": "Kavárna U Lípy",
+  "catalog.tables.selfPayOptions.lastOn":
+    "Jedna možnost zůstane zapnutá. Hosty u stolu zastavíte vypnutím jeho QR kódu.",
   "catalog.tables.selfPayOptions.menu.empty.description":
     "V menu není žádná dostupná položka. Přidejte položky do menu v jejich detailu, nebo je označte jako znovu dostupné.",
   "catalog.tables.selfPayOptions.menu.empty.link": "Otevřít položky",
