@@ -1858,6 +1858,38 @@ test.describe("a guest paying at the table", () => {
       ).toBeHidden()
     })
   })
+
+  test("a Bitcoin-only table without a usable rate asks guests to pay with the staff before they choose", async ({
+    page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const relays = await routeFakeNostrRelays(context)
+    await fakeSelfPayLightning(context, 100_000)
+    await context.route("https://api.yadio.io/exrates/**", (route) =>
+      route.abort()
+    )
+    let guestAddress = ""
+
+    await test.step("seed a Lightning account whose till cannot get a rate", async () => {
+      await seedOnboarding(page, "en", { spark: true })
+      await addTable(page, "en", { name: "Table 32", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Soup", price: "30" })
+      guestAddress = await enableTableSelfPay(page, "en", "Table 32")
+      await openTableBill(page, "en", { table: "Table 32", items: ["Soup"] })
+    })
+
+    await test.step("the guest is told paying here is not available, with no choice and no Pay", async () => {
+      await using phone = await newGuestContext(browser, relays)
+      const guest = await phone.newPage()
+      await guest.goto(guestAddress)
+      await expect(
+        guest.getByText(translate("en", "selfPay.noMethod.description"))
+      ).toBeVisible({ timeout: 45_000 })
+      await expect(guest.getByRole("button", { name: /^Pay / })).toHaveCount(0)
+    })
+  })
 })
 
 test("a guest pays a third of a bill too long to list by Lightning and sees it confirmed", async ({

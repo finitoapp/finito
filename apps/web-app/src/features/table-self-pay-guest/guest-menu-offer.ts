@@ -2,7 +2,10 @@ import {
   countSelfPayMenuItems,
   type SelfPayMenu,
 } from "@payky/core/modules/menu-order/menu-order-utils"
-import { findSelfPayBank } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
+import {
+  findSelfPayBank,
+  type SelfPaySignedRate,
+} from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import type { SelfPayView } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 
 export interface GuestMenuOffer {
@@ -12,11 +15,13 @@ export interface GuestMenuOffer {
 
 export const guestMenuOffer = (
   view: SelfPayView,
-  menu: SelfPayMenu | null
+  menu: SelfPayMenu | null,
+  rate: SelfPaySignedRate | null
 ): GuestMenuOffer => {
   if (
     menu === null ||
-    (findSelfPayBank(view, menu) === null && view.lightning === null)
+    (findSelfPayBank(view, menu) === null &&
+      (view.lightning === null || rate === null))
   ) {
     return { orderable: null, writable: null }
   }

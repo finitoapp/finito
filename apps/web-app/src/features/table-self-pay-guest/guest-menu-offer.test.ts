@@ -1,5 +1,6 @@
 import type { SelfPayMenu } from "@payky/core/modules/menu-order/menu-order-utils"
 import { IbanSchema } from "@payky/core/modules/shared/schema"
+import type { SelfPaySignedRate } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import type { SelfPayView } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { describe, expect, test } from "vitest"
 import { guestMenuOffer } from "./guest-menu-offer.ts"
@@ -10,6 +11,8 @@ const bankInCzk = {
   currency: "CZK",
   qrFormat: "spayd",
 } satisfies SelfPayView["bank"]
+
+const rateInCzk = { currency: "CZK" } as SelfPaySignedRate
 
 const view = (overrides: Partial<SelfPayView> = {}) =>
   ({ bank: bankInCzk, lightning: null, ...overrides }) as SelfPayView
@@ -34,7 +37,7 @@ const inMenu = [{ name: null, items: [coffee] }]
 
 describe("what the guest page offers from the menu", () => {
   test("offers nothing before writing is switched on and with nothing in the menu", () => {
-    expect(guestMenuOffer(view(), menu())).toEqual({
+    expect(guestMenuOffer(view(), menu(), null)).toEqual({
       orderable: null,
       writable: null,
     })
@@ -43,7 +46,7 @@ describe("what the guest page offers from the menu", () => {
   test("offers only writing while writing is on alone", () => {
     const writingAlone = menu({ written: true })
 
-    expect(guestMenuOffer(view(), writingAlone)).toEqual({
+    expect(guestMenuOffer(view(), writingAlone, null)).toEqual({
       orderable: null,
       writable: writingAlone,
     })
@@ -52,7 +55,7 @@ describe("what the guest page offers from the menu", () => {
   test("offers ordering and writing when both are on", () => {
     const both = menu({ written: true, categories: inMenu })
 
-    expect(guestMenuOffer(view(), both)).toEqual({
+    expect(guestMenuOffer(view(), both, null)).toEqual({
       orderable: both,
       writable: both,
     })
@@ -61,7 +64,7 @@ describe("what the guest page offers from the menu", () => {
   test("offers only ordering while writing is off", () => {
     const ordering = menu({ categories: inMenu })
 
-    expect(guestMenuOffer(view(), ordering)).toEqual({
+    expect(guestMenuOffer(view(), ordering, null)).toEqual({
       orderable: ordering,
       writable: null,
     })
@@ -70,15 +73,15 @@ describe("what the guest page offers from the menu", () => {
   test("offers only writing when every item in the menu is sold out", () => {
     const soldOut = menu({ written: true, categories: [] })
 
-    expect(guestMenuOffer(view(), soldOut).writable).toBe(soldOut)
-    expect(guestMenuOffer(view(), soldOut).orderable).toBe(null)
+    expect(guestMenuOffer(view(), soldOut, null).writable).toBe(soldOut)
+    expect(guestMenuOffer(view(), soldOut, null).orderable).toBe(null)
   })
 
   test("offers nothing when the bank is in another currency and Lightning is not offered", () => {
     const euro = view({ bank: { ...bankInCzk, currency: "EUR" } })
 
     expect(
-      guestMenuOffer(euro, menu({ written: true, categories: inMenu }))
+      guestMenuOffer(euro, menu({ written: true, categories: inMenu }), null)
     ).toEqual({ orderable: null, writable: null })
   })
 
@@ -89,6 +92,23 @@ describe("what the guest page offers from the menu", () => {
     })
     const writing = menu({ written: true })
 
-    expect(guestMenuOffer(lightningOnly, writing).writable).toBe(writing)
+    expect(guestMenuOffer(lightningOnly, writing, rateInCzk).writable).toBe(
+      writing
+    )
+  })
+
+  test("offers nothing by Lightning alone without a usable rate", () => {
+    const lightningOnly = view({
+      bank: null,
+      lightning: { identityPublicKey: "02".repeat(33) },
+    })
+
+    expect(
+      guestMenuOffer(
+        lightningOnly,
+        menu({ written: true, categories: inMenu }),
+        null
+      )
+    ).toEqual({ orderable: null, writable: null })
   })
 })

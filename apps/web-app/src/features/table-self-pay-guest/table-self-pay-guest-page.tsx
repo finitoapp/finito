@@ -17,9 +17,7 @@ import {
 import {
   findSelfPayBank,
   findSelfPayConfirmation,
-  findUsableSelfPayRate,
   isSelfPayViewStale,
-  selfPayRateChangesAt,
   selfPayViewConfirmedAt,
   selfPayViewStaleFrom,
 } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
@@ -99,6 +97,7 @@ import {
   useSelfPayMenu,
   useSelfPayView,
 } from "./use-self-pay-view.ts"
+import { useUsableSelfPayRate } from "./use-usable-self-pay-rate.ts"
 
 type PaymentMethod = "bank" | "lightning" | "test"
 
@@ -289,16 +288,7 @@ function GuestPayment({
   const [method, setMethod] = useState<PaymentMethod>(methods[0] ?? "lightning")
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false)
   const [isTestTransferSent, setIsTestTransferSent] = useState(false)
-  const now = useNow(
-    selfPayRateChangesAt(liveness, session.bill.currency).map((moment) =>
-      TimestampMs(moment * 1000)
-    )
-  )
-  const rate = findUsableSelfPayRate(
-    liveness,
-    session.bill.currency,
-    Math.floor(now.getTime() / 1000)
-  )
+  const rate = useUsableSelfPayRate(liveness, session.bill.currency)
 
   useEffect(() => {
     paymentSection.current?.scrollIntoView({ block: "start" })
@@ -432,8 +422,13 @@ function GuestSectionTabs({
   readonly onSectionChange: (section: GuestSection) => void
 }) {
   const { t } = useGuestTranslation()
-  const menu = useSelfPayMenu(address, menuKeys).data?.menu?.value ?? null
-  const { orderable, writable } = guestMenuOffer(view, menu)
+  const shown = useSelfPayMenu(address, menuKeys).data
+  const menu = shown?.menu?.value ?? null
+  const rate = useUsableSelfPayRate(
+    shown?.liveness?.value ?? null,
+    menu?.currency ?? null
+  )
+  const { orderable, writable } = guestMenuOffer(view, menu, rate)
   const sections: ReadonlyArray<{
     readonly value: GuestSection
     readonly label: string
@@ -561,6 +556,10 @@ function GuestOrdering({
       void publishGuestSelection(address, event)
     }
   }, [address, isEveryConfirmationRead, unsettledEvents])
+  const rate = useUsableSelfPayRate(
+    data?.liveness?.value ?? null,
+    data?.menu?.value.currency ?? null
+  )
 
   if (isPending) {
     return hidden ? null : (
@@ -573,7 +572,7 @@ function GuestOrdering({
 
   const menu = data?.menu?.value ?? null
   const liveness = data?.liveness?.value ?? null
-  const { orderable, writable } = guestMenuOffer(view, menu)
+  const { orderable, writable } = guestMenuOffer(view, menu, rate)
   const isWriting =
     writable !== null && (mode === "write" || orderable === null)
 
@@ -810,6 +809,10 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   const bill =
     view?.bills.find(({ reference }) => reference === selectedReference) ??
     view?.bills[0]
+  const billRate = useUsableSelfPayRate(
+    data?.liveness?.value ?? null,
+    bill?.currency ?? null
+  )
   const newestMineOnBill =
     myConfirmations.findLast(
       ({ reference }) => reference === bill?.reference
@@ -903,7 +906,10 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
     Math.floor(now.getTime() / 1000)
   )
   const bank = bill === undefined ? view.bank : findSelfPayBank(view, bill)
-  const offersMethod = bank !== null || view.lightning !== null
+  const isLightningPayable =
+    view.lightning !== null &&
+    (bill === undefined || pendingSession !== null || billRate !== null)
+  const offersMethod = bank !== null || isLightningPayable
   const menuAccess =
     view.enabled && view.menu !== null && view.selectionKey !== null
       ? { menuKeys: view.menu, selectionKey: view.selectionKey }
