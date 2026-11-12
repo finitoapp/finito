@@ -54,7 +54,7 @@ function TablesSettingsBody() {
             clearAriaLabel={t("catalog.tables.search.clear.aria")}
           />
         )}
-        {hasAny && <TableStickerCheck />}
+        {takesSelfPay && <TableStickerCheck />}
         <Suspense fallback={<ListSkeleton />}>
           <TablesList search={debouncedSearch} hasAny={hasAny} />
         </Suspense>

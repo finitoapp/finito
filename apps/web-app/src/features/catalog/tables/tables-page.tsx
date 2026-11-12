@@ -75,7 +75,7 @@ function TablesSettingsContent({
   return (
     <>
       {hasAny && searchInput}
-      {hasAny && <TableStickerCheck />}
+      {takesSelfPay && <TableStickerCheck />}
 
       <Suspense fallback={<ListSkeleton />}>
         <TablesList search={search} hasAny={hasAny} />

@@ -210,9 +210,19 @@ test("the tables list marks self-pay tables, and a sticker's verdict stays until
     }),
   })
 
-  await test.step("add two tables and switch self-pay on for one", async () => {
+  await test.step("no sticker is checked before a table takes self-pay", async () => {
     await addTable(page, "en", { name: "Table 7", seatCount: "4" })
     await addTable(page, "en", { name: "Table 8", seatCount: "2" })
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await expect(page.getByRole("link", { name: /Table 8/u })).toBeVisible()
+    await expect(
+      page.getByRole("button", {
+        name: translate("en", "catalog.tables.sticker.check"),
+      })
+    ).toHaveCount(0)
+  })
+
+  await test.step("switch self-pay on for one table", async () => {
     guestAddress = await enableTableSelfPay(page, "en", "Table 7")
   })
 
