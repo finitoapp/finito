@@ -146,8 +146,9 @@ export const csBill = {
   "selfPay.bank.byHand":
     "Platbu zadáváte ručně? Variabilní symbol a zprávu pro příjemce opište přesně, podle nich restaurace pozná, že platba je vaše.",
   "selfPay.bank.copy": "Kopírovat {field}",
-  "selfPay.bank.format.payBySquare": "Pay by Square",
-  "selfPay.bank.format.spayd": "QR Platba",
+  "selfPay.bank.format.showPayBySquare":
+    "Slovenská banka? Zobrazit kód PAY by square",
+  "selfPay.bank.format.showSpayd": "Česká banka? Zobrazit kód QR Platba",
   "selfPay.bank.hint.open":
     "Na tomto telefonu platbu otevřete v aplikaci banky. Z jiného telefonu stačí naskenovat QR kód. Okamžitá platba dorazí do restaurace během několika sekund.",
   "selfPay.bank.hint.save":

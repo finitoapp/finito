@@ -1,7 +1,4 @@
-import {
-  type BankQrFormat,
-  BankQrFormatSchema,
-} from "@payky/core/modules/account/account-types"
+import type { BankQrFormat } from "@payky/core/modules/account/account-types"
 import { createSelfPayBankQrPayload } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import {
   formatSelfPayBankMessage,
@@ -16,10 +13,9 @@ import { CheckIcon, CopyIcon, DownloadIcon, LandmarkIcon } from "lucide-react"
 import { QRCodeCanvas } from "qrcode.react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { formatAddressGroups } from "@/lib/format-utils.ts"
+import { guestBankQrFormat, otherBankQrFormat } from "./guest-bank-qr-format.ts"
 import { formatGuestAmount, formatGuestBareAmount } from "./guest-format.ts"
-import { guestToggleClassName } from "./guest-pick-styles.ts"
 import { useGuestClipboard } from "./use-guest-clipboard.ts"
 import { useGuestTranslation } from "./use-guest-translation.ts"
 
@@ -112,9 +108,9 @@ export function GuestBankPayment({
   const { t, locale } = useGuestTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [qrImage, setQrImage] = useState<string | null>(null)
-  const [format, setFormat] = useState<BankQrFormat>(bank.qrFormat)
-  const payBySquare =
-    bank.qrFormat === "spayd" ? "payBySquare1_2_0" : bank.qrFormat
+  const [chosenFormat, setChosenFormat] = useState<BankQrFormat | null>(null)
+  const format = chosenFormat ?? guestBankQrFormat(locale, bank.qrFormat)
+  const otherFormat = otherBankQrFormat(format, bank.qrFormat)
   const payload = useQuery({
     queryKey: ["selfPayBankQr", format, bank, bill.reference, amount, pointer],
     queryFn: () =>
@@ -158,28 +154,6 @@ export function GuestBankPayment({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <ToggleGroup<BankQrFormat>
-        value={[format]}
-        onValueChange={([next]) => {
-          const parsed = BankQrFormatSchema.safeParse(next)
-          if (parsed.success) setFormat(parsed.data)
-        }}
-        variant="outline"
-        className="w-full max-w-64"
-      >
-        <ToggleGroupItem
-          value="spayd"
-          className={`${guestToggleClassName} flex-1`}
-        >
-          {t("selfPay.bank.format.spayd")}
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value={payBySquare}
-          className={`${guestToggleClassName} flex-1`}
-        >
-          {t("selfPay.bank.format.payBySquare")}
-        </ToggleGroupItem>
-      </ToggleGroup>
       <p className="text-center text-sm text-muted-foreground">
         {t(
           bankAppFile === null
@@ -215,6 +189,20 @@ export function GuestBankPayment({
           <img src={qrImage} alt={t("selfPay.bank.qr")} className="size-full" />
         )}
       </div>
+      <Button
+        type="button"
+        variant="link"
+        className="h-11"
+        onClick={() => {
+          setChosenFormat(otherFormat)
+        }}
+      >
+        {t(
+          otherFormat === "spayd"
+            ? "selfPay.bank.format.showSpayd"
+            : "selfPay.bank.format.showPayBySquare"
+        )}
+      </Button>
       {bankAppFile === null ? null : saveQrButton}
       <p className="w-full text-sm text-muted-foreground">
         {t("selfPay.bank.byHand")}

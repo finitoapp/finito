@@ -144,8 +144,9 @@ export const enBill = {
   "selfPay.bank.byHand":
     "Typing the payment in by hand? Copy the variable symbol and the message exactly: they tell the restaurant the payment is yours.",
   "selfPay.bank.copy": "Copy {field}",
-  "selfPay.bank.format.payBySquare": "Pay by Square",
-  "selfPay.bank.format.spayd": "QR Platba",
+  "selfPay.bank.format.showPayBySquare":
+    "Slovak bank? Show the PAY by square code",
+  "selfPay.bank.format.showSpayd": "Czech bank? Show the QR Platba code",
   "selfPay.bank.hint.open":
     "On this phone, open the payment in your banking app. From another phone, just scan the QR code. An instant payment reaches the restaurant within seconds.",
   "selfPay.bank.hint.save":

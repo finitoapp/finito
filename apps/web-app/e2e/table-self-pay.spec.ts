@@ -1,6 +1,6 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { defaultSelfPayRelays } from "@payky/core/integrations/nostr/nostr-default-relays"
-import type { Locator, Page } from "@playwright/test"
+import type { BrowserContext, Locator, Page } from "@playwright/test"
 import { addCatalogItem, addTable } from "./support/bill.ts"
 import { cancelBillDirectly } from "./support/collisions.ts"
 import { colorContrast } from "./support/color-contrast.ts"
@@ -121,11 +121,16 @@ test("guests pay a fifth of a line at the table while nobody reserves anything",
       path: `${screenshotDir}/table-self-pay-guest-bank.png`,
       fullPage: true,
     })
-    const payBySquare = payer.getByRole("button", {
-      name: translate("en", "selfPay.bank.format.payBySquare"),
-    })
-    await payBySquare.click()
-    await expect(payBySquare).toHaveAttribute("aria-pressed", "true")
+    await payer
+      .getByRole("button", {
+        name: translate("en", "selfPay.bank.format.showPayBySquare"),
+      })
+      .click()
+    await expect(
+      payer.getByRole("button", {
+        name: translate("en", "selfPay.bank.format.showSpayd"),
+      })
+    ).toBeVisible()
     await expect(
       payer.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
     ).toBeVisible()
@@ -1495,7 +1500,7 @@ test.describe("a guest paying at the table", () => {
     })
 
     for (const colorScheme of ["light", "dark"] as const) {
-      await test.step(`in ${colorScheme} mode the picked tip, unit, share, QR format and method stand out`, async () => {
+      await test.step(`in ${colorScheme} mode the picked tip, unit, share and method stand out, and the other QR format reads`, async () => {
         await using phone = await newGuestContext(browser, relays, {
           colorScheme,
         })
@@ -1559,10 +1564,7 @@ test.describe("a guest paying at the table", () => {
 
         await tile("selfPay.tip.none").click()
         await payTotal(guest, "$101.00").click()
-        await pickedAgainstUnpicked(
-          tile("selfPay.bank.format.spayd"),
-          tile("selfPay.bank.format.payBySquare")
-        )
+        await readable(tile("selfPay.bank.format.showPayBySquare"))
         const tab = (key: TranslationKey) =>
           guest.getByRole("tab", { name: translate("en", key) })
         await expect(tab("selfPay.method.bank")).toHaveAttribute(
@@ -1826,11 +1828,66 @@ test.describe("a guest paying at the table", () => {
     })
 
     await test.step("PAY by square offers no bank-app button", async () => {
-      await guestButton(guest, "selfPay.bank.format.payBySquare").click()
+      await guestButton(guest, "selfPay.bank.format.showPayBySquare").click()
       await expect(
-        guestButton(guest, "selfPay.bank.format.payBySquare")
-      ).toHaveAttribute("aria-pressed", "true")
+        guestButton(guest, "selfPay.bank.format.showSpayd")
+      ).toBeVisible()
       await expect(guestButton(guest, "selfPay.bank.openInApp")).toHaveCount(0)
+    })
+  })
+
+  test("the bank QR follows the page language, PAY by square in Slovak and QR Platba in Czech, each one tap from the other", async ({
+    seededPage: page,
+    context,
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const relays = await routeFakeNostrRelays(context)
+    const { guestAddress } =
+      await test.step("seed a table with self-pay and a bill of a pizza and a beer", () =>
+        seedPizzaAndBeerBill(page, "Table 42"))
+    const payInLanguage = async (
+      phone: BrowserContext,
+      language: "cs" | "sk"
+    ) => {
+      const guest = await phone.newPage()
+      await guest.goto(guestAddress)
+      const pay = guest.getByRole("button", {
+        name: translateParams(language, "selfPay.pay.total", {
+          amount: new Intl.NumberFormat(language, {
+            style: "currency",
+            currency: "USD",
+          }).format(146),
+        }),
+      })
+      await expect(pay).toBeEnabled({ timeout: 45_000 })
+      await pay.click()
+      await expect(
+        guest.getByRole("img", { name: translate(language, "selfPay.bank.qr") })
+      ).toBeVisible()
+      return (key: TranslationKey) =>
+        guest.getByRole("button", { name: translate(language, key) })
+    }
+
+    await test.step("a Slovak page shows PAY by square and offers QR Platba for a Czech bank", async () => {
+      await using phone = await newGuestContext(browser, relays, {
+        locale: "sk-SK",
+      })
+      const link = await payInLanguage(phone, "sk")
+      await expect(link("selfPay.bank.format.showPayBySquare")).toHaveCount(0)
+      await link("selfPay.bank.format.showSpayd").click()
+      await expect(link("selfPay.bank.format.showPayBySquare")).toBeVisible()
+      await expect(link("selfPay.bank.format.showSpayd")).toHaveCount(0)
+    })
+
+    await test.step("a Czech page shows QR Platba and offers PAY by square for a Slovak bank", async () => {
+      await using phone = await newGuestContext(browser, relays, {
+        locale: "cs-CZ",
+      })
+      const link = await payInLanguage(phone, "cs")
+      await expect(link("selfPay.bank.format.showSpayd")).toHaveCount(0)
+      await link("selfPay.bank.format.showPayBySquare").click()
+      await expect(link("selfPay.bank.format.showSpayd")).toBeVisible()
     })
   })
 
@@ -1941,8 +1998,7 @@ test.describe("a guest paying at the table", () => {
         guest.getByRole("tab", {
           name: translate("en", "selfPay.method.bank"),
         }),
-        guestButton(guest, "selfPay.bank.format.spayd"),
-        guestButton(guest, "selfPay.bank.format.payBySquare"),
+        guestButton(guest, "selfPay.bank.format.showPayBySquare"),
         guestButton(guest, "selfPay.bank.saveQr"),
         guest.getByRole("button", { name: /^Copy /u }),
         guestButton(guest, "selfPay.back"),
