@@ -10,8 +10,29 @@
   --ring: oklch(0.83 0.16 88);
   --accent: oklch(0.83 0.16 88 / 0.14);
   --accent-foreground: var(--foreground);
-  /* The accent as text or a thin line, deeper on a light page so it reads. */
-  --landing-ink: oklch(0.6 0.13 72);
+  /*
+   * The accent as text, an icon or a thin line, deeper on a light page so it
+   * reads: a mustard that keeps the gold's hue (3.1:1 on white, the flyer's
+   * gold text) rather than an amber that turns brown. Large or bold type and
+   * icons only; running text stays in the foreground.
+   */
+  --landing-ink: oklch(0.66 0.14 88);
+}
+
+/*
+ * The light page is white, as the flyer's paper, with no warm tint: the gold
+ * is the one hue. A card stays white and stands off the page by its shadow;
+ * a band or a field is a cool grey, as the app's light neutrals are.
+ */
+:root:not(.dark) .landing {
+  --background: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --popover: oklch(1 0 0);
+  --muted: oklch(0.965 0.002 255);
+}
+
+:root:not(.dark):has(.landing) {
+  background-color: oklch(1 0 0);
 }
 
 .dark .landing {
