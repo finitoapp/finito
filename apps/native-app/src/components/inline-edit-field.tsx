@@ -97,7 +97,13 @@ export function InlineEditField<T extends string | number | null>({
       {labelAction === undefined ? (
         <FieldLabel>{label}</FieldLabel>
       ) : (
-        <XStack w="100%" items="center" justify="space-between" gap="2">
+        <XStack
+          w="100%"
+          flexWrap="wrap"
+          items="center"
+          justify="space-between"
+          gap="2"
+        >
           <FieldLabel>{label}</FieldLabel>
           <View
             opacity={draft === null ? 1 : 0}

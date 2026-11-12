@@ -193,7 +193,7 @@ export function InlineEditField<T extends string | number | null>({
 
   return (
     <Field data-invalid={editing && state.invalid}>
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <FieldLabel
           htmlFor={id}
           className={hideLabel === true ? "sr-only" : ""}
