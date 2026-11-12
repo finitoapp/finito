@@ -1,3 +1,5 @@
+import { getDecimalSeparator } from "@payky/app-shared/amount-entry"
+import { minorUnitsToFixedDecimalString } from "@payky/core/modules/shared/money"
 import { type FiatCurrency, Integer } from "@payky/core/modules/shared/schema"
 import { formatMoney, formatTime } from "@/lib/format-utils.ts"
 
@@ -6,6 +8,16 @@ export const formatGuestAmount = (
   { currency }: { readonly currency: FiatCurrency },
   locale: string
 ): string => formatMoney({ value: Integer(amount), currency }, locale)
+
+export const formatGuestBareAmount = (
+  amount: number,
+  { currency }: { readonly currency: FiatCurrency },
+  locale: string
+): string =>
+  minorUnitsToFixedDecimalString({ value: Integer(amount), currency }).replace(
+    ".",
+    getDecimalSeparator(locale)
+  )
 
 export const guestCurrencySymbol = (
   currency: FiatCurrency,

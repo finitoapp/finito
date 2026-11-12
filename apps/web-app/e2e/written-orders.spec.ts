@@ -534,7 +534,7 @@ test("a guest writes 2x pivo for 90.00 and the QR asks for 90.00 with a referenc
     writeOrder(guest, guestAddress, { text: "2x pivo", amount: "90.00" }))
 
   await test.step("the bank payment carries the amount, a 9 reference and a PK1 message, not the text", async () => {
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("90.00")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$90.00")
     expect(await bankField(guest, "selfPay.bank.variableSymbol")).toMatch(
       /^9\d{9}$/u
     )
@@ -588,7 +588,7 @@ test("a guest writes two items, pays their total, and staff see each with its am
     await textField(guest).nth(1).fill("utopenec")
     await amountField(guest).nth(1).fill("60.00")
     await payButton(guest, "$150.00").click()
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("150.00")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$150.00")
     await receiveShownBankTransfer(page, {
       payer: guest,
       language: "en",
@@ -1008,7 +1008,7 @@ test("a guest paying the rest of an order staff reject leaves the payment and is
     })
     await expect(payRest).toBeVisible({ timeout: 45_000 })
     await payRest.click()
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("10.00")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$10.00")
   })
 
   await test.step("staff reject it, and the guest's payment closes on the rejection", async () => {

@@ -2,8 +2,6 @@ import {
   type BankQrFormat,
   BankQrFormatSchema,
 } from "@payky/core/modules/account/account-types"
-import { minorUnitsToFixedDecimalString } from "@payky/core/modules/shared/money"
-import { Integer } from "@payky/core/modules/shared/schema"
 import { createSelfPayBankQrPayload } from "@payky/core/modules/table-self-pay/table-self-pay-guest-utils"
 import {
   formatSelfPayBankMessage,
@@ -19,6 +17,8 @@ import { QRCodeCanvas } from "qrcode.react"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
+import { formatAddressGroups } from "@/lib/format-utils.ts"
+import { formatGuestAmount, formatGuestBareAmount } from "./guest-format.ts"
 import { guestToggleClassName } from "./guest-pick-styles.ts"
 import { useGuestClipboard } from "./use-guest-clipboard.ts"
 import { useGuestTranslation } from "./use-guest-translation.ts"
@@ -26,9 +26,11 @@ import { useGuestTranslation } from "./use-guest-translation.ts"
 function CopyRow({
   label,
   value,
+  displayValue = value,
 }: {
   readonly label: string
   readonly value: string
+  readonly displayValue?: string
 }) {
   const { t } = useGuestTranslation()
   const clipboard = useGuestClipboard()
@@ -36,7 +38,9 @@ function CopyRow({
     <div className="flex items-center justify-between gap-3 py-2">
       <div className="min-w-0">
         <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="break-all font-mono text-sm select-all">{value}</div>
+        <div className="break-all font-mono text-sm select-all">
+          {displayValue}
+        </div>
         {clipboard.state === "failed" ? (
           <p className="text-xs text-destructive">{t("selfPay.copy.failed")}</p>
         ) : null}
@@ -105,7 +109,7 @@ export function GuestBankPayment({
   readonly amount: number
   readonly pointer: SelfPayPointer
 }) {
-  const { t } = useGuestTranslation()
+  const { t, locale } = useGuestTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [qrImage, setQrImage] = useState<string | null>(null)
   const [format, setFormat] = useState<BankQrFormat>(bank.qrFormat)
@@ -212,14 +216,19 @@ export function GuestBankPayment({
         )}
       </div>
       {bankAppFile === null ? null : saveQrButton}
+      <p className="w-full text-sm text-muted-foreground">
+        {t("selfPay.bank.byHand")}
+      </p>
       <div className="flex w-full flex-col divide-y divide-foreground/10">
-        <CopyRow label={t("selfPay.bank.account")} value={bank.iban} />
+        <CopyRow
+          label={t("selfPay.bank.iban")}
+          value={bank.iban}
+          displayValue={formatAddressGroups(bank.iban)}
+        />
         <CopyRow
           label={t("selfPay.bank.amount")}
-          value={minorUnitsToFixedDecimalString({
-            value: Integer(amount),
-            currency: bill.currency,
-          })}
+          value={formatGuestBareAmount(amount, bill, locale)}
+          displayValue={formatGuestAmount(amount, bill, locale)}
         />
         <CopyRow
           label={t("selfPay.bank.variableSymbol")}

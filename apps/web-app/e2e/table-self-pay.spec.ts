@@ -887,6 +887,31 @@ test("a guest copies the amount to pay, or is told to hold the text when copying
       guest.getByRole("main").getByText(translate("en", "selfPay.copy.failed"))
     ).toBeVisible()
   })
+
+  await test.step("on a Czech page the amount copies with a decimal comma, and the IBAN copies without its spaces", async () => {
+    const guest = await context.newPage()
+    const copyField = (key: TranslationKey) =>
+      guest.getByRole("button", {
+        name: translateParams("cs", "selfPay.bank.copy", {
+          field: translate("cs", key),
+        }),
+      })
+    const clipboard = () => guest.evaluate(() => navigator.clipboard.readText())
+    await openBankPayment(guest)
+    await guest
+      .getByRole("combobox", {
+        name: translate("en", "selfPay.language.label"),
+      })
+      .click()
+    await guest.getByRole("option", { name: "Čeština" }).click()
+    await copyField("selfPay.bank.amount").click()
+    await expect.poll(clipboard).toBe("12,00")
+    await expect(
+      guest.getByText("CZ65 0800 0000 1920 0014 5399", { exact: true })
+    ).toBeVisible()
+    await copyField("selfPay.bank.iban").click()
+    await expect.poll(clipboard).toBe("CZ6508000000192000145399")
+  })
 })
 
 test("a guest sees an empty table, then its bill, then pay-with-staff once self-pay is off", async ({

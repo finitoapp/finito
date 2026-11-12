@@ -144,8 +144,9 @@ export const skBill = {
   "billHistory.underpaid": "Nedoplatené",
   "selfPay.amount.unreadable": "Napíšte sumu, napríklad 150 alebo 150,50.",
   "selfPay.back": "Späť k účtu",
-  "selfPay.bank.account": "Číslo účtu",
   "selfPay.bank.amount": "Suma",
+  "selfPay.bank.byHand":
+    "Platbu zadávate ručne? Variabilný symbol a správu pre prijímateľa odpíšte presne, podľa nich reštaurácia spozná, že platba je vaša.",
   "selfPay.bank.copy": "Kopírovať {field}",
   "selfPay.bank.format.payBySquare": "Pay by Square",
   "selfPay.bank.format.spayd": "QR Platba",
@@ -153,7 +154,8 @@ export const skBill = {
     "Na tomto telefóne platbu otvorte v aplikácii banky. Z iného telefónu stačí naskenovať QR kód. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
   "selfPay.bank.hint.save":
     "Na tomto telefóne QR kód uložte a v aplikácii banky ho načítajte z galérie. Z iného telefónu ho stačí naskenovať. Okamžitá platba dorazí do reštaurácie v priebehu niekoľkých sekúnd.",
-  "selfPay.bank.message": "Správa",
+  "selfPay.bank.iban": "IBAN",
+  "selfPay.bank.message": "Správa pre prijímateľa",
   "selfPay.bank.openInApp": "Otvoriť v aplikácii banky",
   "selfPay.bank.qr": "QR kód na platbu prevodom",
   "selfPay.bank.saveQr": "Uložiť QR kód",

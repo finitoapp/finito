@@ -140,8 +140,9 @@ export const enBill = {
   "billHistory.underpaid": "Underpaid",
   "selfPay.amount.unreadable": "Type an amount such as 150 or 150.50.",
   "selfPay.back": "Back to the bill",
-  "selfPay.bank.account": "Account",
   "selfPay.bank.amount": "Amount",
+  "selfPay.bank.byHand":
+    "Typing the payment in by hand? Copy the variable symbol and the message exactly: they tell the restaurant the payment is yours.",
   "selfPay.bank.copy": "Copy {field}",
   "selfPay.bank.format.payBySquare": "Pay by Square",
   "selfPay.bank.format.spayd": "QR Platba",
@@ -149,7 +150,8 @@ export const enBill = {
     "On this phone, open the payment in your banking app. From another phone, just scan the QR code. An instant payment reaches the restaurant within seconds.",
   "selfPay.bank.hint.save":
     "On this phone, save the QR code and load it from your photos in your banking app. From another phone, just scan it. An instant payment reaches the restaurant within seconds.",
-  "selfPay.bank.message": "Message",
+  "selfPay.bank.iban": "IBAN",
+  "selfPay.bank.message": "Message for the recipient",
   "selfPay.bank.openInApp": "Open in bank app",
   "selfPay.bank.qr": "Bank payment QR code",
   "selfPay.bank.saveQr": "Save QR image",

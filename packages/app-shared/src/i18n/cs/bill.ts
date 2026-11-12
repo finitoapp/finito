@@ -142,8 +142,9 @@ export const csBill = {
   "billHistory.underpaid": "Nedoplaceno",
   "selfPay.amount.unreadable": "Napište částku, třeba 150 nebo 150,50.",
   "selfPay.back": "Zpět k účtu",
-  "selfPay.bank.account": "Číslo účtu",
   "selfPay.bank.amount": "Částka",
+  "selfPay.bank.byHand":
+    "Platbu zadáváte ručně? Variabilní symbol a zprávu pro příjemce opište přesně, podle nich restaurace pozná, že platba je vaše.",
   "selfPay.bank.copy": "Kopírovat {field}",
   "selfPay.bank.format.payBySquare": "Pay by Square",
   "selfPay.bank.format.spayd": "QR Platba",
@@ -151,7 +152,8 @@ export const csBill = {
     "Na tomto telefonu platbu otevřete v aplikaci banky. Z jiného telefonu stačí naskenovat QR kód. Okamžitá platba dorazí do restaurace během několika sekund.",
   "selfPay.bank.hint.save":
     "Na tomto telefonu QR kód uložte a v aplikaci banky ho načtěte z galerie. Z jiného telefonu ho stačí naskenovat. Okamžitá platba dorazí do restaurace během několika sekund.",
-  "selfPay.bank.message": "Zpráva",
+  "selfPay.bank.iban": "IBAN",
+  "selfPay.bank.message": "Zpráva pro příjemce",
   "selfPay.bank.openInApp": "Otevřít v aplikaci banky",
   "selfPay.bank.qr": "QR kód pro platbu převodem",
   "selfPay.bank.saveQr": "Uložit QR kód",

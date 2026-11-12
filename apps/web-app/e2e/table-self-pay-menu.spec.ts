@@ -120,7 +120,7 @@ test("a guest orders two coffees and a cake with a note and a tip, and the bank 
     await expect(
       guest.getByRole("img", { name: translate("en", "selfPay.bank.qr") })
     ).toBeVisible()
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("240.90")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$240.90")
     expect(await bankField(guest, "selfPay.bank.variableSymbol")).toMatch(
       /^9\d{9}$/u
     )
@@ -444,7 +444,7 @@ test("a guest who paid an order short sees what is left, also after reopening th
         }),
       })
       .click()
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("19.00")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$19.00")
     await receiveShownBankTransfer(page, {
       payer: guest,
       language: "en",
@@ -511,7 +511,7 @@ test("a guest who leaves an order's payment is offered to pay it from the order 
 
   await test.step("the guest pays the order's 219.00 from it and sees it paid", async () => {
     await payOrder.click()
-    expect(await bankField(guest, "selfPay.bank.amount")).toBe("219.00")
+    expect(await bankField(guest, "selfPay.bank.amount")).toBe("$219.00")
     await receiveShownBankTransfer(page, {
       payer: guest,
       language: "en",
