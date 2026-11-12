@@ -56,7 +56,6 @@ import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
 import { WindowSafeArea } from "../src/platform/window-safe-area"
-import { palette } from "../src/theme/palette.ts"
 import { tamaguiConfig } from "../tamagui.config.ts"
 
 // Kept until the first screen is ready (src/core/first-screen.ts) instead
@@ -131,7 +130,7 @@ function ThemedApp() {
   const systemScheme = useColorScheme()
   const theme = resolveTheme(preference, systemScheme)
   useEffect(() => {
-    setBrowserThemeColor(palette[theme].background)
+    setBrowserThemeColor(theme)
   }, [theme])
   // App jobs first, the Cashu one after, each once the screen is left alone.
   const appJobsMayStart = useIdleAfterFirstScreen(1500)

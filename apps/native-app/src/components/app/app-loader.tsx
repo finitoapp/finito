@@ -2,13 +2,13 @@ import { brandName } from "@payky/app-shared/brand"
 import { Image, useColorScheme, useWindowDimensions, View } from "react-native"
 import appIcon from "../../../assets/app-icon.png"
 import { appBrand } from "../../core/app-brand.ts"
-import { palette } from "../../theme/palette.ts"
+import { appThemes } from "../../theme/themes.ts"
 
 /**
  * Web's `#app-loader` (`apps/web-app/index.html`): the app icon centered at
  * `min(36vw, 11rem)` on the theme background while the app starts. It shows
  * before fonts, Tamagui and the device database (which holds the theme
- * preference) are ready, so it is plain RN on the system scheme's palette
+ * preference) are ready, so it is plain RN on the system scheme's theme
  * background, as web's boot script reads the system scheme.
  *
  * The label is English, as web's: no translations are loaded yet.
@@ -28,7 +28,7 @@ export function AppLoader() {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: palette[scheme].background,
+        backgroundColor: appThemes[scheme].background,
       }}
     >
       <Image

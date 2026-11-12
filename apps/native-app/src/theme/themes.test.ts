@@ -4,9 +4,11 @@ import { expect, test } from "vitest"
 import { appThemes } from "./themes"
 
 /**
- * The splash (`app.config.ts`) and the PWA shell (`public/index.html`) paint
- * the page before the app does, with the theme's `background` written out as
- * a literal; this keeps them on it when the theme moves.
+ * The splash (`app.config.ts`), the PWA shell (`public/index.html`) and the
+ * installed PWA's manifest paint the page and the system bar before the app
+ * does, with the theme's `background` written out as a literal; this keeps
+ * them on it when the theme moves. Once running, the app sets the bar itself
+ * (`src/platform/browser-theme-color.web.ts`).
  */
 
 const appDir = path.resolve(import.meta.dirname, "../..")
@@ -28,4 +30,13 @@ test("the PWA shell paints each theme's background", () => {
     )
     expect(html).toContain(`background: ${theme.background};`)
   }
+})
+
+test("the installed PWA's manifest paints the dark page", () => {
+  // A manifest takes one color, not one per scheme, so it takes the dark
+  // page: the launch splash and the bar until the shell's `theme-color`
+  // takes over.
+  const manifest = JSON.parse(read("public/manifest.webmanifest"))
+  expect(manifest.background_color).toBe(appThemes.dark.background)
+  expect(manifest.theme_color).toBe(appThemes.dark.background)
 })
