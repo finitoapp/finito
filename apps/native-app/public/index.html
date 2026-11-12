@@ -36,17 +36,29 @@
         height: 100%;
         flex: 1;
       }
-      /* An installed iOS web app with the black-translucent status bar draws
-         the page from the top of the screen but sizes 100% without the
-         status bar, leaving a strip at the bottom where the hidden menu bar,
-         slid just below the page, still showed. Add the status bar back. */
-      @media all and (display-mode: standalone) {
-        html,
-        body {
-          height: calc(100% + env(safe-area-inset-top));
-        }
+      /* An installed web app fills the whole screen, under the
+         black-translucent status bar too. iOS 26 sizes 100% (and dvh, svh,
+         innerHeight) short of it by the status bar in that mode (WebKit
+         301108), leaving a strip at the bottom, while older iOS sizes it
+         right; only lvh is the full screen in both. Adding the top inset to
+         100% instead overshot every iOS that has no such bug, cutting the
+         bottom of the page off (the menu bar on an iPhone SE). The class
+         comes from the script below, as iOS does not always match
+         `display-mode: standalone`. */
+      html.standalone,
+      html.standalone body {
+        height: 100lvh;
+        overflow: hidden;
       }
     </style>
+    <script>
+      if (
+        navigator.standalone === true ||
+        window.matchMedia("(display-mode: standalone)").matches
+      ) {
+        document.documentElement.classList.add("standalone")
+      }
+    </script>
     <style>
       /* The theme's background (src/theme/themes.ts) before the app
          paints, so a dark device does not flash white while the bundle

@@ -55,6 +55,7 @@ import { SettingsPage } from "../src/features/settings/settings-page.tsx"
 import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
+import { WindowSafeArea } from "../src/platform/window-safe-area"
 import { palette } from "../src/theme/palette.ts"
 import { tamaguiConfig } from "../tamagui.config.ts"
 
@@ -108,12 +109,14 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <Provider store={store}>
-      <EvoluStartupError />
-      <Suspense fallback={<AppLoader />}>
-        <ThemedApp />
-      </Suspense>
-    </Provider>
+    <WindowSafeArea>
+      <Provider store={store}>
+        <EvoluStartupError />
+        <Suspense fallback={<AppLoader />}>
+          <ThemedApp />
+        </Suspense>
+      </Provider>
+    </WindowSafeArea>
   )
 }
 
