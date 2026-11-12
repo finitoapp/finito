@@ -1,5 +1,5 @@
 import type { InferRow } from "@evolu/common"
-import type { BillCoverage } from "@payky/core/modules/bill/bill-types"
+import { deriveBillCoverage } from "@payky/core/modules/bill/bill-utils"
 import type { BillLineSummaryDiff } from "@payky/core/modules/bill-line/bill-line-utils"
 import { deriveReceivedTipAmount } from "@payky/core/modules/payment/payment-cash-utils"
 import type {
@@ -105,9 +105,18 @@ export type BillCoverageWarningCoverage =
 
 export interface PaymentBillCoverageNotice {
   readonly warning: BillCoverageWarningCoverage | null
+  readonly expectedAmount: NonNegativeInteger
   readonly reason: BillCoverageMismatchReason | null
   readonly hasLineDiff: boolean
 }
+
+export const keptGoodsTotal = ({
+  billTotal,
+  isCanceled,
+}: {
+  readonly billTotal: NonNegativeInteger
+  readonly isCanceled: boolean
+}): NonNegativeInteger => (isCanceled ? NonNegativeInteger(0) : billTotal)
 
 export const hasLineDiff = (diff: BillLineSummaryDiff | null): boolean =>
   diff !== null &&
@@ -120,19 +129,23 @@ export const hasLineDiff = (diff: BillLineSummaryDiff | null): boolean =>
  * actually landed — the same gate the list rows use.
  */
 export const derivePaymentBillCoverageNotice = ({
-  coverage,
+  billTotal,
+  isCanceled,
   claimedSum,
   lineDiff,
   otherClaimedPaymentCount,
   unresolvedOverpayment,
 }: {
-  readonly coverage: BillCoverage
+  readonly billTotal: NonNegativeInteger
+  readonly isCanceled: boolean
   readonly claimedSum: NonNegativeInteger
   readonly lineDiff: BillLineSummaryDiff | null
   readonly otherClaimedPaymentCount: number
   readonly unresolvedOverpayment: number
 }): PaymentBillCoverageNotice => {
   const linesChanged = hasLineDiff(lineDiff)
+  const expectedAmount = keptGoodsTotal({ billTotal, isCanceled })
+  const coverage = deriveBillCoverage(expectedAmount, claimedSum)
 
   return {
     warning:
@@ -144,6 +157,7 @@ export const derivePaymentBillCoverageNotice = ({
         : coverage === "underpaid" && claimedSum > 0
           ? { type: "underpaid" }
           : null,
+    expectedAmount,
     reason: linesChanged
       ? "billLinesChanged"
       : otherClaimedPaymentCount > 0

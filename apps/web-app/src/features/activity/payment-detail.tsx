@@ -601,7 +601,7 @@ function PaymentDetailBillCard({
   const { data: taxRates } = useEvoluQuery(taxRatesQuery)
   const summaries = useBillLineSummaries(billId)
   const billStatus = useBillStatus(billId)
-  const { claimedSum, coverage } = useBillCoverage(billId)
+  const { claimedSum } = useBillCoverage(billId)
   const lineDiff = useBillLineSummaryDiff(paymentId, billId)
   const overpaymentInput = useOverpaymentInput({ billId })
   const claimedPaymentsQuery = claimedPaymentsByBillIdQuery(billId)
@@ -629,10 +629,12 @@ function PaymentDetailBillCard({
       : deriveBillOverpayment(overpaymentInput).unresolved
   const {
     warning: coverageWarning,
+    expectedAmount,
     reason: coverageMismatchReason,
     hasLineDiff,
   } = derivePaymentBillCoverageNotice({
-    coverage,
+    billTotal: totalAmount,
+    isCanceled: billStatus.status === "canceled",
     claimedSum,
     lineDiff,
     otherClaimedPaymentCount: otherClaimedPaymentIds.length,
@@ -771,7 +773,7 @@ function PaymentDetailBillCard({
         {coverageWarning === null ? null : (
           <BillCoverageWarning
             coverage={coverageWarning}
-            expectedAmount={totalAmount}
+            expectedAmount={expectedAmount}
             claimedSum={claimedSum}
             currency={bill.currency}
             reason={coverageMismatchReason}

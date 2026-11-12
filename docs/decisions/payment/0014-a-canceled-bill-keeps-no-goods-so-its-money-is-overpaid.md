@@ -39,3 +39,7 @@ shown as not counted.
 - `packages/core/src/modules/bill/bill-overpayment.test.ts > The unresolved overpayment of a bill > Canceled bill keeps no goods, so all its money is unresolved`
 - `packages/core/src/modules/overpayment-resolution/overpayment-resolution-actions.test.ts > Staff resolves an overpayment > Money a guest paid on a discarded bill`
 - `apps/web-app/e2e/table-self-pay.spec.ts > the till > the guest money a discarded bill holds is answered on its overpayment card`
+- `packages/app-shared/src/activity-detail.test.ts > derivePaymentBillCoverageNotice > a canceled bill keeps no goods, so its money is overpaid, never underpaid`
+- `packages/app-shared/src/activity-history.test.ts > derivePaymentHistoryRowState > a payment on a canceled bill flags its money overpaid, never the bill underpaid`
+- `packages/app-shared/src/activity-history.test.ts > deriveOverpaymentEntry > a canceled bill keeps no goods, so any money on it is an entry`
+- `packages/app-shared/src/activity-history.test.ts > bill history rows > a canceled bill keeps no goods, so its money reads overpaid, never underpaid`

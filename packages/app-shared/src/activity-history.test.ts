@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 import {
   type BillHistoryRow,
   billHistoryIssueLabels,
+  deriveKeptGoodsCoverage,
   deriveOverpaymentEntry,
   derivePaymentHistoryRowState,
   formatActivityDayTitle,
@@ -49,6 +50,23 @@ const claim = (paymentId: string, amount: number, id = "tx1") => ({
   tipAmount: 0,
   transactionKind: "cashRegister",
 })
+
+const espressoLine = {
+  billId: "b1",
+  catalogItemId: null,
+  itemId: "i1",
+  type: "item",
+  kind: "add",
+  quantity: 3,
+  totalAmount: 165,
+}
+const espresso = {
+  id: "i1",
+  name: "Espresso",
+  description: null,
+  currency: "CZK",
+  taxRateId: null,
+}
 
 describe("derivePaymentHistoryRowState", () => {
   test("a claimed payment is paid, an unclaimed one pending", () => {
@@ -130,6 +148,30 @@ describe("derivePaymentHistoryRowState", () => {
     expect(withoutBill.billOverpaid).toBe(false)
   })
 
+  test("a payment on a canceled bill flags its money overpaid, never the bill underpaid", () => {
+    const flagsOf = (billConfirmedClosedAt: number | null) =>
+      derivePaymentHistoryRowState(
+        payment({
+          billId: "b1",
+          billCanceledAt: 1,
+          billConfirmedClosedAt,
+          billLines: [espressoLine],
+          billItems: [espresso],
+          billClaimedTransactions: [claim("p1", 50)],
+        }),
+        now,
+        billConfirmedClosedAt === null
+      ).issueFlags
+    expect(flagsOf(null)).toMatchObject({
+      billUnderpaid: false,
+      billOverpaid: true,
+    })
+    expect(flagsOf(2)).toMatchObject({
+      billUnderpaid: true,
+      billOverpaid: false,
+    })
+  })
+
   test("a resolved overpayment flags nothing", () => {
     const flags = derivePaymentHistoryRowState(
       payment({ billId: "b1", billClaimedTransactions: [claim("other", 50)] }),
@@ -185,6 +227,21 @@ describe("deriveOverpaymentEntry", () => {
       )
     expect(entryOf(null)).toMatchObject({ isCanceled: true })
     expect(entryOf(2)).toMatchObject({ isCanceled: false })
+  })
+
+  test("a canceled bill keeps no goods, so any money on it is an entry", () => {
+    expect(
+      deriveOverpaymentEntry(
+        payment({
+          billId: "b1",
+          billCanceledAt: 1,
+          billConfirmedClosedAt: null,
+          billLines: [espressoLine],
+          billItems: [espresso],
+          billClaimedTransactions: [claim("p1", 50)],
+        })
+      )
+    ).toEqual({ billId: "b1", billTotal: 165, isCanceled: true })
   })
 
   test("a bill that is paid or underpaid is no entry", () => {
@@ -365,6 +422,35 @@ describe("bill history rows", () => {
     expect(billHistoryIssueLabels(summary, t, false)).not.toContain(
       t("billHistory.overpaid")
     )
+  })
+
+  test("a canceled bill keeps no goods, so its money reads overpaid, never underpaid", () => {
+    const summary = summarizeBillHistoryRow(
+      bill({
+        canceledAt: 1,
+        lines: [espressoLine],
+        items: [espresso],
+        claimedTransactions: [claim("p1", 50)],
+      })
+    )
+    expect(deriveKeptGoodsCoverage(summary)).toBe("overpaid")
+    expect(billHistoryIssueLabels(summary, t, true)).toEqual([
+      t("billHistory.overpaid"),
+    ])
+
+    const confirmedClosed = summarizeBillHistoryRow(
+      bill({
+        canceledAt: 1,
+        confirmedClosedAt: 2,
+        lines: [espressoLine],
+        items: [espresso],
+        claimedTransactions: [claim("p1", 50)],
+      })
+    )
+    expect(deriveKeptGoodsCoverage(confirmedClosed)).toBe("underpaid")
+    expect(billHistoryIssueLabels(confirmedClosed, t, false)).toEqual([
+      t("billHistory.underpaid"),
+    ])
   })
 
   test("counts each payment's tip once however many transactions settled it", () => {

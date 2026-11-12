@@ -87,6 +87,8 @@ describe("derivePaymentDetailState", () => {
 
 describe("derivePaymentBillCoverageNotice", () => {
   const base = {
+    billTotal: 100 as never,
+    isCanceled: false,
     lineDiff: null,
     otherClaimedPaymentCount: 0,
     unresolvedOverpayment: 0,
@@ -96,14 +98,12 @@ describe("derivePaymentBillCoverageNotice", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "underpaid",
         claimedSum: 0 as never,
       }).warning
     ).toBeNull()
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "underpaid",
         claimedSum: 40 as never,
       }).warning
     ).toEqual({ type: "underpaid" })
@@ -113,15 +113,13 @@ describe("derivePaymentBillCoverageNotice", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "overpaid",
-        claimedSum: 0 as never,
+        claimedSum: 130 as never,
         unresolvedOverpayment: 30,
       }).warning
     ).toEqual({ type: "overpaid", unresolved: 30 })
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "paid",
         claimedSum: 100 as never,
       }).warning
     ).toBeNull()
@@ -131,8 +129,7 @@ describe("derivePaymentBillCoverageNotice", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "overpaid",
-        claimedSum: 100 as never,
+        claimedSum: 130 as never,
       }).warning
     ).toBeNull()
   })
@@ -140,8 +137,9 @@ describe("derivePaymentBillCoverageNotice", () => {
   test("a changed bill line explains the mismatch before another payment does", () => {
     const diff = { added: [{}], removed: [], changed: [] } as never
     const notice = derivePaymentBillCoverageNotice({
-      coverage: "overpaid",
-      claimedSum: 100 as never,
+      billTotal: 100 as never,
+      isCanceled: false,
+      claimedSum: 130 as never,
       lineDiff: diff,
       otherClaimedPaymentCount: 1,
       unresolvedOverpayment: 0,
@@ -151,8 +149,7 @@ describe("derivePaymentBillCoverageNotice", () => {
     expect(
       derivePaymentBillCoverageNotice({
         ...base,
-        coverage: "overpaid",
-        claimedSum: 100 as never,
+        claimedSum: 130 as never,
         otherClaimedPaymentCount: 1,
       }).reason
     ).toBe("multiplePayments")
@@ -161,12 +158,33 @@ describe("derivePaymentBillCoverageNotice", () => {
   test("an empty diff explains nothing", () => {
     expect(
       derivePaymentBillCoverageNotice({
-        coverage: "overpaid",
-        claimedSum: 100 as never,
+        billTotal: 100 as never,
+        isCanceled: false,
+        claimedSum: 130 as never,
         lineDiff: { added: [], removed: [], changed: [] },
         otherClaimedPaymentCount: 0,
         unresolvedOverpayment: 0,
       }).reason
+    ).toBeNull()
+  })
+
+  test("a canceled bill keeps no goods, so its money is overpaid, never underpaid", () => {
+    const notice = derivePaymentBillCoverageNotice({
+      ...base,
+      billTotal: 165 as never,
+      isCanceled: true,
+      claimedSum: 50 as never,
+      unresolvedOverpayment: 50,
+    })
+    expect(notice.warning).toEqual({ type: "overpaid", unresolved: 50 })
+    expect(notice.expectedAmount).toBe(0)
+    expect(
+      derivePaymentBillCoverageNotice({
+        ...base,
+        billTotal: 165 as never,
+        isCanceled: true,
+        claimedSum: 50 as never,
+      }).warning
     ).toBeNull()
   })
 })

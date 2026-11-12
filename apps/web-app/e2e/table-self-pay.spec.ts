@@ -7,6 +7,7 @@ import { colorContrast } from "./support/color-contrast.ts"
 import { expect, screenshotDir, test } from "./support/fixtures.ts"
 import { nameParam, translate, translateParams } from "./support/i18n.ts"
 import {
+  contentNav,
   gotoPage,
   gotoPosOverview,
   waitForLocalWriteToSettle,
@@ -2124,6 +2125,44 @@ test.describe("the till", () => {
         })
         .click()
       await waitForLocalWriteToSettle(page)
+    })
+
+    await test.step("the activity reads the discarded bill's money overpaid, never underpaid", async () => {
+      await gotoPage(page, "/activity/bills", "en", "activity.title")
+      const billRow = contentNav(page, "en").locator(`a[href$="/${billId}"]`)
+      await expect(billRow).toContainText(
+        translate("en", "billHistory.overpaid")
+      )
+      await expect(billRow).not.toContainText(
+        translate("en", "billHistory.underpaid")
+      )
+
+      await gotoPage(page, "/activity", "en", "activity.title")
+      const paymentRow = contentNav(page, "en").getByRole("link")
+      await expect(paymentRow).toHaveCount(1)
+      await expect(paymentRow).toContainText(
+        translate("en", "paymentHistory.billOverpaid")
+      )
+      await expect(paymentRow).not.toContainText(
+        translate("en", "paymentHistory.billUnderpaid")
+      )
+
+      await paymentRow.click()
+      await expect(
+        page.getByText(
+          translateParams("en", "overpayment.title", { amount: "$45.00" })
+        )
+      ).toBeVisible()
+      await expect(
+        page.getByRole("button", {
+          name: translate("en", "overpayment.resolveOnBill"),
+        })
+      ).toBeVisible()
+      await expect(
+        page.getByText(
+          translate("en", "paymentDetail.bill.coverage.underpaid.title")
+        )
+      ).toBeHidden()
     })
 
     await test.step("the canceled bill offers the guest's money, and keeping it resolves it", async () => {
