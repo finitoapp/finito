@@ -1,6 +1,7 @@
 import { installPolyfills } from "@evolu/common/polyfills"
 import {
   isLandingEetPath,
+  isLandingPrivacyPath,
   isLandingTechPath,
   landingLanguageFromPath,
   readLandingRedirectEnvironment,
@@ -10,6 +11,7 @@ import { createRoot, hydrateRoot } from "react-dom/client"
 import { landingAppEntryUrl, landingSite } from "@/core/landing-site.ts"
 import { LandingEetPage } from "@/features/landing/landing-eet-page.tsx"
 import { LandingPage } from "@/features/landing/landing-page.tsx"
+import { LandingPrivacyPage } from "@/features/landing/landing-privacy-page.tsx"
 import { LandingTechPage } from "@/features/landing/landing-tech-page.tsx"
 import "@/index.css"
 
@@ -27,7 +29,9 @@ const Page = isLandingEetPath(location.pathname, landingSite.paths)
   ? LandingEetPage
   : isLandingTechPath(location.pathname, landingSite.paths)
     ? LandingTechPage
-    : LandingPage
+    : isLandingPrivacyPath(location.pathname, landingSite.paths)
+      ? LandingPrivacyPage
+      : LandingPage
 const page = (
   <StrictMode>
     <Page language={language} />

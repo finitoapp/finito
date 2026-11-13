@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import { appBrand } from "../../../core/app-brand.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { AiAssistantCard } from "./ai-assistant-card.tsx"
@@ -100,7 +101,9 @@ export function PrivacySettingsPage() {
           </CardHeader>
           <CardContent>
             <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
-              {t("settings.about.privacy.body")}
+              {t("settings.about.privacy.body", {
+                websiteUrl: appBrand.websiteUrl,
+              })}
             </Text>
           </CardContent>
         </Card>

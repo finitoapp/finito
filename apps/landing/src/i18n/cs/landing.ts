@@ -271,6 +271,7 @@ export const csLanding = {
   "landing.flows.title": "{appName} se přizpůsobí vašemu podnikání",
   "landing.footer.description": "Platební terminál pro Česko a Slovensko",
   "landing.footer.github": "GitHub",
+  "landing.footer.privacy": "Ochrana soukromí",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "Čím se lišíme",
   "landing.footer.website": "{siteHost}",
@@ -322,6 +323,9 @@ export const csLanding = {
   "landing.noNeed.alt": "Bez smlouvy, data patří vám, nikdo vás nesleduje",
   "landing.noNeed.title":
     "Bez smlouvy.\nData patří jen vám a ani my o vás nic nevíme.",
+  "landing.privacy.meta.description":
+    "Jaká data {appName} zpracovává, se kterými službami komunikuje a co tyto služby vidí. Tytéž zásady, které aplikace ukazuje v Nastavení › O aplikaci › Data a soukromí.",
+  "landing.privacy.meta.title": "Zásady ochrany soukromí {appNameGen}",
   "landing.stage.bitcoin": "Bitcoin",
   "landing.stage.cash": "Hotovost",
   "landing.stage.eet": "Vyřeší EET",

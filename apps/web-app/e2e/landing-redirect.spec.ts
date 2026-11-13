@@ -220,7 +220,7 @@ test("the app origin serves the independent landing documents and assets", async
   request,
 }) => {
   for (const language of ["", "/en", "/sk"]) {
-    for (const document of ["", "/eet-2-0", "/jak-to-funguje"]) {
+    for (const document of ["", "/eet-2-0", "/jak-to-funguje", "/privacy"]) {
       const path = `/landing${language}${document}`
       const response = await request.get(path)
       expect(response.ok()).toBe(true)

@@ -24,6 +24,11 @@ export interface Brand {
   readonly names: Readonly<Record<Language, BrandNameForms>>
   /** The production origin of the app's API, which the native app calls. */
   readonly apiBaseUrl: string
+  /**
+   * The brand's public website, its landing (landing/0013), where the
+   * privacy policy points for its contact form (landing/0014).
+   */
+  readonly websiteUrl: string
   /** The Lightning address the donations page pays (LUD-16). */
   readonly donateLightningAddress: string
   /**
@@ -41,6 +46,7 @@ export const paykyBrand = {
   id: "payky",
   names: { en: payky, cs: payky, sk: payky },
   apiBaseUrl: "https://payky.me",
+  websiteUrl: "https://payky.me/landing",
   donateLightningAddress: "donate@payky.me",
   liveRelayHost: "live-relay.payky.me",
 } as const satisfies Brand
@@ -63,6 +69,7 @@ export const finitoBrand = {
     },
   },
   apiBaseUrl: "https://app.finito.fit",
+  websiteUrl: "https://finito.fit",
   // Served by the landing on finito.fit, which forwards the LNURL request to
   // the API on app.finito.fit.
   donateLightningAddress: "donate@finito.fit",

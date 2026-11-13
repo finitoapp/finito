@@ -14,12 +14,13 @@ import { defineConfig } from "vitest/config"
  */
 function landingPagesPlugin(): PluginOption {
   const landingPath =
-    /^(?:\/landing)?(?:\/([a-z]{2}))?(?:\/(eet-2-0|jak-to-funguje))?\/?(?:\?.*)?$/u
-  // The EET page (landing/0006) and the page on how the app works (landing/0008)
-  // have a file of their own per language.
+    /^(?:\/landing)?(?:\/([a-z]{2}))?(?:\/(eet-2-0|jak-to-funguje|privacy))?\/?(?:\?.*)?$/u
+  // The EET page (landing/0006), the page on how the app works (landing/0008)
+  // and the privacy policy (landing/0014) have a file of their own per language.
   const documentFiles: Record<string, string> = {
     "eet-2-0": "-eet",
     "jak-to-funguje": "-tech",
+    privacy: "-privacy",
   }
   return {
     name: "payky-landing-pages",

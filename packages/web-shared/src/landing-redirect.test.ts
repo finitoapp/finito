@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest"
 import {
   createLandingSitePaths,
   isLandingEetPath,
+  isLandingPrivacyPath,
   isLandingTechPath,
   landingLanguageFromPath,
   markAppEntered,
@@ -54,6 +55,8 @@ describe("landingLanguageFromPath", () => {
     ["/landing/sk/eet-2-0/", "sk"],
     ["/landing/jak-to-funguje", "cs"],
     ["/landing/en/jak-to-funguje", "en"],
+    ["/landing/privacy", "cs"],
+    ["/landing/sk/privacy", "sk"],
   ] as const)("reads %s as %s", (pathname, language) => {
     expect(landingLanguageFromPath(pathname, paykySite)).toBe(language)
   })
@@ -66,6 +69,7 @@ describe("a landing at the domain's root", () => {
     ["/sk/", "sk"],
     ["/eet-2-0", "cs"],
     ["/en/jak-to-funguje", "en"],
+    ["/en/privacy", "en"],
   ] as const)("reads %s as %s", (pathname, language) => {
     expect(landingLanguageFromPath(pathname, finitoSite)).toBe(language)
   })
@@ -75,6 +79,8 @@ describe("a landing at the domain's root", () => {
     expect(isLandingTechPath("/jak-to-funguje/", finitoSite)).toBe(true)
     expect(isLandingEetPath("/", finitoSite)).toBe(false)
     expect(isLandingTechPath("/landing/jak-to-funguje", finitoSite)).toBe(false)
+    expect(isLandingPrivacyPath("/en/privacy", finitoSite)).toBe(true)
+    expect(isLandingPrivacyPath("/landing/privacy", finitoSite)).toBe(false)
   })
 })
 
@@ -101,6 +107,17 @@ describe("isLandingTechPath", () => {
       expect(isLandingTechPath(pathname, paykySite)).toBe(isTech)
     }
   )
+})
+
+describe("isLandingPrivacyPath", () => {
+  test.each([
+    ["/landing/privacy", true],
+    ["/landing/en/privacy/", true],
+    ["/landing/jak-to-funguje", false],
+    ["/landing", false],
+  ] as const)("reads %s as the privacy policy: %s", (pathname, isPrivacy) => {
+    expect(isLandingPrivacyPath(pathname, paykySite)).toBe(isPrivacy)
+  })
 })
 
 describe("preferredLandingLanguage", () => {

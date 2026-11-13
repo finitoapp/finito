@@ -124,6 +124,12 @@ Finito potvrdzuje prijatú platbu
 landing.mockup.payment.alt
 Finito ukazuje QR kód na bankový prevod
 
+landing.privacy.meta.description
+Aké dáta Finito spracúva, s ktorými službami komunikuje a čo tieto služby vidia. Tie isté zásady, ktoré aplikácia ukazuje v Nastaveniach › O aplikácii › Dáta a súkromie.
+
+landing.privacy.meta.title
+Zásady ochrany súkromia Finita
+
 landing.tech.account.kyc.body
 Finito vaše peniaze nikdy nedrží ani nepreposiela. Platba prevodom ide z banky zákazníka rovno na váš účet, ktorý už overila vaša banka. Bitcoiny prijíma peňaženka, ku ktorej máte kľúče len vy. Aplikácia teda u seba nemá žiadne peniaze, kvôli ktorým by vás musela overovať.
 
@@ -219,3 +225,50 @@ Tajný musí zostať len kľúč. Odborníci na šifrovanie tomu hovoria Kerckho
 
 landing.tech.transparency.build.body
 Že aplikácia na app.finito.fit alebo vo vašom telefóne vznikla presne z kódu na GitHube, zatiaľ dokázať nevieme — na to by boli potrebné tzv. reprodukovateľné zostavenia a tie nemáme. Veriť nám v tom ale nemusíte: z kódu na GitHube si aplikáciu môžete zostaviť sami a prevádzkovať vlastnú verziu.
+
+settings.about.privacy.heading
+Zásady ochrany súkromia Finita
+
+settings.about.privacy.body
+Finito - ZÁSADY OCHRANY SÚKROMIA
+
+1. ZBER DÁT
+Finito nepredáva osobné údaje a je navrhnuté tak, aby aplikačné dáta zostávali lokálne vo vašom zariadení. Aplikácia ukladá nastavenia terminálu, katalógové dáta, záznamy platieb a súvisiace prevádzkové dáta lokálne a synchronizuje aplikačné dáta cez Evolu.
+
+2. PLATOBNÉ DÁTA
+Platobné a terminálové dáta môžu obsahovať sumy, časové údaje, názvy položiek, stav platby, informácie o Spark peňaženke, identifikátory zariadení a ďalšie záznamy potrebné na prevádzku bitcoinového platobného terminálu. Chráňte svoje zariadenie, prihlasovacie údaje, zálohy a prístupové dáta k peňaženke, najmä obnovovaciu frázu.
+
+3. SIEŤOVÁ KOMUNIKÁCIA
+Aplikácia môže komunikovať s:
+- infraštruktúrou Evolu na synchronizáciu lokálnych aplikačných dát
+- Spark operátormi a poskytovateľmi služieb Spark na prevádzku Spark peňaženky a odosielanie či prijímanie bitcoinových platieb
+- Lightning alebo peňaženkovými službami používanými na vytvorenie alebo vyrovnanie platieb
+- cenovými alebo kurzovými API, ak je zapnutý fiat prepočet
+- Open Food Facts a Open Beauty Facts na dohľadanie naskenovaných čiarových kódov, ak je zapnuté dohľadanie produktov
+- Server Finita a jeho poskytovateľa AI na odpovede AI asistenta, ak je zapnutý: vaše otázky, odpovede asistenta a, ak to povolíte, účty a platby, ktoré asistent číta
+- vašou bankou (Fio banka alebo MONETA Money Bank) na kontrolu prichádzajúcich platieb, ak je nastavené párovanie platieb: prístupový token k banke a dopyty na pohyby na účte
+- serverom Finita v EÚ (Frankfurt) ako proxy pre pripojené služby, ak ju na zariadení povolíte: webová verzia cez neho posiela požiadavky na Fio banku a MONETA Money Bank, takže vidí prístupový token k banke a odpovede banky (IBAN a pohyby na účte vrátane súm, protiúčtov, mien platiteľov, symbolov a správ pre príjemcu). Nič z toho neukladá, len to prepošle. Mobilná aplikácia volá banky priamo
+
+Tieto služby môžu mať vlastné zásady ochrany súkromia, logy a pravidlá uchovávania dát.
+
+4. ANALYTIKA A HLÁSENIE CHÝB
+Finito nepoužíva analytické ani sledovacie služby. K dispozícii je voliteľné hlásenie chýb cez Sentry, ktoré pomáha diagnostikovať pády a chyby aplikácie. Je vo východiskovom stave vypnuté a aktivuje sa len vtedy, keď ho zapnete v Nastavenia > O aplikácii > Dáta a súkromie. Po zapnutí môžu hlásenia chýb obsahovať informácie o zariadení a aplikácii a chybové správy a stack trace; obnovovacie frázy a čísla bankových účtov sú pred odoslaním automaticky redigované.
+
+5. SIEŤ SPARK
+Platby cez Spark peňaženku spracúvajú Spark operátori a poskytovatelia služieb Spark, ktorí môžu vidieť sumy transakcií, časovanie, identifikátory peňaženky a súvisiace metadáta.
+
+6. ZÁLOHY A SYNCHRONIZÁCIA
+Ak sú zapnuté synchronizačné alebo zálohovacie funkcie, aplikačné dáta môžu byť prenášané do synchronizačnej infraštruktúry. So synchronizovanými dátami zaobchádzajte ako s prevádzkovými obchodnými dátami a chráňte každé zariadenie, ktoré k nim má prístup.
+
+7. VYMAZANIE DÁT
+Finito nemá serverový používateľský účet, v ktorom by prevádzkovateľ mohol vaše dáta vidieť alebo ich za vás vymazať. Dáta patria účtu, ktorý žije vo vašich zariadeniach a je zviazaný s jeho obnovovacou frázou.
+- Dáta v zariadení vymažete odobratím účtu v Nastavenia > Účet aplikácie, alebo vymazaním dát aplikácie a jej odinštalovaním (v prehliadači vymazaním dát webu). Urobte to na každom zariadení, ktoré účet má.
+- Synchronizované dáta sú uložené zašifrovane na synchronizačných relayoch Evolu, ktoré ich nemôžu prečítať. Môžu tam zostať aj po vymazaní účtu, ale bez obnovovacej frázy ich nikto nerozšifruje: keď účet vymažete zo všetkých zariadení a frázu zničíte, neprečíta ich už nikto.
+- Hlásenia chýb, ktoré ste sa rozhodli odoslať, uchováva Sentry počas svojej doby uchovávania a potom ich vymaže.
+- Platby už vykonané v sieťach Bitcoin, Lightning alebo Spark a dáta už odoslané ďalším službám tretích strán uvedeným vyššie nemôže Finito ani jeho prevádzkovateľ vymazať.
+Vymazaný účet sa bez jeho obnovovacej frázy nedá obnoviť.
+
+8. KONTAKT
+S otázkami k súkromiu alebo k vašim dátam nám napíšte cez kontaktný formulár na https://finito.fit/sk#contact.
+
+Posledná aktualizácia: november 2026

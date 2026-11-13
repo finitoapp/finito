@@ -11,13 +11,15 @@ const installLanguageStorageKey = "payky.installLanguage"
 
 /**
  * The addresses of the landing documents, one per language: the home page
- * (landing/0002), the EET 2.0 page (landing/0006) and the page on how the
- * app works (landing/0008), Czech at the bare path.
+ * (landing/0002), the EET 2.0 page (landing/0006), the page on how the app
+ * works (landing/0008) and the privacy policy (landing/0014), Czech at the
+ * bare path.
  */
 export interface LandingSitePaths {
   readonly home: Readonly<Record<Language, string>>
   readonly eet: Readonly<Record<Language, string>>
   readonly tech: Readonly<Record<Language, string>>
+  readonly privacy: Readonly<Record<Language, string>>
 }
 
 /**
@@ -37,6 +39,11 @@ export const createLandingSitePaths = (
     cs: `${base}/jak-to-funguje`,
     en: `${base}/en/jak-to-funguje`,
     sk: `${base}/sk/jak-to-funguje`,
+  },
+  privacy: {
+    cs: `${base}/privacy`,
+    en: `${base}/en/privacy`,
+    sk: `${base}/sk/privacy`,
   },
 })
 
@@ -170,6 +177,7 @@ export function landingLanguageFromPath(
     ...Object.entries(site.home),
     ...Object.entries(site.eet),
     ...Object.entries(site.tech),
+    ...Object.entries(site.privacy),
   ].find(([, path]) => path === normalized)
   return LandingLanguageSchema.catch("cs").parse(match?.[0])
 }
@@ -187,3 +195,10 @@ export const isLandingTechPath = (
   site: LandingSitePaths
 ): boolean =>
   Object.values<string>(site.tech).includes(normalizeLandingPath(pathname))
+
+/** Whether `pathname` is the privacy policy in one of its languages. */
+export const isLandingPrivacyPath = (
+  pathname: string,
+  site: LandingSitePaths
+): boolean =>
+  Object.values<string>(site.privacy).includes(normalizeLandingPath(pathname))

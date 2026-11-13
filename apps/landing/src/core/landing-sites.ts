@@ -57,12 +57,17 @@ export const landingSites = {
   },
 } as const satisfies Record<BrandId, LandingSite>
 
-/** The hosts the copy names besides the app's name, by placeholder. */
+/**
+ * The hosts the copy names besides the app's name, by placeholder, and the
+ * brand's website, which the privacy policy taken from the app's copy names
+ * for its contact form (landing/0014).
+ */
 export const landingHosts = (site: LandingSite) =>
   ({
     siteHost: new URL(site.siteUrl).host,
     appHost: new URL(site.appOrigin ?? site.siteUrl).host,
     liveRelayHost: site.brand.liveRelayHost,
+    websiteUrl: site.brand.websiteUrl,
   }) as const
 
 export type LandingResources = Readonly<

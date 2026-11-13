@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
+import { appBrand } from "@/core/app-brand.ts"
 import { AiAssistantCard } from "@/features/settings/privacy/ai-assistant-card.tsx"
 import { ErrorReportingCard } from "@/features/settings/privacy/error-reporting-card.tsx"
 import { ProductLookupCard } from "@/features/settings/privacy/product-lookup-card.tsx"
@@ -35,7 +36,9 @@ export function PrivacySettingsPage() {
           </CardHeader>
           <CardContent>
             <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {t("settings.about.privacy.body")}
+              {t("settings.about.privacy.body", {
+                websiteUrl: appBrand.websiteUrl,
+              })}
             </p>
           </CardContent>
         </Card>

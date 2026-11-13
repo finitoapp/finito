@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs"
+import { applyBrandName } from "@payky/app-shared/brand"
+import { enSettings } from "@payky/app-shared/i18n/en/settings"
 import { describe, expect, test } from "vitest"
-import { landingResources as resources } from "@/core/landing-site.ts"
+import {
+  landingSite,
+  landingResources as resources,
+} from "@/core/landing-site.ts"
 import { transparencyProof } from "@/features/landing/landing-tech-page.tsx"
 import { renderLandingDocument } from "@/landing-server.tsx"
 
@@ -297,5 +302,75 @@ describe("renderLandingDocument", () => {
       `href="/landing/sk" data-label="${resources.sk["landing.menu.home"]}"`
     )
     expect(body).toContain(`href="/landing/sk/eet-2-0" aria-current="page"`)
+  })
+
+  test.each([
+    ["cs", "https://payky.me/landing/privacy"],
+    ["en", "https://payky.me/landing/en/privacy"],
+    ["sk", "https://payky.me/landing/sk/privacy"],
+  ] as const)(
+    "prerenders the privacy policy in %s at its own address",
+    (language, url) => {
+      const document = renderLandingDocument(template, language, "privacy")
+
+      expect(document).toContain(`<link rel="canonical" href="${url}"/>`)
+      expect(document).toContain(
+        `<title>${resources[language]["landing.privacy.meta.title"]}</title>`
+      )
+      expect(document.split("<body>")[1]).toContain(
+        resources[language]["settings.about.privacy.heading"]
+      )
+    }
+  )
+
+  test("prerenders the privacy policy the app shows, every line of it", () => {
+    const body = renderLandingDocument(template, "en", "privacy").split(
+      "<body>"
+    )[1]
+    // React escapes the text it renders.
+    const html = (text: string) =>
+      text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("'", "&#x27;")
+    const policy = applyBrandName(
+      enSettings["settings.about.privacy.body"],
+      landingSite.brand.names.en
+    ).replaceAll("{websiteUrl}", landingSite.brand.websiteUrl)
+    // The text's own title line gives way to the page's heading.
+    const lines = policy
+      .split("\n")
+      .slice(1)
+      .map((line) => line.replace(/^- /u, ""))
+      .filter((line) => line !== "")
+
+    expect(lines.length).toBeGreaterThan(10)
+    for (const line of lines) {
+      // An address in the line is a link of its own.
+      expect(body?.replaceAll(/<[^>]*>/gu, "")).toContain(html(line))
+    }
+    expect(body).toContain(`<h2 class="text-xl font-bold tracking-tight">1. `)
+    expect(body).not.toContain('type="application/ld+json"')
+  })
+
+  test("leads from the privacy policy to the contact form", () => {
+    const body = renderLandingDocument(template, "en", "privacy").split(
+      "<body>"
+    )[1]
+
+    expect(body).toContain(`href="https://payky.me/landing/en#contact"`)
+  })
+
+  test("leads from the footer of every landing page to the privacy policy", () => {
+    const link = `href="/landing/en/privacy"`
+
+    for (const document of ["home", "eet", "tech", "privacy"] as const) {
+      const footer = renderLandingDocument(template, "en", document)
+        .split("<body>")[1]
+        ?.split("<footer")[1]
+
+      expect(footer).toContain(link)
+    }
   })
 })
