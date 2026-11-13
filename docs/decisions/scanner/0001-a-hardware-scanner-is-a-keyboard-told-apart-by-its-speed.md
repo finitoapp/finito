@@ -56,7 +56,7 @@ when no text field has focus; EAN and UPC codes are digits only.
 - `packages/app-shared/src/hardware-scan.test.ts > readScanKey > typing at human speed is not a scan`
 - `packages/app-shared/src/hardware-scan.test.ts > readScanKey > a burst shorter than the minimum is not a scan`
 - `packages/app-shared/src/hardware-scan.test.ts > readScanKey > Enter after a pause is not a scan`
-- `apps/native-app/src/features/terminal-home/keypad-keyboard.test.ts > readKeypadKey > undoes a scan burst instead of charging it`
+- `apps/native-app/src/features/shared/keypad-keyboard.test.ts > readKeypadKey > undoes a scan burst instead of charging it`
 - `apps/web-app/e2e/hardware-scanner.spec.ts > a hardware scan adds the item to the bill outside scan mode`
 - `apps/web-app/e2e/hardware-scanner.spec.ts > a hardware scan on the home keypad opens a new bill instead of charging`
 - `apps/web-app/e2e/hardware-scanner.spec.ts > a hardware scan on the home screen with an unknown code offers to create the item`

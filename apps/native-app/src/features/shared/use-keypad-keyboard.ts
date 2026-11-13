@@ -9,7 +9,7 @@ import { initialKeypadKeyboardState, readKeypadKey } from "./keypad-keyboard.ts"
 
 /**
  * Types the keypad amount on a physical keyboard, as web's
- * `TerminalPaymentKeypad` does: a counter terminal often has one attached.
+ * `AmountKeypad` does: a counter terminal often has one attached.
  * Enter charges the amount on screen, read from the atom when the key comes
  * (`useStore().get`), so the keypad still re-renders only its display. Keys
  * typed into a text field, while a confirmation is up or a charge is

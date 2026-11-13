@@ -5,6 +5,7 @@ import {
   calculatePaymentAmounts,
   calculatePaymentBaseAmount,
   calculatePercentageTipAmount,
+  calculateTipPercentage,
 } from "./payment-tip-utils.ts"
 
 describe("calculatePercentageTipAmount", () => {
@@ -76,5 +77,31 @@ describe("calculatePaymentBaseAmount", () => {
         tipAmount: NonNegativeInteger(500),
       })
     ).toBe(0)
+  })
+})
+
+describe("calculateTipPercentage", () => {
+  test("is the tip's share of the order, unrounded", () => {
+    expect(
+      calculateTipPercentage({
+        amount: NonNegativeInteger(20000),
+        tipAmount: NonNegativeInteger(2000),
+      })
+    ).toBe(10)
+    expect(
+      calculateTipPercentage({
+        amount: NonNegativeInteger(24500),
+        tipAmount: NonNegativeInteger(2000),
+      })
+    ).toBeCloseTo(8.163, 3)
+  })
+
+  test("has nothing to show for an order of zero", () => {
+    expect(
+      calculateTipPercentage({
+        amount: NonNegativeInteger(0),
+        tipAmount: NonNegativeInteger(2000),
+      })
+    ).toBeNull()
   })
 })

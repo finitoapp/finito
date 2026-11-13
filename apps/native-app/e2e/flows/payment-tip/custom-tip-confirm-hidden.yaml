@@ -1,12 +1,13 @@
-# web payment-tip.spec.ts: "there is no confirm button until a custom tip is
-# being entered". Its disabled state is checked on Android only.
+# web payment-tip.spec.ts: "the custom tip has a keypad screen of its own,
+# its continue disabled until a tip is typed". Its disabled state is checked
+# on Android only.
 appId: ${APP_ID}
 tags: [payment-tip]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow: ../../subflows/to-tip-step.yaml
 - assertNotVisible: ${output.t["paymentTip.continue"]}
-# The custom tile reveals it, disabled until an amount is entered.
+# The custom tile opens its keypad, continue disabled until a tip is typed.
 - tapOn: ${output.t["paymentTip.custom.label"]}
 - runFlow:
     file: ../../subflows/assert-label.yaml

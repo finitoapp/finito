@@ -37,7 +37,7 @@ test("charge with a percentage tip preset then mark cash paid", async ({
   })
 })
 
-test("there is no confirm button until a custom tip is being entered", async ({
+test("the custom tip has a keypad screen of its own, its continue disabled until a tip is typed", async ({
   seededPage: page,
 }) => {
   await test.step("enter an amount and go to the tip step", async () => {
@@ -54,11 +54,11 @@ test("there is no confirm button until a custom tip is being entered", async ({
     name: translate("en", "paymentTip.continue"),
   })
 
-  await test.step("no confirm button is shown before picking a tip", async () => {
+  await test.step("the tip step has no confirm button", async () => {
     await expect(continueButton).not.toBeVisible()
   })
 
-  await test.step("picking the custom tip tile reveals the confirm button", async () => {
+  await test.step("the custom tip opens its keypad, nothing typed yet", async () => {
     await page
       .getByRole("button", { name: translate("en", "paymentTip.custom.label") })
       .click()
@@ -67,7 +67,7 @@ test("there is no confirm button until a custom tip is being entered", async ({
   })
 })
 
-test("charge with a custom tip amount, confirmed via its own button", async ({
+test("charge with a custom tip typed on its keypad", async ({
   seededPage: page,
 }) => {
   await test.step("enter an amount and go to the tip step", async () => {
@@ -80,15 +80,14 @@ test("charge with a custom tip amount, confirmed via its own button", async ({
       .waitFor()
   })
 
-  await test.step("enter a custom tip amount and confirm", async () => {
+  await test.step("type a custom tip on its keypad and continue", async () => {
     await page
       .getByRole("button", { name: translate("en", "paymentTip.custom.label") })
       .click()
     await page
-      .getByRole("textbox", {
-        name: translate("en", "paymentTip.custom.label"),
-      })
-      .fill("2.50")
+      .getByRole("button", { name: translate("en", "paymentTip.continue") })
+      .waitFor()
+    await enterAmount(page, "en", "2.5")
     await page
       .getByRole("button", { name: translate("en", "paymentTip.continue") })
       .click()

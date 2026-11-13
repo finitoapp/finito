@@ -176,11 +176,8 @@ export const skPayment = {
   "paymentTip.continue": "Pokračovať k platbe",
   "paymentTip.creating": "Vytváram platbu...",
   "paymentTip.custom.actionDescription": "Zadať sumu",
-  "paymentTip.custom.description": "Zadajte sumu, ktorú chce zákazník pridať.",
-  "paymentTip.custom.invalid":
-    "Zadajte kladnú sumu s najviac dvoma desatinnými miestami.",
   "paymentTip.custom.label": "Vlastné prepitné",
-  "paymentTip.custom.placeholder": "napr. 20,00",
+  "paymentTip.custom.orderTotal": "Cena objednávky {amount}",
   "paymentTip.fixedAmounts": "Prepitné pevnou sumou",
   "paymentTip.invalidLink": "Neplatný odkaz na prepitné.",
   "paymentTip.none": "Bez prepitného",

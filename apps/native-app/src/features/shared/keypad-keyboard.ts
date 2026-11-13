@@ -29,7 +29,7 @@ const digitKeys = new Set<string>([
 ])
 
 /**
- * Web's `TerminalPaymentKeypad` mapping: digits type, `.` and `,` type the
+ * Web's `AmountKeypad` mapping: digits type, `.` and `,` type the
  * decimal separator (whichever the locale shows), Backspace deletes, Delete
  * and Escape clear, Enter charges. Any other key is not the keypad's.
  */

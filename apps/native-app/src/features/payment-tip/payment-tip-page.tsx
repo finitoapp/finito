@@ -8,28 +8,19 @@ import type { BillId } from "@payky/core/modules/bill/bill-types"
 import {
   calculatePaymentAmounts,
   calculatePercentageTipAmount,
+  calculateTipPercentage,
 } from "@payky/core/modules/payment/payment-tip-utils"
-import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import {
   type FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
-import { Redirect, useLocalSearchParams } from "expo-router"
+import { Redirect, router, useLocalSearchParams } from "expo-router"
 import { useRef, useState } from "react"
 import { Text, YStack } from "tamagui"
 import { AmountFigure } from "../../components/amount-figure.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
 import { Screen } from "../../components/screen.tsx"
-import { Button } from "../../components/ui/button.tsx"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "../../components/ui/field.tsx"
-import { Input } from "../../components/ui/input.tsx"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -63,6 +54,12 @@ export function PaymentTipPage() {
   )
 }
 
+/**
+ * Web's `PaymentTipForm`: the presets, one under another or in two columns
+ * past three, each a percentage over what it adds or a fixed tip over its
+ * share of the order, then the custom tip, which has a keypad screen of its own
+ * (`PaymentCustomTipPage`), and no tip.
+ */
 function PaymentTipForm({
   amount,
   currency,
@@ -79,19 +76,12 @@ function PaymentTipForm({
   const { t } = useTranslation()
   const locale = useLocale()
   const createTerminalPayment = useCreateTerminalPayment()
-  const [customOpen, setCustomOpen] = useState(false)
-  const [customTip, setCustomTip] = useState("")
   const [pending, setPending] = useState(false)
   const pendingRef = useRef(false)
 
   const formatMinor = (value: number) =>
     formatMoney({ value: NonNegativeInteger(value), currency }, locale)
   const orderTotal = formatMoneyParts({ value: amount, currency }, locale)
-  const customMinor = decimalAmountToMinorUnits({
-    currency,
-    value: customTip,
-  })
-  const customInvalid = customTip.length > 0 && customMinor === null
 
   // One tap confirms: the ref closes the window before `pending` re-renders,
   // so a double tap cannot create two payments.
@@ -111,41 +101,42 @@ function PaymentTipForm({
     }
   }
 
-  const tipTotal = (tipAmount: NonNegativeInteger) =>
-    formatMinor(calculatePaymentAmounts({ amount, tipAmount }).amount)
-  const percentageOptions = percentages.map((percentage) => ({
-    value: String(percentage),
-    label: t("settings.tips.percentages.value", { value: percentage }),
-    tipAmount: calculatePercentageTipAmount({ amount, percentage }),
-  }))
-  const fixedOptions = fixedAmounts.map((fixed) => ({
-    value: String(fixed),
-    label: `+${formatMinor(fixed)}`,
-    tipAmount: NonNegativeInteger(fixed),
-  }))
+  // A preset shows what it adds to the order, not the new total.
+  const tipIncrease = (tipAmount: number) => `+${formatMinor(tipAmount)}`
+  const percentageOptions = percentages.map((percentage) => {
+    const tipAmount = calculatePercentageTipAmount({ amount, percentage })
+    return {
+      value: String(percentage),
+      label: t("settings.tips.percentages.value", { value: percentage }),
+      detail: tipIncrease(tipAmount),
+      tipAmount,
+    }
+  })
+  // A fixed tip, large, says its share of the order beneath.
+  const percentFormat = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  })
+  const fixedOptions = fixedAmounts.map((fixed) => {
+    const tipAmount = NonNegativeInteger(fixed)
+    const share = calculateTipPercentage({ amount, tipAmount })
+    return {
+      value: String(fixed),
+      label: tipIncrease(fixed),
+      detail:
+        share === null
+          ? undefined
+          : t("settings.tips.percentages.value", {
+              value: percentFormat.format(share),
+            }),
+      tipAmount,
+    }
+  })
+  // Up to three presets stand one under another; more take two columns.
+  const presetColumns =
+    percentageOptions.length + fixedOptions.length > 3 ? 2 : 1
 
   return (
-    <Screen
-      footer={
-        customOpen ? (
-          <YStack px={16} pb={16}>
-            <Button
-              size="lg"
-              h={56}
-              label={
-                pending ? t("paymentTip.creating") : t("paymentTip.continue")
-              }
-              pending={pending}
-              disabled={customMinor === null}
-              onPress={() => {
-                if (customMinor !== null)
-                  void confirm(NonNegativeInteger(customMinor))
-              }}
-            />
-          </YStack>
-        ) : null
-      }
-    >
+    <Screen>
       <FadeHeader />
       <YStack items="center" gap={8}>
         <Text
@@ -186,7 +177,7 @@ function PaymentTipForm({
                 if (option !== undefined) void confirm(option.tipAmount)
               }}
               variant="outline"
-              columns={2}
+              columns={presetColumns}
               spacing={3}
               disabled={pending}
             >
@@ -195,7 +186,8 @@ function PaymentTipForm({
                   key={option.value}
                   value={option.value}
                   label={option.label}
-                  detail={tipTotal(option.tipAmount)}
+                  detail={option.detail}
+                  prominent
                 />
               ))}
             </ToggleGroup>
@@ -203,9 +195,17 @@ function PaymentTipForm({
         )}
         <ToggleGroup
           aria-label={t("paymentTip.title")}
-          value={customOpen ? "custom" : null}
+          value={null}
           onValueChange={(value) => {
-            if (value === "custom") setCustomOpen(true)
+            if (value === "custom")
+              router.push({
+                pathname: "/payment/custom-tip",
+                params: {
+                  amount: String(amount),
+                  currency,
+                  ...(billId === null ? {} : { billId }),
+                },
+              })
             else void confirm(NonNegativeInteger(0))
           }}
           variant="outline"
@@ -221,71 +221,54 @@ function PaymentTipForm({
           <TipOption
             value="none"
             label={t("paymentTip.none")}
-            detail={formatMinor(amount)}
+            detail={tipIncrease(0)}
           />
         </ToggleGroup>
-
-        {customOpen ? (
-          <FieldGroup>
-            <Field>
-              <FieldLabel>{t("paymentTip.custom.label")}</FieldLabel>
-              <FieldDescription>
-                {t("paymentTip.custom.description")}
-              </FieldDescription>
-              <Input
-                value={customTip}
-                keyboardType="decimal-pad"
-                autoComplete="off"
-                autoFocus
-                disabled={pending}
-                invalid={customInvalid}
-                placeholder={t("paymentTip.custom.placeholder")}
-                onChangeText={setCustomTip}
-              />
-              <FieldError>
-                {customInvalid ? t("paymentTip.custom.invalid") : undefined}
-              </FieldError>
-            </Field>
-          </FieldGroup>
-        ) : null}
       </YStack>
     </Screen>
   )
 }
 
-/** Web's tip option: `h-[clamp(4.5rem,10dvh,6rem)] flex-col gap-1 py-3 text-lg`. */
+/**
+ * Web's tip option. A preset is `prominent`: its percentage or amount large,
+ * the other small beneath.
+ */
 function TipOption({
   value,
   label,
   detail,
+  prominent = false,
 }: {
   readonly value: string
   readonly label: string
-  readonly detail: string
+  readonly detail?: string | undefined
+  readonly prominent?: boolean
 }) {
   return (
     <ToggleGroupItem
       value={value}
-      aria-label={`${label} ${detail}`}
+      aria-label={detail === undefined ? label : `${label} ${detail}`}
       flexDirection="column"
-      h={80}
+      h={prominent ? 88 : 72}
       gap={4}
       py={12}
     >
       <Text
-        fontSize={fontSize.lg}
-        lineHeight={fontSize.lg}
-        fontWeight={fontWeight.semibold}
+        fontSize={prominent ? fontSize["3xl"] : fontSize.base}
+        lineHeight={prominent ? fontSize["3xl"] : fontSize.base}
+        fontWeight={prominent ? fontWeight.bold : fontWeight.semibold}
       >
         {label}
       </Text>
-      <Text
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-        color="muted-foreground"
-      >
-        {detail}
-      </Text>
+      {detail === undefined ? null : (
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {detail}
+        </Text>
+      )}
     </ToggleGroupItem>
   )
 }

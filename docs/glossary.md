@@ -25,7 +25,7 @@ where it is specified; the specification wins over this page.
   `home.*` keys).
 - **Pos** / **numpad** — the two modes home toggles between: `nav.pos`
   ("Sales", the table grid, `PosOverviewPage`) and `nav.numpad` ("Keypad",
-  `TerminalPaymentKeypad`). Neither is another name for the terminal.
+  `TerminalPaymentKeypadLoader` over the shared `AmountKeypad`). Neither is another name for the terminal.
   Finito's home toggles between them too, under the same setting
   (`docs/decisions/navigation/0004`).
 - **Menu** — the section behind home's hamburger (`nav.menu`,

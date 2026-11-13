@@ -8,8 +8,8 @@ import type { BillId } from "@payky/core/modules/bill/bill-types"
 import {
   calculatePaymentAmounts,
   calculatePercentageTipAmount,
+  calculateTipPercentage,
 } from "@payky/core/modules/payment/payment-tip-utils"
-import { decimalAmountToMinorUnits } from "@payky/core/modules/shared/money"
 import {
   type FiatCurrency,
   NonNegativeInteger,
@@ -18,24 +18,15 @@ import {
 import { useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import { FadeHeader } from "@/components/fade-header.tsx"
-import { Button } from "@/components/ui/button.tsx"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field.tsx"
-import { Input } from "@/components/ui/input.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
 import { useCreateTerminalPayment } from "@/hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatMoney } from "@/lib/format-utils.ts"
+import { cn } from "@/lib/utils.ts"
 
 type TipSelection =
-  | { readonly kind: "custom" }
   | { readonly kind: "fixed"; readonly tipAmount: NonNegativeIntegerValue }
   | { readonly kind: "none"; readonly tipAmount: NonNegativeIntegerValue }
   | {
@@ -50,8 +41,9 @@ interface PaymentTipPageProps {
   readonly billId?: BillId | null
 }
 
-const tipOptionClassName =
-  "h-[clamp(4.5rem,10dvh,6rem)] flex-col gap-1 py-3 text-lg"
+const tipOptionClassName = "h-[clamp(4rem,9dvh,4.5rem)] flex-col gap-1 py-3"
+const tipPresetClassName =
+  "h-[clamp(4.5rem,10dvh,5.5rem)] flex-col gap-1 py-3 text-3xl"
 
 export function PaymentTipPage({
   amount,
@@ -75,6 +67,12 @@ export function PaymentTipPage({
   )
 }
 
+/**
+ * The tip step: the order total, the presets one under another or in two
+ * columns past three, each a percentage over what it adds or a fixed tip
+ * over its share of the order, then the custom tip, which has a keypad screen of
+ * its own (`PaymentCustomTipPage`), and no tip.
+ */
 function PaymentTipForm({
   amount,
   currency,
@@ -92,40 +90,35 @@ function PaymentTipForm({
   const { t } = useTranslation()
   const createTerminalPayment = useCreateTerminalPayment()
   const [selection, setSelection] = useState<TipSelection | null>(null)
-  const [customTip, setCustomTip] = useState("")
-  const customTipInputRef = useRef<HTMLInputElement>(null)
-  const [customTipFocusRequest, setCustomTipFocusRequest] = useState(0)
   const [pending, setPending] = useState(false)
   const confirmPendingRef = useRef(false)
-  const parseCustomTipAmount = (
-    value: string
-  ): NonNegativeIntegerValue | null => {
-    const amount = decimalAmountToMinorUnits({ currency, value })
-    return amount === null ? null : NonNegativeInteger(amount)
-  }
-  const customTipInvalid =
-    customTip.length > 0 && parseCustomTipAmount(customTip) === null
-  const selectedTipAmount =
-    selection?.kind === "custom"
-      ? parseCustomTipAmount(customTip)
-      : (selection?.tipAmount ?? null)
-  const hasTipPresets = percentages.length > 0 || fixedAmounts.length > 0
 
   const formatMinor = (value: NonNegativeIntegerValue) =>
     formatMoney({ value, currency }, locale)
-
-  const selectTip = (nextSelection: TipSelection | null) => {
-    setSelection(nextSelection)
-    if (nextSelection?.kind !== "custom") setCustomTip("")
+  // A preset shows what it adds to the order, not the new total.
+  const formatTipIncrease = (tipAmount: NonNegativeIntegerValue) =>
+    `+${formatMinor(tipAmount)}`
+  // A fixed tip, large, says its share of the order beneath.
+  const percentFormat = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  })
+  const formatTipShare = (tipAmount: NonNegativeIntegerValue) => {
+    const share = calculateTipPercentage({ amount, tipAmount })
+    return share === null
+      ? null
+      : t("settings.tips.percentages.value", {
+          value: percentFormat.format(share),
+        })
   }
+  // Up to three presets stand one under another; more take two columns.
+  const presetGridClassName = cn(
+    "grid w-full gap-3",
+    percentages.length + fixedAmounts.length > 3 ? "grid-cols-2" : "grid-cols-1"
+  )
 
   useEffect(() => {
     if (!tipsEnabled) void navigate({ to: "/" })
   }, [navigate, tipsEnabled])
-
-  useEffect(() => {
-    if (customTipFocusRequest > 0) customTipInputRef.current?.focus()
-  }, [customTipFocusRequest])
 
   const handleConfirm = async (tipAmount: NonNegativeIntegerValue) => {
     if (confirmPendingRef.current) return
@@ -167,144 +160,119 @@ function PaymentTipForm({
               {t("paymentTip.title")}
             </h2>
 
-            {hasTipPresets ? (
-              <div className="flex flex-col gap-3">
-                {percentages.length > 0 ? (
-                  <ToggleGroup
-                    aria-label={t("paymentTip.percentages")}
-                    className="grid w-full grid-cols-2 gap-3"
-                    disabled={pending}
-                    value={
-                      selection?.kind === "percentage"
-                        ? [String(selection.percentage)]
-                        : []
-                    }
-                    onValueChange={(values) => {
-                      const [value] = values
-                      const percentage = Number(value)
-                      if (!percentages.includes(percentage)) {
-                        selectTip(null)
-                        return
-                      }
+            {percentages.length > 0 ? (
+              <ToggleGroup
+                aria-label={t("paymentTip.percentages")}
+                className={presetGridClassName}
+                disabled={pending}
+                value={
+                  selection?.kind === "percentage"
+                    ? [String(selection.percentage)]
+                    : []
+                }
+                onValueChange={(values) => {
+                  const [value] = values
+                  const percentage = Number(value)
+                  if (!percentages.includes(percentage)) {
+                    setSelection(null)
+                    return
+                  }
 
-                      const tipAmount = calculatePercentageTipAmount({
-                        amount,
-                        percentage,
-                      })
-                      selectTip({ kind: "percentage", percentage, tipAmount })
-                      void handleConfirm(tipAmount)
-                    }}
+                  const tipAmount = calculatePercentageTipAmount({
+                    amount,
+                    percentage,
+                  })
+                  setSelection({ kind: "percentage", percentage, tipAmount })
+                  void handleConfirm(tipAmount)
+                }}
+              >
+                {percentages.map((percentage) => (
+                  <ToggleGroupItem
+                    key={percentage}
+                    value={String(percentage)}
+                    variant="outline"
+                    className={tipPresetClassName}
                   >
-                    {percentages.map((percentage) => {
-                      const tipAmount = calculatePercentageTipAmount({
-                        amount,
-                        percentage,
-                      })
-                      const totalAmount = calculatePaymentAmounts({
-                        amount,
-                        tipAmount,
-                      }).amount
-
-                      return (
-                        <ToggleGroupItem
-                          key={percentage}
-                          value={String(percentage)}
-                          variant="outline"
-                          className={tipOptionClassName}
-                        >
-                          <span className="font-semibold">
-                            {t("settings.tips.percentages.value", {
-                              value: percentage,
-                            })}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {formatMinor(totalAmount)}
-                          </span>
-                        </ToggleGroupItem>
-                      )
-                    })}
-                  </ToggleGroup>
-                ) : null}
-
-                {fixedAmounts.length > 0 ? (
-                  <ToggleGroup
-                    aria-label={t("paymentTip.fixedAmounts")}
-                    className="grid w-full grid-cols-2 gap-3"
-                    disabled={pending}
-                    value={
-                      selection?.kind === "fixed"
-                        ? [String(selection.tipAmount)]
-                        : []
-                    }
-                    onValueChange={(values) => {
-                      const [value] = values
-                      const fixedAmount = fixedAmounts.find(
-                        (preset) => preset === Number(value)
-                      )
-                      if (fixedAmount === undefined) {
-                        selectTip(null)
-                        return
-                      }
-
-                      const tipAmount = NonNegativeInteger(fixedAmount)
-                      selectTip({ kind: "fixed", tipAmount })
-                      void handleConfirm(tipAmount)
-                    }}
-                  >
-                    {fixedAmounts.map((fixedAmount) => {
-                      const tipAmount = NonNegativeInteger(fixedAmount)
-                      const totalAmount = calculatePaymentAmounts({
-                        amount,
-                        tipAmount,
-                      }).amount
-
-                      return (
-                        <ToggleGroupItem
-                          key={fixedAmount}
-                          value={String(fixedAmount)}
-                          variant="outline"
-                          className={tipOptionClassName}
-                        >
-                          <span className="font-semibold">
-                            +{formatMinor(tipAmount)}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {formatMinor(totalAmount)}
-                          </span>
-                        </ToggleGroupItem>
-                      )
-                    })}
-                  </ToggleGroup>
-                ) : null}
-              </div>
+                    <span className="font-bold">
+                      {t("settings.tips.percentages.value", {
+                        value: percentage,
+                      })}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatTipIncrease(
+                        calculatePercentageTipAmount({ amount, percentage })
+                      )}
+                    </span>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             ) : null}
 
-            <ToggleGroup
+            {fixedAmounts.length > 0 ? (
+              <ToggleGroup
+                aria-label={t("paymentTip.fixedAmounts")}
+                className={presetGridClassName}
+                disabled={pending}
+                value={
+                  selection?.kind === "fixed"
+                    ? [String(selection.tipAmount)]
+                    : []
+                }
+                onValueChange={(values) => {
+                  const [value] = values
+                  const fixedAmount = fixedAmounts.find(
+                    (preset) => preset === Number(value)
+                  )
+                  if (fixedAmount === undefined) {
+                    setSelection(null)
+                    return
+                  }
+
+                  const tipAmount = NonNegativeInteger(fixedAmount)
+                  setSelection({ kind: "fixed", tipAmount })
+                  void handleConfirm(tipAmount)
+                }}
+              >
+                {fixedAmounts.map((fixedAmount) => (
+                  <ToggleGroupItem
+                    key={fixedAmount}
+                    value={String(fixedAmount)}
+                    variant="outline"
+                    className={tipPresetClassName}
+                  >
+                    <span className="font-bold">
+                      {formatTipIncrease(NonNegativeInteger(fixedAmount))}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatTipShare(NonNegativeInteger(fixedAmount))}
+                    </span>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ) : null}
+
+            <ToggleGroup<"custom" | "none">
               aria-label={t("paymentTip.title")}
               className="grid w-full grid-cols-2 gap-3"
               disabled={pending}
-              value={
-                selection?.kind === "custom"
-                  ? ["custom"]
-                  : selection?.kind === "none"
-                    ? ["none"]
-                    : []
-              }
+              value={selection?.kind === "none" ? ["none"] : []}
               onValueChange={(values) => {
                 const [value] = values
                 if (value === "custom") {
-                  setSelection({ kind: "custom" })
-                  setCustomTipFocusRequest((current) => current + 1)
+                  void navigate({
+                    to: "/payment/custom-tip",
+                    search: { amount, currency, billId: billId ?? undefined },
+                  })
                   return
                 }
                 if (value === "none") {
                   const tipAmount = NonNegativeInteger(0)
-                  selectTip({ kind: "none", tipAmount })
+                  setSelection({ kind: "none", tipAmount })
                   void handleConfirm(tipAmount)
                   return
                 }
 
-                selectTip(null)
+                setSelection(null)
               }}
             >
               <ToggleGroupItem
@@ -326,56 +294,12 @@ function PaymentTipForm({
               >
                 <span className="font-semibold">{t("paymentTip.none")}</span>
                 <span className="text-sm text-muted-foreground">
-                  {formatMinor(amount)}
+                  {formatTipIncrease(NonNegativeInteger(0))}
                 </span>
               </ToggleGroupItem>
             </ToggleGroup>
-
-            {selection?.kind === "custom" ? (
-              <FieldGroup>
-                <Field data-invalid={customTipInvalid}>
-                  <FieldLabel htmlFor="custom-tip">
-                    {t("paymentTip.custom.label")}
-                  </FieldLabel>
-                  <FieldDescription>
-                    {t("paymentTip.custom.description")}
-                  </FieldDescription>
-                  <Input
-                    id="custom-tip"
-                    ref={customTipInputRef}
-                    value={customTip}
-                    inputMode="decimal"
-                    autoComplete="off"
-                    aria-invalid={customTipInvalid}
-                    placeholder={t("paymentTip.custom.placeholder")}
-                    onChange={(event) => {
-                      setCustomTip(event.currentTarget.value)
-                    }}
-                  />
-                  <FieldError>
-                    {customTipInvalid ? t("paymentTip.custom.invalid") : null}
-                  </FieldError>
-                </Field>
-              </FieldGroup>
-            ) : null}
           </div>
         </section>
-
-        {selection?.kind === "custom" ? (
-          <footer className="shrink-0 pt-4">
-            <Button
-              size="lg"
-              className="h-14 w-full"
-              disabled={selectedTipAmount === null || pending}
-              onClick={() => {
-                if (selectedTipAmount !== null)
-                  void handleConfirm(selectedTipAmount)
-              }}
-            >
-              {pending ? t("paymentTip.creating") : t("paymentTip.continue")}
-            </Button>
-          </footer>
-        ) : null}
       </div>
     </>
   )

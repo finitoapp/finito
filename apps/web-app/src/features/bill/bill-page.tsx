@@ -574,7 +574,7 @@ function BillCartView({
   // pending payment (see `payment-actions.ts`), so the second tap would
   // create a second payment and silently lock the cart. The ref is the half
   // that is true immediately; the state exists only to re-render `disabled`.
-  // Same pairing as `terminal-payment-keypad.tsx` and `payment-tip-page.tsx`.
+  // Same pairing as `amount-keypad.tsx` and `payment-tip-page.tsx`.
   const chargePendingRef = useRef(false)
   const [chargePending, setChargePending] = useState(false)
   const [tablePickerOpen, setTablePickerOpen] = useState(false)
