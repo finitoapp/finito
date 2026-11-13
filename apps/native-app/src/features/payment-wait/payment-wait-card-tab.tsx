@@ -53,7 +53,9 @@ export function CardPaymentTab({
         disabled={!canPayCard}
         onPress={onPayCard}
       />
-      {unresolvedTransactionId !== null ? (
+      {/* The attempt is written unresolved before the terminal opens, so
+          while it runs the marker names the attempt itself. */}
+      {unresolvedTransactionId !== null && !pending ? (
         <>
           <Text
             maxW={288}
