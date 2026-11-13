@@ -9,6 +9,7 @@ import {
 } from "./nostr-event.ts"
 
 const DEFAULT_TIMEOUT_MS = 5000
+const LATE_RELAY_GRACE_MS = 1000
 const MAX_MESSAGE_LENGTH = 256 * 1024
 const MAX_EVENTS_PER_QUERY = 50
 
@@ -67,11 +68,13 @@ const exchangeWithRelay = ({
   request,
   onMessage,
   timeoutMs,
+  signal,
 }: {
   readonly openSocket: () => NostrSocket
   readonly request: ReadonlyArray<unknown>
   readonly onMessage: (message: RelayMessage) => boolean
   readonly timeoutMs: number
+  readonly signal?: AbortSignal
 }): Promise<void> =>
   new Promise((resolve) => {
     let socket: NostrSocket
@@ -89,6 +92,7 @@ const exchangeWithRelay = ({
       resolve()
     }
     const timer = setTimeout(finish, timeoutMs)
+    signal?.addEventListener("abort", finish)
     socket.addEventListener("open", () => socket.send(JSON.stringify(request)))
     socket.addEventListener("message", ({ data }) => {
       if (isFinished) return
@@ -99,6 +103,18 @@ const exchangeWithRelay = ({
     socket.addEventListener("close", finish)
   })
 
+const untilLateRelayGrace = async (
+  exchanges: (onAnswer: () => void) => ReadonlyArray<Promise<void>>
+): Promise<void> => {
+  const grace = Promise.withResolvers<void>()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const onAnswer = () => {
+    timer ??= setTimeout(grace.resolve, LATE_RELAY_GRACE_MS)
+  }
+  await Promise.race([Promise.all(exchanges(onAnswer)), grace.promise])
+  clearTimeout(timer)
+}
+
 export const createNostrRelayClient = ({
   createSocket = (url) => new WebSocket(url),
   timeoutMs = DEFAULT_TIMEOUT_MS,
@@ -106,26 +122,29 @@ export const createNostrRelayClient = ({
   readonly createSocket?: (url: string) => NostrSocket
   readonly timeoutMs?: number
 } = {}): NostrRelayClient => ({
-  publish: async (relays, event) =>
-    await Promise.all(
-      relays.map(async (url) => {
-        let isAccepted = false
-        await exchangeWithRelay({
+  publish: async (relays, event) => {
+    const accepted = new Set<string>()
+    await untilLateRelayGrace((onAnswer) =>
+      relays.map((url) =>
+        exchangeWithRelay({
           openSocket: () => createSocket(url),
           request: ["EVENT", event],
           onMessage: (message) => {
             if (message[0] !== "OK" || message[1] !== event.id) return false
-            isAccepted = message[2]
+            if (message[2]) accepted.add(url)
+            onAnswer()
             return true
           },
           timeoutMs,
         })
-        return { url, accepted: isAccepted }
-      })
-    ),
+      )
+    )
+    return relays.map((url) => ({ url, accepted: accepted.has(url) }))
+  },
   query: async (relays, filter) => {
     const events = new Map<string, NostrEvent>()
-    await Promise.all(
+    const lateRelays = new AbortController()
+    await untilLateRelayGrace((onAnswer) =>
       relays.map((url, index) => {
         const subscriptionId = `q${index}`
         let received = 0
@@ -135,18 +154,23 @@ export const createNostrRelayClient = ({
           onMessage: (message) => {
             if (message[1] !== subscriptionId) return false
             if (message[0] !== "EVENT") {
+              if (message[0] === "EOSE") onAnswer()
               return message[0] === "EOSE" || message[0] === "CLOSED"
             }
             received++
             if (verifyNostrEvent(message[2])) {
               events.set(message[2].id, message[2])
             }
-            return received >= MAX_EVENTS_PER_QUERY
+            if (received < MAX_EVENTS_PER_QUERY) return false
+            onAnswer()
+            return true
           },
           timeoutMs,
+          signal: lateRelays.signal,
         })
       })
     )
+    lateRelays.abort()
     return [...events.values()]
   },
 })
