@@ -26,6 +26,7 @@ import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Field, FieldError, FieldLabel } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
+import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
@@ -40,6 +41,10 @@ const ascending = (presets: ReadonlyArray<number>) =>
  * Tip suggestions, as web's `TipsSettingsPage` without its Save: every
  * change is written the moment it is made, and the presets are kept in
  * ascending order. No card, no descriptions (fazole-ui-minimal-copy).
+ *
+ * The presets show only while tips are on, as they do nothing otherwise.
+ * Removing a preset and resetting to the defaults are confirmed first; the
+ * reset replaces the presets only and leaves tips on or off as they are.
  */
 export function TipsSettingsPage() {
   const { t } = useTranslation()
@@ -68,6 +73,7 @@ function TipsSettingsForm({
   >
 }) {
   const runToast = useRunToast()
+  const confirm = useConfirm()
   const { t } = useTranslation()
   const locale = useLocale()
   const enabled = settings.tipsEnabled === sqliteTrue
@@ -133,15 +139,46 @@ function TipsSettingsForm({
     if (await save({ fixedAmounts: result.presets })) setFixedAmountInput("")
   }
 
-  const resetToDefaults = () => {
+  const resetToDefaults = async () => {
+    const confirmed = await confirm({
+      title: t("settings.tips.resetConfirm.title"),
+      description: t("settings.tips.resetConfirm.description"),
+      confirmLabel: t("settings.tips.resetConfirm.confirm"),
+      cancelLabel: t("settings.tips.resetConfirm.cancel"),
+      variant: "destructive",
+    })
+    if (!confirmed) return
     setPercentageInput("")
     setFixedAmountInput("")
     setPercentageError(null)
     setFixedAmountError(null)
-    void save({
-      enabled: true,
+    await save({
       percentages: [...defaultTipPercentages],
       fixedAmounts: [...defaultTipFixedAmounts],
+    })
+  }
+
+  /** Asks before a preset is removed, naming it as the list shows it. */
+  const confirmRemove = (text: string) =>
+    confirm({
+      title: t("settings.tips.removeConfirm.title", { value: text }),
+      description: t("settings.tips.removeConfirm.description"),
+      confirmLabel: t("settings.tips.removeConfirm.confirm"),
+      cancelLabel: t("settings.tips.removeConfirm.cancel"),
+      variant: "destructive",
+    })
+
+  const removePercentage = async (value: number, text: string) => {
+    if (!(await confirmRemove(text))) return
+    await save({
+      percentages: percentages.filter((percentage) => percentage !== value),
+    })
+  }
+
+  const removeFixedAmount = async (value: number, text: string) => {
+    if (!(await confirmRemove(text))) return
+    await save({
+      fixedAmounts: fixedAmounts.filter((amount) => amount !== value),
     })
   }
 
@@ -156,73 +193,71 @@ function TipsSettingsForm({
         }}
       />
 
-      <TipPresetField
-        addLabel={t("settings.tips.percentages.add")}
-        disabled={pending}
-        error={percentageError}
-        keyboardType="number-pad"
-        inputValue={percentageInput}
-        label={t("settings.tips.percentages.label")}
-        onAdd={() => void addPercentage()}
-        onInputChange={(value) => {
-          setPercentageInput(value)
-          setPercentageError(null)
-        }}
-        onRemove={(value) =>
-          void save({
-            percentages: percentages.filter(
-              (percentage) => percentage !== value
-            ),
-          })
-        }
-        placeholder={t("settings.tips.percentages.placeholder")}
-        presets={percentages}
-        renderPreset={(value) =>
-          t("settings.tips.percentages.value", { value })
-        }
-      />
+      {enabledChoice.value ? (
+        <>
+          <TipPresetField
+            addLabel={t("settings.tips.percentages.add")}
+            disabled={pending}
+            error={percentageError}
+            keyboardType="number-pad"
+            inputValue={percentageInput}
+            label={t("settings.tips.percentages.label")}
+            maximumKey="settings.tips.percentages.maximum"
+            onAdd={() => void addPercentage()}
+            onInputChange={(value) => {
+              setPercentageInput(value)
+              setPercentageError(null)
+            }}
+            onRemove={(value, text) => void removePercentage(value, text)}
+            placeholder={t("settings.tips.percentages.placeholder")}
+            presets={percentages}
+            renderPreset={(value) =>
+              t("settings.tips.percentages.value", { value })
+            }
+          />
 
-      <TipPresetField
-        addLabel={t("settings.tips.fixedAmounts.add")}
-        disabled={pending}
-        error={fixedAmountError}
-        keyboardType="decimal-pad"
-        inputValue={fixedAmountInput}
-        label={t("settings.tips.fixedAmounts.label")}
-        onAdd={() => void addFixedAmount()}
-        onInputChange={(value) => {
-          setFixedAmountInput(value)
-          setFixedAmountError(null)
-        }}
-        onRemove={(value) =>
-          void save({
-            fixedAmounts: fixedAmounts.filter((amount) => amount !== value),
-          })
-        }
-        placeholder={t("settings.tips.fixedAmounts.placeholder")}
-        presets={fixedAmounts}
-        renderPreset={(value) =>
-          formatMoney(
-            { value: Integer(value), currency: settings.fiatCurrency },
-            locale
-          )
-        }
-      />
+          <TipPresetField
+            addLabel={t("settings.tips.fixedAmounts.add")}
+            disabled={pending}
+            error={fixedAmountError}
+            keyboardType="decimal-pad"
+            inputValue={fixedAmountInput}
+            label={t("settings.tips.fixedAmounts.label")}
+            maximumKey="settings.tips.fixedAmounts.maximum"
+            onAdd={() => void addFixedAmount()}
+            onInputChange={(value) => {
+              setFixedAmountInput(value)
+              setFixedAmountError(null)
+            }}
+            onRemove={(value, text) => void removeFixedAmount(value, text)}
+            placeholder={t("settings.tips.fixedAmounts.placeholder")}
+            presets={fixedAmounts}
+            renderPreset={(value) =>
+              formatMoney(
+                { value: Integer(value), currency: settings.fiatCurrency },
+                locale
+              )
+            }
+          />
 
-      <Button
-        label={t("settings.tips.reset")}
-        iconStart={RotateCcw}
-        variant="outline"
-        disabled={pending}
-        onPress={resetToDefaults}
-      />
+          <Button
+            label={t("settings.tips.reset")}
+            iconStart={RotateCcw}
+            variant="ghost"
+            disabled={pending}
+            onPress={() => void resetToDefaults()}
+          />
+        </>
+      ) : null}
     </YStack>
   )
 }
 
 /**
  * One list of presets with a remove button each and, while there is room
- * for another (`maxTipPresetCount`), the input and the Add button under it.
+ * for another (`maxTipPresetCount`), the input and the Add button under it;
+ * once the list is full, the limit in their place, so they do not vanish
+ * without a word.
  */
 function TipPresetField({
   addLabel,
@@ -231,6 +266,7 @@ function TipPresetField({
   keyboardType,
   inputValue,
   label,
+  maximumKey,
   onAdd,
   onInputChange,
   onRemove,
@@ -244,9 +280,10 @@ function TipPresetField({
   readonly keyboardType: "number-pad" | "decimal-pad"
   readonly inputValue: string
   readonly label: string
+  readonly maximumKey: TipPresetError
   readonly onAdd: () => void
   readonly onInputChange: (value: string) => void
-  readonly onRemove: (value: number) => void
+  readonly onRemove: (value: number, text: string) => void
   readonly placeholder: string
   readonly presets: ReadonlyArray<number>
   readonly renderPreset: (value: number) => string
@@ -271,15 +308,20 @@ function TipPresetField({
                 aria-label={t("settings.tips.preset.remove", {
                   value: text,
                 })}
+                labelColor="muted-foreground"
                 disabled={disabled}
                 iconStart={Trash}
-                onPress={() => onRemove(value)}
+                onPress={() => onRemove(value, text)}
               />
             </XStack>
           )
         })}
       </YStack>
-      {full ? null : (
+      {full ? (
+        <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+          {t(maximumKey)}
+        </Text>
+      ) : (
         <>
           <Input
             value={inputValue}

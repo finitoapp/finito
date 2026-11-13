@@ -1177,6 +1177,16 @@ export const skSettings = {
   "settings.tips.percentages.placeholder": "napr. 15",
   "settings.tips.percentages.value": "{value} %",
   "settings.tips.preset.remove": "Odstrániť {value}",
+  "settings.tips.removeConfirm.title": "Odstrániť {value}?",
+  "settings.tips.removeConfirm.description":
+    "Zákazníkom sa už pri platení neponúkne.",
+  "settings.tips.removeConfirm.confirm": "Odstrániť",
+  "settings.tips.removeConfirm.cancel": "Zrušiť",
+  "settings.tips.resetConfirm.title": "Obnoviť predvolené tringelty?",
+  "settings.tips.resetConfirm.description":
+    "Vaše vlastné percentá a pevné sumy sa nahradia predvolenými.",
+  "settings.tips.resetConfirm.confirm": "Obnoviť",
+  "settings.tips.resetConfirm.cancel": "Zrušiť",
   "settings.tips.reset": "Obnoviť predvolené hodnoty",
   "settings.tips.save": "Uložiť tringelty",
   "settings.tips.saved": "Nastavenie tringeltu uložené.",
