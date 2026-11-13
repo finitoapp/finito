@@ -15,11 +15,12 @@ import {
 } from "../../../components/ui/card.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 
-const SOFTPOS_URL = "https://switchio.com/try-softpos/"
+/** Switchio's page about the terminal app, still under its SoftPOS name. */
+const SWITCHIO_PAY_URL = "https://switchio.com/try-softpos/"
 
 /**
  * Informational only, as web's: the terminal itself is configured in the
- * Switchio SoftPOS app, which this app drives through the `switchio.pay.ECR`
+ * SwitchioPay app, which this app drives through the `switchio.pay.ECR`
  * intent.
  */
 export function CardSwitchioSettingsPage() {
@@ -37,14 +38,14 @@ export function CardSwitchioSettingsPage() {
         </CardHeader>
         <CardContent>
           <YStack gap="2">
-            <Text>{`• ${t("settings.cardSwitchioAccount.info.softpos")}`}</Text>
+            <Text>{`• ${t("settings.cardSwitchioAccount.info.switchioPay")}`}</Text>
             <Text>{`• ${t("settings.cardSwitchioAccount.info.contract")}`}</Text>
             <Button
               size="lg"
               variant="outline"
               iconStart={ExternalLink}
-              label={t("settings.cardSwitchioAccount.info.softposLink")}
-              onPress={() => void Linking.openURL(SOFTPOS_URL)}
+              label={t("settings.cardSwitchioAccount.info.switchioPayLink")}
+              onPress={() => void Linking.openURL(SWITCHIO_PAY_URL)}
             />
           </YStack>
         </CardContent>

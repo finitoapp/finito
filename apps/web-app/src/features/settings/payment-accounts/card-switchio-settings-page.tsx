@@ -12,9 +12,9 @@ import {
 import { useTranslation } from "@/hooks/use-translation.ts"
 
 /**
- * Informational only: the terminal itself is configured in the Switchio
- * SoftPOS app (Comgate POS and similar branded builds), which this app
- * drives through the `switchio.pay.ECR` intent. See
+ * Informational only: the terminal itself is configured in the SwitchioPay
+ * app (Comgate POS and similar branded builds), which this app drives
+ * through the `switchio.pay.ECR` intent. See
  * `src/core/native/switchio.ts`.
  */
 export function CardSwitchioSettingsPage() {
@@ -33,7 +33,7 @@ export function CardSwitchioSettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4 text-sm">
           <ul className="list-disc space-y-2 pl-5">
-            <li>{t("settings.cardSwitchioAccount.info.softpos")}</li>
+            <li>{t("settings.cardSwitchioAccount.info.switchioPay")}</li>
             <li>{t("settings.cardSwitchioAccount.info.contract")}</li>
           </ul>
           <p className="text-muted-foreground">
@@ -51,7 +51,7 @@ export function CardSwitchioSettingsPage() {
             }
           >
             <ExternalLinkIcon />
-            {t("settings.cardSwitchioAccount.info.softposLink")}
+            {t("settings.cardSwitchioAccount.info.switchioPayLink")}
           </Button>
         </CardContent>
       </Card>
