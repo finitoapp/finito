@@ -1,0 +1,23 @@
+# Card payments turned on in Settings > Payment methods, then a payment taken
+# on the fake SwitchioPay's "approved" scenario: the payment settles and its
+# detail reads paid.
+appId: ${APP_ID}
+tags: [switchio]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/enable-card.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow: ../../subflows/pay-by-card.yaml
+- extendedWaitUntil:
+    visible:
+      id: payment-paid-panel
+    timeout: 15000
+- assertVisible: ${output.t["paymentWait.paid"]}
+- tapOn: ${output.t["paymentWait.detail"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.title"]}
+    timeout: 15000
+- assertVisible: ${output.t["payment.status.paid"]}

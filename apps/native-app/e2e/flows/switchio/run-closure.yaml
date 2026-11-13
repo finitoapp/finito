@@ -1,0 +1,51 @@
+# A card payment, then the terminal closure from Settings > Terminal
+# closures: the fake SwitchioPay closes its batch and reports what it
+# charged since the last closure, which the closure's detail shows.
+appId: ${APP_ID}
+tags: [switchio]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/enable-card.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow: ../../subflows/pay-by-card.yaml
+- extendedWaitUntil:
+    visible:
+      id: payment-paid-panel
+    timeout: 15000
+- tapOn: ${output.t["paymentWait.back"]}
+- extendedWaitUntil:
+    visible: ${output.t["home.pay"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/open-settings-entry.yaml
+    env:
+      TITLE: ${output.t["settings.cardClosure.title"]}
+      FROM_HOME: "true"
+- runFlow:
+    file: ../../subflows/assert-label.yaml
+    env:
+      LABEL: ${output.t["settings.cardClosure.action"]}
+- assertVisible: ${output.t["settings.cardClosure.thisTerminal.never"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["settings.cardClosure.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.cardClosure.confirm.title"]}
+    timeout: 15000
+# The dialog's confirm shares its copy with the page's button behind it,
+# which sits higher: take the one below the dialog's description.
+- tapOn:
+    text: ${output.t["settings.cardClosure.action"]}
+    below: ${output.t["settings.cardClosure.confirm.description"]}
+- extendedWaitUntil:
+    visible: ${output.t["settings.cardClosure.detail.title"]}
+    timeout: 15000
+# The terminal's totals: the one 5.90 payment, nothing refunded.
+- assertVisible: ${output.re(output.t["settings.cardClosure.result.payments"])}
+- assertVisible: '1× · .5\.90'
+- assertVisible: '0× · .0'
+- assertVisible: ${output.t["settings.cardClosure.result.batch"]}
