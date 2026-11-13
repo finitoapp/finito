@@ -1174,6 +1174,16 @@ export const enSettings = {
   "settings.tips.percentages.placeholder": "e.g. 15",
   "settings.tips.percentages.value": "{value}%",
   "settings.tips.preset.remove": "Remove {value}",
+  "settings.tips.removeConfirm.title": "Remove {value}?",
+  "settings.tips.removeConfirm.description":
+    "Customers will no longer be offered it when paying.",
+  "settings.tips.removeConfirm.confirm": "Remove",
+  "settings.tips.removeConfirm.cancel": "Cancel",
+  "settings.tips.resetConfirm.title": "Reset tip options?",
+  "settings.tips.resetConfirm.description":
+    "Your own percentages and fixed amounts will be replaced by the defaults.",
+  "settings.tips.resetConfirm.confirm": "Reset",
+  "settings.tips.resetConfirm.cancel": "Cancel",
   "settings.tips.reset": "Reset to defaults",
   "settings.tips.save": "Save tips",
   "settings.tips.saved": "Tip settings saved.",

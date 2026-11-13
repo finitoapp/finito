@@ -1173,6 +1173,16 @@ export const csSettings = {
   "settings.tips.percentages.placeholder": "např. 15",
   "settings.tips.percentages.value": "{value} %",
   "settings.tips.preset.remove": "Odebrat {value}",
+  "settings.tips.removeConfirm.title": "Odebrat {value}?",
+  "settings.tips.removeConfirm.description":
+    "Zákazníkům se už při placení nenabídne.",
+  "settings.tips.removeConfirm.confirm": "Odebrat",
+  "settings.tips.removeConfirm.cancel": "Zrušit",
+  "settings.tips.resetConfirm.title": "Obnovit výchozí spropitné?",
+  "settings.tips.resetConfirm.description":
+    "Vaše vlastní procenta a pevné částky se nahradí výchozími.",
+  "settings.tips.resetConfirm.confirm": "Obnovit",
+  "settings.tips.resetConfirm.cancel": "Zrušit",
   "settings.tips.reset": "Obnovit výchozí hodnoty",
   "settings.tips.save": "Uložit spropitné",
   "settings.tips.saved": "Nastavení spropitného uloženo.",
