@@ -427,14 +427,14 @@ export const enPayment = {
   "refund.switchio.done": "The money went back to the card.",
   "refund.switchio.pending": "Refunding to the card in SwitchioPay",
   "refund.switchio.pendingElsewhere":
-    "Waiting for SwitchioPay on another phone. If that phone is gone, check SwitchioPay and dismiss the refund.",
+    "Waiting for SwitchioPay on another device. If that device is gone, check SwitchioPay and dismiss the refund.",
   "refund.switchio.unresolved":
     "The refund's result is not known, so the card may have been refunded. Check SwitchioPay before refunding again.",
   "refund.switchio.failed": "The terminal declined the refund to the card.",
   "refund.switchio.check": "Ask SwitchioPay",
   "refund.switchio.dismissPending.title": "Dismiss the refund?",
   "refund.switchio.dismissPending.description":
-    "The other phone may still report it. If the money went back, the refund is recorded then anyway.",
+    "The other device may still report it. If the money went back, the refund is recorded then anyway.",
   "refund.switchio.dismissPending.confirm": "Dismiss",
   "refund.switchio.dismissPending.cancel": "Back",
   "refund.switchio.error.notAvailable":
@@ -444,7 +444,7 @@ export const enPayment = {
   "refund.switchio.error.notStarted":
     "SwitchioPay is busy or not ready. Nothing was refunded; try again.",
   "refund.switchio.error.otherDevice":
-    "Only the phone that started this refund can ask its SwitchioPay.",
+    "Only the device that started this refund can ask its SwitchioPay.",
   "refund.switchio.restored.unusable":
     "A refund result from before the app restarted could not be processed. Check the refund in SwitchioPay.",
   "refund.switchio.reversalDeclined.title":

@@ -484,7 +484,7 @@ export const interpretSwitchioClosureResult = ({
 }
 
 /**
- * Closes the batch of the SwitchioPay terminal on this phone. Kept apart from
+ * Closes the batch of the SwitchioPay terminal on this device. Kept apart from
  * {@link SwitchioTerminalDep} so that an app which only takes payments (web's
  * Capacitor bridge) need not implement it.
  */
@@ -690,7 +690,7 @@ export const interpretSwitchioTransactionLookup = ({
 
 /**
  * Takes payments back (reversal) or refunds them to the card (referral
- * refund) through the SwitchioPay terminal on this phone, and asks it what
+ * refund) through the SwitchioPay terminal on this device, and asks it what
  * became of one whose result was lost. Kept apart from
  * {@link SwitchioTerminalDep} and {@link SwitchioClosureDep}, so that an app
  * which only takes payments need not implement it.

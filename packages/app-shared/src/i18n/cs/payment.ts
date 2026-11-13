@@ -415,14 +415,14 @@ export const csPayment = {
   "refund.switchio.done": "Peníze se vrátily na kartu.",
   "refund.switchio.pending": "Vracím na kartu přes SwitchioPay",
   "refund.switchio.pendingElsewhere":
-    "Čeká se na SwitchioPay na jiném telefonu. Pokud ten telefon není k dispozici, zkontrolujte SwitchioPay a vrácení zavřete.",
+    "Čeká se na SwitchioPay na jiném zařízení. Pokud to zařízení není k dispozici, zkontrolujte SwitchioPay a vrácení zavřete.",
   "refund.switchio.unresolved":
     "Výsledek vrácení na kartu není znám, karta tedy mohla být vrácená. Před dalším vrácením zkontrolujte SwitchioPay.",
   "refund.switchio.failed": "Terminál vrácení na kartu zamítl.",
   "refund.switchio.check": "Zjistit stav v SwitchioPay",
   "refund.switchio.dismissPending.title": "Zavřít vrácení?",
   "refund.switchio.dismissPending.description":
-    "Druhý telefon ho může ještě nahlásit. Pokud se peníze vrátily, vrácení se pak zapíše i tak.",
+    "Druhé zařízení ho může ještě nahlásit. Pokud se peníze vrátily, vrácení se pak zapíše i tak.",
   "refund.switchio.dismissPending.confirm": "Zavřít",
   "refund.switchio.dismissPending.cancel": "Zpět",
   "refund.switchio.error.notAvailable":
@@ -432,7 +432,7 @@ export const csPayment = {
   "refund.switchio.error.notStarted":
     "SwitchioPay je zaneprázdněný nebo není připravený. Nic se nevrátilo, zkuste to znovu.",
   "refund.switchio.error.otherDevice":
-    "Stav v SwitchioPay může zjistit jen telefon, který vrácení spustil.",
+    "Stav v SwitchioPay může zjistit jen zařízení, které vrácení spustilo.",
   "refund.switchio.restored.unusable":
     "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení v SwitchioPay.",
   "refund.switchio.reversalDeclined.title":
