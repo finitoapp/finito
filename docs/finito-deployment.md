@@ -51,6 +51,7 @@ project, not just the proxies, to Frankfurt.
 | Variable | `finito` | `finito-edge` |
 | --- | --- | --- |
 | `PAYKY_BRAND` | `finito` | `finito` |
+| `PAYKY_APP_CHANNEL` | `production` | `edge` for Production, `prev` for Preview |
 | `EXPO_PUBLIC_PAYKY_API_BASE_URL` | unset (`https://app.finito.fit`) | `https://edge.app.finito.fit` |
 | `EXPO_PUBLIC_SENTRY_DSN` | Payky's DSN | Payky's DSN |
 | `PAYKY_DONATE_IDENTIFIER` | `donate@finito.fit` | `donate@edge.finito.fit` |
@@ -71,6 +72,26 @@ origins the service proxies answer with CORS besides their own: Expo web on
 an edge deployment and call it cross-origin. It is set on the edge projects
 only; production answers its own origin alone. Unset or invalid, it allows
 none.
+
+## Channels
+
+A build names its channel in the name an installed app shows (brand/0005),
+so a home screen tells the builds apart:
+
+| Channel | Build | Name |
+| --- | --- | --- |
+| `production` | `finito` (app.finito.fit); the release APK and AAB | `Finito` |
+| `edge` | `finito-edge`, Production (edge.app.finito.fit) | `Finito edge` |
+| `prev` | `finito-edge`, Preview (pull requests) | `Finito prev` |
+| `dev` | Expo's dev server, a local `bun run build:native:web`, the debug APK | `Finito dev` |
+
+The PWA takes its channel from `PAYKY_APP_CHANNEL`, which
+`scripts/build-web.ts` reads and writes into the exported `index.html` and
+`manifest.webmanifest`. Unset, it is `dev`, so plain `Finito` is only ever
+set on purpose. Expo's dev server names only its tab. The APK takes its
+channel from the Gradle build type instead: the release build keeps the
+config's `name`, and `plugins/with-debug-app-id.cjs` names the debug build
+types `Finito dev`.
 
 ## The landing projects
 
