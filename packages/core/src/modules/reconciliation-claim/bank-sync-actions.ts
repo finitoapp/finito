@@ -71,7 +71,7 @@ const loadRecordedBankTransactions =
  *
  * A transaction that names `formerBankReferences` counts as recorded under
  * any of them too, so a bank whose sync changed how it keys a transfer does
- * not record one again that was recorded under the old key (moneta/0011).
+ * not record one again that was recorded under the old key (moneta/0011, moneta/0012).
  * Its row is still re-checked while no payment holds it.
  */
 export const loadUnrecordedBankTransactions =

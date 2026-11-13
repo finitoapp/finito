@@ -16,7 +16,6 @@ import {
 
 const transaction: MonetaTransaction = {
   id: "E-1",
-  entryReference: "E-1",
   status: "booked",
   isReversal: false,
   direction: "incoming",
@@ -31,15 +30,13 @@ const transaction: MonetaTransaction = {
 }
 
 describe("isIncomingMonetaTransaction", () => {
-  test("is a booked or pending incoming transfer in the account's currency", () => {
+  test("is a booked incoming transfer in the account's currency", () => {
     expect(isIncomingMonetaTransaction(transaction, "CZK")).toBe(true)
-    expect(
-      isIncomingMonetaTransaction({ ...transaction, status: "pending" }, "CZK")
-    ).toBe(true)
   })
 
   test("is not anything else", () => {
     for (const other of [
+      { ...transaction, status: "pending" as const },
       { ...transaction, status: "other" as const },
       { ...transaction, isReversal: true },
       { ...transaction, direction: "outgoing" as const },

@@ -125,8 +125,8 @@ export const isMonetaFastWatchActive = ({
 
 /**
  * A transaction that can pay a payment into the account: incoming, not a
- * reversal, booked or still pending (moneta/0011), with a bank reference to
- * key it by, a positive amount, and in the account's currency.
+ * reversal, booked (moneta/0012), with a bank reference to key it by, a
+ * positive amount, and in the account's currency.
  */
 export const isIncomingMonetaTransaction = (
   transaction: MonetaTransaction,
@@ -134,7 +134,7 @@ export const isIncomingMonetaTransaction = (
 ): transaction is MonetaTransaction & { readonly id: string } =>
   transaction.direction === "incoming" &&
   !transaction.isReversal &&
-  (transaction.status === "booked" || transaction.status === "pending") &&
+  transaction.status === "booked" &&
   transaction.id !== null &&
   transaction.amountMinor > 0 &&
   transaction.currency === currency
