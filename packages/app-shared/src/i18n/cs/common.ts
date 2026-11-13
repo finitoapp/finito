@@ -88,8 +88,8 @@ export const csCommon = {
   "nav.menu": "Menu",
   "nav.notifications": "Oznámení",
   "nav.notificationsUnread": "Oznámení – nová",
-  "nav.numpad": "Klávesnice",
-  "nav.pos": "Prodej",
+  "nav.numpad": "Částka",
+  "nav.pos": "Účty",
   "nav.settings": "Nastavení",
   "nav.stats": "Statistiky",
   "notifications.empty.description":

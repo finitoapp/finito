@@ -86,8 +86,8 @@ export const enCommon = {
   "nav.menu": "Menu",
   "nav.notifications": "Notifications",
   "nav.notificationsUnread": "Notifications – new",
-  "nav.numpad": "Keypad",
-  "nav.pos": "Sales",
+  "nav.numpad": "Amount",
+  "nav.pos": "Bills",
   "nav.settings": "Settings",
   "nav.stats": "Statistics",
   "notifications.empty.description":

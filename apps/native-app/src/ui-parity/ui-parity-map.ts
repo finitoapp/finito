@@ -523,7 +523,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
-    native: "src/features/onboarding/selling-mode-illustrations.tsx",
+    native: "src/features/shared/selling-mode-illustrations.tsx",
     web: [
       "apps/web-app/src/features/onboarding/onboarding-steps/selling-mode-illustrations.tsx",
     ],
@@ -2142,19 +2142,17 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Card: "no card on a mobile detail screen; the switches sit on the page",
-      CardHeader:
-        "no card on a mobile detail screen; the switches sit on the page",
-      CardTitle:
-        "no card on a mobile detail screen; the switches sit on the page",
-      CardDescription: "no second-line explanations (fazole-ui-minimal-copy)",
-      CardContent:
-        "no card on a mobile detail screen; the switches sit on the page",
-      FieldGroup: "the switches sit on the page, one SwitchRow each",
+      FieldGroup:
+        "each mode is the pictured HomeModeCard onboarding offers, side by side, rather than a group of switch rows",
       InlineEditSwitch:
-        "native's SwitchRow over useInlineChoice, as the tips switch",
-      SwitchRow: "web's InlineEditSwitch, as the tips switch",
+        "each mode is the pictured HomeModeCard onboarding offers, turned on or off by a tap, over useInlineChoice",
     },
+  },
+  {
+    native: "src/features/shared/home-mode-card.tsx",
+    web: [],
+    status: "matched",
+    note: "One of home's modes as a pictured choice, shared by onboarding's selling step (one mode, as a radio) and the home screen settings (each mode on or off, as a checkbox); web draws the onboarding card inside its selling step and the settings as switches.",
   },
   {
     native: "src/features/shared/wallet-body.tsx",
