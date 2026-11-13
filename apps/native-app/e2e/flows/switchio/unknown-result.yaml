@@ -1,0 +1,32 @@
+# The fake SwitchioPay's "unknown" scenario: the terminal answers success
+# with no data, so the card may have been charged (payment/0006). The payment
+# stays unpaid, names the attempt to check in SwitchioPay, and another
+# attempt asks before charging again.
+appId: ${APP_ID}
+tags: [switchio]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/enable-card.yaml
+    env:
+      SCENARIO: unknown
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow: ../../subflows/pay-by-card.yaml
+- extendedWaitUntil:
+    visible: '${output.re(output.t["paymentWait.cardPaid.unresolved"].split("{transactionId}")[0])}.*'
+    timeout: 15000
+- assertNotVisible:
+    id: payment-paid-panel
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentWait.cardPaid.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentWait.cardPaid.retryUnresolved.title"]}
+    timeout: 15000
+- tapOn: ${output.t["paymentWait.cardPaid.retryUnresolved.cancel"]}
+- assertNotVisible: ${output.t["paymentWait.cardPaid.retryUnresolved.title"]}
+- assertVisible: '${output.re(output.t["paymentWait.cardPaid.unresolved"].split("{transactionId}")[0])}.*'

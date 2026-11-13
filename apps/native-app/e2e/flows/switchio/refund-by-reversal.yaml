@@ -1,0 +1,52 @@
+# A card payment refunded whole right after it was taken, on the phone that
+# took it with no closure since: SwitchioPay reverses it (refund/0008), and
+# the payment shows the refund back to the card.
+appId: ${APP_ID}
+tags: [switchio]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow: ../../subflows/enable-card.yaml
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["nav.back"]}
+- runFlow: ../../subflows/pay-by-card.yaml
+- extendedWaitUntil:
+    visible:
+      id: payment-paid-panel
+    timeout: 15000
+- tapOn: ${output.t["paymentWait.detail"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.title"]}
+    timeout: 15000
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["paymentDetail.refunds.action"]}
+- extendedWaitUntil:
+    visible: ${output.t["refund.dialog.method.label"]}
+    timeout: 15000
+- tapOn: ${output.t["refund.dialog.method.cardSwitchio"]}
+# The whole payment on its own phone, no closure since: a reversal.
+- extendedWaitUntil:
+    visible: ${output.t["refund.outcome.reversal"]}
+    timeout: 15000
+# Maestro reads a dollar sign as its own, so amounts match it with a
+# wildcard.
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      PATTERN: '${output.re(output.t["refund.dialog.confirm"]).replace("\\{amount\\}", ".5\\.90")}'
+- extendedWaitUntil:
+    visible: ${output.t["refund.switchio.done"]}
+    timeout: 15000
+# Back on the payment: refunded to the card, nothing left to refund.
+- extendedWaitUntil:
+    visible: ${output.t["paymentDetail.refunds.title"]}
+    timeout: 15000
+- assertVisible: '${output.re(output.t["paymentDetail.refunds.method.cardSwitchio"])} · .*'
+- assertNotVisible: ${output.t["paymentDetail.refunds.action"]}

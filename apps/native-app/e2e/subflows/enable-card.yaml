@@ -1,0 +1,25 @@
+# Card payments over the fake SwitchioPay (src/e2e/e2e-switchio-presets.ts):
+# the `fake` action (switchio=SCENARIO, default "approved") moves on to
+# Settings > Payment methods in-app (a link would reload web and lose the
+# in-memory terminal), where the "Payment card" switch is turned on. Ends on
+# Payment methods: one Back is the home. Needs a seeded app. From here on
+# navigate by tapping, never by link, on web.
+appId: ${APP_ID}
+---
+- openLink: '${BASE_URL}e2e/fake?switchio=${typeof SCENARIO === "undefined" ? "approved" : SCENARIO}&next=/settings/payment-accounts'
+- extendedWaitUntil:
+    visible: ${output.t["settings.paymentAccounts.title"]}
+    timeout: 30000
+# The fake stands in for the native module: the row can be enabled, and
+# SwitchioPay reads as installed.
+- assertNotVisible: ${output.re(output.t["settings.paymentAccounts.status.nativeOnly"])}
+- assertNotVisible: ${output.re(output.t["settings.cardSwitchioAccount.notInstalledWarning"])}
+- runFlow:
+    file: tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.cardSwitchioAccount.enabled.label"]}
+- runFlow:
+    file: assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.cardSwitchioAccount.enabled.label"]}
+      CHECKED: "true"

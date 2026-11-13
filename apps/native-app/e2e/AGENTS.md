@@ -84,7 +84,10 @@ assertions.
   in-app fake mint, turns Bitcoin on and makes Cashu its main method on
   the Bitcoin screen, where it ends (see the bridge's `fake`);
   `fund-cashu-wallet` takes a Cashu payment and walks to a new Cashu
-  withdrawal, by taps only.
+  withdrawal, by taps only. `enable-card` (`SCENARIO`, default `approved`)
+  puts the fake SwitchioPay in place and turns the "Payment card" method on,
+  ending on Payment methods (see the bridge's `fake`); `pay-by-card` takes
+  5.90 with no tip on the card tab, leaving the outcome to the caller.
   `open-spark-wallet-dialog`, `type-spark-mnemonic`
   (`MNEMONIC`, into the dialog's masked field, not the page's twin behind it),
   `assert-spark-phrase` (`PHRASE`, restarts and reveals the wallet's phrase) and
@@ -144,7 +147,14 @@ assertions.
   Cashu wallet first starts). `cashuPayQuotes` is web's
   `__e2eCashuPayQuotes` and prints how many quotes it paid; a web link
   reloads the page and loses the mint, so flows use `cashu=autopay` instead,
-  which pays open quotes every 4 s by itself.
+  which pays open quotes every 4 s by itself. `switchio=<scenario>`
+  (`e2e-switchio-presets.ts`, `off` to drop it) stands a fake SwitchioPay in
+  for the native module, so the card screens show on web too: it answers the
+  module's raw results by the scenario (`approved`, `declined`, `unknown`,
+  `unknown-then-approved`, `cancelled`, `busy`, `launch-refused`,
+  `reversal-declined`, `refund-unknown`, `closure-unknown`,
+  `restored-approved`, `not-installed`, ...) and keeps its transactions and
+  batch in memory, so a link that reloads web loses them.
 - `offline` is web's `context.setOffline(true)` for the restore sync screen
   only (`e2e-network.ts`: that screen reads the device as offline, requests
   still go out) until the app restarts, so move on with `next=`;
