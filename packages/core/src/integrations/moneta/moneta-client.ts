@@ -184,7 +184,6 @@ const MonetaTransactionSchema = z
     status: z.string().nullish(),
     bookingDate: MonetaDateSchema,
     valueDate: MonetaDateSchema,
-    enteredDate: MonetaDateSchema,
     entryDetails: z
       .looseObject({
         transactionDetails: z
@@ -254,20 +253,14 @@ const MonetaTransactionSchema = z
       return trimmed === undefined || trimmed === "" ? [] : [trimmed]
     })
 
-    const entryReference = transaction.entryReference?.trim() || null
-
     return {
-      id: entryReference === null ? null : monetaTransactionKey(entryReference),
-      entryReference,
+      id: transaction.entryReference?.trim() || null,
       status: toMonetaTransactionStatus(transaction.status),
       isReversal: transaction.reversalIndicator === true,
       direction,
       amountMinor: Integer(direction === "incoming" ? absolute : -absolute),
       currency: transaction.amount.currency,
-      occurredOn:
-        transaction.valueDate ??
-        transaction.bookingDate ??
-        transaction.enteredDate,
+      occurredOn: transaction.valueDate ?? transaction.bookingDate,
       variableSymbol: readSymbol(
         "VS",
         [referenceText, endToEnd],
@@ -294,14 +287,8 @@ const MonetaTransactionSchema = z
  * tested on its own (`isIncomingMonetaTransaction`).
  */
 export interface MonetaTransaction {
-  /**
-   * The key a transfer is recorded by: the last `:`-separated segment of the
-   * bank's `entryReference` (moneta/0011), or the whole reference when it has
-   * no such segment; `null` when the bank sends none.
-   */
+  /** The bank's `entryReference`; `null` when it sends none. */
   readonly id: string | null
-  /** The bank's `entryReference` as sent, trimmed; `null` when it sends none. */
-  readonly entryReference: string | null
   /**
    * `BOOK` and `PDNG`; a status the standard lists but no payment can come
    * from (a scheduled `FUTR`, an `INFO` line) is `other`. A transaction
@@ -314,10 +301,9 @@ export interface MonetaTransaction {
   readonly amountMinor: Integer
   readonly currency: FiatCurrency
   /**
-   * `valueDate`, else `bookingDate`, else `enteredDate`: the day the money
-   * reached the account. The bank books a weekend transfer on the next
-   * working day, so `bookingDate` may lie in the future; a pending entry has
-   * neither yet, only the day the bank entered it.
+   * `valueDate`, else `bookingDate`: the day the money reached the account.
+   * The bank books a weekend transfer on the next working day, so
+   * `bookingDate` may lie in the future.
    */
   readonly occurredOn: DateString | null
   readonly variableSymbol: VariableSymbol | null
@@ -328,18 +314,6 @@ export interface MonetaTransaction {
   /** The entry exactly as the bank sent it. */
   readonly raw: unknown
 }
-
-/**
- * The part of an `entryReference` that names one transfer. A booked entry's
- * reference is `<account>:<bookingDate>:<sequence>:<id>`, a pending one's
- * only an id such as `2610542566906527751` — the `<id>` of the booked form,
- * as far as anyone knows: assumed, not yet seen on a live transfer going from
- * pending to booked (moneta/0011). Keying a transfer by it records the two
- * forms once. An empty last segment leaves the whole reference as the key.
- */
-const monetaTransactionKey = (entryReference: string): string =>
-  entryReference.slice(entryReference.lastIndexOf(":") + 1).trim() ||
-  entryReference
 
 const monetaTransactionStatuses: Readonly<
   Record<string, MonetaTransaction["status"]>
@@ -461,9 +435,9 @@ export interface MonetaTransactions {
  * The bank lists the newest booking first. A transaction booked between two
  * page reads pushes the rest of the listing one place down, so an entry at a
  * page boundary can be read twice but is never skipped; the sync records a
- * transaction once by its key (`MonetaTransaction.id`). A page the bank no
- * longer has — `404 PAGE_NOT_FOUND`, its answer for a page past the end —
- * ends the listing rather than failing it.
+ * transaction once by its `entryReference`. A page the bank no longer has —
+ * `404 PAGE_NOT_FOUND`, its answer for a page past the end — ends the
+ * listing rather than failing it.
  */
 export const fetchMonetaTransactions =
   ({

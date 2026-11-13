@@ -99,12 +99,10 @@ independently runs its own sync job for it, with no leader election — nor
 do a browser's tabs, each of which runs the bank jobs as one more device
 would (`service-proxy/0001`). Safety comes from convergence, not coordination:
 
-- `accountTransaction.id` derives from `accountId` + bank reference (FIO;
-  MONETA's key, the last `:` segment of its `entryReference`, which its
-  pending and booked forms share, `moneta/0011`) or
+- `accountTransaction.id` derives from `accountId` + bank reference (FIO,
+  MONETA's `entryReference`) or
   `sparkTransferId` (Spark) — two devices recording the same thing write the
-  same CRDT row. A MONETA transfer recorded before `moneta/0011` holds its
-  whole `entryReference`, and the sync treats it as recorded under either.
+  same CRDT row.
 - `reconciliationClaim.id` derives from `` `{source}:${paymentId}:${accountTransactionId}` ``
   — same reasoning.
 - The advisory locks above are **per-device only**; they mainly guard a
@@ -184,7 +182,7 @@ in the UI.
 |---|---|---|
 | 1 | Spark transfer with no Lightning/Spark invoice | open by design — never recorded |
 | 2 | Ambiguous candidate ties | open — `payment.id` order decides |
-| 3 | MONETA pending (`PDNG`) transfer | by design — pays at once, as if final; a rejected one is not undone (`moneta/0011`) |
+| 3 | MONETA pending (`PDNG`) transfer | by design — recorded only once booked (`moneta/0012`) |
 | 4 | MONETA day with more bookings than one sync reads | by design — passed with what was read, logged (`moneta/0006`) |
 
 1. **By design**, not a bug: `assertHasSparkIdentifier` is a domain
@@ -193,16 +191,11 @@ in the UI.
 2. **Ties.** IBAN candidate: same VS/SS/amount on two open payments. Cash
    candidate: same amount (currently unreachable, see the table above).
 
-3. **MONETA `PDNG`.** A pending incoming transfer is recorded and pays its
-   payment as a booked one does (`moneta/0011`): an instant transfer from
-   another bank was seen pending for a long time while the customer waited.
-   A booked `entryReference` is `<account>:<bookingDate>:<sequence>:<id>`,
-   a pending one only the `<id>`, so a transfer is keyed by that last
-   segment and its booked form records nothing new. That the `<id>` stays
-   the same from pending to booked is assumed, not yet seen live; if it
-   does not, the booked form is recorded again and overpays the payment
-   (`payment/0007`). A pending transfer the bank later rejects leaves its
-   payment paid; detecting that is not done yet.
+3. **MONETA `PDNG`.** Only a booked transfer is recorded (`moneta/0012`),
+   so a recorded one is final and its `entryReference` never changes. A
+   pending entry may be booked under another reference — the reference
+   carries the booking date — and recording it would count the money twice.
+   Incoming transfers seen on a live account were listed as `BOOK` at once.
 
 4. **A too-busy MONETA day.** One sync reads at most `MONETA_MAX_PAGES`
    pages, and the bank filters by date alone, so no narrower window reads

@@ -1,6 +1,6 @@
 # 0011 A pending MONETA transfer pays the payment
 
-Status: accepted
+Status: superseded by moneta/0012
 Date: 2026-11-11
 
 ## Context

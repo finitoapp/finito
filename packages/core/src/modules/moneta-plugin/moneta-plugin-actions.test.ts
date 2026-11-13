@@ -17,16 +17,15 @@ import {
   createPayment,
 } from "../payment/payment-actions.ts"
 import { recordBankTransactions } from "../reconciliation-claim/bank-sync-actions.ts"
-import { dateStringToDate } from "../shared/date-string-utils.ts"
 import {
   DateStringSchema,
   IbanSchema,
   Integer,
-  NonEmptyString255Schema,
+  NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
-  TimestampMsSchema,
+  TimestampMs,
   VariableSymbol,
 } from "../shared/schema.ts"
 import {
@@ -78,32 +77,6 @@ const transaction = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-/** The key MONETA's pending and booked forms of one transfer share. */
-const transferKey = "2610542566906527751"
-const bookedReference = `2123456789:2026-05-27:0001:${transferKey}`
-/** The day the bank entered it, the only date a pending entry carries. */
-const enteredAt = dateStringToDate(
-  DateStringSchema.decode("2026-05-26")
-).getTime()
-
-/** An instant transfer from another bank as MONETA lists it while pending. */
-const pending = (overrides: Record<string, unknown> = {}) =>
-  transaction({
-    entryReference: transferKey,
-    status: "PDNG",
-    bookingDate: { date: null },
-    valueDate: { date: null },
-    enteredDate: { date: "2026-05-26" },
-    ...overrides,
-  })
-
-/** The same transfer once booked, under its full reference. */
-const booked = () =>
-  transaction({
-    entryReference: bookedReference,
-    bookingDate: { date: "2026-05-27" },
-  })
-
 /** A bank that answers the account list and then the given transactions. */
 const fakeBank = (transactions: () => ReadonlyArray<unknown>) => {
   const requests: URL[] = []
@@ -132,7 +105,6 @@ const accountTransactionsQuery = (accountId: AccountId) =>
         "accountTransaction.amount",
         "accountTransaction.currency",
         "accountTransaction.note",
-        "accountTransaction.occurredAt",
         "accountTransactionIban.variableSymbol",
         "accountTransactionIban.bankReference",
       ])
@@ -408,141 +380,34 @@ describe("syncMonetaTransactions", () => {
     ])
   })
 
-  test("a pending transfer pays the payment its symbol and amount match", async () => {
-    await using context = await setUp(fakeBank(() => [pending()]).fetch)
-    await context.run.orThrow(
-      connectMonetaPlugin({ accountId: context.accountId, iban, token })
-    )
-    const paymentId = await createIbanPayment(context)
-
-    await expect(
-      context.run(syncMonetaTransactions(range))
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { recordedCount: 1, claimedPaymentIds: [paymentId] },
-    })
-    await expect(
-      context.evolu.loadQuery(accountTransactionsQuery(context.accountId))
-    ).resolves.toMatchObject([
-      { amount: 19_950, bankReference: transferKey, occurredAt: enteredAt },
-    ])
-    await expect(context.evolu.loadQuery(claimsQuery)).resolves.toMatchObject([
-      { paymentId },
-    ])
-  })
-
-  test("a pending transfer the bank books later records nothing new and does not overpay", async () => {
-    let listed = [pending()]
+  test("a pending transfer pays nothing until the bank books it", async () => {
+    let listed = [
+      transaction({ entryReference: "P-1", status: "PDNG", bookingDate: null }),
+    ]
     await using context = await setUp(fakeBank(() => listed).fetch)
     await context.run.orThrow(
       connectMonetaPlugin({ accountId: context.accountId, iban, token })
     )
     const paymentId = await createIbanPayment(context)
-    await context.run.orThrow(syncMonetaTransactions(range))
 
-    listed = [booked()]
     await expect(
       context.run(syncMonetaTransactions(range))
     ).resolves.toMatchObject({
       ok: true,
       value: { recordedCount: 0, claimedPaymentIds: [] },
     })
-    await expect(
-      context.evolu.loadQuery(accountTransactionsQuery(context.accountId))
-    ).resolves.toMatchObject([{ bankReference: transferKey }])
-    await expect(context.evolu.loadQuery(claimsQuery)).resolves.toMatchObject([
-      { paymentId },
-    ])
-  })
 
-  test("a transfer listed both pending and booked in one window is recorded once", async () => {
-    await using context = await setUp(
-      fakeBank(() => [booked(), pending()]).fetch
-    )
-    await context.run.orThrow(
-      connectMonetaPlugin({ accountId: context.accountId, iban, token })
-    )
-    const paymentId = await createIbanPayment(context)
-
+    // Booked under another reference than it was listed pending with.
+    listed = [transaction({ entryReference: "B-1", status: "BOOK" })]
     await expect(
       context.run(syncMonetaTransactions(range))
     ).resolves.toMatchObject({
       ok: true,
       value: { recordedCount: 1, claimedPaymentIds: [paymentId] },
     })
-    await expect(context.evolu.loadQuery(claimsQuery)).resolves.toHaveLength(1)
-  })
-
-  test("a transfer recorded under its whole reference before is not recorded again under its key, and still pays a payment", async () => {
-    await using context = await setUp(fakeBank(() => [booked()]).fetch)
-    await context.run.orThrow(
-      connectMonetaPlugin({ accountId: context.accountId, iban, token })
-    )
-    // As the sync recorded a booked transfer before moneta/0011.
-    await context.run.ok(
-      recordBankTransactions({
-        accountId: context.accountId,
-        transactions: [
-          {
-            bankReference: NonEmptyString255Schema.decode(bookedReference),
-            amount: Integer(19_950),
-            currency: "CZK",
-            occurredAt: TimestampMsSchema.decode(enteredAt),
-            note: null,
-            variableSymbol: VariableSymbol("123456"),
-            constantSymbol: null,
-            specificSymbol: null,
-          },
-        ],
-      })
-    )
-    const [recorded] = await context.evolu.loadQuery(
-      accountTransactionsQuery(context.accountId)
-    )
-    const paymentId = await createIbanPayment(context)
-
-    await expect(
-      context.run(syncMonetaTransactions(range))
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { recordedCount: 0, claimedPaymentIds: [paymentId] },
-    })
     await expect(
       context.evolu.loadQuery(accountTransactionsQuery(context.accountId))
-    ).resolves.toMatchObject([{ bankReference: bookedReference }])
-    await expect(context.evolu.loadQuery(claimsQuery)).resolves.toMatchObject([
-      { paymentId, accountTransactionId: recorded?.id },
-    ])
-
-    await expect(
-      context.run(syncMonetaTransactions(range))
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { recordedCount: 0, claimedPaymentIds: [] },
-    })
-  })
-
-  test("two pending transfers with the same amount and symbols are both recorded, the second overpaying the payment", async () => {
-    await using context = await setUp(
-      fakeBank(() => [
-        pending(),
-        pending({ entryReference: "2610542566906527752" }),
-      ]).fetch
-    )
-    await context.run.orThrow(
-      connectMonetaPlugin({ accountId: context.accountId, iban, token })
-    )
-    const paymentId = await createIbanPayment(context)
-
-    await expect(
-      context.run(syncMonetaTransactions(range))
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { recordedCount: 2, claimedPaymentIds: [paymentId, paymentId] },
-    })
-    await expect(
-      context.run(acknowledgePaymentExcessSettlement(paymentId))
-    ).resolves.toMatchObject({ ok: true })
+    ).resolves.toMatchObject([{ bankReference: "B-1" }])
   })
 
   test("skips outgoing, reversed, foreign-currency and scheduled entries", async () => {
@@ -556,12 +421,6 @@ describe("syncMonetaTransactions", () => {
         }),
         transaction({ entryReference: "futr", status: "FUTR" }),
         transaction({ entryReference: null }),
-        pending({ entryReference: "pdng-out", creditDebitIndicator: "DBIT" }),
-        pending({ entryReference: "pdng-rev", reversalIndicator: true }),
-        pending({
-          entryReference: "pdng-zero",
-          amount: { value: 0, currency: "CZK" },
-        }),
       ]).fetch
     )
     await context.run.orThrow(
@@ -572,7 +431,7 @@ describe("syncMonetaTransactions", () => {
     await expect(context.run(syncMonetaTransactions(range))).resolves.toEqual({
       ok: true,
       value: {
-        downloadedCount: 8,
+        downloadedCount: 5,
         recordedCount: 0,
         claimedPaymentIds: [],
         isTruncated: false,
@@ -602,6 +461,51 @@ describe("syncMonetaTransactions", () => {
       context.evolu.loadQuery(accountTransactionsQuery(context.accountId))
     ).resolves.toHaveLength(1)
     await expect(context.evolu.loadQuery(claimsQuery)).resolves.toHaveLength(1)
+  })
+
+  test("a transfer recorded under the last segment of its reference is not recorded again, and still pays a payment", async () => {
+    const entryReference = "2123456789:2026-05-26:1:2610542566906527751"
+    await using context = await setUp(
+      fakeBank(() => [transaction({ entryReference })]).fetch
+    )
+    await context.run.orThrow(
+      connectMonetaPlugin({ accountId: context.accountId, iban, token })
+    )
+    // As a build recorded a booked transfer while moneta/0011 held.
+    await context.run.ok(
+      recordBankTransactions({
+        accountId: context.accountId,
+        transactions: [
+          {
+            bankReference: NonEmptyString255("2610542566906527751"),
+            amount: Integer(19_950),
+            currency: "CZK",
+            occurredAt: TimestampMs(Date.parse("2026-05-26T00:00:00.000Z")),
+            note: null,
+            variableSymbol: VariableSymbol("123456"),
+            constantSymbol: null,
+            specificSymbol: null,
+          },
+        ],
+      })
+    )
+    const [recorded] = await context.evolu.loadQuery(
+      accountTransactionsQuery(context.accountId)
+    )
+    const paymentId = await createIbanPayment(context)
+
+    await expect(
+      context.run(syncMonetaTransactions(range))
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { recordedCount: 0, claimedPaymentIds: [paymentId] },
+    })
+    await expect(
+      context.evolu.loadQuery(accountTransactionsQuery(context.accountId))
+    ).resolves.toMatchObject([{ bankReference: "2610542566906527751" }])
+    await expect(context.evolu.loadQuery(claimsQuery)).resolves.toMatchObject([
+      { paymentId, accountTransactionId: recorded?.id },
+    ])
   })
 
   test("pays a payment created after its transfer was recorded", async () => {
