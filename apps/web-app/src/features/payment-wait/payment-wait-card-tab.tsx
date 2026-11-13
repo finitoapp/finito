@@ -13,6 +13,11 @@ export function CardPaymentTab({
   onPayCard,
 }: CardPaymentTabProps) {
   const { t } = useTranslation()
+  // The attempt is written unresolved before the terminal opens, so while it
+  // runs the marker names the attempt itself, not an earlier one.
+  const unresolvedTransactionId = cardPaymentPending
+    ? null
+    : cardUnresolvedTransactionId
 
   return (
     <div className="flex w-full flex-col items-center py-4">
@@ -32,14 +37,14 @@ export function CardPaymentTab({
           ? t("paymentWait.cardPaid.pending")
           : t("paymentWait.cardPaid.action")}
       </Button>
-      {cardUnresolvedTransactionId ? (
+      {unresolvedTransactionId ? (
         <p className="max-w-72 text-balance text-sm font-medium text-destructive">
           {t("paymentWait.cardPaid.unresolved", {
-            transactionId: cardUnresolvedTransactionId,
+            transactionId: unresolvedTransactionId,
           })}
         </p>
       ) : null}
-      {cardPaymentErrorKey && !cardUnresolvedTransactionId ? (
+      {cardPaymentErrorKey && !unresolvedTransactionId ? (
         <p className="text-sm font-medium text-destructive">
           {t(cardPaymentErrorKey)}
         </p>
