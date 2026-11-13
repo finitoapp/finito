@@ -1396,9 +1396,9 @@ export const enSettings = {
   "settings.cardClosure.confirm.description":
     "Card payments since the last closure will be sent for settlement.",
   "settings.cardClosure.confirm.cancel": "Cancel",
-  "settings.cardClosure.thisTerminal.title": "Terminal on this phone",
+  "settings.cardClosure.thisTerminal.title": "This terminal",
   "settings.cardClosure.thisTerminal.description":
-    "The closure sends the card payments taken on this phone for settlement. Run it every day after the end of the shift.",
+    "The closure sends the card payments taken on this terminal for settlement. Run it every day after the end of the shift.",
   "settings.cardClosure.thisTerminal.last": "Last closure",
   "settings.cardClosure.thisTerminal.never": "Not yet run",
   "settings.cardClosure.result.title": "Summary",
@@ -1412,10 +1412,10 @@ export const enSettings = {
   "settings.cardClosure.result.batchAndShift": "Batch {batch}, shift {shift}",
   "settings.cardClosure.terminals.title": "All terminals",
   "settings.cardClosure.terminals.description":
-    "A terminal can only be closed on the phone it runs on.",
+    "A terminal can only be closed on the terminal itself.",
   "settings.cardClosure.terminals.notClosedToday": "Not closed today",
   "settings.cardClosure.terminals.closedToday": "Closed today",
-  "settings.cardClosure.terminals.thisDevice": "This phone",
+  "settings.cardClosure.terminals.thisDevice": "This device",
   "settings.cardClosure.terminals.unknownDevice": "Unknown device",
   "settings.cardClosure.terminals.empty": "No closure has been run yet.",
   "settings.cardClosure.detail.title": "Closure detail",
@@ -1430,7 +1430,7 @@ export const enSettings = {
   "settings.cardClosure.error.demo":
     "A real terminal closure cannot be run in a demo account.",
   "settings.cardClosure.error.unavailable":
-    "The SwitchioPay app is not available on this phone.",
+    "The SwitchioPay app is not available on this device.",
   "settings.cardClosure.error.accountMissing":
     "Card payments are not turned on.",
   "settings.cardClosure.error.unknown":

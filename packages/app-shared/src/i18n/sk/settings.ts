@@ -1399,9 +1399,9 @@ export const skSettings = {
   "settings.cardClosure.confirm.description":
     "Platby kartou od poslednej uzávierky sa odošlú na vyrovnanie.",
   "settings.cardClosure.confirm.cancel": "Zrušiť",
-  "settings.cardClosure.thisTerminal.title": "Terminál v tomto telefóne",
+  "settings.cardClosure.thisTerminal.title": "Tento terminál",
   "settings.cardClosure.thisTerminal.description":
-    "Uzávierka odošle platby kartou z tohto telefónu na vyrovnanie. Vykonávajte ju každý deň po skončení zmeny.",
+    "Uzávierka odošle platby kartou z tohto terminálu na vyrovnanie. Vykonávajte ju každý deň po skončení zmeny.",
   "settings.cardClosure.thisTerminal.last": "Posledná uzávierka",
   "settings.cardClosure.thisTerminal.never": "Zatiaľ neprebehla",
   "settings.cardClosure.result.title": "Súhrn",
@@ -1415,10 +1415,10 @@ export const skSettings = {
   "settings.cardClosure.result.batchAndShift": "Dávka {batch}, zmena {shift}",
   "settings.cardClosure.terminals.title": "Všetky terminály",
   "settings.cardClosure.terminals.description":
-    "Uzávierku terminálu možno vykonať len na telefóne, v ktorom beží.",
+    "Uzávierku terminálu možno vykonať len priamo na ňom.",
   "settings.cardClosure.terminals.notClosedToday": "Dnes bez uzávierky",
   "settings.cardClosure.terminals.closedToday": "Uzávierka dnes",
-  "settings.cardClosure.terminals.thisDevice": "Tento telefón",
+  "settings.cardClosure.terminals.thisDevice": "Toto zariadenie",
   "settings.cardClosure.terminals.unknownDevice": "Neznáme zariadenie",
   "settings.cardClosure.terminals.empty": "Zatiaľ neprebehla žiadna uzávierka.",
   "settings.cardClosure.detail.title": "Detail uzávierky",
@@ -1433,7 +1433,7 @@ export const skSettings = {
   "settings.cardClosure.error.demo":
     "V demo účte nemožno vykonať skutočnú uzávierku terminálu.",
   "settings.cardClosure.error.unavailable":
-    "Aplikácia SwitchioPay nie je v tomto telefóne dostupná.",
+    "Aplikácia SwitchioPay nie je na tomto zariadení dostupná.",
   "settings.cardClosure.error.accountMissing": "Platby kartou nie sú zapnuté.",
   "settings.cardClosure.error.unknown":
     "Nevieme, či uzávierka prebehla. Skontrolujte ju v aplikácii SwitchioPay.",

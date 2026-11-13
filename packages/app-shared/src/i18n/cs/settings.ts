@@ -1394,9 +1394,9 @@ export const csSettings = {
   "settings.cardClosure.confirm.description":
     "Platby kartou od poslední uzávěrky se odešlou k vypořádání.",
   "settings.cardClosure.confirm.cancel": "Zrušit",
-  "settings.cardClosure.thisTerminal.title": "Terminál v tomto telefonu",
+  "settings.cardClosure.thisTerminal.title": "Tento terminál",
   "settings.cardClosure.thisTerminal.description":
-    "Uzávěrka odešle platby kartou z tohoto telefonu k vypořádání. Provádějte ji každý den po skončení směny.",
+    "Uzávěrka odešle platby kartou z tohoto terminálu k vypořádání. Provádějte ji každý den po skončení směny.",
   "settings.cardClosure.thisTerminal.last": "Poslední uzávěrka",
   "settings.cardClosure.thisTerminal.never": "Zatím neproběhla",
   "settings.cardClosure.result.title": "Souhrn",
@@ -1410,10 +1410,10 @@ export const csSettings = {
   "settings.cardClosure.result.batchAndShift": "Dávka {batch}, směna {shift}",
   "settings.cardClosure.terminals.title": "Všechny terminály",
   "settings.cardClosure.terminals.description":
-    "Uzávěrku terminálu lze provést jen na telefonu, ve kterém běží.",
+    "Uzávěrku terminálu lze provést jen přímo na něm.",
   "settings.cardClosure.terminals.notClosedToday": "Dnes bez uzávěrky",
   "settings.cardClosure.terminals.closedToday": "Uzávěrka dnes",
-  "settings.cardClosure.terminals.thisDevice": "Tento telefon",
+  "settings.cardClosure.terminals.thisDevice": "Toto zařízení",
   "settings.cardClosure.terminals.unknownDevice": "Neznámé zařízení",
   "settings.cardClosure.terminals.empty": "Zatím neproběhla žádná uzávěrka.",
   "settings.cardClosure.detail.title": "Detail uzávěrky",
@@ -1428,7 +1428,7 @@ export const csSettings = {
   "settings.cardClosure.error.demo":
     "V demo účtu nelze provést skutečnou uzávěrku terminálu.",
   "settings.cardClosure.error.unavailable":
-    "Aplikace SwitchioPay není v tomto telefonu dostupná.",
+    "Aplikace SwitchioPay není na tomto zařízení dostupná.",
   "settings.cardClosure.error.accountMissing": "Platby kartou nejsou zapnuté.",
   "settings.cardClosure.error.unknown":
     "Nevíme, jestli uzávěrka proběhla. Zkontrolujte ji v aplikaci SwitchioPay.",
