@@ -72,8 +72,11 @@ export function AmountFigure({
       hitSlop={onPress === undefined ? undefined : pressSlop}
       justify="center"
       rounded={shape.control}
+      transition="fast"
       bg={
-        onPress === undefined ? "transparent" : "transparent press:neutral-soft"
+        onPress === undefined
+          ? "transparent"
+          : "transparent hover:neutral-soft press:neutral-soft"
       }
       cursor={onPress === undefined ? undefined : "web:pointer"}
       accessible

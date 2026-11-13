@@ -118,10 +118,11 @@ function SellingModeCard({
       gap={12}
       p={12}
       rounded={shape.card}
+      transition="fast"
       bg={
         selected
-          ? "primary-15 press:primary-20"
-          : "surface-raised press:neutral-soft"
+          ? "primary-15 hover:primary-20 press:primary-20"
+          : "surface-raised hover:neutral-soft press:neutral-soft"
       }
       opacity={disabled ? 0.5 : 1}
       cursor="web:pointer"

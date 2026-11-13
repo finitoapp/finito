@@ -172,11 +172,12 @@ export function VerticalNavRow({
       rounded={shape.control}
       borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
       borderLeftColor={item.stripeColor ?? "transparent"}
+      transition="fast"
       bg={
         active
           ? "accent"
           : interactive && !disabled
-            ? "transparent press:neutral-soft"
+            ? "transparent hover:neutral-soft press:neutral-soft"
             : "transparent"
       }
       onPress={onPress}

@@ -134,7 +134,8 @@ const lightTones = (colors: Palette): Tones => ({
   "tile-primary-15": opaqueOver(lightAccent["primary-15"], white),
   "tile-info-10": opaqueOver(colors["info-10"], white),
   "tile-accent": opaqueOver(lightAccent.accent, white),
-  // The bottom tab bar, a block like Linky's `TabBar` on `surface`.
+  // The menu's fill, the bottom tab bar (a block like Linky's `TabBar` on
+  // `surface`) and the wide window's rail alike.
   "nav-bar": white,
 })
 

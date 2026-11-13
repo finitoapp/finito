@@ -36,8 +36,8 @@ import { NotificationDot } from "./ui/notification-dot.tsx"
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
 export const menuBarHeight = control.md + 8
 
-/** The wide window's rail, Linky's `NavigationRail` (`$hero`, 112). */
-export const menuSidebarWidth = 112
+/** The wide window's rail, narrower than Linky's `NavigationRail` (`$hero`, 112): its entries are icons alone, and 80 holds them and the 44 logo tile. */
+export const menuSidebarWidth = 80
 
 /** Linky's `wide` breakpoint, from which the rail replaces the bottom bar. */
 export const menuSidebarMinWidth = 961
@@ -58,9 +58,11 @@ const menuTabFaces = {
  * (`packages/ui/src/navigation.tsx`): on a phone the `TabBar`, a row of
  * icon-only tabs on the raised surface, the active one on a solid accent
  * pill that slides from the tab that had it; on a wide window the
- * `NavigationRail`, a 112-wide column of icon-only entries under the
+ * `NavigationRail`, an 80-wide column of icon-only entries under the
  * business's picture, the active one on the soft accent, with Settings
- * pinned to the bottom. Both open with the terminal, a calculator: on the
+ * pinned to the bottom. Unlike Linky's rail, which sits on the page, ours
+ * takes the bar's fill (`nav-bar`), so the menu keeps one color when the
+ * window widens. Both open with the terminal, a calculator: on the
  * phone it is Home, the way out of the section; on the rail, which stays
  * on every screen, it is the terminal's own tab. The root layout mounts
  * the rail beside its stack and the bar over it (`MenuBar`), and keeps
@@ -209,7 +211,7 @@ export function MenuNav({
         aria-label={t("nav.menu")}
         w={menuSidebarWidth}
         shrink={0}
-        bg="background"
+        bg="nav-bar"
         pt={16 + insets.top}
         px={8}
         pb={12}
@@ -305,6 +307,8 @@ function RailProfileTile() {
     <View
       rounded={shape.control}
       overflow="hidden"
+      transition="fast"
+      opacity="1 hover:0.85 press:0.7"
       cursor="web:pointer"
       accessible
       role="link"
@@ -430,12 +434,13 @@ function MenuNavEntry({
       py={rail ? 8 : 0}
       px={rail ? 4 : 0}
       rounded={shape.control}
+      transition="fast"
       bg={
-        rail
-          ? active
+        active
+          ? rail
             ? "accent"
-            : "transparent press:neutral-soft"
-          : "transparent"
+            : "transparent"
+          : "transparent hover:neutral-soft press:neutral-soft"
       }
       cursor="web:pointer"
       onPress={onPress}

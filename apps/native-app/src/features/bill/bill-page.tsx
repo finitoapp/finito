@@ -1548,7 +1548,8 @@ function ItemBrick({
         r={0}
         b={0}
         l={0}
-        bg="transparent press:card-ring"
+        transition="fast"
+        bg="transparent hover:card-ring press:card-ring"
         role="button"
         aria-label={t("bill.brick.add.aria", { name })}
         cursor="web:pointer"

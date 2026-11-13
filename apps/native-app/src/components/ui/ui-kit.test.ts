@@ -387,3 +387,28 @@ test("text fields pad with pl/pr, so a caller's inner icon padding wins", () => 
   )
   expect(violations).toEqual([])
 })
+
+// A flat clause pressed on touch (`bg="primary press:primary-pressed"`) is
+// web's `hover:` fill, so a pointer gets it too: a `hover:` clause beside it.
+// A press that scales its view (a QR code giving under the finger) is a
+// touch response only.
+test("every pressed fill also answers a pointer's hover", () => {
+  const appDir = path.resolve(srcDir, "../app")
+  const pressClause = /"([^"\n]*\bpress:[^"\n]*)"/gu
+  const violations = [...sourceFiles(srcDir), ...sourceFiles(appDir)].flatMap(
+    (file) =>
+      readFileSync(file, "utf8")
+        .split("\n")
+        .flatMap((line, index) =>
+          /\bscale=/u.test(line)
+            ? []
+            : [...line.matchAll(pressClause)]
+                .filter((match) => !/\bhover:/u.test(match[1] ?? ""))
+                .map(
+                  (match) =>
+                    `${path.relative(path.dirname(srcDir), file)}:${index + 1} ${match[0]}`
+                )
+        )
+  )
+  expect(violations).toEqual([])
+})

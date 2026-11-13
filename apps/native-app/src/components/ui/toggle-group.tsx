@@ -58,13 +58,16 @@ const ItemFrame = styled(View, {
   shrink: 0,
   gap: 4,
   rounded: shape.control,
-  bg: "transparent press:neutral-soft",
+  transition: "fast",
+  bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 
   variants: {
     variant: {
       default: {},
-      outline: { bg: "neutral-soft press:button-outline-pressed" },
+      outline: {
+        bg: "neutral-soft hover:button-outline-pressed press:button-outline-pressed",
+      },
     },
     size: {
       default: { h: 32, minW: 32, px: 10 },
