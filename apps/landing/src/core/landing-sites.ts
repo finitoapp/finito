@@ -50,7 +50,7 @@ export const landingSites = {
   finito: {
     brand: finitoBrand,
     siteUrl: "https://finito.fit",
-    paths: createLandingSitePaths(""),
+    paths: createLandingSitePaths("", { terminal: true }),
     appOrigin: finitoBrand.apiBaseUrl,
     apkUrl: `${releasesUrl}/finito-release-signed.apk`,
     zapstoreUrl: null,

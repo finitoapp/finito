@@ -5,6 +5,7 @@ import {
   isLandingEetPath,
   isLandingPrivacyPath,
   isLandingTechPath,
+  isLandingTerminalPath,
   landingLanguageFromPath,
   markAppEntered,
   preferredLandingLanguage,
@@ -14,7 +15,7 @@ import {
 } from "./landing-redirect.ts"
 
 const paykySite = createLandingSitePaths("/landing")
-const finitoSite = createLandingSitePaths("")
+const finitoSite = createLandingSitePaths("", { terminal: true })
 
 describe("shouldRedirectToLanding", () => {
   test("sends a browser tab that never opened the app to the landing page", () => {
@@ -70,6 +71,8 @@ describe("a landing at the domain's root", () => {
     ["/eet-2-0", "cs"],
     ["/en/jak-to-funguje", "en"],
     ["/en/privacy", "en"],
+    ["/terminal", "cs"],
+    ["/sk/terminal/", "sk"],
   ] as const)("reads %s as %s", (pathname, language) => {
     expect(landingLanguageFromPath(pathname, finitoSite)).toBe(language)
   })
@@ -118,6 +121,31 @@ describe("isLandingPrivacyPath", () => {
   ] as const)("reads %s as the privacy policy: %s", (pathname, isPrivacy) => {
     expect(isLandingPrivacyPath(pathname, paykySite)).toBe(isPrivacy)
   })
+})
+
+describe("isLandingTerminalPath", () => {
+  test.each([
+    ["/terminal", true],
+    ["/en/terminal/", true],
+    ["/sk/terminal", true],
+    ["/privacy", false],
+    ["/", false],
+    ["/landing/terminal", false],
+  ] as const)(
+    "reads %s on Finito's landing as the card terminal documentation: %s",
+    (pathname, isTerminal) => {
+      expect(isLandingTerminalPath(pathname, finitoSite)).toBe(isTerminal)
+    }
+  )
+
+  // Only Finito's landing has the document (landing/0015).
+  test.each(["/landing/terminal", "/landing/en/terminal", "/terminal"])(
+    "finds no card terminal documentation at %s on Payky's landing",
+    (pathname) => {
+      expect(paykySite.terminal).toBeUndefined()
+      expect(isLandingTerminalPath(pathname, paykySite)).toBe(false)
+    }
+  )
 })
 
 describe("preferredLandingLanguage", () => {

@@ -8,6 +8,7 @@ import {
   landingFileName,
   landingLanguages,
   renderLandingDocument,
+  siteDocuments,
 } from "./landing-server.tsx"
 
 interface Rewrite {
@@ -40,15 +41,37 @@ describe("landing deployment", () => {
   test("serves every prerendered language and document at its existing address", () => {
     // Payky's under /landing, Finito's at the root (landing/0013).
     for (const site of Object.values(landingSites)) {
-      for (const document of landingDocuments) {
+      for (const document of siteDocuments(site.paths)) {
         for (const language of landingLanguages) {
           expect(landingConfig.rewrites).toContainEqual({
-            source: site.paths[document][language],
+            source: site.paths[document]?.[language],
             destination: `/${landingFileName(document, language)}`,
           })
         }
       }
     }
+  })
+
+  // The card terminal documentation is Finito's alone (landing/0015): three
+  // addresses at finito.fit's root, none under Payky's /landing.
+  test("serves the card terminal documentation at Finito's addresses only", () => {
+    expect(siteDocuments(landingSites.finito.paths)).toContain("terminal")
+    expect(siteDocuments(landingSites.payky.paths)).not.toContain("terminal")
+    const terminalRewrites = landingConfig.rewrites.filter((rewrite) =>
+      rewrite.destination.startsWith("/landing-terminal-")
+    )
+    expect(terminalRewrites.map((rewrite) => rewrite.source)).toEqual([
+      "/terminal",
+      "/en/terminal",
+      "/sk/terminal",
+    ])
+    expect(
+      landingConfig.rewrites.filter((rewrite) =>
+        rewrite.source.startsWith("/landing/")
+      )
+    ).not.toContainEqual(
+      expect.objectContaining({ source: expect.stringMatching(/terminal/u) })
+    )
   })
 
   test.each([

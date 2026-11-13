@@ -3,6 +3,7 @@ import {
   isLandingEetPath,
   isLandingPrivacyPath,
   isLandingTechPath,
+  isLandingTerminalPath,
   landingLanguageFromPath,
   readLandingRedirectEnvironment,
 } from "@payky/web-shared/landing-redirect"
@@ -13,6 +14,7 @@ import { LandingEetPage } from "@/features/landing/landing-eet-page.tsx"
 import { LandingPage } from "@/features/landing/landing-page.tsx"
 import { LandingPrivacyPage } from "@/features/landing/landing-privacy-page.tsx"
 import { LandingTechPage } from "@/features/landing/landing-tech-page.tsx"
+import { LandingTerminalPage } from "@/features/landing/landing-terminal-page.tsx"
 import "@/index.css"
 
 // The contact form's `await using` needs `Symbol.asyncDispose`.
@@ -31,7 +33,9 @@ const Page = isLandingEetPath(location.pathname, landingSite.paths)
     ? LandingTechPage
     : isLandingPrivacyPath(location.pathname, landingSite.paths)
       ? LandingPrivacyPage
-      : LandingPage
+      : isLandingTerminalPath(location.pathname, landingSite.paths)
+        ? LandingTerminalPage
+        : LandingPage
 const page = (
   <StrictMode>
     <Page language={language} />

@@ -7,7 +7,11 @@ import {
   landingResources as resources,
 } from "@/core/landing-site.ts"
 import { transparencyProof } from "@/features/landing/landing-tech-page.tsx"
-import { renderLandingDocument } from "@/landing-server.tsx"
+import {
+  landingDocuments,
+  renderLandingDocument,
+  renderSitemap,
+} from "@/landing-server.tsx"
 
 const template = `<!doctype html><html lang="cs"><head><!--landing-head--></head><body><div id="root"><!--landing-app--></div></body></html>`
 
@@ -360,6 +364,19 @@ describe("renderLandingDocument", () => {
     )[1]
 
     expect(body).toContain(`href="https://payky.me/landing/en#contact"`)
+  })
+
+  // Payky integrates neither the reversal, the refund nor the closure, so
+  // its landing has no card terminal documentation (landing/0015).
+  test("keeps the card terminal documentation to Finito's landing", () => {
+    expect(landingDocuments).not.toContain("terminal")
+    expect(renderSitemap()).not.toContain("terminal")
+    for (const document of landingDocuments) {
+      const body = renderLandingDocument(template, "en", document).split(
+        "<body>"
+      )[1]
+      expect(body).not.toContain("/terminal")
+    }
   })
 
   test("leads from the footer of every landing page to the privacy policy", () => {

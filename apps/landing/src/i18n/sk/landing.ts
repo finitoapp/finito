@@ -272,6 +272,7 @@ export const skLanding = {
   "landing.footer.privacy": "Ochrana súkromia",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "Čím sa líšime",
+  "landing.footer.terminal": "Kartový terminál",
   "landing.footer.website": "{siteHost}",
   "landing.hero.subtitle":
     "Vás ani vašich zákazníkov. {appName} premení telefón na platobný terminál: zákazník naskenuje kód a zaplatí prevodom rovno na váš účet. Bez poplatkov, bez zmluvy a bez ďalšieho zariadenia.",

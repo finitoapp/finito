@@ -262,6 +262,32 @@ test("the app origin serves the independent landing documents and assets", async
   expect(await manifest.json()).toMatchObject({ start_url: "/" })
 })
 
+// The card terminal documentation is Finito's alone (landing/0015).
+test("Payky's landing has no card terminal documentation", async ({
+  page,
+  request,
+}) => {
+  for (const path of [
+    "/landing/terminal",
+    "/landing/en/terminal",
+    "/landing/sk/terminal",
+  ]) {
+    expect((await request.get(path)).ok(), path).toBe(false)
+  }
+
+  await page.goto("/landing/en", { waitUntil: "domcontentloaded" })
+  await expect(
+    page.getByRole("link", {
+      name: translate("en", "landing.footer.privacy"),
+    })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("link", {
+      name: translate("en", "landing.footer.terminal"),
+    })
+  ).toHaveCount(0)
+})
+
 test("the independent landing submits contact to the app origin", async ({
   page,
 }) => {

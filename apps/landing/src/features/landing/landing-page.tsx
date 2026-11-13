@@ -25,6 +25,7 @@ import {
   landingPrivacyPaths,
   landingResources,
   landingTechPaths,
+  landingTerminalPaths,
 } from "@/core/landing-site.ts"
 import { LandingClosing } from "@/features/landing/landing-closing.tsx"
 import { LandingFeatureStory } from "@/features/landing/landing-feature-story.tsx"
@@ -284,6 +285,12 @@ function Footer() {
           <FooterLink href={landingTechPaths[language]}>
             {t("landing.footer.tech")}
           </FooterLink>
+          {/* Finito's landing alone documents the card terminal (landing/0015). */}
+          {landingTerminalPaths === undefined ? null : (
+            <FooterLink href={landingTerminalPaths[language]}>
+              {t("landing.footer.terminal")}
+            </FooterLink>
+          )}
           <FooterLink href={githubUrl}>{t("landing.footer.github")}</FooterLink>
           <FooterLink href={landingPrivacyPaths[language]}>
             {t("landing.footer.privacy")}

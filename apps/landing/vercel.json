@@ -103,6 +103,18 @@
       "destination": "/landing-privacy-sk.html"
     },
     {
+      "source": "/terminal",
+      "destination": "/landing-terminal-cs.html"
+    },
+    {
+      "source": "/en/terminal",
+      "destination": "/landing-terminal-en.html"
+    },
+    {
+      "source": "/sk/terminal",
+      "destination": "/landing-terminal-sk.html"
+    },
+    {
       "source": "/.well-known/lnurlp/donate",
       "has": [
         {

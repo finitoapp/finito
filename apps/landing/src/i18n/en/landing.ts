@@ -273,6 +273,7 @@ export const enLanding = {
   "landing.footer.privacy": "Privacy policy",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "What makes us different",
+  "landing.footer.terminal": "Card terminal",
   "landing.footer.website": "{siteHost}",
   "landing.hero.subtitle":
     "Not you, not your customers. {appName} turns your phone into a payment terminal: the customer scans a code and pays by bank transfer straight to your account. No fees, no contract, no hardware.",

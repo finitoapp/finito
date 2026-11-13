@@ -54,6 +54,9 @@ brand being built.
 
 The same workspace builds Finito's landing on `finito.fit` when
 `PAYKY_LANDING_BRAND=finito` (landing/0013, `docs/finito-deployment.md`).
+Only that build has the card terminal documentation at `/terminal`,
+`/en/terminal` and `/sk/terminal` (landing/0015); Payky's has no
+`/landing/terminal`, and its build writes no `landing-terminal-*.html`.
 
 ## Development and verification
 

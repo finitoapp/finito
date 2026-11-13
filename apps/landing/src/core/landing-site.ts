@@ -31,6 +31,8 @@ export const landingPaths = landingSite.paths.home
 export const landingEetPaths = landingSite.paths.eet
 export const landingTechPaths = landingSite.paths.tech
 export const landingPrivacyPaths = landingSite.paths.privacy
+/** The card terminal documentation, Finito's only (landing/0015). */
+export const landingTerminalPaths = landingSite.paths.terminal
 
 /**
  * Where the landing's ways into the web app lead, in the page's language
