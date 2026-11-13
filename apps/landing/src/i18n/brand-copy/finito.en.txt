@@ -279,112 +279,91 @@ For questions about privacy or your data, write to us through the contact form a
 Last updated: November 2026
 
 landing.terminal.meta.title
-Finito on the SwitchioPay card terminal: payment, reversal, refund, closure
+Finito with the SwitchioPay card terminal: payments, reversals, refunds and closures
 
 landing.terminal.meta.description
-How Finito takes card payments on a NEXGO terminal through SwitchioPay: turning it on, a payment, a reversal, a refund to the card, the closure, edge cases and testing in Comgate's environment.
+How to take card payments with Finito on a NEXGO terminal running SwitchioPay: setup, payments, reversals, refunds to the card, closures, unusual situations and testing with Comgate.
 
 landing.terminal.hero.title
-Finito on the SwitchioPay card terminal
+Finito with the SwitchioPay card terminal
 
 landing.terminal.hero.body
-Finito runs right on the NEXGO N92 payment terminal, next to the SwitchioPay app. For a card payment it hands the amount over to SwitchioPay on the same terminal and never sees the card's data. SwitchioPay prints the receipts on the terminal's printer, as its configuration says.
+Finito runs directly on the NEXGO N92 payment terminal, alongside the SwitchioPay app. For a card payment it simply passes the amount to SwitchioPay and never handles any card data. SwitchioPay prints receipts on the terminal's printer, according to its own settings.
 
 landing.terminal.requirements.install
-Finito installed on the terminal from the Switchio Store, signed by Comgate.
-
-landing.terminal.requirements.onboarding
-Onboarding completed in Finito: it creates the business's account in a minute.
-
-landing.terminal.requirements.tester.body
-Finito has no login and no test account to hand over. Install the APK, go through onboarding without setting a PIN, so whoever holds the terminal may do everything, and turn card payments on as described below.
+Finito installed on the terminal from the Switchio Store (signed by Comgate).
 
 landing.terminal.payment.body
-Finito sends SwitchioPay the amount, the tip on its own, the currency and the payment's number as the invoice number.
+Finito passes SwitchioPay the amount, the tip separately, the currency and the payment number as the invoice number.
 
 landing.terminal.payment.step.waiting
-Finito waits while SwitchioPay has the screen.
+Finito waits while SwitchioPay completes the payment.
 
 landing.terminal.payment.note
-With an approved payment Finito keeps what its refund needs: the transaction ID, the ID SwitchioPay refunds it by, the device that took it and when.
+For every approved payment, Finito stores everything needed to refund it later: the transaction ID, the refund identifier, the device that took the payment and the time it was approved.
 
 landing.terminal.reversal.body
-A reversal takes the whole payment back on the terminal, and the card is not needed for it. Finito chooses it by itself whenever all of these hold:
+A reversal cancels the whole payment directly on the terminal, and the card isn't needed. Finito uses it automatically when all of these conditions are met:
 
 landing.terminal.reversal.rule.noClosure
-that terminal has run no closure in Finito since.
+no closure has been run from Finito on this terminal since the payment.
 
 landing.terminal.reversal.step.running
 Confirm the refund. Finito waits while SwitchioPay reverses the payment.
 
 landing.terminal.reversal.step.switchioPay
-SwitchioPay reverses the transaction Finito names by its ID.
+SwitchioPay reverses exactly the transaction whose ID Finito passes to it.
 
 landing.terminal.refund.body
-Whenever a reversal is not possible, Finito refunds to the card the customer paid with: after a closure, for part of the payment or the tip alone, after an earlier refund, or on another terminal than the one that took the payment.
+When a reversal isn't possible, Finito refunds the money to the card the customer paid with. This happens after a closure, when refunding only part of the payment or only the tip, when something has already been refunded, or when you refund on a different terminal from the one that took the payment.
 
 landing.terminal.refund.step.declined
-If the batch was closed outside Finito, the terminal declines the reversal. Finito asks SwitchioPay whether the payment was reversed after all, and if not, offers to refund it to the card instead.
+If the batch was closed outside Finito, the terminal declines the reversal. The app then checks with SwitchioPay whether the payment was reversed after all and, if not, offers a refund to the card instead.
 
 landing.terminal.closure.step.detail
-Finito records the summary (payments with tips, refunds, adjustments) with the batch and shift numbers. The history and the overview of all the business's terminals show it on every device.
+Finito saves the closure summary (payments including tips, refunds, adjustments) with the batch and shift numbers. The closure history and the overview of all the business's terminals are visible on every device.
 
 landing.terminal.closure.note.outside
-A closure run directly in SwitchioPay, or by SwitchioPay itself, is not known to Finito.
+Finito isn't aware of closures started directly in SwitchioPay or run automatically.
 
 landing.terminal.closure.note.reconciliation
-Finito does not yet match a closure's totals with its own payments.
-
-landing.terminal.edge.body
-What you see, what to do, and what Finito records. It counts a payment as paid only when SwitchioPay approved it, and after an unclear result it asks you to check before charging the card again.
-
-landing.terminal.edge.column.records
-What Finito records
-
-landing.terminal.edge.unknown.see
-That the result is unknown. Finito then asks SwitchioPay about the transaction by itself.
+Finito doesn't yet compare closure totals with its own payments.
 
 landing.terminal.edge.restored.situation
-Android closes Finito while SwitchioPay has the screen.
+Android closes Finito while SwitchioPay is on screen.
 
 landing.terminal.edge.reversalDeclined.situation
-A reversal after a closure run outside Finito.
-
-landing.terminal.edge.refundUnknown.do
-Let Finito ask SwitchioPay, or check SwitchioPay yourself and dismiss the refund.
+A reversal after a closure that was run outside Finito.
 
 landing.terminal.edge.offline.see
-Finito works on: it talks to SwitchioPay on the terminal itself. SwitchioPay needs the connection to authorize the card.
+Finito keeps working, because it talks to SwitchioPay right on the terminal. SwitchioPay, however, needs the internet to authorize the card.
 
 landing.terminal.testing.column.app
-Finito shows
+What Finito shows
 
 landing.terminal.testing.partial.app
-Being verified on the development terminal; Finito does not ask for partial approvals.
+Still being verified on the development terminal; Finito doesn't request partial approvals.
 
 landing.terminal.limits.title
-What Finito does not do
+What Finito doesn't do
 
 landing.terminal.faq.otherTerminal.answer
-Yes, to the card. Only the terminal that took a payment can reverse it, so on any other terminal of the business Finito refunds it to the card the customer paid with.
+Yes, to the card. Only the terminal that took a payment can reverse it. On any other terminal of the business, Finito refunds the money to the card the customer paid with.
 
 landing.terminal.faq.forgotClosure.answer
-Run it as soon as you notice: the batch holds every card payment since the last closure. If SwitchioPay closes the batch on its own, Finito does not know about it; a reversal the terminal then declines is offered as a refund to the card.
+Run it as soon as you notice. The batch contains all card payments since the last closure. If SwitchioPay closes the batch by itself, Finito isn't aware of it; a reversal that the terminal then declines is offered as a refund to the card.
 
 landing.terminal.faq.cardNumber.question
-Does Finito see the card number?
+Can Finito see the card number?
 
 landing.terminal.faq.cardNumber.answer
-No. SwitchioPay reads the card. Finito gets back only the masked card number, the card brand, the authorization code and the transaction IDs, and keeps them with the payment.
+No. SwitchioPay reads the card, and Finito only receives the masked card number, the card type, the authorization code and the transaction IDs, which it saves with the payment.
 
 landing.terminal.faq.receipts.answer
-SwitchioPay, on the terminal's printer, as its configuration says. Finito prints nothing.
+SwitchioPay, on the terminal's printer, according to its own settings. Finito doesn't print anything.
 
 landing.terminal.faq.login.answer
-No. Finito has no login: install it, go through onboarding and turn card payments on. Without a PIN, whoever holds the terminal may do everything.
+No. Finito has no login: install it, go through the first-run setup and turn on card payments. Without a PIN, staff can do everything.
 
 landing.terminal.shot.settings-payments.alt
-Finito's settings with the payment methods under Payments
-
-landing.terminal.shot.edge-unknown-resolved.alt
-The payment received after Finito asked SwitchioPay
+Finito settings with Payment methods in the Payments section
