@@ -15,7 +15,6 @@ import {
 import type { TableSelfPayAddress } from "@payky/core/modules/table-self-pay/table-self-pay-address-utils"
 import {
   createSelfPayViewFilter,
-  findSelfPayConfirmation,
   keepNewerSelfPayContent,
   pickNewestSelfPayContent,
   publishSelfPaySelection,
@@ -39,17 +38,29 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
+import { useEffect, useSyncExternalStore } from "react"
 import { appEnv } from "@/core/app-env.ts"
+import {
+  createGuestLiveRelays,
+  type GuestLiveRelays,
+} from "./guest-live-relays.ts"
 import { ORDER_SHOWN_FOR_MS } from "./guest-orders.ts"
 
 const REFRESH_INTERVAL_MS = 5000
-const PAYMENT_REFRESH_INTERVAL_MS = 5000
+const LIVE_REFRESH_INTERVAL_MS = 30_000
 const PAYMENT_WAIT_MS = 10 * 60 * 1000
 
 const guestRelays = createNostrRelayClient()
+const guestLiveRelays = createGuestLiveRelays(guestRelays)
 
 const guestRelaysOf = (address: TableSelfPayAddress) =>
   selfPayRelaysToRead(address.relays, appEnv.VITE_PAYKY_SELF_PAY_RELAYS)
+
+const refreshIntervalOf = (isLive: boolean): number =>
+  isLive ? LIVE_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS
+
+const useGuestRelaysLive = (): boolean =>
+  useSyncExternalStore(guestLiveRelays.watchLive, guestLiveRelays.isLive)
 
 export const publishGuestSelection = (
   address: TableSelfPayAddress,
@@ -74,45 +85,66 @@ interface ShownSelfPayView {
   readonly liveness: SelfPayContent<SelfPayLiveness> | null
 }
 
+const selfPayViewKeysOf = (address: TableSelfPayAddress) => ({
+  publicKey: address.publicKey,
+  viewKey: address.viewKey,
+})
+
+const selfPayViewQueryKeyOf = (address: TableSelfPayAddress) => [
+  "selfPayView",
+  bytesToHex(address.publicKey),
+]
+
+const readShownView = (
+  address: TableSelfPayAddress,
+  shown: ShownSelfPayView | undefined,
+  events: ReadonlyArray<NostrEvent>
+): ShownSelfPayView => {
+  const keys = selfPayViewKeysOf(address)
+  return {
+    view: keepNewerSelfPayContent(
+      shown?.view ?? null,
+      pickNewestSelfPayContent({
+        ...keys,
+        events,
+        tag: deriveSelfPayViewTag(keys.viewKey),
+        schema: SelfPayViewSchema,
+      })
+    ),
+    liveness: keepNewerSelfPayContent(
+      shown?.liveness ?? null,
+      pickNewestSelfPayContent({
+        ...keys,
+        events,
+        tag: deriveSelfPayLivenessTag(keys.viewKey),
+        schema: SelfPayLivenessSchema,
+      })
+    ),
+  }
+}
+
 export const selfPayViewQueryOptions = ({
   address,
   queryClient,
   relays,
-  awaitedPayment,
+  isLive,
 }: {
   readonly address: TableSelfPayAddress
   readonly queryClient: QueryClient
   readonly relays: NostrRelayClient
-  readonly awaitedPayment: AwaitedSelfPayPayment | null
+  readonly isLive: boolean
 }) => {
-  const keys = { publicKey: address.publicKey, viewKey: address.viewKey }
-  const queryKey = ["selfPayView", bytesToHex(keys.publicKey)]
+  const queryKey = selfPayViewQueryKeyOf(address)
   const fetchShownView = async (): Promise<ShownSelfPayView> => {
     const events = await relays.query(
       guestRelaysOf(address),
-      createSelfPayViewFilter(keys)
+      createSelfPayViewFilter(selfPayViewKeysOf(address))
     )
-    const shown = queryClient.getQueryData<ShownSelfPayView>(queryKey)
-    return {
-      view: keepNewerSelfPayContent(
-        shown?.view ?? null,
-        pickNewestSelfPayContent({
-          ...keys,
-          events,
-          tag: deriveSelfPayViewTag(keys.viewKey),
-          schema: SelfPayViewSchema,
-        })
-      ),
-      liveness: keepNewerSelfPayContent(
-        shown?.liveness ?? null,
-        pickNewestSelfPayContent({
-          ...keys,
-          events,
-          tag: deriveSelfPayLivenessTag(keys.viewKey),
-          schema: SelfPayLivenessSchema,
-        })
-      ),
-    }
+    return readShownView(
+      address,
+      queryClient.getQueryData<ShownSelfPayView>(queryKey),
+      events
+    )
   }
   return queryOptions({
     queryKey,
@@ -123,29 +155,47 @@ export const selfPayViewQueryOptions = ({
         ? await fetchShownView()
         : fetched
     },
-    refetchInterval: (query) => {
-      const view = query.state.data?.view?.value
-      const isAwaiting =
-        awaitedPayment !== null &&
-        Date.now() < paymentWaitEndsAt(awaitedPayment.startedAt) &&
-        (view === undefined ||
-          findSelfPayConfirmation(view, awaitedPayment.pointer) === null)
-      return isAwaiting ? PAYMENT_REFRESH_INTERVAL_MS : REFRESH_INTERVAL_MS
-    },
+    refetchInterval: refreshIntervalOf(isLive),
   })
 }
 
-export const useSelfPayView = (
-  address: TableSelfPayAddress,
-  awaitedPayment: AwaitedSelfPayPayment | null
-) => {
+export const listenToSelfPayView = ({
+  address,
+  queryClient,
+  liveRelays,
+}: {
+  readonly address: TableSelfPayAddress
+  readonly queryClient: QueryClient
+  readonly liveRelays: GuestLiveRelays
+}): (() => void) =>
+  liveRelays.listen({
+    relays: guestRelaysOf(address),
+    filters: [createSelfPayViewFilter(selfPayViewKeysOf(address))],
+    onEvent: (event) =>
+      queryClient.setQueryData<ShownSelfPayView>(
+        selfPayViewQueryKeyOf(address),
+        (shown) => readShownView(address, shown, [event])
+      ),
+  })
+
+export const useSelfPayView = (address: TableSelfPayAddress) => {
   const queryClient = useQueryClient()
+  const isLive = useGuestRelaysLive()
+  useEffect(
+    () =>
+      listenToSelfPayView({
+        address,
+        queryClient,
+        liveRelays: guestLiveRelays,
+      }),
+    [address, queryClient]
+  )
   return useQuery(
     selfPayViewQueryOptions({
       address,
       queryClient,
       relays: guestRelays,
-      awaitedPayment,
+      isLive,
     })
   )
 }
@@ -155,47 +205,97 @@ interface ShownSelfPayMenu {
   readonly liveness: SelfPayContent<SelfPayLiveness> | null
 }
 
+const readShownMenu = (
+  keys: NonNullable<SelfPayView["menu"]>,
+  shown: ShownSelfPayMenu | undefined,
+  events: ReadonlyArray<NostrEvent>
+): ShownSelfPayMenu => {
+  const publicKey = hexToBytes(keys.publicKey)
+  const readKey = hexToBytes(keys.readKey)
+  return {
+    menu: keepNewerSelfPayContent(
+      shown?.menu ?? null,
+      pickNewestSelfPayContent({
+        events,
+        publicKey,
+        viewKey: readKey,
+        tag: deriveSelfPayViewTag(readKey),
+        schema: SelfPayMenuSchema,
+      })
+    ),
+    liveness: keepNewerSelfPayContent(
+      shown?.liveness ?? null,
+      pickNewestSelfPayContent({
+        events,
+        publicKey,
+        viewKey: readKey,
+        tag: deriveSelfPayLivenessTag(readKey),
+        schema: SelfPayLivenessSchema,
+      })
+    ),
+  }
+}
+
 export const useSelfPayMenu = (
   address: TableSelfPayAddress,
   keys: NonNullable<SelfPayView["menu"]>
 ) => {
   const queryClient = useQueryClient()
-  const queryKey = ["selfPayMenu", keys.publicKey]
+  const isLive = useGuestRelaysLive()
+  const { publicKey, readKey } = keys
+  useEffect(
+    () =>
+      guestLiveRelays.listen({
+        relays: guestRelaysOf(address),
+        filters: [
+          createSelfPayMenuFilter({ publicKey, readKey: hexToBytes(readKey) }),
+        ],
+        onEvent: (event) =>
+          queryClient.setQueryData<ShownSelfPayMenu>(
+            ["selfPayMenu", publicKey],
+            (shown) => readShownMenu({ publicKey, readKey }, shown, [event])
+          ),
+      }),
+    [address, publicKey, readKey, queryClient]
+  )
+  const queryKey = ["selfPayMenu", publicKey]
   return useQuery({
     queryKey,
     queryFn: async (): Promise<ShownSelfPayMenu> => {
-      const publicKey = hexToBytes(keys.publicKey)
-      const readKey = hexToBytes(keys.readKey)
       const events = await guestRelays.query(
         guestRelaysOf(address),
-        createSelfPayMenuFilter({ publicKey: keys.publicKey, readKey })
+        createSelfPayMenuFilter({ publicKey, readKey: hexToBytes(readKey) })
       )
-      const shown = queryClient.getQueryData<ShownSelfPayMenu>(queryKey)
-      return {
-        menu: keepNewerSelfPayContent(
-          shown?.menu ?? null,
-          pickNewestSelfPayContent({
-            events,
-            publicKey,
-            viewKey: readKey,
-            tag: deriveSelfPayViewTag(readKey),
-            schema: SelfPayMenuSchema,
-          })
-        ),
-        liveness: keepNewerSelfPayContent(
-          shown?.liveness ?? null,
-          pickNewestSelfPayContent({
-            events,
-            publicKey,
-            viewKey: readKey,
-            tag: deriveSelfPayLivenessTag(readKey),
-            schema: SelfPayLivenessSchema,
-          })
-        ),
-      }
+      return readShownMenu(
+        { publicKey, readKey },
+        queryClient.getQueryData<ShownSelfPayMenu>(queryKey),
+        events
+      )
     },
-    refetchInterval: REFRESH_INTERVAL_MS,
+    refetchInterval: refreshIntervalOf(isLive),
   })
+}
+
+type ShownOrderConfirmation = SelfPayContent<SelfPayOrderConfirmation> | null
+
+interface OrderConfirmationLookup {
+  readonly menuPublicKey: string
+  readonly pointer: SelfPayPointer
+  readonly selectionKey: Uint8Array
+}
+
+const readOrderConfirmation = (
+  lookup: OrderConfirmationLookup,
+  shown: ShownOrderConfirmation | undefined,
+  events: ReadonlyArray<NostrEvent>
+): ShownOrderConfirmation => {
+  const confirmation = openSelfPayOrderConfirmation({ events, ...lookup })
+  return keepNewerSelfPayContent(
+    shown ?? null,
+    confirmation === null
+      ? null
+      : { value: confirmation, createdAt: confirmation.at }
+  )
 }
 
 export const useGuestOrderConfirmations = ({
@@ -210,35 +310,49 @@ export const useGuestOrderConfirmations = ({
   readonly orders: ReadonlyArray<AwaitedSelfPayPayment>
 }) => {
   const queryClient = useQueryClient()
+  const isLive = useGuestRelaysLive()
+  useEffect(() => {
+    const stopListening = orders.map(({ pointer }) => {
+      const lookup = {
+        menuPublicKey,
+        pointer,
+        selectionKey: hexToBytes(selectionKey),
+      }
+      return guestLiveRelays.listen({
+        relays: guestRelaysOf(address),
+        filters: [createSelfPayOrderConfirmationFilter(lookup)],
+        onEvent: (event) =>
+          queryClient.setQueryData<ShownOrderConfirmation>(
+            ["selfPayOrderConfirmation", pointer],
+            (shown) => readOrderConfirmation(lookup, shown, [event])
+          ),
+      })
+    })
+    return () => {
+      for (const stop of stopListening) stop()
+    }
+  }, [address, menuPublicKey, selectionKey, orders, queryClient])
   return useQueries({
     queries: orders.map(({ pointer, startedAt }) => {
       const queryKey = ["selfPayOrderConfirmation", pointer]
       return queryOptions({
         queryKey,
-        queryFn:
-          async (): Promise<SelfPayContent<SelfPayOrderConfirmation> | null> => {
-            const lookup = {
-              menuPublicKey,
-              pointer,
-              selectionKey: hexToBytes(selectionKey),
-            }
-            const events = await guestRelays.query(
-              guestRelaysOf(address),
-              createSelfPayOrderConfirmationFilter(lookup)
-            )
-            const confirmation = openSelfPayOrderConfirmation({
-              events,
-              ...lookup,
-            })
-            return keepNewerSelfPayContent(
-              queryClient.getQueryData<SelfPayContent<SelfPayOrderConfirmation> | null>(
-                queryKey
-              ) ?? null,
-              confirmation === null
-                ? null
-                : { value: confirmation, createdAt: confirmation.at }
-            )
-          },
+        queryFn: async (): Promise<ShownOrderConfirmation> => {
+          const lookup = {
+            menuPublicKey,
+            pointer,
+            selectionKey: hexToBytes(selectionKey),
+          }
+          const events = await guestRelays.query(
+            guestRelaysOf(address),
+            createSelfPayOrderConfirmationFilter(lookup)
+          )
+          return readOrderConfirmation(
+            lookup,
+            queryClient.getQueryData<ShownOrderConfirmation>(queryKey),
+            events
+          )
+        },
         refetchInterval: (query) => {
           const confirmation = query.state.data?.value
           if (
@@ -248,9 +362,7 @@ export const useGuestOrderConfirmations = ({
             Date.now() >= startedAt + ORDER_SHOWN_FOR_MS
           )
             return false
-          return Date.now() < paymentWaitEndsAt(startedAt)
-            ? PAYMENT_REFRESH_INTERVAL_MS
-            : REFRESH_INTERVAL_MS
+          return refreshIntervalOf(isLive)
         },
       })
     }),
