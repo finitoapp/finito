@@ -967,6 +967,39 @@ test("a guest sees an empty table, then its bill, then pay-with-staff once self-
   })
 })
 
+test("a guest sees an item staff add while the page stays open, without reloading", async ({
+  seededPage: page,
+  context,
+}) => {
+  test.setTimeout(120_000)
+  await routeFakeNostrRelays(context)
+  const guest = await context.newPage()
+  const payTotal = (amount: string) =>
+    guest.getByRole("button", {
+      name: guestText("selfPay.pay.total", amount),
+    })
+
+  const billId =
+    await test.step("a guest has the table's bill of a soup open", async () => {
+      await seedActiveFioPlugin(page)
+      await addTable(page, "en", { name: "Table 14", seatCount: "2" })
+      await addCatalogItem(page, "en", { name: "Soup", price: "30" })
+      const guestAddress = await enableTableSelfPay(page, "en", "Table 14")
+      const id = await openTableBill(page, "en", {
+        table: "Table 14",
+        items: ["Soup"],
+      })
+      await guest.goto(guestAddress)
+      await expect(payTotal("$30.00")).toBeVisible({ timeout: 45_000 })
+      return id
+    })
+
+  await test.step("staff add a bread and the open page shows it within seconds", async () => {
+    await addBillLines(page, billId, [{ name: "Bread", amount: 1000 }])
+    await expect(payTotal("$40.00")).toBeVisible({ timeout: 4000 })
+  })
+})
+
 test.describe("a guest paying at the table", () => {
   const payTotal = (guest: Page, amount: string) =>
     guest.getByRole("button", {

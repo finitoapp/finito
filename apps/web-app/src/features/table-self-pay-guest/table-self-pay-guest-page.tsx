@@ -785,7 +785,7 @@ function GuestTable({ address }: { readonly address: TableSelfPayAddress }) {
   const [orderSession, setOrderSession] = useState<OrderPaymentSession | null>(
     null
   )
-  const { data, isPending } = useSelfPayView(address, session)
+  const { data, isPending } = useSelfPayView(address)
   const offersLightning = (data?.view?.value.lightning ?? null) !== null
   useEffect(() => {
     if (offersLightning) {

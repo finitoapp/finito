@@ -14,7 +14,6 @@ import {
   createSelfPayViewEvent,
 } from "@payky/core/modules/table-self-pay/table-self-pay-view-utils"
 import { afterEach, expect, test, vi } from "vitest"
-import type { AwaitedSelfPayPayment } from "./use-self-pay-view.ts"
 
 afterEach(() => {
   vi.useRealTimers()
@@ -59,94 +58,108 @@ const viewConfirming = (
 
 const observeSelfPayView = async (
   answer: () => ReadonlyArray<NostrEvent>,
-  awaitedPayment: AwaitedSelfPayPayment | null
+  { isLive = false }: { readonly isLive?: boolean } = {}
 ) => {
   vi.stubGlobal("window", {})
   vi.useFakeTimers()
   const { focusManager, QueryClient, QueryObserver } = await import(
     "@tanstack/react-query"
   )
-  const { selfPayViewQueryOptions } = await import("./use-self-pay-view.ts")
+  const { listenToSelfPayView, selfPayViewQueryOptions } = await import(
+    "./use-self-pay-view.ts"
+  )
+  const { createGuestLiveRelays } = await import("./guest-live-relays.ts")
   const queryClient = new QueryClient()
   queryClient.mount()
   let queries = 0
+  let subscribed: Parameters<NostrRelayClient["subscribe"]>[2] | null = null
   const relays: NostrRelayClient = {
     publish: async () => [],
     query: async () => {
       queries++
       return answer()
     },
+    subscribe: (_relays, _filters, listener) => {
+      subscribed = listener
+      return {
+        update: () => undefined,
+        close: () => {
+          subscribed = null
+        },
+      }
+    },
   }
-  const observer = new QueryObserver(
-    queryClient,
-    selfPayViewQueryOptions({
-      address: { ...keys, relays: [] },
-      queryClient,
-      relays,
-      awaitedPayment,
-    })
-  )
+  const address = { ...keys, relays: [] }
+  const optionsWhile = (live: boolean) =>
+    selfPayViewQueryOptions({ address, queryClient, relays, isLive: live })
+  const observer = new QueryObserver(queryClient, optionsWhile(isLive))
   const unsubscribe = observer.subscribe(() => undefined)
+  const stopListening = listenToSelfPayView({
+    address,
+    queryClient,
+    liveRelays: createGuestLiveRelays(relays),
+  })
+  await vi.advanceTimersByTimeAsync(0)
   return {
     focusManager,
     queries: () => queries,
+    isSubscribed: () => subscribed !== null,
+    push: (event: NostrEvent) => subscribed?.onEvent(event),
+    setLive: (live: boolean) => observer.setOptions(optionsWhile(live)),
     shownView: () => observer.getCurrentResult().data?.view,
     stop: () => {
+      stopListening()
       unsubscribe()
       queryClient.unmount()
     },
   }
 }
 
-test("stops polling the relays while the page is hidden and refreshes on return", async () => {
-  const page = await observeSelfPayView(() => [], null)
+test("stops polling and listening while the page is hidden and resumes both on return", async () => {
+  const page = await observeSelfPayView(() => [])
 
   await vi.advanceTimersByTimeAsync(31_000)
   const whileVisible = page.queries()
   page.focusManager.setFocused(false)
   await vi.advanceTimersByTimeAsync(60_000)
   const whileHidden = page.queries() - whileVisible
+  const isSubscribedWhileHidden = page.isSubscribed()
   page.focusManager.setFocused(true)
   await vi.advanceTimersByTimeAsync(0)
+  const isSubscribedOnReturn = page.isSubscribed()
   page.stop()
 
   expect(whileVisible).toBe(7)
   expect(whileHidden).toBe(0)
+  expect(isSubscribedWhileHidden).toBe(false)
   expect(page.queries()).toBe(8)
+  expect(isSubscribedOnReturn).toBe(true)
 })
 
-test("asks every 5 s while a started payment waits and after it is confirmed", async () => {
-  let confirmed = false
-  const page = await observeSelfPayView(
-    () => (confirmed ? [viewConfirming(pointer)] : []),
-    { pointer, startedAt: Date.now() }
-  )
+test("asks every 30 s while a relay subscription is live and every 5 s without one", async () => {
+  const page = await observeSelfPayView(() => [], { isLive: true })
 
-  await vi.advanceTimersByTimeAsync(31_000)
-  const whileWaiting = page.queries()
-  confirmed = true
-  await vi.advanceTimersByTimeAsync(5000)
-  const untilConfirmed = page.queries()
-  await vi.advanceTimersByTimeAsync(60_000)
+  await vi.advanceTimersByTimeAsync(61_000)
+  const whileLive = page.queries()
+  page.setLive(false)
+  await vi.advanceTimersByTimeAsync(30_000)
   page.stop()
 
-  expect(whileWaiting).toBe(7)
-  expect(untilConfirmed).toBe(8)
-  expect(page.queries() - untilConfirmed).toBe(12)
+  expect(whileLive).toBe(3)
+  expect(page.queries() - whileLive).toBe(6)
 })
 
-test("asks every 5 s once a payment waited 10 minutes", async () => {
-  const page = await observeSelfPayView(() => [], {
-    pointer,
-    startedAt: Date.now(),
-  })
+test("shows a view the subscription pushes without asking the relays", async () => {
+  const page = await observeSelfPayView(() => [], { isLive: true })
+  const asked = page.queries()
 
-  await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 5000)
-  const afterWaiting = page.queries()
-  await vi.advanceTimersByTimeAsync(60_000)
+  const pushed = viewConfirming(pointer)
+  page.push(pushed)
+  await vi.advanceTimersByTimeAsync(0)
   page.stop()
 
-  expect(page.queries() - afterWaiting).toBe(12)
+  expect(page.shownView()?.createdAt).toBe(pushed.created_at)
+  expect(page.queries()).toBe(asked)
 })
 
 test("asks the relays once more before it shows a view older than the one confirmed", async () => {
@@ -162,9 +175,8 @@ test("asks the relays once more before it shows a view older than the one confir
     answers++
     const view = viewConfirming(pointer, answers === 1 ? version - 60 : version)
     return [view, confirmation]
-  }, null)
+  })
 
-  await vi.advanceTimersByTimeAsync(0)
   page.stop()
 
   expect(page.queries()).toBe(2)
