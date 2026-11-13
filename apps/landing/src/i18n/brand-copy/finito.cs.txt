@@ -274,100 +274,88 @@ S dotazy k soukromí nebo k vašim datům nám napište přes kontaktní formul�
 Poslední aktualizace: listopad 2026
 
 landing.terminal.meta.title
-Finito na karetním terminálu SwitchioPay: platba, storno, refundace, uzávěrka
+Finito a karetní terminál SwitchioPay: platba, storno, refundace a uzávěrka
 
 landing.terminal.meta.description
-Jak Finito přijímá platby kartou na terminálu NEXGO přes SwitchioPay: zapnutí, platba, storno, vrácení peněz na kartu, uzávěrka, krajní situace a testování v prostředí Comgate.
+Jak přijímat platby kartou v aplikaci Finito na terminálu NEXGO se SwitchioPay: zapnutí, platba, storno, vrácení peněz na kartu, uzávěrka, nestandardní situace a testování u Comgate.
 
 landing.terminal.hero.title
-Finito na karetním terminálu SwitchioPay
+Finito a karetní terminál SwitchioPay
 
 landing.terminal.hero.body
-Finito běží přímo na platebním terminálu NEXGO N92 vedle aplikace SwitchioPay. Při platbě kartou předá částku SwitchioPay na tomtéž terminálu a údaje z karty nikdy nevidí. Účtenky tiskne SwitchioPay na tiskárně terminálu podle svého nastavení.
+Aplikace Finito běží přímo na platebním terminálu NEXGO N92 vedle aplikace SwitchioPay. Při platbě kartou jí jen předá částku, s údaji z karty vůbec nepracuje. Účtenky tiskne SwitchioPay na tiskárně terminálu podle svého nastavení.
 
 landing.terminal.requirements.install
-Aplikace Finito nainstalovaná na terminálu ze Switchio Store a podepsaná Comgate.
-
-landing.terminal.requirements.onboarding
-Dokončené první spuštění aplikace Finito, které za minutu založí účet podniku.
-
-landing.terminal.requirements.tester.body
-Finito nemá žádné přihlášení ani testovací účet, který by bylo potřeba předat. Nainstalujte APK, projděte prvním spuštěním bez nastavení PINu, takže kdokoli s terminálem v ruce smí všechno, a zapněte platby kartou podle návodu níže.
+Aplikaci Finito nainstalovanou na terminál ze Switchio Store (podepsanou společností Comgate).
 
 landing.terminal.payment.body
-Finito pošle SwitchioPay částku, zvlášť spropitné, měnu a číslo platby jako číslo dokladu.
+Finito předá aplikaci SwitchioPay částku, zvlášť spropitné, měnu a číslo platby jako číslo dokladu.
 
 landing.terminal.payment.step.waiting
-Finito čeká, než SwitchioPay platbu dokončí.
+Finito počká, až SwitchioPay platbu dokončí.
 
 landing.terminal.payment.note
-U schválené platby si Finito uloží, co bude potřeba k jejímu vrácení: ID transakce, ID, podle kterého ji SwitchioPay vrací, zařízení, které ji přijalo, a čas schválení.
+Ke schválené platbě si Finito uloží vše, co je potřeba pro její pozdější vrácení: ID transakce, identifikátor pro refundaci, zařízení, na kterém platba proběhla, a čas schválení.
 
 landing.terminal.reversal.body
-Storno vezme na terminálu zpět celou platbu a karta k němu není potřeba. Aplikace Finito ho zvolí sama, kdykoli platí všechno najednou:
+Storno zruší celou platbu přímo na terminálu a karta k němu není potřeba. Aplikace Finito ho použije automaticky, pokud jsou splněny všechny tyto podmínky:
 
 landing.terminal.reversal.rule.noClosure
-na tomto terminálu od platby neproběhla uzávěrka v aplikaci Finito.
+na tomto terminálu od platby neproběhla uzávěrka spuštěná z aplikace Finito.
 
 landing.terminal.reversal.step.running
-Potvrďte vrácení. Finito čeká, než SwitchioPay platbu stornuje.
+Potvrďte vrácení. Finito počká, až SwitchioPay platbu stornuje.
 
 landing.terminal.refund.body
-Kdykoli storno nejde, vrátí Finito peníze na kartu, kterou zákazník platil: po uzávěrce, při vrácení části platby nebo jen spropitného, po dřívějším vrácení, nebo na jiném terminálu, než který platbu přijal.
+Když storno není možné, vrátí Finito peníze na kartu, kterou zákazník platil. Tak je to po uzávěrce, při vrácení jen části platby nebo jen spropitného, když už se z platby něco vracelo, nebo když vracíte na jiném terminálu, než na kterém platba proběhla.
 
 landing.terminal.refund.step.declined
-Když byla dávka uzavřena mimo aplikaci Finito, terminál storno odmítne. Aplikace se pak zeptá SwitchioPay, jestli platba přece jen stornovaná není, a pokud ne, nabídne místo storna vrácení na kartu.
+Pokud byla dávka uzavřena mimo aplikaci Finito, terminál storno odmítne. Aplikace pak ověří ve SwitchioPay, jestli platba přece jen stornovaná není, a pokud ne, nabídne místo storna vrácení na kartu.
 
 landing.terminal.closure.step.detail
-Finito zapíše souhrn (platby se spropitným, vrácené platby, úpravy plateb) s číslem dávky a směny. Historie a přehled všech terminálů podniku ho ukáží na každém zařízení.
+Finito uloží souhrn uzávěrky (platby včetně spropitného, vrácené platby, opravy plateb) s číslem dávky a směny. Historie uzávěrek a přehled všech terminálů podniku jsou vidět na každém zařízení.
 
 landing.terminal.closure.note.outside
-Uzávěrku spuštěnou přímo ve SwitchioPay nebo provedenou samotným SwitchioPay aplikace Finito nezná.
+O uzávěrce spuštěné přímo v aplikaci SwitchioPay nebo provedené automaticky aplikace Finito neví.
 
 landing.terminal.closure.note.reconciliation
-Součty uzávěrky aplikace Finito zatím neporovnává se svými platbami.
-
-landing.terminal.edge.body
-Co uvidíte, co udělat a co Finito zapíše. Platbu počítá jako zaplacenou, jen když ji SwitchioPay schválil, a po nejasném výsledku chce před dalším strhnutím karty kontrolu.
-
-landing.terminal.edge.column.records
-Co Finito zapíše
+Součty z uzávěrky zatím aplikace Finito neporovnává se svými platbami.
 
 landing.terminal.edge.restored.situation
-Android aplikaci Finito zavře, zatímco obrazovku drží SwitchioPay.
+Android aplikaci Finito ukončí ve chvíli, kdy je na obrazovce SwitchioPay.
 
 landing.terminal.edge.reversalDeclined.situation
-Storno po uzávěrce provedené mimo aplikaci Finito.
+Storno po uzávěrce, která proběhla mimo aplikaci Finito.
 
 landing.terminal.edge.offline.see
-Finito funguje dál: se SwitchioPay komunikuje přímo na terminálu. SwitchioPay ale připojení k autorizaci karty potřebuje.
+Aplikace Finito funguje dál, protože se SwitchioPay komunikuje přímo na terminálu. SwitchioPay ale internet k autorizaci karty potřebuje.
 
 landing.terminal.testing.column.app
-Finito ukáže
+Co ukáže Finito
 
 landing.terminal.testing.partial.app
-Ověřuje se na vývojovém terminálu; Finito o částečné schválení nežádá.
+Ověřujeme na vývojovém terminálu; Finito o částečné schválení nežádá.
 
 landing.terminal.limits.title
-Co Finito nedělá
+Co Finito neumí
 
 landing.terminal.faq.otherTerminal.answer
-Ano, na kartu. Stornovat platbu umí jen terminál, který ji přijal, takže na kterémkoli jiném terminálu podniku vrátí Finito peníze na kartu, kterou zákazník platil.
+Ano, na kartu. Stornovat platbu může jen terminál, na kterém proběhla. Na kterémkoli jiném terminálu podniku vrátí Finito peníze na kartu, kterou zákazník platil.
 
 landing.terminal.faq.forgotClosure.answer
-Udělejte ji, jakmile si všimnete: dávka obsahuje všechny platby kartou od poslední uzávěrky. Když dávku uzavře SwitchioPay sám, Finito o tom neví; storno, které pak terminál odmítne, se nabídne jako vrácení na kartu.
+Udělejte ji, jakmile na to přijdete – dávka obsahuje všechny platby kartou od poslední uzávěrky. Pokud dávku uzavře SwitchioPay sám, Finito o tom neví. Storno, které pak terminál odmítne, aplikace nabídne jako vrácení na kartu.
 
 landing.terminal.faq.cardNumber.question
 Vidí Finito číslo karty?
 
 landing.terminal.faq.cardNumber.answer
-Ne. Kartu čte SwitchioPay. Finito od něj dostane jen maskované číslo karty, značku karty, autorizační kód a ID transakcí a uloží je k platbě.
+Ne. Kartu čte SwitchioPay a Finito od něj dostane jen maskované číslo karty, typ karty, autorizační kód a ID transakce, které uloží k platbě.
 
 landing.terminal.faq.receipts.answer
-SwitchioPay, na tiskárně terminálu podle svého nastavení. Finito netiskne nic.
+SwitchioPay, na tiskárně terminálu podle svého nastavení. Finito sám nic netiskne.
 
 landing.terminal.faq.login.answer
-Ne. Finito žádné přihlášení nemá: nainstalujte ho, projděte prvním spuštěním a zapněte platby kartou. Bez PINu smí kdokoli s terminálem v ruce všechno.
+Ne. Finito žádné přihlašování nemá: nainstalujte ho, projděte prvním spuštěním a zapněte platby kartou. Bez nastaveného PINu může obsluha dělat všechno.
 
 landing.terminal.shot.settings-payments.alt
-Nastavení aplikace Finito s platebními metodami v sekci Platby
+Nastavení aplikace Finito s položkou Platební metody v sekci Platby

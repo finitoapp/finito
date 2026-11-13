@@ -60,7 +60,7 @@ export const csSettings = {
   "settings.appVersionCode": "Kód verze:",
   "settings.appearance": "VZHLED A JAZYK",
   "settings.cashRegisterAccount.enabled.label": "Povolit pokladnu",
-  "settings.cardSwitchioAccount.enabled.label": "Zapnout platební terminál",
+  "settings.cardSwitchioAccount.enabled.label": "Zapnout platby kartou",
   "settings.qerkoTerminal.advanced": "Další možnosti",
   "settings.qerkoTerminal.code.back": "Zpět",
   "settings.qerkoTerminal.code.confirm": "Potvrdit",
@@ -159,13 +159,13 @@ export const csSettings = {
     "Na tomto zařízení není vybraný terminál",
   "settings.qerkoTerminal.status.notPaired": "Nespárováno s Qerkem",
   "settings.cardSwitchioAccount.info.contract":
-    "uzavřenou smlouvu s poskytovatelem platebního řešení, například Comgate.",
+    "smlouvu s poskytovatelem platebních služeb, například Comgate.",
   "settings.cardSwitchioAccount.info.description":
-    "Pro přijímání plateb platební kartou potřebujete:",
+    "K přijímání plateb kartou potřebujete:",
   "settings.cardSwitchioAccount.info.switchioPay":
     "aplikaci SwitchioPay na tomto zařízení,",
   "settings.cardSwitchioAccount.info.switchioPayLink": "O aplikaci SwitchioPay",
-  "settings.cardSwitchioAccount.info.title": "Platby platební kartou",
+  "settings.cardSwitchioAccount.info.title": "Platby kartou",
   "settings.cardSwitchioAccount.notInstalledWarning":
     "Aplikace SwitchioPay není na tomto zařízení nainstalovaná.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":
@@ -1410,7 +1410,7 @@ export const csSettings = {
   "settings.cardClosure.result.batchAndShift": "Dávka {batch}, směna {shift}",
   "settings.cardClosure.terminals.title": "Všechny terminály",
   "settings.cardClosure.terminals.description":
-    "Uzávěrku terminálu lze provést jen přímo na něm.",
+    "Uzávěrku lze provést jen přímo na daném terminálu.",
   "settings.cardClosure.terminals.notClosedToday": "Dnes bez uzávěrky",
   "settings.cardClosure.terminals.closedToday": "Uzávěrka dnes",
   "settings.cardClosure.terminals.thisDevice": "Toto zařízení",
@@ -1434,7 +1434,7 @@ export const csSettings = {
     "Nevíme, jestli uzávěrka proběhla. Zkontrolujte ji v aplikaci SwitchioPay.",
   "settings.cardClosure.restored.closed": "Uzávěrka terminálu byla dokončena.",
   "settings.cardClosure.restored.unanswered":
-    "Uzávěrka terminálu nedostala ze SwitchioPay odpověď. Zkontrolujte v aplikaci SwitchioPay, zda byla dávka uzavřena.",
+    "Na uzávěrku nepřišla ze SwitchioPay odpověď. Zkontrolujte v aplikaci SwitchioPay, zda byla dávka uzavřena.",
   "settings.cardClosure.restored.unresolved":
     "Výsledek uzávěrky se nepodařilo přečíst. Zkontrolujte ji v aplikaci SwitchioPay.",
   "settings.cardSwitchioAccount.closureLink": "Uzávěrky terminálů",
