@@ -261,6 +261,36 @@ export const unresolvedCardSwitchioPaymentsByDeviceIdQuery = (
   )
 
 /**
+ * What the SwitchioPay terminal answered for a card payment it approved, as
+ * the payment's detail shows it: the card it charged (`maskedPan`,
+ * `cardLabel`) and the ids staff match against the terminal's statement.
+ * Present on a payment whose card attempt was approved.
+ */
+export const paymentCardSwitchioDetailQuery = (idValue: PaymentId) =>
+  createQuery((db) =>
+    db
+      .selectFrom("paymentCardSwitchio")
+      .select([
+        "id",
+        "transactionId",
+        "maskedPan",
+        "cardLabel",
+        "authCode",
+        "terminalId",
+      ])
+      .where("id", "=", idValue)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("unresolvedTransactionId", "is", null)
+      .where((eb) =>
+        eb.or([
+          eb("approvedAt", "is not", null),
+          eb("authCode", "is not", null),
+          eb("maskedPan", "is not", null),
+        ])
+      )
+  )
+
+/**
  * What refunding a SwitchioPay payment to the card needs (payment/0009):
  * its card account, the terminal's `refundId`, the phone that charged the
  * card and when, and the approved attempt's `transactionId`, which a
