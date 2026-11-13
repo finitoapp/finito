@@ -162,13 +162,12 @@ export const csSettings = {
     "uzavřenou smlouvu s poskytovatelem platebního řešení, například Comgate.",
   "settings.cardSwitchioAccount.info.description":
     "Pro přijímání plateb platební kartou potřebujete:",
-  "settings.cardSwitchioAccount.info.softpos":
-    "aplikaci Switchio SoftPOS na tomto zařízení,",
-  "settings.cardSwitchioAccount.info.softposLink":
-    "O aplikaci Switchio SoftPOS",
+  "settings.cardSwitchioAccount.info.switchioPay":
+    "aplikaci SwitchioPay na tomto zařízení,",
+  "settings.cardSwitchioAccount.info.switchioPayLink": "O aplikaci SwitchioPay",
   "settings.cardSwitchioAccount.info.title": "Platby platební kartou",
   "settings.cardSwitchioAccount.notInstalledWarning":
-    "Aplikace Switchio SoftPOS není na tomto zařízení nainstalovaná.",
+    "Aplikace SwitchioPay není na tomto zařízení nainstalovaná.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":
     "Platební terminál je dostupný jen v nativní aplikaci.",
   "catalog.categories.add": "Přidat kategorii",

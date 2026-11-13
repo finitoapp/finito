@@ -162,12 +162,12 @@ export const enSettings = {
     "a signed contract with a payment solution provider, for example Comgate.",
   "settings.cardSwitchioAccount.info.description":
     "To accept payment card payments you need:",
-  "settings.cardSwitchioAccount.info.softpos":
-    "the Switchio SoftPOS app on this device,",
-  "settings.cardSwitchioAccount.info.softposLink": "About Switchio SoftPOS",
+  "settings.cardSwitchioAccount.info.switchioPay":
+    "the SwitchioPay app on this device,",
+  "settings.cardSwitchioAccount.info.switchioPayLink": "About SwitchioPay",
   "settings.cardSwitchioAccount.info.title": "Payment card payments",
   "settings.cardSwitchioAccount.notInstalledWarning":
-    "The Switchio SoftPOS app is not installed on this device.",
+    "The SwitchioPay app is not installed on this device.",
   "settings.cardSwitchioAccount.nativeRuntimeWarning":
     "The card terminal is available only in the native app.",
   "catalog.categories.add": "Add category",
