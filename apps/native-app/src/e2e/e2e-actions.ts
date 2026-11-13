@@ -89,6 +89,10 @@ import {
 } from "./e2e-hold-migration.ts"
 import { setE2eOffline } from "./e2e-network.ts"
 import { e2eSparkPresetNames, setE2eSparkPreset } from "./e2e-spark-presets.ts"
+import {
+  e2eSwitchioScenarios,
+  setE2eSwitchioScenario,
+} from "./e2e-switchio-presets.ts"
 
 /**
  * What a flow opens `/e2e/<action>?<params>` for: the native twin of web's
@@ -117,6 +121,7 @@ const SeedOnboardingParams = z.object({
 const FakeParams = z.object({
   spark: z.enum(e2eSparkPresetNames).optional(),
   cashu: z.enum(["manual", "autopay", "off"]).optional(),
+  switchio: z.enum([...e2eSwitchioScenarios, "off"]).optional(),
 })
 
 export const e2eActions: Readonly<Record<string, E2eAction>> = {
@@ -166,14 +171,18 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
    * Swaps in a named fake for an outside service (`spark=funded`,
    * `cashu=manual|autopay`), standing in for web's `page.addInitScript` that sets
    * `window.__e2eSparkWallet` / `__e2eCashuMint`. Do it before the Cashu
-   * wallet starts (enable Cashu afterwards).
+   * wallet starts (enable Cashu afterwards). `switchio=<scenario>` puts a
+   * fake SwitchioPay in place of the native module, so the card screens
+   * show on web too (`e2e-switchio-presets.ts`); `switchio=off` drops it.
    * It lasts until the app restarts, so on web pass `next=` to move on
    * in-app instead of opening another link.
    */
   fake: async (_run, params) => {
-    const { spark, cashu } = FakeParams.parse(params)
+    const { spark, cashu, switchio } = FakeParams.parse(params)
     if (spark !== undefined) setE2eSparkPreset(spark)
     if (cashu !== undefined) setE2eCashu(cashu === "off" ? null : cashu)
+    if (switchio !== undefined)
+      setE2eSwitchioScenario(switchio === "off" ? null : switchio)
     return undefined
   },
 
