@@ -27,6 +27,7 @@ import { Route as TerminalCatalogIndexRouteImport } from './routes/_terminal.cat
 import { Route as TerminalCatalogCategoriesRouteImport } from './routes/_terminal.catalog.categories'
 import { Route as TerminalCatalogItemsRouteImport } from './routes/_terminal.catalog.items'
 import { Route as TerminalCatalogTablesRouteImport } from './routes/_terminal.catalog.tables'
+import { Route as TerminalPaymentCustomTipRouteImport } from './routes/_terminal.payment.custom-tip'
 import { Route as TerminalPaymentTipRouteImport } from './routes/_terminal.payment.tip'
 import { Route as TerminalPaymentPaymentIdRouteImport } from './routes/_terminal.payment_.$paymentId'
 import { Route as TerminalSettingsIndexRouteImport } from './routes/_terminal.settings.index'
@@ -189,6 +190,12 @@ const TerminalCatalogTablesRoute = TerminalCatalogTablesRouteImport.update({
   path: '/tables',
   getParentRoute: () => TerminalCatalogRoute,
 } as any)
+const TerminalPaymentCustomTipRoute =
+  TerminalPaymentCustomTipRouteImport.update({
+    id: '/payment/custom-tip',
+    path: '/payment/custom-tip',
+    getParentRoute: () => TerminalRoute,
+  } as any)
 const TerminalPaymentTipRoute = TerminalPaymentTipRouteImport.update({
   id: '/payment/tip',
   path: '/payment/tip',
@@ -622,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
   '/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
   '/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
+  '/payment/custom-tip': typeof TerminalPaymentCustomTipRoute
   '/payment/tip': typeof TerminalPaymentTipRoute
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/about': typeof TerminalSettingsAboutRouteWithChildren
@@ -705,6 +713,7 @@ export interface FileRoutesByTo {
   '/activity/bills': typeof TerminalActivityBillsRoute
   '/activity/stats': typeof TerminalActivityStatsRoute
   '/activity/$paymentId': typeof TerminalActivityPaymentIdRoute
+  '/payment/custom-tip': typeof TerminalPaymentCustomTipRoute
   '/payment/tip': typeof TerminalPaymentTipRoute
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/access': typeof TerminalSettingsAccessRoute
@@ -787,6 +796,7 @@ export interface FileRoutesById {
   '/_terminal/catalog/categories': typeof TerminalCatalogCategoriesRouteWithChildren
   '/_terminal/catalog/items': typeof TerminalCatalogItemsRouteWithChildren
   '/_terminal/catalog/tables': typeof TerminalCatalogTablesRouteWithChildren
+  '/_terminal/payment/custom-tip': typeof TerminalPaymentCustomTipRoute
   '/_terminal/payment/tip': typeof TerminalPaymentTipRoute
   '/_terminal/payment_/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/_terminal/settings/about': typeof TerminalSettingsAboutRouteWithChildren
@@ -878,6 +888,7 @@ export interface FileRouteTypes {
     | '/catalog/categories'
     | '/catalog/items'
     | '/catalog/tables'
+    | '/payment/custom-tip'
     | '/payment/tip'
     | '/payment/$paymentId'
     | '/settings/about'
@@ -961,6 +972,7 @@ export interface FileRouteTypes {
     | '/activity/bills'
     | '/activity/stats'
     | '/activity/$paymentId'
+    | '/payment/custom-tip'
     | '/payment/tip'
     | '/payment/$paymentId'
     | '/settings/access'
@@ -1042,6 +1054,7 @@ export interface FileRouteTypes {
     | '/_terminal/catalog/categories'
     | '/_terminal/catalog/items'
     | '/_terminal/catalog/tables'
+    | '/_terminal/payment/custom-tip'
     | '/_terminal/payment/tip'
     | '/_terminal/payment_/$paymentId'
     | '/_terminal/settings/about'
@@ -1250,6 +1263,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/catalog/tables'
       preLoaderRoute: typeof TerminalCatalogTablesRouteImport
       parentRoute: typeof TerminalCatalogRoute
+    }
+    '/_terminal/payment/custom-tip': {
+      id: '/_terminal/payment/custom-tip'
+      path: '/payment/custom-tip'
+      fullPath: '/payment/custom-tip'
+      preLoaderRoute: typeof TerminalPaymentCustomTipRouteImport
+      parentRoute: typeof TerminalRoute
     }
     '/_terminal/payment/tip': {
       id: '/_terminal/payment/tip'
@@ -2093,6 +2113,7 @@ interface TerminalRouteChildren {
   TerminalSettingsRoute: typeof TerminalSettingsRouteWithChildren
   TerminalIndexRoute: typeof TerminalIndexRoute
   TerminalActivityPaymentIdRoute: typeof TerminalActivityPaymentIdRoute
+  TerminalPaymentCustomTipRoute: typeof TerminalPaymentCustomTipRoute
   TerminalPaymentTipRoute: typeof TerminalPaymentTipRoute
   TerminalPaymentPaymentIdRoute: typeof TerminalPaymentPaymentIdRoute
   TerminalActivityPaymentIdRefundRoute: typeof TerminalActivityPaymentIdRefundRoute
@@ -2108,6 +2129,7 @@ const TerminalRouteChildren: TerminalRouteChildren = {
   TerminalSettingsRoute: TerminalSettingsRouteWithChildren,
   TerminalIndexRoute: TerminalIndexRoute,
   TerminalActivityPaymentIdRoute: TerminalActivityPaymentIdRoute,
+  TerminalPaymentCustomTipRoute: TerminalPaymentCustomTipRoute,
   TerminalPaymentTipRoute: TerminalPaymentTipRoute,
   TerminalPaymentPaymentIdRoute: TerminalPaymentPaymentIdRoute,
   TerminalActivityPaymentIdRefundRoute: TerminalActivityPaymentIdRefundRoute,

@@ -176,12 +176,8 @@ export const enPayment = {
   "paymentTip.continue": "Continue to payment",
   "paymentTip.creating": "Creating payment...",
   "paymentTip.custom.actionDescription": "Enter amount",
-  "paymentTip.custom.description":
-    "Enter the amount the customer wants to add.",
-  "paymentTip.custom.invalid":
-    "Enter a positive amount with up to two decimal places.",
   "paymentTip.custom.label": "Custom tip",
-  "paymentTip.custom.placeholder": "e.g. 20.00",
+  "paymentTip.custom.orderTotal": "Order total {amount}",
   "paymentTip.fixedAmounts": "Fixed amount tips",
   "paymentTip.invalidLink": "Invalid tip link.",
   "paymentTip.none": "No tip",

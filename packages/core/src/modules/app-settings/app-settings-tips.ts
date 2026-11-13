@@ -4,8 +4,8 @@ import { jsonCodec } from "../../zod-utils.ts"
 
 export const maxTipPresetCount = 4
 
-export const defaultTipPercentages = [5, 10, 15, 20] as const
-export const defaultTipFixedAmounts = [2000, 5000] as const
+export const defaultTipPercentages = [5, 10, 15] as const
+export const defaultTipFixedAmounts = [] as const
 
 const hasUniqueValues = (values: ReadonlyArray<number>): boolean =>
   new Set(values).size === values.length

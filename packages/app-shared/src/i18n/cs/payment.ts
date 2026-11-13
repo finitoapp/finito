@@ -175,12 +175,8 @@ export const csPayment = {
   "paymentTip.continue": "Pokračovat k platbě",
   "paymentTip.creating": "Vytvářím platbu...",
   "paymentTip.custom.actionDescription": "Zadat částku",
-  "paymentTip.custom.description":
-    "Zadejte částku, kterou chce zákazník přidat.",
-  "paymentTip.custom.invalid":
-    "Zadejte kladnou částku s nejvýše dvěma desetinnými místy.",
   "paymentTip.custom.label": "Vlastní spropitné",
-  "paymentTip.custom.placeholder": "např. 20,00",
+  "paymentTip.custom.orderTotal": "Cena objednávky {amount}",
   "paymentTip.fixedAmounts": "Spropitné pevnou částkou",
   "paymentTip.invalidLink": "Neplatný odkaz na spropitné.",
   "paymentTip.none": "Bez spropitného",

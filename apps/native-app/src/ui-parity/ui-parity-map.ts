@@ -21,10 +21,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/components/app/access-gate.tsx",
     web: ["apps/web-app/src/components/app/access-gate.tsx"],
     status: "matched",
-    allowedDifferences: {
-      FadeHeader:
-        "Web adds this route header above the PIN screen; native renders the gated route inside its shared Screen layout.",
-    },
   },
   {
     native: "src/components/app/app-background-jobs.tsx",
@@ -540,6 +536,15 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       ActivityIndicator:
         "the native page uses React Native's platform spinner while sync is in progress",
+    },
+  },
+  {
+    native: "src/features/payment-tip/payment-custom-tip-page.tsx",
+    web: ["apps/web-app/src/features/payment-tip/payment-custom-tip-page.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      RouteMessage:
+        "web answers an invalid tip link in its route file (_terminal.payment.custom-tip.tsx); native's route renders this page, which does it",
     },
   },
   {
@@ -1596,6 +1601,11 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
   },
   {
+    native: "src/features/shared/amount-keypad.tsx",
+    web: ["apps/web-app/src/features/shared/amount-keypad.tsx"],
+    status: "matched",
+  },
+  {
     native: "src/features/shared/evolu-transports/transport-add-form.tsx",
     web: [
       "apps/web-app/src/features/shared/evolu-transports/transport-add-form.tsx",
@@ -1933,13 +1943,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/stats/vat-recap.tsx",
     web: ["apps/web-app/src/features/stats/vat-recap.tsx"],
-    status: "matched",
-  },
-  {
-    native: "src/features/terminal-home/amount-keypad.tsx",
-    web: [
-      "apps/web-app/src/features/terminal-home/terminal-payment-keypad.tsx",
-    ],
     status: "matched",
   },
   {

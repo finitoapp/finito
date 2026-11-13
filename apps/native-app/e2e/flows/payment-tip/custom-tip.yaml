@@ -1,21 +1,17 @@
-# web payment-tip.spec.ts: "charge with a custom tip amount, confirmed via its
-# own button".
+# web payment-tip.spec.ts: "charge with a custom tip typed on its keypad".
 appId: ${APP_ID}
 tags: [payment-tip]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
 - runFlow: ../../subflows/to-tip-step.yaml
 - tapOn: ${output.t["paymentTip.custom.label"]}
+- extendedWaitUntil:
+    visible: ${output.t["paymentTip.continue"]}
+    timeout: 10000
 - runFlow:
-    file: ../../subflows/type-input.yaml
+    file: ../../subflows/enter-amount.yaml
     env:
-      LABEL: ${output.t["paymentTip.custom.label"]}
-      VALUE: "2.50"
-- runFlow:
-    when:
-      platform: Android
-    commands:
-      - hideKeyboard
+      AMOUNT: "2.5"
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:

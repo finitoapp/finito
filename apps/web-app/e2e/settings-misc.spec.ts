@@ -18,23 +18,6 @@ test("configure tip presets", async ({ seededPage: page }) => {
   )
 
   await test.step("add a percentage and a fixed amount preset", async () => {
-    // The default percentage presets already fill maxTipPresetCount (4), so
-    // remove one before adding a new one.
-    const existingPercentageLabel = translateValue(
-      "en",
-      "settings.tips.percentages.value",
-      20
-    )
-    await page
-      .getByRole("button", {
-        name: translateValue(
-          "en",
-          "settings.tips.preset.remove",
-          existingPercentageLabel
-        ),
-      })
-      .click()
-
     await page
       .getByRole("textbox", {
         name: translate("en", "settings.tips.percentages.label"),

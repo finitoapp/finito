@@ -12,6 +12,18 @@ export const calculatePercentageTipAmount = ({
 }): NonNegativeIntegerValue =>
   NonNegativeInteger(Math.round((amount * percentage) / 100))
 
+/**
+ * What share of the order a tip is, in percent, unrounded: the tip step
+ * shows it under a fixed tip. An order of zero has no share to show.
+ */
+export const calculateTipPercentage = ({
+  amount,
+  tipAmount,
+}: {
+  readonly amount: NonNegativeIntegerValue
+  readonly tipAmount: NonNegativeIntegerValue
+}): number | null => (amount === 0 ? null : (tipAmount / amount) * 100)
+
 export const calculatePaymentAmounts = ({
   amount,
   tipAmount,

@@ -14,7 +14,6 @@ import { type PrimitiveAtom, useAtomValue, useSetAtom, useStore } from "jotai"
 import { LoaderCircle } from "lucide-react"
 import { motion, useAnimationControls, useReducedMotion } from "motion/react"
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
-import { terminalAmountInputAtom } from "@/atoms/terminal-amount.ts"
 import { Button } from "@/components/ui/button.tsx"
 import { useLocale } from "@/hooks/use-locale.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
@@ -57,22 +56,27 @@ function applyKeypadPress(
 }
 
 /**
- * The entered amount lives in `terminalAmountInputAtom`, which outlives the
- * keypad so a half-typed amount survives leaving home until a payment is
- * created from it. The atom is passed down as a prop, so only `AmountDisplay` and `ChargeButton` re-render per keypress —
+ * The amount keypad: the typed amount, the twelve keys and one submit
+ * button, which a physical keyboard's Enter presses too. Home charges from
+ * it, holding the amount in `terminalAmountInputAtom` so a half-typed amount
+ * survives leaving home; the custom tip step types its tip into an atom of
+ * its own. The atom is passed down as a prop, so only `AmountDisplay` and `ChargeButton` re-render per keypress —
  * not the twelve `KeypadButton`s. Measured (Chrome, CDP `TaskDuration`, 600
  * keypresses): 2.8 ms per keypress with the atom versus 4.95 ms with a plain
  * `useState` here, and a Capacitor WebView on low-end Android multiplies that
  * gap several times against a 16 ms frame.
  */
-export function TerminalPaymentKeypad({
+export function AmountKeypad({
+  amountInputAtom,
   currency,
+  submitLabel,
   onCharge,
 }: {
+  readonly amountInputAtom: AmountInputAtom
   readonly currency: FiatCurrency
+  readonly submitLabel: string
   readonly onCharge: ChargeHandler
 }) {
-  const amountInputAtom = terminalAmountInputAtom
   const isChargePendingRef = useRef(false)
   const [isChargePending, setIsChargePending] = useState(false)
 
@@ -105,6 +109,7 @@ export function TerminalPaymentKeypad({
       <ChargeButton
         amountInputAtom={amountInputAtom}
         currency={currency}
+        label={submitLabel}
         isChargePending={isChargePending}
         onCharge={handleCharge}
       />
@@ -310,15 +315,16 @@ function KeypadButton({
 function ChargeButton({
   amountInputAtom,
   currency,
+  label,
   isChargePending,
   onCharge,
 }: {
   readonly amountInputAtom: AmountInputAtom
   readonly currency: FiatCurrency
+  readonly label: string
   readonly isChargePending: boolean
   readonly onCharge: ChargeHandler
 }) {
-  const { t } = useTranslation()
   const amountInput = useAtomValue(amountInputAtom)
   const amount = decimalAmountToMinorUnits({ currency, value: amountInput })
 
@@ -338,7 +344,7 @@ function ChargeButton({
       {isChargePending ? (
         <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
       ) : null}
-      {t("home.pay")}
+      {label}
     </Button>
   )
 }

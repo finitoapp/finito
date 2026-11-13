@@ -11,6 +11,10 @@ import {
   terminalHomeModes,
 } from "@payky/core/modules/app-settings/app-settings-utils"
 import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import {
+  type FiatCurrency,
+  NonNegativeInteger,
+} from "@payky/core/modules/shared/schema"
 import { Redirect, router } from "expo-router"
 import { useAtomValue } from "jotai"
 import Menu from "lucide-react-native/icons/menu"
@@ -19,6 +23,7 @@ import { ActivityIndicator, Platform, useWindowDimensions } from "react-native"
 import { useTheme, View, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
+import { terminalAmountInputAtom } from "../../atoms/terminal-amount.ts"
 import { LoadingView } from "../../components/loading-view.tsx"
 import { menuSidebarMinWidth } from "../../components/menu-nav.tsx"
 import { SafeAreaView } from "../../components/safe-area-view.tsx"
@@ -30,6 +35,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
 import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
 import { useActiveNotifications } from "../../hooks/use-active-notifications.ts"
+import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
@@ -37,7 +43,7 @@ import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { maxWidth } from "../../theme/tokens.ts"
-import { AmountKeypad } from "./amount-keypad.tsx"
+import { AmountKeypad } from "../shared/amount-keypad.tsx"
 import { PosOverviewPage } from "./pos-overview-page.tsx"
 
 /**
@@ -132,7 +138,7 @@ export function TerminalHomePage() {
       )}
       {mode === "numpad" ? (
         <YStack flex={1} px={16}>
-          <AmountKeypad
+          <TerminalPaymentKeypadLoader
             currency={getFiatCurrency(settings)}
             tipsEnabled={settings.tipsEnabled === sqliteTrue}
           />
@@ -143,6 +149,45 @@ export function TerminalHomePage() {
         </Suspense>
       )}
     </SafeAreaView>
+  )
+}
+
+/**
+ * Web's `TerminalPaymentKeypadLoader`: home's keypad charges the typed
+ * amount, through the tip step while tips are on.
+ */
+function TerminalPaymentKeypadLoader({
+  currency,
+  tipsEnabled,
+}: {
+  readonly currency: FiatCurrency
+  readonly tipsEnabled: boolean
+}) {
+  const { t } = useTranslation()
+  const createTerminalPayment = useCreateTerminalPayment()
+
+  const charge = async (amount: NonNegativeInteger) => {
+    if (tipsEnabled) {
+      router.push({
+        pathname: "/payment/tip",
+        params: { amount: String(amount), currency },
+      })
+      return
+    }
+    await createTerminalPayment({
+      amount,
+      currency,
+      tipAmount: NonNegativeInteger(0),
+    })
+  }
+
+  return (
+    <AmountKeypad
+      amountInputAtom={terminalAmountInputAtom}
+      currency={currency}
+      submitLabel={t("home.pay")}
+      onSubmit={charge}
+    />
   )
 }
 

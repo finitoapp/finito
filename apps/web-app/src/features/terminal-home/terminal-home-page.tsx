@@ -11,6 +11,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { BellIcon, Calculator, LayoutGrid, MenuIcon } from "lucide-react"
 import { LayoutGroup, motion } from "motion/react"
 import { Suspense } from "react"
+import { terminalAmountInputAtom } from "@/atoms/terminal-amount.ts"
 import { NotificationDot } from "@/components/notification-dot.tsx"
 import {
   SlidingPillSegmentContent,
@@ -19,8 +20,8 @@ import {
 } from "@/components/sliding-pill.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group.tsx"
+import { AmountKeypad } from "@/features/shared/amount-keypad.tsx"
 import { PosOverviewPage } from "@/features/terminal-home/pos-overview-page.tsx"
-import { TerminalPaymentKeypad } from "@/features/terminal-home/terminal-payment-keypad.tsx"
 import { useActiveNotifications } from "@/hooks/use-active-notifications.ts"
 import { useIsConfirmDialogOpen } from "@/hooks/use-confirm-dialog.ts"
 import { useCreateTerminalPayment } from "@/hooks/use-create-terminal-payment.ts"
@@ -129,6 +130,7 @@ const Header = () => {
 }
 
 function TerminalPaymentKeypadLoader() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const createTerminalPayment = useCreateTerminalPayment()
   const { data } = useEvoluQuery(settingsQuery)
@@ -160,8 +162,10 @@ function TerminalPaymentKeypadLoader() {
     <div className={"px-4 flex flex-1 flex-col justify-between"}>
       <div>&nbsp;</div>
 
-      <TerminalPaymentKeypad
+      <AmountKeypad
+        amountInputAtom={terminalAmountInputAtom}
         currency={getFiatCurrency(settings)}
+        submitLabel={t("home.pay")}
         onCharge={handleCharge}
       />
     </div>

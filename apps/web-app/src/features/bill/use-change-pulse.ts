@@ -8,7 +8,7 @@ const changePulseAnimation = {
 
 /**
  * Pulses (opacity dip + scale bounce) whenever `value` changes, matching the
- * amount-entry pulse in TerminalPaymentKeypad's AmountDisplay. Skips the
+ * amount-entry pulse in AmountKeypad's AmountDisplay. Skips the
  * pulse on mount so components rendered in bulk (e.g. a grid of item
  * quantities) don't all flash together on initial paint.
  */

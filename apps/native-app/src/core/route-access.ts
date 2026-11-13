@@ -12,6 +12,7 @@ export type NativeRoutePath =
   | "/restore-account"
   | "/bill"
   | "/payment/tip"
+  | "/payment/custom-tip"
   | "/payment/:paymentId"
   | "/activity"
   | "/activity/bills"
@@ -94,8 +95,10 @@ export const routeAccess = {
   "/restore-account": "free",
   // Like web's `_terminal/bill` (access/0002: the bill is `sell`).
   "/bill": "sell",
-  // Like web's `_terminal/payment/tip` and `payment_/$paymentId`.
+  // Like web's `_terminal/payment/tip`, `payment/custom-tip` and
+  // `payment_/$paymentId`; the static segments stay above the id.
   "/payment/tip": "sell",
+  "/payment/custom-tip": "sell",
   "/payment/:paymentId": "sell",
   // Like web's `_terminal/activity` routes (access/0002: history is `activity`).
   "/activity": "activity",

@@ -10,17 +10,14 @@ import {
   type FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
-import { router } from "expo-router"
 import { type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
-import { useRef, useState } from "react"
+import { type ReactNode, useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
-import { terminalAmountInputAtom } from "../../atoms/terminal-amount.ts"
 import { AmountFigure } from "../../components/amount-figure.tsx"
 import { replay } from "../../components/motion.ts"
 import { Button } from "../../components/ui/button.tsx"
 import { useChangePulse } from "../../hooks/use-change-pulse.ts"
-import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
@@ -40,13 +37,14 @@ const bubbleKeyframes = {
 } as const
 
 /**
- * The typed amount lives in `terminalAmountInputAtom`, as on web: it
- * outlives home, so a half-typed amount survives leaving it until a payment
- * is created from it. The atom is passed down as a prop (AGENTS.md; web's
- * `TerminalPaymentKeypad` has the measurement), so a key press re-renders
- * only the display and the Charge button, not the keys.
+ * Web's `AmountKeypad`: the typed amount, the keys and one submit button.
+ * Home charges from it, holding the amount in `terminalAmountInputAtom` so
+ * a half-typed amount survives leaving home; the custom tip step types its
+ * tip into an atom of its own. The atom is passed down as a prop (AGENTS.md;
+ * web's `AmountKeypad` has the measurement), so a key press re-renders only
+ * the display and the submit button, not the keys.
  *
- * Drawn as web's `TerminalPaymentKeypad`: a spacer, the amount (the
+ * Drawn as web's `AmountKeypad`: the `header` (a spacer on home), the amount (the
  * `AmountFigure` every screen headlines with, at its largest), the 3-column grid of round ghost keys
  * (`text-3xl`, rows `gap-y-10` around keys that overlap by `-m-6`) and the
  * round Charge button (`h-14 rounded-full text-base font-bold`), filled
@@ -60,17 +58,22 @@ const bubbleKeyframes = {
  * Charge button does, so the pending charge lives here, shared by both.
  */
 export function AmountKeypad({
+  amountInputAtom,
   currency,
-  tipsEnabled,
+  submitLabel,
+  onSubmit,
+  header,
 }: {
+  readonly amountInputAtom: AmountInputAtom
   readonly currency: FiatCurrency
-  readonly tipsEnabled: boolean
+  readonly submitLabel: string
+  readonly onSubmit: (amount: NonNegativeInteger) => Promise<void> | void
+  /** Drawn above the amount; an empty spacer when left out. */
+  readonly header?: ReactNode
 }) {
-  const amountInputAtom = terminalAmountInputAtom
-  const createTerminalPayment = useCreateTerminalPayment()
   const [pending, setPending] = useState(false)
   // The ref closes the window before `pending` re-renders: a double tap
-  // creates one payment (web's `TerminalPaymentKeypad` does the same).
+  // creates one payment (web's `AmountKeypad` does the same).
   const pendingRef = useRef(false)
 
   const charge = async (minor: number) => {
@@ -78,19 +81,7 @@ export function AmountKeypad({
     pendingRef.current = true
     setPending(true)
     try {
-      const chargeAmount = NonNegativeInteger(minor)
-      if (tipsEnabled) {
-        router.push({
-          pathname: "/payment/tip",
-          params: { amount: String(chargeAmount), currency },
-        })
-      } else {
-        await createTerminalPayment({
-          amount: chargeAmount,
-          currency,
-          tipAmount: NonNegativeInteger(0),
-        })
-      }
+      await onSubmit(NonNegativeInteger(minor))
     } finally {
       pendingRef.current = false
       setPending(false)
@@ -107,12 +98,13 @@ export function AmountKeypad({
 
   return (
     <YStack flex={1} justify="space-between">
-      <YStack />
+      {header ?? <YStack />}
       <AmountDisplay amountInputAtom={amountInputAtom} currency={currency} />
       <Keys amountInputAtom={amountInputAtom} currency={currency} />
       <ChargeButton
         amountInputAtom={amountInputAtom}
         currency={currency}
+        label={submitLabel}
         pending={pending}
         onCharge={handleCharge}
       />
@@ -289,15 +281,16 @@ function KeypadKey({
 function ChargeButton({
   amountInputAtom,
   currency,
+  label,
   pending,
   onCharge,
 }: {
   readonly amountInputAtom: AmountInputAtom
   readonly currency: FiatCurrency
+  readonly label: string
   readonly pending: boolean
   readonly onCharge: (minor: number) => void
 }) {
-  const { t } = useTranslation()
   const amountInput = useAtomValue(amountInputAtom)
   const amount = decimalAmountToMinorUnits({ currency, value: amountInput })
 
@@ -306,7 +299,7 @@ function ChargeButton({
       variant="default"
       h={56}
       rounded={radius.full}
-      aria-label={t("home.pay")}
+      aria-label={label}
       pending={pending}
       disabled={amount === null}
       onPress={() => {
@@ -321,7 +314,7 @@ function ChargeButton({
         fontWeight={fontWeight.bold}
         color="primary-foreground"
       >
-        {t("home.pay")}
+        {label}
       </Text>
     </Button>
   )

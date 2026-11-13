@@ -8,11 +8,7 @@ tags: [settings]
     env:
       ROUTE: settings/tips
       TEXT: ${output.t["settings.tips.title"]}
-# The defaults fill all four percentage slots: remove 20% first, add 25%.
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: '${output.tv("settings.tips.preset.remove", { value: output.tv("settings.tips.percentages.value", { value: 20 }) })}'
+# The defaults leave a percentage slot free: add 25%.
 - runFlow:
     file: ../../subflows/type-input.yaml
     env:
