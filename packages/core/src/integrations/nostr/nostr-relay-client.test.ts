@@ -52,6 +52,25 @@ const createSilentSocket = (closed: Array<boolean>): NostrSocket => {
   }
 }
 
+const subscribeTo = (
+  sockets: Readonly<Record<string, () => NostrSocket>>,
+  filters = [{ kinds: [30_078], "#d": ["table"] }]
+) => {
+  const delivered: string[] = []
+  const live: number[] = []
+  const subscription = createNostrRelayClient({
+    createSocket: (url) => {
+      const create = sockets[url]
+      if (create === undefined) throw new SyntaxError(url)
+      return create()
+    },
+  }).subscribe(Object.keys(sockets), filters, {
+    onEvent: ({ content }) => delivered.push(content),
+    onLive: (count) => live.push(count),
+  })
+  return { delivered, live, subscription }
+}
+
 describe("nostr relays", () => {
   test("publishes to every relay and reads back what they keep", async () => {
     const first = createFakeNostrRelay()
@@ -277,5 +296,122 @@ describe("nostr relays", () => {
     expect(closed).toEqual([false])
     await vi.advanceTimersByTimeAsync(4000)
     expect(closed).toEqual([true])
+  })
+
+  test("pushes each new event of an open subscription once, whichever relay has it", async () => {
+    const first = createFakeNostrRelay()
+    const second = createFakeNostrRelay()
+    first.createSocket().send(JSON.stringify(["EVENT", view(1, "stored")]))
+    const { delivered, live, subscription } = subscribeTo({
+      first: first.createSocket,
+      second: second.createSocket,
+    })
+    await vi.waitFor(() => expect(live).toEqual([1, 2]))
+
+    const added = view(2, "added")
+    first.createSocket().send(JSON.stringify(["EVENT", added]))
+    second.createSocket().send(JSON.stringify(["EVENT", added]))
+    await vi.waitFor(() => expect(delivered).toEqual(["stored", "added"]))
+    subscription.close()
+
+    expect(first.openRequests()).toBe(0)
+    expect(second.openRequests()).toBe(0)
+    expect(live.at(-1)).toBe(0)
+  })
+
+  test("swaps the filters of an open subscription on the same socket", async () => {
+    const relay = createFakeNostrRelay()
+    let sockets = 0
+    const { delivered, live, subscription } = subscribeTo({
+      relay: () => {
+        sockets++
+        return relay.createSocket()
+      },
+    })
+    await vi.waitFor(() => expect(live).toEqual([1]))
+
+    subscription.update([
+      { kinds: [30_078], "#d": ["table"] },
+      { kinds: [30_078], "#d": ["order"] },
+    ])
+    await vi.waitFor(() => expect(relay.openRequests()).toBe(1))
+    const order = signNostrEvent(secretKey, {
+      created_at: 3,
+      kind: 30_078,
+      tags: [["d", "order"]],
+      content: "accepted",
+    })
+    relay.createSocket().send(JSON.stringify(["EVENT", order]))
+    await vi.waitFor(() => expect(delivered).toEqual(["accepted"]))
+    subscription.close()
+
+    expect(sockets).toBe(1)
+  })
+
+  test("ignores an oversized message on a subscription", async () => {
+    const oversized = view(3, "x".repeat(256 * 1024))
+    const { delivered, live, subscription } = subscribeTo({
+      oversized: () =>
+        createScriptedSocket((subscriptionId) => [
+          ["EVENT", subscriptionId, oversized],
+          ["EVENT", subscriptionId, view(2, "table")],
+          ["EOSE", subscriptionId],
+        ]),
+    })
+    await vi.waitFor(() => expect(live).toEqual([1]))
+    subscription.close()
+
+    expect(delivered).toEqual(["table"])
+  })
+
+  test("tries a refusing relay again after 1, 2 and 4 s and starts over once it answers", async () => {
+    vi.useFakeTimers()
+    const relay = createFakeNostrRelay()
+    relay.refuseRequests(true)
+    const connectedAt: number[] = []
+    const startedAt = Date.now()
+    const { live, subscription } = subscribeTo({
+      relay: () => {
+        connectedAt.push(Date.now() - startedAt)
+        return relay.createSocket()
+      },
+    })
+
+    await vi.advanceTimersByTimeAsync(7000)
+    relay.refuseRequests(false)
+    await vi.advanceTimersByTimeAsync(8000)
+    const answeredAt = connectedAt.length
+    relay.dropConnections()
+    await vi.advanceTimersByTimeAsync(1000)
+    subscription.close()
+
+    expect(connectedAt.slice(0, answeredAt)).toEqual([
+      0, 1000, 3000, 7000, 15_000,
+    ])
+    expect(connectedAt.at(-1)).toBe(16_000)
+    expect(live).toEqual([1, 0, 1, 0])
+  })
+
+  test("stops listening to a relay that sends more than 120 events in a minute", async () => {
+    vi.useFakeTimers()
+    const flood = Array.from({ length: 121 }, (_, index) =>
+      view(index, String(index))
+    )
+    let sockets = 0
+    const { delivered, subscription } = subscribeTo({
+      flood: () => {
+        sockets++
+        return createScriptedSocket((subscriptionId) => [
+          ["EOSE", subscriptionId],
+          ...flood.map((event) => ["EVENT", subscriptionId, event]),
+        ])
+      },
+    })
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    subscription.close()
+
+    expect(delivered).toHaveLength(120)
+    expect(sockets).toBe(1)
   })
 })
