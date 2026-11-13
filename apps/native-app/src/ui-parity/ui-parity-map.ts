@@ -1535,23 +1535,23 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       Field:
-        "Native uses InlineEditField, which renders the same ui/field primitives internally; the name edit stays editable on-device without a separate web-style field wrapper.",
+        "Native uses InlineEditField for the name, which renders the same ui/field primitives internally; the profile screen's own Fields label the business's country and currency, from web's legal-entity screen.",
       FieldError:
         "The native InlineEditField owns validation and renders its field error internally.",
       FieldGroup:
         "Native groups these controls with the CardContent YStack while keeping the app's shared InlineEditField intact.",
       FieldLabel:
-        "The native InlineEditField and picture label render labels inside the controls' existing native components.",
+        "The native InlineEditField and picture label render labels inside the controls' existing native components; the country and currency labels come from web's legal-entity screen.",
       Select:
-        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+        "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       SelectTrigger:
-        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+        "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       SelectValue:
-        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+        "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       SelectContent:
-        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+        "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       SelectItem:
-        "the business's country and currency sit on the profile screen, unlabelled, where web has a legal-entity screen",
+        "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       Switch:
         "the VAT-payer row is a switch on the profile screen, where web's legal-entity screen has a checkbox",
     },

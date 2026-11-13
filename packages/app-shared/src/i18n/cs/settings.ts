@@ -825,6 +825,11 @@ export const csSettings = {
   "settings.privacy.aiAssistant.all.title": "Včetně mých dat",
   "settings.privacy.aiAssistant.all.description":
     "Čte i vaše účty a platby v tomto zařízení a to, co přečte, odesílá poskytovateli AI.",
+  "settings.profile.public.title": "Veřejný profil",
+  "settings.profile.public.description":
+    "Jméno a obrázek vašeho podniku. Jsou zveřejněné, takže je může vidět kdokoli.",
+  "settings.profile.business.description":
+    "Země, měna a plátcovství DPH vašeho podniku. Nezveřejňují se.",
   "settings.profile.description":
     "Váš Nostr profil, stejný, jaký pro tuto obnovovací frázi zobrazuje Linky.",
   "settings.profile.loadFailed":
