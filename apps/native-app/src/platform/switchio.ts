@@ -23,15 +23,16 @@ import {
   type SwitchioTerminalDep,
   type SwitchioUnavailableError,
 } from "@payky/core/switchio"
-import { NativeModule, requireOptionalNativeModule } from "expo"
+import { requireOptionalNativeModule } from "expo"
 import { z } from "zod"
+import { onE2eSwitchioChange } from "../e2e/e2e-switchio-presets.ts"
 
 /**
  * `modules/payky-switchio`: the SwitchioPay ECR API (v8) is driven entirely
  * through Android intents, so there is no iOS or web equivalent. The Android
  * half of web's `platform/switchio.ts`.
  */
-declare class PaykySwitchioNativeModule extends NativeModule {
+export interface PaykySwitchioNativeModule {
   isInstalled(): boolean
   pay(
     transactionId: string,
@@ -74,8 +75,18 @@ const SWITCHIO_NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
 const SWITCHIO_LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
 
 // Absent in a binary built before the module existed.
-const switchio =
+const nativeSwitchio =
   requireOptionalNativeModule<PaykySwitchioNativeModule>("PaykySwitchio")
+
+/**
+ * The module every launch below goes through: the native one, or in an e2e
+ * build the fake SwitchioPay while a flow has it on
+ * (`e2e-switchio-presets.ts`, inert in any other build).
+ */
+let switchio = nativeSwitchio
+onE2eSwitchioChange((fake) => {
+  switchio = fake ?? nativeSwitchio
+})
 
 /** Whether this build can talk to SwitchioPay at all (the module is linked). */
 export const isSwitchioSupported = (): boolean => switchio !== null

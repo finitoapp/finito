@@ -1,8 +1,13 @@
+import { z } from "zod"
 import { nativeEnv } from "../core/native-env.ts"
+import {
+  e2eSwitchioScenarios,
+  setE2eSwitchioScenario,
+} from "./e2e-switchio-presets.ts"
 
 /**
  * Two gaps between Maestro's web driver and React Native Web, closed in an
- * e2e build only.
+ * e2e build only, and Playwright's handle on the fake SwitchioPay.
  *
  * Scrolling: the driver (`scroll`, `scrollUntilVisible`, swipes) calls
  * `window.scroll({ top: window.scrollY ± half a viewport })`, but React
@@ -16,6 +21,12 @@ import { nativeEnv } from "../core/native-env.ts"
  * `maestro.createXPathFromElement`, whose path steps by `class` without an
  * index, and Tamagui gives sibling inputs the same classes — so it typed into
  * the first input of a form. Its path here indexes every step.
+ *
+ * SwitchioPay (`e2e-switchio-presets.ts`): Playwright switches the fake on or
+ * changes its scenario with `window.__e2eSwitchio.setScenario("declined")`
+ * (`null` turns it off), with no reload that would lose its state; an init
+ * script's `window.__e2eSwitchioScenario = "approved"` switches it on at
+ * every load, as the bridge's `fake?switchio=` cannot across a reload.
  */
 const scroller = (): Element | undefined => {
   for (
@@ -65,4 +76,18 @@ if (nativeEnv.EXPO_PUBLIC_PAYKY_E2E) {
     get: () => xPath,
     set: () => {},
   })
+  const switchioWindow = window as {
+    __e2eSwitchio?: object
+    __e2eSwitchioScenario?: unknown
+  }
+  const SwitchioScenario = z.enum(e2eSwitchioScenarios).nullable()
+  switchioWindow.__e2eSwitchio = {
+    setScenario: (scenario: unknown) =>
+      setE2eSwitchioScenario(SwitchioScenario.parse(scenario)),
+  }
+  const initial = SwitchioScenario.optional().safeParse(
+    switchioWindow.__e2eSwitchioScenario
+  )
+  if (initial.success && initial.data !== undefined)
+    setE2eSwitchioScenario(initial.data)
 }
