@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest"
 import {
   interpretSwitchioClosureResult,
+  interpretSwitchioPaymentLookup,
   interpretSwitchioPaymentResult,
   interpretSwitchioRefundResult,
   interpretSwitchioReversalResult,
@@ -514,6 +515,76 @@ describe("interpretSwitchioTransactionLookup", () => {
         interpretSwitchioTransactionLookup({ transactionId, ...answer })
       ).toEqual({ type: "unknown" })
     }
+  })
+})
+
+describe("interpretSwitchioPaymentLookup", () => {
+  const transactionId = "48a3ea7d-b82f-4b42-abbb-5043365e4faa"
+
+  test("reads an approval of the payment asked for as the payment's own result", () => {
+    const answer = { resultCode: -1, transactionResult: approvedResult }
+    const payment = interpretSwitchioPaymentResult(answer)
+
+    expect(
+      interpretSwitchioPaymentLookup({ transactionId, ...answer })
+    ).toEqual({
+      type: "approved",
+      result: payment.ok ? payment.value : null,
+    })
+    expect(payment).toMatchObject({
+      ok: true,
+      value: { maskedPan: "970348******3910", authCode: "114546" },
+    })
+  })
+
+  test("never reads a payment the terminal does not confirm as not charged", () => {
+    for (const answer of [
+      // What the terminal answered, on a device, for a reversal it approved.
+      {
+        resultCode: -1,
+        transactionResult: JSON.stringify({
+          transactionId,
+          responseCode: "FAILED",
+          responseMessage: "Transaction not found",
+        }),
+      },
+      {
+        resultCode: -1,
+        transactionResult: JSON.stringify({
+          transactionId,
+          responseCode: "DECLINED",
+        }),
+      },
+      { resultCode: 0, transactionResult: null },
+      { resultCode: 2, transactionResult: null },
+      { resultCode: -1, transactionResult: "{not json" },
+      { resultCode: -1, transactionResult: JSON.stringify({ transactionId }) },
+    ]) {
+      expect(
+        interpretSwitchioPaymentLookup({ transactionId, ...answer })
+      ).toEqual({ type: "unknown" })
+    }
+  })
+
+  test("never takes an answer about another transaction, or a reversal, for the payment", () => {
+    expect(
+      interpretSwitchioPaymentLookup({
+        transactionId: "another",
+        resultCode: -1,
+        transactionResult: approvedResult,
+      })
+    ).toEqual({ type: "unknown" })
+    expect(
+      interpretSwitchioPaymentLookup({
+        transactionId,
+        resultCode: -1,
+        transactionResult: JSON.stringify({
+          transactionId,
+          responseCode: "OK",
+          reversal: true,
+        }),
+      })
+    ).toEqual({ type: "unknown" })
   })
 })
 

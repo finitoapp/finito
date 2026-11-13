@@ -23,6 +23,7 @@ vi.mock("expo", () => ({
 
 const {
   createSwitchioClosureDep,
+  createSwitchioPaymentLookupDep,
   createSwitchioRefundDep,
   createSwitchioTerminalDep,
 } = await import("./switchio.ts")
@@ -93,6 +94,15 @@ describe("a demo account and SwitchioPay (demo-data/0001)", () => {
     expect(native.lookupTransaction).not.toHaveBeenCalled()
   })
 
+  it("never asks the terminal about a card payment", async () => {
+    await expect(
+      createSwitchioPaymentLookupDep({
+        demo: true,
+      }).switchioPaymentLookup.lookup("t1")
+    ).resolves.toEqual({ type: "unknown" })
+    expect(native.lookupTransaction).not.toHaveBeenCalled()
+  })
+
   it("launches the terminal for an account that is not a demo", async () => {
     native.close.mockResolvedValueOnce({
       resultCode: -1,
@@ -127,9 +137,9 @@ it("is told by useAppRun whether the active account is a demo", () => {
     "utf8"
   )
   expect(useAppRun).toContain("const demo = account.demo !== null")
-  for (const dep of ["Terminal", "Closure", "Refund"]) {
+  for (const dep of ["Terminal", "PaymentLookup", "Closure", "Refund"]) {
     expect(useAppRun).toMatch(
-      new RegExp(`createSwitchio${dep}Dep\\(\\{\\s*demo,`, "u")
+      new RegExp(`createSwitchio${dep}Dep\\(\\{\\s*demo\\b`, "u")
     )
   }
 })

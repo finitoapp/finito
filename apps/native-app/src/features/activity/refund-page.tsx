@@ -226,6 +226,7 @@ const switchioRefundErrorKeys = {
   CardSwitchioRefundDeclined: "refund.switchio.failed",
   CardSwitchioReversalDeclined: "refund.switchio.reversalDeclined.title",
   SwitchioRefundNotStarted: "refund.switchio.error.notStarted",
+  SwitchioLaunchRefused: "refund.switchio.error.notStarted",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
 } satisfies Record<StartCardSwitchioRefundError["type"], TranslationKey>
 

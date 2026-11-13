@@ -208,6 +208,15 @@ export const skPayment = {
   "paymentWait.cancelError": "Platbu sa nepodarilo zrušiť.",
   "paymentWait.canceled": "Táto platba bola zrušená.",
   "paymentWait.cardPaid.action": "Zaplatiť platobnou kartou",
+  "paymentWait.cardPaid.check": "Opýtať sa SwitchioPay",
+  "paymentWait.cardPaid.check.paid":
+    "SwitchioPay potvrdil platbu kartou, ktorej výsledok nebol známy.",
+  "paymentWait.cardPaid.check.unresolved":
+    "SwitchioPay platbu nepotvrdil. Predtým, než to skúsite znova, skontrolujte transakciu v SwitchioPay.",
+  "paymentWait.cardPaid.check.otherDevice":
+    "Opýtať sa SwitchioPay môže len zariadenie, ktoré platbu spustilo.",
+  "paymentWait.cardPaid.error.busy":
+    "SwitchioPay je zaneprázdnený. Nič sa nestiahlo, skúste to o chvíľu znova.",
   "paymentWait.cardPaid.error.declined": "Platba platobnou kartou neprebehla.",
   "paymentWait.cardPaid.error.generic":
     "Platbu platobnou kartou nie je možné vykonať.",

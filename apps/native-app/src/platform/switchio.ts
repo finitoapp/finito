@@ -1,18 +1,23 @@
 import { err, type Result } from "@evolu/common"
 import {
+  createSwitchioLaunchRefusedError,
   createSwitchioResultUnreadableError,
   createSwitchioUnavailableError,
   interpretSwitchioClosureResult,
+  interpretSwitchioPaymentLookup,
   interpretSwitchioPaymentResult,
   interpretSwitchioRefundResult,
   interpretSwitchioReversalResult,
   interpretSwitchioTransactionLookup,
   type SwitchioClosureDep,
+  type SwitchioLaunchRefusedError,
+  type SwitchioNativeClosureResult,
   SwitchioNativeClosureResultSchema,
   type SwitchioNativePayResult,
   SwitchioNativePayResultSchema,
   type SwitchioNativeRestoredClosure,
   SwitchioNativeRestoredClosureSchema,
+  type SwitchioPaymentLookupDep,
   type SwitchioRefundDep,
   type SwitchioResultUnreadableError,
   type SwitchioTerminalDep,
@@ -58,8 +63,15 @@ declare class PaykySwitchioNativeModule extends NativeModule {
   acknowledgeRefundResult(transactionId: string | null): void
 }
 
-/** Matched by the Kotlin module: the one rejection known to precede any charge. */
+/** Matched by the Kotlin module: SwitchioPay is missing, so nothing was charged. */
 const SWITCHIO_NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
+
+/**
+ * Matched by the Kotlin module: it refused to launch SwitchioPay, because a
+ * launch of the same kind is waiting on it or a result nobody settled yet is
+ * stored. Nothing left for the terminal, so nothing was charged.
+ */
+const SWITCHIO_LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
 
 // Absent in a binary built before the module existed.
 const switchio =
@@ -72,11 +84,11 @@ export const isSwitchioSupported = (): boolean => switchio !== null
 export const isSwitchioInstalled = (): boolean =>
   switchio?.isInstalled() === true
 
-const isNotInstalledRejection = (error: unknown): boolean =>
+const isRejectionWithCode = (error: unknown, code: string): boolean =>
   typeof error === "object" &&
   error !== null &&
   "code" in error &&
-  error.code === SWITCHIO_NOT_INSTALLED_CODE
+  error.code === code
 
 /**
  * The device's accounts as the restore path sees them. Each launch stores the
@@ -117,6 +129,8 @@ const unreadable = () =>
   err(
     createSwitchioResultUnreadableError({ resultCode: null, rawResult: null })
   )
+
+const refused = () => err(createSwitchioLaunchRefusedError())
 
 /**
  * The SwitchioPay launches this JS runtime is awaiting. Native code stores a
@@ -192,15 +206,16 @@ const refundStore: SwitchioResultStore = {
  * - a demo account calls no outside service (demo-data/0001), and a build
  *   without the module has none to call;
  * - a launch while another on the same store is in flight, or while a
- *   result no one has settled yet waits there, is refused as unreadable:
- *   it would overwrite what the terminal did, so the restore path settles
- *   that first;
+ *   result no one has settled yet waits there, is refused
+ *   (`SwitchioLaunchRefused`, payment/0020): it would overwrite what the
+ *   terminal did, so the restore path settles that first. The Kotlin module
+ *   refuses the same two cases itself, with `SWITCHIO_LAUNCH_REFUSED`;
  * - the stored copy is acknowledged as soon as the promise answers, since
  *   the caller settles it from the promise;
- * - only a missing SwitchioPay is known to fail before the terminal could
- *   act. Any other rejection (a dropped bridge call, a recreated activity)
- *   may come after it took the card or closed the batch, so it is an
- *   unknown outcome, never "unavailable".
+ * - only a missing SwitchioPay and a refused launch are known to fail
+ *   before the terminal could act. Any other rejection (a dropped bridge
+ *   call, a recreated activity) may come after it took the card or closed
+ *   the batch, so it is an unknown outcome, never "unavailable".
  */
 const launchSwitchio = async <Answer, Value, Error>({
   demo,
@@ -219,15 +234,18 @@ const launchSwitchio = async <Answer, Value, Error>({
 }): Promise<
   Result<
     Value,
-    Error | SwitchioUnavailableError | SwitchioResultUnreadableError
+    | Error
+    | SwitchioUnavailableError
+    | SwitchioLaunchRefusedError
+    | SwitchioResultUnreadableError
   >
 > => {
   if (demo) return err(createSwitchioUnavailableError({ reason: "demo" }))
   if (switchio === null) {
     return err(createSwitchioUnavailableError({ reason: "notNativeRuntime" }))
   }
-  if (store.busy()) return unreadable()
-  if (store.peek(switchio) !== null) return unreadable()
+  if (store.busy()) return refused()
+  if (store.peek(switchio) !== null) return refused()
 
   const module = switchio
   return whileInFlight(store.launch, async () => {
@@ -237,8 +255,11 @@ const launchSwitchio = async <Answer, Value, Error>({
       const parsed = schema.safeParse(raw)
       return parsed.success ? interpret(parsed.data) : unreadable()
     } catch (error) {
-      if (isNotInstalledRejection(error)) {
+      if (isRejectionWithCode(error, SWITCHIO_NOT_INSTALLED_CODE)) {
         return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+      }
+      if (isRejectionWithCode(error, SWITCHIO_LAUNCH_REFUSED_CODE)) {
+        return refused()
       }
       return unreadable()
     }
@@ -328,7 +349,7 @@ export const takeRestoredSwitchioResult = (
   })
 
 /**
- * Closes the batch of the SwitchioPay terminal on this phone. The caller
+ * Closes the batch of the SwitchioPay terminal on this device. The caller
  * records the closure from the promise; the stored copy is only for a
  * promise lost with the process.
  */
@@ -434,24 +455,65 @@ export const createSwitchioRefundDep = ({
       }),
     // Stores nothing and changes nothing, so every failure is `unknown`.
     lookup: async (transactionId) => {
-      if (demo || switchio === null || refundStore.busy()) {
+      if (demo || refundStore.busy()) return { type: "unknown" }
+      const answer = await lookupSwitchioTransaction(transactionId)
+      return answer === null
+        ? { type: "unknown" }
+        : interpretSwitchioTransactionLookup({ transactionId, ...answer })
+    },
+  },
+})
+
+/**
+ * Asks SwitchioPay about one of its transactions (`get_transaction`): its
+ * answer, or null when there is none to read — no module, a refused launch
+ * (another lookup is waiting), or any other rejection. A lookup stores
+ * nothing and changes nothing, so null only means "ask again later".
+ */
+const lookupSwitchioTransaction = async (
+  transactionId: string
+): Promise<SwitchioNativeClosureResult | null> => {
+  if (switchio === null || inFlight.lookup) return null
+  const module = switchio
+  return whileInFlight("lookup", async () => {
+    try {
+      const raw = await module.lookupTransaction(transactionId)
+      const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
+      return parsed.success ? parsed.data : null
+    } catch {
+      return null
+    }
+  })
+}
+
+/**
+ * Whether a payment or a lookup is waiting on SwitchioPay in this process.
+ * The terminal is asked about a payment whose outcome is unknown only when
+ * neither is: an attempt in flight is answered by its own promise.
+ */
+export const isSwitchioPaymentInFlight = (): boolean =>
+  inFlight.payment || inFlight.lookup
+
+/**
+ * Asks SwitchioPay what became of a card payment whose result was lost or
+ * unreadable (payment/0019). Never while any launch is waiting on it, so a
+ * lookup cannot interrupt the terminal taking a card, closing the batch or
+ * refunding; such an ask, like any failure, is simply `unknown`.
+ */
+export const createSwitchioPaymentLookupDep = ({
+  demo,
+}: {
+  readonly demo: boolean
+}): SwitchioPaymentLookupDep => ({
+  switchioPaymentLookup: {
+    lookup: async (transactionId) => {
+      if (demo || Object.values(inFlight).some(Boolean)) {
         return { type: "unknown" }
       }
-      const module = switchio
-      return whileInFlight("lookup", async () => {
-        try {
-          const raw = await module.lookupTransaction(transactionId)
-          const parsed = SwitchioNativeClosureResultSchema.safeParse(raw)
-          return parsed.success
-            ? interpretSwitchioTransactionLookup({
-                transactionId,
-                ...parsed.data,
-              })
-            : { type: "unknown" }
-        } catch {
-          return { type: "unknown" }
-        }
-      })
+      const answer = await lookupSwitchioTransaction(transactionId)
+      return answer === null
+        ? { type: "unknown" }
+        : interpretSwitchioPaymentLookup({ transactionId, ...answer })
     },
   },
 })

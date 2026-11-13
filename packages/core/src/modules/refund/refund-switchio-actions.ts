@@ -293,6 +293,7 @@ const settleApprovedAttempt =
 /**
  * Applies one answer of the terminal to its attempt: approved writes the
  * refund, a decline keeps the attempt as failed, a refund that never started
+ * (busy, not initialised, or a launch SwitchioPay refused, payment/0020)
  * takes it away, and an unreadable answer leaves it unknown, blocking
  * another refund until it is resolved (payment/0006).
  */
@@ -347,6 +348,7 @@ const applyRefundOutcome =
               })
         )
       case "SwitchioRefundNotStarted":
+      case "SwitchioLaunchRefused":
       case "SwitchioUnavailable":
         await update({ isDeleted: sqliteTrue })
         return err(error)

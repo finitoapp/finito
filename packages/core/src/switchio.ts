@@ -94,8 +94,25 @@ export type SwitchioResultUnreadableError = ReturnType<
   typeof createSwitchioResultUnreadableError
 >
 
+/**
+ * SwitchioPay was never launched: another launch of the same kind is still
+ * waiting on it, or a result no one has settled yet is stored. Launching
+ * would overwrite what the terminal did, so the launch is refused before
+ * anything leaves for the terminal, and nothing was charged, closed or
+ * refunded. Kept apart from {@link SwitchioResultUnreadableError} on
+ * purpose: this attempt is known not to have happened, so it must not read
+ * as an unknown outcome.
+ */
+export const createSwitchioLaunchRefusedError = defineError(
+  "SwitchioLaunchRefused"
+)()
+export type SwitchioLaunchRefusedError = ReturnType<
+  typeof createSwitchioLaunchRefusedError
+>
+
 export type SwitchioPaymentError =
   | SwitchioUnavailableError
+  | SwitchioLaunchRefusedError
   | SwitchioPaymentFailedError
   | SwitchioResultUnreadableError
 
@@ -130,6 +147,15 @@ const readRawRefundId = (transactionResult: string | null): string | null => {
 
 const optionalString = (value: string | null | undefined): string | null =>
   value === null || value === undefined || value === "" ? null : value
+
+/** A payment's, a refund's or a lookup's answer, or null when unreadable. */
+const parseTransactionResult = (
+  transactionResult: string | null
+): z.output<typeof SwitchioTransactionResultSchema> | null => {
+  if (transactionResult === null || transactionResult === "") return null
+  const result = z.safeDecode(SwitchioTransactionResultJson, transactionResult)
+  return result.success ? result.data : null
+}
 
 /**
  * What one SwitchioPay answer amounts to, whatever was asked: a payment, a
@@ -187,6 +213,22 @@ const classifySwitchioOutcome = <
 const unreadableResult = (resultCode: number, rawResult: string | null) =>
   err(createSwitchioResultUnreadableError({ resultCode, rawResult }))
 
+/** What an approved payment keeps of the terminal's answer. */
+const toCardPaymentResult = (
+  approved: z.output<typeof SwitchioTransactionResultSchema>,
+  transactionResult: string | null
+): SwitchioCardPaymentResult => ({
+  responseCode: optionalString(approved.responseCode),
+  authCode: optionalString(approved.authCode),
+  sequenceNumber: optionalString(approved.sequenceNumber),
+  maskedPan: optionalString(approved.pan),
+  cardLabel:
+    optionalString(approved.appLabel) ?? optionalString(approved.brand),
+  terminalId: optionalString(approved.terminalIdAcquirer),
+  terminalDateTime: optionalString(approved.dateTimeTerminal),
+  refundId: readRawRefundId(transactionResult),
+})
+
 /**
  * Turns one intent result into a domain Result.
  *
@@ -203,17 +245,7 @@ export const interpretSwitchioPaymentResult = ({
   readonly resultCode: number
   readonly transactionResult: string | null
 }): Result<SwitchioCardPaymentResult, SwitchioPaymentError> => {
-  const parsed = ((): z.output<
-    typeof SwitchioTransactionResultSchema
-  > | null => {
-    if (transactionResult === null || transactionResult === "") return null
-
-    const result = z.safeDecode(
-      SwitchioTransactionResultJson,
-      transactionResult
-    )
-    return result.success ? result.data : null
-  })()
+  const parsed = parseTransactionResult(transactionResult)
 
   const outcome = classifySwitchioOutcome(resultCode, parsed)
   if (outcome.type === "unreadable") {
@@ -229,18 +261,7 @@ export const interpretSwitchioPaymentResult = ({
     )
   }
 
-  const approved = outcome.parsed
-  return ok({
-    responseCode: optionalString(approved.responseCode),
-    authCode: optionalString(approved.authCode),
-    sequenceNumber: optionalString(approved.sequenceNumber),
-    maskedPan: optionalString(approved.pan),
-    cardLabel:
-      optionalString(approved.appLabel) ?? optionalString(approved.brand),
-    terminalId: optionalString(approved.terminalIdAcquirer),
-    terminalDateTime: optionalString(approved.dateTimeTerminal),
-    refundId: readRawRefundId(transactionResult),
-  })
+  return ok(toCardPaymentResult(outcome.parsed, transactionResult))
 }
 
 export interface SwitchioTerminalDep {
@@ -252,6 +273,63 @@ export interface SwitchioTerminalDep {
       readonly currencyCode: number
       readonly invoiceNumber?: string
     }) => Promise<Result<SwitchioCardPaymentResult, SwitchioPaymentError>>
+  }
+}
+
+/**
+ * What the terminal says about a payment whose own result was lost or
+ * unreadable (`get_transaction`, ECR 5.12), asked by its request id.
+ *
+ * Only an approval is an answer (payment/0019). The terminal answers
+ * `FAILED`, "Transaction not found", for a reversal it had just approved
+ * (refund/0007), and whether it says the same of a payment it never started
+ * is not yet verified on a terminal, so nothing else it says can be read as
+ * "not charged": it is `unknown`, which changes nothing.
+ */
+export type SwitchioPaymentLookup =
+  | { readonly type: "approved"; readonly result: SwitchioCardPaymentResult }
+  | { readonly type: "unknown" }
+
+/**
+ * Reads a `get_transaction` answer about a payment. Only an approval of the
+ * transaction asked for counts: an answer naming another `transactionId` is
+ * `unknown`, so the terminal's last transaction can never pass for this
+ * one, and so is one that says it is a reversal, whatever it took back.
+ */
+export const interpretSwitchioPaymentLookup = ({
+  transactionId,
+  resultCode,
+  transactionResult,
+}: {
+  readonly transactionId: string
+  readonly resultCode: number
+  readonly transactionResult: string | null
+}): SwitchioPaymentLookup => {
+  const parsed = parseTransactionResult(transactionResult)
+  if (
+    resultCode !== switchioResultCode.success ||
+    parsed === null ||
+    parsed.transactionId !== transactionId ||
+    parsed.reversal === true ||
+    optionalString(parsed.responseCode) !== "OK"
+  ) {
+    return { type: "unknown" }
+  }
+  return {
+    type: "approved",
+    result: toCardPaymentResult(parsed, transactionResult),
+  }
+}
+
+/**
+ * Asks the SwitchioPay terminal of this device about a card payment whose
+ * result was lost or unreadable. Kept apart from {@link SwitchioTerminalDep},
+ * so that an app which only takes payments (web's Capacitor bridge) need not
+ * implement it.
+ */
+export interface SwitchioPaymentLookupDep {
+  readonly switchioPaymentLookup: {
+    readonly lookup: (transactionId: string) => Promise<SwitchioPaymentLookup>
   }
 }
 
@@ -333,6 +411,7 @@ export type SwitchioClosureFailedError = ReturnType<
  */
 export type SwitchioClosureError =
   | SwitchioUnavailableError
+  | SwitchioLaunchRefusedError
   | SwitchioClosureFailedError
   | SwitchioResultUnreadableError
 
@@ -474,6 +553,7 @@ export type SwitchioRefundNotStartedError = ReturnType<
  */
 export type SwitchioRefundError =
   | SwitchioUnavailableError
+  | SwitchioLaunchRefusedError
   | SwitchioRefundFailedError
   | SwitchioRefundNotStartedError
   | SwitchioResultUnreadableError
@@ -485,14 +565,6 @@ export interface SwitchioCardRefundResult {
   readonly sequenceNumber: string | null
   readonly maskedPan: string | null
   readonly terminalDateTime: string | null
-}
-
-const parseRefundResult = (
-  transactionResult: string | null
-): z.output<typeof SwitchioTransactionResultSchema> | null => {
-  if (transactionResult === null || transactionResult === "") return null
-  const result = z.safeDecode(SwitchioTransactionResultJson, transactionResult)
-  return result.success ? result.data : null
 }
 
 const toCardRefundResult = (
@@ -518,7 +590,7 @@ export const interpretSwitchioRefundResult = ({
   readonly resultCode: number
   readonly transactionResult: string | null
 }): Result<SwitchioCardRefundResult, SwitchioRefundError> => {
-  const parsed = parseRefundResult(transactionResult)
+  const parsed = parseTransactionResult(transactionResult)
 
   if (
     resultCode === switchioResultCode.terminalBusy ||
@@ -555,7 +627,7 @@ export const interpretSwitchioReversalResult = (answer: {
   const result = interpretSwitchioRefundResult(answer)
   if (
     result.ok &&
-    parseRefundResult(answer.transactionResult)?.reversal === false
+    parseTransactionResult(answer.transactionResult)?.reversal === false
   ) {
     return err(
       createSwitchioResultUnreadableError({
@@ -599,7 +671,7 @@ export const interpretSwitchioTransactionLookup = ({
   readonly resultCode: number
   readonly transactionResult: string | null
 }): SwitchioTransactionLookup => {
-  const parsed = parseRefundResult(transactionResult)
+  const parsed = parseTransactionResult(transactionResult)
   if (
     resultCode !== switchioResultCode.success ||
     parsed === null ||

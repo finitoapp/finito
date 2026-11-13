@@ -25,6 +25,7 @@ const restoredRefundErrorKeys = {
   CardSwitchioRefundDeclined: "refund.switchio.failed",
   CardSwitchioReversalDeclined: "refund.switchio.reversalDeclined.title",
   SwitchioRefundNotStarted: "refund.switchio.error.notStarted",
+  SwitchioLaunchRefused: "refund.switchio.error.notStarted",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
   CardSwitchioRefundAttemptNotFound: "refund.switchio.restored.unusable",
 } satisfies Record<

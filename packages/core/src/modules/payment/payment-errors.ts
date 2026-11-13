@@ -287,6 +287,27 @@ export type SwitchioRestoredResultUnmatchedError = ReturnType<
   typeof createSwitchioRestoredResultUnmatchedError
 >
 
+/**
+ * The card attempt whose outcome is unknown went to another device's
+ * SwitchioPay: only that terminal saw it, so only that device can ask it
+ * (payment/0019).
+ */
+export const createSwitchioAttemptOtherDeviceError = defineError(
+  "SwitchioAttemptOtherDevice"
+)<{
+  readonly id: PaymentId
+  readonly transactionId: NonEmptyString255
+}>()
+export type SwitchioAttemptOtherDeviceError = ReturnType<
+  typeof createSwitchioAttemptOtherDeviceError
+>
+
+export type ResolveSwitchioCardPaymentError =
+  | SwitchioAttemptOtherDeviceError
+  | PaymentNotFoundError
+  | CardSwitchioAccountNotFoundError
+  | AccountCurrencyMismatchError
+
 export type PayPaymentWithSwitchioCardError =
   | PaymentNotFoundError
   | PaymentNotPayableError

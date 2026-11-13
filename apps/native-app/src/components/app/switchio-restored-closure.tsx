@@ -16,6 +16,7 @@ import { useLoadSwitchioResultOwner } from "./use-switchio-result-owner.ts"
 
 const restoredClosureErrorKeys = {
   SwitchioClosureFailed: "settings.cardClosure.error.failed",
+  SwitchioLaunchRefused: "settings.cardClosure.error.busy",
   SwitchioUnavailable: "settings.cardClosure.restored.unresolved",
   SwitchioResultUnreadable: "settings.cardClosure.restored.unresolved",
   CardSwitchioClosureAccountNotFound:

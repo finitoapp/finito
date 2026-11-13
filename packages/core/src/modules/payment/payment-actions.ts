@@ -17,6 +17,7 @@ import {
   type SwitchioCardPaymentResult,
   type SwitchioNativePayResult,
   type SwitchioPaymentError,
+  type SwitchioPaymentLookupDep,
   type SwitchioTerminalDep,
 } from "../../switchio.ts"
 import {
@@ -103,6 +104,7 @@ import {
   createPaymentNotClaimedError,
   createPaymentNotFoundError,
   createPaymentNotOverpaidError,
+  createSwitchioAttemptOtherDeviceError,
   createSwitchioAttemptUnresolvedError,
   createSwitchioRestoredResultUnmatchedError,
   type MarkPaymentPaidCashError,
@@ -115,6 +117,7 @@ import {
   type PaymentNotOverpaidError,
   type PayPaymentWithBoltCardError,
   type PayPaymentWithSwitchioCardError,
+  type ResolveSwitchioCardPaymentError,
   type SettleRestoredSwitchioCardPaymentError,
 } from "./payment-errors.ts"
 import {
@@ -809,18 +812,21 @@ export const markPaymentPaidIban =
     )
   }
 
+type RecordSwitchioApprovalError =
+  | PaymentNotFoundError
+  | CardSwitchioAccountNotFoundError
+  | AccountCurrencyMismatchError
+
 /**
  * Records what the SwitchioPay terminal answered for one attempt — shared by
  * `payPaymentWithSwitchioCard` and `settleRestoredSwitchioCardPayment`, since
  * a result that only arrives after Android restarted the app means exactly
  * the same thing.
  *
- * On success this mirrors `markPaymentPaidCash`: one account transaction
- * keyed on payment + account (so a repeated result settles once, not twice)
- * and one reconciliation claim, which is what makes `derivePaymentStatus`
- * report the payment as paid. A definite failure clears the attempt's
- * `unresolvedTransactionId`; an unreadable result leaves it set, because the
- * card may have been charged. See docs/bill-payment-states.md.
+ * A definite failure clears the attempt's `unresolvedTransactionId`; an
+ * unreadable result leaves it set, because the card may have been charged.
+ * An approval is recorded by {@link recordSwitchioApproval}. See
+ * docs/bill-payment-states.md.
  */
 const recordSwitchioTerminalOutcome =
   ({
@@ -840,10 +846,7 @@ const recordSwitchioTerminalOutcome =
     >
   }): Task<
     PaymentId,
-    | PaymentNotFoundError
-    | CardSwitchioAccountNotFoundError
-    | AccountCurrencyMismatchError
-    | SwitchioPaymentError,
+    RecordSwitchioApprovalError | SwitchioPaymentError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
@@ -876,6 +879,49 @@ const recordSwitchioTerminalOutcome =
       return terminalResult
     }
 
+    return await run(
+      recordSwitchioApproval({
+        paymentId,
+        accountId,
+        deviceId,
+        transactionId,
+        result: terminalResult.value,
+      })
+    )
+  }
+
+/**
+ * Records a payment the SwitchioPay terminal approved, however the approval
+ * reached this device: the launch's promise, a result restored after Android
+ * restarted the app, or the terminal's answer when asked about the attempt
+ * (payment/0019). All mean the same, so all are recorded alike.
+ *
+ * This mirrors `markPaymentPaidCash`: one account transaction keyed on
+ * payment + account (so a repeated result settles once, not twice) and one
+ * reconciliation claim, which is what makes `derivePaymentStatus` report the
+ * payment as paid.
+ */
+const recordSwitchioApproval =
+  ({
+    paymentId,
+    accountId,
+    deviceId,
+    transactionId,
+    result,
+  }: {
+    readonly paymentId: PaymentId
+    readonly accountId: AccountId
+    readonly deviceId?: DeviceId | null
+    readonly transactionId: NonEmptyString255
+    readonly result: SwitchioCardPaymentResult
+  }): Task<
+    PaymentId,
+    RecordSwitchioApprovalError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const { evoluOwner } = run.deps
+
     // Transaction and claim land in one batch through `markPaymentPaid`, and
     // before the terminal's trace fields on purpose: the claim is what makes
     // the payment read as paid, so if the app dies mid-way the worst outcome
@@ -900,7 +946,6 @@ const recordSwitchioTerminalOutcome =
     )
     if (!settleResult.ok) return settleResult
 
-    const result = terminalResult.value
     const [cardRow] = await run.deps.evolu.loadQuery(
       paymentCardSwitchioByIdQuery(paymentId)
     )
@@ -946,9 +991,17 @@ const recordSwitchioTerminalOutcome =
  * both as `transactionId` and as `unresolvedTransactionId`: Android may kill
  * this WebView while the terminal app is in the foreground, and with the id
  * stored the result can still be matched (`settleRestoredSwitchioCardPayment`)
- * or, failing that, checked against the terminal's own records. While the
- * previous attempt is unresolved, another one needs `retryUnresolved` — the
- * caller's confirmation that staff has checked SwitchioPay.
+ * or, failing that, asked of the terminal (`resolveSwitchioCardPayment`,
+ * payment/0019) by the device written with it, the one whose SwitchioPay the
+ * attempt went to. While the previous attempt is unresolved, another one
+ * needs `retryUnresolved` — the caller's confirmation that staff has checked
+ * SwitchioPay.
+ *
+ * A launch SwitchioPay refused (`SwitchioLaunchRefused`, payment/0020:
+ * another launch is waiting on it, or a result nobody settled yet is stored)
+ * never reached the terminal, so it is not an unknown outcome: the row is
+ * put back as it was before this attempt, the previous attempt's marker and
+ * request id included, which a stored result of that attempt is matched by.
  */
 export const payPaymentWithSwitchioCard =
   ({
@@ -993,7 +1046,8 @@ export const payPaymentWithSwitchioCard =
       run.deps.evolu.loadQuery(paymentNumberByPaymentIdQuery(paymentId)),
     ])
 
-    const unresolvedTransactionId = cardRows[0]?.unresolvedTransactionId
+    const previous = cardRows[0]
+    const unresolvedTransactionId = previous?.unresolvedTransactionId
     if (
       unresolvedTransactionId !== null &&
       unresolvedTransactionId !== undefined &&
@@ -1020,6 +1074,7 @@ export const payPaymentWithSwitchioCard =
           accountId,
           transactionId,
           unresolvedTransactionId: transactionId,
+          deviceId: deviceId ?? null,
         },
         { ...options, owner: evoluOwner }
       )
@@ -1041,6 +1096,37 @@ export const payPaymentWithSwitchioCard =
             : createVariableSymbolFromSerialNumber(paymentNumber.serialNumber),
       })
     )
+
+    if (
+      !terminalResult.ok &&
+      terminalResult.error.type === "SwitchioLaunchRefused"
+    ) {
+      run.deps.console.warn("[payment] SwitchioPay refused the launch", {
+        paymentId,
+        transactionId,
+      })
+      // Only while the row still holds this attempt: a result of the
+      // previous one settled meanwhile has written the row itself.
+      const [cardRow] = await run.deps.evolu.loadQuery(
+        paymentCardSwitchioByIdQuery(paymentId)
+      )
+      if (cardRow?.unresolvedTransactionId === transactionId) {
+        await runMutationWithCompletion((options) =>
+          run.deps.evolu.update(
+            "paymentCardSwitchio",
+            {
+              id: paymentId,
+              transactionId: previous?.transactionId ?? null,
+              unresolvedTransactionId:
+                previous?.unresolvedTransactionId ?? null,
+              deviceId: previous?.deviceId ?? null,
+            },
+            { ...options, owner: evoluOwner }
+          )
+        )
+      }
+      return terminalResult
+    }
 
     return run(
       recordSwitchioTerminalOutcome({
@@ -1151,6 +1237,77 @@ export const settleRestoredSwitchioCardPayment =
         terminalResult: interpretSwitchioPaymentResult(restored),
       })
     )
+  }
+
+/** Where a card payment stands after its terminal was asked about it. */
+export type SwitchioCardPaymentResolution =
+  /** The terminal approved the attempt, and the payment is recorded as paid. */
+  | { readonly status: "paid" }
+  /** The terminal said nothing that settles it: the outcome stays unknown. */
+  | { readonly status: "unresolved" }
+  /** The payment has no attempt whose outcome is unknown. */
+  | { readonly status: "idle" }
+
+/**
+ * Asks the SwitchioPay terminal of this device what became of a card
+ * payment's attempt whose result was lost or unreadable (`get_transaction`,
+ * payment/0019), and records it as paid when the terminal says it was
+ * approved — exactly as the approval itself would have been, so asking
+ * again, or a restored result arriving too, records it once.
+ *
+ * Nothing else the terminal says is read as "not charged": the attempt stays
+ * unknown and another one still needs staff's confirmation. Only the device
+ * the attempt went to is asked, since no other terminal saw it; an attempt
+ * written before the device was kept with it is asked anywhere, which at
+ * worst learns nothing.
+ */
+export const resolveSwitchioCardPayment =
+  ({
+    paymentId,
+    deviceId,
+  }: {
+    readonly paymentId: PaymentId
+    /** This device: the one whose SwitchioPay will answer. */
+    readonly deviceId: DeviceId
+  }): Task<
+    SwitchioCardPaymentResolution,
+    ResolveSwitchioCardPaymentError,
+    EvoluDep & EvoluOwnerDep & DateDep & SwitchioPaymentLookupDep
+  > =>
+  async (run) => {
+    const [cardRow] = await run.deps.evolu.loadQuery(
+      paymentCardSwitchioByIdQuery(paymentId)
+    )
+    const transactionId = cardRow?.unresolvedTransactionId ?? null
+    if (cardRow === undefined || transactionId === null) {
+      return ok({ status: "idle" })
+    }
+    if (cardRow.deviceId !== null && cardRow.deviceId !== deviceId) {
+      return err(
+        createSwitchioAttemptOtherDeviceError({ id: paymentId, transactionId })
+      )
+    }
+
+    const answer = await run.deps.switchioPaymentLookup.lookup(transactionId)
+    if (answer.type !== "approved") {
+      run.deps.console.info("[payment] SwitchioPay did not settle an attempt", {
+        paymentId,
+        transactionId,
+      })
+      return ok({ status: "unresolved" })
+    }
+
+    const recorded = await run(
+      recordSwitchioApproval({
+        paymentId,
+        accountId: cardRow.accountId,
+        deviceId,
+        transactionId,
+        result: answer.result,
+      })
+    )
+    if (!recorded.ok) return recorded
+    return ok({ status: "paid" })
   }
 
 export const cancelPayment =

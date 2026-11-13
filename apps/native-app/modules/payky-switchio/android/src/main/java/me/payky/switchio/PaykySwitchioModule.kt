@@ -25,8 +25,19 @@ private const val URI_PATH_GET_TRANSACTION = "api/light/v8/get_transaction"
  */
 private const val LOOKUP_REQUEST_CODE = 53704
 
-/** Matched by `src/platform/switchio.ts`: the one rejection known to happen before anything could be charged. */
+/** Matched by `src/platform/switchio.ts`: SwitchioPay is missing, so nothing could be charged. */
 private const val NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
+
+/**
+ * Matched by `src/platform/switchio.ts`: a launch refused before anything
+ * left for the terminal (payment/0020), because a launch of the same kind is
+ * still waiting on SwitchioPay — a second one would take its promise — or a
+ * result nobody has settled yet is stored, which the launch would overwrite.
+ * Never an unknown outcome: nothing was charged, closed or refunded.
+ */
+private const val LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
+
+private fun launchRefused(message: String) = CodedException(LAUNCH_REFUSED_CODE, message, null)
 
 private fun dataIntent(path: String, data: String): Intent {
   val uri = Uri.Builder()
@@ -68,7 +79,12 @@ private fun closureIntent(): Intent {
  * the card (ECR 5.17); both resolve like `pay` and share their own request
  * code, promise and [SwitchioRefundStore].
  * `lookupTransaction` asks the terminal about one of its transactions
- * (`get_transaction`, ECR 5.12) and resolves like `close`; it stores nothing.
+ * (`get_transaction`, ECR 5.12) — a refund's or a payment's — and resolves
+ * like `close`; it stores nothing.
+ *
+ * Each kind refuses a launch while another of its kind waits on SwitchioPay
+ * or while its store holds a result nobody has settled yet, rejecting with
+ * [LAUNCH_REFUSED_CODE] before anything leaves for the terminal.
  */
 class PaykySwitchioModule : Module() {
   private var pendingPromise: Promise? = null
@@ -81,6 +97,11 @@ class PaykySwitchioModule : Module() {
 
   /** Launches a reversal or a referral refund, its id stored before the terminal can act. */
   private fun launchRefund(intent: Intent, transactionId: String, accountId: String, promise: Promise) {
+    // A lookup is answered on the refund's behalf, so it holds the refund's launches too.
+    if (pendingRefundPromise != null || pendingLookupPromise != null || SwitchioRefundStore.peek(context) != null) {
+      promise.reject(launchRefused("A refund is waiting on SwitchioPay or its result is not settled yet"))
+      return
+    }
     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
     SwitchioRefundStore.begin(context, transactionId, accountId)
     pendingRefundPromise = promise
@@ -112,15 +133,19 @@ class PaykySwitchioModule : Module() {
       // Recommended by the ECR docs to keep SwitchioPay from opening a second instance of itself.
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
-      // Durable before the terminal can take the card.
-      SwitchioResultStore.begin(context, transactionId, accountId)
-      pendingPromise = promise
-      try {
-        appContext.throwingActivity.startActivityForResult(intent, SwitchioResultStore.REQUEST_CODE)
-      } catch (exception: ActivityNotFoundException) {
-        pendingPromise = null
-        SwitchioResultStore.clearAttempt(context)
-        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+      if (pendingPromise != null || SwitchioResultStore.peek(context) != null) {
+        promise.reject(launchRefused("A card payment is waiting on SwitchioPay or its result is not settled yet"))
+      } else {
+        // Durable before the terminal can take the card.
+        SwitchioResultStore.begin(context, transactionId, accountId)
+        pendingPromise = promise
+        try {
+          appContext.throwingActivity.startActivityForResult(intent, SwitchioResultStore.REQUEST_CODE)
+        } catch (exception: ActivityNotFoundException) {
+          pendingPromise = null
+          SwitchioResultStore.clearAttempt(context)
+          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+        }
       }
     }
 
@@ -128,14 +153,22 @@ class PaykySwitchioModule : Module() {
       val intent = closureIntent()
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
-      SwitchioClosureStore.begin(context, closureId, accountId)
-      pendingClosurePromise = promise
-      try {
-        appContext.throwingActivity.startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)
-      } catch (exception: ActivityNotFoundException) {
-        pendingClosurePromise = null
-        SwitchioClosureStore.clear(context)
-        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+      if (
+        pendingClosurePromise != null ||
+        SwitchioClosureStore.peek(context) != null ||
+        SwitchioClosureStore.peekUnanswered(context) != null
+      ) {
+        promise.reject(launchRefused("A closure is waiting on SwitchioPay or its result is not settled yet"))
+      } else {
+        SwitchioClosureStore.begin(context, closureId, accountId)
+        pendingClosurePromise = promise
+        try {
+          appContext.throwingActivity.startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)
+        } catch (exception: ActivityNotFoundException) {
+          pendingClosurePromise = null
+          SwitchioClosureStore.clear(context)
+          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+        }
       }
     }
 
@@ -171,12 +204,16 @@ class PaykySwitchioModule : Module() {
       val intent = dataIntent(URI_PATH_GET_TRANSACTION, data.toString())
       intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
 
-      pendingLookupPromise = promise
-      try {
-        appContext.throwingActivity.startActivityForResult(intent, LOOKUP_REQUEST_CODE)
-      } catch (exception: ActivityNotFoundException) {
-        pendingLookupPromise = null
-        promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+      if (pendingLookupPromise != null) {
+        promise.reject(launchRefused("Another lookup is waiting on SwitchioPay"))
+      } else {
+        pendingLookupPromise = promise
+        try {
+          appContext.throwingActivity.startActivityForResult(intent, LOOKUP_REQUEST_CODE)
+        } catch (exception: ActivityNotFoundException) {
+          pendingLookupPromise = null
+          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+        }
       }
     }
 

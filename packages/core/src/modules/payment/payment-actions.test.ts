@@ -1,5 +1,6 @@
 import {
   createIdFromString,
+  err,
   ok,
   sqliteTrue,
   testCreateRun,
@@ -14,7 +15,10 @@ import {
 import type { SparkWalletDep } from "../../spark/spark-wallet.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
 import {
+  createSwitchioLaunchRefusedError,
   interpretSwitchioPaymentResult,
+  type SwitchioPaymentLookup,
+  type SwitchioPaymentLookupDep,
   type SwitchioTerminalDep,
 } from "../../switchio.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
@@ -89,6 +93,7 @@ import {
   markPaymentPaidIban,
   payPaymentWithBoltCard,
   payPaymentWithSwitchioCard,
+  resolveSwitchioCardPayment,
   settleRestoredSwitchioCardPayment,
   updatePayment,
 } from "./payment-actions.ts"
@@ -3759,11 +3764,15 @@ describe("payment actions", () => {
     })
 
     const setUp = async (
-      pay: SwitchioTerminalDep["switchioTerminal"]["pay"]
+      pay: SwitchioTerminalDep["switchioTerminal"]["pay"],
+      lookup: (
+        transactionId: string
+      ) => Promise<SwitchioPaymentLookup> = async () => ({ type: "unknown" })
     ) => {
       const testEvolu = await createEvoluTest()
       const { evolu } = testEvolu
       const requests: Array<{ readonly transactionId: string }> = []
+      const lookups: Array<string> = []
       const dateDep = createTestDateDep()
       const deps = {
         ...evoluTestDeps(evolu),
@@ -3774,7 +3783,17 @@ describe("payment actions", () => {
             return pay(request)
           },
         },
-      } satisfies EvoluDep & EvoluOwnerDep & DateDep & SwitchioTerminalDep
+        switchioPaymentLookup: {
+          lookup: async (transactionId) => {
+            lookups.push(transactionId)
+            return lookup(transactionId)
+          },
+        },
+      } satisfies EvoluDep &
+        EvoluOwnerDep &
+        DateDep &
+        SwitchioTerminalDep &
+        SwitchioPaymentLookupDep
       const run = testCreateRun(deps)
       await run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
       const accountId = createCardSwitchioAccountId("CZK")
@@ -3794,6 +3813,7 @@ describe("payment actions", () => {
         evolu,
         run,
         requests,
+        lookups,
         accountId,
         paymentId,
         advanceClock: dateDep.advance,
@@ -4014,6 +4034,232 @@ describe("payment actions", () => {
         authCode: "998877",
       })
     }, 15_000)
+
+    /** What the terminal answers when its result comes back without data. */
+    const unreadable = async () =>
+      interpretSwitchioPaymentResult({ resultCode: 0, transactionResult: null })
+
+    test("writes the device an attempt goes to before the terminal is launched", async () => {
+      const deviceId = createRowId<"Device">()
+      const seen: Array<unknown> = []
+      await using ctx = await setUp(async () => {
+        seen.push(
+          (
+            await ctx.evolu.loadQuery(
+              paymentCardSwitchioByPaymentIdQuery(ctx.paymentId)
+            )
+          )[0]?.deviceId
+        )
+        return unreadable()
+      })
+
+      await ctx.run(
+        payPaymentWithSwitchioCard({
+          paymentId: ctx.paymentId,
+          accountId: ctx.accountId,
+          deviceId,
+        })
+      )
+
+      expect(seen).toEqual([deviceId])
+    }, 15_000)
+
+    describe("asking the terminal about an unknown result (payment/0019)", () => {
+      const lookedUp = {
+        responseCode: "OK",
+        authCode: "998877",
+        sequenceNumber: "001001614",
+        maskedPan: "476173******0010",
+        cardLabel: "VISA",
+        terminalId: "M1TNEXGO01",
+        terminalDateTime: null,
+        refundId: "123456789012345678",
+      }
+
+      test("records an approval the terminal reports as the approval itself would be, once", async () => {
+        const deviceId = createRowId<"Device">()
+        await using ctx = await setUp(unreadable, async () => ({
+          type: "approved",
+          result: lookedUp,
+        }))
+        const { evolu, run, requests, lookups, accountId, paymentId } = ctx
+        await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId, deviceId })
+        )
+
+        await expect(
+          run(resolveSwitchioCardPayment({ paymentId, deviceId }))
+        ).resolves.toEqual({ ok: true, value: { status: "paid" } })
+
+        expect(lookups).toEqual([requests[0]?.transactionId])
+        await expect(
+          evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
+        ).resolves.toMatchObject([{ source: "auto", deviceId }])
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row).toMatchObject({
+          transactionId: requests[0]?.transactionId,
+          unresolvedTransactionId: null,
+          authCode: "998877",
+          maskedPan: "476173******0010",
+          cardLabel: "VISA",
+          refundId: "123456789012345678",
+          deviceId,
+          approvedAt: testFixedDate.getTime(),
+        })
+
+        // Asked again, or the same approval restored too: still one payment.
+        await expect(
+          run(resolveSwitchioCardPayment({ paymentId, deviceId }))
+        ).resolves.toEqual({ ok: true, value: { status: "idle" } })
+        await run.orThrow(
+          settleRestoredSwitchioCardPayment({
+            restored: {
+              resultCode: -1,
+              transactionId: requests[0]?.transactionId ?? null,
+              transactionResult: JSON.stringify({
+                transactionId: requests[0]?.transactionId,
+                responseCode: "OK",
+              }),
+            },
+            deviceId,
+          })
+        )
+        await expect(
+          evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
+        ).resolves.toHaveLength(1)
+        await expect(
+          evolu.loadQuery(accountTransactionsByPaymentIdQuery(paymentId))
+        ).resolves.toHaveLength(1)
+      }, 15_000)
+
+      test("keeps the outcome unknown, and the retry confirmation, on anything but an approval", async () => {
+        const deviceId = createRowId<"Device">()
+        await using ctx = await setUp(unreadable)
+        const { evolu, run, requests, lookups, accountId, paymentId } = ctx
+        await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId, deviceId })
+        )
+
+        await expect(
+          run(resolveSwitchioCardPayment({ paymentId, deviceId }))
+        ).resolves.toEqual({ ok: true, value: { status: "unresolved" } })
+
+        expect(lookups).toHaveLength(1)
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row?.unresolvedTransactionId).toBe(requests[0]?.transactionId)
+        await expect(
+          evolu.loadQuery(reconciliationClaimsByPaymentIdQuery(paymentId))
+        ).resolves.toEqual([])
+        const again = await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId, deviceId })
+        )
+        expect(!again.ok && again.error.type).toBe("SwitchioAttemptUnresolved")
+      }, 15_000)
+
+      test("is not asked from a device the attempt never went to", async () => {
+        await using ctx = await setUp(unreadable, async () => ({
+          type: "approved",
+          result: lookedUp,
+        }))
+        const { run, lookups, accountId, paymentId } = ctx
+        await run(
+          payPaymentWithSwitchioCard({
+            paymentId,
+            accountId,
+            deviceId: createRowId<"Device">(),
+          })
+        )
+
+        const result = await run(
+          resolveSwitchioCardPayment({
+            paymentId,
+            deviceId: createRowId<"Device">(),
+          })
+        )
+
+        expect(!result.ok && result.error.type).toBe(
+          "SwitchioAttemptOtherDevice"
+        )
+        expect(lookups).toEqual([])
+      }, 15_000)
+    })
+
+    describe("a launch SwitchioPay refused (payment/0020)", () => {
+      test("leaves no unknown outcome behind, so the next attempt needs no confirmation", async () => {
+        const results = [err(createSwitchioLaunchRefusedError()), approved]
+        await using ctx = await setUp(async () => {
+          const next = results.shift()
+          if (next === undefined) throw new Error("Unexpected terminal call.")
+          return next
+        })
+        const { evolu, run, accountId, paymentId } = ctx
+
+        const refused = await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId })
+        )
+
+        expect(!refused.ok && refused.error.type).toBe("SwitchioLaunchRefused")
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row).toMatchObject({
+          transactionId: null,
+          unresolvedTransactionId: null,
+        })
+        await expect(
+          run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        ).resolves.toEqual({ ok: true, value: paymentId })
+      }, 15_000)
+
+      test("puts back the earlier attempt whose outcome is unknown, so its stored result still finds it", async () => {
+        const results = [
+          await unreadable(),
+          err(createSwitchioLaunchRefusedError()),
+        ]
+        await using ctx = await setUp(async () => {
+          const next = results.shift()
+          if (next === undefined) throw new Error("Unexpected terminal call.")
+          return next
+        })
+        const { evolu, run, requests, accountId, paymentId, advanceClock } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        const first = requests[0]?.transactionId ?? null
+
+        advanceClock(1_000)
+        const refused = await run(
+          payPaymentWithSwitchioCard({
+            paymentId,
+            accountId,
+            retryUnresolved: true,
+          })
+        )
+
+        expect(!refused.ok && refused.error.type).toBe("SwitchioLaunchRefused")
+        expect(requests[1]?.transactionId).not.toBe(first)
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row).toMatchObject({
+          transactionId: first,
+          unresolvedTransactionId: first,
+        })
+        await expect(
+          run(
+            settleRestoredSwitchioCardPayment({
+              restored: {
+                resultCode: -1,
+                transactionId: first,
+                transactionResult: JSON.stringify({ responseCode: "OK" }),
+              },
+            })
+          )
+        ).resolves.toEqual({ ok: true, value: paymentId })
+      }, 15_000)
+    })
 
     test("refuses a restored result for an unknown request id", async () => {
       await using ctx = await setUp(async () => approved)

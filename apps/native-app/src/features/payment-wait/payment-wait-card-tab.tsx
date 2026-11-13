@@ -1,5 +1,6 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import CreditCard from "lucide-react-native/icons/credit-card"
+import RotateCw from "lucide-react-native/icons/rotate-cw"
 import { Text, YStack } from "tamagui"
 import { Button } from "../../components/ui/button.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -8,6 +9,9 @@ import { fontSize, fontWeight } from "../../theme/tokens.ts"
 /**
  * The card tab, as web's `CardPaymentTab`: one 56-high button with a card
  * icon that opens the terminal; the page says what to do above the cancel.
+ * While the last attempt's outcome is unknown, the device it went to can ask
+ * SwitchioPay about it (payment/0019), as a refund's attempt can be asked
+ * about in `payment-refunds.tsx`; web has no such lookup.
  */
 export function CardPaymentTab({
   canPayCard,
@@ -16,6 +20,8 @@ export function CardPaymentTab({
   hasAccount,
   unresolvedTransactionId,
   onPayCard,
+  asking,
+  onAskTerminal,
 }: {
   readonly canPayCard: boolean
   readonly pending: boolean
@@ -24,6 +30,10 @@ export function CardPaymentTab({
   /** Set while the last attempt's outcome is unknown. */
   readonly unresolvedTransactionId: string | null
   readonly onPayCard: () => void
+  /** Whether SwitchioPay is being asked about the unknown attempt. */
+  readonly asking: boolean
+  /** Asks SwitchioPay about the unknown attempt; null where it cannot. */
+  readonly onAskTerminal: (() => void) | null
 }) {
   const { t } = useTranslation()
 
@@ -44,19 +54,31 @@ export function CardPaymentTab({
         onPress={onPayCard}
       />
       {unresolvedTransactionId !== null ? (
-        <Text
-          maxW={288}
-          fontSize={fontSize.sm}
-          lineHeight={fontSize.sm}
-          fontWeight={fontWeight.medium}
-          color="destructive"
-          text="center"
-          role="alert"
-        >
-          {t("paymentWait.cardPaid.unresolved", {
-            transactionId: unresolvedTransactionId,
-          })}
-        </Text>
+        <>
+          <Text
+            maxW={288}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.medium}
+            color="destructive"
+            text="center"
+            role="alert"
+          >
+            {t("paymentWait.cardPaid.unresolved", {
+              transactionId: unresolvedTransactionId,
+            })}
+          </Text>
+          {onAskTerminal === null ? null : (
+            <Button
+              variant="outline"
+              iconStart={RotateCw}
+              pending={asking}
+              disabled={pending}
+              label={t("paymentWait.cardPaid.check")}
+              onPress={onAskTerminal}
+            />
+          )}
+        </>
       ) : errorKey !== null ? (
         <Text
           fontSize={fontSize.sm}

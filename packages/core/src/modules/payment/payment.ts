@@ -104,7 +104,11 @@ export const paymentBtcSpark = {
  * phone whose SwitchioPay charged the card — not `payment.deviceId`, the
  * device that created the payment, since a pending payment can be paid on
  * any device — and when that phone recorded the approval, by the same clock
- * that stamps its `cardSwitchioClosure.closedAt`.
+ * that stamps its `cardSwitchioClosure.closedAt`. `deviceId` is written
+ * with each attempt too, before the terminal is launched, so the device an
+ * attempt with an unknown outcome went to can ask its terminal about it
+ * (payment/0019); until an approval it names that device, not one that
+ * charged anything.
  */
 export const paymentCardSwitchio = {
   id: PaymentId,

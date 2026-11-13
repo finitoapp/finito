@@ -32,6 +32,7 @@ import {
   markPaymentPaidCash,
   markPaymentPaidIban,
   payPaymentWithSwitchioCard,
+  resolveSwitchioCardPayment,
 } from "@payky/core/modules/payment/payment-actions"
 import { isCashPayable } from "@payky/core/modules/payment/payment-cash-utils"
 import type { PayPaymentWithSwitchioCardError } from "@payky/core/modules/payment/payment-errors"
@@ -207,6 +208,8 @@ const cardPaymentErrorKeys = {
   AccountCurrencyMismatch: "paymentWait.cardPaid.error.generic",
   SwitchioAttemptUnresolved: "paymentWait.cardPaid.error.unreadable",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
+  // Nothing left for the terminal (payment/0020): simply try again.
+  SwitchioLaunchRefused: "paymentWait.cardPaid.error.busy",
   SwitchioPaymentFailed: "paymentWait.cardPaid.error.declined",
   SwitchioResultUnreadable: "paymentWait.cardPaid.error.unreadable",
 } satisfies Record<PayPaymentWithSwitchioCardError["type"], TranslationKey>
@@ -273,6 +276,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [newQuotePending, setNewQuotePending] = useState(false)
   const [cardPending, setCardPending] = useState(false)
   const [cardErrorKey, setCardErrorKey] = useState<TranslationKey | null>(null)
+  const [cardAsking, setCardAsking] = useState(false)
   const [selected, setSelected] = useState<MethodId | null>(null)
   // The profile name is the recipient the bank QR names (payment/0005). It
   // comes from relays, so the QR shows at once and takes the name when it
@@ -710,10 +714,57 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
           nativeConsole.error("Failed to take the card payment", result.error)
           setCardErrorKey(cardPaymentErrorKey(result.error))
         }
+        // The outcome is unknown: ask the terminal right away, which settles
+        // the payment if it approved the card (payment/0019).
+        if (!result.ok && result.error.type === "SwitchioResultUnreadable") {
+          const asked = await run(
+            resolveSwitchioCardPayment({ paymentId, deviceId })
+          )
+          if (!asked.ok) {
+            nativeConsole.warn("Could not ask SwitchioPay", asked.error)
+          } else if (asked.value.status === "paid") {
+            setCardErrorKey(null)
+          }
+        }
         return undefined
       })
     } finally {
       setCardPending(false)
+      busyRef.current = false
+    }
+  }
+
+  // Only the device the unknown attempt went to can ask its terminal; an
+  // attempt kept without its device is asked anywhere (payment/0019).
+  const cardDeviceId = payment.cardDeviceId ?? null
+  const canAskCardTerminal =
+    cardUnresolvedTransactionId !== null &&
+    (cardDeviceId === null || cardDeviceId === deviceId)
+
+  const askCardTerminal = async () => {
+    if (!canAskCardTerminal || busyRef.current) return
+    busyRef.current = true
+    setCardAsking(true)
+    try {
+      await runToast(async (run) => {
+        const result = await run(
+          resolveSwitchioCardPayment({ paymentId, deviceId })
+        )
+        if (!result.ok) {
+          nativeConsole.warn("Could not ask SwitchioPay", result.error)
+          return result.error.type === "SwitchioAttemptOtherDevice"
+            ? "paymentWait.cardPaid.check.otherDevice"
+            : "paymentWait.cardPaid.error.generic"
+        }
+        // Nothing the terminal said settles it: staff still checks
+        // SwitchioPay before charging again.
+        if (result.value.status === "unresolved") {
+          return "paymentWait.cardPaid.check.unresolved"
+        }
+        return undefined
+      })
+    } finally {
+      setCardAsking(false)
       busyRef.current = false
     }
   }
@@ -1049,6 +1100,10 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
               hasAccount={cardAccountId !== null && cardAccountId !== undefined}
               unresolvedTransactionId={cardUnresolvedTransactionId}
               onPayCard={() => void payCard()}
+              asking={cardAsking}
+              onAskTerminal={
+                canAskCardTerminal ? () => void askCardTerminal() : null
+              }
             />
           ) : (
             <YStack w="100%" items="center" gap={12} py={16}>

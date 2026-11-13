@@ -208,6 +208,15 @@ export const enPayment = {
   "paymentWait.cancelError": "Could not cancel the payment.",
   "paymentWait.canceled": "This payment was canceled.",
   "paymentWait.cardPaid.action": "Pay with payment card",
+  "paymentWait.cardPaid.check": "Ask SwitchioPay",
+  "paymentWait.cardPaid.check.paid":
+    "SwitchioPay confirmed a card payment whose result was unknown.",
+  "paymentWait.cardPaid.check.unresolved":
+    "SwitchioPay did not confirm the payment. Check the transaction in SwitchioPay before trying again.",
+  "paymentWait.cardPaid.check.otherDevice":
+    "Only the device that started this payment can ask its SwitchioPay.",
+  "paymentWait.cardPaid.error.busy":
+    "SwitchioPay is busy. Nothing was charged; try again in a moment.",
   "paymentWait.cardPaid.error.declined":
     "Payment by payment card did not go through.",
   "paymentWait.cardPaid.error.generic":
