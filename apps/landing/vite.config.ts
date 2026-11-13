@@ -1,8 +1,10 @@
 import path from "node:path"
+import { createEnv } from "@t3-oss/env-core"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import type { PluginOption } from "vite"
+import { loadEnv, type PluginOption } from "vite"
 import { defineConfig } from "vitest/config"
+import { z } from "zod"
 
 /**
  * The landing page is its own document, prerendered once per language by
@@ -12,16 +14,21 @@ import { defineConfig } from "vitest/config"
  * the preview server serves the prerendered file for the address's
  * language, Czech at `/landing`, or at the root as Finito's (landing/0013).
  */
-function landingPagesPlugin(): PluginOption {
-  const landingPath =
-    /^(?:\/landing)?(?:\/([a-z]{2}))?(?:\/(eet-2-0|jak-to-funguje|privacy))?\/?(?:\?.*)?$/u
+function landingPagesPlugin(brand: LandingBrand): PluginOption {
   // The EET page (landing/0006), the page on how the app works (landing/0008)
-  // and the privacy policy (landing/0014) have a file of their own per language.
+  // and the privacy policy (landing/0014) have a file of their own per
+  // language, and on Finito's landing the card terminal documentation
+  // (landing/0015), which Payky's does not serve.
   const documentFiles: Record<string, string> = {
     "eet-2-0": "-eet",
     "jak-to-funguje": "-tech",
     privacy: "-privacy",
+    ...(brand === "finito" ? { terminal: "-terminal" } : {}),
   }
+  const landingPath = new RegExp(
+    `^(?:/landing)?(?:/([a-z]{2}))?(?:/(${Object.keys(documentFiles).join("|")}))?/?(?:\\?.*)?$`,
+    "u"
+  )
   return {
     name: "payky-landing-pages",
     configureServer(server) {
@@ -89,7 +96,22 @@ function landingSiteFilesPlugin(): PluginOption {
   }
 }
 
-export default defineConfig({
+/**
+ * The brand the config serves, as `src/core/app-env.ts` reads it for the
+ * pages (landing/0013), so the dev and preview servers know its documents.
+ */
+const loadBuildEnv = (mode: string) =>
+  createEnv({
+    server: {
+      PAYKY_LANDING_BRAND: z.enum(["payky", "finito"]).default("payky"),
+    },
+    runtimeEnv: loadEnv(mode, import.meta.dirname, "PAYKY_LANDING_"),
+    emptyStringAsUndefined: true,
+  })
+
+type LandingBrand = ReturnType<typeof loadBuildEnv>["PAYKY_LANDING_BRAND"]
+
+export default defineConfig(({ mode }) => ({
   // On finito.fit too, whose pages sit at the root (landing/0013): the assets
   // stay under /landing, which vercel.json maps to the build's root.
   base: "/landing/",
@@ -99,7 +121,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     landingSiteFilesPlugin(),
-    landingPagesPlugin(),
+    landingPagesPlugin(loadBuildEnv(mode).PAYKY_LANDING_BRAND),
   ],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   // Its ESM build imports its hooks without file extensions, which Node's
@@ -118,4 +140,4 @@ export default defineConfig({
     root: import.meta.dirname,
     setupFiles: ["../../packages/core/src/testing/setup.ts"],
   },
-})
+}))

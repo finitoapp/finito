@@ -97,7 +97,14 @@ types `Finito dev`.
 
 `finito-landing` and `finito-landing-edge` build `apps/landing` with
 `PAYKY_LANDING_BRAND=finito` (landing/0013): the same pages as Payky's, at
-the root of `finito.fit`, naming Finito. `VITE_PAYKY_API_BASE_URL` names the
+the root of `finito.fit`, naming Finito, plus the card terminal
+documentation Comgate certifies Finito by, which Payky's landing does not
+have (landing/0015). After a deployment, verify `/`, `/en`, `/eet-2-0`,
+`/jak-to-funguje`, `/privacy` and `/terminal` with their `/en` and `/sk`
+variants. The terminal page's screenshots come from
+`apps/native-app/docs/terminal/<language>/`; a missing one fails
+`landing-terminal-shots.test.ts`, so regenerate the set with the card flow,
+its design or its copy. `VITE_PAYKY_API_BASE_URL` names the
 app they send visitors to and whose `/api/contact` the form calls:
 `https://app.finito.fit`, resp. `https://edge.app.finito.fit`. The prerender
 writes the site's `sitemap.xml` and `robots.txt`; `apps/landing/vercel.json`

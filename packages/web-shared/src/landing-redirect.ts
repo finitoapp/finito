@@ -12,7 +12,8 @@ const installLanguageStorageKey = "payky.installLanguage"
 /**
  * The addresses of the landing documents, one per language: the home page
  * (landing/0002), the EET 2.0 page (landing/0006), the page on how the app
- * works (landing/0008) and the privacy policy (landing/0014), Czech at the
+ * works (landing/0008), the privacy policy (landing/0014) and, on Finito's
+ * landing only, the card terminal documentation (landing/0015), Czech at the
  * bare path.
  */
 export interface LandingSitePaths {
@@ -20,14 +21,19 @@ export interface LandingSitePaths {
   readonly eet: Readonly<Record<Language, string>>
   readonly tech: Readonly<Record<Language, string>>
   readonly privacy: Readonly<Record<Language, string>>
+  /** A landing without the document has no addresses for it. */
+  readonly terminal?: Readonly<Record<Language, string>>
 }
 
 /**
  * The documents under `base`: `/landing` on payky.me, which the web app
- * proxies there, the domain's root on finito.fit (landing/0013).
+ * proxies there, the domain's root on finito.fit (landing/0013). `terminal`
+ * adds the card terminal documentation, which only Finito's landing has
+ * (landing/0015).
  */
 export const createLandingSitePaths = (
-  base: "/landing" | ""
+  base: "/landing" | "",
+  { terminal = false }: { readonly terminal?: boolean } = {}
 ): LandingSitePaths => ({
   home: { cs: base === "" ? "/" : base, en: `${base}/en`, sk: `${base}/sk` },
   eet: {
@@ -45,6 +51,15 @@ export const createLandingSitePaths = (
     en: `${base}/en/privacy`,
     sk: `${base}/sk/privacy`,
   },
+  ...(terminal
+    ? {
+        terminal: {
+          cs: `${base}/terminal`,
+          en: `${base}/en/terminal`,
+          sk: `${base}/sk/terminal`,
+        },
+      }
+    : {}),
 })
 
 /** Payky's landing, where the web app sends a visitor (landing/0001). */
@@ -178,6 +193,7 @@ export function landingLanguageFromPath(
     ...Object.entries(site.eet),
     ...Object.entries(site.tech),
     ...Object.entries(site.privacy),
+    ...Object.entries(site.terminal ?? {}),
   ].find(([, path]) => path === normalized)
   return LandingLanguageSchema.catch("cs").parse(match?.[0])
 }
@@ -202,3 +218,14 @@ export const isLandingPrivacyPath = (
   site: LandingSitePaths
 ): boolean =>
   Object.values<string>(site.privacy).includes(normalizeLandingPath(pathname))
+
+/**
+ * Whether `pathname` is the card terminal documentation in one of its
+ * languages, which a landing without it never is (landing/0015).
+ */
+export const isLandingTerminalPath = (
+  pathname: string,
+  site: LandingSitePaths
+): boolean =>
+  site.terminal !== undefined &&
+  Object.values<string>(site.terminal).includes(normalizeLandingPath(pathname))

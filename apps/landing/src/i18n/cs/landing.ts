@@ -274,6 +274,7 @@ export const csLanding = {
   "landing.footer.privacy": "Ochrana soukromí",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "Čím se lišíme",
+  "landing.footer.terminal": "Karetní terminál",
   "landing.footer.website": "{siteHost}",
   "landing.hero.subtitle":
     "Vás ani vaše zákazníky. {appName} promění telefon v platební terminál: zákazník naskenuje kód a zaplatí převodem rovnou na váš účet. Bez poplatků, bez smlouvy a bez dalšího zařízení.",

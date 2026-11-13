@@ -1,9 +1,11 @@
 /**
- * Writes every landing document prerendered in every language, and the
- * sitemap and robots.txt of the brand's site (landing/0002, landing/0013,
- * landing/0006, landing/0008) from
- * the client build's `dist/landing.html` and the server bundle
- * `vite build --ssr src/landing-server.tsx` leaves in `dist-ssr`. The
+ * Writes every landing document of the brand prerendered in every language,
+ * and the sitemap and robots.txt of the brand's site (landing/0002,
+ * landing/0013, landing/0006, landing/0008) from the client build's
+ * `dist/landing.html` and the server bundle
+ * `vite build --ssr src/landing-server.tsx` leaves in `dist-ssr`.
+ * `landingDocuments` leaves out a document the brand has no addresses for,
+ * as Payky's has no card terminal documentation (landing/0015). The
  * template itself is removed, so only the filled pages are served.
  */
 import { readFileSync, rmSync, writeFileSync } from "node:fs"

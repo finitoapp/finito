@@ -8,9 +8,9 @@ vi.mock("@/core/app-env.ts", () => ({
   },
 }))
 
-const { renderLandingDocument, renderRobots, renderSitemap } = await import(
-  "@/landing-server.tsx"
-)
+const { landingDocuments, renderLandingDocument, renderRobots, renderSitemap } =
+  await import("@/landing-server.tsx")
+const { landingResources } = await import("@/core/landing-site.ts")
 
 const template = `<!doctype html><html lang="cs"><head><!--landing-head--></head><body><div id="root"><!--landing-app--></div></body></html>`
 
@@ -32,7 +32,13 @@ describe("Finito's landing", () => {
   })
 
   test("names Finito and none of Payky's hosts", () => {
-    for (const document of ["home", "eet", "tech", "privacy"] as const) {
+    for (const document of [
+      "home",
+      "eet",
+      "tech",
+      "privacy",
+      "terminal",
+    ] as const) {
       for (const language of ["cs", "en", "sk"] as const) {
         const html = renderLandingDocument(template, language, document)
         expect(html).toContain("Finito")
@@ -52,6 +58,55 @@ describe("Finito's landing", () => {
     expect(html).toContain("Finito Privacy Policy")
     expect(html).toContain("1. DATA COLLECTION")
     expect(html).toContain('href="https://finito.fit/en#contact"')
+  })
+
+  // The documentation Comgate certifies Finito by, Finito's alone
+  // (landing/0015).
+  test("serves its card terminal documentation at finito.fit/terminal", () => {
+    expect(landingDocuments).toContain("terminal")
+    const html = renderLandingDocument(template, "cs", "terminal")
+    const body = html.split("<body>")[1]
+    const data: unknown = JSON.parse(
+      html.match(
+        /<script type="application\/ld\+json">(.*?)<\/script>/su
+      )?.[1] ?? "null"
+    )
+
+    expect(html).toContain(
+      '<link rel="canonical" href="https://finito.fit/terminal"/>'
+    )
+    expect(html).toContain(
+      '<link rel="alternate" hrefLang="sk" href="https://finito.fit/sk/terminal"/>'
+    )
+    expect(html).toContain(
+      `<title>${landingResources.cs["landing.terminal.meta.title"]}</title>`
+    )
+    expect(data).toEqual([
+      expect.objectContaining({
+        "@type": "FAQPage",
+        mainEntity: expect.arrayContaining([
+          expect.objectContaining({
+            name: landingResources.cs[
+              "landing.terminal.faq.cardNumber.question"
+            ],
+          }),
+        ]),
+      }),
+    ])
+    expect(body).toContain(
+      landingResources.cs["landing.terminal.faq.cardNumber.answer"]
+    )
+    // The app's own labels, as the screenshots show them.
+    expect(body).toContain(landingResources.cs["paymentWait.cardPaid.action"])
+    expect(renderSitemap()).toContain(
+      "<loc>https://finito.fit/en/terminal</loc>"
+    )
+    for (const document of landingDocuments) {
+      const footer = renderLandingDocument(template, "en", document)
+        .split("<body>")[1]
+        ?.split("<footer")[1]
+      expect(footer).toContain('href="/en/terminal"')
+    }
   })
 
   test("sends visitors to the app on app.finito.fit", () => {

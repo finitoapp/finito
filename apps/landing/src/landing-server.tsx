@@ -1,3 +1,4 @@
+import type { LandingSitePaths } from "@payky/web-shared/landing-redirect"
 import type { ReactNode } from "react"
 import { renderToStaticMarkup, renderToString } from "react-dom/server"
 import { landingFontPreloads } from "@/core/landing-font-preloads.ts"
@@ -21,6 +22,10 @@ import {
   LandingTechPage,
   techFaqItems,
 } from "@/features/landing/landing-tech-page.tsx"
+import {
+  LandingTerminalPage,
+  terminalFaqItems,
+} from "@/features/landing/landing-terminal-page.tsx"
 import type { Language, TranslationKey } from "@/i18n/resources.ts"
 
 const { siteUrl } = landingSite
@@ -37,16 +42,27 @@ export const landingLanguages = Object.keys(
 
 /**
  * The prerendered landing documents: the home page, the EET 2.0 page, the
- * page on how the app works and the privacy policy.
+ * page on how the app works, the privacy policy and the card terminal
+ * documentation, which only Finito's landing has (landing/0015).
  */
-export type LandingDocument = "home" | "eet" | "tech" | "privacy"
-
-export const landingDocuments: ReadonlyArray<LandingDocument> = [
+const allLandingDocuments = [
   "home",
   "eet",
   "tech",
   "privacy",
-]
+  "terminal",
+] as const satisfies ReadonlyArray<keyof LandingSitePaths>
+
+export type LandingDocument = (typeof allLandingDocuments)[number]
+
+/** The documents a brand's site has addresses for. */
+export const siteDocuments = (
+  paths: LandingSitePaths
+): ReadonlyArray<LandingDocument> =>
+  allLandingDocuments.filter((document) => paths[document] !== undefined)
+
+/** The documents this build prerenders. */
+export const landingDocuments = siteDocuments(landingSite.paths)
 
 /** The file each document is written to, which `vercel.json` serves. */
 export const landingFileName = (
@@ -57,10 +73,15 @@ export const landingFileName = (
     ? `landing-${language}.html`
     : `landing-${document}-${language}.html`
 
-const documentPaths = landingSite.paths satisfies Record<
-  LandingDocument,
-  Readonly<Record<Language, string>>
->
+const documentPaths = (
+  document: LandingDocument
+): Readonly<Record<Language, string>> => {
+  const paths = landingSite.paths[document]
+  if (paths === undefined) {
+    throw new Error(`This landing has no ${document} document.`)
+  }
+  return paths
+}
 
 const documentMeta = {
   home: {
@@ -79,13 +100,17 @@ const documentMeta = {
     title: "landing.privacy.meta.title",
     description: "landing.privacy.meta.description",
   },
+  terminal: {
+    title: "landing.terminal.meta.title",
+    description: "landing.terminal.meta.description",
+  },
 } satisfies Record<
   LandingDocument,
   { readonly title: TranslationKey; readonly description: TranslationKey }
 >
 
 const pageUrl = (document: LandingDocument, language: Language) =>
-  `${siteUrl}${documentPaths[document][language]}`
+  `${siteUrl}${documentPaths(document)[language]}`
 
 const ogLocales = {
   cs: "cs_CZ",
@@ -120,8 +145,8 @@ const faqStructuredData = (
 /**
  * Structured data for search results: who makes the app, the app with its
  * price and downloads, and the page's FAQ, whose answers the page shows too.
- * The EET page and the page on how the app works describe only their own FAQ;
- * the privacy policy has none.
+ * The EET page, the page on how the app works and the card terminal
+ * documentation describe only their own FAQ; the privacy policy has none.
  */
 const structuredData = {
   home: (language) => {
@@ -155,6 +180,7 @@ const structuredData = {
   eet: (language) => [faqStructuredData(language, eetFaqItems)],
   tech: (language) => [faqStructuredData(language, techFaqItems)],
   privacy: () => [],
+  terminal: (language) => [faqStructuredData(language, terminalFaqItems)],
 } satisfies Record<
   LandingDocument,
   (language: Language) => ReadonlyArray<object>
@@ -251,6 +277,7 @@ const documentPages = {
   eet: LandingEetPage,
   tech: LandingTechPage,
   privacy: LandingPrivacyPage,
+  terminal: LandingTerminalPage,
 } satisfies Record<
   LandingDocument,
   (props: { readonly language: Language }) => ReactNode
@@ -258,8 +285,9 @@ const documentPages = {
 
 /**
  * Fills the built `landing.html` with `document` in `language` (landing/0002,
- * landing/0006, landing/0008, landing/0014): `bin/prerender-landing.ts` writes one file per document and
- * language from it.
+ * landing/0006, landing/0008, landing/0014, landing/0015):
+ * `scripts/prerender-landing.ts` writes one file per document of the brand
+ * and language from it.
  */
 export function renderLandingDocument(
   template: string,
