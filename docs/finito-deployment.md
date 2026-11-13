@@ -102,14 +102,43 @@ documentation Comgate certifies Finito by, which Payky's landing does not
 have (landing/0015). After a deployment, verify `/`, `/en`, `/eet-2-0`,
 `/jak-to-funguje`, `/privacy` and `/terminal` with their `/en` and `/sk`
 variants. The terminal page's screenshots come from
-`apps/native-app/docs/terminal/<language>/`; a missing one fails
-`landing-terminal-shots.test.ts`, so regenerate the set with the card flow,
-its design or its copy. `VITE_PAYKY_API_BASE_URL` names the
+`apps/native-app/docs/terminal/<language>/` (see below); a missing one fails
+`landing-terminal-shots.test.ts`. `VITE_PAYKY_API_BASE_URL` names the
 app they send visitors to and whose `/api/contact` the form calls:
 `https://app.finito.fit`, resp. `https://edge.app.finito.fit`. The prerender
 writes the site's `sitemap.xml` and `robots.txt`; `apps/landing/vercel.json`
 forwards `/.well-known/lnurlp/donate` to the matching app, which answers
 `donate@finito.fit`.
+
+## The card terminal screenshots
+
+The terminal page shows the app's own screens, captured from Finito's web
+export at the NEXGO N92's 720×1600 display and committed as WebP in
+`apps/native-app/docs/terminal/<cs|en|sk>/<shot>.webp`, under the names of
+`packages/doc-mockups/src/terminal-shots.ts`:
+
+```sh
+bun run docs:screenshots:terminal                            # every scenario, en/cs/sk
+PAYKY_SCREENSHOT_SCENARIOS=closure bun run docs:screenshots:terminal
+PAYKY_SCREENSHOT_LANGUAGES=en bun run docs:screenshots:terminal
+PAYKY_SCREENSHOT_SKIP_BUILD=1 bun run docs:screenshots:terminal  # the last export
+```
+
+It exports the app with `EXPO_PUBLIC_PAYKY_E2E=1` into
+`apps/native-app/.tmp/docs-web-e2e`, so the fake SwitchioPay
+(`src/e2e/e2e-switchio-presets.ts`) stands in for the terminal, and drives
+the scenarios of `scripts/screenshots/terminal-scenarios.ts` (`activation`,
+`payment`, `reversal`, `refund`, `reversal-declined`, `closure`, `edges`,
+`restored`, `canceled-but-paid`, `not-installed`, `demo`), each in a fresh
+app, onboarded on the keypad with card payments on, at the same moment
+(13 November 2026, 10:30 in Prague: Playwright's clock in the page, a pinned
+`Date` in Evolu's workers). The account, its device name and the payments'
+ids are new on every run, so a regenerated set still differs where they
+show. A failed scenario leaves
+its last screen in `apps/native-app/.tmp/docs-terminal/<language>/`.
+Regenerate the set when the card flow, the app's design or its copy changes:
+the test notices a missing screenshot, not a stale one. SwitchioPay's own
+screens cannot be captured; the page draws a placeholder for them.
 
 ## Outside Vercel
 

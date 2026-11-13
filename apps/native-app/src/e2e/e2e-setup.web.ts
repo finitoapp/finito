@@ -2,6 +2,9 @@ import { z } from "zod"
 import { nativeEnv } from "../core/native-env.ts"
 import {
   e2eSwitchioScenarios,
+  e2eSwitchioWaitingCount,
+  holdE2eSwitchio,
+  releaseE2eSwitchio,
   setE2eSwitchioScenario,
 } from "./e2e-switchio-presets.ts"
 
@@ -27,6 +30,9 @@ import {
  * (`null` turns it off), with no reload that would lose its state; an init
  * script's `window.__e2eSwitchioScenario = "approved"` switches it on at
  * every load, as the bridge's `fake?switchio=` cannot across a reload.
+ * `hold(true)` keeps every launch waiting as if SwitchioPay had the screen,
+ * `waiting()` counts the ones that wait, `release()` lets them answer and
+ * `hold(false)` stops holding.
  */
 const scroller = (): Element | undefined => {
   for (
@@ -84,6 +90,9 @@ if (nativeEnv.EXPO_PUBLIC_PAYKY_E2E) {
   switchioWindow.__e2eSwitchio = {
     setScenario: (scenario: unknown) =>
       setE2eSwitchioScenario(SwitchioScenario.parse(scenario)),
+    hold: (hold: unknown) => holdE2eSwitchio(z.boolean().parse(hold)),
+    release: releaseE2eSwitchio,
+    waiting: e2eSwitchioWaitingCount,
   }
   const initial = SwitchioScenario.optional().safeParse(
     switchioWindow.__e2eSwitchioScenario

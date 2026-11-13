@@ -17,7 +17,9 @@ import type { PaykySwitchioNativeModule } from "../platform/switchio.ts"
  * (so `get_transaction`, a reversal and a referral refund find them, and
  * `isReversed` is told), the open batch (a closure reports what was charged
  * and refunded since the last one), and a running sequence number. Every
- * value but the clock is fixed or counted, so screenshots stay the same.
+ * value but the clock is fixed or counted, so screenshots stay the same;
+ * the clock is the page's `Date`, which the screenshots pin with Playwright's
+ * `page.clock`.
  *
  * Chosen per scenario, each named after what the next launches do:
  *
@@ -46,6 +48,10 @@ import type { PaykySwitchioNativeModule } from "../platform/switchio.ts"
  *   coming back to the foreground);
  * - `not-installed`: SwitchioPay is missing (`isInstalled` false, every
  *   launch rejected with `SWITCHIO_NOT_INSTALLED`).
+ *
+ * A launch can also be held while SwitchioPay "has the screen"
+ * (`holdE2eSwitchio`), so the screenshots catch the app waiting for the
+ * terminal; it answers by the scenario current when it is let go.
  *
  * Inert unless `EXPO_PUBLIC_PAYKY_E2E`: the `fake` bridge action
  * (`switchio=<scenario>`, `off` to drop it) or, on web, Playwright's
@@ -162,9 +168,12 @@ interface PayRequest {
 export const createE2eSwitchioModule = ({
   scenario,
   now = () => new Date(),
+  gate = () => Promise.resolve(),
 }: {
   readonly scenario: () => E2eSwitchioScenario
   readonly now?: () => Date
+  /** Awaited by every launch before it reads the scenario and answers. */
+  readonly gate?: () => Promise<void>
 }): PaykySwitchioNativeModule => {
   const payments = createResultStore()
   const closures = createResultStore()
@@ -277,6 +286,7 @@ export const createE2eSwitchioModule = ({
    * answers before it does anything.
    */
   const launch = async <T>(answer: () => T, onBusy: () => T): Promise<T> => {
+    await gate()
     const current = scenario()
     if (current === "not-installed") {
       throw rejection(
@@ -572,6 +582,40 @@ let activeScenario: E2eSwitchioScenario = "approved"
 let activeModule: PaykySwitchioNativeModule | null = null
 const listeners = new Set<(module: PaykySwitchioNativeModule | null) => void>()
 
+/** Whether launches wait (`holdE2eSwitchio`), and the ones that do. */
+let held = false
+let waiting: ReadonlyArray<() => void> = []
+
+const gate = (): Promise<void> =>
+  held
+    ? new Promise((resolve) => {
+        waiting = [...waiting, resolve]
+      })
+    : Promise.resolve()
+
+/**
+ * Lets the launches waiting now answer, by the scenario current then; while
+ * the fake is held, the next launch waits again.
+ */
+export const releaseE2eSwitchio = (): void => {
+  const released = waiting
+  waiting = []
+  for (const resolve of released) resolve()
+}
+
+/**
+ * Holds every launch as if SwitchioPay had the screen, until
+ * `releaseE2eSwitchio` lets the waiting ones go, or until it is no longer
+ * held (`false`), which lets them all go.
+ */
+export const holdE2eSwitchio = (hold: boolean): void => {
+  held = hold
+  if (!hold) releaseE2eSwitchio()
+}
+
+/** How many launches wait on a held fake, for a flow to wait on. */
+export const e2eSwitchioWaitingCount = (): number => waiting.length
+
 /**
  * Switches the fake on with `scenario`, or off with `null` (forgetting its
  * transactions). A changed scenario keeps the terminal's state, so a flow can
@@ -587,6 +631,7 @@ export const setE2eSwitchioScenario = (
     activeScenario = scenario
     activeModule ??= createE2eSwitchioModule({
       scenario: () => activeScenario,
+      gate,
     })
   }
   for (const listener of listeners) listener(activeModule)

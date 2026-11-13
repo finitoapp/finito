@@ -14,6 +14,7 @@
     "ui-parity": "bun scripts/ui-parity.ts",
     "test:e2e": "bun e2e/scripts/run.ts",
     "docs:screenshots": "bun scripts/generate-doc-screenshots.ts",
+    "docs:screenshots:terminal": "bun scripts/generate-terminal-screenshots.ts",
     "google-play:assets": "bun scripts/generate-google-play-assets.ts"
   },
   "dependencies": {

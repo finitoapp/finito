@@ -36,6 +36,7 @@ export async function startFinitoWeb({
   webPort,
   mockPort,
   skipBuild,
+  e2e = false,
 }: {
   readonly appDir: string
   readonly webDir: string
@@ -43,11 +44,29 @@ export async function startFinitoWeb({
   readonly mockPort: number
   /** Reuses the export already in `webDir`. */
   readonly skipBuild: boolean
+  /**
+   * Builds with `EXPO_PUBLIC_PAYKY_E2E=1`, which the fake SwitchioPay needs
+   * (src/e2e/e2e-switchio-presets.ts), into a `webDir` of its own: an e2e
+   * build also changes how the page scrolls and types
+   * (src/e2e/e2e-setup.web.ts), so the marketing screenshots keep the plain
+   * export.
+   */
+  readonly e2e?: boolean
 }): Promise<FinitoWeb> {
   pointAtMocks("127.0.0.1", mockPort)
   if (!skipBuild) {
     await rm(webDir, { recursive: true, force: true })
-    await $`bun x expo export --platform web --output-dir ${webDir}`.cwd(appDir)
+    if (e2e) {
+      // Expo inlines EXPO_PUBLIC_* when it transforms a module: --clear
+      // keeps a cached plain transform out of the e2e build.
+      await $`bun x expo export --platform web --clear --output-dir ${webDir}`
+        .cwd(appDir)
+        .env({ ...process.env, EXPO_PUBLIC_PAYKY_E2E: "1" })
+    } else {
+      await $`bun x expo export --platform web --output-dir ${webDir}`.cwd(
+        appDir
+      )
+    }
   }
 
   const mocks = serveMocks(mockPort)
