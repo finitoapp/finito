@@ -826,6 +826,11 @@ export const enSettings = {
   "settings.privacy.aiAssistant.all.title": "Including my data",
   "settings.privacy.aiAssistant.all.description":
     "It also reads your bills and payments on this device and sends what it reads to the AI provider.",
+  "settings.profile.public.title": "Public profile",
+  "settings.profile.public.description":
+    "Your business's name and picture. They are published, so anyone can see them.",
+  "settings.profile.business.description":
+    "Your business's country, currency, and VAT status. They are not published.",
   "settings.profile.description":
     "Your Nostr profile, the same one Linky shows for this recovery phrase.",
   "settings.profile.loadFailed":

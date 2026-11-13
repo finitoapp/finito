@@ -11,6 +11,7 @@ import {
   type NostrProfile,
   profileFromMetadata,
   publishNostrProfile,
+  shortenNpub,
 } from "@payky/core/integrations/nostr/nostr-client"
 import { updateSettings } from "@payky/core/modules/app-settings/app-settings-actions"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
@@ -22,9 +23,10 @@ import Copy from "lucide-react-native/icons/copy"
 import ImageIcon from "lucide-react-native/icons/image"
 import Trash from "lucide-react-native/icons/trash"
 import { useState } from "react"
-import { Image, Text as NativeText } from "react-native"
-import { Text, useTheme, XStack, YStack } from "tamagui"
+import { Image } from "react-native"
+import { Text, XStack, YStack } from "tamagui"
 import { z } from "zod"
+import appIcon from "../../../../assets/app-icon.png"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -37,6 +39,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import { Field, FieldLabel } from "../../../components/ui/field.tsx"
 import {
   Select,
   SelectContent,
@@ -62,18 +65,19 @@ import { pickProfilePicture } from "../../../platform/pick-profile-picture"
 import { radius } from "../../../theme/tokens.ts"
 
 /**
- * Edits the name and picture of the account's Nostr profile, as web's
- * `ProfileSettingsPage`: republished with the account's key as soon as it is
- * saved. The editor opens only once the published profile is known, so a save
- * never overwrites fields it could not read. Between the name and the key
- * sit the business's country, currency and VAT status (web's legal-entity
- * screen), unlabelled, each written as soon as it is chosen.
+ * The business's profile in two cards, as what is public and what is not:
+ * - the public profile, web's `ProfileSettingsPage`: the name and picture of
+ *   the account's Nostr profile, republished with the account's key as soon
+ *   as they are saved, and the public key itself, shortened, with a copy
+ *   button. The editor opens only once the published profile is known, so a
+ *   save never overwrites fields it could not read.
+ * - the business, web's legal-entity screen: country, currency and VAT
+ *   status, kept in the app and written as soon as each is chosen.
  */
 export function ProfileSettingsPage() {
   const { t } = useTranslation()
   const identity = useNostrIdentity()
   const copy = useCopyToClipboard()
-  const theme = useTheme()
   const profile = useNostrProfile(identity.pubkey)
 
   return (
@@ -81,8 +85,10 @@ export function ProfileSettingsPage() {
       <FadeHeader title={t("settings.profile.title")} />
       <Card>
         <CardHeader>
-          <CardTitle>{t("settings.profile.title")}</CardTitle>
-          <CardDescription>{t("settings.profile.description")}</CardDescription>
+          <CardTitle>{t("settings.profile.public.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.profile.public.description")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <YStack gap="5">
@@ -105,26 +111,24 @@ export function ProfileSettingsPage() {
                 <Skeleton h={40} />
               </YStack>
             )}
-            <BusinessFields />
             <YStack gap="1.5">
               <Text fontSize="sm" lineHeight="sm" fontWeight="600">
                 {t("settings.profile.npub.label")}
               </Text>
-              {/* The key can be copied by hand as well as with the button. */}
+              {/* Shortened, as on the settings list: the whole key does not
+                  fit a phone's width and pushed the copy button off it. The
+                  button copies all of it. */}
               <XStack items="center" gap="1">
-                <NativeText
-                  selectable
-                  style={{
-                    flex: 1,
-                    fontSize: 12,
-                    lineHeight: 16,
-                    // Web's text-muted-foreground; RN Text has no theme color.
-                    color: theme["muted-foreground"]?.val,
-                    fontFamily: "monospace",
-                  }}
+                <Text
+                  flex={1}
+                  minW={0}
+                  numberOfLines={1}
+                  fontSize="xs"
+                  lineHeight="xs"
+                  color="muted-foreground"
                 >
-                  {identity.npub}
-                </NativeText>
+                  {shortenNpub(identity.npub)}
+                </Text>
                 <Button
                   size="icon-sm"
                   variant="ghost"
@@ -141,6 +145,17 @@ export function ProfileSettingsPage() {
               </XStack>
             </YStack>
           </YStack>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.legalEntity.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.profile.business.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BusinessFields />
         </CardContent>
       </Card>
     </Screen>
@@ -193,20 +208,14 @@ function ProfileEditor({
           {t("settings.profile.picture.label")}
         </Text>
         <XStack gap="3" alignItems="center">
-          <YStack
-            width={80}
-            height={80}
-            borderRadius={40}
-            overflow="hidden"
-            backgroundColor="card"
-          >
-            {picture.value !== null ? (
-              <Image
-                source={{ uri: picture.value }}
-                style={{ width: 80, height: 80 }}
-                accessibilityIgnoresInvertColors
-              />
-            ) : null}
+          <YStack width={80} height={80} borderRadius={40} overflow="hidden">
+            {/* Without a picture, the app's icon, as the settings list and the
+                rail show it, rather than an empty circle the card hides. */}
+            <Image
+              source={picture.value === null ? appIcon : { uri: picture.value }}
+              style={{ width: 80, height: 80 }}
+              accessibilityIgnoresInvertColors
+            />
           </YStack>
           <YStack gap="2" flex={1}>
             <Button
@@ -254,9 +263,9 @@ const settingsPageQueries = [legalEntityQuery, settingsQuery]
 
 /**
  * Country, accounting currency and VAT status, as web's
- * `LegalEntitySettingsPage`, without its labels: the country and the
- * currency read as their value ("Česko", "Kč"), the VAT status as one row
- * with a switch. Every choice is written at once.
+ * `LegalEntitySettingsPage`: the country and the currency under their
+ * labels, the VAT status as one row with a switch. Every choice is written
+ * at once.
  */
 function BusinessFields() {
   usePreloadEvoluQueries(settingsPageQueries)
@@ -294,59 +303,68 @@ function BusinessFields() {
 
   return (
     <YStack gap="3">
-      {/* Nothing is selected until a country is chosen: the row does not exist. */}
-      <Select
-        value={
-          country.value === undefined
-            ? null
-            : z.encode(countryCodec, country.value)
-        }
-        onValueChange={(value) => {
-          const parsed = z.safeDecode(countryCodec, value)
-          if (parsed.success) void country.choose(parsed.data)
-        }}
-        items={Object.fromEntries(
-          countryOptions.map((option) => [option, countryTitle(option)])
-        )}
-      >
-        <SelectTrigger
-          fullWidth
-          aria-label={t("settings.legalEntity.country.label")}
+      <Field>
+        <FieldLabel>{t("settings.legalEntity.country.label")}</FieldLabel>
+        {/* Nothing is selected until a country is chosen: the row does not exist. */}
+        <Select
+          value={
+            country.value === undefined
+              ? null
+              : z.encode(countryCodec, country.value)
+          }
+          onValueChange={(value) => {
+            const parsed = z.safeDecode(countryCodec, value)
+            if (parsed.success) void country.choose(parsed.data)
+          }}
+          items={Object.fromEntries(
+            countryOptions.map((option) => [option, countryTitle(option)])
+          )}
         >
-          <SelectValue
-            placeholder={t("settings.legalEntity.country.placeholder")}
-          />
-        </SelectTrigger>
-        <SelectContent title={t("settings.legalEntity.country.label")}>
-          {countryOptions.map((option) => (
-            <SelectItem key={option} value={option}>
-              {countryTitle(option)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {/* The currency reads as its sign ("Kč"); the sheet names it too. */}
-      <Select
-        value={currency.value}
-        onValueChange={(value) => void currency.choose(value)}
-        items={Object.fromEntries(
-          fiatCurrencyOptions.map((option) => [option.value, t(option.symbol)])
-        )}
-      >
-        <SelectTrigger
-          fullWidth
-          aria-label={t("settings.legalEntity.currency.label")}
+          <SelectTrigger
+            fullWidth
+            aria-label={t("settings.legalEntity.country.label")}
+          >
+            <SelectValue
+              placeholder={t("settings.legalEntity.country.placeholder")}
+            />
+          </SelectTrigger>
+          <SelectContent title={t("settings.legalEntity.country.label")}>
+            {countryOptions.map((option) => (
+              <SelectItem key={option} value={option}>
+                {countryTitle(option)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field>
+        <FieldLabel>{t("settings.legalEntity.currency.label")}</FieldLabel>
+        {/* The currency reads as its sign ("Kč"); the sheet names it too. */}
+        <Select
+          value={currency.value}
+          onValueChange={(value) => void currency.choose(value)}
+          items={Object.fromEntries(
+            fiatCurrencyOptions.map((option) => [
+              option.value,
+              t(option.symbol),
+            ])
+          )}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent title={t("settings.legalEntity.currency.label")}>
-          {fiatCurrencyOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {`${t(option.symbol)} · ${t(option.label)}`}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            fullWidth
+            aria-label={t("settings.legalEntity.currency.label")}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent title={t("settings.legalEntity.currency.label")}>
+            {fiatCurrencyOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {`${t(option.symbol)} · ${t(option.label)}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
       <SwitchRow
         label={t("settings.profile.vatPayer")}
         checked={vat.value}

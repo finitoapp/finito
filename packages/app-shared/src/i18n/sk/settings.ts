@@ -829,6 +829,11 @@ export const skSettings = {
   "settings.privacy.aiAssistant.all.title": "Vrátane mojich dát",
   "settings.privacy.aiAssistant.all.description":
     "Číta aj vaše účty a platby v tomto zariadení a to, čo prečíta, odosiela poskytovateľovi AI.",
+  "settings.profile.public.title": "Verejný profil",
+  "settings.profile.public.description":
+    "Meno a obrázok vášho podniku. Sú zverejnené, takže ich môže vidieť ktokoľvek.",
+  "settings.profile.business.description":
+    "Krajina, mena a platiteľstvo DPH vášho podniku. Nezverejňujú sa.",
   "settings.profile.description":
     "Váš Nostr profil, rovnaký, aký pre túto obnovovaciu frázu zobrazuje Linky.",
   "settings.profile.loadFailed":
