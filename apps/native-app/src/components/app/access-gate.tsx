@@ -22,6 +22,7 @@ import {
 import { markGateResolved } from "../../core/first-screen.ts"
 import { requiredPermission } from "../../core/route-access.ts"
 import { useAccess } from "../../core/use-access.ts"
+import { FadeHeader } from "../fade-header.tsx"
 import { Screen } from "../screen.tsx"
 import { AppLoader } from "./app-loader.tsx"
 import { PinScreen } from "./pin-screen.tsx"
@@ -75,6 +76,8 @@ function Gate({
       ) : null}
       {locked ? (
         <Screen>
+          {/* Home has nowhere to go back to (web's gate). */}
+          {pathname === "/" ? null : <FadeHeader />}
           <Suspense fallback={null}>
             <PinScreen
               key={`${access.accountId}:${pathname}`}
