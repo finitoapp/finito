@@ -10,6 +10,7 @@ import { describe, expect, test } from "vitest"
 import type { DateDep, EvoluOwnerDep, UuidDep } from "../../deps.ts"
 import { createQuery } from "../../evolu/schema.ts"
 import {
+  createSwitchioLaunchRefusedError,
   createSwitchioUnavailableError,
   interpretSwitchioRefundResult,
   type SwitchioCardPaymentResult,
@@ -333,6 +334,26 @@ describe("refund to the card through SwitchioPay", () => {
     const missing = await t.run(start)
     expect(!missing.ok && missing.error.type).toBe("SwitchioUnavailable")
     await expect(t.attempts()).resolves.toEqual([])
+  }, 15_000)
+
+  test("a refund SwitchioPay refused to launch leaves nothing behind and blocks nothing", async () => {
+    await using t = await setup({
+      answers: [err(createSwitchioLaunchRefusedError()), approvedRefund],
+    })
+    const start = startCardSwitchioRefund({
+      paymentId: t.paymentId,
+      deviceId: t.deviceId,
+      amount: NonNegativeInteger(5_000),
+    })
+
+    const refused = await t.run(start)
+    expect(!refused.ok && refused.error.type).toBe("SwitchioLaunchRefused")
+    await expect(t.attempts()).resolves.toEqual([])
+
+    await expect(t.run(start)).resolves.toEqual({
+      ok: true,
+      value: { status: "refunded" },
+    })
   }, 15_000)
 
   test("an unknown result blocks another refund until staff dismiss it", async () => {

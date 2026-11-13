@@ -40,6 +40,7 @@ vi.mock("expo", () => ({
 
 const {
   createSwitchioClosureDep,
+  createSwitchioPaymentLookupDep,
   createSwitchioRefundDep,
   createSwitchioTerminalDep,
   takeRestoredSwitchioClosureResult,
@@ -135,11 +136,7 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
 
     expect(second).toEqual({
       ok: false,
-      error: {
-        type: "SwitchioResultUnreadable",
-        resultCode: null,
-        rawResult: null,
-      },
+      error: { type: "SwitchioLaunchRefused" },
     })
     expect(native.close).toHaveBeenCalledTimes(1)
     launch.resolve(closureResult)
@@ -168,11 +165,7 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
 
     expect(second).toEqual({
       ok: false,
-      error: {
-        type: "SwitchioResultUnreadable",
-        resultCode: null,
-        rawResult: null,
-      },
+      error: { type: "SwitchioLaunchRefused" },
     })
     expect(native.pay).toHaveBeenCalledTimes(1)
     launch.resolve({
@@ -237,6 +230,151 @@ describe("a SwitchioPay result is settled by one path (payment/0008)", () => {
     await reversing
 
     expect(native.acknowledgeRefundResult).toHaveBeenCalledExactlyOnceWith("r1")
+  })
+})
+
+describe("a launch SwitchioPay refused (payment/0020)", () => {
+  const payment = {
+    transactionId: "t2",
+    amount: 100,
+    tipAmount: 0,
+    currencyCode: 203,
+  }
+
+  it("is refused, not unknown, while a payment result nobody settled is stored", async () => {
+    native.stored.payment = {
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+    }
+
+    const result = await createSwitchioTerminalDep({
+      demo: false,
+      accountId: "a1",
+    }).switchioTerminal.pay(payment)
+
+    expect(result).toEqual({
+      ok: false,
+      error: { type: "SwitchioLaunchRefused" },
+    })
+    expect(native.pay).not.toHaveBeenCalled()
+  })
+
+  it("reads the Kotlin module's refusal as refused for a payment, a closure and a refund", async () => {
+    const refusal = Object.assign(new Error("refused"), {
+      code: "SWITCHIO_LAUNCH_REFUSED",
+    })
+    native.pay.mockRejectedValueOnce(refusal)
+    native.close.mockRejectedValueOnce(refusal)
+    native.reversal.mockRejectedValueOnce(refusal)
+    const refused = { ok: false, error: { type: "SwitchioLaunchRefused" } }
+
+    await expect(
+      createSwitchioTerminalDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioTerminal.pay(payment)
+    ).resolves.toEqual(refused)
+    await expect(
+      createSwitchioClosureDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioClosure.close({ closureId: "c1" })
+    ).resolves.toEqual(refused)
+    await expect(
+      createSwitchioRefundDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioRefund.reverse({
+        transactionId: "r1",
+        originalTransactionId: "t1",
+      })
+    ).resolves.toEqual(refused)
+  })
+
+  it("still reads any other rejection as an unknown outcome", async () => {
+    native.pay.mockRejectedValueOnce(new Error("bridge dropped"))
+
+    await expect(
+      createSwitchioTerminalDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioTerminal.pay(payment)
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "SwitchioResultUnreadable" },
+    })
+  })
+})
+
+describe("asking SwitchioPay about a card payment (payment/0019)", () => {
+  const { switchioPaymentLookup } = createSwitchioPaymentLookupDep({
+    demo: false,
+  })
+
+  it("reads the terminal's approval of the payment asked for", async () => {
+    native.lookupTransaction.mockResolvedValueOnce({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        transactionId: "t1",
+        responseCode: "OK",
+        authCode: "998877",
+        pan: "476173******0010",
+      }),
+    })
+
+    await expect(switchioPaymentLookup.lookup("t1")).resolves.toMatchObject({
+      type: "approved",
+      result: { authCode: "998877", maskedPan: "476173******0010" },
+    })
+    expect(native.lookupTransaction).toHaveBeenCalledExactlyOnceWith("t1")
+  })
+
+  it("is unknown when the terminal does not find it or the module refuses", async () => {
+    native.lookupTransaction.mockResolvedValueOnce({
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        transactionId: "t1",
+        responseCode: "FAILED",
+        responseMessage: "Transaction not found",
+      }),
+    })
+    native.lookupTransaction.mockRejectedValueOnce(
+      Object.assign(new Error("refused"), { code: "SWITCHIO_LAUNCH_REFUSED" })
+    )
+
+    await expect(switchioPaymentLookup.lookup("t1")).resolves.toEqual({
+      type: "unknown",
+    })
+    await expect(switchioPaymentLookup.lookup("t1")).resolves.toEqual({
+      type: "unknown",
+    })
+  })
+
+  it("never interrupts a payment waiting on SwitchioPay", async () => {
+    const launch = returnedButUnresolved<unknown>()
+    native.pay.mockReturnValueOnce(launch.promise)
+    const paying = createSwitchioTerminalDep({
+      demo: false,
+      accountId: "a1",
+    }).switchioTerminal.pay({
+      transactionId: "t1",
+      amount: 100,
+      tipAmount: 0,
+      currencyCode: 203,
+    })
+
+    await expect(switchioPaymentLookup.lookup("t1")).resolves.toEqual({
+      type: "unknown",
+    })
+    expect(native.lookupTransaction).not.toHaveBeenCalled()
+
+    launch.resolve({
+      transactionId: "t1",
+      resultCode: 0,
+      transactionResult: null,
+    })
+    await paying
   })
 })
 

@@ -14,6 +14,7 @@ import { useTranslation } from "@/hooks/use-translation.ts"
 import { SWITCHIO_PLUGIN_NAME } from "@/platform/switchio.ts"
 
 const restoredErrorKeys = {
+  SwitchioLaunchRefused: "paymentWait.cardPaid.restored.unresolved",
   SwitchioPaymentFailed: "paymentWait.cardPaid.error.declined",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
   SwitchioResultUnreadable: "paymentWait.cardPaid.restored.unresolved",

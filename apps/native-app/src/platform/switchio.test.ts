@@ -26,6 +26,27 @@ it("uses the same not-installed rejection code on both sides", () => {
   expect(module).toContain(`NOT_INSTALLED_CODE = "${code}"`)
 })
 
+it("uses the same launch-refused rejection code on both sides", () => {
+  const code = /SWITCHIO_LAUNCH_REFUSED_CODE = "([^"]+)"/u.exec(js)?.[1]
+  expect(code).toBe("SWITCHIO_LAUNCH_REFUSED")
+  expect(module).toContain(`LAUNCH_REFUSED_CODE = "${code}"`)
+})
+
+it("refuses each launch before it stores or launches anything", () => {
+  const launches = [
+    ['AsyncFunction("pay")', "SwitchioResultStore.begin("],
+    ['AsyncFunction("close")', "SwitchioClosureStore.begin("],
+    ["private fun launchRefund(", "SwitchioRefundStore.begin("],
+    ['AsyncFunction("lookupTransaction")', "startActivityForResult("],
+  ] as const
+  for (const [start, begin] of launches) {
+    const launch = module.slice(module.indexOf(start))
+    const refusal = launch.indexOf("launchRefused(")
+    expect(refusal, start).toBeGreaterThan(-1)
+    expect(launch.indexOf(begin), start).toBeGreaterThan(refusal)
+  }
+})
+
 it("stores the attempt before the terminal is launched", () => {
   const pay = module.slice(module.indexOf('AsyncFunction("pay")'))
   const begin = pay.indexOf("SwitchioResultStore.begin(")

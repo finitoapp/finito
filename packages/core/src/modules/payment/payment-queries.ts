@@ -5,6 +5,7 @@ import {
 } from "@evolu/common"
 import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import type { DeviceId } from "../device/device-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { NonEmptyString, NonEmptyString255 } from "../shared/schema.ts"
 import type { PaymentId, QerkoPaymentAttemptId } from "./payment-types.ts"
@@ -219,7 +220,8 @@ export const paymentNonExpiringMethodsByIdQuery = (idValue: PaymentId) =>
 
 /**
  * The card-terminal row of a payment, read by `payPaymentWithSwitchioCard`
- * for the previous attempt's `unresolvedTransactionId`.
+ * for the previous attempt's `unresolvedTransactionId`, and by
+ * `resolveSwitchioCardPayment` for the device that attempt went to.
  */
 export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
   createQuery((db) =>
@@ -230,12 +232,32 @@ export const paymentCardSwitchioByIdQuery = (idValue: PaymentId) =>
         "accountId",
         "transactionId",
         "unresolvedTransactionId",
+        "deviceId",
         "approvedAt",
       ])
       .where("id", "=", idValue)
       .where("isDeleted", "is not", sqliteTrue)
       .where("accountId", "is not", null)
       .$narrowType<{ accountId: KyselyNotNull }>()
+  )
+
+/**
+ * The card payments whose last attempt went to this device's SwitchioPay and
+ * whose outcome is unknown: the ones this device asks its terminal about
+ * (payment/0019).
+ */
+export const unresolvedCardSwitchioPaymentsByDeviceIdQuery = (
+  deviceId: DeviceId
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("paymentCardSwitchio")
+      .select(["id", "unresolvedTransactionId"])
+      .where("deviceId", "=", deviceId)
+      .where("unresolvedTransactionId", "is not", null)
+      .where("isDeleted", "is not", sqliteTrue)
+      .where("accountId", "is not", null)
+      .$narrowType<{ unresolvedTransactionId: KyselyNotNull }>()
   )
 
 /**
@@ -1035,6 +1057,7 @@ export const paymentRequestQuery = (paymentId: PaymentId) =>
         "paymentCashRegister.accountId as cashRegisterAccountId",
         "paymentCardSwitchio.accountId as cardAccountId",
         "paymentCardSwitchio.unresolvedTransactionId as cardUnresolvedTransactionId",
+        "paymentCardSwitchio.deviceId as cardDeviceId",
         "paymentQerkoTerminal.accountId as qerkoAccountId",
         "paymentQerkoTerminal.pendingTransactionId as qerkoPendingTransactionId",
         "paymentQerkoTerminal.unresolvedTransactionId as qerkoUnresolvedTransactionId",

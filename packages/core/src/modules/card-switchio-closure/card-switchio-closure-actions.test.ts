@@ -6,6 +6,7 @@ import {
 } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 import {
+  createSwitchioLaunchRefusedError,
   createSwitchioResultUnreadableError,
   interpretSwitchioClosureResult,
   type SwitchioClosure,
@@ -152,6 +153,18 @@ describe("closeCardSwitchioBatch", () => {
 
     expect(!busy.ok && busy.error.type).toBe("SwitchioClosureFailed")
     expect(!unknown.ok && unknown.error.type).toBe("SwitchioResultUnreadable")
+    expect(await t.evolu.loadQuery(cardSwitchioClosuresQuery(30))).toEqual([])
+  })
+
+  test("reports a launch SwitchioPay refused as refused, not unknown, and writes nothing", async () => {
+    await using t = await setUp([err(createSwitchioLaunchRefusedError())])
+    await t.run.ok(saveCardSwitchioAccount({ enabled: true, currency: "CZK" }))
+
+    const refused = await t.run(
+      closeCardSwitchioBatch({ deviceId: thisDevice })
+    )
+
+    expect(!refused.ok && refused.error.type).toBe("SwitchioLaunchRefused")
     expect(await t.evolu.loadQuery(cardSwitchioClosuresQuery(30))).toEqual([])
   })
 

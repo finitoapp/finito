@@ -75,6 +75,7 @@ const closureErrorKeys = {
     "settings.cardClosure.error.accountMissing",
   SwitchioUnavailable: "settings.cardClosure.error.unavailable",
   SwitchioClosureFailed: "settings.cardClosure.error.failed",
+  SwitchioLaunchRefused: "settings.cardClosure.error.busy",
   SwitchioResultUnreadable: "settings.cardClosure.error.unknown",
 } satisfies Record<CloseCardSwitchioBatchError["type"], TranslationKey>
 

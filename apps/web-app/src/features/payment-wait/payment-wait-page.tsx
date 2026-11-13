@@ -125,6 +125,7 @@ const cardPaymentErrorKeys = {
   AccountCurrencyMismatch: "paymentWait.cardPaid.error.generic",
   SwitchioAttemptUnresolved: "paymentWait.cardPaid.error.unreadable",
   SwitchioUnavailable: "paymentWait.cardPaid.error.unavailable",
+  SwitchioLaunchRefused: "paymentWait.cardPaid.error.busy",
   SwitchioPaymentFailed: "paymentWait.cardPaid.error.declined",
   SwitchioResultUnreadable: "paymentWait.cardPaid.error.unreadable",
 } satisfies Record<PayPaymentWithSwitchioCardError["type"], TranslationKey>

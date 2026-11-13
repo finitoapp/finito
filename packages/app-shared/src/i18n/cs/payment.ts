@@ -206,6 +206,15 @@ export const csPayment = {
   "paymentWait.cancelError": "Platbu se nepodařilo zrušit.",
   "paymentWait.canceled": "Tato platba byla zrušena.",
   "paymentWait.cardPaid.action": "Zaplatit platební kartou",
+  "paymentWait.cardPaid.check": "Zeptat se SwitchioPay",
+  "paymentWait.cardPaid.check.paid":
+    "SwitchioPay potvrdil platbu kartou, jejíž výsledek nebyl známý.",
+  "paymentWait.cardPaid.check.unresolved":
+    "SwitchioPay platbu nepotvrdil. Než to zkusíte znovu, zkontrolujte transakci v SwitchioPay.",
+  "paymentWait.cardPaid.check.otherDevice":
+    "Zeptat se SwitchioPay může jen zařízení, které platbu spustilo.",
+  "paymentWait.cardPaid.error.busy":
+    "SwitchioPay je zaneprázdněný. Nic se nestrhlo, zkuste to za chvíli znovu.",
   "paymentWait.cardPaid.error.declined": "Platba platební kartou neproběhla.",
   "paymentWait.cardPaid.error.generic": "Platbu platební kartou nelze provést.",
   "paymentWait.cardPaid.error.demo":
