@@ -270,6 +270,7 @@ export const enLanding = {
   "landing.flows.title": "{appName} adapts to the way you do business",
   "landing.footer.description": "The payment terminal for Czechia & Slovakia",
   "landing.footer.github": "GitHub",
+  "landing.footer.privacy": "Privacy policy",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "What makes us different",
   "landing.footer.website": "{siteHost}",
@@ -322,6 +323,9 @@ export const enLanding = {
   "landing.noNeed.alt": "No contract, your data stays yours, nobody watches",
   "landing.noNeed.title":
     "No contract.\nYour data is yours alone, and even we know nothing about you.",
+  "landing.privacy.meta.description":
+    "What data {appName} handles, which services it talks to and what they see. The policy the app shows under Settings › About › Data and privacy.",
+  "landing.privacy.meta.title": "{appName} privacy policy",
   "landing.stage.bitcoin": "Bitcoin",
   "landing.stage.cash": "Cash",
   "landing.stage.eet": "Handles EET",

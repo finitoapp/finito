@@ -32,13 +32,26 @@ describe("Finito's landing", () => {
   })
 
   test("names Finito and none of Payky's hosts", () => {
-    for (const document of ["home", "eet", "tech"] as const) {
+    for (const document of ["home", "eet", "tech", "privacy"] as const) {
       for (const language of ["cs", "en", "sk"] as const) {
         const html = renderLandingDocument(template, language, document)
         expect(html).toContain("Finito")
         expect(html).not.toMatch(/\bPayky\b|payky\.me/u)
       }
     }
+  })
+
+  // The address Google Play's listing links to, which must show the policy
+  // itself rather than a page leading to it (landing/0014).
+  test("serves its privacy policy at finito.fit/en/privacy", () => {
+    const html = renderLandingDocument(template, "en", "privacy")
+
+    expect(html).toContain(
+      '<link rel="canonical" href="https://finito.fit/en/privacy"/>'
+    )
+    expect(html).toContain("Finito Privacy Policy")
+    expect(html).toContain("1. DATA COLLECTION")
+    expect(html).toContain('href="https://finito.fit/en#contact"')
   })
 
   test("sends visitors to the app on app.finito.fit", () => {

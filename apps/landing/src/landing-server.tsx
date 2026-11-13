@@ -16,6 +16,7 @@ import {
   githubUrl,
   LandingPage,
 } from "@/features/landing/landing-page.tsx"
+import { LandingPrivacyPage } from "@/features/landing/landing-privacy-page.tsx"
 import {
   LandingTechPage,
   techFaqItems,
@@ -35,15 +36,16 @@ export const landingLanguages = Object.keys(
 ) as ReadonlyArray<Language>
 
 /**
- * The prerendered landing documents: the home page, the EET 2.0 page and the
- * page on how the app works.
+ * The prerendered landing documents: the home page, the EET 2.0 page, the
+ * page on how the app works and the privacy policy.
  */
-export type LandingDocument = "home" | "eet" | "tech"
+export type LandingDocument = "home" | "eet" | "tech" | "privacy"
 
 export const landingDocuments: ReadonlyArray<LandingDocument> = [
   "home",
   "eet",
   "tech",
+  "privacy",
 ]
 
 /** The file each document is written to, which `vercel.json` serves. */
@@ -72,6 +74,10 @@ const documentMeta = {
   tech: {
     title: "landing.tech.meta.title",
     description: "landing.tech.meta.description",
+  },
+  privacy: {
+    title: "landing.privacy.meta.title",
+    description: "landing.privacy.meta.description",
   },
 } satisfies Record<
   LandingDocument,
@@ -114,43 +120,49 @@ const faqStructuredData = (
 /**
  * Structured data for search results: who makes the app, the app with its
  * price and downloads, and the page's FAQ, whose answers the page shows too.
- * The EET page and the page on how the app works describe only their own FAQ.
+ * The EET page and the page on how the app works describe only their own FAQ;
+ * the privacy policy has none.
  */
-function structuredData(document: LandingDocument, language: Language): string {
-  const t = landingResources[language]
-  const data =
-    document === "eet"
-      ? [faqStructuredData(language, eetFaqItems)]
-      : document === "tech"
-        ? [faqStructuredData(language, techFaqItems)]
-        : [
-            {
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: t["app.name"],
-              url: pageUrl("home", language),
-              logo: `${appUrl}/pwa-icon-512.png`,
-              sameAs: [githubUrl],
-            },
-            {
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              name: t["app.name"],
-              description: t["landing.meta.description"],
-              url: pageUrl("home", language),
-              image: `${siteUrl}${ogImages[language]}`,
-              applicationCategory: "FinanceApplication",
-              operatingSystem: "Android, Web",
-              downloadUrl: landingSite.apkUrl,
-              installUrl: landingSite.zapstoreUrl ?? undefined,
-              inLanguage: language,
-              offers: { "@type": "Offer", price: "0", priceCurrency: "CZK" },
-            },
-            faqStructuredData(language, faqItems),
-          ]
-  // Inside a <script>, so nothing in the copy may close it.
-  return JSON.stringify(data).replaceAll("<", "\\u003c")
-}
+const structuredData = {
+  home: (language) => {
+    const t = landingResources[language]
+    return [
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: t["app.name"],
+        url: pageUrl("home", language),
+        logo: `${appUrl}/pwa-icon-512.png`,
+        sameAs: [githubUrl],
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: t["app.name"],
+        description: t["landing.meta.description"],
+        url: pageUrl("home", language),
+        image: `${siteUrl}${ogImages[language]}`,
+        applicationCategory: "FinanceApplication",
+        operatingSystem: "Android, Web",
+        downloadUrl: landingSite.apkUrl,
+        installUrl: landingSite.zapstoreUrl ?? undefined,
+        inLanguage: language,
+        offers: { "@type": "Offer", price: "0", priceCurrency: "CZK" },
+      },
+      faqStructuredData(language, faqItems),
+    ]
+  },
+  eet: (language) => [faqStructuredData(language, eetFaqItems)],
+  tech: (language) => [faqStructuredData(language, techFaqItems)],
+  privacy: () => [],
+} satisfies Record<
+  LandingDocument,
+  (language: Language) => ReadonlyArray<object>
+>
+
+// Inside a <script>, so nothing in the copy may close it.
+const scriptJson = (data: ReadonlyArray<object>) =>
+  JSON.stringify(data).replaceAll("<", "\\u003c")
 
 /** What a crawler and a link preview read before any script runs. */
 function LandingHead({
@@ -161,6 +173,7 @@ function LandingHead({
   readonly language: Language
 }) {
   const t = landingResources[language]
+  const data = structuredData[document](language)
   const title = t[documentMeta[document].title]
   const description = t[documentMeta[document].description]
 
@@ -222,11 +235,13 @@ function LandingHead({
       {installsFromLanding ? (
         <link rel="manifest" href="/manifest.webmanifest" />
       ) : null}
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON built here, `<` escaped.
-        dangerouslySetInnerHTML={{ __html: structuredData(document, language) }}
-      />
+      {data.length === 0 ? null : (
+        <script
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON built here, `<` escaped.
+          dangerouslySetInnerHTML={{ __html: scriptJson(data) }}
+        />
+      )}
     </>
   )
 }
@@ -235,6 +250,7 @@ const documentPages = {
   home: LandingPage,
   eet: LandingEetPage,
   tech: LandingTechPage,
+  privacy: LandingPrivacyPage,
 } satisfies Record<
   LandingDocument,
   (props: { readonly language: Language }) => ReactNode
@@ -242,7 +258,7 @@ const documentPages = {
 
 /**
  * Fills the built `landing.html` with `document` in `language` (landing/0002,
- * landing/0006, landing/0008): `bin/prerender-landing.ts` writes one file per document and
+ * landing/0006, landing/0008, landing/0014): `bin/prerender-landing.ts` writes one file per document and
  * language from it.
  */
 export function renderLandingDocument(

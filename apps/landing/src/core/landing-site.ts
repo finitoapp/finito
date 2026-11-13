@@ -30,6 +30,7 @@ export const landingResources = createLandingResources(landingSite)
 export const landingPaths = landingSite.paths.home
 export const landingEetPaths = landingSite.paths.eet
 export const landingTechPaths = landingSite.paths.tech
+export const landingPrivacyPaths = landingSite.paths.privacy
 
 /**
  * Where the landing's ways into the web app lead, in the page's language

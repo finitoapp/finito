@@ -269,6 +269,7 @@ export const skLanding = {
   "landing.flows.title": "{appName} sa prispôsobí vášmu podnikaniu",
   "landing.footer.description": "Platobný terminál pre Slovensko a Česko",
   "landing.footer.github": "GitHub",
+  "landing.footer.privacy": "Ochrana súkromia",
   "landing.footer.signal": "Signal",
   "landing.footer.tech": "Čím sa líšime",
   "landing.footer.website": "{siteHost}",
@@ -320,6 +321,9 @@ export const skLanding = {
   "landing.noNeed.alt": "Bez zmluvy, dáta patria vám, nikto vás nesleduje",
   "landing.noNeed.title":
     "Bez zmluvy.\nDáta patria len vám a ani my o vás nič nevieme.",
+  "landing.privacy.meta.description":
+    "Aké dáta {appName} spracúva, s ktorými službami komunikuje a čo tieto služby vidia. Tie isté zásady, ktoré aplikácia ukazuje v Nastaveniach › O aplikácii › Dáta a súkromie.",
+  "landing.privacy.meta.title": "Zásady ochrany súkromia {appNameGen}",
   "landing.stage.bitcoin": "Bitcoin",
   "landing.stage.cash": "Hotovosť",
   "landing.stage.eet": "Vyrieši EET",

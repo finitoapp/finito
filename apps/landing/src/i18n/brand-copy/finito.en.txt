@@ -129,6 +129,12 @@ Finito confirming a received payment
 landing.mockup.payment.alt
 Finito showing a QR code for a bank transfer
 
+landing.privacy.meta.description
+What data Finito handles, which services it talks to and what they see. The policy the app shows under Settings › About › Data and privacy.
+
+landing.privacy.meta.title
+Finito privacy policy
+
 landing.tech.account.kyc.body
 Finito never holds or forwards your money. A bank transfer goes from the customer's bank straight to your account, which your bank has already verified. Bitcoin lands in a wallet only you hold the keys to. So the app has no money of yours that would require verifying you.
 
@@ -224,3 +230,50 @@ Only the key has to stay secret. Cryptographers call this Kerckhoffs's principle
 
 landing.tech.transparency.build.body
 We can't yet prove that the app on app.finito.fit or on your phone was built from exactly the code on GitHub — that would take so-called reproducible builds, which we don't have. But you don't have to take our word for it: you can build the app yourself from the code on GitHub and run your own copy.
+
+settings.about.privacy.heading
+Finito Privacy Policy
+
+settings.about.privacy.body
+Finito - PRIVACY POLICY
+
+1. DATA COLLECTION
+Finito does not sell personal data and is designed to keep application data local to your device. The app stores terminal settings, catalog data, payment records, and related operational data locally and synchronizes application data through Evolu.
+
+2. PAYMENT DATA
+Payment and terminal data may include amounts, timestamps, item names, payment status, Spark wallet information, device identifiers, and other records needed to operate a Bitcoin payment terminal. Keep your device, credentials, backups, and wallet access data, especially your recovery phrase, secure.
+
+3. NETWORK COMMUNICATIONS
+The app may communicate with:
+- Evolu synchronization infrastructure to sync local-first application data
+- Spark operators and Spark service providers to run the Spark wallet and send or receive Bitcoin payments
+- Lightning or wallet services used to create or settle payments
+- Price or exchange-rate APIs when fiat conversion is enabled
+- Open Food Facts and Open Beauty Facts to look up scanned barcodes, if product lookup is enabled
+- Finito's server and its AI provider to answer the AI assistant, if it is enabled: your questions, the assistant's replies and, if you allowed it, the bills and payments it reads
+- Your bank (Fio banka or MONETA Money Bank) to check for incoming payments, if payment matching is set up: your bank access token and requests for the account's transactions
+- Finito's server in the EU (Frankfurt) as the proxy for connected services, if you allow it on a device: the web version sends its requests to Fio banka and MONETA Money Bank through it, so it sees your bank access token and the bank's responses (the IBAN and the account's transactions, including amounts, counter-accounts, payer names, symbols and messages for the recipient). It stores none of it and only passes it on. The mobile app calls the banks directly
+
+These services may have their own privacy policies, logs, and retention rules.
+
+4. ANALYTICS AND ERROR REPORTING
+Finito does not use analytics or tracking services. Optional error reporting through Sentry is available to help diagnose crashes and bugs. It is off by default and only activates if you turn it on in Settings > About > Data and privacy. When enabled, error reports may include device and app information, and error messages and stack traces; recovery phrases and bank account numbers are automatically redacted before being sent.
+
+5. SPARK NETWORK
+Payments through the Spark wallet are processed by Spark operators and Spark service providers, which may see transaction amounts, timing, wallet identifiers, and related metadata.
+
+6. BACKUPS AND SYNC
+If synchronization or backup features are enabled, application data may be transmitted to synchronization infrastructure. Treat synced data as operational business data and protect every device that can access it.
+
+7. DELETING YOUR DATA
+Finito has no server-side user account in which the operator could see your data or delete it for you. The data belongs to an account that lives on your devices and is tied to its recovery phrase.
+- To delete the data on a device, remove the account in Settings > App Account, or clear the app's data and uninstall the app (in a browser, clear the site's data). Do this on every device that has the account.
+- Synchronized data is stored encrypted on Evolu sync relays, which cannot read it. It may stay there after the account is deleted, but nobody can decrypt it without the recovery phrase: once you delete the account from every device and destroy the phrase, it can no longer be read by anyone.
+- Error reports you chose to send are kept by Sentry for its retention period and then deleted.
+- Payments already made on the Bitcoin, Lightning or Spark networks, and data already sent to the other third-party services listed above, cannot be deleted by Finito or its operator.
+A deleted account cannot be restored without its recovery phrase.
+
+8. CONTACT
+For questions about privacy or your data, write to us through the contact form at https://finito.fit/en#contact.
+
+Last updated: November 2026

@@ -22,6 +22,7 @@ import {
 import {
   landingEetPaths,
   landingPaths,
+  landingPrivacyPaths,
   landingResources,
   landingTechPaths,
 } from "@/core/landing-site.ts"
@@ -284,6 +285,9 @@ function Footer() {
             {t("landing.footer.tech")}
           </FooterLink>
           <FooterLink href={githubUrl}>{t("landing.footer.github")}</FooterLink>
+          <FooterLink href={landingPrivacyPaths[language]}>
+            {t("landing.footer.privacy")}
+          </FooterLink>
           <FooterLink href={signalGroupUrl}>
             {t("landing.footer.signal")}
           </FooterLink>

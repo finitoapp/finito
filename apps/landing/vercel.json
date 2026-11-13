@@ -39,6 +39,18 @@
       "destination": "/landing-tech-sk.html"
     },
     {
+      "source": "/landing/privacy",
+      "destination": "/landing-privacy-cs.html"
+    },
+    {
+      "source": "/landing/en/privacy",
+      "destination": "/landing-privacy-en.html"
+    },
+    {
+      "source": "/landing/sk/privacy",
+      "destination": "/landing-privacy-sk.html"
+    },
+    {
       "source": "/landing/:path*",
       "destination": "/:path*"
     },
@@ -77,6 +89,18 @@
     {
       "source": "/sk/jak-to-funguje",
       "destination": "/landing-tech-sk.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/landing-privacy-cs.html"
+    },
+    {
+      "source": "/en/privacy",
+      "destination": "/landing-privacy-en.html"
+    },
+    {
+      "source": "/sk/privacy",
+      "destination": "/landing-privacy-sk.html"
     },
     {
       "source": "/.well-known/lnurlp/donate",

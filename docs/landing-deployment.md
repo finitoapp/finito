@@ -23,7 +23,7 @@ version, production branch or native release.
    Keep the upstreams publicly accessible so the app's rewrites can fetch them.
    If Vercel assigns different stable addresses, update `apps/web-app/vercel.json`.
 3. Deploy both landing projects first. Verify `/landing`, `/landing/en`,
-   `/landing/eet-2-0`, `/landing/jak-to-funguje`, their language variants,
+   `/landing/eet-2-0`, `/landing/jak-to-funguje`, `/landing/privacy`, their language variants,
    and their `/landing/assets/` resources on its stable address.
 4. Deploy the web-app proxy configuration to edge, then through the normal
    app release to production. Keep both public domains attached to their app
