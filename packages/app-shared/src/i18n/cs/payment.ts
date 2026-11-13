@@ -211,41 +211,41 @@ export const csPayment = {
   "paymentWait.cancel": "Zrušit platbu",
   "paymentWait.cancelError": "Platbu se nepodařilo zrušit.",
   "paymentWait.canceled": "Tato platba byla zrušena.",
-  "paymentWait.cardPaid.action": "Zaplatit platební kartou",
+  "paymentWait.cardPaid.action": "Zaplatit kartou",
   "paymentWait.cardPaid.check": "Zeptat se SwitchioPay",
   "paymentWait.cardPaid.check.paid":
-    "SwitchioPay potvrdil platbu kartou, jejíž výsledek nebyl známý.",
+    "SwitchioPay dodatečně potvrdil platbu kartou.",
   "paymentWait.cardPaid.check.unresolved":
-    "SwitchioPay platbu nepotvrdil. Než to zkusíte znovu, zkontrolujte transakci v SwitchioPay.",
+    "SwitchioPay platbu nepotvrdil. Než to zkusíte znovu, zkontrolujte transakci ve SwitchioPay.",
   "paymentWait.cardPaid.check.otherDevice":
-    "Zeptat se SwitchioPay může jen zařízení, které platbu spustilo.",
+    "Na SwitchioPay se může zeptat jen zařízení, na kterém platba proběhla.",
   "paymentWait.cardPaid.error.busy":
-    "SwitchioPay je zaneprázdněný. Nic se nestrhlo, zkuste to za chvíli znovu.",
-  "paymentWait.cardPaid.error.declined": "Platba platební kartou neproběhla.",
-  "paymentWait.cardPaid.error.generic": "Platbu platební kartou nelze provést.",
+    "SwitchioPay je zaneprázdněný. Z karty se nic nestrhlo, zkuste to za chvíli znovu.",
+  "paymentWait.cardPaid.error.declined": "Platba kartou neproběhla.",
+  "paymentWait.cardPaid.error.generic": "Platbu kartou nelze provést.",
   "paymentWait.cardPaid.error.demo":
     "V demo účtu nelze přijmout skutečnou platbu kartou.",
   "paymentWait.cardPaid.error.unavailable":
-    "Aplikace terminálu SwitchioPay není na tomto zařízení dostupná.",
+    "Aplikace SwitchioPay není na tomto zařízení dostupná.",
   "paymentWait.cardPaid.error.unreadable":
-    "Terminál nevrátil čitelný výsledek. Než to zkusíte znovu, zkontrolujte transakci v SwitchioPay.",
+    "Terminál nevrátil srozumitelný výsledek. Než to zkusíte znovu, zkontrolujte transakci ve SwitchioPay.",
   "paymentWait.cardPaid.error.notPayable":
     "Tuto platbu už nelze zaplatit kartou.",
   "paymentWait.cardPaid.pending": "Čekám na terminál...",
-  "paymentWait.cardPaid.prompt": "Přijměte platbu platební kartou",
+  "paymentWait.cardPaid.prompt": "Přijměte platbu kartou",
   "paymentWait.cardPaid.unavailable":
     "K této platbě není připojen platební terminál.",
   "paymentWait.cardPaid.restored.paid":
-    "Platba kartou byla po restartu aplikace zaznamenána.",
+    "Platba kartou byla po restartu aplikace zpracována.",
   "paymentWait.cardPaid.restored.unresolved":
-    "Výsledek platby kartou z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte transakci v SwitchioPay.",
+    "Výsledek platby kartou z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte transakci ve SwitchioPay.",
   "paymentWait.cardPaid.retryUnresolved.cancel": "Zpět",
-  "paymentWait.cardPaid.retryUnresolved.confirm": "Strhnout znovu",
+  "paymentWait.cardPaid.retryUnresolved.confirm": "Zaplatit znovu",
   "paymentWait.cardPaid.retryUnresolved.description":
-    "Výsledek posledního pokusu ({transactionId}) není známý a karta už mohla být stržena. Strhněte znovu, až když v SwitchioPay ověříte, že platba neproběhla.",
-  "paymentWait.cardPaid.retryUnresolved.title": "Strhnout kartu znovu?",
+    "Výsledek posledního pokusu ({transactionId}) není známý a peníze z karty už mohly odejít. Zaplaťte znovu, až když ve SwitchioPay ověříte, že platba neproběhla.",
+  "paymentWait.cardPaid.retryUnresolved.title": "Zkusit platbu kartou znovu?",
   "paymentWait.cardPaid.unresolved":
-    "Výsledek posledního pokusu ({transactionId}) není známý. Než to zkusíte znovu, zkontrolujte transakci v SwitchioPay.",
+    "Výsledek posledního pokusu ({transactionId}) není známý. Než to zkusíte znovu, zkontrolujte transakci ve SwitchioPay.",
   "paymentWait.cashPaid.action": "Označit jako zaplaceno",
   "paymentWait.cashPaid.difference": "Rozdíl proti útratě: {amount}",
   "paymentWait.cashPaid.error": "Platbu se nepodařilo označit jako zaplacenou.",
@@ -411,34 +411,34 @@ export const csPayment = {
   "refund.page.amount.label": "Kolik",
   "refund.page.method.qerkoPayment": "Zpět přes Qerko",
   "refund.page.qerko.done": "Peníze se vrátily na kartu.",
-  "refund.page.switchio.waiting": "Dokončete vrácení v SwitchioPay.",
+  "refund.page.switchio.waiting": "Dokončete vrácení ve SwitchioPay.",
   "refund.switchio.done": "Peníze se vrátily na kartu.",
   "refund.switchio.pending": "Vracím na kartu přes SwitchioPay",
   "refund.switchio.pendingElsewhere":
-    "Čeká se na SwitchioPay na jiném zařízení. Pokud to zařízení není k dispozici, zkontrolujte SwitchioPay a vrácení zavřete.",
+    "Čeká se na SwitchioPay na jiném zařízení. Pokud už to zařízení není k dispozici, zkontrolujte vrácení ve SwitchioPay a upozornění zavřete.",
   "refund.switchio.unresolved":
-    "Výsledek vrácení na kartu není znám, karta tedy mohla být vrácená. Před dalším vrácením zkontrolujte SwitchioPay.",
+    "Výsledek vrácení na kartu není známý, peníze se tedy možná už vrátily. Před dalším vrácením to zkontrolujte ve SwitchioPay.",
   "refund.switchio.failed": "Terminál vrácení na kartu zamítl.",
-  "refund.switchio.check": "Zjistit stav v SwitchioPay",
+  "refund.switchio.check": "Zjistit stav ve SwitchioPay",
   "refund.switchio.dismissPending.title": "Zavřít vrácení?",
   "refund.switchio.dismissPending.description":
-    "Druhé zařízení ho může ještě nahlásit. Pokud se peníze vrátily, vrácení se pak zapíše i tak.",
+    "Druhé zařízení ho ještě může ohlásit. Pokud se peníze vrátily, vrácení se pak zapíše i tak.",
   "refund.switchio.dismissPending.confirm": "Zavřít",
   "refund.switchio.dismissPending.cancel": "Zpět",
   "refund.switchio.error.notAvailable":
-    "Tuto platbu nelze vrátit na kartu: terminál k ní nevydal identifikátor, který vrácení potřebuje.",
+    "Tuto platbu nelze vrátit na kartu: terminál k ní nevrátil identifikátor potřebný pro vrácení.",
   "refund.switchio.error.running":
     "Jiné vrácení této platby na kartu ještě není vyřízené.",
   "refund.switchio.error.notStarted":
     "SwitchioPay je zaneprázdněný nebo není připravený. Nic se nevrátilo, zkuste to znovu.",
   "refund.switchio.error.otherDevice":
-    "Stav v SwitchioPay může zjistit jen zařízení, které vrácení spustilo.",
+    "Stav ve SwitchioPay může zjistit jen zařízení, které vrácení spustilo.",
   "refund.switchio.restored.unusable":
-    "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení v SwitchioPay.",
+    "Výsledek vrácení na kartu z doby před restartem aplikace se nepodařilo zpracovat. Zkontrolujte vrácení ve SwitchioPay.",
   "refund.switchio.reversalDeclined.title":
-    "Terminál už platbu nemůže vzít zpět",
+    "Terminál už platbu nemůže stornovat",
   "refund.switchio.reversalDeclined.description":
-    "Jeho dávka byla nejspíš uzavřena. Peníze ale jde vrátit na kartu, kterou zákazník platil. Vrátit je?",
+    "Dávka byla nejspíš už uzavřena. Peníze ale můžete vrátit na kartu, kterou zákazník platil. Vrátit je?",
   "refund.switchio.reversalDeclined.confirm": "Vrátit na kartu",
   "refund.switchio.reversalDeclined.cancel": "Zpět",
   "refund.qerko.dismiss": "Zavřít",
