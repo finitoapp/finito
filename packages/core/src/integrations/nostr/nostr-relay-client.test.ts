@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 import { signNostrEvent } from "./nostr-event.ts"
 import {
@@ -33,6 +33,22 @@ const createScriptedSocket = (
         listeners.get("message")?.({ data: JSON.stringify(message) })
       }
     },
+  }
+}
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+const createSilentSocket = (closed: Array<boolean>): NostrSocket => {
+  const index = closed.length
+  closed.push(false)
+  return {
+    addEventListener: () => undefined,
+    close: () => {
+      closed[index] = true
+    },
+    send: () => undefined,
   }
 }
 
@@ -214,5 +230,52 @@ describe("nostr relays", () => {
     })
 
     expect(await relays.query(urls, { kinds: [30_078] })).toHaveLength(50)
+  })
+
+  test("answers a read 1 s after the first relay when another stays silent", async () => {
+    vi.useFakeTimers()
+    const honest = createFakeNostrRelay()
+    const signed = view(2, "table")
+    honest.createSocket().send(JSON.stringify(["EVENT", signed]))
+    const closed: boolean[] = []
+    const relays = createNostrRelayClient({
+      createSocket: (url) =>
+        url === "honest" ? honest.createSocket() : createSilentSocket(closed),
+    })
+
+    let found: ReadonlyArray<unknown> | null = null
+    void relays
+      .query(["honest", "silent"], { kinds: [30_078] })
+      .then((events) => {
+        found = events
+      })
+    await vi.advanceTimersByTimeAsync(999)
+    const beforeGrace = found
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(beforeGrace).toBeNull()
+    expect(found).toEqual([signed])
+    expect(closed).toEqual([true])
+  })
+
+  test("finishes a publish 1 s after the first relay and leaves a silent one to its timeout", async () => {
+    vi.useFakeTimers()
+    const honest = createFakeNostrRelay()
+    const closed: boolean[] = []
+    const relays = createNostrRelayClient({
+      createSocket: (url) =>
+        url === "honest" ? honest.createSocket() : createSilentSocket(closed),
+    })
+
+    const results = relays.publish(["honest", "silent"], view(1, "x"))
+    await vi.advanceTimersByTimeAsync(1000)
+
+    expect(await results).toEqual([
+      { url: "honest", accepted: true },
+      { url: "silent", accepted: false },
+    ])
+    expect(closed).toEqual([false])
+    await vi.advanceTimersByTimeAsync(4000)
+    expect(closed).toEqual([true])
   })
 })
