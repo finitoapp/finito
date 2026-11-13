@@ -27,8 +27,14 @@ vi.mock("../core/native-env.ts", async (importOriginal) => {
   }
 })
 
-const { createE2eSwitchioModule, e2eSwitchioTerminal, setE2eSwitchioScenario } =
-  await import("./e2e-switchio-presets.ts")
+const {
+  createE2eSwitchioModule,
+  e2eSwitchioTerminal,
+  e2eSwitchioWaitingCount,
+  holdE2eSwitchio,
+  releaseE2eSwitchio,
+  setE2eSwitchioScenario,
+} = await import("./e2e-switchio-presets.ts")
 const switchio = await import("../platform/switchio.ts")
 
 type Scenario = Parameters<typeof createE2eSwitchioModule>[0]["scenario"]
@@ -396,6 +402,44 @@ describe("in an e2e build the fake stands in for the missing native module", () 
 
     setE2eSwitchioScenario(null)
     expect(switchio.isSwitchioSupported()).toBe(false)
+  })
+
+  test("a held launch waits, then answers by the scenario current when let go", async () => {
+    setE2eSwitchioScenario("approved")
+    holdE2eSwitchio(true)
+    const { switchioTerminal } = switchio.createSwitchioTerminalDep({
+      demo: false,
+      accountId: "a1",
+    })
+    const paying = switchioTerminal.pay({
+      transactionId: "t-held",
+      amount: 100,
+      tipAmount: 0,
+      currencyCode: 203,
+    })
+    await vi.waitFor(() => expect(e2eSwitchioWaitingCount()).toBe(1))
+
+    setE2eSwitchioScenario("declined")
+    releaseE2eSwitchio()
+    expect(await paying).toMatchObject({
+      ok: false,
+      error: { type: "SwitchioPaymentFailed" },
+    })
+    expect(e2eSwitchioWaitingCount()).toBe(0)
+
+    // Still held: the next launch waits until the hold ends.
+    const next = switchioTerminal.pay({
+      transactionId: "t-next",
+      amount: 100,
+      tipAmount: 0,
+      currencyCode: 203,
+    })
+    await vi.waitFor(() => expect(e2eSwitchioWaitingCount()).toBe(1))
+    setE2eSwitchioScenario("approved")
+    holdE2eSwitchio(false)
+    expect(await next).toMatchObject({ ok: true })
+
+    setE2eSwitchioScenario(null)
   })
 
   test("never outside one", () => {
