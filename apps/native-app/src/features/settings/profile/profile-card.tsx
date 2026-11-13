@@ -49,7 +49,8 @@ export function ProfileCard() {
       gap={16}
       px={16}
       py={12}
-      bg={editorOpen ? "accent" : "card press:accent"}
+      transition="fast"
+      bg={editorOpen ? "accent" : "card hover:accent press:accent"}
       cursor="web:pointer"
       onPress={() => openDetail("/settings/profile")}
       role="link"

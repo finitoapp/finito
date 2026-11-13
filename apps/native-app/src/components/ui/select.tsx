@@ -89,7 +89,8 @@ const TriggerFrame = styled(View, {
   pr: 10,
   pl: 12,
   rounded: shape.control,
-  bg: "input-bg press:input-50",
+  transition: "fast",
+  bg: "input-bg hover:input-50 press:input-50",
   cursor: "web:pointer",
 
   variants: {
@@ -222,7 +223,8 @@ const ItemFrame = styled(View, {
   pl: 6,
   pr: 8,
   rounded: shape.control,
-  bg: "transparent press:neutral-soft",
+  transition: "fast",
+  bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 
   variants: {

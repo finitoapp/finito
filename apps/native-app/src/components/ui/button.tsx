@@ -32,8 +32,9 @@ import { Icon } from "./icon.tsx"
  * Variants on fazole's: `default` the accent (`primary`), `secondary` the
  * raised surface, `outline` and `ghost` the neutral fill (always for
  * `outline`, pressed for `ghost`), `destructive` the danger tint, `link`
- * bare text. `hover:` becomes a `press:` clause; every size reaches 48
- * through `hitSlop`, for touch; `link` dims on press instead of underlining.
+ * bare text. Web's `hover:` fill is both a `hover:` clause, for a pointer,
+ * and a `press:` one, for touch; every size reaches 48 through `hitSlop`;
+ * `link` dims instead of underlining.
  */
 
 type ButtonVariant =
@@ -63,17 +64,25 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   borderWidth: 0,
   rounded: shape.control,
   cursor: "web:pointer",
+  // The hover and press fills fade in (`theme/animations.ts`).
+  transition: "fast",
 
   variants: {
     variant: {
-      default: { bg: "primary press:primary-pressed" },
-      outline: { bg: "button-outline press:button-outline-pressed" },
-      secondary: { bg: "surface-raised press:button-outline-pressed" },
-      ghost: { bg: "transparent press:button-ghost-pressed" },
-      destructive: {
-        bg: "button-destructive press:button-destructive-pressed",
+      default: { bg: "primary hover:primary-pressed press:primary-pressed" },
+      outline: {
+        bg: "button-outline hover:button-outline-pressed press:button-outline-pressed",
       },
-      link: { bg: "transparent", opacity: "1 press:0.7" },
+      secondary: {
+        bg: "surface-raised hover:button-outline-pressed press:button-outline-pressed",
+      },
+      ghost: {
+        bg: "transparent hover:button-ghost-pressed press:button-ghost-pressed",
+      },
+      destructive: {
+        bg: "button-destructive hover:button-destructive-pressed press:button-destructive-pressed",
+      },
+      link: { bg: "transparent", opacity: "1 hover:0.7 press:0.7" },
     },
     size: {
       default: { minH: control.md, px: 16, py: 10, gap: 8 },

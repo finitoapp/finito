@@ -166,11 +166,12 @@ const FieldLabelCardFrame = styled(View, {
   px: 12,
   py: 10,
   rounded: shape.control,
-  bg: "surface-raised press:neutral-soft",
+  transition: "fast",
+  bg: "surface-raised hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 
   variants: {
-    checked: { true: { bg: "primary-10 press:primary-15" } },
+    checked: { true: { bg: "primary-10 hover:primary-15 press:primary-15" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })

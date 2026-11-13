@@ -191,8 +191,17 @@ const TriggerFrame = styled(View, {
   rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
+  transition: "fast",
 
   variants: {
+    // Web's `hover:text-foreground` as a fill a step above the list's, which
+    // fades in; the active trigger takes none, so it never covers the pill.
+    active: {
+      true: { bg: "transparent" },
+      false: {
+        bg: "transparent hover:button-outline-pressed press:button-outline-pressed",
+      },
+    },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
@@ -231,6 +240,7 @@ export function TabsTrigger({
   const active = tabs.value === value
   return (
     <TriggerFrame
+      active={active}
       disabled={disabled}
       onLayout={(event) => {
         report?.(value, event.nativeEvent.layout)

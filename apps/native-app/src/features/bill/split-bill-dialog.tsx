@@ -316,7 +316,12 @@ function ExistingBillOption({
       items="center"
       justify="space-between"
       rounded={radius.md}
-      bg={selected ? "accent" : "transparent press:neutral-soft"}
+      transition="fast"
+      bg={
+        selected
+          ? "accent"
+          : "transparent hover:neutral-soft press:neutral-soft"
+      }
     >
       <YStack flex={1} minW={0}>
         <Text

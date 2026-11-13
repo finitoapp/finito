@@ -64,7 +64,7 @@ export function ConfirmHost() {
               onPress={() => settle(true)}
               {...(head.variant === "destructive"
                 ? {
-                    bg: "destructive press:destructive-90",
+                    bg: "destructive hover:destructive-90 press:destructive-90",
                     labelColor: "destructive-foreground",
                   }
                 : {})}

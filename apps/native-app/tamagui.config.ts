@@ -1,5 +1,6 @@
 import { defaultConfig } from "@tamagui/config/v6"
 import { createTamagui, isWeb } from "tamagui"
+import { animations } from "./src/theme/animations"
 import { appThemes } from "./src/theme/themes"
 import { radius } from "./src/theme/tokens"
 
@@ -25,6 +26,7 @@ const nativeThemes = {
 
 export const tamaguiConfig = createTamagui({
   ...defaultConfig,
+  animations,
   fonts: {
     body: { ...defaultConfig.fonts.body, ...manrope },
     heading: { ...defaultConfig.fonts.heading, ...manrope },
