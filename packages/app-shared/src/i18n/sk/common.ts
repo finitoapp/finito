@@ -88,8 +88,8 @@ export const skCommon = {
   "nav.menu": "Menu",
   "nav.notifications": "Oznámenia",
   "nav.notificationsUnread": "Oznámenia – nové",
-  "nav.numpad": "Klávesnica",
-  "nav.pos": "Predaj",
+  "nav.numpad": "Suma",
+  "nav.pos": "Účty",
   "nav.settings": "Nastavenia",
   "nav.stats": "Štatistiky",
   "notifications.empty.description":
