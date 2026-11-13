@@ -101,6 +101,7 @@ import { createCashRegisterAccountNotFoundError } from "./payment-errors.ts"
 import { preparePaymentMethod } from "./payment-preparation-actions.ts"
 import {
   paymentByIdQuery,
+  paymentCardSwitchioDetailQuery,
   paymentsWithClaimsByBillIdQuery,
 } from "./payment-queries.ts"
 import {
@@ -4038,6 +4039,54 @@ describe("payment actions", () => {
     /** What the terminal answers when its result comes back without data. */
     const unreadable = async () =>
       interpretSwitchioPaymentResult({ resultCode: 0, transactionResult: null })
+
+    test("shows the card the terminal charged on the payment's detail, and nothing for an unknown attempt", async () => {
+      const results = [
+        await unreadable(),
+        ok({
+          responseCode: "OK",
+          authCode: "114546",
+          sequenceNumber: null,
+          maskedPan: "476173******0010",
+          cardLabel: "VISA",
+          terminalId: "M1TNEXGO01",
+          terminalDateTime: null,
+          refundId: null,
+        }),
+      ]
+      await using ctx = await setUp(async () => {
+        const next = results.shift()
+        if (next === undefined) throw new Error("Unexpected terminal call.")
+        return next
+      })
+      const { evolu, run, requests, accountId, paymentId, advanceClock } = ctx
+
+      await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+      await expect(
+        evolu.loadQuery(paymentCardSwitchioDetailQuery(paymentId))
+      ).resolves.toEqual([])
+
+      advanceClock(1_000)
+      await run.orThrow(
+        payPaymentWithSwitchioCard({
+          paymentId,
+          accountId,
+          retryUnresolved: true,
+        })
+      )
+      await expect(
+        evolu.loadQuery(paymentCardSwitchioDetailQuery(paymentId))
+      ).resolves.toEqual([
+        {
+          id: paymentId,
+          transactionId: requests[1]?.transactionId,
+          maskedPan: "476173******0010",
+          cardLabel: "VISA",
+          authCode: "114546",
+          terminalId: "M1TNEXGO01",
+        },
+      ])
+    }, 15_000)
 
     test("writes the device an attempt goes to before the terminal is launched", async () => {
       const deviceId = createRowId<"Device">()

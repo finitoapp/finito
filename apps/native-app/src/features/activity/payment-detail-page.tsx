@@ -35,6 +35,7 @@ import {
   parseEetWarnings,
 } from "@payky/core/modules/eet/eet-utils"
 import {
+  paymentCardSwitchioDetailQuery,
   paymentDetailQuery,
   paymentQerkoTerminalByIdQuery,
   paymentReconciliationsQuery,
@@ -169,6 +170,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
         paymentNumberByPaymentIdQuery(paymentId),
         eetSalesByPaymentIdQuery(paymentId),
         qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
+        paymentCardSwitchioDetailQuery(paymentId),
         ...paymentRefundsQueries(paymentId),
       ],
       [paymentId]
@@ -372,6 +374,8 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
         </CardContent>
       </Card>
 
+      <PaymentCardSwitchioCard paymentId={paymentId} />
+
       <PaymentRefunds
         payment={payment}
         excess={excess}
@@ -533,6 +537,55 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
         )}
       </Technical>
     </YStack>
+  )
+}
+
+/**
+ * What SwitchioPay answered for a card payment it approved, as web's
+ * `PaymentDetailCardSwitchioCard`: the card it charged, masked as the
+ * terminal gave it, and the ids staff match against the terminal's
+ * statement, as a refund's detail shows its own.
+ */
+function PaymentCardSwitchioCard({
+  paymentId,
+}: {
+  readonly paymentId: PaymentId
+}) {
+  const { t } = useTranslation()
+  const [card] = useEvoluQuery(paymentCardSwitchioDetailQuery(paymentId)).data
+  if (card === undefined) return null
+  return (
+    <Card testID="payment-detail-card">
+      <CardHeader>
+        <CardTitle>{t("paymentDetail.card.title")}</CardTitle>
+      </CardHeader>
+      <CardContent gap={8}>
+        <OptionalRow
+          label={t("paymentDetail.card.brand")}
+          value={card.cardLabel}
+        />
+        <OptionalRow
+          mono
+          label={t("paymentDetail.card.maskedPan")}
+          value={card.maskedPan}
+        />
+        <OptionalRow
+          mono
+          label={t("paymentDetail.card.authCode")}
+          value={card.authCode}
+        />
+        <OptionalRow
+          mono
+          label={t("paymentDetail.card.transactionId")}
+          value={card.transactionId}
+        />
+        <OptionalRow
+          mono
+          label={t("paymentDetail.card.terminalId")}
+          value={card.terminalId}
+        />
+      </CardContent>
+    </Card>
   )
 }
 

@@ -38,6 +38,7 @@ import {
   confirmPaymentPaidDespiteCancellation,
 } from "@payky/core/modules/payment/payment-actions"
 import {
+  paymentCardSwitchioDetailQuery,
   paymentDetailQuery,
   paymentQerkoTerminalByIdQuery,
   paymentReconciliationsQuery,
@@ -168,6 +169,7 @@ function PaymentDetailContent({
     paymentNumberByPaymentIdQuery(paymentId),
     eetSalesByPaymentIdQuery(paymentId),
     qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
+    paymentCardSwitchioDetailQuery(paymentId),
     ...paymentRefundsQueries(paymentId),
   ])
   const { t } = useTranslation()
@@ -392,6 +394,8 @@ function PaymentDetailContent({
         </CardContent>
       </Card>
 
+      <PaymentDetailCardSwitchioCard paymentId={paymentId} />
+
       <PaymentDetailRefunds
         payment={payment}
         excess={excess}
@@ -544,6 +548,51 @@ function PaymentDetailContent({
         )}
       </PaymentDetailTechnical>
     </div>
+  )
+}
+
+/**
+ * What SwitchioPay answered for a card payment it approved: the card it
+ * charged, masked as the terminal gave it, and the ids staff match against
+ * the terminal's statement, as a refund's detail shows its own.
+ */
+function PaymentDetailCardSwitchioCard({
+  paymentId,
+}: {
+  readonly paymentId: PaymentId
+}) {
+  const { t } = useTranslation()
+  const { data } = useEvoluQuery(paymentCardSwitchioDetailQuery(paymentId))
+  const card = data[0]
+  if (card === undefined) return null
+  return (
+    <Card data-testid="payment-detail-card">
+      <CardHeader>
+        <CardTitle>{t("paymentDetail.card.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2">
+        <PaymentDetailOptionalRow
+          label={t("paymentDetail.card.brand")}
+          value={card.cardLabel}
+        />
+        <PaymentDetailCopyRow
+          label={t("paymentDetail.card.maskedPan")}
+          value={card.maskedPan}
+        />
+        <PaymentDetailCopyRow
+          label={t("paymentDetail.card.authCode")}
+          value={card.authCode}
+        />
+        <PaymentDetailCopyRow
+          label={t("paymentDetail.card.transactionId")}
+          value={card.transactionId}
+        />
+        <PaymentDetailOptionalRow
+          label={t("paymentDetail.card.terminalId")}
+          value={card.terminalId}
+        />
+      </CardContent>
+    </Card>
   )
 }
 
