@@ -43,15 +43,16 @@ export default {
     },
     allowBackup: false,
     // Removed from the merged manifest: the prebuild template's storage and
-    // overlay permissions. Files are picked through the system picker and
-    // shared through a FileProvider, so nothing reads or writes shared
-    // storage. Keep expo-screen-capture's DETECT_SCREEN_CAPTURE, although
-    // only `usePreventScreenCapture` (FLAG_SECURE) is used: on Android 14+
-    // its native module registers a screen capture callback as soon as it
-    // is created, which throws without the permission and crashes the app
-    // at start.
+    // overlay permissions, and screenshot detection, which Finito never does
+    // (account/0010; `modules/payky-secure-screen` only sets FLAG_SECURE).
+    // Files are picked through the system picker and shared through a
+    // FileProvider, so nothing reads or writes shared storage.
+    // Never block a permission a dependency's native module needs at start:
+    // expo-screen-capture, since replaced, crashed v26.11.5 and v26.11.6 at
+    // launch on Android 14+ without DETECT_SCREEN_CAPTURE.
     blockedPermissions: [
       "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.DETECT_SCREEN_CAPTURE",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",

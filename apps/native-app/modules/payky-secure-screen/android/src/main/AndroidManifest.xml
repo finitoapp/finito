@@ -1,0 +1,3 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- FLAG_SECURE needs no permission, and nothing here detects screenshots. -->
+</manifest>

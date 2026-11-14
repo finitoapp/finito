@@ -21,6 +21,7 @@ import {
 } from "../../components/ui/field.tsx"
 import { Input } from "../../components/ui/input.tsx"
 import { Switch } from "../../components/ui/switch.tsx"
+import { usePreventScreenCapture } from "../../hooks/use-prevent-screen-capture.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 
 /**
@@ -29,8 +30,13 @@ import { useTranslation } from "../../hooks/use-translation.ts"
  * unmount), never in a query key, a persisted atom or a log. A pasted phrase
  * fans out over the fields; unknown words and completions of the field being
  * typed in show under the grid. Keyboard learning, suggestions and autofill
- * are off. The transfer from another device is the caller's to offer beside
- * it: onboarding's restore page draws it under the form, Settings as a row.
+ * are off. The whole form is kept out of screenshots, recordings, screen
+ * sharing and the recents thumbnail while it is mounted, not only while the
+ * words are shown: the unknown words and completions list them anyway, and
+ * a phrase typed in hidden fields is still pieced together from what passes
+ * on screen (account/0010). The transfer from another device is the
+ * caller's to offer beside it: onboarding's restore page draws it under the
+ * form, Settings as a row.
  */
 export function RestoreAccountStep({
   error,
@@ -44,6 +50,7 @@ export function RestoreAccountStep({
   /** Onboarding makes this submit full-width, as fazole.fit's restore page; Settings ends its row with it. */
   readonly submitFullWidth?: boolean
 }) {
+  usePreventScreenCapture()
   const { t } = useTranslation()
   const [words, setWords] = useState(emptyRestoreWords)
   const [shown, setShown] = useState(false)

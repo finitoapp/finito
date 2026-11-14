@@ -3,15 +3,17 @@ import appConfig from "../../app.config.ts"
 import packageJson from "../../package.json"
 
 /**
- * expo-screen-capture's native module registers an Android 14+ screen
- * capture callback as soon as it is created, whether or not anything
- * listens for screenshots, and Android throws without DETECT_SCREEN_CAPTURE.
- * The module is created while the bundle loads, so blocking the permission
- * crashed Finito at start on every Android 14+ phone (v26.11.5, v26.11.6).
+ * Finito keeps the recovery phrase out of screenshots with FLAG_SECURE alone
+ * and never detects screenshots (account/0010), so DETECT_SCREEN_CAPTURE is
+ * blocked. expo-screen-capture must not come back with it: its native module
+ * registers an Android 14+ screen capture callback as soon as it is created,
+ * which throws without the permission, and the module is created while the
+ * bundle loads, so v26.11.5 and v26.11.6 crashed at start on every Android
+ * 14+ phone.
  */
-test("keeps the permission expo-screen-capture needs at start", () => {
-  expect(packageJson.dependencies).toHaveProperty("expo-screen-capture")
-  expect(appConfig.android.blockedPermissions).not.toContain(
+test("blocks screenshot detection and leaves out the module that needs it", () => {
+  expect(appConfig.android.blockedPermissions).toContain(
     "android.permission.DETECT_SCREEN_CAPTURE"
   )
+  expect(packageJson.dependencies).not.toHaveProperty("expo-screen-capture")
 })
