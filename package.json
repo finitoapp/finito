@@ -1,7 +1,7 @@
 {
   "name": "payky",
   "private": true,
-  "version": "26.11.6",
+  "version": "26.11.7",
   "license": "MIT",
   "type": "module",
   "scripts": {
