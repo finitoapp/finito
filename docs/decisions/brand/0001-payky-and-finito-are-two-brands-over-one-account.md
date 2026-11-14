@@ -1,6 +1,6 @@
 # 0001 Payky and Finito are two brands over one account
 
-Status: accepted
+Status: superseded by brand/0006
 Date: 2026-11-01
 
 ## Context

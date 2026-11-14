@@ -4,7 +4,7 @@ import { z } from "zod"
 import { loadServerEnv, throwInvalidServerEnv } from "./server-env.js"
 
 /**
- * The app names the API writes into what it sends out (brand/0001). The
+ * The app names the API writes into what it sends out (brand/0006). The
  * handlers cannot import `@payky/app-shared/brand`, which ships as TypeScript
  * that Node does not run, so the names are repeated here and
  * `server-brand.test.ts` holds them to the brands.

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 /**
- * A fake `PaykySwitchio` module that behaves as the Kotlin one does: the
+ * A fake `FinitoSwitchio` module that behaves as the Kotlin one does: the
  * result is stored before the launch's promise resolves, and JS clears it.
  */
 const native = vi.hoisted(() => {

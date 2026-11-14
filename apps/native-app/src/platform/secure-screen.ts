@@ -1,15 +1,15 @@
 import { NativeModule, requireOptionalNativeModule } from "expo"
 
-/** `modules/payky-secure-screen`: FLAG_SECURE on the app's window. */
-declare class PaykySecureScreenNativeModule extends NativeModule {
+/** `modules/finito-secure-screen`: FLAG_SECURE on the app's window. */
+declare class FinitoSecureScreenNativeModule extends NativeModule {
   setSecure(secure: boolean): void
 }
 
 // Absent on the PWA, which cannot keep the screen out of a screenshot, and
 // in a binary built before the module existed: then nothing is protected.
 const secureScreen =
-  requireOptionalNativeModule<PaykySecureScreenNativeModule>(
-    "PaykySecureScreen"
+  requireOptionalNativeModule<FinitoSecureScreenNativeModule>(
+    "FinitoSecureScreen"
   )
 
 let holders = 0

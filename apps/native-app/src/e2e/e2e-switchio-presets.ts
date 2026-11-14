@@ -1,11 +1,11 @@
 import { format } from "date-fns"
 import { nativeEnv } from "../core/native-env.ts"
 import { queryClient } from "../core/query-client.ts"
-import type { PaykySwitchioNativeModule } from "../platform/switchio.ts"
+import type { FinitoSwitchioNativeModule } from "../platform/switchio.ts"
 
 /**
  * A fake SwitchioPay for e2e builds and the screenshots: it stands in for the
- * native `PaykySwitchio` module (`modules/payky-switchio`) where there is none
+ * native `FinitoSwitchio` module (`modules/finito-switchio`) where there is none
  * (the web export) or where SwitchioPay is not installed (an emulator), so
  * every card screen can be driven. It answers with the module's *raw*
  * results (`{ resultCode, transactionResult: "<ECR v8 JSON>", transactionId }`)
@@ -174,7 +174,7 @@ export const createE2eSwitchioModule = ({
   readonly now?: () => Date
   /** Awaited by every launch before it reads the scenario and answers. */
   readonly gate?: () => Promise<void>
-}): PaykySwitchioNativeModule => {
+}): FinitoSwitchioNativeModule => {
   const payments = createResultStore()
   const closures = createResultStore()
   const refunds = createResultStore()
@@ -579,8 +579,8 @@ export const createE2eSwitchioModule = ({
 
 // Module state: one fake terminal, until the app restarts or `off`.
 let activeScenario: E2eSwitchioScenario = "approved"
-let activeModule: PaykySwitchioNativeModule | null = null
-const listeners = new Set<(module: PaykySwitchioNativeModule | null) => void>()
+let activeModule: FinitoSwitchioNativeModule | null = null
+const listeners = new Set<(module: FinitoSwitchioNativeModule | null) => void>()
 
 /** Whether launches wait (`holdE2eSwitchio`), and the ones that do. */
 let held = false
@@ -645,7 +645,7 @@ export const setE2eSwitchioScenario = (
  * module at once and on every change, `null` while it is off.
  */
 export const onE2eSwitchioChange = (
-  listener: (module: PaykySwitchioNativeModule | null) => void
+  listener: (module: FinitoSwitchioNativeModule | null) => void
 ): void => {
   listeners.add(listener)
   listener(activeModule)

@@ -38,7 +38,7 @@ unknown words and completions under the grid list them even when hidden.
   screenshot QR codes and takings, and support asks for screenshots and
   screen sharing; a black screen there protects nothing.
 - **FLAG_SECURE is all Finito does.** The local module
-  `modules/payky-secure-screen` sets and clears it on the window, and its
+  `modules/finito-secure-screen` sets and clears it on the window, and its
   JS side counts holds so overlapping protected components release the
   window only together. Finito never detects screenshots:
   `DETECT_SCREEN_CAPTURE` is blocked in `app.config.ts`, and
@@ -68,7 +68,7 @@ documentation screenshots come from the web export, which protects nothing.
 The PWA protects nothing either: the module is absent there and
 `holdSecureScreen` does nothing. A binary built before the module existed
 protects nothing until it is updated. The module is ours to keep building
-across Expo upgrades, like `payky-nfc` and the others.
+across Expo upgrades, like `finito-nfc` and the others.
 
 ## Enforced by
 

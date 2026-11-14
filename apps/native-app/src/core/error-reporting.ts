@@ -39,7 +39,7 @@ export function enableErrorReporting(): void {
     dsn,
     release: Constants.expoConfig?.version,
     environment: __DEV__ ? "development" : "production",
-    // One Sentry project for both apps (brand/0001); the tag tells them apart.
+    // One Sentry project for both apps (brand/0006); the tag tells them apart.
     initialScope: { tags: { brand: appBrand.id } },
     beforeBreadcrumb: scrubBreadcrumb,
     beforeSend: scrubEvent,

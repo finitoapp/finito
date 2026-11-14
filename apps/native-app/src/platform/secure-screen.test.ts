@@ -12,9 +12,9 @@ const { holdSecureScreen } = await import("./secure-screen.ts")
 const read = (file: string) =>
   readFileSync(new URL(file, import.meta.url), "utf8")
 const js = read("./secure-screen.ts")
-const moduleDir = "../../modules/payky-secure-screen/android/src/main/"
+const moduleDir = "../../modules/finito-secure-screen/android/src/main/"
 const kotlin = read(
-  `${moduleDir}java/me/payky/securescreen/PaykySecureScreenModule.kt`
+  `${moduleDir}java/fit/finito/securescreen/FinitoSecureScreenModule.kt`
 )
 const manifest = read(`${moduleDir}AndroidManifest.xml`)
 
@@ -46,9 +46,9 @@ describe("holdSecureScreen", () => {
 
 it("names the module and its function the same in JS and Kotlin", () => {
   expect(js).toMatch(
-    /requireOptionalNativeModule<PaykySecureScreenNativeModule>\(\s*"PaykySecureScreen"/u
+    /requireOptionalNativeModule<FinitoSecureScreenNativeModule>\(\s*"FinitoSecureScreen"/u
   )
-  expect(kotlin).toContain('Name("PaykySecureScreen")')
+  expect(kotlin).toContain('Name("FinitoSecureScreen")')
   expect(js).toContain("setSecure(")
   expect(kotlin).toContain('Function("setSecure")')
 })

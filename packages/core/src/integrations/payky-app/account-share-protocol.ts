@@ -18,7 +18,7 @@ import {
  *
  * The "service" is the other app, so this sits under `integrations/`. The
  * native halves mirror these constants: Payky's `AccountShareActivity.java`
- * and Finito's `PaykyAccountRequestModule.kt`, which
+ * and Finito's `FinitoAccountRequestModule.kt`, which
  * `apps/web-app/src/platform/account-share.test.ts` and
  * `apps/native-app/src/platform/payky-account-request.test.ts` check.
  *

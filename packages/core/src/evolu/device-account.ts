@@ -186,7 +186,7 @@ export const resolveTransportUrl = (
 
 /**
  * The transports a new account starts with: Linky's plain relay and the live
- * relay under the app's own host. Each app names its host (brand/0001); every
+ * relay under the app's own host. Each app names its host (brand/0006); every
  * host reaches the one live relay, so devices of both apps meet in a room.
  */
 export const createDefaultEvoluTransportUrls = (
