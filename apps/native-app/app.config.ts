@@ -43,13 +43,15 @@ export default {
     },
     allowBackup: false,
     // Removed from the merged manifest: the prebuild template's storage and
-    // overlay permissions, and expo-screen-capture's screenshot detection
-    // (only `usePreventScreenCapture`, FLAG_SECURE, is used). Files are
-    // picked through the system picker and shared through a FileProvider,
-    // so nothing reads or writes shared storage.
+    // overlay permissions. Files are picked through the system picker and
+    // shared through a FileProvider, so nothing reads or writes shared
+    // storage. Keep expo-screen-capture's DETECT_SCREEN_CAPTURE, although
+    // only `usePreventScreenCapture` (FLAG_SECURE) is used: on Android 14+
+    // its native module registers a screen capture callback as soon as it
+    // is created, which throws without the permission and crashes the app
+    // at start.
     blockedPermissions: [
       "android.permission.READ_MEDIA_IMAGES",
-      "android.permission.DETECT_SCREEN_CAPTURE",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.SYSTEM_ALERT_WINDOW",
