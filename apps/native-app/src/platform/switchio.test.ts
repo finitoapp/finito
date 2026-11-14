@@ -5,16 +5,16 @@ const read = (file: string) =>
   readFileSync(new URL(file, import.meta.url), "utf8")
 const js = read("./switchio.ts")
 const root =
-  "../../modules/payky-switchio/android/src/main/java/me/payky/switchio/"
-const module = read(`${root}PaykySwitchioModule.kt`)
+  "../../modules/finito-switchio/android/src/main/java/fit/finito/switchio/"
+const module = read(`${root}FinitoSwitchioModule.kt`)
 const store = read(`${root}SwitchioResultStore.kt`)
 const closureStore = read(`${root}SwitchioClosureStore.kt`)
 const refundStore = read(`${root}SwitchioRefundStore.kt`)
 const plugin = read("../../plugins/with-switchio-result-capture.cjs")
 
 it("names the module and its functions the same in JS and Kotlin", () => {
-  expect(js).toContain('"PaykySwitchio"')
-  expect(module).toContain('Name("PaykySwitchio")')
+  expect(js).toContain('"FinitoSwitchio"')
+  expect(module).toContain('Name("FinitoSwitchio")')
   for (const fn of ["isInstalled", "peekStoredResult", "acknowledgeResult"])
     expect(module).toContain(`Function("${fn}")`)
   expect(module).toContain('AsyncFunction("pay")')
@@ -57,6 +57,8 @@ it("stores the attempt before the terminal is launched", () => {
 
 it("captures the result in MainActivity with the module's request code and passes it on", () => {
   expect(store).toContain("REQUEST_CODE = 53701")
+  expect(store).toContain('PREFS = "payky_switchio"')
+  expect(plugin).toContain("import fit.finito.switchio.SwitchioResultStore")
   expect(plugin).toContain("SwitchioResultStore.REQUEST_CODE")
   expect(plugin).toContain(
     "super.onActivityResult(requestCode, resultCode, data)"

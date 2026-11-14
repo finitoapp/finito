@@ -11,11 +11,11 @@ import { Platform } from "react-native"
 import { z } from "zod"
 
 /**
- * `modules/payky-account-request`: asks Payky on this phone for its account
+ * `modules/finito-account-request`: asks Payky on this phone for its account
  * (account/0008) with an Android intent launched for a result. There is no
  * iOS or web equivalent, so outside Android nothing is offered.
  */
-declare class PaykyAccountRequestNativeModule extends NativeModule {
+declare class FinitoAccountRequestNativeModule extends NativeModule {
   canRequestAccount(): boolean
   requestAccount(
     version: number,
@@ -35,21 +35,21 @@ const RawResultSchema = z.object({
 })
 
 /** The module's surface, so a test can stand in for it. */
-interface PaykyAccountRequestModule {
+interface FinitoAccountRequestModule {
   canRequestAccount(): boolean
-  requestAccount: PaykyAccountRequestNativeModule["requestAccount"]
+  requestAccount: FinitoAccountRequestNativeModule["requestAccount"]
 }
 
-export interface PaykyAccountRequestDeps {
+export interface FinitoAccountRequestDeps {
   /** `null` off Android and in a binary built before the module existed. */
-  readonly module: PaykyAccountRequestModule | null
+  readonly module: FinitoAccountRequestModule | null
 }
 
-const defaultDeps = (): PaykyAccountRequestDeps => ({
+const defaultDeps = (): FinitoAccountRequestDeps => ({
   module:
     Platform.OS === "android"
-      ? requireOptionalNativeModule<PaykyAccountRequestNativeModule>(
-          "PaykyAccountRequest"
+      ? requireOptionalNativeModule<FinitoAccountRequestNativeModule>(
+          "FinitoAccountRequest"
         )
       : null,
 })
@@ -59,7 +59,7 @@ const defaultDeps = (): PaykyAccountRequestDeps => ({
  * installed. Always `false` off Android.
  */
 export const canRequestAccountFromPayky = (
-  deps: PaykyAccountRequestDeps = defaultDeps()
+  deps: FinitoAccountRequestDeps = defaultDeps()
 ): boolean => deps.module?.canRequestAccount() === true
 
 const isNotInstalledRejection = (error: unknown): boolean =>
@@ -75,7 +75,7 @@ const isNotInstalledRejection = (error: unknown): boolean =>
  */
 export const requestAccountFromPayky = async (
   request: AccountShareRequest,
-  deps: PaykyAccountRequestDeps = defaultDeps()
+  deps: FinitoAccountRequestDeps = defaultDeps()
 ): Promise<Result<TransferPayload, AccountShareFailedError>> => {
   if (deps.module === null) return err(accountShareNotInstalled())
   try {

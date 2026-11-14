@@ -4,9 +4,9 @@ const PAYMENT_MARKER = "SwitchioResultStore.save"
 
 const IMPORTS = [
   "import android.content.Intent",
-  "import me.payky.switchio.SwitchioClosureStore",
-  "import me.payky.switchio.SwitchioRefundStore",
-  "import me.payky.switchio.SwitchioResultStore",
+  "import fit.finito.switchio.SwitchioClosureStore",
+  "import fit.finito.switchio.SwitchioRefundStore",
+  "import fit.finito.switchio.SwitchioResultStore",
 ]
 
 /** The branch that writes one store's result, and whether `contents` has it. */
@@ -34,7 +34,7 @@ const LATER_BRANCHES = [
  * terminal was in the foreground, the result is delivered to the recreated
  * activity before any JS runs; storing it here is what lets JS settle the
  * payment, record the batch closure or settle the refund afterwards
- * (`payky-switchio` `peekStoredResult`, `peekStoredClosureResult`,
+ * (`finito-switchio` `peekStoredResult`, `peekStoredClosureResult`,
  * `peekStoredRefundResult`). Each request code has its own store, so a
  * closure or a refund never reaches the payment's recovery. The result is
  * passed on unchanged, so the module's own promise path still works.
@@ -60,11 +60,23 @@ const addImports = (contents) => {
   return contents.replace(/^(package .*\n)/mu, `$1\n${imports.join("\n")}\n`)
 }
 
+/**
+ * The stores' package before the module took Finito's name. A MainActivity
+ * patched by an earlier prebuild imports them from there, and would otherwise
+ * be left as it is, since it already has every branch.
+ */
+const RENAMED_PACKAGE = /^import me\.payky\.switchio\./gmu
+
 /** @type {import("expo/config-plugins").ConfigPlugin} */
 const withSwitchioResultCapture = (config) =>
   withMainActivity(config, (activityConfig) => {
-    const { language, contents } = activityConfig.modResults
+    const { language } = activityConfig.modResults
     if (language !== "kt") throw new Error("MainActivity is not Kotlin")
+    const contents = activityConfig.modResults.contents.replace(
+      RENAMED_PACKAGE,
+      "import fit.finito.switchio."
+    )
+    activityConfig.modResults.contents = contents
     const missing = LATER_BRANCHES.filter(
       ({ marker }) => !contents.includes(marker)
     )

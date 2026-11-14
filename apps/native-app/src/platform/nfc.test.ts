@@ -5,14 +5,14 @@ const read = (file: string) =>
   readFileSync(new URL(file, import.meta.url), "utf8")
 const js = read("./nfc.ts")
 const kotlin = read(
-  "../../modules/payky-nfc/android/src/main/java/me/payky/nfc/PaykyNfcModule.kt"
+  "../../modules/finito-nfc/android/src/main/java/fit/finito/nfc/FinitoNfcModule.kt"
 )
 
 it("names the module and its event the same in JS and Kotlin", () => {
   expect(js).toContain(
-    'requireOptionalNativeModule<PaykyNfcNativeModule>("PaykyNfc")'
+    'requireOptionalNativeModule<FinitoNfcNativeModule>("FinitoNfc")'
   )
-  expect(kotlin).toContain('Name("PaykyNfc")')
+  expect(kotlin).toContain('Name("FinitoNfc")')
   expect(js).toContain('"onTagRead"')
   expect(kotlin).toContain('Events("onTagRead")')
 })

@@ -39,9 +39,9 @@ const {
 const read = (file: string) =>
   readFileSync(new URL(file, import.meta.url), "utf8")
 const js = read("./payky-account-request.ts")
-const moduleRoot = "../../modules/payky-account-request/android/src/main/"
+const moduleRoot = "../../modules/finito-account-request/android/src/main/"
 const kotlin = read(
-  `${moduleRoot}java/me/payky/accountrequest/PaykyAccountRequestModule.kt`
+  `${moduleRoot}java/fit/finito/accountrequest/FinitoAccountRequestModule.kt`
 )
 const manifest = read(`${moduleRoot}AndroidManifest.xml`)
 
@@ -59,9 +59,9 @@ const fakeModule = (
 describe("account request protocol in Finito's Android module", () => {
   test("names the module and its functions the same in JS and Kotlin", () => {
     expect(js).toContain(
-      'requireOptionalNativeModule<PaykyAccountRequestNativeModule>(\n          "PaykyAccountRequest"'
+      'requireOptionalNativeModule<FinitoAccountRequestNativeModule>(\n          "FinitoAccountRequest"'
     )
-    expect(kotlin).toContain('Name("PaykyAccountRequest")')
+    expect(kotlin).toContain('Name("FinitoAccountRequest")')
     expect(kotlin).toContain('Function("canRequestAccount")')
     expect(kotlin).toContain('AsyncFunction("requestAccount")')
   })

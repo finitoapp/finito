@@ -28,11 +28,11 @@ import { z } from "zod"
 import { onE2eSwitchioChange } from "../e2e/e2e-switchio-presets.ts"
 
 /**
- * `modules/payky-switchio`: the SwitchioPay ECR API (v8) is driven entirely
+ * `modules/finito-switchio`: the SwitchioPay ECR API (v8) is driven entirely
  * through Android intents, so there is no iOS or web equivalent. The Android
  * half of web's `platform/switchio.ts`.
  */
-export interface PaykySwitchioNativeModule {
+export interface FinitoSwitchioNativeModule {
   isInstalled(): boolean
   pay(
     transactionId: string,
@@ -76,7 +76,7 @@ const SWITCHIO_LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
 
 // Absent in a binary built before the module existed.
 const nativeSwitchio =
-  requireOptionalNativeModule<PaykySwitchioNativeModule>("PaykySwitchio")
+  requireOptionalNativeModule<FinitoSwitchioNativeModule>("FinitoSwitchio")
 
 /**
  * The module every launch below goes through: the native one, or in an e2e
@@ -188,7 +188,7 @@ interface SwitchioResultStore {
    * leave its result to that promise.
    */
   readonly busy: () => boolean
-  readonly peek: (module: PaykySwitchioNativeModule) => unknown
+  readonly peek: (module: FinitoSwitchioNativeModule) => unknown
 }
 
 const paymentStore: SwitchioResultStore = {
@@ -238,8 +238,8 @@ const launchSwitchio = async <Answer, Value, Error>({
 }: {
   readonly demo: boolean
   readonly store: SwitchioResultStore
-  readonly launch: (module: PaykySwitchioNativeModule) => Promise<unknown>
-  readonly acknowledge: (module: PaykySwitchioNativeModule) => void
+  readonly launch: (module: FinitoSwitchioNativeModule) => Promise<unknown>
+  readonly acknowledge: (module: FinitoSwitchioNativeModule) => void
   readonly schema: z.ZodType<Answer>
   readonly interpret: (answer: Answer) => Result<Value, Error>
 }): Promise<
@@ -296,7 +296,7 @@ const takeStoredSwitchioResult = <Stored>({
   readonly owner: SwitchioResultOwner
   readonly schema: z.ZodType<Stored>
   readonly acknowledge: (
-    module: PaykySwitchioNativeModule,
+    module: FinitoSwitchioNativeModule,
     stored: Stored | null
   ) => void
 }): Stored | "unusable" | null => {

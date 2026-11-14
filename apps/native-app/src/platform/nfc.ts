@@ -3,8 +3,8 @@ import { z } from "zod"
 
 export type NfcStatus = "unsupported" | "disabled" | "enabled"
 
-/** `modules/payky-nfc`; the Android half of web's `platform/nfc.ts`. */
-declare class PaykyNfcNativeModule extends NativeModule<{
+/** `modules/finito-nfc`; the Android half of web's `platform/nfc.ts`. */
+declare class FinitoNfcNativeModule extends NativeModule<{
   onTagRead: (event: unknown) => void
 }> {
   getStatus(): NfcStatus
@@ -18,7 +18,7 @@ const NfcTagReadEventSchema = z.object({
 })
 
 // Absent in a binary built before the module existed: then there is no reader.
-const nfc = requireOptionalNativeModule<PaykyNfcNativeModule>("PaykyNfc")
+const nfc = requireOptionalNativeModule<FinitoNfcNativeModule>("FinitoNfc")
 
 export const getNfcStatus = (): NfcStatus =>
   nfc === null ? "unsupported" : nfc.getStatus()

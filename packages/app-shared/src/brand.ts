@@ -13,7 +13,7 @@ export interface BrandNameForms {
 }
 
 /**
- * The name an app ships under (brand/0001): the web app and the Capacitor
+ * The name an app ships under (brand/0006): the web app and the Capacitor
  * shell are Payky, the native app and its web export are Finito, over one
  * shared account, protocol and set of internal identifiers. Each app imports
  * its own brand statically; the API, deployed once per brand, reads which one

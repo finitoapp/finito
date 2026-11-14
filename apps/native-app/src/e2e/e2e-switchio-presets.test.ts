@@ -8,7 +8,7 @@ import {
   SwitchioNativePayResultSchema,
 } from "@payky/core/switchio"
 import { describe, expect, test, vi } from "vitest"
-import type { PaykySwitchioNativeModule } from "../platform/switchio.ts"
+import type { FinitoSwitchioNativeModule } from "../platform/switchio.ts"
 
 const e2eBuild = vi.hoisted(() => ({ enabled: true }))
 
@@ -50,7 +50,7 @@ const createTerminal = () => {
 }
 
 const pay = async (
-  module: PaykySwitchioNativeModule,
+  module: FinitoSwitchioNativeModule,
   transactionId: string,
   amount = 12_900,
   tipAmount = 1_000
@@ -63,7 +63,7 @@ const pay = async (
 }
 
 const lookup = async (
-  module: PaykySwitchioNativeModule,
+  module: FinitoSwitchioNativeModule,
   transactionId: string
 ) =>
   interpretSwitchioTransactionLookup({
@@ -73,7 +73,7 @@ const lookup = async (
     ),
   })
 
-const close = async (module: PaykySwitchioNativeModule) => {
+const close = async (module: FinitoSwitchioNativeModule) => {
   const raw = SwitchioNativeClosureResultSchema.parse(
     await module.close("closure-1", "a1")
   )

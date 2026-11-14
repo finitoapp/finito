@@ -4,13 +4,14 @@ import ts from "typescript"
 import { expect, test } from "vitest"
 
 /**
- * The native app ships as Finito (brand/0001), so nothing it shows may say
+ * The native app ships as Finito (brand/0006), so nothing it shows may say
  * Payky: copy names the app through brand placeholders and code through
  * `brandName(appBrand)`, and it reaches Finito's own hosts through the brand
  * (`appBrand.apiBaseUrl`), never payky.me. Internal identifiers keep their
- * name (`PaykyNfc`, `payky.terminalHomeMode`, `payky:` URIs), so only the
- * word "Payky" and the host payky.me in string literals and JSX text count,
- * and comments are free to explain.
+ * name (`payky.terminalHomeMode`, `payky:` URIs), so only the word "Payky"
+ * and the host payky.me in string literals and JSX text count, and comments
+ * are free to explain. Its native modules are Finito's own and carry its
+ * name.
  */
 
 const appDir = path.resolve(import.meta.dirname, "../..")
@@ -59,6 +60,33 @@ test("the native app's code shows no Payky", () => {
     ...files("src", /\.tsx?$/u),
   ]
   expect(sources.flatMap(brandedTexts)).toEqual([])
+})
+
+test("Finito's native modules carry Finito's name", () => {
+  const modules = readdirSync(path.join(appDir, "modules"), {
+    withFileTypes: true,
+  }).filter((entry) => entry.isDirectory())
+  expect(modules.length).toBeGreaterThan(0)
+  for (const { name } of modules) {
+    expect(name).toMatch(/^finito-/u)
+    const dir = path.join("modules", name)
+    const config = readFileSync(
+      path.join(appDir, dir, "expo-module.config.json"),
+      "utf8"
+    )
+    expect(config).not.toMatch(/me\.payky/u)
+    expect(config).toMatch(/"fit\.finito\.[a-z]+\.Finito[A-Za-z]+Module"/u)
+    const sources = files(dir, /\.kt$/u).filter(
+      (file) => !file.includes(`${path.sep}build${path.sep}`)
+    )
+    expect(sources.length).toBeGreaterThan(0)
+    for (const file of sources) {
+      const kotlin = readFileSync(path.join(appDir, file), "utf8")
+      expect(file).toMatch(/\/java\/fit\/finito\//u)
+      expect(kotlin).toMatch(/^package fit\.finito\./mu)
+      expect(kotlin).not.toMatch(/Name\("Payky/u)
+    }
+  }
 })
 
 test("the native app's web export names no Payky", () => {

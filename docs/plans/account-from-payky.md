@@ -111,9 +111,9 @@ Tyto soubory se při `cap:sync` nepřepisují.
   - Odchod ze stránky, přepnutí účtu nebo expirace znamená `rejected`/`expired`. Po dobu stránky `setOverlayProtection(true)`.
 - **Sestavení payloadu** vytáhnout z `account-transfer-source-page.tsx` do `packages/core` (`createTransferPayload(account)` vedle `TransferPayload`), aby QR přenos i intent posílaly totéž.
 
-### 3. Finito: Android modul (`apps/native-app/modules/payky-account-request`)
+### 3. Finito: Android modul (`apps/native-app/modules/finito-account-request`)
 
-Expo modul v Kotlinu, po vzoru `payky-switchio`, ale **bez** result store a config pluginu pro zachycení výsledku:
+Expo modul v Kotlinu, po vzoru `finito-switchio`, ale **bez** result store a config pluginu pro zachycení výsledku:
 
 - `canRequestAccount()`: zjistí, jestli **nainstalovaná verze** Payky umí tento intent, ne jen jestli je Payky nainstalované.
   - Finito sestaví přesně ten intent, který by poslalo (akce `me.payky.action.SHARE_ACCOUNT`, `setPackage("me.payky")`), a zavolá `PackageManager.resolveActivity`.

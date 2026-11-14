@@ -44,7 +44,7 @@ export default {
     allowBackup: false,
     // Removed from the merged manifest: the prebuild template's storage and
     // overlay permissions, and screenshot detection, which Finito never does
-    // (account/0010; `modules/payky-secure-screen` only sets FLAG_SECURE).
+    // (account/0010; `modules/finito-secure-screen` only sets FLAG_SECURE).
     // Files are picked through the system picker and shared through a
     // FileProvider, so nothing reads or writes shared storage.
     // Never block a permission a dependency's native module needs at start:
