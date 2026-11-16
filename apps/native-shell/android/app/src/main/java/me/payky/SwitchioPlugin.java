@@ -37,6 +37,9 @@ public class SwitchioPlugin extends Plugin {
     // Matched by `src/core/native/switchio.ts`: the one rejection known to
     // happen before anything could have been charged.
     private static final String NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED";
+    // Matched by `src/platform/switchio.ts`: the launch threw before
+    // SwitchioPay started (payment/0021), so nothing was charged either.
+    private static final String LAUNCH_FAILED_CODE = "SWITCHIO_LAUNCH_FAILED";
 
     @PluginMethod
     public void isInstalled(PluginCall call) {
@@ -93,10 +96,14 @@ public class SwitchioPlugin extends Plugin {
         // second instance of itself.
         intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 
+        // A launch throws before SwitchioPay starts, so whatever it threw,
+        // the terminal never saw the request.
         try {
             startActivityForResult(call, intent, "payResult");
         } catch (ActivityNotFoundException exception) {
             call.reject("SwitchioPay is not installed", NOT_INSTALLED_CODE, exception);
+        } catch (RuntimeException exception) {
+            call.reject("SwitchioPay could not be launched", LAUNCH_FAILED_CODE, exception);
         }
     }
 

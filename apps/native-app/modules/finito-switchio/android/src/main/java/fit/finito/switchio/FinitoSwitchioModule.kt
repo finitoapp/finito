@@ -39,6 +39,14 @@ private const val LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
 
 private fun launchRefused(message: String) = CodedException(LAUNCH_REFUSED_CODE, message, null)
 
+/**
+ * Matched by `src/platform/switchio.ts`: SwitchioPay is installed, but the
+ * launch threw before it started — no activity to launch from, a launch
+ * Android refused (payment/0021). Never an unknown outcome: nothing was
+ * charged, closed or refunded.
+ */
+private const val LAUNCH_FAILED_CODE = "SWITCHIO_LAUNCH_FAILED"
+
 private fun dataIntent(path: String, data: String): Intent {
   val uri = Uri.Builder()
     .scheme(URI_SCHEME)
@@ -84,7 +92,8 @@ private fun closureIntent(): Intent {
  *
  * Each kind refuses a launch while another of its kind waits on SwitchioPay
  * or while its store holds a result nobody has settled yet, rejecting with
- * [LAUNCH_REFUSED_CODE] before anything leaves for the terminal.
+ * [LAUNCH_REFUSED_CODE] before anything leaves for the terminal. A launch
+ * that throws is put back as it was ([startSwitchio]).
  */
 class FinitoSwitchioModule : Module() {
   private var pendingPromise: Promise? = null
@@ -94,6 +103,26 @@ class FinitoSwitchioModule : Module() {
 
   private val context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+
+  /**
+   * Hands [intent] to SwitchioPay, or runs [undo] — which puts back the
+   * promise and the store the launch set up — and rejects when it never
+   * left. `startActivityForResult` throws before anything starts, so a
+   * launch it threw for reached no terminal (payment/0021); left set up, it
+   * would read as an unknown outcome and refuse every later launch of its
+   * kind until the app restarts.
+   */
+  private fun startSwitchio(intent: Intent, requestCode: Int, promise: Promise, undo: () -> Unit) {
+    try {
+      appContext.throwingActivity.startActivityForResult(intent, requestCode)
+    } catch (exception: ActivityNotFoundException) {
+      undo()
+      promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
+    } catch (exception: Exception) {
+      undo()
+      promise.reject(CodedException(LAUNCH_FAILED_CODE, "SwitchioPay could not be launched", exception))
+    }
+  }
 
   /** Launches a reversal or a referral refund, its id stored before the terminal can act. */
   private fun launchRefund(intent: Intent, transactionId: String, accountId: String, promise: Promise) {
@@ -105,12 +134,9 @@ class FinitoSwitchioModule : Module() {
     intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
     SwitchioRefundStore.begin(context, transactionId, accountId)
     pendingRefundPromise = promise
-    try {
-      appContext.throwingActivity.startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)
-    } catch (exception: ActivityNotFoundException) {
+    startSwitchio(intent, SwitchioRefundStore.REQUEST_CODE, promise) {
       pendingRefundPromise = null
       SwitchioRefundStore.clearAttempt(context)
-      promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
     }
   }
 
@@ -139,12 +165,9 @@ class FinitoSwitchioModule : Module() {
         // Durable before the terminal can take the card.
         SwitchioResultStore.begin(context, transactionId, accountId)
         pendingPromise = promise
-        try {
-          appContext.throwingActivity.startActivityForResult(intent, SwitchioResultStore.REQUEST_CODE)
-        } catch (exception: ActivityNotFoundException) {
+        startSwitchio(intent, SwitchioResultStore.REQUEST_CODE, promise) {
           pendingPromise = null
           SwitchioResultStore.clearAttempt(context)
-          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
         }
       }
     }
@@ -162,12 +185,9 @@ class FinitoSwitchioModule : Module() {
       } else {
         SwitchioClosureStore.begin(context, closureId, accountId)
         pendingClosurePromise = promise
-        try {
-          appContext.throwingActivity.startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)
-        } catch (exception: ActivityNotFoundException) {
+        startSwitchio(intent, SwitchioClosureStore.REQUEST_CODE, promise) {
           pendingClosurePromise = null
           SwitchioClosureStore.clear(context)
-          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
         }
       }
     }
@@ -208,11 +228,8 @@ class FinitoSwitchioModule : Module() {
         promise.reject(launchRefused("Another lookup is waiting on SwitchioPay"))
       } else {
         pendingLookupPromise = promise
-        try {
-          appContext.throwingActivity.startActivityForResult(intent, LOOKUP_REQUEST_CODE)
-        } catch (exception: ActivityNotFoundException) {
+        startSwitchio(intent, LOOKUP_REQUEST_CODE, promise) {
           pendingLookupPromise = null
-          promise.reject(CodedException(NOT_INSTALLED_CODE, "SwitchioPay is not installed", exception))
         }
       }
     }

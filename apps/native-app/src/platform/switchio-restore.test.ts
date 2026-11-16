@@ -307,6 +307,50 @@ describe("a launch SwitchioPay refused (payment/0020)", () => {
   })
 })
 
+describe("a launch that never reached SwitchioPay (payment/0021)", () => {
+  it("reads the Kotlin module's failed launch as unavailable for a payment, a closure and a refund", async () => {
+    const failure = Object.assign(new Error("failed"), {
+      code: "SWITCHIO_LAUNCH_FAILED",
+    })
+    native.pay.mockRejectedValueOnce(failure)
+    native.close.mockRejectedValueOnce(failure)
+    native.referralRefund.mockRejectedValueOnce(failure)
+    const unavailable = {
+      ok: false,
+      error: { type: "SwitchioUnavailable", reason: "launchFailed" },
+    }
+
+    await expect(
+      createSwitchioTerminalDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioTerminal.pay({
+        transactionId: "t1",
+        amount: 100,
+        tipAmount: 0,
+        currencyCode: 203,
+      })
+    ).resolves.toEqual(unavailable)
+    await expect(
+      createSwitchioClosureDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioClosure.close({ closureId: "c1" })
+    ).resolves.toEqual(unavailable)
+    await expect(
+      createSwitchioRefundDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioRefund.referralRefund({
+        transactionId: "r1",
+        amount: 100,
+        currencyCode: 203,
+        refundId: "123456789012345678",
+      })
+    ).resolves.toEqual(unavailable)
+  })
+})
+
 describe("asking SwitchioPay about a card payment (payment/0019)", () => {
   const { switchioPaymentLookup } = createSwitchioPaymentLookupDep({
     demo: false,

@@ -32,7 +32,8 @@ module. Nothing left for the terminal, so:
 - a closure writes nothing and says SwitchioPay is busy.
 
 Any other rejection of the module may still come after the terminal acted,
-and stays an unknown outcome (payment/0006).
+and stays an unknown outcome (payment/0006), except a launch that threw
+before SwitchioPay started (payment/0021).
 
 ## Alternatives considered
 
