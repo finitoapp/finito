@@ -19,7 +19,7 @@ change because the live library did.
 - **The library lives in its own repository**
   (`github.com/finitoapp/product-library`) **and its own Vercel project**,
   published as static files: `v1/library.json` and the pictures under
-  `v1/img/`. Its production host is `https://product-library-chi.vercel.app`;
+  `v1/img/`. Its production host is `https://products.finito.fit`;
   nothing there runs at request time.
 - **`/v1/` is a contract that only grows.** Within `v1` the library may add
   fields, products, categories, packs, languages and countries at any time;

@@ -16,6 +16,13 @@ with files outside the Root Directory enabled as build inputs and Node 24:
 | `finito-landing-edge` | `apps/landing` | `main` | `edge.finito.fit` |
 | `finito-landing` | `apps/landing` | `landing-production` | `finito.fit`, `www.finito.fit` (308 to `finito.fit`) |
 
+The product library (`docs/product-library.md`) is a fifth project in the same
+team, `product-library`, built from its own repository
+(`finitoapp/product-library`) and served at `products.finito.fit`. Like the
+other `finito.fit` hosts, the subdomain is verified through a
+`vc-domain-verify` TXT record on `_vercel.finito.fit` in Cloudflare, where
+`finito.fit`'s DNS lives.
+
 `finito` and `finito-landing` share their production branches with `payky`
 and `payky-landing`, so a release (`docs/releases.md`) or a landing promotion
 ships both brands at once. Both have preview deployments off and an Ignored

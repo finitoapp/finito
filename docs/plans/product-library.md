@@ -308,7 +308,7 @@ Done:
 - The library repository (`github.com/finitoapp/product-library`): the `v1`
   contract, 76 products in ten categories with cs/sk/en names and
   synonyms, the Café, Bistro and Bar packs, the build and the review page,
-  deployed to `https://product-library-chi.vercel.app`, which answers the
+  deployed to `https://products.finito.fit`, which answers the
   open question of the host. Pictures are generated through Codex CLI's
   image generation by default (`--backend openai` keeps the Images API);
   every product has a `generated` picture.
