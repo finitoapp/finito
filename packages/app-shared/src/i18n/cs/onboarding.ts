@@ -191,6 +191,8 @@ export const csOnboarding = {
   "onboarding.starterPack.pricingFailed":
     "Položka za 0 potřebuje sazbu DPH a jedna z vašich žádnou nemá. Zadejte jí cenu, nebo zrušte její zaškrtnutí.",
   "onboarding.starterPack.title": "Začněte s nabídkou",
+  "onboarding.starterPack.unavailable":
+    "Vybraná nabídka už není k dispozici. Vyberte jinou, nebo začněte bez položek.",
   "onboarding.title": "{appName} vás vítá",
   "onboarding.welcome.new": "Nový podnik",
   "onboarding.welcome.restore": "Už mám účet",

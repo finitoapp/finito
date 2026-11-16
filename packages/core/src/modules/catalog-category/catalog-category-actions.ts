@@ -1,6 +1,7 @@
 import {
   err,
   type InsertValues,
+  type MutationOptions,
   ok,
   sqliteTrue,
   type Task,
@@ -11,11 +12,12 @@ import type { EvoluOwnerDep } from "../../deps.ts"
 import { defineError } from "../../error.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
+  createRowId,
   getNextSortOrder,
   removeUndefinedValues,
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
-import type { NonEmptyString255 } from "../shared/schema.ts"
+import { type NonEmptyString255, NonNegativeInteger } from "../shared/schema.ts"
 import type { CatalogCategory } from "./catalog-category.ts"
 import {
   catalogCategoriesQuery,
@@ -105,6 +107,91 @@ export const deleteCatalogCategory =
     return ok(id)
   }
 
+/** A category a plan creates, its id chosen before the batch writing it. */
+export interface NewCatalogCategory {
+  readonly id: CatalogCategoryId
+  readonly name: NonEmptyString255
+  readonly sortOrder: NonNegativeInteger
+}
+
+/** What `planCatalogCategoriesByName` worked out, nothing of it written yet. */
+export interface CatalogCategoryPlan {
+  /** The categories to create, appended after the last one in name order. */
+  readonly created: ReadonlyArray<NewCatalogCategory>
+  /**
+   * The category a name resolves to, existing or in `created`. Throws for a
+   * name that is neither: asking for one the plan was not given is a bug.
+   */
+  readonly idOf: (name: NonEmptyString255) => CatalogCategoryId
+}
+
+/**
+ * Resolves category names the way `findOrCreateCatalogCategory` does, without
+ * writing: a name an existing category spells, case and surrounding spaces
+ * aside, is that category, and every other one becomes a new category at the
+ * end — one per name, however many times it is given or however it is
+ * cased. The load/compute half, for a caller folding the categories into
+ * its own batch through `upsertNewCatalogCategories`.
+ */
+export const planCatalogCategoriesByName =
+  (
+    names: ReadonlyArray<NonEmptyString255>
+  ): Task<CatalogCategoryPlan, never, EvoluDep> =>
+  async (run) => {
+    const [categories, [last]] = await Promise.all([
+      run.deps.evolu.loadQuery(catalogCategoriesQuery),
+      run.deps.evolu.loadQuery(lastCatalogCategorySortOrderQuery),
+    ])
+    const firstSortOrder = getNextSortOrder(last)
+
+    const created: NewCatalogCategory[] = []
+    for (const name of names) {
+      const taken = [...categories, ...created].some((category) =>
+        sameCategoryName(category.name, name)
+      )
+      if (taken) continue
+      created.push({
+        id: createRowId<"CatalogCategory">(),
+        name,
+        sortOrder: NonNegativeInteger(firstSortOrder + created.length),
+      })
+    }
+    // Existing categories first, so a name one of them spells resolves to it.
+    const known = [...categories, ...created]
+
+    return ok({
+      created,
+      idOf: (name) => {
+        const found = known.find((category) =>
+          sameCategoryName(category.name, name)
+        )
+        if (found === undefined) {
+          throw new Error("A category name the plan was not given.")
+        }
+        return found.id
+      },
+    })
+  }
+
+/**
+ * Writes the categories a `CatalogCategoryPlan` creates into the caller's
+ * batch: the plain upsert half of `planCatalogCategoriesByName`, as
+ * `upsertPaymentNumberRows` is `loadNextPaymentNumber`'s.
+ */
+export const upsertNewCatalogCategories = (
+  evolu: EvoluDep["evolu"],
+  categories: ReadonlyArray<NewCatalogCategory>,
+  options: MutationOptions
+): void => {
+  for (const { id, name, sortOrder } of categories) {
+    evolu.upsert(
+      "catalogCategory",
+      { id, deviceId: null, name, sortOrder },
+      options
+    )
+  }
+}
+
 /**
  * The category called `name`, created at the end when there is none yet,
  * as Linky makes a contact group from the name typed on the contact
@@ -118,15 +205,17 @@ export const findOrCreateCatalogCategory =
     name: NonEmptyString255
   ): Task<CatalogCategoryId, never, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
-    const categories = await run.deps.evolu.loadQuery(catalogCategoriesQuery)
-    const existing = categories.find((category) =>
-      sameCategoryName(category.name, name)
-    )
-    if (existing !== undefined) return ok(existing.id)
-
-    return ok(
-      await run.ok(createCatalogCategoryAtEnd({ deviceId: null, name }))
-    )
+    const plan = await run.ok(planCatalogCategoriesByName([name]))
+    if (plan.created.length > 0) {
+      const { evoluOwner } = run.deps
+      await runMutationWithCompletion((options) =>
+        upsertNewCatalogCategories(run.deps.evolu, plan.created, {
+          ...options,
+          owner: evoluOwner,
+        })
+      )
+    }
+    return ok(plan.idOf(name))
   }
 
 const createCatalogCategoryNameTakenError = defineError(

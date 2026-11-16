@@ -9,6 +9,7 @@ import {
 import {
   canFinishOnboarding,
   finishOnboardingErrorKeys,
+  isPickedStarterPackUnavailable,
   offersStarterPacks,
   onboardingStarterItems,
 } from "@payky/app-shared/onboarding-starter-pack"
@@ -132,8 +133,8 @@ export function OnboardingPage({
     tipsEnabled,
     starterPack,
   } = form
-  // Starter packs need the library; without it (offline, a failed load, a
-  // build with no library host) the last step is as it always was.
+  // Starter packs need the library; without it (offline or a failed load)
+  // the last step is as it always was.
   const { library } = useProductLibrary()
   const starterPackContext = {
     library,
@@ -142,7 +143,12 @@ export function OnboardingPage({
     starterPack,
     language,
   }
-  const showStarterPacks = offersStarterPacks(starterPackContext)
+  // A fresher library may no longer offer the pack picked: the section
+  // stays to ask for another pick, and Finish waits for one.
+  const starterPackUnavailable =
+    isPickedStarterPackUnavailable(starterPackContext)
+  const showStarterPacks =
+    offersStarterPacks(starterPackContext) || starterPackUnavailable
   const starterItems = onboardingStarterItems(starterPackContext)
   const canFinish = canFinishOnboarding(starterPackContext)
   // Validate only on submission, so an unfinished account number shows no
@@ -445,7 +451,10 @@ export function OnboardingPage({
                       <StarterPackSection
                         library={library}
                         starterPack={starterPack}
-                        missingPrices={starterItems === null}
+                        unavailable={starterPackUnavailable}
+                        missingPrices={
+                          starterItems === null && !starterPackUnavailable
+                        }
                         pending={pending}
                         onStarterPackChange={(update) => {
                           setForm((current) => ({

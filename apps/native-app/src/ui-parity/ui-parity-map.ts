@@ -2274,7 +2274,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
   {
     native: "src/features/shared/item-library-picture.tsx",
     web: [],
-    note: "Finito only: product library suggestions land in Finito first; an item form's library picture with Remove picture.",
+    note: "Finito only: product library suggestions land in Finito first; an item form's library product, its picture and name, with Unlink from library.",
     status: "matched",
     allowedDifferences: {
       Button: "product library suggestions land in Finito first",

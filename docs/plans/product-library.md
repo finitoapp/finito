@@ -240,7 +240,8 @@ image:
 3. **Pictures.** A square thumbnail in the bill's item grid
    (`features/bill`, `item-brick-grid*`), the catalog list
    (`features/catalog/items/items-list.tsx`) and the item form, with a
-   "Remove picture" action. An item without one renders as today.
+   "Unlink from library" action (shown, with the product's name, even
+   without a picture). An item without one renders as today.
 4. **Starter packs in onboarding.** On the last step (onboarding/0012), when
    the merchant chooses "bills built from items", a pack picker appears:
    Café / Bistro / Bar / Start empty (nothing preselected beyond "Start

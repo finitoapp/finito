@@ -15,8 +15,8 @@ const baseUrl = nativeEnv.EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL
 export interface ProductLibraryState {
   /** `undefined` until a load (or the offline copy) answers, and for good when it never does. */
   readonly library: ProductLibrary | undefined
-  /** The library's host, which picture URLs are built from; `undefined` when the build has none. */
-  readonly baseUrl: string | undefined
+  /** The library's host, which picture URLs are built from. */
+  readonly baseUrl: string
 }
 
 /**
@@ -25,24 +25,24 @@ export interface ProductLibraryState {
  * it too. Loaded the first time a screen asks and refreshed at most hourly;
  * on Android the last download is kept in the cache directory and answers at
  * once, offline included, while the fresh one loads (the PWA relies on the
- * browser's HTTP cache). A build without `EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL`
- * never loads it. A failed load only means no suggestions and no pictures:
- * it is never toasted nor reported, and leaves the last library in place.
+ * browser's HTTP cache). The host is
+ * `EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL`, the production library unless a
+ * build points it elsewhere (the e2e builds at the mock server, whose 404
+ * leaves them without the library). A failed load only means no
+ * suggestions and no pictures: it is never toasted nor reported, and leaves
+ * the last library in place.
  */
 export function useProductLibrary(): ProductLibraryState {
   const query = useQuery({
     queryKey: ["productLibrary", baseUrl],
-    enabled: baseUrl !== undefined,
     staleTime: 60 * 60 * 1000,
     // App-wide data: keep it while no screen shows it.
     gcTime: Number.POSITIVE_INFINITY,
     retry: 2,
     // The offline copy, dated as old so the network load still runs.
-    initialData: () =>
-      baseUrl === undefined ? undefined : productLibraryCache.read(),
+    initialData: () => productLibraryCache.read(),
     initialDataUpdatedAt: 0,
     queryFn: async () => {
-      if (baseUrl === undefined) throw new Error("No product library host.")
       await using run = nativeRun.create({
         ...createFetchDep(),
         ...createProductLibraryDep({ baseUrl }),
@@ -88,17 +88,3 @@ export const libraryProductById = (
   libraryProductId === null
     ? undefined
     : productIndex(library).get(libraryProductId)
-
-/**
- * The library product a catalog item came from (`catalogItem.libraryProductId`);
- * `undefined` without one, without a loaded library, or when the library does
- * not know the id.
- */
-export function useLibraryProduct(
-  libraryProductId: string | null
-): LibraryProduct | undefined {
-  const { library } = useProductLibrary()
-  return library === undefined
-    ? undefined
-    : libraryProductById(library, libraryProductId)
-}

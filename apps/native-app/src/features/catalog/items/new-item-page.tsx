@@ -1,7 +1,4 @@
-import {
-  type CategoryChoice,
-  resolveCategoryChoice,
-} from "@payky/app-shared/catalog-category-choice"
+import { resolveCategoryChoice } from "@payky/app-shared/catalog-category-choice"
 import {
   type CatalogItemFormErrors,
   catalogItemPricingErrorKeys,
@@ -10,7 +7,6 @@ import {
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
-import type { LibraryProductPrefill } from "@payky/app-shared/library-product-prefill"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
@@ -22,12 +18,8 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import type {
-  FiatCurrency,
-  NonEmptyString255,
-} from "@payky/core/modules/shared/schema"
+import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
-import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import { type ComponentProps, useMemo, useState } from "react"
 import { View, XStack } from "tamagui"
@@ -76,7 +68,8 @@ import { DiscountSwitchField } from "../../shared/discount-switch-field.tsx"
 import { ItemLibraryPicture } from "../../shared/item-library-picture.tsx"
 import { LibraryNameField } from "../../shared/library-name-field.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
-import { useLibraryProductPrefill } from "../../shared/use-library-product-prefill.ts"
+import { useLibraryItemFields } from "../../shared/use-library-product-prefill.ts"
+import { newItemReturn } from "./new-item-return.ts"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 /**
@@ -99,9 +92,11 @@ const newItemPageQueries = [
  * opening the form from a related product's chip on the items list
  * (`?libraryProductId=`, with the `categoryId` of the item just created when
  * the library files both together), fills the name, the picture, the VAT
- * rate and the category, never the price. An item saved from a library
- * product returns to the list with `?added=` naming it, where its related
- * products are offered next.
+ * rate and the category, never the price; the VAT rate and the category
+ * only where the merchant has not set them. Opened from the items list
+ * (`?from=items`), an item saved from a library product returns to the list
+ * with `?added=` naming it, where its related products are offered next;
+ * any other save goes Back, as to the bill whose empty state opened it.
  */
 export function NewCatalogItemPage() {
   usePreloadEvoluQueries(newItemPageQueries)
@@ -111,17 +106,17 @@ export function NewCatalogItemPage() {
   const { data: catalogItems } = useEvoluQuery(catalogItemsQuery)
   const runToast = useRunToast()
   const { defaultTaxRate, taxRateOptions } = useCatalogItemOptions()
-  const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [internalName, setInternalName] = useState("")
   const [internalDescription, setInternalDescription] = useState("")
   const [sku, setSku] = useState("")
   const { data: categories } = useEvoluQuery(catalogCategoriesQuery)
-  // A typed name stays a name until the item is saved (catalog/0004).
-  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
-  const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
-    defaultTaxRate?.id ?? NO_OPTION
-  )
+  // The name, the library product it links, the VAT rate and the category
+  // (a typed name stays a name until the item is saved, catalog/0004).
+  const libraryFields = useLibraryItemFields({
+    defaultTaxRateId: defaultTaxRate?.id ?? NO_OPTION,
+  })
+  const { name, libraryProductId, category, taxRateId } = libraryFields
   const [currency, setCurrency] = useState<FiatCurrency>(
     getFiatCurrency(settings)
   )
@@ -133,6 +128,8 @@ export function NewCatalogItemPage() {
     scan?: string
     libraryProductId?: string
     categoryId?: string
+    /** `items` when the items list opened the form (`newItemReturn`). */
+    from?: string
   }>()
   // A code scanned in the item list, which opened this form to carry it.
   const { scan } = params
@@ -144,20 +141,7 @@ export function NewCatalogItemPage() {
   const clearError = (field: keyof CatalogItemFormErrors) =>
     setErrors((current) => ({ ...current, [field]: undefined }))
 
-  // The library product the item comes from; editing the name keeps it,
-  // removing its picture forgets it.
-  const [libraryProductId, setLibraryProductId] =
-    useState<NonEmptyString255 | null>(null)
   const { library } = useProductLibrary()
-  const prefillFor = useLibraryProductPrefill()
-
-  const applyPrefill = (prefill: LibraryProductPrefill) => {
-    setName(prefill.name)
-    setLibraryProductId(prefill.libraryProductId)
-    if (prefill.taxRateId !== undefined) setTaxRateId(prefill.taxRateId)
-    if (prefill.category !== undefined) setCategory(prefill.category)
-    clearError("name")
-  }
 
   // A related product's chip opened the form: fill it from that product
   // once the library is there (it is, the list showed the chip).
@@ -169,10 +153,11 @@ export function NewCatalogItemPage() {
   ) {
     setRoutePrefilled(true)
     const product = libraryProductById(library, params.libraryProductId)
-    const prefill = product === undefined ? undefined : prefillFor(product)
+    const prefill =
+      product === undefined ? undefined : libraryFields.prefillFor(product)
     if (prefill !== undefined) {
       const categoryId = CatalogCategoryId.safeParse(params.categoryId)
-      applyPrefill(
+      libraryFields.apply(
         categoryId.success &&
           categories.some((candidate) => candidate.id === categoryId.data)
           ? { ...prefill, category: { kind: "existing", id: categoryId.data } }
@@ -270,12 +255,17 @@ export function NewCatalogItemPage() {
     })
     setPending(false)
     if (!saved) return
-    // Back to the list, which offers the related products of a library
-    // item (`?added=`); the same Back as before for any other item.
-    if (libraryProductId !== null && createdId !== undefined)
+    // Back to the list that opened the form, which offers the related
+    // products of a library item (`?added=`); the same Back as before for
+    // any other item or opener.
+    const destination =
+      createdId === undefined
+        ? undefined
+        : newItemReturn({ from: params.from, libraryProductId, createdId })
+    if (destination?.kind === "list")
       router.dismissTo({
         pathname: "/settings/items",
-        params: { added: createdId },
+        params: { added: destination.added },
       })
     else router.back()
   }
@@ -295,7 +285,7 @@ export function NewCatalogItemPage() {
             <ItemLibraryPicture
               libraryProductId={libraryProductId}
               disabled={pending}
-              onRemove={() => setLibraryProductId(null)}
+              onUnlink={libraryFields.unlink}
             />
             <Field>
               <FieldLabel>{t("catalog.items.form.name.label")}</FieldLabel>
@@ -305,12 +295,11 @@ export function NewCatalogItemPage() {
                 invalid={error("name") !== undefined}
                 disabled={pending}
                 onChangeText={(next) => {
-                  setName(next)
+                  libraryFields.typeName(next)
                   clearError("name")
                 }}
                 onChoose={(product) => {
-                  const prefill = prefillFor(product)
-                  if (prefill !== undefined) applyPrefill(prefill)
+                  if (libraryFields.pick(product)) clearError("name")
                 }}
               />
               <FieldError>{error("name")}</FieldError>
@@ -421,7 +410,7 @@ export function NewCatalogItemPage() {
               <CategoryCombobox
                 categories={categories}
                 value={category}
-                onValueChange={setCategory}
+                onValueChange={libraryFields.chooseCategory}
                 disabled={pending}
               />
             </Field>
@@ -431,7 +420,7 @@ export function NewCatalogItemPage() {
                 <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
                 <Select
                   value={taxRateId}
-                  onValueChange={setTaxRateId}
+                  onValueChange={libraryFields.chooseTaxRate}
                   items={Object.fromEntries(
                     taxRateOptions.map((option) => [option.value, option.title])
                   )}

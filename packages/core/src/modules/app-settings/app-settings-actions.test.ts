@@ -1,5 +1,5 @@
 import { testCreateRun } from "@evolu/common"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import type { DateDep, EvoluOwnerDep } from "../../deps.ts"
 import { createTestDateDep, testFixedDate } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
@@ -12,6 +12,7 @@ import {
 } from "../account/account-queries.ts"
 import { catalogCategoriesQuery } from "../catalog-category/catalog-category-queries.ts"
 import { catalogItemsQuery } from "../catalog-item/catalog-item-queries.ts"
+import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { MasterKey } from "../shared/key-derivation.ts"
@@ -523,6 +524,141 @@ describe("finishOnboarding starter items", () => {
         ["Tap water", 0],
         ["Cheese board", 24_901],
       ])
+  }, 15_000)
+
+  test("writes the starter categories and items in the batch that marks the account onboarded", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+    const upsertSpy = vi.spyOn(evolu, "upsert")
+
+    await run.orThrow(
+      finishOnboarding({
+        ...input,
+        homeMode: "pos",
+        starterItems: [
+          starterItem({
+            name: "Espresso",
+            unitAmount: 5_900,
+            categoryName: "Káva",
+            taxRatePercentage: 1200,
+          }),
+          starterItem({
+            name: "Točené pivo 0,5 l",
+            unitAmount: 6_500,
+            categoryName: "Pivo",
+            taxRatePercentage: 2100,
+          }),
+        ],
+      })
+    )
+
+    const lastBatch = upsertSpy.mock.calls.filter(([table]) =>
+      ["catalogCategory", "catalogItem", "appSettings"].includes(table)
+    )
+    upsertSpy.mockRestore()
+    // A finish cut short between them would leave a pack without the row
+    // that keeps the wizard from creating it a second time.
+    expect(lastBatch.map(([table]) => table).toSorted()).toEqual([
+      "appSettings",
+      "catalogCategory",
+      "catalogCategory",
+      "catalogItem",
+      "catalogItem",
+    ])
+    expect(new Set(lastBatch.map((call) => call[2]?.onComplete)).size).toBe(1)
+  }, 15_000)
+
+  test("a refused starter pack leaves the account not onboarded and writes no categories or items", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+    // A VAT payer, which a product given away without a VAT rate breaks
+    // (catalog/0001): Czech VAT has no rate of 15 %.
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+
+    await expect(
+      run(
+        finishOnboarding({
+          ...input,
+          homeMode: "pos",
+          starterItems: [
+            starterItem({
+              name: "Espresso",
+              unitAmount: 5_900,
+              categoryName: "Káva",
+              taxRatePercentage: 1200,
+            }),
+            starterItem({
+              name: "Tap water",
+              unitAmount: 0,
+              categoryName: "Nápoje",
+              taxRatePercentage: 1500,
+            }),
+          ],
+        })
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "ZeroPriceWithoutTaxRate" },
+    })
+
+    const [settings, items, categories] = await Promise.all([
+      evolu.loadQuery(settingsQuery),
+      evolu.loadQuery(catalogItemsQuery),
+      evolu.loadQuery(catalogCategoriesQuery),
+    ])
+    expect([settings, items, categories]).toEqual([[], [], []])
+  }, 15_000)
+
+  test("finishing again after a refused pack creates each category and item once", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+    const espresso = starterItem({
+      name: "Espresso",
+      unitAmount: 5_900,
+      categoryName: "Káva",
+      taxRatePercentage: 1200,
+    })
+    const tapWater = starterItem({
+      name: "Tap water",
+      unitAmount: 0,
+      categoryName: "Nápoje",
+      taxRatePercentage: 1500,
+    })
+
+    const refused = await run(
+      finishOnboarding({
+        ...input,
+        homeMode: "pos",
+        starterItems: [espresso, tapWater],
+      })
+    )
+    expect(refused.ok).toBe(false)
+    // The merchant prices the water and finishes again.
+    await run.orThrow(
+      finishOnboarding({
+        ...input,
+        homeMode: "pos",
+        starterItems: [
+          espresso,
+          { ...tapWater, unitAmount: NonNegativeInteger(1_000) },
+        ],
+      })
+    )
+
+    await expect.poll(() => evolu.loadQuery(settingsQuery)).toHaveLength(1)
+    const [items, categories] = await Promise.all([
+      evolu.loadQuery(catalogItemsQuery),
+      evolu.loadQuery(catalogCategoriesQuery),
+    ])
+    expect(categories.map(({ name }) => name)).toEqual(["Káva", "Nápoje"])
+    expect(items.map(({ name, sortOrder }) => [name, sortOrder])).toEqual([
+      ["Espresso", 0],
+      ["Tap water", 1],
+    ])
   }, 15_000)
 
   test("creates no catalog items without starter items", async () => {

@@ -35,19 +35,27 @@ Finito first; Payky's web app follows from the same app-shared code.
   available.** A price is in CZK, 0 included (catalog/0001), never negative
   or unreadable; unchecking a product is the way to skip it. The section
   says what is missing.
+- **A picked pack the library stops offering blocks Finish.** When a
+  fresher copy of the library replaces the one the step opened with and no
+  longer has the picked pack, the section asks to pick again instead of
+  finishing with an empty catalog the merchant did not choose.
 - **Only the checked products are created, at the prices typed,** named
   and categorized in the device's language, each with its
   `libraryProductId` (catalog/0006) and the account's active tax rate of
   the library's VAT for the onboarding country, CZ (onboarding/0001), or
   none when the account has no such rate. Products of one library category
   share one category, made where none of that name exists.
-- **They are created with the account, before its settings row.**
-  `finishOnboarding` creates the categories, then every item in one batch
-  (`createCatalogItemsAtEnd`) after the seeded tax rates and before the row
-  that marks the account onboarded. One item its pricing rules refuse
-  (a product given away for 0 without a VAT rate, catalog/0001) writes none
-  of them and leaves the account not onboarded, so the wizard can finish
-  again; the merchant is told to price or uncheck it.
+- **They are created with the account, in the batch of its settings
+  row.** `finishOnboarding` judges the whole pack first, once the tax rates
+  are seeded and before anything of it is written, then writes its new
+  categories, every item and the row that marks the account onboarded in one
+  batch, so the pack and the onboarded account land together or not at all.
+  One item its pricing rules refuse (a product given away for 0 without a
+  VAT rate, catalog/0001) writes no category and no item and leaves the
+  account not onboarded, so the wizard can finish again; the merchant is
+  told to price or uncheck it. A finish cut short after the settings row is
+  written is a finished onboarding; one cut short before it left no pack
+  behind, so finishing again creates each category and item once.
 
 ## Alternatives considered
 
@@ -63,14 +71,17 @@ Finito first; Payky's web app follows from the same app-shared code.
 - The onboarding form holds `starterPack` (`packId`, the unchecked
   products, the prices typed); `finishOnboarding` takes the resulting
   `starterItems`, none when left out.
-- A category made for a starter item survives a refused finish and is found
-  by name when the wizard finishes again.
+- The writes before the pack (the legal entity, the seeded tax rates, the
+  payment accounts) are their own batches and may land without it; each is
+  skipped once its row exists or is a singleton upsert, so a second finish
+  repeats none of them.
 - A pack offers only the products the library still suggests; a pack left
   with none is not offered.
 
 ## Enforced by
 
 - `packages/app-shared/src/onboarding-starter-pack.test.ts > starter packs on the last step > starts with no starter pack`
+- `packages/app-shared/src/onboarding-starter-pack.test.ts > starter packs on the last step > cannot finish when the picked pack is no longer offered`
 - `packages/app-shared/src/onboarding-starter-pack.test.ts > starter packs on the last step > offers starter packs only to a new account selling from items once the library has loaded`
 - `packages/app-shared/src/onboarding-starter-pack.test.ts > starter packs on the last step > lists a pack's suggestable products in its order, named in the device language and all checked`
 - `packages/app-shared/src/onboarding-starter-pack.test.ts > starter packs on the last step > cannot finish until every checked product has a typed price`
@@ -85,5 +96,8 @@ Finito first; Payky's web app follows from the same app-shared code.
 - `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > creates the starter items with their categories and VAT rates`
 - `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > keeps the starter items' prices exactly as the merchant typed them`
 - `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > creates no catalog items without starter items`
+- `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > writes the starter categories and items in the batch that marks the account onboarded`
+- `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > a refused starter pack leaves the account not onboarded and writes no categories or items`
+- `packages/core/src/modules/app-settings/app-settings-actions.test.ts > finishOnboarding starter items > finishing again after a refused pack creates each category and item once`
 - `packages/core/src/modules/catalog-item/catalog-item-actions.test.ts > createCatalogItemsAtEnd > appends the items in the order given after the last one`
 - `packages/core/src/modules/catalog-item/catalog-item-actions.test.ts > createCatalogItemsAtEnd > writes none of the items when one breaks the pricing rules`

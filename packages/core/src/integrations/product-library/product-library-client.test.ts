@@ -1,8 +1,13 @@
 import { testCreateRun } from "@evolu/common"
 import { describe, expect, test } from "vitest"
+import { z } from "zod"
 
 import type { FetchDep } from "../../deps.ts"
-import { testProductLibrary } from "../../testing/product-library.ts"
+import {
+  createTestLibraryProduct,
+  testProductLibrary,
+} from "../../testing/product-library.ts"
+import { jsonCodec } from "../../zod-utils.ts"
 import {
   createProductLibraryDep,
   libraryImageUrl,
@@ -10,7 +15,12 @@ import {
   type ProductLibraryApiError,
   type ProductLibraryDep,
   type ProductLibraryHttpError,
+  ProductLibrarySchema,
 } from "./product-library-client.ts"
+import {
+  relatedSuggestions,
+  starterPackProducts,
+} from "./product-library-utils.ts"
 
 const inputToString = (input: RequestInfo | URL): string =>
   input instanceof URL ? input.toString() : String(input)
@@ -86,6 +96,106 @@ describe("loadProductLibrary", () => {
     })
   })
 
+  test("keeps the valid products when one breaks the contract", async () => {
+    const [espresso, ...others] = testProductLibrary.products
+    await using run = testCreateRun(
+      createDeps(() =>
+        Response.json({
+          ...testProductLibrary,
+          categories: [
+            ...testProductLibrary.categories,
+            { id: "tea", names: { cs: "Čaj" } },
+          ],
+          products: [
+            { ...espresso, names: { cs: "Espresso" } },
+            { id: "lemonade", retired: "no" },
+            ...others,
+          ],
+          packs: [...testProductLibrary.packs, { id: "tea-room" }],
+        })
+      )
+    )
+
+    await expect(run(loadProductLibrary())).resolves.toEqual({
+      ok: true,
+      value: { ...testProductLibrary, products: others },
+    })
+  })
+
+  test("drops a product whose id the catalog could not store", async () => {
+    const longId = "a".repeat(256)
+    await using run = testCreateRun(
+      createDeps(() =>
+        Response.json({
+          ...testProductLibrary,
+          products: [
+            ...testProductLibrary.products,
+            createTestLibraryProduct({ id: longId }),
+          ],
+        })
+      )
+    )
+
+    const result = await run(loadProductLibrary())
+
+    expect(result.ok && result.value.products.map(({ id }) => id)).toEqual(
+      testProductLibrary.products.map(({ id }) => id)
+    )
+  })
+
+  test("reads an empty picture as none", async () => {
+    await using run = testCreateRun(
+      createDeps(() =>
+        Response.json({
+          ...testProductLibrary,
+          products: [createTestLibraryProduct({ id: "tea", image: "" })],
+        })
+      )
+    )
+
+    await expect(run(loadProductLibrary())).resolves.toEqual({
+      ok: true,
+      value: {
+        ...testProductLibrary,
+        products: [createTestLibraryProduct({ id: "tea", image: null })],
+      },
+    })
+  })
+
+  test("keeps the packs and related lists naming a product it left out", async () => {
+    const [draftLagerLarge, draftLagerSmall, ...others] =
+      testProductLibrary.products
+    await using run = testCreateRun(
+      createDeps(() =>
+        Response.json({
+          ...testProductLibrary,
+          products: [
+            draftLagerLarge,
+            { ...draftLagerSmall, vat: { CZ: "21 %" } },
+            ...others,
+          ],
+        })
+      )
+    )
+
+    const result = await run(loadProductLibrary())
+    if (!result.ok) throw new Error("The library did not load.")
+    const library = result.value
+
+    expect(library.packs).toEqual(testProductLibrary.packs)
+    const [lager] = library.products
+    expect(lager?.id).toBe("draft-lager-large")
+    expect(
+      lager === undefined
+        ? []
+        : relatedSuggestions(library, lager, new Set()).map(({ id }) => id)
+    ).toEqual(["non-alcoholic-beer"])
+    expect(starterPackProducts(library, "bar").map(({ id }) => id)).toEqual([
+      "draft-lager-large",
+      "non-alcoholic-beer",
+    ])
+  })
+
   test("returns a typed error for a failed request", async () => {
     await using run = testCreateRun(
       createDeps(() => new Response("Not found", { status: 404 }))
@@ -113,6 +223,16 @@ describe("loadProductLibrary", () => {
         responseBody: body,
       } satisfies Partial<ProductLibraryApiError>,
     })
+  })
+})
+
+describe("ProductLibrarySchema", () => {
+  test("writes a loaded library back as JSON that reads the same", () => {
+    const codec = jsonCodec(ProductLibrarySchema)
+
+    expect(z.decode(codec, z.encode(codec, testProductLibrary))).toEqual(
+      testProductLibrary
+    )
   })
 })
 

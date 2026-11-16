@@ -1,5 +1,6 @@
 import {
   err,
+  type MutationOptions,
   ok,
   sqliteFalse,
   sqliteTrue,
@@ -14,9 +15,16 @@ import {
   saveFiatBankAccount,
   saveSparkAccount,
 } from "../account/account-actions.ts"
-import { findOrCreateCatalogCategory } from "../catalog-category/catalog-category-actions.ts"
-import type { CatalogCategoryId } from "../catalog-category/catalog-category-types.ts"
-import { createCatalogItemsAtEnd } from "../catalog-item/catalog-item-actions.ts"
+import {
+  type NewCatalogCategory,
+  planCatalogCategoriesByName,
+  upsertNewCatalogCategories,
+} from "../catalog-category/catalog-category-actions.ts"
+import {
+  type NewCatalogItem,
+  planCatalogItemsAtEnd,
+  upsertNewCatalogItems,
+} from "../catalog-item/catalog-item-actions.ts"
 import type { CatalogItemPricingError } from "../catalog-item/catalog-item-utils.ts"
 import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
@@ -70,56 +78,68 @@ export const requireNotOnboarded =
     return rows.length === 0 ? ok() : err(createAlreadyOnboardedError())
   }
 
+/** What the appSettings row an onboarding writes starts with. */
+interface OnboardingSettingsInput {
+  readonly fiatCurrency: FiatCurrency
+  readonly defaultPaymentMethod: DefaultPaymentMethod
+  readonly paymentMethodOrderJson: string
+  /**
+   * The one mode home offers, as the merchant chose it (onboarding/0012);
+   * left out, the modes stay unset, which means all of them.
+   */
+  readonly homeMode?: TerminalHomeMode
+  /** Left out, tips start on. */
+  readonly tipsEnabled?: boolean
+}
+
+/**
+ * Writes the appSettings row that marks the account onboarded into the
+ * caller's batch; `onboardingCompleted` is still written for compatibility
+ * with older app versions syncing the same account.
+ */
+const upsertOnboardingSettings = (
+  evolu: EvoluDep["evolu"],
+  { homeMode, tipsEnabled, ...input }: OnboardingSettingsInput,
+  options: MutationOptions
+): void => {
+  evolu.upsert(
+    "appSettings",
+    {
+      ...createDefaultSettings(),
+      ...input,
+      ...(homeMode === undefined
+        ? {}
+        : {
+            enabledHomeModesJson: z.encode(EnabledHomeModesJson, [homeMode]),
+          }),
+      ...(tipsEnabled === undefined
+        ? {}
+        : { tipsEnabled: tipsEnabled ? sqliteTrue : sqliteFalse }),
+      onboardingCompleted: sqliteTrue,
+    },
+    options
+  )
+}
+
 /**
  * Creates the appSettings row when onboarding finishes. The row's existence
- * marks the account as onboarded; `onboardingCompleted` is still written for
- * compatibility with older app versions syncing the same account.
+ * marks the account as onboarded.
  */
 export const completeOnboarding =
-  ({
-    homeMode,
-    tipsEnabled,
-    ...input
-  }: {
-    readonly fiatCurrency: FiatCurrency
-    readonly defaultPaymentMethod: DefaultPaymentMethod
-    readonly paymentMethodOrderJson: string
-    /**
-     * The one mode home offers, as the merchant chose it (onboarding/0012);
-     * left out, the modes stay unset, which means all of them.
-     */
-    readonly homeMode?: TerminalHomeMode
-    /** Left out, tips start on. */
-    readonly tipsEnabled?: boolean
-  }): Task<AppSettingsId, AlreadyOnboardedError, EvoluDep & EvoluOwnerDep> =>
+  (
+    input: OnboardingSettingsInput
+  ): Task<AppSettingsId, AlreadyOnboardedError, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
     const { evoluOwner } = run.deps
 
-    // The last line of defence; `finishOnboarding` checks before its first
-    // write already.
     const notOnboarded = await run(requireNotOnboarded())
     if (!notOnboarded.ok) return notOnboarded
 
     await runMutationWithCompletion((options) =>
-      run.deps.evolu.upsert(
-        "appSettings",
-        {
-          ...createDefaultSettings(),
-          ...input,
-          ...(homeMode === undefined
-            ? {}
-            : {
-                enabledHomeModesJson: z.encode(EnabledHomeModesJson, [
-                  homeMode,
-                ]),
-              }),
-          ...(tipsEnabled === undefined
-            ? {}
-            : { tipsEnabled: tipsEnabled ? sqliteTrue : sqliteFalse }),
-          onboardingCompleted: sqliteTrue,
-        },
-        { ...options, owner: evoluOwner }
-      )
+      upsertOnboardingSettings(run.deps.evolu, input, {
+        ...options,
+        owner: evoluOwner,
+      })
     )
     return ok(settingsId)
   }
@@ -229,38 +249,47 @@ export const markRecoveryPhraseVerified =
       })
     )
 
+/** The starter pack's rows, judged and placed, nothing of them written. */
+interface StarterItemsPlan {
+  readonly categories: ReadonlyArray<NewCatalogCategory>
+  readonly items: ReadonlyArray<NewCatalogItem>
+}
+
 /**
- * Creates a starter pack's items in the onboarding currency, after the
- * catalog's last item, in one batch. Items naming one category share it, made
- * where there is none of that name yet; an item's VAT becomes the account's
- * active rate of that percentage, or none when it has no such rate.
+ * Plans a starter pack's items in the onboarding currency, after the
+ * catalog's last item, without writing. Items naming one category share it,
+ * made where there is none of that name yet; an item's VAT becomes the
+ * account's active rate of that percentage, or none when it has no such
+ * rate. Every item's pricing is judged here, so a refused one stops the
+ * pack before anything of it is written.
  */
-const createStarterItems =
+const planStarterItems =
   (
     starterItems: ReadonlyArray<OnboardingStarterItem>,
     currency: FiatCurrency
-  ): Task<void, CatalogItemPricingError, EvoluDep & EvoluOwnerDep> =>
+  ): Task<StarterItemsPlan, CatalogItemPricingError, EvoluDep> =>
   async (run) => {
-    if (starterItems.length === 0) return ok()
+    if (starterItems.length === 0) return ok({ categories: [], items: [] })
 
-    const taxRates = await run.deps.evolu.loadQuery(activeTaxRatesQuery)
-    const categoryIds = new Map<string, CatalogCategoryId>()
-    for (const { categoryName } of starterItems) {
-      if (categoryName === null || categoryIds.has(categoryName)) continue
-      categoryIds.set(
-        categoryName,
-        await run.ok(findOrCreateCatalogCategory(categoryName))
-      )
-    }
+    const [taxRates, categories] = await Promise.all([
+      run.deps.evolu.loadQuery(activeTaxRatesQuery),
+      run.ok(
+        planCatalogCategoriesByName(
+          starterItems.flatMap(({ categoryName }) =>
+            categoryName === null ? [] : [categoryName]
+          )
+        )
+      ),
+    ])
 
-    const created = await run(
-      createCatalogItemsAtEnd(
+    const items = await run(
+      planCatalogItemsAtEnd(
         starterItems.map((item) => ({
           deviceId: null,
           categoryId:
             item.categoryName === null
               ? null
-              : (categoryIds.get(item.categoryName) ?? null),
+              : categories.idOf(item.categoryName),
           name: item.name,
           libraryProductId: item.libraryProductId,
           currency,
@@ -275,15 +304,15 @@ const createStarterItems =
         }))
       )
     )
-    if (!created.ok) return created
-    return ok()
+    if (!items.ok) return items
+    return ok({ categories: categories.created, items: items.value })
   }
 
 /**
  * Writes everything the onboarding wizard collected. Refuses an onboarded
  * account before the first write (account/0005): the bank account below is
- * a last-write-wins singleton, so a refusal in `completeOnboarding` alone
- * would come after the IBAN was already overwritten.
+ * a last-write-wins singleton, so a refusal at the settings row alone would
+ * come after the IBAN was already overwritten.
  */
 export const finishOnboarding =
   (input: {
@@ -322,6 +351,13 @@ export const finishOnboarding =
       run.deps.evolu.loadQuery(taxRatesQuery),
     ])
 
+    // These writes come before the starter pack is judged, which needs the
+    // seeded rates, and each is its own batch. Running them again is
+    // harmless: the two above are skipped once their rows exist, and the
+    // three accounts are singleton upserts a second finish only writes again
+    // with what the wizard then holds.
+    // So a finish refused or cut short anywhere up to the last batch leaves
+    // the account not onboarded, and the wizard can finish it again.
     if (existingLegalEntity.length === 0) {
       await run.ok(setLegalEntity({ country: input.country, vatPayer: false }))
     }
@@ -339,22 +375,40 @@ export const finishOnboarding =
         currency: input.currency,
       })
     )
-    // Before the settings row, so a refused item leaves the account not
-    // onboarded and the wizard can finish again: everything above is
-    // guarded or an upsert, and a category made here is found by name.
+
     const starter = await run(
-      createStarterItems(input.starterItems ?? [], input.currency)
+      planStarterItems(input.starterItems ?? [], input.currency)
     )
     if (!starter.ok) return starter
-    const completed = await run(
-      completeOnboarding({
-        fiatCurrency: input.currency,
-        defaultPaymentMethod: input.defaultPaymentMethod,
-        paymentMethodOrderJson: input.paymentMethodOrderJson,
-        homeMode: input.homeMode,
-        tipsEnabled: input.tipsEnabled,
-      })
-    )
-    if (!completed.ok) return completed
+
+    // The last line of defence: a settings row synced in since the check
+    // above must not be overwritten, nor get a second starter pack.
+    const stillNotOnboarded = await run(requireNotOnboarded())
+    if (!stillNotOnboarded.ok) return stillNotOnboarded
+
+    // One batch: the starter pack lands with the row that marks the account
+    // onboarded or not at all, so a finish cut short creates no pack the
+    // wizard's next finish would create a second time.
+    const { evoluOwner } = run.deps
+    await runMutationWithCompletion((options) => {
+      const ownerOptions = { ...options, owner: evoluOwner }
+      upsertNewCatalogCategories(
+        run.deps.evolu,
+        starter.value.categories,
+        ownerOptions
+      )
+      upsertNewCatalogItems(run.deps.evolu, starter.value.items, ownerOptions)
+      upsertOnboardingSettings(
+        run.deps.evolu,
+        {
+          fiatCurrency: input.currency,
+          defaultPaymentMethod: input.defaultPaymentMethod,
+          paymentMethodOrderJson: input.paymentMethodOrderJson,
+          homeMode: input.homeMode,
+          tipsEnabled: input.tipsEnabled,
+        },
+        ownerOptions
+      )
+    })
     return ok()
   }

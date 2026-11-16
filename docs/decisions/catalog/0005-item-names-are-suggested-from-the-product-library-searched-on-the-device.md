@@ -77,6 +77,7 @@ products, one JSON file of tens of kilobytes compressed.
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > ignores case and diacritics in the query`
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > finds a name while it is still being typed with a typo`
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > matches the names and synonyms of the language asked for`
+- `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > matches the names of the language asked for only`
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > ranks an exact name over a name prefix, a word prefix, a synonym, a substring and a typo`
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > allows one typo from four letters and two from seven`
 - `packages/core/src/integrations/product-library/product-library-search.test.ts > searchLibraryProducts > never suggests a retired product`

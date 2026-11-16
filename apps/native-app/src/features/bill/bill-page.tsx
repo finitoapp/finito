@@ -75,7 +75,7 @@ import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader, goBack } from "../../components/fade-header.tsx"
 import {
   LibraryPicture,
-  useLibraryPictureUrl,
+  libraryPictureUrlReader,
 } from "../../components/library-picture.tsx"
 import { LoadingView } from "../../components/loading-view.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
@@ -112,6 +112,7 @@ import {
 } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
+import { useProductLibrary } from "../../hooks/use-product-library.ts"
 import { useProductLookup } from "../../hooks/use-product-lookup.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
@@ -686,6 +687,9 @@ function BillCart({
     showCategoryHeadings,
     gridColumns
   )
+  // The library is read once for the whole grid, each brick handed its
+  // picture's URL, rather than a query observer per brick.
+  const brickPictureUrl = libraryPictureUrlReader(useProductLibrary())
   // The action runs long after this render, so it must not capture it:
   // `cart.undo` reads the top of its stack when it runs, as web's.
   const showUndoToast = (message: string) =>
@@ -839,6 +843,10 @@ function BillCart({
                   lastScanned === null ? null : (
                     <ItemBrick
                       catalogItem={lastScanned}
+                      pictureUrl={brickPictureUrl(
+                        lastScanned.libraryProductId,
+                        BRICK_PICTURE_SIZE
+                      )}
                       summaries={summaries}
                       locale={locale}
                       onAdd={() => void cart.addOne(lastScanned)}
@@ -893,6 +901,10 @@ function BillCart({
                         <View key={item.id} flex={1}>
                           <ItemBrick
                             catalogItem={item}
+                            pictureUrl={brickPictureUrl(
+                              item.libraryProductId,
+                              BRICK_PICTURE_SIZE
+                            )}
                             summaries={summaries}
                             locale={locale}
                             onAdd={() => void cart.addOne(item)}
@@ -1514,6 +1526,7 @@ const BRICK_PICTURE_SIZE = 56
  */
 function ItemBrick({
   catalogItem,
+  pictureUrl,
   summaries,
   locale,
   onAdd,
@@ -1521,6 +1534,8 @@ function ItemBrick({
   onRemove,
 }: {
   readonly catalogItem: CatalogItemRow
+  /** Its library picture's URL (`libraryPictureUrl`), if it has one. */
+  readonly pictureUrl: string | undefined
   readonly summaries: ReadonlyArray<BillLineSummary>
   readonly locale: string
   readonly onAdd: () => void
@@ -1539,9 +1554,7 @@ function ItemBrick({
   const quantityPulse = useChangePulse(quantity)
 
   const inCart = quantity > 0
-  const pictured =
-    useLibraryPictureUrl(catalogItem.libraryProductId, BRICK_PICTURE_SIZE) !==
-    undefined
+  const pictured = pictureUrl !== undefined
   const brickName = (
     <Text
       flex={pictured ? undefined : 1}
@@ -1589,10 +1602,7 @@ function ItemBrick({
          * tile's full width; an item without one is drawn as before.
          */}
         {pictured ? (
-          <LibraryPicture
-            libraryProductId={catalogItem.libraryProductId}
-            size={BRICK_PICTURE_SIZE}
-          />
+          <LibraryPicture url={pictureUrl} size={BRICK_PICTURE_SIZE} />
         ) : (
           brickName
         )}

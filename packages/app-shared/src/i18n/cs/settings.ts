@@ -1385,8 +1385,9 @@ export const csSettings = {
   "catalog.library.suggestionsLabel": "Návrhy z knihovny produktů",
   "catalog.library.addAlso": "Přidejte také",
   "catalog.library.addAlso.description":
-    "Otevře novou položku s vyplněným názvem a obrázkem, cenu doplníte sami.",
-  "catalog.library.removePicture": "Odebrat obrázek",
+    "Otevře novou položku vyplněnou z knihovny, cenu doplníte sami.",
+  "catalog.library.linked": "Z knihovny produktů: {name}",
+  "catalog.library.unlink": "Odpojit od knihovny",
   "catalog.library.dismiss": "Zavřít",
   "settings.paymentAccounts.status.nativeOnly": "Pouze v nativní aplikaci",
   "settings.cashuAccount.balance.switchUnit": "Přepnout jednotku",

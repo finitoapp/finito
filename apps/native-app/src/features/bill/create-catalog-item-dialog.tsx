@@ -1,7 +1,4 @@
-import {
-  type CategoryChoice,
-  resolveCategoryChoice,
-} from "@payky/app-shared/catalog-category-choice"
+import { resolveCategoryChoice } from "@payky/app-shared/catalog-category-choice"
 import {
   type CatalogItemFormErrors,
   catalogItemPricingErrorKeys,
@@ -14,12 +11,8 @@ import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-it
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import type {
-  FiatCurrency,
-  NonEmptyString255,
-} from "@payky/core/modules/shared/schema"
+import type { FiatCurrency } from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
-import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { useAtomValue } from "jotai"
 import { useState } from "react"
 import { evoluAtom } from "../../atoms/evolu.ts"
@@ -62,7 +55,7 @@ import { DiscountSwitchField } from "../shared/discount-switch-field.tsx"
 import { ItemLibraryPicture } from "../shared/item-library-picture.tsx"
 import { LibraryNameField } from "../shared/library-name-field.tsx"
 import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
-import { useLibraryProductPrefill } from "../shared/use-library-product-prefill.ts"
+import { useLibraryItemFields } from "../shared/use-library-product-prefill.ts"
 
 /**
  * Lightweight create-item form opened from bill scan mode when a scanned code
@@ -140,24 +133,21 @@ function CreateForm({
   // Unlike web's dialog, this form mounts only when it opens, by which time
   // the lookup (started with the unknown-code confirmation) usually answered:
   // start from that product, then follow it below.
-  const [name, setName] = useState(productLookup.product?.name ?? "")
+  // The name, the library product it links, the VAT rate and the category
+  // (a typed name becomes its category with the item, catalog/0004).
+  const libraryFields = useLibraryItemFields({
+    initialName: productLookup.product?.name ?? "",
+    defaultTaxRateId: defaultTaxRate?.id ?? NO_OPTION,
+  })
+  const { name, setName, libraryProductId, category, taxRateId } = libraryFields
   const [description, setDescription] = useState(
     productLookup.product?.description ?? ""
   )
   const [price, setPrice] = useState("")
   // The sign of the price, as the catalog form's switch (catalog/0002).
   const [discount, setDiscount] = useState(false)
-  // A typed name becomes its category with the item (catalog/0004).
-  const [category, setCategory] = useState<CategoryChoice>({ kind: "none" })
-  const [taxRateId, setTaxRateId] = useState<TaxRateId | "none">(
-    defaultTaxRate?.id ?? NO_OPTION
-  )
   const [errors, setErrors] = useState<CatalogItemFormErrors>({})
   const [pending, setPending] = useState(false)
-  // The library product picked from the name's suggestions, if any.
-  const [libraryProductId, setLibraryProductId] =
-    useState<NonEmptyString255 | null>(null)
-  const prefillFor = useLibraryProductPrefill()
 
   // Prefill once the lookup arrives, without overwriting what was typed.
   const { product } = productLookup
@@ -247,7 +237,7 @@ function CreateForm({
         <ItemLibraryPicture
           libraryProductId={libraryProductId}
           disabled={pending}
-          onRemove={() => setLibraryProductId(null)}
+          onUnlink={libraryFields.unlink}
         />
         <Field>
           <FieldLabel>{t("catalog.items.form.name.label")}</FieldLabel>
@@ -258,18 +248,11 @@ function CreateForm({
             autoFocus
             placeholder={t("catalog.items.form.name.placeholder")}
             onChangeText={(next) => {
-              setName(next)
+              libraryFields.typeName(next)
               clear("name")
             }}
             onChoose={(product) => {
-              const prefill = prefillFor(product)
-              if (prefill === undefined) return
-              setName(prefill.name)
-              setLibraryProductId(prefill.libraryProductId)
-              if (prefill.taxRateId !== undefined)
-                setTaxRateId(prefill.taxRateId)
-              if (prefill.category !== undefined) setCategory(prefill.category)
-              clear("name")
+              if (libraryFields.pick(product)) clear("name")
             }}
           />
           <FieldError>{error("name")}</FieldError>
@@ -325,7 +308,7 @@ function CreateForm({
           <CategoryCombobox
             categories={categories}
             value={category}
-            onValueChange={setCategory}
+            onValueChange={libraryFields.chooseCategory}
             disabled={pending}
           />
         </Field>
@@ -335,7 +318,7 @@ function CreateForm({
             <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
             <Select
               value={taxRateId}
-              onValueChange={setTaxRateId}
+              onValueChange={libraryFields.chooseTaxRate}
               items={Object.fromEntries(
                 taxRateOptions.map((option) => [option.value, option.title])
               )}

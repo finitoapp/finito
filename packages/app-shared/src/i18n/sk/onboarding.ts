@@ -192,6 +192,8 @@ export const skOnboarding = {
   "onboarding.starterPack.pricingFailed":
     "Položka za 0 potrebuje sadzbu DPH a jedna z vašich žiadnu nemá. Zadajte jej cenu alebo zrušte jej zaškrtnutie.",
   "onboarding.starterPack.title": "Začnite s ponukou",
+  "onboarding.starterPack.unavailable":
+    "Vybraná ponuka už nie je k dispozícii. Vyberte inú alebo začnite bez položiek.",
   "onboarding.title": "{appName} vás víta",
   "onboarding.welcome.new": "Nový podnik",
   "onboarding.welcome.restore": "Už mám účet",

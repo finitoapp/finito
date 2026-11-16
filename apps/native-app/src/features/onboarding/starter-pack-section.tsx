@@ -11,7 +11,10 @@ import {
 import { onboardingCurrency } from "@payky/app-shared/onboarding-utils"
 import type { ProductLibrary } from "@payky/core/integrations/product-library/product-library-client"
 import { Text, XStack, YStack } from "tamagui"
-import { LibraryPicture } from "../../components/library-picture.tsx"
+import {
+  LibraryPicture,
+  libraryPictureUrl,
+} from "../../components/library-picture.tsx"
 import { Card, CardContent } from "../../components/ui/card.tsx"
 import { Checkbox } from "../../components/ui/checkbox.tsx"
 import { Input } from "../../components/ui/input.tsx"
@@ -19,6 +22,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "../../components/ui/toggle-group.tsx"
+import { useProductLibrary } from "../../hooks/use-product-library.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
@@ -35,18 +39,23 @@ const PICTURE_SIZE = 40
  * pack lists its products, each checked, with its picture and an empty
  * price field in the onboarding currency. The page keeps Finish unavailable
  * until every checked product has a price (`canFinishOnboarding`), so this
- * section says what is missing. Finito only for now: starter packs land in
- * Finito first.
+ * section says what is missing; and while the pack picked is one a fresher
+ * library no longer offers (`isPickedStarterPackUnavailable`), it asks for
+ * another pick, which "Start empty" answers too. Finito only for now:
+ * starter packs land in Finito first.
  */
 export function StarterPackSection({
   library,
   starterPack,
+  unavailable,
   missingPrices,
   pending,
   onStarterPackChange,
 }: {
   readonly library: ProductLibrary
   readonly starterPack: OnboardingStarterPack
+  /** The pack picked is no longer offered. */
+  readonly unavailable: boolean
   /** Some checked product still has no valid price. */
   readonly missingPrices: boolean
   readonly pending: boolean
@@ -55,6 +64,7 @@ export function StarterPackSection({
   ) => void
 }) {
   const { language, t } = useTranslation()
+  const { baseUrl } = useProductLibrary()
   const packs = offeredStarterPacks(library, language)
   const products =
     starterPack.packId === null
@@ -115,7 +125,12 @@ export function StarterPackSection({
                     }
                   />
                   <LibraryPicture
-                    libraryProductId={product.id}
+                    url={libraryPictureUrl({
+                      library,
+                      baseUrl,
+                      libraryProductId: product.id,
+                      size: PICTURE_SIZE,
+                    })}
                     size={PICTURE_SIZE}
                   />
                   <Text
@@ -156,6 +171,11 @@ export function StarterPackSection({
           </CardContent>
         </Card>
       )}
+      {unavailable ? (
+        <Text px={4} color="muted-foreground" fontSize={fontSize.sm}>
+          {t("onboarding.starterPack.unavailable")}
+        </Text>
+      ) : null}
       {missingPrices ? (
         <Text px={4} color="muted-foreground" fontSize={fontSize.sm}>
           {t("onboarding.starterPack.missingPrices")}

@@ -1,5 +1,6 @@
 import {
   type InsertValues,
+  type MutationOptions,
   ok,
   sqliteTrue,
   type Task,
@@ -12,6 +13,7 @@ import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import { isVatPayer } from "../legal-entity/legal-entity-utils.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import {
+  createRowId,
   getNextSortOrder,
   removeUndefinedValues,
   runMutationWithCompletion,
@@ -164,20 +166,22 @@ export const createCatalogItemAtEnd =
     )
   }
 
+/** A catalog item a plan creates, its id chosen before the batch writing it. */
+export interface NewCatalogItem extends InsertValues<CatalogItem> {
+  readonly id: CatalogItemId
+}
+
 /**
- * Creates several catalog items appended after the current last one, in the
- * order given and in one batch. Every item's pricing is judged first, so one
- * that breaks `validateCatalogItemPricing` refuses them all and none is
- * written.
+ * Judges several new items and places them after the current last one, in
+ * the order given, without writing: every item's pricing is judged first, so
+ * one that breaks `validateCatalogItemPricing` refuses them all. The
+ * load/compute half of `createCatalogItemsAtEnd`, for a caller folding the
+ * items into its own batch through `upsertNewCatalogItems`.
  */
-export const createCatalogItemsAtEnd =
+export const planCatalogItemsAtEnd =
   (
     inputs: ReadonlyArray<Omit<InsertValues<CatalogItem>, "sortOrder">>
-  ): Task<
-    ReadonlyArray<CatalogItemId>,
-    CatalogItemPricingError,
-    EvoluDep & EvoluOwnerDep
-  > =>
+  ): Task<ReadonlyArray<NewCatalogItem>, CatalogItemPricingError, EvoluDep> =>
   async (run) => {
     if (inputs.length === 0) return ok([])
 
@@ -196,21 +200,62 @@ export const createCatalogItemsAtEnd =
     }
 
     const firstSortOrder = getNextSortOrder(last)
-    const { evoluOwner } = run.deps
-    const ids = await runMutationWithCompletion((options) =>
-      inputs.map(
-        (input, index) =>
-          run.deps.evolu.insert(
-            "catalogItem",
-            catalogItemInsertValues({
-              ...input,
-              sortOrder: NonNegativeInteger(firstSortOrder + index),
-            }),
-            { ...options, owner: evoluOwner }
-          ).id
-      )
+    return ok(
+      inputs.map((input, index) => ({
+        ...input,
+        id: createRowId<"CatalogItem">(),
+        sortOrder: NonNegativeInteger(firstSortOrder + index),
+      }))
     )
-    return ok(ids)
+  }
+
+/**
+ * Writes items a `planCatalogItemsAtEnd` judged into the caller's batch: the
+ * plain upsert half, as `upsertPaymentNumberRows` is `loadNextPaymentNumber`'s.
+ */
+export const upsertNewCatalogItems = (
+  evolu: EvoluDep["evolu"],
+  items: ReadonlyArray<NewCatalogItem>,
+  options: MutationOptions
+): void => {
+  for (const item of items) {
+    evolu.upsert(
+      "catalogItem",
+      { id: item.id, ...catalogItemInsertValues(item) },
+      options
+    )
+  }
+}
+
+/**
+ * Creates several catalog items appended after the current last one, in the
+ * order given and in one batch. Every item's pricing is judged first, so one
+ * that breaks `validateCatalogItemPricing` refuses them all and none is
+ * written.
+ */
+export const createCatalogItemsAtEnd =
+  (
+    inputs: ReadonlyArray<Omit<InsertValues<CatalogItem>, "sortOrder">>
+  ): Task<
+    ReadonlyArray<CatalogItemId>,
+    CatalogItemPricingError,
+    EvoluDep & EvoluOwnerDep
+  > =>
+  async (run) => {
+    const planned = await run(planCatalogItemsAtEnd(inputs))
+    if (!planned.ok) return planned
+    const items = planned.value
+    // An empty batch would never complete (`runMutationWithCompletion`).
+    if (items.length === 0) return ok([])
+
+    const { evoluOwner } = run.deps
+    await runMutationWithCompletion((options) =>
+      upsertNewCatalogItems(run.deps.evolu, items, {
+        ...options,
+        owner: evoluOwner,
+      })
+    )
+    return ok(items.map(({ id }) => id))
   }
 
 export const deleteCatalogItem =

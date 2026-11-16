@@ -29,17 +29,28 @@ style, at fixed sizes, content-addressed and cacheable for good.
   point at.
 - **A merchant's own photo is out of scope.** There is no upload; an item
   that did not come from the library has no picture and renders as before.
-- **The merchant's name wins, the picture stays.** Renaming an item keeps
-  its `libraryProductId`; the library's name is a suggestion, not a link
-  to keep in sync.
-- **"Remove picture" unlinks the item.** It sets `libraryProductId` to
+- **The merchant's name wins, the picture stays.** Renaming a saved item
+  keeps its `libraryProductId`; the library's name is a suggestion, not a
+  link to keep in sync.
+- **A create form keeps the link only while the name refers to the
+  product.** Before the item is saved, the product picked stays linked
+  while the typed name, case and diacritics aside, contains the product's
+  name in any language or one of its synonyms ("Espresso velké",
+  "Dvojité espresso"); typed into something else ("Pivo" after picking
+  Espresso) or emptied, the form drops it (`nameKeepsLibraryProduct`), so
+  the item never carries another product's picture or related products.
+- **The link is always visible, and "Unlink from library" removes it.** An
+  item form names the linked library product ("From the library:
+  Espresso"), with its picture when it has one, so a link without a
+  picture is not hidden. "Unlink from library" sets `libraryProductId` to
   `null`, in the edit form at once and in a create form before saving; the
   item then has no picture and no library product for good, related
   products included.
 - Pictures show in the bill's item grid, the catalog list (every row then
   leads with the same slot, a picture or the tag icon, so names line up),
-  the item forms and the name suggestions. Finito first; Payky's web app
-  follows.
+  the item forms and the name suggestions. A list or grid reads the
+  library once and hands each row its picture's URL
+  (`libraryPictureUrl`). Finito first; Payky's web app follows.
 
 ## Alternatives considered
 
@@ -64,6 +75,8 @@ style, at fixed sizes, content-addressed and cacheable for good.
 
 - `packages/core/src/modules/catalog-item/catalog-item-actions.test.ts > catalog item library product > an item created without a library product has none`
 - `packages/core/src/modules/catalog-item/catalog-item-actions.test.ts > catalog item library product > renaming an item keeps its library product, and clearing it removes it`
+- `packages/app-shared/src/library-product-prefill.test.ts > a create form's link to the library product picked > holds while the name contains the product's name in any language or a synonym`
+- `packages/app-shared/src/library-product-prefill.test.ts > a create form's link to the library product picked > drops once the name no longer names the product, or is emptied`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > libraryImageUrl > picks the smallest published size at least as large as asked`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > libraryImageUrl > falls back to the largest size when none is large enough`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > libraryImageUrl > has no URL when the library publishes no sizes`

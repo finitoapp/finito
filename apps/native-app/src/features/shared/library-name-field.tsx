@@ -3,7 +3,10 @@ import { searchLibraryProducts } from "@payky/core/integrations/product-library/
 import { libraryCategoryName } from "@payky/core/integrations/product-library/product-library-utils"
 import { useMemo, useState } from "react"
 import { Text, View, XStack, YStack } from "tamagui"
-import { LibraryPicture } from "../../components/library-picture.tsx"
+import {
+  LibraryPicture,
+  libraryPictureUrlReader,
+} from "../../components/library-picture.tsx"
 import {
   Combobox,
   ComboboxItem,
@@ -56,7 +59,9 @@ export function LibraryNameField({
   readonly autoFocus?: boolean
 }) {
   const { t, language } = useTranslation()
-  const { library } = useProductLibrary()
+  const productLibrary = useProductLibrary()
+  const { library } = productLibrary
+  const pictureUrl = libraryPictureUrlReader(productLibrary)
   const [focused, setFocused] = useState(false)
   // Set once a suggestion is chosen, cleared by the next edit of the name.
   const [chosen, setChosen] = useState(false)
@@ -118,7 +123,7 @@ export function LibraryNameField({
                     overflow="hidden"
                   >
                     <LibraryPicture
-                      libraryProductId={product.id}
+                      url={pictureUrl(product.id, SUGGESTION_PICTURE_SIZE)}
                       size={SUGGESTION_PICTURE_SIZE}
                     />
                   </View>

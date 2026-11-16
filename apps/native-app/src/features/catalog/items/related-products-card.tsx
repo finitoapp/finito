@@ -21,6 +21,7 @@ import {
 } from "../../../hooks/use-product-library.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { shape } from "../../../theme/tokens.ts"
+import { NEW_ITEM_FROM_LIST } from "./new-item-return.ts"
 
 /** How many related products the card offers at most. */
 const RELATED_LIMIT = 5
@@ -115,6 +116,7 @@ export function RelatedProductsCard({
                   router.push({
                     pathname: "/settings/items/new",
                     params: {
+                      from: NEW_ITEM_FROM_LIST,
                       libraryProductId: related.id,
                       ...(categoryId === undefined ? {} : { categoryId }),
                     },
