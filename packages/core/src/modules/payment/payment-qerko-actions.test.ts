@@ -322,6 +322,31 @@ describe("qerko terminal payment", () => {
     ).toHaveLength(2)
   }, 15_000)
 
+  test("a payment whose attempt is unknown is canceled only once staff confirm they checked the terminal (payment/0025)", async () => {
+    await using test = await setup({
+      "create-terminal-payment": (body) =>
+        started(pending(String(body.transactionId))),
+      "get-terminal-payment-status": (body) => ({
+        type: "found",
+        payment: { status: "unknown", transactionId: body.transactionId },
+      }),
+    })
+    await test.start()
+    await test.sync()
+
+    await expect(test.run(cancelPayment(test.paymentId))).resolves.toEqual({
+      ok: false,
+      error: {
+        type: "PaymentAttemptUnresolved",
+        id: test.paymentId,
+        transactionId: "00000000-0000-4000-8000-000000000001",
+      },
+    })
+    await expect(
+      test.run(cancelPayment(test.paymentId, { confirmUnresolved: true }))
+    ).resolves.toEqual({ ok: true, value: test.paymentId })
+  }, 15_000)
+
   test("a dropped connection leaves the attempt pending, and a poll that finds nothing ends it without money", async () => {
     let reachable = false
     await using test = await setup({

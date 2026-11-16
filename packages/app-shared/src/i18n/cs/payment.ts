@@ -210,6 +210,11 @@ export const csPayment = {
   "paymentWait.boltCard.ready": "Nebo přiložte Bolt Card",
   "paymentWait.cancel": "Zrušit platbu",
   "paymentWait.cancelError": "Platbu se nepodařilo zrušit.",
+  "paymentWait.cancelUnresolved.cancel": "Zpět",
+  "paymentWait.cancelUnresolved.confirm": "Zrušit platbu",
+  "paymentWait.cancelUnresolved.description":
+    "Výsledek posledního pokusu o platbu kartou ({transactionId}) není známý a peníze z karty už mohly odejít. Platbu zrušte, až když na terminálu ověříte, že neproběhla.",
+  "paymentWait.cancelUnresolved.title": "Zrušit platbu?",
   "paymentWait.canceled": "Tato platba byla zrušena.",
   "paymentWait.cardPaid.action": "Zaplatit kartou",
   "paymentWait.cardPaid.check": "Zeptat se SwitchioPay",

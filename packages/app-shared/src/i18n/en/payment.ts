@@ -212,6 +212,11 @@ export const enPayment = {
   "paymentWait.boltCard.ready": "Or tap a Bolt Card",
   "paymentWait.cancel": "Cancel payment",
   "paymentWait.cancelError": "Could not cancel the payment.",
+  "paymentWait.cancelUnresolved.cancel": "Back",
+  "paymentWait.cancelUnresolved.confirm": "Cancel payment",
+  "paymentWait.cancelUnresolved.description":
+    "The result of the last card attempt ({transactionId}) is unknown and the card may already have been charged. Cancel the payment only after checking on the terminal that it did not go through.",
+  "paymentWait.cancelUnresolved.title": "Cancel the payment?",
   "paymentWait.canceled": "This payment was canceled.",
   "paymentWait.cardPaid.action": "Pay with payment card",
   "paymentWait.cardPaid.check": "Ask SwitchioPay",

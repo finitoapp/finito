@@ -69,6 +69,21 @@ export type PaymentAlreadyPaidError = ReturnType<
   typeof createPaymentAlreadyPaidError
 >
 
+/**
+ * A payment canceled while a card attempt on it has an unknown outcome
+ * (payment/0006): the card may have been charged, so it is canceled only
+ * once staff confirm they checked the terminal (payment/0025).
+ */
+export const createPaymentAttemptUnresolvedError = defineError(
+  "PaymentAttemptUnresolved"
+)<{
+  readonly id: PaymentId
+  readonly transactionId: string
+}>()
+export type PaymentAttemptUnresolvedError = ReturnType<
+  typeof createPaymentAttemptUnresolvedError
+>
+
 export const createPaymentNotCanceledError = defineError("PaymentNotCanceled")<{
   readonly id: PaymentId
 }>()
