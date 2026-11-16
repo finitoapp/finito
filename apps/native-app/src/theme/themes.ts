@@ -60,7 +60,7 @@ const withAlpha = (hex: string, alpha: number): string =>
 
 /**
  * The picture tones: the same on both pages but for `dim`, the black veil
- * that takes a picture down to about 90 % brightness on the dark page. The
+ * that takes a picture down to about 82 % brightness on the dark page. The
  * scrim is a near-black of the dark page's hue, from 0.82 at the tile's
  * bottom through 0.55 to nothing (`ItemBrick` lays out the stops); a
  * pressed picture darkens under the finger rather than taking `card-ring`;
@@ -245,7 +245,7 @@ const darkTones = (colors: Palette): Tones => ({
   "tile-info-10": colors["info-10"],
   "tile-accent": darkAccent.accent,
   "nav-bar": darkVeil(0.13),
-  ...photoTones(0.1),
+  ...photoTones(0.18),
 })
 
 /**
