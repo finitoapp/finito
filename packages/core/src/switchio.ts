@@ -32,6 +32,17 @@ const switchioResultCode = {
 } as const
 
 /**
+ * The codes ECR documents for an answer that did not go through. Any other
+ * code but success is not documented at all, so it says nothing of what the
+ * terminal did (payment/0023).
+ */
+const switchioFailureCodes: ReadonlySet<number> = new Set([
+  switchioResultCode.failure,
+  switchioResultCode.initFailure,
+  switchioResultCode.terminalBusy,
+])
+
+/**
  * The subset of the ECR v8 transaction result this app keeps. Every field is
  * documented as optional, so all of them are read leniently; unknown fields
  * are dropped by zod.
@@ -174,18 +185,22 @@ type SwitchioOutcome<Parsed> =
 
 /**
  * The rules every SwitchioPay answer is read by, kept in one place because
- * the first and third are what payment/0006 rests on — an answer that does
- * not say what the terminal did is never a failure, since staff would then
- * charge the card again:
+ * the first three are what payment/0006 and payment/0023 rest on — an
+ * answer that does not say what the terminal did is never a failure, since
+ * staff would then charge the card again:
  *
  * 1. The failure code with no readable answer is unreadable. Android
  *    answers 0 (RESULT_CANCELED) with no data when the terminal app
  *    crashes, is killed, or, with the reorder-to-front flag, was already
  *    running and takes the card after the result has come back.
- * 2. Any other code but success is a failure.
+ * 2. A code ECR does not document is unreadable, whatever answer it
+ *    carries: a later SwitchioPay may give it any meaning, approval
+ *    included.
  * 3. Success with no readable answer is unreadable.
- * 4. A `responseCode` other than `"OK"` is a failure, even on success.
- * 5. Anything else is approved.
+ * 4. Any other code but success — failure with the terminal's own answer,
+ *    busy, not initialised — is a failure.
+ * 5. A `responseCode` other than `"OK"` is a failure, even on success.
+ * 6. Anything else is approved.
  */
 const classifySwitchioOutcome = <
   Parsed extends {
@@ -199,12 +214,16 @@ const classifySwitchioOutcome = <
   if (resultCode === switchioResultCode.failure && parsed === null) {
     return { type: "unreadable" }
   }
+  const success = resultCode === switchioResultCode.success
+  if (!success && !switchioFailureCodes.has(resultCode)) {
+    return { type: "unreadable" }
+  }
   const failed = {
     type: "failed",
     responseCode: optionalString(parsed?.responseCode),
     responseMessage: optionalString(parsed?.responseMessage),
   } as const
-  if (resultCode !== switchioResultCode.success) return failed
+  if (!success) return failed
   if (parsed === null) return { type: "unreadable" }
   if (failed.responseCode !== null && failed.responseCode !== "OK") {
     return failed

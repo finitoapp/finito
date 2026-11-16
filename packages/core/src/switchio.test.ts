@@ -588,6 +588,36 @@ describe("interpretSwitchioPaymentLookup", () => {
   })
 })
 
+describe("a result code ECR does not document (payment/0023)", () => {
+  const readers = {
+    payment: interpretSwitchioPaymentResult,
+    closure: interpretSwitchioClosureResult,
+    refund: interpretSwitchioRefundResult,
+    reversal: interpretSwitchioReversalResult,
+  }
+
+  test.each([
+    ["with no answer", 5, null],
+    ["below success", -2, null],
+    [
+      "with the terminal's own decline",
+      3,
+      JSON.stringify({ responseCode: "DECLINED" }),
+    ],
+    ["with an approval", 3, JSON.stringify({ responseCode: "OK" })],
+  ] as const)(
+    "is an unknown outcome, never a decline, %s",
+    (_, resultCode, transactionResult) => {
+      for (const [kind, read] of Object.entries(readers)) {
+        expect(read({ resultCode, transactionResult }), kind).toMatchObject({
+          ok: false,
+          error: { type: "SwitchioResultUnreadable", resultCode },
+        })
+      }
+    }
+  )
+})
+
 describe("every SwitchioPay answer (payment/0006)", () => {
   const readers = {
     payment: interpretSwitchioPaymentResult,
@@ -613,7 +643,8 @@ describe("every SwitchioPay answer (payment/0006)", () => {
       JSON.stringify({ responseCode: "DECLINED" }),
       "failed",
     ],
-    ["another code with no answer", 5, null, "failed"],
+    ["the busy code with no answer", 2, null, "failed"],
+    ["the initialisation code with no answer", 1, null, "failed"],
     ["success with no answer", -1, null, "unreadable"],
     [
       "success with a response code that is not OK",
