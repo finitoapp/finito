@@ -27,7 +27,8 @@ import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 /**
  * Creates a demo account and switches to it; `DemoDataSeed` then fills it
  * with its fictional history (demo-data/0001). Existing accounts are never
- * written to, and the demo account never syncs.
+ * written to, and the demo account never syncs. Creating deletes nothing, so
+ * the confirm and the button are plain, where web's are destructive.
  */
 export function DemoDataPage() {
   const { t } = useTranslation()
@@ -46,7 +47,6 @@ export function DemoDataPage() {
       description: t("settings.demoData.confirm.description"),
       confirmLabel: t("settings.demoData.confirm.confirm"),
       cancelLabel: t("settings.demoData.confirm.cancel"),
-      variant: "destructive",
     })
     if (!confirmed) return
 
@@ -70,58 +70,55 @@ export function DemoDataPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.demoData.title")} />
-      <YStack gap={20}>
-        {account.demo === null ? null : (
-          <Alert variant="info" icon={DatabaseZap}>
-            <AlertTitle>{t("settings.demoData.current.title")}</AlertTitle>
-            <AlertDescription>
-              {t("settings.demoData.current.description")}
-            </AlertDescription>
-          </Alert>
-        )}
-        <Alert variant="destructive" icon={TriangleAlert}>
-          <AlertTitle>{t("settings.demoData.warning.title")}</AlertTitle>
+      {account.demo === null ? null : (
+        <Alert variant="info" icon={DatabaseZap}>
+          <AlertTitle>{t("settings.demoData.current.title")}</AlertTitle>
           <AlertDescription>
-            <YStack gap={8} pl={20}>
-              {(
-                [
-                  t("settings.demoData.warning.newAccount", {
-                    name: accountName,
-                  }),
-                  t("settings.demoData.warning.irreversible"),
-                  t("settings.demoData.warning.relays"),
-                  t("settings.demoData.warning.services"),
-                  t("settings.demoData.warning.duration"),
-                ] as const
-              ).map((item, index) => (
-                <Text
-                  key={item}
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  color="muted-foreground"
-                  // Web's <strong> around the relays item.
-                  fontWeight={index === 2 ? fontWeight.bold : fontWeight.normal}
-                >
-                  {`• ${item}`}
-                </Text>
-              ))}
-            </YStack>
+            {t("settings.demoData.current.description")}
           </AlertDescription>
         </Alert>
-        <Button
-          size="lg"
-          label={t(
-            pending
-              ? "settings.demoData.action.pending"
-              : "settings.demoData.action"
-          )}
-          variant="destructive"
-          pending={pending}
-          onPress={() => {
-            void create()
-          }}
-        />
-      </YStack>
+      )}
+      <Alert variant="destructive" icon={TriangleAlert}>
+        <AlertTitle>{t("settings.demoData.warning.title")}</AlertTitle>
+        <AlertDescription>
+          <YStack gap={8} pl={20}>
+            {(
+              [
+                t("settings.demoData.warning.newAccount", {
+                  name: accountName,
+                }),
+                t("settings.demoData.warning.irreversible"),
+                t("settings.demoData.warning.relays"),
+                t("settings.demoData.warning.services"),
+                t("settings.demoData.warning.duration"),
+              ] as const
+            ).map((item, index) => (
+              <Text
+                key={item}
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+                // Web's <strong> around the relays item.
+                fontWeight={index === 2 ? fontWeight.bold : fontWeight.normal}
+              >
+                {`• ${item}`}
+              </Text>
+            ))}
+          </YStack>
+        </AlertDescription>
+      </Alert>
+      <Button
+        size="lg"
+        label={t(
+          pending
+            ? "settings.demoData.action.pending"
+            : "settings.demoData.action"
+        )}
+        pending={pending}
+        onPress={() => {
+          void create()
+        }}
+      />
     </Screen>
   )
 }

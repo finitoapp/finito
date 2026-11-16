@@ -17,8 +17,6 @@ import { updatePaymentNumberSeries } from "@payky/core/modules/payment-number-se
 import { paymentNumberSeriesQuery } from "@payky/core/modules/payment-number-series/payment-number-series-queries"
 import { createDefaultPaymentNumberSeries } from "@payky/core/modules/payment-number-series/payment-number-series-utils"
 import { NonNegativeInteger } from "@payky/core/modules/shared/schema"
-import ReceiptText from "lucide-react-native/icons/receipt-text"
-import { Text, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { OptionToggleGroup } from "../../../components/option-toggle-group.tsx"
@@ -30,7 +28,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
-import { FieldGroup } from "../../../components/ui/field.tsx"
+import { Field, FieldGroup, FieldLabel } from "../../../components/ui/field.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
@@ -43,10 +41,8 @@ export function PaymentNumberSeriesSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.paymentNumberSeries.title")} />
-      <YStack gap={16}>
-        <LastNumberSection />
-        <SeriesFormatSection />
-      </YStack>
+      <LastNumberSection />
+      <SeriesFormatSection />
     </Screen>
   )
 }
@@ -147,12 +143,12 @@ function SeriesFormatSection() {
     save({ dayFormat })
   )
 
+  // No icon: one and the same on every option would tell them nothing apart.
   const options = <Value extends string>(
     list: ReadonlyArray<ToggleOption<Value>>
   ) =>
     list.map((option) => ({
       value: option.value,
-      icon: ReceiptText,
       title: t(option.label),
       description: t(option.description),
     }))
@@ -186,36 +182,36 @@ function SeriesFormatSection() {
             errorKey="settings.paymentNumberSeries.prefix.invalid"
             onSave={(prefix) => save({ prefix })}
           />
-          <YStack gap="2">
-            <Text fontWeight="600">
+          <Field>
+            <FieldLabel>
               {t("settings.paymentNumberSeries.year.label")}
-            </Text>
+            </FieldLabel>
             <OptionToggleGroup
               value={year.value}
               options={options(yearFormatOptions)}
               onChange={(value) => void year.choose(value)}
             />
-          </YStack>
-          <YStack gap="2">
-            <Text fontWeight="600">
+          </Field>
+          <Field>
+            <FieldLabel>
               {t("settings.paymentNumberSeries.month.label")}
-            </Text>
+            </FieldLabel>
             <OptionToggleGroup
               value={month.value}
               options={options(monthFormatOptions)}
               onChange={(value) => void month.choose(value)}
             />
-          </YStack>
-          <YStack gap="2">
-            <Text fontWeight="600">
+          </Field>
+          <Field>
+            <FieldLabel>
               {t("settings.paymentNumberSeries.day.label")}
-            </Text>
+            </FieldLabel>
             <OptionToggleGroup
               value={day.value}
               options={options(dayFormatOptions)}
               onChange={(value) => void day.choose(value)}
             />
-          </YStack>
+          </Field>
         </FieldGroup>
       </CardContent>
     </Card>

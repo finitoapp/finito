@@ -1,6 +1,6 @@
-# web settings-appearance.spec.ts: "toggle error reporting". Every consent
-# card has the same Enable/Disable copy, so this one's are found between its
-# title and the next card's.
+# web settings-appearance.spec.ts: "toggle error reporting". The consent is
+# a switch named after it; its state is checked on Android only (Maestro's
+# web driver reports no checked state).
 appId: ${APP_ID}
 tags: [settings]
 ---
@@ -11,19 +11,25 @@ tags: [settings]
       ROUTE: settings/about/privacy
       TEXT: ${output.t["settings.about.privacy.title"]}
 # Off by default (a device setting).
-- tapOn:
-    text: ${output.t["settings.privacy.errorReporting.enable"]}
-    below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.serviceProxy.title"]}
-- assertVisible:
-    text: ${output.t["settings.privacy.errorReporting.enabled"]}
-    below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.serviceProxy.title"]}
-- tapOn:
-    text: ${output.t["settings.privacy.errorReporting.disable"]}
-    below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.serviceProxy.title"]}
-- assertVisible:
-    text: ${output.t["settings.privacy.errorReporting.disabled"]}
-    below: ${output.t["settings.privacy.errorReporting.title"]}
-    above: ${output.t["settings.privacy.serviceProxy.title"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.errorReporting.title"]}
+      CHECKED: "false"
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.errorReporting.title"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.errorReporting.title"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.errorReporting.title"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.errorReporting.title"]}
+      CHECKED: "false"

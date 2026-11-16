@@ -6,8 +6,7 @@ import Landmark from "lucide-react-native/icons/landmark"
 import QrCode from "lucide-react-native/icons/qr-code"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Suspense } from "react"
-import { ActivityIndicator } from "react-native"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { LoadingView } from "../../../components/loading-view.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -20,8 +19,11 @@ import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize } from "../../../theme/tokens.ts"
-import { useCashuWalletSnapshot } from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import {
+  type CashuWalletSnapshot,
+  useCashuWalletSnapshot,
+} from "../../shared/cashu/use-cashu-wallet-snapshot.ts"
 import { WalletBody } from "../../shared/wallet-body.tsx"
 import { cashuPaymentQrLabelKeys } from "./cashu-payment-qr-page.tsx"
 
@@ -47,7 +49,8 @@ export function CashuAccountSettingsBody() {
 /**
  * The shared wallet body (`WalletBody`) over the Linky wallet's balance,
  * with the rows for the mints, the payment QR choice and the withdrawals;
- * a wallet still syncing simply shows what it has so far.
+ * the balance is a skeleton until the wallet is first read, and a wallet
+ * still syncing simply shows what it has so far.
  */
 function CashuAccountSettingsContent() {
   const { t } = useTranslation()
@@ -62,7 +65,7 @@ function CashuAccountSettingsContent() {
         </AlertDescription>
         <AlertAction>
           <Button
-            size="lg"
+            size="sm"
             variant="outline"
             label={t("appError.tryAgain")}
             onPress={() => void refetch()}
@@ -71,18 +74,10 @@ function CashuAccountSettingsContent() {
       </Alert>
     )
   }
-  if (isPending || snapshot === null) {
-    return (
-      <YStack flex={1} items="center" justify="center">
-        <ActivityIndicator size="large" />
-      </YStack>
-    )
-  }
-  const total = cashuWalletTotal(snapshot.balances)
 
   return (
     <WalletBody
-      sats={total}
+      sats={walletTotal(isPending, snapshot)}
       withdrawHref="/cashu-withdraw/new"
       testID="cashu-balance"
       items={[
@@ -109,7 +104,7 @@ function CashuAccountSettingsContent() {
               <Text
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
-                fontWeight="600"
+                fontWeight={fontWeight.medium}
               >
                 {t("settings.cashuAccount.qr.title")}
               </Text>
@@ -138,4 +133,13 @@ function CashuAccountSettingsContent() {
       ]}
     />
   )
+}
+
+/** The wallet's total, `undefined` until it has been read. */
+function walletTotal(
+  isPending: boolean,
+  snapshot: CashuWalletSnapshot | null
+): number | undefined {
+  if (isPending || snapshot === null) return undefined
+  return cashuWalletTotal(snapshot.balances)
 }

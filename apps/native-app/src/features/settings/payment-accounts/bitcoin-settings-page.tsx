@@ -4,7 +4,6 @@ import {
   defaultBitcoinWallet,
 } from "@payky/app-shared/bitcoin-payment-method"
 import { useState } from "react"
-import { YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { SwitchRow } from "../../../components/switch-row.tsx"
@@ -39,33 +38,31 @@ export function BitcoinSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.paymentAccounts.method.bitcoin")} />
-      <YStack gap={20}>
-        <Tabs<BitcoinWallet> value={view} onValueChange={setView}>
-          <TabsList>
-            {bitcoinWallets.map((value) => (
-              <TabsTrigger key={value} value={value}>
-                {t(walletLabelKeys[value])}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-        <MainMethodRow
-          wallet={wallet}
-          view={view}
-          // The Lightning address can only be the main method once one is
-          // saved; its form below saves it.
-          canSelect={
-            view !== "lightningAddress" || wallet.lightningAddress !== undefined
-          }
-        />
-        {view === "cashu" ? (
-          <CashuAccountSettingsBody />
-        ) : view === "lightningAddress" ? (
-          <LightningAddressSettingsBody />
-        ) : (
-          <SparkAccountSettingsBody />
-        )}
-      </YStack>
+      <Tabs<BitcoinWallet> value={view} onValueChange={setView}>
+        <TabsList>
+          {bitcoinWallets.map((value) => (
+            <TabsTrigger key={value} value={value}>
+              {t(walletLabelKeys[value])}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+      <MainMethodRow
+        wallet={wallet}
+        view={view}
+        // The Lightning address can only be the main method once one is
+        // saved; its form below saves it.
+        canSelect={
+          view !== "lightningAddress" || wallet.lightningAddress !== undefined
+        }
+      />
+      {view === "cashu" ? (
+        <CashuAccountSettingsBody />
+      ) : view === "lightningAddress" ? (
+        <LightningAddressSettingsBody />
+      ) : (
+        <SparkAccountSettingsBody />
+      )}
     </Screen>
   )
 }

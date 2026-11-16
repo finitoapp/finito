@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -87,15 +88,16 @@ export function FioTokenForm() {
             </FieldDescription>
             <FieldError>{error === null ? undefined : t(error)}</FieldError>
           </Field>
-          <Button
-            size="lg"
-            iconStart={Plus}
-            label={t("settings.fioPlugin.tokens.add.submit")}
-            pending={pending}
-            onPress={() => void submit()}
-          />
         </FieldGroup>
       </CardContent>
+      <CardFooter justify="flex-end">
+        <Button
+          iconStart={Plus}
+          label={t("settings.fioPlugin.tokens.add.submit")}
+          pending={pending}
+          onPress={() => void submit()}
+        />
+      </CardFooter>
     </Card>
   )
 }

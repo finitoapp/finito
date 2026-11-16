@@ -8,16 +8,26 @@ import type { DeviceAccountId } from "@payky/core/evolu/device-client"
 import { runMutationWithCompletion } from "@payky/core/modules/shared/evolu-utils"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Text } from "tamagui"
 import { deviceEvoluAtom } from "../../../atoms/device-evolu.ts"
 import { reloadAppEvoluAtom } from "../../../atoms/evolu-counter.ts"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
 import { Switch } from "../../../components/ui/switch.tsx"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
 import { TransportSyncStatus } from "./transport-sync-status.tsx"
 
-/** The account's transports with an on/off switch; a change reopens the app database. */
+/**
+ * The account's transports, each a `SettingsTile` with its URL, the live
+ * sync status while it is on, and its switch, which is also its on/off
+ * state; a change reopens the app database. Security and the restore's sync
+ * step both draw it.
+ */
 export function TransportToggleList({
   accountId,
   disabled = false,
@@ -37,42 +47,28 @@ export function TransportToggleList({
 
   if (transports.length === 0) {
     return (
-      <Text color="muted-foreground">
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        color="muted-foreground"
+      >
         {t("settings.security.transports.empty")}
       </Text>
     )
   }
 
   return (
-    <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
+    <SettingsTileList>
       {transports.map((transport) => {
         const active = transport.isActive === sqliteTrue
         return (
-          <YStack key={transport.id} gap="2" p="3">
-            <TransportUrl url={transport.url} muted={!active} />
-            <XStack items="center" justify="space-between" gap="3">
-              <YStack flex={1}>
-                {active ? (
-                  <TransportSyncStatus url={transport.url} />
-                ) : (
-                  <XStack items="center" gap="1.5">
-                    <YStack
-                      w={8}
-                      h={8}
-                      shrink={0}
-                      rounded="full"
-                      bg="muted-foreground-30"
-                    />
-                    <Text
-                      fontSize="xs"
-                      lineHeight="xs"
-                      color="muted-foreground"
-                    >
-                      {t("settings.security.transports.inactive")}
-                    </Text>
-                  </XStack>
-                )}
-              </YStack>
+          <SettingsTile
+            key={transport.id}
+            title={<TransportUrl url={transport.url} muted={!active} />}
+            description={
+              active ? <TransportSyncStatus url={transport.url} /> : undefined
+            }
+            trailing={
               <Switch
                 aria-label={t("settings.security.transports.toggle", {
                   url: transport.url,
@@ -100,11 +96,11 @@ export function TransportToggleList({
                   })()
                 }}
               />
-            </XStack>
-          </YStack>
+            }
+          />
         )
       })}
-    </YStack>
+    </SettingsTileList>
   )
 }
 
@@ -121,9 +117,9 @@ function TransportUrl({
 
   return (
     <Text
-      fontSize="sm"
-      lineHeight="sm"
-      fontWeight="600"
+      fontSize={fontSize.sm}
+      lineHeight={fontSize.sm}
+      fontWeight={fontWeight.semibold}
       color={muted ? "muted-foreground" : "color"}
       style={{ fontFamily: "monospace" }}
     >
@@ -134,12 +130,12 @@ function TransportUrl({
           {index === 0 ? null : (
             <Text
               fontFamily="body"
-              fontSize="xs"
-              lineHeight="xs"
+              fontSize={fontSize.xs}
+              lineHeight={fontSize.xs}
               color="muted-foreground"
-              bg="neutral-soft"
-              rounded="sm"
-              px="1"
+              bg="surface-raised"
+              rounded={radius.sm}
+              px={4}
             >
               {t("settings.security.transports.accountId")}
             </Text>

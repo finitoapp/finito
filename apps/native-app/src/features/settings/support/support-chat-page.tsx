@@ -13,9 +13,11 @@ import Check from "lucide-react-native/icons/check"
 import CircleAlert from "lucide-react-native/icons/circle-alert"
 import Clock from "lucide-react-native/icons/clock"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Image } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import appIcon from "../../../../assets/app-icon.png"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import {
@@ -116,7 +118,7 @@ function SupportChat({ pubkey }: { readonly pubkey: string }) {
     >
       <FadeHeader title={t("settings.supportChat.title")} />
       {failure === null ? null : (
-        <Alert variant="destructive" icon={CircleAlert}>
+        <Alert variant="destructive" icon={TriangleAlert}>
           <AlertDescription>{t(failure)}</AlertDescription>
           <AlertAction>
             <Button
@@ -131,18 +133,21 @@ function SupportChat({ pubkey }: { readonly pubkey: string }) {
           </AlertAction>
         </Alert>
       )}
+      {/* The thread, its placeholder and the empty state sit at the
+          bottom, next to the composer, as the assistant's and web's
+          `mt-auto` list. */}
       {loading ? (
-        <YStack gap="2" mt="auto" aria-hidden>
+        <YStack gap={8} mt="auto" aria-hidden>
           <Skeleton h={40} w="67%" rounded={radius["2xl"]} />
           <Skeleton h={56} w="50%" self="flex-end" rounded={radius["2xl"]} />
           <Skeleton h={40} w="60%" rounded={radius["2xl"]} />
         </YStack>
       ) : timeline.length === 0 && failure === null ? (
-        <Text color="muted-foreground" text="center">
-          {t("settings.supportChat.empty")}
-        </Text>
+        <YStack mt="auto">
+          <EmptyState description={t("settings.supportChat.empty")} />
+        </YStack>
       ) : (
-        <YStack aria-live="polite">
+        <YStack mt="auto" aria-live="polite">
           {timeline.map((item) => (
             <TimelineRow
               key={item.key}
@@ -180,7 +185,7 @@ function TimelineRow({
   const locale = useLocale()
   if (item.kind === "day") {
     return (
-      <YStack self="center" my="2">
+      <YStack self="center" my={8}>
         <Badge
           variant="secondary"
           label={formatRelativeDate(item.date, new Date(), locale)}

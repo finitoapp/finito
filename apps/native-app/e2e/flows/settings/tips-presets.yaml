@@ -24,7 +24,7 @@ tags: [settings]
     env:
       LABEL: ${output.t["settings.tips.percentages.add"]}
 - assertVisible: '${output.tv("settings.tips.percentages.value", { value: 25 })}'
-# And a fixed amount, then save.
+# And a fixed amount; each change saves itself.
 - scrollUntilVisible:
     element:
       id: ${output.re(output.t["settings.tips.fixedAmounts.label"])}
@@ -43,15 +43,6 @@ tags: [settings]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["settings.tips.fixedAmounts.add"]}
-- scrollUntilVisible:
-    element: ${output.t["settings.tips.save"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["settings.tips.save"]}
-- extendedWaitUntil:
-    visible: ${output.t["settings.tips.saved"]}
-    timeout: 10000
 # The new presets survive a restart.
 - runFlow:
     file: ../../subflows/reopen.yaml
@@ -59,11 +50,15 @@ tags: [settings]
       ROUTE: settings/tips
       TEXT: ${output.t["settings.tips.title"]}
 - assertVisible: '${output.tv("settings.tips.percentages.value", { value: 25 })}'
-# Reset to the defaults.
+# Reset to the defaults, which asks first.
 - scrollUntilVisible:
     element: ${output.t["settings.tips.reset"]}
 - runFlow:
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["settings.tips.reset"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["settings.tips.resetConfirm.confirm"]}
 - assertNotVisible: '${output.tv("settings.tips.percentages.value", { value: 25 })}'

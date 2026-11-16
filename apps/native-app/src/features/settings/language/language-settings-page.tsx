@@ -2,7 +2,6 @@ import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { DeviceLocale } from "@payky/core/evolu/device-client"
 import Earth from "lucide-react-native/icons/earth"
 import Languages from "lucide-react-native/icons/languages"
-import { YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { languageOptions } from "../../../components/language-options.ts"
 import { OptionToggleGroup } from "../../../components/option-toggle-group.tsx"
@@ -44,46 +43,44 @@ export function LanguageSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.language.title")} />
-      <YStack gap={16}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.language.mode.title")}</CardTitle>
-            <CardDescription>
-              {t("settings.language.mode.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OptionToggleGroup
-              value={language}
-              options={languageOptions.map(({ value, label }) => ({
-                value,
-                icon: Languages,
-                title: label,
-              }))}
-              onChange={setLanguage}
-            />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.language.locale.title")}</CardTitle>
-            <CardDescription>
-              {t("settings.language.locale.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OptionToggleGroup
-              value={locale}
-              options={localeOptions.map(({ value, label }) => ({
-                value,
-                icon: Earth,
-                title: t(label),
-              }))}
-              onChange={setLocale}
-            />
-          </CardContent>
-        </Card>
-      </YStack>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.language.mode.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.language.mode.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OptionToggleGroup
+            value={language}
+            options={languageOptions.map(({ value, label }) => ({
+              value,
+              icon: Languages,
+              title: label,
+            }))}
+            onChange={setLanguage}
+          />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.language.locale.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.language.locale.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OptionToggleGroup
+            value={locale}
+            options={localeOptions.map(({ value, label }) => ({
+              value,
+              icon: Earth,
+              title: t(label),
+            }))}
+            onChange={setLocale}
+          />
+        </CardContent>
+      </Card>
     </Screen>
   )
 }

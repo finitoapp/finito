@@ -776,6 +776,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "the web file contains the full access page; the native permission editor has no input error field",
       FieldContent:
         "native's field kit groups the permission label and description; web's field markup does not need this wrapper",
+      Alert:
+        "the Owner warning in the permissions dialog is the kit's destructive Alert, where web draws a local Warning box",
+      AlertDescription:
+        "the Owner warning in the permissions dialog is the kit's destructive Alert, where web draws a local Warning box",
       Input:
         "the web file contains the full access page; native keeps the device rename input in device-parts.tsx",
       Select:
@@ -887,6 +891,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "the web file contains the full access page; native renders device badges in device-parts.tsx",
       Checkbox:
         "the web file contains the full access page; native renders permission controls in device-item.tsx",
+      DialogDescription:
+        "the wizard's rename dialog has no description, which only repeated the Name field's label; the permissions dialog's is in device-item.tsx",
       DialogFooter:
         "the web file contains the full access page; native keeps dialog actions in device-item.tsx",
       FadeHeader:
@@ -914,6 +920,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       SelectValue:
         "the web file contains the full access page; native keeps device presets in device-parts.tsx",
     },
+  },
+  {
+    native: "src/features/settings/account-avatar.tsx",
+    web: ["apps/web-app/src/features/settings/profile/profile-avatar.tsx"],
+    status: "matched",
+    note: "Web's ProfileAvatar under profile/; native's sits at the settings root because the profile card, the profile editor and the accounts list all draw it.",
   },
   {
     native: "src/features/settings/accounts/open-account-page.tsx",
@@ -946,6 +958,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/debug-console/cashu-shard-debug-card.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Skeleton:
+        "the snapshot's lines while the shard store starts and the snapshot loads, where web renders nothing",
+    },
   },
   {
     native: "src/features/settings/debug-console/debug-console-page.tsx",
@@ -962,12 +978,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/settings/demo-data/demo-data-page.tsx",
     web: ["apps/web-app/src/features/settings/demo-data/demo-data-page.tsx"],
     status: "matched",
+    note: "Creating the demo account deletes nothing, so its confirm and button are plain where web's are destructive.",
   },
   {
     native: "src/features/settings/donations/donation-history.tsx",
     web: ["apps/web-app/src/features/settings/donations/donation-history.tsx"],
     status: "matched",
-    note: "Native keeps its explicit load-more control; web loads pages as the history scrolls.",
+    note: "Native keeps its explicit load-more control; web loads pages as the history scrolls. The empty history is the shared EmptyState.",
+    allowedDifferences: {
+      Alert:
+        "a failed load is a destructive Alert with a retry in Finito's settings; web draws the message and the retry button bare",
+      AlertAction:
+        "a failed load is a destructive Alert with a retry in Finito's settings; web draws the message and the retry button bare",
+      AlertDescription:
+        "a failed load is a destructive Alert with a retry in Finito's settings; web draws the message and the retry button bare",
+    },
   },
   {
     native:
@@ -976,9 +1001,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/donations/donations-invoice-settings-page.tsx",
     ],
     status: "matched",
+    note: "The screen is titled Donations, so the card's Lightning invoice title does not repeat it.",
     allowedDifferences: {
       CopyableQrCode:
         "Native retains the donation-specific copy button and toast messages below the QR, while web copies by tapping the QR itself.",
+      Alert:
+        "a failed verification is a destructive Alert in Finito's settings; web draws it as text",
+      AlertDescription:
+        "a failed verification is a destructive Alert in Finito's settings; web draws it as text",
+      CardFooter:
+        "Open in wallet is the screen's main action, a full-width lg button below the card in Finito's settings",
     },
   },
   {
@@ -987,6 +1019,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/donations/donations-settings-page.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Alert:
+        "a failed load or invoice is a destructive Alert in Finito's settings; web draws it as destructive text",
+      AlertDescription:
+        "a failed load or invoice is a destructive Alert in Finito's settings; web draws it as destructive text",
+      CardFooter:
+        "Create invoice is the card's action, in its footer in Finito's settings; web puts it at the end of the form",
+    },
   },
   {
     native: "src/features/settings/eet/eet-certificate-import.tsx",
@@ -1020,6 +1060,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Badge:
         "Certificate file/password fields and the test-certificate badge are siblings within the native parent card, not part of this official-certificate list.",
       Card: "The native certificate card wraps this official-certificate list in the parent EET settings page.",
+      Skeleton:
+        "native holds one certificate tile's place while the list is fetched; web says it is loading in text",
       CardContent:
         "The native certificate card wraps this official-certificate list in the parent EET settings page.",
       CardDescription:
@@ -1056,6 +1098,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "The native certificate import action is in the separate EetCertificateImport child; the web source keeps it inline with the settings page.",
       FieldLabel:
         "Web's environment label is visually hidden; the native environment choices already announce each option and do not repeat the card title.",
+      Switch:
+        "The reporting switch is native's SwitchRow (label, its description under it, the switch trailing), as every settings switch; web draws a horizontal Field around a Switch.",
+      FieldContent:
+        "The reporting switch is native's SwitchRow, which lays out its own label and description; web wraps them in FieldContent.",
       FieldError:
         "The native InlineEditField child renders its validation error internally; the web source inlines that part of the field.",
       Input:
@@ -1073,6 +1119,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/eet/eet-unconfirmed-sales-card.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      VerticalNavRow:
+        "each sale opens its payment, so it is the navigable row every native settings list draws; web links plain list items. An empty list is native's EmptyState, which is not a kit component.",
+    },
   },
   {
     native: "src/features/settings/evolu-export/evolu-export-page.tsx",
@@ -1080,6 +1130,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/evolu-export/evolu-export-page.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Alert:
+        "the sensitive-data warning, which web draws as a card with a red icon, and the outcome in the export card, which web reports as a toast plus a status card",
+      AlertTitle: "the warning's title and the failed export's message",
+      AlertDescription:
+        "the warning's description and bullets, and the share-sheet hand-off note",
+    },
   },
   {
     native: "src/features/settings/fio-plugin/fio-plugin-settings-page.tsx",
@@ -1088,13 +1145,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Badge: "rendered by the sibling fio-token-list.tsx",
+      Alert:
+        "the wrong-bank warning when the fiat bank account is not at Fio banka, as MONETA's screen warns for its bank; web shows it only in the IBAN screen's plugin row",
+      AlertDescription: "the wrong-bank warning's text",
+      Badge:
+        "web's per-token Active badge, drawn by web's token list; native's fio-token-list.tsx drops it because every saved token is active",
       Button:
         "rendered by the sibling fio-token-form.tsx and fio-token-list.tsx",
+      Field:
+        "the active toggle is native's SwitchRow (label, description, the switch trailing), as every settings switch; web saves the same flag through InlineEditCheckbox in a Field. The token field is in the sibling fio-token-form.tsx",
+      FieldDescription:
+        "the active toggle's description is drawn by SwitchRow; the token field's is in the sibling fio-token-form.tsx",
+      FieldLabel:
+        "the active toggle's label is drawn by SwitchRow; the token field's is in the sibling fio-token-form.tsx",
       FieldError: "rendered by the sibling fio-token-form.tsx",
       PasswordTextarea: "rendered by the sibling fio-token-form.tsx",
-      Switch:
-        "known control-type gap: native keeps its existing switch (role switch) for the active toggle where web saves the same flag through InlineEditCheckbox, which wraps ui/checkbox; ui/checkbox exists natively, the swap is left for device acceptance",
     },
   },
   {
@@ -1107,8 +1172,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       CardDescription:
         "web's connect card gets its description through SettingsFormCard, a web wrapper the kit has no counterpart of; native draws the same card from Card parts, as fio-token-form.tsx does",
-      Switch:
-        "known control-type gap, as on the Fio page: native keeps its switch for the active toggle where web saves the same flag through InlineEditCheckbox",
+      DetailRow:
+        "the connected account and token are DetailRows, as every native label/value pair; web lays them out with its own rows",
     },
   },
   {
@@ -1118,7 +1183,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Badge: "rendered by the sibling fio-token-list.tsx",
+      Badge:
+        "web's per-token Active badge; native's fio-token-list.tsx drops it because every saved token is active",
+      CardFooter:
+        "a card's action sits right-aligned in its footer on every native settings card; web's SettingsFormCard places the Add token submit itself",
       FadeHeader: "rendered by the parent fio-plugin-settings-page.tsx",
     },
   },
@@ -1129,6 +1197,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
+      Badge:
+        "web marks every token Active, the same on every row, so it says nothing; native's token rows are SettingsTiles (not a kit component) with only the labelled remove, and an empty list is EmptyState",
       FadeHeader: "rendered by the parent fio-plugin-settings-page.tsx",
       Field: "rendered by the sibling fio-token-form.tsx",
       FieldDescription: "rendered by the sibling fio-token-form.tsx",
@@ -1261,18 +1331,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       CardDescription:
         "what the closure does, when the shown result was recorded, and that another phone's terminal cannot be closed from here",
       CardContent: "each card's body",
-      DetailRow:
-        "the last closure's time and the result's totals, batch and shift",
       Alert:
         "SwitchioPay missing on this device, and an unknown outcome that stays on screen until staff checks SwitchioPay",
-      AlertTitle: "the unknown outcome's message",
-      AlertDescription: "the missing-SwitchioPay warning",
+      AlertDescription:
+        "the missing-SwitchioPay warning and the unknown outcome's message",
       Button: "the one action, Close the batch",
+      CardFooter: "this terminal's card action, Close the batch",
+      Skeleton: "the history's next page while it loads",
       Badge: "whether each terminal was closed today",
       VerticalNavTitle:
         "the history card's heading, drawn above its rows in the one virtualized list",
       VerticalNavRow:
-        "the last closure and each history row, which open the closure's detail",
+        "the last closure and each history row, which open the closure's detail, each terminal's last closure, and the lists' empty rows",
     },
   },
   {
@@ -1307,6 +1377,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native:
+      "src/features/settings/payment-accounts/advanced-settings-label.tsx",
+    web: [],
+    note: "The content of the Advanced CollapsibleTrigger on the IBAN, Spark and Qerko screens and the Qerko pairing wizard, which web writes inline in each screen's trigger (text-sm font-medium with a rotating ChevronDown); native shares it as one component.",
+    status: "matched",
+  },
+  {
     native: "src/features/settings/payment-accounts/qerko-pairing-wizard.tsx",
     web: [
       "apps/web-app/src/features/settings/payment-accounts/qerko-pairing-wizard.tsx",
@@ -1323,6 +1400,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/payment-accounts/qerko-location-chooser.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Alert:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      AlertAction:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      AlertDescription:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      Skeleton:
+        "The locations load behind skeleton rows where web spins a LoaderCircle (native settings rule R10: no raw spinner).",
+    },
   },
   {
     native:
@@ -1331,6 +1418,20 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/payment-accounts/qerko-payment-settings-page.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      CardFooter:
+        "Unpairing removes the screen's subject, so it is a full-width destructive button under the card instead of the card's footer (native settings rule R7).",
+      Field:
+        "The wizard's 'this device' switch is a SwitchRow with its description, where web lays out a horizontal Field around a Switch (native settings rule R4).",
+      FieldContent:
+        "The wizard's 'this device' switch is a SwitchRow with its description, where web lays out a horizontal Field around a Switch (native settings rule R4).",
+      FieldDescription:
+        "The wizard's 'this device' switch is a SwitchRow with its description, where web lays out a horizontal Field around a Switch (native settings rule R4).",
+      FieldLabel:
+        "The wizard's 'this device' switch is a SwitchRow with its description, where web lays out a horizontal Field around a Switch (native settings rule R4).",
+      DetailRow:
+        "The company, terminal, key name and environment are DetailRows, where web writes a local label-and-value row.",
+    },
   },
   {
     native: "src/features/settings/payment-accounts/qerko-terminal-chooser.tsx",
@@ -1338,6 +1439,16 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/payment-accounts/qerko-terminal-chooser.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Alert:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      AlertAction:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      AlertDescription:
+        "A failed load or pairing is a destructive Alert with TriangleAlert and its retry in the AlertAction, where web writes a line of destructive text (native settings rule R12).",
+      ListSkeleton:
+        "The terminals load behind ListSkeleton rows where web spins a LoaderCircle (native settings rule R10: no raw spinner).",
+    },
   },
   {
     native:
@@ -1346,6 +1457,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/payment-accounts/qerko-terminal-settings-page.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Badge:
+        "A sandbox key shows the Sandbox badge in the card's header, as Qerko payments' screen does on both apps; web's terminal screen shows the environment only under Advanced.",
+      DetailRow:
+        "The company, terminal, key name and environment are DetailRows, where web writes a local label-and-value row.",
+    },
   },
   {
     native:
@@ -1412,6 +1529,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "Native adds an inline retry alert on wallet-query errors; the web keeps its existing snapshot/default rendering.",
       Button:
         "Native adds an inline retry action on wallet-query errors; the web keeps its existing snapshot/default rendering.",
+      ListSkeleton:
+        "the known mints' list while the wallet and its mints load, under the screen's header (settings rule R10); web renders nothing until then",
     },
   },
   {
@@ -1436,6 +1555,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "native toggle group replaces web's shared BankAccountFormatToggle helper",
       ToggleGroupItem:
         "native toggle group replaces web's shared BankAccountFormatToggle helper",
+      Badge:
+        "MONETA's on/off state in its plugin row is a badge, as every read-only status on native; web writes it as a medium-weight text line",
+      Field:
+        "the currency and QR format selects are labelled with Field and FieldLabel; web's InlineEditSelect draws the same label itself",
+      FieldLabel:
+        "the currency and QR format selects' labels; web's InlineEditSelect draws them itself",
     },
   },
   {
@@ -1463,9 +1588,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       Switch:
-        "known control-type gap: native keeps its existing switch (role switch) for privacy mode where web saves the same choice through InlineEditCheckbox, which wraps ui/checkbox; ui/checkbox exists natively, the swap is left for device acceptance",
+        "known control-type gap: native draws privacy mode as a SwitchRow (settings rule R4) where web saves the same choice through InlineEditCheckbox, which wraps ui/checkbox",
       VerticalNav:
         "the wallet's rows are drawn by the shared WalletBody (features/shared/wallet-body.tsx)",
+      Alert:
+        "the wallet-switch warnings as a warning Alert with muted lines (settings rule R15), and a privacy-mode read that fails as a destructive Alert with a retry (R12); web lists the warnings as plain text and says the failure in the checkbox's description",
+      AlertDescription:
+        "the wallet-switch warnings and the privacy-mode read failure, each inside its Alert",
+      AlertAction: "the retry of a privacy-mode read that failed",
     },
   },
   {
@@ -1481,13 +1611,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "src/features/settings/payment-number-series/payment-number-series-settings-page.tsx",
     web: [
       "apps/web-app/src/features/settings/payment-number-series/payment-number-series-settings-page.tsx",
+      "apps/web-app/src/features/shared/forms/inline-edit-toggle-group.tsx",
     ],
     status: "matched",
     allowedDifferences: {
       DateInput:
         "native edits the existing yyyy-MM-dd value with a keyboard field; web uses the browser date input",
-      OptionToggleGroup:
-        "native renders the option groups directly and saves each choice immediately; web wraps the same immediate choices in InlineEditToggleGroup",
+      FieldDescription:
+        "web's InlineEditToggleGroup draws a description only when given one, and the number-series formats pass none",
     },
   },
   {
@@ -1503,6 +1634,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/privacy/service-proxy-card.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      Badge:
+        "each consent is a SwitchRow, so the switch shows its state and no status badge repeats it",
+      Button:
+        "each consent is a SwitchRow; web flips it with an Enable/Disable button",
+      CardHeader:
+        "the SwitchRow's label is the consent's title, so the card has no header to repeat it",
+      CardTitle:
+        "the SwitchRow's label is the consent's title, so the card has no header to repeat it",
+      CardDescription:
+        "what the consent sends is the SwitchRow's description, under its label",
+    },
   },
   {
     native: "src/features/settings/privacy/service-proxy-required-alert.tsx",
@@ -1534,14 +1677,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      Field:
-        "Native uses InlineEditField for the name, which renders the same ui/field primitives internally; the profile screen's own Fields label the business's country and currency, from web's legal-entity screen.",
-      FieldError:
-        "The native InlineEditField owns validation and renders its field error internally.",
-      FieldGroup:
-        "Native groups these controls with the CardContent YStack while keeping the app's shared InlineEditField intact.",
-      FieldLabel:
-        "The native InlineEditField and picture label render labels inside the controls' existing native components; the country and currency labels come from web's legal-entity screen.",
       Select:
         "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       SelectTrigger:
@@ -1554,6 +1689,12 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "the business's country and currency sit on the profile screen, in a card of their own, where web has a legal-entity screen",
       Switch:
         "the VAT-payer row is a switch on the profile screen, where web's legal-entity screen has a checkbox",
+      Alert:
+        "a profile that fails to load is a destructive Alert with its retry, where web shows destructive text over a button",
+      AlertDescription:
+        "a profile that fails to load is a destructive Alert with its retry, where web shows destructive text over a button",
+      AlertAction:
+        "a profile that fails to load is a destructive Alert with its retry, where web shows destructive text over a button",
     },
   },
   {
@@ -1570,8 +1711,18 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      CardContent:
-        "Web lays the steps out with a flex column inside CardContent; native renders each step's own YStack.",
+      CardFooter:
+        "each step's actions sit in the card's footer, where web stacks them inside CardContent",
+      Stepper:
+        "the card counts the three steps (intro, words, check) with the Stepper's dots; web shows no step indicator",
+      StepperNav:
+        "the card counts the three steps (intro, words, check) with the Stepper's dots; web shows no step indicator",
+      StepperItem:
+        "the card counts the three steps (intro, words, check) with the Stepper's dots; web shows no step indicator",
+      StepperIndicator:
+        "the card counts the three steps (intro, words, check) with the Stepper's dots; web shows no step indicator",
+      StepperSeparator:
+        "the card counts the three steps (intro, words, check) with the Stepper's dots; web shows no step indicator",
     },
   },
   {
@@ -1580,6 +1731,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/security/recovery-verify-step.tsx",
     ],
     status: "matched",
+    allowedDifferences: {
+      CardContent:
+        "the check draws the content and footer of the backup page's card, whose header titles it; web's step is a heading and a form inside the card",
+      CardFooter:
+        "Skip and Check sit in the card's footer, as the words step's actions do; web right-aligns them under the form",
+      FieldError:
+        "a wrong word is the kit's FieldError under the inputs, where web shows destructive text",
+    },
   },
   {
     native: "src/features/settings/security/recovery-words-grid.tsx",
@@ -1630,6 +1789,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/catalog/catalog-form-empty-state.tsx",
     web: ["apps/web-app/src/features/catalog/catalog-form-empty-state.tsx"],
     status: "matched",
+    allowedDifferences: {
+      NotFoundCard:
+        "a missing row is a NotFoundCard in Finito's settings; web draws the message as bare text",
+    },
   },
   {
     native: "src/features/catalog/catalog-list-parts.tsx",
@@ -1639,8 +1802,6 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     ],
     status: "matched",
     allowedDifferences: {
-      ListSkeleton:
-        "Native keeps the existing ActivityIndicator footer while fetching more rows; web adds a ListSkeleton.",
       VerticalNavRow:
         "Native uses a row helper to preserve FlatList virtualization inside the VerticalNav shell.",
     },
@@ -1714,9 +1875,9 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       Star: "the default-rate button uses the native secondary variant but the lucide-react-native star remains unfilled; the web fills its star icon",
       CardDescription:
-        "native uses CardDescription for descriptive copy that the web renders as a paragraph",
+        "every native card is headed by CardTitle and CardDescription; web renders the list's and the keypad rate's copy as paragraphs",
       CardTitle:
-        "native uses CardTitle for the add-rate heading that the web renders as a paragraph",
+        "every native card is headed by a CardTitle (the active and archived lists, the keypad rate, the add form); web renders those headings as paragraphs or field labels",
     },
   },
   {
@@ -1748,6 +1909,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Switch: "the enabled row is a switch, as the other settings rows",
       FieldContent: "the enabled row is one line, label and switch",
       FieldDescription: "no second-line explanations (fazole-ui-minimal-copy)",
+      Skeleton:
+        "holds the tips switch's place until the settings are read; web renders nothing until then",
     },
   },
   {
@@ -2102,7 +2265,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       DialogHeader: "the dialog's title, web's screen title",
       DialogTitle: "the dialog's title, web's screen title",
       DialogFooter:
-        "Save and Cancel, where web's inline field saves itself and Back leaves",
+        "Save, Cancel and the delete, where web's inline field saves itself, Back leaves and the delete sits below the card",
     },
   },
   {
@@ -2162,6 +2325,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       Button: "Withdraw funds under the balance",
       VerticalNav: "the wallet's rows",
+      Skeleton:
+        "the balance's place while it loads, so neither wallet shows a 0 it has not read (settings rule R10)",
     },
   },
   {

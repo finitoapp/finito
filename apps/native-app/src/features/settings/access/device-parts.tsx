@@ -8,6 +8,7 @@ import { useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
+import { DialogFooter } from "../../../components/ui/dialog.tsx"
 import { Field, FieldLabel } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
 import {
@@ -20,9 +21,13 @@ import {
 import { accessPresetLabelKeys } from "../../../core/access-labels.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
-/** Name, "this device", blocked, and what kind of device it is (access/0004). */
-export function DeviceHeading({
+/**
+ * A device's name with its "this device" and blocked badges (access/0004),
+ * the title of its `SettingsTile`.
+ */
+export function DeviceTitle({
   device,
   thisDevice,
 }: {
@@ -30,32 +35,36 @@ export function DeviceHeading({
   readonly thisDevice: boolean
 }) {
   const { t } = useTranslation()
+
+  return (
+    <XStack gap={8} items="center" flexWrap="wrap">
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
+      >
+        {device.name}
+      </Text>
+      {thisDevice ? (
+        <Badge variant="outline" label={t("access.device.this")} />
+      ) : null}
+      {device.pinBlockedAt !== null ? (
+        <Badge
+          variant="destructive"
+          icon={Ban}
+          label={t("access.device.blocked")}
+        />
+      ) : null}
+    </XStack>
+  )
+}
+
+/** What kind of device it is, or `undefined` when nothing is known. */
+export const deviceDetails = (device: DeviceListRow): string | undefined => {
   const details = [device.deviceType, device.browserName, device.osName]
     .filter((value) => value !== null)
     .join(" · ")
-
-  return (
-    <YStack gap="1">
-      <XStack gap="2" items="center" flexWrap="wrap">
-        <Text fontWeight="600">{device.name}</Text>
-        {thisDevice ? (
-          <Badge variant="secondary" label={t("access.device.this")} />
-        ) : null}
-        {device.pinBlockedAt !== null ? (
-          <Badge
-            variant="destructive"
-            icon={Ban}
-            label={t("access.device.blocked")}
-          />
-        ) : null}
-      </XStack>
-      {details === "" ? null : (
-        <Text fontSize={13} color="muted-foreground">
-          {details}
-        </Text>
-      )}
-    </YStack>
-  )
+  return details === "" ? undefined : details
 }
 
 /**
@@ -105,7 +114,7 @@ export function PresetPicker({
   )
 }
 
-/** Renames a device (synced, access/0004), inline in its row. */
+/** Renames a device (synced, access/0004), in its rename dialog. */
 export function RenameForm({
   device,
   onClose,
@@ -130,7 +139,7 @@ export function RenameForm({
   }
 
   return (
-    <YStack gap="3">
+    <YStack gap={16}>
       <Field>
         <FieldLabel>{t("access.device.name")}</FieldLabel>
         <Input
@@ -141,7 +150,7 @@ export function RenameForm({
           onSubmitEditing={() => void save()}
         />
       </Field>
-      <XStack justify="flex-end" gap={8}>
+      <DialogFooter>
         <Button
           variant="ghost"
           label={t("access.cancel")}
@@ -154,7 +163,7 @@ export function RenameForm({
           disabled={!parsed.success}
           onPress={() => void save()}
         />
-      </XStack>
+      </DialogFooter>
     </YStack>
   )
 }

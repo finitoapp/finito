@@ -27,14 +27,19 @@ import {
 import Archive from "lucide-react-native/icons/archive"
 import ArchiveRestore from "lucide-react-native/icons/archive-restore"
 import Pencil from "lucide-react-native/icons/pencil"
+import Percent from "lucide-react-native/icons/percent"
 import Plus from "lucide-react-native/icons/plus"
 import Star from "lucide-react-native/icons/star"
 import { type ComponentProps, useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
 import { z } from "zod"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -77,7 +82,11 @@ const taxRatesSettingsPageQueries = [
   settingsQuery,
 ]
 
-/** Tax rates, as web's `TaxRatesSettingsPage`; every change is written at once. */
+/**
+ * Tax rates, as web's `TaxRatesSettingsPage`; every change is written at
+ * once. Each card is headed by its title, the rates are tiles whose actions
+ * are icon buttons, and a rate is added in the form under the list.
+ */
 export function TaxRatesSettingsPage() {
   usePreloadEvoluQueries(taxRatesSettingsPageQueries)
   const { t } = useTranslation()
@@ -91,49 +100,47 @@ export function TaxRatesSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.taxRates.title")} />
-      <YStack gap={20}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.taxRates.active.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.taxRates.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {activeTaxRates.length === 0 ? (
+            <EmptyState
+              icon={Percent}
+              description={t("settings.taxRates.empty")}
+            />
+          ) : (
+            <SettingsTileList>
+              {activeTaxRates.map((taxRate) => (
+                <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
+              ))}
+            </SettingsTileList>
+          )}
+        </CardContent>
+      </Card>
+
+      {isVatPayer(legalEntity) && <KeypadTaxRateCard taxRates={taxRates} />}
+
+      <NewTaxRateForm />
+
+      {archivedTaxRates.length > 0 && (
         <Card>
           <CardHeader>
-            <CardDescription>
-              {t("settings.taxRates.description")}
-            </CardDescription>
+            <CardTitle>{t("settings.taxRates.archived.title")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {activeTaxRates.length === 0 ? (
-              <Text py={16} color="muted-foreground" text="center">
-                {t("settings.taxRates.empty")}
-              </Text>
-            ) : (
-              <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
-                {activeTaxRates.map((taxRate) => (
-                  <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
-                ))}
-              </YStack>
-            )}
+            <SettingsTileList>
+              {archivedTaxRates.map((taxRate) => (
+                <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
+              ))}
+            </SettingsTileList>
           </CardContent>
         </Card>
-
-        {isVatPayer(legalEntity) && <KeypadTaxRateCard taxRates={taxRates} />}
-
-        <NewTaxRateForm />
-
-        {archivedTaxRates.length > 0 && (
-          <Card>
-            <CardHeader>
-              <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                {t("settings.taxRates.archived.title")}
-              </Text>
-            </CardHeader>
-            <CardContent>
-              <YStack rounded="lg" bg="neutral-soft" overflow="hidden">
-                {archivedTaxRates.map((taxRate) => (
-                  <TaxRateRowItem key={taxRate.id} taxRate={taxRate} />
-                ))}
-              </YStack>
-            </CardContent>
-          </Card>
-        )}
-      </YStack>
+      )}
     </Screen>
   )
 }
@@ -198,90 +205,90 @@ function TaxRateRowItem({ taxRate }: { readonly taxRate: TaxRateRow }) {
 
   if (editing) {
     return (
-      <YStack px={12} py={8}>
-        <InlineEditField
-          startEditing
-          label={t("settings.taxRates.rename.input", name)}
-          defaultValue={taxRate.name}
-          codec={requiredTextCodec}
-          errorKey="settings.taxRates.name.invalid"
-          onSave={(next) =>
-            runToast(async (run) => {
-              await run.ok(renameTaxRate({ id: taxRate.id, name: next }))
-            })
-          }
-          onEditFinished={() => setEditing(false)}
-        />
-      </YStack>
+      <SettingsTile
+        title={
+          <InlineEditField
+            startEditing
+            label={t("settings.taxRates.rename.input", name)}
+            defaultValue={taxRate.name}
+            codec={requiredTextCodec}
+            errorKey="settings.taxRates.name.invalid"
+            onSave={(next) =>
+              runToast(async (run) => {
+                await run.ok(renameTaxRate({ id: taxRate.id, name: next }))
+              })
+            }
+            onEditFinished={() => setEditing(false)}
+          />
+        }
+      />
     )
   }
 
   return (
-    <XStack items="center" justify="space-between" gap="1" px={12} py={8}>
-      <YStack flex={1}>
-        <Text fontSize="sm" lineHeight="sm" fontWeight="600" numberOfLines={1}>
-          {taxRate.name}
-        </Text>
-        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-          {taxRatePercentageToDecimalString(taxRate.rate)}%
-        </Text>
-      </YStack>
-      {!isArchived && (
-        <RowAction
-          iconStart={Star}
-          label={t(
-            isDefault
-              ? "settings.taxRates.default.unset"
-              : "settings.taxRates.default.set",
-            name
+    <SettingsTile
+      title={taxRate.name}
+      description={`${taxRatePercentageToDecimalString(taxRate.rate)}%`}
+      trailing={
+        <>
+          {!isArchived && (
+            <RowAction
+              iconStart={Star}
+              label={t(
+                isDefault
+                  ? "settings.taxRates.default.unset"
+                  : "settings.taxRates.default.set",
+                name
+              )}
+              disabled={pending}
+              variant={isDefault ? "secondary" : "ghost"}
+              onPress={() => {
+                void act(async (run) => {
+                  await run.ok(setDefaultTaxRate(isDefault ? null : taxRate.id))
+                })
+              }}
+            />
           )}
-          disabled={pending}
-          variant={isDefault ? "secondary" : "ghost"}
-          onPress={() => {
-            void act(async (run) => {
-              await run.ok(setDefaultTaxRate(isDefault ? null : taxRate.id))
-            })
-          }}
-        />
-      )}
-      {!isArchived && (
-        <RowAction
-          iconStart={Pencil}
-          label={t("settings.taxRates.rename", name)}
-          disabled={pending}
-          onPress={() => setEditing(true)}
-        />
-      )}
-      {isArchived ? (
-        <RowAction
-          iconStart={ArchiveRestore}
-          label={t("settings.taxRates.activate", name)}
-          disabled={pending}
-          onPress={() => {
-            void act(
-              async (run) => {
-                await run.ok(activateTaxRate(taxRate.id))
-              },
-              { key: "activate" }
-            )
-          }}
-        />
-      ) : (
-        <RowAction
-          iconStart={Archive}
-          label={t("settings.taxRates.archive", name)}
-          disabled={pending}
-          onPress={() => {
-            void act(
-              async (run) => {
-                await run.ok(archiveTaxRate(taxRate.id))
-              },
-              { key: "archive" }
-            )
-          }}
-        />
-      )}
-    </XStack>
+          {!isArchived && (
+            <RowAction
+              iconStart={Pencil}
+              label={t("settings.taxRates.rename", name)}
+              disabled={pending}
+              onPress={() => setEditing(true)}
+            />
+          )}
+          {isArchived ? (
+            <RowAction
+              iconStart={ArchiveRestore}
+              label={t("settings.taxRates.activate", name)}
+              disabled={pending}
+              onPress={() => {
+                void act(
+                  async (run) => {
+                    await run.ok(activateTaxRate(taxRate.id))
+                  },
+                  { key: "activate" }
+                )
+              }}
+            />
+          ) : (
+            <RowAction
+              iconStart={Archive}
+              label={t("settings.taxRates.archive", name)}
+              disabled={pending}
+              onPress={() => {
+                void act(
+                  async (run) => {
+                    await run.ok(archiveTaxRate(taxRate.id))
+                  },
+                  { key: "archive" }
+                )
+              }}
+            />
+          )}
+        </>
+      }
+    />
   )
 }
 
@@ -319,9 +326,14 @@ function KeypadTaxRateCard({
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.taxRates.keypad.label")}</CardTitle>
+        <CardDescription>
+          {t("settings.taxRates.keypad.description")}
+        </CardDescription>
+      </CardHeader>
       <CardContent>
         <Field>
-          <FieldLabel>{t("settings.taxRates.keypad.label")}</FieldLabel>
           <Select
             value={z.encode(keypadTaxRateCodec, keypadTaxRate.value)}
             disabled={keypadTaxRate.saving}
@@ -350,9 +362,6 @@ function KeypadTaxRateCard({
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FieldDescription>
-            {t("settings.taxRates.keypad.description")}
-          </FieldDescription>
         </Field>
       </CardContent>
     </Card>
@@ -393,7 +402,7 @@ function NewTaxRateForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle size="sm">{t("settings.taxRates.add.title")}</CardTitle>
+        <CardTitle>{t("settings.taxRates.add.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <FieldGroup>
@@ -437,6 +446,7 @@ function NewTaxRateForm() {
           <Button
             label={t("settings.taxRates.add")}
             iconStart={Plus}
+            variant="outline"
             pending={pending}
             onPress={() => {
               void submit()

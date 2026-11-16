@@ -12,7 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 
 const loadSnapshot = async (store: CashuShardStore) => ({
   activeIndex: await store.activeIndex(),
@@ -45,7 +47,12 @@ export function CashuShardDebugCard() {
   }, [store, refetch])
 
   const line = (text: string, key?: string) => (
-    <Text key={key} fontSize="xs" lineHeight="xs" userSelect="text">
+    <Text
+      key={key}
+      fontSize={fontSize.xs}
+      lineHeight={fontSize.xs}
+      userSelect="text"
+    >
       {text}
     </Text>
   )
@@ -57,7 +64,7 @@ export function CashuShardDebugCard() {
       </CardHeader>
       <CardContent>
         {snapshot.data ? (
-          <YStack gap="1">
+          <YStack gap={4}>
             {line(
               t("settings.debugConsole.cashu.activeShard", {
                 index: String(snapshot.data.activeIndex),
@@ -89,7 +96,36 @@ export function CashuShardDebugCard() {
                   line(`${mint}: ${sats} sat`, mint)
                 )}
           </YStack>
-        ) : null}
+        ) : (
+          <SnapshotSkeleton />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** The snapshot's lines while they load: two lines, the button, a balance. */
+function SnapshotSkeleton() {
+  return (
+    <YStack gap={8} items="flex-start">
+      <Skeleton w={128} h={12} />
+      <Skeleton w={112} h={12} />
+      <Skeleton w={144} h={32} />
+      <Skeleton w={192} h={12} />
+    </YStack>
+  )
+}
+
+/** The card while the Cashu shard store starts, for its `Suspense` fallback. */
+export function CashuShardDebugCardSkeleton() {
+  const { t } = useTranslation()
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.debugConsole.cashu.title")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <SnapshotSkeleton />
       </CardContent>
     </Card>
   )

@@ -46,6 +46,7 @@ import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
+import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import {
   bitcoinWalletQueries,
@@ -75,8 +76,8 @@ function SettingValue({ children }: { readonly children: string | undefined }) {
   return (
     <Text
       color="muted-foreground"
-      fontSize="sm"
-      lineHeight="sm"
+      fontSize={fontSize.sm}
+      lineHeight={fontSize.sm}
       numberOfLines={1}
       ml="auto"
       maxW="100%"
@@ -201,9 +202,9 @@ function createSettingsNavItems(
           <Text
             flexShrink={1}
             minW={0}
-            fontSize="sm"
-            lineHeight="sm"
-            fontWeight="600"
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.medium}
           >
             {label}
           </Text>
@@ -218,7 +219,6 @@ function createSettingsNavItems(
   })
 }
 
-/** The settings groups follow web's order; unavailable native routes stay omitted. */
 /**
  * Everything the list's values read, `useEetSettings` included, started in
  * one round trip as the page mounts; `usePrivacySettings` reads the device
@@ -235,6 +235,7 @@ const settingsPageQueries = [
 ]
 const settingsPageDeviceQueries = [privacyQuery]
 
+/** The settings groups follow web's order; unavailable native routes stay omitted. */
 export function SettingsPage() {
   usePreloadEvoluQueries(settingsPageQueries)
   usePreloadDeviceEvoluQueries(settingsPageDeviceQueries)

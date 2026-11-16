@@ -5,7 +5,7 @@ import { router } from "expo-router"
 import { useAtomValue } from "jotai"
 import { useEffect, useState } from "react"
 import { AppState } from "react-native"
-import { Text, YStack } from "tamagui"
+import { Text } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -14,16 +14,31 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import {
+  Stepper,
+  StepperIndicator,
+  StepperItem,
+  StepperNav,
+  StepperSeparator,
+} from "../../../components/ui/stepper.tsx"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { usePreventScreenCapture } from "../../../hooks/use-prevent-screen-capture.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 import { RecoveryVerifyStep } from "./recovery-verify-step.tsx"
 import { RecoveryWordsGrid } from "./recovery-words-grid.tsx"
 
 type BackupStep = "intro" | "words" | "verify"
+
+const backupSteps = [
+  "intro",
+  "words",
+  "verify",
+] as const satisfies ReadonlyArray<BackupStep>
 
 /**
  * Web's `RecoveryBackupPage` (account/0007): what the phrase is, the words,
@@ -33,6 +48,8 @@ type BackupStep = "intro" | "words" | "verify"
  * the app leaves the foreground, blocks screenshots and the recents
  * thumbnail while shown (Android), and is not selectable or copyable: native
  * offers no way out of the screen, only transcription and the verification.
+ * The card counts the three steps with a `Stepper` and titles each one,
+ * below the screen's own title; each step's actions sit in its footer.
  */
 export function RecoveryBackupPage() {
   const { t } = useTranslation()
@@ -51,16 +68,23 @@ export function RecoveryBackupPage() {
     <Screen>
       <FadeHeader title={t("settings.security.mnemonic.title")} />
       <Card>
-        <CardHeader>
-          <CardTitle>{t("settings.security.mnemonic.title")}</CardTitle>
+        <CardHeader gap={12}>
+          <BackupStepper step={step} />
+          <CardTitle>
+            {t(
+              step === "verify"
+                ? "settings.security.verify.title"
+                : "settings.security.mnemonic.label"
+            )}
+          </CardTitle>
           {step === "intro" ? (
             <CardDescription>
               {t("settings.security.mnemonic.intro")}
             </CardDescription>
           ) : null}
         </CardHeader>
-        <CardContent>
-          {step === "intro" ? (
+        {step === "intro" ? (
+          <CardFooter justify="flex-end">
             <Button
               label={t("settings.security.backup.start")}
               onPress={() => {
@@ -73,16 +97,36 @@ export function RecoveryBackupPage() {
                 })()
               }}
             />
-          ) : (
-            <RevealedPhrase
-              step={step}
-              onContinue={() => setStep("verify")}
-              onDone={() => router.replace("/settings/security")}
-            />
-          )}
-        </CardContent>
+          </CardFooter>
+        ) : (
+          <RevealedPhrase
+            step={step}
+            onContinue={() => setStep("verify")}
+            onDone={() => router.replace("/settings/security")}
+          />
+        )}
       </Card>
     </Screen>
+  )
+}
+
+/** Where the backup is: the intro, the words, the check. */
+function BackupStepper({ step }: { readonly step: BackupStep }) {
+  return (
+    <Stepper value={backupSteps.indexOf(step) + 1}>
+      <StepperNav>
+        {backupSteps.map((item, index) => (
+          <StepperItem
+            key={item}
+            step={index + 1}
+            last={index === backupSteps.length - 1}
+          >
+            <StepperIndicator size={8} inactiveColor="muted-foreground-30" />
+            {index < backupSteps.length - 1 ? <StepperSeparator /> : null}
+          </StepperItem>
+        ))}
+      </StepperNav>
+    </Stepper>
   )
 }
 
@@ -111,23 +155,35 @@ function RevealedPhrase({
     return <RecoveryVerifyStep words={words} onDone={onDone} />
   }
   return (
-    <YStack gap="3">
-      <RecoveryWordsGrid words={words} />
-      <Text fontSize="sm" color="muted-foreground">
-        {t("settings.security.mnemonic.nativeHint")}
-      </Text>
-      <Text fontSize="sm" color="muted-foreground">
-        {t("settings.security.mnemonic.warning")}
-      </Text>
-      <Button
-        label={t("settings.security.backup.continue")}
-        onPress={onContinue}
-      />
-      <Button
-        variant="ghost"
-        label={t("settings.security.verify.skip")}
-        onPress={onDone}
-      />
-    </YStack>
+    <>
+      <CardContent gap={12}>
+        <RecoveryWordsGrid words={words} />
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {t("settings.security.mnemonic.nativeHint")}
+        </Text>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
+          {t("settings.security.mnemonic.warning")}
+        </Text>
+      </CardContent>
+      <CardFooter justify="flex-end" flexWrap="wrap" gap={8}>
+        <Button
+          variant="ghost"
+          label={t("settings.security.verify.skip")}
+          onPress={onDone}
+        />
+        <Button
+          label={t("settings.security.backup.continue")}
+          onPress={onContinue}
+        />
+      </CardFooter>
+    </>
   )
 }

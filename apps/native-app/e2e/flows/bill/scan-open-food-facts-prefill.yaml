@@ -36,23 +36,24 @@ tags: [bill]
     file: ../../subflows/open-facts-mock.yaml
     env:
       PATH: /__mock/open-facts/expect?count=0
-# Opt in to product lookup (every consent card says Enable: this one's sits
-# between its title and the next card's).
+# Opt in to product lookup: its switch is named after the consent.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/about/privacy
       TEXT: ${output.t["settings.about.privacy.title"]}
-- tapOn:
-    text: ${output.t["settings.privacy.productLookup.enable"]}
-    below: ${output.t["settings.privacy.productLookup.title"]}
-    above: ${output.t["settings.privacy.aiAssistant.title"]}
-- extendedWaitUntil:
-    visible:
-      text: ${output.t["settings.privacy.productLookup.enabled"]}
-      below: ${output.t["settings.privacy.productLookup.title"]}
-      above: ${output.t["settings.privacy.aiAssistant.title"]}
-    timeout: 10000
+- runFlow:
+    file: ../../subflows/scroll-to-label.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.productLookup.title"]}
+- runFlow:
+    file: ../../subflows/tap-id.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.productLookup.title"]}
+- runFlow:
+    file: ../../subflows/assert-checked.yaml
+    env:
+      LABEL: ${output.t["settings.privacy.productLookup.title"]}
 # An internal code is never looked up.
 - runFlow:
     file: ../../subflows/goto.yaml

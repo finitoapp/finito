@@ -66,7 +66,7 @@ export function TransportAddForm({
   }
 
   return (
-    <YStack gap="3">
+    <YStack gap={12}>
       <FieldGroup>
         <Field>
           <FieldLabel>{t("settings.security.transports.url.label")}</FieldLabel>
@@ -90,7 +90,7 @@ export function TransportAddForm({
           <FieldError>{error === null ? undefined : t(error)}</FieldError>
         </Field>
       </FieldGroup>
-      <XStack items="center" justify="space-between" gap="3">
+      <XStack items="center" justify="space-between" gap={12}>
         {saved ? (
           <Text aria-live="polite">
             {t("settings.security.transports.saved")}

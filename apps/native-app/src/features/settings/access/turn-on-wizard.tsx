@@ -11,7 +11,10 @@ import { useAtom } from "jotai"
 import KeyRound from "lucide-react-native/icons/key-round"
 import Pencil from "lucide-react-native/icons/pencil"
 import { useState } from "react"
-import { XStack, YStack } from "tamagui"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -24,7 +27,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../../../components/ui/dialog.tsx"
@@ -32,7 +34,12 @@ import { useAccess, useRequirePermission } from "../../../core/use-access.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { DeviceHeading, PresetPicker, RenameForm } from "./device-parts.tsx"
+import {
+  DeviceTitle,
+  deviceDetails,
+  PresetPicker,
+  RenameForm,
+} from "./device-parts.tsx"
 import { NewPinFields, useNewPin } from "./new-pin-fields.tsx"
 
 /**
@@ -160,33 +167,38 @@ export function TurnOnWizard({
           {t("access.wizard.devices.description")}
         </CardDescription>
       </CardHeader>
-      <CardContent gap={12} testID="wizard-devices">
-        {devices.map((device) => (
-          <YStack key={device.id} gap="2" p="3" rounded="lg" bg="neutral-soft">
-            <XStack items="flex-start" justify="space-between" gap="2">
-              <YStack flex={1} minW={0}>
-                <DeviceHeading
+      <CardContent>
+        <SettingsTileList testID="wizard-devices">
+          {devices.map((device) => (
+            <SettingsTile
+              key={device.id}
+              title={
+                <DeviceTitle
                   device={device}
                   thisDevice={device.id === deviceId}
                 />
-              </YStack>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("access.device.rename")}
-                iconStart={Pencil}
-                onPress={() => setRenaming(device)}
-              />
-            </XStack>
-            <PresetPicker
-              label={t("access.device.preset", { name: device.name })}
-              value={presets[device.id] ?? "basic"}
-              onChange={(preset) =>
-                setPresets((current) => ({ ...current, [device.id]: preset }))
               }
-            />
-          </YStack>
-        ))}
+              description={deviceDetails(device)}
+              trailing={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t("access.device.rename")}
+                  iconStart={Pencil}
+                  onPress={() => setRenaming(device)}
+                />
+              }
+            >
+              <PresetPicker
+                label={t("access.device.preset", { name: device.name })}
+                value={presets[device.id] ?? "basic"}
+                onChange={(preset) =>
+                  setPresets((current) => ({ ...current, [device.id]: preset }))
+                }
+              />
+            </SettingsTile>
+          ))}
+        </SettingsTileList>
         {renaming === null ? null : (
           <Dialog
             open
@@ -197,7 +209,6 @@ export function TurnOnWizard({
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{t("access.device.rename")}</DialogTitle>
-                <DialogDescription>{t("access.device.name")}</DialogDescription>
               </DialogHeader>
               <RenameForm device={renaming} onClose={() => setRenaming(null)} />
             </DialogContent>

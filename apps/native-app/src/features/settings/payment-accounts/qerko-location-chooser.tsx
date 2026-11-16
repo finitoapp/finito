@@ -8,11 +8,19 @@ import { getQerkoLocations } from "@payky/core/integrations/qerko/qerko-client"
 import { pairQerkoPaymentLocation } from "@payky/core/modules/qerko-plugin/qerko-plugin-actions"
 import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import { useQuery } from "@tanstack/react-query"
+import MapPinOff from "lucide-react-native/icons/map-pin-off"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { type ReactNode, useState } from "react"
-import { ActivityIndicator } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
+import { EmptyState } from "../../../components/empty-state.tsx"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+} from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Field, FieldLabel } from "../../../components/ui/field.tsx"
+import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -20,11 +28,16 @@ import {
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 
 /**
  * The locations of the paired company, as web's `QerkoLocationChooser`
  * (qerko/0007): the only one, or the one the key is already paired with,
  * starts chosen; confirming pairs it, then `onPaired` runs.
+ *
+ * Native differences: the list loads behind skeleton rows where web spins a
+ * loader; a failure is a destructive `Alert` with its retry, and no location
+ * at all an `EmptyState` with it, where web writes a line of text.
  */
 export function QerkoLocationChooser({
   confirmLabel,
@@ -70,7 +83,15 @@ export function QerkoLocationChooser({
     },
   })
 
-  if (locations.isPending) return <ActivityIndicator />
+  if (locations.isPending) {
+    return (
+      <YStack gap={8}>
+        <Skeleton h={14} w={96} />
+        <Skeleton h={56} rounded={shape.control} />
+        <Skeleton h={56} rounded={shape.control} opacity={0.5} />
+      </YStack>
+    )
+  }
 
   const data = locations.data
   if (
@@ -82,38 +103,40 @@ export function QerkoLocationChooser({
     const failure =
       data?.failure ?? describeQerkoLocationsFailure({ type: "unknown" })
     return (
-      <YStack gap={12} items="flex-start">
-        <Text fontSize="sm" lineHeight="sm" color="destructive">
-          {t(failure.key)}
-        </Text>
+      <Alert variant="destructive" icon={TriangleAlert}>
+        <AlertDescription>{t(failure.key)}</AlertDescription>
         {failure.keyRejected ? null : (
-          <Button
-            variant="outline"
-            label={t("settings.qerkoPayment.location.retry")}
-            onPress={() => {
-              void locations.refetch()
-            }}
-          />
+          <AlertAction>
+            <Button
+              size="sm"
+              variant="outline"
+              label={t("settings.qerkoPayment.location.retry")}
+              onPress={() => {
+                void locations.refetch()
+              }}
+            />
+          </AlertAction>
         )}
-      </YStack>
+      </Alert>
     )
   }
 
   if (data.choices.length === 0) {
     return (
-      <YStack gap={12} items="flex-start">
-        <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
-          {t("settings.qerkoPayment.location.empty")}
-        </Text>
-        <Button
-          variant="outline"
-          label={t("settings.qerkoPayment.location.retry")}
-          pending={locations.isFetching}
-          onPress={() => {
-            void locations.refetch()
-          }}
-        />
-      </YStack>
+      <EmptyState
+        icon={MapPinOff}
+        description={t("settings.qerkoPayment.location.empty")}
+        action={
+          <Button
+            variant="outline"
+            label={t("settings.qerkoPayment.location.retry")}
+            pending={locations.isFetching}
+            onPress={() => {
+              void locations.refetch()
+            }}
+          />
+        }
+      />
     )
   }
 
@@ -164,10 +187,18 @@ export function QerkoLocationChooser({
               justify="flex-start"
             >
               <YStack gap={2} items="flex-start">
-                <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.semibold}
+                >
                   {choice.name}
                 </Text>
-                <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+                <Text
+                  fontSize={fontSize.xs}
+                  lineHeight={fontSize.xs}
+                  color="muted-foreground"
+                >
                   {choice.address}
                 </Text>
               </YStack>
@@ -177,9 +208,9 @@ export function QerkoLocationChooser({
       </Field>
       {children}
       {failureKey === null ? null : (
-        <Text fontSize="sm" lineHeight="sm" color="destructive">
-          {t(failureKey)}
-        </Text>
+        <Alert variant="destructive" icon={TriangleAlert}>
+          <AlertDescription>{t(failureKey)}</AlertDescription>
+        </Alert>
       )}
       <XStack justify="flex-end">
         <Button

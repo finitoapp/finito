@@ -32,6 +32,7 @@ import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { OptionToggleGroup } from "../../../components/option-toggle-group.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
 import {
   Alert,
   AlertDescription,
@@ -47,17 +48,15 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "../../../components/ui/field.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
-import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 import { useEetSettings } from "../../shared/use-eet-settings.ts"
 import { EetCertificateImport } from "./eet-certificate-import.tsx"
 import { EetOfficialTestCertificates } from "./eet-official-test-certificates.tsx"
@@ -123,12 +122,7 @@ export function EetSettingsPage() {
       />
       <StoredCertificate environment={eet.environment} />
       <EetTestSection environment={eet.environment} gaps={gaps} />
-      <Section
-        title={t("settings.eet.unconfirmed.title")}
-        description={t("settings.eet.unconfirmed.description")}
-      >
-        <EetUnconfirmedSales />
-      </Section>
+      <EetUnconfirmedSales />
     </Screen>
   )
 }
@@ -149,7 +143,7 @@ function Section({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <YStack gap="3">{children}</YStack>
+        <YStack gap={12}>{children}</YStack>
       </CardContent>
     </Card>
   )
@@ -198,28 +192,23 @@ function ReportingSection({
             })
           }
         />
-        <Field orientation="horizontal">
-          <Switch
-            aria-label={t("settings.eet.enabled.label")}
-            checked={enabled.value}
-            disabled={cannotEnable || enabled.saving}
-            onCheckedChange={(checked) => {
-              void enabled.choose(checked)
-            }}
-          />
-          <FieldContent>
-            <FieldLabel>{t("settings.eet.enabled.label")}</FieldLabel>
-            <FieldDescription>
-              {cannotEnable
-                ? t("settings.eet.enabled.missing", {
-                    missing: gaps
-                      .map((gap) => t(configurationGapKeys[gap]))
-                      .join(", "),
-                  })
-                : t("settings.eet.enabled.description")}
-            </FieldDescription>
-          </FieldContent>
-        </Field>
+        <SwitchRow
+          label={t("settings.eet.enabled.label")}
+          description={
+            cannotEnable
+              ? t("settings.eet.enabled.missing", {
+                  missing: gaps
+                    .map((gap) => t(configurationGapKeys[gap]))
+                    .join(", "),
+                })
+              : t("settings.eet.enabled.description")
+          }
+          checked={enabled.value}
+          disabled={cannotEnable || enabled.saving}
+          onCheckedChange={(checked) => {
+            void enabled.choose(checked)
+          }}
+        />
       </FieldGroup>
     </Section>
   )
@@ -281,7 +270,7 @@ function EnvironmentSection({
   const { t } = useTranslation()
   const confirm = useConfirm()
   const runToast = useRunToast()
-  const toast = useToast()
+  // A choice saves silently; a refusal still says why.
   const choice = useInlineChoice(environment, async (next) => {
     if (next === "playground") {
       const confirmed = await confirm({
@@ -292,12 +281,10 @@ function EnvironmentSection({
       })
       if (!confirmed) return false
     }
-    const saved = await runToast(async (run) => {
+    return runToast(async (run) => {
       const result = await run(selectEetEnvironment(next))
       return result.ok ? undefined : environmentErrorKeys[result.error.type]
     })
-    if (saved) toast.success(t("settings.eet.environment.saved"))
-    return saved
   })
 
   const productionDescription = !isProductionAvailable
@@ -311,8 +298,8 @@ function EnvironmentSection({
       title={t("settings.eet.environment.title")}
       description={t("settings.eet.environment.description")}
     >
-      <Field>
-        <FieldGroup>
+      <FieldGroup>
+        <Field>
           <OptionToggleGroup<EetEnvironment>
             value={choice.value}
             options={[
@@ -335,8 +322,8 @@ function EnvironmentSection({
               void choice.choose(next)
             }}
           />
-        </FieldGroup>
-      </Field>
+        </Field>
+      </FieldGroup>
     </Section>
   )
 }
@@ -360,7 +347,11 @@ function StoredCertificate({
       {settings?.eic === null ||
       settings?.eic === undefined ||
       validTo === null ? (
-        <Text color="muted-foreground">
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
           {t("settings.eet.certificate.none")}
         </Text>
       ) : (
@@ -398,26 +389,38 @@ function StoredCertificateDetails({
   const expiry = deriveEetCertificateExpiry({ validTo: new Date(validTo), now })
 
   return (
-    <YStack gap="3">
-      <YStack gap="1" p="3" rounded="lg" bg="neutral-soft">
-        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+    <YStack gap={12}>
+      <YStack gap={4} p={12} rounded={shape.control} bg="neutral-soft">
+        <Text
+          fontSize={fontSize.xs}
+          lineHeight={fontSize.xs}
+          color="muted-foreground"
+        >
           {t("settings.eet.certificate.eic")}
         </Text>
         <Text
-          fontSize="sm"
-          lineHeight="sm"
-          fontWeight="600"
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
           style={{ fontFamily: "monospace" }}
           testID="eet-certificate-eic"
         >
           {eic}
         </Text>
         {description === null ? null : (
-          <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+          <Text
+            fontSize={fontSize.xs}
+            lineHeight={fontSize.xs}
+            color="muted-foreground"
+          >
             {description}
           </Text>
         )}
-        <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+        <Text
+          fontSize={fontSize.xs}
+          lineHeight={fontSize.xs}
+          color="muted-foreground"
+        >
           {t("settings.eet.certificate.validTo", {
             date: new Intl.DateTimeFormat(locale).format(new Date(validTo)),
           })}

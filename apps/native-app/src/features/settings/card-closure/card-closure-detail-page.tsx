@@ -10,14 +10,11 @@ import {
 import { Integer } from "@payky/core/modules/shared/schema"
 import { useLocalSearchParams } from "expo-router"
 import { Suspense } from "react"
-import { ScrollView } from "react-native"
-import { useTheme } from "tamagui"
 import { DetailRow } from "../../../components/detail-row.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { LoadingView } from "../../../components/loading-view.tsx"
 import { NotFoundCard } from "../../../components/not-found-card.tsx"
-import { SafeAreaView } from "../../../components/safe-area-view.tsx"
-import { screenPaddingX } from "../../../components/screen.tsx"
+import { Screen } from "../../../components/screen.tsx"
 import {
   Card,
   CardContent,
@@ -37,19 +34,12 @@ import { useClosureDeviceLabel } from "./use-closure-device-label.ts"
  * after the batch was closed. Gated by `confirm`, as the list (access/0011).
  */
 export function CardClosureDetailPage() {
-  const theme = useTheme()
   const { t } = useTranslation()
   const { closureId } = useLocalSearchParams<{ closureId: string }>()
   const parsed = CardSwitchioClosureIdSchema.safeParse(closureId)
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        paddingHorizontal: screenPaddingX,
-        backgroundColor: theme.background.val,
-      }}
-    >
+    <Screen>
       <FadeHeader title={t("settings.cardClosure.detail.title")} />
       {parsed.success ? (
         <Suspense fallback={<LoadingView />}>
@@ -58,7 +48,7 @@ export function CardClosureDetailPage() {
       ) : (
         <NotFoundCard messageKey="settings.cardClosure.detail.notFound" />
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 
@@ -71,11 +61,7 @@ function CardClosureDetail({
   if (closure === undefined) {
     return <NotFoundCard messageKey="settings.cardClosure.detail.notFound" />
   }
-  return (
-    <ScrollView contentContainerStyle={{ gap: 12, paddingBottom: 24 }}>
-      <ClosureResultCard closure={closure} />
-    </ScrollView>
-  )
+  return <ClosureResultCard closure={closure} />
 }
 
 function ClosureResultCard({

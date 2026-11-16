@@ -536,6 +536,7 @@ export const enSettings = {
   "settings.fioPlugin.syncLookbackDays.invalid":
     "Enter a whole number greater than zero.",
   "settings.fioPlugin.syncLookbackDays.label": "Sync lookback days",
+  "settings.fioPlugin.notFioIbanShort": "Not a Fio banka account.",
   "settings.fioPlugin.notFioIbanWarning":
     "This IBAN is not a Fio banka account, so the plugin will not find its payments.",
   "settings.fioPlugin.title": "Fio Plugin",
@@ -556,6 +557,11 @@ export const enSettings = {
   "settings.fioPlugin.tokens.empty": "No tokens saved.",
   "settings.fioPlugin.tokens.item": "Fio API token",
   "settings.fioPlugin.tokens.remove": "Remove",
+  "settings.fioPlugin.tokens.remove.confirm.title": "Remove the token?",
+  "settings.fioPlugin.tokens.remove.confirm.description":
+    "The sync stops using the token {token}. To use it again, add it again.",
+  "settings.fioPlugin.tokens.remove.confirm.confirm": "Remove",
+  "settings.fioPlugin.tokens.remove.confirm.cancel": "Cancel",
   "settings.fioPlugin.tokens.title": "Tokens",
   "settings.monetaPlugin.title": "MONETA Plugin",
   "settings.monetaPlugin.description":
@@ -592,6 +598,7 @@ export const enSettings = {
   "settings.monetaPlugin.connected.token": "Token",
   "settings.monetaPlugin.connected.ibanMismatch":
     "The token was connected for the account {iban}, not the current fiat bank account. Connect a token for the current account.",
+  "settings.monetaPlugin.settings.title": "Sync settings",
   "settings.monetaPlugin.active.label": "Confirm payments automatically",
   "settings.monetaPlugin.active.description":
     "Checks the account for incoming transfers in the background and while a payment waits.",
@@ -1113,6 +1120,7 @@ export const enSettings = {
   "settings.taxRates.activate.confirm.description":
     "{name} will be available again when assigning tax rates to catalog items.",
   "settings.taxRates.activate.confirm.title": "Reactivate {name}?",
+  "settings.taxRates.active.title": "Active",
   "settings.taxRates.add": "Add tax rate",
   "settings.taxRates.add.title": "Add a tax rate",
   "settings.taxRates.archive": "Archive {name}",
@@ -1179,6 +1187,7 @@ export const enSettings = {
   "settings.tips.percentages.placeholder": "e.g. 15",
   "settings.tips.percentages.value": "{value}%",
   "settings.tips.preset.remove": "Remove {value}",
+  "settings.tips.preset.removeLabel": "Remove",
   "settings.tips.removeConfirm.title": "Remove {value}?",
   "settings.tips.removeConfirm.description":
     "Customers will no longer be offered it when paying.",

@@ -12,7 +12,6 @@ import { tableByIdQuery } from "@payky/core/modules/table/table-queries"
 import { TableId } from "@payky/core/modules/table/table-types"
 import { router, useLocalSearchParams } from "expo-router"
 import Trash from "lucide-react-native/icons/trash"
-import { YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -114,52 +113,50 @@ function EditTableForm({ table }: { readonly table: TableRow }) {
   return (
     <Screen>
       <FadeHeader title={t("catalog.tables.form.title.edit")} />
-      <YStack gap={20}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("catalog.tables.form.card.title")}</CardTitle>
-            <CardDescription>
-              {t("catalog.tables.form.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <InlineEditField
-                label={t("catalog.tables.form.name.label")}
-                placeholder={t("catalog.tables.form.name.placeholder")}
-                defaultValue={table.name}
-                codec={requiredTextCodec}
-                errorKey="catalog.tables.form.name.invalid"
-                onSave={(name) => saveTable({ name })}
-              />
-              <InlineEditField
-                label={t("catalog.tables.form.seatCount.label")}
-                placeholder={t("catalog.tables.form.seatCount.placeholder")}
-                keyboardType="number-pad"
-                defaultValue={table.seatCount}
-                codec={positiveIntegerCodec}
-                errorKey="catalog.tables.form.seatCount.invalid"
-                onSave={(seatCount) => saveTable({ seatCount })}
-              />
-              <Field>
-                <FieldLabel>{t("catalog.tables.form.code.label")}</FieldLabel>
-                <Input value={table.code} disabled readOnly />
-                <FieldDescription>
-                  {t("catalog.tables.form.code.description")}
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          </CardContent>
-        </Card>
-        <Button
-          label={t("catalog.tables.delete")}
-          iconStart={Trash}
-          variant="destructive"
-          onPress={() => {
-            void handleDelete()
-          }}
-        />
-      </YStack>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("catalog.tables.form.card.title")}</CardTitle>
+          <CardDescription>
+            {t("catalog.tables.form.card.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <InlineEditField
+              label={t("catalog.tables.form.name.label")}
+              placeholder={t("catalog.tables.form.name.placeholder")}
+              defaultValue={table.name}
+              codec={requiredTextCodec}
+              errorKey="catalog.tables.form.name.invalid"
+              onSave={(name) => saveTable({ name })}
+            />
+            <InlineEditField
+              label={t("catalog.tables.form.seatCount.label")}
+              placeholder={t("catalog.tables.form.seatCount.placeholder")}
+              keyboardType="number-pad"
+              defaultValue={table.seatCount}
+              codec={positiveIntegerCodec}
+              errorKey="catalog.tables.form.seatCount.invalid"
+              onSave={(seatCount) => saveTable({ seatCount })}
+            />
+            <Field>
+              <FieldLabel>{t("catalog.tables.form.code.label")}</FieldLabel>
+              <Input value={table.code} disabled readOnly />
+              <FieldDescription>
+                {t("catalog.tables.form.code.description")}
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+      <Button
+        label={t("catalog.tables.delete")}
+        iconStart={Trash}
+        variant="destructive"
+        onPress={() => {
+          void handleDelete()
+        }}
+      />
     </Screen>
   )
 }

@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "../../../components/ui/card.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 
 /** Switchio's page about the terminal app, still under its SoftPOS name. */
 const SWITCHIO_PAY_URL = "https://switchio.com/try-softpos/"
@@ -21,7 +22,7 @@ const SWITCHIO_PAY_URL = "https://switchio.com/try-softpos/"
 /**
  * Informational only, as web's: the terminal itself is configured in the
  * SwitchioPay app, which this app drives through the `switchio.pay.ECR`
- * intent.
+ * intent. The two requirements read as muted bullets, as Spark's do.
  */
 export function CardSwitchioSettingsPage() {
   const { t } = useTranslation()
@@ -37,9 +38,17 @@ export function CardSwitchioSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <YStack gap="2">
-            <Text>{`• ${t("settings.cardSwitchioAccount.info.switchioPay")}`}</Text>
-            <Text>{`• ${t("settings.cardSwitchioAccount.info.contract")}`}</Text>
+          <YStack gap={8}>
+            <Text
+              fontSize={fontSize.sm}
+              lineHeight={fontSize.sm}
+              color="muted-foreground"
+            >{`• ${t("settings.cardSwitchioAccount.info.switchioPay")}`}</Text>
+            <Text
+              fontSize={fontSize.sm}
+              lineHeight={fontSize.sm}
+              color="muted-foreground"
+            >{`• ${t("settings.cardSwitchioAccount.info.contract")}`}</Text>
             <Button
               size="lg"
               variant="outline"

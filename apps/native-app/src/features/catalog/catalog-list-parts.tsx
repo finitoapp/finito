@@ -4,9 +4,11 @@ import type { Href } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import Plus from "lucide-react-native/icons/plus"
 import { type ReactNode, Suspense } from "react"
-import { ActivityIndicator, FlatList } from "react-native"
+import { FlatList } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
+import { EmptyState } from "../../components/empty-state.tsx"
 import { FadeHeader } from "../../components/fade-header.tsx"
+import { ListSkeleton } from "../../components/list-skeleton.tsx"
 import { LoadingView } from "../../components/loading-view.tsx"
 import { SafeAreaView } from "../../components/safe-area-view.tsx"
 import { screenPaddingX } from "../../components/screen.tsx"
@@ -19,6 +21,7 @@ import {
 } from "../../components/vertical-nav.tsx"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
 import { useOpenDetail } from "../../hooks/use-open-detail.ts"
+import { fontSize, fontWeight } from "../../theme/tokens.ts"
 
 /**
  * The frame every catalog list screen shares, as web's `CatalogListPage`: a
@@ -56,11 +59,11 @@ export function CatalogListShell({
           addHref === undefined ? null : (
             <Button
               variant="ghost"
-              size="default"
+              size="icon"
               aria-label={addLabel}
               onPress={() => openDetail(addHref)}
             >
-              <Icon icon={Plus} size={20} color="primary" strokeWidth={3} />
+              <Icon icon={Plus} color="primary" />
             </Button>
           )
         }
@@ -95,25 +98,40 @@ function toVerticalNavItem(
       gap={8}
     >
       <YStack flex={1} minW={0} gap={4}>
-        <Text fontWeight="600" numberOfLines={1}>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          fontWeight={fontWeight.semibold}
+          numberOfLines={1}
+        >
           {row.title}
         </Text>
         {row.subtitle === undefined ? null : (
-          <Text fontSize={13} color="muted-foreground" numberOfLines={1}>
+          <Text
+            fontSize={fontSize.xs}
+            lineHeight={fontSize.xs}
+            color="muted-foreground"
+            numberOfLines={1}
+          >
             {row.subtitle}
           </Text>
         )}
       </YStack>
       {row.trailing === undefined ? null : (
-        <Text color="muted-foreground" numberOfLines={1}>
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+          numberOfLines={1}
+        >
           {row.trailing}
         </Text>
       )}
     </XStack>
   )
 
-  // Web's lucide icon without a size class: the 24 px default.
-  const rowIcon = <Icon icon={icon} size={24} color="muted-foreground" />
+  // A settings row's 20, as About's rows (web's lucide default is 24).
+  const rowIcon = <Icon icon={icon} color="muted-foreground" />
   return row.href === undefined
     ? { kind: "static", id: row.id, icon: rowIcon, label, disableAction: true }
     : { kind: "link", id: row.id, href: row.href, icon: rowIcon, label }
@@ -165,28 +183,16 @@ export function CatalogEntityList<R extends Row>({
         }}
         ListEmptyComponent={
           hasAny ? (
-            <Text color="muted-foreground" text="center" py="6">
-              {emptySearchLabel}
-            </Text>
+            <EmptyState description={emptySearchLabel} />
           ) : (
-            <YStack items="center" gap="2" py="6">
-              <Text
-                fontSize="lg"
-                lineHeight="lg"
-                fontWeight="700"
-                text="center"
-              >
-                {emptyTitle}
-              </Text>
-              <Text color="muted-foreground" text="center">
-                {emptyDescription}
-              </Text>
-            </YStack>
+            <EmptyState
+              icon={icon}
+              title={emptyTitle}
+              description={emptyDescription}
+            />
           )
         }
-        ListFooterComponent={
-          hasMore ? <ActivityIndicator style={{ padding: 16 }} /> : undefined
-        }
+        ListFooterComponent={hasMore ? <ListSkeleton rows={2} /> : undefined}
         renderItem={({ item, index }) => (
           <VerticalNavRow
             item={toVerticalNavItem(item, icon)}

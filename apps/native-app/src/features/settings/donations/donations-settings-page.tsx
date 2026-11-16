@@ -18,16 +18,18 @@ import {
 } from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useEffect, useState } from "react"
-import { Text } from "tamagui"
 import { z } from "zod"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
@@ -221,32 +223,39 @@ export function DonationsSettingsPage() {
                   : t(visibleAmountError)}
               </FieldError>
             </Field>
+            {/* No retry: the rate and the address are loaded once, by
+                shared hooks without a refetch; leaving and coming back
+                loads them again. Creating the invoice again is the
+                button below. */}
             {loadErrorKey === null ? null : (
-              <Text color="destructive" role="alert">
-                {t(loadErrorKey)}
-              </Text>
+              <Alert variant="destructive" icon={TriangleAlert}>
+                <AlertDescription>{t(loadErrorKey)}</AlertDescription>
+              </Alert>
             )}
             {invoiceFailed ? (
-              <Text color="destructive" role="alert">
-                {t("settings.donations.invoice.error")}
-              </Text>
+              <Alert variant="destructive" icon={TriangleAlert}>
+                <AlertDescription>
+                  {t("settings.donations.invoice.error")}
+                </AlertDescription>
+              </Alert>
             ) : null}
-            <Button
-              size="lg"
-              label={t(
-                creating
-                  ? "settings.donations.create.pending"
-                  : "settings.donations.create"
-              )}
-              iconStart={HeartHandshake}
-              disabled={!canCreate || isLoading}
-              pending={creating}
-              onPress={() => {
-                void createInvoice()
-              }}
-            />
           </FieldGroup>
         </CardContent>
+        <CardFooter justify="flex-end">
+          <Button
+            label={t(
+              creating
+                ? "settings.donations.create.pending"
+                : "settings.donations.create"
+            )}
+            iconStart={HeartHandshake}
+            disabled={!canCreate || isLoading}
+            pending={creating}
+            onPress={() => {
+              void createInvoice()
+            }}
+          />
+        </CardFooter>
       </Card>
       <DonationHistory />
     </Screen>

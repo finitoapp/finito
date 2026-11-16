@@ -4,6 +4,7 @@ import {
   positiveIntegerCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import { fiatBankAccountQuery } from "@payky/core/modules/account/account-queries"
+import type { AccountId } from "@payky/core/modules/account/account-types"
 import { legacyFiatBankAccountId } from "@payky/core/modules/account/account-utils"
 import {
   saveFioPlugin,
@@ -14,16 +15,19 @@ import {
   fioPluginSyncPointerByPluginIdQuery,
 } from "@payky/core/modules/fio-plugin/fio-plugin-queries"
 import { fioPluginId } from "@payky/core/modules/fio-plugin/fio-plugin-utils"
+import { isFioBankIban } from "@payky/core/modules/shared/iban-utils"
 import {
   type DateString,
   DateStringSchema,
   PositiveInteger,
 } from "@payky/core/modules/shared/schema"
 import { format, subDays } from "date-fns"
-import { YStack } from "tamagui"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
+import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import {
   Card,
   CardContent,
@@ -31,13 +35,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "../../../components/ui/field.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
+import { FieldGroup } from "../../../components/ui/field.tsx"
 import { useAccess } from "../../../core/use-access.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
@@ -59,7 +57,8 @@ const getDefaultLastSyncedDate = (): DateString =>
  * the plugin row exists. The app's web build reaches the bank only through
  * the service proxy, so until the device allows it there it shows the
  * runtime warning, which leads to the privacy settings, and cannot turn the
- * sync on.
+ * sync on. When the fiat bank account is not at Fio banka, a warning says the
+ * plugin will not find its payments, as MONETA's screen does for its bank.
  */
 export function FioPluginSettingsPage() {
   const { accountId } = useAccess()
@@ -69,6 +68,7 @@ export function FioPluginSettingsPage() {
 function FioPluginSettings() {
   const { t } = useTranslation()
   const canReachBank = useCanReachBanks()
+  const [bankAccount] = useEvoluQuery(fiatBankAccountQuery).data
 
   return (
     <Screen>
@@ -79,7 +79,17 @@ function FioPluginSettings() {
           description={t("settings.fioPlugin.nativeRuntimeWarning.description")}
         />
       )}
-      <FioPluginForm canReachBank={canReachBank} />
+      {bankAccount !== undefined && !isFioBankIban(bankAccount.iban) ? (
+        <Alert variant="warning" icon={TriangleAlert}>
+          <AlertDescription>
+            {t("settings.fioPlugin.notFioIbanWarning")}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <FioPluginForm
+        canReachBank={canReachBank}
+        bankAccountId={bankAccount?.id}
+      />
       <FioTokenForm />
       <FioTokenList />
     </Screen>
@@ -88,9 +98,12 @@ function FioPluginSettings() {
 
 function FioPluginForm({
   canReachBank,
+  bankAccountId,
 }: {
   /** Without it the sync cannot run here, so it cannot be turned on. */
   readonly canReachBank: boolean
+  /** The fiat bank account the plugin reads, once there is one. */
+  readonly bankAccountId: AccountId | undefined
 }) {
   const runToast = useRunToast()
   const { t } = useTranslation()
@@ -98,7 +111,6 @@ function FioPluginForm({
   const [pointer] = useEvoluQuery(
     fioPluginSyncPointerByPluginIdQuery(fioPluginId)
   ).data
-  const [bankAccount] = useEvoluQuery(fiatBankAccountQuery).data
   const lastSyncedDate = pointer?.lastSyncedDate ?? getDefaultLastSyncedDate()
 
   const isActive = plugin?.isActive === sqliteTrue
@@ -124,7 +136,7 @@ function FioPluginForm({
         saveFioPlugin({
           // With no bank account yet, the plugin waits on the placeholder id
           // until `saveFiatBankAccount` points it at the real one.
-          accountId: bankAccount?.id ?? legacyFiatBankAccountId,
+          accountId: bankAccountId ?? legacyFiatBankAccountId,
           numberOfSecondsBetweenChecks:
             changed.numberOfSecondsBetweenChecks ??
             numberOfSecondsBetweenChecks,
@@ -139,77 +151,68 @@ function FioPluginForm({
   )
 
   return (
-    <YStack gap="3">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("settings.fioPlugin.form.title")}</CardTitle>
-          <CardDescription>
-            {t("settings.fioPlugin.form.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            <Field orientation="horizontal">
-              <Switch
-                aria-label={t("settings.fioPlugin.active.label")}
-                checked={activeChoice.value}
-                disabled={activeChoice.saving || !canReachBank}
-                onCheckedChange={(next) => {
-                  void activeChoice.choose(next)
-                }}
-              />
-              <YStack flex={1} gap="1">
-                <FieldLabel>{t("settings.fioPlugin.active.label")}</FieldLabel>
-                <FieldDescription>
-                  {t("settings.fioPlugin.active.description")}
-                </FieldDescription>
-              </YStack>
-            </Field>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.fioPlugin.form.title")}</CardTitle>
+        <CardDescription>
+          {t("settings.fioPlugin.form.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <SwitchRow
+            label={t("settings.fioPlugin.active.label")}
+            description={t("settings.fioPlugin.active.description")}
+            checked={activeChoice.value}
+            disabled={activeChoice.saving || !canReachBank}
+            onCheckedChange={(next) => {
+              void activeChoice.choose(next)
+            }}
+          />
 
-            <InlineEditField
-              label={t("settings.fioPlugin.interval.label")}
-              description={t("settings.fioPlugin.interval.description")}
-              keyboardType="number-pad"
-              defaultValue={numberOfSecondsBetweenChecks}
-              codec={positiveIntegerCodec}
-              errorKey="settings.fioPlugin.interval.invalid"
-              onSave={(next) =>
-                savePlugin({ numberOfSecondsBetweenChecks: next })
-              }
-            />
+          <InlineEditField
+            label={t("settings.fioPlugin.interval.label")}
+            description={t("settings.fioPlugin.interval.description")}
+            keyboardType="number-pad"
+            defaultValue={numberOfSecondsBetweenChecks}
+            codec={positiveIntegerCodec}
+            errorKey="settings.fioPlugin.interval.invalid"
+            onSave={(next) =>
+              savePlugin({ numberOfSecondsBetweenChecks: next })
+            }
+          />
 
-            <InlineEditField
-              label={t("settings.fioPlugin.syncLookbackDays.label")}
-              description={t("settings.fioPlugin.syncLookbackDays.description")}
-              keyboardType="number-pad"
-              defaultValue={syncLookbackDays}
-              codec={positiveIntegerCodec}
-              errorKey="settings.fioPlugin.syncLookbackDays.invalid"
-              onSave={(next) => savePlugin({ syncLookbackDays: next })}
-            />
+          <InlineEditField
+            label={t("settings.fioPlugin.syncLookbackDays.label")}
+            description={t("settings.fioPlugin.syncLookbackDays.description")}
+            keyboardType="number-pad"
+            defaultValue={syncLookbackDays}
+            codec={positiveIntegerCodec}
+            errorKey="settings.fioPlugin.syncLookbackDays.invalid"
+            onSave={(next) => savePlugin({ syncLookbackDays: next })}
+          />
 
-            <InlineEditField
-              label={t("settings.fioPlugin.lastSyncedDate.label")}
-              description={t("settings.fioPlugin.lastSyncedDate.description")}
-              placeholder="yyyy-MM-dd"
-              keyboardType="numbers-and-punctuation"
-              defaultValue={lastSyncedDate}
-              codec={dateCodec}
-              errorKey="settings.fioPlugin.lastSyncedDate.invalid"
-              onSave={(next) =>
-                runToast(async (run) => {
-                  await run.ok(
-                    updateFioPluginSyncPointer({
-                      id: fioPluginId,
-                      lastSyncedDate: next,
-                    })
-                  )
-                })
-              }
-            />
-          </FieldGroup>
-        </CardContent>
-      </Card>
-    </YStack>
+          <InlineEditField
+            label={t("settings.fioPlugin.lastSyncedDate.label")}
+            description={t("settings.fioPlugin.lastSyncedDate.description")}
+            placeholder="yyyy-MM-dd"
+            keyboardType="numbers-and-punctuation"
+            defaultValue={lastSyncedDate}
+            codec={dateCodec}
+            errorKey="settings.fioPlugin.lastSyncedDate.invalid"
+            onSave={(next) =>
+              runToast(async (run) => {
+                await run.ok(
+                  updateFioPluginSyncPointer({
+                    id: fioPluginId,
+                    lastSyncedDate: next,
+                  })
+                )
+              })
+            }
+          />
+        </FieldGroup>
+      </CardContent>
+    </Card>
   )
 }

@@ -134,24 +134,26 @@ function CategoryEditForm({
           {invalid ? t("catalog.categories.form.name.invalid") : undefined}
         </FieldError>
       </Field>
-      <Button
-        label={t("catalog.categories.delete")}
-        iconStart={Trash}
-        variant="destructive"
-        disabled={pending}
-        onPress={() => void remove()}
-      />
+      {/* The footer stacks its actions from the bottom up: Save on top,
+          Cancel under it, and the delete last, farthest from Save. */}
       <DialogFooter>
+        <Button
+          label={t("catalog.categories.delete")}
+          iconStart={Trash}
+          variant="destructive"
+          disabled={pending}
+          onPress={() => void remove()}
+        />
+        <Button
+          label={t("catalog.categories.form.cancel")}
+          variant="ghost"
+          disabled={pending}
+          onPress={onClose}
+        />
         <Button
           label={t("catalog.categories.form.save.edit")}
           pending={pending}
           onPress={() => void save()}
-        />
-        <Button
-          label={t("catalog.categories.form.cancel")}
-          variant="outline"
-          disabled={pending}
-          onPress={onClose}
         />
       </DialogFooter>
     </DialogContent>

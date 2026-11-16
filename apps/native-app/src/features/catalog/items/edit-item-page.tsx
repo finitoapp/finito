@@ -36,7 +36,6 @@ import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
 import Trash from "lucide-react-native/icons/trash"
 import { useMemo, useState } from "react"
-import { YStack } from "tamagui"
 import { z } from "zod"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
@@ -199,221 +198,206 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
   return (
     <Screen>
       <FadeHeader title={t("catalog.items.form.title.edit")} />
-      <YStack gap={20}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("catalog.items.form.card.title")}</CardTitle>
-            <CardDescription>
-              {t("catalog.items.form.card.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <InlineEditField
-                label={t("catalog.items.form.name.label")}
-                placeholder={t("catalog.items.form.name.placeholder")}
-                defaultValue={item.name}
-                codec={requiredTextCodec}
-                errorKey="catalog.items.form.name.invalid"
-                onSave={(name) => saveItem({ name })}
-              />
-              <InlineEditField
-                label={t("catalog.items.form.internalName.label")}
-                description={t("catalog.items.form.internalName.hint")}
-                placeholder={t("catalog.items.form.internalName.placeholder")}
-                defaultValue={item.internalName}
-                codec={optionalTextCodec}
-                errorKey="catalog.items.form.internalName.invalid"
-                onSave={(internalName) => saveItem({ internalName })}
-              />
-              <InlineEditField
-                label={t(
-                  discount
-                    ? "catalog.items.form.discount.label"
-                    : "catalog.items.form.price.label"
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("catalog.items.form.card.title")}</CardTitle>
+          <CardDescription>
+            {t("catalog.items.form.card.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <InlineEditField
+              label={t("catalog.items.form.name.label")}
+              placeholder={t("catalog.items.form.name.placeholder")}
+              defaultValue={item.name}
+              codec={requiredTextCodec}
+              errorKey="catalog.items.form.name.invalid"
+              onSave={(name) => saveItem({ name })}
+            />
+            <InlineEditField
+              label={t("catalog.items.form.internalName.label")}
+              description={t("catalog.items.form.internalName.hint")}
+              placeholder={t("catalog.items.form.internalName.placeholder")}
+              defaultValue={item.internalName}
+              codec={optionalTextCodec}
+              errorKey="catalog.items.form.internalName.invalid"
+              onSave={(internalName) => saveItem({ internalName })}
+            />
+            <InlineEditField
+              label={t(
+                discount
+                  ? "catalog.items.form.discount.label"
+                  : "catalog.items.form.price.label"
+              )}
+              description={
+                discount ? t("catalog.items.form.discount.existing") : undefined
+              }
+              keyboardType="decimal-pad"
+              defaultValue={item.unitAmount}
+              codec={priceCodec}
+              errorKey={priceErrorKey(discount)}
+              onSave={(unitAmount) => saveItem({ unitAmount })}
+            />
+            <Field>
+              <FieldLabel>{t("catalog.items.form.currency.label")}</FieldLabel>
+              <Select
+                value={currency.value}
+                onValueChange={(value) => void currency.choose(value)}
+                items={Object.fromEntries(
+                  fiatCurrencyOptions.map((option) => [
+                    option.value,
+                    option.value,
+                  ])
                 )}
-                description={
-                  discount
-                    ? t("catalog.items.form.discount.existing")
-                    : undefined
-                }
-                keyboardType="decimal-pad"
-                defaultValue={item.unitAmount}
-                codec={priceCodec}
-                errorKey={priceErrorKey(discount)}
-                onSave={(unitAmount) => saveItem({ unitAmount })}
+              >
+                <SelectTrigger
+                  fullWidth
+                  aria-label={t("catalog.items.form.currency.label")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent title={t("catalog.items.form.currency.label")}>
+                  <SelectGroup>
+                    {fiatCurrencyOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.value}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <InlineEditField
+              label={t("catalog.items.form.description.label")}
+              placeholder={t("catalog.items.form.description.placeholder")}
+              defaultValue={item.description}
+              codec={optionalTextCodec}
+              errorKey="catalog.items.form.description.invalid"
+              onSave={(description) => saveItem({ description })}
+            />
+            <InlineEditField
+              label={t("catalog.items.form.internalDescription.label")}
+              placeholder={t(
+                "catalog.items.form.internalDescription.placeholder"
+              )}
+              defaultValue={item.internalDescription}
+              codec={optionalTextCodec}
+              errorKey="catalog.items.form.internalDescription.invalid"
+              onSave={(internalDescription) =>
+                saveItem({ internalDescription })
+              }
+            />
+            <InlineEditField
+              label={t("catalog.items.form.sku.label")}
+              placeholder={t("catalog.items.form.sku.placeholder")}
+              defaultValue={item.sku}
+              codec={optionalTextCodec}
+              errorKey="catalog.items.form.sku.invalid"
+              onSave={(sku) => saveItem({ sku })}
+            />
+            <Field>
+              <FieldLabel>{t("catalog.items.form.category.label")}</FieldLabel>
+              <CategoryCombobox
+                categories={categories}
+                value={category.value}
+                onValueChange={(next) => void category.choose(next)}
+                onEdit={setEditedCategory}
+                disabled={category.saving}
               />
+            </Field>
+            {discount ? null : (
               <Field>
-                <FieldLabel>
-                  {t("catalog.items.form.currency.label")}
-                </FieldLabel>
+                <FieldLabel>{t("catalog.items.form.taxRate.label")}</FieldLabel>
                 <Select
-                  value={currency.value}
-                  onValueChange={(value) => void currency.choose(value)}
+                  value={z.encode(taxRateCodec, taxRate.value)}
+                  onValueChange={(value) =>
+                    void taxRate.choose(
+                      z.safeDecode(taxRateCodec, value).data ?? null
+                    )
+                  }
                   items={Object.fromEntries(
-                    fiatCurrencyOptions.map((option) => [
-                      option.value,
-                      option.value,
-                    ])
+                    taxRateOptions.map((option) => [option.value, option.title])
                   )}
                 >
                   <SelectTrigger
                     fullWidth
-                    aria-label={t("catalog.items.form.currency.label")}
+                    aria-label={t("catalog.items.form.taxRate.label")}
                   >
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent title={t("catalog.items.form.currency.label")}>
+                  <SelectContent title={t("catalog.items.form.taxRate.label")}>
                     <SelectGroup>
-                      {fiatCurrencyOptions.map((option) => (
+                      {taxRateOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
-                          {option.value}
+                          {option.title}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
+                <FieldDescription>
+                  {t("catalog.items.form.taxRate.description")}
+                </FieldDescription>
               </Field>
-              <InlineEditField
-                label={t("catalog.items.form.description.label")}
-                placeholder={t("catalog.items.form.description.placeholder")}
-                defaultValue={item.description}
-                codec={optionalTextCodec}
-                errorKey="catalog.items.form.description.invalid"
-                onSave={(description) => saveItem({ description })}
-              />
-              <InlineEditField
-                label={t("catalog.items.form.internalDescription.label")}
-                placeholder={t(
-                  "catalog.items.form.internalDescription.placeholder"
-                )}
-                defaultValue={item.internalDescription}
-                codec={optionalTextCodec}
-                errorKey="catalog.items.form.internalDescription.invalid"
-                onSave={(internalDescription) =>
-                  saveItem({ internalDescription })
-                }
-              />
-              <InlineEditField
-                label={t("catalog.items.form.sku.label")}
-                placeholder={t("catalog.items.form.sku.placeholder")}
-                defaultValue={item.sku}
-                codec={optionalTextCodec}
-                errorKey="catalog.items.form.sku.invalid"
-                onSave={(sku) => saveItem({ sku })}
-              />
-              <Field>
-                <FieldLabel>
-                  {t("catalog.items.form.category.label")}
-                </FieldLabel>
-                <CategoryCombobox
-                  categories={categories}
-                  value={category.value}
-                  onValueChange={(next) => void category.choose(next)}
-                  onEdit={setEditedCategory}
-                  disabled={category.saving}
+            )}
+            <InlineEditField
+              label={t("catalog.items.form.scanCode.label")}
+              description={
+                scanCodeCollisions.length > 0
+                  ? t("catalog.items.form.scanCode.duplicate", {
+                      name: scanCodeCollisions
+                        .map((match) => getStaffDisplayName(match))
+                        .join(", "),
+                    })
+                  : undefined
+              }
+              placeholder={t("catalog.items.form.scanCode.placeholder")}
+              defaultValue={item.scanCode}
+              codec={optionalTextCodec}
+              errorKey="catalog.items.form.scanCode.invalid"
+              trailing={
+                <ScanCodeButton
+                  onPress={() => setScannerOpen((open) => !open)}
                 />
-              </Field>
-              {discount ? null : (
-                <Field>
-                  <FieldLabel>
-                    {t("catalog.items.form.taxRate.label")}
-                  </FieldLabel>
-                  <Select
-                    value={z.encode(taxRateCodec, taxRate.value)}
-                    onValueChange={(value) =>
-                      void taxRate.choose(
-                        z.safeDecode(taxRateCodec, value).data ?? null
-                      )
-                    }
-                    items={Object.fromEntries(
-                      taxRateOptions.map((option) => [
-                        option.value,
-                        option.title,
-                      ])
-                    )}
-                  >
-                    <SelectTrigger
-                      fullWidth
-                      aria-label={t("catalog.items.form.taxRate.label")}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent
-                      title={t("catalog.items.form.taxRate.label")}
-                    >
-                      <SelectGroup>
-                        {taxRateOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.title}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <FieldDescription>
-                    {t("catalog.items.form.taxRate.description")}
-                  </FieldDescription>
-                </Field>
-              )}
-              <InlineEditField
-                label={t("catalog.items.form.scanCode.label")}
-                description={
-                  scanCodeCollisions.length > 0
-                    ? t("catalog.items.form.scanCode.duplicate", {
-                        name: scanCodeCollisions
-                          .map((match) => getStaffDisplayName(match))
-                          .join(", "),
-                      })
-                    : undefined
-                }
-                placeholder={t("catalog.items.form.scanCode.placeholder")}
-                defaultValue={item.scanCode}
-                codec={optionalTextCodec}
-                errorKey="catalog.items.form.scanCode.invalid"
-                trailing={
-                  <ScanCodeButton
-                    onPress={() => setScannerOpen((open) => !open)}
-                  />
-                }
-                onSave={(scanCode) => saveItem({ scanCode })}
+              }
+              onSave={(scanCode) => saveItem({ scanCode })}
+            />
+            {scannerOpen ? (
+              <ScanCodeScanner
+                onScan={(rawValue) => {
+                  setScannerOpen(false)
+                  const parsed = z.safeDecode(optionalTextCodec, rawValue)
+                  if (parsed.success) void saveItem({ scanCode: parsed.data })
+                }}
               />
-              {scannerOpen ? (
-                <ScanCodeScanner
-                  onScan={(rawValue) => {
-                    setScannerOpen(false)
-                    const parsed = z.safeDecode(optionalTextCodec, rawValue)
-                    if (parsed.success) void saveItem({ scanCode: parsed.data })
-                  }}
-                />
-              ) : null}
-            </FieldGroup>
-          </CardContent>
-        </Card>
-        <Button
-          label={t("catalog.items.delete")}
-          iconStart={Trash}
-          variant="destructive"
-          onPress={() => {
-            void (async () => {
-              const name = getStaffDisplayName(item)
-              const deleted = await confirmedRun(
-                {
-                  title: t("catalog.items.delete.confirm.title", { name }),
-                  description: t("catalog.items.delete.confirm.description", {
-                    name,
-                  }),
-                  confirmLabel: t("catalog.items.delete.confirm.confirm"),
-                  cancelLabel: t("catalog.items.delete.confirm.cancel"),
-                  variant: "destructive",
-                },
-                deleteCatalogItem(item.id)
-              )
-              if (deleted) router.back()
-            })()
-          }}
-        />
-      </YStack>
+            ) : null}
+          </FieldGroup>
+        </CardContent>
+      </Card>
+      <Button
+        label={t("catalog.items.delete")}
+        iconStart={Trash}
+        variant="destructive"
+        onPress={() => {
+          void (async () => {
+            const name = getStaffDisplayName(item)
+            const deleted = await confirmedRun(
+              {
+                title: t("catalog.items.delete.confirm.title", { name }),
+                description: t("catalog.items.delete.confirm.description", {
+                  name,
+                }),
+                confirmLabel: t("catalog.items.delete.confirm.confirm"),
+                cancelLabel: t("catalog.items.delete.confirm.cancel"),
+                variant: "destructive",
+              },
+              deleteCatalogItem(item.id)
+            )
+            if (deleted) router.back()
+          })()
+        }}
+      />
       <CategoryEditDialog
         category={editedCategory}
         onClose={() => setEditedCategory(null)}

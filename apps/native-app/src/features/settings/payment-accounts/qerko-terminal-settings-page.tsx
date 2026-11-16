@@ -16,12 +16,16 @@ import type { QerkoPluginRow } from "@payky/core/modules/qerko-plugin/qerko-plug
 import { deleteQerkoPlugin } from "@payky/core/modules/qerko-plugin/qerko-plugin-actions"
 import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-queries"
 import { useAtomValue } from "jotai"
+import CircleCheck from "lucide-react-native/icons/circle-check"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useEffect, useRef, useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, XStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
+import { DetailRow } from "../../../components/detail-row.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
+import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -33,7 +37,6 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Collapsible,
-  CollapsibleChevron,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../../../components/ui/collapsible.tsx"
@@ -45,6 +48,8 @@ import {
 } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
+import { AdvancedSettingsLabel } from "./advanced-settings-label.tsx"
 import { QerkoPairingWizard } from "./qerko-pairing-wizard.tsx"
 import { QerkoTerminalChooser } from "./qerko-terminal-chooser.tsx"
 
@@ -52,6 +57,11 @@ import { QerkoTerminalChooser } from "./qerko-terminal-chooser.tsx"
  * The Qerko card terminal's settings, as web's `QerkoTerminalSettingsPage`:
  * the pairing wizard until the company is paired, then what is paired, the
  * terminal this device pays on and a way to unpair.
+ *
+ * Native differences: a sandbox key shows a Sandbox badge in the card's
+ * header, as Qerko payments' does; each paired value is a `DetailRow`; and
+ * unpairing, which removes the screen's subject, is a full-width destructive
+ * button under the card rather than the first of its footer's buttons.
  */
 export function QerkoTerminalSettingsPage() {
   const { t } = useTranslation()
@@ -168,31 +178,37 @@ function QerkoPairedView({
   }
 
   return (
-    <YStack gap={16}>
+    <>
       <Card>
         <CardHeader>
-          <CardTitle>{t("settings.qerkoTerminal.paired.title")}</CardTitle>
+          <XStack gap={8} items="center" flexWrap="wrap">
+            <CardTitle>{t("settings.qerkoTerminal.paired.title")}</CardTitle>
+            {plugin.environment === "sandbox" ? (
+              <Badge
+                variant="outline"
+                label={t("settings.qerkoPayment.sandbox")}
+              />
+            ) : null}
+          </XStack>
           <CardDescription>
             {t("settings.qerkoTerminal.paired.description")}
           </CardDescription>
         </CardHeader>
         <CardContent gap={16}>
-          <YStack gap={8}>
-            <Row
-              label={t("settings.qerkoTerminal.paired.company")}
-              value={`${plugin.legalEntityName} (${plugin.identificationNumber}, ${t(
-                qerkoCountryLabelKeys[plugin.country]
-              )})`}
-            />
-            <Row
-              label={t("settings.qerkoTerminal.terminal.label")}
-              value={
-                selection === undefined
-                  ? t("settings.qerkoTerminal.terminal.none")
-                  : `${selection.locationName} · ${selection.terminalTid}`
-              }
-            />
-          </YStack>
+          <DetailRow
+            label={t("settings.qerkoTerminal.paired.company")}
+            value={`${plugin.legalEntityName} (${plugin.identificationNumber}, ${t(
+              qerkoCountryLabelKeys[plugin.country]
+            )})`}
+          />
+          <DetailRow
+            label={t("settings.qerkoTerminal.terminal.label")}
+            value={
+              selection === undefined
+                ? t("settings.qerkoTerminal.terminal.none")
+                : `${selection.locationName} · ${selection.terminalTid}`
+            }
+          />
 
           {choosing ? (
             <QerkoTerminalChooser
@@ -207,7 +223,10 @@ function QerkoPairedView({
           ) : null}
 
           {testResult === null ? null : (
-            <Alert variant={testResult.ok ? "success" : "destructive"}>
+            <Alert
+              variant={testResult.ok ? "success" : "destructive"}
+              icon={testResult.ok ? CircleCheck : TriangleAlert}
+            >
               <AlertDescription>{t(testResult.key)}</AlertDescription>
             </Alert>
           )}
@@ -218,31 +237,26 @@ function QerkoPairedView({
                 label={t("settings.qerkoTerminal.advanced")}
               />
             </CollapsibleTrigger>
-            <CollapsibleContent pt="4">
-              <YStack gap={8}>
-                <Row
-                  label={t("settings.qerkoTerminal.paired.keyName")}
-                  value={plugin.apiKeyName}
-                />
-                <Row
-                  label={t("settings.qerkoTerminal.environment.label")}
-                  value={t(qerkoEnvironmentLabelKeys[plugin.environment])}
-                />
-                <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                  {t("settings.qerkoTerminal.paired.environmentReadOnly")}
-                </Text>
-              </YStack>
+            <CollapsibleContent pt={16} gap={8}>
+              <DetailRow
+                label={t("settings.qerkoTerminal.paired.keyName")}
+                value={plugin.apiKeyName}
+              />
+              <DetailRow
+                label={t("settings.qerkoTerminal.environment.label")}
+                value={t(qerkoEnvironmentLabelKeys[plugin.environment])}
+              />
+              <Text
+                fontSize={fontSize.xs}
+                lineHeight={fontSize.xs}
+                color="muted-foreground"
+              >
+                {t("settings.qerkoTerminal.paired.environmentReadOnly")}
+              </Text>
             </CollapsibleContent>
           </Collapsible>
         </CardContent>
-        <CardFooter gap={8}>
-          <Button
-            variant="destructive"
-            label={t("settings.qerkoTerminal.unpair.action")}
-            onPress={() => {
-              void unpair()
-            }}
-          />
+        <CardFooter justify="flex-end" flexWrap="wrap" gap={8}>
           <Button
             variant="outline"
             label={t(
@@ -264,36 +278,13 @@ function QerkoPairedView({
           />
         </CardFooter>
       </Card>
-    </YStack>
-  )
-}
-
-function Row({
-  label,
-  value,
-}: {
-  readonly label: string
-  readonly value: string
-}) {
-  return (
-    <XStack gap={16} justify="space-between">
-      <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
-        {label}
-      </Text>
-      <Text flex={1} fontSize="sm" lineHeight="sm" text="right">
-        {value}
-      </Text>
-    </XStack>
-  )
-}
-
-function AdvancedSettingsLabel({ label }: { readonly label: string }) {
-  return (
-    <XStack items="center" justify="space-between" w="100%">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-        {label}
-      </Text>
-      <CollapsibleChevron color="muted-foreground" />
-    </XStack>
+      <Button
+        variant="destructive"
+        label={t("settings.qerkoTerminal.unpair.action")}
+        onPress={() => {
+          void unpair()
+        }}
+      />
+    </>
   )
 }

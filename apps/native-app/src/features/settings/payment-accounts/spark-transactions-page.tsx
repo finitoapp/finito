@@ -4,20 +4,26 @@ import { activeSparkAccountsQuery } from "@payky/core/modules/account/account-sp
 import type { AccountId } from "@payky/core/modules/account/account-types"
 import { accountTransactionsByAccountQuery } from "@payky/core/modules/account-transaction/account-transaction-queries"
 import type { AccountTransactionKind } from "@payky/core/modules/account-transaction/account-transaction-types"
+import ReceiptText from "lucide-react-native/icons/receipt-text"
 import { Text, XStack, YStack } from "tamagui"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../../lib/format-money.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 const kindKeys: Partial<Record<AccountTransactionKind, TranslationKey>> = {
   spark: "withdraw.transactions.kind.spark",
   onchain: "withdraw.kind.onchain",
 }
 
-/** The Spark account's transactions, read only. */
+/**
+ * The Spark account's transactions, read only; an empty state when there are
+ * none yet or no Spark account to have any.
+ */
 export function SparkTransactionsPage() {
   const { t } = useTranslation()
   const { data } = useEvoluQuery(activeSparkAccountsQuery)
@@ -26,7 +32,12 @@ export function SparkTransactionsPage() {
   return (
     <Screen>
       <FadeHeader title={t("withdraw.transactions.title")} />
-      {sparkAccount === undefined ? null : (
+      {sparkAccount === undefined ? (
+        <EmptyState
+          icon={ReceiptText}
+          description={t("withdraw.noAccount.title")}
+        />
+      ) : (
         <SparkTransactions accountId={sparkAccount.id} />
       )}
     </Screen>
@@ -38,13 +49,17 @@ function SparkTransactions({ accountId }: { readonly accountId: AccountId }) {
   const locale = useLocale()
   const { data } = useEvoluQuery(accountTransactionsByAccountQuery(accountId))
 
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        icon={ReceiptText}
+        description={t("withdraw.transactions.empty")}
+      />
+    )
+  }
+
   return (
     <VerticalNav
-      empty={
-        <Text p="4" fontSize="sm" lineHeight="sm" color="muted-foreground">
-          {t("withdraw.transactions.empty")}
-        </Text>
-      }
       items={data.map((row) => {
         const kindKey = kindKeys[row.kind]
         const amount = `${row.amount > 0 ? "+" : "−"}${t("withdraw.sats", {
@@ -61,22 +76,30 @@ function SparkTransactions({ accountId }: { readonly accountId: AccountId }) {
             .filter((part) => part !== "")
             .join(", "),
           label: (
-            <YStack w="100%" gap="1" items="flex-start">
-              <XStack w="100%" justify="space-between" items="center" gap="2">
+            <YStack w="100%" gap={4} items="flex-start">
+              <XStack w="100%" justify="space-between" items="center" gap={8}>
                 <Text
-                  fontSize="sm"
-                  lineHeight="sm"
-                  fontWeight="600"
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.semibold}
                   fontVariant={["tabular-nums"]}
                   color={row.amount > 0 ? "success" : undefined}
                 >
                   {amount}
                 </Text>
-                <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+                <Text
+                  fontSize={fontSize.xs}
+                  lineHeight={fontSize.xs}
+                  color="muted-foreground"
+                >
                   {occurredAt}
                 </Text>
               </XStack>
-              <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+              <Text
+                fontSize={fontSize.xs}
+                lineHeight={fontSize.xs}
+                color="muted-foreground"
+              >
                 {details}
               </Text>
             </YStack>

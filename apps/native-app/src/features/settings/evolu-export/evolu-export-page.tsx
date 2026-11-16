@@ -1,6 +1,7 @@
 import { createEvoluExportFilename } from "@payky/app-shared/evolu-export"
 import { useAtomValue } from "jotai"
 import Download from "lucide-react-native/icons/download"
+import Info from "lucide-react-native/icons/info"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
 import { Platform } from "react-native"
@@ -8,6 +9,11 @@ import { Text, XStack, YStack } from "tamagui"
 import { evoluAtom } from "../../../atoms/evolu.ts"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "../../../components/ui/alert.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
@@ -28,11 +34,10 @@ import {
   FieldLegend,
   FieldSet,
 } from "../../../components/ui/field.tsx"
-import { Icon } from "../../../components/ui/icon.tsx"
 import { appBrand } from "../../../core/app-brand.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
-import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 import { createExportFolder, evoluExportShareIo } from "./evolu-export-io"
 import { shareEvoluExport } from "./evolu-export-share.ts"
 
@@ -44,11 +49,14 @@ const warningKeys = [
   "settings.evoluExport.warning.secrets",
 ] as const
 
-/** Exports the active account's app database through the system share sheet, like web's Evolu Export. */
+/**
+ * Exports the active account's app database through the system share sheet,
+ * like web's Evolu Export. The outcome is reported once, as an `Alert` in the
+ * export card, where web adds a toast and a status card.
+ */
 export function EvoluExportPage() {
   const { t } = useTranslation()
   const evolu = useAtomValue(evoluAtom)
-  const toast = useToast()
   const { require } = useRequirePermission()
   const [acceptedWarning, setAcceptedWarning] = useState(false)
   const [pending, setPending] = useState(false)
@@ -78,17 +86,14 @@ export function EvoluExportPage() {
       })
       if (outcome === "unavailable") {
         setFailed(true)
-        toast.error(t("settings.evoluExport.status.error"))
         return
       }
       // expo-sharing resolves the same for a completed share and a dismissed
-      // chooser, so show a neutral status instead of success (the toast has no
-      // neutral variant).
+      // chooser, so the status is neutral (`info`), not a success.
       setHandedOff(true)
     } catch {
       // The error can name paths; the screen shows only the generic failure.
       setFailed(true)
-      toast.error(t("settings.evoluExport.status.error"))
     } finally {
       setPending(false)
     }
@@ -97,119 +102,108 @@ export function EvoluExportPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.evoluExport.title")} />
-      <YStack gap="4">
-        <Card>
-          <CardHeader>
-            <XStack gap="3" items="flex-start">
-              <Icon icon={TriangleAlert} color="destructive" />
-              <YStack gap="1" flex={1}>
-                <CardTitle>{t("settings.evoluExport.warning.title")}</CardTitle>
-                <CardDescription>
-                  {t("settings.evoluExport.warning.description")}
-                </CardDescription>
-              </YStack>
-            </XStack>
-          </CardHeader>
-          <CardContent>
-            <YStack gap="1" pl="5">
-              {warningKeys.map((key) => (
-                <Text
-                  key={key}
-                  color="muted-foreground"
-                  fontSize="sm"
-                  lineHeight="sm"
-                >
-                  {`• ${t(key)}`}
-                </Text>
-              ))}
-            </YStack>
-          </CardContent>
-        </Card>
+      <Alert variant="destructive" icon={TriangleAlert}>
+        <AlertTitle>{t("settings.evoluExport.warning.title")}</AlertTitle>
+        <AlertDescription>
+          {t("settings.evoluExport.warning.description")}
+          <YStack gap={8} pl={20}>
+            {warningKeys.map((key) => (
+              <Text
+                key={key}
+                color="muted-foreground"
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+              >
+                {`• ${t(key)}`}
+              </Text>
+            ))}
+          </YStack>
+        </AlertDescription>
+      </Alert>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("settings.evoluExport.options.title")}</CardTitle>
-            <CardDescription>
-              {t("settings.evoluExport.options.description")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <FieldSet>
-                <FieldLegend>
-                  {t("settings.evoluExport.options.format")}
-                </FieldLegend>
-                <XStack items="center" gap="2">
-                  <Badge
-                    variant="secondary"
-                    label={t("settings.evoluExport.format.sqlite")}
-                  />
-                  <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
-                    {t("settings.evoluExport.format.description")}
-                  </Text>
-                </XStack>
-              </FieldSet>
-
-              <Field orientation="horizontal">
-                <Checkbox
-                  checked={acceptedWarning}
-                  disabled={pending}
-                  aria-label={t("settings.evoluExport.confirm.label")}
-                  onCheckedChange={setAcceptedWarning}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("settings.evoluExport.options.title")}</CardTitle>
+          <CardDescription>
+            {t("settings.evoluExport.options.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent gap={16}>
+          <FieldGroup>
+            <FieldSet>
+              <FieldLegend>
+                {t("settings.evoluExport.options.format")}
+              </FieldLegend>
+              <XStack items="center" gap={8}>
+                <Badge
+                  variant="outline"
+                  label={t("settings.evoluExport.format.sqlite")}
                 />
-                <FieldContent>
-                  <FieldLabel>
-                    {t("settings.evoluExport.confirm.label")}
-                  </FieldLabel>
-                  <FieldDescription>
-                    {t("settings.evoluExport.confirm.description")}
-                  </FieldDescription>
-                </FieldContent>
-              </Field>
-            </FieldGroup>
-          </CardContent>
-          <CardFooter flexDirection="column" items="stretch" gap="3">
-            <Text color="muted-foreground" aria-live="polite">
-              {t(
-                Platform.OS === "web"
-                  ? "settings.evoluExport.destination.web"
-                  : "settings.evoluExport.destination.capacitor"
-              )}
-            </Text>
-            <Button
-              label={t(
-                pending
-                  ? "settings.evoluExport.action.pending"
-                  : "settings.evoluExport.action"
-              )}
-              iconStart={Download}
-              disabled={!acceptedWarning}
-              pending={pending}
-              onPress={() => void exportDatabase()}
-            />
-          </CardFooter>
-        </Card>
+                <Text
+                  color="muted-foreground"
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                >
+                  {t("settings.evoluExport.format.description")}
+                </Text>
+              </XStack>
+            </FieldSet>
 
-        {/* A browser shows its own download; the share-sheet note fits only native. */}
-        {(handedOff && Platform.OS !== "web") || failed ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("settings.evoluExport.status.title")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {failed ? (
-                <Text color="destructive" role="alert">
-                  {t("settings.evoluExport.status.error")}
-                </Text>
-              ) : (
-                <Text color="muted-foreground">
-                  {t("settings.evoluExport.status.handedOff")}
-                </Text>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-      </YStack>
+            <Field orientation="horizontal">
+              <Checkbox
+                checked={acceptedWarning}
+                disabled={pending}
+                aria-label={t("settings.evoluExport.confirm.label")}
+                onCheckedChange={setAcceptedWarning}
+              />
+              <FieldContent>
+                <FieldLabel>
+                  {t("settings.evoluExport.confirm.label")}
+                </FieldLabel>
+                <FieldDescription>
+                  {t("settings.evoluExport.confirm.description")}
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+          </FieldGroup>
+          <Text
+            color="muted-foreground"
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+          >
+            {t(
+              Platform.OS === "web"
+                ? "settings.evoluExport.destination.web"
+                : "settings.evoluExport.destination.capacitor"
+            )}
+          </Text>
+          {failed ? (
+            <Alert variant="destructive" icon={TriangleAlert}>
+              <AlertTitle>{t("settings.evoluExport.status.error")}</AlertTitle>
+            </Alert>
+          ) : handedOff && Platform.OS !== "web" ? (
+            // A browser shows its own download; the note fits only native.
+            <Alert variant="info" icon={Info}>
+              <AlertDescription>
+                {t("settings.evoluExport.status.handedOff")}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+        <CardFooter justify="flex-end">
+          <Button
+            label={t(
+              pending
+                ? "settings.evoluExport.action.pending"
+                : "settings.evoluExport.action"
+            )}
+            iconStart={Download}
+            disabled={!acceptedWarning}
+            pending={pending}
+            onPress={() => void exportDatabase()}
+          />
+        </CardFooter>
+      </Card>
     </Screen>
   )
 }

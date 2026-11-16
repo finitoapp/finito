@@ -34,11 +34,12 @@ import Plug from "lucide-react-native/icons/plug"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import Unplug from "lucide-react-native/icons/unplug"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { DetailRow } from "../../../components/detail-row.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { PasswordTextarea } from "../../../components/password-textarea.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
@@ -56,8 +57,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "../../../components/ui/field.tsx"
-import { Icon } from "../../../components/ui/icon.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import { useAccess } from "../../../core/use-access.ts"
 import { useConfirmedRun } from "../../../hooks/use-confirmed-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
@@ -66,7 +65,6 @@ import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useCanReachBanks } from "../../../hooks/use-service-proxy.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize } from "../../../theme/tokens.ts"
 import { ServiceProxyRequiredAlert } from "../privacy/service-proxy-required-alert.tsx"
 
 /**
@@ -74,7 +72,9 @@ import { ServiceProxyRequiredAlert } from "../privacy/service-proxy-required-ale
  * connect a VIP API token to the fiat bank account, then tune how it syncs.
  * The app's web build reaches the bank only through the service proxy, so
  * until the device allows it there it shows the runtime warning, which
- * leads to the privacy settings, and cannot connect.
+ * leads to the privacy settings, and cannot connect. Disconnecting deletes
+ * the screen's subject, so it is the full-width destructive button under the
+ * cards rather than web's outline button in the connected card's footer.
  */
 export function MonetaPluginSettingsPage() {
   const { accountId } = useAccess()
@@ -109,13 +109,20 @@ function MonetaPluginSettings() {
           </AlertDescription>
         </Alert>
       ) : null}
+      {plugin !== undefined &&
+      account !== undefined &&
+      account.iban !== plugin.iban ? (
+        <Alert variant="warning" icon={TriangleAlert}>
+          <AlertDescription>
+            {t("settings.monetaPlugin.connected.ibanMismatch", {
+              iban: formatAddressGroups(plugin.iban),
+            })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {plugin !== undefined ? (
         <>
-          <MonetaPluginConnectedCard
-            iban={plugin.iban}
-            token={plugin.token}
-            accountIban={account?.iban ?? null}
-          />
+          <MonetaPluginConnectedCard iban={plugin.iban} token={plugin.token} />
           <MonetaPluginSettingsCard
             isActive={plugin.isActive === sqliteTrue}
             numberOfSecondsBetweenChecks={plugin.numberOfSecondsBetweenChecks}
@@ -130,6 +137,7 @@ function MonetaPluginSettings() {
           disabled={!canReachBank}
         />
       ) : null}
+      {plugin !== undefined ? <MonetaPluginDisconnectButton /> : null}
     </Screen>
   )
 }
@@ -137,102 +145,55 @@ function MonetaPluginSettings() {
 function MonetaPluginConnectedCard({
   iban,
   token,
-  accountIban,
 }: {
   readonly iban: Iban
   readonly token: string
-  readonly accountIban: Iban | null
 }) {
   const { t } = useTranslation()
-  const confirmedRun = useConfirmedRun()
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("settings.monetaPlugin.connected.title")}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <YStack gap="2">
-          <ConnectedRow
-            label={t("settings.monetaPlugin.connected.iban")}
-            value={formatAddressGroups(iban)}
-          />
-          <ConnectedRow
-            label={t("settings.monetaPlugin.connected.token")}
-            value={maskMonetaToken(token)}
-          />
-          {accountIban !== null && accountIban !== iban ? (
-            <XStack items="flex-start" gap="1.5">
-              <Icon icon={TriangleAlert} size={16} color="warning" />
-              <Text
-                flex={1}
-                fontSize={fontSize.sm}
-                lineHeight={fontSize.sm}
-                color="warning"
-              >
-                {t("settings.monetaPlugin.connected.ibanMismatch", {
-                  iban: formatAddressGroups(iban),
-                })}
-              </Text>
-            </XStack>
-          ) : null}
-        </YStack>
-      </CardContent>
-      <CardFooter>
-        <Button
-          variant="outline"
-          iconStart={Unplug}
-          label={t("settings.monetaPlugin.disconnect.action")}
-          onPress={() =>
-            void confirmedRun(
-              {
-                title: t("settings.monetaPlugin.disconnect.confirm.title"),
-                description: t(
-                  "settings.monetaPlugin.disconnect.confirm.description"
-                ),
-                confirmLabel: t(
-                  "settings.monetaPlugin.disconnect.confirm.confirm"
-                ),
-                cancelLabel: t(
-                  "settings.monetaPlugin.disconnect.confirm.cancel"
-                ),
-                variant: "destructive",
-              },
-              disconnectMonetaPlugin()
-            )
-          }
+      <CardContent gap={8}>
+        <DetailRow
+          label={t("settings.monetaPlugin.connected.iban")}
+          value={formatAddressGroups(iban)}
         />
-      </CardFooter>
+        <DetailRow
+          label={t("settings.monetaPlugin.connected.token")}
+          value={maskMonetaToken(token)}
+        />
+      </CardContent>
     </Card>
   )
 }
 
-function ConnectedRow({
-  label,
-  value,
-}: {
-  readonly label: string
-  readonly value: string
-}) {
+function MonetaPluginDisconnectButton() {
+  const { t } = useTranslation()
+  const confirmedRun = useConfirmedRun()
+
   return (
-    <XStack gap="4">
-      <Text
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-        color="muted-foreground"
-      >
-        {label}
-      </Text>
-      <Text
-        flex={1}
-        numberOfLines={1}
-        style={{ fontFamily: "monospace" }}
-        fontSize={fontSize.sm}
-        lineHeight={fontSize.sm}
-      >
-        {value}
-      </Text>
-    </XStack>
+    <Button
+      variant="destructive"
+      iconStart={Unplug}
+      label={t("settings.monetaPlugin.disconnect.action")}
+      onPress={() =>
+        void confirmedRun(
+          {
+            title: t("settings.monetaPlugin.disconnect.confirm.title"),
+            description: t(
+              "settings.monetaPlugin.disconnect.confirm.description"
+            ),
+            confirmLabel: t("settings.monetaPlugin.disconnect.confirm.confirm"),
+            cancelLabel: t("settings.monetaPlugin.disconnect.confirm.cancel"),
+            variant: "destructive",
+          },
+          disconnectMonetaPlugin()
+        )
+      }
+    />
   )
 }
 
@@ -267,24 +228,20 @@ function MonetaPluginSettingsCard({
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.monetaPlugin.settings.title")}</CardTitle>
+      </CardHeader>
       <CardContent>
         <FieldGroup>
-          <Field orientation="horizontal">
-            <Switch
-              aria-label={t("settings.monetaPlugin.active.label")}
-              checked={activeChoice.value}
-              disabled={activeChoice.saving}
-              onCheckedChange={(next) => {
-                void activeChoice.choose(next)
-              }}
-            />
-            <YStack flex={1} gap="1">
-              <FieldLabel>{t("settings.monetaPlugin.active.label")}</FieldLabel>
-              <FieldDescription>
-                {t("settings.monetaPlugin.active.description")}
-              </FieldDescription>
-            </YStack>
-          </Field>
+          <SwitchRow
+            label={t("settings.monetaPlugin.active.label")}
+            description={t("settings.monetaPlugin.active.description")}
+            checked={activeChoice.value}
+            disabled={activeChoice.saving}
+            onCheckedChange={(next) => {
+              void activeChoice.choose(next)
+            }}
+          />
 
           <InlineEditField
             label={t("settings.monetaPlugin.interval.label")}
@@ -425,16 +382,17 @@ function MonetaPluginConnectForm({
             <FieldDescription>{formatAddressGroups(iban)}</FieldDescription>
             <FieldError>{errorMessage}</FieldError>
           </Field>
-          <Button
-            size="lg"
-            iconStart={Plug}
-            label={t("settings.monetaPlugin.connect.submit")}
-            pending={pending}
-            disabled={disabled}
-            onPress={() => void submit()}
-          />
         </FieldGroup>
       </CardContent>
+      <CardFooter justify="flex-end">
+        <Button
+          iconStart={Plug}
+          label={t("settings.monetaPlugin.connect.submit")}
+          pending={pending}
+          disabled={disabled}
+          onPress={() => void submit()}
+        />
+      </CardFooter>
     </Card>
   )
 }

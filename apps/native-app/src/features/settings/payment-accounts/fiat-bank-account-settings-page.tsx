@@ -25,6 +25,7 @@ import { Text, XStack, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { Badge } from "../../../components/ui/badge.tsx"
 import {
   Card,
   CardContent,
@@ -34,11 +35,15 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Collapsible,
-  CollapsibleChevron,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../../../components/ui/collapsible.tsx"
-import { FieldDescription, FieldGroup } from "../../../components/ui/field.tsx"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "../../../components/ui/field.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import {
   Select,
@@ -59,12 +64,17 @@ import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { AdvancedSettingsLabel } from "./advanced-settings-label.tsx"
 
 /**
  * The bank transfer account, as web's `FiatBankAccountSettingsPage`: the IBAN
  * (or a Czech account number, normalized to IBAN), its currency and the QR
  * format. Each control writes at once; since `saveFiatBankAccount` upserts the
  * whole row, each sends the current settings with its own field replaced.
+ * The bank-sync plugin rows under it link to their screens, MONETA's with an
+ * on/off badge and Fio's with a short wrong-bank note; each plugin screen
+ * explains that warning in full.
  */
 export function FiatBankAccountSettingsPage() {
   const runToast = useRunToast()
@@ -169,12 +179,12 @@ export function FiatBankAccountSettingsPage() {
                   label={t("settings.fiatBankAccount.advanced")}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent pt="4">
+              <CollapsibleContent pt={16}>
                 <FieldGroup>
-                  <YStack gap="2">
-                    <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                  <Field>
+                    <FieldLabel>
                       {t("settings.fiatBankAccount.currency.label")}
-                    </Text>
+                    </FieldLabel>
                     <Select
                       value={currencyChoice.value}
                       onValueChange={(next) => {
@@ -208,11 +218,11 @@ export function FiatBankAccountSettingsPage() {
                     <FieldDescription>
                       {t("settings.fiatBankAccount.currency.description")}
                     </FieldDescription>
-                  </YStack>
-                  <YStack gap="2">
-                    <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                  </Field>
+                  <Field>
+                    <FieldLabel>
                       {t("settings.fiatBankAccount.qrFormat.label")}
-                    </Text>
+                    </FieldLabel>
                     <Select
                       value={qrFormatChoice.value}
                       onValueChange={(next) => {
@@ -246,7 +256,7 @@ export function FiatBankAccountSettingsPage() {
                     <FieldDescription>
                       {t("settings.fiatBankAccount.qrFormat.description")}
                     </FieldDescription>
-                  </YStack>
+                  </Field>
                 </FieldGroup>
               </CollapsibleContent>
             </Collapsible>
@@ -262,20 +272,21 @@ export function FiatBankAccountSettingsPage() {
                   href: "/settings/payment-accounts/iban/moneta-plugin",
                   icon: <Icon icon={Plug} color="muted-foreground" />,
                   label: (
-                    <YStack gap="1">
-                      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                    <YStack gap={4}>
+                      <PluginRowTitle>
                         {t("settings.monetaPlugin.title")}
-                      </Text>
-                      <Text fontSize={13} color="muted-foreground">
+                      </PluginRowTitle>
+                      <PluginRowDescription>
                         {t("settings.monetaPlugin.description")}
-                      </Text>
-                      <Text fontSize={13} fontWeight="600">
-                        {t(
+                      </PluginRowDescription>
+                      <Badge
+                        variant={isMonetaPluginOn ? "secondary" : "outline"}
+                        label={t(
                           isMonetaPluginOn
                             ? "settings.monetaPlugin.status.on"
                             : "settings.monetaPlugin.status.off"
                         )}
-                      </Text>
+                      />
                     </YStack>
                   ),
                 } satisfies VerticalNavItem,
@@ -288,22 +299,27 @@ export function FiatBankAccountSettingsPage() {
                   href: "/settings/payment-accounts/iban/fio-plugin",
                   icon: <Icon icon={Plug} color="muted-foreground" />,
                   label: (
-                    <YStack gap="1">
-                      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                    <YStack gap={4}>
+                      <PluginRowTitle>
                         {t("settings.fioPlugin.title")}
-                      </Text>
-                      <Text fontSize={13} color="muted-foreground">
+                      </PluginRowTitle>
+                      <PluginRowDescription>
                         {t("settings.fioPlugin.description")}
-                      </Text>
+                      </PluginRowDescription>
                       {iban !== null && !isFioBankIban(iban) ? (
-                        <XStack items="flex-start" gap="1">
+                        <XStack items="center" gap={4}>
                           <Icon
                             icon={TriangleAlert}
-                            size={14}
+                            size={16}
                             color="warning"
                           />
-                          <Text flex={1} fontSize={13} color="warning">
-                            {t("settings.fioPlugin.notFioIbanWarning")}
+                          <Text
+                            flex={1}
+                            fontSize={fontSize.xs}
+                            lineHeight={fontSize.xs}
+                            color="warning"
+                          >
+                            {t("settings.fioPlugin.notFioIbanShort")}
                           </Text>
                         </XStack>
                       ) : null}
@@ -318,13 +334,28 @@ export function FiatBankAccountSettingsPage() {
   )
 }
 
-function AdvancedSettingsLabel({ label }: { readonly label: string }) {
+/** A plugin row's name, `sm` semibold as web's. */
+function PluginRowTitle({ children }: { readonly children: string }) {
   return (
-    <XStack items="center" justify="space-between" w="100%">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-        {label}
-      </Text>
-      <CollapsibleChevron color="muted-foreground" />
-    </XStack>
+    <Text
+      fontSize={fontSize.sm}
+      lineHeight={fontSize.sm}
+      fontWeight={fontWeight.semibold}
+    >
+      {children}
+    </Text>
+  )
+}
+
+/** A plugin row's second line, `xs` muted. */
+function PluginRowDescription({ children }: { readonly children: string }) {
+  return (
+    <Text
+      fontSize={fontSize.xs}
+      lineHeight={fontSize.xs}
+      color="muted-foreground"
+    >
+      {children}
+    </Text>
   )
 }

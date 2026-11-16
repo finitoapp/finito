@@ -16,8 +16,7 @@ import MonitorSmartphone from "lucide-react-native/icons/monitor-smartphone"
 import Plus from "lucide-react-native/icons/plus"
 import Trash from "lucide-react-native/icons/trash"
 import { useState } from "react"
-import { Image } from "react-native"
-import { Text, useTheme, XStack, YStack } from "tamagui"
+import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../../atoms/device-evolu.ts"
 import {
@@ -35,13 +34,16 @@ import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useDeviceEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 import { useCanRequestAccountFromPayky } from "../../shared/use-can-request-account-from-payky.ts"
+import { AccountAvatar } from "../account-avatar.tsx"
 
 /**
  * Which accounts this device has and which one is active, plus the ways to
  * add another or open this one elsewhere. Switching and removing are governed
  * by the active account's `admin`; the other account's PIN is never asked
- * (access/0002).
+ * (access/0002). Each account shows its picture (`AccountAvatar`); the active
+ * one is marked by its row's tint and the Active badge.
  */
 export function AccountsSettingsPage() {
   const { language, t } = useTranslation()
@@ -111,27 +113,12 @@ export function AccountsSettingsPage() {
       id: account.id,
       kind: "static" as const,
       active,
-      icon: (
-        <AccountAvatar
-          name={account.name}
-          active={active}
-          picture={account.nostrPicture}
-        />
-      ),
+      icon: <AccountAvatar picture={account.nostrPicture} size={36} />,
       label: (
-        <YStack gap="1">
-          <Text
-            fontSize="sm"
-            lineHeight="sm"
-            fontWeight="600"
-            numberOfLines={1}
-          >
-            {account.name}
-          </Text>
-          <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-            {`${t("settings.accounts.list.createdAt")} ${formatDateTime(new Date(account.createdAt), language)}`}
-          </Text>
-        </YStack>
+        <RowLabel
+          title={account.name}
+          description={`${t("settings.accounts.list.createdAt")} ${formatDateTime(new Date(account.createdAt), language)}`}
+        />
       ),
       action: active ? (
         <Badge
@@ -140,7 +127,7 @@ export function AccountsSettingsPage() {
           icon={Check}
         />
       ) : (
-        <XStack items="center" gap="1">
+        <XStack items="center" gap={4}>
           <Button
             size="sm"
             label={t("settings.accounts.list.switch")}
@@ -151,8 +138,8 @@ export function AccountsSettingsPage() {
             }}
           />
           <Button
-            size="icon-sm"
-            aria-label={t("settings.accounts.list.remove")}
+            size="sm"
+            label={t("settings.accounts.list.remove")}
             variant="ghost"
             iconStart={Trash}
             disabled={busy}
@@ -168,131 +155,99 @@ export function AccountsSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.accounts.title")} />
-      <YStack gap={24}>
-        <VerticalNav
-          title={t("settings.accounts.list.title")}
-          items={accountItems}
-          empty={t("settings.accounts.list.empty")}
-          testID="account-list"
-        />
+      <VerticalNav
+        title={t("settings.accounts.list.title")}
+        items={accountItems}
+        empty={t("settings.accounts.list.empty")}
+        testID="account-list"
+      />
 
-        <VerticalNav
-          title={t("settings.accounts.add.title")}
-          items={[
-            {
-              id: "new",
-              kind: "button",
-              icon: <Icon icon={Plus} color="muted-foreground" />,
-              label: (
-                <YStack gap="1">
-                  <Text fontWeight="600">{t("accountChoice.new.title")}</Text>
-                  <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {t("accountChoice.new.description")}
-                  </Text>
-                </YStack>
-              ),
-              disabled: busy,
-              onPress: () => {
-                void createNew()
-              },
+      <VerticalNav
+        title={t("settings.accounts.add.title")}
+        items={[
+          {
+            id: "new",
+            kind: "button",
+            icon: <Icon icon={Plus} color="muted-foreground" />,
+            label: (
+              <RowLabel
+                title={t("accountChoice.new.title")}
+                description={t("accountChoice.new.description")}
+              />
+            ),
+            disabled: busy,
+            onPress: () => {
+              void createNew()
             },
-            {
-              id: "existing",
-              kind: "button",
-              icon: <Icon icon={LogIn} color="muted-foreground" />,
-              label: (
-                <YStack gap="1">
-                  <Text fontWeight="600">
-                    {t("accountChoice.existing.title")}
-                  </Text>
-                  <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {canRequestFromPayky
-                      ? t("accountChoice.existing.descriptionWithPayky", {
-                          sourceApp,
-                        })
-                      : t("accountChoice.existing.description")}
-                  </Text>
-                </YStack>
-              ),
-              disabled: busy,
-              // The chooser of onboarding/0011, as onboarding shows it.
-              onPress: () => router.push("/settings/accounts/open"),
-            },
-          ]}
-        />
+          },
+          {
+            id: "existing",
+            kind: "button",
+            icon: <Icon icon={LogIn} color="muted-foreground" />,
+            label: (
+              <RowLabel
+                title={t("accountChoice.existing.title")}
+                description={
+                  canRequestFromPayky
+                    ? t("accountChoice.existing.descriptionWithPayky", {
+                        sourceApp,
+                      })
+                    : t("accountChoice.existing.description")
+                }
+              />
+            ),
+            disabled: busy,
+            // The chooser of onboarding/0011, as onboarding shows it.
+            onPress: () => router.push("/settings/accounts/open"),
+          },
+        ]}
+      />
 
-        <VerticalNav
-          title={t("settings.accounts.elsewhere.title")}
-          items={[
-            {
-              kind: "button",
-              icon: <Icon icon={MonitorSmartphone} color="muted-foreground" />,
-              label: (
-                <YStack gap="1">
-                  <Text fontWeight="600">
-                    {t("accountTransfer.settings.source.title")}
-                  </Text>
-                  <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {t("accountTransfer.settings.source.description")}
-                  </Text>
-                </YStack>
-              ),
-              disabled: busy,
-              onPress: () => router.push("/settings/access/add-device"),
-            },
-          ]}
-        />
-      </YStack>
+      <VerticalNav
+        title={t("settings.accounts.elsewhere.title")}
+        items={[
+          {
+            kind: "button",
+            icon: <Icon icon={MonitorSmartphone} color="muted-foreground" />,
+            label: (
+              <RowLabel
+                title={t("accountTransfer.settings.source.title")}
+                description={t("accountTransfer.settings.source.description")}
+              />
+            ),
+            disabled: busy,
+            onPress: () => router.push("/settings/access/add-device"),
+          },
+        ]}
+      />
     </Screen>
   )
 }
 
-/** The last published picture, or the account's initial when unavailable. */
-function AccountAvatar({
-  name,
-  active,
-  picture,
+/** A row's `sm` semibold title over its `xs` muted second line. */
+function RowLabel({
+  title,
+  description,
 }: {
-  readonly name: string
-  readonly active: boolean
-  readonly picture: string | null
+  /** Both already translated. */
+  readonly title: string
+  readonly description: string
 }) {
-  const theme = useTheme()
-  const [failedPicture, setFailedPicture] = useState<string | null>(null)
-
-  if (picture !== null && picture !== failedPicture) {
-    return (
-      <Image
-        source={{ uri: picture }}
-        accessibilityIgnoresInvertColors
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: theme.muted.val,
-        }}
-        onError={() => setFailedPicture(picture)}
-      />
-    )
-  }
-
   return (
-    <YStack
-      w={36}
-      h={36}
-      shrink={0}
-      rounded="full"
-      items="center"
-      justify="center"
-      bg={active ? "primary" : "neutral-soft"}
-      aria-hidden
-    >
+    <YStack gap={4}>
       <Text
-        fontWeight="600"
-        color={active ? "primary-foreground" : "muted-foreground"}
-        textTransform="uppercase"
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
       >
-        {name.slice(0, 1)}
+        {title}
+      </Text>
+      <Text
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        color="muted-foreground"
+      >
+        {description}
       </Text>
     </YStack>
   )

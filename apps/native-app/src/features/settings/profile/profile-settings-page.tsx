@@ -22,15 +22,19 @@ import type { CountryCode } from "@payky/core/modules/legal-entity/legal-entity-
 import Copy from "lucide-react-native/icons/copy"
 import ImageIcon from "lucide-react-native/icons/image"
 import Trash from "lucide-react-native/icons/trash"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
-import { Image } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { z } from "zod"
-import appIcon from "../../../../assets/app-icon.png"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { SwitchRow } from "../../../components/switch-row.tsx"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+} from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -39,7 +43,12 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
-import { Field, FieldLabel } from "../../../components/ui/field.tsx"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "../../../components/ui/field.tsx"
 import {
   Select,
   SelectContent,
@@ -62,7 +71,8 @@ import {
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { pickProfilePicture } from "../../../platform/pick-profile-picture"
-import { radius } from "../../../theme/tokens.ts"
+import { fontSize, radius } from "../../../theme/tokens.ts"
+import { AccountAvatar } from "../account-avatar.tsx"
 
 /**
  * The business's profile in two cards, as what is public and what is not:
@@ -91,40 +101,41 @@ export function ProfileSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <YStack gap="5">
+          <FieldGroup>
             {profile.data !== null ? (
               <ProfileEditor pubkey={identity.pubkey} profile={profile.data} />
             ) : profile.failed && !profile.loading ? (
-              <YStack gap="2" role="alert">
-                <Text color="destructive">
+              <Alert variant="destructive" icon={TriangleAlert}>
+                <AlertDescription>
                   {t("settings.profile.loadFailed")}
-                </Text>
-                <Button
-                  label={t("settings.profile.retry")}
-                  variant="outline"
-                  onPress={profile.refetch}
-                />
-              </YStack>
+                </AlertDescription>
+                <AlertAction>
+                  <Button
+                    size="sm"
+                    label={t("settings.profile.retry")}
+                    variant="outline"
+                    onPress={profile.refetch}
+                  />
+                </AlertAction>
+              </Alert>
             ) : (
-              <YStack gap="3" aria-label={t("settings.profile.title")}>
+              <YStack gap={12} aria-label={t("settings.profile.title")}>
                 <Skeleton w={80} h={80} rounded={radius.full} />
                 <Skeleton h={40} />
               </YStack>
             )}
-            <YStack gap="1.5">
-              <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                {t("settings.profile.npub.label")}
-              </Text>
+            <Field>
+              <FieldLabel>{t("settings.profile.npub.label")}</FieldLabel>
               {/* Shortened, as on the settings list: the whole key does not
                   fit a phone's width and pushed the copy button off it. The
                   button copies all of it. */}
-              <XStack items="center" gap="1">
+              <XStack items="center" gap={4}>
                 <Text
                   flex={1}
                   minW={0}
                   numberOfLines={1}
-                  fontSize="xs"
-                  lineHeight="xs"
+                  fontSize={fontSize.xs}
+                  lineHeight={fontSize.xs}
                   color="muted-foreground"
                 >
                   {shortenNpub(identity.npub)}
@@ -143,8 +154,8 @@ export function ProfileSettingsPage() {
                   }
                 />
               </XStack>
-            </YStack>
-          </YStack>
+            </Field>
+          </FieldGroup>
         </CardContent>
       </Card>
       <Card>
@@ -202,22 +213,14 @@ function ProfileEditor({
   }
 
   return (
-    <YStack gap="3">
-      <YStack gap="2">
-        <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-          {t("settings.profile.picture.label")}
-        </Text>
-        <XStack gap="3" alignItems="center">
-          <YStack width={80} height={80} borderRadius={40} overflow="hidden">
-            {/* Without a picture, the app's icon, as the settings list and the
-                rail show it, rather than an empty circle the card hides. */}
-            <Image
-              source={picture.value === null ? appIcon : { uri: picture.value }}
-              style={{ width: 80, height: 80 }}
-              accessibilityIgnoresInvertColors
-            />
-          </YStack>
-          <YStack gap="2" flex={1}>
+    <FieldGroup>
+      <Field>
+        <FieldLabel>{t("settings.profile.picture.label")}</FieldLabel>
+        <XStack gap={12} items="center">
+          {/* Without a picture, the app's icon, as the settings list and the
+              rail show it, rather than an empty circle the card hides. */}
+          <AccountAvatar picture={picture.value} size={80} />
+          <YStack gap={8} flex={1} items="flex-start">
             <Button
               label={t("settings.profile.picture.choose")}
               variant="outline"
@@ -227,6 +230,7 @@ function ProfileEditor({
             />
             {picture.value !== null ? (
               <Button
+                size="sm"
                 label={t("settings.profile.picture.remove")}
                 variant="ghost"
                 iconStart={Trash}
@@ -239,12 +243,10 @@ function ProfileEditor({
             ) : null}
           </YStack>
         </XStack>
-        {pictureInvalid ? (
-          <Text color="destructive" role="alert">
-            {t("settings.profile.picture.invalid")}
-          </Text>
-        ) : null}
-      </YStack>
+        <FieldError>
+          {pictureInvalid ? t("settings.profile.picture.invalid") : undefined}
+        </FieldError>
+      </Field>
       <InlineEditField
         label={t("settings.profile.name.label")}
         placeholder={t("settings.profile.name.placeholder")}
@@ -255,7 +257,7 @@ function ProfileEditor({
           publish({ name: name ?? "", picture: profile.picture })
         }
       />
-    </YStack>
+    </FieldGroup>
   )
 }
 
@@ -302,7 +304,7 @@ function BusinessFields() {
     t(countryLabelKey(option === OTHER_COUNTRY ? null : option))
 
   return (
-    <YStack gap="3">
+    <FieldGroup>
       <Field>
         <FieldLabel>{t("settings.legalEntity.country.label")}</FieldLabel>
         {/* Nothing is selected until a country is chosen: the row does not exist. */}
@@ -373,6 +375,6 @@ function BusinessFields() {
         disabled={legalEntity === undefined || vat.saving}
         onCheckedChange={(next) => void vat.choose(next)}
       />
-    </YStack>
+    </FieldGroup>
   )
 }

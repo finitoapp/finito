@@ -6,7 +6,9 @@ import {
 import { Integer } from "@payky/core/modules/shared/schema"
 import { parseISO } from "date-fns"
 import { router } from "expo-router"
-import { Text, XStack, YStack } from "tamagui"
+import CircleCheck from "lucide-react-native/icons/circle-check"
+import { Text, YStack } from "tamagui"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import {
   Card,
   CardContent,
@@ -14,12 +16,17 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import { VerticalNavRow } from "../../../components/vertical-nav.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 import { EetSaleStatusLabel } from "../../shared/eet-sale-status.tsx"
 
-/** Sales and reversals EET has not confirmed; each opens its payment. */
+/**
+ * Sales and reversals EET has not confirmed, a card of its own on the EET
+ * screen; each row opens its payment, and with none left the card says so.
+ */
 export function EetUnconfirmedSales() {
   const { t } = useTranslation()
   const locale = useLocale()
@@ -59,35 +66,41 @@ export function EetUnconfirmedSales() {
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
-            {t("settings.eet.unconfirmed.empty")}
-          </Text>
+          <EmptyState
+            icon={CircleCheck}
+            description={t("settings.eet.unconfirmed.empty")}
+          />
         ) : (
-          <YStack gap="2">
+          // The rows' own inset lines their text up with the card's title.
+          <YStack mx={-12}>
             {rows.map(({ key, testID, sale, title }) => (
-              <XStack
+              <VerticalNavRow
                 key={key}
-                testID={testID}
-                minH={56}
-                items="center"
-                gap="3"
-                p="3"
-                rounded="lg"
-                bg="neutral-soft"
-                role="button"
-                cursor="web:pointer"
-                onPress={() => router.push(`/activity/${sale.paymentId}`)}
-              >
-                <YStack flex={1}>
-                  <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                    {title}
-                  </Text>
-                  <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                    {formatDateTime(parseISO(sale.saleAt), locale)}
-                  </Text>
-                </YStack>
-                <EetSaleStatusLabel sale={sale} />
-              </XStack>
+                item={{
+                  kind: "button",
+                  accessibilityLabel: title,
+                  onPress: () => router.push(`/activity/${sale.paymentId}`),
+                  label: (
+                    <YStack gap={4} testID={testID}>
+                      <Text
+                        fontSize={fontSize.sm}
+                        lineHeight={fontSize.sm}
+                        fontWeight={fontWeight.semibold}
+                      >
+                        {title}
+                      </Text>
+                      <Text
+                        fontSize={fontSize.xs}
+                        lineHeight={fontSize.xs}
+                        color="muted-foreground"
+                      >
+                        {formatDateTime(parseISO(sale.saleAt), locale)}
+                      </Text>
+                    </YStack>
+                  ),
+                  action: <EetSaleStatusLabel sale={sale} />,
+                }}
+              />
             ))}
           </YStack>
         )}
