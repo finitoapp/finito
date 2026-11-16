@@ -305,8 +305,6 @@ export type SwitchioAttemptOtherDeviceError = ReturnType<
 export type ResolveSwitchioCardPaymentError =
   | SwitchioAttemptOtherDeviceError
   | PaymentNotFoundError
-  | CardSwitchioAccountNotFoundError
-  | AccountCurrencyMismatchError
 
 export type PayPaymentWithSwitchioCardError =
   | PaymentNotFoundError
@@ -338,8 +336,6 @@ export type PayPaymentWithBoltCardError =
 export type SettleRestoredSwitchioCardPaymentError =
   | SwitchioRestoredResultUnmatchedError
   | PaymentNotFoundError
-  | CardSwitchioAccountNotFoundError
-  | AccountCurrencyMismatchError
   | SwitchioPaymentError
 
 export const createCashuAccountNotFoundError = defineError(
