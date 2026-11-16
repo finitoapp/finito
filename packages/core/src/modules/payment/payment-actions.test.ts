@@ -4464,6 +4464,37 @@ describe("payment actions", () => {
       expect(requests).toHaveLength(1)
     }, 15_000)
 
+    test("keeps an attempt unknown when its restored answer names another transaction (payment/0024)", async () => {
+      await using ctx = await setUp(async () => await unreadable())
+      const { evolu, run, requests, accountId, paymentId } = ctx
+      await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+      const transactionId = requests[0]?.transactionId ?? null
+
+      const restored = await run(
+        settleRestoredSwitchioCardPayment({
+          restored: {
+            resultCode: -1,
+            transactionId,
+            transactionResult: JSON.stringify({
+              transactionId: "an-earlier-transaction",
+              responseCode: "OK",
+            }),
+          },
+        })
+      )
+
+      expect(!restored.ok && restored.error.type).toBe(
+        "SwitchioResultUnreadable"
+      )
+      await expect(
+        evolu.loadQuery(activeReconciliationClaimsByPaymentIdQuery(paymentId))
+      ).resolves.toEqual([])
+      const [row] = await evolu.loadQuery(
+        paymentCardSwitchioByPaymentIdQuery(paymentId)
+      )
+      expect(row?.unresolvedTransactionId).toBe(transactionId)
+    }, 15_000)
+
     describe("a launch that never reached SwitchioPay (payment/0021)", () => {
       const launchFailed = () =>
         err(createSwitchioUnavailableError({ reason: "launchFailed" }))

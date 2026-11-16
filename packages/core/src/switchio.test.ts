@@ -588,6 +588,64 @@ describe("interpretSwitchioPaymentLookup", () => {
   })
 })
 
+describe("an answer naming another transaction (payment/0024)", () => {
+  const readers = {
+    payment: interpretSwitchioPaymentResult,
+    refund: interpretSwitchioRefundResult,
+    reversal: interpretSwitchioReversalResult,
+  }
+  const answer = (fields: Record<string, unknown>) =>
+    JSON.stringify({ responseCode: "OK", reversal: true, ...fields })
+
+  test.each([
+    [
+      "an approval of another transaction",
+      "t1",
+      -1,
+      answer({ transactionId: "t0" }),
+    ],
+    [
+      "a decline of another transaction",
+      "t1",
+      0,
+      answer({ transactionId: "t0", responseCode: "DECLINED" }),
+    ],
+  ] as const)(
+    "is an unknown outcome: %s",
+    (_, transactionId, resultCode, transactionResult) => {
+      for (const [kind, read] of Object.entries(readers)) {
+        expect(
+          read({ transactionId, resultCode, transactionResult }),
+          kind
+        ).toMatchObject({
+          ok: false,
+          error: { type: "SwitchioResultUnreadable", resultCode },
+        })
+      }
+    }
+  )
+
+  test.each([
+    ["names the request", "t1", answer({ transactionId: "t1" })],
+    ["names no transaction", "t1", answer({})],
+    [
+      "comes back for a request whose id is not known",
+      null,
+      answer({ transactionId: "t0" }),
+    ],
+  ] as const)(
+    "is read as the request's when it %s",
+    (_, transactionId, transactionResult) => {
+      for (const [kind, read] of Object.entries(readers)) {
+        expect(
+          read({ transactionId, resultCode: -1, transactionResult }).ok,
+          kind
+        ).toBe(true)
+      }
+    }
+  )
+})
+
 describe("a result code ECR does not document (payment/0023)", () => {
   const readers = {
     payment: interpretSwitchioPaymentResult,
