@@ -234,6 +234,25 @@ const classifySwitchioOutcome = <
 const unreadableResult = (resultCode: number, rawResult: string | null) =>
   err(createSwitchioResultUnreadableError({ resultCode, rawResult }))
 
+/**
+ * Whether the terminal's answer names another transaction than the request
+ * it came back for (payment/0024). Such an answer says nothing of this
+ * request, so it is an unknown outcome: with the reorder-to-front flag a
+ * stale answer of an earlier transaction can come back, and recorded as
+ * this one it would settle another payment with another's refund id. An
+ * answer that names no transaction is taken as the request's, since the
+ * field is optional in the ECR result structure, and so is any answer when
+ * the request's id is not known: a result stored by a build that kept none.
+ */
+const answersAnotherTransaction = (
+  requestTransactionId: string | null | undefined,
+  parsed: { readonly transactionId?: string | null | undefined } | null
+): boolean => {
+  const request = optionalString(requestTransactionId)
+  const answered = optionalString(parsed?.transactionId)
+  return request !== null && answered !== null && answered !== request
+}
+
 /** What an approved payment keeps of the terminal's answer. */
 const toCardPaymentResult = (
   approved: z.output<typeof SwitchioTransactionResultSchema>,
@@ -257,16 +276,23 @@ const toCardPaymentResult = (
  * `responseCode` that is either the terminal's `"OK"` or absent — the field
  * is optional in the ECR result structure, so a terminal that omits it must
  * still be able to complete a payment, while an explicit non-`OK` code
- * always means the transaction did not go through.
+ * always means the transaction did not go through. An answer naming another
+ * transaction than `transactionId` is unknown (payment/0024).
  */
 export const interpretSwitchioPaymentResult = ({
+  transactionId,
   resultCode,
   transactionResult,
 }: {
+  /** The request's id: the attempt this answer came back for. */
+  readonly transactionId?: string | null
   readonly resultCode: number
   readonly transactionResult: string | null
 }): Result<SwitchioCardPaymentResult, SwitchioPaymentError> => {
   const parsed = parseTransactionResult(transactionResult)
+  if (answersAnotherTransaction(transactionId, parsed)) {
+    return unreadableResult(resultCode, transactionResult)
+  }
 
   const outcome = classifySwitchioOutcome(resultCode, parsed)
   if (outcome.type === "unreadable") {
@@ -602,16 +628,24 @@ const toCardRefundResult = (
  * Turns one refund intent result into a domain Result, by the payment's
  * rules ({@link interpretSwitchioPaymentResult}) with one more: busy and not
  * initialised are {@link SwitchioRefundNotStartedError}, not a decline, so the
- * attempt can be dropped rather than kept as failed.
+ * attempt can be dropped rather than kept as failed. An answer naming
+ * another transaction than `transactionId` is unknown, before anything else
+ * is read of it (payment/0024).
  */
 export const interpretSwitchioRefundResult = ({
+  transactionId,
   resultCode,
   transactionResult,
 }: {
+  /** The request's id: the attempt this answer came back for. */
+  readonly transactionId?: string | null
   readonly resultCode: number
   readonly transactionResult: string | null
 }): Result<SwitchioCardRefundResult, SwitchioRefundError> => {
   const parsed = parseTransactionResult(transactionResult)
+  if (answersAnotherTransaction(transactionId, parsed)) {
+    return unreadableResult(resultCode, transactionResult)
+  }
 
   if (
     resultCode === switchioResultCode.terminalBusy ||
@@ -642,6 +676,8 @@ export const interpretSwitchioRefundResult = ({
  * approved — whatever the terminal did, it was not this.
  */
 export const interpretSwitchioReversalResult = (answer: {
+  /** The request's id: the attempt this answer came back for. */
+  readonly transactionId?: string | null
   readonly resultCode: number
   readonly transactionResult: string | null
 }): Result<SwitchioCardRefundResult, SwitchioRefundError> => {

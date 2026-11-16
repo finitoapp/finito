@@ -72,3 +72,23 @@ describe("a launch that never reached SwitchioPay in Payky (payment/0021)", () =
     })
   })
 })
+
+describe("an answer naming another transaction in Payky (payment/0024)", () => {
+  it("reads an answer naming another transaction as an unknown outcome", async () => {
+    plugin.pay.mockResolvedValueOnce({
+      transactionId: payment.transactionId,
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        transactionId: "t0",
+        responseCode: "OK",
+      }),
+    })
+
+    await expect(
+      createSwitchioTerminalDep({ demo: false }).switchioTerminal.pay(payment)
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { type: "SwitchioResultUnreadable" },
+    })
+  })
+})

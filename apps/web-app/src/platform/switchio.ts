@@ -75,7 +75,12 @@ export const createSwitchioTerminalDep = ({
       }
 
       try {
-        return interpretSwitchioPaymentResult(await SwitchioNative.pay(request))
+        // Read against the request, so a stale answer of another
+        // transaction is unknown (payment/0024).
+        return interpretSwitchioPaymentResult({
+          ...(await SwitchioNative.pay(request)),
+          transactionId: request.transactionId,
+        })
       } catch (error) {
         // Only a missing SwitchioPay and a launch that threw before it
         // started are known to fail before anything was charged. Any other

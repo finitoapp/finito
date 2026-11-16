@@ -353,7 +353,13 @@ export const createSwitchioTerminalDep = ({
         acknowledge: (module) =>
           module.acknowledgeResult(request.transactionId),
         schema: SwitchioNativePayResultSchema,
-        interpret: interpretSwitchioPaymentResult,
+        // Read against the request, so a stale answer of another
+        // transaction is unknown (payment/0024).
+        interpret: (answer) =>
+          interpretSwitchioPaymentResult({
+            ...answer,
+            transactionId: request.transactionId,
+          }),
       }),
   },
 })
@@ -456,7 +462,11 @@ export const createSwitchioRefundDep = ({
         acknowledge: (module) =>
           module.acknowledgeRefundResult(request.transactionId),
         schema: SwitchioNativePayResultSchema,
-        interpret: interpretSwitchioReversalResult,
+        interpret: (answer) =>
+          interpretSwitchioReversalResult({
+            ...answer,
+            transactionId: request.transactionId,
+          }),
       }),
     referralRefund: (request) =>
       launchSwitchio({
@@ -473,7 +483,11 @@ export const createSwitchioRefundDep = ({
         acknowledge: (module) =>
           module.acknowledgeRefundResult(request.transactionId),
         schema: SwitchioNativePayResultSchema,
-        interpret: interpretSwitchioRefundResult,
+        interpret: (answer) =>
+          interpretSwitchioRefundResult({
+            ...answer,
+            transactionId: request.transactionId,
+          }),
       }),
     // Stores nothing and changes nothing, so every failure is `unknown`.
     lookup: async (transactionId) => {

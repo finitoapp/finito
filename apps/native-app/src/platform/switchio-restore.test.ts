@@ -351,6 +351,50 @@ describe("a launch that never reached SwitchioPay (payment/0021)", () => {
   })
 })
 
+describe("an answer naming another transaction (payment/0024)", () => {
+  it("is read against the request, not the module's echo of it, for a payment and a refund", async () => {
+    // The module echoes the request's id; the terminal's own answer names
+    // an earlier transaction.
+    const stale = {
+      transactionId: "t1",
+      resultCode: -1,
+      transactionResult: JSON.stringify({
+        transactionId: "t0",
+        responseCode: "OK",
+      }),
+    }
+    native.pay.mockResolvedValueOnce(stale)
+    native.referralRefund.mockResolvedValueOnce(stale)
+    const unknown = {
+      ok: false,
+      error: { type: "SwitchioResultUnreadable", resultCode: -1 },
+    }
+
+    await expect(
+      createSwitchioTerminalDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioTerminal.pay({
+        transactionId: "t1",
+        amount: 100,
+        tipAmount: 0,
+        currencyCode: 203,
+      })
+    ).resolves.toMatchObject(unknown)
+    await expect(
+      createSwitchioRefundDep({
+        demo: false,
+        accountId: "a1",
+      }).switchioRefund.referralRefund({
+        transactionId: "t1",
+        amount: 100,
+        currencyCode: 203,
+        refundId: "123456789012345678",
+      })
+    ).resolves.toMatchObject(unknown)
+  })
+})
+
 describe("asking SwitchioPay about a card payment (payment/0019)", () => {
   const { switchioPaymentLookup } = createSwitchioPaymentLookupDep({
     demo: false,
