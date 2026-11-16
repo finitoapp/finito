@@ -29,7 +29,7 @@ build validates it and writes static files. Nothing runs at request time.
 
 | Host | URL |
 | --- | --- |
-| Production | `https://product-library-chi.vercel.app` |
+| Production | `https://products.finito.fit` (also `https://product-library-chi.vercel.app`) |
 | Preview (one per pull request, once the project is connected to the repository) | a `*.vercel.app` URL, behind Vercel's login |
 
 It publishes:

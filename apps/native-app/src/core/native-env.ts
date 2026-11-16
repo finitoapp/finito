@@ -52,7 +52,7 @@ export const nativeEnv = createEnv({
     // the library.
     EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL: z
       .url()
-      .default("https://product-library-chi.vercel.app"),
+      .default("https://products.finito.fit"),
     // Set only by the e2e builds (e2e/scripts); turns on the e2e bridge route.
     EXPO_PUBLIC_PAYKY_E2E: z.stringbool().default(false),
   },
