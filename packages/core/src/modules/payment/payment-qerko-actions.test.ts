@@ -429,6 +429,46 @@ describe("qerko terminal payment", () => {
       .toMatchObject([{ accountId, kind: "qerkoTerminal", amount: 12_900 }])
   }, 15_000)
 
+  test.each([
+    ["the Qerko terminal was turned off", false, "CZK"],
+    ["the Qerko terminal switched currency", true, "EUR"],
+  ] as const)(
+    "an approval that arrives after %s still records the money on the account it was charged on (payment/0022)",
+    async (_, enabled, currency) => {
+      await using test = await setup({
+        "create-terminal-payment": (body) =>
+          started(pending(String(body.transactionId))),
+        "get-terminal-payment-status": (body) => ({
+          type: "found",
+          payment: approved(String(body.transactionId)),
+        }),
+      })
+      await test.start()
+      await test.run.ok(saveQerkoTerminalAccount({ enabled, currency }))
+
+      await expect(test.sync()).resolves.toEqual({
+        ok: true,
+        value: { status: "paid" },
+      })
+
+      await expect
+        .poll(() =>
+          test.evolu.loadQuery(
+            accountTransactionsByPaymentIdQuery(test.paymentId)
+          )
+        )
+        .toMatchObject([
+          { accountId, kind: "qerkoTerminal", amount: 12_900, currency: "CZK" },
+        ])
+      await expect
+        .poll(() => test.evolu.loadQuery(rowQuery(test.paymentId)))
+        .toMatchObject([
+          { pendingTransactionId: null, unresolvedTransactionId: null },
+        ])
+    },
+    15_000
+  )
+
   test("asks Qerko to cancel the pending attempt", async () => {
     await using test = await setup({
       "create-terminal-payment": (body) =>

@@ -30,17 +30,15 @@ import {
 import type { paymentQerkoTerminal } from "./payment.ts"
 import {
   loadPayment,
-  markPaymentPaid,
+  markPaymentCharged,
   optionalNonEmptyString255,
 } from "./payment-actions.ts"
 import {
-  type AccountCurrencyMismatchError,
   createQerkoAttemptUnresolvedError,
   createQerkoTerminalAccountNotFoundError,
   createQerkoTerminalNotStartedError,
   createQerkoTerminalPaymentFailedError,
   type PaymentNotFoundError,
-  type QerkoTerminalAccountNotFoundError,
   type QerkoTerminalPaymentFailedError,
   type StartQerkoTerminalPaymentError,
   type SyncQerkoTerminalPaymentError,
@@ -104,10 +102,7 @@ const applyQerkoPayment =
     readonly operation: QerkoPayment
   }): Task<
     QerkoTerminalPaymentProgress,
-    | PaymentNotFoundError
-    | QerkoTerminalAccountNotFoundError
-    | AccountCurrencyMismatchError
-    | QerkoTerminalPaymentFailedError,
+    PaymentNotFoundError | QerkoTerminalPaymentFailedError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
@@ -169,10 +164,12 @@ const applyQerkoPayment =
     // is what makes the payment read as paid, so a crash in between leaves a
     // paid payment with a thinner audit trail, not a charged card that still
     // shows as unpaid. No status guard: the card has been charged, even on a
-    // payment canceled meanwhile (payment/0004). The account receives what
-    // the card was charged, a tip added on the terminal included (qerko/0002).
+    // payment canceled meanwhile (payment/0004), and on the account the
+    // attempt was made with, whatever became of it since (payment/0022). The
+    // account receives what the card was charged, a tip added on the
+    // terminal included (qerko/0002).
     const settled = await run(
-      markPaymentPaid({
+      markPaymentCharged({
         paymentId,
         accountId,
         deviceId,
@@ -180,10 +177,6 @@ const applyQerkoPayment =
         accountKind: "qerkoTerminal",
         // The terminal approved the card, not staff (payment/0010).
         source: "auto",
-        accountQuery: qerkoTerminalAccountByIdQuery,
-        notFoundError: createQerkoTerminalAccountNotFoundError({
-          id: accountId,
-        }),
       })
     )
     if (!settled.ok) return settled

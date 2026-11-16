@@ -12,7 +12,6 @@ import type {
   QerkoReceipt,
   QerkoWirePayment,
 } from "../../integrations/qerko/qerko-rpc.ts"
-import { qerkoPaymentAccountByIdQuery } from "../account/account-queries.ts"
 import type { AccountId } from "../account/account-types.ts"
 import { settingsQuery } from "../app-settings/app-settings-queries.ts"
 import { billLinesByBillIdQuery } from "../bill-line/bill-line-queries.ts"
@@ -44,13 +43,12 @@ import {
 } from "../shared/schema.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { PaymentRow, QerkoPaymentAttemptRow } from "./payment.ts"
-import { markPaymentPaid } from "./payment-actions.ts"
+import { markPaymentCharged } from "./payment-actions.ts"
 import {
   createQerkoBillClosedError,
   createQerkoBillLockedError,
   createQerkoBillNotFoundError,
   createQerkoInvalidDataError,
-  createQerkoPaymentAccountNotFoundError,
   createQerkoPaymentAttemptNotFoundError,
   type QerkoPaymentAttemptNotFoundError,
   type ResolveQerkoBillError,
@@ -506,7 +504,9 @@ export const settleQerkoPayment =
     // neither over- nor underpaid; otherwise the money is recorded as charged
     // and the difference shows. `tipBrutto` comes from the `Payment`, or from
     // the attempt when the `Payment` lacks it. Qerko's commission on the tip,
-    // like its other fees, is not recorded (qerko/0015).
+    // like its other fees, is not recorded (qerko/0015). Qerko has taken the
+    // money on the account the attempt was made with, whatever became of it
+    // since (payment/0022).
     const chargedAmount =
       parts === null || parts.chargedAmount === 0
         ? undefined
@@ -523,7 +523,7 @@ export const settleQerkoPayment =
             goodsAmount: paymentRow.amount - paymentRow.tipAmount,
           })
     const settled = await run(
-      markPaymentPaid({
+      markPaymentCharged({
         paymentId: attempt.paymentId,
         accountId: method.accountId,
         deviceId,
@@ -532,10 +532,6 @@ export const settleQerkoPayment =
         accountKind: "qerkoPayment",
         // Qerko said paid, not staff (payment/0010).
         source: "auto",
-        accountQuery: qerkoPaymentAccountByIdQuery,
-        notFoundError: createQerkoPaymentAccountNotFoundError({
-          id: method.accountId,
-        }),
       })
     )
     if (!settled.ok) return settled
