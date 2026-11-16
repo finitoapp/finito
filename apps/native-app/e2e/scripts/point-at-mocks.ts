@@ -13,4 +13,8 @@ export function pointAtMocks(host: string, port: number): void {
   process.env.EXPO_PUBLIC_PAYKY_EET_PRODUCTION_URL = `${base}/eet/services/EETServiceSOAP/v4`
   process.env.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS = `ws://${host}:${port}/nostr`
   process.env.EXPO_PUBLIC_PAYKY_EET_PLAYGROUND_URL = `${base}/eet-playground/services/EETServiceSOAP/v4`
+  // The mock server has no library, so its 404 leaves the app without
+  // suggestions, pictures or starter packs: flows and screenshots never
+  // depend on what the live product library holds.
+  process.env.EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL = `${base}/product-library`
 }

@@ -81,6 +81,8 @@ export interface CatalogListRowData {
   readonly trailing?: string | undefined
   /** The edit screen the row opens. */
   readonly href?: Href | undefined
+  /** Drawn in place of the list's icon, as an item's library picture. */
+  readonly leading?: ReactNode
 }
 
 function toVerticalNavItem(
@@ -131,7 +133,7 @@ function toVerticalNavItem(
   )
 
   // A settings row's 20, as About's rows (web's lucide default is 24).
-  const rowIcon = <Icon icon={icon} color="muted-foreground" />
+  const rowIcon = row.leading ?? <Icon icon={icon} color="muted-foreground" />
   return row.href === undefined
     ? { kind: "static", id: row.id, icon: rowIcon, label, disableAction: true }
     : { kind: "link", id: row.id, href: row.href, icon: rowIcon, label }
