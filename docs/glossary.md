@@ -62,6 +62,23 @@ where it is specified; the specification wins over this page.
   separate "discount" type; the sign of `unitAmount` makes one, and it is set
   only when the item is created. Not a percentage discount on a whole bill,
   which the app does not have.
+- **Product library** (`productLibrary`, `docs/product-library.md`) — the
+  shared, read-only list of typical gastro products both apps download
+  whole from their own host and search on the device
+  (`docs/decisions/catalog/0005`, `product-library/0001`). Not the
+  **catalog**, which is the merchant's own items, synced and editable;
+  the library is the same for every merchant and nothing writes to it.
+- **Library product** (`libraryProduct`) — one entry of the product
+  library: names, synonyms, related products, VAT per country and a
+  picture, never a price. A catalog item made from one keeps its id in
+  `libraryProductId`, through which its picture is shown
+  (`docs/decisions/catalog/0006`); it is otherwise an ordinary catalog item,
+  and editing it never changes the library product.
+- **Starter pack** (`starterPack`) — a named set of library products
+  (Café, Bistro, Bar) onboarding offers a new account that sells from
+  items; the products the merchant keeps and prices become catalog items
+  (`docs/decisions/onboarding/0013`). Not a **category**, which groups the
+  catalog's own items.
 - **Bill** (`bill`) — the tab: lines, an optional table, a total. Its status
   (`open`/`closed`/`canceled`) is derived, never stored
   (`docs/bill-payment-states.md`). In the UI a canceled bill is

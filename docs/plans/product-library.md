@@ -31,9 +31,10 @@ Decisions taken:
   and searches it on the device; nothing the merchant types leaves the
   device, so unlike the Open Facts lookup it needs no opt-in under Privacy.
 - **Hosted on Vercel**, as its own Vercel project.
-- **Pictures are generated through the OpenAI Images API** (`gpt-image-2`,
-  the model configurable), driven by subagents that write the prompts, and
-  reviewed by a person before release.
+- **Pictures are generated through Codex CLI's image generation** (under the
+  team's ChatGPT login, no API key), with the OpenAI Images API
+  (`gpt-image-2`) as an alternative backend, and reviewed by a person before
+  release.
 - **Languages: cs, sk, en.**
 - **Starter packs ship in the first phase, with empty prices.** The library
   carries no prices at all.
@@ -116,7 +117,8 @@ image:
 - `style/image-style.md` fixes the look once: angle, background, lighting,
   framing, no text or logos. Every prompt is that style plus the product's
   `subject`, so all pictures read as one set.
-- `scripts/generate-images.ts` calls the OpenAI Images API
+- `scripts/generate-images.ts` runs `codex exec` per picture by default, or
+  with `--backend openai` calls the OpenAI Images API
   (`OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL` defaulting to `gpt-image-2`,
   1024×1024, WebP output) for the products it is given.
 - The generation workflow: subagents take the products whose `image.status` is
@@ -295,3 +297,42 @@ Each names its tests under `## Enforced by`.
 ## Open questions
 
 - The library's production host name.
+
+## Implementation status
+
+As of 2026-11-16, on `feat/product-library`.
+
+Done:
+
+- The library repository (`github.com/finitoapp/product-library`): the `v1`
+  contract, 76 products in ten categories with cs/sk/en names and
+  synonyms, the Café, Bistro and Bar packs, the build and the review page,
+  deployed to `https://product-library-chi.vercel.app`, which answers the
+  open question of the host. Pictures are generated through Codex CLI's
+  image generation by default (`--backend openai` keeps the Images API);
+  every product has a `generated` picture.
+- Core: the client, search and utils, `catalogItem.libraryProductId`,
+  `createCatalogItemsAtEnd`, `findActiveTaxRateByPercentage`, and
+  `finishOnboarding`'s starter items; app-shared's form prefill and starter
+  pack state.
+- Finito: loading with the offline copy, `EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL`
+  (production by default, the mock server's 404 in e2e builds), pictures in
+  the bill's item grid, the items list and the item forms, name suggestions
+  in both create forms, the "Add also" card, and starter packs on
+  onboarding's last step.
+- Decision records catalog/0005–0007, onboarding/0013 and product-library/0001
+  (the plan's catalog/0008 on VAT is part of catalog/0007), the glossary,
+  `docs/product-library.md` and `AGENTS.md`.
+
+Not yet:
+
+- The web app (Payky): `VITE_PRODUCT_LIBRARY_BASE_URL`, workbox caching,
+  autocomplete, related chips, pictures and starter packs.
+- E2E coverage: the mock server serves no fixture library, so no web or
+  Maestro flow exercises suggestions, pictures or starter packs.
+- Approved pictures: none is approved yet, so production publishes no
+  picture and the apps show none.
+- The VAT values reviewed by an accountant before a release.
+- Connecting the library's Vercel project to its git repository, so merging
+  to `main` deploys and pull requests get previews; it is deployed by hand
+  so far.
