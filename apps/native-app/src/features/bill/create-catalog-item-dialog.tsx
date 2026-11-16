@@ -14,7 +14,10 @@ import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-it
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemByIdQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import type { FiatCurrency } from "@payky/core/modules/shared/schema"
+import type {
+  FiatCurrency,
+  NonEmptyString255,
+} from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { useAtomValue } from "jotai"
@@ -56,7 +59,10 @@ import { useToast } from "../../hooks/use-toast.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { CategoryCombobox } from "../shared/category-combobox.tsx"
 import { DiscountSwitchField } from "../shared/discount-switch-field.tsx"
+import { ItemLibraryPicture } from "../shared/item-library-picture.tsx"
+import { LibraryNameField } from "../shared/library-name-field.tsx"
 import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
+import { useLibraryProductPrefill } from "../shared/use-library-product-prefill.ts"
 
 /**
  * Lightweight create-item form opened from bill scan mode when a scanned code
@@ -64,7 +70,9 @@ import { useCatalogItemOptions } from "../shared/use-catalog-item-options.ts"
  * description, price and whether it is a discount, category and tax rate; the
  * rest is left for Settings.
  * Name and description are prefilled from `productLookup` once it arrives,
- * unless the user already typed into them.
+ * unless the user already typed into them. The name field suggests products
+ * of the product library, as the catalog's create form does; the merchant
+ * is mid-sale, so no related products are offered afterwards.
  */
 export function CreateCatalogItemDialog({
   scanCode,
@@ -146,6 +154,10 @@ function CreateForm({
   )
   const [errors, setErrors] = useState<CatalogItemFormErrors>({})
   const [pending, setPending] = useState(false)
+  // The library product picked from the name's suggestions, if any.
+  const [libraryProductId, setLibraryProductId] =
+    useState<NonEmptyString255 | null>(null)
+  const prefillFor = useLibraryProductPrefill()
 
   // Prefill once the lookup arrives, without overwriting what was typed.
   const { product } = productLookup
@@ -207,6 +219,7 @@ function CreateForm({
           unitAmount: values.price,
           scanCode: values.scanCode,
           taxRateId: values.taxRateId,
+          libraryProductId,
         })
       )
       // The core's own pricing rules, should the account have become a VAT
@@ -231,18 +244,31 @@ function CreateForm({
         </DialogDescription>
       </DialogHeader>
       <FieldGroup>
+        <ItemLibraryPicture
+          libraryProductId={libraryProductId}
+          disabled={pending}
+          onRemove={() => setLibraryProductId(null)}
+        />
         <Field>
           <FieldLabel>{t("catalog.items.form.name.label")}</FieldLabel>
-          <Input
+          <LibraryNameField
             value={name}
             disabled={pending}
             invalid={errors.name !== undefined}
-            autoComplete="off"
-            autoCorrect={false}
             autoFocus
             placeholder={t("catalog.items.form.name.placeholder")}
             onChangeText={(next) => {
               setName(next)
+              clear("name")
+            }}
+            onChoose={(product) => {
+              const prefill = prefillFor(product)
+              if (prefill === undefined) return
+              setName(prefill.name)
+              setLibraryProductId(prefill.libraryProductId)
+              if (prefill.taxRateId !== undefined)
+                setTaxRateId(prefill.taxRateId)
+              if (prefill.category !== undefined) setCategory(prefill.category)
               clear("name")
             }}
           />

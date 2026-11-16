@@ -523,6 +523,20 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/onboarding/starter-pack-section.tsx",
+    web: [],
+    note: "The starter packs under onboarding's \"Bills\" choice: the product library's packs, then the picked pack's products with a checkbox, a picture and an empty price each. Starter packs land in Finito first.",
+    status: "matched",
+    allowedDifferences: {
+      Card: "starter packs land in Finito first",
+      CardContent: "starter packs land in Finito first",
+      Checkbox: "starter packs land in Finito first",
+      Input: "starter packs land in Finito first",
+      ToggleGroup: "starter packs land in Finito first",
+      ToggleGroupItem: "starter packs land in Finito first",
+    },
+  },
+  {
     native: "src/features/shared/selling-mode-illustrations.tsx",
     web: [
       "apps/web-app/src/features/onboarding/onboarding-steps/selling-mode-illustrations.tsx",
@@ -1243,6 +1257,21 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "native renders the camera inline after the scan-code field instead of inside a modal",
       ScanCodeScannerDialog:
         "web wraps the scanner in a dialog; native renders it inline after the scan-code field",
+    },
+  },
+  {
+    native: "src/features/catalog/items/related-products-card.tsx",
+    web: [],
+    note: "Finito only: product library suggestions land in Finito first; the items list's Add also card after an item from the library is created.",
+    status: "matched",
+    allowedDifferences: {
+      Button: "product library suggestions land in Finito first",
+      Card: "product library suggestions land in Finito first",
+      CardAction: "product library suggestions land in Finito first",
+      CardContent: "product library suggestions land in Finito first",
+      CardDescription: "product library suggestions land in Finito first",
+      CardHeader: "product library suggestions land in Finito first",
+      CardTitle: "product library suggestions land in Finito first",
     },
   },
   {
@@ -2229,6 +2258,27 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/withdraw/withdraw-review-step.tsx",
     web: ["apps/web-app/src/features/withdraw/withdraw-review-step.tsx"],
     status: "matched",
+  },
+  {
+    native: "src/features/shared/library-name-field.tsx",
+    web: [],
+    note: "Finito only: product library suggestions land in Finito first; the create forms' name field with the product library's suggestions under it.",
+    status: "matched",
+    allowedDifferences: {
+      Combobox: "product library suggestions land in Finito first",
+      ComboboxItem: "product library suggestions land in Finito first",
+      ComboboxList: "product library suggestions land in Finito first",
+      Input: "product library suggestions land in Finito first",
+    },
+  },
+  {
+    native: "src/features/shared/item-library-picture.tsx",
+    web: [],
+    note: "Finito only: product library suggestions land in Finito first; an item form's library picture with Remove picture.",
+    status: "matched",
+    allowedDifferences: {
+      Button: "product library suggestions land in Finito first",
+    },
   },
   {
     native: "src/features/shared/category-combobox.tsx",

@@ -10,9 +10,11 @@ import {
 import { fiatCurrencyOptions } from "@payky/app-shared/fiat-currency-options"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import { NO_OPTION } from "@payky/app-shared/inline-edit-codecs"
+import type { LibraryProductPrefill } from "@payky/app-shared/library-product-prefill"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
+import { CatalogCategoryId } from "@payky/core/modules/catalog-category/catalog-category-types"
 import { createCatalogItemAtEnd } from "@payky/core/modules/catalog-item/catalog-item-actions"
 import { catalogItemsQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import {
@@ -20,7 +22,10 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { legalEntityQuery } from "@payky/core/modules/legal-entity/legal-entity-queries"
-import type { FiatCurrency } from "@payky/core/modules/shared/schema"
+import type {
+  FiatCurrency,
+  NonEmptyString255,
+} from "@payky/core/modules/shared/schema"
 import { taxRatesQuery } from "@payky/core/modules/tax-rate/tax-rate-queries"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { router, useLocalSearchParams } from "expo-router"
@@ -60,11 +65,18 @@ import {
 } from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
+import {
+  libraryProductById,
+  useProductLibrary,
+} from "../../../hooks/use-product-library.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CategoryCombobox } from "../../shared/category-combobox.tsx"
 import { DiscountSwitchField } from "../../shared/discount-switch-field.tsx"
+import { ItemLibraryPicture } from "../../shared/item-library-picture.tsx"
+import { LibraryNameField } from "../../shared/library-name-field.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
+import { useLibraryProductPrefill } from "../../shared/use-library-product-prefill.ts"
 import { ScanCodeButton } from "./scan-code-button.tsx"
 
 /**
@@ -82,6 +94,14 @@ const newItemPageQueries = [
 /**
  * Adds a catalog item, as web's `NewCatalogItemPage`: a submit-and-go-back
  * form that validates every field at once before it inserts.
+ *
+ * The name field suggests products of the product library; picking one, or
+ * opening the form from a related product's chip on the items list
+ * (`?libraryProductId=`, with the `categoryId` of the item just created when
+ * the library files both together), fills the name, the picture, the VAT
+ * rate and the category, never the price. An item saved from a library
+ * product returns to the list with `?added=` naming it, where its related
+ * products are offered next.
  */
 export function NewCatalogItemPage() {
   usePreloadEvoluQueries(newItemPageQueries)
@@ -109,16 +129,58 @@ export function NewCatalogItemPage() {
   // The Discount switch carries the price's sign, which Android's decimal
   // keyboard cannot type; it is set here, on create, only (catalog/0002).
   const [discount, setDiscount] = useState(false)
+  const params = useLocalSearchParams<{
+    scan?: string
+    libraryProductId?: string
+    categoryId?: string
+  }>()
   // A code scanned in the item list, which opened this form to carry it.
-  const { scan } = useLocalSearchParams<{ scan?: string }>()
+  const { scan } = params
   const [scanCode, setScanCode] = useState(scan ?? "")
   const [scannerOpen, setScannerOpen] = useState(false)
   const [errors, setErrors] = useState<CatalogItemFormErrors>({})
   const [pending, setPending] = useState(false)
   const confirmOpen = useIsConfirmOpen()
-
   const clearError = (field: keyof CatalogItemFormErrors) =>
     setErrors((current) => ({ ...current, [field]: undefined }))
+
+  // The library product the item comes from; editing the name keeps it,
+  // removing its picture forgets it.
+  const [libraryProductId, setLibraryProductId] =
+    useState<NonEmptyString255 | null>(null)
+  const { library } = useProductLibrary()
+  const prefillFor = useLibraryProductPrefill()
+
+  const applyPrefill = (prefill: LibraryProductPrefill) => {
+    setName(prefill.name)
+    setLibraryProductId(prefill.libraryProductId)
+    if (prefill.taxRateId !== undefined) setTaxRateId(prefill.taxRateId)
+    if (prefill.category !== undefined) setCategory(prefill.category)
+    clearError("name")
+  }
+
+  // A related product's chip opened the form: fill it from that product
+  // once the library is there (it is, the list showed the chip).
+  const [routePrefilled, setRoutePrefilled] = useState(false)
+  if (
+    !routePrefilled &&
+    library !== undefined &&
+    params.libraryProductId !== undefined
+  ) {
+    setRoutePrefilled(true)
+    const product = libraryProductById(library, params.libraryProductId)
+    const prefill = product === undefined ? undefined : prefillFor(product)
+    if (prefill !== undefined) {
+      const categoryId = CatalogCategoryId.safeParse(params.categoryId)
+      applyPrefill(
+        categoryId.success &&
+          categories.some((candidate) => candidate.id === categoryId.data)
+          ? { ...prefill, category: { kind: "existing", id: categoryId.data } }
+          : prefill
+      )
+    }
+  }
+
   // Fills the field wherever focus is; a focused field already received the
   // code's characters and is overwritten with the clean code.
   useHardwareScanner({
@@ -181,6 +243,7 @@ export function NewCatalogItemPage() {
     }
     const values = parsed.value
     setPending(true)
+    let createdId: string | undefined
     const saved = await runToast(async (run) => {
       const categoryId = await run.ok(resolveCategoryChoice(category))
       const result = await run(
@@ -196,15 +259,25 @@ export function NewCatalogItemPage() {
           unitAmount: values.price,
           scanCode: values.scanCode,
           taxRateId: values.taxRateId,
+          libraryProductId,
         })
       )
       // The core's own pricing rules, should the account have become a VAT
       // payer since the form judged it.
       if (!result.ok) return catalogItemPricingErrorKeys[result.error.type]
+      createdId = result.value
       return undefined
     })
     setPending(false)
-    if (saved) router.back()
+    if (!saved) return
+    // Back to the list, which offers the related products of a library
+    // item (`?added=`); the same Back as before for any other item.
+    if (libraryProductId !== null && createdId !== undefined)
+      router.dismissTo({
+        pathname: "/settings/items",
+        params: { added: createdId },
+      })
+    else router.back()
   }
 
   return (
@@ -219,12 +292,26 @@ export function NewCatalogItemPage() {
         </CardHeader>
         <CardContent>
           <FieldGroup>
+            <ItemLibraryPicture
+              libraryProductId={libraryProductId}
+              disabled={pending}
+              onRemove={() => setLibraryProductId(null)}
+            />
             <Field>
               <FieldLabel>{t("catalog.items.form.name.label")}</FieldLabel>
-              <Input
+              <LibraryNameField
+                value={name}
                 placeholder={t("catalog.items.form.name.placeholder")}
                 invalid={error("name") !== undefined}
-                {...text("name", name, setName)}
+                disabled={pending}
+                onChangeText={(next) => {
+                  setName(next)
+                  clearError("name")
+                }}
+                onChoose={(product) => {
+                  const prefill = prefillFor(product)
+                  if (prefill !== undefined) applyPrefill(prefill)
+                }}
               />
               <FieldError>{error("name")}</FieldError>
             </Field>

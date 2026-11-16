@@ -10,7 +10,7 @@ import {
   getStaffDisplayName,
 } from "@payky/core/modules/catalog-item/catalog-item-utils"
 import { Integer } from "@payky/core/modules/shared/schema"
-import { router } from "expo-router"
+import { router, useLocalSearchParams } from "expo-router"
 import Tag from "lucide-react-native/icons/tag"
 import { Suspense, useCallback, useMemo, useState } from "react"
 import { View, YStack } from "tamagui"
@@ -31,8 +31,13 @@ import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
 import { CategoryFilterBar } from "../../shared/category-filter-bar.tsx"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
+import { RelatedProductsCard } from "./related-products-card.tsx"
 
-/** Catalog items, as web's `ItemsPage`, under Settings (navigation/0003). */
+/**
+ * Catalog items, as web's `ItemsPage`, under Settings (navigation/0003).
+ * Back from creating an item from the product library (`?added=`), the
+ * library's related products are offered on top (`RelatedProductsCard`).
+ */
 export function ItemsPage() {
   const { t } = useTranslation()
   return (
@@ -64,6 +69,7 @@ function ItemsSettingsBody() {
   // Beside an item's form on a wide window the form owns the scan.
   const inMasterPane = useMasterPane() !== null
   const { data: allItems } = useEvoluQuery(catalogItemsQuery)
+  const { added } = useLocalSearchParams<{ added?: string }>()
 
   // A scan opens the item it identifies, or a new one carrying the code.
   // Several matches (the code is not unique across devices) are left to the
@@ -90,6 +96,7 @@ function ItemsSettingsBody() {
 
   return (
     <YStack flex={1} gap={12}>
+      <RelatedProductsCard addedItemId={added} catalogItems={allItems} />
       {hasAny && (
         <SearchInput
           value={search}

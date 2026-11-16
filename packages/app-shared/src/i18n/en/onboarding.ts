@@ -180,6 +180,17 @@ export const enOnboarding = {
   "onboarding.selling.tips.description": "Customers can add one when paying.",
   "onboarding.selling.tips.label": "Tips",
   "onboarding.selling.title": "How do you sell?",
+  "onboarding.starterPack.description":
+    "Pick ready-made items and type your prices. You can edit them later.",
+  "onboarding.starterPack.empty": "Start empty",
+  "onboarding.starterPack.include": "Add {name}",
+  "onboarding.starterPack.missingPrices":
+    "Type a price for every checked item, or uncheck the ones you don't sell.",
+  "onboarding.starterPack.priceLabel": "Price of {name}",
+  "onboarding.starterPack.pricePlaceholder": "Price",
+  "onboarding.starterPack.pricingFailed":
+    "An item for 0 needs a VAT rate, and one of yours has none. Type a price or uncheck it.",
+  "onboarding.starterPack.title": "Start with a menu",
   "onboarding.title": "Welcome to {appName}",
   "onboarding.welcome.new": "New business",
   "onboarding.welcome.restore": "I already have an account",

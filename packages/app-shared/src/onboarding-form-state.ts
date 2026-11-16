@@ -1,5 +1,9 @@
 import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
 import { atom } from "jotai"
+import {
+  initialOnboardingStarterPack,
+  type OnboardingStarterPack,
+} from "./onboarding-starter-pack.ts"
 
 export type OnboardingStep =
   | "accountChoice"
@@ -46,6 +50,8 @@ interface OnboardingFormState {
   /** Nothing until the merchant picks one: there is no default (onboarding/0012). */
   readonly homeMode: TerminalHomeMode | null
   readonly tipsEnabled: boolean
+  /** "Start empty" until a pack is picked; Finito offers packs, web not yet. */
+  readonly starterPack: OnboardingStarterPack
 }
 
 export const initialOnboardingFormState: OnboardingFormState = {
@@ -55,6 +61,7 @@ export const initialOnboardingFormState: OnboardingFormState = {
   iban: "",
   homeMode: null,
   tipsEnabled: true,
+  starterPack: initialOnboardingStarterPack,
 }
 
 export const onboardingFormAtom = atom<OnboardingFormState>(

@@ -74,6 +74,7 @@ import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { CategoryCombobox } from "../../shared/category-combobox.tsx"
+import { ItemLibraryPicture } from "../../shared/item-library-picture.tsx"
 import { useCatalogItemOptions } from "../../shared/use-catalog-item-options.ts"
 import { CatalogFormEmptyState } from "../catalog-form-empty-state.tsx"
 import { CategoryEditDialog } from "./category-edit-dialog.tsx"
@@ -85,7 +86,9 @@ const taxRateCodec = optionalIdCodec<TaxRateId>()
  * Edits one catalog item, as web's `EditCatalogItemPage`: every field saves
  * itself. Whether the item is a discount was settled when it was created
  * (catalog/0002): a discount's price field edits the amount and keeps the
- * sign, and it has no VAT rate to pick.
+ * sign, and it has no VAT rate to pick. An item from the product library
+ * shows its picture, which "Remove picture" takes off for good
+ * (`libraryProductId` to `null`); renaming it keeps the picture.
  */
 export function EditCatalogItemPage() {
   const { catalogItemId } = useLocalSearchParams<{ catalogItemId: string }>()
@@ -207,6 +210,10 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
         </CardHeader>
         <CardContent>
           <FieldGroup>
+            <ItemLibraryPicture
+              libraryProductId={item.libraryProductId}
+              onRemove={() => void saveItem({ libraryProductId: null })}
+            />
             <InlineEditField
               label={t("catalog.items.form.name.label")}
               placeholder={t("catalog.items.form.name.placeholder")}

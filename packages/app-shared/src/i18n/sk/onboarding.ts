@@ -181,6 +181,17 @@ export const skOnboarding = {
   "onboarding.selling.tips.description": "Zákazník ho môže pridať pri platení.",
   "onboarding.selling.tips.label": "Prepitné",
   "onboarding.selling.title": "Ako predávate?",
+  "onboarding.starterPack.description":
+    "Vyberte hotové položky a zadajte svoje ceny. Neskôr ich môžete upraviť.",
+  "onboarding.starterPack.empty": "Začať bez položiek",
+  "onboarding.starterPack.include": "Pridať {name}",
+  "onboarding.starterPack.missingPrices":
+    "Zadajte cenu pri každej zaškrtnutej položke alebo zrušte zaškrtnutie tých, ktoré nepredávate.",
+  "onboarding.starterPack.priceLabel": "Cena: {name}",
+  "onboarding.starterPack.pricePlaceholder": "Cena",
+  "onboarding.starterPack.pricingFailed":
+    "Položka za 0 potrebuje sadzbu DPH a jedna z vašich žiadnu nemá. Zadajte jej cenu alebo zrušte jej zaškrtnutie.",
+  "onboarding.starterPack.title": "Začnite s ponukou",
   "onboarding.title": "{appName} vás víta",
   "onboarding.welcome.new": "Nový podnik",
   "onboarding.welcome.restore": "Už mám účet",
