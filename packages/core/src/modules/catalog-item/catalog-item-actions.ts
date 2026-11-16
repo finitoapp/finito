@@ -17,6 +17,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import { getFirstOr } from "../shared/result.ts"
+import { NonNegativeInteger } from "../shared/schema.ts"
 import type { CatalogItem } from "./catalog-item.ts"
 import {
   catalogItemByIdQuery,
@@ -37,6 +38,24 @@ export const createCatalogItemNotFoundError = defineError(
 export type CatalogItemNotFoundError = ReturnType<
   typeof createCatalogItemNotFoundError
 >
+
+/** Only the catalog item's own columns, without the undefined ones. */
+const catalogItemInsertValues = (input: InsertValues<CatalogItem>) =>
+  removeUndefinedValues({
+    deviceId: input.deviceId,
+    categoryId: input.categoryId,
+    name: input.name,
+    description: input.description,
+    internalName: input.internalName,
+    internalDescription: input.internalDescription,
+    sku: input.sku,
+    currency: input.currency,
+    unitAmount: input.unitAmount,
+    sortOrder: input.sortOrder,
+    scanCode: input.scanCode,
+    taxRateId: input.taxRateId,
+    libraryProductId: input.libraryProductId,
+  })
 
 /** Whether the account is a VAT payer, for `validateCatalogItemPricing`. */
 const loadVatPayer = (): Task<boolean, never, EvoluDep> => async (run) => {
@@ -64,24 +83,10 @@ export const createCatalogItem =
 
     const { evoluOwner } = run.deps
     const { id } = await runMutationWithCompletion((options) =>
-      run.deps.evolu.insert(
-        "catalogItem",
-        removeUndefinedValues({
-          deviceId: input.deviceId,
-          categoryId: input.categoryId,
-          name: input.name,
-          description: input.description,
-          internalName: input.internalName,
-          internalDescription: input.internalDescription,
-          sku: input.sku,
-          currency: input.currency,
-          unitAmount: input.unitAmount,
-          sortOrder: input.sortOrder,
-          scanCode: input.scanCode,
-          taxRateId: input.taxRateId,
-        }),
-        { ...options, owner: evoluOwner }
-      )
+      run.deps.evolu.insert("catalogItem", catalogItemInsertValues(input), {
+        ...options,
+        owner: evoluOwner,
+      })
     )
     return ok(id)
   }
@@ -157,6 +162,55 @@ export const createCatalogItemAtEnd =
         sortOrder: getNextSortOrder(last),
       })
     )
+  }
+
+/**
+ * Creates several catalog items appended after the current last one, in the
+ * order given and in one batch. Every item's pricing is judged first, so one
+ * that breaks `validateCatalogItemPricing` refuses them all and none is
+ * written.
+ */
+export const createCatalogItemsAtEnd =
+  (
+    inputs: ReadonlyArray<Omit<InsertValues<CatalogItem>, "sortOrder">>
+  ): Task<
+    ReadonlyArray<CatalogItemId>,
+    CatalogItemPricingError,
+    EvoluDep & EvoluOwnerDep
+  > =>
+  async (run) => {
+    if (inputs.length === 0) return ok([])
+
+    const [[last], vatPayer] = await Promise.all([
+      run.deps.evolu.loadQuery(lastCatalogItemSortOrderQuery),
+      run.ok(loadVatPayer()),
+    ])
+    for (const input of inputs) {
+      const pricingResult = validateCatalogItemPricing({
+        unitAmount: input.unitAmount,
+        taxRateId: input.taxRateId ?? null,
+        vatPayer,
+        originalUnitAmount: null,
+      })
+      if (!pricingResult.ok) return pricingResult
+    }
+
+    const firstSortOrder = getNextSortOrder(last)
+    const { evoluOwner } = run.deps
+    const ids = await runMutationWithCompletion((options) =>
+      inputs.map(
+        (input, index) =>
+          run.deps.evolu.insert(
+            "catalogItem",
+            catalogItemInsertValues({
+              ...input,
+              sortOrder: NonNegativeInteger(firstSortOrder + index),
+            }),
+            { ...options, owner: evoluOwner }
+          ).id
+      )
+    )
+    return ok(ids)
   }
 
 export const deleteCatalogItem =

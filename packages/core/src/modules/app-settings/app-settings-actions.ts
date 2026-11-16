@@ -14,6 +14,10 @@ import {
   saveFiatBankAccount,
   saveSparkAccount,
 } from "../account/account-actions.ts"
+import { findOrCreateCatalogCategory } from "../catalog-category/catalog-category-actions.ts"
+import type { CatalogCategoryId } from "../catalog-category/catalog-category-types.ts"
+import { createCatalogItemsAtEnd } from "../catalog-item/catalog-item-actions.ts"
+import type { CatalogItemPricingError } from "../catalog-item/catalog-item-utils.ts"
 import { setLegalEntity } from "../legal-entity/legal-entity-actions.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { CountryCode } from "../legal-entity/legal-entity-types.ts"
@@ -24,8 +28,12 @@ import {
 } from "../shared/evolu-utils.ts"
 import { type FiatCurrency, type Iban, TimestampMs } from "../shared/schema.ts"
 import { seedTaxRatesForCountry } from "../tax-rate/tax-rate-actions.ts"
-import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import {
+  activeTaxRatesQuery,
+  taxRatesQuery,
+} from "../tax-rate/tax-rate-queries.ts"
 import type { TaxRateId } from "../tax-rate/tax-rate-types.ts"
+import { findActiveTaxRateByPercentage } from "../tax-rate/tax-rate-utils.ts"
 import type { appSettings } from "./app-settings.ts"
 import { settingsQuery } from "./app-settings-queries.ts"
 import {
@@ -35,6 +43,7 @@ import {
 import type {
   AppSettingsId,
   DefaultPaymentMethod,
+  OnboardingStarterItem,
   TerminalHomeMode,
 } from "./app-settings-types.ts"
 import {
@@ -221,6 +230,56 @@ export const markRecoveryPhraseVerified =
     )
 
 /**
+ * Creates a starter pack's items in the onboarding currency, after the
+ * catalog's last item, in one batch. Items naming one category share it, made
+ * where there is none of that name yet; an item's VAT becomes the account's
+ * active rate of that percentage, or none when it has no such rate.
+ */
+const createStarterItems =
+  (
+    starterItems: ReadonlyArray<OnboardingStarterItem>,
+    currency: FiatCurrency
+  ): Task<void, CatalogItemPricingError, EvoluDep & EvoluOwnerDep> =>
+  async (run) => {
+    if (starterItems.length === 0) return ok()
+
+    const taxRates = await run.deps.evolu.loadQuery(activeTaxRatesQuery)
+    const categoryIds = new Map<string, CatalogCategoryId>()
+    for (const { categoryName } of starterItems) {
+      if (categoryName === null || categoryIds.has(categoryName)) continue
+      categoryIds.set(
+        categoryName,
+        await run.ok(findOrCreateCatalogCategory(categoryName))
+      )
+    }
+
+    const created = await run(
+      createCatalogItemsAtEnd(
+        starterItems.map((item) => ({
+          deviceId: null,
+          categoryId:
+            item.categoryName === null
+              ? null
+              : (categoryIds.get(item.categoryName) ?? null),
+          name: item.name,
+          libraryProductId: item.libraryProductId,
+          currency,
+          unitAmount: item.unitAmount,
+          taxRateId:
+            item.taxRatePercentage === null
+              ? null
+              : (findActiveTaxRateByPercentage(
+                  taxRates,
+                  item.taxRatePercentage
+                ) ?? null),
+        }))
+      )
+    )
+    if (!created.ok) return created
+    return ok()
+  }
+
+/**
  * Writes everything the onboarding wizard collected. Refuses an onboarded
  * account before the first write (account/0005): the bank account below is
  * a last-write-wins singleton, so a refusal in `completeOnboarding` alone
@@ -236,9 +295,14 @@ export const finishOnboarding =
     /** How the business sells, chosen on onboarding's last step (onboarding/0012). */
     readonly homeMode: TerminalHomeMode
     readonly tipsEnabled: boolean
+    /**
+     * The starter pack's products the merchant checked and priced; left out,
+     * the catalog starts empty.
+     */
+    readonly starterItems?: ReadonlyArray<OnboardingStarterItem>
   }): Task<
     void,
-    AlreadyOnboardedError,
+    AlreadyOnboardedError | CatalogItemPricingError,
     EvoluDep & EvoluOwnerDep & MasterKeyDep
   > =>
   async (run) => {
@@ -275,6 +339,13 @@ export const finishOnboarding =
         currency: input.currency,
       })
     )
+    // Before the settings row, so a refused item leaves the account not
+    // onboarded and the wizard can finish again: everything above is
+    // guarded or an upsert, and a category made here is found by name.
+    const starter = await run(
+      createStarterItems(input.starterItems ?? [], input.currency)
+    )
+    if (!starter.ok) return starter
     const completed = await run(
       completeOnboarding({
         fiatCurrency: input.currency,

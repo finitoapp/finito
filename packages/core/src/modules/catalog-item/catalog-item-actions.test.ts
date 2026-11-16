@@ -15,6 +15,7 @@ import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
 import {
   createCatalogItem,
   createCatalogItemAtEnd,
+  createCatalogItemsAtEnd,
   deleteCatalogItem,
   updateCatalogItem,
 } from "./catalog-item-actions.ts"
@@ -316,6 +317,128 @@ describe("catalog item actions", () => {
     expect(await run.ok(deleteCatalogItem(id))).toBe(id)
 
     await expect.poll(() => evolu.loadQuery(catalogItemsQuery)).toEqual([])
+  }, 15_000)
+})
+
+describe("catalog item library product", () => {
+  const espresso = {
+    deviceId: null,
+    categoryId: null,
+    name: NonEmptyString255("Espresso"),
+    currency: "CZK",
+    unitAmount: NonNegativeInteger(5_900),
+  } as const
+
+  test("an item created without a library product has none", async () => {
+    await using testEvolu = await createEvoluTest()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+
+    const id = await run.orThrow(createCatalogItemAtEnd(espresso))
+
+    await expect
+      .poll(() => testEvolu.evolu.loadQuery(catalogItemByIdQuery(id)))
+      .toMatchObject([{ id, libraryProductId: null }])
+  }, 15_000)
+
+  test("renaming an item keeps its library product, and clearing it removes it", async () => {
+    await using testEvolu = await createEvoluTest()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+
+    const id = await run.orThrow(
+      createCatalogItemAtEnd({
+        ...espresso,
+        libraryProductId: NonEmptyString255("espresso"),
+      })
+    )
+    await run.orThrow(
+      updateCatalogItem({ id, name: NonEmptyString255("Our espresso") })
+    )
+    await expect
+      .poll(() => testEvolu.evolu.loadQuery(catalogItemByIdQuery(id)))
+      .toMatchObject([
+        { id, name: "Our espresso", libraryProductId: "espresso" },
+      ])
+
+    await run.orThrow(updateCatalogItem({ id, libraryProductId: null }))
+    await expect
+      .poll(() => testEvolu.evolu.loadQuery(catalogItemByIdQuery(id)))
+      .toMatchObject([{ id, libraryProductId: null }])
+  }, 15_000)
+})
+
+describe("createCatalogItemsAtEnd", () => {
+  const item = (name: string, unitAmount: number) =>
+    ({
+      deviceId: null,
+      categoryId: null,
+      name: NonEmptyString255(name),
+      currency: "CZK",
+      unitAmount: Integer(unitAmount),
+    }) as const
+
+  test("appends the items in the order given after the last one", async () => {
+    await using testEvolu = await createEvoluTest()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    const existing = await run.orThrow(
+      createCatalogItemAtEnd(item("Water", 2_000))
+    )
+
+    const [espresso, cappuccino] = await run.orThrow(
+      createCatalogItemsAtEnd([
+        {
+          ...item("Espresso", 5_900),
+          libraryProductId: NonEmptyString255("espresso"),
+        },
+        item("Cappuccino", 6_900),
+      ])
+    )
+
+    await expect
+      .poll(() => testEvolu.evolu.loadQuery(catalogItemsQuery))
+      .toMatchObject([
+        { id: existing, sortOrder: 0 },
+        {
+          id: espresso,
+          name: "Espresso",
+          unitAmount: 5_900,
+          sortOrder: 1,
+          libraryProductId: "espresso",
+        },
+        {
+          id: cappuccino,
+          name: "Cappuccino",
+          unitAmount: 6_900,
+          sortOrder: 2,
+          libraryProductId: null,
+        },
+      ])
+  }, 15_000)
+
+  test("writes none of the items when one breaks the pricing rules", async () => {
+    await using testEvolu = await createEvoluTest()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+    await run.ok(setLegalEntity({ country: "CZ", vatPayer: true }))
+
+    await expect(
+      run(
+        createCatalogItemsAtEnd([item("Espresso", 5_900), item("Tap water", 0)])
+      )
+    ).resolves.toEqual({
+      ok: false,
+      error: { type: "ZeroPriceWithoutTaxRate" },
+    })
+    expect(await testEvolu.evolu.loadQuery(catalogItemsQuery)).toEqual([])
+  }, 15_000)
+
+  test("writes nothing for no items", async () => {
+    await using testEvolu = await createEvoluTest()
+    await using run = testCreateRun(evoluTestDeps(testEvolu.evolu))
+
+    await expect(run(createCatalogItemsAtEnd([]))).resolves.toEqual({
+      ok: true,
+      value: [],
+    })
+    expect(await testEvolu.evolu.loadQuery(catalogItemsQuery)).toEqual([])
   }, 15_000)
 })
 

@@ -30,6 +30,7 @@ const makeItem = (
   sortOrder: NonNegativeInteger(0),
   scanCode: null,
   taxRateId: null,
+  libraryProductId: null,
   ...overrides,
 })
 
