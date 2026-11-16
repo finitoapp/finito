@@ -172,7 +172,11 @@ function TableAssignmentTile({
       <TableTileShell
         inDialog
         name={table.name}
-        subtitle={t("tables.seatCount", { value: table.seatCount })}
+        subtitle={
+          table.seatCount === null
+            ? undefined
+            : t("tables.seatCount", { value: table.seatCount })
+        }
         occupied={bills.length > 0}
         selected={selected}
       >

@@ -9,13 +9,11 @@ export const tablesQuery = createQuery((db) =>
     .selectFrom("table")
     .selectAll()
     .where("name", "is not", null)
-    .where("seatCount", "is not", null)
     .where("code", "is not", null)
     .where("sortOrder", "is not", null)
     .where("isDeleted", "is", null)
     .$narrowType<{
       name: KyselyNotNull
-      seatCount: KyselyNotNull
       code: KyselyNotNull
       sortOrder: KyselyNotNull
     }>()
@@ -34,7 +32,6 @@ export const lastTableSortOrderQuery = createQuery((db) =>
     .selectFrom("table")
     .select("sortOrder")
     .where("name", "is not", null)
-    .where("seatCount", "is not", null)
     .where("code", "is not", null)
     .where("sortOrder", "is not", null)
     .where("isDeleted", "is", null)
@@ -54,7 +51,6 @@ export const tablesExistQuery = createQuery((db) =>
     .selectFrom("table")
     .select("id")
     .where("name", "is not", null)
-    .where("seatCount", "is not", null)
     .where("code", "is not", null)
     .where("sortOrder", "is not", null)
     .where("isDeleted", "is", null)
@@ -79,13 +75,11 @@ export const tablesPageQuery = ({
       .selectFrom("table")
       .selectAll()
       .where("name", "is not", null)
-      .where("seatCount", "is not", null)
       .where("code", "is not", null)
       .where("sortOrder", "is not", null)
       .where("isDeleted", "is", null)
       .$narrowType<{
         name: KyselyNotNull
-        seatCount: KyselyNotNull
         code: KyselyNotNull
         sortOrder: KyselyNotNull
       }>()
@@ -107,12 +101,10 @@ export const tableByIdQuery = (idValue: TableId) =>
       .selectAll()
       .where("id", "=", idValue)
       .where("name", "is not", null)
-      .where("seatCount", "is not", null)
       .where("code", "is not", null)
       .where("sortOrder", "is not", null)
       .$narrowType<{
         name: KyselyNotNull
-        seatCount: KyselyNotNull
         code: KyselyNotNull
         sortOrder: KyselyNotNull
       }>()

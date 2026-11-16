@@ -1,5 +1,6 @@
-# web's addTable: adds a table (NAME, SEATS) through the settings form and
-# ends on the tables list.
+# web's addTable: adds a table (NAME, optional SEATS) through the settings
+# form and ends on the tables list. Without SEATS the seat count is left
+# empty: a table without seats (catalog/0008).
 appId: ${APP_ID}
 ---
 - runFlow:
@@ -20,10 +21,12 @@ appId: ${APP_ID}
       LABEL: ${output.t["catalog.tables.form.name.label"]}
       VALUE: ${NAME}
 - runFlow:
+    when:
+      true: ${typeof SEATS !== "undefined"}
     file: type-input.yaml
     env:
       LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
-      VALUE: ${SEATS}
+      VALUE: '${typeof SEATS === "undefined" ? "" : SEATS}'
 - runFlow:
     when:
       platform: Android

@@ -315,13 +315,15 @@ function TableTile({
             ) : (
               <>
                 <span>{t("tables.tile.free")}</span>
-                <span className="flex items-center gap-0.5">
-                  <UsersIcon aria-hidden className="size-3.5" />
-                  <span aria-hidden>{table.seatCount}</span>
-                  <span className="sr-only">
-                    {t("tables.seatCount", { value: table.seatCount })}
+                {table.seatCount !== null && (
+                  <span className="flex items-center gap-0.5">
+                    <UsersIcon aria-hidden className="size-3.5" />
+                    <span aria-hidden>{table.seatCount}</span>
+                    <span className="sr-only">
+                      {t("tables.seatCount", { value: table.seatCount })}
+                    </span>
                   </span>
-                </span>
+                )}
               </>
             )}
           </div>

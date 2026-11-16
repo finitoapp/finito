@@ -1,6 +1,6 @@
 import { addTable } from "./support/bill.ts"
 import { expect, test } from "./support/fixtures.ts"
-import { translate } from "./support/i18n.ts"
+import { translate, translateValue } from "./support/i18n.ts"
 import { gotoPage, reloadPage } from "./support/navigation.ts"
 
 test("create, edit and delete a table", async ({ seededPage: page }) => {
@@ -150,6 +150,53 @@ test("create, edit and delete a table", async ({ seededPage: page }) => {
     await expect(
       page.getByText(translate("en", "catalog.tables.empty.title"))
     ).toBeVisible()
+  })
+})
+
+test("a table without seats lists without a seat count", async ({
+  seededPage: page,
+}) => {
+  await test.step("add a table with seats and one without", async () => {
+    await addTable(page, "en", { name: "Patio 1", seatCount: "4" })
+    await addTable(page, "en", { name: "Bar" })
+  })
+
+  const patioRow = page.getByRole("link", { name: /Patio 1/ })
+  const barRow = page.getByRole("link", { name: /Bar/ })
+
+  await test.step("only the table with seats shows a count", async () => {
+    await expect(patioRow).toContainText(
+      translateValue("en", "catalog.tables.seatCount", 4)
+    )
+    await expect(barRow).toHaveText("Bar")
+  })
+
+  const seatCountInput = page.getByRole("textbox", {
+    name: translate("en", "catalog.tables.form.seatCount.label"),
+  })
+
+  await test.step("clearing a seat count saves the table without one", async () => {
+    await patioRow.click()
+    await page
+      .getByRole("heading", {
+        name: translate("en", "catalog.tables.form.title.edit"),
+      })
+      .waitFor()
+    await expect(seatCountInput).toHaveValue("4")
+
+    await seatCountInput.fill("")
+    await seatCountInput.press("Enter")
+    await expect(
+      page.getByLabel(translate("en", "inlineEdit.saved"))
+    ).toBeVisible()
+
+    await reloadPage(page, "en", "catalog.tables.form.title.edit")
+    await expect(seatCountInput).toHaveValue("")
+  })
+
+  await test.step("the cleared table lists without a seat count", async () => {
+    await gotoPage(page, "/catalog/tables", "en", "catalog.tables.title")
+    await expect(patioRow).toHaveText("Patio 1")
   })
 })
 

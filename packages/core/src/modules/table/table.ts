@@ -11,7 +11,11 @@ export const table = {
   id: TableId,
   deviceId: DeviceId.nullable(),
   name: NonEmptyString255Schema,
-  seatCount: PositiveIntegerSchema,
+  /**
+   * How many people the table seats, or null when the merchant has not said
+   * (catalog/0008): a count nobody knows is not shown at all.
+   */
+  seatCount: PositiveIntegerSchema.nullable(),
   // Not read or written by any feature yet — reserved for a future QR code
   // sticker on the physical table that resolves straight to it.
   code: NonEmptyString255Schema,

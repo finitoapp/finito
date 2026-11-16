@@ -33,11 +33,12 @@ export function TablesList({
         params: { tableId: table.id },
         icon: <Table2Icon className="text-muted-foreground" />,
         label: table.name,
-        action: (
-          <span className="text-sm font-medium text-muted-foreground">
-            {t("catalog.tables.seatCount", { value: table.seatCount })}
-          </span>
-        ),
+        action:
+          table.seatCount === null ? undefined : (
+            <span className="text-sm font-medium text-muted-foreground">
+              {t("catalog.tables.seatCount", { value: table.seatCount })}
+            </span>
+          ),
       })}
     />
   )

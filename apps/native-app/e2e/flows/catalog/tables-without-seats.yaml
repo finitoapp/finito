@@ -1,0 +1,51 @@
+# web catalog-tables.spec.ts: "a table without seats lists without a seat
+# count" (catalog/0008).
+appId: ${APP_ID}
+tags: [catalog]
+---
+- runFlow: ../../subflows/seed-onboarding.yaml
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Patio 1
+      SEATS: "4"
+- runFlow:
+    file: ../../subflows/add-table.yaml
+    env:
+      NAME: Bar
+# Only the table with seats shows a count.
+- assertVisible: Bar
+- assertVisible: '${output.tv("catalog.tables.seatCount", { value: 4 })}'
+# Clearing the seat count saves the table without one.
+- tapOn: Patio 1
+- extendedWaitUntil:
+    visible: ${output.t["catalog.tables.form.title.edit"]}
+    timeout: 10000
+- assertVisible:
+    id: ${output.re(output.t["catalog.tables.form.seatCount.label"])}
+    text: "4"
+- runFlow:
+    file: ../../subflows/tap-input.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
+- runFlow:
+    file: ../../subflows/clear-input.yaml
+    env:
+      LABEL: ${output.t["catalog.tables.form.seatCount.label"]}
+      PLACEHOLDER: ${output.t["catalog.tables.form.seatCount.placeholder"]}
+- runFlow:
+    file: ../../subflows/tap-label.yaml
+    env:
+      LABEL: ${output.t["inlineEdit.save"]}
+- extendedWaitUntil:
+    visible: ${output.re(output.t["inlineEdit.saved"])}
+    timeout: 15000
+# The cleared table lists without a seat count, and so does the other one.
+- runFlow:
+    file: ../../subflows/reopen.yaml
+    env:
+      ROUTE: settings/tables
+      TEXT: ${output.t["catalog.tables.title"]}
+- assertVisible: Patio 1
+- assertVisible: Bar
+- assertNotVisible: '${output.tv("catalog.tables.seatCount", { value: "\\d+" })}'

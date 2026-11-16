@@ -1096,7 +1096,7 @@ export const skSettings = {
   "catalog.tables.empty.title": "Zatiaľ žiadne stoly",
   "catalog.tables.emptySearch": "Vyhľadávanie nenašlo žiadne stoly.",
   "catalog.tables.form.card.description":
-    "Názov a počet miest zobrazené pri priraďovaní stola k účtu.",
+    "Názov a nepovinný počet miest zobrazené pri priraďovaní stola k účtu.",
   "catalog.tables.form.card.title": "Detaily",
   "catalog.tables.form.code.description":
     "Zatiaľ sa nepoužíva - rezervované pre budúci QR kód, ktorý bude tento stôl identifikovať.",
@@ -1110,7 +1110,7 @@ export const skSettings = {
   "catalog.tables.form.saved.create": "Stôl pridaný.",
   "catalog.tables.form.seatCount.invalid": "Zadajte platný počet miest.",
   "catalog.tables.form.seatCount.label": "Počet miest",
-  "catalog.tables.form.seatCount.placeholder": "napr. 4",
+  "catalog.tables.form.seatCount.placeholder": "Nepovinné – napr. 4",
   "catalog.tables.form.title.create": "Pridať stôl",
   "catalog.tables.form.title.edit": "Upraviť stôl",
   "catalog.tables.search": "Hľadať stoly...",

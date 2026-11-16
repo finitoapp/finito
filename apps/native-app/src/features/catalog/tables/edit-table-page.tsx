@@ -1,6 +1,6 @@
 import type { UpdateValues } from "@evolu/common"
 import {
-  positiveIntegerCodec,
+  optionalPositiveIntegerCodec,
   requiredTextCodec,
 } from "@payky/app-shared/inline-edit-codecs"
 import type { Table, TableRow } from "@payky/core/modules/table/table"
@@ -135,7 +135,7 @@ function EditTableForm({ table }: { readonly table: TableRow }) {
               placeholder={t("catalog.tables.form.seatCount.placeholder")}
               keyboardType="number-pad"
               defaultValue={table.seatCount}
-              codec={positiveIntegerCodec}
+              codec={optionalPositiveIntegerCodec}
               errorKey="catalog.tables.form.seatCount.invalid"
               onSave={(seatCount) => saveTable({ seatCount })}
             />
