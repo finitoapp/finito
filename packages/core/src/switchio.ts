@@ -57,11 +57,13 @@ const SwitchioTransactionResultJson = jsonCodec(SwitchioTransactionResultSchema)
 /**
  * The terminal was never reached. `demo`: a demo account calls no outside
  * service (demo-data/0001), so it never launches the real SwitchioPay.
+ * `launchFailed`: SwitchioPay is installed, but the launch threw before it
+ * started (payment/0021).
  */
 export const createSwitchioUnavailableError = defineError(
   "SwitchioUnavailable"
 )<{
-  readonly reason: "notNativeRuntime" | "notInstalled" | "demo"
+  readonly reason: "notNativeRuntime" | "notInstalled" | "launchFailed" | "demo"
 }>()
 export type SwitchioUnavailableError = ReturnType<
   typeof createSwitchioUnavailableError

@@ -16,6 +16,7 @@ import type { SparkWalletDep } from "../../spark/spark-wallet.ts"
 import { createFakeSparkWallet } from "../../spark/spark-wallet-test-fixtures.ts"
 import {
   createSwitchioLaunchRefusedError,
+  createSwitchioUnavailableError,
   interpretSwitchioPaymentResult,
   type SwitchioPaymentLookup,
   type SwitchioPaymentLookupDep,
@@ -4307,6 +4308,75 @@ describe("payment actions", () => {
             })
           )
         ).resolves.toEqual({ ok: true, value: paymentId })
+      }, 15_000)
+    })
+
+    describe("a launch that never reached SwitchioPay (payment/0021)", () => {
+      const launchFailed = () =>
+        err(createSwitchioUnavailableError({ reason: "launchFailed" }))
+
+      test("leaves no unknown outcome behind, so the next attempt needs no confirmation", async () => {
+        const results = [launchFailed(), approved]
+        await using ctx = await setUp(async () => {
+          const next = results.shift()
+          if (next === undefined) throw new Error("Unexpected terminal call.")
+          return next
+        })
+        const { evolu, run, accountId, paymentId } = ctx
+
+        const failed = await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId })
+        )
+
+        expect(!failed.ok && failed.error).toEqual({
+          type: "SwitchioUnavailable",
+          reason: "launchFailed",
+        })
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row).toMatchObject({
+          transactionId: null,
+          unresolvedTransactionId: null,
+        })
+        await expect(
+          run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        ).resolves.toEqual({ ok: true, value: paymentId })
+      }, 15_000)
+
+      test("puts back the earlier attempt whose outcome is unknown, so it still needs confirmation", async () => {
+        const results = [await unreadable(), launchFailed()]
+        await using ctx = await setUp(async () => {
+          const next = results.shift()
+          if (next === undefined) throw new Error("Unexpected terminal call.")
+          return next
+        })
+        const { evolu, run, requests, accountId, paymentId, advanceClock } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        const first = requests[0]?.transactionId ?? null
+
+        advanceClock(1_000)
+        await run(
+          payPaymentWithSwitchioCard({
+            paymentId,
+            accountId,
+            retryUnresolved: true,
+          })
+        )
+
+        const [row] = await evolu.loadQuery(
+          paymentCardSwitchioByPaymentIdQuery(paymentId)
+        )
+        expect(row).toMatchObject({
+          transactionId: first,
+          unresolvedTransactionId: first,
+        })
+        const unconfirmed = await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId })
+        )
+        expect(!unconfirmed.ok && unconfirmed.error.type).toBe(
+          "SwitchioAttemptUnresolved"
+        )
       }, 15_000)
     })
 

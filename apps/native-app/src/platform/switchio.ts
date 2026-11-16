@@ -74,6 +74,13 @@ const SWITCHIO_NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
  */
 const SWITCHIO_LAUNCH_REFUSED_CODE = "SWITCHIO_LAUNCH_REFUSED"
 
+/**
+ * Matched by the Kotlin module: the launch threw before SwitchioPay started
+ * (payment/0021), and the module put back what it had set up. Nothing left
+ * for the terminal, so nothing was charged.
+ */
+const SWITCHIO_LAUNCH_FAILED_CODE = "SWITCHIO_LAUNCH_FAILED"
+
 // Absent in a binary built before the module existed.
 const nativeSwitchio =
   requireOptionalNativeModule<FinitoSwitchioNativeModule>("FinitoSwitchio")
@@ -223,10 +230,11 @@ const refundStore: SwitchioResultStore = {
  *   refuses the same two cases itself, with `SWITCHIO_LAUNCH_REFUSED`;
  * - the stored copy is acknowledged as soon as the promise answers, since
  *   the caller settles it from the promise;
- * - only a missing SwitchioPay and a refused launch are known to fail
- *   before the terminal could act. Any other rejection (a dropped bridge
- *   call, a recreated activity) may come after it took the card or closed
- *   the batch, so it is an unknown outcome, never "unavailable".
+ * - only a missing SwitchioPay, a refused launch and a launch that threw
+ *   before SwitchioPay started (payment/0021) are known to fail before the
+ *   terminal could act. Any other rejection (a dropped bridge call, a
+ *   recreated activity) may come after it took the card or closed the
+ *   batch, so it is an unknown outcome, never "unavailable".
  */
 const launchSwitchio = async <Answer, Value, Error>({
   demo,
@@ -268,6 +276,9 @@ const launchSwitchio = async <Answer, Value, Error>({
     } catch (error) {
       if (isRejectionWithCode(error, SWITCHIO_NOT_INSTALLED_CODE)) {
         return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+      }
+      if (isRejectionWithCode(error, SWITCHIO_LAUNCH_FAILED_CODE)) {
+        return err(createSwitchioUnavailableError({ reason: "launchFailed" }))
       }
       if (isRejectionWithCode(error, SWITCHIO_LAUNCH_REFUSED_CODE)) {
         return refused()

@@ -999,9 +999,11 @@ const recordSwitchioApproval =
  *
  * A launch SwitchioPay refused (`SwitchioLaunchRefused`, payment/0020:
  * another launch is waiting on it, or a result nobody settled yet is stored)
- * never reached the terminal, so it is not an unknown outcome: the row is
- * put back as it was before this attempt, the previous attempt's marker and
- * request id included, which a stored result of that attempt is matched by.
+ * never reached the terminal, and neither did one it was unavailable for
+ * (`SwitchioUnavailable`: not installed, or a launch that threw before it
+ * started, payment/0021). Neither is an unknown outcome: the row is put back
+ * as it was before this attempt, the previous attempt's marker and request
+ * id included, which a stored result of that attempt is matched by.
  */
 export const payPaymentWithSwitchioCard =
   ({
@@ -1099,11 +1101,13 @@ export const payPaymentWithSwitchioCard =
 
     if (
       !terminalResult.ok &&
-      terminalResult.error.type === "SwitchioLaunchRefused"
+      (terminalResult.error.type === "SwitchioLaunchRefused" ||
+        terminalResult.error.type === "SwitchioUnavailable")
     ) {
-      run.deps.console.warn("[payment] SwitchioPay refused the launch", {
+      run.deps.console.warn("[payment] SwitchioPay was not reached", {
         paymentId,
         transactionId,
+        error: terminalResult.error,
       })
       // Only while the row still holds this attempt: a result of the
       // previous one settled meanwhile has written the row itself.

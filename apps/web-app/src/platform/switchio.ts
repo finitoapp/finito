@@ -29,6 +29,12 @@ interface SwitchioNativePlugin {
 export const SWITCHIO_PLUGIN_NAME = "Switchio"
 const SWITCHIO_NOT_INSTALLED_CODE = "SWITCHIO_NOT_INSTALLED"
 
+/**
+ * The plugin's rejection for a launch that threw before SwitchioPay started
+ * (payment/0021): nothing was charged either.
+ */
+const SWITCHIO_LAUNCH_FAILED_CODE = "SWITCHIO_LAUNCH_FAILED"
+
 const SwitchioNative =
   registerPlugin<SwitchioNativePlugin>(SWITCHIO_PLUGIN_NAME)
 
@@ -44,11 +50,11 @@ export const isCardTerminalLinked = (): boolean => Capacitor.isNativePlatform()
 export const isSwitchioInstalled = async (): Promise<boolean> =>
   Capacitor.isNativePlatform() && (await SwitchioNative.isInstalled()).installed
 
-const isNotInstalledRejection = (error: unknown): boolean =>
+const isRejectionWithCode = (error: unknown, code: string): boolean =>
   typeof error === "object" &&
   error !== null &&
   "code" in error &&
-  error.code === SWITCHIO_NOT_INSTALLED_CODE
+  error.code === code
 
 /**
  * Takes card payments through SwitchioPay. A demo account calls no outside
@@ -71,12 +77,16 @@ export const createSwitchioTerminalDep = ({
       try {
         return interpretSwitchioPaymentResult(await SwitchioNative.pay(request))
       } catch (error) {
-        // Only a missing SwitchioPay activity is known to fail before
-        // anything was charged. Any other rejection (a dropped bridge call,
-        // a recreated activity) may come after the terminal took the card,
-        // so it is reported as an unknown outcome, never as "unavailable".
-        if (isNotInstalledRejection(error)) {
+        // Only a missing SwitchioPay and a launch that threw before it
+        // started are known to fail before anything was charged. Any other
+        // rejection (a dropped bridge call, a recreated activity) may come
+        // after the terminal took the card, so it is reported as an unknown
+        // outcome, never as "unavailable".
+        if (isRejectionWithCode(error, SWITCHIO_NOT_INSTALLED_CODE)) {
           return err(createSwitchioUnavailableError({ reason: "notInstalled" }))
+        }
+        if (isRejectionWithCode(error, SWITCHIO_LAUNCH_FAILED_CODE)) {
+          return err(createSwitchioUnavailableError({ reason: "launchFailed" }))
         }
         return err(
           createSwitchioResultUnreadableError({

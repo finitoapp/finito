@@ -32,12 +32,62 @@ it("uses the same launch-refused rejection code on both sides", () => {
   expect(module).toContain(`LAUNCH_REFUSED_CODE = "${code}"`)
 })
 
+it("uses the same launch-failed rejection code on both sides", () => {
+  const code = /SWITCHIO_LAUNCH_FAILED_CODE = "([^"]+)"/u.exec(js)?.[1]
+  expect(code).toBe("SWITCHIO_LAUNCH_FAILED")
+  expect(module).toContain(`LAUNCH_FAILED_CODE = "${code}"`)
+})
+
+it("launches SwitchioPay only through startSwitchio, which puts a launch that threw back as it was", () => {
+  // payment/0021: any throw, not only a missing SwitchioPay, undoes the
+  // promise and the store, so a launch that never left neither reads as an
+  // unknown outcome nor refuses every later one.
+  expect(module.match(/startActivityForResult\(/gu)).toHaveLength(1)
+  const start = module.indexOf("private fun startSwitchio(")
+  expect(start).toBeGreaterThan(-1)
+  const helper = module.slice(start, module.indexOf("\n  }", start))
+  expect(helper).toContain("startActivityForResult(intent, requestCode)")
+  expect(helper).toContain("catch (exception: ActivityNotFoundException)")
+  expect(helper).toContain("catch (exception: Exception)")
+  expect(helper.match(/undo\(\)/gu)).toHaveLength(2)
+  expect(helper).toContain("LAUNCH_FAILED_CODE")
+
+  const launches = [
+    [
+      "SwitchioResultStore.REQUEST_CODE",
+      "pendingPromise = null",
+      "SwitchioResultStore.clearAttempt(context)",
+    ],
+    [
+      "SwitchioClosureStore.REQUEST_CODE",
+      "pendingClosurePromise = null",
+      "SwitchioClosureStore.clear(context)",
+    ],
+    [
+      "SwitchioRefundStore.REQUEST_CODE",
+      "pendingRefundPromise = null",
+      "SwitchioRefundStore.clearAttempt(context)",
+    ],
+    ["LOOKUP_REQUEST_CODE", "pendingLookupPromise = null"],
+  ] as const
+  for (const [requestCode, ...undo] of launches) {
+    const call = `startSwitchio(intent, ${requestCode}, promise) {`
+    const at = module.indexOf(call)
+    expect(at, requestCode).toBeGreaterThan(-1)
+    const body = module.slice(
+      at + call.length,
+      module.indexOf("}", at + call.length)
+    )
+    for (const step of undo) expect(body, requestCode).toContain(step)
+  }
+})
+
 it("refuses each launch before it stores or launches anything", () => {
   const launches = [
     ['AsyncFunction("pay")', "SwitchioResultStore.begin("],
     ['AsyncFunction("close")', "SwitchioClosureStore.begin("],
     ["private fun launchRefund(", "SwitchioRefundStore.begin("],
-    ['AsyncFunction("lookupTransaction")', "startActivityForResult("],
+    ['AsyncFunction("lookupTransaction")', "startSwitchio("],
   ] as const
   for (const [start, begin] of launches) {
     const launch = module.slice(module.indexOf(start))
@@ -50,7 +100,7 @@ it("refuses each launch before it stores or launches anything", () => {
 it("stores the attempt before the terminal is launched", () => {
   const pay = module.slice(module.indexOf('AsyncFunction("pay")'))
   const begin = pay.indexOf("SwitchioResultStore.begin(")
-  const launch = pay.indexOf("startActivityForResult(")
+  const launch = pay.indexOf("startSwitchio(")
   expect(begin).toBeGreaterThan(-1)
   expect(launch).toBeGreaterThan(begin)
 })
@@ -105,7 +155,7 @@ it("stores the closure before the terminal is launched, under its own request co
   const close = module.slice(module.indexOf('AsyncFunction("close")'))
   const begin = close.indexOf("SwitchioClosureStore.begin(")
   const launch = close.indexOf(
-    "startActivityForResult(intent, SwitchioClosureStore.REQUEST_CODE)"
+    "startSwitchio(intent, SwitchioClosureStore.REQUEST_CODE"
   )
   expect(begin).toBeGreaterThan(-1)
   expect(launch).toBeGreaterThan(begin)
@@ -161,7 +211,7 @@ it("stores the refund before the terminal is launched, under its own request cod
   const launcher = module.slice(module.indexOf("private fun launchRefund("))
   const begin = launcher.indexOf("SwitchioRefundStore.begin(")
   const launch = launcher.indexOf(
-    "startActivityForResult(intent, SwitchioRefundStore.REQUEST_CODE)"
+    "startSwitchio(intent, SwitchioRefundStore.REQUEST_CODE"
   )
   expect(begin).toBeGreaterThan(-1)
   expect(launch).toBeGreaterThan(begin)
