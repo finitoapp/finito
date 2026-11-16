@@ -4439,6 +4439,31 @@ describe("payment actions", () => {
       }, 15_000)
     })
 
+    test("keeps an attempt answered with a code ECR does not document unknown, so the next one needs confirmation (payment/0023)", async () => {
+      await using ctx = await setUp(async () =>
+        interpretSwitchioPaymentResult({
+          resultCode: 3,
+          transactionResult: JSON.stringify({ responseCode: "DECLINED" }),
+        })
+      )
+      const { evolu, run, requests, accountId, paymentId } = ctx
+
+      const first = await run(
+        payPaymentWithSwitchioCard({ paymentId, accountId })
+      )
+
+      expect(!first.ok && first.error.type).toBe("SwitchioResultUnreadable")
+      const [row] = await evolu.loadQuery(
+        paymentCardSwitchioByPaymentIdQuery(paymentId)
+      )
+      expect(row?.unresolvedTransactionId).toBe(requests[0]?.transactionId)
+      const second = await run(
+        payPaymentWithSwitchioCard({ paymentId, accountId })
+      )
+      expect(!second.ok && second.error.type).toBe("SwitchioAttemptUnresolved")
+      expect(requests).toHaveLength(1)
+    }, 15_000)
+
     describe("a launch that never reached SwitchioPay (payment/0021)", () => {
       const launchFailed = () =>
         err(createSwitchioUnavailableError({ reason: "launchFailed" }))
