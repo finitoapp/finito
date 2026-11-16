@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vitest"
 
-import { NonNegativeInteger } from "../shared/schema.ts"
-import { TaxRatePercentage } from "./tax-rate-types.ts"
+import { NonNegativeInteger, TimestampMs } from "../shared/schema.ts"
+import { type TaxRateId, TaxRatePercentage } from "./tax-rate-types.ts"
 import {
   decimalStringToTaxRatePercentage,
+  findActiveTaxRateByPercentage,
   splitInclusiveAmount,
   taxRatePercentageToDecimalString,
 } from "./tax-rate-utils.ts"
@@ -107,5 +108,44 @@ describe("splitInclusiveAmount", () => {
     )
     expect(result.base).toBe(5_900)
     expect(result.tax).toBe(0)
+  })
+})
+
+describe("findActiveTaxRateByPercentage", () => {
+  const rate = (
+    id: string,
+    percentage: number,
+    deactivatedAt: number | null = null
+  ) => ({
+    id: id as TaxRateId,
+    rate: TaxRatePercentage(percentage),
+    deactivatedAt: deactivatedAt === null ? null : TimestampMs(deactivatedAt),
+  })
+
+  test("finds the active rate of exactly that percentage", () => {
+    expect(
+      findActiveTaxRateByPercentage(
+        [rate("standard", 2100), rate("reduced", 1200)],
+        TaxRatePercentage(1200)
+      )
+    ).toBe("reduced")
+  })
+
+  test("skips an archived rate of that percentage", () => {
+    expect(
+      findActiveTaxRateByPercentage(
+        [rate("old", 1200, 1_700_000_000_000), rate("current", 1200)],
+        TaxRatePercentage(1200)
+      )
+    ).toBe("current")
+  })
+
+  test("finds nothing when no active rate has that percentage", () => {
+    expect(
+      findActiveTaxRateByPercentage(
+        [rate("standard", 2100), rate("old", 1500, 1_700_000_000_000)],
+        TaxRatePercentage(1500)
+      )
+    ).toBeUndefined()
   })
 })

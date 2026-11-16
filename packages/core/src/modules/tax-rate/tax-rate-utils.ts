@@ -85,3 +85,16 @@ export const splitInclusiveAmount = (
 
   return { base: NonNegativeInteger(base), tax: NonNegativeInteger(tax) }
 }
+
+/**
+ * The first active (not archived) rate of exactly `percentage`, in the order
+ * given — how a VAT percentage from outside the account, such as a product
+ * library's, becomes one of its own rates. `undefined` when it has none.
+ */
+export const findActiveTaxRateByPercentage = (
+  taxRates: ReadonlyArray<Pick<TaxRateRow, "id" | "rate" | "deactivatedAt">>,
+  percentage: TaxRatePercentageType
+): TaxRateId | undefined =>
+  taxRates.find(
+    (taxRate) => taxRate.deactivatedAt === null && taxRate.rate === percentage
+  )?.id

@@ -10,15 +10,21 @@ import {
   fiatBankAccountQuery,
   sparkAccountQuery,
 } from "../account/account-queries.ts"
+import { catalogCategoriesQuery } from "../catalog-category/catalog-category-queries.ts"
+import { catalogItemsQuery } from "../catalog-item/catalog-item-queries.ts"
 import { legalEntityQuery } from "../legal-entity/legal-entity-queries.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { MasterKey } from "../shared/key-derivation.ts"
 import {
   BankAccountInputIbanSchema,
   NonEmptyString255,
+  NonNegativeInteger,
 } from "../shared/schema.ts"
 import { createTaxRate } from "../tax-rate/tax-rate-actions.ts"
-import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
+import {
+  activeTaxRatesQuery,
+  taxRatesQuery,
+} from "../tax-rate/tax-rate-queries.ts"
 import { TaxRatePercentage } from "../tax-rate/tax-rate-types.ts"
 import {
   completeOnboarding,
@@ -30,6 +36,7 @@ import {
   updateTipSettings,
 } from "./app-settings-actions.ts"
 import { settingsQuery } from "./app-settings-queries.ts"
+import type { OnboardingStarterItem } from "./app-settings-types.ts"
 import {
   createDefaultSettings,
   defaultPaymentMethod,
@@ -361,4 +368,172 @@ describe("finishOnboarding", () => {
       [],
     ])
   })
+})
+
+describe("finishOnboarding starter items", () => {
+  const starterItem = ({
+    name,
+    unitAmount,
+    categoryName,
+    taxRatePercentage,
+  }: {
+    readonly name: string
+    readonly unitAmount: number
+    readonly categoryName: string | null
+    readonly taxRatePercentage: number | null
+  }): OnboardingStarterItem => ({
+    name: NonEmptyString255(name),
+    libraryProductId: NonEmptyString255(name.toLowerCase().replace(/ /g, "-")),
+    unitAmount: NonNegativeInteger(unitAmount),
+    categoryName:
+      categoryName === null ? null : NonEmptyString255(categoryName),
+    taxRatePercentage:
+      taxRatePercentage === null ? null : TaxRatePercentage(taxRatePercentage),
+  })
+
+  const createRun = (evolu: EvoluDep["evolu"]) =>
+    testCreateRun({
+      ...evoluTestDeps(evolu),
+      masterKey: MasterKey("000102030405060708090a0b0c0d0e0f"),
+    })
+
+  test("creates the starter items with their categories and VAT rates", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+
+    await run.orThrow(
+      finishOnboarding({
+        ...input,
+        homeMode: "pos",
+        starterItems: [
+          starterItem({
+            name: "Espresso",
+            unitAmount: 5_900,
+            categoryName: "Káva",
+            taxRatePercentage: 1200,
+          }),
+          starterItem({
+            name: "Točené pivo 0,5 l",
+            unitAmount: 6_500,
+            categoryName: "Pivo",
+            taxRatePercentage: 2100,
+          }),
+          starterItem({
+            name: "Cappuccino",
+            unitAmount: 6_900,
+            categoryName: "Káva",
+            taxRatePercentage: 1200,
+          }),
+          starterItem({
+            name: "Tonic",
+            unitAmount: 4_500,
+            categoryName: null,
+            taxRatePercentage: 1500,
+          }),
+        ],
+      })
+    )
+
+    await expect.poll(() => evolu.loadQuery(catalogItemsQuery)).toHaveLength(4)
+    const [items, categories, taxRates] = await Promise.all([
+      evolu.loadQuery(catalogItemsQuery),
+      evolu.loadQuery(catalogCategoriesQuery),
+      evolu.loadQuery(activeTaxRatesQuery),
+    ])
+    const categoryId = (name: string) =>
+      categories.find((category) => category.name === name)?.id
+    const taxRateId = (rate: number) =>
+      taxRates.find((taxRate) => taxRate.rate === rate)?.id
+
+    expect(categories.map(({ name }) => name)).toEqual(["Káva", "Pivo"])
+    expect(items).toEqual([
+      expect.objectContaining({
+        name: "Espresso",
+        libraryProductId: "espresso",
+        currency: "CZK",
+        categoryId: categoryId("Káva"),
+        taxRateId: taxRateId(1200),
+        sortOrder: 0,
+      }),
+      expect.objectContaining({
+        name: "Točené pivo 0,5 l",
+        categoryId: categoryId("Pivo"),
+        taxRateId: taxRateId(2100),
+        sortOrder: 1,
+      }),
+      expect.objectContaining({
+        name: "Cappuccino",
+        categoryId: categoryId("Káva"),
+        taxRateId: taxRateId(1200),
+        sortOrder: 2,
+      }),
+      // No category, and no Czech rate of 15 %.
+      expect.objectContaining({
+        name: "Tonic",
+        categoryId: null,
+        taxRateId: null,
+        sortOrder: 3,
+      }),
+    ])
+    expect(taxRateId(1200)).toBeDefined()
+    expect(taxRateId(2100)).toBeDefined()
+  }, 15_000)
+
+  test("keeps the starter items' prices exactly as the merchant typed them", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+
+    await run.orThrow(
+      finishOnboarding({
+        ...input,
+        homeMode: "pos",
+        starterItems: [
+          starterItem({
+            name: "Espresso",
+            unitAmount: 5_950,
+            categoryName: null,
+            taxRatePercentage: null,
+          }),
+          starterItem({
+            name: "Tap water",
+            unitAmount: 0,
+            categoryName: null,
+            taxRatePercentage: null,
+          }),
+          starterItem({
+            name: "Cheese board",
+            unitAmount: 24_901,
+            categoryName: null,
+            taxRatePercentage: null,
+          }),
+        ],
+      })
+    )
+
+    await expect
+      .poll(async () =>
+        (await evolu.loadQuery(catalogItemsQuery)).map(
+          ({ name, unitAmount }) => [name, unitAmount]
+        )
+      )
+      .toEqual([
+        ["Espresso", 5_950],
+        ["Tap water", 0],
+        ["Cheese board", 24_901],
+      ])
+  }, 15_000)
+
+  test("creates no catalog items without starter items", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = createRun(evolu)
+
+    await run.orThrow(finishOnboarding({ ...input, homeMode: "pos" }))
+
+    await expect.poll(() => evolu.loadQuery(settingsQuery)).toHaveLength(1)
+    expect(await evolu.loadQuery(catalogItemsQuery)).toEqual([])
+    expect(await evolu.loadQuery(catalogCategoriesQuery)).toEqual([])
+  }, 15_000)
 })

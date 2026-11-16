@@ -27,6 +27,13 @@ export const catalogItem = {
   scanCode: NonEmptyString255Schema.nullable(),
   /** `null` supports non-VAT-payer tenants and items with no tax assigned yet. */
   taxRateId: TaxRateId.nullable(),
+  /**
+   * The product library's product the item came from. Its picture is
+   * resolved through the loaded library, so a re-generated picture reaches
+   * the item; never copied into the `item` snapshot, since a picture is not
+   * part of what was sold.
+   */
+  libraryProductId: NonEmptyString255Schema.nullable(),
 } as const
 
 /**
