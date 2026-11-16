@@ -12,21 +12,39 @@ import { qerkoPluginQuery } from "@payky/core/modules/qerko-plugin/qerko-plugin-
 import { NonEmptyString255Schema } from "@payky/core/modules/shared/schema"
 import { useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
-import { ActivityIndicator } from "react-native"
+import CreditCard from "lucide-react-native/icons/credit-card"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { Text, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../../atoms/device-evolu.ts"
+import { EmptyState } from "../../../components/empty-state.tsx"
+import { ListSkeleton } from "../../../components/list-skeleton.tsx"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+} from "../../../components/ui/alert.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 /**
  * Web's `QerkoTerminalChooser`: the terminals Qerko lists for the paired
  * company, grouped by location; choosing one makes it this device's terminal
  * (qerko/0001), written to the device database so it never syncs.
+ *
+ * Native differences: the list loads behind `ListSkeleton` rows where web
+ * spins a loader; each terminal is a `SettingsTile` with its platform as an
+ * outline tag; a failure is a destructive `Alert` carrying its actions, and
+ * no terminal at all an `EmptyState`, where web writes lines of text.
  */
 export function QerkoTerminalChooser({
   enableAccount = false,
@@ -117,25 +135,25 @@ export function QerkoTerminalChooser({
       />
     )
 
-  if (terminals.isPending) return <ActivityIndicator />
+  if (terminals.isPending) return <ListSkeleton rows={2} />
 
   if (terminals.isError || terminals.data.failure !== null) {
     const failure =
       terminals.data?.failure ??
       describeQerkoTerminalsFailure({ type: "unknown" })
     return (
-      <YStack gap={12} items="flex-start">
-        <Text fontSize="sm" lineHeight="sm" color="destructive">
-          {t(failure.key)}
-        </Text>
-        <XStack gap={8}>
+      <Alert variant="destructive" icon={TriangleAlert}>
+        <AlertDescription>{t(failure.key)}</AlertDescription>
+        <AlertAction>
           {failure.keyRejected && onKeyRejected !== undefined ? (
             <Button
+              size="sm"
               label={t("settings.qerkoTerminal.terminals.keyRejected.action")}
               onPress={onKeyRejected}
             />
           ) : (
             <Button
+              size="sm"
               variant="outline"
               label={t("settings.qerkoTerminal.terminals.retry")}
               onPress={() => {
@@ -144,34 +162,31 @@ export function QerkoTerminalChooser({
             />
           )}
           {skip}
-        </XStack>
-      </YStack>
+        </AlertAction>
+      </Alert>
     )
   }
 
   if (terminals.data.locations.length === 0) {
     return (
-      <YStack gap={12} items="flex-start">
-        <YStack gap={4}>
-          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-            {t("settings.qerkoTerminal.terminals.empty")}
-          </Text>
-          <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
-            {t("settings.qerkoTerminal.terminals.empty.help")}
-          </Text>
-        </YStack>
-        <XStack gap={8}>
-          <Button
-            variant="outline"
-            label={t("settings.qerkoTerminal.terminals.retry")}
-            pending={terminals.isFetching}
-            onPress={() => {
-              void terminals.refetch()
-            }}
-          />
-          {skip}
-        </XStack>
-      </YStack>
+      <EmptyState
+        icon={CreditCard}
+        title={t("settings.qerkoTerminal.terminals.empty")}
+        description={t("settings.qerkoTerminal.terminals.empty.help")}
+        action={
+          <XStack gap={8} flexWrap="wrap" justify="center">
+            <Button
+              variant="outline"
+              label={t("settings.qerkoTerminal.terminals.retry")}
+              pending={terminals.isFetching}
+              onPress={() => {
+                void terminals.refetch()
+              }}
+            />
+            {skip}
+          </XStack>
+        }
+      />
     )
   }
 
@@ -179,42 +194,40 @@ export function QerkoTerminalChooser({
     <YStack gap={16}>
       {terminals.data.locations.map((location) => (
         <YStack key={location.locationId} gap={8}>
-          <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+          <Text
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.semibold}
+          >
             {location.locationName}
           </Text>
-          {location.terminals.map((terminal) => (
-            <XStack
-              key={terminal.terminalId}
-              items="center"
-              justify="space-between"
-              gap={12}
-              bg="neutral-soft"
-              rounded={8}
-              px={12}
-              py={8}
-            >
-              <YStack flex={1} gap={4} items="flex-start">
-                <Text fontSize="sm" lineHeight="sm">
-                  {terminal.tid}
-                </Text>
-                <Badge
-                  variant="secondary"
-                  label={t(
-                    terminal.platform === "softPos"
-                      ? "settings.qerkoTerminal.terminals.platform.softPos"
-                      : "settings.qerkoTerminal.terminals.platform.physical"
-                  )}
-                />
-              </YStack>
-              <Button
-                variant="outline"
-                label={t("settings.qerkoTerminal.terminals.choose")}
-                onPress={() => {
-                  void choose(terminal)
-                }}
+          <SettingsTileList>
+            {location.terminals.map((terminal) => (
+              <SettingsTile
+                key={terminal.terminalId}
+                title={terminal.tid}
+                description={
+                  <Badge
+                    variant="outline"
+                    label={t(
+                      terminal.platform === "softPos"
+                        ? "settings.qerkoTerminal.terminals.platform.softPos"
+                        : "settings.qerkoTerminal.terminals.platform.physical"
+                    )}
+                  />
+                }
+                trailing={
+                  <Button
+                    variant="outline"
+                    label={t("settings.qerkoTerminal.terminals.choose")}
+                    onPress={() => {
+                      void choose(terminal)
+                    }}
+                  />
+                }
               />
-            </XStack>
-          ))}
+            ))}
+          </SettingsTileList>
         </YStack>
       ))}
       {skip}

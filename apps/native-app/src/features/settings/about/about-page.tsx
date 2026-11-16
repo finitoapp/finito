@@ -13,7 +13,7 @@ import { Screen } from "../../../components/screen.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize } from "../../../theme/tokens.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 export function AboutPage() {
   const { t } = useTranslation()
@@ -21,11 +21,19 @@ export function AboutPage() {
   const versionCode = Constants.expoConfig?.android?.versionCode
 
   const label = (title: string, description: string) => (
-    <YStack gap="1">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+    <YStack gap={4}>
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
+      >
         {title}
       </Text>
-      <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+      <Text
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        color="muted-foreground"
+      >
         {description}
       </Text>
     </YStack>
@@ -49,7 +57,8 @@ export function AboutPage() {
             lineHeight={fontSize.sm}
             color="muted-foreground"
           >
-            {t("settings.appVersion")} <Text fontWeight="700">{version}</Text>
+            {t("settings.appVersion")}{" "}
+            <Text fontWeight={fontWeight.bold}>{version}</Text>
           </Text>
         )}
         {Platform.OS === "android" && versionCode !== undefined ? (
@@ -59,7 +68,7 @@ export function AboutPage() {
             color="muted-foreground"
           >
             {t("settings.appVersionCode")}{" "}
-            <Text fontWeight="700">{versionCode}</Text>
+            <Text fontWeight={fontWeight.bold}>{versionCode}</Text>
           </Text>
         ) : null}
       </YStack>

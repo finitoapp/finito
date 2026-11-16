@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "../../../components/ui/card.tsx"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 
 export function TermsPage() {
   const { t } = useTranslation()
@@ -22,7 +23,11 @@ export function TermsPage() {
           <CardDescription>{t("settings.about.terms.summary")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
+          <Text
+            color="muted-foreground"
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+          >
             {t("settings.about.terms.body")}
           </Text>
         </CardContent>

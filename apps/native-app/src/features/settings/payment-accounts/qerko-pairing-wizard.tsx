@@ -21,8 +21,9 @@ import {
   requestQerkoPairing,
 } from "@payky/core/integrations/qerko/qerko-client"
 import { completeQerkoPairing } from "@payky/core/modules/qerko-plugin/qerko-plugin-actions"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { type ReactNode, useEffect, useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Text } from "tamagui"
 import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
@@ -35,7 +36,6 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Collapsible,
-  CollapsibleChevron,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../../../components/ui/collapsible.tsx"
@@ -69,6 +69,8 @@ import {
 import { appBrand } from "../../../core/app-brand.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
+import { AdvancedSettingsLabel } from "./advanced-settings-label.tsx"
 
 type Phase = "company" | "code" | "last"
 
@@ -255,10 +257,10 @@ export function QerkoPairingWizard({
                     : undefined}
                 </FieldError>
               </Field>
-              <YStack gap="2">
-                <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+              <Field>
+                <FieldLabel>
                   {t("settings.qerkoTerminal.company.country.label")}
-                </Text>
+                </FieldLabel>
                 <Select
                   value={country}
                   onValueChange={(next) => {
@@ -292,7 +294,7 @@ export function QerkoPairingWizard({
                     ))}
                   </SelectContent>
                 </Select>
-              </YStack>
+              </Field>
 
               <Collapsible>
                 <CollapsibleTrigger>
@@ -300,11 +302,11 @@ export function QerkoPairingWizard({
                     label={t("settings.qerkoTerminal.advanced")}
                   />
                 </CollapsibleTrigger>
-                <CollapsibleContent pt="4">
-                  <YStack gap="2">
-                    <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+                <CollapsibleContent pt={16}>
+                  <Field>
+                    <FieldLabel>
                       {t("settings.qerkoTerminal.environment.label")}
-                    </Text>
+                    </FieldLabel>
                     <Select
                       value={environment}
                       onValueChange={(next) => {
@@ -339,12 +341,12 @@ export function QerkoPairingWizard({
                     <FieldDescription>
                       {t("settings.qerkoTerminal.environment.description")}
                     </FieldDescription>
-                  </YStack>
+                  </Field>
                 </CollapsibleContent>
               </Collapsible>
 
               {message !== null ? (
-                <Alert variant="destructive">
+                <Alert variant="destructive" icon={TriangleAlert}>
                   <AlertDescription>
                     {t(message.key, message.params)}
                   </AlertDescription>
@@ -352,7 +354,7 @@ export function QerkoPairingWizard({
               ) : null}
             </FieldGroup>
           </CardContent>
-          <CardFooter>
+          <CardFooter justify="flex-end">
             <Button
               label={t("settings.qerkoTerminal.requestCode")}
               pending={pending}
@@ -394,14 +396,18 @@ export function QerkoPairingWizard({
               </FieldError>
             </Field>
             {resendIn > 0 ? (
-              <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
                 {t("settings.qerkoTerminal.code.resendIn", {
                   time: formatCountdown(resendIn),
                 })}
               </Text>
             ) : null}
           </CardContent>
-          <CardFooter gap={8}>
+          <CardFooter justify="flex-end" flexWrap="wrap" gap={8}>
             <Button
               variant="outline"
               label={t("settings.qerkoTerminal.code.resend")}
@@ -411,7 +417,7 @@ export function QerkoPairingWizard({
               }}
             />
             <Button
-              variant="outline"
+              variant="ghost"
               label={t("settings.qerkoTerminal.code.back")}
               disabled={pending}
               onPress={() => {
@@ -433,16 +439,5 @@ export function QerkoPairingWizard({
 
       {phase === "last" ? <CardContent>{lastStep}</CardContent> : null}
     </Card>
-  )
-}
-
-function AdvancedSettingsLabel({ label }: { readonly label: string }) {
-  return (
-    <XStack items="center" justify="space-between" w="100%">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-        {label}
-      </Text>
-      <CollapsibleChevron color="muted-foreground" />
-    </XStack>
   )
 }

@@ -33,7 +33,7 @@ function TablesSettingsBody() {
   const hasAny = useEvoluQuery(tablesExistQuery).data.length > 0
 
   return (
-    <YStack flex={1} gap="3">
+    <YStack flex={1} gap={12}>
       {hasAny && (
         <SearchInput
           value={search}

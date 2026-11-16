@@ -1,5 +1,6 @@
 import { RESTORE_WORD_COUNT } from "@payky/app-shared/restore-words"
 import { Text, XStack } from "tamagui"
+import { fontSize } from "../../../theme/tokens.ts"
 
 /**
  * Web's `RecoveryWordsGrid`: 20 numbered tiles in two columns. `words` is
@@ -12,18 +13,19 @@ export function RecoveryWordsGrid({
   readonly words: ReadonlyArray<string> | null
 }) {
   return (
-    <XStack flexWrap="wrap" gap="2">
+    <XStack flexWrap="wrap" gap={8}>
       {Array.from({ length: RESTORE_WORD_COUNT }, (_, index) => (
         <XStack
           // biome-ignore lint/suspicious/noArrayIndexKey: the slots are fixed positions
           key={index}
           width="48%"
           items="center"
-          gap="2"
+          gap={8}
         >
           <Text
             width={20}
-            fontSize="xs"
+            fontSize={fontSize.xs}
+            lineHeight={fontSize.xs}
             color="muted-foreground"
             style={{ textAlign: "right" }}
           >

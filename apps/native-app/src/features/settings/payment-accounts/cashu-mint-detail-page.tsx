@@ -67,7 +67,8 @@ const moveErrorKeys = {
 
 /**
  * One mint, as web's `CashuMintDetailPage`: info, balance, the default badge
- * or "set as default", moving its funds to the default mint, and removal.
+ * or "set as default", moving its funds to the default mint, and removal
+ * (a full-width destructive button under the cards, confirmed first).
  */
 export function CashuMintDetailPage() {
   const { t } = useTranslation()
@@ -77,7 +78,14 @@ export function CashuMintDetailPage() {
     return <RouteMessage>{t("settings.cashuMints.invalid")}</RouteMessage>
   }
   return (
-    <Suspense fallback={<LoadingView />}>
+    <Suspense
+      fallback={
+        <Screen>
+          <FadeHeader title={formatMintLabel(parsed)} />
+          <LoadingView />
+        </Screen>
+      }
+    >
       <CashuMintDetail mint={parsed} />
     </Suspense>
   )
@@ -140,7 +148,7 @@ function CashuMintDetail({ mint }: { readonly mint: MintUrl }) {
       <FadeHeader title={info.data?.name ?? formatMintLabel(mint)} />
       <Card>
         <CardHeader>
-          <XStack items="center" gap="2">
+          <XStack items="center" gap={8}>
             {info.data?.iconUrl ? (
               <Image
                 source={{ uri: info.data.iconUrl }}
@@ -192,8 +200,7 @@ function CashuMintDetail({ mint }: { readonly mint: MintUrl }) {
       ) : null}
       {isDefault ? null : (
         <Button
-          size="lg"
-          variant="ghost"
+          variant="destructive"
           iconStart={Trash2}
           label={t("settings.cashuMints.remove")}
           onPress={() => void remove()}

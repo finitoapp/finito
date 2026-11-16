@@ -20,28 +20,25 @@ import { useAtomValue } from "jotai"
 import CalendarCheck from "lucide-react-native/icons/calendar-check"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { type ReactNode, Suspense, useState } from "react"
-import { ActivityIndicator, FlatList } from "react-native"
+import { FlatList } from "react-native"
 import { Text, useTheme, View, XStack, YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
-import { DetailRow } from "../../../components/detail-row.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { LoadingView } from "../../../components/loading-view.tsx"
 import { SafeAreaView } from "../../../components/safe-area-view.tsx"
 import { screenPaddingX } from "../../../components/screen.tsx"
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "../../../components/ui/alert.tsx"
+import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card.tsx"
+import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import {
   VerticalNavRow,
   VerticalNavTitle,
@@ -59,7 +56,7 @@ import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
-import { shape } from "../../../theme/tokens.ts"
+import { control, fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 import { useClosureDeviceLabel } from "./use-closure-device-label.ts"
 
 /** Every query the screen reads, started in one round trip. */
@@ -144,7 +141,7 @@ function CardClosureList() {
         if (hasMore && !isPending) loadMore()
       }}
       ListHeaderComponent={
-        <YStack gap={16}>
+        <YStack gap={24}>
           <ThisTerminalCard />
           <TerminalsCard />
           {/* The top of the history card, which its rows continue. */}
@@ -163,15 +160,7 @@ function CardClosureList() {
       }
       ListEmptyComponent={
         <HistoryRowFrame>
-          <Text
-            px={12}
-            py={12}
-            color="muted-foreground"
-            fontSize="sm"
-            lineHeight="sm"
-          >
-            {t("settings.cardClosure.history.empty")}
-          </Text>
+          <EmptyListRow label={t("settings.cardClosure.history.empty")} />
         </HistoryRowFrame>
       }
       ListFooterComponent={
@@ -183,7 +172,7 @@ function CardClosureList() {
           borderBottomLeftRadius={shape.card}
           borderBottomRightRadius={shape.card}
         >
-          {hasMore ? <ActivityIndicator style={{ padding: 16 }} /> : null}
+          {hasMore ? <HistoryRowSkeleton /> : null}
         </View>
       }
       renderItem={({ item }) => (
@@ -192,6 +181,26 @@ function CardClosureList() {
         </HistoryRowFrame>
       )}
     />
+  )
+}
+
+/** `VerticalNav`'s `empty` row, for the lists this screen draws row by row. */
+function EmptyListRow({ label }: { readonly label: string }) {
+  return (
+    <VerticalNavRow item={{ kind: "static", disableAction: true, label }} />
+  )
+}
+
+/** The next history page loading: one row in `HistoryRow`'s shape. */
+function HistoryRowSkeleton() {
+  return (
+    <XStack items="center" gap={12} minH={control.lg} px={12} py={8}>
+      <YStack flex={1} items="flex-start" gap={8}>
+        <Skeleton w={128} h={14} />
+        <Skeleton w={96} h={12} />
+      </YStack>
+      <Skeleton w={56} h={14} />
+    </XStack>
   )
 }
 
@@ -223,13 +232,17 @@ function HistoryRow({
         label: (
           <XStack items="center" gap={12}>
             <YStack flex={1} minW={0} gap={2}>
-              <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.semibold}
+              >
                 {closedAt}
               </Text>
               <Text
                 color="muted-foreground"
-                fontSize="xs"
-                lineHeight="xs"
+                fontSize={fontSize.xs}
+                lineHeight={fontSize.xs}
                 numberOfLines={1}
               >
                 {[
@@ -241,7 +254,11 @@ function HistoryRow({
                 ].join(" · ")}
               </Text>
             </YStack>
-            <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+            <Text
+              fontSize={fontSize.sm}
+              lineHeight={fontSize.sm}
+              fontWeight={fontWeight.semibold}
+            >
               {formatMoney(
                 { value: Integer(row.debitsAmount), currency: row.currency },
                 locale
@@ -302,66 +319,68 @@ function ThisTerminalCard() {
   }
 
   return (
-    <YStack gap={16}>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("settings.cardClosure.thisTerminal.title")}</CardTitle>
-          <CardDescription>
-            {t("settings.cardClosure.thisTerminal.description")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent gap={12}>
-          {last === undefined ? (
-            <DetailRow
-              label={t("settings.cardClosure.thisTerminal.last")}
-              value={t("settings.cardClosure.thisTerminal.never")}
-            />
-          ) : (
-            <VerticalNavRow
-              item={{
-                kind: "link",
-                href: cardClosureHref(last.id),
-                accessibilityLabel: t("settings.cardClosure.thisTerminal.last"),
-                label: (
-                  <XStack items="center" justify="space-between" gap={12}>
-                    <Text
-                      color="muted-foreground"
-                      fontSize="sm"
-                      lineHeight="sm"
-                    >
-                      {t("settings.cardClosure.thisTerminal.last")}
-                    </Text>
-                    <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                      {formatDateTime(new Date(last.closedAt), locale)}
-                    </Text>
-                  </XStack>
-                ),
-              }}
-            />
-          )}
-          {installed ? null : (
-            <Alert variant="warning" icon={TriangleAlert}>
-              <AlertDescription>
-                {t("settings.cardSwitchioAccount.notInstalledWarning")}
-              </AlertDescription>
-            </Alert>
-          )}
-          <Button
-            size="lg"
-            iconStart={CalendarCheck}
-            label={t("settings.cardClosure.action")}
-            disabled={!installed}
-            pending={pending}
-            onPress={() => void close()}
-          />
-        </CardContent>
-      </Card>
-      {unknownOutcome ? (
-        <Alert variant="warning" icon={TriangleAlert}>
-          <AlertTitle>{t("settings.cardClosure.error.unknown")}</AlertTitle>
-        </Alert>
-      ) : null}
-    </YStack>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("settings.cardClosure.thisTerminal.title")}</CardTitle>
+        <CardDescription>
+          {t("settings.cardClosure.thisTerminal.description")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent gap={12}>
+        {/* One row shape with or without a closure, so the card keeps its height. */}
+        <VerticalNavRow
+          item={{
+            ...(last === undefined
+              ? ({ kind: "static", disableAction: true } as const)
+              : ({ kind: "link", href: cardClosureHref(last.id) } as const)),
+            accessibilityLabel: t("settings.cardClosure.thisTerminal.last"),
+            label: (
+              <XStack items="center" justify="space-between" gap={12}>
+                <Text
+                  color="muted-foreground"
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                >
+                  {t("settings.cardClosure.thisTerminal.last")}
+                </Text>
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  fontWeight={fontWeight.semibold}
+                >
+                  {last === undefined
+                    ? t("settings.cardClosure.thisTerminal.never")
+                    : formatDateTime(new Date(last.closedAt), locale)}
+                </Text>
+              </XStack>
+            ),
+          }}
+        />
+        {installed ? null : (
+          <Alert variant="warning" icon={TriangleAlert}>
+            <AlertDescription>
+              {t("settings.cardSwitchioAccount.notInstalledWarning")}
+            </AlertDescription>
+          </Alert>
+        )}
+        {unknownOutcome ? (
+          <Alert variant="warning" icon={TriangleAlert}>
+            <AlertDescription>
+              {t("settings.cardClosure.error.unknown")}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+      </CardContent>
+      <CardFooter justify="flex-end">
+        <Button
+          iconStart={CalendarCheck}
+          label={t("settings.cardClosure.action")}
+          disabled={!installed}
+          pending={pending}
+          onPress={() => void close()}
+        />
+      </CardFooter>
+    </Card>
   )
 }
 
@@ -381,33 +400,48 @@ function TerminalsCard() {
           {t("settings.cardClosure.terminals.description")}
         </CardDescription>
       </CardHeader>
-      <CardContent gap={12}>
+      <CardContent>
         {rows.length === 0 ? (
-          <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
-            {t("settings.cardClosure.terminals.empty")}
-          </Text>
+          <EmptyListRow label={t("settings.cardClosure.terminals.empty")} />
         ) : (
           rows.map((row) => {
             const closedToday = isSameDay(new Date(row.closedAt), now)
             return (
-              <XStack key={row.deviceId} items="center" gap={12}>
-                <YStack flex={1} minW={0} gap={2}>
-                  <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-                    {deviceLabel(row)}
-                  </Text>
-                  <Text color="muted-foreground" fontSize="xs" lineHeight="xs">
-                    {formatDateTime(new Date(row.closedAt), locale)}
-                  </Text>
-                </YStack>
-                <Badge
-                  variant={closedToday ? "secondary" : "destructive"}
-                  label={t(
-                    closedToday
-                      ? "settings.cardClosure.terminals.closedToday"
-                      : "settings.cardClosure.terminals.notClosedToday"
-                  )}
-                />
-              </XStack>
+              <VerticalNavRow
+                key={row.deviceId}
+                item={{
+                  kind: "static",
+                  accessibilityLabel: deviceLabel(row),
+                  label: (
+                    <YStack gap={2}>
+                      <Text
+                        fontSize={fontSize.sm}
+                        lineHeight={fontSize.sm}
+                        fontWeight={fontWeight.semibold}
+                      >
+                        {deviceLabel(row)}
+                      </Text>
+                      <Text
+                        color="muted-foreground"
+                        fontSize={fontSize.xs}
+                        lineHeight={fontSize.xs}
+                      >
+                        {formatDateTime(new Date(row.closedAt), locale)}
+                      </Text>
+                    </YStack>
+                  ),
+                  action: (
+                    <Badge
+                      variant={closedToday ? "secondary" : "destructive"}
+                      label={t(
+                        closedToday
+                          ? "settings.cardClosure.terminals.closedToday"
+                          : "settings.cardClosure.terminals.notClosedToday"
+                      )}
+                    />
+                  ),
+                }}
+              />
             )
           })
         )}

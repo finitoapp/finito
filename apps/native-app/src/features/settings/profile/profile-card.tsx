@@ -1,9 +1,7 @@
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
 import { usePathname } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
-import { Image } from "react-native"
 import { Text, YStack } from "tamagui"
-import appIcon from "../../../../assets/app-icon.png"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
@@ -13,7 +11,8 @@ import {
 } from "../../../hooks/use-nostr-profile.ts"
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { AccountAvatar } from "../account-avatar.tsx"
 
 /**
  * Web `apps/web-app/src/features/settings/profile/profile-card.tsx`: the
@@ -21,8 +20,8 @@ import { fontSize, fontWeight, radius } from "../../../theme/tokens.ts"
  * Linky shows for this recovery phrase. Opens the profile editor.
  *
  * Tailwind mirrored: the vertical-nav shell `flex-row items-center gap-4
- * px-4 py-3 hover:bg-accent/50`; avatar `size-14 rounded-full bg-muted`
- * (web's `ProfileAvatar`, the app icon until a picture is published); name
+ * px-4 py-3 hover:bg-accent/50`; avatar `size-14` (`AccountAvatar`, web's
+ * `ProfileAvatar`, the app icon until a picture is published); name
  * `truncate text-base font-semibold`, muted while unset; npub `truncate
  * text-xs text-muted-foreground`; `ChevronRight` `size-4` muted.
  *
@@ -57,20 +56,7 @@ export function ProfileCard() {
       aria-label={name ?? t("settings.profile.setName")}
       testID="profile-card"
     >
-      <YStack
-        w={56}
-        h={56}
-        shrink={0}
-        rounded={radius.full}
-        overflow="hidden"
-        bg="surface-raised"
-      >
-        <Image
-          source={picture === null ? appIcon : { uri: picture }}
-          style={{ width: 56, height: 56 }}
-          accessibilityIgnoresInvertColors
-        />
-      </YStack>
+      <AccountAvatar picture={picture} size={56} />
       <YStack flex={1} minW={0}>
         <Text
           fontSize={fontSize.base}

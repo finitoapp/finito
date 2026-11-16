@@ -24,15 +24,23 @@ import { useAtomValue } from "jotai"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import KeyRound from "lucide-react-native/icons/key-round"
 import ReceiptText from "lucide-react-native/icons/receipt-text"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import Wallet from "lucide-react-native/icons/wallet"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { YStack } from "tamagui"
 import { accountAtom } from "../../../atoms/account.ts"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { InlineEditField } from "../../../components/inline-edit-field.tsx"
 import { OptionToggleGroup } from "../../../components/option-toggle-group.tsx"
 import { PasswordTextarea } from "../../../components/password-textarea.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import { SettingsTile } from "../../../components/settings-tile.tsx"
+import { SwitchRow } from "../../../components/switch-row.tsx"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+} from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import {
   Card,
@@ -43,7 +51,6 @@ import {
 } from "../../../components/ui/card.tsx"
 import {
   Collapsible,
-  CollapsibleChevron,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../../../components/ui/collapsible.tsx"
@@ -63,7 +70,6 @@ import {
   Field as UiField,
 } from "../../../components/ui/field.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
-import { Switch } from "../../../components/ui/switch.tsx"
 import { useAccess } from "../../../core/use-access.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
@@ -72,6 +78,7 @@ import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { useSparkBalance } from "../../shared/use-spark-balance.ts"
 import { WalletBody } from "../../shared/wallet-body.tsx"
+import { AdvancedSettingsLabel } from "./advanced-settings-label.tsx"
 
 const privacyModeQueryKey = (
   activeAccountId: string,
@@ -179,7 +186,7 @@ function SparkAccountSettingsContent({
                   label={t("settings.sparkAccount.advanced")}
                 />
               </CollapsibleTrigger>
-              <CollapsibleContent pt="4">
+              <CollapsibleContent pt={16}>
                 <FieldGroup>
                   {secret === null || accountId === undefined ? null : (
                     <SparkPrivacyMode
@@ -208,14 +215,16 @@ function SparkAccountSettingsContent({
 /**
  * Fazole's wallet screen for the Spark wallet, as the Linky wallet's: the
  * balance alone, "Withdraw funds" while there is anything to withdraw, then
- * the rows for the withdrawals and the wallet's transactions.
+ * the rows for the withdrawals and the wallet's transactions. The balance
+ * is a skeleton until it is read (also when it cannot be: `useSparkBalance`
+ * does not tell the two apart), never a "0 sats" it has not seen.
  */
 function SparkWalletBalance({ accountId }: { readonly accountId: AccountId }) {
   const { t } = useTranslation()
   const balance = useSparkBalance(accountId)
   return (
     <WalletBody
-      sats={balance ?? 0}
+      sats={balance ?? undefined}
       withdrawHref="/withdraw/new"
       testID="spark-balance"
       items={[
@@ -260,21 +269,19 @@ function SparkWalletSummary({
   return (
     <UiField>
       <FieldLabel>{t("settings.sparkAccount.wallet.label")}</FieldLabel>
-      <XStack items="center" gap="3" p="3" rounded="lg" bg="neutral-soft">
-        <Icon icon={WalletIcon} color="muted-foreground" />
-        <YStack flex={1} gap="1">
-          <Text fontWeight="600">{currentTitle}</Text>
-          <Text fontSize={13} color="muted-foreground">
-            {currentDescription}
-          </Text>
-        </YStack>
-        <Button
-          size="sm"
-          label={t("settings.sparkAccount.wallet.change")}
-          variant="outline"
-          onPress={() => setDialogOpen(true)}
-        />
-      </XStack>
+      <SettingsTile
+        icon={WalletIcon}
+        title={currentTitle}
+        description={currentDescription}
+        trailing={
+          <Button
+            size="sm"
+            label={t("settings.sparkAccount.wallet.change")}
+            variant="outline"
+            onPress={() => setDialogOpen(true)}
+          />
+        }
+      />
 
       <ChangeSparkWalletModal
         open={dialogOpen}
@@ -353,7 +360,7 @@ function ChangeSparkWalletModal({
             {t("settings.sparkAccount.wallet.changeDialog.description")}
           </DialogDescription>
         </DialogHeader>
-        <YStack gap="4">
+        <YStack gap={16}>
           <OptionToggleGroup<SparkWalletKind>
             value={target}
             options={[
@@ -404,21 +411,19 @@ function ChangeSparkWalletModal({
             </UiField>
           ) : null}
 
-          <YStack gap="2">
-            <Text color="muted-foreground">
+          <Alert variant="warning" icon={TriangleAlert}>
+            <AlertDescription>
               {`• ${t("settings.sparkAccount.wallet.warning.invoices")}`}
-            </Text>
-            <Text color="muted-foreground">
               {`• ${t("settings.sparkAccount.wallet.warning.funds")}`}
-            </Text>
-          </YStack>
+            </AlertDescription>
+          </Alert>
         </YStack>
         <DialogFooter>
           <Button
             size="lg"
             w="100%"
             label={t("settings.sparkAccount.wallet.cancel")}
-            variant="outline"
+            variant="ghost"
             onPress={close}
           />
           <Button
@@ -431,17 +436,6 @@ function ChangeSparkWalletModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
-}
-
-function AdvancedSettingsLabel({ label }: { readonly label: string }) {
-  return (
-    <XStack items="center" justify="space-between" w="100%">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
-        {label}
-      </Text>
-      <CollapsibleChevron color="muted-foreground" />
-    </XStack>
   )
 }
 
@@ -487,32 +481,37 @@ function SparkPrivacyMode({
       return false
     }
   })
-  const description = query.isError
-    ? t("settings.sparkAccount.privacyMode.loadError")
-    : query.isPending
-      ? t("settings.sparkAccount.privacyMode.loading")
-      : t("settings.sparkAccount.privacyMode.description")
 
   return (
-    <YStack gap="2">
-      <XStack gap="3" items="center">
-        <Switch
-          aria-label={t("settings.sparkAccount.privacyMode.label")}
-          checked={choice.value}
-          disabled={query.isPending || query.isError || mutation.isPending}
-          onCheckedChange={(next) => {
-            void choice.choose(next)
-          }}
-        />
-        <YStack flex={1}>
-          <Text fontWeight="600">
-            {t("settings.sparkAccount.privacyMode.label")}
-          </Text>
-          <Text fontSize={13} color="muted-foreground">
-            {description}
-          </Text>
-        </YStack>
-      </XStack>
+    <YStack gap={8}>
+      <SwitchRow
+        label={t("settings.sparkAccount.privacyMode.label")}
+        description={t(
+          query.isPending
+            ? "settings.sparkAccount.privacyMode.loading"
+            : "settings.sparkAccount.privacyMode.description"
+        )}
+        checked={choice.value}
+        disabled={query.isPending || query.isError || mutation.isPending}
+        onCheckedChange={(next) => {
+          void choice.choose(next)
+        }}
+      />
+      {query.isError ? (
+        <Alert variant="destructive" icon={TriangleAlert}>
+          <AlertDescription>
+            {t("settings.sparkAccount.privacyMode.loadError")}
+          </AlertDescription>
+          <AlertAction>
+            <Button
+              size="sm"
+              variant="outline"
+              label={t("appError.tryAgain")}
+              onPress={() => void query.refetch()}
+            />
+          </AlertAction>
+        </Alert>
+      ) : null}
     </YStack>
   )
 }

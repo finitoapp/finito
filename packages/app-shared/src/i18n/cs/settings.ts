@@ -534,6 +534,7 @@ export const csSettings = {
   "settings.fioPlugin.syncLookbackDays.invalid":
     "Zadejte celé číslo větší než nula.",
   "settings.fioPlugin.syncLookbackDays.label": "Dny zpětné kontroly",
+  "settings.fioPlugin.notFioIbanShort": "Účet není u Fio banky.",
   "settings.fioPlugin.notFioIbanWarning":
     "Tento IBAN nepatří k účtu u Fio banky, plugin proto jeho platby nenajde.",
   "settings.fioPlugin.title": "Fio plugin",
@@ -555,6 +556,11 @@ export const csSettings = {
   "settings.fioPlugin.tokens.empty": "Nejsou uložené žádné tokeny.",
   "settings.fioPlugin.tokens.item": "Fio API token",
   "settings.fioPlugin.tokens.remove": "Odebrat",
+  "settings.fioPlugin.tokens.remove.confirm.title": "Odebrat token?",
+  "settings.fioPlugin.tokens.remove.confirm.description":
+    "Synchronizace přestane token {token} používat. Chcete-li ho znovu použít, přidejte ho znovu.",
+  "settings.fioPlugin.tokens.remove.confirm.confirm": "Odebrat",
+  "settings.fioPlugin.tokens.remove.confirm.cancel": "Zrušit",
   "settings.fioPlugin.tokens.title": "Tokeny",
   "settings.monetaPlugin.title": "MONETA Plugin",
   "settings.monetaPlugin.description":
@@ -590,6 +596,7 @@ export const csSettings = {
   "settings.monetaPlugin.connected.token": "Token",
   "settings.monetaPlugin.connected.ibanMismatch":
     "Token byl připojen pro účet {iban}, ne pro současný bankovní účet. Připojte token pro současný účet.",
+  "settings.monetaPlugin.settings.title": "Nastavení synchronizace",
   "settings.monetaPlugin.active.label": "Automaticky potvrzovat platby",
   "settings.monetaPlugin.active.description":
     "Kontroluje příchozí převody na pozadí a během čekání na platbu.",
@@ -1113,6 +1120,7 @@ export const csSettings = {
   "settings.taxRates.activate.confirm.description":
     "{name} bude znovu dostupná při přiřazování daňových sazeb katalogovým položkám.",
   "settings.taxRates.activate.confirm.title": "Znovu aktivovat {name}?",
+  "settings.taxRates.active.title": "Aktivní",
   "settings.taxRates.add": "Přidat sazbu",
   "settings.taxRates.add.title": "Přidat daňovou sazbu",
   "settings.taxRates.archive": "Archivovat {name}",
@@ -1178,6 +1186,7 @@ export const csSettings = {
   "settings.tips.percentages.placeholder": "např. 15",
   "settings.tips.percentages.value": "{value} %",
   "settings.tips.preset.remove": "Odebrat {value}",
+  "settings.tips.preset.removeLabel": "Odebrat",
   "settings.tips.removeConfirm.title": "Odebrat {value}?",
   "settings.tips.removeConfirm.description":
     "Zákazníkům se už při placení nenabídne.",

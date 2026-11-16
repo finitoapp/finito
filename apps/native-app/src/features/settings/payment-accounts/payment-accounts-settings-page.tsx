@@ -47,7 +47,7 @@ import {
   Pressable,
   type ViewStyle,
 } from "react-native"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { animateTo } from "../../../components/motion.ts"
 import { QerkoIcon } from "../../../components/qerko-icon.tsx"
@@ -430,27 +430,25 @@ export function PaymentAccountsSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.paymentAccounts.title")} />
-      <YStack gap={12}>
-        <Text
-          px={4}
-          fontSize={fontSize.sm}
-          lineHeight={fontSize.sm}
-          color="muted-foreground"
-        >
-          {t("settings.paymentAccounts.order.description")}
-        </Text>
-        <VerticalNavShell>
-          {shownOrder.map((method) => (
-            <PaymentMethodRow
-              key={method}
-              row={rows[method]}
-              isDefault={method === firstAvailable}
-              drag={rowDrag(method)}
-              onMove={(offset) => move(method, offset)}
-            />
-          ))}
-        </VerticalNavShell>
-      </YStack>
+      <Text
+        px={4}
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        color="muted-foreground"
+      >
+        {t("settings.paymentAccounts.order.description")}
+      </Text>
+      <VerticalNavShell>
+        {shownOrder.map((method) => (
+          <PaymentMethodRow
+            key={method}
+            row={rows[method]}
+            isDefault={method === firstAvailable}
+            drag={rowDrag(method)}
+            onMove={(offset) => move(method, offset)}
+          />
+        ))}
+      </VerticalNavShell>
     </Screen>
   )
 }

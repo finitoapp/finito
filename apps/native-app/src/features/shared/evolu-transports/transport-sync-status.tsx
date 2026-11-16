@@ -18,6 +18,7 @@ import { PulseDot } from "../../../components/pulse-dot.tsx"
 import { nativeRun } from "../../../core/native-runtime.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 
 const kindDotColors = {
   synced: "success",
@@ -89,14 +90,14 @@ export function TransportSyncStatus({ url }: { readonly url: string }) {
   })()
 
   return (
-    <XStack items="center" gap="1.5">
+    <XStack items="center" gap={6}>
       <PulseDot
         color={kindDotColors[kind]}
         loop={kind === "syncing" || kind === "connecting" ? "pulse" : undefined}
       />
       <Text
-        fontSize="xs"
-        lineHeight="xs"
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
         color={kind === "error" ? "destructive" : "muted-foreground"}
       >
         {t(transportSyncKindLabels[kind])}

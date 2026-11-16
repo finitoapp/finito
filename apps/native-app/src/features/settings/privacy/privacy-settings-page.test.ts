@@ -19,7 +19,7 @@ it("flips errorReportingEnabled on the device row and lets the controller react"
     "errorReportingEnabled: enabled ? sqliteTrue : sqliteFalse"
   )
   expect(hook).toContain("updateDeviceSettings(deviceEvolu")
-  expect(page).toContain("settings.setErrorReportingEnabled(!reporting)")
+  expect(page).toContain("settings.setErrorReportingEnabled(enabled)")
   // The page never touches the SDK; the controller starts and closes it.
   expect(page).not.toMatch(/error-reporting|Sentry/u)
   expect(controller).toContain("enableErrorReporting()")
@@ -31,7 +31,7 @@ it("flips productLookupEnabled on the device row, with no lookup of its own", ()
   expect(hook).toContain(
     "productLookupEnabled: enabled ? sqliteTrue : sqliteFalse"
   )
-  expect(page).toContain("settings.setProductLookupEnabled(!lookup)")
+  expect(page).toContain("settings.setProductLookupEnabled(enabled)")
   // The lookup itself arrives with the bill/item screens, not the consent.
   expect(page + hook).not.toMatch(/open-facts|lookupOpenFactsProduct/u)
 })
@@ -53,7 +53,7 @@ it("flips serviceProxyEnabled through the core write, with the native note outsi
   expect(hook).toContain('"serviceProxyEnabled"')
   expect(hook).toContain("serviceProxyEnabled: isServiceProxyEnabled(row)")
   expect(hook).toContain("setServiceProxyEnabled(deviceEvolu, enabled)")
-  expect(page).toContain("settings.setServiceProxyEnabled(!proxy)")
+  expect(page).toContain("settings.setServiceProxyEnabled(enabled)")
   expect(page).toMatch(
     /Platform\.OS === "web"\s*\?\s*undefined\s*:\s*t\("settings\.privacy\.serviceProxy\.nativeNote"\)/u
   )
@@ -69,7 +69,7 @@ it("flips serviceProxyEnabled through the core write, with the native note outsi
 it("asks for the owner PIN before turning the service proxy on or off", () => {
   expect(page).toContain('require("admin", "access.action.serviceProxy")')
   expect(page.indexOf("access.action.serviceProxy")).toBeLessThan(
-    page.indexOf("settings.setServiceProxyEnabled(!proxy)")
+    page.indexOf("settings.setServiceProxyEnabled(enabled)")
   )
   expect(page).toContain('from "../../../core/use-access.ts"')
 })

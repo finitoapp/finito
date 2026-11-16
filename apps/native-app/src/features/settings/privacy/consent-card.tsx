@@ -1,28 +1,21 @@
-import Power from "lucide-react-native/icons/power"
-import PowerOff from "lucide-react-native/icons/power-off"
-import { XStack } from "tamagui"
-import { Badge } from "../../../components/ui/badge.tsx"
-import { Button } from "../../../components/ui/button.tsx"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card.tsx"
+import { Text } from "tamagui"
+import { SwitchRow } from "../../../components/switch-row.tsx"
+import { Card, CardContent } from "../../../components/ui/card.tsx"
+import { fontSize } from "../../../theme/tokens.ts"
 
 /**
- * An on/off consent: title, what it sends, its state and the button that
- * flips it, with an optional note under them.
+ * An on/off consent: one switch named after the consent, with what it sends
+ * under the name and an optional note below. The switch is its state, so
+ * there is no status badge, and its label is the consent's title, so the
+ * card draws no header that would repeat it. Web's consent cards say the
+ * same with a status badge and an Enable/Disable button.
  */
 export function ConsentCard({
   title,
   description,
   note,
   enabled,
-  status,
-  actionLabel,
-  onPress,
+  onCheckedChange,
 }: {
   /** All already translated. */
   readonly title: string
@@ -30,28 +23,27 @@ export function ConsentCard({
   /** What this runtime makes of the consent, when that needs saying. */
   readonly note?: string | undefined
   readonly enabled: boolean
-  readonly status: string
-  readonly actionLabel: string
-  readonly onPress: () => void
+  readonly onCheckedChange: (enabled: boolean) => void
 }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-        {note === undefined ? null : <CardDescription>{note}</CardDescription>}
-      </CardHeader>
-      <CardContent>
-        <XStack items="center" justify="space-between" gap="3">
-          <Badge variant={enabled ? "secondary" : "outline"} label={status} />
-          <Button
-            size="sm"
-            variant="outline"
-            label={actionLabel}
-            iconStart={enabled ? PowerOff : Power}
-            onPress={onPress}
-          />
-        </XStack>
+      <CardContent gap={8}>
+        <SwitchRow
+          label={title}
+          description={description}
+          checked={enabled}
+          onCheckedChange={onCheckedChange}
+        />
+        {note === undefined ? null : (
+          <Text
+            px={4}
+            fontSize={fontSize.xs}
+            lineHeight={fontSize.xs}
+            color="muted-foreground"
+          >
+            {note}
+          </Text>
+        )}
       </CardContent>
     </Card>
   )

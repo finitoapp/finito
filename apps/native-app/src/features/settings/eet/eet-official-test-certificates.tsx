@@ -4,19 +4,25 @@ import { storeEetCertificate } from "@payky/core/modules/eet/eet-actions"
 import { useQuery } from "@tanstack/react-query"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, YStack } from "tamagui"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
+import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import { apiUrl } from "../../../core/native-env.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useToast } from "../../../hooks/use-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { eetNativeCrypto } from "../../../platform/eet-crypto"
+import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 
 /**
  * The sandbox's official test certificates, fetched only on request: the
@@ -62,8 +68,12 @@ export function EetOfficialTestCertificates() {
 
   if (!requested) {
     return (
-      <YStack gap="2" p="3" rounded="lg" bg="neutral-soft">
-        <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+      <YStack gap={8} p={12} rounded={shape.control} bg="neutral-soft">
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
           {t("settings.eet.officialTest.description")}
         </Text>
         <Button
@@ -89,58 +99,53 @@ export function EetOfficialTestCertificates() {
     )
   }
 
+  // One tile's place while the list is fetched.
   if (certificatesQuery.data === undefined) {
-    return (
-      <Text color="muted-foreground" fontSize="sm" lineHeight="sm">
-        {t("settings.eet.officialTest.loading")}
-      </Text>
-    )
+    return <Skeleton h={56} rounded={shape.control} />
   }
 
   return (
-    <YStack gap="2">
-      <Text fontSize="sm" lineHeight="sm" fontWeight="600">
+    <YStack gap={8}>
+      <Text
+        fontSize={fontSize.sm}
+        lineHeight={fontSize.sm}
+        fontWeight={fontWeight.semibold}
+      >
         {t("settings.eet.officialTest.title")}
       </Text>
-      {certificatesQuery.data.map((certificate) => (
-        <XStack
-          key={certificate.eic}
-          items="center"
-          gap="3"
-          p="3"
-          rounded="lg"
-          bg="neutral-soft"
-        >
-          <YStack flex={1}>
-            <Text
-              fontSize="sm"
-              lineHeight="sm"
-              fontWeight="600"
-              style={{ fontFamily: "monospace" }}
-            >
-              {certificate.eic}
-            </Text>
-            {certificate.description === null ? null : (
-              <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-                {certificate.description}
+      <SettingsTileList>
+        {certificatesQuery.data.map((certificate) => (
+          <SettingsTile
+            key={certificate.eic}
+            title={
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.semibold}
+                style={{ fontFamily: "monospace" }}
+              >
+                {certificate.eic}
               </Text>
-            )}
-          </YStack>
-          <Button
-            size="sm"
-            variant="default"
-            label={t("settings.eet.officialTest.useShort")}
-            aria-label={t("settings.eet.officialTest.use", {
-              name: certificate.eic,
-            })}
-            disabled={storingEic !== null}
-            pending={storingEic === certificate.eic}
-            onPress={() => {
-              void store(certificate)
-            }}
+            }
+            description={certificate.description ?? undefined}
+            trailing={
+              <Button
+                size="sm"
+                variant="default"
+                label={t("settings.eet.officialTest.useShort")}
+                aria-label={t("settings.eet.officialTest.use", {
+                  name: certificate.eic,
+                })}
+                disabled={storingEic !== null}
+                pending={storingEic === certificate.eic}
+                onPress={() => {
+                  void store(certificate)
+                }}
+              />
+            }
           />
-        </XStack>
-      ))}
+        ))}
+      </SettingsTileList>
     </YStack>
   )
 }

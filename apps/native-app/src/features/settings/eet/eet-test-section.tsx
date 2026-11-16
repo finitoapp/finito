@@ -30,6 +30,7 @@ import {
 } from "../../../components/ui/collapsible.tsx"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight, shape } from "../../../theme/tokens.ts"
 
 type EetTestKind = "verification" | "sale"
 
@@ -77,8 +78,8 @@ export function EetTestSection({
         <CardDescription>{t("settings.eet.test.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <YStack gap="4">
-          <XStack gap="2" flexWrap="wrap">
+        <YStack gap={16}>
+          <XStack gap={8} flexWrap="wrap">
             <Button
               label={t("settings.eet.test.connection")}
               variant="outline"
@@ -117,17 +118,24 @@ function EetTestResult({ submission }: { readonly submission: EetSubmission }) {
 
   return (
     <YStack
-      gap="2"
-      p="3"
-      rounded="lg"
+      gap={8}
+      p={12}
+      rounded={shape.control}
       bg="neutral-soft"
       testID="eet-test-result"
     >
-      <Text fontWeight="700" color={isSuccess ? "success" : "destructive"}>
+      <Text
+        fontWeight={fontWeight.bold}
+        color={isSuccess ? "success" : "destructive"}
+      >
         {t(outcomeTitleKeys[outcome.type])}
       </Text>
       {outcome.type === "accepted" ? (
-        <Text fontSize="xs" lineHeight="xs" testID="eet-test-pok">
+        <Text
+          fontSize={fontSize.xs}
+          lineHeight={fontSize.xs}
+          testID="eet-test-pok"
+        >
           {t("settings.eet.test.pok", { pok: outcome.pok })}
         </Text>
       ) : null}
@@ -165,11 +173,11 @@ function RawMessage({
 
   return (
     <Collapsible>
-      <CollapsibleTrigger flexDirection="row" items="center" gap="1">
+      <CollapsibleTrigger flexDirection="row" items="center" gap={4}>
         <Text
-          fontSize="xs"
-          lineHeight="xs"
-          fontWeight="600"
+          fontSize={fontSize.xs}
+          lineHeight={fontSize.xs}
+          fontWeight={fontWeight.medium}
           color="muted-foreground"
         >
           {label}
@@ -177,14 +185,14 @@ function RawMessage({
         <CollapsibleChevron size={14} color="muted-foreground" />
       </CollapsibleTrigger>
       <CollapsibleContent
-        mt="2"
+        mt={8}
         maxH={256}
         overflow="scroll"
-        rounded="md"
+        rounded={shape.control}
         bg="surface-raised"
-        p="2"
+        p={8}
       >
-        <Text fontSize={11} userSelect="text">
+        <Text fontSize={fontSize.xs} lineHeight={fontSize.xs} userSelect="text">
           {value}
         </Text>
       </CollapsibleContent>

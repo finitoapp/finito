@@ -1,12 +1,18 @@
 import { formatDateTime } from "@payky/app-shared/format-date"
 import { fetchDonationHistory } from "@payky/core/integrations/donations/donations-client"
 import { useInfiniteQuery } from "@tanstack/react-query"
-import CircleAlert from "lucide-react-native/icons/circle-alert"
 import HeartHandshake from "lucide-react-native/icons/heart-handshake"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
+import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import Zap from "lucide-react-native/icons/zap"
 import { Text, YStack } from "tamagui"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
+import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+} from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
@@ -14,6 +20,7 @@ import { apiUrl } from "../../../core/native-env.ts"
 import { useAppRun } from "../../../hooks/use-app-run.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatSatsAmount } from "../../../lib/format-money.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 /** The donations received so far, newest first, a page at a time. */
 export function DonationHistory() {
@@ -57,49 +64,35 @@ export function DonationHistory() {
         title={t("settings.donations.history.title")}
         items={[]}
         empty={
-          <YStack items="center" justify="center" gap="4" py="10">
-            <Icon icon={CircleAlert} size={40} color="destructive" />
-            <Text
-              color="muted-foreground"
-              text="center"
-              fontSize="sm"
-              lineHeight="sm"
-              role="alert"
-            >
+          <Alert variant="destructive" icon={TriangleAlert}>
+            <AlertDescription>
               {t("settings.donations.history.error")}
-            </Text>
-            <Button
-              variant="outline"
-              size="sm"
-              label={t("settings.donations.history.retry")}
-              iconStart={RotateCw}
-              onPress={() => void refetch()}
-            />
-          </YStack>
+            </AlertDescription>
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="sm"
+                label={t("settings.donations.history.retry")}
+                iconStart={RotateCw}
+                onPress={() => void refetch()}
+              />
+            </AlertAction>
+          </Alert>
         }
       />
     )
   }
 
   return (
-    <YStack gap="3">
+    <YStack gap={12}>
       <VerticalNav
         title={t("settings.donations.history.title")}
         empty={
-          <YStack items="center" justify="center" gap="8" py="10">
-            <Icon icon={HeartHandshake} size={40} color="muted-foreground" />
-            <Text fontSize="lg" lineHeight="lg">
-              {t("settings.donations.history.empty.title")}
-            </Text>
-            <Text
-              color="muted-foreground"
-              text="center"
-              fontSize="sm"
-              lineHeight="sm"
-            >
-              {t("settings.donations.history.empty.description")}
-            </Text>
-          </YStack>
+          <EmptyState
+            icon={HeartHandshake}
+            title={t("settings.donations.history.empty.title")}
+            description={t("settings.donations.history.empty.description")}
+          />
         }
         items={items.map((item) => ({
           id: `${item.occurredAt}-${item.amountSats}`,
@@ -119,13 +112,21 @@ export function DonationHistory() {
             </YStack>
           ),
           label: (
-            <YStack gap="1">
-              <Text fontWeight="700">
+            <YStack gap={4}>
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                fontWeight={fontWeight.semibold}
+              >
                 {t("settings.donations.history.amount", {
                   amount: formatSatsAmount(item.amountSats, locale),
                 })}
               </Text>
-              <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
+              <Text
+                fontSize={fontSize.xs}
+                lineHeight={fontSize.xs}
+                color="muted-foreground"
+              >
                 {formatDateTime(new Date(item.occurredAt), locale)}
               </Text>
             </YStack>
@@ -134,20 +135,28 @@ export function DonationHistory() {
       />
       {isFetchingNextPage ? <ListSkeleton rows={2} /> : null}
       {isFetchNextPageError ? (
-        <Text color="destructive" role="alert">
-          {t("settings.donations.history.error")}
-        </Text>
-      ) : null}
-      {hasNextPage ? (
+        <Alert variant="destructive" icon={TriangleAlert}>
+          <AlertDescription>
+            {t("settings.donations.history.error")}
+          </AlertDescription>
+          <AlertAction>
+            <Button
+              variant="outline"
+              size="sm"
+              label={t("settings.donations.history.retry")}
+              iconStart={RotateCw}
+              pending={isFetchingNextPage}
+              onPress={() => {
+                void fetchNextPage()
+              }}
+            />
+          </AlertAction>
+        </Alert>
+      ) : hasNextPage ? (
         <Button
-          size={isFetchNextPageError ? "sm" : "lg"}
-          label={t(
-            isFetchNextPageError
-              ? "settings.donations.history.retry"
-              : "settings.donations.history.more"
-          )}
+          size="lg"
+          label={t("settings.donations.history.more")}
           variant="outline"
-          iconStart={isFetchNextPageError ? RotateCw : undefined}
           pending={isFetchingNextPage}
           onPress={() => {
             void fetchNextPage()

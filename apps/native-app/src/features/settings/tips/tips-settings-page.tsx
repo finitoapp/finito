@@ -19,19 +19,25 @@ import Plus from "lucide-react-native/icons/plus"
 import RotateCcw from "lucide-react-native/icons/rotate-ccw"
 import Trash from "lucide-react-native/icons/trash"
 import { useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Text, YStack } from "tamagui"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
+import {
+  SettingsTile,
+  SettingsTileList,
+} from "../../../components/settings-tile.tsx"
 import { SwitchRow } from "../../../components/switch-row.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Field, FieldError, FieldLabel } from "../../../components/ui/field.tsx"
 import { Input } from "../../../components/ui/input.tsx"
+import { Skeleton } from "../../../components/ui/skeleton.tsx"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
+import { control, fontSize, shape } from "../../../theme/tokens.ts"
 
 /** Smallest first, so the payment screen's options read in order. */
 const ascending = (presets: ReadonlyArray<number>) =>
@@ -45,6 +51,7 @@ const ascending = (presets: ReadonlyArray<number>) =>
  * The presets show only while tips are on, as they do nothing otherwise.
  * Removing a preset and resetting to the defaults are confirmed first; the
  * reset replaces the presets only and leaves tips on or off as they are.
+ * Until the settings are read, a skeleton holds the switch's place.
  */
 export function TipsSettingsPage() {
   const { t } = useTranslation()
@@ -53,7 +60,9 @@ export function TipsSettingsPage() {
   return (
     <Screen>
       <FadeHeader title={t("settings.tips.title")} />
-      {settings === undefined ? null : (
+      {settings === undefined ? (
+        <Skeleton h={control.md} rounded={shape.control} />
+      ) : (
         <TipsSettingsForm key={settings.id} settings={settings} />
       )}
     </Screen>
@@ -254,10 +263,10 @@ function TipsSettingsForm({
 }
 
 /**
- * One list of presets with a remove button each and, while there is room
- * for another (`maxTipPresetCount`), the input and the Add button under it;
- * once the list is full, the limit in their place, so they do not vanish
- * without a word.
+ * One list of presets, each a tile with its labelled remove and, while
+ * there is room for another (`maxTipPresetCount`), the input and the Add
+ * button under it; once the list is full, the limit in their place, so they
+ * do not vanish without a word.
  */
 function TipPresetField({
   addLabel,
@@ -294,31 +303,38 @@ function TipPresetField({
   return (
     <Field>
       <FieldLabel>{label}</FieldLabel>
-      <YStack rounded="lg" bg="tile" overflow="hidden">
-        {presets.map((value) => {
-          const text = renderPreset(value)
-          return (
-            <XStack key={value} items="center" gap="3" px="3" py="2">
-              <Text flex={1} fontWeight="600">
-                {text}
-              </Text>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                aria-label={t("settings.tips.preset.remove", {
-                  value: text,
-                })}
-                labelColor="muted-foreground"
-                disabled={disabled}
-                iconStart={Trash}
-                onPress={() => onRemove(value, text)}
+      {presets.length === 0 ? null : (
+        <SettingsTileList>
+          {presets.map((value) => {
+            const text = renderPreset(value)
+            return (
+              <SettingsTile
+                key={value}
+                title={text}
+                trailing={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    label={t("settings.tips.preset.removeLabel")}
+                    aria-label={t("settings.tips.preset.remove", {
+                      value: text,
+                    })}
+                    disabled={disabled}
+                    iconStart={Trash}
+                    onPress={() => onRemove(value, text)}
+                  />
+                }
               />
-            </XStack>
-          )
-        })}
-      </YStack>
+            )
+          })}
+        </SettingsTileList>
+      )}
       {full ? (
-        <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+        <Text
+          fontSize={fontSize.sm}
+          lineHeight={fontSize.sm}
+          color="muted-foreground"
+        >
           {t(maximumKey)}
         </Text>
       ) : (

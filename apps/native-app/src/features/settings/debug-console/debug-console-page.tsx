@@ -5,10 +5,12 @@ import {
 import { format } from "date-fns"
 import Pause from "lucide-react-native/icons/pause"
 import Play from "lucide-react-native/icons/play"
+import SquareTerminal from "lucide-react-native/icons/square-terminal"
 import Trash from "lucide-react-native/icons/trash"
 import { Suspense, useEffect, useState } from "react"
 import { ScrollView } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
+import { EmptyState } from "../../../components/empty-state.tsx"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
 import { Badge } from "../../../components/ui/badge.tsx"
@@ -22,7 +24,11 @@ import {
 } from "../../../components/ui/card.tsx"
 import { nativeConsoleHistory } from "../../../core/native-runtime.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { CashuShardDebugCard } from "./cashu-shard-debug-card.tsx"
+import { fontSize, shape } from "../../../theme/tokens.ts"
+import {
+  CashuShardDebugCard,
+  CashuShardDebugCardSkeleton,
+} from "./cashu-shard-debug-card.tsx"
 
 const methodColors = {
   trace: "info",
@@ -62,7 +68,7 @@ export function DebugConsolePage() {
     <Screen>
       <FadeHeader title={t("settings.debugConsole.title")} />
       {__DEV__ ? (
-        <Suspense fallback={null}>
+        <Suspense fallback={<CashuShardDebugCardSkeleton />}>
           <CashuShardDebugCard />
         </Suspense>
       ) : null}
@@ -70,7 +76,7 @@ export function DebugConsolePage() {
         <CardHeader>
           <CardTitle>{t("settings.debugConsole.history.title")}</CardTitle>
           <CardAction>
-            <XStack gap="1">
+            <XStack gap={4}>
               <Button
                 size="sm"
                 label={t(
@@ -98,29 +104,26 @@ export function DebugConsolePage() {
         </CardHeader>
         <CardContent>
           {entries.length === 0 ? (
-            <Text
-              py="8"
-              color="muted-foreground"
-              text="center"
-              fontSize="sm"
-              lineHeight="sm"
-            >
-              {t("settings.debugConsole.empty")}
-            </Text>
+            <EmptyState
+              icon={SquareTerminal}
+              description={t("settings.debugConsole.empty")}
+            />
           ) : (
-            <YStack gap="2" testID="debug-console-entries">
+            <YStack gap={8} testID="debug-console-entries">
               {entries.toReversed().map((entry, index) => (
                 <YStack
                   // biome-ignore lint/suspicious/noArrayIndexKey: console entries do not expose stable ids
                   key={index}
-                  gap="1"
-                  p="2"
-                  rounded="md"
-                  bg="muted-20"
+                  gap={4}
+                  px={12}
+                  py={8}
+                  rounded={shape.control}
+                  bg="neutral-soft"
                 >
-                  <XStack minW={0} gap="2" items="center">
+                  <XStack minW={0} gap={8} items="center">
                     <Text
-                      fontSize={11}
+                      fontSize={fontSize.xs}
+                      lineHeight={fontSize.xs}
                       color="muted-foreground"
                       style={{ fontFamily: "monospace" }}
                     >
@@ -136,7 +139,8 @@ export function DebugConsolePage() {
                       <Text
                         flex={1}
                         minW={0}
-                        fontSize={11}
+                        fontSize={fontSize.xs}
+                        lineHeight={fontSize.xs}
                         color="muted-foreground"
                         style={{ fontFamily: "monospace" }}
                         numberOfLines={1}
@@ -148,7 +152,7 @@ export function DebugConsolePage() {
                   <YStack
                     maxHeight={192}
                     overflow="hidden"
-                    rounded="sm"
+                    rounded={shape.control}
                     bg="background"
                   >
                     <ScrollView
@@ -160,7 +164,8 @@ export function DebugConsolePage() {
                       }}
                     >
                       <Text
-                        fontSize={11}
+                        fontSize={fontSize.xs}
+                        lineHeight={fontSize.xs}
                         style={{ fontFamily: "monospace" }}
                         userSelect="text"
                       >

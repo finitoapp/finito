@@ -59,6 +59,7 @@ import { nativeEnv } from "../../../core/native-env.ts"
 import { useAccess, useRequirePermission } from "../../../core/use-access.ts"
 import { useScreenWakeLock } from "../../../hooks/use-screen-wake-lock.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize, fontWeight } from "../../../theme/tokens.ts"
 
 type FailureReason = Extract<TransferSourceState, { phase: "failed" }>["reason"]
 
@@ -72,6 +73,7 @@ const failureKeys = {
 
 const TRANSFER_CODE_LENGTH = 6
 
+/** The step the header's dots light up to; the intro (no session yet) lights none. */
 const stepByPhase = {
   waiting: 1,
   expired: 1,
@@ -161,9 +163,9 @@ export function AccountTransferSourcePage() {
     <Screen>
       <FadeHeader title={t("accountTransfer.source.title")} />
       <Card>
-        {state !== null && stepByPhase[state.phase] > 0 ? (
+        {state === null || stepByPhase[state.phase] > 0 ? (
           <CardHeader>
-            <Stepper value={stepByPhase[state.phase]}>
+            <Stepper value={state === null ? 0 : stepByPhase[state.phase]}>
               <StepperNav>
                 {[1, 2, 3].map((step) => (
                   <StepperItem key={step} step={step} last={step === 3}>
@@ -181,22 +183,16 @@ export function AccountTransferSourcePage() {
 
         <CardContent gap={16}>
           {state === null ? (
-            <YStack gap="3">
-              {introSteps.map(({ label, icon }, index) => (
-                <XStack key={label} items="center" gap="3">
-                  <YStack
-                    w={32}
-                    h={32}
-                    shrink={0}
-                    items="center"
-                    justify="center"
-                    rounded="full"
-                    bg="neutral-soft"
-                  >
-                    <Text fontWeight="600">{index + 1}</Text>
-                  </YStack>
+            <YStack gap={12}>
+              {/* The three steps the header's dots count, in order. */}
+              {introSteps.map(({ label, icon }) => (
+                <XStack key={label} items="center" gap={12}>
                   <Icon icon={icon} color="muted-foreground" />
-                  <Text flex={1} fontSize="sm" lineHeight="sm">
+                  <Text
+                    flex={1}
+                    fontSize={fontSize.sm}
+                    lineHeight={fontSize.sm}
+                  >
                     {t(label)}
                   </Text>
                 </XStack>
@@ -210,7 +206,11 @@ export function AccountTransferSourcePage() {
                 </AlertDescription>
               </Alert>
               {accessControlOn ? (
-                <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  color="muted-foreground"
+                >
                   {t("accountTransfer.source.permissions")}
                 </Text>
               ) : null}
@@ -218,10 +218,14 @@ export function AccountTransferSourcePage() {
           ) : null}
 
           {state?.phase === "waiting" ? (
-            <YStack gap="3" aria-live="polite">
+            <YStack gap={12} aria-live="polite">
               {qr(state.uri, 260)}
               <Text>{t("accountTransfer.source.qr.instructions")}</Text>
-              <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+              <Text
+                fontSize={fontSize.sm}
+                lineHeight={fontSize.sm}
+                color="muted-foreground"
+              >
                 {t("accountTransfer.source.qr.reassurance")}
               </Text>
               <Text color="muted-foreground">
@@ -234,9 +238,9 @@ export function AccountTransferSourcePage() {
           ) : null}
 
           {state?.phase === "locked" ? (
-            <YStack gap="3" aria-live="polite">
+            <YStack gap={12} aria-live="polite">
               {state.uri !== null ? qr(state.uri, 160) : null}
-              <Text fontWeight="600">
+              <Text fontWeight={fontWeight.semibold}>
                 {t("accountTransfer.source.code.connected")}
               </Text>
               <Field>
@@ -300,12 +304,6 @@ export function AccountTransferSourcePage() {
             </Text>
           ) : null}
 
-          {state?.phase === "sending" ? (
-            <Text aria-live="polite">
-              {t("accountTransfer.source.sending")}
-            </Text>
-          ) : null}
-
           {state?.phase === "done" ? (
             <Alert variant="success" icon={Check}>
               <AlertTitle>{t("accountTransfer.source.done.title")}</AlertTitle>
@@ -338,7 +336,7 @@ export function AccountTransferSourcePage() {
             <>
               <Button
                 label={t("accountTransfer.cancel")}
-                variant="outline"
+                variant="ghost"
                 onPress={close}
               />
               <Button
@@ -353,9 +351,13 @@ export function AccountTransferSourcePage() {
           {state?.phase === "waiting" || state?.phase === "locked" ? (
             <Button
               label={t("accountTransfer.cancel")}
-              variant="outline"
+              variant="ghost"
               onPress={close}
             />
+          ) : null}
+          {/* The account is on its way: nothing to press until it lands. */}
+          {state?.phase === "sending" ? (
+            <Button pending label={t("accountTransfer.source.sending")} />
           ) : null}
           {state?.phase === "expired" ? (
             <Button
@@ -370,7 +372,7 @@ export function AccountTransferSourcePage() {
             <>
               <Button
                 label={t("accountTransfer.close")}
-                variant="outline"
+                variant="ghost"
                 onPress={close}
               />
               <Button

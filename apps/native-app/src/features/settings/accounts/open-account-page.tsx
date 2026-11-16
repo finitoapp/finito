@@ -6,7 +6,7 @@ import {
 } from "@payky/app-shared/open-account"
 import { router, useLocalSearchParams } from "expo-router"
 import { useAtomValue, useStore } from "jotai"
-import { Text, YStack } from "tamagui"
+import { Text } from "tamagui"
 import { evoluCounterAtom } from "../../../atoms/evolu-counter.ts"
 import { FadeHeader } from "../../../components/fade-header.tsx"
 import { Screen } from "../../../components/screen.tsx"
@@ -38,27 +38,23 @@ export function OpenAccountPage() {
   return (
     <Screen>
       <FadeHeader title={t(copy.title, { sourceApp })} />
-      <YStack gap={20}>
-        <Text color="muted-foreground">
-          {t(copy.description, { sourceApp })}
-        </Text>
-        <OpenAccountFlow
-          step={step}
-          source="settings"
-          confirmBeforeAdding
-          disabled={restoring.pending}
-          restore={{
-            error: restoring.error,
-            pending: restoring.pending,
-            onRestore: (phrase) => {
-              // Switched account meanwhile: the phrase was meant for the other.
-              if (store.get(evoluCounterAtom) !== accountVersion) return
-              void restoring.restore(phrase)
-            },
-          }}
-          onStepChange={goTo}
-        />
-      </YStack>
+      <Text color="muted-foreground">{t(copy.description, { sourceApp })}</Text>
+      <OpenAccountFlow
+        step={step}
+        source="settings"
+        confirmBeforeAdding
+        disabled={restoring.pending}
+        restore={{
+          error: restoring.error,
+          pending: restoring.pending,
+          onRestore: (phrase) => {
+            // Switched account meanwhile: the phrase was meant for the other.
+            if (store.get(evoluCounterAtom) !== accountVersion) return
+            void restoring.restore(phrase)
+          },
+        }}
+        onStepChange={goTo}
+      />
     </Screen>
   )
 }

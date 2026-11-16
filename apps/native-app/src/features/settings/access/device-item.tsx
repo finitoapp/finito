@@ -17,6 +17,8 @@ import Trash from "lucide-react-native/icons/trash"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
+import { SettingsTile } from "../../../components/settings-tile.tsx"
+import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { Checkbox } from "../../../components/ui/checkbox.tsx"
 import {
@@ -34,7 +36,6 @@ import {
   FieldGroup,
   FieldLabel,
 } from "../../../components/ui/field.tsx"
-import { Icon } from "../../../components/ui/icon.tsx"
 import {
   accessPresetLabelKeys,
   permissionDescriptionKeys,
@@ -44,9 +45,19 @@ import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
-import { DeviceHeading, PresetPicker, RenameForm } from "./device-parts.tsx"
+import { fontSize } from "../../../theme/tokens.ts"
+import {
+  DeviceTitle,
+  deviceDetails,
+  PresetPicker,
+  RenameForm,
+} from "./device-parts.tsx"
 
-/** One device of the account: its defaults, name, and removal (access/0004). */
+/**
+ * One device of the account as a `SettingsTile`: its name and badges, what
+ * it is and its defaults, and the row's actions, the removal a labelled
+ * ghost with a destructive confirm (access/0004).
+ */
 export function DeviceItem({
   device,
   thisDevice,
@@ -88,9 +99,15 @@ export function DeviceItem({
   }
 
   return (
-    <YStack gap="3" p="3" rounded="lg" bg="neutral-soft">
-      <DeviceHeading device={device} thisDevice={thisDevice} />
-      <Text fontSize="sm" lineHeight="sm" color="muted-foreground">
+    <SettingsTile
+      title={<DeviceTitle device={device} thisDevice={thisDevice} />}
+      description={deviceDetails(device)}
+    >
+      <Text
+        fontSize={fontSize.xs}
+        lineHeight={fontSize.xs}
+        color="muted-foreground"
+      >
         {preset === null
           ? permissions
               .filter((permission) => granted.has(permission))
@@ -99,7 +116,7 @@ export function DeviceItem({
           : t(accessPresetLabelKeys[preset])}
       </Text>
       {editor === null ? (
-        <XStack flexWrap="wrap" gap="2">
+        <XStack flexWrap="wrap" gap={8} pt={4}>
           <Button
             size="sm"
             variant="outline"
@@ -168,7 +185,7 @@ export function DeviceItem({
           </DialogContent>
         </Dialog>
       )}
-    </YStack>
+    </SettingsTile>
   )
 }
 
@@ -199,15 +216,17 @@ function PermissionsEditor({
   }
 
   return (
-    <YStack gap="3">
-      <Text fontWeight="600">
-        {t("access.device.preset", { name: device.name })}
-      </Text>
-      <PresetPicker
-        label={t("access.device.preset", { name: device.name })}
-        value={presetOf(granted)}
-        onChange={(preset) => setGranted(new Set(accessPresets[preset]))}
-      />
+    <YStack gap={16}>
+      <Field>
+        <FieldLabel>
+          {t("access.device.preset", { name: device.name })}
+        </FieldLabel>
+        <PresetPicker
+          label={t("access.device.preset", { name: device.name })}
+          value={presetOf(granted)}
+          onChange={(preset) => setGranted(new Set(accessPresets[preset]))}
+        />
+      </Field>
       <FieldGroup>
         {permissions.map((permission) => (
           <Field key={permission} orientation="horizontal">
@@ -231,14 +250,9 @@ function PermissionsEditor({
         ))}
       </FieldGroup>
       {granted.has("admin") ? (
-        <XStack gap={8} rounded={6.8} bg="destructive-tint" p={12} role="alert">
-          <YStack pt={2}>
-            <Icon icon={TriangleAlert} color="destructive" />
-          </YStack>
-          <Text flex={1} fontSize="sm" lineHeight="sm">
-            {t("access.device.adminWarning")}
-          </Text>
-        </XStack>
+        <Alert variant="destructive" icon={TriangleAlert}>
+          <AlertDescription>{t("access.device.adminWarning")}</AlertDescription>
+        </Alert>
       ) : null}
       <DialogFooter>
         <Button

@@ -12,6 +12,7 @@ import {
 } from "../../../components/ui/card.tsx"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
+import { fontSize } from "../../../theme/tokens.ts"
 
 /** Web's `RecoveryBackupCard`: only whether the backup was verified, and the way to the backup screen. */
 export function RecoveryBackupCard() {
@@ -29,11 +30,12 @@ export function RecoveryBackupCard() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <XStack items="center" justify="space-between" gap="3">
+        <XStack items="center" justify="space-between" gap={12}>
           <Text
             flex={1}
             testID="recovery-verify-status"
-            fontSize="sm"
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
             color="muted-foreground"
           >
             {verifiedAt === null
