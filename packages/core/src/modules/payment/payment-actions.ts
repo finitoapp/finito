@@ -609,11 +609,12 @@ export const markPaymentPaid =
 
 /**
  * Records money an outside system has already taken for a payment — a card
- * terminal that approved — on the account the attempt was made with, as
+ * terminal that approved, Qerko saying paid — on the account the attempt
+ * was made with, as
  * {@link markPaymentPaid} does but without checking that account first
- * (payment/0022). The card was charged in the payment's currency whatever
+ * (payment/0022). The money was taken in the payment's currency whatever
  * became of the account since: turned off, or switched to another currency,
- * it must not leave a charged card unrecorded, nor its attempt unknown.
+ * it must not leave money taken unrecorded, nor its attempt open.
  */
 export const markPaymentCharged =
   (

@@ -474,8 +474,6 @@ export type StartQerkoTerminalPaymentError =
 
 export type SyncQerkoTerminalPaymentError =
   | PaymentNotFoundError
-  | QerkoTerminalAccountNotFoundError
-  | AccountCurrencyMismatchError
   | QerkoPluginNotPairedError
   | QerkoTerminalPaymentFailedError
   | QerkoClientError
@@ -539,5 +537,3 @@ export type StartQerkoPaymentError =
 export type SettleQerkoPaymentError =
   | QerkoPaymentAttemptNotFoundError
   | PaymentNotFoundError
-  | QerkoPaymentAccountNotFoundError
-  | AccountCurrencyMismatchError

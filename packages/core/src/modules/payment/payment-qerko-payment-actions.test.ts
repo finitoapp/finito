@@ -779,6 +779,37 @@ describe("settleQerkoPayment", () => {
     expect(await test.transactions()).toMatchObject([{ amount: 14_950 }])
   })
 
+  test.each([
+    ["Qerko payments were turned off", false, "CZK"],
+    ["Qerko payments switched currency", true, "EUR"],
+  ] as const)(
+    "PAID after %s still records the money on the account Qerko took it on (payment/0022)",
+    async (_, enabled, currency) => {
+      await using test = await setup()
+      await test.run.orThrow(startQerkoPayment(wire("qerko-1", test.paymentId)))
+      await test.run.ok(saveQerkoPaymentAccount({ enabled, currency }))
+
+      await expect(
+        test.run(
+          settleQerkoPayment({
+            qerkoPaymentId: "qerko-1",
+            state: "PAID",
+            payment: wire("qerko-1", test.paymentId, {
+              state: "PAID",
+              parts: cardParts("129.5"),
+            }),
+          })
+        )
+      ).resolves.toEqual({ ok: true, value: "paid" })
+
+      expect(await test.transactions()).toMatchObject([
+        { accountId, kind: "qerkoPayment", amount: 12_950, currency: "CZK" },
+      ])
+      expect(await test.claims()).toHaveLength(1)
+      expect(await test.attempts()).toMatchObject([{ outcome: "paid" }])
+    }
+  )
+
   test("reads the customer's tip from the attempt when the Payment carries none", async () => {
     await using test = await setup({
       getPayment: (body) =>
