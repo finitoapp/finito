@@ -30,9 +30,57 @@ type Tones = Record<
   | "tile-primary-15"
   | "tile-info-10"
   | "tile-accent"
-  | "nav-bar",
+  | "nav-bar"
+  | PhotoTone,
   string
 >
+
+/**
+ * What is drawn over a library picture filling a tile (the bill's item
+ * grid): white text on a dark scrim, whatever the page, and the picture
+ * dimmed a little on the dark page, where a bright photo would glare.
+ */
+type PhotoTone =
+  | "photo-foreground"
+  | "photo-foreground-85"
+  | "photo-shadow"
+  | "photo-scrim"
+  | "photo-scrim-55"
+  | "photo-scrim-0"
+  | "photo-dim"
+  | "photo-pressed"
+  | "photo-control"
+  | "photo-control-pressed"
+
+/** `#rrggbb` at `alpha`, as `#rrggbbaa`. */
+const withAlpha = (hex: string, alpha: number): string =>
+  `${hex}${Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, "0")}`
+
+/**
+ * The picture tones: the same on both pages but for `dim`, the black veil
+ * that takes a picture down to about 90 % brightness on the dark page. The
+ * scrim is a near-black of the dark page's hue, from 0.82 at the tile's
+ * bottom through 0.55 to nothing (`ItemBrick` lays out the stops); a
+ * pressed picture darkens under the finger rather than taking `card-ring`;
+ * a control on it is a translucent white disc.
+ */
+const photoTones = (dim: number): Record<PhotoTone, string> => {
+  const scrim = "#0e1012"
+  return {
+    "photo-foreground": white,
+    "photo-foreground-85": withAlpha(white, 0.85),
+    "photo-shadow": withAlpha("#000000", 0.35),
+    "photo-scrim": withAlpha(scrim, 0.82),
+    "photo-scrim-55": withAlpha(scrim, 0.55),
+    "photo-scrim-0": withAlpha(scrim, 0),
+    "photo-dim": withAlpha("#000000", dim),
+    "photo-pressed": withAlpha(scrim, 0.15),
+    "photo-control": withAlpha(white, 0.22),
+    "photo-control-pressed": withAlpha(white, 0.34),
+  }
+}
 
 /**
  * The light page: a near-neutral cool grey a step below web's `:root`
@@ -137,6 +185,7 @@ const lightTones = (colors: Palette): Tones => ({
   // The menu's fill, the bottom tab bar (a block like Linky's `TabBar` on
   // `surface`) and the wide window's rail alike.
   "nav-bar": white,
+  ...photoTones(0),
 })
 
 /**
@@ -196,6 +245,7 @@ const darkTones = (colors: Palette): Tones => ({
   "tile-info-10": colors["info-10"],
   "tile-accent": darkAccent.accent,
   "nav-bar": darkVeil(0.13),
+  ...photoTones(0.1),
 })
 
 /**
