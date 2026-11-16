@@ -1093,7 +1093,7 @@ export const enSettings = {
   "catalog.tables.empty.title": "No tables yet",
   "catalog.tables.emptySearch": "No tables match your search.",
   "catalog.tables.form.card.description":
-    "Name and seat count shown when assigning this table to a bill.",
+    "Name and optional seat count shown when assigning this table to a bill.",
   "catalog.tables.form.card.title": "Details",
   "catalog.tables.form.code.description":
     "Not used yet — reserved for a future QR code that will identify this table.",
@@ -1107,7 +1107,7 @@ export const enSettings = {
   "catalog.tables.form.saved.create": "Table added.",
   "catalog.tables.form.seatCount.invalid": "Enter a valid seat count.",
   "catalog.tables.form.seatCount.label": "Seat count",
-  "catalog.tables.form.seatCount.placeholder": "e.g. 4",
+  "catalog.tables.form.seatCount.placeholder": "Optional — e.g. 4",
   "catalog.tables.form.title.create": "Add table",
   "catalog.tables.form.title.edit": "Edit table",
   "catalog.tables.search": "Search tables...",

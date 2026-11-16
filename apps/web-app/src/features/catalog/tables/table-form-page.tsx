@@ -1,8 +1,10 @@
 import type { UpdateValues } from "@evolu/common"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { requiredTextCodec } from "@payky/app-shared/inline-edit-codecs"
+import {
+  optionalPositiveIntegerCodec,
+  requiredTextCodec,
+} from "@payky/app-shared/inline-edit-codecs"
 import { parseTableForm } from "@payky/app-shared/table-form"
-import { PositiveIntegerSchema } from "@payky/core/modules/shared/schema"
 import type { Table, TableRow } from "@payky/core/modules/table/table"
 import {
   createTableAtEnd,
@@ -18,7 +20,6 @@ import { useRouter } from "@tanstack/react-router"
 import { Trash2Icon } from "lucide-react"
 import { useId, useState } from "react"
 import { toast } from "sonner"
-import { z } from "zod"
 import { FadeHeader } from "@/components/fade-header.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
@@ -45,11 +46,6 @@ import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
 import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useSettingsForm } from "@/hooks/use-settings-form.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
-
-const seatCountCodec = z.codec(z.string(), PositiveIntegerSchema, {
-  decode: (value) => Number(value),
-  encode: (value) => String(value),
-})
 
 export function NewTablePage() {
   const { t } = useTranslation()
@@ -279,7 +275,7 @@ function EditTableForm({ table }: { readonly table: TableRow }) {
               placeholder={t("catalog.tables.form.seatCount.placeholder")}
               inputMode="numeric"
               defaultValue={table.seatCount}
-              codec={seatCountCodec}
+              codec={optionalPositiveIntegerCodec}
               errorKey="catalog.tables.form.seatCount.invalid"
               onSave={(seatCount) => saveTable({ seatCount })}
             />

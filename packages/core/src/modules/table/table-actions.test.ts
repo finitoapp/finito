@@ -21,6 +21,7 @@ import {
   listTables,
   updateTable,
 } from "./table-actions.ts"
+import { tableByIdQuery, tablesPageQuery } from "./table-queries.ts"
 import type { TableId } from "./table-types.ts"
 
 const tableRecordByIdQuery = (id: TableId) =>
@@ -251,5 +252,51 @@ describe("table actions", () => {
     expect(first?.code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/)
     expect(second?.code).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/)
     expect(first?.code).not.toBe(second?.code)
+  }, 15_000)
+
+  test("creates and lists a table without seats, and clears a seat count", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    const deps = {
+      ...evoluTestDeps(evolu),
+    } satisfies EvoluDep & EvoluOwnerDep
+    await using run = testCreateRun(deps)
+
+    const barId = await run.ok(
+      createTableAtEnd({
+        deviceId: null,
+        name: NonEmptyString255("Bar"),
+        seatCount: null,
+      })
+    )
+    const patioId = await run.ok(
+      createTableAtEnd({
+        deviceId: null,
+        name: NonEmptyString255("Patio"),
+        seatCount: PositiveInteger(4),
+      })
+    )
+
+    await expect
+      .poll(() => run.ok(listTables()))
+      .toMatchObject([
+        { id: barId, name: "Bar", seatCount: null },
+        { id: patioId, name: "Patio", seatCount: 4 },
+      ])
+
+    await run.ok(updateTable({ id: patioId, seatCount: null }))
+
+    await expect
+      .poll(() => run.ok(listTables()))
+      .toMatchObject([
+        { id: barId, seatCount: null },
+        { id: patioId, seatCount: null },
+      ])
+    expect(
+      await evolu.loadQuery(tablesPageQuery({ search: "", limit: 10 }))
+    ).toHaveLength(2)
+    expect(await evolu.loadQuery(tableByIdQuery(barId))).toMatchObject([
+      { id: barId, seatCount: null },
+    ])
   }, 15_000)
 })

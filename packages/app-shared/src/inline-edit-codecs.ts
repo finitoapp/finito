@@ -68,6 +68,17 @@ export const positiveIntegerCodec = z.codec(z.string(), PositiveIntegerSchema, {
   encode: String,
 })
 
+/** The same, except blank means "not set". */
+export const optionalPositiveIntegerCodec = z.codec(
+  z.string(),
+  PositiveIntegerSchema.nullable(),
+  {
+    decode: (value) =>
+      value.trim() === "" ? null : wholeNumberFromText(value),
+    encode: (value) => (value === null ? "" : String(value)),
+  }
+)
+
 /** For `<Input type="date">`, whose value is already `yyyy-MM-dd`. */
 export const dateCodec = z.codec(z.string(), DateStringSchema, {
   decode: (value) => value.trim(),

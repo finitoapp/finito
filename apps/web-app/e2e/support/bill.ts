@@ -335,11 +335,15 @@ export async function addTaxRate(
   await expect(page.getByText(input.name, { exact: true })).toBeVisible()
 }
 
-/** Adds a table through the real settings UI (used to seed tables for bill/floor-view specs). */
+/**
+ * Adds a table through the real settings UI (used to seed tables for
+ * bill/floor-view specs). Without a `seatCount` the optional field is left
+ * empty, which saves a table without seats.
+ */
 export async function addTable(
   page: Page,
   language: Language,
-  input: { readonly name: string; readonly seatCount: string }
+  input: { readonly name: string; readonly seatCount?: string }
 ): Promise<void> {
   await gotoPage(page, "/catalog/tables", language, "catalog.tables.title")
   await page
@@ -355,11 +359,13 @@ export async function addTable(
       name: translate(language, "catalog.tables.form.name.label"),
     })
     .fill(input.name)
-  await page
-    .getByRole("textbox", {
-      name: translate(language, "catalog.tables.form.seatCount.label"),
-    })
-    .fill(input.seatCount)
+  if (input.seatCount !== undefined) {
+    await page
+      .getByRole("textbox", {
+        name: translate(language, "catalog.tables.form.seatCount.label"),
+      })
+      .fill(input.seatCount)
+  }
   await page
     .getByRole("button", {
       name: translate(language, "catalog.tables.form.save.create"),

@@ -86,8 +86,9 @@ where it is specified; the specification wins over this page.
 - **Bill line** (`bill-line`) — an append-only ledger entry on a bill, `kind`
   `add` or `remove`. A bill's total is adds minus removes; a line is never
   edited in place.
-- **Table** (`table`) — a table in the venue, with a seat count; a bill can be
-  assigned to one, and the pos grid shows them.
+- **Table** (`table`) — a table in the venue, with an optional seat count
+  (`docs/decisions/catalog/0008`); a bill can be assigned to one, and the pos
+  grid shows them.
 
 ## Collecting money
 

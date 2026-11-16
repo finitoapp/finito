@@ -112,13 +112,17 @@ function TableAssignmentTile({
   readonly onSelect: () => void
 }) {
   const { t } = useTranslation()
+  const subtitle =
+    table.seatCount === null
+      ? undefined
+      : t("tables.seatCount", { value: table.seatCount })
 
   if (bills.length === 0) {
     return (
       <button type="button" onClick={onSelect} className={tileButtonClassName}>
         <TableTileShell
           name={table.name}
-          subtitle={t("tables.seatCount", { value: table.seatCount })}
+          subtitle={subtitle}
           occupied={false}
           selected={selected}
         >
@@ -138,7 +142,7 @@ function TableAssignmentTile({
       <button type="button" onClick={onSelect} className={tileButtonClassName}>
         <TableTileShell
           name={table.name}
-          subtitle={t("tables.seatCount", { value: table.seatCount })}
+          subtitle={subtitle}
           occupied
           selected={selected}
         >
@@ -161,7 +165,7 @@ function TableAssignmentTile({
     <button type="button" onClick={onSelect} className={tileButtonClassName}>
       <TableTileShell
         name={table.name}
-        subtitle={t("tables.seatCount", { value: table.seatCount })}
+        subtitle={subtitle}
         occupied
         selected={selected}
       >

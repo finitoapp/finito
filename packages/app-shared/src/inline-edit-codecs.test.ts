@@ -1,4 +1,7 @@
-import { NonEmptyString255 } from "@payky/core/modules/shared/schema"
+import {
+  NonEmptyString255,
+  PositiveInteger,
+} from "@payky/core/modules/shared/schema"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
 import {
@@ -6,6 +9,7 @@ import {
   nonNegativeIntegerCodec,
   optionalDateCodec,
   optionalIdCodec,
+  optionalPositiveIntegerCodec,
   optionalTextCodec,
   requiredTextCodec,
 } from "./inline-edit-codecs.ts"
@@ -65,5 +69,21 @@ describe("nonNegativeIntegerCodec and optionalDateCodec", () => {
     expect(z.safeDecode(optionalDateCodec, " ").data).toBeNull()
     expect(z.safeDecode(optionalDateCodec, "2026-10-01").success).toBe(true)
     expect(z.safeDecode(optionalDateCodec, "yesterday").success).toBe(false)
+  })
+})
+
+describe("optionalPositiveIntegerCodec", () => {
+  it("treats blank as not set and still rejects anything but a whole count", () => {
+    expect(z.safeDecode(optionalPositiveIntegerCodec, "  ").data).toBeNull()
+    expect(z.safeDecode(optionalPositiveIntegerCodec, " 4 ").data).toBe(4)
+    expect(z.safeDecode(optionalPositiveIntegerCodec, "0").success).toBe(false)
+    expect(z.safeDecode(optionalPositiveIntegerCodec, "1.5").success).toBe(
+      false
+    )
+  })
+
+  it("encodes not set back to an empty input", () => {
+    expect(z.encode(optionalPositiveIntegerCodec, null)).toBe("")
+    expect(z.encode(optionalPositiveIntegerCodec, PositiveInteger(4))).toBe("4")
   })
 })

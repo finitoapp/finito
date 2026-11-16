@@ -20,7 +20,25 @@ import {
 import { TableId } from "@payky/core/modules/table/table-types"
 import { generateTableCode } from "@payky/core/modules/table/table-utils"
 import { type Command, createCommand } from "commander"
+import { z } from "zod"
 import { zodCommand } from "zod-commander/zod4"
+
+/** A seat count, or 'null' for a table without one (catalog/0008). */
+const SeatCountOptionSchema = z.string().transform((value, ctx) => {
+  const trimmed = value.trim()
+  if (trimmed === "null") return null
+
+  const parsed = PositiveIntegerFromStringSchema.safeParse(trimmed)
+  if (!parsed.success) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Expected a whole number above zero or 'null'.",
+    })
+    return z.NEVER
+  }
+
+  return parsed.data
+})
 
 export const registerTablesCommand =
   (program: Command): Task<void, never, EvoluDep & EvoluOwnerDep> =>
@@ -66,7 +84,9 @@ export const registerTablesCommand =
           args: {},
           opts: {
             name: NonEmptyString255Schema.describe("n;Table name"),
-            seatCount: PositiveIntegerFromStringSchema.describe("p;Seat count"),
+            seatCount: PositiveIntegerFromStringSchema.optional().describe(
+              "p;Seat count (none if omitted)"
+            ),
             sortOrder:
               NonNegativeIntegerFromStringSchema.describe("s;Sort order"),
             code: NonEmptyString255Schema.optional().describe(
@@ -80,7 +100,7 @@ export const registerTablesCommand =
             const data = {
               deviceId: options.deviceId ?? null,
               name: options.name,
-              seatCount: options.seatCount,
+              seatCount: options.seatCount ?? null,
               code: options.code ?? generateTableCode(),
               sortOrder: options.sortOrder,
             }
@@ -96,15 +116,15 @@ export const registerTablesCommand =
       .addCommand(
         zodCommand({
           name: "update",
-          description: "Update a table.",
+          description:
+            "Update a table. Use --seat-count null to clear the seat count.",
           args: {},
           opts: {
             id: TableId.describe("Table id"),
             name: NonEmptyString255Schema.optional().describe("n;Table name"),
-            seatCount:
-              PositiveIntegerFromStringSchema.optional().describe(
-                "p;Seat count"
-              ),
+            seatCount: SeatCountOptionSchema.optional().describe(
+              "p;Seat count, or 'null' to clear it"
+            ),
             sortOrder:
               NonNegativeIntegerFromStringSchema.optional().describe(
                 "s;Sort order"

@@ -431,23 +431,25 @@ function TableTile({
             >
               {t("tables.tile.free")}
             </Text>
-            <XStack
-              gap={2}
-              items="center"
-              accessible
-              aria-label={t("tables.seatCount", {
-                value: table.seatCount,
-              })}
-            >
-              <Icon icon={Users} size={14} color="muted-foreground" />
-              <Text
-                fontSize={fontSize.sm}
-                lineHeight={fontSize.sm}
-                color="muted-foreground"
+            {table.seatCount === null ? null : (
+              <XStack
+                gap={2}
+                items="center"
+                accessible
+                aria-label={t("tables.seatCount", {
+                  value: table.seatCount,
+                })}
               >
-                {table.seatCount}
-              </Text>
-            </XStack>
+                <Icon icon={Users} size={14} color="muted-foreground" />
+                <Text
+                  fontSize={fontSize.sm}
+                  lineHeight={fontSize.sm}
+                  color="muted-foreground"
+                >
+                  {table.seatCount}
+                </Text>
+              </XStack>
+            )}
           </XStack>
         )}
       </YStack>

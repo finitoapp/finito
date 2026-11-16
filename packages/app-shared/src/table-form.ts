@@ -1,5 +1,5 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { positiveIntegerCodec } from "@payky/app-shared/inline-edit-codecs"
+import { optionalPositiveIntegerCodec } from "@payky/app-shared/inline-edit-codecs"
 import {
   type NonEmptyString255,
   NonEmptyString255Schema,
@@ -11,7 +11,8 @@ export type TableFormResult =
   | {
       readonly ok: true
       readonly name: NonEmptyString255
-      readonly seatCount: PositiveInteger
+      /** Null when the field was left empty: the table has no seat count. */
+      readonly seatCount: PositiveInteger | null
     }
   | {
       readonly ok: false
@@ -19,7 +20,11 @@ export type TableFormResult =
       readonly errorKey: TranslationKey
     }
 
-/** Validates the "add a table" form: the name first, then the seat count. */
+/**
+ * Validates the "add a table" form: the name first, then the seat count,
+ * which may be left empty (catalog/0008) but, once filled in, must be a
+ * whole number above zero.
+ */
 export const parseTableForm = (input: {
   readonly name: string
   readonly seatCount: string
@@ -32,7 +37,7 @@ export const parseTableForm = (input: {
       errorKey: "catalog.tables.form.name.invalid",
     }
   }
-  const seatCount = z.safeDecode(positiveIntegerCodec, input.seatCount)
+  const seatCount = z.safeDecode(optionalPositiveIntegerCodec, input.seatCount)
   if (!seatCount.success) {
     return {
       ok: false,

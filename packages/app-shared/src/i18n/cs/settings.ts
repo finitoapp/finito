@@ -1093,7 +1093,7 @@ export const csSettings = {
   "catalog.tables.empty.title": "Zatím žádné stoly",
   "catalog.tables.emptySearch": "Hledání nenašlo žádné stoly.",
   "catalog.tables.form.card.description":
-    "Název a počet míst zobrazené při přiřazování stolu k účtu.",
+    "Název a nepovinný počet míst zobrazené při přiřazování stolu k účtu.",
   "catalog.tables.form.card.title": "Detaily",
   "catalog.tables.form.code.description":
     "Zatím se nepoužívá - rezervováno pro budoucí QR kód, který bude tento stůl identifikovat.",
@@ -1107,7 +1107,7 @@ export const csSettings = {
   "catalog.tables.form.saved.create": "Stůl přidán.",
   "catalog.tables.form.seatCount.invalid": "Zadejte platný počet míst.",
   "catalog.tables.form.seatCount.label": "Počet míst",
-  "catalog.tables.form.seatCount.placeholder": "např. 4",
+  "catalog.tables.form.seatCount.placeholder": "Nepovinné – např. 4",
   "catalog.tables.form.title.create": "Přidat stůl",
   "catalog.tables.form.title.edit": "Upravit stůl",
   "catalog.tables.search": "Hledat stoly...",

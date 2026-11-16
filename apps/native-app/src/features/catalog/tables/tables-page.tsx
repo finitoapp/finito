@@ -75,7 +75,10 @@ function TablesList({
         id: table.id,
         title: table.name,
         href: `/settings/tables/${table.id}`,
-        trailing: t("catalog.tables.seatCount", { value: table.seatCount }),
+        trailing:
+          table.seatCount === null
+            ? undefined
+            : t("catalog.tables.seatCount", { value: table.seatCount }),
       })}
     />
   )
