@@ -103,6 +103,7 @@ import { preparePaymentMethod } from "./payment-preparation-actions.ts"
 import {
   paymentByIdQuery,
   paymentCardSwitchioDetailQuery,
+  paymentReconciliationsQuery,
   paymentsWithClaimsByBillIdQuery,
 } from "./payment-queries.ts"
 import {
@@ -4308,6 +4309,133 @@ describe("payment actions", () => {
             })
           )
         ).resolves.toEqual({ ok: true, value: paymentId })
+      }, 15_000)
+    })
+
+    describe("an approval after its card account changed (payment/0022)", () => {
+      const approvedTrace = {
+        authCode: "114546",
+        sequenceNumber: null,
+        maskedPan: null,
+        cardLabel: null,
+        terminalId: null,
+        terminalDateTime: null,
+        refundId: "123456789012345678",
+      }
+
+      /** Where an approval's money was recorded, and whether its attempt is still unknown. */
+      const recorded = async (
+        evolu: Awaited<ReturnType<typeof createEvoluTest>>["evolu"],
+        paymentId: PaymentId
+      ) => ({
+        claims: (
+          await evolu.loadQuery(paymentReconciliationsQuery(paymentId))
+        ).map((claim) => ({
+          accountId: claim.accountId,
+          transactionAmount: claim.transactionAmount,
+          transactionCurrency: claim.transactionCurrency,
+        })),
+        unresolvedTransactionId: (
+          await evolu.loadQuery(paymentCardSwitchioByPaymentIdQuery(paymentId))
+        )[0]?.unresolvedTransactionId,
+      })
+
+      test("records the money on the account the card was charged on, though card payments were turned off meanwhile", async () => {
+        await using ctx = await setUp(async () => {
+          await ctx.run.ok(
+            saveCardSwitchioAccount({ enabled: false, currency: "CZK" })
+          )
+          return approved
+        })
+        const { evolu, run, accountId, paymentId } = ctx
+
+        await expect(
+          run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        ).resolves.toEqual({ ok: true, value: paymentId })
+
+        await expect(recorded(evolu, paymentId)).resolves.toEqual({
+          claims: [
+            {
+              accountId,
+              transactionAmount: 12_900,
+              transactionCurrency: "CZK",
+            },
+          ],
+          unresolvedTransactionId: null,
+        })
+      }, 15_000)
+
+      test("records the money in the payment's currency, though the card terminal switched currency meanwhile", async () => {
+        await using ctx = await setUp(async () => {
+          await ctx.run.ok(
+            saveCardSwitchioAccount({ enabled: true, currency: "EUR" })
+          )
+          return approved
+        })
+        const { evolu, run, accountId, paymentId } = ctx
+
+        await expect(
+          run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        ).resolves.toEqual({ ok: true, value: paymentId })
+
+        await expect(recorded(evolu, paymentId)).resolves.toEqual({
+          claims: [
+            {
+              accountId,
+              transactionAmount: 12_900,
+              transactionCurrency: "CZK",
+            },
+          ],
+          unresolvedTransactionId: null,
+        })
+      }, 15_000)
+
+      test("records an approval the terminal answered when asked, after card payments were turned off", async () => {
+        await using ctx = await setUp(unreadable, async () => ({
+          type: "approved",
+          result: { ...approvedTrace, responseCode: "OK" },
+        }))
+        const { evolu, run, accountId, paymentId } = ctx
+        const deviceId = createRowId<"Device">()
+        await run(
+          payPaymentWithSwitchioCard({ paymentId, accountId, deviceId })
+        )
+        await run.ok(
+          saveCardSwitchioAccount({ enabled: false, currency: "CZK" })
+        )
+
+        await expect(
+          run(resolveSwitchioCardPayment({ paymentId, deviceId }))
+        ).resolves.toEqual({ ok: true, value: { status: "paid" } })
+        await expect(recorded(evolu, paymentId)).resolves.toMatchObject({
+          claims: [{ accountId }],
+          unresolvedTransactionId: null,
+        })
+      }, 15_000)
+
+      test("records a restored approval after card payments were turned off", async () => {
+        await using ctx = await setUp(unreadable)
+        const { evolu, run, requests, accountId, paymentId } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        await run.ok(
+          saveCardSwitchioAccount({ enabled: false, currency: "CZK" })
+        )
+
+        await expect(
+          run(
+            settleRestoredSwitchioCardPayment({
+              restored: {
+                resultCode: -1,
+                transactionId: requests[0]?.transactionId ?? null,
+                transactionResult: JSON.stringify({ responseCode: "OK" }),
+              },
+            })
+          )
+        ).resolves.toEqual({ ok: true, value: paymentId })
+        await expect(recorded(evolu, paymentId)).resolves.toMatchObject({
+          claims: [{ accountId }],
+          unresolvedTransactionId: null,
+        })
       }, 15_000)
     })
 

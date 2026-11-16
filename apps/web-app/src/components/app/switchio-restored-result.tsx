@@ -20,8 +20,6 @@ const restoredErrorKeys = {
   SwitchioResultUnreadable: "paymentWait.cardPaid.restored.unresolved",
   SwitchioRestoredResultUnmatched: "paymentWait.cardPaid.restored.unresolved",
   PaymentNotFound: "paymentWait.cardPaid.restored.unresolved",
-  CardSwitchioAccountNotFound: "paymentWait.cardPaid.restored.unresolved",
-  AccountCurrencyMismatch: "paymentWait.cardPaid.restored.unresolved",
 } satisfies Record<
   SettleRestoredSwitchioCardPaymentError["type"],
   TranslationKey

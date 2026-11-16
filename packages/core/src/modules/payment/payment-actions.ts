@@ -89,7 +89,6 @@ import type {
 import { isCashPayable, roundCashAmount } from "./payment-cash-utils.ts"
 import {
   type AccountCurrencyMismatchError,
-  type CardSwitchioAccountNotFoundError,
   type CreatePaymentError,
   createCardSwitchioAccountNotFoundError,
   createCashAmountRoundsToZeroError,
@@ -535,9 +534,36 @@ interface MarkPaymentPaidInput {
   readonly note?: NonEmptyString | null
 }
 
+/** What {@link markPaymentPaid} and {@link markPaymentCharged} record. */
+interface RecordPaymentPaidInput extends MarkPaymentPaidInput {
+  readonly accountKind: PaymentAccountKind
+  readonly source: SyncSource
+  readonly receivedCashAmount?: NonNegativeInteger
+  /**
+   * What the account actually received, when it is not the payment's own
+   * `amount`: a card terminal reports what it charged, tip added on the
+   * terminal included (qerko/0002). The excess then reads as an overpayment
+   * through the ordinary coverage rule.
+   */
+  readonly chargedAmount?: NonNegativeInteger
+  /**
+   * The tip the outside system charged on top of the payment's goods, when
+   * it takes the place of the payment's own `tipAmount` (payment/0018): a
+   * Qerko payment whose customer tipped in Qerko (qerko/0015). Different
+   * from `tipAmount`, it rewrites the payment to that tip and its amount to
+   * the goods plus that tip, in the batch that records the money, and the
+   * bill's closing is judged on the payment as rewritten. The goods never
+   * change.
+   */
+  readonly chargedTipAmount?: NonNegativeInteger
+}
+
 /**
  * Records that money for a payment arrived on one of the business's own
- * accounts, as an `accountTransaction` claimed against that payment.
+ * accounts, as an `accountTransaction` claimed against that payment, once
+ * the account has been checked: it must still be turned on, in the
+ * payment's currency. Money an outside system has already taken is recorded
+ * by {@link markPaymentCharged} instead, whatever became of its account.
  *
  * `source` says who confirmed it (payment/0010): `manual` when staff did —
  * cash taken, a transfer checked by hand — and `auto` when the app's own
@@ -553,9 +579,63 @@ interface MarkPaymentPaidInput {
  */
 export const markPaymentPaid =
   <TRow extends { readonly currency: FiatCurrency }, TNotFoundError>({
-    accountKind,
     accountQuery,
     notFoundError,
+    ...input
+  }: RecordPaymentPaidInput & {
+    readonly accountQuery: (accountId: AccountId) => Query<EvoluSchema, TRow>
+    readonly notFoundError: TNotFoundError
+  }): Task<
+    PaymentId,
+    PaymentNotFoundError | TNotFoundError | AccountCurrencyMismatchError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const paymentResult = await run(loadPayment(input.paymentId))
+    if (!paymentResult.ok) return paymentResult
+
+    const payment = paymentResult.value
+    const accountResult = loadAccountWithCurrencyCheck({
+      rows: await run.deps.evolu.loadQuery(accountQuery(input.accountId)),
+      notFoundError,
+      accountKind: input.accountKind,
+      accountId: input.accountId,
+      expectedCurrency: payment.currency,
+    })
+    if (!accountResult.ok) return accountResult
+
+    return await run(writePaymentPaid({ ...input, payment }))
+  }
+
+/**
+ * Records money an outside system has already taken for a payment — a card
+ * terminal that approved — on the account the attempt was made with, as
+ * {@link markPaymentPaid} does but without checking that account first
+ * (payment/0022). The card was charged in the payment's currency whatever
+ * became of the account since: turned off, or switched to another currency,
+ * it must not leave a charged card unrecorded, nor its attempt unknown.
+ */
+export const markPaymentCharged =
+  (
+    input: RecordPaymentPaidInput
+  ): Task<
+    PaymentId,
+    PaymentNotFoundError,
+    EvoluDep & EvoluOwnerDep & DateDep
+  > =>
+  async (run) => {
+    const paymentResult = await run(loadPayment(input.paymentId))
+    if (!paymentResult.ok) return paymentResult
+    return await run(
+      writePaymentPaid({ ...input, payment: paymentResult.value })
+    )
+  }
+
+/** The writes of {@link markPaymentPaid} and {@link markPaymentCharged}, in one batch. */
+const writePaymentPaid =
+  ({
+    payment,
+    accountKind,
     receivedCashAmount,
     chargedAmount,
     chargedTipAmount,
@@ -565,48 +645,10 @@ export const markPaymentPaid =
     occurredAt,
     note,
     source,
-  }: MarkPaymentPaidInput & {
-    readonly accountKind: PaymentAccountKind
-    readonly source: SyncSource
-    readonly accountQuery: (accountId: AccountId) => Query<EvoluSchema, TRow>
-    readonly notFoundError: TNotFoundError
-    readonly receivedCashAmount?: NonNegativeInteger
-    /**
-     * What the account actually received, when it is not the payment's own
-     * `amount`: a card terminal reports what it charged, tip added on the
-     * terminal included (qerko/0002). The excess then reads as an overpayment
-     * through the ordinary coverage rule.
-     */
-    readonly chargedAmount?: NonNegativeInteger
-    /**
-     * The tip the outside system charged on top of the payment's goods, when
-     * it takes the place of the payment's own `tipAmount` (payment/0018): a
-     * Qerko payment whose customer tipped in Qerko (qerko/0015). Different
-     * from `tipAmount`, it rewrites the payment to that tip and its amount to
-     * the goods plus that tip, in the batch that records the money, and the
-     * bill's closing is judged on the payment as rewritten. The goods never
-     * change.
-     */
-    readonly chargedTipAmount?: NonNegativeInteger
-  }): Task<
-    PaymentId,
-    PaymentNotFoundError | TNotFoundError | AccountCurrencyMismatchError,
-    EvoluDep & EvoluOwnerDep & DateDep
-  > =>
+  }: RecordPaymentPaidInput & {
+    readonly payment: PaymentRow
+  }): Task<PaymentId, never, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
-    const paymentResult = await run(loadPayment(paymentId))
-    if (!paymentResult.ok) return paymentResult
-
-    const payment = paymentResult.value
-    const accountResult = loadAccountWithCurrencyCheck({
-      rows: await run.deps.evolu.loadQuery(accountQuery(accountId)),
-      notFoundError,
-      accountKind,
-      accountId,
-      expectedCurrency: payment.currency,
-    })
-    if (!accountResult.ok) return accountResult
-
     // The payment as this batch leaves it: its own tip replaced by the one
     // charged, the goods kept (payment/0018).
     const revision =
@@ -812,10 +854,7 @@ export const markPaymentPaidIban =
     )
   }
 
-type RecordSwitchioApprovalError =
-  | PaymentNotFoundError
-  | CardSwitchioAccountNotFoundError
-  | AccountCurrencyMismatchError
+type RecordSwitchioApprovalError = PaymentNotFoundError
 
 /**
  * Records what the SwitchioPay terminal answered for one attempt — shared by
@@ -930,18 +969,16 @@ const recordSwitchioApproval =
     // approved just now, not when the intent was launched. No payment-status
     // guard here: the card has been charged, so the money is recorded even
     // on a payment that got canceled meanwhile.
+    // Charged on the account the attempt was made with, whatever became of
+    // it since (payment/0022).
     const settleResult = await run(
-      markPaymentPaid({
+      markPaymentCharged({
         paymentId,
         accountId,
         deviceId,
         accountKind: "cardSwitchio",
         // The terminal approved the card, not staff (payment/0010).
         source: "auto",
-        accountQuery: cardSwitchioAccountByIdQuery,
-        notFoundError: createCardSwitchioAccountNotFoundError({
-          id: accountId,
-        }),
       })
     )
     if (!settleResult.ok) return settleResult
