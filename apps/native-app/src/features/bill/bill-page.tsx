@@ -67,14 +67,16 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  View as NativeView,
   Pressable,
   ScrollView,
+  StyleSheet,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader, goBack } from "../../components/fade-header.tsx"
 import {
-  LibraryPicture,
+  LibraryPictureFill,
   libraryPictureUrlReader,
 } from "../../components/library-picture.tsx"
 import { LoadingView } from "../../components/loading-view.tsx"
@@ -122,7 +124,7 @@ import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
-import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { fontSize, fontWeight, radius, shape } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { CategoryFilterBar } from "../shared/category-filter-bar.tsx"
 import {
@@ -841,20 +843,31 @@ function BillCart({
                 onScan={handleScan}
                 lastScanned={
                   lastScanned === null ? null : (
-                    <ItemBrick
-                      catalogItem={lastScanned}
-                      pictureUrl={brickPictureUrl(
-                        lastScanned.libraryProductId,
-                        BRICK_PICTURE_SIZE
-                      )}
-                      summaries={summaries}
-                      locale={locale}
-                      onAdd={() => void cart.addOne(lastScanned)}
-                      onAddQuantity={(quantity) =>
-                        void cart.addQuantity(lastScanned, quantity)
-                      }
-                      onRemove={(summary) => void cart.removeOne(summary)}
-                    />
+                    // One of the grid's square tiles, in its first column,
+                    // not a square the scanner's width.
+                    <XStack gap={8}>
+                      <View flex={1}>
+                        <ItemBrick
+                          catalogItem={lastScanned}
+                          pictureUrl={brickPictureUrl(
+                            lastScanned.libraryProductId,
+                            TILE_PICTURE_SIZE
+                          )}
+                          summaries={summaries}
+                          locale={locale}
+                          onAdd={() => void cart.addOne(lastScanned)}
+                          onAddQuantity={(quantity) =>
+                            void cart.addQuantity(lastScanned, quantity)
+                          }
+                          onRemove={(summary) => void cart.removeOne(summary)}
+                        />
+                      </View>
+                      {gridColumnIndexes(gridColumns)
+                        .slice(1)
+                        .map((column) => (
+                          <View key={column} flex={1} />
+                        ))}
+                    </XStack>
                   )
                 }
               />
@@ -903,7 +916,7 @@ function BillCart({
                             catalogItem={item}
                             pictureUrl={brickPictureUrl(
                               item.libraryProductId,
-                              BRICK_PICTURE_SIZE
+                              TILE_PICTURE_SIZE
                             )}
                             summaries={summaries}
                             locale={locale}
@@ -1517,10 +1530,21 @@ function CatalogEmpty() {
   )
 }
 
-/** The side of a brick's library picture: a finger's target and a bit. */
-const BRICK_PICTURE_SIZE = 56
+/**
+ * The side, in points, a tile's library picture is asked for: the grid's
+ * narrowest column (`itemGridColumns`' 192), which on a phone's density
+ * already asks for the library's largest picture, so a wider tile on a wide
+ * window gets no sharper one and nothing waits for the grid's measure.
+ */
+const TILE_PICTURE_SIZE = 192
 
 /**
+ * A tile of the bill's item grid, a square whatever it shows so a row keeps
+ * one height. A pictured item's library picture fills it, its name and
+ * price over a dark scrim at the bottom; an item without one is the card
+ * with its name on top and its price below. On the bill it is ringed in the
+ * gold, its quantity in the top corner.
+ *
  * A tap anywhere on the tile adds one, as on a till. The brick has no
  * `disabled`: the cart queues taps, and a button disabled mid-tap drops one.
  */
@@ -1555,25 +1579,33 @@ function ItemBrick({
 
   const inCart = quantity > 0
   const pictured = pictureUrl !== undefined
-  const brickName = (
-    <Text
-      flex={pictured ? undefined : 1}
-      pt={2}
-      fontWeight={fontWeight.medium}
-      pointerEvents="none"
-    >
-      {name}
-    </Text>
+  const price = formatMoney(
+    { value: catalogItem.unitAmount, currency: catalogItem.currency },
+    locale
   )
 
   return (
-    // grow, not flex: flex 1 is a zero basis, which collapses the tile on
-    // web, where views also have no minimum height.
-    <Card grow={1} p={12} gap={4} bg={inCart ? "tile-primary-15" : "card"}>
+    <Card aspectRatio={1} p={0} gap={0}>
+      {pictured ? (
+        <>
+          <LibraryPictureFill url={pictureUrl} />
+          <View
+            position="absolute"
+            t={0}
+            r={0}
+            b={0}
+            l={0}
+            bg="photo-dim"
+            pointerEvents="none"
+          />
+          <PhotoScrim />
+        </>
+      ) : null}
       {/*
        * A tap anywhere on the tile adds one, as on a till; the corner
-       * controls above it are kept in the layout but invisible until the
-       * item is on the bill, so the tile does not reflow under the finger.
+       * controls above it are kept in place but invisible until the item is
+       * on the bill, so nothing moves under the finger. Over a picture the
+       * press darkens it, as `card-ring` would barely show there.
        */}
       <View
         position="absolute"
@@ -1582,7 +1614,11 @@ function ItemBrick({
         b={0}
         l={0}
         transition="fast"
-        bg="transparent hover:card-ring press:card-ring"
+        bg={
+          pictured
+            ? "transparent hover:photo-pressed press:photo-pressed"
+            : "transparent hover:card-ring press:card-ring"
+        }
         role="button"
         aria-label={t("bill.brick.add.aria", { name })}
         cursor="web:pointer"
@@ -1591,83 +1627,141 @@ function ItemBrick({
           onAdd()
         }}
       />
-      <XStack
-        items="flex-start"
-        justify="space-between"
-        gap={8}
-        pointerEvents="box-none"
-      >
-        {/*
-         * A pictured item leads with its picture, its name below at the
-         * tile's full width; an item without one is drawn as before.
-         */}
-        {pictured ? (
-          <LibraryPicture url={pictureUrl} size={BRICK_PICTURE_SIZE} />
-        ) : (
-          brickName
-        )}
-        <Button
-          size="sm"
-          shrink={0}
-          h={28}
-          minW={28}
-          px={8}
-          rounded={radius.full}
-          opacity={inCart ? 1 : 0}
-          disabled={!inCart}
-          aria-hidden={!inCart}
-          aria-label={t("bill.brick.quantity.trigger.aria", { name })}
-          onPress={() => setQuantityDialogOpen(true)}
-        >
-          <Animated.View style={quantityPulse}>
-            <Text
-              fontSize={12.8}
-              fontWeight={fontWeight.bold}
-              fontVariant={["tabular-nums"]}
-              color="primary-foreground"
-            >
-              {quantity}
-            </Text>
-          </Animated.View>
-        </Button>
-      </XStack>
-      {pictured ? brickName : null}
-      <XStack
-        items="flex-end"
-        justify="space-between"
-        gap={8}
-        pointerEvents="box-none"
-      >
-        <Text
-          pb={4}
-          fontWeight={fontWeight.semibold}
-          color="foreground-70"
-          fontVariant={["tabular-nums"]}
+      {/* The name and price leave the minus button its corner. */}
+      {pictured ? (
+        <YStack
+          position="absolute"
+          l={10}
+          r={52}
+          b={10}
+          gap={2}
           pointerEvents="none"
         >
-          {formatMoney(
-            { value: catalogItem.unitAmount, currency: catalogItem.currency },
-            locale
-          )}
-        </Text>
-        <Button
-          variant="secondary"
-          size="icon"
-          w={40}
-          h={40}
-          shrink={0}
-          rounded={radius.full}
-          iconStart={Minus}
-          aria-label={t("bill.brick.remove.aria", { name })}
-          opacity={inCart ? 1 : 0}
-          disabled={!inCart}
-          onPress={() => {
-            if (latestSummary === undefined) return
-            hapticButtonPress()
-            onRemove(latestSummary)
-          }}
+          <Text
+            numberOfLines={2}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.semibold}
+            color="photo-foreground"
+            textShadowColor="photo-shadow"
+            textShadowOffset={{ width: 0, height: 1 }}
+            textShadowRadius={2}
+          >
+            {name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.semibold}
+            fontVariant={["tabular-nums"]}
+            color="photo-foreground-85"
+            textShadowColor="photo-shadow"
+            textShadowOffset={{ width: 0, height: 1 }}
+            textShadowRadius={2}
+          >
+            {price}
+          </Text>
+        </YStack>
+      ) : (
+        <YStack
+          position="absolute"
+          t={12}
+          l={12}
+          r={52}
+          b={10}
+          justify="space-between"
+          gap={4}
+          pointerEvents="none"
+        >
+          <Text
+            numberOfLines={3}
+            fontSize={fontSize.base}
+            lineHeight={fontSize.base}
+            fontWeight={fontWeight.semibold}
+          >
+            {name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            fontSize={fontSize.sm}
+            lineHeight={fontSize.sm}
+            fontWeight={fontWeight.semibold}
+            fontVariant={["tabular-nums"]}
+            color="muted-foreground"
+          >
+            {price}
+          </Text>
+        </YStack>
+      )}
+      {/*
+       * The gold ring of an item on the bill, drawn over the picture: an
+       * overlay, as a ring on the card itself would sit under it.
+       */}
+      {inCart ? (
+        <View
+          position="absolute"
+          t={0}
+          r={0}
+          b={0}
+          l={0}
+          rounded={shape.card}
+          borderWidth={3}
+          borderColor="primary"
+          pointerEvents="none"
         />
-      </XStack>
+      ) : null}
+      <Button
+        size="sm"
+        position="absolute"
+        t={8}
+        r={8}
+        h={28}
+        minW={28}
+        px={8}
+        rounded={radius.full}
+        opacity={inCart ? 1 : 0}
+        disabled={!inCart}
+        aria-hidden={!inCart}
+        aria-label={t("bill.brick.quantity.trigger.aria", { name })}
+        onPress={() => setQuantityDialogOpen(true)}
+      >
+        <Animated.View style={quantityPulse}>
+          <Text
+            fontSize={12.8}
+            fontWeight={fontWeight.bold}
+            fontVariant={["tabular-nums"]}
+            color="primary-foreground"
+          >
+            {quantity}
+          </Text>
+        </Animated.View>
+      </Button>
+      <Button
+        variant={pictured ? "ghost" : "outline"}
+        size="icon"
+        position="absolute"
+        r={8}
+        b={8}
+        w={36}
+        h={36}
+        rounded={radius.full}
+        {...(pictured
+          ? {
+              bg: "photo-control hover:photo-control-pressed press:photo-control-pressed",
+              labelColor: "photo-foreground",
+            }
+          : {})}
+        iconStart={Minus}
+        aria-label={t("bill.brick.remove.aria", { name })}
+        opacity={inCart ? 1 : 0}
+        disabled={!inCart}
+        onPress={() => {
+          if (latestSummary === undefined) return
+          hapticButtonPress()
+          onRemove(latestSummary)
+        }}
+      />
       <ItemQuantityDialog
         name={name}
         open={quantityDialogOpen}
@@ -1675,6 +1769,33 @@ function ItemBrick({
         onAddQuantity={onAddQuantity}
       />
     </Card>
+  )
+}
+
+/**
+ * The dark scrim a pictured tile's name and price sit on, rising from its
+ * bottom: 0.82 at the edge, 0.55 at 28 %, gone by 58 % of its height. Drawn
+ * as React Native's own `backgroundImage` gradient, which Android draws
+ * natively and react-native-web hands to the browser as CSS, so no native
+ * module is needed for it.
+ */
+function PhotoScrim() {
+  const theme = useTheme()
+  const stops = [
+    `${theme["photo-scrim"]?.val} 0%`,
+    `${theme["photo-scrim-55"]?.val} 28%`,
+    `${theme["photo-scrim-0"]?.val} 58%`,
+  ]
+  return (
+    <NativeView
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          pointerEvents: "none",
+          backgroundImage: `linear-gradient(to top, ${stops.join(", ")})`,
+        },
+      ]}
+    />
   )
 }
 

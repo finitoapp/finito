@@ -3,7 +3,7 @@ import {
   type ProductLibrary,
 } from "@payky/core/integrations/product-library/product-library-client"
 import { Image } from "expo-image"
-import { PixelRatio } from "react-native"
+import { PixelRatio, StyleSheet } from "react-native"
 import { View } from "tamagui"
 import {
   libraryProductById,
@@ -81,6 +81,36 @@ export function LibraryPicture({
       <Image
         source={url}
         style={{ width: size, height: size }}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={isReduceMotionEnabled() ? 0 : 150}
+        accessible={false}
+      />
+    </View>
+  )
+}
+
+/**
+ * A library picture filling its parent edge to edge (`cover`), on the muted
+ * fill until it loads: the bill's item tile, which its picture fills. The
+ * parent is positioned and clips it to its own shape. Decorative, as
+ * `LibraryPicture`.
+ */
+export function LibraryPictureFill({ url }: { readonly url: string }) {
+  return (
+    <View
+      position="absolute"
+      t={0}
+      r={0}
+      b={0}
+      l={0}
+      bg="neutral-soft"
+      pointerEvents="none"
+      aria-hidden
+    >
+      <Image
+        source={url}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         cachePolicy="memory-disk"
         transition={isReduceMotionEnabled() ? 0 : 150}
