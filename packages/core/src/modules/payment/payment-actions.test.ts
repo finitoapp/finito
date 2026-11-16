@@ -4495,6 +4495,52 @@ describe("payment actions", () => {
       expect(row?.unresolvedTransactionId).toBe(transactionId)
     }, 15_000)
 
+    describe("canceling a payment whose card attempt is unknown (payment/0025)", () => {
+      test("is refused until staff confirm they checked the terminal", async () => {
+        await using ctx = await setUp(async () => await unreadable())
+        const { run, requests, accountId, paymentId } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+        const transactionId = requests[0]?.transactionId
+
+        await expect(run(cancelPayment(paymentId))).resolves.toEqual({
+          ok: false,
+          error: {
+            type: "PaymentAttemptUnresolved",
+            id: paymentId,
+            transactionId,
+          },
+        })
+        expect((await run.orThrow(loadPayment(paymentId))).canceledAt).toBe(
+          null
+        )
+
+        await expect(
+          run(cancelPayment(paymentId, { confirmUnresolved: true }))
+        ).resolves.toEqual({ ok: true, value: paymentId })
+        await expect
+          .poll(
+            async () => (await run.orThrow(loadPayment(paymentId))).canceledAt
+          )
+          .not.toBeNull()
+      }, 15_000)
+
+      test("needs no confirmation once the attempt is settled as declined", async () => {
+        await using ctx = await setUp(async () =>
+          interpretSwitchioPaymentResult({
+            resultCode: 0,
+            transactionResult: JSON.stringify({ responseCode: "DECLINED" }),
+          })
+        )
+        const { run, accountId, paymentId } = ctx
+        await run(payPaymentWithSwitchioCard({ paymentId, accountId }))
+
+        await expect(run(cancelPayment(paymentId))).resolves.toEqual({
+          ok: true,
+          value: paymentId,
+        })
+      }, 15_000)
+    })
+
     describe("a launch that never reached SwitchioPay (payment/0021)", () => {
       const launchFailed = () =>
         err(createSwitchioUnavailableError({ reason: "launchFailed" }))

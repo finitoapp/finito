@@ -97,6 +97,7 @@ import {
   createIbanAccountNotFoundError,
   createNoPayableMethodError,
   createPaymentAlreadyPaidError,
+  createPaymentAttemptUnresolvedError,
   createPaymentCanceledError,
   createPaymentLightningInvoiceNotFoundError,
   createPaymentNotCanceledError,
@@ -109,6 +110,7 @@ import {
   type MarkPaymentPaidCashError,
   type MarkPaymentPaidIbanError,
   type PaymentAlreadyPaidError,
+  type PaymentAttemptUnresolvedError,
   type PaymentCanceledError,
   type PaymentNotCanceledError,
   type PaymentNotClaimedError,
@@ -129,6 +131,7 @@ import {
   paymentCardSwitchioByIdQuery,
   paymentCardSwitchioByTransactionIdQuery,
   paymentLightningAddressByIdQuery,
+  paymentQerkoTerminalByIdQuery,
   paymentSparkDetailsByIdQuery,
 } from "./payment-queries.ts"
 import { createVariableSymbolFromSerialNumber } from "./payment-symbol-utils.ts"
@@ -1352,12 +1355,24 @@ export const resolveSwitchioCardPayment =
     return ok({ status: "paid" })
   }
 
+/**
+ * Cancels a payment that has taken no money.
+ *
+ * A payment whose card attempt — SwitchioPay's or Qerko's terminal — has an
+ * unknown outcome may have charged the card (payment/0006). Canceling it
+ * and charging a new payment would skip the confirmation a retry on the
+ * same payment asks for, so it is refused with `PaymentAttemptUnresolved`
+ * unless the caller passes `confirmUnresolved`: staff's confirmation that
+ * they checked the terminal (payment/0025). A result that arrives after
+ * the cancel still records the money (payment/0004).
+ */
 export const cancelPayment =
   (
-    paymentId: PaymentId
+    paymentId: PaymentId,
+    { confirmUnresolved = false }: { readonly confirmUnresolved?: boolean } = {}
   ): Task<
     PaymentId,
-    PaymentAlreadyPaidError,
+    PaymentAlreadyPaidError | PaymentAttemptUnresolvedError,
     EvoluDep & EvoluOwnerDep & DateDep
   > =>
   async (run) => {
@@ -1369,6 +1384,20 @@ export const cancelPayment =
     // docs/bill-payment-states.md.
     if (await run.ok(loadPaymentHasActiveClaim(paymentId))) {
       return err(createPaymentAlreadyPaidError({ id: paymentId }))
+    }
+
+    if (!confirmUnresolved) {
+      const [[card], [qerko]] = await Promise.all([
+        run.deps.evolu.loadQuery(paymentCardSwitchioByIdQuery(paymentId)),
+        run.deps.evolu.loadQuery(paymentQerkoTerminalByIdQuery(paymentId)),
+      ])
+      const transactionId =
+        card?.unresolvedTransactionId ?? qerko?.unresolvedTransactionId ?? null
+      if (transactionId !== null) {
+        return err(
+          createPaymentAttemptUnresolvedError({ id: paymentId, transactionId })
+        )
+      }
     }
 
     const { evoluOwner } = run.deps

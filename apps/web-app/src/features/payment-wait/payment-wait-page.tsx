@@ -835,10 +835,31 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const handleCancelPayment = async () => {
     if (!canCancelPayment) return
     if (!(await require("discard", "access.action.cancelPayment"))) return
+    // A card attempt whose outcome is unknown may have charged the card:
+    // cancel only after staff has checked the terminal (payment/0025).
+    const unresolvedTransactionId =
+      cardUnresolvedTransactionId ??
+      payment.qerkoUnresolvedTransactionId ??
+      null
+    const confirmUnresolved = unresolvedTransactionId !== null
+    if (
+      confirmUnresolved &&
+      !(await confirm({
+        title: t("paymentWait.cancelUnresolved.title"),
+        description: t("paymentWait.cancelUnresolved.description", {
+          transactionId: unresolvedTransactionId,
+        }),
+        confirmLabel: t("paymentWait.cancelUnresolved.confirm"),
+        cancelLabel: t("paymentWait.cancelUnresolved.cancel"),
+        variant: "destructive",
+      }))
+    ) {
+      return
+    }
 
     setCancelPending(true)
     await runToast(async (run) => {
-      const result = await run(cancelPayment(paymentId))
+      const result = await run(cancelPayment(paymentId, { confirmUnresolved }))
 
       if (!result.ok) {
         console.error("Failed to cancel payment", result.error)

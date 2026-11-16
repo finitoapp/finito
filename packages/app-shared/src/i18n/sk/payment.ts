@@ -212,6 +212,11 @@ export const skPayment = {
   "paymentWait.boltCard.ready": "Alebo priložte Bolt Card",
   "paymentWait.cancel": "Zrušiť platbu",
   "paymentWait.cancelError": "Platbu sa nepodarilo zrušiť.",
+  "paymentWait.cancelUnresolved.cancel": "Späť",
+  "paymentWait.cancelUnresolved.confirm": "Zrušiť platbu",
+  "paymentWait.cancelUnresolved.description":
+    "Výsledok posledného pokusu o platbu kartou ({transactionId}) nie je známy a karta už mohla byť stiahnutá. Platbu zrušte, až keď na termináli overíte, že platba neprebehla.",
+  "paymentWait.cancelUnresolved.title": "Zrušiť platbu?",
   "paymentWait.canceled": "Táto platba bola zrušená.",
   "paymentWait.cardPaid.action": "Zaplatiť platobnou kartou",
   "paymentWait.cardPaid.check": "Opýtať sa SwitchioPay",
