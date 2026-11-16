@@ -13,14 +13,20 @@ import { Integer } from "@payky/core/modules/shared/schema"
 import { router } from "expo-router"
 import Tag from "lucide-react-native/icons/tag"
 import { Suspense, useCallback, useMemo, useState } from "react"
-import { YStack } from "tamagui"
+import { View, YStack } from "tamagui"
+import {
+  LibraryPicture,
+  useLibraryPictureUrl,
+} from "../../../components/library-picture.tsx"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
+import { Icon } from "../../../components/ui/icon.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
 import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
+import { useProductLibrary } from "../../../hooks/use-product-library.ts"
 import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
 import { CategoryFilterBar } from "../../shared/category-filter-bar.tsx"
@@ -128,6 +134,9 @@ function ItemsList({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  // With the library loaded every row leads with the same 40-point slot, a
+  // picture or the tag icon, so the names line up; without it, as before.
+  const { library } = useProductLibrary()
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories]
@@ -148,6 +157,10 @@ function ItemsList({
       emptySearchLabel={t("catalog.items.emptySearch")}
       renderRow={(item) => ({
         id: item.id,
+        leading:
+          library === undefined ? undefined : (
+            <ItemPicture libraryProductId={item.libraryProductId} />
+          ),
         title: getStaffDisplayName(item),
         href: `/settings/items/${item.id}`,
         subtitle:
@@ -160,5 +173,28 @@ function ItemsList({
         ),
       })}
     />
+  )
+}
+
+/** The side of a row's picture: the row's height inside its padding. */
+const ROW_PICTURE_SIZE = 40
+
+/** An item row's library picture, or the list's tag icon in its slot. */
+function ItemPicture({
+  libraryProductId,
+}: {
+  readonly libraryProductId: string | null
+}) {
+  const pictured =
+    useLibraryPictureUrl(libraryProductId, ROW_PICTURE_SIZE) !== undefined
+  return pictured ? (
+    <LibraryPicture
+      libraryProductId={libraryProductId}
+      size={ROW_PICTURE_SIZE}
+    />
+  ) : (
+    <View w={ROW_PICTURE_SIZE} items="center">
+      <Icon icon={Tag} size={24} color="muted-foreground" />
+    </View>
   )
 }

@@ -43,6 +43,14 @@ export const nativeEnv = createEnv({
       .pipe(z.array(z.url({ protocol: /^wss$/u })).min(1))
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
     EXPO_PUBLIC_SENTRY_DSN: z.string().optional(),
+    // The product library's host (github.com/finitoapp/product-library, its
+    // own Vercel project), which serves `v1/library.json` and the pictures.
+    // While it cannot be loaded the app offers no suggestions and shows no
+    // pictures, exactly as before the library. The e2e builds point it at
+    // the mock server (e2e/scripts/point-at-mocks.ts).
+    EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL: z
+      .url()
+      .default("https://product-library-chi.vercel.app"),
     // Set only by the e2e builds (e2e/scripts); turns on the e2e bridge route.
     EXPO_PUBLIC_PAYKY_E2E: z.stringbool().default(false),
   },
@@ -62,6 +70,8 @@ export const nativeEnv = createEnv({
     EXPO_PUBLIC_LINKY_RELAYS_URL: process.env.EXPO_PUBLIC_LINKY_RELAYS_URL,
     EXPO_PUBLIC_LINKY_EVOLU_RELAYS: process.env.EXPO_PUBLIC_LINKY_EVOLU_RELAYS,
     EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL:
+      process.env.EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL,
     EXPO_PUBLIC_PAYKY_E2E: process.env.EXPO_PUBLIC_PAYKY_E2E,
   },
   emptyStringAsUndefined: true,

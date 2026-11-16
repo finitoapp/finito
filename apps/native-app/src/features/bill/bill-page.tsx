@@ -73,6 +73,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader, goBack } from "../../components/fade-header.tsx"
+import {
+  LibraryPicture,
+  useLibraryPictureUrl,
+} from "../../components/library-picture.tsx"
 import { LoadingView } from "../../components/loading-view.tsx"
 import { RouteMessage } from "../../components/route-message.tsx"
 import type { SafeAreaEdge } from "../../components/safe-area-padding.ts"
@@ -1501,6 +1505,9 @@ function CatalogEmpty() {
   )
 }
 
+/** The side of a brick's library picture: a finger's target and a bit. */
+const BRICK_PICTURE_SIZE = 56
+
 /**
  * A tap anywhere on the tile adds one, as on a till. The brick has no
  * `disabled`: the cart queues taps, and a button disabled mid-tap drops one.
@@ -1532,6 +1539,19 @@ function ItemBrick({
   const quantityPulse = useChangePulse(quantity)
 
   const inCart = quantity > 0
+  const pictured =
+    useLibraryPictureUrl(catalogItem.libraryProductId, BRICK_PICTURE_SIZE) !==
+    undefined
+  const brickName = (
+    <Text
+      flex={pictured ? undefined : 1}
+      pt={2}
+      fontWeight={fontWeight.medium}
+      pointerEvents="none"
+    >
+      {name}
+    </Text>
+  )
 
   return (
     // grow, not flex: flex 1 is a zero basis, which collapses the tile on
@@ -1564,14 +1584,18 @@ function ItemBrick({
         gap={8}
         pointerEvents="box-none"
       >
-        <Text
-          flex={1}
-          pt={2}
-          fontWeight={fontWeight.medium}
-          pointerEvents="none"
-        >
-          {name}
-        </Text>
+        {/*
+         * A pictured item leads with its picture, its name below at the
+         * tile's full width; an item without one is drawn as before.
+         */}
+        {pictured ? (
+          <LibraryPicture
+            libraryProductId={catalogItem.libraryProductId}
+            size={BRICK_PICTURE_SIZE}
+          />
+        ) : (
+          brickName
+        )}
         <Button
           size="sm"
           shrink={0}
@@ -1597,6 +1621,7 @@ function ItemBrick({
           </Animated.View>
         </Button>
       </XStack>
+      {pictured ? brickName : null}
       <XStack
         items="flex-end"
         justify="space-between"
