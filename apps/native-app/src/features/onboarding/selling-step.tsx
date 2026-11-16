@@ -1,6 +1,7 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
 import type { TerminalHomeMode } from "@payky/core/modules/app-settings/app-settings-types"
 import { terminalHomeModes } from "@payky/core/modules/app-settings/app-settings-utils"
+import type { ReactNode } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { SwitchRow } from "../../components/switch-row.tsx"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -30,6 +31,8 @@ const sellingModes = {
  * built from items, as two pictured choices of which neither is picked
  * until the merchant picks one, and whether customers may add a tip, on
  * unless switched off. The choice becomes the one mode home offers.
+ * `starterPacks` sits right under the choice: Finito's starter packs, which
+ * land in Finito first.
  */
 export function SellingStep({
   homeMode,
@@ -37,12 +40,14 @@ export function SellingStep({
   pending,
   onHomeModeChange,
   onTipsEnabledChange,
+  starterPacks,
 }: {
   readonly homeMode: TerminalHomeMode | null
   readonly tipsEnabled: boolean
   readonly pending: boolean
   readonly onHomeModeChange: (mode: TerminalHomeMode) => void
   readonly onTipsEnabledChange: (enabled: boolean) => void
+  readonly starterPacks?: ReactNode
 }) {
   const { t } = useTranslation()
   return (
@@ -61,6 +66,7 @@ export function SellingStep({
           />
         ))}
       </XStack>
+      {starterPacks}
       <SwitchRow
         label={t("onboarding.selling.tips.label")}
         checked={tipsEnabled}

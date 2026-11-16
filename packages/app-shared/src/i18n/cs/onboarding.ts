@@ -180,6 +180,17 @@ export const csOnboarding = {
   "onboarding.selling.tips.description": "Zákazník ho může přidat při placení.",
   "onboarding.selling.tips.label": "Spropitné",
   "onboarding.selling.title": "Jak prodáváte?",
+  "onboarding.starterPack.description":
+    "Vyberte hotové položky a zadejte své ceny. Později je můžete upravit.",
+  "onboarding.starterPack.empty": "Začít bez položek",
+  "onboarding.starterPack.include": "Přidat {name}",
+  "onboarding.starterPack.missingPrices":
+    "Zadejte cenu u každé zaškrtnuté položky, nebo zrušte zaškrtnutí těch, které neprodáváte.",
+  "onboarding.starterPack.priceLabel": "Cena: {name}",
+  "onboarding.starterPack.pricePlaceholder": "Cena",
+  "onboarding.starterPack.pricingFailed":
+    "Položka za 0 potřebuje sazbu DPH a jedna z vašich žádnou nemá. Zadejte jí cenu, nebo zrušte její zaškrtnutí.",
+  "onboarding.starterPack.title": "Začněte s nabídkou",
   "onboarding.title": "{appName} vás vítá",
   "onboarding.welcome.new": "Nový podnik",
   "onboarding.welcome.restore": "Už mám účet",

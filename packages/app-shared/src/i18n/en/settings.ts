@@ -1385,6 +1385,12 @@ export const enSettings = {
     "Another category already has this name.",
   "catalog.categories.form.save.edit": "Save",
   "catalog.categories.form.cancel": "Cancel",
+  "catalog.library.suggestionsLabel": "Suggestions from the product library",
+  "catalog.library.addAlso": "Add also",
+  "catalog.library.addAlso.description":
+    "Opens a new item with the name and picture filled in; the price is up to you.",
+  "catalog.library.removePicture": "Remove picture",
+  "catalog.library.dismiss": "Dismiss",
   "settings.paymentAccounts.status.nativeOnly": "Only in the native app",
   "settings.cashuAccount.balance.switchUnit": "Switch the unit",
   "settings.fiat.czk.symbol": "Kč",

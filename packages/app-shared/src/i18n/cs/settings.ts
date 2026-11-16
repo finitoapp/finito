@@ -1382,6 +1382,12 @@ export const csSettings = {
   "catalog.categories.form.name.taken": "Kategorie s tímto názvem už existuje.",
   "catalog.categories.form.save.edit": "Uložit",
   "catalog.categories.form.cancel": "Zrušit",
+  "catalog.library.suggestionsLabel": "Návrhy z knihovny produktů",
+  "catalog.library.addAlso": "Přidejte také",
+  "catalog.library.addAlso.description":
+    "Otevře novou položku s vyplněným názvem a obrázkem, cenu doplníte sami.",
+  "catalog.library.removePicture": "Odebrat obrázek",
+  "catalog.library.dismiss": "Zavřít",
   "settings.paymentAccounts.status.nativeOnly": "Pouze v nativní aplikaci",
   "settings.cashuAccount.balance.switchUnit": "Přepnout jednotku",
   "settings.fiat.czk.symbol": "Kč",

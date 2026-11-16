@@ -1,5 +1,6 @@
 import type {
   DefaultPaymentMethod,
+  OnboardingStarterItem,
   TerminalHomeMode,
 } from "@payky/core/modules/app-settings/app-settings-types"
 import { PaymentMethodOrderJson } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -11,6 +12,11 @@ import {
   NonEmptyString255Schema,
 } from "@payky/core/modules/shared/schema"
 import { z } from "zod"
+
+/** Every new account is Czech, whatever the UI language (onboarding/0001)… */
+export const onboardingCountry = "CZ" as const
+/** …and sells in CZK, the currency a starter pack is priced in too. */
+export const onboardingCurrency = FiatCurrency.CZK
 
 /** Stored for every new account; only enabled methods appear during payment. */
 export const onboardingPaymentMethodOrder = [
@@ -60,22 +66,26 @@ export const validateOnboardingForm = (form: {
  * The `finishOnboarding` input of every new account: Czech, in CZK whatever
  * the UI language (onboarding/0001), the fixed method order whose first
  * entry is the default (onboarding/0007), and how the business sells, with
- * tips on or off, as its last step chose (onboarding/0012).
+ * tips on or off, as its last step chose (onboarding/0012), and the starter
+ * pack's priced products, none when left out.
  */
 export const createFinishOnboardingInput = ({
   iban,
   homeMode,
   tipsEnabled,
+  starterItems = [],
 }: {
   readonly iban: Iban | null
   readonly homeMode: TerminalHomeMode
   readonly tipsEnabled: boolean
+  readonly starterItems?: ReadonlyArray<OnboardingStarterItem>
 }) => ({
-  country: "CZ" as const,
-  currency: FiatCurrency.CZK,
+  country: onboardingCountry,
+  currency: onboardingCurrency,
   iban,
   homeMode,
   tipsEnabled,
+  starterItems,
   defaultPaymentMethod: onboardingPaymentMethodOrder[0],
   paymentMethodOrderJson: z.encode(
     PaymentMethodOrderJson,

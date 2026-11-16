@@ -7,6 +7,12 @@ import {
   previousOnboardingStep,
 } from "@payky/app-shared/onboarding-form-state"
 import {
+  canFinishOnboarding,
+  finishOnboardingErrorKeys,
+  offersStarterPacks,
+  onboardingStarterItems,
+} from "@payky/app-shared/onboarding-starter-pack"
+import {
   createFinishOnboardingInput,
   validateOnboardingForm,
 } from "@payky/app-shared/onboarding-utils"
@@ -57,6 +63,7 @@ import {
   useDeviceEvoluQuery,
   useEvoluQuery,
 } from "../../hooks/use-evolu-query.ts"
+import { useProductLibrary } from "../../hooks/use-product-library.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import {
   useSetLanguage,
@@ -69,6 +76,7 @@ import { useRestoreAccount } from "../shared/use-restore-account.ts"
 import { LanguageSelect } from "./language-select.tsx"
 import { PaymentsStep } from "./payments-step.tsx"
 import { SellingStep } from "./selling-step.tsx"
+import { StarterPackSection } from "./starter-pack-section.tsx"
 import { WelcomeStep } from "./welcome-step.tsx"
 
 /** The steps after the welcome screen head their page, as fazole.fit's do. */
@@ -115,7 +123,28 @@ export function OnboardingPage({
   const setLocale = useSetLocale()
   const [settings] = useEvoluQuery(settingsQuery).data
   const [form, setForm] = useAtom(onboardingFormAtom)
-  const { step, accountType, iban, businessName, homeMode, tipsEnabled } = form
+  const {
+    step,
+    accountType,
+    iban,
+    businessName,
+    homeMode,
+    tipsEnabled,
+    starterPack,
+  } = form
+  // Starter packs need the library; without it (offline, a failed load, a
+  // build with no library host) the last step is as it always was.
+  const { library } = useProductLibrary()
+  const starterPackContext = {
+    library,
+    accountType,
+    homeMode,
+    starterPack,
+    language,
+  }
+  const showStarterPacks = offersStarterPacks(starterPackContext)
+  const starterItems = onboardingStarterItems(starterPackContext)
+  const canFinish = canFinishOnboarding(starterPackContext)
   // Validate only on submission, so an unfinished account number shows no
   // error while it is still being typed (as on web).
   const [submitAttempted, setSubmitAttempted] = useState(false)
@@ -185,8 +214,9 @@ export function OnboardingPage({
 
   const finish = async (skipProfile = false) => {
     if (finishingRef.current) return
-    // Nothing is preselected: the merchant picks how they sell (onboarding/0012).
-    if (homeMode === null) return
+    // Nothing is preselected: the merchant picks how they sell (onboarding/0012),
+    // and a checked starter product is never sold at a price not typed.
+    if (homeMode === null || starterItems === null) return
     // Validation precedes publishing the name (onboarding/0004, 0006).
     if (businessDetailsInvalid) {
       setSubmitAttempted(true)
@@ -220,10 +250,11 @@ export function OnboardingPage({
             iban: validation.iban,
             homeMode,
             tipsEnabled,
+            starterItems,
           })
         )
       )
-      if (!finished.ok) return "onboarding.alreadyOnboarded"
+      if (!finished.ok) return finishOnboardingErrorKeys[finished.error.type]
       setForm(initialOnboardingFormState)
       router.replace("/")
     })
@@ -409,6 +440,22 @@ export function OnboardingPage({
                       tipsEnabled: enabled,
                     }))
                   }}
+                  starterPacks={
+                    showStarterPacks && library !== undefined ? (
+                      <StarterPackSection
+                        library={library}
+                        starterPack={starterPack}
+                        missingPrices={starterItems === null}
+                        pending={pending}
+                        onStarterPackChange={(update) => {
+                          setForm((current) => ({
+                            ...current,
+                            starterPack: update(current.starterPack),
+                          }))
+                        }}
+                      />
+                    ) : null
+                  }
                 />
                 {profilePublishFailed ? (
                   <Alert variant="destructive">
@@ -428,7 +475,7 @@ export function OnboardingPage({
                       : "onboarding.finish"
                   )}
                   pending={finishing}
-                  disabled={homeMode === null}
+                  disabled={!canFinish}
                   onPress={() => {
                     void finish()
                   }}
