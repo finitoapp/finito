@@ -63,6 +63,24 @@ describe("searchLibraryProducts", () => {
     ])
   })
 
+  test("matches the names of the language asked for only", () => {
+    // One library searched in turn in each language, as a device switching
+    // its language would: what one language indexed never answers another.
+    expect(searchIds("plzen", { language: "cs" })).toEqual([
+      "draft-lager-large",
+    ])
+    expect(searchIds("plzen", { language: "sk" })).toEqual([])
+    expect(searchIds("capovane", { language: "sk" })).toEqual([
+      "draft-lager-large",
+      "draft-lager-small",
+    ])
+    expect(searchIds("capovane", { language: "cs" })).toEqual([])
+    expect(searchIds("plzen", { language: "en" })).toEqual([])
+    expect(searchIds("plzen", { language: "cs" })).toEqual([
+      "draft-lager-large",
+    ])
+  })
+
   test("ranks an exact name over a name prefix, a word prefix, a synonym, a substring and a typo", () => {
     const library: ProductLibrary = {
       ...testProductLibrary,

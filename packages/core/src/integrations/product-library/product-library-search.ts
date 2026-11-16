@@ -93,37 +93,94 @@ const isTypoOf = (
   )
 }
 
-const rankProduct = (
+/**
+ * A product's texts in one language, folded once per loaded library rather
+ * than on every keystroke.
+ */
+interface IndexedProduct {
+  readonly product: LibraryProduct
+  /** Its position in the library, which breaks ties between equal ranks. */
+  readonly index: number
+  readonly name: string
+  readonly nameWords: ReadonlyArray<string>
+  readonly synonyms: ReadonlyArray<string>
+  /** The name and the synonyms, for a substring. */
+  readonly texts: ReadonlyArray<string>
+  /** The texts and each of their words, for a typo. */
+  readonly typoTargets: ReadonlyArray<string>
+}
+
+type LanguageIndex = ReadonlyArray<IndexedProduct>
+
+/**
+ * Per loaded library, its suggestable products folded per language. Weak, so
+ * a library replaced by a newer download takes its index with it.
+ */
+const libraryIndexes = new WeakMap<
+  ProductLibrary,
+  Map<DeviceLanguage, LanguageIndex>
+>()
+
+const indexProduct = (
   product: LibraryProduct,
-  language: DeviceLanguage,
+  index: number,
+  language: DeviceLanguage
+): IndexedProduct => {
+  const name = foldDiacritics(product.names[language])
+  const nameWords = wordsOf(name)
+  const synonyms = (product.synonyms[language] ?? []).map(foldDiacritics)
+  const texts = [name, ...synonyms]
+  return {
+    product,
+    index,
+    name,
+    nameWords,
+    synonyms,
+    texts,
+    typoTargets: [
+      ...texts,
+      ...nameWords,
+      ...synonyms.flatMap((synonym) => wordsOf(synonym)),
+    ],
+  }
+}
+
+/** The library's suggestable products in `language`, folded once. */
+const languageIndex = (
+  library: ProductLibrary,
+  language: DeviceLanguage
+): LanguageIndex => {
+  const languages =
+    libraryIndexes.get(library) ?? new Map<DeviceLanguage, LanguageIndex>()
+  libraryIndexes.set(library, languages)
+
+  const known = languages.get(language)
+  if (known !== undefined) return known
+  const built = library.products.flatMap((product, index) =>
+    product.retired ? [] : [indexProduct(product, index, language)]
+  )
+  languages.set(language, built)
+  return built
+}
+
+const rankProduct = (
+  { name, nameWords, synonyms, texts, typoTargets }: IndexedProduct,
   query: string
 ): MatchRank | undefined => {
-  const name = foldDiacritics(product.names[language])
   if (name === query) return matchRanks.exactName
   if (name.startsWith(query)) return matchRanks.namePrefix
-
-  const nameWords = wordsOf(name)
   if (nameWords.some((word) => word.startsWith(query))) {
     return matchRanks.nameWordPrefix
   }
-
-  const synonyms = (product.synonyms[language] ?? []).map(foldDiacritics)
   if (synonyms.some((synonym) => synonym.startsWith(query))) {
     return matchRanks.synonym
   }
-
-  const texts = [name, ...synonyms]
   if (texts.some((text) => text.includes(query))) return matchRanks.substring
 
   const max = allowedTypos(query.length)
   if (max === 0) return undefined
   const queryLetters = Array.from(query)
-  const targets = [
-    ...texts,
-    ...nameWords,
-    ...synonyms.flatMap((synonym) => wordsOf(synonym)),
-  ]
-  return targets.some((target) => isTypoOf(queryLetters, target, max))
+  return typoTargets.some((target) => isTypoOf(queryLetters, target, max))
     ? matchRanks.typo
     : undefined
 }
@@ -149,11 +206,12 @@ export const searchLibraryProducts = (
   const folded = foldDiacritics(query.trim()).replace(/\s+/g, " ")
   if (folded === "") return []
 
-  return library.products
-    .flatMap((product, index) => {
-      if (product.retired) return []
-      const rank = rankProduct(product, language, folded)
-      return rank === undefined ? [] : [{ product, rank, index }]
+  return languageIndex(library, language)
+    .flatMap((indexed) => {
+      const rank = rankProduct(indexed, folded)
+      return rank === undefined
+        ? []
+        : [{ product: indexed.product, rank, index: indexed.index }]
     })
     .toSorted((a, b) => a.rank - b.rank || a.index - b.index)
     .slice(0, limit)

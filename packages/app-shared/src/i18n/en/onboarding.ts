@@ -191,6 +191,8 @@ export const enOnboarding = {
   "onboarding.starterPack.pricingFailed":
     "An item for 0 needs a VAT rate, and one of yours has none. Type a price or uncheck it.",
   "onboarding.starterPack.title": "Start with a menu",
+  "onboarding.starterPack.unavailable":
+    "The menu you picked is no longer offered. Pick another one, or start empty.",
   "onboarding.title": "Welcome to {appName}",
   "onboarding.welcome.new": "New business",
   "onboarding.welcome.restore": "I already have an account",

@@ -62,8 +62,12 @@ hundredths of a percent (the apps' `TaxRatePercentage` unit, `1200` is
   and it is never suggested, related or packed.
 - **The apps are tolerant readers.** `ProductLibrarySchema` in
   `packages/core/src/integrations/product-library/product-library-client.ts`
-  names only what the apps read and drops the rest; a file that breaks what
-  they read is a `ProductLibraryApiError`, which the apps treat as no library.
+  names only what the apps read and drops the rest. It reads the
+  categories, products and packs entry by entry: one that breaks the
+  contract, or that the apps could not store (a product id over 255
+  characters), is left out and skipped where it is named, and an empty
+  picture reads as none. Only a file whose top level breaks what they read
+  is a `ProductLibraryApiError`, which the apps treat as no library.
 
 ## In the apps
 
@@ -110,9 +114,11 @@ the `starterItems` `finishOnboarding` creates).
   (`product-library-cache.web.ts`).
 - **Pictures.** `LibraryPicture` (`src/components/library-picture.tsx`)
   draws them through expo-image's memory and disk cache, sized for the
-  screen's pixel density. They show in the bill's item grid, the items list,
-  the item forms (with "Remove picture"), the name suggestions and the
-  starter pack.
+  screen's pixel density (`libraryPictureUrl`; a list or grid reads the
+  library once and passes each row its URL). They show in the bill's item
+  grid, the items list, the item forms, the name suggestions and the
+  starter pack. The item forms name the linked library product even when it
+  has no picture, with "Unlink from library" (`ItemLibraryPicture`).
 - **Screens.** `LibraryNameField` (`src/features/shared/library-name-field.tsx`)
   is the name field of the create forms; `RelatedProductsCard`
   (`src/features/catalog/items/related-products-card.tsx`) the "Add also"

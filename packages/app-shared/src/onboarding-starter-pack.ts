@@ -167,12 +167,35 @@ interface StarterItemsContext {
 }
 
 /**
+ * Whether the picked pack is gone from the packs offered to a new account
+ * selling from items: a fresher library replaced the one it was picked from
+ * and no longer lists it. The step then asks for another pick, and cannot
+ * finish until it gets one, rather than finish with an empty catalog.
+ */
+export const isPickedStarterPackUnavailable = ({
+  library,
+  accountType,
+  homeMode,
+  starterPack,
+  language,
+}: StarterItemsContext): boolean =>
+  library !== undefined &&
+  starterPack.packId !== null &&
+  (accountType ?? "new") === "new" &&
+  homeMode === "pos" &&
+  !offeredStarterPacks(library, language).some(
+    (pack) => pack.id === starterPack.packId
+  )
+
+/**
  * What finishing submits as `finishOnboarding`'s `starterItems`: none
  * without a pack offered and picked, else the pack's checked products at the
  * prices typed, named and categorized in the device language, with the
  * library's VAT for the onboarding country. `null` while a checked product
- * has no valid typed price: nothing is ever sold at a price the merchant did
- * not type.
+ * has no valid typed price, nothing is ever sold at a price the merchant did
+ * not type, and while the picked pack is no longer offered
+ * (`isPickedStarterPackUnavailable`), nothing the merchant picked is
+ * silently dropped.
  */
 export const onboardingStarterItems = ({
   library,
@@ -181,6 +204,16 @@ export const onboardingStarterItems = ({
   starterPack,
   language,
 }: StarterItemsContext): ReadonlyArray<OnboardingStarterItem> | null => {
+  if (
+    isPickedStarterPackUnavailable({
+      library,
+      accountType,
+      homeMode,
+      starterPack,
+      language,
+    })
+  )
+    return null
   if (
     library === undefined ||
     starterPack.packId === null ||
@@ -214,8 +247,9 @@ export const onboardingStarterItems = ({
 }
 
 /**
- * Whether the last step can finish: a way of selling picked (onboarding/0012)
- * and every checked starter product priced.
+ * Whether the last step can finish: a way of selling picked (onboarding/0012),
+ * a picked starter pack still offered, and every checked starter product
+ * priced.
  */
 export const canFinishOnboarding = (context: StarterItemsContext): boolean =>
   context.homeMode !== null && onboardingStarterItems(context) !== null

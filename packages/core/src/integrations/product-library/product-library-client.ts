@@ -9,19 +9,39 @@ import { defineError } from "../../error.ts"
 import type { DeviceLanguage } from "../../evolu/device-client.ts"
 import type { CountryCode } from "../../modules/legal-entity/legal-entity-types.ts"
 
-/** A name in every language the apps speak. */
+/**
+ * A name in every language the apps speak, at most 255 characters as the
+ * contract caps it: an item named after it stores a `NonEmptyString255`.
+ */
 const LocalizedNameSchema = z.object({
-  cs: z.string().min(1),
-  sk: z.string().min(1),
-  en: z.string().min(1),
+  cs: z.string().min(1).max(255),
+  sk: z.string().min(1).max(255),
+  en: z.string().min(1).max(255),
 } satisfies Record<DeviceLanguage, z.ZodType>)
 
-const LibraryIdSchema = z.string().min(1).max(255)
+/**
+ * The contract's ids are lowercase kebab-case without a length limit; the
+ * apps need only one that is there.
+ */
+const LibraryIdSchema = z.string().min(1)
 
 const SynonymsSchema = z.array(z.string().min(1)).readonly().optional()
 
 /** VAT in hundredths of a percent, the apps' `TaxRatePercentage` unit. */
 const VatRateSchema = z.number().int().min(0).max(10000).optional()
+
+/**
+ * A picture's `<id>.<hash>`, `null` without one. The contract allows an
+ * empty string, which names no picture either, so it reads as `null`.
+ */
+const LibraryImageSchema = z.codec(
+  z.string().nullable(),
+  z.string().min(1).nullable(),
+  {
+    decode: (image) => (image === "" ? null : image),
+    encode: (image) => image,
+  }
+)
 
 const LibraryCategorySchema = z.object({
   id: LibraryIdSchema,
@@ -29,8 +49,11 @@ const LibraryCategorySchema = z.object({
 })
 
 const LibraryProductSchema = z.object({
-  /** Permanent: a catalog item's `libraryProductId` points at it. */
-  id: LibraryIdSchema,
+  /**
+   * Permanent: a catalog item's `libraryProductId` points at it, which holds
+   * at most 255 characters, so a longer one makes the product unusable.
+   */
+  id: LibraryIdSchema.max(255),
   category: LibraryIdSchema,
   names: LocalizedNameSchema,
   /** Other spellings people type, typos included; matched like names. */
@@ -49,7 +72,7 @@ const LibraryProductSchema = z.object({
    * `<id>.<hash>`, served at `v1/img/<image>-<size>.webp` for each of the
    * library's `imageSizes`; `null` while the product has no picture.
    */
-  image: z.string().min(1).nullable(),
+  image: LibraryImageSchema,
   /** Still resolvable for the items pointing at it, never suggested. */
   retired: z.boolean(),
 })
@@ -61,16 +84,35 @@ const StarterPackSchema = z.object({
 })
 
 /**
+ * A list read entry by entry: an entry that breaks the contract, or that the
+ * apps could not store, is left out rather than refusing the whole library.
+ * A codec, not a transform, so the native cache can encode the list back.
+ */
+const tolerantList = <TEntry extends z.ZodType>(entry: TEntry) =>
+  z.codec(z.array(z.unknown()), z.array(entry).readonly(), {
+    decode: (entries) =>
+      entries.flatMap((value) => {
+        const parsed = entry.safeParse(value)
+        return parsed.success ? [value as z.input<TEntry>] : []
+      }),
+    encode: (entries) => [...entries],
+  })
+
+/**
  * The consumer's reading of the library's `v1/library.json`: only the fields
  * the apps use. A tolerant reader — the library may add fields, languages and
  * countries within `v1`, and plain `z.object` drops what it does not know.
+ * Its three lists are read entry by entry (`tolerantList`), so one bad
+ * product costs that product, not the library; a related product or a pack's
+ * product left out that way is skipped where it is listed, as an unknown id
+ * is.
  */
 export const ProductLibrarySchema = z.object({
   version: z.string(),
   imageSizes: z.array(z.number().int().positive()).readonly(),
-  categories: z.array(LibraryCategorySchema).readonly(),
-  products: z.array(LibraryProductSchema).readonly(),
-  packs: z.array(StarterPackSchema).readonly(),
+  categories: tolerantList(LibraryCategorySchema),
+  products: tolerantList(LibraryProductSchema),
+  packs: tolerantList(StarterPackSchema),
 })
 
 export type ProductLibrary = z.output<typeof ProductLibrarySchema>

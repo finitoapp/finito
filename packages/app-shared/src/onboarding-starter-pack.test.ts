@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest"
 import { initialOnboardingFormState } from "./onboarding-form-state.ts"
 import {
   canFinishOnboarding,
+  isPickedStarterPackUnavailable,
   isStarterProductChecked,
   isStarterProductPriceInvalid,
   type OnboardingStarterPack,
@@ -199,6 +200,46 @@ describe("starter packs on the last step", () => {
         accountType: "existingMnemonic",
       })
     ).toEqual([])
+  })
+
+  test("cannot finish when the picked pack is no longer offered", () => {
+    const starterPack = cafe({
+      espresso: "45",
+      cappuccino: "59",
+      croissant: "35",
+    })
+    const refreshed = {
+      ...testProductLibrary,
+      packs: testProductLibrary.packs.filter((pack) => pack.id !== "cafe"),
+    }
+    const stale = { ...context(starterPack), library: refreshed }
+    expect(isPickedStarterPackUnavailable(stale)).toBe(true)
+    expect(onboardingStarterItems(stale)).toBeNull()
+    expect(canFinishOnboarding(stale)).toBe(false)
+    // A library offering no pack at all blocks it the same way.
+    expect(
+      canFinishOnboarding({
+        ...stale,
+        library: { ...testProductLibrary, packs: [] },
+      })
+    ).toBe(false)
+    // Picking another pack, or starting empty, lets it finish again.
+    const empty = { ...stale, starterPack: pickStarterPack(starterPack, null) }
+    expect(isPickedStarterPackUnavailable(empty)).toBe(false)
+    expect(canFinishOnboarding(empty)).toBe(true)
+    const bar = {
+      ...stale,
+      starterPack: ["draft-lager-large", "draft-lager-small"].reduce(
+        (state, id) => setStarterProductPrice(state, id, "55"),
+        setStarterProductChecked(
+          pickStarterPack(starterPack, "bar"),
+          "non-alcoholic-beer",
+          false
+        )
+      ),
+    }
+    expect(isPickedStarterPackUnavailable(bar)).toBe(false)
+    expect(canFinishOnboarding(bar)).toBe(true)
   })
 
   test("checks every product of a newly picked pack again", () => {

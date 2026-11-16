@@ -44,10 +44,12 @@ export const nativeEnv = createEnv({
       .default(["wss://evolu.eu.freedomrelay.dev", "wss://evolu.linky.fit"]),
     EXPO_PUBLIC_SENTRY_DSN: z.string().optional(),
     // The product library's host (github.com/finitoapp/product-library, its
-    // own Vercel project), which serves `v1/library.json` and the pictures.
-    // While it cannot be loaded the app offers no suggestions and shows no
-    // pictures, exactly as before the library. The e2e builds point it at
-    // the mock server (e2e/scripts/point-at-mocks.ts).
+    // own Vercel project), which serves `v1/library.json` and the pictures:
+    // the production library unless a build points it elsewhere. The e2e
+    // builds point it at the mock server (e2e/scripts/point-at-mocks.ts),
+    // whose 404 leaves them without the library: while it cannot be loaded
+    // the app offers no suggestions and shows no pictures, exactly as before
+    // the library.
     EXPO_PUBLIC_PRODUCT_LIBRARY_BASE_URL: z
       .url()
       .default("https://product-library-chi.vercel.app"),

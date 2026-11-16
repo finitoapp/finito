@@ -1390,8 +1390,9 @@ export const skSettings = {
   "catalog.library.suggestionsLabel": "Návrhy z knižnice produktov",
   "catalog.library.addAlso": "Pridajte aj",
   "catalog.library.addAlso.description":
-    "Otvorí novú položku s vyplneným názvom a obrázkom, cenu doplníte sami.",
-  "catalog.library.removePicture": "Odstrániť obrázok",
+    "Otvorí novú položku vyplnenú z knižnice, cenu doplníte sami.",
+  "catalog.library.linked": "Z knižnice produktov: {name}",
+  "catalog.library.unlink": "Odpojiť od knižnice",
   "catalog.library.dismiss": "Zavrieť",
   "settings.paymentAccounts.status.nativeOnly": "Len v natívnej aplikácii",
   "settings.cashuAccount.balance.switchUnit": "Prepnúť jednotku",

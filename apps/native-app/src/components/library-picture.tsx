@@ -1,10 +1,13 @@
-import { libraryImageUrl } from "@payky/core/integrations/product-library/product-library-client"
+import {
+  libraryImageUrl,
+  type ProductLibrary,
+} from "@payky/core/integrations/product-library/product-library-client"
 import { Image } from "expo-image"
 import { PixelRatio } from "react-native"
 import { View } from "tamagui"
 import {
   libraryProductById,
-  useProductLibrary,
+  type ProductLibraryState,
 } from "../hooks/use-product-library.ts"
 import { isReduceMotionEnabled } from "../platform/reduce-motion.ts"
 import { shape } from "../theme/tokens.ts"
@@ -13,14 +16,21 @@ import { shape } from "../theme/tokens.ts"
  * The URL of the picture of a catalog item's library product, sized for
  * `size` points on this screen's pixel density; `undefined` when the item
  * has no library product, the library is not loaded or does not know it, or
- * the product has no picture.
+ * the product has no picture. A screen reads the library once
+ * (`useProductLibrary`) and asks this for each picture it shows.
  */
-export function useLibraryPictureUrl(
-  libraryProductId: string | null,
-  size: number
-): string | undefined {
-  const { library, baseUrl } = useProductLibrary()
-  if (library === undefined || baseUrl === undefined) return undefined
+export const libraryPictureUrl = ({
+  library,
+  baseUrl,
+  libraryProductId,
+  size,
+}: {
+  readonly library: ProductLibrary | undefined
+  readonly baseUrl: string
+  readonly libraryProductId: string | null
+  readonly size: number
+}): string | undefined => {
+  if (library === undefined) return undefined
   const product = libraryProductById(library, libraryProductId)
   if (product === undefined || product.image === null) return undefined
   return libraryImageUrl({
@@ -32,22 +42,30 @@ export function useLibraryPictureUrl(
 }
 
 /**
+ * A reader of picture URLs over one read of the library, for a list or grid
+ * whose every row may show a picture: one query observer for all of them.
+ */
+export const libraryPictureUrlReader =
+  ({ library, baseUrl }: ProductLibraryState) =>
+  (libraryProductId: string | null, size: number): string | undefined =>
+    libraryPictureUrl({ library, baseUrl, libraryProductId, size })
+
+/**
  * A catalog item's picture from the product library: a `size`-point square,
  * rounded as a control, on the muted fill until the picture loads. Renders
- * nothing when there is no picture (`useLibraryPictureUrl`). Decorative: the
- * item's name beside it says what it is. Pictures are content-addressed, so
- * expo-image keeps them in memory and on disk for good. Native-only for now:
- * the product library's pictures land in Finito first.
+ * nothing without a `url` (`libraryPictureUrl`). Decorative: the item's name
+ * beside it says what it is. Pictures are content-addressed, so expo-image
+ * keeps them in memory and on disk for good. Native-only for now: the
+ * product library's pictures land in Finito first.
  */
 export function LibraryPicture({
-  libraryProductId,
+  url,
   size,
 }: {
-  readonly libraryProductId: string | null
+  readonly url: string | undefined
   /** The square's side in points. */
   readonly size: number
 }) {
-  const url = useLibraryPictureUrl(libraryProductId, size)
   if (url === undefined) return null
   return (
     <View

@@ -28,7 +28,12 @@ change because the live library did.
   there. The contract's source of truth is the library's `contract/v1.ts`.
 - **The apps read it tolerantly.** Core's `ProductLibrarySchema` names only
   the fields the apps use and drops the rest, so an addition breaks no
-  build; a file that breaks what they read fails as a typed error, which
+  build. It reads the categories, products and packs one entry at a time:
+  an entry that breaks the contract, or that the apps could not store (a
+  product id longer than the 255 characters a catalog item keeps), is left
+  out, and the lists naming it skip it as they skip an unknown id. An empty
+  picture reads as none. Only a file whose top level breaks what they read
+  (`version`, `imageSizes`, the three lists) fails, as a typed error, which
   the apps treat as no library (catalog/0005).
 - **Library ids are permanent.** A catalog item stores one
   (catalog/0006); the library never renames or reuses an id, and a product
@@ -70,6 +75,11 @@ change because the live library did.
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > downloads the whole library from v1/library.json`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > keeps a base URL's path prefix`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > ignores fields, languages and countries it does not know`
+- `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > keeps the valid products when one breaks the contract`
+- `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > drops a product whose id the catalog could not store`
+- `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > reads an empty picture as none`
+- `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > keeps the packs and related lists naming a product it left out`
+- `packages/core/src/integrations/product-library/product-library-client.test.ts > ProductLibrarySchema > writes a loaded library back as JSON that reads the same`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > returns a typed error for a failed request`
 - `packages/core/src/integrations/product-library/product-library-client.test.ts > loadProductLibrary > returns a typed error for a library that breaks the contract`
 - `packages/core/src/integrations/product-library/product-library-utils.test.ts > findLibraryProduct > finds a product by id, a retired one included`

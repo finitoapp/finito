@@ -18,6 +18,7 @@ import type { TaxRateRow } from "@payky/core/modules/tax-rate/tax-rate"
 import type { TaxRateId } from "@payky/core/modules/tax-rate/tax-rate-types"
 import { foldDiacritics } from "@payky/core/utils/sql-text-search"
 import type { CategoryChoice } from "./catalog-category-choice.ts"
+import type { NO_OPTION } from "./inline-edit-codecs.ts"
 
 interface Category {
   readonly id: CatalogCategoryId
@@ -132,3 +133,61 @@ export const relatedItemCategoryId = ({
   related.category === created.category && createdCategoryId !== null
     ? createdCategoryId
     : undefined
+
+/**
+ * Whether a create form's name still refers to the library product picked
+ * for it, so the item keeps that product (catalog/0006): while the name,
+ * case and diacritics aside, contains the product's name in any language or
+ * one of its synonyms ("Espresso velké", "Dvojité espresso"). Typed into
+ * something else ("Pivo" after picking Espresso), or emptied, the form drops
+ * the product, its picture and related products with it.
+ */
+export const nameKeepsLibraryProduct = (
+  name: string,
+  product: Pick<LibraryProduct, "names" | "synonyms">
+): boolean => {
+  const typed = foldDiacritics(name.trim())
+  if (typed === "") return false
+  const spellings = [
+    ...Object.values(product.names),
+    ...Object.values(product.synonyms).flatMap((synonyms) => synonyms ?? []),
+  ]
+  return spellings.some((spelling) => {
+    const folded = foldDiacritics(spelling.trim())
+    return folded !== "" && typed.includes(folded)
+  })
+}
+
+/** The fields of a create form besides its name that a library pick fills. */
+export interface LibraryPrefillFields {
+  readonly taxRateId: TaxRateId | typeof NO_OPTION
+  readonly category: CategoryChoice
+}
+
+/**
+ * The VAT rate and category a create form holds once a library product is
+ * picked (catalog/0007): the product's where the merchant has not chosen the
+ * field themselves, else the merchant's choice, kept. A field the merchant
+ * left alone and the product has nothing for goes back to the form's initial
+ * value, so an earlier pick's rate or category does not outlive it.
+ */
+export const libraryPrefillFields = ({
+  prefill,
+  current,
+  initial,
+  chosen,
+}: {
+  readonly prefill: Pick<LibraryProductPrefill, "taxRateId" | "category">
+  readonly current: LibraryPrefillFields
+  /** The form's values when it opened: its default VAT rate, no category. */
+  readonly initial: LibraryPrefillFields
+  /** The fields the merchant set by hand since the form opened. */
+  readonly chosen: Readonly<Record<keyof LibraryPrefillFields, boolean>>
+}): LibraryPrefillFields => ({
+  taxRateId: chosen.taxRateId
+    ? current.taxRateId
+    : (prefill.taxRateId ?? initial.taxRateId),
+  category: chosen.category
+    ? current.category
+    : (prefill.category ?? initial.category),
+})

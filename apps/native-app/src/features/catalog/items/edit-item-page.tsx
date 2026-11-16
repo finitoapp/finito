@@ -87,8 +87,9 @@ const taxRateCodec = optionalIdCodec<TaxRateId>()
  * itself. Whether the item is a discount was settled when it was created
  * (catalog/0002): a discount's price field edits the amount and keeps the
  * sign, and it has no VAT rate to pick. An item from the product library
- * shows its picture, which "Remove picture" takes off for good
- * (`libraryProductId` to `null`); renaming it keeps the picture.
+ * shows its picture, if the product has one, and names the product; "Unlink
+ * from library" takes it off for good (`libraryProductId` to `null`), and
+ * renaming the item keeps it.
  */
 export function EditCatalogItemPage() {
   const { catalogItemId } = useLocalSearchParams<{ catalogItemId: string }>()
@@ -212,7 +213,7 @@ function EditCatalogItemForm({ item }: { readonly item: CatalogItemRow }) {
           <FieldGroup>
             <ItemLibraryPicture
               libraryProductId={item.libraryProductId}
-              onRemove={() => void saveItem({ libraryProductId: null })}
+              onUnlink={() => void saveItem({ libraryProductId: null })}
             />
             <InlineEditField
               label={t("catalog.items.form.name.label")}

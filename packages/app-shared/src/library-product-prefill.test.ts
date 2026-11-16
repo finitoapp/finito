@@ -11,9 +11,13 @@ import {
 } from "@payky/core/testing/product-library"
 import { describe, expect, test } from "vitest"
 
+import type { CategoryChoice } from "./catalog-category-choice.ts"
 import {
+  type LibraryPrefillFields,
   libraryCategoryChoice,
+  libraryPrefillFields,
   libraryProductPrefill,
+  nameKeepsLibraryProduct,
   relatedItemCategoryId,
 } from "./library-product-prefill.ts"
 
@@ -149,5 +153,77 @@ describe("a related product's chip", () => {
         related: product("cappuccino"),
       })
     ).toBeUndefined()
+  })
+})
+
+describe("a picked library product's fields in a form the merchant has touched", () => {
+  const initial: LibraryPrefillFields = {
+    taxRateId: standard,
+    category: { kind: "none" },
+  }
+  const coffeeCategory: CategoryChoice = { kind: "existing", id: coffee }
+  const drinksCategory: CategoryChoice = { kind: "existing", id: drinks }
+  const untouched = { taxRateId: false, category: false }
+
+  test("fills the VAT rate and category the merchant has not chosen", () => {
+    expect(
+      libraryPrefillFields({
+        prefill: { taxRateId: reduced, category: coffeeCategory },
+        current: initial,
+        initial,
+        chosen: untouched,
+      })
+    ).toEqual({ taxRateId: reduced, category: coffeeCategory })
+  })
+
+  test("keeps a category the merchant already chose", () => {
+    expect(
+      libraryPrefillFields({
+        prefill: { taxRateId: reduced, category: coffeeCategory },
+        current: { ...initial, category: drinksCategory },
+        initial,
+        chosen: { ...untouched, category: true },
+      })
+    ).toEqual({ taxRateId: reduced, category: drinksCategory })
+  })
+
+  test("keeps a VAT rate the merchant already chose", () => {
+    expect(
+      libraryPrefillFields({
+        prefill: { taxRateId: reduced, category: coffeeCategory },
+        current: { ...initial, taxRateId: "none" },
+        initial,
+        chosen: { ...untouched, taxRateId: true },
+      })
+    ).toEqual({ taxRateId: "none", category: coffeeCategory })
+  })
+
+  test("replaces what an earlier pick filled, back to the form's own value where the product has none", () => {
+    expect(
+      libraryPrefillFields({
+        prefill: { taxRateId: undefined, category: undefined },
+        current: { taxRateId: reduced, category: coffeeCategory },
+        initial,
+        chosen: untouched,
+      })
+    ).toEqual(initial)
+  })
+})
+
+describe("a create form's link to the library product picked", () => {
+  test("holds while the name contains the product's name in any language or a synonym", () => {
+    const espresso = product("espresso")
+    expect(nameKeepsLibraryProduct("Espresso velké", espresso)).toBe(true)
+    expect(nameKeepsLibraryProduct("Dvojité ESPRESSO", espresso)).toBe(true)
+    const lager = product("draft-lager-large")
+    // Its English name in a Czech catalog, and a synonym without diacritics.
+    expect(nameKeepsLibraryProduct("Draught lager 0.5 l", lager)).toBe(true)
+    expect(nameKeepsLibraryProduct("Velke pivo 12°", lager)).toBe(true)
+  })
+
+  test("drops once the name no longer names the product, or is emptied", () => {
+    expect(nameKeepsLibraryProduct("Pivo", product("espresso"))).toBe(false)
+    expect(nameKeepsLibraryProduct("Espr", product("espresso"))).toBe(false)
+    expect(nameKeepsLibraryProduct("  ", product("espresso"))).toBe(false)
   })
 })

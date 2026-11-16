@@ -16,7 +16,7 @@ import { Suspense, useCallback, useMemo, useState } from "react"
 import { View, YStack } from "tamagui"
 import {
   LibraryPicture,
-  useLibraryPictureUrl,
+  libraryPictureUrlReader,
 } from "../../../components/library-picture.tsx"
 import { ListSkeleton } from "../../../components/list-skeleton.tsx"
 import { SearchInput } from "../../../components/search-input.tsx"
@@ -31,7 +31,14 @@ import { useLocale, useTranslation } from "../../../hooks/use-translation.ts"
 import { formatMoney } from "../../../lib/format-money.ts"
 import { CategoryFilterBar } from "../../shared/category-filter-bar.tsx"
 import { CatalogEntityList, CatalogListShell } from "../catalog-list-parts.tsx"
+import { NEW_ITEM_FROM_LIST } from "./new-item-return.ts"
 import { RelatedProductsCard } from "./related-products-card.tsx"
+
+/** The "+" of the list: the form returns here once it saves. */
+const newItemFromList = {
+  pathname: "/settings/items/new",
+  params: { from: NEW_ITEM_FROM_LIST },
+} as const
 
 /**
  * Catalog items, as web's `ItemsPage`, under Settings (navigation/0003).
@@ -44,7 +51,7 @@ export function ItemsPage() {
     <CatalogListShell
       title={t("catalog.items.title")}
       addLabel={t("catalog.items.add")}
-      addHref="/settings/items/new"
+      addHref={newItemFromList}
     >
       <ItemsSettingsBody />
     </CatalogListShell>
@@ -85,7 +92,10 @@ function ItemsSettingsBody() {
       )
       if (matches.length > 1) setSearch(code)
       else if (match === undefined)
-        router.push({ pathname: "/settings/items/new", params: { scan: code } })
+        router.push({
+          pathname: "/settings/items/new",
+          params: { scan: code, from: NEW_ITEM_FROM_LIST },
+        })
       else
         router.push({
           pathname: "/settings/items/[catalogItemId]",
@@ -143,7 +153,9 @@ function ItemsList({
   const locale = useLocale()
   // With the library loaded every row leads with the same 40-point slot, a
   // picture or the tag icon, so the names line up; without it, as before.
-  const { library } = useProductLibrary()
+  // Read once for the whole list, not once per row.
+  const productLibrary = useProductLibrary()
+  const pictureUrl = libraryPictureUrlReader(productLibrary)
   const categoryNameById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories]
@@ -165,8 +177,10 @@ function ItemsList({
       renderRow={(item) => ({
         id: item.id,
         leading:
-          library === undefined ? undefined : (
-            <ItemPicture libraryProductId={item.libraryProductId} />
+          productLibrary.library === undefined ? undefined : (
+            <ItemPicture
+              url={pictureUrl(item.libraryProductId, ROW_PICTURE_SIZE)}
+            />
           ),
         title: getStaffDisplayName(item),
         href: `/settings/items/${item.id}`,
@@ -187,21 +201,12 @@ function ItemsList({
 const ROW_PICTURE_SIZE = 40
 
 /** An item row's library picture, or the list's tag icon in its slot. */
-function ItemPicture({
-  libraryProductId,
-}: {
-  readonly libraryProductId: string | null
-}) {
-  const pictured =
-    useLibraryPictureUrl(libraryProductId, ROW_PICTURE_SIZE) !== undefined
-  return pictured ? (
-    <LibraryPicture
-      libraryProductId={libraryProductId}
-      size={ROW_PICTURE_SIZE}
-    />
-  ) : (
+function ItemPicture({ url }: { readonly url: string | undefined }) {
+  return url === undefined ? (
     <View w={ROW_PICTURE_SIZE} items="center">
       <Icon icon={Tag} size={24} color="muted-foreground" />
     </View>
+  ) : (
+    <LibraryPicture url={url} size={ROW_PICTURE_SIZE} />
   )
 }

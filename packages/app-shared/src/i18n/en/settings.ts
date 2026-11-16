@@ -1388,8 +1388,9 @@ export const enSettings = {
   "catalog.library.suggestionsLabel": "Suggestions from the product library",
   "catalog.library.addAlso": "Add also",
   "catalog.library.addAlso.description":
-    "Opens a new item with the name and picture filled in; the price is up to you.",
-  "catalog.library.removePicture": "Remove picture",
+    "Opens a new item filled in from the library; the price is up to you.",
+  "catalog.library.linked": "From the library: {name}",
+  "catalog.library.unlink": "Unlink from library",
   "catalog.library.dismiss": "Dismiss",
   "settings.paymentAccounts.status.nativeOnly": "Only in the native app",
   "settings.cashuAccount.balance.switchUnit": "Switch the unit",
