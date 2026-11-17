@@ -13,8 +13,12 @@ import { useNow } from "@payky/app-shared/use-now"
 import { latestPaymentsQuery } from "@payky/core/modules/payment/payment-queries"
 import { refundSummariesQuery } from "@payky/core/modules/refund/refund-queries"
 import { summarizeRefundsByPayment } from "@payky/core/modules/refund/refund-utils"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
+import { paymentHistoryQueries } from "../../hooks/use-preload-activity.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { RefundBadge } from "../shared/refund-badge.tsx"
@@ -33,6 +37,7 @@ export function PaymentHistoryPage() {
 function PaymentHistory() {
   const { t } = useTranslation()
   const locale = useLocale()
+  usePreloadEvoluQueries(paymentHistoryQueries())
   const { rows, hasMore, isPending, loadMore } = useInfiniteEvoluQuery(
     [],
     latestPaymentsQuery

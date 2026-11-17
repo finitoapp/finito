@@ -88,3 +88,24 @@ const randomBytes = createRandomBytes()
  */
 export const createRowId = <Entity extends TypeName>(): Id & Brand<Entity> =>
   createId<never>({ randomBytes }) as Id & Brand<Entity>
+
+/**
+ * A query factory that builds each limit's query once. Kysely compiles a
+ * query on every call, and an Activity list's page query is large: the
+ * payment history's took ~50 ms of Hermes on a PAX A920Pro, paid on every
+ * mount of the list. The query is a string, so the cached one is the same
+ * query Evolu already holds; the limits a list asks for grow by its page
+ * size, so the cache stays small.
+ */
+export const cacheQueryByLimit = <TQuery>(
+  create: (limit: number) => TQuery
+): ((limit: number) => TQuery) => {
+  const cache = new Map<number, TQuery>()
+  return (limit) => {
+    const cached = cache.get(limit)
+    if (cached !== undefined) return cached
+    const query = create(limit)
+    cache.set(limit, query)
+    return query
+  }
+}

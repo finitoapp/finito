@@ -39,6 +39,7 @@ import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-paymen
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
+import { usePreloadActivity } from "../../hooks/use-preload-activity.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
 import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
@@ -77,6 +78,7 @@ export function TerminalHomePage() {
   // The hamburger stands for the menu, Notifications its tab, so it carries
   // their dot (a wide window shows it on the rail's tab instead).
   const unread = useActiveNotifications().length > 0
+  const preloadActivity = usePreloadActivity()
   // A scan starts a new bill without a table; the bill then adds the item
   // as if it had been scanned there (scanner/0001).
   useHardwareScanner({
@@ -126,7 +128,10 @@ export function TerminalHomePage() {
             <Button
               variant="ghost"
               aria-label={t(unread ? "nav.notificationsUnread" : "nav.menu")}
-              onPress={() => router.push("/activity")}
+              onPress={() => {
+                preloadActivity()
+                router.push("/activity")
+              }}
             >
               <View>
                 <Icon icon={Menu} size={24} strokeWidth={3} />
