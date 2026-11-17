@@ -11,7 +11,7 @@ import {
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
 import { type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
-import { type ReactNode, useRef, useState } from "react"
+import { memo, type ReactNode, useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { AmountFigure } from "../../components/amount-figure.tsx"
@@ -33,6 +33,8 @@ type AmountInputAtom = PrimitiveAtom<string>
  * React committed the pending state together with it: on a PAX A920Pro the
  * button stayed as it was for about a second, the time the tip step took to
  * render (measured 2026-11-17, 934–1062 ms from touch to the pending frame).
+ * Only the Charge button renders for `pending` (`Keys` and `AmountDisplay`
+ * are memoized), so the frame it waits for is a cheap one.
  */
 const afterNextFrame = () =>
   new Promise<void>((resolve) => {
@@ -128,7 +130,7 @@ export function AmountKeypad({
   )
 }
 
-function AmountDisplay({
+const AmountDisplay = memo(function AmountDisplay({
   amountInputAtom,
   currency,
 }: {
@@ -157,9 +159,14 @@ function AmountDisplay({
       </Animated.View>
     </YStack>
   )
-}
+})
 
-function Keys({
+/**
+ * Memoized, as `AmountDisplay` is: its props are an atom and a currency, so
+ * the keypad's own renders (`pending`) pass it by. Twelve kit buttons cost
+ * ~200 ms to render on a PAX A920Pro.
+ */
+const Keys = memo(function Keys({
   amountInputAtom,
   currency,
 }: {
@@ -204,7 +211,7 @@ function Keys({
       ))}
     </YStack>
   )
-}
+})
 
 const PRESS_IN_EXPIRES_MS = 5000
 
