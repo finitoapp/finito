@@ -1,11 +1,11 @@
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
-import { router, usePathname } from "expo-router"
+import { router } from "expo-router"
 import type { LucideIcon } from "lucide-react-native"
 import Bell from "lucide-react-native/icons/bell"
 import Calculator from "lucide-react-native/icons/calculator"
 import Clock3 from "lucide-react-native/icons/clock-3"
 import Settings from "lucide-react-native/icons/settings"
-import { Suspense, useEffect, useRef, useState } from "react"
+import { memo, Suspense, useEffect, useRef, useState } from "react"
 import {
   Animated,
   Easing,
@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useTheme, View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
+import { currentPathname } from "../core/current-pathname.ts"
 import {
   type MenuTab,
   menuPositionOf,
@@ -118,7 +119,11 @@ const barExit = { duration: 140, easing: Easing.in(Easing.cubic) }
  * the root layout re-renders on the new path). Any route change brings the
  * pill back in line with the route.
  */
-export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
+export const MenuBar = memo(function MenuBar({
+  tab,
+}: {
+  readonly tab: MenuTab | undefined
+}) {
   const insets = useSafeAreaInsets()
   const visible = tab !== undefined
   const [lastTab, setLastTab] = useState<MenuTab>(tab ?? "terminal")
@@ -165,7 +170,7 @@ export function MenuBar({ tab }: { readonly tab: MenuTab | undefined }) {
       />
     </Animated.View>
   )
-}
+})
 
 /**
  * The room a screen with the bar leaves at its bottom for `MenuBar`, which
@@ -302,7 +307,6 @@ function RailProfileTile() {
   const { t } = useTranslation()
   const identity = useNostrIdentity()
   const profile = useNostrProfile(identity.pubkey)
-  const pathname = usePathname()
   const name = profile.data?.name ?? null
   return (
     <View
@@ -318,7 +322,7 @@ function RailProfileTile() {
         ? { title: name ?? t("settings.profile.title") }
         : {})}
       onPress={() => {
-        if (pathname === "/settings/profile") return
+        if (currentPathname() === "/settings/profile") return
         router.dismissTo("/settings")
         router.push("/settings/profile")
       }}
@@ -355,7 +359,6 @@ function MenuNavLink({
   readonly onSelect?: ((tab: MenuTab) => void) | undefined
 }) {
   const { t } = useTranslation()
-  const pathname = usePathname()
   const { icon, labelKey } = menuTabFaces[tab]
   // The notifications' tab carries their dot (home's hamburger the same).
   const unread = useActiveNotifications().length > 0 && tab === "notifications"
@@ -381,7 +384,7 @@ function MenuNavLink({
           else router.replace("/")
         } else if (home) {
           router.dismissTo("/")
-        } else if (menuPositionOf(pathname)?.tab === tab) {
+        } else if (menuPositionOf(currentPathname())?.tab === tab) {
           // From a detail of this tab (the rail shows on every screen): back
           // to the tab's root rather than a second copy of it.
           router.dismissTo(menuTabTargets[tab].href)
