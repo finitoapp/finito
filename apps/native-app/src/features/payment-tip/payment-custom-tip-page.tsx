@@ -30,13 +30,12 @@ export function PaymentCustomTipPage() {
     return <RouteMessage>{t("paymentTip.invalidLink")}</RouteMessage>
   const { amount, currency, billId } = search
 
-  const handleContinue = async (tipAmount: NonNegativeInteger) => {
+  const handleContinue = async (tipAmount: NonNegativeInteger) =>
     await createTerminalPayment({
       ...calculatePaymentAmounts({ amount, tipAmount }),
       currency,
       billId,
     })
-  }
 
   return (
     <Screen>

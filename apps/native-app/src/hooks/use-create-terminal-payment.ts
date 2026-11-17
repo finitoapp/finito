@@ -38,7 +38,8 @@ export function useCreateTerminalPayment() {
       readonly currency: FiatCurrency
       readonly tipAmount: NonNegativeInteger
       readonly billId?: BillId | null
-    }): Promise<void> => {
+    }): Promise<boolean> =>
+      // `true` once it left for the payment's screen.
       await runToast(async (run) => {
         const result = await run(
           createPreparedPayment({
@@ -63,8 +64,7 @@ export function useCreateTerminalPayment() {
           pathname: "/payment/[paymentId]",
           params: { paymentId: result.value },
         })
-      })
-    },
+      }),
     [device.id, runToast, setTerminalAmountInput]
   )
 }

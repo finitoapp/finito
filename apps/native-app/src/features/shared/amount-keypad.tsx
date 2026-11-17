@@ -10,8 +10,9 @@ import {
   type FiatCurrency,
   NonNegativeInteger,
 } from "@payky/core/modules/shared/schema"
+import { useFocusEffect } from "expo-router"
 import { type PrimitiveAtom, useAtomValue, useSetAtom } from "jotai"
-import { memo, type ReactNode, useRef, useState } from "react"
+import { memo, type ReactNode, useCallback, useRef, useState } from "react"
 import { Animated, StyleSheet } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
 import { AmountFigure } from "../../components/amount-figure.tsx"
@@ -73,6 +74,12 @@ const bubbleKeyframes = {
  * explains, and neither runs under reduced motion. A physical keyboard
  * types too (`useKeypadKeyboard`), and its Enter charges as the
  * Charge button does, so the pending charge lives here, shared by both.
+ *
+ * A submit that leaves the screen says so (`onSubmit` resolves `true`), and
+ * the button stays pending until the screen is focused again: reset at once,
+ * it rendered the keypad a second time before the next screen could (on a
+ * PAX A920Pro the tip step came ~450 ms later and the button looked idle
+ * for ~0.8 s in between).
  */
 export function AmountKeypad({
   amountInputAtom,
@@ -84,7 +91,8 @@ export function AmountKeypad({
   readonly amountInputAtom: AmountInputAtom
   readonly currency: FiatCurrency
   readonly submitLabel: string
-  readonly onSubmit: (amount: NonNegativeInteger) => Promise<void> | void
+  /** Resolves `true` when it left the screen (navigated), `false` when not. */
+  readonly onSubmit: (amount: NonNegativeInteger) => Promise<boolean> | boolean
   /** Drawn above the amount; an empty spacer when left out. */
   readonly header?: ReactNode
 }) {
@@ -93,16 +101,24 @@ export function AmountKeypad({
   // creates one payment (web's `AmountKeypad` does the same).
   const pendingRef = useRef(false)
 
+  const settle = useCallback(() => {
+    if (!pendingRef.current) return
+    pendingRef.current = false
+    setPending(false)
+  }, [])
+  // Back on this screen after a submit that left it.
+  useFocusEffect(settle)
+
   const charge = async (minor: number) => {
     if (pendingRef.current) return
     pendingRef.current = true
     setPending(true)
+    let left = false
     try {
       await afterNextFrame()
-      await onSubmit(NonNegativeInteger(minor))
+      left = await onSubmit(NonNegativeInteger(minor))
     } finally {
-      pendingRef.current = false
-      setPending(false)
+      if (!left) settle()
     }
   }
   const handleCharge = (minor: number) => void charge(minor)
