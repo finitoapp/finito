@@ -39,7 +39,6 @@ import {
   paymentDetailQuery,
   paymentQerkoTerminalByIdQuery,
   paymentReconciliationsQuery,
-  qerkoPaymentAttemptsByPaymentIdQuery,
 } from "@payky/core/modules/payment/payment-queries"
 import { PaymentId } from "@payky/core/modules/payment/payment-types"
 import { paymentNumberByPaymentIdQuery } from "@payky/core/modules/payment-number/payment-number-queries"
@@ -88,6 +87,7 @@ import {
   useEvoluQuery,
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
+import { usePreloadPaymentWait } from "../../hooks/use-preload-payment-wait.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
 import { useToast } from "../../hooks/use-toast.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
@@ -102,7 +102,6 @@ import {
 import { paymentMethodIcon } from "../shared/payment-method-display.ts"
 import { TaxRecap } from "../shared/tax-recap.tsx"
 import {
-  billStateQueries,
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
@@ -118,12 +117,14 @@ import { PaymentQerkoAttempts } from "./payment-qerko-attempts.tsx"
 import { PaymentRefunds } from "./payment-refunds.tsx"
 import { PaymentStatusBadge } from "./payment-status-display.tsx"
 import {
-  billLineSummaryDiffQueries,
   useBillCoverage,
   usePaymentLineSummaries,
 } from "./use-bill-detail-data.ts"
 import { usePaymentCollisionActions } from "./use-payment-collision-actions.ts"
-import { paymentRefundsQueries } from "./use-payment-refund-state.ts"
+import {
+  paymentBillCardQueries,
+  paymentDetailQueries,
+} from "./use-preload-payment-detail.ts"
 
 const claimSourceLabelKey = {
   auto: "paymentDetail.reconciliation.source.auto",
@@ -163,18 +164,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
   // This card's queries and those of the cards below that need only the
   // payment's id; `PaymentBillCard` preloads its own once the bill id is read.
   usePreloadEvoluQueries(
-    useMemo(
-      () => [
-        paymentDetailQuery(paymentId),
-        paymentReconciliationsQuery(paymentId),
-        paymentNumberByPaymentIdQuery(paymentId),
-        eetSalesByPaymentIdQuery(paymentId),
-        qerkoPaymentAttemptsByPaymentIdQuery(paymentId),
-        paymentCardSwitchioDetailQuery(paymentId),
-        ...paymentRefundsQueries(paymentId),
-      ],
-      [paymentId]
-    )
+    useMemo(() => paymentDetailQueries(paymentId), [paymentId])
   )
   const { t } = useTranslation()
   const locale = useLocale()
@@ -190,6 +180,7 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
     paymentNumberByPaymentIdQuery(paymentId)
   ).data
   const collision = usePaymentCollisionActions(paymentId)
+  const preloadPaymentWait = usePreloadPaymentWait()
   // Nothing writes a row when a payment expires; see `useNow`.
   const now = useNow([payment?.expiresAt ?? null])
 
@@ -217,12 +208,13 @@ function PaymentDetail({ paymentId }: { readonly paymentId: PaymentId }) {
           <Button
             size="lg"
             label={t("paymentDetail.backToPayment")}
-            onPress={() =>
+            onPress={() => {
+              preloadPaymentWait(paymentId)
               router.push({
                 pathname: "/payment/[paymentId]",
                 params: { paymentId },
               })
-            }
+            }}
           />
           {payment.expiresAt === null ? null : (
             <Text
@@ -600,13 +592,7 @@ function PaymentBillCard({
 }) {
   usePreloadEvoluQueries(
     useMemo(
-      () => [
-        ...billStateQueries(billId),
-        ...billLineSummaryDiffQueries(paymentId),
-        tablesQuery,
-        taxRatesQuery,
-        claimedPaymentsByBillIdQuery(billId),
-      ],
+      () => paymentBillCardQueries(billId, paymentId),
       [billId, paymentId]
     )
   )

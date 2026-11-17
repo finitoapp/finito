@@ -122,6 +122,8 @@ export interface ActivityRowData {
   readonly isVoid: boolean
   readonly statusLabel: string
   readonly href: Href
+  /** Starts loading the screen `href` opens, as the row is pressed. */
+  readonly onOpen?: () => void
 }
 
 export interface ActivityGroup {
@@ -140,6 +142,7 @@ function ActivityDay({ group }: { readonly group: ActivityGroup }) {
         id: row.id,
         kind: "link" as const,
         href: row.href,
+        onOpen: row.onOpen,
         accessibilityLabel: `${row.title}, ${row.amount}, ${row.statusLabel}`,
         stripeColor: row.issues.length > 0 ? ("warning" as const) : undefined,
         icon: <View p={8}>{row.statusIcon}</View>,

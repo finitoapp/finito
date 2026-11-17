@@ -12,6 +12,7 @@ import { accountAtom } from "../atoms/account.ts"
 import { terminalAmountInputAtom } from "../atoms/terminal-amount.ts"
 import { nativeConsole } from "../core/native-runtime.ts"
 import { isSwitchioSupported } from "../platform/switchio.ts"
+import { usePreloadPaymentWait } from "./use-preload-payment-wait.ts"
 import { useRunToast } from "./use-run-toast.ts"
 
 /**
@@ -26,6 +27,7 @@ export function useCreateTerminalPayment() {
   const runToast = useRunToast()
   const { device } = useAtomValue(accountAtom)
   const setTerminalAmountInput = useSetAtom(terminalAmountInputAtom)
+  const preloadPaymentWait = usePreloadPaymentWait()
 
   return useCallback(
     async ({
@@ -59,12 +61,13 @@ export function useCreateTerminalPayment() {
           return createPaymentErrorKeys[result.error.type]
         }
 
+        preloadPaymentWait(result.value)
         if (billId === null) setTerminalAmountInput("")
         router.push({
           pathname: "/payment/[paymentId]",
           params: { paymentId: result.value },
         })
       }),
-    [device.id, runToast, setTerminalAmountInput]
+    [device.id, preloadPaymentWait, runToast, setTerminalAmountInput]
   )
 }

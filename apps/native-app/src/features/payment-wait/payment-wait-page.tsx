@@ -92,6 +92,7 @@ import {
   useEvoluQuery,
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
+import { paymentWaitQueries } from "../../hooks/use-preload-payment-wait.ts"
 import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
@@ -245,16 +246,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const { require } = useRequirePermission()
   const deviceId = useAtomValue(accountAtom).device.id
   usePreloadEvoluQueries(
-    useMemo(
-      () => [
-        paymentRequestQuery(paymentId),
-        paymentClaimsQuery(paymentId),
-        enabledPaymentMethodAccountsQuery,
-        cashuAccountQuery,
-        settingsQuery,
-      ],
-      [paymentId]
-    )
+    useMemo(() => paymentWaitQueries(paymentId), [paymentId])
   )
   const [payment] = useEvoluQuery(paymentRequestQuery(paymentId)).data
   const claims = useEvoluQuery(paymentClaimsQuery(paymentId)).data

@@ -21,10 +21,7 @@ import {
 } from "@payky/core/modules/bill-line/bill-line-utils"
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
-import {
-  catalogItemsPageQuery,
-  catalogItemsQuery,
-} from "@payky/core/modules/catalog-item/catalog-item-queries"
+import { catalogItemsQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
 import type { CategoryFilter } from "@payky/core/modules/catalog-item/catalog-item-types"
 import {
   findCatalogItemsByScanCode,
@@ -120,6 +117,7 @@ import {
 } from "../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../hooks/use-is-confirm-open.ts"
+import { usePreloadPaymentWait } from "../../hooks/use-preload-payment-wait.ts"
 import { useProductLibrary } from "../../hooks/use-product-library.ts"
 import { useProductLookup } from "../../hooks/use-product-lookup.ts"
 import { useRunToast } from "../../hooks/use-run-toast.ts"
@@ -134,11 +132,11 @@ import { fontSize, fontWeight, radius, shape } from "../../theme/tokens.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { CategoryFilterBar } from "../shared/category-filter-bar.tsx"
 import {
-  billStateQueries,
   useBillLineSummaries,
   useBillStatus,
   usePendingPayments,
 } from "../shared/use-bill-state.ts"
+import { billGridQuery, billPageQueries } from "../shared/use-preload-bill.ts"
 import { AssignTableDialog } from "./assign-table-dialog.tsx"
 import { BillScanView } from "./bill-scan-view.tsx"
 import { CreateCatalogItemDialog } from "./create-catalog-item-dialog.tsx"
@@ -203,20 +201,7 @@ function BillPage({
   readonly initialScanCode: string | undefined
 }) {
   // The cart's catalog too: `BillCart` mounts below once these are in.
-  usePreloadEvoluQueries(
-    useMemo(
-      () => [
-        ...billStateQueries(billId),
-        tablesQuery,
-        settingsQuery,
-        enabledPaymentMethodAccountsQuery,
-        qerkoPluginQuery("standard"),
-        catalogItemsQuery,
-        catalogCategoriesQuery,
-      ],
-      [billId]
-    )
-  )
+  usePreloadEvoluQueries(useMemo(() => billPageQueries(billId), [billId]))
   useScreenWakeLock(true)
   const { t } = useTranslation()
   const locale = useLocale()
@@ -411,6 +396,7 @@ function BillLocked({
   readonly paymentIds: ReadonlyArray<PaymentId>
 }) {
   const { t } = useTranslation()
+  const preloadPaymentWait = usePreloadPaymentWait()
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <YStack mt={64} px={24} gap={16} items="center">
@@ -430,12 +416,13 @@ function BillLocked({
                     })
                   : t("bill.locked.viewPayment")
               }
-              onPress={() =>
+              onPress={() => {
+                preloadPaymentWait(paymentId)
                 router.push({
                   pathname: "/payment/[paymentId]",
                   params: { paymentId },
                 })
-              }
+              }}
             />
           ))}
         </YStack>
@@ -653,22 +640,16 @@ function BillCart({
   const deferredSearch = useDeferredValue(useDebouncedValue(search, 250))
   const deferredFilter = useDeferredValue(categoryFilter)
   const deferredInBillIds = useDeferredValue(inBillItemIds)
+  // The unsearched, unfiltered grid is the one home preloads (`usePreloadBill`).
   const gridQuery = useMemo(
     () =>
-      catalogItemsPageQuery({
+      billGridQuery({
         search: deferredSearch,
         categoryFilter: deferredFilter === "inBill" ? "all" : deferredFilter,
         currency,
         ...(deferredFilter === "inBill"
           ? { catalogItemIds: deferredInBillIds }
           : {}),
-        // The whole catalog, unsearched, keeps each category's items
-        // together, as web.
-        groupByCategory:
-          deferredFilter === "all" && deferredSearch.trim() === "",
-        // ponytail: no paging, the list is virtualized; raise or page if a
-        // catalog ever outgrows this.
-        limit: 10_000,
       }),
     [deferredSearch, deferredFilter, deferredInBillIds, currency]
   )

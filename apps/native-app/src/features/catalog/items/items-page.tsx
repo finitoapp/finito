@@ -23,7 +23,10 @@ import { SearchInput } from "../../../components/search-input.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import { useDebouncedValue } from "../../../hooks/use-debounced-value.ts"
-import { useEvoluQuery } from "../../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../../hooks/use-evolu-query.ts"
 import { useHardwareScanner } from "../../../hooks/use-hardware-scanner.ts"
 import { useIsConfirmOpen } from "../../../hooks/use-is-confirm-open.ts"
 import { useProductLibrary } from "../../../hooks/use-product-library.ts"
@@ -58,7 +61,15 @@ export function ItemsPage() {
   )
 }
 
+/** Everything the list's body reads before its rows: one round trip. */
+const itemsBodyQueries = [
+  catalogCategoriesQuery,
+  catalogItemUsedCategoryIdsQuery,
+  catalogItemsQuery,
+]
+
 function ItemsSettingsBody() {
+  usePreloadEvoluQueries(itemsBodyQueries)
   const { t } = useTranslation()
   const [search, setSearch] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all")
