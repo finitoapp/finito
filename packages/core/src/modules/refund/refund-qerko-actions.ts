@@ -527,7 +527,6 @@ export const repairQerkoTerminalTipRefunds =
     const missing = await evolu.loadQuery(qerkoTerminalRefundsMissingTipQuery)
     const rows: Array<ReturnType<typeof computeCardRefundRows>> = []
     for (const attempt of missing) {
-      if (attempt.tipAmount === 0) continue
       const [qerkoPayment] = await evolu.loadQuery(
         paymentQerkoTerminalByIdQuery(attempt.paymentId)
       )

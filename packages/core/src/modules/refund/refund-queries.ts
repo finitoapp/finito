@@ -9,7 +9,7 @@ import type { BillId } from "../bill/bill-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import type { PaymentId } from "../payment/payment-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
-import type { NonEmptyString255 } from "../shared/schema.ts"
+import { type NonEmptyString255, NonNegativeInteger } from "../shared/schema.ts"
 import type { CardSwitchioRefundAttemptId, RefundId } from "./refund-types.ts"
 
 const refundColumns = [
@@ -389,7 +389,10 @@ export const qerkoTerminalRefundsMissingTipQuery = createQuery((db) =>
     ])
     .where("attempt.isDeleted", "=", sqliteTrue)
     .where("attempt.isTip", "is", null)
-    .where("attempt.tipAmount", "is not", null)
+    // No tip, nothing to repair: left out here rather than skipped by the
+    // repair, so the result of this query, which the terminal sync job keeps
+    // subscribed, stays empty instead of growing with every such refund.
+    .where("attempt.tipAmount", ">", NonNegativeInteger(0))
     .where("attempt.paymentId", "is not", null)
     .where("attempt.transactionId", "is not", null)
     .where("attempt.terminalId", "is not", null)
