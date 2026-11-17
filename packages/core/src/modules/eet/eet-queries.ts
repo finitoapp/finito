@@ -13,26 +13,16 @@ import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
 import type { EetDateTime, EetReversalId, EetSaleId } from "./eet-types.ts"
 import { eetSettingsId } from "./eet-utils.ts"
 
-const paymentSalesConfirmation = (
-  db: Parameters<Parameters<typeof createQuery>[0]>[0]
+/**
+ * When every reported sale of the payment `paymentId` names was confirmed,
+ * `null` while one is not, or while it has none: a reversal is sent only
+ * after its sales were. A correlated subquery, so a query works it out for
+ * the rows it keeps rather than grouping every sale ever recorded.
+ */
+const saleConfirmedAtSql = (
+  paymentId: "refund.paymentId" | "eetReversal.paymentId"
 ) =>
-  db
-    .selectFrom("eetSale")
-    .leftJoin("eetSaleConfirmation", (join) =>
-      join
-        .onRef("eetSaleConfirmation.id", "=", "eetSale.id")
-        .on("eetSaleConfirmation.isDeleted", "is not", sqliteTrue)
-    )
-    .select((eb) => [
-      "eetSale.paymentId",
-      kyselySql<EetDateTime | null>`case when count(${eb.ref("eetSaleConfirmation.id")}) = count(*) then max(${eb.ref("eetSaleConfirmation.receivedAt")}) end`.as(
-        "confirmedAt"
-      ),
-    ])
-    .where("eetSale.isDeleted", "is not", sqliteTrue)
-    .where("eetSale.unsupportedReason", "is", null)
-    .groupBy("eetSale.paymentId")
-    .as("paymentSales")
+  kyselySql<EetDateTime | null>`(select case when count("eetSaleConfirmation"."id") = count(*) then max("eetSaleConfirmation"."receivedAt") end from "eetSale" left join "eetSaleConfirmation" on "eetSaleConfirmation"."id" = "eetSale"."id" and "eetSaleConfirmation"."isDeleted" is not ${sqliteTrue} where "eetSale"."paymentId" = ${kyselySql.ref(paymentId)} and "eetSale"."isDeleted" is not ${sqliteTrue} and "eetSale"."unsupportedReason" is null)`
 
 export const eetSettingsQuery = createQuery((db) =>
   db
@@ -85,113 +75,182 @@ export const eetSigningCertificateQuery = createQuery((db) =>
     }>()
 )
 
+/**
+ * Changes whenever an EET sale, extra sale or reversal may have become due:
+ * a claim, sale, sale confirmation or refund was written, or the EET
+ * settings changed. No row while EET is off.
+ *
+ * The reporting job subscribes to this instead of the queries that find
+ * what is due (`eetPaymentsToReportQuery`, `eetExtraClaimsQuery`,
+ * `eetRefundsToReverseQuery`). Those read every claim made since EET was
+ * enabled, and Evolu re-runs every subscribed query after every write, on
+ * the payment terminal on its UI thread. A count, deleted rows included,
+ * changes with every row written; the latest `updatedAt` with every later
+ * change. A change synced with an older timestamp than the newest row moves
+ * neither, which the job's periodic check catches (eet/0013).
+ */
+export const eetCreationTriggerQuery = createQuery((db) =>
+  db
+    .selectFrom("eetSettings")
+    .select([
+      "eetSettings.enabledAt",
+      "eetSettings.tipOwner",
+      kyselySql<number>`(select count(*) from "reconciliationClaim")`.as(
+        "claimCount"
+      ),
+      kyselySql<
+        string | null
+      >`(select max("updatedAt") from "reconciliationClaim")`.as(
+        "claimUpdatedAt"
+      ),
+      kyselySql<number>`(select count(*) from "eetSale")`.as("saleCount"),
+      kyselySql<string | null>`(select max("updatedAt") from "eetSale")`.as(
+        "saleUpdatedAt"
+      ),
+      kyselySql<number>`(select count(*) from "eetSaleConfirmation")`.as(
+        "saleConfirmationCount"
+      ),
+      kyselySql<number>`(select count(*) from "refund")`.as("refundCount"),
+      kyselySql<string | null>`(select max("updatedAt") from "refund")`.as(
+        "refundUpdatedAt"
+      ),
+    ])
+    .where("eetSettings.id", "=", eetSettingsId)
+    .where("eetSettings.isDeleted", "is not", sqliteTrue)
+    .where("eetSettings.enabledAt", "is not", null)
+)
+
+/**
+ * Payments EET reports a sale for: settled first at or after EET was
+ * enabled, with no sale record yet.
+ *
+ * Driven from the claims made since EET was enabled
+ * (`reconciliationClaim_claimedAt`), so a payment settled before then, or
+ * never, costs nothing. The job keeps this subscribed, and Evolu re-runs it
+ * after every write (payment/0026's context).
+ */
 export const eetPaymentsToReportQuery = createQuery((db) =>
   db
     .selectFrom((eb) =>
       eb
-        .selectFrom("payment")
-        .innerJoin("eetSettings", (join) =>
-          join
-            .on("eetSettings.id", "=", eetSettingsId)
-            .on("eetSettings.isDeleted", "is not", sqliteTrue)
+        .selectFrom("eetSettings")
+        .innerJoin("reconciliationClaim", (join) =>
+          join.onRef(
+            "reconciliationClaim.claimedAt",
+            ">=",
+            "eetSettings.enabledAt"
+          )
         )
-        .leftJoin("paymentCashRegister", (join) =>
-          join
-            .onRef("paymentCashRegister.id", "=", "payment.id")
-            .on("paymentCashRegister.isDeleted", "is not", sqliteTrue)
-        )
-        .leftJoin("paymentBtc", (join) =>
-          join
-            .onRef("paymentBtc.id", "=", "payment.id")
-            .on("paymentBtc.isDeleted", "is not", sqliteTrue)
-        )
-        .leftJoin("paymentCashu", (join) =>
-          join
-            .onRef("paymentCashu.id", "=", "payment.id")
-            .on("paymentCashu.isDeleted", "is not", sqliteTrue)
-        )
-        .leftJoin("paymentLightningAddress", (join) =>
-          join
-            .onRef("paymentLightningAddress.id", "=", "payment.id")
-            .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
-        )
-        .select((eb) => {
-          const firstActiveClaim = eb
-            .selectFrom("reconciliationClaim")
+        .select((eb) => [
+          "reconciliationClaim.paymentId",
+          "eetSettings.enabledAt",
+          // The first active claim decides when the payment counts as
+          // settled and by what method.
+          eb
+            .selectFrom("reconciliationClaim as firstClaim")
             .innerJoin(
               "accountTransaction",
               "accountTransaction.id",
-              "reconciliationClaim.accountTransactionId"
+              "firstClaim.accountTransactionId"
             )
             .innerJoin("account", "account.id", "accountTransaction.accountId")
-            .whereRef("reconciliationClaim.paymentId", "=", "payment.id")
-            .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+            .select("firstClaim.id")
+            .whereRef(
+              "firstClaim.paymentId",
+              "=",
+              "reconciliationClaim.paymentId"
+            )
+            .where("firstClaim.isDeleted", "is not", sqliteTrue)
             .where("accountTransaction.isDeleted", "is not", sqliteTrue)
-            .where("reconciliationClaim.claimedAt", "is not", null)
+            .where("firstClaim.claimedAt", "is not", null)
             .where("account.kind", "is not", null)
-            .orderBy("reconciliationClaim.claimedAt")
-            .orderBy("reconciliationClaim.id")
+            .orderBy("firstClaim.claimedAt")
+            .orderBy("firstClaim.id")
             .limit(1)
-
-          return [
-            "payment.id",
-            "payment.billId",
-            "payment.amount",
-            "payment.tipAmount",
-            "payment.currency",
-            "payment.deviceId as paymentDeviceId",
-            "paymentCashRegister.receivedAmount as cashReceivedAmount",
-            // The first claim's own method sets the rate (`quotedAmountSats`).
-            firstActiveClaim
-              .select(
-                quotedAmountSatsSql({
-                  kind: "accountTransaction.kind",
-                  btc: "paymentBtc.amountSats",
-                  cashu: "paymentCashu.amountSats",
-                  lightningAddress: "paymentLightningAddress.amountSats",
-                }).as("paymentAmountSats")
-              )
-              .as("paymentAmountSats"),
-            "eetSettings.enabledAt",
-            firstActiveClaim
-              .select("reconciliationClaim.claimedAt")
-              .as("firstClaimedAt"),
-            firstActiveClaim
-              .select("reconciliationClaim.deviceId")
-              .as("firstClaimDeviceId"),
-            firstActiveClaim.select("account.kind").as("method"),
-            firstActiveClaim
-              .select("accountTransaction.id")
-              .as("firstClaimTransactionId"),
-            firstActiveClaim
-              .select("accountTransaction.amount")
-              .as("firstClaimAmount"),
-            firstActiveClaim
-              .select("accountTransaction.currency")
-              .as("firstClaimCurrency"),
-          ]
-        })
-        .where("payment.isDeleted", "is not", sqliteTrue)
-        .where("payment.amount", "is not", null)
-        .where("payment.tipAmount", "is not", null)
-        .where("payment.currency", "is not", null)
+            .as("firstClaimId"),
+        ])
+        .distinct()
+        .where("eetSettings.id", "=", eetSettingsId)
+        .where("eetSettings.isDeleted", "is not", sqliteTrue)
         .where("eetSettings.enabledAt", "is not", null)
+        .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
         .where((eb) =>
           eb.not(
             eb.exists(
               eb
                 .selectFrom("eetSale")
                 .select("eetSale.id")
-                .whereRef("eetSale.paymentId", "=", "payment.id")
+                .whereRef(
+                  "eetSale.paymentId",
+                  "=",
+                  "reconciliationClaim.paymentId"
+                )
                 .where("eetSale.extraFrom", "is", null)
             )
           )
         )
         .as("candidate")
     )
-    .selectAll()
-    .where("candidate.firstClaimedAt", "is not", null)
-    .whereRef("candidate.firstClaimedAt", ">=", "candidate.enabledAt")
+    .innerJoin("payment", "payment.id", "candidate.paymentId")
+    .innerJoin(
+      "reconciliationClaim",
+      "reconciliationClaim.id",
+      "candidate.firstClaimId"
+    )
+    .innerJoin(
+      "accountTransaction",
+      "accountTransaction.id",
+      "reconciliationClaim.accountTransactionId"
+    )
+    .innerJoin("account", "account.id", "accountTransaction.accountId")
+    .leftJoin("paymentCashRegister", (join) =>
+      join
+        .onRef("paymentCashRegister.id", "=", "payment.id")
+        .on("paymentCashRegister.isDeleted", "is not", sqliteTrue)
+    )
+    .leftJoin("paymentBtc", (join) =>
+      join
+        .onRef("paymentBtc.id", "=", "payment.id")
+        .on("paymentBtc.isDeleted", "is not", sqliteTrue)
+    )
+    .leftJoin("paymentCashu", (join) =>
+      join
+        .onRef("paymentCashu.id", "=", "payment.id")
+        .on("paymentCashu.isDeleted", "is not", sqliteTrue)
+    )
+    .leftJoin("paymentLightningAddress", (join) =>
+      join
+        .onRef("paymentLightningAddress.id", "=", "payment.id")
+        .on("paymentLightningAddress.isDeleted", "is not", sqliteTrue)
+    )
+    .select([
+      "payment.id",
+      "payment.billId",
+      "payment.amount",
+      "payment.tipAmount",
+      "payment.currency",
+      "payment.deviceId as paymentDeviceId",
+      "paymentCashRegister.receivedAmount as cashReceivedAmount",
+      // The first claim's own method sets the rate (`quotedAmountSats`).
+      quotedAmountSatsSql({
+        kind: "accountTransaction.kind",
+        btc: "paymentBtc.amountSats",
+        cashu: "paymentCashu.amountSats",
+        lightningAddress: "paymentLightningAddress.amountSats",
+      }).as("paymentAmountSats"),
+      "candidate.enabledAt",
+      "reconciliationClaim.claimedAt as firstClaimedAt",
+      "reconciliationClaim.deviceId as firstClaimDeviceId",
+      "account.kind as method",
+      "accountTransaction.id as firstClaimTransactionId",
+      "accountTransaction.amount as firstClaimAmount",
+      "accountTransaction.currency as firstClaimCurrency",
+    ])
+    .where("payment.isDeleted", "is not", sqliteTrue)
+    .where("payment.amount", "is not", null)
+    .where("payment.tipAmount", "is not", null)
+    .where("payment.currency", "is not", null)
+    .whereRef("reconciliationClaim.claimedAt", ">=", "candidate.enabledAt")
     .$narrowType<{
       amount: KyselyNotNull
       tipAmount: KyselyNotNull
@@ -205,6 +264,13 @@ export const eetPaymentsToReportQuery = createQuery((db) =>
     }>()
 )
 
+/**
+ * Every claim of a payment that may have received more than its amount, for
+ * `deriveDueEetExtraSale`. Only payments claimed at or after EET was enabled
+ * can owe an extra sale (its `extraFrom` counts the earlier claims), so they
+ * drive the query (`reconciliationClaim_claimedAt`), and its cost follows
+ * the claims made since then, not the whole history.
+ */
 export const eetExtraClaimsQuery = createQuery((db) =>
   db
     .selectFrom("reconciliationClaim")
@@ -273,6 +339,61 @@ export const eetExtraClaimsQuery = createQuery((db) =>
         .where("eetSale.extraFrom", "is not", null)
         .as("reportedExtra"),
     ])
+    // The payments worth the full check below: claimed since EET was
+    // enabled, and either settled by more than one transaction, or by one
+    // larger than the payment in its currency, or by one in another
+    // currency, which only the full check can compare.
+    .where("reconciliationClaim.paymentId", "in", (eb) =>
+      eb
+        .selectFrom("eetSettings")
+        .innerJoin("reconciliationClaim as sinceEnabled", (join) =>
+          join.onRef("sinceEnabled.claimedAt", ">=", "eetSettings.enabledAt")
+        )
+        .innerJoin(
+          "accountTransaction as sinceEnabledTransaction",
+          "sinceEnabledTransaction.id",
+          "sinceEnabled.accountTransactionId"
+        )
+        .innerJoin(
+          "payment as sinceEnabledPayment",
+          "sinceEnabledPayment.id",
+          "sinceEnabled.paymentId"
+        )
+        .select("sinceEnabled.paymentId")
+        .where("eetSettings.id", "=", eetSettingsId)
+        .where("eetSettings.isDeleted", "is not", sqliteTrue)
+        .where("sinceEnabled.isDeleted", "is not", sqliteTrue)
+        .where((eb) =>
+          eb.or([
+            eb(
+              "sinceEnabledTransaction.currency",
+              "!=",
+              eb.ref("sinceEnabledPayment.currency")
+            ),
+            eb(
+              "sinceEnabledTransaction.amount",
+              ">",
+              eb.ref("sinceEnabledPayment.amount")
+            ),
+            eb.exists(
+              eb
+                .selectFrom("reconciliationClaim as secondClaim")
+                .select("secondClaim.id")
+                .whereRef(
+                  "secondClaim.paymentId",
+                  "=",
+                  "sinceEnabled.paymentId"
+                )
+                .whereRef(
+                  "secondClaim.accountTransactionId",
+                  "!=",
+                  "sinceEnabled.accountTransactionId"
+                )
+                .where("secondClaim.isDeleted", "is not", sqliteTrue)
+            ),
+          ])
+        )
+    )
     .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
     .where("reconciliationClaim.claimedAt", "is not", null)
     .where("accountTransaction.isDeleted", "is not", sqliteTrue)
@@ -285,27 +406,6 @@ export const eetExtraClaimsQuery = createQuery((db) =>
     .where("eetSettings.enabledAt", "is not", null)
     .where((eb) =>
       eb.or([
-        eb(
-          eb
-            .selectFrom("reconciliationClaim as otherClaim")
-            .innerJoin(
-              "accountTransaction as otherTransaction",
-              "otherTransaction.id",
-              "otherClaim.accountTransactionId"
-            )
-            .select((eb) =>
-              eb.fn
-                .count<number>("otherClaim.accountTransactionId")
-                .distinct()
-                .as("count")
-            )
-            .whereRef("otherClaim.paymentId", "=", "payment.id")
-            .where("otherClaim.isDeleted", "is not", sqliteTrue)
-            .where("otherClaim.claimedAt", "is not", null)
-            .where("otherTransaction.isDeleted", "is not", sqliteTrue),
-          ">",
-          1
-        ),
         eb.and([
           eb("accountTransaction.currency", "=", eb.ref("payment.currency")),
           eb("accountTransaction.amount", ">", eb.ref("payment.amount")),
@@ -323,6 +423,27 @@ export const eetExtraClaimsQuery = createQuery((db) =>
             })
           ),
         ]),
+        // Settled by more than one transaction: this claim's own is one of
+        // them, so another one is enough.
+        eb.exists(
+          eb
+            .selectFrom("reconciliationClaim as otherClaim")
+            .innerJoin(
+              "accountTransaction as otherTransaction",
+              "otherTransaction.id",
+              "otherClaim.accountTransactionId"
+            )
+            .select("otherClaim.id")
+            .whereRef("otherClaim.paymentId", "=", "payment.id")
+            .whereRef(
+              "otherClaim.accountTransactionId",
+              "!=",
+              "reconciliationClaim.accountTransactionId"
+            )
+            .where("otherClaim.isDeleted", "is not", sqliteTrue)
+            .where("otherClaim.claimedAt", "is not", null)
+            .where("otherTransaction.isDeleted", "is not", sqliteTrue)
+        ),
       ])
     )
     .$narrowType<{
@@ -481,9 +602,6 @@ export const eetRefundsToReverseQuery = createQuery((db) =>
   db
     .selectFrom("refund")
     .innerJoin("eetSale", "eetSale.paymentId", "refund.paymentId")
-    .leftJoin(paymentSalesConfirmation(db), (join) =>
-      join.onRef("paymentSales.paymentId", "=", "refund.paymentId")
-    )
     // The cash a refund from the register handed out (refund/0012).
     .leftJoin("refundCashRegister", (join) =>
       join
@@ -499,7 +617,7 @@ export const eetRefundsToReverseQuery = createQuery((db) =>
       "refund.isTip",
       "refund.refundedAt",
       "eetSale.id as saleId",
-      "paymentSales.confirmedAt as saleConfirmedAt",
+      saleConfirmedAtSql("refund.paymentId").as("saleConfirmedAt"),
     ])
     .where("refund.deviceId", "is not", null)
     .where("refund.isDeleted", "is not", sqliteTrue)
@@ -531,9 +649,6 @@ export const eetRefundsToReverseQuery = createQuery((db) =>
 export const eetReversalsToDeliverQuery = createQuery((db) =>
   db
     .selectFrom("eetReversal")
-    .innerJoin(paymentSalesConfirmation(db), (join) =>
-      join.onRef("paymentSales.paymentId", "=", "eetReversal.paymentId")
-    )
     .leftJoin("eetReversalConfirmation", (join) =>
       join
         .onRef("eetReversalConfirmation.id", "=", "eetReversal.id")
@@ -543,12 +658,11 @@ export const eetReversalsToDeliverQuery = createQuery((db) =>
       "eetReversal.id",
       "eetReversal.deviceId",
       "eetReversal.saleAt",
-      "paymentSales.confirmedAt as saleConfirmedAt",
+      saleConfirmedAtSql("eetReversal.paymentId").as("saleConfirmedAt"),
     ])
     .where("eetReversal.isDeleted", "is not", sqliteTrue)
     .where("eetReversal.deviceId", "is not", null)
     .where("eetReversal.saleAt", "is not", null)
-    .where("paymentSales.confirmedAt", "is not", null)
     .where("eetReversal.unsupportedReason", "is", null)
     .where((eb) =>
       eb.or([
@@ -557,6 +671,7 @@ export const eetReversalsToDeliverQuery = createQuery((db) =>
       ])
     )
     .where("eetReversalConfirmation.id", "is", null)
+    .where(saleConfirmedAtSql("eetReversal.paymentId"), "is not", null)
     .orderBy("eetReversal.createdAt")
     .$narrowType<{
       deviceId: KyselyNotNull
@@ -593,7 +708,6 @@ const eetReversalColumns = [
   "eetReversalConfirmation.isTest",
   "eetReversalConfirmation.warningsJson",
   "eetReversalConfirmation.globalTransactionId",
-  "paymentSales.confirmedAt as saleConfirmedAt",
 ] as const
 
 type EetReversalRequiredColumns = {
@@ -626,10 +740,8 @@ const selectEetReversals = (
         .onRef("eetReversalConfirmation.id", "=", "eetReversal.id")
         .on("eetReversalConfirmation.isDeleted", "is not", sqliteTrue)
     )
-    .leftJoin(paymentSalesConfirmation(db), (join) =>
-      join.onRef("paymentSales.paymentId", "=", "eetReversal.paymentId")
-    )
     .select(eetReversalColumns)
+    .select(saleConfirmedAtSql("eetReversal.paymentId").as("saleConfirmedAt"))
     .where("eetReversal.isDeleted", "is not", sqliteTrue)
     .where("eetReversal.refundId", "is not", null)
     .where("eetReversal.saleAt", "is not", null)

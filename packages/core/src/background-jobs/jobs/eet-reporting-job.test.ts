@@ -28,8 +28,11 @@ import {
   selectEetEnvironment,
 } from "../../modules/eet/eet-actions.ts"
 import {
+  eetCreationTriggerQuery,
   eetReversalsByPaymentIdQuery,
+  eetReversalsToDeliverQuery,
   eetSalesByPaymentIdQuery,
+  eetSalesToDeliverQuery,
 } from "../../modules/eet/eet-queries.ts"
 import {
   configureEet,
@@ -111,11 +114,15 @@ const startJob = async (
     connectivity = createConnectivity(),
     retryBaseDelayMs = 10,
     priorityPeriodMs,
+    creationRecheckMs,
+    evolu = context.deps.evolu,
   }: {
     readonly deviceId?: DeviceId
     readonly connectivity?: ConnectivityDep
     readonly retryBaseDelayMs?: number
     readonly priorityPeriodMs?: number
+    readonly creationRecheckMs?: number
+    readonly evolu?: EetTestContext["deps"]["evolu"]
   } = {}
 ) => {
   const errors: unknown[] = []
@@ -128,6 +135,7 @@ const startJob = async (
     ...createQerkoSocketDep(),
     ...createQerkoConnectionStatusDep(),
     ...connectivity,
+    evolu,
     deviceId,
     onError: (error) => {
       errors.push(error)
@@ -135,7 +143,11 @@ const startJob = async (
   }
   const run = testCreateRun(jobDeps)
   const job = await run.ok(
-    createEetReportingJob({ retryBaseDelayMs, priorityPeriodMs })
+    createEetReportingJob({
+      retryBaseDelayMs,
+      priorityPeriodMs,
+      creationRecheckMs,
+    })
   )
 
   return {
@@ -446,6 +458,58 @@ describe("eet reporting job: sale records", () => {
 
     expect(context.responder.requests).toEqual([])
     expect(await context.deps.evolu.loadQuery(allEetSalesQuery)).toEqual([])
+    expect(job.errors).toEqual([])
+  })
+})
+
+describe("eet reporting job: what wakes it", () => {
+  test("subscribes to the creation trigger and the deliveries, never to the queries that read every claim", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    const subscribed: unknown[] = []
+    const { evolu } = context.deps
+    await using job = await startJob(context, {
+      evolu: {
+        ...evolu,
+        subscribeQuery: (query) => {
+          subscribed.push(query)
+          return evolu.subscribeQuery(query)
+        },
+      },
+    })
+    const paymentId = await createTestPayment(context)
+
+    await settleInCash(context, paymentId)
+
+    await expect
+      .poll(() => saleOf(context, paymentId))
+      .toMatchObject([{ pok: expect.any(String) }])
+    expect(new Set(subscribed)).toEqual(
+      new Set([
+        eetCreationTriggerQuery,
+        eetSalesToDeliverQuery,
+        eetReversalsToDeliverQuery,
+      ])
+    )
+    expect(job.errors).toEqual([])
+  })
+
+  test("finds a sale due at its periodic check when no subscription tells it", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context)
+    const { evolu } = context.deps
+    await using job = await startJob(context, {
+      creationRecheckMs: 50,
+      evolu: {
+        ...evolu,
+        subscribeQuery: () => () => () => {},
+      },
+    })
+    const paymentId = await createTestPayment(context)
+
+    await settleInCash(context, paymentId)
+
+    await expect.poll(() => saleOf(context, paymentId)).toHaveLength(1)
     expect(job.errors).toEqual([])
   })
 })

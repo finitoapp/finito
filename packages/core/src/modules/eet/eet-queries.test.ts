@@ -11,6 +11,7 @@ import {
   disableEet,
 } from "./eet-actions.ts"
 import {
+  eetCreationTriggerQuery,
   eetExtraClaimsQuery,
   eetPaymentsToReportQuery,
   eetReversalByRefundIdQuery,
@@ -323,5 +324,51 @@ describe("eetExtraClaimsQuery", () => {
     await expect(
       context.deps.evolu.loadQuery(eetExtraClaimsQuery)
     ).resolves.toEqual([])
+  })
+
+  test("leaves out a payment claimed only before EET was enabled, which owes no extra sale", async () => {
+    await using context = await createEetTestContext()
+    const settledBefore = await createTestPayment(context)
+    await settleInCash(context, settledBefore)
+    await settleByTransfer(context, settledBefore)
+    context.clock.advance(60_000)
+    await configureEet(context)
+    context.clock.advance(60_000)
+    const settledAfter = await createTestPayment(context)
+    await settleInCash(context, settledAfter)
+    await settleByTransfer(context, settledAfter)
+
+    const claims = await context.deps.evolu.loadQuery(eetExtraClaimsQuery)
+
+    expect(new Set(claims.map(({ paymentId }) => paymentId))).toEqual(
+      new Set([settledAfter])
+    )
+  })
+})
+
+describe("eetCreationTriggerQuery", () => {
+  test("moves with every claim, sale and refund written, and has no row while EET is off", async () => {
+    await using context = await createEetTestContext()
+    await configureEet(context, { enabled: false })
+    const paymentId = await createTestPayment(context)
+    await settleInCash(context, paymentId)
+    await expect(
+      context.deps.evolu.loadQuery(eetCreationTriggerQuery)
+    ).resolves.toEqual([])
+
+    await configureEet(context)
+    const [enabled] = await context.deps.evolu.loadQuery(
+      eetCreationTriggerQuery
+    )
+    await settleByTransfer(context, paymentId)
+    const [claimed] = await context.deps.evolu.loadQuery(
+      eetCreationTriggerQuery
+    )
+    await createSale(context)
+    const [sold] = await context.deps.evolu.loadQuery(eetCreationTriggerQuery)
+
+    expect(enabled).toMatchObject({ claimCount: 1, saleCount: 0 })
+    expect(claimed).toMatchObject({ claimCount: 2, saleCount: 0 })
+    expect(sold).toMatchObject({ claimCount: 2, saleCount: 1 })
   })
 })

@@ -131,10 +131,14 @@ sales created afterwards — with one exception in "Manual retry" below.
 
 ## Delivery
 
-The job subscribes to three queries for sales and two for reversals (see
-"Extra money" and "Refunds and storno") and runs through a keyed queue: one
-pass at a time, with at most one pending `create` and one pending `deliver`
-pass:
+The job subscribes to `eetCreationTriggerQuery`, which moves with every
+claim, sale, sale confirmation and refund written and with the settings, and
+then loads what is due to be created: payments, extra claims (see "Extra
+money") and refunds (see "Refunds and storno"). It also looks every 5
+minutes, for an update synced with an older timestamp than the trigger
+sees (eet/0013). It keeps the two delivery queries, for sales and for
+reversals, subscribed. Its passes run through a keyed queue: one pass at a
+time, with at most one pending `create` and one pending `deliver` pass:
 
 - `eetSalesToDeliverQuery`: every device's sales that are supported,
   unconfirmed and whose `lastAttemptResult` is `null` or `retry`; the job
