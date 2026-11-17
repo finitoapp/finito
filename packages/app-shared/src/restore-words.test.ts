@@ -101,15 +101,33 @@ describe("restoreWordsToPhrase", () => {
 })
 
 describe("detectForeignSeed", () => {
-  test("flags BIP-39 word counts", () => {
-    expect(
-      detectForeignSeed(Array.from({ length: 12 }, () => "academic"))
-    ).toBe(true)
-    expect(detectForeignSeed(Array.from({ length: 24 }, () => "x"))).toBe(true)
+  test("flags a BIP-39 seed of a BIP-39 length", () => {
+    const twelve = Array.from({ length: 12 }, () => "abandon")
+    expect(detectForeignSeed(twelve)).toBe(true)
+    // One word both lists share does not hide the rest.
+    expect(detectForeignSeed(["academic", ...twelve.slice(1)])).toBe(true)
   })
 
   test("flags BIP-39 words that SLIP-39 does not have", () => {
     expect(detectForeignSeed(["abandon", "ability", "able"])).toBe(true)
+  })
+
+  test("leaves a SLIP-39 phrase typed word by word alone at every length", () => {
+    for (const length of [12, 15, 18, 21, 24]) {
+      expect(detectForeignSeed(Array.from({ length }, () => "academic"))).toBe(
+        false
+      )
+    }
+  })
+
+  test("leaves a word being typed alone while SLIP-39 can still complete it", () => {
+    // "act" is BIP-39, and the start of SLIP-39's "activity" and "actress".
+    const words = [...Array.from({ length: 11 }, () => "academic"), "act"]
+    expect(detectForeignSeed(words)).toBe(false)
+  })
+
+  test("leaves unknown words to the word check", () => {
+    expect(detectForeignSeed(Array.from({ length: 24 }, () => "x"))).toBe(false)
   })
 
   test("leaves SLIP-39 words and empty input alone", () => {

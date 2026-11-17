@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react"
@@ -55,6 +56,36 @@ export const ScrollAwayHeaderInsetContext = createContext<number | null>(null)
 export const useScrollAwayHeaderInset = () =>
   useContext(ScrollAwayHeaderInsetContext)
 
+/** Puts a `ScreenKeyboardBar`'s content right above the keyboard; `null` outside a `Screen`. */
+const ScreenKeyboardBarContext = createContext<
+  ((bar: ReactNode) => void) | null
+>(null)
+
+/**
+ * Draws its children under the scrolling content of the `Screen` around it,
+ * above `footer`, so with the keyboard up they sit right on top of it, as the
+ * keyboard's own suggestion strip does. Taps there keep the focused field's
+ * keyboard open: no scroll view sits under them to dismiss it. Outside a
+ * `Screen`, and on the web, where the layout does not follow the keyboard,
+ * it draws them in place.
+ */
+export function ScreenKeyboardBar({
+  children,
+}: {
+  readonly children: ReactNode
+}) {
+  const setBar = useContext(ScreenKeyboardBarContext)
+  const inPlace = setBar === null || Platform.OS === "web"
+  useLayoutEffect(() => {
+    if (!inPlace) setBar(children)
+  })
+  useLayoutEffect(() => {
+    if (inPlace) return
+    return () => setBar(null)
+  }, [inPlace, setBar])
+  return inPlace ? children : null
+}
+
 interface ScrollEvent {
   readonly nativeEvent: {
     readonly contentOffset: { readonly y: number }
@@ -69,7 +100,8 @@ const STICK_TO_BOTTOM_PX = 80
 /**
  * Keyboard-safe, scrollable, themed screen; taps outside fields reach
  * buttons. `footer` stays fixed under the scrolling content, for a bottom
- * panel or the page's main buttons.
+ * panel or the page's main buttons, and a `ScreenKeyboardBar` from the
+ * content sits above it.
  *
  * `followKey` (any value but `undefined`) makes it a chat, as web's
  * `ChatScrollArea`: it follows the newest content (a new message, a reply
@@ -104,6 +136,7 @@ export function Screen({
   // A ref for following, state only for the button.
   const stickToBottom = useRef(true)
   const [awayFromBottom, setAwayFromBottom] = useState(false)
+  const [keyboardBar, setKeyboardBar] = useState<ReactNode>(null)
   const follow = () => {
     if (chat && stickToBottom.current) scrollRef.current?.scrollToEnd()
   }
@@ -151,7 +184,11 @@ export function Screen({
               onContentSizeChange={follow}
               onLayout={follow}
             >
-              <ScreenGapContext value={screenGap}>{children}</ScreenGapContext>
+              <ScreenGapContext value={screenGap}>
+                <ScreenKeyboardBarContext value={setKeyboardBar}>
+                  {children}
+                </ScreenKeyboardBarContext>
+              </ScreenGapContext>
             </Animated.ScrollView>
             {chat && awayFromBottom ? (
               <View position="absolute" b={12} l={0} r={0} items="center">
@@ -167,6 +204,7 @@ export function Screen({
             ) : null}
           </View>
         </ScreenScrollContext>
+        {keyboardBar}
         {footer}
       </KeyboardAvoidingView>
     </SafeArea>
