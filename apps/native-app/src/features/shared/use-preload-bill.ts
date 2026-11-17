@@ -1,3 +1,4 @@
+import type { Evolu } from "@payky/core/evolu/schema"
 import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getFiatCurrency } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -74,6 +75,31 @@ export const billGridQuery = ({
   })
 
 /**
+ * The grid in the bill's currency, the settings' for a bill not written
+ * yet. Only warms Evolu's cache: the screen loads the same queries and
+ * reports a failure itself, so one here is dropped.
+ */
+const preloadBillGrid = async (evolu: Evolu, billId: BillId): Promise<void> => {
+  const [loaded] = await Promise.allSettled([
+    Promise.all([
+      evolu.loadQuery(billByIdQuery(billId)),
+      evolu.loadQuery(settingsQuery),
+    ]),
+  ])
+  if (loaded.status === "rejected") return
+  const [[bill], [settings]] = loaded.value
+  await Promise.allSettled([
+    evolu.loadQuery(
+      billGridQuery({
+        search: "",
+        categoryFilter: "all",
+        currency: bill?.currency ?? getFiatCurrency(settings),
+      })
+    ),
+  ])
+}
+
+/**
  * Starts loading the bill's screen as the press that opens it lands, as
  * `usePreloadActivity` does for Activity. The grid follows once the bill's
  * currency is known (the settings' for a bill not written yet); both of
@@ -86,23 +112,7 @@ export function usePreloadBill(): (billId: BillId) => void {
       // Only warms Evolu's cache: the screen reads, and reports, the same
       // queries itself.
       void Promise.allSettled(evolu.loadQueries(billPageQueries(billId)))
-      void (async () => {
-        try {
-          const [[bill], [settings]] = await Promise.all([
-            evolu.loadQuery(billByIdQuery(billId)),
-            evolu.loadQuery(settingsQuery),
-          ])
-          await evolu.loadQuery(
-            billGridQuery({
-              search: "",
-              categoryFilter: "all",
-              currency: bill?.currency ?? getFiatCurrency(settings),
-            })
-          )
-        } catch {
-          // The screen loads the same queries and reports a failure itself.
-        }
-      })()
+      void preloadBillGrid(evolu, billId)
     },
     [evolu]
   )

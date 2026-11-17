@@ -22,7 +22,10 @@ import {
 import { catalogCategoriesQuery } from "@payky/core/modules/catalog-category/catalog-category-queries"
 import type { CatalogItemRow } from "@payky/core/modules/catalog-item/catalog-item"
 import { catalogItemsQuery } from "@payky/core/modules/catalog-item/catalog-item-queries"
-import type { CategoryFilter } from "@payky/core/modules/catalog-item/catalog-item-types"
+import type {
+  CatalogItemId,
+  CategoryFilter,
+} from "@payky/core/modules/catalog-item/catalog-item-types"
 import {
   findCatalogItemsByScanCode,
   getStaffDisplayName,
@@ -33,12 +36,12 @@ import {
   type FiatCurrency,
   Integer,
   NonNegativeInteger,
-  type PositiveNumber,
 } from "@payky/core/modules/shared/schema"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import { TableId } from "@payky/core/modules/table/table-types"
 import { isSameDay } from "date-fns"
 import { Redirect, router, useLocalSearchParams } from "expo-router"
+import { type Atom, useAtomValue } from "jotai"
 import ArrowLeft from "lucide-react-native/icons/arrow-left"
 import Eraser from "lucide-react-native/icons/eraser"
 import Minus from "lucide-react-native/icons/minus"
@@ -56,6 +59,7 @@ import {
   Suspense,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -86,7 +90,7 @@ import {
   AlertDescription,
   AlertTitle,
 } from "../../components/ui/alert.tsx"
-import { Button } from "../../components/ui/button.tsx"
+import { Button, type ButtonProps } from "../../components/ui/button.tsx"
 import { Card, CardContent } from "../../components/ui/card.tsx"
 import {
   Collapsible,
@@ -481,6 +485,23 @@ function BillCart({
   )
   const totalAmountPulse = useChangePulse(totalAmount)
   const cart = useCartBill({ billId, currency, tableId, onTableSeedChange })
+  // The grid's handlers are made once and call the latest cart, so a tap,
+  // which renders this cart again, leaves every brick's props as they were
+  // and React skips the bricks whose own quantity did not change.
+  const cartRef = useRef(cart)
+  useLayoutEffect(() => {
+    cartRef.current = cart
+  })
+  const [brickActions] = useState(
+    (): BrickActions => ({
+      add: (item) => void cartRef.current.addOne(item),
+      remove: (summary) => void cartRef.current.removeOne(summary),
+    })
+  )
+  // One quantity dialog for the whole grid, for the brick that opened it.
+  const [quantityTarget, setQuantityTarget] = useState<CatalogItemRow | null>(
+    null
+  )
   const toast = useToast()
   const runToast = useRunToast()
   const { require } = useRequirePermission()
@@ -534,24 +555,32 @@ function BillCart({
     const amount = NonNegativeInteger(totalAmount)
     chargePendingRef.current = true
     setChargePending(true)
+    // Not a `try`/`finally`: React Compiler skips a component holding one,
+    // and this cart is the screen it saves most renders on.
+    const release = () => {
+      chargePendingRef.current = false
+      setChargePending(false)
+    }
+    if (tipsEnabled) {
+      router.push({
+        pathname: "/payment/tip",
+        params: { amount: String(amount), currency, billId },
+      })
+      release()
+      return
+    }
     try {
-      if (tipsEnabled) {
-        router.push({
-          pathname: "/payment/tip",
-          params: { amount: String(amount), currency, billId },
-        })
-        return
-      }
       await createTerminalPayment({
         amount,
         currency,
         tipAmount: NonNegativeInteger(0),
         billId,
       })
-    } finally {
-      chargePendingRef.current = false
-      setChargePending(false)
+    } catch (error) {
+      release()
+      throw error
     }
+    release()
   }
   const catalogItems = useEvoluQuery(catalogItemsQuery).data
   const catalogItemsById = useMemo(
@@ -622,7 +651,29 @@ function BillCart({
     [currencyItems]
   )
   const [categoryFilter, setCategoryFilter] = useState<BillItemFilter>("all")
-  const inBillItemIds = useMemo(
+  // Each item's quantity and latest line, read by the bricks: one pass over
+  // the bill, rather than each brick scanning it.
+  const brickStates = useMemo(() => {
+    const quantities = new Map<CatalogItemId, number>()
+    for (const summary of summaries) {
+      if (summary.catalogItemId === null) continue
+      quantities.set(
+        summary.catalogItemId,
+        (quantities.get(summary.catalogItemId) ?? 0) + summary.quantity
+      )
+    }
+    return new Map(
+      [...quantities].map(([id, quantity]) => [
+        id,
+        { quantity, latestSummary: getLatestCatalogItemSummary(summaries, id) },
+      ])
+    )
+  }, [summaries])
+  const brickStateOf = (id: CatalogItemId) =>
+    brickStates.get(id) ?? emptyBrickState
+  // Kept while its items stay the same, so a tap that only changes a
+  // quantity neither rebuilds the grid's query nor defers a render for it.
+  const nextInBillItemIds = useMemo(
     () => [
       ...new Set(
         summaries.flatMap((summary) =>
@@ -634,12 +685,19 @@ function BillCart({
     ],
     [summaries]
   )
+  const [inBillItemIds, setInBillItemIds] = useState(nextInBillItemIds)
+  if (!sameIds(inBillItemIds, nextInBillItemIds))
+    setInBillItemIds(nextInBillItemIds)
   // Deferred, so switching a chip never suspends this screen: a suspend here
   // would bubble to the route's boundary and remount the cart mid-tap.
   // The search additionally waits for typing to pause, as web's 250 ms.
   const deferredSearch = useDeferredValue(useDebouncedValue(search, 250))
   const deferredFilter = useDeferredValue(categoryFilter)
-  const deferredInBillIds = useDeferredValue(inBillItemIds)
+  // Deferred only while it filters the grid: otherwise a new item on the
+  // bill would render the whole cart once more for nothing.
+  const deferredInBillIds = useDeferredValue(
+    categoryFilter === "inBill" ? inBillItemIds : noItemIds
+  )
   // The unsearched, unfiltered grid is the one home preloads (`usePreloadBill`).
   const gridQuery = useMemo(
     () =>
@@ -693,7 +751,7 @@ function BillCart({
   // disabled: disabling it on every add or remove made it flash. Clear
   // writes this render's lines, which that write is about to change.
   const handleClear = async () => {
-    if (cart.pending) return
+    if (cart.isPending()) return
     if (await cart.clear(summaries)) {
       showUndoToast(t("bill.summary.clear.toast"))
     }
@@ -840,13 +898,10 @@ function BillCart({
                             lastScanned.libraryProductId,
                             TILE_PICTURE_SIZE
                           )}
-                          summaries={summaries}
+                          {...brickStateOf(lastScanned.id)}
                           locale={locale}
-                          onAdd={() => void cart.addOne(lastScanned)}
-                          onAddQuantity={(quantity) =>
-                            void cart.addQuantity(lastScanned, quantity)
-                          }
-                          onRemove={(summary) => void cart.removeOne(summary)}
+                          actions={brickActions}
+                          onOpenQuantity={setQuantityTarget}
                         />
                       </View>
                       {gridColumnIndexes(gridColumns)
@@ -864,6 +919,12 @@ function BillCart({
                 contentContainerStyle={{ gap: 8, paddingBottom: 16 }}
                 data={gridRows}
                 keyExtractor={(row) => row.key}
+                // A screen of rows past each edge, not RN's ten: a tap
+                // renders the mounted bricks, and a long catalog mounted
+                // nearly all of them.
+                initialNumToRender={6}
+                maxToRenderPerBatch={4}
+                windowSize={5}
                 ListEmptyComponent={
                   currencyItems.length === 0 ? (
                     <CatalogEmpty />
@@ -905,13 +966,10 @@ function BillCart({
                               item.libraryProductId,
                               TILE_PICTURE_SIZE
                             )}
-                            summaries={summaries}
+                            {...brickStateOf(item.id)}
                             locale={locale}
-                            onAdd={() => void cart.addOne(item)}
-                            onAddQuantity={(quantity) =>
-                              void cart.addQuantity(item, quantity)
-                            }
-                            onRemove={(summary) => void cart.removeOne(summary)}
+                            actions={brickActions}
+                            onOpenQuantity={setQuantityTarget}
                           />
                         </View>
                       ))}
@@ -1096,7 +1154,7 @@ function BillCart({
                         onRemove={async () => {
                           // Ignored while a cart write is in flight, as
                           // Clear: this render's line is about to change.
-                          if (cart.pending) return
+                          if (cart.isPending()) return
                           // A failed removal recorded nothing, so offering to
                           // undo it would invert the change before it.
                           if (await cart.removeLine(summary)) {
@@ -1251,15 +1309,15 @@ function BillCart({
                 />
                 {/* Finish closes a bill that comes to zero (payment/0013),
                     Charge creates a payment for anything else. */}
-                <Button
+                <BillMainAction
+                  cartPendingAtom={cart.pendingAtom}
+                  finishing={finishing}
                   flex={wide ? undefined : 1}
                   w={wide ? "100%" : undefined}
                   h={wide ? 56 : 48}
                   aria-label={mainActionLabel}
                   pending={finishing ? finishPending : chargePending}
-                  // A cart write still in flight may change the total Finish
-                  // closes.
-                  disabled={finishing ? cart.pending : checkout !== "charge"}
+                  disabled={checkout !== "charge"}
                   onPress={() => {
                     hapticButtonPress()
                     void (finishing ? onFinish() : charge())
@@ -1273,7 +1331,7 @@ function BillCart({
                   >
                     {mainActionLabel}
                   </Text>
-                </Button>
+                </BillMainAction>
               </XStack>
               {checkoutHintKey === null ? null : (
                 <Text
@@ -1310,6 +1368,19 @@ function BillCart({
         onSelect={(item) => {
           setCollisionCandidates([])
           void addScanned(item)
+        }}
+      />
+      <ItemQuantityDialog
+        name={
+          quantityTarget === null ? "" : getStaffDisplayName(quantityTarget)
+        }
+        open={quantityTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setQuantityTarget(null)
+        }}
+        onAddQuantity={(quantity) => {
+          if (quantityTarget !== null)
+            void cart.addQuantity(quantityTarget, quantity)
         }}
       />
       <AssignTableDialog
@@ -1544,33 +1615,69 @@ const brickFills = {
  * A tap anywhere on the tile adds one, as on a till. The brick has no
  * `disabled`: the cart queues taps, and a button disabled mid-tap drops one.
  */
+/**
+ * Finish or Charge. A cart write still in flight may change the total
+ * Finish closes, so Finish waits it out; only this button reads that, so a
+ * tap does not render the whole cart as the write starts and ends.
+ */
+function BillMainAction({
+  cartPendingAtom,
+  finishing,
+  disabled,
+  ...props
+}: ButtonProps & {
+  readonly cartPendingAtom: Atom<boolean>
+  readonly finishing: boolean
+  readonly disabled: boolean
+}) {
+  const cartPending = useAtomValue(cartPendingAtom)
+  return <Button {...props} disabled={finishing ? cartPending : disabled} />
+}
+
+/** What a brick does, made once per cart so its props stay equal (`BillCart`). */
+interface BrickActions {
+  readonly add: (item: CatalogItemRow) => void
+  readonly remove: (summary: BillLineSummary) => void
+}
+
+/** A brick's item on the bill: how many, and the line "−" takes one off. */
+interface BrickState {
+  readonly quantity: number
+  readonly latestSummary: BillLineSummary | undefined
+}
+
+const emptyBrickState: BrickState = { quantity: 0, latestSummary: undefined }
+
+const noItemIds: ReadonlyArray<CatalogItemId> = []
+
+const sameIds = (
+  a: ReadonlyArray<CatalogItemId>,
+  b: ReadonlyArray<CatalogItemId>
+) => a.length === b.length && a.every((id, index) => id === b[index])
+
+/**
+ * One item of the grid. Its props are primitives, rows and handlers made
+ * once, so a tap renders only the bricks whose quantity it changed.
+ */
 function ItemBrick({
   catalogItem,
   pictureUrl,
-  summaries,
+  quantity,
+  latestSummary,
   locale,
-  onAdd,
-  onAddQuantity,
-  onRemove,
-}: {
+  actions,
+  onOpenQuantity,
+}: BrickState & {
   readonly catalogItem: CatalogItemRow
   /** Its library picture's URL (`libraryPictureUrl`), if it has one. */
   readonly pictureUrl: string | undefined
-  readonly summaries: ReadonlyArray<BillLineSummary>
   readonly locale: string
-  readonly onAdd: () => void
-  readonly onAddQuantity: (quantity: PositiveNumber) => void
-  readonly onRemove: (summary: BillLineSummary) => void
+  readonly actions: BrickActions
+  /** Opens the grid's one quantity dialog for this item. */
+  readonly onOpenQuantity: (item: CatalogItemRow) => void
 }) {
   const { t } = useTranslation()
-  const [quantityDialogOpen, setQuantityDialogOpen] = useState(false)
   const name = getStaffDisplayName(catalogItem)
-  const quantity = summaries.reduce(
-    (sum, summary) =>
-      summary.catalogItemId === catalogItem.id ? sum + summary.quantity : sum,
-    0
-  )
-  const latestSummary = getLatestCatalogItemSummary(summaries, catalogItem.id)
   const quantityPulse = useChangePulse(quantity)
   const pressFill = usePressFill({ disabled: false })
 
@@ -1619,7 +1726,7 @@ function ItemBrick({
         onPressOut={pressFill.onPressOut}
         onPress={() => {
           hapticButtonPress()
-          onAdd()
+          actions.add(catalogItem)
         }}
       >
         <PressFill
@@ -1725,7 +1832,7 @@ function ItemBrick({
         disabled={!inCart}
         aria-hidden={!inCart}
         aria-label={t("bill.brick.quantity.trigger.aria", { name })}
-        onPress={() => setQuantityDialogOpen(true)}
+        onPress={() => onOpenQuantity(catalogItem)}
       >
         <Animated.View style={quantityPulse}>
           <Text
@@ -1749,7 +1856,10 @@ function ItemBrick({
         rounded={radius.full}
         {...(pictured
           ? {
-              bg: "photo-control hover:photo-control-pressed press:photo-control-pressed",
+              fillColors: {
+                rest: "photo-control",
+                pressed: "photo-control-pressed",
+              },
               labelColor: "photo-foreground",
             }
           : {})}
@@ -1760,14 +1870,8 @@ function ItemBrick({
         onPress={() => {
           if (latestSummary === undefined) return
           hapticButtonPress()
-          onRemove(latestSummary)
+          actions.remove(latestSummary)
         }}
-      />
-      <ItemQuantityDialog
-        name={name}
-        open={quantityDialogOpen}
-        onOpenChange={setQuantityDialogOpen}
-        onAddQuantity={onAddQuantity}
       />
     </Card>
   )

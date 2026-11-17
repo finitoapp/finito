@@ -249,12 +249,15 @@ export function Button({
   "aria-label": ariaLabel,
   labelColor,
   rounded = radii[size],
-  fillColors: fill = variant === "link" ? undefined : fills[variant],
+  fillColors,
   onPressIn,
   onPressOut,
   ...frameProps
 }: ButtonProps) {
   const theme = useTheme()
+  // Not a parameter default: React Compiler cannot compile a component
+  // whose parameter defaults to a conditional.
+  const fill = fillColors ?? (variant === "link" ? undefined : fills[variant])
   const inactive = disabled || pending
   const color = labelColor ?? textColors[variant]
   const iconSize = iconSizes[size]

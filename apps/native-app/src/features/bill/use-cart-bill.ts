@@ -26,7 +26,7 @@ import {
   PositiveNumber,
 } from "@payky/core/modules/shared/schema"
 import type { TableId } from "@payky/core/modules/table/table-types"
-import { useAtomValue } from "jotai"
+import { atom, useAtomValue, useSetAtom } from "jotai"
 import { useRef, useState } from "react"
 import { accountAtom } from "../../atoms/account.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
@@ -47,6 +47,11 @@ type CartHistoryEntry = ReadonlyArray<CartLine>
  * (the bill-line ledger is append-only, so out-of-order appends are wrong) and
  * the item bricks never need to disable themselves mid-write: a button that
  * turns `disabled` between press and release swallows the tap.
+ *
+ * Whether a write is in flight is `isPending()` for a handler and
+ * `pendingAtom` for the one control that shows it: as state it rendered the
+ * whole cart twice more on every tap, once as the write started and once as
+ * it ended.
  */
 export function useCartBill({
   billId,
@@ -70,7 +75,8 @@ export function useCartBill({
   const toast = useToast()
   const { t } = useTranslation()
   const { require } = useRequirePermission()
-  const [pending, setPending] = useState(false)
+  const [pendingAtom] = useState(() => atom(false))
+  const setPending = useSetAtom(pendingAtom)
   /**
    * The one place the cart checks `discard`, on the lines about to be written
    * (access/0012): a `remove` line or a discount.
@@ -342,7 +348,8 @@ export function useCartBill({
     })
 
   return {
-    pending,
+    pendingAtom,
+    isPending: () => pendingCountRef.current > 0,
     canUndo,
     canRedo,
     assignTable,
