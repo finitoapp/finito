@@ -128,7 +128,18 @@ class MonetaPluginSync implements BankPluginSync<ActiveMonetaPlugin> {
   private async syncTransactionsOnce(): Promise<BankPluginSyncOutcome> {
     const now = this.run.deps.date.now()
     const today = monetaBankDay(now)
-    let fromDate = await this.getSyncStart(now)
+    const [pointer] = await this.run.deps.evolu.loadQuery(
+      monetaPluginSyncPointerByPluginIdQuery(this.plugin.id)
+    )
+    // The stored pointer, kept current with each save below: a sync that
+    // ends where the last one did writes nothing (payment/0026).
+    let lastSyncedDate = pointer?.lastSyncedDate ?? null
+    const savePointer = async (date: DateString): Promise<void> => {
+      if (date === lastSyncedDate) return
+      await this.run.ok(updateMonetaPluginSyncPointer({ lastSyncedDate: date }))
+      lastSyncedDate = date
+    }
+    let fromDate = this.getSyncStart(now, lastSyncedDate)
     let windowIndex = 0
     /** The last day of the window the bank listed too much for. */
     let narrowedUntil: DateString | null = null
@@ -169,15 +180,11 @@ class MonetaPluginSync implements BankPluginSync<ActiveMonetaPlugin> {
       if (this.session.isDisposed) return "synced"
 
       if (toDate >= today) {
-        await this.run.ok(
-          updateMonetaPluginSyncPointer({ lastSyncedDate: today })
-        )
+        await savePointer(today)
         return "synced"
       }
       fromDate = addMonetaBankDays(toDate, 1)
-      await this.run.ok(
-        updateMonetaPluginSyncPointer({ lastSyncedDate: fromDate })
-      )
+      await savePointer(fromDate)
       if (narrowedUntil === null || toDate >= narrowedUntil) {
         windowIndex = 0
         narrowedUntil = null
@@ -229,14 +236,14 @@ class MonetaPluginSync implements BankPluginSync<ActiveMonetaPlugin> {
     }
   }
 
-  private async getSyncStart(now: Date): Promise<DateString> {
-    const [pointer] = await this.run.deps.evolu.loadQuery(
-      monetaPluginSyncPointerByPluginIdQuery(this.plugin.id)
-    )
+  private getSyncStart(
+    now: Date,
+    lastSyncedDate: DateString | null
+  ): DateString {
     // The pointer's own day is read again and no earlier one: the bank
     // filters by booking date, which is never before the day a transfer is
     // first listed (moneta/0004).
-    const start = pointer?.lastSyncedDate ?? monetaFirstSyncStartDate(now)
+    const start = lastSyncedDate ?? monetaFirstSyncStartDate(now)
 
     // A pointer set by hand past the readable history would be refused with
     // `NARR` on every attempt, and one in the future would ask for a window

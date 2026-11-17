@@ -202,7 +202,11 @@ class FioPluginSync implements BankPluginSync<ActiveFioPluginWithTokens> {
       )
       return
     }
-    await this.saveSyncPointer(period.to)
+    // The pointer is a date, so all but a day's first sync would write it
+    // again unchanged: skipped, as every write is synced to every device
+    // (payment/0026).
+    if (period.to !== period.lastSyncedDate)
+      await this.saveSyncPointer(period.to)
     this.run.deps.console.info("Finished FIO transaction sync.", {
       accountId: this.plugin.accountId,
       from: period.from,
@@ -276,6 +280,8 @@ class FioPluginSync implements BankPluginSync<ActiveFioPluginWithTokens> {
   private async getSyncPeriod(): Promise<{
     readonly from: DateString
     readonly to: DateString
+    /** The stored pointer, `null` before the first sync. */
+    readonly lastSyncedDate: DateString | null
   }> {
     const to = dateToDateString(this.run.deps.date.now())
     const [pointer] = await this.run.deps.evolu.loadQuery(
@@ -298,7 +304,7 @@ class FioPluginSync implements BankPluginSync<ActiveFioPluginWithTokens> {
       to,
     })
 
-    return { from, to }
+    return { from, to, lastSyncedDate: pointer?.lastSyncedDate ?? null }
   }
 
   private async getTransactionsToRecord(

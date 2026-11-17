@@ -57,6 +57,11 @@ const TRANSFER_PAGE_SIZE = 50
 // rescan) are the primary way a transfer gets recorded promptly; this window
 // is only the safety net's reach when those are missed.
 const SPARK_SYNC_LOOKBACK_HOURS = 72
+// How far a sweep's start must be from the stored pointer before the pointer
+// is written again. Sweeps run every minute, and each write is synced to
+// every device and re-runs every subscribed query there; a pointer up to an
+// hour behind only widens the next window by that hour (payment/0026).
+const SPARK_SYNC_POINTER_STEP_MS = 60 * 60 * 1000
 const OUTGOING_TRANSFER_DIRECTION = "OUTGOING"
 
 interface SparkTransfer {
@@ -534,7 +539,19 @@ const createSparkAccountSyncSession = ({
     // Only once the sweep actually finished — a sweep cut short by disposal
     // covered less than `[createdAfter, now)` and must not claim it did.
     if (!queue.isDisposed) {
-      await saveSparkSyncPointer(run, account.id, startedAt)
+      const lastSyncedAt = pointer[0]?.lastSyncedAt
+      const advancedMs =
+        lastSyncedAt === undefined
+          ? undefined
+          : startedAt.getTime() - lastSyncedAt
+      // A pointer ahead of the clock (set by hand, or by a device whose
+      // clock runs fast) is pulled back to now, as before.
+      if (
+        advancedMs === undefined ||
+        advancedMs < 0 ||
+        advancedMs >= SPARK_SYNC_POINTER_STEP_MS
+      )
+        await saveSparkSyncPointer(run, account.id, startedAt)
       await checkWithdrawals(currentWallet)
     }
 
