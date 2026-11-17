@@ -1,6 +1,7 @@
-import { useState } from "react"
-import { Animated, StyleSheet } from "react-native"
-import { isWeb, useTheme } from "tamagui"
+import { useRef, useState } from "react"
+import { Animated, StyleSheet, View } from "react-native"
+import { isWeb } from "tamagui"
+import { useAppColors } from "../../theme/app-colors.ts"
 import type { ThemeColor } from "../../theme/themes.ts"
 import { duration } from "../../theme/tokens.ts"
 
@@ -66,7 +67,11 @@ const fadeTo = (progress: Animated.Value, toValue: 0 | 1) => {
  * whatever work the press does. On web it returns the caller's handlers as
  * they are.
  *
- * Every change of `disabled` starts a fresh progress at rest. A frame that
+ * The animated layer is mounted on the first press, not with the control:
+ * a list drew an animated view per row that nobody touched. `progress` is
+ * `null` until then, and `PressFill` draws only the rest color, plainly.
+ *
+ * Every change of `disabled` starts again at rest. A frame that
  * turns disabled under the finger drops its handlers before the release
  * arrives (`pending` set by its own `onPress`), and one that turns active
  * (a menu tab, a nav row) unmounts its `PressFill` mid-press; fading the
@@ -83,42 +88,75 @@ export function usePressFill<Event>({
   readonly onPressIn?: ((event: Event) => void) | undefined
   readonly onPressOut?: ((event: Event) => void) | undefined
 }) {
-  const [state, setState] = useState(() => ({
-    disabled,
-    progress: new Animated.Value(0),
-  }))
-  if (state.disabled !== disabled)
-    setState({ disabled, progress: new Animated.Value(0) })
+  const [state, setState] = useState<{
+    readonly disabled: boolean
+    readonly progress: Animated.Value | null
+  }>(() => ({ disabled, progress: null }))
+  if (state.disabled !== disabled) setState({ disabled, progress: null })
+  // The value a release fades back: a release can land before the render
+  // that mounts the layer the press created it for.
+  const pressedRef = useRef<Animated.Value | null>(null)
   const { progress } = state
   if (isWeb) return { progress, onPressIn, onPressOut }
   return {
     progress,
     onPressIn: (event: Event) => {
-      fadeTo(progress, 1)
+      const value = progress ?? new Animated.Value(0)
+      if (progress === null) setState({ disabled, progress: value })
+      pressedRef.current = value
+      fadeTo(value, 1)
       onPressIn?.(event)
     },
     onPressOut: (event: Event) => {
-      fadeTo(progress, 0)
+      if (pressedRef.current !== null) fadeTo(pressedRef.current, 0)
       onPressOut?.(event)
     },
   }
 }
 
 interface PressFillProps {
-  readonly progress: Animated.Value
+  /** `null` until the first press: nothing is drawn until then. */
+  readonly progress: Animated.Value | null
   readonly colors: PressFillColors
   /** The frame's corner radius. */
   readonly rounded: number
 }
 
-export function PressFill(props: PressFillProps) {
-  return isWeb ? null : <NativePressFill {...props} />
+export function PressFill({ progress, ...props }: PressFillProps) {
+  if (isWeb) return null
+  return progress === null ? (
+    <RestFill {...props} />
+  ) : (
+    <NativePressFill progress={progress} {...props} />
+  )
 }
 
-function NativePressFill({ progress, colors, rounded }: PressFillProps) {
-  const theme = useTheme()
+/**
+ * The fill before the first press: the rest color as a plain view, as the
+ * frame draws none of its own on native, or nothing for a transparent one
+ * (a list row), where the saving is.
+ */
+function RestFill({ colors, rounded }: Omit<PressFillProps, "progress">) {
+  const appColors = useAppColors()
+  return colors.rest === "transparent" ? null : (
+    <View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        { borderRadius: rounded, backgroundColor: appColors[colors.rest] },
+      ]}
+    />
+  )
+}
+
+function NativePressFill({
+  progress,
+  colors,
+  rounded,
+}: PressFillProps & { readonly progress: Animated.Value }) {
+  const appColors = useAppColors()
   const color = (key: ThemeColor | "transparent") =>
-    key === "transparent" ? key : String(theme[key]?.val ?? "transparent")
+    key === "transparent" ? key : appColors[key]
   return (
     <Animated.View
       pointerEvents="none"

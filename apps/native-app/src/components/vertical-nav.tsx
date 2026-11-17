@@ -1,18 +1,17 @@
 import type { Href } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import type { ReactNode } from "react"
-import { Linking } from "react-native"
-import { isWeb, styled, Text, View } from "tamagui"
+import { Linking, Pressable, StyleSheet, View } from "react-native"
+import { isWeb, styled, View as TamaguiView, Text } from "tamagui"
 import { usePathnameSelect } from "../core/current-pathname.ts"
 import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
 import { useOpenDetail } from "../hooks/use-open-detail.ts"
+import { useAppColors } from "../theme/app-colors.ts"
 import type { ThemeColor } from "../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
-import { Icon } from "./ui/icon.tsx"
 import {
   PressFill,
   type PressFillColors,
-  pressFillClause,
   usePressFill,
 } from "./ui/press-fill.tsx"
 
@@ -36,7 +35,7 @@ import {
  */
 
 /** The shell a `VerticalNav` draws, shared with `ListSkeleton` so the two cannot drift apart. */
-export const VerticalNavShell = styled(View, {
+export const VerticalNavShell = styled(TamaguiView, {
   name: "VerticalNavShell",
   bg: "card",
   rounded: shape.card,
@@ -163,6 +162,39 @@ const rowFill = {
   pressed: "neutral-soft",
 } as const satisfies PressFillColors
 
+const rowStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: control.lg,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: shape.control,
+  },
+  label: { flex: 1, minWidth: 0 },
+  action: { flexShrink: 0, paddingLeft: 8 },
+})
+
+/**
+ * A pressable row on web: the pointer cursor, and the hover fill's fade as a
+ * CSS transition, which react-native-web passes on (React Native's types do
+ * not name it).
+ */
+const webPressableRow = {
+  cursor: "pointer" as const,
+  transitionProperty: "background-color",
+  transitionDuration: "150ms",
+  transitionTimingFunction: "ease-out",
+}
+
+/**
+ * One row of a `VerticalNav`, also drawn alone by a few screens. Its frame
+ * is React Native's own `Pressable` and `View`, not Tamagui's, and its
+ * colors come from `useAppColors`: a settings screen drew ~18 rows, each
+ * frame resolving its styles and each icon subscribing to the theme on
+ * every visit (2026-11-17). The label stays Tamagui `Text`, the kit's type.
+ */
 export function VerticalNavRow({
   item,
 }: {
@@ -172,6 +204,7 @@ export function VerticalNavRow({
 }) {
   const openDetail = useOpenDetail()
   const masterPane = useMasterPane()
+  const colors = useAppColors()
   // In a master pane the row whose detail is open beside it reads as
   // selected. Only that fact is read from the route, so a navigation renders
   // the rows whose selection it changes, not the whole list under it.
@@ -188,45 +221,20 @@ export function VerticalNavRow({
   // The active row is tinted instead, and a static or disabled one is inert.
   const pressable = interactive && !disabled && !active
   const pressFill = usePressFill({ disabled: !pressable })
-  return (
-    <View
-      flexDirection="row"
-      items="center"
-      gap={12}
-      minH={control.lg}
-      px={12}
-      py={8}
-      rounded={shape.control}
-      borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
-      borderLeftColor={item.stripeColor ?? "transparent"}
-      bg={
-        active
-          ? "accent"
-          : pressable && isWeb
-            ? pressFillClause(rowFill)
-            : "transparent"
-      }
-      {...(isWeb ? { transition: "fast" as const } : {})}
-      onPress={onPress}
-      {...(pressable
-        ? { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut }
-        : {})}
-      cursor={onPress === undefined ? undefined : "web:pointer"}
-      opacity={disabled ? 0.5 : undefined}
-      accessible={interactive ? true : undefined}
-      role={
-        item.kind === "link" || item.kind === "href"
-          ? "link"
-          : item.kind === "button"
-            ? "button"
-            : undefined
-      }
-      aria-label={
-        item.accessibilityLabel ??
-        (typeof item.label === "string" ? item.label : undefined)
-      }
-      aria-disabled={disabled || undefined}
-    >
+  const frame = [
+    rowStyles.row,
+    {
+      borderLeftWidth: item.stripeColor === undefined ? 0 : 3,
+      borderLeftColor:
+        item.stripeColor === undefined
+          ? "transparent"
+          : colors[item.stripeColor],
+      backgroundColor: active ? colors.accent : "transparent",
+      opacity: disabled ? 0.5 : 1,
+    },
+  ]
+  const content = (
+    <>
       {pressable ? (
         <PressFill
           progress={pressFill.progress}
@@ -235,7 +243,7 @@ export function VerticalNavRow({
         />
       ) : null}
       {item.icon}
-      <View flex={1} minW={0}>
+      <View style={rowStyles.label}>
         {typeof item.label === "string" ? (
           <Text
             fontSize={fontSize.sm}
@@ -249,10 +257,55 @@ export function VerticalNavRow({
         )}
       </View>
       {item.disableAction === true ? null : (
-        <View shrink={0} pl={8}>
-          {item.action ?? <Icon icon={ChevronRight} />}
+        <View style={rowStyles.action}>
+          {item.action ?? <ChevronRight size={20} color={colors.color} />}
         </View>
       )}
-    </View>
+    </>
+  )
+  const accessibility = {
+    accessible: interactive ? true : undefined,
+    role:
+      item.kind === "link" || item.kind === "href"
+        ? ("link" as const)
+        : item.kind === "button"
+          ? ("button" as const)
+          : undefined,
+    "aria-label":
+      item.accessibilityLabel ??
+      (typeof item.label === "string" ? item.label : undefined),
+    "aria-disabled": disabled || undefined,
+  }
+
+  if (onPress === undefined)
+    return (
+      <View style={frame} {...accessibility}>
+        {content}
+      </View>
+    )
+  return (
+    <Pressable
+      {...accessibility}
+      onPress={onPress}
+      {...(pressable
+        ? { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut }
+        : {})}
+      // On web the fill is the frame's own, under a pointer or a press; a
+      // style function there only, as it renders the row on every press.
+      style={
+        isWeb
+          ? (state) => [
+              ...frame,
+              webPressableRow,
+              pressable &&
+              (state.pressed || ("hovered" in state && state.hovered === true))
+                ? { backgroundColor: colors[rowFill.pressed] }
+                : null,
+            ]
+          : frame
+      }
+    >
+      {content}
+    </Pressable>
   )
 }

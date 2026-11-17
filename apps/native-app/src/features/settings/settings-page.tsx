@@ -28,13 +28,13 @@ import SunMoon from "lucide-react-native/icons/sun-moon"
 import Table2 from "lucide-react-native/icons/table-2"
 import Tag from "lucide-react-native/icons/tag"
 import UserRound from "lucide-react-native/icons/user-round"
-import { type ReactNode, Suspense, useDeferredValue } from "react"
-import { Text, XStack } from "tamagui"
+import { type ReactNode, Suspense } from "react"
+import { StyleSheet, View } from "react-native"
+import { Text } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
 import { MenuBarSpacer } from "../../components/menu-nav.tsx"
 import { Screen } from "../../components/screen.tsx"
-import { Icon } from "../../components/ui/icon.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { VerticalNav } from "../../components/vertical-nav.tsx"
 import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
@@ -47,6 +47,7 @@ import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useThemePreference } from "../../hooks/use-theme-preference.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
+import { type AppColors, useAppColors } from "../../theme/app-colors.ts"
 import { fontSize, fontWeight } from "../../theme/tokens.ts"
 import { useEetSettings } from "../shared/use-eet-settings.ts"
 import {
@@ -174,29 +175,41 @@ function ThemeValue() {
   return <SettingValue>{t(themeLabelKeys[useThemePreference()])}</SettingValue>
 }
 
+const labelStyles = StyleSheet.create({
+  // No flex: 1: it would grow to the row's height and, wrapping, pack a
+  // one-line label at the top instead of the row's center.
+  label: {
+    minWidth: 0,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    columnGap: 12,
+    rowGap: 4,
+  },
+})
+
+/**
+ * The rows of a settings group. The icon and the label's frame are React
+ * Native's own, colored from `useAppColors`, as `VerticalNavRow` is: the
+ * screen draws ~18 of them on every visit.
+ */
 function createSettingsNavItems(
   settings: ReadonlyArray<SettingRow>,
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey) => string,
+  colors: AppColors
 ) {
   return settings.map((item) => {
     const label = t(item.title)
+    const RowIcon = item.icon
 
     return {
       kind: "link" as const,
       href: item.href,
-      icon: <Icon icon={item.icon} size={20} color="muted-foreground" />,
+      icon: <RowIcon size={20} color={colors["muted-foreground"]} />,
       accessibilityLabel: label,
       label: (
-        // No flex={1}: it would grow to the row's height and, wrapping, pack
-        // a one-line label at the top instead of the row's center.
-        <XStack
-          minW={0}
-          flexWrap="wrap"
-          items="center"
-          justify="space-between"
-          columnGap={12}
-          rowGap={4}
-        >
+        <View style={labelStyles.label}>
           {/* Web's wrap: the title keeps its own width (no flex={1}, whose
               zero basis never wraps and squeezes it instead) and a value that
               does not fit beside it drops below, right-aligned. */}
@@ -214,7 +227,7 @@ function createSettingsNavItems(
           ) : (
             item.value
           )}
-        </XStack>
+        </View>
       ),
     }
   })
@@ -241,6 +254,7 @@ export function SettingsPage() {
   usePreloadEvoluQueries(settingsPageQueries)
   usePreloadDeviceEvoluQueries(settingsPageDeviceQueries)
   const { language, t } = useTranslation()
+  const colors = useAppColors()
 
   // Items, tables and the modes home offers are set up here; the tables
   // grid itself is a mode of home (navigation/0004).
@@ -259,7 +273,8 @@ export function SettingsPage() {
         href: "/settings/home-screen",
       },
     ],
-    t
+    t,
+    colors
   )
   const taxItems = createSettingsNavItems(
     [
@@ -284,7 +299,8 @@ export function SettingsPage() {
         href: "/settings/eet",
       },
     ],
-    t
+    t,
+    colors
   )
   const accountItems = createSettingsNavItems(
     [
@@ -309,7 +325,8 @@ export function SettingsPage() {
         href: "/settings/backends",
       },
     ],
-    t
+    t,
+    colors
   )
   const appearanceItems = createSettingsNavItems(
     [
@@ -331,12 +348,9 @@ export function SettingsPage() {
         href: "/settings/theme",
       },
     ],
-    t
+    t,
+    colors
   )
-  // The groups below the first screen render right after it, in a pass
-  // React may interrupt: all ~18 rows at once held the tab switch for
-  // ~0.8 s on a PAX A920Pro, against ~0.3 s for Activity (2026-11-17).
-  const belowFold = useDeferredValue(true, false)
   return (
     <Screen footer={<MenuBarSpacer />}>
       <FadeHeader title={t("settings.title")} startAddon={null} />
@@ -346,24 +360,13 @@ export function SettingsPage() {
         <PaymentsNavWithCardClosure />
       </Suspense>
       <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
-      {belowFold ? (
-        <>
-          <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
-          <VerticalNav
-            title={t("settings.accountAndSync")}
-            items={accountItems}
-          />
-          <VerticalNav
-            title={t("settings.appearance")}
-            items={appearanceItems}
-          />
-          {/* The assistant row joins once the device's privacy setting is
-              read. */}
-          <Suspense fallback={<SupportNav assistant={false} />}>
-            <SupportNavWithAssistant />
-          </Suspense>
-        </>
-      ) : null}
+      <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
+      <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
+      <VerticalNav title={t("settings.appearance")} items={appearanceItems} />
+      {/* The assistant row joins once the device's privacy setting is read. */}
+      <Suspense fallback={<SupportNav assistant={false} />}>
+        <SupportNavWithAssistant />
+      </Suspense>
     </Screen>
   )
 }
@@ -380,6 +383,7 @@ function PaymentsNavWithCardClosure() {
 
 function PaymentsNav({ cardClosure }: { readonly cardClosure: boolean }) {
   const { t } = useTranslation()
+  const colors = useAppColors()
   const items = createSettingsNavItems(
     [
       {
@@ -412,7 +416,8 @@ function PaymentsNav({ cardClosure }: { readonly cardClosure: boolean }) {
         href: "/settings/tips",
       },
     ],
-    t
+    t,
+    colors
   )
   return <VerticalNav title={t("settings.payments")} items={items} />
 }
@@ -424,6 +429,7 @@ function SupportNavWithAssistant() {
 
 function SupportNav({ assistant }: { readonly assistant: boolean }) {
   const { t } = useTranslation()
+  const colors = useAppColors()
   const items = createSettingsNavItems(
     [
       {
@@ -451,7 +457,8 @@ function SupportNav({ assistant }: { readonly assistant: boolean }) {
         href: "/settings/about",
       },
     ],
-    t
+    t,
+    colors
   )
   return <VerticalNav title={t("settings.support")} items={items} />
 }

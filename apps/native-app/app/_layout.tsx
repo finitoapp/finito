@@ -64,6 +64,8 @@ import { EetSandboxBanner } from "../src/features/shared/eet-sandbox-banner.tsx"
 import { useThemePreference } from "../src/hooks/use-theme-preference.ts"
 import { setBrowserThemeColor } from "../src/platform/browser-theme-color"
 import { WindowSafeArea } from "../src/platform/window-safe-area"
+import { AppColorsContext } from "../src/theme/app-colors.ts"
+import { appThemes } from "../src/theme/themes.ts"
 import { tamaguiConfig } from "../tamagui.config.ts"
 
 // Kept until the first screen is ready (src/core/first-screen.ts) instead
@@ -148,31 +150,33 @@ function ThemedApp() {
     <QueryClientProvider client={queryClient}>
       <TamaguiProvider config={tamaguiConfig} defaultTheme={theme}>
         <Theme name={theme}>
-          <StatusBar style={theme === "dark" ? "light" : "dark"} />
-          <AccessGate>
-            <ThemedStack dark={theme === "dark"} />
-          </AccessGate>
-          {/* After the first screen and a pause in tapping: their start blocks the JS thread. */}
-          {appJobsMayStart ? <AppEvoluConsumers /> : null}
-          {cashuJobsMayStart ? <CashuEvoluConsumers /> : null}
-          <ConfirmHost />
-          <PinPromptHost />
-          <ToastHost />
-          {/* Its own boundary: the pending check suspends on every account switch. */}
-          <Suspense fallback={null}>
-            <AppMigrations />
-          </Suspense>
-          <Suspense fallback={null}>
-            <NotOnboardedRedirect />
-          </Suspense>
-          <Suspense fallback={null}>
-            <SentryController />
-            <DeviceRegistration />
-            <DemoDataSeed />
-            <SwitchioRestoredResult />
-            <SwitchioRestoredClosure />
-            <SwitchioRestoredRefund />
-          </Suspense>
+          <AppColorsContext value={appThemes[theme]}>
+            <StatusBar style={theme === "dark" ? "light" : "dark"} />
+            <AccessGate>
+              <ThemedStack dark={theme === "dark"} />
+            </AccessGate>
+            {/* After the first screen and a pause in tapping: their start blocks the JS thread. */}
+            {appJobsMayStart ? <AppEvoluConsumers /> : null}
+            {cashuJobsMayStart ? <CashuEvoluConsumers /> : null}
+            <ConfirmHost />
+            <PinPromptHost />
+            <ToastHost />
+            {/* Its own boundary: the pending check suspends on every account switch. */}
+            <Suspense fallback={null}>
+              <AppMigrations />
+            </Suspense>
+            <Suspense fallback={null}>
+              <NotOnboardedRedirect />
+            </Suspense>
+            <Suspense fallback={null}>
+              <SentryController />
+              <DeviceRegistration />
+              <DemoDataSeed />
+              <SwitchioRestoredResult />
+              <SwitchioRestoredClosure />
+              <SwitchioRestoredRefund />
+            </Suspense>
+          </AppColorsContext>
         </Theme>
       </TamaguiProvider>
     </QueryClientProvider>
