@@ -1,10 +1,9 @@
 import { Capacitor } from "@capacitor/core"
 import {
-  accessPresetOrder,
   checkNewPin,
   presetOf,
   sanitizePinInput,
-  withPermission,
+  sortDevicesByPermissions,
   wizardDeviceDefaults,
 } from "@payky/app-shared/access-form"
 import { accessSessionAtom } from "@payky/app-shared/access-state"
@@ -17,7 +16,6 @@ import {
 import { accessControlQuery } from "@payky/core/modules/access/access-queries"
 import {
   type AccessPreset,
-  accessPresets,
   type Permission,
   permissions,
 } from "@payky/core/modules/access/access-types"
@@ -48,7 +46,6 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
-  TriangleAlert,
   Unlock,
 } from "lucide-react"
 import { useId, useState } from "react"
@@ -63,7 +60,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx"
-import { Checkbox } from "@/components/ui/checkbox.tsx"
 import {
   Dialog,
   DialogContent,
@@ -81,12 +77,10 @@ import {
 } from "@/components/ui/field.tsx"
 import { Input } from "@/components/ui/input.tsx"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select.tsx"
+  PermissionsFields,
+  PresetSelect,
+  Warning,
+} from "@/features/settings/access/permissions-fields.tsx"
 import { useAccess, useRequirePermission } from "@/hooks/use-access.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useEvoluQuery } from "@/hooks/use-evolu-query.ts"
@@ -94,13 +88,13 @@ import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import {
   accessPresetLabelKeys,
-  permissionDescriptionKeys,
   permissionLabelKeys,
 } from "@/i18n/access-labels.ts"
 
 /**
- * Settings → Access (access/0001, access/0004): switching access control on
- * with its wizard and off, changing the PIN, and every device's defaults.
+ * Settings → Devices (access/0001, access/0013): the account's devices, in
+ * order of what each may do without the PIN, and below them the PIN that
+ * locks the rest — switching it on with its wizard and off, and changing it.
  */
 export function AccessSettingsPage() {
   const { t } = useTranslation()
@@ -112,8 +106,11 @@ export function AccessSettingsPage() {
   return (
     <>
       <div className="h-6" />
-      <FadeHeader title={t("access.title")} />
+      <FadeHeader title={t("devices.title")} />
       <div className="flex flex-col gap-5">
+        {mode === "wizard" && !enabled ? null : (
+          <DevicesCard accessControlOn={enabled} />
+        )}
         {mode === "wizard" && !enabled ? (
           <TurnOnWizard hasPin={hasPin} onDone={() => setMode("view")} />
         ) : mode === "changePin" ? (
@@ -125,7 +122,6 @@ export function AccessSettingsPage() {
             onChangePin={() => setMode("changePin")}
           />
         )}
-        {mode === "wizard" && !enabled ? null : <DevicesCard />}
       </div>
     </>
   )
@@ -188,18 +184,6 @@ function StatusCard({
         )}
       </CardFooter>
     </Card>
-  )
-}
-
-function Warning({ children }: { readonly children: string }) {
-  return (
-    <p className="flex gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-      <TriangleAlert
-        className="mt-0.5 size-4 shrink-0 text-destructive"
-        aria-hidden="true"
-      />
-      {children}
-    </p>
   )
 }
 
@@ -445,44 +429,6 @@ function TurnOnWizard({
   )
 }
 
-function PresetSelect({
-  label,
-  value,
-  onChange,
-}: {
-  readonly label: string
-  readonly value: AccessPreset | null
-  readonly onChange: (preset: AccessPreset) => void
-}) {
-  const { t } = useTranslation()
-
-  return (
-    <Select<AccessPreset>
-      value={value}
-      onValueChange={(preset: AccessPreset | null) => {
-        if (preset !== null) onChange(preset)
-      }}
-    >
-      <SelectTrigger aria-label={label} className="w-full">
-        <SelectValue>
-          {(preset: AccessPreset | null) =>
-            preset === null
-              ? t("access.preset.custom")
-              : t(accessPresetLabelKeys[preset])
-          }
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {accessPresetOrder.map((preset) => (
-          <SelectItem key={preset} value={preset}>
-            {t(accessPresetLabelKeys[preset])}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
 /** Name, "this device", and what kind of device it is (access/0004). */
 function DeviceHeading({
   device,
@@ -517,7 +463,11 @@ function DeviceHeading({
   )
 }
 
-function DevicesCard() {
+function DevicesCard({
+  accessControlOn,
+}: {
+  readonly accessControlOn: boolean
+}) {
   const { t } = useTranslation()
   const { deviceId } = useAccess()
   const { data: devices } = useEvoluQuery(devicesQuery)
@@ -530,11 +480,12 @@ function DevicesCard() {
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-3" data-testid="access-devices">
-          {devices.map((device) => (
+          {sortDevicesByPermissions(devices).map((device) => (
             <DeviceItem
               key={device.id}
               device={device}
               thisDevice={device.id === deviceId}
+              accessControlOn={accessControlOn}
             />
           ))}
         </ul>
@@ -556,9 +507,11 @@ function DevicesCard() {
 function DeviceItem({
   device,
   thisDevice,
+  accessControlOn,
 }: {
   readonly device: DeviceListRow
   readonly thisDevice: boolean
+  readonly accessControlOn: boolean
 }) {
   const { t } = useTranslation()
   const runToast = useRunToast()
@@ -575,7 +528,12 @@ function DeviceItem({
     })
   }
 
+  // Removing a device signs it out of the account (access/0013), so it
+  // takes the PIN, even on a device with `admin`, once there is one.
   const remove = async () => {
+    if (accessControlOn && !(await requirePin("access.action.removeDevice"))) {
+      return
+    }
     const confirmed = await confirm({
       title: t("access.device.remove.title", { name: device.name }),
       description: t("access.device.remove.description"),
@@ -670,40 +628,11 @@ function PermissionsDialog({
             {t("access.device.permissions.description")}
           </DialogDescription>
         </DialogHeader>
-        <PresetSelect
+        <PermissionsFields
           label={t("access.device.preset", { name: device.name })}
-          value={presetOf(granted)}
-          onChange={(preset) => setGranted(new Set(accessPresets[preset]))}
+          granted={granted}
+          onChange={setGranted}
         />
-        <FieldGroup>
-          {permissions.map((permission) => {
-            const id = `${device.id}-${permission}`
-            return (
-              <Field key={permission} orientation="horizontal">
-                <Checkbox
-                  id={id}
-                  checked={granted.has(permission)}
-                  onCheckedChange={(checked) =>
-                    setGranted((current) =>
-                      withPermission(current, permission, checked === true)
-                    )
-                  }
-                />
-                <div className="flex flex-col gap-0.5">
-                  <FieldLabel htmlFor={id}>
-                    {t(permissionLabelKeys[permission])}
-                  </FieldLabel>
-                  <FieldDescription>
-                    {t(permissionDescriptionKeys[permission])}
-                  </FieldDescription>
-                </div>
-              </Field>
-            )
-          })}
-        </FieldGroup>
-        {granted.has("admin") ? (
-          <Warning>{t("access.device.adminWarning")}</Warning>
-        ) : null}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             {t("access.cancel")}

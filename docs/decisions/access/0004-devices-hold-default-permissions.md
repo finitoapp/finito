@@ -1,6 +1,6 @@
 # 0004 Devices hold default permissions, and a new one holds none
 
-Status: accepted
+Status: superseded by access/0013
 Date: 2026-10-08
 
 ## Context

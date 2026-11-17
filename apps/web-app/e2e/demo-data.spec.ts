@@ -47,7 +47,7 @@ test("a demo account generates from today back until stopped, with its relays lo
   })
 
   await test.step("its relays are off and cannot be switched on", async () => {
-    await gotoPage(page, "/settings/security", "en", "settings.security.title")
+    await gotoPage(page, "/settings/backends", "en", "settings.backends.title")
     await expect(
       page.getByText(translate("en", "settings.security.transports.demo"))
     ).toBeVisible()

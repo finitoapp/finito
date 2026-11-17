@@ -18,6 +18,7 @@ import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useEffect, useRef, useState } from "react"
 import { ActivityIndicator } from "react-native"
 import { Text, useTheme, XStack, YStack } from "tamagui"
+import { accountAtom } from "../../atoms/account.ts"
 import { evoluCounterAtom } from "../../atoms/evolu-counter.ts"
 import {
   QR_SCAN_TYPES,
@@ -82,6 +83,8 @@ export function AccountTransferTarget({
 }) {
   const { t } = useTranslation()
   const accountVersion = useAtomValue(evoluCounterAtom)
+  // Sent with the `hello`, so the source can set what this device may do.
+  const deviceId = useAtomValue(accountAtom).device.id
   const addTransferredAccount = useAddTransferredAccount({
     source,
     confirmBeforeAdding,
@@ -117,6 +120,7 @@ export function AccountTransferTarget({
       },
       {
         pair: pair.value,
+        deviceId,
         onState: (state) => {
           if (state.phase === "received") {
             cancelRef.current = null

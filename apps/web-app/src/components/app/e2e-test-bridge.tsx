@@ -637,6 +637,7 @@ export function E2eTestBridge() {
           deviceType: NonEmptyString255("tablet"),
           browserName: null,
           osName: NonEmptyString255("Android"),
+          joining: true,
         })
       )
       if (blocked) await run.ok(setDevicePinBlocked({ id, blocked: true }))

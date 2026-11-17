@@ -40,12 +40,12 @@ tags: [settings]
     file: ../../subflows/assert-label.yaml
     env:
       LABEL: ${output.t["nav.notificationsUnread"]}
-# Security only reports the status.
+# Backup only reports the status.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/security
-      TEXT: ${output.t["settings.security.title"]}
+      TEXT: ${output.t["settings.backup.title"]}
 - assertVisible: ${output.t["settings.security.verify.status.unverified"]}
 - assertNotVisible:
     id: recovery-word-1
@@ -65,7 +65,7 @@ tags: [settings]
 - hideKeyboard
 - tapOn: ${output.t["settings.security.verify.submit"]}
 - assertVisible: ${output.t["settings.security.verify.wrong"]}
-# The right ones verify the backup and leave for Security.
+# The right ones verify the backup and leave for Backup.
 - runFlow:
     file: ../../subflows/verify-slots.yaml
     env:
@@ -73,7 +73,7 @@ tags: [settings]
 - hideKeyboard
 - tapOn: ${output.t["settings.security.verify.submit"]}
 - extendedWaitUntil:
-    visible: ${output.t["settings.security.title"]}
+    visible: ${output.t["settings.backup.title"]}
     timeout: 15000
 - assertNotVisible: ${output.t["settings.security.verify.status.unverified"]}
 # The reminder is over: the card gives way to the empty state, and neither

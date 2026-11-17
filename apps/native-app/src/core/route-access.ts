@@ -58,6 +58,7 @@ export type NativeRoutePath =
   | "/settings/access/add-device"
   | "/settings/security"
   | "/settings/security/backup"
+  | "/settings/backends"
   | "/settings/evolu-export"
   | "/settings/payment-accounts"
   | "/settings/payment-accounts/iban"
@@ -165,18 +166,20 @@ export const routeAccess = {
   "/settings/tables": "catalog",
   "/settings/tables/new": "catalog",
   "/settings/tables/:tableId": "catalog",
-  // Like web's `_terminal/settings/access`: the Access section is owner-only (access/0002).
   // Like web's `_terminal/settings/accounts`: switching and removing accounts is owner-only.
   "/settings/accounts": "admin",
   // Adds an account the user already has (onboarding/0011); owner-only like the accounts screen.
   "/settings/accounts/open": "admin",
   // Like web's `_terminal/settings/eet`: fiscal reporting is owner-only.
   "/settings/eet": "admin",
+  // Like web's `_terminal/settings/access`: the Devices section is owner-only (access/0002).
   "/settings/access": "admin",
   // Like web's `_terminal/settings/access_/add-device`: sends the account away, owner-only.
   "/settings/access/add-device": "admin",
-  // Like web's `_terminal/settings/security`: the recovery phrase and sync relays are owner-only.
+  // Like web's `_terminal/settings/security`: the recovery phrase is owner-only.
   "/settings/security": "admin",
+  // Like web's `_terminal/settings/backends`: the sync relays are owner-only.
+  "/settings/backends": "admin",
   // Like web's `_terminal/settings/security_/backup`: the recovery phrase is owner-only.
   "/settings/security/backup": "admin",
   // Like web's `_terminal/settings/evolu-export`: owner-only, and the export asks again before serializing.

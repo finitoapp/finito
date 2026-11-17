@@ -19,11 +19,17 @@ import type { DeviceId } from "./device-types.ts"
 
 /**
  * Puts this device's row into the active account's app database on start
- * (access/0004). Never writes `defaultPermissions`, `pinBlockedAt` or
- * `pinUnblockToken`, and `name` only for a new row: Evolu resolves each
- * column last-write-wins, so writing them on every start would undo what
- * the owner set. A row the owner removed comes back — with the permissions
- * the removal cleared, which is none.
+ * (access/0004, access/0013). Never writes `defaultPermissions`,
+ * `pinBlockedAt` or `pinUnblockToken`, and `name` only while the row has
+ * none: Evolu resolves each column last-write-wins, so writing them on every
+ * start would undo what the owner set.
+ *
+ * `joining` is true until this device has registered since the account was
+ * added to it. A joining device writes `isDeleted: false`, so an old removal
+ * of this device, synced or not yet, cannot sign it out again. A device that
+ * has joined never writes `isDeleted`, so a removal from another device
+ * wins, and once it is here the device is `removed`: its caller signs it
+ * out of the account.
  */
 export const registerDevice =
   (device: {
@@ -32,34 +38,45 @@ export const registerDevice =
     readonly deviceType: NonEmptyString255 | null
     readonly browserName: NonEmptyString255 | null
     readonly osName: NonEmptyString255 | null
-  }): Task<void, never, EvoluDep & EvoluOwnerDep> =>
+    readonly joining: boolean
+  }): Task<"registered" | "removed", never, EvoluDep & EvoluOwnerDep> =>
   async (run) => {
     const { evolu, evoluOwner } = run.deps
     const [existing] = await evolu.loadQuery(deviceByIdQuery(device.id))
+    if (existing?.isDeleted === sqliteTrue && !device.joining) {
+      return ok("removed")
+    }
     const labels = {
       id: device.id,
       deviceType: device.deviceType,
       browserName: device.browserName,
       osName: device.osName,
     }
+    const isDeleted = device.joining
+      ? ({ isDeleted: sqliteFalse } as const)
+      : {}
 
     await runMutationWithCompletion((options) => {
       const mutationOptions = { ...options, owner: evoluOwner }
       if (existing === undefined) {
         evolu.upsert(
           "device",
-          { ...labels, name: device.name },
+          { ...labels, name: device.name, ...isDeleted },
           mutationOptions
         )
       } else {
         evolu.update(
           "device",
-          { ...labels, isDeleted: sqliteFalse },
+          {
+            ...labels,
+            ...(existing.name === null ? { name: device.name } : {}),
+            ...isDeleted,
+          },
           mutationOptions
         )
       }
     })
-    return ok()
+    return ok("registered")
   }
 
 /**
@@ -162,8 +179,9 @@ export const unblockDevice =
   }
 
 /**
- * Removes a device row and its permissions together, so a device that is
- * still alive and registers itself again comes back with none (access/0004).
+ * Removes a device row and its permissions together (access/0013): the
+ * device signs itself out of the account once it sees the removal, and one
+ * that joins the account again starts with none.
  */
 export const removeDevice =
   (id: DeviceId): Task<void, never, EvoluDep & EvoluOwnerDep> =>

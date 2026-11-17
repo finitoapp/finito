@@ -112,8 +112,8 @@ test("verifying the backup ends the reminder", async ({ seededPage: page }) => {
     await expect(dot(page)).toBeVisible()
   })
 
-  await test.step("Security only reports the backup status", async () => {
-    await gotoPage(page, "/settings/security", "en", "settings.security.title")
+  await test.step("Backup only reports the backup status", async () => {
+    await gotoPage(page, "/settings/security", "en", "settings.backup.title")
     await expect(page.getByTestId("recovery-verify-status")).toHaveText(
       translate("en", "settings.security.verify.status.unverified")
     )

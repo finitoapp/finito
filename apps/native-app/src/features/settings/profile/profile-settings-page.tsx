@@ -65,8 +65,8 @@ import {
 import { useInlineChoice } from "../../../hooks/use-inline-choice.ts"
 import {
   setOwnNostrProfile,
+  useActiveNostrProfile,
   useNostrIdentity,
-  useNostrProfile,
 } from "../../../hooks/use-nostr-profile.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -88,7 +88,7 @@ export function ProfileSettingsPage() {
   const { t } = useTranslation()
   const identity = useNostrIdentity()
   const copy = useCopyToClipboard()
-  const profile = useNostrProfile(identity.pubkey)
+  const profile = useActiveNostrProfile()
 
   return (
     <Screen>

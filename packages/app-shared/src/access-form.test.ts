@@ -6,6 +6,7 @@ import {
   checkNewPin,
   presetOf,
   sanitizePinInput,
+  sortDevicesByPermissions,
   withPermission,
   wizardDeviceDefaults,
 } from "./access-form.ts"
@@ -86,6 +87,35 @@ describe("wizardDeviceDefaults", () => {
     ).toEqual([
       { id: a, permissions: accessPresets.basic },
       { id: b, permissions: accessPresets.owner },
+    ])
+  })
+})
+
+describe("sortDevicesByPermissions", () => {
+  it("lists admins first, then by how much a device may do, then by name", () => {
+    const device = (
+      name: string,
+      permissions: ReadonlyArray<string> | null
+    ) => ({
+      name,
+      defaultPermissions:
+        permissions === null ? null : JSON.stringify(permissions),
+    })
+    const sorted = sortDevicesByPermissions([
+      device("Kiosk", null),
+      device("Bar", ["sell"]),
+      device("Owner phone", ["admin"]),
+      device("Back office", ["sell", "stats", "catalog"]),
+      device("Anna's phone", ["sell"]),
+      device("Manager", ["admin", "sell"]),
+    ])
+    expect(sorted.map(({ name }) => name)).toEqual([
+      "Manager",
+      "Owner phone",
+      "Back office",
+      "Anna's phone",
+      "Bar",
+      "Kiosk",
     ])
   })
 })

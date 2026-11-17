@@ -1,6 +1,5 @@
-import { presetOf, withPermission } from "@payky/app-shared/access-form"
+import { presetOf } from "@payky/app-shared/access-form"
 import {
-  accessPresets,
   type Permission,
   permissions,
 } from "@payky/core/modules/access/access-types"
@@ -14,13 +13,10 @@ import type { DeviceListRow } from "@payky/core/modules/device/device-queries"
 import LockOpen from "lucide-react-native/icons/lock-open"
 import Pencil from "lucide-react-native/icons/pencil"
 import Trash from "lucide-react-native/icons/trash"
-import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import { useState } from "react"
 import { Text, XStack, YStack } from "tamagui"
 import { SettingsTile } from "../../../components/settings-tile.tsx"
-import { Alert, AlertDescription } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
-import { Checkbox } from "../../../components/ui/checkbox.tsx"
 import {
   Dialog,
   DialogContent,
@@ -30,15 +26,7 @@ import {
   DialogTitle,
 } from "../../../components/ui/dialog.tsx"
 import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "../../../components/ui/field.tsx"
-import {
   accessPresetLabelKeys,
-  permissionDescriptionKeys,
   permissionLabelKeys,
 } from "../../../core/access-labels.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
@@ -46,12 +34,8 @@ import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize } from "../../../theme/tokens.ts"
-import {
-  DeviceTitle,
-  deviceDetails,
-  PresetPicker,
-  RenameForm,
-} from "./device-parts.tsx"
+import { DeviceTitle, deviceDetails, RenameForm } from "./device-parts.tsx"
+import { PermissionsFields } from "./permissions-fields.tsx"
 
 /**
  * One device of the account as a `SettingsTile`: its name and badges, what
@@ -61,9 +45,11 @@ import {
 export function DeviceItem({
   device,
   thisDevice,
+  accessControlOn,
 }: {
   readonly device: DeviceListRow
   readonly thisDevice: boolean
+  readonly accessControlOn: boolean
 }) {
   const { t } = useTranslation()
   const runToast = useRunToast()
@@ -82,9 +68,13 @@ export function DeviceItem({
     })
   }
 
-  // As web: a confirmation, not the PIN. The route is `admin` already, and
-  // removing a row clears its permissions together with the delete.
+  // Removing a device signs it out of the account (access/0013), so it
+  // takes the PIN, even on a device with `admin`, once there is one; the row's
+  // permissions are cleared together with the delete.
   const remove = async () => {
+    if (accessControlOn && !(await requirePin("access.action.removeDevice"))) {
+      return
+    }
     const confirmed = await confirm({
       title: t("access.device.remove.title", { name: device.name }),
       description: t("access.device.remove.description"),
@@ -217,43 +207,12 @@ function PermissionsEditor({
 
   return (
     <YStack gap={16}>
-      <Field>
-        <FieldLabel>
-          {t("access.device.preset", { name: device.name })}
-        </FieldLabel>
-        <PresetPicker
-          label={t("access.device.preset", { name: device.name })}
-          value={presetOf(granted)}
-          onChange={(preset) => setGranted(new Set(accessPresets[preset]))}
-        />
-      </Field>
-      <FieldGroup>
-        {permissions.map((permission) => (
-          <Field key={permission} orientation="horizontal">
-            <Checkbox
-              aria-label={t(permissionLabelKeys[permission])}
-              checked={granted.has(permission)}
-              disabled={pending}
-              onCheckedChange={(checked) =>
-                setGranted((current) =>
-                  withPermission(current, permission, checked)
-                )
-              }
-            />
-            <FieldContent>
-              <FieldLabel>{t(permissionLabelKeys[permission])}</FieldLabel>
-              <FieldDescription>
-                {t(permissionDescriptionKeys[permission])}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        ))}
-      </FieldGroup>
-      {granted.has("admin") ? (
-        <Alert variant="destructive" icon={TriangleAlert}>
-          <AlertDescription>{t("access.device.adminWarning")}</AlertDescription>
-        </Alert>
-      ) : null}
+      <PermissionsFields
+        label={t("access.device.preset", { name: device.name })}
+        granted={granted}
+        disabled={pending}
+        onChange={setGranted}
+      />
       <DialogFooter>
         <Button
           variant="ghost"

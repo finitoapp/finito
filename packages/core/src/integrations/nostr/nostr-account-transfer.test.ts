@@ -1,3 +1,4 @@
+import { createIdFromString } from "@evolu/common"
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js"
 import type { SubscribeManyParams } from "nostr-tools/abstract-pool"
 import { type Filter, matchFilter } from "nostr-tools/filter"
@@ -10,6 +11,7 @@ import {
 } from "nostr-tools/pure"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 
+import type { DeviceId } from "../../modules/device/device-types.ts"
 import { MasterKey } from "../../modules/shared/key-derivation.ts"
 import { type PairUri, parsePairUri } from "../../modules/shared/payky-uri.ts"
 import { NonEmptyString255, WssUrl } from "../../modules/shared/schema.ts"
@@ -132,10 +134,15 @@ const startSource = (network: Relay) => {
   }
 }
 
-const startTarget = (network: Relay, pair: PairUri) => {
+const startTarget = (
+  network: Relay,
+  pair: PairUri,
+  deviceId?: DeviceId | undefined
+) => {
   const states: TransferTargetState[] = []
   const session = startTransferTarget(network.deps, {
     pair,
+    deviceId,
     onState: (state) => states.push(state),
   })
   const targetPubkey = () => {
@@ -273,7 +280,25 @@ describe("account transfer session", () => {
     await flush()
 
     expect(target.last()).toEqual({ phase: "received", payload })
-    expect(source.last()).toEqual({ phase: "done", acked: true })
+    expect(source.last()).toEqual({
+      phase: "done",
+      acked: true,
+      deviceId: null,
+    })
+  })
+
+  test("tells the source which device the account went to", async () => {
+    const network = createRelay()
+    const source = startSource(network)
+    const deviceId = createIdFromString<"Device">("new-till")
+    const target = startTarget(network, source.pair, deviceId)
+    await flush()
+
+    source.session.submitCode(codeOf(target.states))
+    await flush()
+    await flush()
+
+    expect(source.last()).toEqual({ phase: "done", acked: true, deviceId })
   })
 
   test("accepts the code with a space and after one typo", async () => {
@@ -490,7 +515,11 @@ describe("account transfer session", () => {
     await flush()
     await flush()
 
-    expect(source.last()).toEqual({ phase: "done", acked: true })
+    expect(source.last()).toEqual({
+      phase: "done",
+      acked: true,
+      deviceId: null,
+    })
   })
 
   test("the source ignores ack and abort from anyone but the locked device", async () => {
@@ -575,6 +604,10 @@ describe("account transfer session", () => {
     await vi.advanceTimersByTimeAsync(30_000)
 
     expect(target.last()?.phase).toBe("received")
-    expect(source.last()).toEqual({ phase: "done", acked: false })
+    expect(source.last()).toEqual({
+      phase: "done",
+      acked: false,
+      deviceId: null,
+    })
   })
 })

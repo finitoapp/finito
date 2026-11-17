@@ -3,7 +3,11 @@ import {
   accessPresets,
   type Permission,
 } from "@payky/core/modules/access/access-types"
-import { type Pin, PinSchema } from "@payky/core/modules/access/access-utils"
+import {
+  decodePermissions,
+  type Pin,
+  PinSchema,
+} from "@payky/core/modules/access/access-utils"
 import type { DeviceId } from "@payky/core/modules/device/device-types"
 
 /** The order presets are offered in. */
@@ -78,3 +82,30 @@ export const wizardDeviceDefaults = (
     id: device.id,
     permissions: accessPresets[presets[device.id] ?? "basic"],
   }))
+
+/**
+ * The device list in order of what each device may do (access/0013): those
+ * with `admin` first, then by how many permissions they hold, then by name.
+ */
+export const sortDevicesByPermissions = <
+  Device extends {
+    readonly name: string
+    readonly defaultPermissions: string | null
+  },
+>(
+  devices: ReadonlyArray<Device>
+): ReadonlyArray<Device> => {
+  const rank = (device: Device) => {
+    const granted = decodePermissions(device.defaultPermissions)
+    return { admin: granted.has("admin") ? 1 : 0, count: granted.size }
+  }
+  return devices
+    .map((device) => ({ device, ...rank(device) }))
+    .sort(
+      (a, b) =>
+        b.admin - a.admin ||
+        b.count - a.count ||
+        a.device.name.localeCompare(b.device.name)
+    )
+    .map(({ device }) => device)
+}

@@ -35,6 +35,7 @@ import { Route as TerminalSettingsAboutRouteImport } from './routes/_terminal.se
 import { Route as TerminalSettingsAccessRouteImport } from './routes/_terminal.settings.access'
 import { Route as TerminalSettingsAccountsRouteImport } from './routes/_terminal.settings.accounts'
 import { Route as TerminalSettingsAssistantRouteImport } from './routes/_terminal.settings.assistant'
+import { Route as TerminalSettingsBackendsRouteImport } from './routes/_terminal.settings.backends'
 import { Route as TerminalSettingsDebugConsoleRouteImport } from './routes/_terminal.settings.debug-console'
 import { Route as TerminalSettingsDemoDataRouteImport } from './routes/_terminal.settings.demo-data'
 import { Route as TerminalSettingsDonationsRouteImport } from './routes/_terminal.settings.donations'
@@ -232,6 +233,12 @@ const TerminalSettingsAssistantRoute =
   TerminalSettingsAssistantRouteImport.update({
     id: '/assistant',
     path: '/assistant',
+    getParentRoute: () => TerminalSettingsRoute,
+  } as any)
+const TerminalSettingsBackendsRoute =
+  TerminalSettingsBackendsRouteImport.update({
+    id: '/backends',
+    path: '/backends',
     getParentRoute: () => TerminalSettingsRoute,
   } as any)
 const TerminalSettingsDebugConsoleRoute =
@@ -636,6 +643,7 @@ export interface FileRoutesByFullPath {
   '/settings/access': typeof TerminalSettingsAccessRoute
   '/settings/accounts': typeof TerminalSettingsAccountsRouteWithChildren
   '/settings/assistant': typeof TerminalSettingsAssistantRoute
+  '/settings/backends': typeof TerminalSettingsBackendsRoute
   '/settings/debug-console': typeof TerminalSettingsDebugConsoleRoute
   '/settings/demo-data': typeof TerminalSettingsDemoDataRoute
   '/settings/donations': typeof TerminalSettingsDonationsRoute
@@ -718,6 +726,7 @@ export interface FileRoutesByTo {
   '/payment/$paymentId': typeof TerminalPaymentPaymentIdRoute
   '/settings/access': typeof TerminalSettingsAccessRoute
   '/settings/assistant': typeof TerminalSettingsAssistantRoute
+  '/settings/backends': typeof TerminalSettingsBackendsRoute
   '/settings/debug-console': typeof TerminalSettingsDebugConsoleRoute
   '/settings/demo-data': typeof TerminalSettingsDemoDataRoute
   '/settings/donations': typeof TerminalSettingsDonationsRoute
@@ -803,6 +812,7 @@ export interface FileRoutesById {
   '/_terminal/settings/access': typeof TerminalSettingsAccessRoute
   '/_terminal/settings/accounts': typeof TerminalSettingsAccountsRouteWithChildren
   '/_terminal/settings/assistant': typeof TerminalSettingsAssistantRoute
+  '/_terminal/settings/backends': typeof TerminalSettingsBackendsRoute
   '/_terminal/settings/debug-console': typeof TerminalSettingsDebugConsoleRoute
   '/_terminal/settings/demo-data': typeof TerminalSettingsDemoDataRoute
   '/_terminal/settings/donations': typeof TerminalSettingsDonationsRoute
@@ -895,6 +905,7 @@ export interface FileRouteTypes {
     | '/settings/access'
     | '/settings/accounts'
     | '/settings/assistant'
+    | '/settings/backends'
     | '/settings/debug-console'
     | '/settings/demo-data'
     | '/settings/donations'
@@ -977,6 +988,7 @@ export interface FileRouteTypes {
     | '/payment/$paymentId'
     | '/settings/access'
     | '/settings/assistant'
+    | '/settings/backends'
     | '/settings/debug-console'
     | '/settings/demo-data'
     | '/settings/donations'
@@ -1061,6 +1073,7 @@ export interface FileRouteTypes {
     | '/_terminal/settings/access'
     | '/_terminal/settings/accounts'
     | '/_terminal/settings/assistant'
+    | '/_terminal/settings/backends'
     | '/_terminal/settings/debug-console'
     | '/_terminal/settings/demo-data'
     | '/_terminal/settings/donations'
@@ -1318,6 +1331,13 @@ declare module '@tanstack/react-router' {
       path: '/assistant'
       fullPath: '/settings/assistant'
       preLoaderRoute: typeof TerminalSettingsAssistantRouteImport
+      parentRoute: typeof TerminalSettingsRoute
+    }
+    '/_terminal/settings/backends': {
+      id: '/_terminal/settings/backends'
+      path: '/backends'
+      fullPath: '/settings/backends'
+      preLoaderRoute: typeof TerminalSettingsBackendsRouteImport
       parentRoute: typeof TerminalSettingsRoute
     }
     '/_terminal/settings/debug-console': {
@@ -2047,6 +2067,7 @@ interface TerminalSettingsRouteChildren {
   TerminalSettingsAccessRoute: typeof TerminalSettingsAccessRoute
   TerminalSettingsAccountsRoute: typeof TerminalSettingsAccountsRouteWithChildren
   TerminalSettingsAssistantRoute: typeof TerminalSettingsAssistantRoute
+  TerminalSettingsBackendsRoute: typeof TerminalSettingsBackendsRoute
   TerminalSettingsDebugConsoleRoute: typeof TerminalSettingsDebugConsoleRoute
   TerminalSettingsDemoDataRoute: typeof TerminalSettingsDemoDataRoute
   TerminalSettingsDonationsRoute: typeof TerminalSettingsDonationsRoute
@@ -2076,6 +2097,7 @@ const TerminalSettingsRouteChildren: TerminalSettingsRouteChildren = {
   TerminalSettingsAccessRoute: TerminalSettingsAccessRoute,
   TerminalSettingsAccountsRoute: TerminalSettingsAccountsRouteWithChildren,
   TerminalSettingsAssistantRoute: TerminalSettingsAssistantRoute,
+  TerminalSettingsBackendsRoute: TerminalSettingsBackendsRoute,
   TerminalSettingsDebugConsoleRoute: TerminalSettingsDebugConsoleRoute,
   TerminalSettingsDemoDataRoute: TerminalSettingsDemoDataRoute,
   TerminalSettingsDonationsRoute: TerminalSettingsDonationsRoute,

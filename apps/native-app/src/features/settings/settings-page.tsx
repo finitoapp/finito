@@ -17,9 +17,10 @@ import Info from "lucide-react-native/icons/info"
 import Landmark from "lucide-react-native/icons/landmark"
 import Languages from "lucide-react-native/icons/languages"
 import LifeBuoy from "lucide-react-native/icons/life-buoy"
-import LockKeyhole from "lucide-react-native/icons/lock-keyhole"
+import MonitorSmartphone from "lucide-react-native/icons/monitor-smartphone"
 import Percent from "lucide-react-native/icons/percent"
 import ReceiptText from "lucide-react-native/icons/receipt-text"
+import Server from "lucide-react-native/icons/server"
 import ShieldCheck from "lucide-react-native/icons/shield-check"
 import Sparkles from "lucide-react-native/icons/sparkles"
 import Stamp from "lucide-react-native/icons/stamp"
@@ -293,14 +294,19 @@ export function SettingsPage() {
         href: "/settings/accounts",
       },
       {
+        icon: MonitorSmartphone,
+        title: "devices.title",
+        href: "/settings/access",
+      },
+      {
         icon: ShieldCheck,
-        title: "settings.security.title",
+        title: "settings.backup.title",
         href: "/settings/security",
       },
       {
-        icon: LockKeyhole,
-        title: "access.title",
-        href: "/settings/access",
+        icon: Server,
+        title: "settings.backends.title",
+        href: "/settings/backends",
       },
     ],
     t

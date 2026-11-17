@@ -323,6 +323,7 @@ describe("lastCardSwitchioClosurePerDeviceQuery", () => {
           deviceType: null,
           browserName: null,
           osName: null,
+          joining: true,
         })
       )
     }
@@ -361,6 +362,7 @@ describe("lastCardSwitchioClosurePerDeviceQuery", () => {
           deviceType: null,
           browserName: null,
           osName: null,
+          joining: true,
         })
       )
     await register(thisDevice, "Bar")

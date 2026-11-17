@@ -1,7 +1,10 @@
 import { expect, test } from "./support/fixtures.ts"
 import { translate } from "./support/i18n.ts"
 import { gotoPage } from "./support/navigation.ts"
-import { completeOnboardingDefaults } from "./support/onboarding.ts"
+import {
+  completeOnboardingDefaults,
+  seedOnboarding,
+} from "./support/onboarding.ts"
 
 test("create, switch, and remove a device account", async ({
   seededPage: page,
@@ -13,18 +16,13 @@ test("create, switch, and remove a device account", async ({
   await test.step("open device accounts settings", () =>
     gotoPage(page, "/settings/accounts", "en", "settings.accounts.title"))
 
-  await test.step("create a second account", async () => {
-    await page
+  // Adding opens onboarding's welcome in a new, empty account (account/0011).
+  await test.step("add a second account", () =>
+    page
       .getByRole("button", {
-        name: translate("en", "accountChoice.new.title"),
+        name: translate("en", "settings.accounts.add.title"),
       })
-      .click()
-    await page
-      .getByRole("button", {
-        name: translate("en", "settings.accounts.create.confirm.confirm"),
-      })
-      .click()
-  })
+      .click())
 
   await test.step("complete onboarding for the new account", () =>
     completeOnboardingDefaults(page, "en"))
@@ -97,52 +95,16 @@ test("create, switch, and remove a device account", async ({
   })
 })
 
-test("canceling the create-account confirmation stays on the current account", async ({
-  seededPage: page,
-}) => {
-  await test.step("open device accounts settings", () =>
-    gotoPage(page, "/settings/accounts", "en", "settings.accounts.title"))
-
-  await test.step("start creating a new account, then cancel the confirmation", async () => {
-    await page
-      .getByRole("button", {
-        name: translate("en", "accountChoice.new.title"),
-      })
-      .click()
-    await page
-      .getByRole("button", {
-        name: translate("en", "settings.accounts.create.confirm.cancel"),
-      })
-      .click()
-  })
-
-  await test.step("no second account was created and no switch happened", async () => {
-    await expect(
-      page.getByRole("heading", {
-        name: translate("en", "settings.accounts.title"),
-      })
-    ).toBeVisible()
-    await expect(
-      page.getByTestId("account-list").getByRole("listitem")
-    ).toHaveCount(1)
-  })
-})
-
 test("canceling setup from onboarding discards the new account and switches back", async ({
   seededPage: page,
 }) => {
   test.setTimeout(60_000)
 
-  await test.step("create a second account", async () => {
+  await test.step("add a second account", async () => {
     await gotoPage(page, "/settings/accounts", "en", "settings.accounts.title")
     await page
       .getByRole("button", {
-        name: translate("en", "accountChoice.new.title"),
-      })
-      .click()
-    await page
-      .getByRole("button", {
-        name: translate("en", "settings.accounts.create.confirm.confirm"),
+        name: translate("en", "settings.accounts.add.title"),
       })
       .click()
     await page
@@ -173,4 +135,65 @@ test("canceling setup from onboarding discards the new account and switches back
       page.getByTestId("account-list").getByRole("listitem")
     ).toHaveCount(1)
   })
+})
+
+test("removing the only copy of an unverified account offers the backup first", async ({
+  page,
+}) => {
+  await seedOnboarding(page, "en", { unverifiedBackup: true })
+  await gotoPage(page, "/settings/accounts", "en", "settings.accounts.title")
+  const accountRows = page.getByTestId("account-list").getByRole("listitem")
+
+  await test.step("the removal becomes a trip to the backup, and nothing is removed", async () => {
+    await accountRows
+      .first()
+      .getByRole("button", {
+        name: translate("en", "settings.accounts.list.remove"),
+      })
+      .click()
+    await expect(
+      page.getByText(
+        translate("en", "settings.accounts.remove.backupFirst.title")
+      )
+    ).toBeVisible()
+    await page
+      .getByRole("button", {
+        name: translate("en", "settings.accounts.remove.backupFirst.confirm"),
+      })
+      .click()
+    await page
+      .getByRole("heading", {
+        name: translate("en", "settings.security.mnemonic.title"),
+      })
+      .waitFor()
+    await gotoPage(page, "/settings/accounts", "en", "settings.accounts.title")
+    await expect(accountRows).toHaveCount(1)
+  })
+})
+
+test("removing the only account leaves for onboarding's welcome", async ({
+  seededPage: page,
+}) => {
+  test.setTimeout(60_000)
+  await gotoPage(page, "/settings/accounts", "en", "settings.accounts.title")
+  const accountRows = page.getByTestId("account-list").getByRole("listitem")
+
+  await test.step("a backed-up account is removed after a confirmation", async () => {
+    await accountRows
+      .first()
+      .getByRole("button", {
+        name: translate("en", "settings.accounts.list.remove"),
+      })
+      .click()
+    await page
+      .getByRole("button", {
+        name: translate("en", "settings.accounts.remove.confirm.confirm"),
+      })
+      .click()
+  })
+
+  await test.step("a new, empty account starts on the welcome screen", () =>
+    page
+      .getByRole("heading", { name: translate("en", "onboarding.title") })
+      .waitFor())
 })

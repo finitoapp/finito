@@ -14,9 +14,9 @@ tags: [access-gates, android-only]
     file: ../../subflows/tap-label.yaml
     env:
       LABEL: ${output.t["nav.back"]}
-# Back on the settings list, still scrolled to Access.
+# Back on the settings list, still scrolled to Devices.
 - extendedWaitUntil:
-    visible: ${output.re(output.t["access.title"])}
+    visible: ${output.re(output.t["devices.title"])}
     timeout: 15000
 - runFlow:
     file: ../../subflows/e2e-action.yaml

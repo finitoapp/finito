@@ -54,6 +54,7 @@ const setUp = async () => {
         deviceType: null,
         browserName: null,
         osName: null,
+        joining: true,
       })
     )
   }

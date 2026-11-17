@@ -4,6 +4,7 @@ import {
   insertAccount,
   loadActiveAccountRow,
 } from "@payky/core/evolu/device-account"
+import { defaultDeviceName } from "@payky/core/modules/device/device-utils"
 import { masterKeyToMnemonic } from "@payky/core/modules/shared/key-derivation"
 import { NonEmptyString255 } from "@payky/core/modules/shared/schema"
 import { createRandomDisplayName } from "@payky/core/utils/random-name"
@@ -65,7 +66,14 @@ export const accountAtom = atom(async (get) => {
         }
       : {
           id: createId<"Device">({ randomBytes: createRandomBytes() }),
-          name: NonEmptyString255(createRandomDisplayName()),
+          name: NonEmptyString255(
+            defaultDeviceName({
+              vendor: labels.deviceVendor,
+              model: new UAParser().getDevice().model,
+              browserName: labels.browserName,
+              osName: labels.osName,
+            }) ?? createRandomDisplayName()
+          ),
           ...labels,
         }
   if (row.device === null) {

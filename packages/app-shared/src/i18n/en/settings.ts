@@ -23,21 +23,11 @@ export const enSettings = {
   "settings.about.title": "About",
   "settings.accountAndSync": "ACCOUNT & SYNC",
   "settings.accounts.add.title": "Add an account",
-  "settings.accounts.elsewhere.title": "This account on another device",
-  "settings.accounts.create.confirm.cancel": "Cancel",
-  "settings.accounts.create.confirm.confirm": "Create account",
-  "settings.accounts.create.confirm.description":
-    "You'll switch away from {name} and set up a brand new account with its own recovery phrase.",
-  "settings.accounts.create.confirm.title": "Create a new account?",
   "settings.accounts.list.active": "Active",
-  "settings.accounts.list.createdAt": "Created",
-  "settings.accounts.list.empty": "No accounts saved on this device.",
   "settings.accounts.list.remove": "Remove",
   "settings.accounts.list.switch": "Switch",
-  "settings.accounts.list.title": "On this device",
-  "settings.accounts.nav.description":
-    "Choose which user account is active on this device",
-  "settings.accounts.nav.title": "Switch User Account",
+  "settings.accounts.nav.description": "The accounts on this device",
+  "settings.accounts.nav.title": "Accounts",
   "settings.accounts.remove.confirm.cancel": "Keep account",
   "settings.accounts.remove.confirm.confirm": "Remove account",
   "settings.accounts.remove.confirm.description":
@@ -55,7 +45,7 @@ export const enSettings = {
   "settings.accounts.restore.mnemonic.required": "Recovery phrase is required.",
   "settings.accounts.restore.mnemonic.wordCount":
     "The recovery phrase has 20 words.",
-  "settings.accounts.title": "App Account",
+  "settings.accounts.title": "Accounts",
   "settings.appVersion": "App version:",
   "settings.appVersionCode": "Version code:",
   "settings.appearance": "APPEARANCE & LANGUAGE",
@@ -906,7 +896,6 @@ export const enSettings = {
   "settings.qerkoTerminal.unpaired.description":
     "Connect your company's Qerko account to take card payments on its payment terminals. Qerko sends a confirmation code to the company's e-mail.",
   "settings.qerkoTerminal.unpaired.title": "Pair with Qerko",
-  "settings.security.description": "Manage sync transports and recovery access",
   "settings.security.mnemonic.copied": "Recovery phrase copied.",
   "settings.security.mnemonic.copy": "Copy",
   "settings.security.mnemonic.copyError": "Could not copy the recovery phrase.",
@@ -948,7 +937,6 @@ export const enSettings = {
   "settings.security.backup.start": "Show recovery phrase",
   "settings.security.backup.continue": "I wrote it down — verify",
   "settings.security.verify.skip": "Skip verification",
-  "settings.security.title": "Security & Sync",
   "settings.security.transports.add": "Add transport",
   "settings.security.transports.demo":
     "This is a demo account: it never syncs, so its relays stay off.",
@@ -1256,7 +1244,7 @@ export const enSettings = {
   "access.device.remove": "Remove",
   "access.device.remove.confirm": "Remove device",
   "access.device.remove.description":
-    "Its permissions are cleared. If the device is still in use, it shows up again with no permissions.",
+    "It is signed out of the account as soon as it next connects, and its permissions are cleared.",
   "access.device.remove.title": "Remove {name}?",
   "access.device.rename": "Rename",
   "access.device.this": "This device",
@@ -1265,7 +1253,6 @@ export const enSettings = {
   "access.devices.description":
     "Devices of this account and what each may do without the PIN. A device appears once it has synced.",
   "access.devices.title": "Devices",
-  "access.nav.description": "Owner PIN and device permissions",
   "access.newPin.description":
     "4–8 digits. Don't reuse a PIN from a bank card or phone: its hash is stored on every device of this account and in every database export.",
   "access.newPin.label": "New PIN",
@@ -1305,10 +1292,10 @@ export const enSettings = {
   "access.phrase.setNewPin": "Set a new PIN",
   "access.phrase.submit": "Unlock",
   "access.phrase.warning":
-    "Typing the recovery phrase at the counter can expose it to cameras and people around. It opens the whole account. Unblocking from another device in Settings → Access is the better way.",
+    "Typing the recovery phrase at the counter can expose it to cameras and people around. It opens the whole account. Unblocking from another device in Settings → Devices is the better way.",
   "access.phrase.wrong": "This is not the recovery phrase of this account.",
   "access.pin.blocked.description":
-    "Too many wrong PINs. The owner can unblock this device from another device in Settings → Access, or with the recovery phrase here. Meanwhile the device keeps its own permissions.",
+    "Too many wrong PINs. The owner can unblock this device from another device in Settings → Devices, or with the recovery phrase here. Meanwhile the device keeps its own permissions.",
   "access.pin.blocked.title": "PIN entry is blocked on this device",
   "access.pin.cancel": "Cancel",
   "access.pin.entered": "Digits entered: {count}",
@@ -1332,7 +1319,6 @@ export const enSettings = {
   "access.save": "Save",
   "access.status.off": "Access control is off",
   "access.status.on": "Access control is on",
-  "access.title": "Access",
   "access.turnOff": "Turn off",
   "access.turnOn": "Turn on",
   "access.webWarning":
@@ -1472,4 +1458,22 @@ export const enSettings = {
   "settings.cardClosure.restored.unresolved":
     "The closure's result could not be read. Check it in the SwitchioPay app.",
   "settings.cardSwitchioAccount.closureLink": "Terminal closures",
+  "devices.title": "Devices",
+  "devices.nav.description":
+    "Devices of this account and what each may do without the PIN",
+  "devices.removedHere": "This device was removed from {name}.",
+  "access.action.removeDevice": "Remove a device",
+  "settings.backup.title": "Backup",
+  "settings.backup.description": "The recovery phrase of this account",
+  "settings.backends.title": "Backends",
+  "settings.backends.description": "Servers this account syncs through",
+  "settings.accounts.add.description":
+    "Start a new business or open an account you already have",
+  "settings.accounts.remove.confirm.otherDevices":
+    "This device forgets the account. It stays on the account's other devices.",
+  "settings.accounts.remove.backupFirst.title":
+    "Back up the recovery phrase first",
+  "settings.accounts.remove.backupFirst.description":
+    "{name} is on no other device and its recovery phrase is not backed up. Removed now, it would be gone for good.",
+  "settings.accounts.remove.backupFirst.confirm": "Back up",
 } as const

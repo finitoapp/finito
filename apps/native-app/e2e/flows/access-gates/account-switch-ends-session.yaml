@@ -18,9 +18,8 @@ tags: [access-gates]
     env:
       TITLE: ${output.t["settings.accounts.nav.title"]}
 - scrollUntilVisible:
-    element: ${output.t["onboarding.welcome.new"]}
-- tapOn: ${output.t["onboarding.welcome.new"]}
-- tapOn: ${output.t["settings.accounts.create.confirm.confirm"]}
+    element: ${output.t["settings.accounts.add.title"]}
+- tapOn: ${output.t["settings.accounts.add.title"]}
 - extendedWaitUntil:
     visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000

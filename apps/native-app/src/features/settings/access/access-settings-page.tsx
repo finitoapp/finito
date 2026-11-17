@@ -1,3 +1,4 @@
+import { sortDevicesByPermissions } from "@payky/app-shared/access-form"
 import { disableAccessControl } from "@payky/core/modules/access/access-actions"
 import { accessControlQuery } from "@payky/core/modules/access/access-queries"
 import { decodePinHash } from "@payky/core/modules/access/access-utils"
@@ -27,8 +28,10 @@ import { DeviceItem } from "./device-item.tsx"
 import { TurnOnWizard } from "./turn-on-wizard.tsx"
 
 /**
- * Settings → Access (access/0001, access/0004), as web's
- * `AccessSettingsPage`. The route is `admin` (access/0002).
+ * Settings → Devices (access/0001, access/0013), as web's
+ * `AccessSettingsPage`: the account's devices, in order of what each may do
+ * without the PIN, and below them the PIN that locks the rest. The route is
+ * `admin` (access/0002).
  */
 export function AccessSettingsPage() {
   const { accountId } = useAccess()
@@ -47,7 +50,10 @@ function AccessSettings() {
 
   return (
     <Screen>
-      <FadeHeader title={t("access.title")} />
+      <FadeHeader title={t("devices.title")} />
+      {mode === "wizard" && !enabled ? null : (
+        <DevicesCard accessControlOn={enabled} />
+      )}
       {mode === "wizard" && !enabled ? (
         <TurnOnWizard hasPin={hasPin} onDone={toView} />
       ) : mode === "changePin" ? (
@@ -59,7 +65,6 @@ function AccessSettings() {
           onChangePin={() => setMode("changePin")}
         />
       )}
-      {mode === "wizard" && !enabled ? null : <DevicesCard />}
     </Screen>
   )
 }
@@ -121,7 +126,11 @@ function StatusCard({
   )
 }
 
-function DevicesCard() {
+function DevicesCard({
+  accessControlOn,
+}: {
+  readonly accessControlOn: boolean
+}) {
   const { t } = useTranslation()
   const { deviceId } = useAccess()
   const { data: devices } = useEvoluQuery(devicesQuery)
@@ -134,11 +143,12 @@ function DevicesCard() {
       </CardHeader>
       <CardContent>
         <SettingsTileList testID="access-devices">
-          {devices.map((device) => (
+          {sortDevicesByPermissions(devices).map((device) => (
             <DeviceItem
               key={device.id}
               device={device}
               thisDevice={device.id === deviceId}
+              accessControlOn={accessControlOn}
             />
           ))}
         </SettingsTileList>

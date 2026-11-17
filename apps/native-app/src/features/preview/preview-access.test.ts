@@ -34,7 +34,7 @@ it("requires current-account admin before diagnostic account mutations", () => {
   expectInOrder(
     addAccount,
     currentAccountReturn,
-    permissionReturn("admin", "settings.accounts.create.confirm.confirm"),
+    permissionReturn("admin", "settings.accounts.add.title"),
     currentAccountReturn,
     /insertAccount\(deviceEvolu, createAccountMasterKey\(\),/
   )
