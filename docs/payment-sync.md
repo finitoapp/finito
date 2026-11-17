@@ -62,7 +62,9 @@ never wait. MONETA takes none: the job and an open payment-wait screen may
 sync at once, and write the same rows. A second transfer for a paid payment
 claims it too, so it overpays the payment however the two syncs interleave
 (`payment/0007`). All pointers are wall-clock values (sync start time), not derived from any
-record's own timestamp, so a quiet sync still advances the window forward.
+record's own timestamp, so a quiet sync still advances the window forward. A
+pointer is written only when it moves: FIO's and MONETA's date once it
+changes, Spark's once it is an hour past the stored one (`payment/0026`).
 
 FIO and MONETA record a statement through the same steps
 (`reconciliation-claim/bank-sync-actions.ts`): the bank references already

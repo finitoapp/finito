@@ -400,6 +400,82 @@ describe("spark account transaction sync job", () => {
     expect(errors).toEqual([])
   })
 
+  test.each([
+    { name: "half an hour behind", behindMs: 30 * 60_000, written: false },
+    { name: "two hours behind", behindMs: 2 * 60 * 60_000, written: true },
+    {
+      name: "an hour ahead of the clock",
+      behindMs: -60 * 60_000,
+      written: true,
+    },
+  ])(
+    "writes the sync pointer again only once a sweep moves it an hour, or pulls it back to now: $name",
+    async ({ behindMs, written }) => {
+      await using testEvolu = await createEvoluTest()
+      const { evolu } = testEvolu
+      await using run = testCreateRun(evoluTestDeps(evolu))
+      const errors: unknown[] = []
+      const console = testCreateConsole()
+      const secret = createUniqueSecret()
+      const accountId = await run.ok(
+        createAccount({
+          deviceId: null,
+          name: NonEmptyString255("Spark account"),
+          spark: { secret },
+        })
+      )
+      await runMutationWithCompletion((options) =>
+        evolu.upsert(
+          "sparkAccountSyncPointer",
+          {
+            id: accountId,
+            lastSyncedAt: TimestampMs(testFixedDate.getTime() - behindMs),
+          },
+          { ...options, owner: evolu.appOwner }
+        )
+      )
+      const upsertSpy = vi.spyOn(evolu, "upsert")
+      await using jobRun = testCreateRun({
+        console,
+        ...evoluTestDeps(evolu),
+        ...createTestDateDep(testFixedDate),
+        fetch: unimplementedFetch,
+        lockManager: createInProcessLockManager(),
+        ...testNotificationsDep(),
+        onError: (error: unknown) => {
+          errors.push(error)
+        },
+      })
+      await using _job = await jobRun.ok(
+        createSparkAccountTransactionSyncJob({
+          walletFactory: createFakeWalletFactory(
+            secret,
+            new FakeSparkWallet([])
+          ),
+          recheckIntervalMs: 60_000,
+        })
+      )
+
+      // Logged after the pointer would have been written.
+      await expect
+        .poll(() =>
+          console
+            .getEntriesSnapshot()
+            .some(
+              (entry) =>
+                entry.args[0] === "Finished Spark transfer history sync."
+            )
+        )
+        .toBe(true)
+      expect(
+        upsertSpy.mock.calls.some(
+          ([table]) => table === "sparkAccountSyncPointer"
+        )
+      ).toBe(written)
+      expect(errors).toEqual([])
+    }
+  )
+
   test("retries reconciliation for a Spark transfer already recorded but never claimed", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

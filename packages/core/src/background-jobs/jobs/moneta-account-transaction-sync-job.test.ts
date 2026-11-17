@@ -1,5 +1,5 @@
 import { sqliteTrue, testCreateConsole, testCreateRun } from "@evolu/common"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { createQuery } from "../../evolu/schema.ts"
 import { MONETA_MAX_PAGES } from "../../integrations/moneta/moneta-client.ts"
 import { saveFiatBankAccount } from "../../modules/account/account-actions.ts"
@@ -198,6 +198,33 @@ describe("moneta account transaction sync job", () => {
         .get("fromDate")
         ?.slice(0, 10)
     ).toBe("2026-05-20")
+  })
+
+  test("does not write the pointer again when a sync ends on the day it points at", async () => {
+    await using context = await setUp()
+    await context.run.ok(
+      updateMonetaPluginSyncPointer({
+        lastSyncedDate: DateStringSchema.decode("2026-05-31"),
+      })
+    )
+    const upsertSpy = vi.spyOn(context.evolu, "upsert")
+
+    await using _job = await context.startJob()
+
+    // Logged right before the pointer would have been written.
+    await expect
+      .poll(() =>
+        context.console
+          .getEntriesSnapshot()
+          .some((entry) => entry.args[0] === "Synced MONETA transactions.")
+      )
+      .toBe(true)
+    expect(
+      upsertSpy.mock.calls.some(
+        ([table]) => table === "monetaPluginSyncPointer"
+      )
+    ).toBe(false)
+    expect(context.errors).toEqual([])
   })
 
   test("reads a long gap a week at a time, saving the pointer after each week", async () => {
