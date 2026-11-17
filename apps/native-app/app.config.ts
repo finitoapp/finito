@@ -27,6 +27,14 @@ export default {
   version: buildEnv.PAYKY_APP_VERSION,
   platforms: ["android", "ios", "web"],
   userInterfaceStyle: "automatic",
+  // React Compiler memoizes components and hooks at build time
+  // (babel-preset-expo runs `babel-plugin-react-compiler` when Metro asks it
+  // to), so a parent's render passes the children whose props did not
+  // change. On a PAX A920Pro a navigation spent most of its JS time
+  // rendering kit components that had not changed (2026-11-17,
+  // docs/plans/background-jobs-performance.md). A component that breaks the
+  // rules of React is left as written.
+  experiments: { reactCompiler: true },
   // The PWA icon; launchers without adaptive icons use it as is.
   icon: "./assets/app-icon.png",
   ios: {
