@@ -7,6 +7,7 @@ import {
 import { describe, expect, test } from "vitest"
 import { createQuery, type Evolu } from "../evolu/schema.ts"
 import { saveCashuAccount } from "../modules/account/account-actions.ts"
+import { cashuOperationChangesQuery } from "../modules/cashu/cashu-queries.ts"
 import {
   CashuAmount,
   type CashuQuoteId,
@@ -285,6 +286,35 @@ describe("cashu shard store", () => {
     const rows = await t.evolu.loadQuery(allOperationRowsQuery)
     expect(rows).toHaveLength(1)
     expect((await t.store.loadOperation(first))?.status).toBe("done")
+  })
+
+  test("the pending operations are the ones still pending once merged, an older shard's pending copy aside", async () => {
+    await using t = await setup()
+    await waitForHydration(t.store)
+    const settled = await t.store.insertOperation(topup("q1"))
+    const stillPending = await t.store.insertOperation(topup("q2"))
+    await movePointer(t.evolu, 1)
+
+    await t.store.updateOperation(settled, { status: "done" })
+
+    expect((await t.store.loadPendingOperations()).map(({ id }) => id)).toEqual(
+      [stillPending]
+    )
+  })
+
+  test("an operation write fires the operation changes", async () => {
+    await using t = await setup()
+    await waitForHydration(t.store)
+    const fired = Promise.withResolvers<void>()
+    const stop = t.store.subscribeOperationChanges(() => fired.resolve())
+    await t.evolu.loadQuery(
+      cashuOperationChangesQuery(await t.store.shardOwnerIds())
+    )
+
+    await t.store.insertOperation(topup("q1"))
+
+    await fired.promise
+    stop()
   })
 
   test("any spent copy wins the merge, even a tombstoned one", async () => {

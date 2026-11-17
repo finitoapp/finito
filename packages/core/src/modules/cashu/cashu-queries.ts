@@ -122,6 +122,45 @@ export const cashuOperationCopiesQuery = (
       .where("ownerId", "in", ownerIds)
   )
 
+/**
+ * Moves with every operation written under the shard owners: its count,
+ * tombstones included, with every row added, its latest `updatedAt` with
+ * every later change. A cheap signal for a reader that only needs to know
+ * when to look again, instead of subscribing every copy of every operation;
+ * a change synced with an older timestamp than the newest row moves
+ * neither, so such a reader also looks on a timer.
+ */
+export const cashuOperationChangesQuery = (
+  ownerIds: NonEmptyReadonlyArray<OwnerId>
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cashuOperation")
+      .select((eb) => [
+        eb.fn.countAll<number>().as("count"),
+        eb.fn.max("updatedAt").as("updatedAt"),
+      ])
+      .where("ownerId", "in", ownerIds)
+  )
+
+/**
+ * The ids of the operations with a pending copy under the shard owners: the
+ * ones a sync job may still have to settle. A copy is only a candidate, as a
+ * newer one in another shard may say otherwise; merge the operation itself
+ * before acting on it.
+ */
+export const cashuPendingOperationIdsQuery = (
+  ownerIds: NonEmptyReadonlyArray<OwnerId>
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("cashuOperation")
+      .select("id")
+      .distinct()
+      .where("ownerId", "in", ownerIds)
+      .where("status", "=", "pending")
+  )
+
 export const cashuOperationCopiesByIdQuery = (
   ownerIds: NonEmptyReadonlyArray<OwnerId>,
   id: CashuOperationId
