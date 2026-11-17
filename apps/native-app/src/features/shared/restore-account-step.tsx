@@ -12,7 +12,9 @@ import * as Clipboard from "expo-clipboard"
 import ClipboardPaste from "lucide-react-native/icons/clipboard-paste"
 import KeyRound from "lucide-react-native/icons/key-round"
 import { useRef, useState } from "react"
-import { Text, XStack, YStack } from "tamagui"
+import { Platform, ScrollView } from "react-native"
+import { Text, useTheme, XStack, YStack } from "tamagui"
+import { ScreenKeyboardBar, screenPaddingX } from "../../components/screen.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
   FieldDescription,
@@ -28,9 +30,11 @@ import { useTranslation } from "../../hooks/use-translation.ts"
  * The recovery-phrase form: a paste button and 20 numbered word fields, hidden
  * until shown. The phrase lives only in this component's state (gone on
  * unmount), never in a query key, a persisted atom or a log. A pasted phrase
- * fans out over the fields; unknown words and completions of the field being
- * typed in show under the grid. Keyboard learning, suggestions and autofill
- * are off. The whole form is kept out of screenshots, recordings, screen
+ * fans out over the fields; unknown words show under the grid, and the
+ * SLIP-39 completions of the field being typed in sit right above the
+ * keyboard (`ScreenKeyboardBar`), where its own suggestions would be — on
+ * the web under the grid. The keyboard's learning, suggestions and autofill
+ * are off: it never sees the phrase as words to remember. The whole form is kept out of screenshots, recordings, screen
  * sharing and the recents thumbnail while it is mounted, not only while the
  * words are shown: the unknown words and completions list them anyway, and
  * a phrase typed in hidden fields is still pieced together from what passes
@@ -52,6 +56,7 @@ export function RestoreAccountStep({
 }) {
   usePreventScreenCapture()
   const { t } = useTranslation()
+  const theme = useTheme()
   const [words, setWords] = useState(emptyRestoreWords)
   const [shown, setShown] = useState(false)
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -209,23 +214,37 @@ export function RestoreAccountStep({
               </XStack>
             ))}
           </XStack>
-          {analysis.suggestions.length > 0 ? (
-            <XStack flexWrap="wrap" gap="2">
-              {analysis.suggestions.map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  variant="outline"
-                  size="sm"
-                  label={suggestion}
-                  // On web a press would first blur the word field, which
-                  // clears the active slot and these suggestions with it;
-                  // Android keeps the focus (`keyboardShouldPersistTaps`).
-                  onMouseDown={(event) => event.preventDefault()}
-                  onPress={() => complete(suggestion)}
-                />
-              ))}
-            </XStack>
-          ) : null}
+          <ScreenKeyboardBar>
+            {analysis.suggestions.length > 0 ? (
+              <ScrollView
+                horizontal
+                keyboardShouldPersistTaps="always"
+                showsHorizontalScrollIndicator={false}
+                accessibilityLabel={t("onboarding.restore.suggestions")}
+                style={{ flexGrow: 0, backgroundColor: theme.background.val }}
+                contentContainerStyle={{
+                  gap: 8,
+                  paddingHorizontal: Platform.OS === "web" ? 0 : screenPaddingX,
+                  paddingVertical: Platform.OS === "web" ? 0 : 8,
+                }}
+              >
+                {analysis.suggestions.map((suggestion) => (
+                  <Button
+                    key={suggestion}
+                    variant="outline"
+                    size="sm"
+                    label={suggestion}
+                    // On web a press would first blur the word field, which
+                    // clears the active slot and these suggestions with it;
+                    // Android keeps the focus, nothing under the bar
+                    // dismissing the keyboard.
+                    onMouseDown={(event) => event.preventDefault()}
+                    onPress={() => complete(suggestion)}
+                  />
+                ))}
+              </ScrollView>
+            ) : null}
+          </ScreenKeyboardBar>
           {unknownWords.length > 0 ? (
             <FieldError>
               {t("onboarding.restore.unknownWords", {

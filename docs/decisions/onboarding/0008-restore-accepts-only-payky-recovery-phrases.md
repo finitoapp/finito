@@ -1,6 +1,6 @@
 # 0008 Restore accepts only Payky recovery phrases
 
-Status: accepted
+Status: superseded by onboarding/0014
 Date: 2026-10-25
 
 ## Context

@@ -103,15 +103,26 @@ export function restoreWordsToPhrase(words: ReadonlyArray<string>): string {
 }
 
 /**
- * Whether the words look like a seed from another wallet: a BIP-39 length
- * (12/15/18/21/24) or words that are all BIP-39 but not all SLIP-39.
+ * A BIP-39 word that is no SLIP-39 word and that no SLIP-39 word begins with:
+ * a phrase holding one cannot be a Payky phrase, not even with that word
+ * still being typed.
+ */
+const isForeignWord = (word: string): boolean =>
+  bip39WordSet.has(word) &&
+  !slip39WordSet.has(word) &&
+  !Slip39WordList.some((slip39Word) => slip39Word.startsWith(word))
+
+/**
+ * Whether the words look like a seed from another wallet: they hold a word
+ * only BIP-39 has, and either their count is a BIP-39 length (12/15/18/21/24)
+ * or every word is BIP-39. The count alone says nothing — a SLIP-39 phrase
+ * typed word by word passes through 12, 15 and 18 words too.
  */
 export function detectForeignSeed(words: ReadonlyArray<string>): boolean {
   const filled = words.filter((word) => word.length > 0)
-  if (filled.length === 0) return false
-  if (foreignSeedWordCounts.has(filled.length)) return true
+  if (!filled.some(isForeignWord)) return false
   return (
-    filled.every((word) => bip39WordSet.has(word)) &&
-    filled.some((word) => !slip39WordSet.has(word))
+    foreignSeedWordCounts.has(filled.length) ||
+    filled.every((word) => bip39WordSet.has(word))
   )
 }

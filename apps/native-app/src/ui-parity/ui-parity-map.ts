@@ -2076,7 +2076,7 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       Label:
         "web wraps the switch in a Label; native has no label-for, so the switch carries an aria-label and a Text sits beside it",
     },
-    note: "Native reads the clipboard through expo-clipboard and draws the word-grid inside the step. The submit button matches the onboarding full-width/min-height-44 wrapper and the Settings default-size/end-aligned layout; native hitSlop retains the touch target.",
+    note: "Native reads the clipboard through expo-clipboard and draws the word-grid inside the step. Its word suggestions sit right above the keyboard on Android (`ScreenKeyboardBar`), under the grid on the web export. The submit button matches the onboarding full-width/min-height-44 wrapper and the Settings default-size/end-aligned layout; native hitSlop retains the touch target.",
   },
   {
     native: "src/features/shared/tax-recap.tsx",
