@@ -1,8 +1,9 @@
-import { type Href, usePathname } from "expo-router"
+import type { Href } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import type { ReactNode } from "react"
 import { Linking } from "react-native"
 import { isWeb, styled, Text, View } from "tamagui"
+import { usePathnameSelect } from "../core/current-pathname.ts"
 import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
 import { useOpenDetail } from "../hooks/use-open-detail.ts"
 import type { ThemeColor } from "../theme/themes.ts"
@@ -171,16 +172,19 @@ export function VerticalNavRow({
 }) {
   const openDetail = useOpenDetail()
   const masterPane = useMasterPane()
-  const pathname = usePathname()
+  // In a master pane the row whose detail is open beside it reads as
+  // selected. Only that fact is read from the route, so a navigation renders
+  // the rows whose selection it changes, not the whole list under it.
+  const detailOpen = usePathnameSelect(
+    (pathname) =>
+      masterPane !== null &&
+      item.kind === "link" &&
+      isDetailOf(pathname, item.href)
+  )
   const disabled = item.disabled === true
   const onPress = disabled ? undefined : press(item, openDetail)
   const interactive = item.kind !== "static"
-  // In a master pane the row whose detail is open beside it reads as selected.
-  const active =
-    item.active ??
-    (masterPane !== null &&
-      item.kind === "link" &&
-      isDetailOf(pathname, item.href))
+  const active = item.active ?? detailOpen
   // The active row is tinted instead, and a static or disabled one is inert.
   const pressable = interactive && !disabled && !active
   const pressFill = usePressFill({ disabled: !pressable })

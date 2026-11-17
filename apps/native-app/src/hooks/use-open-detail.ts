@@ -1,4 +1,5 @@
-import { type Href, router, usePathname } from "expo-router"
+import { type Href, router } from "expo-router"
+import { currentPathname } from "../core/current-pathname.ts"
 import { hrefPath, useMasterPane } from "../core/master-pane.ts"
 
 /**
@@ -11,10 +12,11 @@ import { hrefPath, useMasterPane } from "../core/master-pane.ts"
  */
 export function useOpenDetail(): (href: Href) => void {
   const root = useMasterPane()
-  const pathname = usePathname()
+  // Read when pressed: subscribing would render every list row again on
+  // every navigation.
   return (href) => {
     if (root !== null) {
-      if (pathname === hrefPath(href)) return
+      if (currentPathname() === hrefPath(href)) return
       router.dismissTo(root)
     }
     router.push(href)

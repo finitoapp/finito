@@ -1,4 +1,3 @@
-import { usePathname } from "expo-router"
 import { type ReactNode, Suspense, useState } from "react"
 import { View, YStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
@@ -9,6 +8,7 @@ import {
   useScrollAwayHeaderInset,
 } from "../../components/screen.tsx"
 import { ScrollAwayHeader } from "../../components/scroll-away-header.tsx"
+import { usePathnameSelect } from "../../core/current-pathname.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { type ActivityTab, ActivityTabs } from "../shared/activity-tabs.tsx"
 
@@ -54,7 +54,9 @@ function ActivityFallback() {
  */
 export function ActivityLayout({ children }: { readonly children: ReactNode }) {
   const { t } = useTranslation()
-  const routed = activityTabOf(usePathname())
+  // Only the tab is read from the route: opening a payment over the list
+  // leaves the header and tabs alone.
+  const routed = usePathnameSelect(activityTabOf)
   const [selected, setSelected] = useState(routed)
   const [lastRouted, setLastRouted] = useState(routed)
   if (routed !== lastRouted) {

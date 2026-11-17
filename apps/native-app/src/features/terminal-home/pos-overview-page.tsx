@@ -25,7 +25,7 @@ import { router, useFocusEffect } from "expo-router"
 import { useAtom } from "jotai"
 import Plus from "lucide-react-native/icons/plus"
 import Users from "lucide-react-native/icons/users"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { FlatList, Pressable, ScrollView, View } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { screenPaddingX } from "../../components/screen.tsx"
@@ -81,18 +81,29 @@ function useOpenBill(): (billId: BillId) => void {
 }
 
 /**
- * The id is minted once per mounted button, as web's `NewBillLink`, so the
- * `/bill` URL is stable before the first tap and a bill left empty is
- * reopened rather than abandoned. Web's home unmounts behind the bill and
- * mints anew on return; native's stays mounted under the stack, so it mints
- * anew once the home loses focus — otherwise the next "New bill" reopened
- * the bill just charged.
+ * The id is minted once per visit of home, as web's `NewBillLink` mints it
+ * once per mounted link, so taps before leaving open one bill and a bill
+ * left empty is reopened rather than abandoned. Web's home unmounts behind
+ * the bill and mints anew on return; native's stays mounted under the
+ * stack, so it mints anew once the home loses focus — otherwise the next
+ * "New bill" reopened the bill just charged. A ref, not state: only the
+ * press reads it, and a state update on blur rendered every table tile
+ * again while the bill's screen was mounting.
  */
 function useNewBill(tableId: TableId | undefined) {
-  const [billId, setBillId] = useState(createRandomBillId)
-  useFocusEffect(useCallback(() => () => setBillId(createRandomBillId()), []))
+  const billIdRef = useRef<BillId | null>(null)
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        billIdRef.current = null
+      },
+      []
+    )
+  )
   const preloadBill = usePreloadBill()
   return () => {
+    billIdRef.current ??= createRandomBillId()
+    const billId = billIdRef.current
     preloadBill(billId)
     router.push({
       pathname: "/bill",
@@ -102,6 +113,9 @@ function useNewBill(tableId: TableId | undefined) {
 }
 
 const preloadedQueries = [tablesQuery, openBillsQuery]
+
+/** A free table's rows: one array, so its tile's props stay equal. */
+const noRows: ReadonlyArray<BillWithStats> = []
 
 /**
  * Web's POS home screen, home's Sales mode (navigation/0004): floor
@@ -130,7 +144,7 @@ export function PosOverviewPage() {
   const rowsByTableId = useMemo(() => groupBillRowsByTableId(rows), [rows])
   const tiles = tables.map((table) => ({
     table,
-    rows: rowsByTableId.get(table.id) ?? [],
+    rows: rowsByTableId.get(table.id) ?? noRows,
   }))
   const occupiedCount = tiles.filter((tile) => tile.rows.length > 0).length
   const visibleTiles = tiles.filter((tile) =>
@@ -186,7 +200,7 @@ export function PosOverviewPage() {
               </ToggleGroup>
             )}
           </XStack>
-          <NoTableStrip rows={rowsByTableId.get(null) ?? []} now={now} />
+          <NoTableStrip rows={rowsByTableId.get(null) ?? noRows} now={now} />
         </YStack>
       }
       ListEmptyComponent={
@@ -229,7 +243,12 @@ export function PosOverviewPage() {
       }
       renderItem={({ item }) => (
         <View style={{ width: "50%", padding: 4 }}>
-          <TableTile table={item.table} rows={item.rows} now={now} />
+          <TableTile
+            table={item.table}
+            rows={item.rows}
+            // A free table shows no time: its tile skips the clock's ticks.
+            now={item.rows.length > 0 ? now : 0}
+          />
         </View>
       )}
     />
