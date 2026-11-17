@@ -31,7 +31,6 @@ import {
 import { usePreloadActivity } from "../hooks/use-preload-activity.ts"
 import { useTranslation } from "../hooks/use-translation.ts"
 import { control, maxWidth, shape } from "../theme/tokens.ts"
-import { fadeTransition } from "../theme/transitions.ts"
 import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
 import { NotificationDot } from "./ui/notification-dot.tsx"
@@ -313,7 +312,7 @@ function RailProfileTile() {
     <View
       rounded={shape.control}
       overflow="hidden"
-      transition={fadeTransition}
+      transition="fast"
       opacity="1 hover:0.85 press:0.7"
       cursor="web:pointer"
       accessible
@@ -441,7 +440,7 @@ function MenuNavEntry({
       py={rail ? 8 : 0}
       px={rail ? 4 : 0}
       rounded={shape.control}
-      transition={fadeTransition}
+      transition="fast"
       bg={
         active
           ? rail

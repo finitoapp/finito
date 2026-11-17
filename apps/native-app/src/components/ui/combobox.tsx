@@ -3,7 +3,6 @@ import ChevronDown from "lucide-react-native/icons/chevron-down"
 import { createContext, type ReactNode, useContext, useState } from "react"
 import { styled, Text, View } from "tamagui"
 import { control, fontSize, shape } from "../../theme/tokens.ts"
-import { fadeTransition } from "../../theme/transitions.ts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog.tsx"
 import { Icon } from "./icon.tsx"
 import { Input } from "./input.tsx"
@@ -113,7 +112,7 @@ const TriggerFrame = styled(View, {
   pr: 10,
   pl: 12,
   rounded: shape.control,
-  transition: fadeTransition,
+  transition: "fast",
   bg: "input-bg hover:input-50 press:input-50",
   cursor: "web:pointer",
 
@@ -233,7 +232,7 @@ const ItemFrame = styled(View, {
   pl: 6,
   pr: 8,
   rounded: shape.control,
-  transition: fadeTransition,
+  transition: "fast",
   bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 

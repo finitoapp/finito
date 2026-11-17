@@ -15,7 +15,6 @@ import {
 } from "tamagui/unstyled"
 import type { ThemeColor } from "../../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
-import { fadeTransition } from "../../theme/transitions.ts"
 import { Icon } from "./icon.tsx"
 
 /**
@@ -66,7 +65,7 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   rounded: shape.control,
   cursor: "web:pointer",
   // The hover and press fills fade in (`theme/animations.ts`).
-  transition: fadeTransition,
+  transition: "fast",
 
   variants: {
     variant: {

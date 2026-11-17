@@ -125,7 +125,6 @@ import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { isSwitchioSupported } from "../../platform/switchio.ts"
 import { fontSize, fontWeight, radius, shape } from "../../theme/tokens.ts"
-import { fadeTransition } from "../../theme/transitions.ts"
 import { BillCancellationCollisionActions } from "../shared/bill-cancellation-collision-actions.tsx"
 import { CategoryFilterBar } from "../shared/category-filter-bar.tsx"
 import {
@@ -1614,7 +1613,7 @@ function ItemBrick({
         r={0}
         b={0}
         l={0}
-        transition={fadeTransition}
+        transition="fast"
         bg={
           pictured
             ? "transparent hover:photo-pressed press:photo-pressed"
