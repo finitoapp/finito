@@ -1,4 +1,5 @@
 import type {
+  ConfigOptions,
   NetworkType,
   SparkWallet,
   SparkWalletEvents,
@@ -211,6 +212,35 @@ const catchRejection = async <T>(
  * synchronized. `initialize` always constructs a fresh instance that this
  * pool exclusively owns, which avoids that race entirely.
  */
+/**
+ * `Wallet` whose failed initialization tears down what it started. The SDK
+ * opens its connections, its background stream and, on React Native, a
+ * 10-second claim timer before the wallet's first sync
+ * (`createClientsAndSyncWallet`, SDK 0.14.0). When that sync throws —
+ * offline at boot, an operator outage — `initialize` rejects without handing
+ * back the instance, so nobody could call `cleanup`: every failed start left
+ * a wallet reconnecting and polling in the background, and the sync job
+ * retries a failed start. `initialize` builds the wallet with `new this`, so
+ * it builds this subclass and runs its `initWallet`.
+ */
+const cleaningUpFailedInit = (Wallet: typeof SparkWallet) =>
+  class extends Wallet {
+    protected override async initWallet(
+      mnemonicOrSeed?: Uint8Array | string,
+      accountNumber?: number,
+      options?: ConfigOptions
+    ) {
+      try {
+        return await super.initWallet(mnemonicOrSeed, accountNumber, options)
+      } catch (error) {
+        // The failed start is what the caller hears about; a cleanup that
+        // fails as well has nothing to add to it.
+        await this.cleanup().catch(() => undefined)
+        throw error
+      }
+    }
+  }
+
 interface SparkWalletPoolKey {
   readonly network: SparkNetwork
   readonly mnemonic: string
@@ -226,7 +256,7 @@ const sparkWalletPool = createRefCountedResourcePool<
   // shared app bundle — it's fetched only once a wallet is actually acquired.
   create: async ({ mnemonic, network }) => {
     const { SparkWallet } = await import("@buildonspark/spark-sdk")
-    const { wallet } = await SparkWallet.initialize({
+    const { wallet } = await cleaningUpFailedInit(SparkWallet).initialize({
       // The seed, not the mnemonic: the SDK would derive the same seed in
       // pure JS (~1.6 s of blocked JS on Hermes), where this one can come
       // from the platform's native PBKDF2 (`installBip39Pbkdf2`).

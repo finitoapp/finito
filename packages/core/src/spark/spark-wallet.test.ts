@@ -3,28 +3,49 @@ import { ExitSpeed } from "@buildonspark/spark-sdk/types"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { SparkSecret } from "../modules/shared/key-derivation.ts"
 
-const { initializeMock, FakeUUID, FakeSparkValidationError } = vi.hoisted(
-  () => {
-    class FakeUUID {
-      readonly value: string
-      constructor(value: string) {
-        this.value = value
-      }
-      static parse(value: string) {
-        return new FakeUUID(value)
-      }
+const {
+  initializeMock,
+  failedInitCleanupMock,
+  FakeUUID,
+  FakeSparkValidationError,
+  FakeSdkSparkWallet,
+} = vi.hoisted(() => {
+  const initializeMock = vi.fn()
+  const failedInitCleanupMock = vi.fn(async () => undefined)
+  /**
+   * The SDK's `SparkWallet` as far as the wrapper sees it: a class the
+   * wrapper subclasses, whose `initialize` is the mock above. Its own
+   * `initWallet` fails as the SDK's does when the first sync throws, for
+   * a test that makes `initialize` run it.
+   */
+  class FakeSdkSparkWallet {
+    static initialize = initializeMock
+    protected async initWallet(): Promise<never> {
+      throw new Error("Spark wallet sync failed")
     }
-    class FakeSparkValidationError extends Error {}
-    return {
-      initializeMock: vi.fn(),
-      FakeUUID,
-      FakeSparkValidationError,
+    cleanup = failedInitCleanupMock
+  }
+  class FakeUUID {
+    readonly value: string
+    constructor(value: string) {
+      this.value = value
+    }
+    static parse(value: string) {
+      return new FakeUUID(value)
     }
   }
-)
+  class FakeSparkValidationError extends Error {}
+  return {
+    initializeMock,
+    failedInitCleanupMock,
+    FakeUUID,
+    FakeSparkValidationError,
+    FakeSdkSparkWallet,
+  }
+})
 
 vi.mock("@buildonspark/spark-sdk", () => ({
-  SparkWallet: { initialize: initializeMock },
+  SparkWallet: FakeSdkSparkWallet,
   UUID: FakeUUID,
   SparkValidationError: FakeSparkValidationError,
   SparkWalletEvent: {
@@ -36,6 +57,7 @@ vi.mock("@buildonspark/spark-sdk", () => ({
 
 beforeEach(() => {
   initializeMock.mockClear()
+  failedInitCleanupMock.mockClear()
 })
 
 const { createDefaultSparkPaymentWallet, createSharedSparkSyncWallet } =
@@ -301,6 +323,23 @@ describe("createDefaultSparkPaymentWallet", () => {
     await using wallet = await createDefaultSparkPaymentWallet(nextSecret())
 
     await expect(wallet.getTransfer("known")).rejects.toThrow("unavailable")
+  })
+})
+
+describe("Spark wallet initialization", () => {
+  test("cleans up a wallet whose initialization failed, which the SDK hands nobody", async () => {
+    // What the SDK's `initialize` does: build the wallet with `new this` and
+    // run its `initWallet`, rejecting without the instance when it throws.
+    initializeMock.mockImplementationOnce(async function (
+      this: new () => { readonly initWallet: () => Promise<unknown> }
+    ) {
+      return await new this().initWallet()
+    })
+
+    await expect(createSharedSparkSyncWallet(nextSecret())).rejects.toThrow(
+      "Spark wallet sync failed"
+    )
+    expect(failedInitCleanupMock).toHaveBeenCalledTimes(1)
   })
 })
 

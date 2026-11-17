@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import {
   type BankPluginSyncOutcome,
   createBankPluginSyncSession,
-  getBankPluginSyncRetryTicks,
 } from "./bank-plugin-sync.ts"
 
 const intervalMs = 60_000
@@ -88,19 +87,5 @@ describe("bank plugin sync session", () => {
 
     expect(session.isDisposed).toBe(true)
     expect(minutes(syncTimes)).toEqual([0])
-  })
-})
-
-describe("getBankPluginSyncRetryTicks", () => {
-  test("doubles the ticks to wait up to 15 minutes", () => {
-    expect(getBankPluginSyncRetryTicks(300_000, 1)).toBe(1)
-    expect(getBankPluginSyncRetryTicks(300_000, 2)).toBe(2)
-    expect(getBankPluginSyncRetryTicks(300_000, 3)).toBe(3)
-    expect(getBankPluginSyncRetryTicks(300_000, 10)).toBe(3)
-    expect(getBankPluginSyncRetryTicks(30_000, 10)).toBe(30)
-  })
-
-  test("waits at least the next tick when the interval exceeds the cap", () => {
-    expect(getBankPluginSyncRetryTicks(20 * 60_000, 5)).toBe(1)
   })
 })

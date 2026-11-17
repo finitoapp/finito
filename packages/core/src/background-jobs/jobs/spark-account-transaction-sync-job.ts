@@ -41,6 +41,7 @@ import {
 import type { BackgroundJobContext } from "../background-job-types.ts"
 import { createKeyedTaskQueue } from "../keyed-task-queue.ts"
 import { reconcileAccountSyncSessions } from "../reconcile-account-sync-sessions.ts"
+import { getRetryTicks } from "../retry-ticks.ts"
 
 const DEFAULT_RECHECK_INTERVAL_MS = 60_000
 // Pending withdrawals are checked on their own, far more often than the
@@ -211,7 +212,12 @@ const createSparkAccountSyncManager = ({
       getKey: (account) => account.id,
       matches: (session, account) => session.secret === account.secret,
       createSession: (account) =>
-        createSparkAccountSyncSession({ account, run, walletFactory }),
+        createSparkAccountSyncSession({
+          account,
+          run,
+          walletFactory,
+          recheckIntervalMs,
+        }),
       disposeSession: (session) => session[Symbol.asyncDispose](),
       onSessionStopped: (accountId) => {
         run.deps.console.info("Stopped Spark account sync.", { accountId })
@@ -274,10 +280,13 @@ const createSparkAccountSyncSession = ({
   account,
   run,
   walletFactory,
+  recheckIntervalMs,
 }: {
   readonly account: SparkAccountRow
   readonly run: Run<SparkSyncJobContext>
   readonly walletFactory: SparkWalletFactory
+  /** The job's history timer, whose ticks a failed start waits out. */
+  readonly recheckIntervalMs: number
 }): AsyncDisposable & {
   readonly secret: SparkSecret
   syncHistorySoon: () => void
@@ -287,6 +296,11 @@ const createSparkAccountSyncSession = ({
   let unsubscribeEvents: (() => void) | undefined
   let disposed = false
   let isInitializing = false
+  // A wallet that fails to start (offline, an operator outage) is tried
+  // again on the history timer, backing off (`getRetryTicks`): every start
+  // opens connections and signs in to every operator before it can fail.
+  let failedInitCount = 0
+  let initTicksToSkip = 0
   let pendingHistorySync = false
   const pendingTransferIds = new Set<string>()
   const queue = createKeyedTaskQueue<
@@ -582,6 +596,10 @@ const createSparkAccountSyncSession = ({
   const syncHistorySoon = (): void => {
     if (wallet === undefined) {
       bufferHistorySync("Buffered Spark history event before wallet init.")
+      if (initTicksToSkip > 0) {
+        initTicksToSkip -= 1
+        return
+      }
       initializeSoon()
       return
     }
@@ -613,7 +631,16 @@ const createSparkAccountSyncSession = ({
     isInitializing = true
 
     try {
-      const createdWallet = await walletFactory(account.secret)
+      let createdWallet: SharedSparkSyncWallet
+      try {
+        createdWallet = await walletFactory(account.secret)
+      } catch (error) {
+        failedInitCount += 1
+        initTicksToSkip = getRetryTicks(recheckIntervalMs, failedInitCount) - 1
+        throw error
+      }
+      failedInitCount = 0
+      initTicksToSkip = 0
 
       if (disposed) {
         await createdWallet[Symbol.asyncDispose]()
