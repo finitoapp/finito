@@ -1,5 +1,4 @@
 import { shortenNpub } from "@payky/core/integrations/nostr/nostr-client"
-import { usePathname } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import { isWeb, Text, YStack } from "tamagui"
 import { Icon } from "../../../components/ui/icon.tsx"
@@ -10,6 +9,7 @@ import {
   usePressFill,
 } from "../../../components/ui/press-fill.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
+import { usePathnameSelect } from "../../../core/current-pathname.ts"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import {
   useActiveNostrProfile,
@@ -48,8 +48,9 @@ export function ProfileCard() {
   const profile = useActiveNostrProfile()
   const openDetail = useOpenDetail()
   const masterPane = useMasterPane()
-  const pathname = usePathname()
-  const editorOpen = masterPane !== null && pathname === "/settings/profile"
+  const editorOpen = usePathnameSelect(
+    (pathname) => masterPane !== null && pathname === "/settings/profile"
+  )
   const name = profile.data?.name ?? null
   const pending = profile.data === null && profile.loading
   const picture = profile.data?.picture ?? null

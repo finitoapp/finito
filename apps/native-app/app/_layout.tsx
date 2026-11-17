@@ -13,6 +13,7 @@ import {
   type ComponentType,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from "react"
@@ -232,7 +233,8 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   // them on a large window, the terminal's included; the bottom bar on a
   // menu tab's root screen otherwise (home keeps its hamburger).
   const pathname = usePathname()
-  useEffect(() => recordPathname(pathname), [pathname])
+  // Before paint, so a screen selecting from the route draws it right.
+  useLayoutEffect(() => recordPathname(pathname), [pathname])
   const menu = menuPositionOf(pathname)
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   const sidebar = menu !== undefined && wide
