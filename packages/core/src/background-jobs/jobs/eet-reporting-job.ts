@@ -14,6 +14,7 @@ import {
   deliverEetSale,
 } from "../../modules/eet/eet-actions.ts"
 import {
+  eetCreationTriggerQuery,
   eetExtraClaimsQuery,
   eetPaymentsToReportQuery,
   eetRefundsToReverseQuery,
@@ -46,6 +47,12 @@ type EetDelivery = Task<
 >
 
 const EET_RETRY_BASE_DELAY_MS = 30_000
+/**
+ * How often the job looks for what is due without being told: the one
+ * change `eetCreationTriggerQuery` cannot see, an update synced with an
+ * older timestamp than the newest row, waits at most this long (eet/0013).
+ */
+const EET_CREATION_RECHECK_MS = 5 * 60 * 1000
 const EET_RETRY_MAX_DELAY_MS = 15 * 60 * 1000
 
 export const getEetRetryDelayMs = (
@@ -63,9 +70,11 @@ export const createEetReportingJob =
   ({
     retryBaseDelayMs = EET_RETRY_BASE_DELAY_MS,
     priorityPeriodMs = EET_PRIORITY_PERIOD_MS,
+    creationRecheckMs = EET_CREATION_RECHECK_MS,
   }: {
     readonly retryBaseDelayMs?: number
     readonly priorityPeriodMs?: number
+    readonly creationRecheckMs?: number
   } = {}): AppBackgroundJob =>
   (run) => {
     const jobRun = run.create({
@@ -75,6 +84,7 @@ export const createEetReportingJob =
     const reporting = new EetReporting(jobRun, {
       retryBaseDelayMs,
       priorityPeriodMs,
+      creationRecheckMs,
     })
 
     reporting.start()
@@ -99,6 +109,7 @@ class EetReporting {
   } | null = null
   private onlineCount = 0
   private readonly unsubscribes: ReadonlyArray<() => void>
+  private readonly creationRecheck: ReturnType<typeof setInterval>
   private readonly queue = createKeyedTaskQueue<"create" | "deliver">({
     onError: (error) => this.run.deps.onError(error),
   })
@@ -108,27 +119,27 @@ class EetReporting {
     {
       retryBaseDelayMs,
       priorityPeriodMs,
+      creationRecheckMs,
     }: {
       readonly retryBaseDelayMs: number
       readonly priorityPeriodMs: number
+      readonly creationRecheckMs: number
     }
   ) {
     this.run = run
     this.retryBaseDelayMs = retryBaseDelayMs
     this.priorityPeriodMs = priorityPeriodMs
     const { evolu, connectivity } = run.deps
+    // What is due to be created is read only when the trigger moves, not
+    // kept subscribed: those queries read every claim since EET was enabled
+    // (eet/0013). What is due to be delivered stays subscribed, as it is
+    // read from the sales and reversals alone.
     this.unsubscribes = [
-      evolu.subscribeQuery(eetPaymentsToReportQuery)(() => {
-        this.queueCreation()
-      }),
-      evolu.subscribeQuery(eetExtraClaimsQuery)(() => {
+      evolu.subscribeQuery(eetCreationTriggerQuery)(() => {
         this.queueCreation()
       }),
       evolu.subscribeQuery(eetSalesToDeliverQuery)(() => {
         this.queueDelivery()
-      }),
-      evolu.subscribeQuery(eetRefundsToReverseQuery)(() => {
-        this.queueCreation()
       }),
       evolu.subscribeQuery(eetReversalsToDeliverQuery)(() => {
         this.queueDelivery()
@@ -137,6 +148,10 @@ class EetReporting {
         this.retryNow()
       }),
     ]
+    this.creationRecheck = setInterval(() => {
+      this.queueCreation()
+    }, creationRecheckMs)
+    ;(this.creationRecheck as { readonly unref?: () => void }).unref?.()
   }
 
   start(): void {
@@ -148,6 +163,7 @@ class EetReporting {
     if (this.queue.isDisposed) return
 
     for (const unsubscribe of this.unsubscribes) unsubscribe()
+    clearInterval(this.creationRecheck)
     for (const { timer } of this.backoffs.values()) {
       if (timer !== null) clearTimeout(timer)
     }
