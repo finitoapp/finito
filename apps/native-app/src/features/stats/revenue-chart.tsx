@@ -1,3 +1,4 @@
+import { numberFormat } from "@payky/app-shared/number-format"
 import {
   type RevenueChartPoint,
   revenueChartPoints,
@@ -324,7 +325,7 @@ function RevenueDetail({
       )}
       {ratio === null ? null : (
         <DetailLine label={t("stats.chart.change")}>
-          {new Intl.NumberFormat(locale, {
+          {numberFormat(locale, {
             style: "percent",
             signDisplay: "exceptZero",
             maximumFractionDigits: 0,

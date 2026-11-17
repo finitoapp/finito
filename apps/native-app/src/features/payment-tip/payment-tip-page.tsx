@@ -1,4 +1,5 @@
 import { sqliteTrue } from "@evolu/common"
+import { numberFormat } from "@payky/app-shared/number-format"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import {
   parseTipFixedAmounts,
@@ -113,7 +114,7 @@ function PaymentTipForm({
     }
   })
   // A fixed tip, large, says its share of the order beneath.
-  const percentFormat = new Intl.NumberFormat(locale, {
+  const percentFormat = numberFormat(locale, {
     maximumFractionDigits: 1,
   })
   const fixedOptions = fixedAmounts.map((fixed) => {

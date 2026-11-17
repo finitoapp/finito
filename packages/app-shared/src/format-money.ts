@@ -5,6 +5,7 @@ import {
   SATS_PER_BTC,
 } from "@payky/core/modules/shared/money"
 import type { Currency } from "@payky/core/modules/shared/schema"
+import { numberFormat } from "./number-format.ts"
 
 /**
  * How the fraction is shown: `always` writes the currency's digits even
@@ -31,7 +32,7 @@ export function formatAmount(
   { fraction = "always" }: FormatMoneyOptions = {}
 ) {
   if (currency === "BTC") {
-    return new Intl.NumberFormat(locale, {
+    return numberFormat(locale, {
       style: "currency",
       currencyDisplay: "code",
       currency: "USD", // Use USD as base but replace symbol
@@ -43,7 +44,7 @@ export function formatAmount(
   }
 
   try {
-    return new Intl.NumberFormat(locale, {
+    return numberFormat(locale, {
       style: "currency",
       currency,
       ...(currency === undefined
@@ -68,7 +69,7 @@ export function formatMoney(
 
 /** A satoshi amount with the locale's digit grouping, and no currency label. */
 export const formatSatsAmount = (sats: number, locale: string): string =>
-  new Intl.NumberFormat(locale).format(sats)
+  numberFormat(locale).format(sats)
 
 /**
  * An amount split for a display that draws the unit smaller than the
@@ -118,7 +119,7 @@ export function formatAmountParts(
     }
   }
   try {
-    const parts = new Intl.NumberFormat(locale, {
+    const parts = numberFormat(locale, {
       style: "currency",
       currency,
       minimumFractionDigits: fractionDigits(amount, currency, fraction),

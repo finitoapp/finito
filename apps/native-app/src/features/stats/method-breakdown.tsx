@@ -1,5 +1,6 @@
 import { paymentMethodLabelKey } from "@payky/app-shared/activity-labels"
 import type { TranslationKey } from "@payky/app-shared/i18n/resources"
+import { numberFormat } from "@payky/app-shared/number-format"
 import type {
   ExpectedCash,
   MethodBreakdown as MethodBreakdownRow,
@@ -257,7 +258,7 @@ function MethodDonut({
         <YStack gap="1" aria-live="polite" width="100%">
           <Text fontWeight="600">{t(methodLabelKey(chosen.method))}</Text>
           <Text fontSize={13}>
-            {`${new Intl.NumberFormat(locale, {
+            {`${numberFormat(locale, {
               style: "percent",
               maximumFractionDigits: 0,
             }).format(chosen.share)} · ${money(chosen.amount, row.currency)}`}
@@ -320,7 +321,7 @@ function MethodRow({
           {t(methodLabelKey(method.method))}
         </Text>
         <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
-          {new Intl.NumberFormat(locale, {
+          {numberFormat(locale, {
             style: "percent",
             maximumFractionDigits: 0,
           }).format(method.share)}
