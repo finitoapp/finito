@@ -28,6 +28,7 @@ import {
   useNostrIdentity,
   useNostrProfile,
 } from "../hooks/use-nostr-profile.ts"
+import { usePreloadActivity } from "../hooks/use-preload-activity.ts"
 import { useTranslation } from "../hooks/use-translation.ts"
 import { control, maxWidth, shape } from "../theme/tokens.ts"
 import { fadeTransition } from "../theme/transitions.ts"
@@ -359,6 +360,7 @@ function MenuNavLink({
   readonly onSelect?: ((tab: MenuTab) => void) | undefined
 }) {
   const { t } = useTranslation()
+  const preloadActivity = usePreloadActivity()
   const { icon, labelKey } = menuTabFaces[tab]
   // The notifications' tab carries their dot (home's hamburger the same).
   const unread = useActiveNotifications().length > 0 && tab === "notifications"
@@ -389,6 +391,7 @@ function MenuNavLink({
           // to the tab's root rather than a second copy of it.
           router.dismissTo(menuTabTargets[tab].href)
         } else {
+          if (tab === "activity") preloadActivity()
           router.replace(menuTabTargets[tab].href)
         }
       }}

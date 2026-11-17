@@ -7,6 +7,7 @@ import { createQuery } from "../../evolu/schema.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import type { DeviceId } from "../device/device-types.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
+import { cacheQueryByLimit } from "../shared/evolu-utils.ts"
 import type { NonEmptyString, NonEmptyString255 } from "../shared/schema.ts"
 import type { PaymentId, QerkoPaymentAttemptId } from "./payment-types.ts"
 
@@ -754,7 +755,7 @@ export const paymentReconciliationsQuery = (paymentId: PaymentId) =>
  * `limit: pageSize + 1` and slice off the extra row to detect whether more
  * payments remain without a separate count query.
  */
-export const latestPaymentsQuery = (limit: number) =>
+export const latestPaymentsQuery = cacheQueryByLimit((limit: number) =>
   createQuery((db) =>
     db
       .selectFrom("payment")
@@ -1013,6 +1014,7 @@ export const latestPaymentsQuery = (limit: number) =>
         createdAt: KyselyNotNull
       }>()
   )
+)
 
 export const paymentRequestQuery = (paymentId: PaymentId) =>
   createQuery((db) =>

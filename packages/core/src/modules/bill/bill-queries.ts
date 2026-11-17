@@ -7,6 +7,7 @@ import {
 
 import { createQuery } from "../../evolu/schema.ts"
 import { quotedAmountSatsSql } from "../shared/claimed-amount.ts"
+import { cacheQueryByLimit } from "../shared/evolu-utils.ts"
 import type { TableId } from "../table/table-types.ts"
 import type { BillId } from "./bill-types.ts"
 
@@ -186,7 +187,7 @@ export const openBillsByTableIdQuery = (tableId: TableId) =>
  * `bill-utils.ts` then re-derives status/coverage from `lines`/
  * `claimedTransactions` with the same pure logic the detail page uses.
  */
-export const latestBillsQuery = (limit: number) =>
+export const latestBillsQuery = cacheQueryByLimit((limit: number) =>
   createQuery((db) =>
     db
       .selectFrom("bill")
@@ -343,6 +344,7 @@ export const latestBillsQuery = (limit: number) =>
       .orderBy("createdAt", "desc")
       .limit(limit)
   )
+)
 
 /**
  * Every bill's `displayNumber`, oldest first, regardless of status — the
