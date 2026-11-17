@@ -102,8 +102,9 @@ function useNewBill(tableId: TableId | undefined) {
   )
   const preloadBill = usePreloadBill()
   return () => {
-    billIdRef.current ??= createRandomBillId()
-    const billId = billIdRef.current
+    // Not `??=`, which React Compiler cannot compile.
+    const billId = billIdRef.current ?? createRandomBillId()
+    billIdRef.current = billId
     preloadBill(billId)
     router.push({
       pathname: "/bill",

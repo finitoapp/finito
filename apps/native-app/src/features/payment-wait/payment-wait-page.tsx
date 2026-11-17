@@ -14,10 +14,6 @@ import {
   buildCashuPaymentUri,
   defaultCashuPaymentRequestLegs,
 } from "@payky/core/cashu/cashu-payment-request"
-import {
-  fetchNostrProfile,
-  getNostrIdentity,
-} from "@payky/core/integrations/nostr/nostr-client"
 import { createQerkoPaymentQrPayload } from "@payky/core/integrations/qerko/qerko-client"
 import {
   cashuAccountQuery,
@@ -92,6 +88,10 @@ import {
   useEvoluQuery,
   usePreloadEvoluQueries,
 } from "../../hooks/use-evolu-query.ts"
+import {
+  useNostrIdentity,
+  useNostrProfile,
+} from "../../hooks/use-nostr-profile.ts"
 import { paymentWaitQueries } from "../../hooks/use-preload-payment-wait.ts"
 import { useCashuRunToast, useRunToast } from "../../hooks/use-run-toast.ts"
 import { useScreenVisit } from "../../hooks/use-screen-visit.ts"
@@ -253,12 +253,7 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const accounts = useEvoluQuery(enabledPaymentMethodAccountsQuery).data
   const [cashuAccountRow] = useEvoluQuery(cashuAccountQuery).data
   const [settings] = useEvoluQuery(settingsQuery).data
-  const masterKey = useAtomValue(accountAtom).masterKey
-  // A secp256k1 derivation in JS: once per account, not on every render.
-  const nostrPubkey = useMemo(
-    () => getNostrIdentity(masterKey).pubkey,
-    [masterKey]
-  )
+  const nostrPubkey = useNostrIdentity().pubkey
   const [edited, setEdited] = useState<string | null>(null)
   const [errorKey, setErrorKey] = useState<TranslationKey | null>(null)
   const [ibanErrorKey, setIbanErrorKey] = useState<TranslationKey | null>(null)
@@ -272,8 +267,11 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
   const [selected, setSelected] = useState<MethodId | null>(null)
   // The profile name is the recipient the bank QR names (payment/0005). It
   // comes from relays, so the QR shows at once and takes the name when it
-  // lands rather than waiting on a relay that may be slow or down.
-  const [profileName, setProfileName] = useState<string | null>(null)
+  // lands rather than waiting on a relay that may be slow or down. Read once
+  // a session and shared with Settings (`useNostrProfile`), not on every
+  // payment: the relay round trip and its signature check ran on the JS
+  // thread while this screen was animating in.
+  const profileName = useNostrProfile(nostrPubkey).data?.name ?? null
   // Refs close the window before the pending state re-renders, so repeated
   // taps neither stack PIN prompts nor settle or cancel twice.
   const busyRef = useRef(false)
@@ -281,22 +279,6 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
     {}
   )
   const [runner] = useState(createPaymentMethodPreparationRunner)
-
-  useEffect(() => {
-    let ignore = false
-    void (async () => {
-      try {
-        await using run = appRun()
-        const result = await run(fetchNostrProfile({ pubkey: nostrPubkey }))
-        if (!ignore && result.ok) setProfileName(result.value.name ?? null)
-      } catch (error) {
-        nativeConsole.error("Failed to read the profile name", error)
-      }
-    })()
-    return () => {
-      ignore = true
-    }
-  }, [appRun, nostrPubkey])
 
   // The enabled accounts in the payment's currency, like web's tab list, in
   // the merchant's method order.
