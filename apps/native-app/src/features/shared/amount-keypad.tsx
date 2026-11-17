@@ -26,6 +26,21 @@ import { useKeypadKeyboard } from "./use-keypad-keyboard.ts"
 
 type AmountInputAtom = PrimitiveAtom<string>
 
+/**
+ * Resolves once a frame has passed since the call, so a state set before it
+ * is on screen. A Charge that navigates (home with tips on pushes the tip
+ * step) renders the next screen synchronously in the press handler, and
+ * React committed the pending state together with it: on a PAX A920Pro the
+ * button stayed as it was for about a second, the time the tip step took to
+ * render (measured 2026-11-17, 934–1062 ms from touch to the pending frame).
+ */
+const afterNextFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve())
+    })
+  })
+
 /** The key bubble, read as `changePulseKeyframes` in `components/motion.ts`. */
 const bubbleKeyframes = {
   inputRange: [0, 0.6, 1],
@@ -81,6 +96,7 @@ export function AmountKeypad({
     pendingRef.current = true
     setPending(true)
     try {
+      await afterNextFrame()
       await onSubmit(NonNegativeInteger(minor))
     } finally {
       pendingRef.current = false
