@@ -1,6 +1,7 @@
 import { currencyFractionDigits } from "@payky/core/modules/shared/money"
 import type { Currency } from "@payky/core/modules/shared/schema"
 import { type AmountParts, splitCurrencyParts } from "./format-money.ts"
+import { numberFormat } from "./number-format.ts"
 
 export const amountKeypadKeys = [
   "1",
@@ -61,7 +62,7 @@ export function applyAmountKey(
 
 export function getDecimalSeparator(locale: string): string {
   return (
-    new Intl.NumberFormat(locale)
+    numberFormat(locale)
       .formatToParts(1.1)
       .find((part) => part.type === "decimal")?.value ?? "."
   )
@@ -71,7 +72,7 @@ export function getDecimalSeparator(locale: string): string {
 function formatAmountNumber(amountInput: string, locale: string): string {
   const [integerPart = "0", fractionPart = ""] = amountInput.split(".")
   const hasDecimalSeparator = amountInput.includes(".")
-  const formattedIntegerPart = new Intl.NumberFormat(locale, {
+  const formattedIntegerPart = numberFormat(locale, {
     maximumFractionDigits: 0,
     useGrouping: true,
   }).format(Number(integerPart === "" ? "0" : integerPart))
@@ -82,7 +83,7 @@ function formatAmountNumber(amountInput: string, locale: string): string {
 }
 
 const currencyLayoutParts = (currency: Currency, locale: string) =>
-  new Intl.NumberFormat(locale, {
+  numberFormat(locale, {
     currency,
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,

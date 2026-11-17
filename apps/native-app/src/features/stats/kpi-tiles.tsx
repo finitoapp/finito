@@ -1,3 +1,4 @@
+import { numberFormat } from "@payky/app-shared/number-format"
 import type { StatsRange } from "@payky/core/modules/sales-stats/sales-stats-types"
 import {
   type SalesKpis,
@@ -259,7 +260,7 @@ function DeltaLabel({ tile }: { readonly tile: Tile }) {
   }
   const good = ratio === 0 ? null : ratio > 0 === tile.upIsGood
   const color = good === true ? "accent-text" : "muted-foreground"
-  const percent = new Intl.NumberFormat(locale, {
+  const percent = numberFormat(locale, {
     style: "percent",
     maximumFractionDigits: 0,
     signDisplay: "exceptZero",
