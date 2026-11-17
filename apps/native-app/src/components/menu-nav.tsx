@@ -341,10 +341,14 @@ function RailProfileTile() {
     >
       <Animated.View
         style={{
-          opacity: press.progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 0.7],
-          }),
+          // Untouched until the first press, which mounts the progress.
+          opacity:
+            press.progress === null
+              ? 1
+              : press.progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [1, 0.7],
+                }),
         }}
       >
         <RailTile picture={profile.data?.picture ?? null} />
