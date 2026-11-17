@@ -262,6 +262,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/components/vertical-nav.tsx",
     web: ["apps/web-app/src/components/vertical-nav.tsx"],
     status: "matched",
+    allowedDifferences: {
+      PressFill:
+        "web's hover/active fill is CSS; native draws the pressed fill as a native-driven layer (ui/press-fill.tsx)",
+    },
   },
   {
     native: "src/features/activity/activity-parts.tsx",
@@ -415,6 +419,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       RouteMessage:
         "web answers an unparsable bill id in the route file (_terminal.bill.tsx); native's route renders this page, which does it",
+      PressFill:
+        "web's hover/active fill is CSS; native draws the pressed fill as a native-driven layer (ui/press-fill.tsx)",
     },
   },
   {
@@ -450,6 +456,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     status: "matched",
     allowedDifferences: {
       DialogClose: "the native dialog has no close part; Cancel calls onClose",
+      PressFill:
+        "web's hover/active fill is CSS; native draws the pressed fill as a native-driven layer (ui/press-fill.tsx)",
     },
   },
   {
@@ -1721,6 +1729,8 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     allowedDifferences: {
       VerticalNavShell:
         "web styles its Link with verticalNavShellClassName; native renders the exported shell component itself",
+      PressFill:
+        "web's hover/active fill is CSS; native draws the pressed fill as a native-driven layer (ui/press-fill.tsx)",
     },
   },
   {
@@ -2397,6 +2407,10 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     web: [],
     status: "matched",
     note: "One of home's modes as a pictured choice, shared by onboarding's selling step (one mode, as a radio) and the home screen settings (each mode on or off, as a checkbox); web draws the onboarding card inside its selling step and the settings as switches.",
+    allowedDifferences: {
+      PressFill:
+        "web's hover/active fill is CSS; native draws the pressed fill as a native-driven layer (ui/press-fill.tsx)",
+    },
   },
   {
     native: "src/features/shared/wallet-body.tsx",

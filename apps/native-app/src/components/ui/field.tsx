@@ -8,8 +8,14 @@ import {
   useRef,
   useState,
 } from "react"
-import { type GetProps, styled, Text, View } from "tamagui"
+import { type GetProps, isWeb, styled, Text, View } from "tamagui"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/field.tsx`: the same parts, in
@@ -166,30 +172,48 @@ const FieldLabelCardFrame = styled(View, {
   px: 12,
   py: 10,
   rounded: shape.control,
-  transition: "fast",
-  bg: "surface-raised hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
+  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
+  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
-    checked: { true: { bg: "primary-10 hover:primary-15 press:primary-15" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
+
+/**
+ * The card's fill at rest and pressed (or hovered, on web), drawn on native
+ * by a `PressFill` layer (`press-fill.tsx` says why); checking it swaps the
+ * fill at once there.
+ */
+const cardFills = {
+  unchecked: { rest: "surface-raised", pressed: "neutral-soft" },
+  checked: { rest: "primary-10", pressed: "primary-15" },
+} as const satisfies Record<string, PressFillColors>
 
 function FieldLabelCard({ children }: { readonly children: ReactNode }) {
   const [control, setControl] = useState<FieldLabelControl>()
   const checked = control?.checked ?? false
   const disabled = control?.disabled ?? false
+  const fill = cardFills[checked ? "checked" : "unchecked"]
+  const pressFill = usePressFill({ disabled })
   return (
     <FieldLabelControlContext value={setControl}>
       <FieldLabelCardFrame
-        checked={checked}
         disabled={disabled}
+        {...(isWeb ? { bg: pressFillClause(fill) } : {})}
         onPress={disabled ? undefined : control?.onPress}
+        onPressIn={pressFill.onPressIn}
+        onPressOut={pressFill.onPressOut}
         role={control?.role}
         aria-checked={checked}
         aria-disabled={disabled}
       >
+        <PressFill
+          progress={pressFill.progress}
+          colors={fill}
+          rounded={shape.control}
+        />
         {children}
       </FieldLabelCardFrame>
     </FieldLabelControlContext>

@@ -69,9 +69,8 @@ const bubbleKeyframes = {
  * with the primary color where web outlines it,
  * spread over the height, with web's two motion effects: the amount
  * bounces when it changes and a key blooms a bubble where it is pressed.
- * Both run on RN `Animated` with the native driver (the Tamagui config has
- * no animation driver), on plain `Animated.View`s, as `ui/skeleton.tsx`
- * explains, and neither runs under reduced motion. A physical keyboard
+ * Both run on RN `Animated` with the native driver, on plain
+ * `Animated.View`s, as `ui/skeleton.tsx` explains, and neither runs under reduced motion. A physical keyboard
  * types too (`useKeypadKeyboard`), and its Enter charges as the
  * Charge button does, so the pending charge lives here, shared by both.
  *

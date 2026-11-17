@@ -437,3 +437,28 @@ test("a transition names a preset, never a list of properties", () => {
   )
   expect(violations).toEqual([])
 })
+
+/**
+ * A control drawing its pressed fill with `ui/press-fill.tsx` keeps its own
+ * frame static on native: a `transition` there would animate every key the
+ * frame carries (a Button's height among them, which keeps the node on the
+ * JS driver) on each mount and press. Web's CSS transition stays.
+ */
+test("a frame under a PressFill takes a transition on web only", () => {
+  const appDir = path.resolve(srcDir, "../app")
+  const transitionKey = /\btransition\s*[:=]/u
+  const violations = [...sourceFiles(srcDir), ...sourceFiles(appDir)]
+    .filter((file) => readFileSync(file, "utf8").includes("<PressFill"))
+    .flatMap((file) =>
+      readFileSync(file, "utf8")
+        .split("\n")
+        .flatMap((line, index) =>
+          transitionKey.test(line) &&
+          !/^\s*(?:\*|\/\/)/u.test(line) &&
+          !/\bisWeb\b/u.test(line)
+            ? [`${path.relative(path.dirname(srcDir), file)}:${index + 1}`]
+            : []
+        )
+    )
+  expect(violations).toEqual([])
+})

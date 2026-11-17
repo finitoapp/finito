@@ -7,9 +7,15 @@ import {
   useState,
 } from "react"
 import { Animated, Easing, type LayoutRectangle } from "react-native"
-import { type GetProps, styled, Text, useTheme, View } from "tamagui"
+import { type GetProps, isWeb, styled, Text, useTheme, View } from "tamagui"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/tabs.tsx`, horizontal and
@@ -32,6 +38,10 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * anew (a tab that is its own route) places it without sliding, so a pill
  * that should travel needs its list to stay mounted, as `ActivityLayout`
  * keeps Activity's.
+ *
+ * An inactive trigger's hover and press fill is a `PressFill` layer on
+ * native (`press-fill.tsx` says why), so the trigger animates nothing; on
+ * the PWA the trigger carries it as a flat clause with `transition="fast"`.
  *
  * Controlled (`value` + `onValueChange`) or not (`defaultValue`), as web.
  * A trigger with its own `onPress` (web's `render={<Link />}`, a tab that is
@@ -191,20 +201,22 @@ const TriggerFrame = styled(View, {
   rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
-  transition: "fast",
+  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
+  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
-    // Web's `hover:text-foreground` as a fill a step above the list's, which
-    // fades in; the active trigger takes none, so it never covers the pill.
-    active: {
-      true: { bg: "transparent" },
-      false: {
-        bg: "transparent hover:button-outline-pressed press:button-outline-pressed",
-      },
-    },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
+
+/**
+ * Web's `hover:text-foreground` as a fill a step above the list's, which
+ * fades in; the active trigger takes none, so it never covers the pill.
+ */
+const triggerFill = {
+  rest: "transparent",
+  pressed: "button-outline-pressed",
+} as const satisfies PressFillColors
 
 const TriggerText = styled(Text, {
   name: "TabsTriggerText",
@@ -219,7 +231,10 @@ const TriggerText = styled(Text, {
 })
 
 export interface TabsTriggerProps
-  extends Omit<GetProps<typeof TriggerFrame>, "children"> {
+  extends Omit<
+    GetProps<typeof TriggerFrame>,
+    "children" | "rounded" | "bg" | "backgroundColor"
+  > {
   readonly value: string
   /** Already translated text, or custom content. */
   readonly children: ReactNode
@@ -233,15 +248,22 @@ export function TabsTrigger({
   disabled = false,
   onPress,
   onLayout,
+  onPressIn,
+  onPressOut,
   ...frameProps
 }: TabsTriggerProps) {
   const tabs = useTabs()
   const report = useContext(TriggerLayoutContext)
   const active = tabs.value === value
+  const pressFill = usePressFill({ disabled, onPressIn, onPressOut })
   return (
     <TriggerFrame
-      active={active}
       disabled={disabled}
+      {...(isWeb
+        ? { bg: active ? "transparent" : pressFillClause(triggerFill) }
+        : {})}
+      onPressIn={pressFill.onPressIn}
+      onPressOut={pressFill.onPressOut}
       onLayout={(event) => {
         report?.(value, event.nativeEvent.layout)
         onLayout?.(event)
@@ -259,6 +281,13 @@ export function TabsTrigger({
       aria-disabled={disabled}
       {...frameProps}
     >
+      {active ? null : (
+        <PressFill
+          progress={pressFill.progress}
+          colors={triggerFill}
+          rounded={shape.pill}
+        />
+      )}
       {typeof children === "string" ? (
         <TriggerText active={active} numberOfLines={1}>
           {children}

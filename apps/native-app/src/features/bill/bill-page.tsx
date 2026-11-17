@@ -73,7 +73,7 @@ import {
   StyleSheet,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { styled, Text, useTheme, View, XStack, YStack } from "tamagui"
+import { isWeb, styled, Text, useTheme, View, XStack, YStack } from "tamagui"
 import { FadeHeader, goBack } from "../../components/fade-header.tsx"
 import {
   LibraryPictureFill,
@@ -98,6 +98,12 @@ import {
   CollapsibleTrigger,
 } from "../../components/ui/collapsible.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "../../components/ui/press-fill.tsx"
 import {
   useBillSummaryPanelWidth,
   useWideWindow,
@@ -1539,6 +1545,15 @@ function CatalogEmpty() {
 const TILE_PICTURE_SIZE = 192
 
 /**
+ * A tile's press under the finger: over a picture it darkens it, as
+ * `card-ring` would barely show there.
+ */
+const brickFills = {
+  pictured: { rest: "transparent", pressed: "photo-pressed" },
+  plain: { rest: "transparent", pressed: "card-ring" },
+} as const satisfies Record<string, PressFillColors>
+
+/**
  * A tile of the bill's item grid, a square whatever it shows so a row keeps
  * one height. A pictured item's library picture fills it, its name and
  * price over a dark scrim at the bottom; an item without one is the card
@@ -1576,9 +1591,11 @@ function ItemBrick({
   )
   const latestSummary = getLatestCatalogItemSummary(summaries, catalogItem.id)
   const quantityPulse = useChangePulse(quantity)
+  const pressFill = usePressFill({ disabled: false })
 
   const inCart = quantity > 0
   const pictured = pictureUrl !== undefined
+  const fill = pictured ? brickFills.pictured : brickFills.plain
   const price = formatMoney(
     { value: catalogItem.unitAmount, currency: catalogItem.currency },
     locale
@@ -1604,8 +1621,7 @@ function ItemBrick({
       {/*
        * A tap anywhere on the tile adds one, as on a till; the corner
        * controls above it are kept in place but invisible until the item is
-       * on the bill, so nothing moves under the finger. Over a picture the
-       * press darkens it, as `card-ring` would barely show there.
+       * on the bill, so nothing moves under the finger.
        */}
       <View
         position="absolute"
@@ -1613,20 +1629,24 @@ function ItemBrick({
         r={0}
         b={0}
         l={0}
-        transition="fast"
-        bg={
-          pictured
-            ? "transparent hover:photo-pressed press:photo-pressed"
-            : "transparent hover:card-ring press:card-ring"
-        }
+        bg={isWeb ? pressFillClause(fill) : undefined}
+        {...(isWeb ? { transition: "fast" as const } : {})}
         role="button"
         aria-label={t("bill.brick.add.aria", { name })}
         cursor="web:pointer"
+        onPressIn={pressFill.onPressIn}
+        onPressOut={pressFill.onPressOut}
         onPress={() => {
           hapticButtonPress()
           onAdd()
         }}
-      />
+      >
+        <PressFill
+          progress={pressFill.progress}
+          colors={fill}
+          rounded={shape.card}
+        />
+      </View>
       {/* The name and price leave the minus button its corner. */}
       {pictured ? (
         <YStack

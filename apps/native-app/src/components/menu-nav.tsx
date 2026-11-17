@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useTheme, View, XStack, YStack } from "tamagui"
+import { isWeb, useTheme, View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
 import { currentPathname } from "../core/current-pathname.ts"
 import {
@@ -34,6 +34,12 @@ import { control, maxWidth, shape } from "../theme/tokens.ts"
 import { animateTo } from "./motion.ts"
 import { Icon } from "./ui/icon.tsx"
 import { NotificationDot } from "./ui/notification-dot.tsx"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./ui/press-fill.tsx"
 
 /** The phone bar's height above the safe area: Linky's `TabBar`, 44 tabs in a `py-1` row. */
 export const menuBarHeight = control.md + 8
@@ -308,12 +314,18 @@ function RailProfileTile() {
   const identity = useNostrIdentity()
   const profile = useNostrProfile(identity.pubkey)
   const name = profile.data?.name ?? null
+  // The press dims the picture: on native the `PressFill` progress drives
+  // its opacity on the native driver, so the frame animates nothing; on
+  // web the frame dims itself, a CSS transition.
+  const press = usePressFill({ disabled: false })
   return (
     <View
       rounded={shape.control}
       overflow="hidden"
-      transition="fast"
-      opacity="1 hover:0.85 press:0.7"
+      {...(isWeb ? { transition: "fast" as const } : {})}
+      {...(isWeb ? { opacity: "1 hover:0.85 press:0.7" as const } : {})}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       cursor="web:pointer"
       accessible
       role="link"
@@ -327,7 +339,16 @@ function RailProfileTile() {
         router.push("/settings/profile")
       }}
     >
-      <RailTile picture={profile.data?.picture ?? null} />
+      <Animated.View
+        style={{
+          opacity: press.progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 0.7],
+          }),
+        }}
+      >
+        <RailTile picture={profile.data?.picture ?? null} />
+      </Animated.View>
     </View>
   )
 }
@@ -398,6 +419,12 @@ function MenuNavLink({
   )
 }
 
+/** An entry's fill under the finger, drawn by a `PressFill` on native. */
+const entryFill = {
+  rest: "transparent",
+  pressed: "neutral-soft",
+} as const satisfies PressFillColors
+
 /**
  * One entry of the bar or the rail: a tab's link or Home's button, an icon
  * named by its label. In the bar the icon cross-fades from muted to
@@ -430,6 +457,9 @@ function MenuNavEntry({
   }, [active, progress])
   const rail = variant === "rail"
   const iconSize = rail ? 24 : 20
+  // The active entry takes no press fill: the pill (bar) or the accent
+  // (rail) marks it, and a press on it does nothing.
+  const pressFill = usePressFill({ disabled: active })
 
   return (
     <View
@@ -440,16 +470,21 @@ function MenuNavEntry({
       py={rail ? 8 : 0}
       px={rail ? 4 : 0}
       rounded={shape.control}
-      transition="fast"
       bg={
         active
           ? rail
             ? "accent"
             : "transparent"
-          : "transparent hover:neutral-soft press:neutral-soft"
+          : isWeb
+            ? pressFillClause(entryFill)
+            : "transparent"
       }
+      {...(isWeb ? { transition: "fast" as const } : {})}
       cursor="web:pointer"
       onPress={onPress}
+      {...(active
+        ? {}
+        : { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut })}
       accessible
       role={role}
       aria-label={label}
@@ -457,6 +492,13 @@ function MenuNavEntry({
       aria-current={active ? "page" : undefined}
       {...(Platform.OS === "web" ? { title: label } : {})}
     >
+      {active ? null : (
+        <PressFill
+          progress={pressFill.progress}
+          colors={entryFill}
+          rounded={shape.control}
+        />
+      )}
       {rail ? (
         <View>
           <Icon
