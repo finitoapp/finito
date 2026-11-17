@@ -166,15 +166,15 @@ function TerminalPaymentKeypadLoader({
   const { t } = useTranslation()
   const createTerminalPayment = useCreateTerminalPayment()
 
-  const charge = async (amount: NonNegativeInteger) => {
+  const charge = async (amount: NonNegativeInteger): Promise<boolean> => {
     if (tipsEnabled) {
       router.push({
         pathname: "/payment/tip",
         params: { amount: String(amount), currency },
       })
-      return
+      return true
     }
-    await createTerminalPayment({
+    return await createTerminalPayment({
       amount,
       currency,
       tipAmount: NonNegativeInteger(0),
