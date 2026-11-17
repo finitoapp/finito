@@ -28,7 +28,7 @@ import SunMoon from "lucide-react-native/icons/sun-moon"
 import Table2 from "lucide-react-native/icons/table-2"
 import Tag from "lucide-react-native/icons/tag"
 import UserRound from "lucide-react-native/icons/user-round"
-import { type ReactNode, Suspense } from "react"
+import { type ReactNode, Suspense, useDeferredValue } from "react"
 import { Text, XStack } from "tamagui"
 import { FadeHeader } from "../../components/fade-header.tsx"
 import { languageOptions } from "../../components/language-options.ts"
@@ -333,6 +333,10 @@ export function SettingsPage() {
     ],
     t
   )
+  // The groups below the first screen render right after it, in a pass
+  // React may interrupt: all ~18 rows at once held the tab switch for
+  // ~0.8 s on a PAX A920Pro, against ~0.3 s for Activity (2026-11-17).
+  const belowFold = useDeferredValue(true, false)
   return (
     <Screen footer={<MenuBarSpacer />}>
       <FadeHeader title={t("settings.title")} startAddon={null} />
@@ -342,13 +346,24 @@ export function SettingsPage() {
         <PaymentsNavWithCardClosure />
       </Suspense>
       <VerticalNav title={t("settings.salesGroup")} items={salesItems} />
-      <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
-      <VerticalNav title={t("settings.accountAndSync")} items={accountItems} />
-      <VerticalNav title={t("settings.appearance")} items={appearanceItems} />
-      {/* The assistant row joins once the device's privacy setting is read. */}
-      <Suspense fallback={<SupportNav assistant={false} />}>
-        <SupportNavWithAssistant />
-      </Suspense>
+      {belowFold ? (
+        <>
+          <VerticalNav title={t("settings.taxesGroup")} items={taxItems} />
+          <VerticalNav
+            title={t("settings.accountAndSync")}
+            items={accountItems}
+          />
+          <VerticalNav
+            title={t("settings.appearance")}
+            items={appearanceItems}
+          />
+          {/* The assistant row joins once the device's privacy setting is
+              read. */}
+          <Suspense fallback={<SupportNav assistant={false} />}>
+            <SupportNavWithAssistant />
+          </Suspense>
+        </>
+      ) : null}
     </Screen>
   )
 }
