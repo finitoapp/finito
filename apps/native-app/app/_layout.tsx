@@ -9,7 +9,13 @@ import {
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { createStore, Provider } from "jotai"
-import { type ComponentType, Suspense, useEffect, useState } from "react"
+import {
+  type ComponentType,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { useColorScheme, useWindowDimensions } from "react-native"
 import { TamaguiProvider, Theme, useTheme, View, XStack } from "tamagui"
 import { AccessGate } from "../src/components/app/access-gate.tsx"
@@ -38,6 +44,7 @@ import {
   menuSidebarWidth,
 } from "../src/components/menu-nav.tsx"
 import { paneGap, WebColumn } from "../src/components/web-column.tsx"
+import { recordPathname } from "../src/core/current-pathname.ts"
 import {
   routeFallbackMounted,
   routeFallbackUnmounted,
@@ -191,6 +198,8 @@ const masterPages: Readonly<Record<string, ComponentType>> = {
   "/settings": SettingsPage,
 }
 
+const stackScreenOptions = { headerShown: false } as const
+
 /**
  * The navigator on the app's theme. React Navigation draws screens and their
  * transitions on its own theme's background, light grey by default, so a
@@ -199,12 +208,31 @@ const masterPages: Readonly<Record<string, ComponentType>> = {
  */
 function ThemedStack({ dark }: { readonly dark: boolean }) {
   const theme = useTheme()
-  const base = dark ? DarkTheme : DefaultTheme
   const background = theme.background.val
+  // Everything that does not follow the route is built once per theme: a
+  // navigation changes the route, which renders this again, and a new theme
+  // object or a new `Stack` element renders every screen and the navigator
+  // under it again too (on a PAX A920Pro ~150 components on each screen
+  // change, 2026-11-17).
+  const navigationTheme = useMemo(() => {
+    const base = dark ? DarkTheme : DefaultTheme
+    return { ...base, colors: { ...base.colors, background, card: background } }
+  }, [dark, background])
+  const banner = useMemo(
+    () => (
+      // Its own boundary: the EET settings query suspends on an account switch.
+      <Suspense fallback={null}>
+        <EetSandboxBanner />
+      </Suspense>
+    ),
+    []
+  )
+  const stack = useMemo(() => <Stack screenOptions={stackScreenOptions} />, [])
   // The tabs (navigation/0001, navigation/0002): the rail on every screen of
   // them on a large window, the terminal's included; the bottom bar on a
   // menu tab's root screen otherwise (home keeps its hamburger).
   const pathname = usePathname()
+  useEffect(() => recordPathname(pathname), [pathname])
   const menu = menuPositionOf(pathname)
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   const sidebar = menu !== undefined && wide
@@ -217,12 +245,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
     masterPath === undefined ? undefined : masterPages[masterPath]
   const panes = MasterPage !== undefined
   return (
-    <ThemeProvider
-      value={{
-        ...base,
-        colors: { ...base.colors, background, card: background },
-      }}
-    >
+    <ThemeProvider value={navigationTheme}>
       <View flex={1} bg="background">
         <XStack flex={1}>
           {sidebar ? <MenuNav active={menu.tab} variant="sidebar" /> : null}
@@ -232,10 +255,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
               panes={panes}
             >
               <View flex={1}>
-                {/* Its own boundary: the EET settings query suspends on an account switch. */}
-                <Suspense fallback={null}>
-                  <EetSandboxBanner />
-                </Suspense>
+                {banner}
                 <XStack flex={1} gap={panes ? paneGap : 0}>
                   {MasterPage === undefined ? null : (
                     <View flex={0.88} minW={0}>
@@ -248,7 +268,7 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
                     </View>
                   )}
                   <View flex={panes ? 1.12 : 1} minW={0}>
-                    <Stack screenOptions={{ headerShown: false }} />
+                    {stack}
                   </View>
                 </XStack>
               </View>
