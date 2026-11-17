@@ -34,7 +34,10 @@ import { useTranslation } from "../../hooks/use-translation.ts"
  * SLIP-39 completions of the field being typed in sit right above the
  * keyboard (`ScreenKeyboardBar`), where its own suggestions would be — on
  * the web under the grid. The keyboard's learning, suggestions and autofill
- * are off: it never sees the phrase as words to remember. The whole form is kept out of screenshots, recordings, screen
+ * are off — the fields are passwords to it, shown or not — so it neither
+ * remembers the phrase nor offers words of its own beside ours. An app
+ * cannot put words into the keyboard's own suggestion strip: Gboard
+ * ignores the completions Android lets an app hand it. The whole form is kept out of screenshots, recordings, screen
  * sharing and the recents thumbnail while it is mounted, not only while the
  * words are shown: the unknown words and completions list them anyway, and
  * a phrase typed in hidden fields is still pieced together from what passes
@@ -185,6 +188,16 @@ export function RestoreAccountStep({
                     visibleError !== null || invalidIndexes.includes(index)
                   }
                   secureTextEntry={!shown}
+                  // Shown words are a visible password to Android: Gboard and
+                  // most keyboards ignore `autoCorrect={false}` alone and keep
+                  // offering (and learning) their own words, which would
+                  // crowd out the SLIP-39 completions above them. Hidden
+                  // words are a password already.
+                  keyboardType={
+                    shown && Platform.OS === "android"
+                      ? "visible-password"
+                      : "default"
+                  }
                   autoComplete={index === 0 ? "current-password" : "off"}
                   autoCorrect={false}
                   autoCapitalize="none"

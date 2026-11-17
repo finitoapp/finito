@@ -234,7 +234,7 @@ export const skOnboarding = {
   "openAccount.fromPayky.description": "Bez opisovania, stačí schváliť.",
   "openAccount.transfer.title": "Z iného zariadenia",
   "openAccount.transfer.description": "Naskenujete QR kód a opíšete kód.",
-  "openAccount.phrase.title": "Obnovovacia fráza (20 slov)",
+  "openAccount.phrase.title": "Obnovovacia fráza",
   "openAccount.phrase.description": "Keď nemáte poruke iné zariadenie.",
   "accountChoice.existing.title": "Už mám účet",
   "accountChoice.existing.description":

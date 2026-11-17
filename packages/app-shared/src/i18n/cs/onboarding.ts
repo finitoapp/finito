@@ -232,7 +232,7 @@ export const csOnboarding = {
   "openAccount.fromPayky.description": "Bez opisování, stačí schválit.",
   "openAccount.transfer.title": "Z jiného zařízení",
   "openAccount.transfer.description": "Naskenujete QR kód a opíšete kód.",
-  "openAccount.phrase.title": "Obnovovací fráze (20 slov)",
+  "openAccount.phrase.title": "Obnovovací fráze",
   "openAccount.phrase.description": "Když nemáte po ruce jiné zařízení.",
   "accountChoice.existing.title": "Už mám účet",
   "accountChoice.existing.description":
