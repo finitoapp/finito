@@ -5,7 +5,6 @@ import type { ComponentType } from "react"
 import { Text, View, YStack } from "tamagui"
 import { Icon } from "../../components/ui/icon.tsx"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
-import { fadeTransition } from "../../theme/transitions.ts"
 import {
   BillsIllustration,
   NumpadIllustration,
@@ -56,7 +55,7 @@ export function HomeModeCard({
       gap={12}
       p={12}
       rounded={shape.card}
-      transition={fadeTransition}
+      transition="fast"
       bg={
         checked
           ? "primary-15 hover:primary-20 press:primary-20"

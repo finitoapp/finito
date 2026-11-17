@@ -413,15 +413,24 @@ test("every pressed fill also answers a pointer's hover", () => {
   expect(violations).toEqual([])
 })
 
-test("a fill fades through fadeTransition, never a transition over every property", () => {
+/**
+ * A transition naming its properties ("background-color fast, opacity
+ * fast") looks cheaper than `fast`, which covers a kit Button's height too
+ * and so animates it on the JS driver. But Tamagui 3.0.18's React Native
+ * driver animates a pressed state's keys through a path that ignores the
+ * list while the render path honours it, and on a PAX A920Pro a keypad
+ * key's pressed fill then stayed after any press held 100 ms or longer
+ * (2026-11-17). Bisected to that one change on the device.
+ */
+test("a transition names a preset, never a list of properties", () => {
   const appDir = path.resolve(srcDir, "../app")
-  const everyProperty = /\btransition\s*[:=]\s*\{?\s*["'](?:all\s+)?fast["']/u
+  const propertyList = /\btransition\s*[:=]\s*\{?\s*["'][^"'\n]*,[^"'\n]*["']/u
   const violations = [...sourceFiles(srcDir), ...sourceFiles(appDir)].flatMap(
     (file) =>
       readFileSync(file, "utf8")
         .split("\n")
         .flatMap((line, index) =>
-          everyProperty.test(line)
+          propertyList.test(line)
             ? [`${path.relative(path.dirname(srcDir), file)}:${index + 1}`]
             : []
         )

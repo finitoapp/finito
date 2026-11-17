@@ -43,7 +43,6 @@ import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { hapticButtonPress } from "../../platform/haptics.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
-import { fadeTransition } from "../../theme/transitions.ts"
 
 /**
  * Native counterpart of web's `SplitBillDialog`: pick how many units of each
@@ -317,7 +316,7 @@ function ExistingBillOption({
       items="center"
       justify="space-between"
       rounded={radius.md}
-      transition={fadeTransition}
+      transition="fast"
       bg={
         selected
           ? "accent"
