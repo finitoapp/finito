@@ -772,6 +772,49 @@ describe("spark account transaction sync job", () => {
     expect(errors).toHaveLength(1)
   })
 
+  test("backs off starting a wallet that keeps failing, doubling the ticks it waits", async () => {
+    await using testEvolu = await createEvoluTest()
+    const { evolu } = testEvolu
+    await using run = testCreateRun(evoluTestDeps(evolu))
+    const errors: unknown[] = []
+    await run.ok(
+      createAccount({
+        deviceId: null,
+        name: NonEmptyString255("Spark account"),
+        spark: { secret: createUniqueSecret() },
+      })
+    )
+    let initializationAttempts = 0
+    await using jobRun = testCreateRun({
+      console: testCreateConsole(),
+      ...evoluTestDeps(evolu),
+      ...createTestDateDep(),
+      fetch: unimplementedFetch,
+      lockManager: createInProcessLockManager(),
+      ...testNotificationsDep(),
+      onError: (error: unknown) => {
+        errors.push(error)
+      },
+    })
+    await using _job = await jobRun.ok(
+      createSparkAccountTransactionSyncJob({
+        walletFactory: async () => {
+          initializationAttempts += 1
+          throw new Error("Spark operators unreachable")
+        },
+        recheckIntervalMs: 10,
+      })
+    )
+
+    // About 30 ticks: at start, then after 1, 2, 4, 8 and 16 ticks, where
+    // trying on every tick would make about 30 attempts.
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    expect(initializationAttempts).toBeGreaterThanOrEqual(3)
+    expect(initializationAttempts).toBeLessThanOrEqual(8)
+    expect(errors).toHaveLength(initializationAttempts)
+  })
+
   test("does not retry wallet initialization after disposal", async () => {
     await using testEvolu = await createEvoluTest()
     const { evolu } = testEvolu

@@ -12,27 +12,7 @@ import type {
 } from "./background-job-types.ts"
 import { createKeyedTaskQueue } from "./keyed-task-queue.ts"
 import { reconcileAccountSyncSessions } from "./reconcile-account-sync-sessions.ts"
-
-/** The longest a failing bank plugin sync waits between attempts. */
-const BANK_PLUGIN_SYNC_MAX_RETRY_BACKOFF_MS = 15 * 60 * 1000
-
-/**
- * How many ticks of the plugin's interval a sync waits after
- * `failedSyncCount` failures in a row before it tries again: the next tick
- * after the first, then twice as many after each further one, up to 15
- * minutes. Counted in ticks rather than against the clock, so the first
- * retry comes one interval after the failure, not two: a deadline of "one
- * interval after the failed sync ended" always lies just past the tick that
- * would have met it.
- */
-export const getBankPluginSyncRetryTicks = (
-  intervalMs: number,
-  failedSyncCount: number
-): number =>
-  Math.min(
-    2 ** Math.max(0, failedSyncCount - 1),
-    Math.max(1, Math.floor(BANK_PLUGIN_SYNC_MAX_RETRY_BACKOFF_MS / intervalMs))
-  )
+import { getRetryTicks } from "./retry-ticks.ts"
 
 /**
  * How one sync went: `synced`, `failed` (the next ones back off, as after a
@@ -49,7 +29,7 @@ export interface BankPluginSyncSession extends AsyncDisposable {
 
 /**
  * One plugin's polling: a sync at start and on every tick of `intervalMs`,
- * one at a time, backing off after failures (`getBankPluginSyncRetryTicks`).
+ * one at a time, backing off after failures (`getRetryTicks`).
  * A sync that throws counts as failed and is reported through `onError`.
  */
 export const createBankPluginSyncSession = ({
@@ -73,7 +53,7 @@ export const createBankPluginSyncSession = ({
 
   const delay = (): void => {
     failedSyncCount += 1
-    const retryTicks = getBankPluginSyncRetryTicks(intervalMs, failedSyncCount)
+    const retryTicks = getRetryTicks(intervalMs, failedSyncCount)
     ticksToSkip = retryTicks - 1
     onDelayed({ failedSyncCount, retryInMs: retryTicks * intervalMs })
   }
