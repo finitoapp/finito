@@ -10,6 +10,7 @@ import { Animated, Easing, type LayoutRectangle } from "react-native"
 import { type GetProps, styled, Text, useTheme, View } from "tamagui"
 import { isReduceMotionEnabled } from "../../platform/reduce-motion.ts"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import { fadeTransition } from "../../theme/transitions.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/tabs.tsx`, horizontal and
@@ -191,7 +192,7 @@ const TriggerFrame = styled(View, {
   rounded: shape.pill,
   hitSlop: { top: 8, bottom: 8 },
   cursor: "web:pointer",
-  transition: "fast",
+  transition: fadeTransition,
 
   variants: {
     // Web's `hover:text-foreground` as a fill a step above the list's, which

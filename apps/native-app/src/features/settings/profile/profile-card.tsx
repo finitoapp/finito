@@ -12,6 +12,7 @@ import {
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { fadeTransition } from "../../../theme/transitions.ts"
 import { AccountAvatar } from "../account-avatar.tsx"
 
 /**
@@ -48,7 +49,7 @@ export function ProfileCard() {
       gap={16}
       px={16}
       py={12}
-      transition="fast"
+      transition={fadeTransition}
       bg={editorOpen ? "accent" : "card hover:accent press:accent"}
       cursor="web:pointer"
       onPress={() => openDetail("/settings/profile")}

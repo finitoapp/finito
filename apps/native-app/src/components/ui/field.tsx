@@ -10,6 +10,7 @@ import {
 } from "react"
 import { type GetProps, styled, Text, View } from "tamagui"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import { fadeTransition } from "../../theme/transitions.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/field.tsx`: the same parts, in
@@ -166,7 +167,7 @@ const FieldLabelCardFrame = styled(View, {
   px: 12,
   py: 10,
   rounded: shape.control,
-  transition: "fast",
+  transition: fadeTransition,
   bg: "surface-raised hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 

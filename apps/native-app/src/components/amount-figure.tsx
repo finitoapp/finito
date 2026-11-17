@@ -1,6 +1,7 @@
 import { Platform } from "react-native"
 import { Text, XStack, YStack } from "tamagui"
 import { control, fontWeight, shape } from "../theme/tokens.ts"
+import { fadeTransition } from "../theme/transitions.ts"
 
 /**
  * The one way an amount is headlined, wherever a screen does it (the
@@ -72,7 +73,7 @@ export function AmountFigure({
       hitSlop={onPress === undefined ? undefined : pressSlop}
       justify="center"
       rounded={shape.control}
-      transition="fast"
+      transition={fadeTransition}
       bg={
         onPress === undefined
           ? "transparent"
