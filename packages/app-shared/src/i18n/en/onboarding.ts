@@ -232,7 +232,7 @@ export const enOnboarding = {
   "openAccount.fromPayky.description": "No typing, you only approve.",
   "openAccount.transfer.title": "From another device",
   "openAccount.transfer.description": "You scan a QR code and type in a code.",
-  "openAccount.phrase.title": "Recovery phrase (20 words)",
+  "openAccount.phrase.title": "Recovery phrase",
   "openAccount.phrase.description": "When you have no other device at hand.",
   "accountChoice.existing.title": "I already have an account",
   "accountChoice.existing.description":
