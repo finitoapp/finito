@@ -5,8 +5,14 @@ import {
   useContext,
   useMemo,
 } from "react"
-import { type GetProps, styled, Text, View } from "tamagui"
+import { type GetProps, isWeb, styled, Text, View } from "tamagui"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/toggle-group.tsx` with the item look of
@@ -28,6 +34,15 @@ import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
  * the `grid grid-cols-N` class web pages put on the group. Items reach 48
  * through `hitSlop`. Base: a controlled Tamagui `View`, not Tamagui
  * `ToggleGroup`, which has not been tried on the device.
+ *
+ * The fill is `itemFills`, drawn on native by a `PressFill` layer under the
+ * content (`press-fill.tsx` says why), so the frame animates nothing; on
+ * the PWA the frame carries it as a flat clause with `transition="fast"`.
+ * A selection change swaps the fill at once on native. Joined segments
+ * (`spacing={0}`) round only their outer corners, which the layer's single
+ * radius cannot draw: on native their frame carries the clause itself,
+ * without a transition, so their pressed fill shows at once instead of
+ * fading.
  */
 
 type ToggleVariant = "default" | "outline"
@@ -57,27 +72,40 @@ const ItemFrame = styled(View, {
   justify: "center",
   shrink: 0,
   gap: 4,
-  rounded: shape.control,
-  transition: "fast",
-  bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
+  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
+  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
-    variant: {
-      default: {},
-      outline: {
-        bg: "neutral-soft hover:button-outline-pressed press:button-outline-pressed",
-      },
-    },
+    variant: { default: {}, outline: {} },
     size: {
       default: { h: 32, minW: 32, px: 10 },
-      sm: { h: 28, minW: 28, px: 10, rounded: shape.pill },
+      sm: { h: 28, minW: 28, px: 10 },
       lg: { h: 36, minW: 36, px: 10 },
     },
-    selected: { true: { bg: "button-outline-pressed" } },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
+
+/**
+ * An item's fill at rest and pressed (or hovered, on web); a selected item
+ * keeps its pressed fill under the finger, as it stays selected.
+ */
+const itemFills = {
+  default: { rest: "transparent", pressed: "neutral-soft" },
+  outline: { rest: "neutral-soft", pressed: "button-outline-pressed" },
+  selected: {
+    rest: "button-outline-pressed",
+    pressed: "button-outline-pressed",
+  },
+} as const satisfies Record<ToggleVariant | "selected", PressFillColors>
+
+/** An item is 12 round; a small one is a pill. */
+const radii = {
+  default: shape.control,
+  sm: shape.pill,
+  lg: shape.control,
+} as const satisfies Record<ToggleSize, number>
 
 const ItemText = styled(Text, {
   name: "ToggleGroupItemText",
@@ -120,7 +148,10 @@ const joinedStyle = (
 }
 
 export interface ToggleGroupItemProps
-  extends Omit<GetProps<typeof ItemFrame>, "children"> {
+  extends Omit<
+    GetProps<typeof ItemFrame>,
+    "children" | "rounded" | "bg" | "backgroundColor"
+  > {
   readonly value: string
   /** Already translated text, or custom content. */
   readonly children: ReactNode
@@ -134,22 +165,31 @@ export function ToggleGroupItem({
   children,
   "aria-label": ariaLabel,
   disabled = false,
+  onPressIn,
+  onPressOut,
   ...frameProps
 }: ToggleGroupItemProps) {
   const group = useContext(GroupContext)
   const position = useContext(PositionContext)
+  const inactive = (group?.disabled ?? false) || disabled
+  const pressFill = usePressFill({ disabled: inactive, onPressIn, onPressOut })
   if (group === undefined)
     throw new Error("ToggleGroupItem must be inside a ToggleGroup")
   const selected = group.value === value
-  const inactive = group.disabled || disabled
+  const fill = itemFills[selected ? "selected" : group.variant]
+  // The layer has one radius; a joined segment's frame draws its own fill.
+  const layered = !isWeb && !group.joined
   return (
     <ItemFrame
       variant={group.variant}
       size={group.size}
-      selected={selected}
       disabled={inactive}
+      rounded={radii[group.size]}
+      {...(layered ? {} : { bg: pressFillClause(fill) })}
       hitSlop={hitSlops[group.size]}
       onPress={inactive ? undefined : () => group.onValueChange(value)}
+      onPressIn={pressFill.onPressIn}
+      onPressOut={pressFill.onPressOut}
       role="radio"
       aria-checked={selected}
       aria-disabled={inactive}
@@ -159,6 +199,13 @@ export function ToggleGroupItem({
       {...(group.joined ? joinedStyle(group.vertical, position) : {})}
       {...frameProps}
     >
+      {layered ? (
+        <PressFill
+          progress={pressFill.progress}
+          colors={fill}
+          rounded={radii[group.size]}
+        />
+      ) : null}
       {typeof children === "string" ? (
         <ItemText size={group.size} numberOfLines={1}>
           {children}

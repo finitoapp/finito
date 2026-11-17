@@ -2,12 +2,18 @@ import { type Href, usePathname } from "expo-router"
 import ChevronRight from "lucide-react-native/icons/chevron-right"
 import type { ReactNode } from "react"
 import { Linking } from "react-native"
-import { styled, Text, View } from "tamagui"
+import { isWeb, styled, Text, View } from "tamagui"
 import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
 import { useOpenDetail } from "../hooks/use-open-detail.ts"
 import type { ThemeColor } from "../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
 import { Icon } from "./ui/icon.tsx"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./ui/press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/vertical-nav.tsx`: a card of rows, each
@@ -142,6 +148,12 @@ const press = (
   }
 }
 
+/** A row's fill under the finger, drawn by a `PressFill` on native. */
+const rowFill = {
+  rest: "transparent",
+  pressed: "neutral-soft",
+} as const satisfies PressFillColors
+
 export function VerticalNavRow({
   item,
 }: {
@@ -161,6 +173,9 @@ export function VerticalNavRow({
     (masterPane !== null &&
       item.kind === "link" &&
       isDetailOf(pathname, item.href))
+  // The active row is tinted instead, and a static or disabled one is inert.
+  const pressable = interactive && !disabled && !active
+  const pressFill = usePressFill({ disabled: !pressable })
   return (
     <View
       flexDirection="row"
@@ -172,15 +187,18 @@ export function VerticalNavRow({
       rounded={shape.control}
       borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
       borderLeftColor={item.stripeColor ?? "transparent"}
-      transition="fast"
       bg={
         active
           ? "accent"
-          : interactive && !disabled
-            ? "transparent hover:neutral-soft press:neutral-soft"
+          : pressable && isWeb
+            ? pressFillClause(rowFill)
             : "transparent"
       }
+      {...(isWeb ? { transition: "fast" as const } : {})}
       onPress={onPress}
+      {...(pressable
+        ? { onPressIn: pressFill.onPressIn, onPressOut: pressFill.onPressOut }
+        : {})}
       cursor={onPress === undefined ? undefined : "web:pointer"}
       opacity={disabled ? 0.5 : undefined}
       accessible={interactive ? true : undefined}
@@ -197,6 +215,13 @@ export function VerticalNavRow({
       }
       aria-disabled={disabled || undefined}
     >
+      {pressable ? (
+        <PressFill
+          progress={pressFill.progress}
+          colors={rowFill}
+          rounded={shape.control}
+        />
+      ) : null}
       {item.icon}
       <View flex={1} minW={0}>
         {typeof item.label === "string" ? (

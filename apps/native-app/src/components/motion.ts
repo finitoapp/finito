@@ -3,9 +3,8 @@ import { isReduceMotionEnabled } from "../platform/reduce-motion.ts"
 
 /**
  * Web's motion, shared by the native effects that port it. Everything runs
- * on RN `Animated` with the native driver, on plain `Animated.View`s (the
- * Tamagui config has no animation driver; `ui/skeleton.tsx` says why not an
- * animated Tamagui view), and every caller skips it under reduced motion
+ * on RN `Animated` with the native driver, on plain `Animated.View`s
+ * (`ui/skeleton.tsx` says why not an animated Tamagui view), and every caller skips it under reduced motion
  * (`platform/reduce-motion.ts`), as web's `useReducedMotion` and
  * `motion-reduce:` do.
  */

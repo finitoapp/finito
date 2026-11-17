@@ -74,3 +74,11 @@ export const maxWidth = {
   md: 448,
   xl: 576,
 } as const
+
+/**
+ * The kit's transition presets, in ms: `fast` is a fill fading between rest,
+ * hover and press (`animations.ts`, `animations.web.ts`, `ui/press-fill.tsx`).
+ */
+export const duration = {
+  fast: 150,
+} as const

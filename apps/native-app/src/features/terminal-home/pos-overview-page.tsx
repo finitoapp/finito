@@ -350,7 +350,7 @@ function TableTile({
             size="icon-lg"
             m={-6}
             rounded={radius.full}
-            bg="background-60 hover:background press:background"
+            fillColors={{ rest: "background-60", pressed: "background" }}
             iconStart={Plus}
             aria-label={t("tables.tile.newBill")}
             onPress={newBill}

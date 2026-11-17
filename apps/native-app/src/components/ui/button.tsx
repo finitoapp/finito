@@ -4,6 +4,7 @@ import { ActivityIndicator } from "react-native"
 import {
   createStyledContext,
   type GetProps,
+  isWeb,
   styled,
   Text,
   useTheme,
@@ -16,6 +17,12 @@ import {
 import type { ThemeColor } from "../../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../../theme/tokens.ts"
 import { Icon } from "./icon.tsx"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/button.tsx`: the same `variant` and
@@ -35,6 +42,11 @@ import { Icon } from "./icon.tsx"
  * bare text. Web's `hover:` fill is both a `hover:` clause, for a pointer,
  * and a `press:` one, for touch; every size reaches 48 through `hitSlop`;
  * `link` dims instead of underlining.
+ *
+ * The fill is `fills`, drawn on native by a `PressFill` layer under the
+ * content (`press-fill.tsx` says why), so the frame animates nothing; on
+ * the PWA the frame carries it as a flat clause with `transition="fast"`.
+ * `link` has no fill: its dim snaps on native.
  */
 
 type ButtonVariant =
@@ -60,45 +72,59 @@ const ButtonFrame = styled(ButtonBehaviorFrame, {
   flexDirection: "row",
   items: "center",
   justify: "center",
-  // Explicitly none: on web this is a real `<button>`, whose default is an outset border.
-  borderWidth: 0,
-  rounded: shape.control,
   cursor: "web:pointer",
-  // The hover and press fills fade in (`theme/animations.ts`).
-  transition: "fast",
+  // A real `<button>` on web, whose default is an outset border; its fill
+  // fades as a CSS transition there (`theme/animations.web.ts`).
+  ...(isWeb ? { borderWidth: 0, transition: "fast" } : {}),
 
   variants: {
     variant: {
-      default: { bg: "primary hover:primary-pressed press:primary-pressed" },
-      outline: {
-        bg: "button-outline hover:button-outline-pressed press:button-outline-pressed",
-      },
-      secondary: {
-        bg: "surface-raised hover:button-outline-pressed press:button-outline-pressed",
-      },
-      ghost: {
-        bg: "transparent hover:button-ghost-pressed press:button-ghost-pressed",
-      },
-      destructive: {
-        bg: "button-destructive hover:button-destructive-pressed press:button-destructive-pressed",
-      },
+      default: {},
+      outline: {},
+      secondary: {},
+      ghost: {},
+      destructive: {},
       link: { bg: "transparent", opacity: "1 hover:0.7 press:0.7" },
     },
     size: {
       default: { minH: control.md, px: 16, py: 10, gap: 8 },
-      xs: { minH: 28, px: 10, gap: 4, rounded: shape.pill },
-      sm: { minH: control.sm, px: 12, py: 4, gap: 6, rounded: shape.pill },
+      xs: { minH: 28, px: 10, gap: 4 },
+      sm: { minH: control.sm, px: 12, py: 4, gap: 6 },
       lg: { minH: control.lg, px: 16, py: 12, gap: 8 },
-      icon: { w: control.md, h: control.md, rounded: shape.pill },
-      "icon-xs": { w: 28, h: 28, rounded: shape.pill },
-      "icon-sm": { w: control.sm, h: control.sm, rounded: shape.pill },
-      "icon-lg": { w: control.lg, h: control.lg, rounded: shape.pill },
+      icon: { w: control.md, h: control.md },
+      "icon-xs": { w: 28, h: 28 },
+      "icon-sm": { w: control.sm, h: control.sm },
+      "icon-lg": { w: control.lg, h: control.lg },
     },
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 
   defaultVariants: { variant: "default", size: "default" },
 })
+
+/** Each variant's fill at rest and pressed (or hovered, on web). */
+const fills = {
+  default: { rest: "primary", pressed: "primary-pressed" },
+  outline: { rest: "button-outline", pressed: "button-outline-pressed" },
+  secondary: { rest: "surface-raised", pressed: "button-outline-pressed" },
+  ghost: { rest: "transparent", pressed: "button-ghost-pressed" },
+  destructive: {
+    rest: "destructive-tint",
+    pressed: "destructive-tint-pressed",
+  },
+} as const satisfies Record<Exclude<ButtonVariant, "link">, PressFillColors>
+
+/** A control is 12 round; the small sizes and icon buttons are pills. */
+const radii = {
+  default: shape.control,
+  xs: shape.pill,
+  sm: shape.pill,
+  lg: shape.control,
+  icon: shape.pill,
+  "icon-xs": shape.pill,
+  "icon-sm": shape.pill,
+  "icon-lg": shape.pill,
+} as const satisfies Record<ButtonSize, number>
 
 const textColors = {
   default: "primary-foreground",
@@ -165,11 +191,28 @@ const hitSlops = {
 
 type FrameProps = Omit<
   GetProps<typeof ButtonFrame>,
-  "children" | "variant" | "size" | "disabled" | "onPress"
+  | "children"
+  | "variant"
+  | "size"
+  | "disabled"
+  | "onPress"
+  | "rounded"
+  | "bg"
+  | "backgroundColor"
 >
 
 interface ButtonBaseProps extends FrameProps {
   readonly variant?: ButtonVariant
+  /**
+   * The corner radius, a number: the native fill layer draws it too.
+   * Defaults to the size's.
+   */
+  readonly rounded?: number
+  /**
+   * Replaces the variant's fill, for the few web call sites that recolor a
+   * button with a class (`bg-background/60 hover:bg-background`).
+   */
+  readonly fillColors?: PressFillColors
   /** Already translated; or pass `children`. */
   readonly label?: string
   readonly children?: ReactNode
@@ -205,6 +248,10 @@ export function Button({
   onPress,
   "aria-label": ariaLabel,
   labelColor,
+  rounded = radii[size],
+  fillColors: fill = variant === "link" ? undefined : fills[variant],
+  onPressIn,
+  onPressOut,
   ...frameProps
 }: ButtonProps) {
   const theme = useTheme()
@@ -212,16 +259,31 @@ export function Button({
   const color = labelColor ?? textColors[variant]
   const iconSize = iconSizes[size]
   const content = label ?? children
+  const pressFill = usePressFill({ disabled: inactive, onPressIn, onPressOut })
   // On web: a `<button>`, `disabled` and out of the tab order while inactive,
-  // and an inert `<span>` (no role, no onPress) when nested in another button.
+  // and an inert `<span>` (no role, no press handlers) when nested in another
+  // button.
   const { props: buttonProps } = useButton<
-    ButtonBehaviorProps & Pick<GetProps<typeof ButtonFrame>, "role" | "onPress">
+    ButtonBehaviorProps &
+      Pick<
+        GetProps<typeof ButtonFrame>,
+        "role" | "onPress" | "onPressIn" | "onPressOut"
+      >
   >({
     role: "button",
     onPress: inactive ? undefined : onPress,
+    onPressIn: pressFill.onPressIn,
+    onPressOut: pressFill.onPressOut,
     disabled: inactive,
     children: (
       <>
+        {fill === undefined ? null : (
+          <PressFill
+            progress={pressFill.progress}
+            colors={fill}
+            rounded={rounded}
+          />
+        )}
         {pending ? (
           <ActivityIndicator size={iconSize} color={theme[color]?.val} />
         ) : iconStart === undefined ? null : (
@@ -247,8 +309,10 @@ export function Button({
     <ButtonFrame
       {...frameProps}
       {...buttonProps}
+      {...(isWeb && fill !== undefined ? { bg: pressFillClause(fill) } : {})}
       variant={variant}
       size={size}
+      rounded={rounded}
       hitSlop={hitSlops[size]}
       aria-label={ariaLabel ?? label}
       aria-busy={pending}

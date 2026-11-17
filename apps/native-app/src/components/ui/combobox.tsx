@@ -1,11 +1,17 @@
 import Check from "lucide-react-native/icons/check"
 import ChevronDown from "lucide-react-native/icons/chevron-down"
 import { createContext, type ReactNode, useContext, useState } from "react"
-import { styled, Text, View } from "tamagui"
+import { isWeb, styled, Text, View } from "tamagui"
 import { control, fontSize, shape } from "../../theme/tokens.ts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog.tsx"
 import { Icon } from "./icon.tsx"
 import { Input } from "./input.tsx"
+import {
+  PressFill,
+  type PressFillColors,
+  pressFillClause,
+  usePressFill,
+} from "./press-fill.tsx"
 
 /**
  * Web `apps/web-app/src/components/ui/combobox.tsx`, in the shape web's
@@ -112,14 +118,28 @@ const TriggerFrame = styled(View, {
   pr: 10,
   pl: 12,
   rounded: shape.control,
-  transition: "fast",
-  bg: "input-bg hover:input-50 press:input-50",
   cursor: "web:pointer",
+  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
+  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
   } as const,
 })
+
+/**
+ * The trigger's and an item's fill at rest and pressed (or hovered, on
+ * web), drawn on native by a `PressFill` layer (`press-fill.tsx` says why),
+ * so their frames animate nothing.
+ */
+const triggerFill = {
+  rest: "input-bg",
+  pressed: "input-50",
+} as const satisfies PressFillColors
+const itemFill = {
+  rest: "transparent",
+  pressed: "neutral-soft",
+} as const satisfies PressFillColors
 
 export function ComboboxTrigger({
   "aria-label": ariaLabel,
@@ -130,11 +150,15 @@ export function ComboboxTrigger({
   readonly children: ReactNode
 }) {
   const combobox = useCombobox()
+  const pressFill = usePressFill({ disabled: combobox.disabled })
   return (
     <TriggerFrame
       disabled={combobox.disabled}
+      {...(isWeb ? { bg: pressFillClause(triggerFill) } : {})}
       hitSlop={8}
       onPress={combobox.disabled ? undefined : () => combobox.setOpen(true)}
+      onPressIn={pressFill.onPressIn}
+      onPressOut={pressFill.onPressOut}
       role="combobox"
       aria-label={ariaLabel}
       // As ui/select: its name doubles as testID for e2e `id:` selectors.
@@ -142,6 +166,11 @@ export function ComboboxTrigger({
       aria-expanded={combobox.open}
       aria-disabled={combobox.disabled}
     >
+      <PressFill
+        progress={pressFill.progress}
+        colors={triggerFill}
+        rounded={shape.control}
+      />
       {children}
       <Icon icon={ChevronDown} color="muted-foreground" />
     </TriggerFrame>
@@ -232,9 +261,9 @@ const ItemFrame = styled(View, {
   pl: 6,
   pr: 8,
   rounded: shape.control,
-  transition: "fast",
-  bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
+  // Its fill fades as a CSS transition on web (`theme/animations.web.ts`).
+  ...(isWeb ? { transition: "fast" } : {}),
 
   variants: {
     disabled: { true: { opacity: 0.5, pointerEvents: "none" } },
@@ -256,14 +285,23 @@ export function ComboboxItem({
 }) {
   const combobox = useCombobox()
   const selected = combobox.value === value
+  const pressFill = usePressFill({ disabled })
   return (
     <ItemFrame
       disabled={disabled}
+      {...(isWeb ? { bg: pressFillClause(itemFill) } : {})}
       onPress={disabled ? undefined : () => combobox.select(value)}
+      onPressIn={pressFill.onPressIn}
+      onPressOut={pressFill.onPressOut}
       role="option"
       aria-selected={selected}
       aria-disabled={disabled}
     >
+      <PressFill
+        progress={pressFill.progress}
+        colors={itemFill}
+        rounded={shape.control}
+      />
       <View flex={1}>
         {typeof children === "string" ? (
           <Text fontSize={fontSize.sm} lineHeight={fontSize.sm}>

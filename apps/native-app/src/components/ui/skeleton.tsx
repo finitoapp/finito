@@ -6,9 +6,8 @@ import { radius } from "../../theme/tokens.ts"
 /**
  * Web `apps/web-app/src/components/ui/skeleton.tsx`: `animate-pulse
  * rounded-md bg-muted`. The pulse (opacity 1 → 0.5 and back, 2 s, as
- * Tailwind's) runs on RN `Animated` with the native driver, because the
- * Tamagui config has no animation driver. It animates a plain
- * `Animated.View` filling the frame rather than an animated Tamagui view:
+ * Tailwind's) runs on RN `Animated` with the native driver. It animates a
+ * plain `Animated.View` filling the frame rather than an animated Tamagui view:
  * Animated hands its component a style array, which Tamagui passes to the
  * DOM as is on web, where it crashes the render.
  */
