@@ -10,19 +10,35 @@ import {
   type NostrIdentity,
   type NostrProfile,
 } from "@payky/core/integrations/nostr/nostr-client"
+import type { MasterKey } from "@payky/core/modules/shared/key-derivation"
 import { useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
-import { useEffect, useMemo } from "react"
+import { useEffect } from "react"
 import { accountAtom } from "../atoms/account.ts"
 import { deviceEvoluAtom } from "../atoms/device-evolu.ts"
 import { queryClient } from "../core/query-client.ts"
 import { useAppRun } from "./use-app-run.ts"
 import { useDeviceEvoluQuery } from "./use-evolu-query.ts"
 
-/** The active account's Nostr identity, derived from its recovery phrase. */
+/**
+ * The last account's identity. Deriving it is a secp256k1 multiplication in
+ * JS, 30-90 ms on a PAX A920Pro, and every reader paid it on every mount:
+ * the settings' profile card twice on each visit (2026-11-17).
+ */
+let identityCache: {
+  readonly masterKey: MasterKey
+  readonly identity: NostrIdentity
+} | null = null
+
+const nostrIdentityOf = (masterKey: MasterKey): NostrIdentity => {
+  if (identityCache?.masterKey !== masterKey)
+    identityCache = { masterKey, identity: getNostrIdentity(masterKey) }
+  return identityCache.identity
+}
+
+/** The active account's Nostr identity, derived from its recovery phrase once. */
 export function useNostrIdentity(): NostrIdentity {
-  const { masterKey } = useAtomValue(accountAtom)
-  return useMemo(() => getNostrIdentity(masterKey), [masterKey])
+  return nostrIdentityOf(useAtomValue(accountAtom).masterKey)
 }
 
 const ownProfileKey = (pubkey: string) => ["nostr", "profile", "own", pubkey]
