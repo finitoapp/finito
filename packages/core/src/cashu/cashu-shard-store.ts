@@ -14,8 +14,10 @@ import { cashuAccountQuery } from "../modules/account/account-queries.ts"
 import {
   type CashuOperationCopy,
   type CashuProofCopy,
+  cashuOperationChangesQuery,
   cashuOperationCopiesByIdQuery,
   cashuOperationCopiesQuery,
+  cashuPendingOperationIdsQuery,
   cashuProofCopiesQuery,
   cashuShardHoldsRowsQuery,
   cashuShardPointerQuery,
@@ -156,6 +158,13 @@ export interface CashuShardStore extends Disposable {
   readonly loadProofs: () => Promise<ReadonlyArray<CashuProofCopy>>
   /** Operations merged as Linky merges them, live only. */
   readonly loadOperations: () => Promise<ReadonlyArray<CashuOperationCopy>>
+  /**
+   * The live operations still pending once merged: what a sync job polls,
+   * read without decoding every operation the wallet ever made.
+   */
+  readonly loadPendingOperations: () => Promise<
+    ReadonlyArray<CashuOperationCopy>
+  >
   readonly loadOperation: (
     id: CashuOperationId
   ) => Promise<CashuOperationCopy | null>
@@ -189,6 +198,13 @@ export interface CashuShardStore extends Disposable {
   readonly switchRelays: (relays: NonEmptyReadonlyArray<string>) => void
   /** Fires after a change to the wallet's tables or to the pointer. */
   readonly subscribe: (listener: () => void) => () => void
+  /**
+   * Fires after an operation is written or the pointer moves, watching a
+   * count rather than every copy (`cashuOperationChangesQuery`), so a
+   * background job can hold it for good. A change synced with an older
+   * timestamp than the newest operation does not fire it.
+   */
+  readonly subscribeOperationChanges: (listener: () => void) => () => void
 }
 
 export type RegisterLinkyOwner = (
@@ -756,23 +772,42 @@ export const createCashuShardStore = ({
     void reconcileSync()
   }
 
-  const subscribe = (listener: () => void): (() => void) => {
-    let stopped = false
-    const stops: Array<() => void> = [
-      evolu.subscribeQuery(cashuShardPointerQuery(linkyAppOwner.id))(listener),
-    ]
-    void shardOwnerIds().then((owners) => {
-      if (stopped) return
-      stops.push(
-        evolu.subscribeQuery(cashuProofCopiesQuery(owners))(listener),
-        evolu.subscribeQuery(cashuOperationCopiesQuery(owners))(listener)
-      )
-    })
-    return () => {
-      stopped = true
-      for (const stop of stops) stop()
+  /**
+   * Subscribes `listener` to the pointer and, under the shard owners known
+   * now, to the queries `queriesOf` names.
+   */
+  const subscribeUnderOwners =
+    (
+      queriesOf: (
+        owners: NonEmptyReadonlyArray<OwnerId>
+      ) => ReadonlyArray<Parameters<typeof evolu.subscribeQuery>[0]>
+    ) =>
+    (listener: () => void): (() => void) => {
+      let stopped = false
+      const stops: Array<() => void> = [
+        evolu.subscribeQuery(cashuShardPointerQuery(linkyAppOwner.id))(
+          listener
+        ),
+      ]
+      void shardOwnerIds().then((owners) => {
+        if (stopped) return
+        for (const query of queriesOf(owners))
+          stops.push(evolu.subscribeQuery(query)(listener))
+      })
+      return () => {
+        stopped = true
+        for (const stop of stops) stop()
+      }
     }
-  }
+
+  const subscribe = subscribeUnderOwners((owners) => [
+    cashuProofCopiesQuery(owners),
+    cashuOperationCopiesQuery(owners),
+  ])
+
+  const subscribeOperationChanges = subscribeUnderOwners((owners) => [
+    cashuOperationChangesQuery(owners),
+  ])
 
   // A pointer moved on another device arrives as a pointer change and
   // subscribes the new shard here (Linky's `followPointers`).
@@ -815,6 +850,20 @@ export const createCashuShardStore = ({
       const { copies, index } = await operationCopies(id)
       return mergeShardRows(copies, index)[0] ?? null
     },
+    loadPendingOperations: async () => {
+      const owners = await shardOwnerIds()
+      const ids = await evolu.loadQuery(cashuPendingOperationIdsQuery(owners))
+      const merged = await Promise.all(
+        ids.map(async ({ id }) => {
+          const { copies, index } = await operationCopies(id)
+          return mergeShardRows(copies, index)[0] ?? null
+        })
+      )
+      return merged.filter(
+        (operation): operation is CashuOperationCopy =>
+          operation !== null && operation.status === "pending"
+      )
+    },
     insertProofs,
     updateProof,
     insertOperation,
@@ -825,6 +874,7 @@ export const createCashuShardStore = ({
     repairPointers,
     switchRelays,
     subscribe,
+    subscribeOperationChanges,
     [Symbol.dispose]: () => {
       disposed = true
       for (const cleanup of cleanups) cleanup()

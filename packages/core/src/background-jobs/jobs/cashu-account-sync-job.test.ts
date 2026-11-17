@@ -2,7 +2,7 @@ import { createConsole, testCreateRun } from "@evolu/common"
 import { PrivateDirectMessage } from "nostr-tools/kinds"
 import { createRumor, createSeal, createWrap } from "nostr-tools/nip59"
 import { generateSecretKey, getPublicKey } from "nostr-tools/pure"
-import { describe, expect, test } from "vitest"
+import { describe, expect, test, vi } from "vitest"
 import { writeCashuDefaultMint } from "../../cashu/cashu-mints.ts"
 import { createCashuWalletDep } from "../../cashu/cashu-wallet.ts"
 import { deriveDeviceAccountId } from "../../evolu/device-account.ts"
@@ -13,6 +13,10 @@ import { createQerkoConnectionStatusDep } from "../../integrations/qerko/qerko-c
 import { createQerkoSocketDep } from "../../integrations/qerko/qerko-socket.ts"
 import { createYadioApiDep } from "../../integrations/yadio/yadio-client.ts"
 import { saveCashuAccount } from "../../modules/account/account-actions.ts"
+import {
+  cashuOperationCopiesQuery,
+  cashuProofCopiesQuery,
+} from "../../modules/cashu/cashu-queries.ts"
 import type { DeviceId } from "../../modules/device/device-types.ts"
 import { createPayment } from "../../modules/payment/payment-actions.ts"
 import { prepareCashuPaymentMethod } from "../../modules/payment/payment-preparation-actions.ts"
@@ -105,6 +109,27 @@ describe("cashu account sync job", () => {
 
     await waitForClaim(deps, paymentId)
     expect(t.mint.mintQuoteState(quoteId ?? "")).toBe("ISSUED")
+    await job[Symbol.asyncDispose]()
+    expect(errors).toEqual([])
+  }, 30_000)
+
+  test("books a paid topup while watching a count of the operations, never every copy of the wallet's rows", async () => {
+    const { t, deps, errors, paymentId } = await setup()
+    await using _ = t
+    const subscribeQuery = vi.spyOn(deps.evolu, "subscribeQuery")
+    await using run = testCreateRun(deps)
+    const job = await run.ok(startCashuAccountSyncJob)
+
+    const [quoteId] = t.mint.mintQuoteIds()
+    t.mint.payMintQuote(quoteId ?? "")
+
+    await waitForClaim(deps, paymentId)
+    const owners = await deps.cashuShardStore.shardOwnerIds()
+    const subscribed = new Set(
+      subscribeQuery.mock.calls.map(([query]) => query)
+    )
+    expect(subscribed.has(cashuProofCopiesQuery(owners))).toBe(false)
+    expect(subscribed.has(cashuOperationCopiesQuery(owners))).toBe(false)
     await job[Symbol.asyncDispose]()
     expect(errors).toEqual([])
   }, 30_000)

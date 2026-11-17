@@ -674,9 +674,17 @@ which `CashuBackgroundJobs` runs under its own boundary.
     3. Advance the cursor only after the batches complete. A crash in between
        repeats the work, which the derived id makes harmless, as it does a
        concurrent write by a second Payky device.
-  - Triggers: at job start, on a `subscribeQuery` over Linky's operations,
-    and on a fallback interval, as the Spark job does
-    (`spark-account-transaction-sync-job.ts`).
+  - Triggers: at job start, on a `subscribeQuery` over a count of Linky's
+    operations and their latest `updatedAt` (`cashuOperationChangesQuery`,
+    through the store's `subscribeOperationChanges`), and on a 60 s fallback
+    interval, as the Spark job does (`spark-account-transaction-sync-job.ts`).
+    Not on every copy of every proof and operation: the job holds the
+    subscription for good, and Evolu re-runs it after every write, on
+    native on the UI thread. A change synced with an older timestamp than
+    the newest operation waits for the fallback.
+  - The 5 s topup tick reads only the operations with a pending copy
+    (`loadPendingOperations`), and the payments' quotes only while a topup
+    is pending.
   - **The cursor lives in a local-only table of the app database**
     (`_cashuBookingCursor`; an underscore-prefixed table is never synced,
     `@evolu/common` `isLocalOnlyTable`), not in the device database. A `rowid`

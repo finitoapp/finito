@@ -102,17 +102,22 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
     if (!(await isEnabled())) return
     const store = run.deps.cashuShardStore
     if (!store.isHydrated()) return
-    const quotes = new Set(
-      (await run.deps.evolu.loadQuery(cashuPaymentQuotesQuery)).map(
-        (row) => `${row.mintUrl}|${row.quoteId}`
-      )
-    )
+    // Every 5 seconds: only the pending operations are read and decoded,
+    // and the payments' quotes only while a topup is pending.
+    const operations = await store.loadPendingOperations()
+    if (operations.length === 0) return
+    const quotes = operations.some(({ kind }) => kind === "topup")
+      ? new Set(
+          (await run.deps.evolu.loadQuery(cashuPaymentQuotesQuery)).map(
+            (row) => `${row.mintUrl}|${row.quoteId}`
+          )
+        )
+      : new Set<string>()
     const nowMs = run.deps.date.now().getTime()
-    const operations = await store.loadOperations()
     // Payky's interrupted melts (a withdrawal, a move's source) settle by the
     // mint's answer; resuming one never sends again.
     for (const operation of operations) {
-      if (operation.kind !== "melt" || operation.status !== "pending") continue
+      if (operation.kind !== "melt") continue
       const [attempt] = await run.deps.deviceEvolu.loadQuery(
         cashuClaimAttemptQuery(
           run.deps.cashuWallet.deviceAccountId,
@@ -140,8 +145,7 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
       const isRecentMove =
         operation.kind === "autoswap" &&
         nowMs / 1000 - operation.createdAtSec < 24 * 60 * 60
-      if (operation.status !== "pending" || !(isPaykyTopup || isRecentMove))
-        return false
+      if (!(isPaykyTopup || isRecentMove)) return false
       const ageSeconds = nowMs / 1000 - operation.createdAtSec
       const last = lastPolledMs.get(operation.id) ?? 0
       return nowMs - last >= pollIntervalMs(ageSeconds)
@@ -174,7 +178,12 @@ export const startCashuAccountSyncJob: CashuBackgroundJob = (taskRun) => {
   }
   const bookSoon = () => queue.enqueue("booking", book)
 
-  const unsubscribeStore = run.deps.cashuShardStore.subscribe(bookSoon)
+  // A count of the operations, not every copy of every proof and operation:
+  // Evolu re-runs a subscribed query after every write, and this one is held
+  // for as long as the job runs. What the count misses waits for
+  // `bookingTick`.
+  const unsubscribeStore =
+    run.deps.cashuShardStore.subscribeOperationChanges(bookSoon)
   const unsubscribeHydration = run.deps.cashuShardStore.subscribeHydration(
     () => {
       settleSoon()
