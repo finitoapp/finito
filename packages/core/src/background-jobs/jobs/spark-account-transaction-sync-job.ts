@@ -1,4 +1,11 @@
-import { err, ok, type Result, type Run, type Task } from "@evolu/common"
+import {
+  err,
+  isNonEmptyArray,
+  ok,
+  type Result,
+  type Run,
+  type Task,
+} from "@evolu/common"
 import { subHours } from "date-fns"
 import { z } from "zod"
 import type { DeviceIdDep } from "../../deps.ts"
@@ -12,7 +19,10 @@ import {
   computeAccountTransactionRows,
   upsertAccountTransactionRows,
 } from "../../modules/account-transaction/account-transaction-actions.ts"
-import { accountTransactionSparkByTransferIdQuery } from "../../modules/account-transaction/account-transaction-queries.ts"
+import {
+  accountTransactionSparkByTransferIdQuery,
+  recordedSparkTransfersQuery,
+} from "../../modules/account-transaction/account-transaction-queries.ts"
 import {
   loadAutomaticReconciliationClaimForNewAccountTransaction,
   loadBillClosedAtForPayment,
@@ -54,10 +64,18 @@ const TRANSFER_PAGE_SIZE = 50
 // reports it as done (an on-chain deposit can sit pending for a while after
 // creation before `deposit:confirmed` fires) — see docs/payment-sync.md and
 // issues.md #30. The event-driven paths (`transfer:claimed`, and this
-// account's own `balance:update`/`deposit:confirmed` triggering a full
-// rescan) are the primary way a transfer gets recorded promptly; this window
-// is only the safety net's reach when those are missed.
+// account's own `balance:update` triggering a recent sweep and
+// `deposit:confirmed` a full one) are the primary way a transfer gets
+// recorded promptly; this window is only the safety net's reach when those
+// are missed.
 const SPARK_SYNC_LOOKBACK_HOURS = 72
+// How often a sweep reaches back the whole `SPARK_SYNC_LOOKBACK_HOURS`
+// (payment/0027). The sweeps in between, every minute and on every
+// `balance:update`, look back only `SPARK_RECENT_SWEEP_LOOKBACK_MS`: each
+// page is a call to the operators and to the SSP, decoded on the JS thread,
+// and a terminal would otherwise fetch three days of transfers every minute.
+const SPARK_FULL_SWEEP_INTERVAL_MS = 30 * 60 * 1000
+const SPARK_RECENT_SWEEP_LOOKBACK_MS = 60 * 60 * 1000
 // How far a sweep's start must be from the stored pointer before the pointer
 // is written again. Sweeps run every minute, and each write is synced to
 // every device and re-runs every subscribed query there; a pointer up to an
@@ -301,6 +319,11 @@ const createSparkAccountSyncSession = ({
   // opens connections and signs in to every operator before it can fail.
   let failedInitCount = 0
   let initTicksToSkip = 0
+  // When the last sweep over the whole lookback started, and whether one
+  // was asked for: the first sweep, and one after `deposit:confirmed`, whose
+  // transfer may have been created long before it completed.
+  let lastFullSweepAt: number | undefined
+  let fullSweepRequested = true
   let pendingHistorySync = false
   const pendingTransferIds = new Set<string>()
   const queue = createKeyedTaskQueue<
@@ -445,6 +468,41 @@ const createSparkAccountSyncSession = ({
   }
 
   /**
+   * Records one page of the history sweep. What the page holds is mostly
+   * recorded already, so it asks which in one query: a claimed one needs
+   * nothing, an unclaimed one is offered to reconciliation again (a sync
+   * may have recorded it and stopped before claiming it, or the payment it
+   * pays synced since), and only a new one goes through `recordTransfer`,
+   * its lock and its own check.
+   */
+  const recordTransferPage = async (
+    transfers: ReadonlyArray<SparkTransfer>
+  ): Promise<ReadonlyArray<RecordTransferResult>> => {
+    const ids = transfers
+      .filter(shouldRecordTransfer)
+      .map(({ id }) => NonEmptyStringSchema.decode(id))
+    const recordedRows = isNonEmptyArray(ids)
+      ? await run.deps.evolu.loadQuery(recordedSparkTransfersQuery(ids))
+      : []
+    const recorded = new Map<string, (typeof recordedRows)[number]>(
+      recordedRows.map((row) => [row.sparkTransferId, row])
+    )
+    const results: RecordTransferResult[] = []
+    for (const transfer of transfers) {
+      if (queue.isDisposed) break
+      const existing = recorded.get(transfer.id)
+      if (existing === undefined) {
+        results.push(await recordTransfer(transfer))
+        continue
+      }
+      if (existing.isClaimed !== 1)
+        await run.ok(reconcileAccountTransaction(existing.id))
+      results.push("duplicate")
+    }
+    return results
+  }
+
+  /**
    * Settles our pending Lightning withdrawals and records the ones that
    * finished, outside the sweep's window (withdraw/0002, withdraw/0003).
    */
@@ -504,10 +562,18 @@ const createSparkAccountSyncSession = ({
     const pointer = await run.deps.evolu.loadQuery(
       sparkAccountSyncPointerByAccountIdQuery(account.id)
     )
-    const createdAfter =
-      pointer[0] === undefined
+    const lastSyncedAt = pointer[0]?.lastSyncedAt
+    const isFull =
+      fullSweepRequested ||
+      lastSyncedAt === undefined ||
+      lastFullSweepAt === undefined ||
+      startedAt.getTime() - lastFullSweepAt >= SPARK_FULL_SWEEP_INTERVAL_MS
+    const createdAfter = isFull
+      ? lastSyncedAt === undefined
         ? undefined
-        : subHours(pointer[0].lastSyncedAt, SPARK_SYNC_LOOKBACK_HOURS)
+        : subHours(lastSyncedAt, SPARK_SYNC_LOOKBACK_HOURS)
+      : new Date(startedAt.getTime() - SPARK_RECENT_SWEEP_LOOKBACK_MS)
+    fullSweepRequested = false
 
     let offset = 0
     let pageCount = 0
@@ -522,6 +588,7 @@ const createSparkAccountSyncSession = ({
     run.deps.console.info("Started Spark transfer history sync.", {
       accountId: account.id,
       createdAfter: createdAfter ?? null,
+      isFull,
       pageSize: TRANSFER_PAGE_SIZE,
     })
 
@@ -541,8 +608,7 @@ const createSparkAccountSyncSession = ({
         transferCount: page.transfers.length,
       })
 
-      for (const transfer of page.transfers) {
-        const result = await recordTransfer(transfer)
+      for (const result of await recordTransferPage(page.transfers)) {
         results[result] += 1
       }
 
@@ -551,21 +617,25 @@ const createSparkAccountSyncSession = ({
     }
 
     // Only once the sweep actually finished — a sweep cut short by disposal
-    // covered less than `[createdAfter, now)` and must not claim it did.
+    // covered less than `[createdAfter, now)` and must not claim it did. A
+    // recent sweep covered only its last hour, so only a full one moves the
+    // pointer.
     if (!queue.isDisposed) {
-      const lastSyncedAt = pointer[0]?.lastSyncedAt
-      const advancedMs =
-        lastSyncedAt === undefined
-          ? undefined
-          : startedAt.getTime() - lastSyncedAt
-      // A pointer ahead of the clock (set by hand, or by a device whose
-      // clock runs fast) is pulled back to now, as before.
-      if (
-        advancedMs === undefined ||
-        advancedMs < 0 ||
-        advancedMs >= SPARK_SYNC_POINTER_STEP_MS
-      )
-        await saveSparkSyncPointer(run, account.id, startedAt)
+      if (isFull) {
+        lastFullSweepAt = startedAt.getTime()
+        const advancedMs =
+          lastSyncedAt === undefined
+            ? undefined
+            : startedAt.getTime() - lastSyncedAt
+        // A pointer ahead of the clock (set by hand, or by a device whose
+        // clock runs fast) is pulled back to now, as before.
+        if (
+          advancedMs === undefined ||
+          advancedMs < 0 ||
+          advancedMs >= SPARK_SYNC_POINTER_STEP_MS
+        )
+          await saveSparkSyncPointer(run, account.id, startedAt)
+      }
       await checkWithdrawals(currentWallet)
     }
 
@@ -670,6 +740,9 @@ const createSparkAccountSyncSession = ({
           run.deps.console.debug("Received Spark deposit confirmed event.", {
             accountId: account.id,
           })
+          // A deposit completes long after its transfer was created, past a
+          // recent sweep's hour.
+          fullSweepRequested = true
           syncHistorySoon()
         },
       })

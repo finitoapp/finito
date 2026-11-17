@@ -1,4 +1,4 @@
-import type { KyselyNotNull } from "@evolu/common"
+import type { KyselyNotNull, NonEmptyReadonlyArray } from "@evolu/common"
 import { sqliteTrue } from "@evolu/common"
 
 import { createQuery } from "../../evolu/schema.ts"
@@ -19,6 +19,41 @@ export const accountTransactionSparkByTransferIdQuery = (
       .$narrowType<{
         sparkTransferId: KyselyNotNull
       }>()
+  )
+
+/**
+ * Which of `sparkTransferIds` are recorded already, and whether a claim of
+ * a payment holds each: the Spark history sweep asks this once per page
+ * instead of taking a lock and asking per transfer. A claimed one needs
+ * nothing more; an unclaimed one is offered to reconciliation again.
+ */
+export const recordedSparkTransfersQuery = (
+  sparkTransferIds: NonEmptyReadonlyArray<NonEmptyString>
+) =>
+  createQuery((db) =>
+    db
+      .selectFrom("accountTransactionSpark")
+      .select((eb) => [
+        "accountTransactionSpark.id",
+        "accountTransactionSpark.sparkTransferId",
+        eb
+          .exists(
+            eb
+              .selectFrom("reconciliationClaim")
+              .select("reconciliationClaim.id")
+              .whereRef(
+                "reconciliationClaim.accountTransactionId",
+                "=",
+                "accountTransactionSpark.id"
+              )
+              .where("reconciliationClaim.isDeleted", "is not", sqliteTrue)
+              .where("reconciliationClaim.paymentId", "is not", null)
+          )
+          .$castTo<0 | 1>()
+          .as("isClaimed"),
+      ])
+      .where("accountTransactionSpark.sparkTransferId", "in", sparkTransferIds)
+      .$narrowType<{ sparkTransferId: KyselyNotNull }>()
   )
 
 /**
