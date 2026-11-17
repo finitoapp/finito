@@ -7,6 +7,7 @@ import { isDetailOf, useMasterPane } from "../core/master-pane.ts"
 import { useOpenDetail } from "../hooks/use-open-detail.ts"
 import type { ThemeColor } from "../theme/themes.ts"
 import { control, fontSize, fontWeight, shape } from "../theme/tokens.ts"
+import { fadeTransition } from "../theme/transitions.ts"
 import { Icon } from "./ui/icon.tsx"
 
 /**
@@ -172,7 +173,7 @@ export function VerticalNavRow({
       rounded={shape.control}
       borderLeftWidth={item.stripeColor === undefined ? 0 : 3}
       borderLeftColor={item.stripeColor ?? "transparent"}
-      transition="fast"
+      transition={fadeTransition}
       bg={
         active
           ? "accent"

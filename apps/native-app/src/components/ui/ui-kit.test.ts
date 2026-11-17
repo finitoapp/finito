@@ -412,3 +412,19 @@ test("every pressed fill also answers a pointer's hover", () => {
   )
   expect(violations).toEqual([])
 })
+
+test("a fill fades through fadeTransition, never a transition over every property", () => {
+  const appDir = path.resolve(srcDir, "../app")
+  const everyProperty = /\btransition\s*[:=]\s*\{?\s*["'](?:all\s+)?fast["']/u
+  const violations = [...sourceFiles(srcDir), ...sourceFiles(appDir)].flatMap(
+    (file) =>
+      readFileSync(file, "utf8")
+        .split("\n")
+        .flatMap((line, index) =>
+          everyProperty.test(line)
+            ? [`${path.relative(path.dirname(srcDir), file)}:${index + 1}`]
+            : []
+        )
+  )
+  expect(violations).toEqual([])
+})

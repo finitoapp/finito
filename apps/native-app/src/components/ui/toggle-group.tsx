@@ -7,6 +7,7 @@ import {
 } from "react"
 import { type GetProps, styled, Text, View } from "tamagui"
 import { fontSize, fontWeight, shape } from "../../theme/tokens.ts"
+import { fadeTransition } from "../../theme/transitions.ts"
 
 /**
  * Web `apps/web-app/src/components/ui/toggle-group.tsx` with the item look of
@@ -58,7 +59,7 @@ const ItemFrame = styled(View, {
   shrink: 0,
   gap: 4,
   rounded: shape.control,
-  transition: "fast",
+  transition: fadeTransition,
   bg: "transparent hover:neutral-soft press:neutral-soft",
   cursor: "web:pointer",
 
