@@ -9,11 +9,10 @@ tags: [settings]
     env:
       ROUTE: settings/accounts
       TEXT: ${output.t["settings.accounts.title"]}
-# Create a second account and onboard it.
+# Add a second account and onboard it (account/0011).
 - scrollUntilVisible:
-    element: ${output.t["onboarding.welcome.new"]}
-- tapOn: ${output.t["onboarding.welcome.new"]}
-- tapOn: ${output.t["settings.accounts.create.confirm.confirm"]}
+    element: ${output.t["settings.accounts.add.title"]}
+- tapOn: ${output.t["settings.accounts.add.title"]}
 - extendedWaitUntil:
     visible: ${output.t["onboarding.welcome.new"]}
     timeout: 30000

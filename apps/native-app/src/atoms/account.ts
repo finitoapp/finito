@@ -4,11 +4,15 @@ import {
   insertAccount,
   loadActiveAccountRow,
 } from "@payky/core/evolu/device-account"
+import { defaultDeviceName } from "@payky/core/modules/device/device-utils"
 import { NonEmptyString255 } from "@payky/core/modules/shared/schema"
 import { createRandomDisplayName } from "@payky/core/utils/random-name"
 import { atom } from "jotai"
 import { appDefaultTransports } from "../core/app-brand.ts"
-import { getNativeDeviceLabels } from "../platform/device-labels.ts"
+import {
+  getNativeDeviceLabels,
+  getNativeDeviceModel,
+} from "../platform/device-labels"
 import { deviceEvoluAtom } from "./device-evolu.ts"
 import { deviceMigrationsAtom } from "./device-migrations.ts"
 import { evoluCounterAtom } from "./evolu-counter.ts"
@@ -44,7 +48,13 @@ export const accountAtom = atom(async (get) => {
         }
       : {
           id: createId<"Device">({ randomBytes: createRandomBytes() }),
-          name: NonEmptyString255(createRandomDisplayName()),
+          name: NonEmptyString255(
+            defaultDeviceName({
+              ...getNativeDeviceModel(),
+              browserName: labels.browserName,
+              osName: labels.osName,
+            }) ?? createRandomDisplayName()
+          ),
           ...labels,
         }
   if (row.device === null) deviceEvolu.upsert("device", device)

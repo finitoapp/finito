@@ -1,7 +1,8 @@
 import {
   accountListQuery,
+  storableNostrName,
   storableNostrPicture,
-  updateAccountNostrPicture,
+  updateAccountNostrProfile,
 } from "@payky/core/evolu/device-account"
 import {
   fetchNostrProfile,
@@ -48,9 +49,10 @@ export const useNostrProfile = (
 
 /**
  * The active account's profile. Whenever it loads, or a save replaces it,
- * its picture is remembered on the device account: that is how the account
- * list shows the other accounts' avatars without asking relays about them,
- * which would let a relay link the accounts (account/0004).
+ * its name and picture are remembered on the device account: that is how
+ * the account list shows the other accounts' businesses without asking
+ * relays about them, which would let a relay link the accounts (account/0004,
+ * account/0011).
  */
 export const useActiveNostrProfile = () => {
   const identity = useNostrIdentity()
@@ -58,7 +60,11 @@ export const useActiveNostrProfile = () => {
   const account = useAtomValue(accountAtom)
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
-  const stored = accounts.find(({ id }) => id === account.id)?.nostrPicture
+  const stored = accounts.find(({ id }) => id === account.id)
+  const name =
+    profile.data === undefined
+      ? undefined
+      : storableNostrName(profile.data.name)
   const picture =
     profile.data === undefined
       ? undefined
@@ -66,11 +72,12 @@ export const useActiveNostrProfile = () => {
 
   useEffect(() => {
     // Written only on a change, so mounting it does not add a write.
-    if (picture === undefined || stored === undefined || picture === stored) {
+    if (name === undefined || picture === undefined || stored === undefined) {
       return
     }
-    updateAccountNostrPicture(deviceEvolu, account.id, picture)
-  }, [account.id, deviceEvolu, picture, stored])
+    if (name === stored.nostrName && picture === stored.nostrPicture) return
+    updateAccountNostrProfile(deviceEvolu, account.id, { name, picture })
+  }, [account.id, deviceEvolu, name, picture, stored])
 
   return profile
 }

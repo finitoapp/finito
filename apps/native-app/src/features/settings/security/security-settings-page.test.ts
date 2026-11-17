@@ -10,8 +10,9 @@ const readTransport = (name: string) =>
     "utf8"
   )
 
-it("keeps the security screen owner-only", () => {
+it("keeps the backup and backends screens owner-only", () => {
   expect(requiredPermission("/settings/security")).toBe("admin")
+  expect(requiredPermission("/settings/backends")).toBe("admin")
 })
 
 it("changes transports only through the core device-account writes, then reloads", () => {

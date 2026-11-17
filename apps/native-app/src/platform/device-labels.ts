@@ -15,3 +15,12 @@ export const getNativeDeviceLabels = () => ({
   browserName: null,
   osName: toOptionalLabel(Platform.OS === "android" ? "Android" : "iOS"),
 })
+
+/** The maker and model a new device is named after (access/0013). */
+export const getNativeDeviceModel = () =>
+  Platform.OS === "android"
+    ? {
+        vendor: Platform.constants.Manufacturer || Platform.constants.Brand,
+        model: Platform.constants.Model,
+      }
+    : { vendor: undefined, model: undefined }

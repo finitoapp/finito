@@ -25,11 +25,32 @@ it("asks for confirmation, awaited, before removing a device, and never for this
 
 it("edits device permissions only through the core action, from the presets and permissions core defines", () => {
   const item = read("device-item.tsx")
+  const fields = read("permissions-fields.tsx")
   expect(item).toMatch(
     /setDeviceDefaultPermissions\(\{ id: device\.id, permissions: granted \}\)/
   )
-  expect(item).toMatch(/accessPresets\[preset\]/)
-  expect(item).toMatch(/permissions\.map\(\(permission\)/)
+  expect(item).toMatch(/<PermissionsFields/)
+  expect(fields).toMatch(/accessPresets\[preset\]/)
+  expect(fields).toMatch(/permissions\.map\(\(permission\)/)
+})
+
+it("asks for the PIN, once there is one, before removing a device signs it out", () => {
+  expectInOrder(
+    read("device-item.tsx"),
+    /const remove = async/,
+    /accessControlOn && !\(await requirePin\("access\.action\.removeDevice"\)\)/,
+    /await confirm\(/,
+    /removeDevice\(device\.id\)/
+  )
+})
+
+it("saves the permissions chosen for a new device once it says which device it is", () => {
+  expectInOrder(
+    read("account-transfer-source-page.tsx"),
+    /const permissions = accessControlOn \? granted : null/,
+    /next\.deviceId === null/,
+    /setDeviceDefaultPermissions\(\{ id, permissions \}\)/
+  )
 })
 
 it("asks for the current PIN, awaited, before the new one reaches changePin, then clears the digits", () => {

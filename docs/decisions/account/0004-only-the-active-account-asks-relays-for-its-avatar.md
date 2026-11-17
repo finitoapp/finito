@@ -1,6 +1,6 @@
 # 0004 Only the active account asks relays for its avatar
 
-Status: accepted
+Status: superseded by account/0011
 Date: 2026-10-08
 
 ## Context

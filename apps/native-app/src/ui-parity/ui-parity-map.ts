@@ -767,6 +767,29 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     },
   },
   {
+    native: "src/features/settings/access/permissions-fields.tsx",
+    web: ["apps/web-app/src/features/settings/access/permissions-fields.tsx"],
+    status: "matched",
+    allowedDifferences: {
+      Select:
+        "web keeps the preset select in this file; native's PresetPicker lives in device-parts.tsx",
+      SelectContent:
+        "web keeps the preset select in this file; native's PresetPicker lives in device-parts.tsx",
+      SelectItem:
+        "web keeps the preset select in this file; native's PresetPicker lives in device-parts.tsx",
+      SelectTrigger:
+        "web keeps the preset select in this file; native's PresetPicker lives in device-parts.tsx",
+      SelectValue:
+        "web keeps the preset select in this file; native's PresetPicker lives in device-parts.tsx",
+      FieldContent:
+        "native's field kit groups the permission label and description; web's field markup does not need this wrapper",
+      Alert:
+        "the Owner warning is the kit's destructive Alert, where web draws a local Warning box",
+      AlertDescription:
+        "the Owner warning is the kit's destructive Alert, where web draws a local Warning box",
+    },
+  },
+  {
     native: "src/features/settings/access/device-item.tsx",
     web: ["apps/web-app/src/features/settings/access/access-settings-page.tsx"],
     status: "matched",
@@ -788,29 +811,24 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
         "the web page owns its route header; this native child renders one device row",
       FieldError:
         "the web file contains the full access page; the native permission editor has no input error field",
-      FieldContent:
-        "native's field kit groups the permission label and description; web's field markup does not need this wrapper",
-      Alert:
-        "the Owner warning in the permissions dialog is the kit's destructive Alert, where web draws a local Warning box",
-      AlertDescription:
-        "the Owner warning in the permissions dialog is the kit's destructive Alert, where web draws a local Warning box",
+      Field:
+        "the web file contains the full access page; native keeps the permission fields in permissions-fields.tsx",
+      FieldGroup:
+        "the web file contains the full access page; native keeps the permission fields in permissions-fields.tsx",
+      FieldLabel:
+        "the web file contains the full access page; native keeps the permission fields in permissions-fields.tsx",
+      FieldDescription:
+        "the web file contains the full access page; native keeps the permission fields in permissions-fields.tsx",
       Input:
         "the web file contains the full access page; native keeps the device rename input in device-parts.tsx",
-      Select:
-        "the web file contains the full access page; native keeps device presets in device-parts.tsx",
-      SelectContent:
-        "the web file contains the full access page; native keeps device presets in device-parts.tsx",
-      SelectItem:
-        "the web file contains the full access page; native keeps device presets in device-parts.tsx",
-      SelectTrigger:
-        "the web file contains the full access page; native keeps device presets in device-parts.tsx",
-      SelectValue:
-        "the web file contains the full access page; native keeps device presets in device-parts.tsx",
     },
   },
   {
     native: "src/features/settings/access/device-parts.tsx",
-    web: ["apps/web-app/src/features/settings/access/access-settings-page.tsx"],
+    web: [
+      "apps/web-app/src/features/settings/access/access-settings-page.tsx",
+      "apps/web-app/src/features/settings/access/permissions-fields.tsx",
+    ],
     status: "matched",
     allowedDifferences: {
       Card: "the web file contains the full access page; native places these device helpers in their parent card and row",
@@ -952,7 +970,13 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
       "apps/web-app/src/features/settings/accounts/accounts-settings-page.tsx",
     ],
     status: "matched",
-    note: "Native account rows use the last persisted nostrPicture; web prefers the active account's current profile query and falls back to the persisted picture. Both open an existing account on /settings/accounts/open (onboarding/0011); native's row also names the web app's Android shell (me.payky) when it takes the request (account/0008).",
+    allowedDifferences: {
+      VerticalNav:
+        "web draws the account rows as a real list (e2e reads its items) with the add row as a VerticalNavRow below; native draws them all as one VerticalNav",
+      VerticalNavRow:
+        "web draws the account rows as a real list (e2e reads its items) with the add row as a VerticalNavRow below; native draws them all as one VerticalNav",
+    },
+    note: "Both apps name and picture each account row by the business's Nostr profile: the active account's from its profile query, the others' from what their device row last remembered. Both add an account by opening onboarding's welcome in a new, empty account (account/0011).",
   },
   {
     native: "src/features/settings/assistant/assistant-chat-page.tsx",
@@ -1784,7 +1808,14 @@ export const uiParityMap: ReadonlyArray<UiParityEntry> = [
     native: "src/features/settings/security/security-settings-page.tsx",
     web: [
       "apps/web-app/src/features/settings/security/security-settings-page.tsx",
-      "apps/web-app/src/features/settings/security/evolu-transport-card.tsx",
+    ],
+    status: "matched",
+  },
+  {
+    native: "src/features/settings/backends/backends-settings-page.tsx",
+    web: [
+      "apps/web-app/src/features/settings/backends/backends-settings-page.tsx",
+      "apps/web-app/src/features/settings/backends/evolu-transport-card.tsx",
     ],
     status: "matched",
   },

@@ -129,6 +129,7 @@ export const accountListQuery = createDeviceQuery((db) =>
       "account.createdAt",
       "account.lastUseAt",
       "account.nostrPicture",
+      "account.nostrName",
     ])
     .where("account.isDeleted", "is not", sqliteTrue)
     .where("account.name", "is not", null)
@@ -454,7 +455,7 @@ export async function createOrSelectAccount(
     deviceEvolu.update("account", {
       id: existingAccount.id,
       lastUseAt: Date.now(),
-      ...(removed ? { isDeleted: sqliteFalse } : {}),
+      ...(removed ? { isDeleted: sqliteFalse, deviceRegistered: null } : {}),
     })
     return { accountId: existingAccount.id, created: removed }
   }
@@ -546,35 +547,107 @@ export function updateAccountName(
   )
 }
 
-const NOSTR_PICTURE_MAX_LENGTH = 2048
+const NOSTR_PICTURE_URL_MAX_LENGTH = 2048
+/**
+ * Room for the pictures both apps publish: at most 256 px a side, as JPEG,
+ * which comes to some tens of kilobytes as a data URL.
+ */
+export const NOSTR_PICTURE_DATA_MAX_LENGTH = 96 * 1024
 
 /**
- * What of an account's Nostr picture its device row keeps: an https URL of
- * sane length. A `data:` picture is left out, so the device database does not
- * grow by whole images; the account then shows its initial.
+ * What of an account's Nostr picture its device row keeps (account/0011): an
+ * https URL of sane length, or an image data URL no larger than the apps'
+ * own picker makes, which is what a picture chosen in the app is. Anything
+ * else is left out, so the device database does not grow by whole images;
+ * the account then shows its initial or the app's icon.
  */
 export const storableNostrPicture = (picture: string | null): string | null => {
   if (picture === null) return null
-  return picture.startsWith("https://") &&
-    picture.length <= NOSTR_PICTURE_MAX_LENGTH
+  if (picture.startsWith("https://")) {
+    return picture.length <= NOSTR_PICTURE_URL_MAX_LENGTH ? picture : null
+  }
+  return picture.startsWith("data:image/") &&
+    picture.length <= NOSTR_PICTURE_DATA_MAX_LENGTH
     ? picture
     : null
 }
 
-export function updateAccountNostrPicture(
-  deviceEvolu: DeviceEvolu,
-  accountId: DeviceAccountId,
-  picture: string | null
-) {
-  deviceEvolu.update("account", { id: accountId, nostrPicture: picture })
+/**
+ * What of an account's Nostr name its device row keeps: the name trimmed, cut
+ * to the column's 255 characters, and `null` when nothing is left.
+ */
+export const storableNostrName = (
+  name: string | null
+): NonEmptyString255 | null => {
+  const trimmed = name?.trim().slice(0, 255) ?? ""
+  return trimmed === "" ? null : NonEmptyString255(trimmed)
 }
 
-export function removeDeviceAccount(
+/**
+ * Remembers the active account's published name and picture on its device
+ * row, which the account list shows (account/0004, account/0011).
+ */
+export function updateAccountNostrProfile(
   deviceEvolu: DeviceEvolu,
-  accountId: DeviceAccountId
+  accountId: DeviceAccountId,
+  profile: {
+    readonly name: NonEmptyString255 | null
+    readonly picture: string | null
+  }
 ) {
   deviceEvolu.update("account", {
     id: accountId,
-    isDeleted: sqliteTrue,
+    nostrName: profile.name,
+    nostrPicture: profile.picture,
   })
+}
+
+/**
+ * The name the account list shows: the business's published name, else the
+ * name the device gave the account.
+ */
+export const deviceAccountDisplayName = (account: {
+  readonly name: string
+  readonly nostrName: string | null
+}): string => account.nostrName ?? account.name
+
+/**
+ * Removes the account from this device. Added again later, the device joins
+ * the account anew (`deviceRegistered` cleared, access/0013).
+ */
+export function removeDeviceAccount(
+  deviceEvolu: DeviceEvolu,
+  accountId: DeviceAccountId,
+  options?: MutationOptions
+) {
+  deviceEvolu.update(
+    "account",
+    { id: accountId, isDeleted: sqliteTrue, deviceRegistered: null },
+    options
+  )
+}
+
+/**
+ * Whether this device has registered itself in the account's app database
+ * since the account was added to it (access/0013).
+ */
+export const deviceRegisteredQuery = (accountId: DeviceAccountId) =>
+  createDeviceQuery((db) =>
+    db
+      .selectFrom("account")
+      .select(["account.id", "account.deviceRegistered"])
+      .where("account.id", "=", accountId)
+  )
+
+/** Notes that this device has registered itself in the account (access/0013). */
+export function markDeviceRegistered(
+  deviceEvolu: DeviceEvolu,
+  accountId: DeviceAccountId,
+  options?: MutationOptions
+) {
+  deviceEvolu.update(
+    "account",
+    { id: accountId, deviceRegistered: sqliteTrue },
+    options
+  )
 }

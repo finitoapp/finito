@@ -107,9 +107,19 @@ const deviceEvoluSchema = {
     lastUseAt: TimestampMsSchema,
     /**
      * The account's Nostr picture as last seen while it was active, so the
-     * account list shows it without asking relays about inactive accounts.
+     * account list shows it without asking relays about inactive accounts:
+     * an https URL or a small image data URL (`storableNostrPicture`).
      */
-    nostrPicture: z.string().max(2048).nullable(),
+    nostrPicture: z
+      .string()
+      .max(96 * 1024)
+      .nullable(),
+    /**
+     * The business's name from the account's Nostr profile, as last seen
+     * while it was active, so the account list names each business without
+     * asking relays about inactive accounts (account/0011).
+     */
+    nostrName: NonEmptyString255Schema.nullable(),
     /**
      * Set only on a demo account (demo-data/0001): `pending` until its
      * fictional history has been generated, then `seeded`. A demo account
@@ -121,6 +131,14 @@ const deviceEvoluSchema = {
      * device (account/0007); `null` until it is first dismissed.
      */
     backupReminderSnoozedUntil: TimestampMsSchema.nullable(),
+    /**
+     * Set once this device has registered itself in the account's app
+     * database, and cleared when the account is added or removed again
+     * (access/0013): from then on, a removed device row means another device
+     * removed this one, which signs it out; before it, a removed row is an
+     * old removal the device rejoins over.
+     */
+    deviceRegistered: SqliteBoolSchema.nullable(),
   },
   accountEvoluTransport: {
     id: AccountEvoluTransportId,

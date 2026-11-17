@@ -1298,6 +1298,7 @@ describe("per device", () => {
         deviceType: null,
         browserName: null,
         osName: null,
+        joining: true,
       })
     )
     await context.pay({ amount: 3_000, deviceId: bar })

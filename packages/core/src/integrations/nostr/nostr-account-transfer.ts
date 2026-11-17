@@ -17,6 +17,7 @@ import {
 import { z } from "zod"
 
 import type { DateDep } from "../../deps.ts"
+import { DeviceId } from "../../modules/device/device-types.ts"
 import { MasterKeySchema } from "../../modules/shared/key-derivation.ts"
 import { encodePairUri, type PairUri } from "../../modules/shared/payky-uri.ts"
 import {
@@ -105,7 +106,12 @@ const AbortMessageSchema = z.object({
 /** Decoded per direction, so a message of the other one is dropped. */
 const ToSourceJson = jsonCodec(
   z.discriminatedUnion("t", [
-    z.object({ t: z.literal("hello"), proof: Hex32Schema }),
+    // `deviceId` since access/0013; an older target sends none.
+    z.object({
+      t: z.literal("hello"),
+      proof: Hex32Schema,
+      deviceId: DeviceId.optional().catch(undefined),
+    }),
     z.object({ t: z.literal("ack") }),
     AbortMessageSchema,
   ])
@@ -121,7 +127,11 @@ const ToTargetJson = jsonCodec(
 )
 
 type Message =
-  | { readonly t: "hello"; readonly proof: string }
+  | {
+      readonly t: "hello"
+      readonly proof: string
+      readonly deviceId?: DeviceId | undefined
+    }
   | { readonly t: "ready" }
   | { readonly t: "payload"; readonly data: TransferPayload }
   | { readonly t: "ack" }
@@ -276,7 +286,15 @@ export type TransferSourceState =
       readonly mismatch: boolean
     }
   | { readonly phase: "sending" }
-  | { readonly phase: "done"; readonly acked: boolean }
+  | {
+      readonly phase: "done"
+      readonly acked: boolean
+      /**
+       * The device the account was sent to, when it said (access/0013), so
+       * the source can set what it may do before it first starts.
+       */
+      readonly deviceId: DeviceId | null
+    }
   | {
       readonly phase: "failed"
       readonly reason: TransferAbortReason | "network"
@@ -317,6 +335,7 @@ export const startTransferSource = (
     expiresAt: deps.date.now().getTime() + QR_LIFETIME_MS,
   }
   let lockedPubkey: string | null = null
+  let lockedDeviceId: DeviceId | null = null
   let codeConfirmed = false
   let payloadSent = false
 
@@ -342,7 +361,11 @@ export const startTransferSource = (
       void channel.send(pubkey, { t: "abort", reason })
   }
 
-  const onHello = (pubkey: string, proof: string) => {
+  const onHello = (
+    pubkey: string,
+    proof: string,
+    deviceId: DeviceId | undefined
+  ) => {
     if (codeConfirmed || helloPubkeys.has(pubkey)) return
     if (
       !constantTimeEqual(
@@ -361,6 +384,7 @@ export const startTransferSource = (
     }
 
     lockedPubkey = pubkey
+    lockedDeviceId = deviceId ?? null
     const uri = state.phase === "waiting" ? state.uri : null
     emit({
       phase: "locked",
@@ -392,13 +416,14 @@ export const startTransferSource = (
       const message = decoded.data
 
       if (message.t === "hello") {
-        onHello(event.pubkey, message.proof)
+        onHello(event.pubkey, message.proof, message.deviceId)
         return
       }
       // Only the locked device may confirm or end the session.
       if (event.pubkey !== lockedPubkey) return
       if (message.t === "ack") {
-        if (payloadSent) finish({ phase: "done", acked: true })
+        if (payloadSent)
+          finish({ phase: "done", acked: true, deviceId: lockedDeviceId })
         return
       }
       // Once the code is confirmed the payload may be on its way, so the
@@ -407,7 +432,8 @@ export const startTransferSource = (
     },
     onClose: () => {
       if (isOver()) return
-      if (payloadSent) finish({ phase: "done", acked: false })
+      if (payloadSent)
+        finish({ phase: "done", acked: false, deviceId: lockedDeviceId })
       else finish({ phase: "failed", reason: "network" })
     },
   })
@@ -447,7 +473,8 @@ export const startTransferSource = (
       }
       payloadSent = true
       after(ACK_WAIT_MS, () => {
-        if (!isOver()) finish({ phase: "done", acked: false })
+        if (!isOver())
+          finish({ phase: "done", acked: false, deviceId: lockedDeviceId })
       })
     })()
   }
@@ -459,7 +486,7 @@ export const startTransferSource = (
     }
     finish(
       codeConfirmed
-        ? { phase: "done", acked: false }
+        ? { phase: "done", acked: false, deviceId: lockedDeviceId }
         : { phase: "failed", reason: "cancelled" }
     )
   }
@@ -486,9 +513,12 @@ export const startTransferTarget = (
   deps: NostrDep & DateDep,
   {
     pair,
+    deviceId,
     onState,
   }: {
     readonly pair: PairUri
+    /** This device, so the source can set what it may do (access/0013). */
+    readonly deviceId?: DeviceId | undefined
     readonly onState: (state: TransferTargetState) => void
   }
 ): { readonly cancel: () => void } => {
@@ -553,6 +583,7 @@ export const startTransferTarget = (
     const accepted = await channel.send(pair.pk, {
       t: "hello",
       proof: computeHelloProof(sessionSecret, pair.pk, channel.pubkey),
+      ...(deviceId === undefined ? {} : { deviceId }),
     })
     if (!accepted && !isOver()) finish({ phase: "failed", reason: "network" })
   })()

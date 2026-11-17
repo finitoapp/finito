@@ -16,7 +16,7 @@ tags: [access]
 - extendedWaitUntil:
     visible: ${output.t["accountTransfer.source.title"]}
     timeout: 15000
-- assertVisible: ${output.t["accountTransfer.source.permissions"]}
+- assertVisible: ${output.t["accountTransfer.source.permissions.title"]}
 # Selling stays open without the PIN.
 - runFlow:
     file: ../../subflows/goto.yaml

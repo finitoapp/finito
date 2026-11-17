@@ -144,6 +144,8 @@ export function AccountTransferTarget({
       { ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS), ...createDateDep() },
       {
         pair: pair.value,
+        // So the source can set what this device may do (access/0013).
+        deviceId: activeAccount.device.id,
         onState: (state) => {
           if (state.phase === "received") {
             cancelRef.current = null

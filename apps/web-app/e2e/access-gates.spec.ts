@@ -248,7 +248,7 @@ test("an Owner device still needs the PIN to change it, to turn access control o
     turnOnAccessControl(page, "en", { preset: "owner" }))
 
   await test.step("a fresh start: no session, the device's own admin opens Access", () =>
-    gotoPage(page, "/settings/access", "en", "access.title"))
+    gotoPage(page, "/settings/access", "en", "devices.title"))
 
   await test.step("changing the PIN asks for the current one", async () => {
     await page
@@ -331,7 +331,7 @@ test("a PIN session ends on a screen the device covers itself, and in the backgr
   await test.step("turn access control on from inside the app, keeping its session", async () => {
     await page.goto("/", { waitUntil: "domcontentloaded" })
     await openSettingsFromHome(page)
-    await openSettingsEntry(page, "en", "access.title")
+    await openSettingsEntry(page, "en", "devices.title")
     await turnOnAccessControl(page, "en", { navigate: false })
   })
 
@@ -377,7 +377,7 @@ test("a device without sell returns to its PIN screen when the session times out
   await test.step("turn access control on from inside the app, this device set to None", async () => {
     await page.goto("/", { waitUntil: "domcontentloaded" })
     await openSettingsFromHome(page)
-    await openSettingsEntry(page, "en", "access.title")
+    await openSettingsEntry(page, "en", "devices.title")
     await turnOnAccessControl(page, "en", { preset: "none", navigate: false })
   })
 
@@ -401,7 +401,7 @@ test("switching account ends the PIN session, also when switching back", async (
   await test.step("turn access control on from inside the app, keeping its session", async () => {
     await page.goto("/", { waitUntil: "domcontentloaded" })
     await openSettingsFromHome(page)
-    await openSettingsEntry(page, "en", "access.title")
+    await openSettingsEntry(page, "en", "devices.title")
     await turnOnAccessControl(page, "en", { navigate: false })
   })
 
@@ -409,11 +409,8 @@ test("switching account ends the PIN session, also when switching back", async (
     await goBackInApp(page)
     await openSettingsEntry(page, "en", "settings.accounts.nav.title")
     await page
-      .getByRole("button", { name: translate("en", "accountChoice.new.title") })
-      .click()
-    await page
       .getByRole("button", {
-        name: translate("en", "settings.accounts.create.confirm.confirm"),
+        name: translate("en", "settings.accounts.add.title"),
       })
       .click()
     await completeOnboardingDefaults(page, "en")
@@ -434,7 +431,7 @@ test("switching account ends the PIN session, also when switching back", async (
   })
 })
 
-test("Settings → Access edits, renames and removes devices", async ({
+test("Settings → Devices edits, renames and removes devices", async ({
   seededPage: page,
 }) => {
   await page.evaluate(async () => {
@@ -499,11 +496,13 @@ test("Settings → Access edits, renames and removes devices", async ({
     await expect(devices.filter({ hasText: "Front till" })).toHaveCount(1)
   })
 
-  await test.step("removing another device takes it off the list", async () => {
+  await test.step("removing another device asks for the PIN, then takes it off the list", async () => {
     await devices
       .filter({ hasText: "Old tablet" })
       .getByRole("button", { name: translate("en", "access.device.remove") })
       .click()
+    // Even on an Owner device: the removal signs the device out (access/0013).
+    await typePin(page, "en", ownerPin)
     await page
       .getByRole("button", {
         name: translate("en", "access.device.remove.confirm"),
@@ -522,11 +521,8 @@ test("a typed URL neither removes an account nor reopens onboarding", async ({
   await test.step("create a second account; the first one is now inactive", async () => {
     await gotoPage(page, "/settings/accounts", "en", "settings.accounts.title")
     await page
-      .getByRole("button", { name: translate("en", "accountChoice.new.title") })
-      .click()
-    await page
       .getByRole("button", {
-        name: translate("en", "settings.accounts.create.confirm.confirm"),
+        name: translate("en", "settings.accounts.add.title"),
       })
       .click()
     await completeOnboardingDefaults(page, "en")

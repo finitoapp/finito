@@ -6,8 +6,8 @@ import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNavShell } from "../../../components/vertical-nav.tsx"
 import { useMasterPane } from "../../../core/master-pane.ts"
 import {
+  useActiveNostrProfile,
   useNostrIdentity,
-  useNostrProfile,
 } from "../../../hooks/use-nostr-profile.ts"
 import { useOpenDetail } from "../../../hooks/use-open-detail.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -32,7 +32,7 @@ import { AccountAvatar } from "../account-avatar.tsx"
 export function ProfileCard() {
   const { t } = useTranslation()
   const identity = useNostrIdentity()
-  const profile = useNostrProfile(identity.pubkey)
+  const profile = useActiveNostrProfile()
   const openDetail = useOpenDetail()
   const masterPane = useMasterPane()
   const pathname = usePathname()

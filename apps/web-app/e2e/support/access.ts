@@ -8,7 +8,7 @@ import { gotoPage } from "./navigation.ts"
 export const ownerPin = "4821"
 
 /**
- * Turns access control on through Settings → Access and its wizard, with
+ * Turns access control on through Settings → Devices and its wizard, with
  * `pin` as the owner PIN and `preset` for this device; any other device keeps
  * the wizard's Basic. `navigate: false` starts on the Access page
  * already open, so the PIN session the wizard starts survives (a `goto`
@@ -28,7 +28,7 @@ export async function turnOnAccessControl(
   } = {}
 ): Promise<void> {
   if (navigate) {
-    await gotoPage(page, "/settings/access", language, "access.title")
+    await gotoPage(page, "/settings/access", language, "devices.title")
   }
   await page
     .getByRole("button", { name: translate(language, "access.turnOn") })

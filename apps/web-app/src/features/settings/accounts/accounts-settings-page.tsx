@@ -1,14 +1,23 @@
+import { accountRemovalStep } from "@payky/app-shared/account-removal"
+import {
+  initialOnboardingFormState,
+  onboardingFormAtom,
+} from "@payky/app-shared/onboarding-form-state"
 import {
   accountListQuery,
   createAccountMasterKey,
   createOrSelectAccount,
+  deviceAccountDisplayName,
   removeDeviceAccount,
   selectAccount,
+  storableNostrName,
 } from "@payky/core/evolu/device-account"
 import type { DeviceAccountId } from "@payky/core/evolu/device-client"
+import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
+import { devicesQuery } from "@payky/core/modules/device/device-queries"
 import { useNavigate } from "@tanstack/react-router"
-import { useAtomValue } from "jotai"
-import { Check, MonitorSmartphone, Trash2 } from "lucide-react"
+import { useAtomValue, useSetAtom } from "jotai"
+import { Check, Plus, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { accountAtom } from "@/atoms/account.ts"
 import { deviceEvoluAtom } from "@/atoms/device-evolu.ts"
@@ -16,47 +25,48 @@ import { FadeHeader } from "@/components/fade-header.tsx"
 import { Badge } from "@/components/ui/badge.tsx"
 import { Button } from "@/components/ui/button.tsx"
 import {
-  VerticalNav,
+  VerticalNavRow,
   verticalNavShellClassName,
-  verticalNavTitleClassName,
 } from "@/components/vertical-nav.tsx"
 import { appDefaultTransports } from "@/core/app-brand.ts"
-import {
-  type AccountChoice,
-  AccountTypeChoice,
-} from "@/features/shared/account/account-type-choice.tsx"
 import { useRequirePermission } from "@/hooks/use-access.ts"
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog.ts"
 import { useDeviceEvoluQuery } from "@/hooks/use-device-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "@/hooks/use-evolu-query.ts"
 import { useActiveNostrProfile } from "@/hooks/use-nostr-profile.ts"
 import { useReloadAppEvolu } from "@/hooks/use-reload-app-evolu.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
-import { formatDateTime } from "@/lib/format-utils.ts"
 import { cn } from "@/lib/utils.ts"
 
 /**
- * Three questions, one section each: which accounts this device has (and
- * which one is active), how to add another — a new one, or one the user
- * already has, opened on `/settings/accounts/open` as onboarding does it
- * (onboarding/0011) — and how to open this one on another device.
+ * Settings → Accounts (account/0011): the accounts this device holds, each by
+ * its picture and name, the active one marked; switching to one, removing
+ * one, and adding another. Adding opens onboarding's welcome in a new, empty
+ * account, which onboarding's Cancel setup leaves for the account before it.
+ * Switching and removing are governed by the active account's `admin`; the
+ * other account's PIN is never asked (access/0002).
  */
 export function AccountsSettingsPage() {
-  const { language, t } = useTranslation()
+  usePreloadEvoluQueries(accountsPageQueries)
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
   const activeAccount = useAtomValue(accountAtom)
   const reloadAppEvolu = useReloadAppEvolu()
+  const setOnboardingForm = useSetAtom(onboardingFormAtom)
   const confirm = useConfirmDialog()
   const { require } = useRequirePermission()
   const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
+  const [settings] = useEvoluQuery(settingsQuery).data
+  const { data: devices } = useEvoluQuery(devicesQuery)
   const [busy, setBusy] = useState(false)
-  const pending = busy
-  // Only the active account asks relays; the others show the picture it last
-  // had while active (account/0004).
+  // Only the active account asks relays; the others show the name and picture
+  // they last had while active (account/0004, account/0011).
   const activeProfile = useActiveNostrProfile()
 
-  // Both governed by the active account's `admin` (access/0002); the other
-  // account's PIN is never asked.
   const activateAccount = async (accountId: DeviceAccountId) => {
     if (accountId === activeAccount.id) return
     if (!(await require("admin", "access.action.switchAccount"))) return
@@ -65,167 +75,162 @@ export function AccountsSettingsPage() {
   }
 
   const removeAccount = async (accountId: DeviceAccountId, name: string) => {
-    if (accountId === activeAccount.id) return
     if (!(await require("admin", "access.action.removeAccount"))) return
+    const active = accountId === activeAccount.id
+    const step = accountRemovalStep({
+      active,
+      demo: activeAccount.demo !== null,
+      otherDevices: devices.filter(
+        (device) => device.id !== activeAccount.device.id
+      ).length,
+      backupVerified:
+        settings?.recoveryPhraseVerifiedAt !== null &&
+        settings?.recoveryPhraseVerifiedAt !== undefined,
+    })
+    if (step === "backupFirst") {
+      const backUp = await confirm({
+        title: t("settings.accounts.remove.backupFirst.title"),
+        description: t("settings.accounts.remove.backupFirst.description", {
+          name,
+        }),
+        confirmLabel: t("settings.accounts.remove.backupFirst.confirm"),
+        cancelLabel: t("settings.accounts.remove.confirm.cancel"),
+      })
+      if (backUp) void navigate({ to: "/settings/security/backup" })
+      return
+    }
 
     // Confirmed because there is no undo: the row is only soft-deleted, every
-    // query filters it out, and the only way back is re-entering the recovery
-    // phrase. `insertAccount` activates the default relays, so a copy may sit
-    // there — but reaching it still needs that same phrase.
+    // query filters it out, and the only way back is the recovery phrase or
+    // another device's QR.
     const confirmed = await confirm({
       title: t("settings.accounts.remove.confirm.title", { name }),
-      description: t("settings.accounts.remove.confirm.description"),
+      description: t(
+        step === "otherDevices"
+          ? "settings.accounts.remove.confirm.otherDevices"
+          : "settings.accounts.remove.confirm.description"
+      ),
       confirmLabel: t("settings.accounts.remove.confirm.confirm"),
       cancelLabel: t("settings.accounts.remove.confirm.cancel"),
       variant: "destructive",
     })
-    if (confirmed) removeDeviceAccount(deviceEvolu, accountId)
+    if (!confirmed) return
+    removeDeviceAccount(deviceEvolu, accountId)
+    if (!active) return
+    // The most recently used account left takes over; with none left, a new
+    // empty one does, and onboarding starts on its welcome screen.
+    setOnboardingForm(initialOnboardingFormState)
+    void navigate({ to: "/" })
+    reloadAppEvolu()
   }
 
-  const createNewAccount = async () => {
-    const confirmed = await confirm({
-      title: t("settings.accounts.create.confirm.title"),
-      description: t("settings.accounts.create.confirm.description", {
-        name: activeAccount.name,
-      }),
-      confirmLabel: t("settings.accounts.create.confirm.confirm"),
-      cancelLabel: t("settings.accounts.create.confirm.cancel"),
-    })
-    if (!confirmed) return
-
+  const addAccount = async () => {
     setBusy(true)
     try {
       await createOrSelectAccount(deviceEvolu, createAccountMasterKey(), {
         defaultTransports: appDefaultTransports,
       })
+      setOnboardingForm(initialOnboardingFormState)
       reloadAppEvolu()
     } finally {
       setBusy(false)
     }
   }
 
-  const chooseAccountType = (choice: AccountChoice) => {
-    if (choice === "new") {
-      void createNewAccount()
-      return
-    }
-    // The chooser of onboarding/0011, on its own screen as onboarding shows it.
-    void navigate({ to: "/settings/accounts/open", search: { step: "choice" } })
-  }
-
   return (
     <>
       <div className="h-6" />
       <FadeHeader title={t("settings.accounts.title")} />
-      <div className="flex flex-col gap-6">
-        <section className={verticalNavShellClassName}>
-          <h2 className={verticalNavTitleClassName}>
-            {t("settings.accounts.list.title")}
-          </h2>
-          {accounts.length === 0 ? (
-            <p className="px-4 pb-4 text-sm text-muted-foreground">
-              {t("settings.accounts.list.empty")}
-            </p>
-          ) : (
-            <ul className="divide-y" data-testid="account-list">
-              {accounts.map((account) => {
-                const active = account.id === activeAccount.id
+      <div className={verticalNavShellClassName} data-testid="account-list">
+        {/* A real list, one item per account, with the add row below it. */}
+        <ul className="divide-y">
+          {accounts.map((account) => {
+            const active = account.id === activeAccount.id
+            const name =
+              (active
+                ? storableNostrName(activeProfile.data?.name ?? null)
+                : null) ?? deviceAccountDisplayName(account)
 
-                return (
-                  <li
-                    key={account.id}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3",
-                      active && "bg-primary/5"
-                    )}
+            return (
+              <li
+                key={account.id}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3",
+                  active && "bg-primary/5"
+                )}
+              >
+                <AccountAvatar
+                  name={name}
+                  active={active}
+                  picture={
+                    active
+                      ? (activeProfile.data?.picture ?? account.nostrPicture)
+                      : account.nostrPicture
+                  }
+                />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {name}
+                </span>
+                <span className="flex shrink-0 items-center gap-1">
+                  {active ? (
+                    <Badge variant="secondary">
+                      <Check data-icon="inline-start" />
+                      {t("settings.accounts.list.active")}
+                    </Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => void activateAccount(account.id)}
+                    >
+                      {t("settings.accounts.list.switch")}
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={busy}
+                    aria-label={t("settings.accounts.list.remove")}
+                    onClick={() => {
+                      void removeAccount(account.id, name)
+                    }}
                   >
-                    <AccountAvatar
-                      name={account.name}
-                      active={active}
-                      picture={
-                        active
-                          ? (activeProfile.data?.picture ??
-                            account.nostrPicture)
-                          : account.nostrPicture
-                      }
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-sm font-medium">
-                        {account.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {t("settings.accounts.list.createdAt")}{" "}
-                        {formatDateTime(new Date(account.createdAt), language)}
-                      </span>
-                    </span>
-                    {active ? (
-                      <Badge variant="secondary">
-                        <Check data-icon="inline-start" />
-                        {t("settings.accounts.list.active")}
-                      </Badge>
-                    ) : (
-                      <span className="flex shrink-0 items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => void activateAccount(account.id)}
-                        >
-                          {t("settings.accounts.list.switch")}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          disabled={pending}
-                          aria-label={t("settings.accounts.list.remove")}
-                          onClick={() => {
-                            void removeAccount(account.id, account.name)
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </span>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
-
-        <AccountTypeChoice
-          title={t("settings.accounts.add.title")}
-          pending={pending}
-          onSelect={chooseAccountType}
-        />
-
-        <VerticalNav
-          title={t("settings.accounts.elsewhere.title")}
-          items={[
-            {
-              id: "transfer",
-              kind: "link",
-              to: "/settings/access/add-device",
-              icon: <MonitorSmartphone className="text-muted-foreground" />,
+                    <Trash2 />
+                  </Button>
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+        <div className="border-t">
+          <VerticalNavRow
+            item={{
+              kind: "button",
+              onClick: busy ? undefined : () => void addAccount(),
+              icon: <Plus className="text-muted-foreground" />,
               label: (
                 <span className="flex flex-col gap-1">
                   <span className="text-sm font-semibold">
-                    {t("accountTransfer.settings.source.title")}
+                    {t("settings.accounts.add.title")}
                   </span>
                   <span className="text-xs leading-snug text-muted-foreground">
-                    {t("accountTransfer.settings.source.description")}
+                    {t("settings.accounts.add.description")}
                   </span>
                 </span>
               ),
-            },
-          ]}
-        />
+            }}
+          />
+        </div>
       </div>
     </>
   )
 }
+
+/** The active account's devices and backup, which removing it reads. */
+const accountsPageQueries = [settingsQuery, devicesQuery]
 
 /**
  * The account's Nostr picture, or its initial when it has none, it is still

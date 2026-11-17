@@ -7,7 +7,7 @@ tags: [access]
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/security
-      TEXT: ${output.t["settings.security.title"]}
+      TEXT: ${output.t["settings.backup.title"]}
 - runFlow:
     file: ../../subflows/read-phrase.yaml
 - runFlow: ../../subflows/turn-on-access.yaml

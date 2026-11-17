@@ -24,9 +24,6 @@ export const enOnboarding = {
   "accountTransfer.cancel": "Cancel",
   "accountTransfer.close": "Close",
   "accountTransfer.done": "Done",
-  "accountTransfer.settings.source.description":
-    "Open this account on a phone or another computer without the recovery phrase. It lives in Settings → Access, next to the device permissions.",
-  "accountTransfer.settings.source.title": "Add a device to this account",
   "accountTransfer.source.code.confirm": "Confirm and transfer",
   "accountTransfer.source.code.connected": "A device connected.",
   "accountTransfer.source.code.instructions":
@@ -53,7 +50,7 @@ export const enOnboarding = {
     "The new device didn't finish in time.",
   "accountTransfer.source.failed.title": "Transfer stopped",
   "accountTransfer.source.permissions":
-    "The new device starts with no permissions. Set them in Settings → Access once it appears there.",
+    "The new device starts with no permissions. Set them in Settings → Devices once it shows up there.",
   "accountTransfer.source.qr.expired": "This code has expired.",
   "accountTransfer.source.qr.instructions":
     "On the new device open {appName}, choose “Transfer from another device” and scan this code.",
@@ -115,7 +112,7 @@ export const enOnboarding = {
   "accountTransfer.target.fallback":
     "Can't scan? Restore with your recovery phrase.",
   "accountTransfer.target.instructions":
-    "On the device that has your account, open Settings → Access → Add a device, then scan the QR code it shows.",
+    "On the device that has your account, open Settings → Devices → Add a device, then scan the QR code it shows.",
   "accountTransfer.target.scanAgain": "Scan again",
   "accountTransfer.target.title": "Transfer from another device",
   "accountTransfer.target.warning.description":
@@ -242,4 +239,10 @@ export const enOnboarding = {
     "Open it from another device or with its 20 words.",
   "accountChoice.existing.descriptionWithPayky":
     "Open it from {sourceApp}, another device or with its 20 words.",
+  "accountTransfer.source.permissions.title":
+    "What the new device may do without the PIN",
+  "accountTransfer.source.permissions.description":
+    "Everything else asks for the PIN. You can change it later in Settings → Devices.",
+  "accountTransfer.source.permissions.saved":
+    "It may do what you chose without the PIN.",
 } as const

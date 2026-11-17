@@ -26,9 +26,6 @@ export const csOnboarding = {
   "accountTransfer.cancel": "Zrušit",
   "accountTransfer.close": "Zavřít",
   "accountTransfer.done": "Hotovo",
-  "accountTransfer.settings.source.description":
-    "Otevřete tento účet na telefonu nebo jiném počítači bez obnovovací fráze. Najdete to v Nastavení → Přístup, vedle oprávnění zařízení.",
-  "accountTransfer.settings.source.title": "Přidat zařízení k tomuto účtu",
   "accountTransfer.source.code.confirm": "Potvrdit a přenést",
   "accountTransfer.source.code.connected": "Připojilo se zařízení.",
   "accountTransfer.source.code.instructions":
@@ -55,7 +52,7 @@ export const csOnboarding = {
     "Nové zařízení nestihlo přenos dokončit.",
   "accountTransfer.source.failed.title": "Přenos zastaven",
   "accountTransfer.source.permissions":
-    "Nové zařízení začne bez oprávnění. Nastavte mu je v Nastavení → Přístup, jakmile se tam objeví.",
+    "Nové zařízení začne bez oprávnění. Nastavte mu je v Nastavení → Zařízení, jakmile se tam objeví.",
   "accountTransfer.source.qr.expired": "Platnost kódu vypršela.",
   "accountTransfer.source.qr.instructions":
     "Na novém zařízení otevřete {appName}, zvolte „Přenést z jiného zařízení“ a naskenujte tento kód.",
@@ -117,7 +114,7 @@ export const csOnboarding = {
   "accountTransfer.target.fallback":
     "Nejde to naskenovat? Obnovte účet obnovovací frází.",
   "accountTransfer.target.instructions":
-    "Na zařízení, kde účet máte, otevřete Nastavení → Přístup → Přidat zařízení a naskenujte zobrazený QR kód.",
+    "Na zařízení, kde účet máte, otevřete Nastavení → Zařízení → Přidat zařízení a naskenujte zobrazený QR kód.",
   "accountTransfer.target.scanAgain": "Skenovat znovu",
   "accountTransfer.target.title": "Přenést z jiného zařízení",
   "accountTransfer.target.warning.description":
@@ -242,4 +239,9 @@ export const csOnboarding = {
     "Otevřete ho z jiného zařízení nebo pomocí 20 slov.",
   "accountChoice.existing.descriptionWithPayky":
     "Otevřete ho z aplikace {sourceApp}, z jiného zařízení nebo pomocí 20 slov.",
+  "accountTransfer.source.permissions.title": "Co smí nové zařízení bez PINu",
+  "accountTransfer.source.permissions.description":
+    "Na všechno ostatní se zeptá na PIN. Změnit to můžete později v Nastavení → Zařízení.",
+  "accountTransfer.source.permissions.saved":
+    "Bez PINu smí to, co jste vybrali.",
 } satisfies Record<keyof typeof enOnboarding, string>

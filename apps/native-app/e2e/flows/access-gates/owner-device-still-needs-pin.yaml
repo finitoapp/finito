@@ -15,12 +15,12 @@ tags: [access-gates]
     file: ../../subflows/turn-on-access.yaml
     env:
       PRESET: ${output.t["access.preset.owner"]}
-# A fresh start: no session, the device's own admin opens Access.
+# A fresh start: no session, the device's own admin opens Devices.
 - runFlow:
     file: ../../subflows/open-settings-entry.yaml
     env:
       FROM_HOME: "true"
-      TITLE: ${output.t["access.title"]}
+      TITLE: ${output.t["devices.title"]}
 - extendedWaitUntil:
     visible: ${output.t["access.status.on"]}
     timeout: 15000

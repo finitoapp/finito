@@ -420,6 +420,7 @@ export const generateDemoData =
             deviceType: null,
             browserName: null,
             osName: null,
+            joining: true,
           })
         )
         devices.push(id)

@@ -8,6 +8,11 @@ import {
   type TransferSourceState,
 } from "@payky/core/integrations/nostr/nostr-account-transfer"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
+import {
+  accessPresets,
+  type Permission,
+} from "@payky/core/modules/access/access-types"
+import { setDeviceDefaultPermissions } from "@payky/core/modules/device/device-actions"
 import { useRouter } from "@tanstack/react-router"
 import { REGEXP_ONLY_DIGITS } from "input-otp"
 import { useAtomValue } from "jotai"
@@ -56,7 +61,9 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp.tsx"
 import { appEnv } from "@/core/app-env.ts"
+import { PermissionsFields } from "@/features/settings/access/permissions-fields.tsx"
 import { useAccess } from "@/hooks/use-access.ts"
+import { useRunToast } from "@/hooks/use-run-toast.ts"
 import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock.ts"
 import { useTranslation } from "@/hooks/use-translation.ts"
 import { formatCountdown } from "@/lib/format-utils.ts"
@@ -101,9 +108,14 @@ export function AccountTransferSourcePage() {
   const { t } = useTranslation()
   const router = useRouter()
   const account = useAtomValue(accountAtom)
-  // A new device holds no permissions (access/0004); the owner sets them in
-  // Settings → Access, the page this one is reached from.
+  // What the new device may do without the PIN is chosen before it is sent
+  // and saved once it says which device it is (access/0013); an older one
+  // that does not starts with none, set later in Settings → Devices.
   const { enabled: accessControlOn } = useAccess()
+  const runToast = useRunToast()
+  const [granted, setGranted] = useState<ReadonlySet<Permission>>(
+    () => new Set(accessPresets.basic)
+  )
   const [state, setState] = useState<TransferSourceState | null>(null)
   const [code, setCode] = useState("")
   const sessionRef = useRef<TransferSource | null>(null)
@@ -124,9 +136,26 @@ export function AccountTransferSourcePage() {
     sessionRef.current?.cancel()
     setCode("")
     const payload = createTransferPayload(account)
+    const permissions = accessControlOn ? granted : null
     sessionRef.current = startTransferSource(
       { ...createNostrDep(appEnv.VITE_PAYKY_NOSTR_RELAYS), ...createDateDep() },
-      { payload, onState: setState }
+      {
+        payload,
+        onState: (next) => {
+          setState(next)
+          if (
+            next.phase !== "done" ||
+            next.deviceId === null ||
+            permissions === null
+          ) {
+            return
+          }
+          const id = next.deviceId
+          void runToast(async (run) => {
+            await run.ok(setDeviceDefaultPermissions({ id, permissions }))
+          })
+        },
+      }
     )
   }
 
@@ -201,9 +230,21 @@ export function AccountTransferSourcePage() {
                 </AlertDescription>
               </Alert>
               {accessControlOn ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("accountTransfer.source.permissions")}
-                </p>
+                <section className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-sm font-semibold">
+                      {t("accountTransfer.source.permissions.title")}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {t("accountTransfer.source.permissions.description")}
+                    </p>
+                  </div>
+                  <PermissionsFields
+                    label={t("accountTransfer.source.permissions.title")}
+                    granted={granted}
+                    onChange={setGranted}
+                  />
+                </section>
               ) : null}
             </>
           ) : null}
@@ -332,7 +373,11 @@ export function AccountTransferSourcePage() {
                       : "accountTransfer.source.done.sent"
                   )}
                   {accessControlOn
-                    ? ` ${t("accountTransfer.source.permissions")}`
+                    ? ` ${t(
+                        state.deviceId === null
+                          ? "accountTransfer.source.permissions"
+                          : "accountTransfer.source.permissions.saved"
+                      )}`
                     : null}
                 </AlertDescription>
               </Alert>

@@ -1,4 +1,10 @@
 import {
+  accountListQuery,
+  storableNostrName,
+  storableNostrPicture,
+  updateAccountNostrProfile,
+} from "@payky/core/evolu/device-account"
+import {
   fetchNostrProfile,
   getNostrIdentity,
   type NostrIdentity,
@@ -6,10 +12,12 @@ import {
 } from "@payky/core/integrations/nostr/nostr-client"
 import { useQuery } from "@tanstack/react-query"
 import { useAtomValue } from "jotai"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { accountAtom } from "../atoms/account.ts"
+import { deviceEvoluAtom } from "../atoms/device-evolu.ts"
 import { queryClient } from "../core/query-client.ts"
 import { useAppRun } from "./use-app-run.ts"
+import { useDeviceEvoluQuery } from "./use-evolu-query.ts"
 
 /** The active account's Nostr identity, derived from its recovery phrase. */
 export function useNostrIdentity(): NostrIdentity {
@@ -45,6 +53,39 @@ export function useNostrProfile(pubkey: string) {
     loading: query.isFetching,
     refetch: () => void query.refetch(),
   }
+}
+
+/**
+ * The active account's profile, as `useNostrProfile` reads it. Whenever it
+ * loads, or the editor replaces it, its name and picture are remembered on
+ * the device account: that is how the account list shows the other
+ * accounts' businesses without asking relays about them, which would let a
+ * relay link the accounts (account/0004, account/0011).
+ */
+export function useActiveNostrProfile() {
+  const identity = useNostrIdentity()
+  const profile = useNostrProfile(identity.pubkey)
+  const account = useAtomValue(accountAtom)
+  const deviceEvolu = useAtomValue(deviceEvoluAtom)
+  const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
+  const stored = accounts.find(({ id }) => id === account.id)
+  const name =
+    profile.data === null ? undefined : storableNostrName(profile.data.name)
+  const picture =
+    profile.data === null
+      ? undefined
+      : storableNostrPicture(profile.data.picture)
+
+  useEffect(() => {
+    // Written only on a change, so mounting it does not add a write.
+    if (name === undefined || picture === undefined || stored === undefined) {
+      return
+    }
+    if (name === stored.nostrName && picture === stored.nostrPicture) return
+    updateAccountNostrProfile(deviceEvolu, account.id, { name, picture })
+  }, [account.id, deviceEvolu, name, picture, stored])
+
+  return profile
 }
 
 /**

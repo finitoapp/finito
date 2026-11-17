@@ -24,21 +24,11 @@ export const skSettings = {
   "settings.about.title": "O aplikácii",
   "settings.accountAndSync": "ÚČET A SYNCHRONIZÁCIA",
   "settings.accounts.add.title": "Pridať účet",
-  "settings.accounts.elsewhere.title": "Tento účet na inom zariadení",
-  "settings.accounts.create.confirm.cancel": "Zrušiť",
-  "settings.accounts.create.confirm.confirm": "Vytvoriť účet",
-  "settings.accounts.create.confirm.description":
-    "Prepnete sa z účtu {name} a založíte úplne nový účet s vlastnou recovery phrase.",
-  "settings.accounts.create.confirm.title": "Vytvoriť nový účet?",
   "settings.accounts.list.active": "Aktívny",
-  "settings.accounts.list.createdAt": "Vytvorené",
-  "settings.accounts.list.empty": "Na tomto zariadení nie sú uložené účty.",
   "settings.accounts.list.remove": "Odobrať",
   "settings.accounts.list.switch": "Prepnúť",
-  "settings.accounts.list.title": "V tomto zariadení",
-  "settings.accounts.nav.description":
-    "Vyberte, ktorý používateľský účet je na tomto zariadení aktívny",
-  "settings.accounts.nav.title": "Prepnutie používateľského účtu",
+  "settings.accounts.nav.description": "Účty na tomto zariadení",
+  "settings.accounts.nav.title": "Účty",
   "settings.accounts.remove.confirm.cancel": "Ponechať účet",
   "settings.accounts.remove.confirm.confirm": "Odobrať účet",
   "settings.accounts.remove.confirm.description":
@@ -55,7 +45,7 @@ export const skSettings = {
   "settings.accounts.restore.mnemonic.label": "Recovery phrase",
   "settings.accounts.restore.mnemonic.required": "Recovery phrase je povinná.",
   "settings.accounts.restore.mnemonic.wordCount": "Recovery phrase má 20 slov.",
-  "settings.accounts.title": "Účet aplikácie",
+  "settings.accounts.title": "Účty",
   "settings.appVersion": "Verzia aplikácie:",
   "settings.appVersionCode": "Kód verzie:",
   "settings.appearance": "VZHĽAD A JAZYK",
@@ -907,7 +897,6 @@ export const skSettings = {
   "settings.qerkoTerminal.unpaired.description":
     "Prepojte účet svojej firmy v Qerku a prijímajte platby kartou na jeho platobných termináloch. Qerko pošle potvrdzovací kód na e-mail firmy.",
   "settings.qerkoTerminal.unpaired.title": "Spárovať s Qerkom",
-  "settings.security.description": "Správa synchronizácie a obnovy účtu",
   "settings.security.mnemonic.copied": "Recovery phrase skopírovaná.",
   "settings.security.mnemonic.copy": "Kopírovať",
   "settings.security.mnemonic.copyError":
@@ -950,7 +939,6 @@ export const skSettings = {
   "settings.security.backup.start": "Zobraziť recovery phrase",
   "settings.security.backup.continue": "Mám zapísané — overiť",
   "settings.security.verify.skip": "Preskočiť overenie",
-  "settings.security.title": "Bezpečnosť a synchronizácia",
   "settings.security.transports.add": "Pridať transport",
   "settings.security.transports.demo":
     "Toto je demo účet: nikdy sa nesynchronizuje, takže jeho relaye zostávajú vypnuté.",
@@ -1259,7 +1247,7 @@ export const skSettings = {
   "access.device.remove": "Odobrať",
   "access.device.remove.confirm": "Odobrať zariadenie",
   "access.device.remove.description":
-    "Jeho oprávnenia sa zmažú. Ak sa zariadenie ďalej používa, objaví sa znova bez oprávnení.",
+    "Zariadenie sa z účtu odhlási, hneď ako sa nabudúce pripojí, a jeho oprávnenia sa zmažú.",
   "access.device.remove.title": "Odobrať {name}?",
   "access.device.rename": "Premenovať",
   "access.device.this": "Toto zariadenie",
@@ -1268,7 +1256,6 @@ export const skSettings = {
   "access.devices.description":
     "Zariadenia tohto účtu a čo každé smie bez PINu. Zariadenie sa objaví, keď sa zosynchronizuje.",
   "access.devices.title": "Zariadenia",
-  "access.nav.description": "PIN majiteľa a oprávnenia zariadení",
   "access.newPin.description":
     "4–8 číslic. Nepoužívajte PIN z platobnej karty ani telefónu: jeho hash je uložený na každom zariadení účtu a v každom exporte databázy.",
   "access.newPin.label": "Nový PIN",
@@ -1307,10 +1294,10 @@ export const skSettings = {
   "access.phrase.setNewPin": "Nastaviť nový PIN",
   "access.phrase.submit": "Odomknúť",
   "access.phrase.warning":
-    "Písanie frázy na obnovenie pri pokladni ju môže prezradiť kamerám a ľuďom okolo. Otvára celý účet. Lepšie je odblokovať zariadenie z iného zariadenia v Nastavenia → Prístup.",
+    "Písanie frázy na obnovenie pri pokladni ju môže prezradiť kamerám a ľuďom okolo. Otvára celý účet. Lepšie je odblokovať zariadenie z iného zariadenia v Nastavenia → Zariadenia.",
   "access.phrase.wrong": "Toto nie je fráza na obnovenie tohto účtu.",
   "access.pin.blocked.description":
-    "Príliš veľa nesprávnych PINov. Majiteľ môže toto zariadenie odblokovať z iného zariadenia v Nastavenia → Prístup, alebo tu frázou na obnovenie. Zariadenie si medzitým drží svoje oprávnenia.",
+    "Príliš veľa nesprávnych PINov. Majiteľ môže toto zariadenie odblokovať z iného zariadenia v Nastavenia → Zariadenia, alebo tu frázou na obnovenie. Zariadenie si medzitým drží svoje oprávnenia.",
   "access.pin.blocked.title":
     "Zadávanie PINu je na tomto zariadení zablokované",
   "access.pin.cancel": "Zrušiť",
@@ -1335,7 +1322,6 @@ export const skSettings = {
   "access.save": "Uložiť",
   "access.status.off": "Riadenie prístupu je vypnuté",
   "access.status.on": "Riadenie prístupu je zapnuté",
-  "access.title": "Prístup",
   "access.turnOff": "Vypnúť",
   "access.turnOn": "Zapnúť",
   "access.webWarning":
@@ -1474,4 +1460,21 @@ export const skSettings = {
   "settings.cardClosure.restored.unresolved":
     "Výsledok uzávierky sa nepodarilo prečítať. Skontrolujte ju v aplikácii SwitchioPay.",
   "settings.cardSwitchioAccount.closureLink": "Uzávierky terminálov",
+  "devices.title": "Zariadenia",
+  "devices.nav.description": "Zariadenia tohto účtu a čo každé smie bez PINu",
+  "devices.removedHere": "Toto zariadenie bolo odobraté z účtu {name}.",
+  "access.action.removeDevice": "Odobrať zariadenie",
+  "settings.backup.title": "Záloha",
+  "settings.backup.description": "Recovery phrase tohto účtu",
+  "settings.backends.title": "Backendy",
+  "settings.backends.description": "Servery, cez ktoré sa účet synchronizuje",
+  "settings.accounts.add.description":
+    "Založte nový podnik alebo otvorte účet, ktorý už máte",
+  "settings.accounts.remove.confirm.otherDevices":
+    "Toto zariadenie účet zabudne. Na ostatných zariadeniach účtu zostane.",
+  "settings.accounts.remove.backupFirst.title":
+    "Najprv zálohujte recovery phrase",
+  "settings.accounts.remove.backupFirst.description":
+    "Účet {name} nie je na žiadnom inom zariadení a jeho recovery phrase nie je zálohovaná. Keby ste ho teraz odobrali, bol by nadobro stratený.",
+  "settings.accounts.remove.backupFirst.confirm": "Zálohovať",
 } satisfies Record<keyof typeof enSettings, string>

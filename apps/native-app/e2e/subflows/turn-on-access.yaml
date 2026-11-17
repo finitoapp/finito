@@ -1,9 +1,9 @@
-# web's turnOnAccessControl: Settings → Access and its wizard, PIN (default
+# web's turnOnAccessControl: Settings → Devices and its wizard, PIN (default
 # 4821) as the owner PIN, optional PRESET (an access.preset.* key's text, e.g.
 # "None") for this device. Turning it on starts a PIN session on the Access
 # page, as web's helper leaves it: KEEP: "true" stays there with it; otherwise
 # the app restarts to end the session, which web's specs do with a reload.
-# IN_APP: "true" opens Access from the terminal home through Settings
+# IN_APP: "true" opens Devices from the terminal home through Settings
 # (web's `navigate: false` after opening it in-app), so nothing reloads.
 appId: ${APP_ID}
 ---
@@ -13,14 +13,14 @@ appId: ${APP_ID}
     file: goto.yaml
     env:
       ROUTE: settings/access
-      TEXT: ${output.t["access.title"]}
+      TEXT: ${output.t["devices.title"]}
 - runFlow:
     when:
       true: ${typeof IN_APP !== "undefined" && IN_APP === "true"}
     file: open-settings-entry.yaml
     env:
       FROM_HOME: "true"
-      TITLE: ${output.t["access.title"]}
+      TITLE: ${output.t["devices.title"]}
 - runFlow:
     file: tap-label.yaml
     env:

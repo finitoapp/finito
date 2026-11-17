@@ -56,7 +56,7 @@ test("confirming a withdrawal asks for the PIN even during a PIN session", async
 
   await test.step("turn access control on from the settings list; the wizard leaves a PIN session", async () => {
     await gotoPage(page, "/settings", "en", "settings.title")
-    await openSettingsEntry(page, "en", "access.title")
+    await openSettingsEntry(page, "en", "devices.title")
     await turnOnAccessControl(page, "en", { navigate: false })
   })
 

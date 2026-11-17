@@ -4,19 +4,24 @@ import { MasterKey } from "../modules/shared/key-derivation.ts"
 import { NonEmptyString255, WssUrl } from "../modules/shared/schema.ts"
 import { createTestDeviceEvolu } from "../testing/device-evolu.ts"
 import {
+  accountListQuery,
   activeAccountQuery,
   appOwnerIdPlaceholder,
   createDefaultEvoluTransportUrls,
   createOrSelectAccount,
   deriveDeviceAccountId,
+  deviceAccountDisplayName,
   insertDemoAccount,
   isServiceProxyEnabled,
   markDemoAccountSeeded,
+  NOSTR_PICTURE_DATA_MAX_LENGTH,
   removeDeviceAccount,
   resolveTransportUrl,
   serviceProxySettingQuery,
   setServiceProxyEnabled,
+  storableNostrName,
   storableNostrPicture,
+  updateAccountNostrProfile,
   updateDeviceSettings,
 } from "./device-account.ts"
 import {
@@ -225,16 +230,61 @@ describe("createOrSelectAccount", () => {
 })
 
 describe("storableNostrPicture", () => {
-  test("keeps an https picture and drops data, http and overlong ones", () => {
+  test("keeps an https picture and one the app picked, drops http and overlong ones", () => {
     const picture = "https://image.example/a.png"
+    const picked = `data:image/jpeg;base64,${"A".repeat(30_000)}`
 
     expect(storableNostrPicture(picture)).toBe(picture)
-    expect(storableNostrPicture("data:image/png;base64,AAAA")).toBeNull()
+    expect(storableNostrPicture(picked)).toBe(picked)
     expect(storableNostrPicture("http://image.example/a.png")).toBeNull()
+    expect(storableNostrPicture("data:text/html;base64,AAAA")).toBeNull()
     expect(
       storableNostrPicture(`https://image.example/${"a".repeat(2048)}`)
     ).toBeNull()
+    expect(
+      storableNostrPicture(
+        `data:image/jpeg;base64,${"A".repeat(NOSTR_PICTURE_DATA_MAX_LENGTH)}`
+      )
+    ).toBeNull()
     expect(storableNostrPicture(null)).toBeNull()
+  })
+})
+
+describe("the account list's names", () => {
+  test("names an account by its business once its profile is remembered", async () => {
+    await using test = await createTestDeviceEvolu()
+    const { deviceEvolu } = test
+    const { accountId } = await createOrSelectAccount(deviceEvolu, masterKey, {
+      defaultTransports,
+      name: NonEmptyString255("windy-tiger-567"),
+    })
+    const listed = async () =>
+      (await deviceEvolu.loadQuery(accountListQuery)).map(
+        deviceAccountDisplayName
+      )
+
+    await expect.poll(listed).toEqual(["windy-tiger-567"])
+
+    updateAccountNostrProfile(deviceEvolu, accountId, {
+      name: storableNostrName("  Kavárna U Lípy "),
+      picture: storableNostrPicture("https://image.example/a.png"),
+    })
+    await expect.poll(listed).toEqual(["Kavárna U Lípy"])
+    await expect
+      .poll(async () => (await deviceEvolu.loadQuery(accountListQuery))[0])
+      .toMatchObject({ nostrPicture: "https://image.example/a.png" })
+
+    // A business that clears its name falls back to the device's name.
+    updateAccountNostrProfile(deviceEvolu, accountId, {
+      name: storableNostrName(" "),
+      picture: null,
+    })
+    await expect.poll(listed).toEqual(["windy-tiger-567"])
+  })
+
+  test("keeps a name of at most 255 characters", () => {
+    expect(storableNostrName("a".repeat(300))).toBe("a".repeat(255))
+    expect(storableNostrName(null)).toBeNull()
   })
 })
 

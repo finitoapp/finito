@@ -522,6 +522,7 @@ export const e2eActions: Readonly<Record<string, E2eAction>> = {
         deviceType: NonEmptyString255("tablet"),
         browserName: null,
         osName: NonEmptyString255("Android"),
+        joining: true,
       })
     )
     if (params.blocked === "true") {

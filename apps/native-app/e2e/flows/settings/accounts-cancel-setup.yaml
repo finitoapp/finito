@@ -5,19 +5,15 @@ appId: ${APP_ID}
 tags: [settings]
 ---
 - runFlow: ../../subflows/seed-onboarding.yaml
-# Create a second account.
+# Add a second account (account/0011).
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/accounts
       TEXT: ${output.t["settings.accounts.title"]}
 - scrollUntilVisible:
-    element: ${output.t["onboarding.welcome.new"]}
-- tapOn: ${output.t["onboarding.welcome.new"]}
-- runFlow:
-    file: ../../subflows/tap-label.yaml
-    env:
-      LABEL: ${output.t["settings.accounts.create.confirm.confirm"]}
+    element: ${output.t["settings.accounts.add.title"]}
+- tapOn: ${output.t["settings.accounts.add.title"]}
 - extendedWaitUntil:
     visible: ${output.t["onboarding.welcome.new"]}
     timeout: 15000

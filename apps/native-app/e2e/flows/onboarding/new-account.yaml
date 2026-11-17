@@ -5,12 +5,12 @@ tags: [onboarding]
 ---
 - runFlow: ../../subflows/start.yaml
 - runFlow: ../../subflows/complete-onboarding.yaml
-# Security settings still hand out the recovery phrase.
+# Backup settings still hand out the recovery phrase.
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
       ROUTE: settings/security
-      TEXT: ${output.t["settings.security.title"]}
+      TEXT: ${output.t["settings.backup.title"]}
 - tapOn: ${output.t["settings.security.backup.open"]}
 - tapOn: ${output.t["settings.security.backup.start"]}
 - assertVisible:

@@ -66,9 +66,12 @@ test("turning access control on with the wizard locks what the device was not gi
         name: translate("en", "accountTransfer.source.title"),
       })
     ).toBeVisible()
+    // What the new device may do is chosen before it is sent (access/0013).
     await expect(
-      page.getByText(translate("en", "accountTransfer.source.permissions"))
-    ).toBeVisible()
+      page.getByRole("combobox", {
+        name: translate("en", "accountTransfer.source.permissions.title"),
+      })
+    ).toContainText(translate("en", "access.preset.basic"))
   })
 
   await test.step("selling stays open without the PIN", async () => {

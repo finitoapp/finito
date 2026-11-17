@@ -38,8 +38,8 @@ tags: [demo-data]
 - runFlow:
     file: ../../subflows/goto.yaml
     env:
-      ROUTE: settings/security
-      TEXT: ${output.t["settings.security.title"]}
+      ROUTE: settings/backends
+      TEXT: ${output.t["settings.backends.title"]}
 - assertVisible: ${output.t["settings.security.transports.demo"]}
 - runFlow:
     when:

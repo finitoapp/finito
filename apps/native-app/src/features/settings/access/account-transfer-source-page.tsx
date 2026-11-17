@@ -8,6 +8,11 @@ import {
   type TransferSourceState,
 } from "@payky/core/integrations/nostr/nostr-account-transfer"
 import { createNostrDep } from "@payky/core/integrations/nostr/nostr-client"
+import {
+  accessPresets,
+  type Permission,
+} from "@payky/core/modules/access/access-types"
+import { setDeviceDefaultPermissions } from "@payky/core/modules/device/device-actions"
 import { router } from "expo-router"
 import { useAtomValue, useStore } from "jotai"
 import ArrowRightLeft from "lucide-react-native/icons/arrow-right-left"
@@ -57,9 +62,11 @@ import {
 } from "../../../components/ui/stepper.tsx"
 import { nativeEnv } from "../../../core/native-env.ts"
 import { useAccess, useRequirePermission } from "../../../core/use-access.ts"
+import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useScreenWakeLock } from "../../../hooks/use-screen-wake-lock.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
 import { fontSize, fontWeight } from "../../../theme/tokens.ts"
+import { PermissionsFields } from "./permissions-fields.tsx"
 
 type FailureReason = Extract<TransferSourceState, { phase: "failed" }>["reason"]
 
@@ -106,7 +113,14 @@ export function AccountTransferSourcePage() {
   const { t } = useTranslation()
   const account = useAtomValue(accountAtom)
   const accountVersion = useAtomValue(evoluCounterAtom)
+  // What the new device may do without the PIN is chosen before it is sent
+  // and saved once it says which device it is (access/0013); an older one
+  // that does not starts with none, set later in Settings → Devices.
   const { enabled: accessControlOn } = useAccess()
+  const runToast = useRunToast()
+  const [granted, setGranted] = useState<ReadonlySet<Permission>>(
+    () => new Set(accessPresets.basic)
+  )
   const { require } = useRequirePermission()
   const [state, setState] = useState<TransferSourceState | null>(null)
   const [code, setCode] = useState("")
@@ -140,12 +154,29 @@ export function AccountTransferSourcePage() {
     setCode("")
     setNow(Date.now())
     const payload = createTransferPayload(account)
+    const permissions = accessControlOn ? granted : null
     sessionRef.current = startTransferSource(
       {
         ...createNostrDep(nativeEnv.EXPO_PUBLIC_PAYKY_NOSTR_RELAYS),
         ...createDateDep(),
       },
-      { payload, onState: setState }
+      {
+        payload,
+        onState: (next) => {
+          setState(next)
+          if (
+            next.phase !== "done" ||
+            next.deviceId === null ||
+            permissions === null
+          ) {
+            return
+          }
+          const id = next.deviceId
+          void runToast(async (run) => {
+            await run.ok(setDeviceDefaultPermissions({ id, permissions }))
+          })
+        },
+      }
     )
   }
 
@@ -206,13 +237,29 @@ export function AccountTransferSourcePage() {
                 </AlertDescription>
               </Alert>
               {accessControlOn ? (
-                <Text
-                  fontSize={fontSize.sm}
-                  lineHeight={fontSize.sm}
-                  color="muted-foreground"
-                >
-                  {t("accountTransfer.source.permissions")}
-                </Text>
+                <YStack gap={12}>
+                  <YStack gap={4}>
+                    <Text
+                      fontSize={fontSize.sm}
+                      lineHeight={fontSize.sm}
+                      fontWeight={fontWeight.semibold}
+                    >
+                      {t("accountTransfer.source.permissions.title")}
+                    </Text>
+                    <Text
+                      fontSize={fontSize.sm}
+                      lineHeight={fontSize.sm}
+                      color="muted-foreground"
+                    >
+                      {t("accountTransfer.source.permissions.description")}
+                    </Text>
+                  </YStack>
+                  <PermissionsFields
+                    label={t("accountTransfer.source.permissions.title")}
+                    granted={granted}
+                    onChange={setGranted}
+                  />
+                </YStack>
               ) : null}
             </YStack>
           ) : null}
@@ -314,7 +361,11 @@ export function AccountTransferSourcePage() {
                     : "accountTransfer.source.done.sent"
                 )}
                 {accessControlOn
-                  ? ` ${t("accountTransfer.source.permissions")}`
+                  ? ` ${t(
+                      state.deviceId === null
+                        ? "accountTransfer.source.permissions"
+                        : "accountTransfer.source.permissions.saved"
+                    )}`
                   : ""}
               </AlertDescription>
             </Alert>

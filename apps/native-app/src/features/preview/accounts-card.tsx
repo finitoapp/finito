@@ -57,10 +57,7 @@ export function AccountsCard() {
         variant="outline"
         onPress={async () => {
           if (!isCurrentAccount()) return
-          if (
-            !(await require("admin", "settings.accounts.create.confirm.confirm"))
-          )
-            return
+          if (!(await require("admin", "settings.accounts.add.title"))) return
           if (!isCurrentAccount()) return
           insertAccount(deviceEvolu, createAccountMasterKey(), {
             defaultTransports: appDefaultTransports,
