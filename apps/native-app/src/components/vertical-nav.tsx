@@ -59,7 +59,12 @@ export const VerticalNavTitle = styled(Text, {
 })
 
 type NavItemTarget =
-  | { readonly kind: "link"; readonly href: Href }
+  | {
+      readonly kind: "link"
+      readonly href: Href
+      /** Runs as the row opens its screen, to start loading that screen. */
+      readonly onOpen?: () => void
+    }
   | { readonly kind: "href"; readonly href: string }
   | { readonly kind: "button"; readonly onPress?: () => void }
   /** A read-only row: no press, nothing to activate. */
@@ -138,7 +143,10 @@ const press = (
 ): (() => void) | undefined => {
   switch (item.kind) {
     case "link":
-      return () => openDetail(item.href)
+      return () => {
+        item.onOpen?.()
+        openDetail(item.href)
+      }
     case "href":
       return () => void Linking.openURL(item.href)
     case "button":

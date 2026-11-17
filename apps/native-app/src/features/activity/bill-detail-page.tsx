@@ -60,6 +60,7 @@ import {
   useBillLineSummaries,
   useBillStatus,
 } from "../shared/use-bill-state.ts"
+import { usePreloadBill } from "../shared/use-preload-bill.ts"
 import { PaymentMethodIcons } from "./activity-parts.tsx"
 import { BillStatusBadge } from "./bill-status-display.tsx"
 import {
@@ -122,6 +123,7 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
   const taxRates = useEvoluQuery(taxRatesQuery).data
   const summaries = useBillLineSummaries(billId)
   const billStatus = useBillStatus(billId)
+  const preloadBill = usePreloadBill()
   const { claimedSum, coverage } = useBillCoverage(billId)
   const payments = useEvoluQuery(paymentsWithClaimsByBillIdQuery(billId)).data
   const refunds = useEvoluQuery(refundSummariesByBillIdQuery(billId)).data
@@ -158,7 +160,10 @@ function BillDetail({ billId }: { readonly billId: BillId }) {
         <Button
           size="lg"
           label={t("billDetail.backToBill")}
-          onPress={() => router.push({ pathname: "/bill", params: { billId } })}
+          onPress={() => {
+            preloadBill(billId)
+            router.push({ pathname: "/bill", params: { billId } })
+          }}
         />
       ) : null}
 

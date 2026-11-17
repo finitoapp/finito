@@ -28,6 +28,7 @@ import {
   type ActivityRowData,
 } from "./activity-parts.tsx"
 import { PaymentStatusIcon } from "./payment-status-display.tsx"
+import { usePreloadPaymentDetail } from "./use-preload-payment-detail.ts"
 
 /** The Activity tab's payments list, under `ActivityLayout`'s header and tabs. */
 export function PaymentHistoryPage() {
@@ -37,6 +38,7 @@ export function PaymentHistoryPage() {
 function PaymentHistory() {
   const { t } = useTranslation()
   const locale = useLocale()
+  const preloadPaymentDetail = usePreloadPaymentDetail()
   usePreloadEvoluQueries(paymentHistoryQueries())
   const { rows, hasMore, isPending, loadMore } = useInfiniteEvoluQuery(
     [],
@@ -90,6 +92,7 @@ function PaymentHistory() {
         pathname: "/activity/[paymentId]",
         params: { paymentId: item.id },
       },
+      onOpen: () => preloadPaymentDetail(item.id, item.billId),
     }
   }
 

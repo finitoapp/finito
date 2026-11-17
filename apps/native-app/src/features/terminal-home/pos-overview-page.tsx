@@ -14,7 +14,10 @@ import {
 } from "@payky/app-shared/pos-overview"
 import type { OpenBillRow } from "@payky/core/modules/bill/bill-queries"
 import { openBillsQuery } from "@payky/core/modules/bill/bill-queries"
-import { createRandomBillId } from "@payky/core/modules/bill/bill-types"
+import {
+  type BillId,
+  createRandomBillId,
+} from "@payky/core/modules/bill/bill-types"
 import type { TableRow } from "@payky/core/modules/table/table"
 import { tablesQuery } from "@payky/core/modules/table/table-queries"
 import type { TableId } from "@payky/core/modules/table/table-types"
@@ -34,11 +37,15 @@ import {
   ToggleGroupItem,
 } from "../../components/ui/toggle-group.tsx"
 import { useColumnScroll } from "../../components/web-column.tsx"
-import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
+import {
+  useEvoluQuery,
+  usePreloadEvoluQueries,
+} from "../../hooks/use-evolu-query.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { viewStateAtom } from "../../platform/view-state-atom.ts"
 import { fontSize, fontWeight, radius } from "../../theme/tokens.ts"
+import { usePreloadBill } from "../shared/use-preload-bill.ts"
 
 const tableFilterLabelKeys = {
   all: "home.pos.filter.all",
@@ -64,8 +71,14 @@ const tableFilterAtom = viewStateAtom<TableFilter>(
   "all"
 )
 
-const openBill = (billId: string) =>
-  router.push({ pathname: "/bill", params: { billId } })
+/** Opens an open bill, its screen's data loading as the press lands. */
+function useOpenBill(): (billId: BillId) => void {
+  const preloadBill = usePreloadBill()
+  return (billId) => {
+    preloadBill(billId)
+    router.push({ pathname: "/bill", params: { billId } })
+  }
+}
 
 /**
  * The id is minted once per mounted button, as web's `NewBillLink`, so the
@@ -78,12 +91,17 @@ const openBill = (billId: string) =>
 function useNewBill(tableId: TableId | undefined) {
   const [billId, setBillId] = useState(createRandomBillId)
   useFocusEffect(useCallback(() => () => setBillId(createRandomBillId()), []))
-  return () =>
+  const preloadBill = usePreloadBill()
+  return () => {
+    preloadBill(billId)
     router.push({
       pathname: "/bill",
       params: tableId === undefined ? { billId } : { billId, tableId },
     })
+  }
 }
+
+const preloadedQueries = [tablesQuery, openBillsQuery]
 
 /**
  * Web's POS home screen, home's Sales mode (navigation/0004): floor
@@ -95,6 +113,8 @@ export function PosOverviewPage() {
   const column = useColumnScroll(screenPaddingX)
   const { t } = useTranslation()
   const locale = useLocale()
+  // In numpad mode home has not read these: both in one round trip.
+  usePreloadEvoluQueries(preloadedQueries)
   const tables = useEvoluQuery(tablesQuery).data
   const openBills = useEvoluQuery(openBillsQuery).data
   const [tableFilter, setTableFilter] = useAtom(tableFilterAtom)
@@ -324,6 +344,7 @@ function TableTile({
   const { t } = useTranslation()
   const locale = useLocale()
   const newBill = useNewBill(table.id)
+  const openBill = useOpenBill()
   const occupied = rows.length > 0
   const onlyBill = rows.length === 1 ? rows[0]?.bill : undefined
   const total = sumBillRows(rows)
@@ -500,6 +521,7 @@ function BillChip({
 }) {
   const { t } = useTranslation()
   const locale = useLocale()
+  const openBill = useOpenBill()
   const elapsedMs = now - new Date(bill.createdAt).getTime()
   const paymentState = billPaymentState(bill, now)
 

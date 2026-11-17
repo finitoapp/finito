@@ -45,6 +45,7 @@ import { useTerminalHomeMode } from "../../hooks/use-terminal-home-mode.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 import { maxWidth } from "../../theme/tokens.ts"
 import { AmountKeypad } from "../shared/amount-keypad.tsx"
+import { usePreloadBill } from "../shared/use-preload-bill.ts"
 import { PosOverviewPage } from "./pos-overview-page.tsx"
 
 /**
@@ -81,13 +82,14 @@ export function TerminalHomePage() {
   const preloadActivity = usePreloadActivity()
   // A scan starts a new bill without a table; the bill then adds the item
   // as if it had been scanned there (scanner/0001).
+  const preloadBill = usePreloadBill()
   useHardwareScanner({
     enabled: settings !== undefined && !confirmOpen,
-    onScan: (code) =>
-      router.push({
-        pathname: "/bill",
-        params: { billId: createRandomBillId(), scan: code },
-      }),
+    onScan: (code) => {
+      const billId = createRandomBillId()
+      preloadBill(billId)
+      router.push({ pathname: "/bill", params: { billId, scan: code } })
+    },
   })
 
   if (settings === undefined) return <NotOnboarded />

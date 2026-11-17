@@ -1,4 +1,5 @@
 import { firstInfinitePageQuery } from "@payky/app-shared/use-infinite-evolu-query"
+import { latestBillsQuery } from "@payky/core/modules/bill/bill-queries"
 import { latestPaymentsQuery } from "@payky/core/modules/payment/payment-queries"
 import { refundSummariesQuery } from "@payky/core/modules/refund/refund-queries"
 import { useAtomValue } from "jotai"
@@ -24,5 +25,15 @@ export function usePreloadActivity(): () => void {
     // Only warms Evolu's cache: the list reads, and reports, the same
     // queries itself.
     void Promise.allSettled(evolu.loadQueries([...paymentHistoryQueries()]))
+  }, [evolu])
+}
+
+/** Activity's bills tab's first page, loading as its tab is pressed. */
+export function usePreloadBillHistory(): () => void {
+  const evolu = useAtomValue(evoluAtom)
+  return useCallback(() => {
+    void Promise.allSettled([
+      evolu.loadQuery(firstInfinitePageQuery(latestBillsQuery)),
+    ])
   }, [evolu])
 }

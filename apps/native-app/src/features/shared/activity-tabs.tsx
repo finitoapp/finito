@@ -1,5 +1,9 @@
 import { router } from "expo-router"
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
+import {
+  usePreloadActivity,
+  usePreloadBillHistory,
+} from "../../hooks/use-preload-activity.ts"
 import { useTranslation } from "../../hooks/use-translation.ts"
 
 export type ActivityTab = "payments" | "bills" | "stats"
@@ -27,8 +31,17 @@ export function ActivityTabs({
   readonly onSelect: (tab: ActivityTab) => void
 }) {
   const { t } = useTranslation()
+  const preloadPayments = usePreloadActivity()
+  const preloadBills = usePreloadBillHistory()
+  // A list tab starts loading its first page as it is pressed.
+  const preloads = {
+    payments: preloadPayments,
+    bills: preloadBills,
+    stats: undefined,
+  } satisfies Record<ActivityTab, (() => void) | undefined>
   const go = (tab: ActivityTab) => {
     if (tab === active) return
+    preloads[tab]?.()
     onSelect(tab)
     router.replace(activityTabHrefs[tab])
   }
