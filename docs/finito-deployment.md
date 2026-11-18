@@ -153,8 +153,11 @@ screens cannot be captured; the page draws a placeholder for them.
   routes by path, not host. New Finito accounts start on it (brand/0003).
 - Android: the Play listing for `fit.finito.app`, its upload keystore and the
   `FINITO_ANDROID_*` GitHub secrets the release job signs with
-  (`docs/releases.md`). Google Play takes API uploads only once an app has a
-  first release, so the first AAB is uploaded by hand in the Play Console.
+  (`docs/releases.md`), and release permission for `fit.finito.app` in the
+  Play Console for the service account Payky's upload already uses
+  (`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`). Google Play takes API uploads only
+  once an app has a first release, so the first AAB is uploaded by hand in
+  the Play Console.
 
 ## Android release
 
@@ -163,4 +166,5 @@ the same tag as Payky's. `plugins/with-release-signing.cjs` signs the release
 build with the key Gradle is handed as `finitoReleaseStoreFile` and its
 passwords; without them it keeps the debug key, as a local or e2e release
 build does, and the job fails on an APK signed by it. The APK is published as
-`finito-release-signed.apk`, the name Finito's landing links.
+`finito-release-signed.apk`, the name Finito's landing links, and the AAB is
+uploaded to Google Play's internal track.

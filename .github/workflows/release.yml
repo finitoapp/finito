@@ -249,7 +249,7 @@ jobs:
           path: apps/native-app/android/app/build/outputs/finito-release-signed.apk
           if-no-files-found: error
 
-      # For uploading to Google Play by hand while the upload below is off;
+      # For uploading to Google Play by hand should the upload below fail;
       # a run artifact, not a release asset, so nobody installs it by mistake.
       - name: Keep the AAB for Google Play
         uses: actions/upload-artifact@v4
@@ -258,17 +258,17 @@ jobs:
           path: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
-      # Off until the Google Play service account may release fit.finito.app:
-      # v26.11.1's upload failed with "The caller does not have permission".
-      # Until then Finito ships through the GitHub release's APK only.
-      # - name: Upload to Google Play internal track
-      #   uses: r0adkll/upload-google-play@v1
-      #   with:
-      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-      #     packageName: fit.finito.app
-      #     releaseFiles: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
-      #     tracks: internal
-      #     status: completed
+      # The service account Payky's upload uses, with release permission for
+      # fit.finito.app too. The AAB's versionCode (app.config.ts) must be
+      # higher than every one Google Play has, an AAB uploaded by hand included.
+      - name: Upload to Google Play internal track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: fit.finito.app
+          releaseFiles: apps/native-app/android/app/build/outputs/bundle/release/app-release.aab
+          tracks: internal
+          status: completed
 
   github-release:
     name: Publish the GitHub release

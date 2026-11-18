@@ -7,7 +7,7 @@
 
 One tag ships both brands (`docs/decisions/brand/`): Payky is the web app and its Capacitor shell (`me.payky`), Finito the native app (`fit.finito.app`, `docs/finito-deployment.md`).
 
-Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 0 each month and stays below 100, because the Android `versionCode` is `YY*10000 + M*100 + MICRO` (`apps/native-shell/android/app/build.gradle`).
+Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 0 each month and stays below 100, because Payky's Android `versionCode` is `YY*10000 + M*100 + MICRO` (`apps/native-shell/android/app/build.gradle`). Finito's is `YY*1000000 + M*10000 + MICRO` (`apps/native-app/app.config.ts`). Each release's `versionCode` must be higher than that of every AAB Google Play already has for the app, one uploaded by hand included.
 
 ## How the version gets into a build
 
@@ -18,7 +18,7 @@ Versions are CalVer `YY.M.MICRO` (`26.10.3`); MICRO restarts at 0 each month and
 1. On an up-to-date `main` with a clean working tree, run `bun run release`.
 2. The pushed tag starts `.github/workflows/release.yml`, which checks the tag matches `package.json`, runs `bun run check`, then in parallel:
    - `web` force-pushes the `production` branch to the tag; the `payky` and `finito` Vercel projects deploy it to `payky.me` and `app.finito.fit`.
-   - `android` builds Payky's signed APK and AAB from `apps/native-shell`, `finito-android` Finito's AAB from `apps/native-app` (`expo prebuild`, then Gradle, signed by `apps/native-app/plugins/with-release-signing.cjs`) and from that AAB, with `bundletool`'s system mode, one APK for `arm64-v8a` only (the universal APK of all four ABIs was ~200 MB). Each keeps its APK for the release and uploads its AAB to Google Play's internal track; Finito's upload is commented out until the service account may release `fit.finito.app`, so for now Finito ships as the GitHub release's APK, and its AAB is kept as the run's `finito-aab` artifact for uploading to Google Play by hand.
+   - `android` builds Payky's signed APK and AAB from `apps/native-shell`, `finito-android` Finito's AAB from `apps/native-app` (`expo prebuild`, then Gradle, signed by `apps/native-app/plugins/with-release-signing.cjs`) and from that AAB, with `bundletool`'s system mode, one APK for `arm64-v8a` only (the universal APK of all four ABIs was ~200 MB). Each keeps its APK for the release, then uploads its AAB to Google Play's internal track with the one service account (`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`), which may release both `me.payky` and `fit.finito.app`. Finito's AAB is also kept as the run's `finito-aab` artifact, for uploading to Google Play by hand should its upload fail.
    - `github-release` then creates one release, `Payky / Finito v<version>`, with both APKs, once both are built, even if a Google Play upload failed. The landings link them as `https://github.com/finitoapp/finito/releases/latest/download/app-release-signed.apk` and `.../finito-release-signed.apk`, so the files keep those names and every release carries both (`docs/decisions/landing/0005`).
 
 A failed job is re-run from the Actions page. A tag is never moved: a fix ships as the next version.
