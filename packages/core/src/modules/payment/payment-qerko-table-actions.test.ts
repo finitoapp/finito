@@ -37,19 +37,26 @@ import { loadBillStatusSnapshot } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
 import { saveQerkoPlugin } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
+import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
+  TimestampMsSchema,
 } from "../shared/schema.ts"
 import { createTable } from "../table/table-actions.ts"
 import type { TableId } from "../table/table-types.ts"
-import { createPayment, markPaymentPaidCash } from "./payment-actions.ts"
+import {
+  cancelPayment,
+  createPayment,
+  markPaymentPaidCash,
+} from "./payment-actions.ts"
 import {
   processQerkoPayment,
   settleQerkoPayment,
 } from "./payment-qerko-payment-actions.ts"
+import { createQerkoPaymentAttemptId } from "./payment-qerko-payment-utils.ts"
 import {
   answerQerkoGetBill,
   answerQerkoGetTableContents,
@@ -185,6 +192,23 @@ const setup = async () => {
     method: (qerkoPaymentId: string) =>
       testEvolu.evolu.loadQuery(
         paymentQerkoPaymentByIdQuery(createQerkoTablePaymentId(qerkoPaymentId))
+      ),
+    /**
+     * Closes an attempt as failed and nothing else: a settling whose cancel
+     * of the table's payment never landed.
+     */
+    closeAttemptOnly: (qerkoPaymentId: string) =>
+      runMutationWithCompletion((options) =>
+        testEvolu.evolu.update(
+          "qerkoPaymentAttempt",
+          {
+            id: createQerkoPaymentAttemptId(qerkoPaymentId),
+            closedAt: TimestampMsSchema.decode(1),
+            outcome: "failed",
+            failureReason: NonEmptyString255("CANCELLED"),
+          },
+          { ...options, owner: deps.evoluOwner }
+        )
       ),
     [Symbol.asyncDispose]: async () => {
       await run[Symbol.asyncDispose]()
@@ -620,6 +644,76 @@ describe("paymentStart of a table's bill", () => {
     expect(await test.payment("qerko-2")).toBeUndefined()
   })
 
+  test("finishes a start whose payment was made but whose attempt was never recorded", async () => {
+    await using test = await setup()
+    const billId = await test.bill(await test.table("T1"), [12_900])
+    const [bill] = await test.contents("T1")
+    if (bill === undefined) throw new Error("no bill")
+    // The start stopped between its two writes: the payment, which locks the
+    // bill, and no attempt.
+    await test.run.orThrow(
+      createPayment({
+        id: createQerkoTablePaymentId("qerko-1"),
+        deviceId,
+        billId,
+        tableId: null,
+        amount: NonNegativeInteger(12_900),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        qerkoPayment: { accountId: qerkoAccountId },
+      })
+    )
+    const wire = wireFor("qerko-1", bill)
+
+    await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
+
+    expect(await test.attempts("qerko-1")).toMatchObject([
+      { qerkoPaymentId: "qerko-1", closedAt: null },
+    ])
+    await test.run.orThrow(
+      settleQerkoPayment({
+        qerkoPaymentId: "qerko-1",
+        state: "PAID",
+        payment: { ...wire, state: "PAID", parts: cardParts("129") },
+      })
+    )
+    expect(await test.status(billId)).toMatchObject({
+      status: "closed",
+      coverage: "paid",
+    })
+  })
+
+  test("refuses a start whose payment staff canceled before its attempt was recorded", async () => {
+    await using test = await setup()
+    const billId = await test.bill(await test.table("T1"), [12_900])
+    const [bill] = await test.contents("T1")
+    if (bill === undefined) throw new Error("no bill")
+    const paymentId = await test.run.orThrow(
+      createPayment({
+        id: createQerkoTablePaymentId("qerko-1"),
+        deviceId,
+        billId,
+        tableId: null,
+        amount: NonNegativeInteger(12_900),
+        currency: "CZK",
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        qerkoPayment: { accountId: qerkoAccountId },
+      })
+    )
+    await test.run.orThrow(cancelPayment(paymentId))
+
+    expect(
+      await test.run(
+        answerQerkoPaymentStart({ wire: wireFor("qerko-1", bill), deviceId })
+      )
+    ).toMatchObject({ ok: false, error: { type: "QerkoBillClosed" } })
+    expect(await test.attempts("qerko-1")).toEqual([])
+  })
+
   test("refuses a table's bill as BILL_NOT_FOUND while table payments are off", async () => {
     await using test = await setup()
     await test.bill(await test.table("T1"), [12_900])
@@ -738,6 +832,43 @@ describe("settling a table's payment", () => {
       expect(await test.payment("qerko-2")).toMatchObject({ amount: 12_900 })
     }
   )
+
+  test("a failed attempt whose cancel never landed cancels its payment when Qerko says so again", async () => {
+    await using test = await setup()
+    const billId = await test.bill(await test.table("T1"), [12_900])
+    await startPaying(test, "T1", "qerko-1")
+    await test.closeAttemptOnly("qerko-1")
+    expect(await test.payment("qerko-1")).toMatchObject({ canceledAt: null })
+
+    await test.run.orThrow(
+      settleQerkoPayment({ qerkoPaymentId: "qerko-1", state: "CANCELLED" })
+    )
+
+    expect(await test.payment("qerko-1")).toMatchObject({
+      canceledAt: expect.any(Number),
+    })
+    await startPaying(test, "T1", "qerko-2")
+    expect(await test.status(billId)).toMatchObject({ status: "open" })
+  })
+
+  test("a canceled payment whose attempt stayed open is closed by the next settling, its cancellation kept", async () => {
+    await using test = await setup()
+    await test.bill(await test.table("T1"), [12_900])
+    await startPaying(test, "T1", "qerko-1")
+    const payment = await test.payment("qerko-1")
+    if (payment === undefined) throw new Error("no payment")
+    await test.run.orThrow(cancelPayment(payment.id))
+    const canceledAt = (await test.payment("qerko-1"))?.canceledAt
+
+    await test.run.orThrow(
+      settleQerkoPayment({ qerkoPaymentId: "qerko-1", state: "CANCELLED" })
+    )
+
+    expect(await test.attempts("qerko-1")).toMatchObject([
+      { outcome: "failed", closedAt: expect.any(Number) },
+    ])
+    expect(await test.payment("qerko-1")).toMatchObject({ canceledAt })
+  })
 
   test("a late CANCELLED does not undo PAID nor cancel the paid payment", async () => {
     await using test = await setup()

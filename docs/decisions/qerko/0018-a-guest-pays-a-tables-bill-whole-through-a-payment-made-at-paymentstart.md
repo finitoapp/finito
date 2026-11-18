@@ -58,6 +58,15 @@ lock the bill while the guest pays and to unlock it on a timeout, and waits
   bill for the next guest; a payment already paid another way stays.
   `get-payment` after the grace period (`qerko/0012`) is the timeout that
   unlocks a bill whose `paymentClosed` never came.
+- No write may leave the lock without a way out:
+  - A start interrupted between its payment and its attempt is finished by
+    Qerko's next `paymentStart` of that payment: the payment its id derives
+    from is this start's own, so its attempt is recorded rather than refused
+    as locked. A payment staff canceled meanwhile is `BILL_CLOSED`.
+  - A failed attempt cancels its payment before it is closed, so an attempt
+    still open sends `get-payment` back to finish it, and every settling of
+    a failed attempt cancels a payment not canceled yet, whatever the
+    attempt says, unless Qerko said `PAID`.
 
 ## Alternatives considered
 
@@ -112,3 +121,7 @@ a coverage mismatch after sync.
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > money above the bill and no tip reads as an overpaid bill`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > %s cancels the table's payment and frees the bill for the next guest`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > a late CANCELLED does not undo PAID nor cancel the paid payment`
+- `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > finishes a start whose payment was made but whose attempt was never recorded`
+- `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > refuses a start whose payment staff canceled before its attempt was recorded`
+- `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > a failed attempt whose cancel never landed cancels its payment when Qerko says so again`
+- `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > a canceled payment whose attempt stayed open is closed by the next settling, its cancellation kept`

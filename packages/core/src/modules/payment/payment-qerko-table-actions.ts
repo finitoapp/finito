@@ -182,6 +182,28 @@ export const startQerkoTablePayment =
     if (!parsed.ok) return parsed
     const billId = parsed.value
 
+    // This start's own payment, made before an interruption — a crash, a
+    // closed tab — kept its attempt from being written. That payment is what
+    // locks the bill now, so the guard below would refuse the start that
+    // made it; the start is finished instead, which lets Qerko's answer
+    // settle the payment.
+    const paymentId = createQerkoTablePaymentId(wire.id)
+    const [existing] = await run.deps.evolu.loadQuery(
+      paymentByIdQuery(paymentId)
+    )
+    if (existing !== undefined) {
+      if (existing.billId !== billId || existing.canceledAt !== null) {
+        return err(createQerkoBillClosedError({ id: billId }))
+      }
+      return await run(
+        recordQerkoPaymentStart({
+          wire,
+          paymentId,
+          currency: existing.currency,
+        })
+      )
+    }
+
     const [editable, [account]] = await Promise.all([
       run(requireEditableBill(billId)),
       run.deps.evolu.loadQuery(qerkoPaymentAccountQuery),
@@ -214,35 +236,29 @@ export const startQerkoTablePayment =
       return err(createQerkoInvalidDataError({ id: billId, reason: mismatch }))
     }
 
-    const paymentId = createQerkoTablePaymentId(wire.id)
-    const [existing] = await run.deps.evolu.loadQuery(
-      paymentByIdQuery(paymentId)
+    const created = await run(
+      createPayment({
+        id: paymentId,
+        deviceId,
+        billId,
+        tableId: billRow.tableId,
+        amount: offered.offer.restAmount,
+        currency: billRow.currency,
+        // The guest tips in Qerko, and that tip replaces this one once paid
+        // (qerko/0015).
+        tipAmount: NonNegativeInteger(0),
+        canceledAt: null,
+        expiresAt: null,
+        qerkoPayment: { accountId: account.id },
+      })
     )
-    if (existing === undefined) {
-      const created = await run(
-        createPayment({
-          id: paymentId,
-          deviceId,
-          billId,
-          tableId: billRow.tableId,
-          amount: offered.offer.restAmount,
-          currency: billRow.currency,
-          // The guest tips in Qerko, and that tip replaces this one once paid
-          // (qerko/0015).
-          tipAmount: NonNegativeInteger(0),
-          canceledAt: null,
-          expiresAt: null,
-          qerkoPayment: { accountId: account.id },
-        })
+    if (!created.ok) {
+      const refusal = createPaymentRefusals[created.error.type]
+      return err(
+        refusal === "QerkoBillNotFound"
+          ? createQerkoBillNotFoundError({ idBill: wire.idBill })
+          : createQerkoBillClosedError({ id: billId })
       )
-      if (!created.ok) {
-        const refusal = createPaymentRefusals[created.error.type]
-        return err(
-          refusal === "QerkoBillNotFound"
-            ? createQerkoBillNotFoundError({ idBill: wire.idBill })
-            : createQerkoBillClosedError({ id: billId })
-        )
-      }
     }
 
     return await run(

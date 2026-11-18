@@ -476,6 +476,26 @@ export const settleQerkoPayment =
     }
 
     if (outcome === "failed") {
+      // A table's payment exists only for its one Qerko payment (qerko/0018):
+      // once that failed, nothing else will pay it, and while pending it
+      // locks its bill. A direct payment stays, for the customer to try
+      // again. Canceled before the attempt is closed, so an attempt still
+      // open sends the sync job back to finish it, and on every settling
+      // after while the payment is still uncanceled, whatever the attempt
+      // says — unless Qerko said paid.
+      if (attempt.outcome !== "paid" && isQerkoTablePaymentAttempt(attempt)) {
+        const [tablePayment] = await run.deps.evolu.loadQuery(
+          paymentByIdQuery(attempt.paymentId)
+        )
+        if (tablePayment !== undefined && tablePayment.canceledAt === null) {
+          const canceled = await run(cancelPayment(attempt.paymentId))
+          // Already paid another way: the money stands, and so does the
+          // payment.
+          if (!canceled.ok && canceled.error.type !== "PaymentAlreadyPaid") {
+            return err(canceled.error)
+          }
+        }
+      }
       await run.ok(
         fillQerkoPaymentAttempt({
           attempt,
@@ -486,16 +506,6 @@ export const settleQerkoPayment =
           },
         })
       )
-      // A table's payment exists only for its one Qerko payment (qerko/0018):
-      // once that failed, nothing else will pay it, and while pending it
-      // locks its bill. A direct payment stays, for the customer to try again.
-      if (attempt.outcome === null && isQerkoTablePaymentAttempt(attempt)) {
-        const canceled = await run(cancelPayment(attempt.paymentId))
-        // Already paid another way: the money stands, and so does the payment.
-        if (!canceled.ok && canceled.error.type !== "PaymentAlreadyPaid") {
-          return err(canceled.error)
-        }
-      }
       return ok(attempt.outcome ?? "failed")
     }
 
