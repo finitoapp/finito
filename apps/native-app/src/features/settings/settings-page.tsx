@@ -67,7 +67,7 @@ function SettingValue({ children }: { readonly children: string | undefined }) {
       numberOfLines={1}
       ml="auto"
       maxW="100%"
-      flexShrink={1}
+      shrink={1}
     >
       {children}
     </Text>
@@ -204,7 +204,7 @@ function createSettingsNavItems(
               zero basis never wraps and squeezes it instead) and a value that
               does not fit beside it drops below, right-aligned. */}
           <Text
-            flexShrink={1}
+            shrink={1}
             minW={0}
             fontSize={fontSize.sm}
             lineHeight={fontSize.sm}

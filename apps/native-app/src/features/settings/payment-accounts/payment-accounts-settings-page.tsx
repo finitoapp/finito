@@ -519,7 +519,7 @@ function PaymentMethodRow({
                 fontSize={fontSize.sm}
                 lineHeight={fontSize.sm}
                 fontWeight={fontWeight.medium}
-                flexShrink={0}
+                shrink={0}
                 color={row.enabled ? "color" : "muted-foreground"}
               >
                 {name}
@@ -536,7 +536,7 @@ function PaymentMethodRow({
                   lineHeight={fontSize.xs}
                   color="muted-foreground"
                   numberOfLines={1}
-                  flexShrink={1}
+                  shrink={1}
                   minW={0}
                 >
                   {row.status}

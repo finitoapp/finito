@@ -86,7 +86,7 @@ export function SalesHeatmap({
       <YStack gap="1">
         {matrix.map((row, dayIndex) => (
           <XStack key={weekday(dayIndex, "long")} gap="1" items="center">
-            <Text width={28} fontSize={10} color="muted-foreground">
+            <Text w={28} fontSize={10} color="muted-foreground">
               {weekday(dayIndex, "short")}
             </Text>
             {row.map((cell, hour) => (
@@ -94,7 +94,7 @@ export function SalesHeatmap({
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed 24-hour row
                 key={hour}
                 flex={1}
-                height={22}
+                h={22}
                 rounded={2}
                 overflow="hidden"
                 bg="track"

@@ -186,7 +186,7 @@ function CurrencyKpis({
       </YStack>
       <XStack flexWrap="wrap" gap="2">
         {tiles.map((tile) => (
-          <YStack key={tile.label} {...tileProps} flexBasis="47%" flexGrow={1}>
+          <YStack key={tile.label} {...tileProps} flexBasis="47%" grow={1}>
             <Text fontSize="xs" lineHeight="xs" color="muted-foreground">
               {tile.label}
             </Text>

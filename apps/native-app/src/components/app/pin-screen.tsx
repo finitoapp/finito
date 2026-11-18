@@ -142,7 +142,7 @@ export function PinScreen({
       : t("access.pin.why.action", { action: t(action) })
 
   return (
-    <YStack gap={20} items="center" width="100%" py={24}>
+    <YStack gap={20} items="center" w="100%" py={24}>
       <YStack gap={8} items="center">
         {blocked && view.kind !== "attempts" ? (
           <Icon icon={ShieldAlert} size={32} color="destructive" />
@@ -299,7 +299,7 @@ function PinPad({
   )
 
   return (
-    <YStack gap={16} items="center" width="100%" maxW={320}>
+    <YStack gap={16} items="center" w="100%" maxW={320}>
       <XStack
         gap={8}
         items="center"
@@ -334,7 +334,7 @@ function PinPad({
           ? null
           : t("access.pin.wrong", { count: attemptsLeft })}
       </Text>
-      <YStack gap={8} width="100%">
+      <YStack gap={8} w="100%">
         {keypadRows.map((row) => (
           <XStack key={row.join()} gap={8}>
             {row.map(digitKey)}
@@ -390,7 +390,7 @@ function PhraseForm({
   const [phrase, setPhrase] = useState("")
 
   return (
-    <YStack gap={16} width="100%" maxW={384}>
+    <YStack gap={16} w="100%" maxW={384}>
       <Text
         rounded={radius.md}
         bg="destructive-tint"
@@ -456,7 +456,7 @@ function FailedAttempts({
   const { t, language } = useTranslation()
 
   return (
-    <YStack gap={16} width="100%" maxW={384}>
+    <YStack gap={16} w="100%" maxW={384}>
       {attempts.length > 0 ? (
         <>
           <Text
@@ -478,7 +478,7 @@ function FailedAttempts({
                 py={8}
               >
                 <Text
-                  flexShrink={1}
+                  shrink={1}
                   numberOfLines={1}
                   fontSize={fontSize.sm}
                   lineHeight={fontSize.sm}

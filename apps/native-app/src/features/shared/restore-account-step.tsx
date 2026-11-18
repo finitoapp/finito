@@ -162,12 +162,12 @@ export function RestoreAccountStep({
               <XStack
                 // biome-ignore lint/suspicious/noArrayIndexKey: the slots are fixed positions
                 key={index}
-                width="48%"
+                w="48%"
                 items="center"
                 gap="2"
               >
                 <Text
-                  width={20}
+                  w={20}
                   fontSize="xs"
                   color="muted-foreground"
                   style={{ textAlign: "right" }}

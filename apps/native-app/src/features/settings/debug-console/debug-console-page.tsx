@@ -150,7 +150,7 @@ export function DebugConsolePage() {
                     )}
                   </XStack>
                   <YStack
-                    maxHeight={192}
+                    maxH={192}
                     overflow="hidden"
                     rounded={shape.control}
                     bg="background"
@@ -167,7 +167,7 @@ export function DebugConsolePage() {
                         fontSize={fontSize.xs}
                         lineHeight={fontSize.xs}
                         style={{ fontFamily: "monospace" }}
-                        userSelect="text"
+                        select="text"
                       >
                         {formatConsoleArgs(entry.args)}
                       </Text>

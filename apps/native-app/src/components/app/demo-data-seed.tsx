@@ -130,11 +130,11 @@ export function DemoDataSeed() {
         </AlertDialogHeader>
         {state.status === "running" ? (
           <YStack gap="2" py="2">
-            <YStack height={8} rounded="lg" bg="border-color" overflow="hidden">
+            <YStack h={8} rounded="lg" bg="border-color" overflow="hidden">
               <YStack
-                height={8}
+                h={8}
                 bg="primary"
-                width={`${(state.done / state.total) * 100}%`}
+                w={`${(state.done / state.total) * 100}%`}
               />
             </YStack>
             <Text fontSize="sm" lineHeight="sm" color="muted-foreground">

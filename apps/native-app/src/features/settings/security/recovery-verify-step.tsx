@@ -65,7 +65,7 @@ export function RecoveryVerifyStep({
           {indexes.map((slot, position) => (
             <XStack key={slot} items="center" gap={8}>
               <Text
-                width={20}
+                w={20}
                 fontSize={fontSize.xs}
                 lineHeight={fontSize.xs}
                 color="muted-foreground"

@@ -47,7 +47,7 @@ it("shows the recovery phrase only on request, behind the owner permission, neve
   const revealed = page.slice(page.indexOf("function RevealedPhrase"))
   expect(revealed).toMatch(/usePreventScreenCapture\(\)/)
   expect(page).toMatch(/gcTime: 0/)
-  expect(grid).toMatch(/userSelect="none"/)
+  expect(grid).toMatch(/\sselect="none"/)
   expect(grid).not.toMatch(/aria-label|accessibilityLabel/)
 })
 
