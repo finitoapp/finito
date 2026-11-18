@@ -13,6 +13,7 @@ import { useNow } from "@payky/app-shared/use-now"
 import { latestPaymentsQuery } from "@payky/core/modules/payment/payment-queries"
 import { refundSummariesQuery } from "@payky/core/modules/refund/refund-queries"
 import { summarizeRefundsByPayment } from "@payky/core/modules/refund/refund-utils"
+import { Suspense } from "react"
 import {
   useEvoluQuery,
   usePreloadEvoluQueries,
@@ -22,6 +23,7 @@ import { paymentHistoryQueries } from "../../hooks/use-preload-activity.ts"
 import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import { RefundBadge } from "../shared/refund-badge.tsx"
+import { ActivityFallback } from "./activity-layout.tsx"
 import {
   type ActivityGroup,
   ActivityList,
@@ -30,9 +32,17 @@ import {
 import { PaymentStatusIcon } from "./payment-status-display.tsx"
 import { usePreloadPaymentDetail } from "./use-preload-payment-detail.ts"
 
-/** The Activity tab's payments list, under `ActivityLayout`'s header and tabs. */
+/**
+ * The Activity tab's payments list, under `ActivityLayout`'s header and tabs.
+ * Its rows wait behind the list's skeleton, so the tab opens on the header
+ * and tabs at once rather than on an empty screen.
+ */
 export function PaymentHistoryPage() {
-  return <PaymentHistory />
+  return (
+    <Suspense fallback={<ActivityFallback />}>
+      <PaymentHistory />
+    </Suspense>
+  )
 }
 
 function PaymentHistory() {

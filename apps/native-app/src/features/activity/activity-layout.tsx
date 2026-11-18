@@ -23,8 +23,13 @@ const activityTabOf = (pathname: string): ActivityTab =>
       ? "stats"
       : "payments"
 
-/** The lists' placeholder, below the header as the list will be. */
-function ActivityFallback() {
+/**
+ * The lists' placeholder, below the header as the list will be. Each list
+ * page puts it around its own rows too: under a route, Expo Router wraps the
+ * page in a Suspense boundary of its own, inside this layout's, and that
+ * one's fallback is empty.
+ */
+export function ActivityFallback() {
   const headerInset = useScrollAwayHeaderInset()
   return (
     <YStack pt={headerInset ?? 0} px={screenPaddingX}>
