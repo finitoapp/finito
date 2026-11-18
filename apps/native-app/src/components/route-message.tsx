@@ -1,5 +1,5 @@
-import { router } from "expo-router"
 import { Text, View } from "tamagui"
+import { showMenuRoot } from "../core/menu-navigation.ts"
 import { fontSize } from "../theme/tokens.ts"
 import { FadeHeader } from "./fade-header.tsx"
 import { Screen } from "./screen.tsx"
@@ -16,7 +16,7 @@ import { Screen } from "./screen.tsx"
 export function RouteMessage({ children }: { readonly children: string }) {
   return (
     <Screen>
-      <FadeHeader customStartAddonOnClick={() => router.replace("/")} />
+      <FadeHeader customStartAddonOnClick={() => showMenuRoot("/")} />
       <View flex={1} items="center" justify="center" px={32}>
         <Text
           fontSize={fontSize.lg}

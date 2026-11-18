@@ -54,7 +54,15 @@ import {
 } from "../src/core/first-screen.ts"
 import { MasterPaneContext } from "../src/core/master-pane.ts"
 import { menuDetailRootOf, menuPositionOf } from "../src/core/menu-routes.ts"
+import {
+  nativeConsole,
+  nativeConsoleHistory,
+} from "../src/core/native-runtime.ts"
 import { queryClient } from "../src/core/query-client.ts"
+import {
+  type TabSwitchTiming,
+  tabSwitchTimer,
+} from "../src/core/tab-switch-timing.ts"
 import { resolveTheme } from "../src/core/theme-preference.ts"
 import { ActivityLayout } from "../src/features/activity/activity-layout.tsx"
 import { BillHistoryPage } from "../src/features/activity/bill-history-page.tsx"
@@ -101,6 +109,21 @@ export function SuspenseFallback({ route }: { readonly route: string }) {
     }
   }, [route])
   return null
+}
+
+/**
+ * A tab switch's timing (`tab-switch-timing.ts`), in Settings › Debug
+ * console on every build: a release build's console keeps warnings only,
+ * and only a release build on the terminal itself times what a merchant
+ * feels. It names a route and two numbers, nothing an owner or a relay
+ * could be read from.
+ */
+const logTabSwitch = ({ pathname, commitMs, frameMs }: TabSwitchTiming) => {
+  const args = [
+    `[tab-switch] ${pathname}: committed ${commitMs} ms, next frame ${frameMs} ms after the press`,
+  ]
+  if (__DEV__) nativeConsole.info(...args)
+  else nativeConsoleHistory.write({ method: "info", path: [], args })
 }
 
 /**
@@ -251,7 +274,10 @@ function ThemedStack({ dark }: { readonly dark: boolean }) {
   // menu tab's root screen otherwise (home keeps its hamburger).
   const pathname = usePathname()
   // Before paint, so a screen selecting from the route draws it right.
-  useLayoutEffect(() => recordPathname(pathname), [pathname])
+  useLayoutEffect(() => {
+    recordPathname(pathname)
+    tabSwitchTimer.arrive(pathname, logTabSwitch)
+  }, [pathname])
   const menu = menuPositionOf(pathname)
   const wide = useWindowDimensions().width >= menuSidebarMinWidth
   const sidebar = menu !== undefined && wide

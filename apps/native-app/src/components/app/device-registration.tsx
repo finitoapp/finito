@@ -8,13 +8,13 @@ import {
 import { applyPinUnblock } from "@payky/core/modules/access/access-actions"
 import { registerDevice } from "@payky/core/modules/device/device-actions"
 import { deviceByIdQuery } from "@payky/core/modules/device/device-queries"
-import { router } from "expo-router"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useEffect, useRef, useState } from "react"
 import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
 import { evoluAtom } from "../../atoms/evolu.ts"
 import { reloadAppEvoluAtom } from "../../atoms/evolu-counter.ts"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { nativeConsole, nativeRun } from "../../core/native-runtime.ts"
 import {
   useDeviceEvoluQuery,
@@ -59,7 +59,7 @@ export function DeviceRegistration() {
     if (active?.id !== accountId) return
     removeDeviceAccount(deviceEvolu, accountId)
     toast.error(t("devices.removedHere", { name: active.name }))
-    router.replace("/")
+    showMenuRoot("/")
     reload()
   }
 

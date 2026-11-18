@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import { Text, YStack } from "tamagui"
 import { accountAtom } from "../../atoms/account.ts"
 import { deviceEvoluAtom } from "../../atoms/device-evolu.ts"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { nativeConsole } from "../../core/native-runtime.ts"
 import { useCashuAppRun } from "../../hooks/use-app-run.ts"
 import { useScreenWakeLock } from "../../hooks/use-screen-wake-lock.ts"
@@ -87,7 +88,7 @@ export function DemoDataSeed() {
           })
         )
         setState({ status: "finished", payments, days })
-        router.replace("/")
+        showMenuRoot("/")
       } catch (error) {
         nativeConsole.error("Generating demo data failed.", error)
         setState({ status: "failed" })

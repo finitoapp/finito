@@ -42,6 +42,7 @@ import {
   CardTitle,
 } from "../../components/ui/card.tsx"
 import { Icon } from "../../components/ui/icon.tsx"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
 import { isE2eOffline } from "../../e2e/e2e-network.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
@@ -160,7 +161,7 @@ export function RestoreSyncPage() {
     if (previousToDiscard !== undefined) {
       removeDeviceAccount(deviceEvolu, previousToDiscard)
     }
-    router.replace("/")
+    showMenuRoot("/")
   }, [deviceEvolu, previousToDiscard, hasSettings])
 
   const retry = () => {
@@ -183,7 +184,8 @@ export function RestoreSyncPage() {
       })
     }
     reloadAppEvolu()
-    router.replace(source === "onboarding" ? "/onboarding" : "/")
+    if (source === "onboarding") router.replace("/onboarding")
+    else showMenuRoot("/")
   }
 
   const setUpAsNew = async () => {

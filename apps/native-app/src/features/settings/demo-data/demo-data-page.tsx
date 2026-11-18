@@ -1,7 +1,6 @@
 import { insertDemoAccount } from "@payky/core/evolu/device-account"
 import { runMutationWithCompletion } from "@payky/core/modules/shared/evolu-utils"
 import { NonEmptyString255 } from "@payky/core/modules/shared/schema"
-import { router } from "expo-router"
 import { useAtomValue, useSetAtom } from "jotai"
 import DatabaseZap from "lucide-react-native/icons/database-zap"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
@@ -19,6 +18,7 @@ import {
 } from "../../../components/ui/alert.tsx"
 import { Button } from "../../../components/ui/button.tsx"
 import { appDefaultTransports } from "../../../core/app-brand.ts"
+import { showMenuRoot } from "../../../core/menu-navigation.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import { useRunToast } from "../../../hooks/use-run-toast.ts"
 import { useTranslation } from "../../../hooks/use-translation.ts"
@@ -61,7 +61,7 @@ export function DemoDataPage() {
         )
       )
       reloadAppEvolu()
-      router.replace("/")
+      showMenuRoot("/")
       return undefined
     })
     setPending(false)

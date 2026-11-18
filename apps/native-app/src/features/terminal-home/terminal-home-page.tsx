@@ -34,6 +34,7 @@ import { NotificationDot } from "../../components/ui/notification-dot.tsx"
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.tsx"
 import { homeModeLabelKeys } from "../../core/home-mode-labels.ts"
 import { nativeRun } from "../../core/native-runtime.ts"
+import { tabSwitchTimer } from "../../core/tab-switch-timing.ts"
 import { useActiveNotifications } from "../../hooks/use-active-notifications.ts"
 import { useCreateTerminalPayment } from "../../hooks/use-create-terminal-payment.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
@@ -131,8 +132,11 @@ export function TerminalHomePage() {
               variant="ghost"
               aria-label={t(unread ? "nav.notificationsUnread" : "nav.menu")}
               onPress={() => {
+                tabSwitchTimer.markPress("activity")
                 preloadActivity()
-                router.push("/activity")
+                // Activity is a tab of the tabs navigator home is in
+                // (navigation/0006): showing it is a tab switch.
+                router.navigate("/activity")
               }}
             >
               <View>

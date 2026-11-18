@@ -1,6 +1,7 @@
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
-import { router, usePathname } from "expo-router"
+import { usePathname } from "expo-router"
 import { useEffect } from "react"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { isTerminalRoute } from "../../core/route-access.ts"
 import { useEvoluQuery } from "../../hooks/use-evolu-query.ts"
 
@@ -18,7 +19,7 @@ export function NotOnboardedRedirect() {
     settings === undefined && pathname !== "/" && isTerminalRoute(pathname)
 
   useEffect(() => {
-    if (leave) router.replace("/")
+    if (leave) showMenuRoot("/")
   }, [leave])
 
   return null
