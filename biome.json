@@ -18,6 +18,7 @@
       "!apps/native-shell/android",
       "!apps/native-shell/ios",
       "!apps/web-app/src/routeTree.gen.ts",
+      "!apps/native-app/assets/icons",
       "!apps/web-app/remotion/public/generated",
       "!docs/videos",
       "!**/dist",

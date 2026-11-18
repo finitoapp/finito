@@ -103,6 +103,15 @@ export default {
         recordAudioAndroid: false,
       },
     ],
+    [
+      "react-native-nano-icons",
+      {
+        // The lucide icons a screen draws many of at once, as one font: each
+        // icon is one native glyph view instead of an SVG view tree
+        // (`src/components/lucide-glyph.tsx`). The `.woff2` is the PWA's.
+        iconSets: [{ inputDir: "./assets/icons/lucide", web: true }],
+      },
+    ],
     // No organization/project/auth token: builds upload no source maps.
     "@sentry/react-native/expo",
     [
