@@ -75,6 +75,9 @@ const subscribe = (listener: () => void) => {
   }
 }
 
+/** `useFirstScreenReady` outside render, read once. */
+export const isFirstScreenReady = (): boolean => ready
+
 export const useFirstScreenReady = (): boolean =>
   useSyncExternalStore(subscribe, () => ready)
 
