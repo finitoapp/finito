@@ -1,4 +1,10 @@
-import { createIdFromString, type InferRow, type OwnerId } from "@evolu/common"
+import {
+  createIdFromString,
+  type InferRow,
+  type OwnerId,
+  type SqliteBoolean,
+  sqliteFalse,
+} from "@evolu/common"
 import type { SparkSecret } from "../shared/key-derivation.ts"
 import type { FiatCurrency, Iban } from "../shared/schema.ts"
 import type { enabledPaymentMethodAccountsQuery } from "./account-queries.ts"
@@ -15,8 +21,37 @@ export type PaymentMethodAccount = Pick<
   | "cardCurrency"
   | "qerkoTerminalCurrency"
   | "qerkoPaymentCurrency"
+  | "qerkoDirectPaymentEnabled"
   | "lightningAddress"
 >
+
+/** The flows of Qerko payments Payky can serve (qerko/0016). */
+export interface QerkoPaymentFlows {
+  /** A QR code for one payment, shown on the payment screen. */
+  readonly direct: boolean
+  /** A table's open bill, from Qerko's QR code on the table (qerko/0017). */
+  readonly table: boolean
+}
+
+/**
+ * Whether one of Qerko's flow switches is on (qerko/0016): on unless stored
+ * off, so `null`, a row written before the switches existed, reads as on.
+ */
+export const isQerkoFlowOn = (value: SqliteBoolean | null): boolean =>
+  value !== sqliteFalse
+
+/** Which Qerko flows are on (qerko/0016); no row at all keeps both on. */
+export const deriveQerkoPaymentFlows = (
+  row:
+    | {
+        readonly directPaymentEnabled: SqliteBoolean | null
+        readonly tablePaymentEnabled: SqliteBoolean | null
+      }
+    | undefined
+): QerkoPaymentFlows => ({
+  direct: isQerkoFlowOn(row?.directPaymentEnabled ?? null),
+  table: isQerkoFlowOn(row?.tablePaymentEnabled ?? null),
+})
 
 /**
  * An account's id is derived from the detail values that identify it, so the
@@ -96,7 +131,9 @@ export const normalizeMnemonic = (value: string): string =>
  * or a payment only they could take would be created where nothing on screen
  * can settle it (payment/0017): the card terminal needs `cardTerminalLinked`,
  * true only where the device can drive it (the native app), and Qerko
- * payments need `qerkoRestaurantPaired`, the restaurant their QR code names.
+ * payments need `qerkoRestaurantPaired`, the restaurant their QR code names,
+ * and their direct flow on (qerko/0016): with it off, Qerko serves only
+ * tables and the screen shows no QR code for a payment.
  */
 export const derivePaymentMethodsOffered = ({
   accounts,
@@ -118,7 +155,9 @@ export const derivePaymentMethodsOffered = ({
       cardTerminalLinked && account.cardCurrency === currency,
     qerkoTerminal: (account) => account.qerkoTerminalCurrency === currency,
     qerkoPayment: (account) =>
-      qerkoRestaurantPaired && account.qerkoPaymentCurrency === currency,
+      qerkoRestaurantPaired &&
+      account.qerkoPaymentCurrency === currency &&
+      isQerkoFlowOn(account.qerkoDirectPaymentEnabled),
     // Neither is tied to a currency: both are quoted in sats.
     cashu: () => true,
     lightningAddress: (account) => account.lightningAddress !== null,

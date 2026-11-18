@@ -127,6 +127,13 @@ export const skSettings = {
   "settings.qerkoPayment.paired.success.noDevice":
     "Zatiaľ ich však neprijíma žiadne zariadenie. Zvoľte ho nižšie.",
   "settings.qerkoPayment.enabled.label": "Zapnúť platby cez Qerko",
+  "settings.qerkoPayment.flows.title": "Čo zákazníci platia cez Qerko",
+  "settings.qerkoPayment.directPayment.label": "Priama platba",
+  "settings.qerkoPayment.directPayment.description":
+    "Obrazovka platby zobrazí QR kód Qerko na účtovanú sumu.",
+  "settings.qerkoPayment.tablePayment.label": "Platba od stola",
+  "settings.qerkoPayment.tablePayment.description":
+    "Hostia naskenujú QR kód Qerko na svojom stole a zaplatia celý jeho otvorený účet. QR kódy so stolmi spárujete v administrácii Qerko.",
   "settings.qerkoPayment.status.notPaired": "Nespárované s Qerkom",
   "settings.qerkoTerminal.enabled.label": "Zapnúť terminál Qerko",
   "settings.qerkoTerminal.environment.description":

@@ -22,10 +22,15 @@ import type {
 } from "../../modules/payment/payment-errors.ts"
 import {
   processQerkoPayment,
-  resolveQerkoBill,
   settleQerkoPayment,
-  startQerkoPayment,
 } from "../../modules/payment/payment-qerko-payment-actions.ts"
+import {
+  answerQerkoGetBill,
+  answerQerkoGetTableContents,
+  answerQerkoGetTableList,
+  answerQerkoPaymentStart,
+  answerQerkoSearchBills,
+} from "../../modules/payment/payment-qerko-pos-actions.ts"
 import { qerkoPluginQuery } from "../../modules/qerko-plugin/qerko-plugin-queries.ts"
 import type {
   AppBackgroundJob,
@@ -311,18 +316,21 @@ class QerkoPaymentConnection {
     const { deviceId } = this.run.deps
     return {
       searchBills: async (qrIdentifier) => {
-        const bill = await this.run(resolveQerkoBill(qrIdentifier))
-        if (bill.ok) return ok([bill.value])
-        return bill.error.type === "QerkoBillNotFound"
-          ? ok([])
-          : err(toRpcError(bill.error))
+        const bills = await this.run(answerQerkoSearchBills(qrIdentifier))
+        return bills.ok ? bills : err(toRpcError(bills.error))
       },
       getBill: async (idBill) => {
-        const bill = await this.run(resolveQerkoBill(idBill))
+        const bill = await this.run(answerQerkoGetBill(idBill))
         return bill.ok ? bill : err(toRpcError(bill.error))
       },
+      getTableList: async () =>
+        ok(await this.run.ok(answerQerkoGetTableList())),
+      getTableContents: async (idTable) =>
+        ok(await this.run.ok(answerQerkoGetTableContents(idTable))),
       paymentStart: async (payment) => {
-        const started = await this.run(startQerkoPayment(payment))
+        const started = await this.run(
+          answerQerkoPaymentStart({ wire: payment, deviceId })
+        )
         return started.ok ? ok(null) : err(toRpcError(started.error))
       },
       paymentProcessed: async (idPayment) => {

@@ -33,9 +33,11 @@ import {
   saveCashRegisterAccount,
   saveFiatBankAccount,
   saveLightningAddressAccount,
+  saveQerkoPaymentAccount,
   saveSparkAccount,
   selectCustomSparkWallet,
   selectDefaultSparkWallet,
+  setQerkoPaymentFlows,
   updateAccount,
   updateSparkAccountSyncPointer,
 } from "./account-actions.ts"
@@ -44,6 +46,7 @@ import {
   cashRegisterAccountQuery,
   fiatBankAccountQuery,
   lightningAddressAccountQuery,
+  qerkoPaymentAccountQuery,
   sparkAccountQuery,
 } from "./account-queries.ts"
 import type { AccountId } from "./account-types.ts"
@@ -51,7 +54,9 @@ import {
   createCashRegisterAccountId,
   createIbanAccountId,
   createLightningAddressAccountId,
+  createQerkoPaymentAccountId,
   createSparkAccountId,
+  deriveQerkoPaymentFlows,
   legacyFiatBankAccountId,
 } from "./account-utils.ts"
 
@@ -724,4 +729,57 @@ describe("account actions", () => {
       .poll(() => evolu.loadQuery(sparkAccountSyncPointerByIdQuery(defaultId)))
       .toMatchObject([{ lastSyncedAt: Date.parse("2026-09-01T00:00:00.000Z") }])
   }, 15_000)
+})
+
+describe("Qerko payment flows", () => {
+  const setup = async () => {
+    const testEvolu = await createEvoluTest()
+    const run = testCreateRun({ ...evoluTestDeps(testEvolu.evolu) })
+    const flows = async () =>
+      deriveQerkoPaymentFlows(
+        (await testEvolu.evolu.loadQuery(qerkoPaymentAccountQuery))[0]
+      )
+    return {
+      run,
+      flows,
+      [Symbol.asyncDispose]: async () => {
+        await run[Symbol.asyncDispose]()
+        await testEvolu[Symbol.asyncDispose]()
+      },
+    }
+  }
+
+  test("an account saved before the switches existed serves both flows, and each switch writes only itself", async () => {
+    await using test = await setup()
+    const accountId = await test.run.ok(
+      saveQerkoPaymentAccount({ enabled: true, currency: "CZK" })
+    )
+    if (accountId === null) throw new Error("no account")
+    expect(await test.flows()).toEqual({ direct: true, table: true })
+
+    await test.run.ok(setQerkoPaymentFlows({ accountId, table: false }))
+    expect(await test.flows()).toEqual({ direct: true, table: false })
+
+    await test.run.ok(setQerkoPaymentFlows({ accountId, direct: false }))
+    expect(await test.flows()).toEqual({ direct: false, table: false })
+
+    await test.run.ok(setQerkoPaymentFlows({ accountId, table: true }))
+    expect(await test.flows()).toEqual({ direct: false, table: true })
+  })
+
+  test("the flows move with the account to another currency", async () => {
+    await using test = await setup()
+    const accountId = await test.run.ok(
+      saveQerkoPaymentAccount({ enabled: true, currency: "CZK" })
+    )
+    if (accountId === null) throw new Error("no account")
+    await test.run.ok(setQerkoPaymentFlows({ accountId, direct: false }))
+
+    const moved = await test.run.ok(
+      saveQerkoPaymentAccount({ enabled: true, currency: "EUR" })
+    )
+
+    expect(moved).toBe(createQerkoPaymentAccountId("EUR"))
+    expect(await test.flows()).toEqual({ direct: false, table: true })
+  })
 })

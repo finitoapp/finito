@@ -1,3 +1,4 @@
+import { sqliteFalse, sqliteTrue } from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import { SparkSecret } from "../shared/key-derivation.ts"
@@ -9,6 +10,7 @@ import {
 import type { AccountKind } from "./account-types.ts"
 import {
   derivePaymentMethodsOffered,
+  deriveQerkoPaymentFlows,
   normalizeMnemonic,
   type PaymentMethodAccount,
 } from "./account-utils.ts"
@@ -47,6 +49,7 @@ describe("derivePaymentMethodsOffered", () => {
     cardCurrency: kind === "cardSwitchio" ? currency : null,
     qerkoTerminalCurrency: kind === "qerkoTerminal" ? currency : null,
     qerkoPaymentCurrency: kind === "qerkoPayment" ? currency : null,
+    qerkoDirectPaymentEnabled: null,
     lightningAddress:
       kind === "lightningAddress"
         ? NonEmptyString255("cafe@example.com")
@@ -115,5 +118,59 @@ describe("derivePaymentMethodsOffered", () => {
         qerkoRestaurantPaired: true,
       })
     ).toEqual(["cashRegister", "cardSwitchio", "qerkoPayment"])
+  })
+
+  test.each([
+    [null, ["cashRegister", "qerkoPayment"]],
+    [sqliteTrue, ["cashRegister", "qerkoPayment"]],
+    [sqliteFalse, ["cashRegister"]],
+  ] as const)(
+    "Qerko payments with the direct flow stored as %s offer %j",
+    (directPaymentEnabled, offered) => {
+      expect(
+        derivePaymentMethodsOffered({
+          accounts: [
+            account("cashRegister"),
+            {
+              ...account("qerkoPayment"),
+              qerkoDirectPaymentEnabled: directPaymentEnabled,
+            },
+          ],
+          currency: "CZK",
+          cardTerminalLinked: false,
+          qerkoRestaurantPaired: true,
+        })
+      ).toEqual(offered)
+    }
+  )
+})
+
+describe("deriveQerkoPaymentFlows", () => {
+  test("a switch never written reads as on, and so does no account", () => {
+    expect(deriveQerkoPaymentFlows(undefined)).toEqual({
+      direct: true,
+      table: true,
+    })
+    expect(
+      deriveQerkoPaymentFlows({
+        directPaymentEnabled: null,
+        tablePaymentEnabled: null,
+      })
+    ).toEqual({ direct: true, table: true })
+  })
+
+  test("each switch is off only when stored off", () => {
+    expect(
+      deriveQerkoPaymentFlows({
+        directPaymentEnabled: sqliteFalse,
+        tablePaymentEnabled: sqliteTrue,
+      })
+    ).toEqual({ direct: false, table: true })
+    expect(
+      deriveQerkoPaymentFlows({
+        directPaymentEnabled: sqliteTrue,
+        tablePaymentEnabled: sqliteFalse,
+      })
+    ).toEqual({ direct: true, table: false })
   })
 })

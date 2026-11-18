@@ -14,6 +14,7 @@ import { buildCashuPaymentUri } from "@payky/core/cashu/cashu-payment-request"
 import { createQerkoPaymentQrPayload } from "@payky/core/integrations/qerko/qerko-client"
 import { enabledPaymentMethodAccountsQuery } from "@payky/core/modules/account/account-queries"
 import type { BankQrFormat } from "@payky/core/modules/account/account-types"
+import { isQerkoFlowOn } from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
 import {
@@ -387,7 +388,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
         : enabledPaymentMethodAccounts.find(
             (account) =>
               account.kind === "qerkoPayment" &&
-              account.qerkoPaymentCurrency === payment?.currency
+              account.qerkoPaymentCurrency === payment?.currency &&
+              // Off, Qerko serves tables only (qerko/0016).
+              isQerkoFlowOn(account.qerkoDirectPaymentEnabled)
           )
     if (enabledQerkoPaymentAccount && qerkoRestaurantId !== null) {
       const prepared =

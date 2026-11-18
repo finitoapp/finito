@@ -85,6 +85,7 @@ import type {
   paymentBtcSpark,
   paymentCashRegister,
   paymentIban,
+  paymentQerkoPayment,
 } from "./payment.ts"
 import { isCashPayable, roundCashAmount } from "./payment-cash-utils.ts"
 import {
@@ -236,12 +237,14 @@ const loadPaymentMethodsOffered =
     cashRegister,
     spark,
     iban,
+    qerkoPayment,
     currency,
     cardTerminalLinked,
   }: {
     readonly cashRegister: object | undefined
     readonly spark: object | undefined
     readonly iban: object | undefined
+    readonly qerkoPayment: object | undefined
     readonly currency: FiatCurrency
     readonly cardTerminalLinked: boolean
   }): Task<ReadonlyArray<AccountKind>, never, EvoluDep> =>
@@ -249,6 +252,7 @@ const loadPaymentMethodsOffered =
     if (cashRegister !== undefined) return ok(["cashRegister"])
     if (spark !== undefined) return ok(["spark"])
     if (iban !== undefined) return ok(["iban"])
+    if (qerkoPayment !== undefined) return ok(["qerkoPayment"])
     const [accounts, [qerkoPlugin]] = await Promise.all([
       run.deps.evolu.loadQuery(enabledPaymentMethodAccountsQuery),
       run.deps.evolu.loadQuery(qerkoPluginQuery("standard")),
@@ -265,15 +269,25 @@ const loadPaymentMethodsOffered =
 
 export const createPayment =
   ({
+    id: givenId,
     cashRegister,
     spark,
     iban,
+    qerkoPayment,
     cardTerminalLinked = false,
     ...input
   }: InsertValues<typeof payment> & {
+    /**
+     * The id, when it derives from something outside Payky so that every
+     * writer reaches the same payment: a Qerko table payment's derives from
+     * Qerko's payment id (qerko/0018). A fresh one otherwise.
+     */
+    readonly id?: PaymentId
     readonly cashRegister?: Omit<InsertValues<typeof paymentCashRegister>, "id">
     readonly spark?: PaymentBtcInput
     readonly iban?: Omit<InsertValues<typeof paymentIban>, "id">
+    /** A Qerko payment the payment is taken through from its start. */
+    readonly qerkoPayment?: Omit<InsertValues<typeof paymentQerkoPayment>, "id">
     /**
      * Whether the creating device can drive the card terminal, which is what
      * the payment screen it opens next shows the card tab by (payment/0017):
@@ -308,6 +322,7 @@ export const createPayment =
           cashRegister,
           spark,
           iban,
+          qerkoPayment,
           currency: input.currency,
           cardTerminalLinked,
         })
@@ -350,7 +365,7 @@ export const createPayment =
       )
     }
 
-    const id = createRowId<"Payment">()
+    const id = givenId ?? createRowId<"Payment">()
     const { evoluOwner } = run.deps
     const paymentNumber = await run.ok(
       loadNextPaymentNumber({
@@ -390,6 +405,14 @@ export const createPayment =
             ...iban,
             id,
           }),
+          { ...options, owner: evoluOwner }
+        )
+      }
+
+      if (qerkoPayment) {
+        run.deps.evolu.upsert(
+          "paymentQerkoPayment",
+          { ...qerkoPayment, id },
           { ...options, owner: evoluOwner }
         )
       }

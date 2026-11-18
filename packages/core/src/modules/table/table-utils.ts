@@ -5,9 +5,8 @@ const TABLE_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 const TABLE_CODE_LENGTH = 8
 
 /**
- * Generates a table's `code`. Not consumed by any feature yet — reserved for
- * a future QR code sticker that will let a scan resolve straight to this
- * table.
+ * Generates a table's `code`, its id towards Qerko: `getTableList` lists the
+ * tables by it and `getTableContents` names one by it (qerko/0017).
  */
 export function generateTableCode(): NonEmptyString255 {
   let code = ""

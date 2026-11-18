@@ -36,6 +36,7 @@ import {
   runMutationWithCompletion,
 } from "../shared/evolu-utils.ts"
 import {
+  type FiatCurrency,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
@@ -43,7 +44,7 @@ import {
 } from "../shared/schema.ts"
 import { taxRatesQuery } from "../tax-rate/tax-rate-queries.ts"
 import type { PaymentRow, QerkoPaymentAttemptRow } from "./payment.ts"
-import { markPaymentCharged } from "./payment-actions.ts"
+import { cancelPayment, markPaymentCharged } from "./payment-actions.ts"
 import {
   createQerkoBillClosedError,
   createQerkoBillLockedError,
@@ -73,6 +74,7 @@ import {
   readQerkoTip,
   summarizeQerkoPaymentParts,
 } from "./payment-qerko-payment-utils.ts"
+import { isQerkoTablePaymentAttempt } from "./payment-qerko-table-utils.ts"
 import {
   paymentByIdQuery,
   paymentQerkoPaymentByIdQuery,
@@ -317,15 +319,40 @@ export const startQerkoPayment =
       )
     }
 
-    // Qerko's tip is fixed once its payment exists, so it is written with the
-    // start, once (qerko/0013, qerko/0015).
-    const tip = readQerkoTip(wire, payment.currency)
+    return await run(
+      recordQerkoPaymentStart({
+        wire,
+        paymentId: payment.id,
+        currency: payment.currency,
+      })
+    )
+  }
+
+/**
+ * Records a Qerko payment's start, its attempt (qerko/0013), for the payment
+ * it pays: a direct one's (`startQerkoPayment`) or the one made for a
+ * table's bill (`startQerkoTablePayment`, qerko/0018). Qerko's tip is fixed
+ * once its payment exists, so it is written with the start, once
+ * (qerko/0015).
+ */
+export const recordQerkoPaymentStart =
+  ({
+    wire,
+    paymentId,
+    currency,
+  }: {
+    readonly wire: QerkoWirePayment
+    readonly paymentId: PaymentId
+    readonly currency: FiatCurrency
+  }): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
+  async (run) => {
+    const tip = readQerkoTip(wire, currency)
     await runMutationWithCompletion((options) =>
       run.deps.evolu.upsert(
         "qerkoPaymentAttempt",
         {
-          id: attemptId,
-          paymentId: payment.id,
+          id: createQerkoPaymentAttemptId(wire.id),
+          paymentId,
           qerkoPaymentId: NonEmptyString255(wire.id),
           startedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
           tipAmount: tip.tipAmount,
@@ -459,6 +486,16 @@ export const settleQerkoPayment =
           },
         })
       )
+      // A table's payment exists only for its one Qerko payment (qerko/0018):
+      // once that failed, nothing else will pay it, and while pending it
+      // locks its bill. A direct payment stays, for the customer to try again.
+      if (attempt.outcome === null && isQerkoTablePaymentAttempt(attempt)) {
+        const canceled = await run(cancelPayment(attempt.paymentId))
+        // Already paid another way: the money stands, and so does the payment.
+        if (!canceled.ok && canceled.error.type !== "PaymentAlreadyPaid") {
+          return err(canceled.error)
+        }
+      }
       return ok(attempt.outcome ?? "failed")
     }
 

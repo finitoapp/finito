@@ -42,6 +42,17 @@ export const QerkoBillSchema = z.object({
 })
 export type QerkoBill = z.output<typeof QerkoBillSchema>
 
+/**
+ * A table as `getTableList` lists it, for pairing Qerko's QR codes with the
+ * restaurant's tables in Qerko's administration; `getTableContents` gets its
+ * `id` back (qerko/0017).
+ */
+export const QerkoTableSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+})
+export type QerkoTable = z.output<typeof QerkoTableSchema>
+
 export const QerkoTaxInfoSchema = z.object({
   rate: DecimalSchema,
   base: DecimalSchema,
@@ -133,6 +144,12 @@ export interface QerkoPosHandlers {
     qrIdentifier: string
   ) => Promise<QerkoRpcResult<ReadonlyArray<QerkoBill>>>
   readonly getBill: (idBill: string) => Promise<QerkoRpcResult<QerkoBill>>
+  readonly getTableList: () => Promise<
+    QerkoRpcResult<ReadonlyArray<QerkoTable>>
+  >
+  readonly getTableContents: (
+    idTable: string
+  ) => Promise<QerkoRpcResult<ReadonlyArray<QerkoBill>>>
   readonly paymentStart: (
     payment: QerkoWirePayment
   ) => Promise<QerkoRpcResult<null>>
@@ -172,9 +189,11 @@ const PaymentArgs = z.tuple([QerkoWirePaymentSchema]).rest(z.unknown())
 const ErrorArgs = z.tuple([QerkoRpcErrorSchema]).rest(z.unknown())
 
 /**
- * Every method Qerko may call on the POS. The table and order methods are
- * answered empty: Payky has no tables or menus to show in Qerko, and a payment
- * is found by its QR code alone.
+ * Every method Qerko may call on the POS. A payment is found by its QR code
+ * (`searchBills`) or by its table (`getTableList`, `getTableContents`,
+ * qerko/0017); the handlers answer each flow only while it is on
+ * (qerko/0016). Payky has no menus, so `pairCustomer` is answered empty and
+ * the order methods are unknown (`NO_SUCH_METHOD`).
  */
 const posMethods = {
   noop: async () => ok(null),
@@ -202,8 +221,11 @@ const posMethods = {
       ? badParameter
       : handlers.paymentClosed(parsed[0], parsed[1])
   },
-  getTableList: async () => ok([]),
-  getTableContents: async () => ok([]),
+  getTableList: async (_args, handlers) => handlers.getTableList(),
+  getTableContents: async (args, handlers) => {
+    const parsed = firstArgs(StringArgs, args)
+    return parsed === null ? badParameter : handlers.getTableContents(parsed[0])
+  },
   pairCustomer: async () => ok(null),
   /** Qerko reporting a failure of ours; logged, never answered. */
   error: async (args, _handlers, console) => {

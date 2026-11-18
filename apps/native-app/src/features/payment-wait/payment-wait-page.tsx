@@ -20,6 +20,7 @@ import {
   enabledPaymentMethodAccountsQuery,
 } from "@payky/core/modules/account/account-queries"
 import type { AccountId } from "@payky/core/modules/account/account-types"
+import { isQerkoFlowOn } from "@payky/core/modules/account/account-utils"
 import { settingsQuery } from "@payky/core/modules/app-settings/app-settings-queries"
 import type { DefaultPaymentMethod } from "@payky/core/modules/app-settings/app-settings-types"
 import { getPaymentMethodOrder } from "@payky/core/modules/app-settings/app-settings-utils"
@@ -323,7 +324,9 @@ function PaymentWaitRequest({ paymentId }: { readonly paymentId: PaymentId }) {
       : accounts.find(
           (account) =>
             account.kind === "qerkoPayment" &&
-            account.qerkoPaymentCurrency === payment?.currency
+            account.qerkoPaymentCurrency === payment?.currency &&
+            // Off, Qerko serves tables only (qerko/0016).
+            isQerkoFlowOn(account.qerkoDirectPaymentEnabled)
         )
   const lightningAddressAccount = accounts.find(
     (account) =>

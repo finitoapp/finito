@@ -1,3 +1,4 @@
+import { nullOr, SqliteBoolean } from "@evolu/common"
 import type { IndexesConfig } from "@evolu/common/local-first"
 import { CashuPaymentRequestLegsSchema } from "../../cashu/cashu-payment-request.ts"
 import { DeviceId } from "../device/device-types.ts"
@@ -84,11 +85,19 @@ export const accountQerkoTerminal = {
  * that holds it and serves every device's payments; it syncs, so every device
  * can tell whether anyone does, and the last device chosen wins, as Qerko's
  * own last connection does.
+ *
+ * Two switches say which of Qerko's flows Payky serves (qerko/0016): a QR
+ * code for one payment (`directPaymentEnabled`) and a table's open bill
+ * (`tablePaymentEnabled`, qerko/0017). Both are nullable and `null` reads as
+ * on (`deriveQerkoPaymentFlows`), so rows written before the columns existed
+ * keep direct payments and gain table payments.
  */
 export const accountQerkoPayment = {
   id: AccountId,
   currency: FiatCurrencySchema,
   connectionDeviceId: DeviceId.nullable(),
+  directPaymentEnabled: nullOr(SqliteBoolean),
+  tablePaymentEnabled: nullOr(SqliteBoolean),
 } as const
 
 /**

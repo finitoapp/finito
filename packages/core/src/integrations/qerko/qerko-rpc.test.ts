@@ -35,6 +35,12 @@ const fixtures = {
     type: "method-call-request",
   },
   getTableList: { uuid, method: "getTableList", type: "method-call-request" },
+  getTableContents: {
+    uuid,
+    method: "getTableContents",
+    args: ["id_of_table", null],
+    type: "method-call-request",
+  },
   paymentStart: {
     uuid,
     method: "paymentStart",
@@ -109,6 +115,8 @@ const bill = {
   denyMenus: true,
 }
 
+const table = { id: "id_of_table", name: "Table 1" }
+
 const createHandlers = (): QerkoPosHandlers & {
   readonly calls: Array<ReadonlyArray<unknown>>
 } => {
@@ -122,6 +130,14 @@ const createHandlers = (): QerkoPosHandlers & {
     getBill: async (id) => {
       calls.push(["getBill", id])
       return err(qerkoRpcError("BILL_CLOSED"))
+    },
+    getTableList: async () => {
+      calls.push(["getTableList"])
+      return ok([table])
+    },
+    getTableContents: async (id) => {
+      calls.push(["getTableContents", id])
+      return ok([bill])
     },
     paymentStart: async (payment) => {
       calls.push(["paymentStart", payment.id, payment.parts.length])
@@ -260,6 +276,7 @@ describe("createQerkoRpcSession", () => {
     test.receive(fixtures.paymentProcessed)
     test.receive(fixtures.paymentClosed)
     test.receive(fixtures.getTableList)
+    test.receive(fixtures.getTableContents)
     await vi.advanceTimersByTimeAsync(0)
 
     expect(test.handlers.calls).toEqual([
@@ -268,8 +285,10 @@ describe("createQerkoRpcSession", () => {
       ["paymentStart", "id_of_payment", 2],
       ["paymentProcessed", "id_of_payment"],
       ["paymentClosed", "id_of_payment", "PAID"],
+      ["getTableList"],
+      ["getTableContents", "id_of_table"],
     ])
-    expect(test.replies()).toHaveLength(6)
+    expect(test.replies()).toHaveLength(7)
     expect(test.replies()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -287,7 +306,14 @@ describe("createQerkoRpcSession", () => {
           result: { items: [], taxInfo: [] },
         }),
         expect.objectContaining({ calledMethod: "paymentClosed", error: null }),
-        expect.objectContaining({ calledMethod: "getTableList", result: [] }),
+        expect.objectContaining({
+          calledMethod: "getTableList",
+          result: [table],
+        }),
+        expect.objectContaining({
+          calledMethod: "getTableContents",
+          result: [bill],
+        }),
       ])
     )
   })
@@ -308,6 +334,28 @@ describe("createQerkoRpcSession", () => {
       }),
     ])
   })
+
+  test.each([
+    ["no table", []],
+    ["an empty table", [""]],
+    ["a table that is not a string", [42]],
+  ])(
+    "answers getTableContents with %s as BAD_PARAMETER",
+    async (_name, args) => {
+      const test = setup()
+      test.authorize()
+      test.receive({ ...fixtures.getTableContents, args })
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(test.handlers.calls).toEqual([])
+      expect(test.replies()).toEqual([
+        expect.objectContaining({
+          calledMethod: "getTableContents",
+          error: expect.objectContaining({ code: "BAD_PARAMETER" }),
+        }),
+      ])
+    }
+  )
 
   test("never answers a call without a uuid", async () => {
     const test = setup()

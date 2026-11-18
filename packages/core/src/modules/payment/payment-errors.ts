@@ -22,6 +22,7 @@ import type {
   BillStatusNotAllowedError,
   BillTotalNotPositiveError,
 } from "../bill/bill-guards.ts"
+import type { BillId } from "../bill/bill-types.ts"
 import type { QerkoPluginNotPairedError } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type {
   FiatCurrency,
@@ -494,8 +495,9 @@ export type SyncQerkoTerminalPaymentError =
   | QerkoClientError
 
 /**
- * Qerko asked for a bill Payky does not offer through Qerko: no such payment,
- * or one whose Qerko payment method was never prepared (`BILL_NOT_FOUND`).
+ * Qerko asked for a bill Payky does not offer through Qerko (`BILL_NOT_FOUND`):
+ * no such payment, one whose Qerko payment method was never prepared, no such
+ * bill, or one of a flow that is off (qerko/0016).
  */
 export const createQerkoBillNotFoundError = defineError("QerkoBillNotFound")<{
   readonly idBill: string
@@ -504,27 +506,34 @@ export type QerkoBillNotFoundError = ReturnType<
   typeof createQerkoBillNotFoundError
 >
 
-/** The payment is no longer waiting for money (`BILL_CLOSED`). */
+/**
+ * The payment is no longer waiting for money, or the table's bill has
+ * nothing left to pay (`BILL_CLOSED`).
+ */
 export const createQerkoBillClosedError = defineError("QerkoBillClosed")<{
-  readonly id: PaymentId
+  readonly id: PaymentId | BillId
 }>()
 export type QerkoBillClosedError = ReturnType<typeof createQerkoBillClosedError>
 
-/** Another Qerko payment of the payment is still in progress (`BILL_LOCKED`). */
+/**
+ * Another Qerko payment of the payment is still in progress, or a payment of
+ * the table's bill is (`BILL_LOCKED`); `qerkoPaymentId` is `null` when that
+ * payment is not one Qerko knows.
+ */
 export const createQerkoBillLockedError = defineError("QerkoBillLocked")<{
-  readonly id: PaymentId
-  readonly qerkoPaymentId: NonEmptyString255
+  readonly id: PaymentId | BillId
+  readonly qerkoPaymentId: NonEmptyString255 | null
 }>()
 export type QerkoBillLockedError = ReturnType<typeof createQerkoBillLockedError>
 
 /**
  * `paymentStart` does not match the bill Payky offered — another currency or
- * amount, a discount, a tip (`INVALID_DATA`): Qerko refreshes the bill and
- * tries again.
+ * amount, a discount, items a table's bill no longer has (`INVALID_DATA`):
+ * Qerko refreshes the bill and tries again.
  */
 export const createQerkoInvalidDataError = defineError("QerkoInvalidData")<{
-  readonly id: PaymentId
-  readonly reason: "currency" | "amount" | "discount"
+  readonly id: PaymentId | BillId
+  readonly reason: "currency" | "amount" | "discount" | "items"
 }>()
 export type QerkoInvalidDataError = ReturnType<
   typeof createQerkoInvalidDataError
@@ -552,3 +561,5 @@ export type StartQerkoPaymentError =
 export type SettleQerkoPaymentError =
   | QerkoPaymentAttemptNotFoundError
   | PaymentNotFoundError
+  /** Canceling a failed table payment (qerko/0018); it has no card attempt. */
+  | PaymentAttemptUnresolvedError

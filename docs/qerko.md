@@ -101,7 +101,10 @@ Finito open.
 | `get-locations`, `pair-location`, `get-payment`, `cancel-payment`, URLs, QR | `packages/core/src/integrations/qerko/qerko-client.ts` |
 | Account kind `qerkoPayment`, `accountQerkoPayment.connectionDeviceId` | `modules/account/` |
 | `paymentQerkoPayment`, `qerkoPaymentAttempt` | `modules/payment/payment.ts` |
-| What Payky answers Qerko, and settling | `modules/payment/payment-qerko-payment-actions.ts` |
+| Which flow answers each of Qerko's calls, by the switches | `modules/payment/payment-qerko-pos-actions.ts` |
+| What Payky answers Qerko for a payment, and settling | `modules/payment/payment-qerko-payment-actions.ts` |
+| Tables and their bills (`getTableList`, `getTableContents`) | `modules/payment/payment-qerko-table-actions.ts`, `-utils.ts` |
+| The switches `directPaymentEnabled`, `tablePaymentEnabled` | `modules/account/account.ts` (`accountQerkoPayment`) |
 | The connection, on the chosen device | `background-jobs/jobs/qerko-payment-connection-job.ts` |
 | `get-payment` when `paymentClosed` never came | `background-jobs/jobs/qerko-payment-sync-job.ts` |
 | The refund | `modules/refund/refund-qerko-payment-actions.ts` |
@@ -162,7 +165,40 @@ in Qerko; the tip set on Payky's tip screen never reaches Qerko
 | `paymentProcessed(id)` | marks the attempt processing, answers the receipt (Qerko cancels without one): the bill's items, no tip, and the VAT breakdown of the goods alone; a VAT payer's keypad payment at the rate set for keypad amounts (`qerko/0014`) |
 | `paymentClosed(id, PAID)` | reads the `Payment` with `get-payment`, records the money, closes the attempt as paid; when the parts are the goods and `tipBrutto`, that tip replaces the payment's own (`qerko/0015`, `payment/0018`) |
 | `paymentClosed(id, other)` | closes the attempt as failed, no money (`qerko/0015`) |
-| table and order calls | answered empty or `NO_SUCH_METHOD` |
+| `getTableList`, `getTableContents` | the table flow, below |
+| order calls | `NO_SUCH_METHOD`; `pairCustomer` answered empty |
+
+### Two flows, two switches
+
+Qerko payments serve two flows, each on its own switch in the settings
+(`qerko/0016`): **Direct payment** ("Přímá platba"), the QR code on the
+payment screen above, and **Table payment** ("Platba od stolu"), Qerko's QR
+code on a table, below. Both are stored nullable on `accountQerkoPayment`
+and `null` is on, so an account paired before them serves both. A flow that
+is off answers as if Payky had nothing for it: `searchBills`,
+`getTableList` and `getTableContents` an empty list, `getBill` and
+`paymentStart` `BILL_NOT_FOUND`; with direct payments off the payment
+screen shows no Qerko tab. A payment already started is settled either way.
+
+### A table's bill
+
+The restaurant pairs Qerko's QR codes with its tables in Qerko's
+administration, from `getTableList`: the catalog's tables, `id` their
+`code`, with their name (`qerko/0017`). A guest's scan calls
+`getTableContents(code)`, answered with the table's open bills, the one
+opened first first; an unknown or empty table is an empty list. Several
+bills on a table are listed apart, by label or `#` and number.
+
+A bill is paid whole (`qerko/0018`): `allowPartialPayment` false, the guest
+tips in Qerko. It offers what is left of it, its lines while nothing is
+paid, one item "Zbývá zaplatit" once a split payment at the till paid part.
+Splitting by items waits for PR #220's per-line allocations.
+
+| Qerko calls | Payky does |
+| --- | --- |
+| `getBill(billId)` | the bill as listed; `BILL_CLOSED` once closed, discarded or with nothing left |
+| `paymentStart(Payment)` | `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless the items are exactly those offered now; otherwise makes a pending payment of the bill for the rest, through Qerko payments, its id from Qerko's payment id, and records the attempt. The pending payment locks the bill. |
+| `paymentProcessed`, `paymentClosed` | as for a direct payment; a final state other than `PAID` also cancels the payment, which unlocks the bill |
 
 An attempt still open 30 s after it started is asked about with `get-payment`
 by every device's sync job and by the payment screen (`qerko/0012`). Every
