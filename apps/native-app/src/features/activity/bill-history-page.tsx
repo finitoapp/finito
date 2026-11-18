@@ -17,6 +17,7 @@ import Check from "lucide-react-native/icons/check"
 import RotateCw from "lucide-react-native/icons/rotate-cw"
 import TriangleAlert from "lucide-react-native/icons/triangle-alert"
 import X from "lucide-react-native/icons/x"
+import { Suspense } from "react"
 import { View } from "tamagui"
 import { Icon } from "../../components/ui/icon.tsx"
 import { useInfiniteEvoluQuery } from "../../hooks/use-infinite-evolu-query.ts"
@@ -24,6 +25,7 @@ import { useLocale, useTranslation } from "../../hooks/use-translation.ts"
 import { formatMoney } from "../../lib/format-money.ts"
 import type { ThemeColor } from "../../theme/themes.ts"
 import { radius } from "../../theme/tokens.ts"
+import { ActivityFallback } from "./activity-layout.tsx"
 import {
   type ActivityGroup,
   ActivityList,
@@ -68,9 +70,16 @@ function BillStatusIcon({
   )
 }
 
-/** The Activity tab's bills list, under `ActivityLayout`'s header and tabs. */
+/**
+ * The Activity tab's bills list, under `ActivityLayout`'s header and tabs,
+ * its rows behind the list's skeleton as the payments list's are.
+ */
 export function BillHistoryPage() {
-  return <BillHistory />
+  return (
+    <Suspense fallback={<ActivityFallback />}>
+      <BillHistory />
+    </Suspense>
+  )
 }
 
 function BillHistory() {
