@@ -39,6 +39,12 @@ lock the bill while the guest pays and to unlock it on a timeout, and waits
   - `INVALID_DATA` unless the currency matches, there is no discount and the
     items are exactly those offered now, each by id and price. A bill
     changed since Qerko read it is refreshed this way.
+- The connection answers `paymentStart` calls one at a time, in the order
+  Qerko made them, while every other call is answered as it comes: the
+  check that nothing else pays the bill and the payment it then writes must
+  not interleave with another start's, or two guests pressing Pay at once
+  would both pass it and both be charged. Direct payments' running-attempt
+  check is held the same way.
 - Then it makes a payment of the bill for what is left, tip zero, prepared
   for Qerko payments, its id derived from Qerko's payment id, and records the
   attempt on it as a direct one's (`qerko/0013`). The payment is pending, so
@@ -77,7 +83,8 @@ line with the rest, and its receipt is the payment's one line with prorated
 VAT (`qerko/0014`). Staff who cancel a table's payment while the guest pays
 get the canceled-and-paid collision if Qerko then says `PAID`, resolved as
 any other (`docs/bill-payment-states.md`). Like every lock here it holds on
-the device that judged it: another device editing the bill offline shows as
+the device that judged it, and only one device holds the connection
+(`qerko/0011`): another device editing the bill offline shows as
 a coverage mismatch after sync.
 
 ## Enforced by
@@ -98,6 +105,8 @@ a coverage mismatch after sync.
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > refuses %s as INVALID_DATA`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > refuses a bill that changed since Qerko read it, and accepts it read again`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > refuses a bill another payment locks with BILL_LOCKED`
+- `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > paymentStart of a table's bill > two guests starting to pay one bill at once: one pays, the other is told BILL_LOCKED`
+- `packages/core/src/integrations/qerko/qerko-rpc.test.ts > createQerkoRpcSession > answers paymentStart one at a time, and nothing else waits for it`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > PAID records the money and closes the bill, the guest's tip apart`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > PAID of what was left closes a bill partly paid at the till`
 - `packages/core/src/modules/payment/payment-qerko-table-actions.test.ts > settling a table's payment > money above the bill and no tip reads as an overpaid bill`

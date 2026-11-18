@@ -1,4 +1,10 @@
-import { createIdFromString, testCreateRun } from "@evolu/common"
+import {
+  createConsole,
+  createIdFromString,
+  err,
+  ok,
+  testCreateRun,
+} from "@evolu/common"
 import { describe, expect, test } from "vitest"
 
 import type { DateDep, EvoluOwnerDep, FetchDep } from "../../deps.ts"
@@ -6,10 +12,13 @@ import {
   createQerkoApiDep,
   type QerkoApiDep,
 } from "../../integrations/qerko/qerko-client.ts"
-import type {
-  QerkoBill,
-  QerkoWirePayment,
+import {
+  createQerkoRpcSession,
+  type QerkoBill,
+  type QerkoWirePayment,
+  qerkoRpcError,
 } from "../../integrations/qerko/qerko-rpc.ts"
+import type { QerkoSocketHandlers } from "../../integrations/qerko/qerko-socket.ts"
 import { createTestDateDep } from "../../testing/date-dep.ts"
 import { createEvoluTest } from "../../testing/evolu.ts"
 import { evoluTestDeps } from "../../testing/evolu-deps.ts"
@@ -529,6 +538,86 @@ describe("paymentStart of a table's bill", () => {
       ok: false,
       error: { type: "QerkoBillLocked", id: billId, qerkoPaymentId: null },
     })
+  })
+
+  test("two guests starting to pay one bill at once: one pays, the other is told BILL_LOCKED", async () => {
+    await using test = await setup()
+    await test.bill(await test.table("T1"), [12_900])
+    const [bill] = await test.contents("T1")
+    if (bill === undefined) throw new Error("no bill")
+
+    // Qerko's two calls arrive over one connection, the second before the
+    // first is answered, as `createQerkoRpcSession` serves them.
+    const sent: Array<{ uuid?: string; error?: { code?: string } | null }> = []
+    let socket: QerkoSocketHandlers | null = null
+    const unused = async () => err(qerkoRpcError("UNUSED"))
+    const session = createQerkoRpcSession({
+      qerkoSocket: {
+        connect: (_url, handlers) => {
+          socket = handlers
+          return {
+            send: (text) => sent.push(JSON.parse(text)),
+            close: () => {},
+          }
+        },
+      },
+      console: createConsole(),
+      url: "wss://test",
+      posId: "pos",
+      apiKey: "key",
+      handlers: {
+        searchBills: unused,
+        getBill: unused,
+        getTableList: unused,
+        getTableContents: unused,
+        paymentProcessed: unused,
+        paymentClosed: unused,
+        paymentStart: async (wire) => {
+          const started = await test.run(
+            answerQerkoPaymentStart({ wire, deviceId })
+          )
+          return started.ok ? ok(null) : err(qerkoRpcError(started.error.type))
+        },
+      },
+      onState: () => {},
+      onError: (error) => {
+        throw error
+      },
+    })
+    const connected = (): QerkoSocketHandlers => {
+      if (socket === null) throw new Error("not connected")
+      return socket
+    }
+    connected().onOpen()
+    connected().onMessage(
+      JSON.stringify({ type: "auth-response", authorized: true, error: null })
+    )
+    for (const id of ["qerko-1", "qerko-2"]) {
+      connected().onMessage(
+        JSON.stringify({
+          type: "method-call-request",
+          uuid: id,
+          method: "paymentStart",
+          args: [wireFor(id, bill)],
+        })
+      )
+    }
+    await expect
+      .poll(() => sent.filter((message) => message.uuid?.startsWith("qerko")))
+      .toHaveLength(2)
+    session.close()
+
+    expect(sent.filter((message) => message.uuid?.startsWith("qerko"))).toEqual(
+      [
+        expect.objectContaining({ uuid: "qerko-1", error: null }),
+        expect.objectContaining({
+          uuid: "qerko-2",
+          error: expect.objectContaining({ code: "QerkoBillLocked" }),
+        }),
+      ]
+    )
+    expect(await test.payment("qerko-1")).toMatchObject({ amount: 12_900 })
+    expect(await test.payment("qerko-2")).toBeUndefined()
   })
 
   test("refuses a table's bill as BILL_NOT_FOUND while table payments are off", async () => {

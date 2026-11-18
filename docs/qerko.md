@@ -197,7 +197,7 @@ Splitting by items waits for PR #220's per-line allocations.
 | Qerko calls | Payky does |
 | --- | --- |
 | `getBill(billId)` | the bill as listed; `BILL_CLOSED` once closed, discarded or with nothing left |
-| `paymentStart(Payment)` | `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless the items are exactly those offered now; otherwise makes a pending payment of the bill for the rest, through Qerko payments, its id from Qerko's payment id, and records the attempt. The pending payment locks the bill. |
+| `paymentStart(Payment)` | answered one at a time, so two guests cannot both pass the lock; `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless the items are exactly those offered now; otherwise makes a pending payment of the bill for the rest, through Qerko payments, its id from Qerko's payment id, and records the attempt. The pending payment locks the bill. |
 | `paymentProcessed`, `paymentClosed` | as for a direct payment; a final state other than `PAID` also cancels the payment, which unlocks the bill |
 
 An attempt still open 30 s after it started is asked about with `get-payment`

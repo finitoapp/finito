@@ -279,15 +279,20 @@ describe("createQerkoRpcSession", () => {
     test.receive(fixtures.getTableContents)
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(test.handlers.calls).toEqual([
-      ["searchBills", "qr_identifier"],
-      ["getBill", "id_of_bill"],
-      ["paymentStart", "id_of_payment", 2],
-      ["paymentProcessed", "id_of_payment"],
-      ["paymentClosed", "id_of_payment", "PAID"],
-      ["getTableList"],
-      ["getTableContents", "id_of_table"],
-    ])
+    // `paymentStart` waits its turn (`serialPosMethods`), so the order of
+    // the calls is not the order they arrived in.
+    expect(test.handlers.calls).toHaveLength(7)
+    expect(test.handlers.calls).toEqual(
+      expect.arrayContaining([
+        ["searchBills", "qr_identifier"],
+        ["getBill", "id_of_bill"],
+        ["paymentStart", "id_of_payment", 2],
+        ["paymentProcessed", "id_of_payment"],
+        ["paymentClosed", "id_of_payment", "PAID"],
+        ["getTableList"],
+        ["getTableContents", "id_of_table"],
+      ])
+    )
     expect(test.replies()).toHaveLength(7)
     expect(test.replies()).toEqual(
       expect.arrayContaining([
@@ -356,6 +361,50 @@ describe("createQerkoRpcSession", () => {
       ])
     }
   )
+
+  test("answers paymentStart one at a time, and nothing else waits for it", async () => {
+    const started: string[] = []
+    const finishes: Array<() => void> = []
+    const test = setup({
+      paymentStart: (payment) => {
+        started.push(payment.id)
+        return new Promise((resolve) => {
+          finishes.push(() => resolve(ok(null)))
+        })
+      },
+    })
+    test.authorize()
+    const start = (id: string) => {
+      const [payment] = fixtures.paymentStart.args
+      test.receive({
+        ...fixtures.paymentStart,
+        uuid: `uuid-${id}`,
+        args: [{ ...payment, id }],
+      })
+    }
+    start("first")
+    start("second")
+    test.receive(fixtures.getBill)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(started).toEqual(["first"])
+    expect(test.replies()).toEqual([
+      expect.objectContaining({ calledMethod: "getBill" }),
+    ])
+
+    finishes[0]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toEqual(["first", "second"])
+
+    finishes[1]?.()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      test.replies().filter((reply) => reply.uuid.startsWith("uuid-"))
+    ).toEqual([
+      expect.objectContaining({ uuid: "uuid-first", error: null }),
+      expect.objectContaining({ uuid: "uuid-second", error: null }),
+    ])
+  })
 
   test("never answers a call without a uuid", async () => {
     const test = setup()

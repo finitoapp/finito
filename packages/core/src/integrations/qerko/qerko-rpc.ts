@@ -236,6 +236,16 @@ const posMethods = {
 
 export type QerkoPosMethod = keyof typeof posMethods
 
+/**
+ * Methods a session answers one at a time, in the order Qerko called them,
+ * where every other call is answered as it comes. `paymentStart` checks that
+ * nothing else is paying the bill and then records its own payment: two
+ * guests pressing Pay at once would otherwise both pass the check before
+ * either wrote (qerko/0018), and Qerko would charge them both. Qerko waits
+ * 15 s for each answer, far longer than one start takes.
+ */
+const serialPosMethods: ReadonlySet<QerkoPosMethod> = new Set(["paymentStart"])
+
 const isQerkoPosMethod = (method: string): method is QerkoPosMethod =>
   Object.hasOwn(posMethods, method)
 
@@ -327,6 +337,8 @@ export const createQerkoRpcSession = ({
   const pending = new Map<string, (ok: boolean) => void>()
   let authTimer: ReturnType<typeof setTimeout> | null = null
   let silenceTimer: ReturnType<typeof setTimeout> | null = null
+  /** The last of the `serialPosMethods` calls, which the next one waits for. */
+  let serialTail: Promise<unknown> = Promise.resolve()
 
   const clearTimers = () => {
     if (authTimer !== null) clearTimeout(authTimer)
@@ -382,11 +394,20 @@ export const createQerkoRpcSession = ({
   ) => {
     let result: QerkoRpcResult<unknown>
     if (isQerkoPosMethod(method)) {
-      try {
-        result = await posMethods[method](args, handlers, console)
-      } catch (error) {
-        onError(error)
-        result = err(qerkoRpcError("UNKNOWN", "Internal error"))
+      const invoke = async (): Promise<QerkoRpcResult<unknown>> => {
+        try {
+          return await posMethods[method](args, handlers, console)
+        } catch (error) {
+          onError(error)
+          return err(qerkoRpcError("UNKNOWN", "Internal error"))
+        }
+      }
+      if (serialPosMethods.has(method)) {
+        const turn = serialTail.then(invoke)
+        serialTail = turn
+        result = await turn
+      } else {
+        result = await invoke()
       }
     } else {
       result = err(qerkoRpcError("NO_SUCH_METHOD", `No such method: ${method}`))
