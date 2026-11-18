@@ -76,7 +76,9 @@ numbers and the catalog went home and back each time.
   tabs come from a table of paths (`apps/native-app/src/core/menu-routes.ts`)
   rather than `staticData.menu`; the root layout draws the bar or the
   sidebar beside its stack, and the withdrawal screens, which sit at the
-  top of its routes, count as Settings. Its Maestro flows in
+  top of its routes, count as Settings. Since navigation/0006 its tabs'
+  root screens stay mounted in a tabs navigator of their own and switch
+  without a transition. Its Maestro flows in
   `e2e/flows/menu/` mirror `menu.spec.ts`.
 - On a large monitor a tab switch from a sub-screen replaces that
   sub-screen's entry, so Home from the new tab's root goes back to the

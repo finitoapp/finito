@@ -59,6 +59,7 @@ import {
   FieldLabel,
 } from "../../components/ui/field.tsx"
 import { Input } from "../../components/ui/input.tsx"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { useConfirm } from "../../hooks/use-confirm.ts"
 import {
   useDeviceEvoluQuery,
@@ -193,7 +194,7 @@ export function OnboardingPage({
   // The appSettings row marks the account as onboarded (same as web): leave
   // so a finished or synced account never finishes again.
   useEffect(() => {
-    if (settings !== undefined) router.replace("/")
+    if (settings !== undefined) showMenuRoot("/")
   }, [settings])
 
   // A visitor arriving from the landing page continues in its language; a
@@ -262,7 +263,7 @@ export function OnboardingPage({
       )
       if (!finished.ok) return finishOnboardingErrorKeys[finished.error.type]
       setForm(initialOnboardingFormState)
-      router.replace("/")
+      showMenuRoot("/")
     })
     finishingRef.current = false
     setFinishing(false)

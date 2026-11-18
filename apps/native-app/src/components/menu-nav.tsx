@@ -17,12 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { isWeb, useTheme, View, XStack, YStack } from "tamagui"
 import appIcon from "../../assets/app-icon.png"
 import { currentPathname } from "../core/current-pathname.ts"
+import { showMenuRoot } from "../core/menu-navigation.ts"
 import {
   type MenuTab,
-  menuPositionOf,
   menuTabOrder,
   menuTabTargets,
 } from "../core/menu-routes.ts"
+import { tabSwitchTimer } from "../core/tab-switch-timing.ts"
 import { useActiveNotifications } from "../hooks/use-active-notifications.ts"
 import {
   useNostrIdentity,
@@ -75,7 +76,9 @@ const menuTabFaces = {
  * on every screen, it is the terminal's own tab. The root layout mounts
  * the rail beside its stack and the bar over it (`MenuBar`), and keeps
  * either mounted across the tab routes, which is what lets the pill travel.
- * Switching tabs replaces the screen, so Back and Home leave the section
+ * The tabs' root screens live in their own tabs navigator
+ * (`app/(menu)/_layout.tsx`): a tab switch shows the tab as it was left,
+ * without a transition (navigation/0006), and Back from any tab leads home
  * instead of rewinding through tabs.
  *
  * Linky's labels are the entries' names (TalkBack, a browser tooltip),
@@ -335,7 +338,7 @@ function RailProfileTile() {
         : {})}
       onPress={() => {
         if (currentPathname() === "/settings/profile") return
-        router.dismissTo("/settings")
+        showMenuRoot("/settings")
         router.push("/settings/profile")
       }}
     >
@@ -389,10 +392,9 @@ function MenuNavLink({
   // The notifications' tab carries their dot (home's hamburger the same).
   const unread = useActiveNotifications().length > 0 && tab === "notifications"
   // The terminal's entry on the bar is Home: it leaves the section the way
-  // it was entered, as web's `MenuHomeEntry` (navigation/0001). The section
-  // opens from home and its tab switches replace the screen, so going back
-  // returns there; a screen opened cold goes home instead. On the rail,
-  // which the terminal's own screens share, it dismisses to home.
+  // it was entered, as web's `MenuHomeEntry` (navigation/0001). Home is the
+  // first of the tabs navigator's screens (`app/(menu)/_layout.tsx`), so
+  // going there is one more tab switch, and so is Back from any tab.
   const home = tab === "terminal"
   return (
     <MenuNavEntry
@@ -405,19 +407,12 @@ function MenuNavLink({
       onPress={() => {
         if (active) return
         onSelect?.(tab)
-        if (home && variant === "bar") {
-          if (router.canGoBack()) router.back()
-          else router.replace("/")
-        } else if (home) {
-          router.dismissTo("/")
-        } else if (menuPositionOf(currentPathname())?.tab === tab) {
-          // From a detail of this tab (the rail shows on every screen): back
-          // to the tab's root rather than a second copy of it.
-          router.dismissTo(menuTabTargets[tab].href)
-        } else {
-          if (tab === "activity") preloadActivity()
-          router.replace(menuTabTargets[tab].href)
-        }
+        tabSwitchTimer.markPress(tab)
+        if (tab === "activity") preloadActivity()
+        // The tab as it was left (navigation/0006); from a screen above the
+        // tabs (the rail shows on every screen), the stack under it goes,
+        // so Back from the tab does not return there.
+        showMenuRoot(menuTabTargets[tab].href)
       }}
     />
   )

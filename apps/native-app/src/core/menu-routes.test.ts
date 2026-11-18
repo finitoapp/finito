@@ -1,4 +1,4 @@
-import { readdirSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
@@ -31,6 +31,24 @@ const routePaths = (readdirSync(appDir, { recursive: true }) as string[])
         .replace(/(^|\/)index$/, "")
         .replace(/\[(\w+)\]/g, ":$1")}`.replace(/\/$/u, "") || "/"
   )
+
+/** The route files under `app/(menu)`, the menu's tabs navigator, as paths. */
+const menuGroupPaths = (
+  readdirSync(join(appDir, "(menu)"), { recursive: true }) as string[]
+)
+  .filter((file) => file.endsWith(".tsx") && !file.endsWith("_layout.tsx"))
+  .map(
+    (file) =>
+      `/${file
+        .replace(/\.tsx$/, "")
+        .replace(/\([^/]+\)\//g, "")
+        .replace(/(^|\/)index$/, "")}`.replace(/\/$/u, "") || "/"
+  )
+
+const menuLayoutSource = readFileSync(
+  join(appDir, "(menu)/_layout.tsx"),
+  "utf8"
+)
 
 const placed = Object.fromEntries(
   routePaths.map((path) => [path, menuPositionOf(path)?.tab ?? null])
@@ -158,5 +176,38 @@ describe("the terminal, home's modes, notifications and nesting (navigation/0004
     expect(menuDetailRootOf("/bill")).toBeUndefined()
     expect(menuDetailRootOf("/payment/abc")).toBeUndefined()
     expect(menuDetailRootOf("/onboarding")).toBeUndefined()
+  })
+})
+
+describe("the tabs' root screens stay mounted (navigation/0006)", () => {
+  it("keeps every root screen in the menu's tabs navigator and nothing else", () => {
+    expect([...menuGroupPaths].sort()).toEqual([...menuRootPaths].sort())
+  })
+
+  it("orders the navigator's screens as the tabs, home first, where Back returns", () => {
+    const screens = [
+      ...menuLayoutSource.matchAll(/<Tabs\.Screen name="([^"]+)"/g),
+    ]
+      .map((match) => match[1])
+      .map((name) =>
+        `/${name?.replace(/\([^/]+\)$/u, "").replace(/^index$/u, "")}`.replace(
+          /(.)\/$/u,
+          "$1"
+        )
+      )
+    expect(screens).toEqual(menuTabOrder.map((tab) => menuTabTargets[tab].href))
+    expect(menuLayoutSource).toContain('backBehavior="firstRoute"')
+  })
+
+  it("hides a tab under React's Activity and switches tabs without a transition", () => {
+    expect(menuLayoutSource).toMatch(/^\s+activityEnabled$/mu)
+    expect(menuLayoutSource).toContain('animation: "none"')
+    expect(menuLayoutSource).not.toMatch(/lazy: false/u)
+  })
+
+  it("builds every tab again with the app Evolu client", () => {
+    expect(menuLayoutSource).toContain("useAtomValue(evoluCounterAtom)")
+    expect(menuLayoutSource).toContain("<Fragment key={accountVersion}>")
+    expect(menuLayoutSource).toContain("screenLayout={screenLayout}")
   })
 })

@@ -41,7 +41,7 @@ export function ActivityFallback() {
 /**
  * Web `apps/web-app/src/features/activity/activity-layout.tsx`: the header
  * and tabs over Activity's three root screens, payments, bills and
- * statistics (navigation/0001), mounted once by `app/activity/(tabs)` so
+ * statistics (navigation/0001), mounted once by `app/(menu)/activity/(tabs)` so
  * switching tabs swaps only the screen under them: the tabs keep one
  * height on all three and their pill slides to the new tab. The header's
  * start stays empty, as on every root screen of the menu section, whose
@@ -53,8 +53,8 @@ export function ActivityFallback() {
  * (Expo Router queues the replace, then the root layout re-renders) and the
  * new screen then loads behind the same placeholder. The screens stay
  * mounted, only hidden, meanwhile: they hold the tabs' navigator, and
- * without it mounted Expo Router would replace the whole Activity route on
- * the root stack, which animates the entire screen in. Any route change,
+ * without it mounted Expo Router would replace the whole Activity tab in
+ * the menu's tabs navigator, building the entire screen again. Any route change,
  * Back included, brings the selection in line with the route again.
  */
 export function ActivityLayout({ children }: { readonly children: ReactNode }) {

@@ -2,7 +2,7 @@ import {
   accessLastActivityAtom,
   accessSessionAtom,
 } from "@payky/app-shared/access-state"
-import { router, usePathname } from "expo-router"
+import { usePathname } from "expo-router"
 import { useAtom, useAtomValue, useSetAtom, useStore } from "jotai"
 import {
   type ReactNode,
@@ -20,6 +20,7 @@ import {
   sessionOutlivesAccount,
 } from "../../core/access-session.ts"
 import { markGateResolved } from "../../core/first-screen.ts"
+import { showMenuRoot } from "../../core/menu-navigation.ts"
 import { requiredPermission } from "../../core/route-access.ts"
 import { useAccess } from "../../core/use-access.ts"
 import { FadeHeader } from "../fade-header.tsx"
@@ -104,7 +105,7 @@ function SessionWatcher({ sell }: { readonly sell: boolean }) {
   useEffect(() => {
     const end = () => {
       setSession(null)
-      if (!sell) router.replace("/")
+      if (!sell) showMenuRoot("/")
     }
     // Mounted when the session starts, whichever way it started.
     touch(store)

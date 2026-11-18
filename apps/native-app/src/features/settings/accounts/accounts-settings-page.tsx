@@ -35,6 +35,7 @@ import { Button } from "../../../components/ui/button.tsx"
 import { Icon } from "../../../components/ui/icon.tsx"
 import { VerticalNav } from "../../../components/vertical-nav.tsx"
 import { appDefaultTransports } from "../../../core/app-brand.ts"
+import { showMenuRoot } from "../../../core/menu-navigation.ts"
 import { useRequirePermission } from "../../../core/use-access.ts"
 import { useConfirm } from "../../../hooks/use-confirm.ts"
 import {
@@ -130,7 +131,7 @@ export function AccountsSettingsPage() {
     // The most recently used account left takes over; with none left, a new
     // empty one does, and onboarding starts on its welcome screen.
     setOnboardingForm(initialOnboardingFormState)
-    router.replace("/")
+    showMenuRoot("/")
     reload()
   }
 
