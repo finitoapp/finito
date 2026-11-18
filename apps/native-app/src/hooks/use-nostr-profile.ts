@@ -18,7 +18,6 @@ import { accountAtom } from "../atoms/account.ts"
 import { deviceEvoluAtom } from "../atoms/device-evolu.ts"
 import { queryClient } from "../core/query-client.ts"
 import { useAppRun } from "./use-app-run.ts"
-import { useDeviceEvoluQuery } from "./use-evolu-query.ts"
 
 /**
  * The last account's identity. Deriving it is a secp256k1 multiplication in
@@ -77,14 +76,17 @@ export function useNostrProfile(pubkey: string) {
  * the device account: that is how the account list shows the other
  * accounts' businesses without asking relays about them, which would let a
  * relay link the accounts (account/0004, account/0011).
+ *
+ * It never suspends: the stored account is loaded inside the effect rather
+ * than subscribed, because the settings' profile card reads this and a
+ * subscription held the whole Settings screen back on a device-database
+ * round trip each time the tab opened.
  */
 export function useActiveNostrProfile() {
   const identity = useNostrIdentity()
   const profile = useNostrProfile(identity.pubkey)
-  const account = useAtomValue(accountAtom)
+  const accountId = useAtomValue(accountAtom).id
   const deviceEvolu = useAtomValue(deviceEvoluAtom)
-  const { data: accounts } = useDeviceEvoluQuery(accountListQuery)
-  const stored = accounts.find(({ id }) => id === account.id)
   const name =
     profile.data === null ? undefined : storableNostrName(profile.data.name)
   const picture =
@@ -93,13 +95,21 @@ export function useActiveNostrProfile() {
       : storableNostrPicture(profile.data.picture)
 
   useEffect(() => {
-    // Written only on a change, so mounting it does not add a write.
-    if (name === undefined || picture === undefined || stored === undefined) {
-      return
+    if (name === undefined || picture === undefined) return
+    let current = true
+    const remember = async () => {
+      const accounts = await deviceEvolu.loadQuery(accountListQuery)
+      const stored = accounts.find(({ id }) => id === accountId)
+      // Written only on a change, so mounting it does not add a write.
+      if (!current || stored === undefined) return
+      if (name === stored.nostrName && picture === stored.nostrPicture) return
+      updateAccountNostrProfile(deviceEvolu, accountId, { name, picture })
     }
-    if (name === stored.nostrName && picture === stored.nostrPicture) return
-    updateAccountNostrProfile(deviceEvolu, account.id, { name, picture })
-  }, [account.id, deviceEvolu, name, picture, stored])
+    void remember()
+    return () => {
+      current = false
+    }
+  }, [accountId, deviceEvolu, name, picture])
 
   return profile
 }
