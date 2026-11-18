@@ -6,7 +6,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@capacitor/core": "8.5.3",
+    "@capacitor/core": "8.6.2",
     "@payky/app-shared": "workspace:*",
     "@payky/core": "workspace:*",
     "react": "19.3.1",

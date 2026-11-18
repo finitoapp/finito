@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "files": {
     "includes": [
       "apps/**",
@@ -82,7 +82,45 @@
       }
     }
   },
-  "overrides": [],
+  "overrides": [
+    {
+      "includes": ["apps/native-app/src/**", "apps/native-app/app/**"],
+      "linter": {
+        "domains": {
+          "playwright": "none"
+        },
+        "rules": {
+          "correctness": {
+            "noReactNativeRawText": {
+              "level": "error",
+              "options": {
+                "skip": [
+                  "AlertDescription",
+                  "AlertTitle",
+                  "Button",
+                  "CardDescription",
+                  "CardTitle",
+                  "DialogDescription",
+                  "DialogTitle",
+                  "FieldDescription",
+                  "FieldError",
+                  "FieldLabel",
+                  "FieldSeparator",
+                  "SelectItem",
+                  "SelectLabel",
+                  "SvgText",
+                  "TabsTrigger",
+                  "TimelineDate",
+                  "TimelineTitle",
+                  "ToggleGroupItem"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "vcs": {
     "enabled": true,
     "clientKind": "git",

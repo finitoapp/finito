@@ -563,6 +563,7 @@ describe("reconciliation claim actions", () => {
     // order even with the `orderBy` deleted, so it is the single claim and
     // the deterministic winner that are under test here.
     const expectedPaymentId =
+      // biome-ignore lint/complexity/useMathMinMax: ids are strings; Math.min would give NaN.
       firstPaymentId < secondPaymentId ? firstPaymentId : secondPaymentId
 
     await expect(

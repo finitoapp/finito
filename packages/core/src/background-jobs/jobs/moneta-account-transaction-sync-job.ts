@@ -44,6 +44,7 @@ const MONETA_SYNC_WINDOWS: ReadonlyArray<(fromDate: DateString) => DateString> =
   [(fromDate) => addMonetaBankDays(fromDate, 6), narrowestMonetaSyncWindow]
 
 const earlierDay = (a: DateString, b: DateString): DateString => (a < b ? a : b)
+const laterDay = (a: DateString, b: DateString): DateString => (a > b ? a : b)
 
 type ActiveMonetaPlugin = Readonly<InferRow<typeof activeMonetaPluginsQuery>>
 
@@ -250,9 +251,6 @@ class MonetaPluginSync implements BankPluginSync<ActiveMonetaPlugin> {
     // that ends before it starts; start where the bank still answers, and
     // no later than today.
     const earliestDay = earliestMonetaReadableDay(now)
-    return earlierDay(
-      start < earliestDay ? earliestDay : start,
-      monetaBankDay(now)
-    )
+    return earlierDay(laterDay(start, earliestDay), monetaBankDay(now))
   }
 }

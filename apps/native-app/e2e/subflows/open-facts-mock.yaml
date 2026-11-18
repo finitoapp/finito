@@ -6,4 +6,4 @@ appId: ${APP_ID}
 - evalScript: ${output.openFactsMock = http.get(MOCK_URL + PATH)}
 - assertTrue:
     condition: ${output.openFactsMock.ok}
-    label: 'Open Facts mock: ${PATH} answered ${output.openFactsMock.status}: ${output.openFactsMock.body}'
+    label: "Open Facts mock: ${PATH} answered ${output.openFactsMock.status}: ${output.openFactsMock.body}"

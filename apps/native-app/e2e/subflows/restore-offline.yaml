@@ -32,8 +32,8 @@ appId: ${APP_ID}
             id: '${output.t["onboarding.restore.wordLabel"].replace("{index}", String(output.slot + 1))}'
       - tapOn:
           id: '${output.t["onboarding.restore.wordLabel"].replace("{index}", String(output.slot + 1))}'
-      - inputText: '${output.words[output.slot]}'
-      - evalScript: '${output.slot = output.slot + 1}'
+      - inputText: "${output.words[output.slot]}"
+      - evalScript: "${output.slot = output.slot + 1}"
 - runFlow:
     when:
       platform: Android

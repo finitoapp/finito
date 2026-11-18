@@ -35,6 +35,7 @@
   background-color: oklch(1 0 0);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: never matches the same element as `:root:not(.dark) .landing`. */
 .dark .landing {
   --landing-ink: oklch(0.86 0.15 88);
 }

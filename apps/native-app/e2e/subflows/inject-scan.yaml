@@ -4,4 +4,4 @@
 # wait for: assert the bill's outcome after it.
 appId: ${APP_ID}
 ---
-- openLink: '${BASE_URL}e2e/injectScanCode?code=${CODE}'
+- openLink: "${BASE_URL}e2e/injectScanCode?code=${CODE}"

@@ -12,12 +12,12 @@
     "@evolu/nodejs": "4.6.0",
     "@payky/core": "workspace:*",
     "@t3-oss/env-core": "0.13.11",
-    "commander": "15.0.0",
+    "commander": "15.1.0",
     "date-fns": "4.4.0",
     "zod": "4.6.7",
     "zod-commander": "0.2.1"
   },
   "devDependencies": {
-    "vitest": "5.0.5"
+    "vitest": "5.1.1"
   }
 }
