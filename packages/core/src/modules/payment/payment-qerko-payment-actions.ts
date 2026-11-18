@@ -74,7 +74,12 @@ import {
   readQerkoTip,
   summarizeQerkoPaymentParts,
 } from "./payment-qerko-payment-utils.ts"
-import { isQerkoTablePaymentAttempt } from "./payment-qerko-table-utils.ts"
+import {
+  applyQerkoPaidLines,
+  isQerkoTablePaymentAttempt,
+  type QerkoPaidLine,
+  QerkoPaidLinesJson,
+} from "./payment-qerko-table-utils.ts"
 import {
   paymentByIdQuery,
   paymentQerkoPaymentByIdQuery,
@@ -146,7 +151,12 @@ interface QerkoPaymentBasis {
  */
 const loadQerkoPaymentContent =
   (
-    payment: Pick<PaymentRow, "id" | "billId" | "amount" | "tipAmount">
+    payment: Pick<PaymentRow, "id" | "billId" | "amount" | "tipAmount">,
+    /**
+     * The lines a table's payment paid (qerko/0018): its content is those
+     * lines at what Qerko charged for them, not every line it froze.
+     */
+    paidLines: ReadonlyArray<QerkoPaidLine> | null = null
   ): Task<QerkoPaymentBasis, never, EvoluDep> =>
   async (run) => {
     const { evolu } = run.deps
@@ -181,10 +191,12 @@ const loadQerkoPaymentContent =
         evolu.loadQuery(legalEntityQuery),
         evolu.loadQuery(taxRatesQuery),
       ])
-    const lines = orderQerkoLines(
+    const frozen = orderQerkoLines(
       paymentLinesToBillLineSummaries(paymentLines, items),
       ledger
     )
+    const lines =
+      paidLines === null ? frozen : applyQerkoPaidLines(frozen, paidLines)
     return ok({
       content: deriveQerkoPaymentContent({
         amount: payment.amount,
@@ -340,10 +352,13 @@ export const recordQerkoPaymentStart =
     wire,
     paymentId,
     currency,
+    paidLines = null,
   }: {
     readonly wire: QerkoWirePayment
     readonly paymentId: PaymentId
     readonly currency: FiatCurrency
+    /** The lines of a table's bill it pays (qerko/0018). */
+    readonly paidLines?: ReadonlyArray<QerkoPaidLine> | null
   }): Task<void, never, EvoluDep & EvoluOwnerDep & DateDep> =>
   async (run) => {
     const tip = readQerkoTip(wire, currency)
@@ -357,6 +372,12 @@ export const recordQerkoPaymentStart =
           startedAt: TimestampMsSchema.decode(run.deps.date.now().getTime()),
           tipAmount: tip.tipAmount,
           tipNetAmount: tip.tipNetAmount,
+          paidLines:
+            paidLines === null
+              ? null
+              : NonEmptyStringSchema.decode(
+                  z.encode(QerkoPaidLinesJson, [...paidLines])
+                ),
         },
         { ...options, owner: run.deps.evoluOwner }
       )
@@ -414,7 +435,16 @@ export const processQerkoPayment =
       return err(createQerkoPaymentAttemptNotFoundError({ qerkoPaymentId }))
     }
 
-    const { content, taxRecap } = await run.ok(loadQerkoPaymentContent(payment))
+    const paidLines =
+      attempt.value.paidLines === null
+        ? null
+        : QerkoPaidLinesJson.safeDecode(attempt.value.paidLines)
+    const { content, taxRecap } = await run.ok(
+      loadQerkoPaymentContent(
+        payment,
+        paidLines?.success === true ? paidLines.data : null
+      )
+    )
     return ok(
       createQerkoReceipt({
         serialNumber: paymentNumber?.serialNumber ?? null,

@@ -189,15 +189,19 @@ administration, from `getTableList`: the catalog's tables, `id` their
 opened first first; an unknown or empty table is an empty list. Several
 bills on a table are listed apart, by label or `#` and number.
 
-A bill is paid whole (`qerko/0018`): `allowPartialPayment` false, the guest
-tips in Qerko. It offers what is left of it, its lines while nothing is
-paid, one item "Zbývá zaplatit" once a split payment at the till paid part.
-Splitting by items waits for PR #220's per-line allocations.
+A bill offers what is left of it (`qerko/0018`) and the guest tips in
+Qerko. Each Qerko payment records on its attempt the lines it paid
+(`paidLines`), so the next guest is offered the lines and quantities still
+unpaid, and may pay part of them (`allowPartialPayment`): any lines, and a
+whole quantity one at a time; a fractional quantity goes whole. A bill with
+a discount is paid whole. Once money that names no lines reached the bill (a
+split at the till, a direct payment), it offers one item "Zbývá zaplatit",
+paid whole. The receipt lists the lines paid at what Qerko charged.
 
 | Qerko calls | Payky does |
 | --- | --- |
 | `getBill(billId)` | the bill as listed; `BILL_CLOSED` once closed, discarded or with nothing left |
-| `paymentStart(Payment)` | answered one at a time, so two guests cannot both pass the lock; `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless the items are exactly those offered now; otherwise makes a pending payment of the bill for the rest, through Qerko payments, its id from Qerko's payment id, and records the attempt. The pending payment locks the bill. |
+| `paymentStart(Payment)` | answered one at a time, so two guests cannot both pass the lock; `BILL_LOCKED` while any payment of the bill is pending; `INVALID_DATA` unless every item is a line still offered, at most what is left of it, at its price (part of a line at its share, within one minor unit); otherwise makes a pending payment of the bill for those items, through Qerko payments, its id from Qerko's payment id, and records the attempt with the lines it pays. The pending payment locks the whole bill. |
 | `paymentProcessed`, `paymentClosed` | as for a direct payment; a final state other than `PAID` also cancels the payment, which unlocks the bill |
 
 An attempt still open 30 s after it started is asked about with `get-payment`

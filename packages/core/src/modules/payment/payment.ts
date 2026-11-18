@@ -288,6 +288,13 @@ export const qerkoPaymentAttempt = {
    * only; like Qerko's other fees it is not recorded as money (qerko/0015).
    */
   tipNetAmount: NonNegativeIntegerSchema.nullable(),
+  /**
+   * The bill lines a table's payment paid (qerko/0018), as JSON
+   * (`QerkoPaidLinesJson`): each line's id, the quantity and the amount Qerko
+   * charged for it. Written once with the start; `null` for a direct payment
+   * and for a table's rest paid as one item.
+   */
+  paidLines: NonEmptyStringSchema.nullable(),
 } as const
 
 export const paymentIndexes = ((create) => [

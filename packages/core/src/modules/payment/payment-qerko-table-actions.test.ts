@@ -29,20 +29,24 @@ import {
 } from "../account/account-actions.ts"
 import { createQerkoPaymentAccountId } from "../account/account-utils.ts"
 import {
+  addCatalogItemToBill,
   addManualAmountToBill,
   cancelBill,
   createBill,
 } from "../bill/bill-actions.ts"
 import { loadBillStatusSnapshot } from "../bill/bill-guards.ts"
 import type { BillId } from "../bill/bill-types.ts"
+import { createCatalogItem } from "../catalog-item/catalog-item-actions.ts"
 import { saveQerkoPlugin } from "../qerko-plugin/qerko-plugin-actions.ts"
 import type { EvoluDep } from "../shared/evolu-deps.ts"
 import { runMutationWithCompletion } from "../shared/evolu-utils.ts"
 import {
+  Integer,
   NonEmptyString255,
   NonEmptyStringSchema,
   NonNegativeInteger,
   PositiveInteger,
+  PositiveNumber,
   TimestampMsSchema,
 } from "../shared/schema.ts"
 import { createTable } from "../table/table-actions.ts"
@@ -255,6 +259,26 @@ const startPaying = async (
   return { bill, wire }
 }
 
+/** One guest pays `items` of a bill read earlier, and Qerko says PAID. */
+const payLines = async (
+  test: TableTest,
+  qerkoPaymentId: string,
+  bill: QerkoBill,
+  items: QerkoWirePayment["items"]
+) => {
+  const wire = wireFor(qerkoPaymentId, bill, { items: [...items] })
+  await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
+  const total = items.reduce((sum, item) => sum + Number(item.price), 0)
+  await test.run.orThrow(
+    settleQerkoPayment({
+      qerkoPaymentId,
+      state: "PAID",
+      payment: { ...wire, state: "PAID", parts: cardParts(String(total)) },
+      deviceId,
+    })
+  )
+}
+
 describe("getTableList", () => {
   test("lists the catalog's tables by code, in their order, once per code", async () => {
     await using test = await setup()
@@ -302,7 +326,7 @@ describe("getTableContents", () => {
             quantity: "1",
           }),
         ],
-        allowPartialPayment: false,
+        allowPartialPayment: true,
         allowTip: true,
         denyDiscounts: true,
         denyMenus: true,
@@ -428,6 +452,9 @@ describe("paymentStart of a table's bill", () => {
     const tableId = await test.table("T1")
     const billId = await test.bill(tableId, [12_900, 5_000])
 
+    // A second guest reads the bill while the first is about to pay.
+    const [listed] = await test.contents("T1")
+    if (listed === undefined) throw new Error("no bill")
     await startPaying(test, "T1", "qerko-1", { tipBrutto: "20" })
 
     expect(await test.payment("qerko-1")).toMatchObject({
@@ -445,9 +472,9 @@ describe("paymentStart of a table's bill", () => {
     expect(await test.attempts("qerko-1")).toMatchObject([
       { qerkoPaymentId: "qerko-1", closedAt: null, tipAmount: 2_000 },
     ])
-    // The bill is listed still, but a second guest is told it is locked.
-    const [listed] = await test.contents("T1")
-    if (listed === undefined) throw new Error("no bill")
+    // What the first guest pays is offered no more, and the second is told
+    // the bill is locked.
+    expect(await test.contents("T1")).toEqual([])
     expect(
       await test.run(
         answerQerkoPaymentStart({ wire: wireFor("qerko-2", listed), deviceId })
@@ -507,32 +534,29 @@ describe("paymentStart of a table's bill", () => {
     expect(await test.payment("qerko-1")).toBeUndefined()
   })
 
-  test("refuses a bill that changed since Qerko read it, and accepts it read again", async () => {
+  test("refuses a line another guest paid since Qerko read the bill, and accepts the bill read again", async () => {
     await using test = await setup()
-    const billId = await test.bill(await test.table("T1"), [12_900])
+    await test.bill(await test.table("T1"), [12_900, 5_000])
     const [stale] = await test.contents("T1")
     if (stale === undefined) throw new Error("no bill")
-    await test.run.orThrow(
-      addManualAmountToBill({
-        billId,
-        deviceId: null,
-        name: NonEmptyString255("Second round"),
-        currency: "CZK",
-        totalAmount: NonNegativeInteger(12_900),
-      })
-    )
+    const [first, second] = stale.items
+    if (first === undefined || second === undefined) throw new Error("items")
+    await payLines(test, "qerko-1", stale, [first])
 
     expect(
       await test.run(
-        answerQerkoPaymentStart({ wire: wireFor("qerko-1", stale), deviceId })
+        answerQerkoPaymentStart({
+          wire: wireFor("qerko-2", stale, { items: [first, second] }),
+          deviceId,
+        })
       )
     ).toMatchObject({
       ok: false,
       error: { type: "QerkoInvalidData", reason: "items" },
     })
 
-    await startPaying(test, "T1", "qerko-2")
-    expect(await test.payment("qerko-2")).toMatchObject({ amount: 25_800 })
+    await startPaying(test, "T1", "qerko-3")
+    expect(await test.payment("qerko-3")).toMatchObject({ amount: 5_000 })
   })
 
   test("refuses a bill another payment locks with BILL_LOCKED", async () => {
@@ -670,7 +694,11 @@ describe("paymentStart of a table's bill", () => {
     await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
 
     expect(await test.attempts("qerko-1")).toMatchObject([
-      { qerkoPaymentId: "qerko-1", closedAt: null },
+      {
+        qerkoPaymentId: "qerko-1",
+        closedAt: null,
+        paidLines: expect.stringContaining(bill.items[0]?.id ?? "-"),
+      },
     ])
     await test.run.orThrow(
       settleQerkoPayment({
@@ -727,6 +755,171 @@ describe("paymentStart of a table's bill", () => {
       )
     ).toMatchObject({ ok: false, error: { type: "QerkoBillNotFound" } })
     expect(await test.payment("qerko-1")).toBeUndefined()
+  })
+})
+
+describe("paying part of a table's bill", () => {
+  test("guests pay a bill in parts, each one what is still left of it", async () => {
+    await using test = await setup()
+    const beer = await test.run.orThrow(
+      createCatalogItem({
+        deviceId: null,
+        categoryId: null,
+        name: NonEmptyString255("Beer"),
+        description: null,
+        currency: "CZK",
+        unitAmount: Integer(5_000),
+        sortOrder: NonNegativeInteger(0),
+        scanCode: null,
+        taxRateId: null,
+      })
+    )
+    const billId = await test.bill(await test.table("T1"), [9_000])
+    await test.run.orThrow(
+      addCatalogItemToBill({
+        billId,
+        deviceId: null,
+        catalogItemId: beer,
+        quantity: PositiveNumber(3),
+        expectedDiscount: null,
+      })
+    )
+    const [bill] = await test.contents("T1")
+    if (bill === undefined) throw new Error("no bill")
+    const soup = bill.items.find((item) => item.name === "Line 1")
+    const beers = bill.items.find((item) => item.name === "Beer")
+    if (soup === undefined || beers === undefined) throw new Error("items")
+    expect(bill).toMatchObject({ allowPartialPayment: true })
+    expect(beers).toMatchObject({
+      quantity: "3",
+      price: "150",
+      minQuantity: "1",
+    })
+
+    // The first guest pays their soup and one beer.
+    const firstItems = [soup, { ...beers, quantity: "1", price: "50" }]
+    const wire = wireFor("qerko-1", bill, { items: firstItems })
+    await test.run.orThrow(answerQerkoPaymentStart({ wire, deviceId }))
+    expect(await test.payment("qerko-1")).toMatchObject({ amount: 14_000 })
+    expect(
+      await test.run.orThrow(processQerkoPayment("qerko-1"))
+    ).toMatchObject({
+      items: [
+        { name: "Line 1", quantity: "1", price: "90" },
+        { name: "Beer", quantity: "1", price: "50" },
+      ],
+    })
+    await test.run.orThrow(
+      settleQerkoPayment({
+        qerkoPaymentId: "qerko-1",
+        state: "PAID",
+        payment: { ...wire, state: "PAID", parts: cardParts("140") },
+        deviceId,
+      })
+    )
+    expect(await test.status(billId)).toMatchObject({
+      status: "open",
+      coverage: "underpaid",
+      claimedSum: 14_000,
+    })
+
+    // The next guest sees the two beers left and pays them.
+    const [rest] = await test.contents("T1")
+    expect(rest).toMatchObject({
+      allowPartialPayment: true,
+      items: [{ name: "Beer", quantity: "2", price: "100" }],
+    })
+    if (rest === undefined) throw new Error("no bill")
+    await payLines(test, "qerko-2", rest, rest.items)
+
+    expect(await test.status(billId)).toMatchObject({
+      status: "closed",
+      coverage: "paid",
+      claimedSum: 24_000,
+    })
+    expect(await test.contents("T1")).toEqual([])
+  })
+
+  test("a failed part payment gives its lines back to the bill", async () => {
+    await using test = await setup()
+    await test.bill(await test.table("T1"), [12_900, 5_000])
+    const [bill] = await test.contents("T1")
+    const first = bill?.items[0]
+    if (bill === undefined || first === undefined) throw new Error("no bill")
+    await test.run.orThrow(
+      answerQerkoPaymentStart({
+        wire: wireFor("qerko-1", bill, { items: [first] }),
+        deviceId,
+      })
+    )
+
+    await test.run.orThrow(
+      settleQerkoPayment({ qerkoPaymentId: "qerko-1", state: "CANCELLED" })
+    )
+
+    expect(await test.contents("T1")).toEqual([bill])
+  })
+
+  test("a bill with a discount is paid whole", async () => {
+    await using test = await setup()
+    const discount = await test.run.orThrow(
+      createCatalogItem({
+        deviceId: null,
+        categoryId: null,
+        name: NonEmptyString255("Discount"),
+        description: null,
+        currency: "CZK",
+        unitAmount: Integer(-1_000),
+        sortOrder: NonNegativeInteger(0),
+        scanCode: null,
+        taxRateId: null,
+      })
+    )
+    const billId = await test.bill(await test.table("T1"), [12_900, 5_000])
+    await test.run.orThrow(
+      addCatalogItemToBill({
+        billId,
+        deviceId: null,
+        catalogItemId: discount,
+        quantity: PositiveNumber(1),
+        expectedDiscount: null,
+      })
+    )
+    const [bill] = await test.contents("T1")
+    const first = bill?.items[0]
+    if (bill === undefined || first === undefined) throw new Error("no bill")
+    expect(bill).toMatchObject({ allowPartialPayment: false })
+
+    expect(
+      await test.run(
+        answerQerkoPaymentStart({
+          wire: wireFor("qerko-1", bill, { items: [first] }),
+          deviceId,
+        })
+      )
+    ).toMatchObject({
+      ok: false,
+      error: { type: "QerkoInvalidData", reason: "items" },
+    })
+    await startPaying(test, "T1", "qerko-2")
+    expect(await test.payment("qerko-2")).toMatchObject({ amount: 16_900 })
+  })
+
+  test("after money the lines cannot account for, the rest is paid whole", async () => {
+    await using test = await setup()
+    const billId = await test.bill(await test.table("T1"), [12_900, 5_000])
+    const [bill] = await test.contents("T1")
+    const first = bill?.items[0]
+    if (bill === undefined || first === undefined) throw new Error("no bill")
+    await payLines(test, "qerko-1", bill, [first])
+    await test.payCash(billId, 1_000)
+
+    expect(await test.contents("T1")).toMatchObject([
+      {
+        allowPartialPayment: false,
+        items: [{ id: billId, name: "Zbývá zaplatit", price: "40" }],
+      },
+    ])
   })
 })
 
