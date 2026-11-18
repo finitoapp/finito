@@ -47,6 +47,7 @@ import {
 import { paneGap, WebColumn } from "../src/components/web-column.tsx"
 import { recordPathname } from "../src/core/current-pathname.ts"
 import {
+  isFirstScreenReady,
   routeFallbackMounted,
   routeFallbackUnmounted,
   useIdleAfterFirstScreen,
@@ -81,12 +82,24 @@ SplashScreen.setOptions({ duration: 150 })
  * Expo Router's fallback for a route that suspends, empty on the navigator's
  * background as its default is. It also tells `first-screen.ts` a route is
  * still on its way, so the splash waits for it.
+ *
+ * Past the first screen, a route that lands here shows nothing at all until
+ * its data comes, its header included: development builds log which route
+ * and for how long, so the read that held it can get its own Suspense and a
+ * skeleton where it is drawn.
  */
-export function SuspenseFallback() {
+export function SuspenseFallback({ route }: { readonly route: string }) {
   useEffect(() => {
     routeFallbackMounted()
-    return routeFallbackUnmounted
-  }, [])
+    const startedAt = __DEV__ && isFirstScreenReady() ? Date.now() : null
+    return () => {
+      routeFallbackUnmounted()
+      if (startedAt === null) return
+      console.info(
+        `[route-suspense] ${route} showed an empty screen for ${Date.now() - startedAt} ms`
+      )
+    }
+  }, [route])
   return null
 }
 
