@@ -8,8 +8,9 @@ import { duration } from "./tokens.ts"
  * fade of a fill between rest, hover and press.
  *
  * `useNativeDriver` is explicit because the driver's own default never
- * turns it on: 3.0.18 detects Fabric by `global.__nativeFabricUIManager`,
- * which React Native 0.88 names `nativeFabricUIManager`. A node whose
+ * turns it on: it detects Fabric by `global.__nativeFabricUIManager`
+ * (3.0.18 through 3.3.3), which React Native 0.88 names
+ * `nativeFabricUIManager`. A node whose
  * transition covers a numeric height, width or min/max size still runs on
  * the JS driver (the driver decides that per node).
  */

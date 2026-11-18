@@ -420,7 +420,8 @@ test("every pressed fill also answers a pointer's hover", () => {
  * driver animates a pressed state's keys through a path that ignores the
  * list while the render path honours it, and on a PAX A920Pro a keypad
  * key's pressed fill then stayed after any press held 100 ms or longer
- * (2026-11-17). Bisected to that one change on the device.
+ * (2026-11-17). Bisected to that one change on the device. The driver's
+ * source is the same in 3.3.3.
  */
 test("a transition names a preset, never a list of properties", () => {
   const appDir = path.resolve(srcDir, "../app")
