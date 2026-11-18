@@ -127,6 +127,7 @@ export default {
       },
     ],
     "./plugins/with-no-data-extraction.cjs",
+    "./plugins/with-optional-hardware-features.cjs",
     "./plugins/with-hardware-key-events.cjs",
     "./plugins/with-switchio-result-capture.cjs",
     "./plugins/with-library-compile-sdk.cjs",
